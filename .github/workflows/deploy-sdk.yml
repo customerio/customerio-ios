@@ -9,7 +9,7 @@ on:
         type: string
 
   push:
-    branches: [beta, main, v1] # all branches where deployments currently occur. Make sure this list matches list of branches in  `.releaserc` file.
+    branches: [beta, main, ahmed/ci/sem_release] # all branches where deployments currently occur. Make sure this list matches list of branches in  `.releaserc` file.
 
 permissions:
   contents: write # access to push the git tag
@@ -17,54 +17,65 @@ permissions:
 jobs:
   # We can only generate SDK size reports on macOS and we prefer to run deployments on Linux because macOS resources are limited. 
   # Therefore, generating SDK reports is a separate job that runs before deployment.
-  generate-sdk-size-report:
-    name: Generate SDK size report to attach to the release 
-    runs-on: macos-14
-    # In order to pass data from 1 action to another, you use outputs. 
-    # These are the generated reports that the deployment action depends on. 
+ 
+  # Check if we should skip this workflow run
+  check-skip:
+    name: Check if workflow should be skipped
+    runs-on: ubuntu-latest
     outputs:
-      sdk-size-report: ${{ steps.generate-sdk-size-report.outputs.sdk-size-report }}
-      sdk-size-including-dependencies-report: ${{ steps.generate-sdk-size-report.outputs.sdk-size-including-dependencies-report }}
+      should_skip: ${{ steps.check.outputs.should_skip }}
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: ./.github/actions/generate-sdk-size-report
-        id: generate-sdk-size-report
-        with:
-          GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64: ${{ secrets.GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64 }} 
+      - id: check
+        name: Check for skip conditions
+        run: |
+          # Check if commit message contains [skip ci] or was created by our workflow
+          if [[ "${{ github.event_name }}" == "push" ]]; then
+            # Get the commit message - this requires checkout first
+            git clone --quiet --no-checkout --filter=blob:none --depth=1 https://github.com/${{ github.repository }}.git .
+            COMMIT_MSG=$(git log --format=%B -n 1 ${{ github.sha }})
+            echo "Commit message: $COMMIT_MSG"
+            
+            # Skip if [skip ci] or workflow commit message pattern is found
+            if [[ "$COMMIT_MSG" == *"[skip ci]"* ]] || [[ "$COMMIT_MSG" == *"[CI WORKFLOW]"* ]] || [[ "$COMMIT_MSG" == "chore: prepare for"* ]]; then
+              echo "This is a workflow-generated commit or has [skip ci] tag. Skipping workflow run."
+              echo "should_skip=true" >> $GITHUB_OUTPUT
+            else
+              echo "Regular commit, continuing with workflow."
+              echo "should_skip=false" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "Not a push event, continuing with workflow."
+            echo "should_skip=false" >> $GITHUB_OUTPUT
+          fi
 
   deploy-git-tag:
     name: Deploy git tag
-    needs: [generate-sdk-size-report]
+    needs: [check-skip]
+    if: ${{ needs.check-skip.outputs.should_skip != 'true' }}
     runs-on: ubuntu-latest
     outputs:
       new_release_git_head: ${{ steps.semantic-release.outputs.new_release_git_head }}
       new_release_published: ${{ steps.semantic-release.outputs.new_release_published }}
       new_release_version: ${{ steps.semantic-release.outputs.new_release_version }}
+      tag_pushed: ${{ steps.tag-verification.outputs.tag_pushed }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          # We need full history and tags for semantic-release to work properly
+          fetch-depth: 0
+          
+      # Configure Git for semantic-release
+      - name: Configure Git
+        run: |
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "GitHub Actions"
 
       # CLI to replace strings in files. The CLI recommends using `cargo install` which is slow. This Action is fast because it downloads pre-built binaries.
       # If using sd on macos, "brew install" works great. for Linux, this is the recommended way.
       - name: Install sd CLI to use later in the workflow
         # uses: kenji-miyake/setup-sd@59a1bd7bba077f6c491f04cd9d24b524ea2db4b6 # v1.1.1
         uses: levibostian/setup-sd@cbdeed93d4fe03f9e36b73bb6d9e7c3c4805e1f9 # add-file-extension # Using fork until upstream Action has bug fixed in it.
-
-      # We want to track the SDK binary size for each release. 
-      # The reports is pushed by semantic-release action below by including files listed in the `assets` array in the `.releaserc` file.
-      - name: Write SDK size reports to file to include in the release
-        run: |
-          mkdir -p reports
-          echo "${{ needs.generate-sdk-size-report.outputs.sdk-size-report }}" > reports/sdk-binary-size.txt
-          echo "${{ needs.generate-sdk-size-report.outputs.sdk-size-including-dependencies-report }}" > reports/sdk-binary-size-including-dependencies.txt
-
-          echo "Verifying the reports got written to the file system. If the files are not empty, they were generated successfully..."
-          echo "SDK binary size report:"
-          head reports/sdk-binary-size.txt
-    
-          echo "SDK binary size including dependencies report:"
-          head reports/sdk-binary-size-including-dependencies.txt
-          
+   
           
       - name: 'Generate token'
         id: generate_token
@@ -72,6 +83,29 @@ jobs:
         with:
           app_id: ${{ secrets.CIO_APP_ID }}
           private_key: ${{ secrets.CIO_APP_SECRET }}
+          
+      - name: Setup repository with token
+        run: |
+          # Configure git to use the token for authentication
+          git config --global credential.helper store
+          echo "https://x-access-token:${{ steps.generate_token.outputs.token }}@github.com" > ~/.git-credentials
+          chmod 600 ~/.git-credentials
+          
+          # Verify current remote URL
+          echo "Current remotes:"
+          git remote -v
+          
+          # Test authentication with token
+          echo "Testing token authentication..."
+          git ls-remote --exit-code --heads origin main || echo "Authentication failed!"
+          
+          # Verify GitHub App permissions
+          echo "Verifying GitHub App permissions via API..."
+          curl -s -H "Authorization: token ${{ steps.generate_token.outputs.token }}" \
+               -H "Accept: application/vnd.github.v3+json" \
+               "https://api.github.com/installation/repositories" | grep -q "${{ github.repository }}" && \
+               echo "✅ GitHub App has access to this repository" || \
+               echo "❌ GitHub App might not have proper repository access"
     
       # Semantic-release tool is used to:
       # 1. Determine the next semantic version for the software during deployment.
@@ -81,6 +115,23 @@ jobs:
       #    specific commit message format during pull requests.
       # 2. Updates metadata files. Such as updating the version number in package.json and adding entries to CHANGELOG.md file.
       # 3. Create git tag and push it to github.
+      # Debug GitHub token permissions
+      - name: Debug token permissions
+        run: |
+          echo "Token check: Using GitHub App token - Making sure it exists"
+          if [ -n "${{ steps.generate_token.outputs.token }}" ]; then
+            echo "GitHub App token is present"
+            echo "Token first 5 chars: ${TOKEN:0:5}..."
+          else
+            echo "ERROR: GitHub App token is missing!"
+          fi
+          
+          # Output Git and GitHub configuration
+          echo "Current Git Configuration:"
+          git config --list
+        env:
+          TOKEN: ${{ steps.generate_token.outputs.token }}
+          
       - name: Deploy git tag via semantic-release
         uses: cycjimmy/semantic-release-action@0a51e81a6baff2acad3ee88f4121c589c73d0f0e # v4.2.0
         id: semantic-release
@@ -96,236 +147,43 @@ jobs:
         env:
           # Needs to push git commits to repo. Needs write access.
           GITHUB_TOKEN: ${{ steps.generate_token.outputs.token }}
-
-      - name: Notify team of git tag being created
-        uses: slackapi/slack-github-action@70cd7be8e40a46e8b0eced40b0de447bdb42f68e # v1.26.0
-        if: steps.semantic-release.outputs.new_release_published == 'true' # only run if a git tag was made.
-        with:
-          # Use block kit for format of the JSON payloads: https://app.slack.com/block-kit-builder
-          payload: |
-            {
-              "text": "iOS SDK git tag created",
-              "username": "iOS deployment bot",
-              "icon_url": "https://pngimg.com/uploads/apple_logo/apple_logo_PNG19687.png",
-              "channel": "#mobile-deployments",
-              "blocks": [
-                  {
-                      "type": "section",
-                      "text": {
-                          "type": "mrkdwn",
-                          "text": "*iOS* SDK git tag created successfully and deployed to Swift Package Manager! (deployment step 1 of 2)"
-                      }
-                  },
-                  {
-                      "type": "divider"
-                  },
-                  {
-                      "type": "section",
-                      "text": {
-                          "type": "mrkdwn",
-                          "text": "*Version ${{ steps.semantic-release.outputs.new_release_version }}*\niOS SDK deployment progress:\n ~1. <https://github.com/${{github.repository}}/releases/tag/${{steps.semantic-release.outputs.new_release_version}}|create git ta and deploy to Swift Package Manager>~\n2. deploy to cocoapods\n\n"
-                      }
-                  }
-              ]
-            }
-        env:
-          # Incoming webhook URL that sends message into the correct Slack channel.
-          # Help on how to get the webhook URL: https://github.com/marketplace/actions/slack-send#setup-2
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_NOTIFY_RELEASES_WEBHOOK_URL }}
-          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
-
-      - name: Notify team of failure
-        uses: slackapi/slack-github-action@70cd7be8e40a46e8b0eced40b0de447bdb42f68e # v1.26.0
-        if: ${{ failure() }} # only run this if any previous step failed
-        with:
-          # Use block kit for format of the JSON payloads: https://app.slack.com/block-kit-builder
-          payload: |
-            {
-              "text": "iOS SDK deployment failure",
-              "username": "iOS deployment bot",
-              "icon_url": "https://pngimg.com/uploads/apple_logo/apple_logo_PNG19687.png",
-              "channel": "#mobile-deployments",
-              "blocks": [
-                  {
-                      "type": "section",
-                      "text": {
-                          "type": "mrkdwn",
-                          "text": "*iOS* SDK deployment :warning: failure :warning:"
-                      }
-                  },
-                  {
-                      "type": "divider"
-                  },
-                  {
-                      "type": "section",
-                      "text": {
-                          "type": "mrkdwn",
-                          "text": "iOS SDK failed deployment during step *create git tag*. View <https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}|CI server logs> to learn why and fix the issue. <https://github.com/customerio/mobile/blob/main/GIT-WORKFLOW.md|Learn more about the deployment process and how to fix errors>."
-                      }
-                  }
-              ]
-            }
-        env:
-          # Incoming webhook URL that sends message into the correct Slack channel.
-          # Help on how to get the webhook URL: https://github.com/marketplace/actions/slack-send#setup-2
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_NOTIFY_RELEASES_WEBHOOK_URL }}
-          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
-
-  deploy-cocoapods:
-    name: Deploy SDK to Cocoapods
-    needs: [deploy-git-tag] # run after git tag is made
-    # Only run if we can find a git tag to checkout.
-    if: ${{ needs.deploy-git-tag.outputs.new_release_published == 'true' || github.event_name == 'workflow_dispatch' }}
-    env:
-      COCOAPODS_TRUNK_TOKEN: ${{ secrets.COCOAPODS_TRUNK_TOKEN }}
-    runs-on: macos-14
-    steps:
-      - name: Checkout git tag that got created in previous step
-        uses: actions/checkout@v4
-        if: ${{ needs.deploy-git-tag.outputs.new_release_published == 'true' }}
-        with:
-          ref: ${{ needs.deploy-git-tag.outputs.new_release_git_head }}
-
-      - name: Checkout git tag that was previously created
-        uses: actions/checkout@v4
-        if: ${{ github.event_name == 'workflow_dispatch' }}
-        with:
-          ref: ${{ inputs.existing-git-tag }}
-
-      - name: Get SDK version
-        id: get-version
+          
+      # Verify tag was properly created and pushed
+      - name: Verify tag creation
+        id: tag-verification
+        if: steps.semantic-release.outputs.new_release_published == 'true'
         run: |
-          if [[ "${{ needs.deploy-git-tag.outputs.new_release_published }}" == "true" ]]; then
-            echo "version=${{ needs.deploy-git-tag.outputs.new_release_version }}" >> $GITHUB_OUTPUT
+          if [ -n "${{ steps.semantic-release.outputs.new_release_version }}" ]; then
+            echo "Verifying tag ${{ steps.semantic-release.outputs.new_release_version }} exists remotely..."
+            
+            # Check if tag exists remotely
+            if git ls-remote --tags origin "refs/tags/${{ steps.semantic-release.outputs.new_release_version }}" | grep -q "${{ steps.semantic-release.outputs.new_release_version }}"; then
+              echo "✅ Tag ${{ steps.semantic-release.outputs.new_release_version }} successfully verified on remote!"
+              echo "tag_pushed=true" >> $GITHUB_OUTPUT
+            else
+              echo "⚠️ Tag not found on remote, attempting to repair..."
+              
+              # Try to repair by re-pushing the tag
+              git fetch --tags
+              
+              if git show-ref --tags "${{ steps.semantic-release.outputs.new_release_version }}" --quiet; then
+                echo "Tag exists locally, pushing again..."
+                git push --force origin "refs/tags/${{ steps.semantic-release.outputs.new_release_version }}"
+                
+                # Verify again
+                if git ls-remote --tags origin "refs/tags/${{ steps.semantic-release.outputs.new_release_version }}" | grep -q "${{ steps.semantic-release.outputs.new_release_version }}"; then
+                  echo "✅ Tag successfully repaired and pushed!"
+                  echo "tag_pushed=true" >> $GITHUB_OUTPUT
+                else
+                  echo "❌ Failed to repair tag."
+                  echo "tag_pushed=false" >> $GITHUB_OUTPUT
+                fi
+              else
+                echo "❌ Tag not found locally either."
+                echo "tag_pushed=false" >> $GITHUB_OUTPUT
+              fi
+            fi
           else
-            echo "version=${{ inputs.existing-git-tag }}" >> $GITHUB_OUTPUT
+            echo "No new version was released."
+            echo "tag_pushed=false" >> $GITHUB_OUTPUT
           fi
-
-      - uses: ./.github/actions/setup-ios
-
-      - name: Install cocoapods
-        run: gem install cocoapods
-      - name: '⚠️ Note: Pushing to cocoapods is flaky. If you see some errors in these logs while deploying, re-run this GitHub Action to try deployment again and it might fix the issue.'
-        run: echo ''
-      - name: Push CustomerIOCommon
-        run: ./scripts/push-cocoapod.sh CustomerIOCommon.podspec
-      - name: Push CustomerIOTrackingMigration
-        run: ./scripts/push-cocoapod.sh CustomerIOTrackingMigration.podspec
-      - name: Push CustomerIODataPipelines
-        run: ./scripts/push-cocoapod.sh CustomerIODataPipelines.podspec
-      - name: Push CustomerIOMessagingPush
-        run: ./scripts/push-cocoapod.sh CustomerIOMessagingPush.podspec
-      - name: Push CustomerIOMessagingPushAPN
-        run: ./scripts/push-cocoapod.sh CustomerIOMessagingPushAPN.podspec
-      - name: Push CustomerIOMessagingPushFCM
-        run: ./scripts/push-cocoapod.sh CustomerIOMessagingPushFCM.podspec
-      - name: Push CustomerIOMessagingInApp
-        run: ./scripts/push-cocoapod.sh CustomerIOMessagingInApp.podspec
-      - name: Push CustomerIO
-        run: ./scripts/push-cocoapod.sh CustomerIO.podspec
-
-      - name: Notify team of successful deployment
-        uses: slackapi/slack-github-action@70cd7be8e40a46e8b0eced40b0de447bdb42f68e # v1.26.0
-        if: ${{ success() }}
-        with:
-          # Use block kit for format of the JSON payloads: https://app.slack.com/block-kit-builder
-          payload: |
-            {
-              "text": "iOS SDK deployed to CocoaPods",
-              "username": "iOS deployment bot",
-              "icon_url": "https://pngimg.com/uploads/apple_logo/apple_logo_PNG19687.png",
-              "channel": "#mobile-deployments",
-              "blocks": [
-                  {
-                      "type": "section",
-                      "text": {
-                          "type": "mrkdwn",
-                          "text": "*iOS* SDK deployed to Cocoapods! (deployment step 2 of 2)"
-                      }
-                  },
-                  {
-                      "type": "divider"
-                  },
-                  {
-                      "type": "section",
-                      "text": {
-                          "type": "mrkdwn",
-                          "text": "*Version ${{ steps.get-version.outputs.version }}*\n\niOS SDK deployment progress:\n ~1. <https://github.com/${{github.repository}}/releases/tag/${{ steps.get-version.outputs.version }}|create git tag and deploy to Swift Package Manager>~\n~2. deploy to cocoapods~\n\nBuilding sample apps with latest SDK version will begin automatically."
-                      }
-                  }
-              ]
-            }
-        env:
-          # Incoming webhook URL that sends message into the correct Slack channel.
-          # Help on how to get the webhook URL: https://github.com/marketplace/actions/slack-send#setup-2
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_NOTIFY_RELEASES_WEBHOOK_URL }}
-          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
-
-      - name: Notify team of failure
-        uses: slackapi/slack-github-action@70cd7be8e40a46e8b0eced40b0de447bdb42f68e # v1.26.0
-        if: ${{ failure() }} # only run this if any previous step failed
-        with:
-          # Use block kit for format of the JSON payloads: https://app.slack.com/block-kit-builder
-          payload: |
-            {
-              "text": "iOS SDK deployment failure",
-              "username": "iOS deployment bot",
-              "icon_url": "https://pngimg.com/uploads/apple_logo/apple_logo_PNG19687.png",
-              "channel": "#mobile-deployments",
-              "blocks": [
-                  {
-                      "type": "section",
-                      "text": {
-                          "type": "mrkdwn",
-                          "text": "*iOS* SDK deployment :warning: failure :warning:"
-                      }
-                  },
-                  {
-                      "type": "divider"
-                  },
-                  {
-                      "type": "section",
-                      "text": {
-                          "type": "mrkdwn",
-                          "text": "iOS SDK failed deployment during step *deploy to cocoapods*. View <https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}|CI server logs> to learn why and fix the issue. <https://github.com/customerio/mobile/blob/main/GIT-WORKFLOW.md|Learn more about the deployment process and how to fix errors>."
-                      }
-                  }
-              ]
-            }
-        env:
-          # Incoming webhook URL that sends message into the correct Slack channel.
-          # Help on how to get the webhook URL: https://github.com/marketplace/actions/slack-send#setup-2
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_NOTIFY_RELEASES_WEBHOOK_URL }}
-          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
-
-  wait-for-cocoapods:
-    name: Wait for deploy-cocoapods to finish
-    needs: [deploy-cocoapods]
-    runs-on: ubuntu-latest
-    if: ${{ success() }}
-    steps:
-      - name: Wait for CocoaPods CDN propagation
-        run: |
-          echo "Waiting for CocoaPods CDN to propagate..."
-          sleep 1200 # Wait for 20 minute to allow CocoaPods CDN to propagate the changes.
-          echo "CocoaPods CDN propagation completed."
-
-  # New job to build sample apps after successful deployment to CocoaPods
-  build-sample-apps:
-    name: Build sample apps with latest SDK version
-    needs: [deploy-cocoapods, wait-for-cocoapods]
-    if: ${{ success() }}
-    uses: ./.github/workflows/reusable_build_sample_apps.yml
-    with:
-      use_latest_sdk_version: true
-    secrets:
-      GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64: ${{ secrets.GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64 }}
-      FIREBASE_APP_DISTRIBUTION_SERVICE_ACCOUNT_CREDS_B64: ${{ secrets.FIREBASE_APP_DISTRIBUTION_SERVICE_ACCOUNT_CREDS_B64 }}
-      CUSTOMERIO_APN_WORKSPACE_SITE_ID: ${{ secrets.CUSTOMERIO_APN_WORKSPACE_SITE_ID }}
-      CUSTOMERIO_APN_WORKSPACE_CDP_API_KEY: ${{ secrets.CUSTOMERIO_APN_WORKSPACE_CDP_API_KEY }}
-      CUSTOMERIO_FCM_WORKSPACE_SITE_ID: ${{ secrets.CUSTOMERIO_FCM_WORKSPACE_SITE_ID }}
-      CUSTOMERIO_FCM_WORKSPACE_CDP_API_KEY: ${{ secrets.CUSTOMERIO_FCM_WORKSPACE_CDP_API_KEY }}
-      SAMPLE_APPS_APN_FIREBASE_APP_ID: ${{ secrets.SAMPLE_APPS_APN_FIREBASE_APP_ID }}
-      SAMPLE_APPS_FCM_FIREBASE_APP_ID: ${{ secrets.SAMPLE_APPS_FCM_FIREBASE_APP_ID }}
-      SAMPLE_APPS_INSTRUCTIONS_GUIDE_LINK: ${{ secrets.SAMPLE_APPS_INSTRUCTIONS_GUIDE_LINK }}
-      SLACK_NOTIFY_RELEASES_WEBHOOK_URL: ${{ secrets.SLACK_NOTIFY_RELEASES_WEBHOOK_URL }}
