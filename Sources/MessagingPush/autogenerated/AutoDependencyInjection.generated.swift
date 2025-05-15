@@ -69,6 +69,9 @@ extension DIGraphShared {
         _ = pushHistory
         countDependenciesResolved += 1
 
+        _ = pushNotificationLogger
+        countDependenciesResolved += 1
+
         _ = richPushDeliveryTracker
         countDependenciesResolved += 1
 
@@ -106,7 +109,7 @@ extension DIGraphShared {
 
     @available(iOSApplicationExtension, unavailable)
     private var newPushEventHandler: PushEventHandler {
-        IOSPushEventListener(jsonAdapter: jsonAdapter, pushEventHandlerProxy: pushEventHandlerProxy, moduleConfig: messagingPushConfigOptions, pushClickHandler: pushClickHandler, pushHistory: pushHistory, logger: logger)
+        IOSPushEventListener(jsonAdapter: jsonAdapter, pushEventHandlerProxy: pushEventHandlerProxy, moduleConfig: messagingPushConfigOptions, pushClickHandler: pushClickHandler, pushHistory: pushHistory, logger: logger, pushLogger: pushNotificationLogger)
     }
 
     // PushClickHandler
@@ -118,7 +121,7 @@ extension DIGraphShared {
 
     @available(iOSApplicationExtension, unavailable)
     private var newPushClickHandler: PushClickHandler {
-        PushClickHandlerImpl(deepLinkUtil: deepLinkUtil, messagingPush: messagingPushInstance)
+        PushClickHandlerImpl(deepLinkUtil: deepLinkUtil, messagingPush: messagingPushInstance, pushLogger: pushNotificationLogger)
     }
 
     // PushEventHandlerProxy (singleton)
@@ -170,6 +173,16 @@ extension DIGraphShared {
 
     private func _get_pushHistory() -> PushHistory {
         PushHistoryImpl(lockManager: lockManager)
+    }
+
+    // PushNotificationLogger
+    var pushNotificationLogger: PushNotificationLogger {
+        getOverriddenInstance() ??
+            newPushNotificationLogger
+    }
+
+    private var newPushNotificationLogger: PushNotificationLogger {
+        PushNotificationLoggerImpl(logger: logger)
     }
 
     // RichPushDeliveryTracker

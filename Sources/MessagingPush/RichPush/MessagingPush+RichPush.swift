@@ -47,23 +47,22 @@ extension MessagingPushImplementation {
         _ request: UNNotificationRequest,
         withContentHandler contentHandler: @escaping (UNNotificationContent) -> Void
     ) -> Bool {
-        logger.info("did receive notification request. Checking if message was a push sent from Customer.io...")
-        logger.debug("notification request: \(request.content.userInfo)")
-
         let push = UNNotificationWrapper(notificationRequest: request)
+        pushLogger.logReceivedPushMessage(notification: push)
 
         guard let pushCioDeliveryInfo = push.cioDelivery else {
-            logger.info("the notification was not sent by Customer.io. Ignoring notification request.")
+            pushLogger.logReceivedNonCioPushMessage()
             return false
         }
 
-        logger.info("push was sent from Customer.io. Processing the request...")
+        pushLogger.logReceivedCioPushMessage()
 
         if moduleConfig.autoTrackPushEvents {
-            logger.info("automatically tracking push metric: delivered")
-            logger.debug("parsed deliveryId \(pushCioDeliveryInfo.id), deviceToken: \(pushCioDeliveryInfo.token)")
+            pushLogger.logTrackingPushMessageDelivered(deliveryId: pushCioDeliveryInfo.id)
 
             trackMetricFromNSE(deliveryID: pushCioDeliveryInfo.id, event: .delivered, deviceToken: pushCioDeliveryInfo.token)
+        } else {
+            pushLogger.logPushMetricsAutoTrackingDisabled()
         }
 
         RichPushRequestHandler.shared.startRequest(

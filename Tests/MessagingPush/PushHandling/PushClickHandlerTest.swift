@@ -14,7 +14,7 @@ class PushClickHandlerTest: IntegrationTest {
     override func setUp() {
         super.setUp()
 
-        pushClickHandler = PushClickHandlerImpl(deepLinkUtil: deepLinkUtilMock, messagingPush: messagingPushMock)
+        pushClickHandler = PushClickHandlerImpl(deepLinkUtil: deepLinkUtilMock, messagingPush: messagingPushMock, pushLogger: PushNotificationLoggerMock())
     }
 
     // MARK: handleDeepLink
