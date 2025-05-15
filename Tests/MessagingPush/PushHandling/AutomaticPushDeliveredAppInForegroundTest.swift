@@ -153,7 +153,8 @@ extension AutomaticPushDeliveredAppInForegrondTest {
             moduleConfig: pushModuleConfig,
             pushClickHandler: pushClickHandler,
             pushHistory: diGraphShared.pushHistory,
-            logger: diGraphShared.logger
+            logger: diGraphShared.logger,
+            pushLogger: diGraphShared.pushNotificationLogger
         )
     }
 
