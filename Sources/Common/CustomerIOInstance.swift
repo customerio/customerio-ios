@@ -15,6 +15,7 @@ public protocol CustomerIOInstance: AutoMockable {
      Note: You can only identify 1 profile at a time in your SDK. If you call this function multiple times,
      the previously identified profile will be removed. Only the latest identified customer is persisted.
      - Parameters:
+    
      - userId: ID you want to assign to the customer.
      This value can be an internal ID that your system uses or an email address.
      [Learn more](https://customer.io/docs/api/#operation/identify)
