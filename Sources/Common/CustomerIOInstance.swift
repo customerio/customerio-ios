@@ -15,6 +15,7 @@ public protocol CustomerIOInstance: AutoMockable {
      Note: You can only identify 1 profile at a time in your SDK. If you call this function multiple times,
      the previously identified profile will be removed. Only the latest identified customer is persisted.
      - Parameters:
+    
      - userId: ID you want to assign to the customer.
      This value can be an internal ID that your system uses or an email address.
      [Learn more](https://customer.io/docs/api/#operation/identify)
@@ -152,12 +153,10 @@ public protocol CustomerIOInstance: AutoMockable {
     func trackMetric(deliveryID: String, event: Metric, deviceToken: String)
 }
 
-/**
- Welcome to the Customer.io iOS SDK!
-
- This class is where you begin to use the SDK.
- You must call `CustomerIO.initialize` to use the features of the SDK.
- */
+/// Welcome to the Customer.io iOS SDK!
+///
+/// This class is where you begin to use the SDK.
+/// You must call `CustomerIO.initialize` to use the features of the SDK.
 public class CustomerIO: CustomerIOInstance {
     /// The current version of the Customer.io SDK.
     public static var version: String {
@@ -170,7 +169,7 @@ public class CustomerIO: CustomerIOInstance {
 
     /**
      Singleton shared instance of `CustomerIO`. Convenient way to use the SDK.
-
+    
      Note: Don't forget to call `CustomerIO.initialize()` before using this!
      */
     @Atomic public private(set) static var shared = CustomerIO()
@@ -184,18 +183,19 @@ public class CustomerIO: CustomerIOInstance {
     private init() {}
 
     #if DEBUG
-    // Methods to set up the test environment.
-    // Any implementation of the interface works for unit tests.
+        // Methods to set up the test environment.
+        // Any implementation of the interface works for unit tests.
 
-    @discardableResult
-    static func setUpSharedInstanceForUnitTest(implementation: CustomerIOInstance) -> CustomerIO {
-        shared.implementation = implementation
-        return shared
-    }
+        @discardableResult
+        static func setUpSharedInstanceForUnitTest(implementation: CustomerIOInstance) -> CustomerIO
+        {
+            shared.implementation = implementation
+            return shared
+        }
 
-    public static func resetSharedTestEnvironment() {
-        shared = CustomerIO()
-    }
+        public static func resetSharedTestEnvironment() {
+            shared = CustomerIO()
+        }
     #endif
 
     public static func initializeSharedInstance(with implementation: CustomerIOInstance) {
