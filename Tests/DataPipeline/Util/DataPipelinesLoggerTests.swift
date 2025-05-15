@@ -63,4 +63,37 @@ class DataPipelinesLoggerTests: UnitTest {
             "Token refreshed, deleting old token to avoid registering same device multiple times"
         )
     }
+
+    func test_automaticTokenRegistrationForNewProfile_logsExpectedMessage() {
+        logger.automaticTokenRegistrationForNewProfile(token: "token", userId: "userId")
+
+        XCTAssertEqual(loggerMock.debugReceivedInvocations.count, 1)
+        XCTAssertEqual(loggerMock.debugReceivedInvocations.first?.tag, "Push")
+        XCTAssertEqual(
+            loggerMock.debugReceivedInvocations.first?.message,
+            "Automatically registering device token: token to newly identified profile: userId"
+        )
+    }
+
+    func test_logDeletingTokenDueToNewProfileIdentification_logsExpectedMessage() {
+        logger.logDeletingTokenDueToNewProfileIdentification()
+
+        XCTAssertEqual(loggerMock.debugReceivedInvocations.count, 1)
+        XCTAssertEqual(loggerMock.debugReceivedInvocations.first?.tag, "Push")
+        XCTAssertEqual(
+            loggerMock.debugReceivedInvocations.first?.message,
+            "Deleting device token before identifying new profile"
+        )
+    }
+
+    func test_logTrackingDevicesAttributesWithoutValidToken_logsExpectedMessage() {
+        logger.logTrackingDevicesAttributesWithoutValidToken()
+
+        XCTAssertEqual(loggerMock.debugReceivedInvocations.count, 1)
+        XCTAssertEqual(loggerMock.debugReceivedInvocations.first?.tag, "Push")
+        XCTAssertEqual(
+            loggerMock.debugReceivedInvocations.first?.message,
+            "No device token found. ignoring request to track device attributes"
+        )
+    }
 }

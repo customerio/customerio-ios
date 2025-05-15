@@ -13,6 +13,7 @@ open class DataPipelineInteractionTests: IntegrationTest {
     fileprivate let deviceAttributesMock = DeviceAttributesProviderMock()
     fileprivate let eventBusHandlerMock = EventBusHandlerMock()
     fileprivate let globalDataStoreMock = GlobalDataStoreMock()
+    fileprivate let dataPipelinesLoggerMock = DataPipelinesLoggerMock()
 
     override open func setUpDependencies() {
         super.setUpDependencies()
@@ -20,6 +21,7 @@ open class DataPipelineInteractionTests: IntegrationTest {
         diGraphShared.override(value: deviceAttributesMock, forType: DeviceAttributesProvider.self)
         diGraphShared.override(value: eventBusHandlerMock, forType: EventBusHandler.self)
         diGraphShared.override(value: globalDataStoreMock, forType: GlobalDataStore.self)
+        diGraphShared.override(value: dataPipelinesLoggerMock, forType: DataPipelinesLogger.self)
     }
 }
 
@@ -584,6 +586,39 @@ class CDPInteractionDefaultConfigTests: DataPipelineInteractionTests {
         XCTAssertEqual(properties?.value(forKeyPath: KeyPath("deliveryId")), givenDeliveryId)
         XCTAssertEqual(properties?.value(forKeyPath: KeyPath("metric")), givenEvent.rawValue)
         XCTAssertEqual(properties?.value(forKeyPath: KeyPath("recipient")), givenDeviceToken)
+    }
+
+    // MARK: Logging
+
+    func test_registerDeviceToken_givenBlankToken_expectLogStoringBlankPushToken() {
+        customerIO.registerDeviceToken(" ")
+
+        XCTAssertEqual(1, dataPipelinesLoggerMock.logStoringBlankPushTokenCallsCount)
+    }
+
+    func test_registerDeviceToken_givenValidToken_expectCorrectLogs() {
+        customerIO.registerDeviceToken("valid-token")
+
+        XCTAssertEqual(1, dataPipelinesLoggerMock.logStoringDevicePushTokenCallsCount)
+        XCTAssertEqual("valid-token", dataPipelinesLoggerMock.logStoringDevicePushTokenReceivedArguments?.token)
+        XCTAssertEqual(nil, dataPipelinesLoggerMock.logStoringDevicePushTokenReceivedArguments?.userId)
+
+        XCTAssertEqual(1, dataPipelinesLoggerMock.logRegisteringPushTokenCallsCount)
+        XCTAssertEqual("valid-token", dataPipelinesLoggerMock.logRegisteringPushTokenReceivedArguments?.token)
+        XCTAssertEqual(nil, dataPipelinesLoggerMock.logRegisteringPushTokenReceivedArguments?.userId)
+    }
+
+    func test_identify_givenChangingUser_expectCorrectLogs() {
+        globalDataStoreMock.underlyingPushDeviceToken = "token"
+
+        customerIO.identify(userId: "id")
+        customerIO.identify(userId: "id2")
+
+        XCTAssertTrue(dataPipelinesLoggerMock.automaticTokenRegistrationForNewProfileCalled)
+        XCTAssertEqual("token", dataPipelinesLoggerMock.automaticTokenRegistrationForNewProfileReceivedArguments?.token)
+        XCTAssertEqual("id2", dataPipelinesLoggerMock.automaticTokenRegistrationForNewProfileReceivedArguments?.userId)
+
+        XCTAssertEqual(1, dataPipelinesLoggerMock.logDeletingTokenDueToNewProfileIdentificationCallsCount)
     }
 }
 

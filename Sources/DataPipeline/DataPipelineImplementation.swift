@@ -157,7 +157,7 @@ class DataPipelineImplementation: DataPipelineInstance {
         let isFirstTimeIdentifying = currentlyIdentifiedProfile == nil
 
         if isChangingIdentifiedProfile, let _ = registeredDeviceToken {
-            logger.debug("deleting registered device token from existing profile: \(currentlyIdentifiedProfile ?? "nil")")
+            dataPipelinesLogger.logDeletingTokenDueToNewProfileIdentification()
             deleteDeviceToken()
         }
 
@@ -169,7 +169,7 @@ class DataPipelineImplementation: DataPipelineInstance {
 
         if isFirstTimeIdentifying || isChangingIdentifiedProfile {
             if let existingDeviceToken = registeredDeviceToken {
-                logger.debug("registering existing device token to newly identified profile: \(userId)")
+                dataPipelinesLogger.automaticTokenRegistrationForNewProfile(token: existingDeviceToken, userId: userId)
                 // register device to newly identified profile
                 addDeviceAttributes(token: existingDeviceToken)
             }
@@ -208,6 +208,11 @@ class DataPipelineImplementation: DataPipelineInstance {
 
     /// Internal method for passing device token to the plugin and updating device attributes
     private func addDeviceAttributes(token deviceToken: String?, attributes customAttributes: [String: Any] = [:]) {
+        guard let token = deviceToken, !token.isBlankOrEmpty() else {
+            dataPipelinesLogger.logTrackingDevicesAttributesWithoutValidToken()
+            return
+        }
+
         if let existingDeviceToken = contextPlugin.deviceToken, existingDeviceToken != deviceToken {
             // token has been refreshed, delete old token to avoid registering same device multiple times
             dataPipelinesLogger.logPushTokenRefreshed()
