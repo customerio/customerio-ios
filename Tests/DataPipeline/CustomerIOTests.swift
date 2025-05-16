@@ -3,12 +3,12 @@
 import XCTest
 
 class CustomerIOTests: IntegrationTest {
-    private let mockLogger = SdkInitializationLoggerMock()
+    private let mockLogger = SdkCommonLoggerMock()
 
     override open func setUpDependencies() {
         super.setUpDependencies()
 
-        diGraphShared.override(value: mockLogger, forType: SdkInitializationLogger.self)
+        diGraphShared.override(value: mockLogger, forType: SdkCommonLogger.self)
         DataPipeline.resetTestEnvironment()
     }
 

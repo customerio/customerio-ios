@@ -57,10 +57,10 @@ open class ModuleTopLevelObject<ImplementationClass> {
             return
         }
 
-        let initLogger = DIGraphShared.shared.sdkInitializationLogger
+        let commonLogger = DIGraphShared.shared.sdkCommonLogger
 
-        initLogger.moduleInitStart(moduleName)
+        commonLogger.moduleInitStart(moduleName)
         _implementation = blockToInitializeModule()
-        initLogger.moduleInitSuccess(moduleName)
+        commonLogger.moduleInitSuccess(moduleName)
     }
 }
