@@ -121,7 +121,7 @@ extension DIGraphShared {
 
     @available(iOSApplicationExtension, unavailable)
     private var newPushClickHandler: PushClickHandler {
-        PushClickHandlerImpl(deepLinkUtil: deepLinkUtil, messagingPush: messagingPushInstance, pushLogger: pushNotificationLogger)
+        PushClickHandlerImpl(deepLinkUtil: deepLinkUtil, messagingPush: messagingPushInstance, pushLogger: pushNotificationLogger, commonLogger: sdkCommonLogger)
     }
 
     // PushEventHandlerProxy (singleton)
