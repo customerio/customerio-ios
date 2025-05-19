@@ -36,11 +36,12 @@ class PushClickHandlerImpl: PushClickHandler {
     }
 
     func handleDeepLink(for push: PushNotification) {
-        if let deepLinkUrl = push.cioDeepLink?.url {
-            deepLinkUtil.handleDeepLink(deepLinkUrl)
-        } else {
+        guard let deepLinkUrl = push.cioDeepLink?.url else {
             commonLogger.logDeepLinkWasNotHandled()
+            return
         }
+
+        deepLinkUtil.handleDeepLink(deepLinkUrl)
     }
 
     // There are files that are created just for displaying a rich push. After a push is interacted with, those files
