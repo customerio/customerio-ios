@@ -25,17 +25,16 @@ For complete implementation examples, check out our sample apps in the repositor
 
 Below, you'll find the necessary steps to set up the SDK.
 
- ## Quick Reference
+## Quick Reference
 
   | Section | Description |
   |---------|-------------|
   | [Installation](#1-install-sdk) | Install SDK via SPM or CocoaPods |
   | [Initialization](#2-initialize-sdk) | Configure and initialize the SDK |
-  | [User Identification](#3-identify-user-and-track-events) | Identify users and their attributes |
-  | [Event and Screen Tracking](#track-events) | Track custom events and screen views |
+  | [User Identification and Event/Screen tracking](#3-identify-user-and-track-events) | Identify users and track custom events and screen views  |
   | [Push Notifications](#4-initialize-push-notifications) | Set up APNs and FCM push notifications |
   | [In-App Messaging](#5-initialize-in-app-messaging) | Configure in-app messaging |
-  | [Testing and Troubleshooting](#testing-push-notifications) | Common issues and solutions |
+  | [Testing and Troubleshooting](#common-use-cases-and-tips) | Common issues and solutions |
   | [Sample Apps](#sample-apps) | Example implementations |
   | [Migration Guide](#migrating-from-an-older-sdk-version) | Upgrade from previous versions |
   | [visionOS Support](#visionos-support) | Using SDK with visionOS |
@@ -43,13 +42,13 @@ Below, you'll find the necessary steps to set up the SDK.
 
 ## 1. Install SDK
 
-### Swift Package Manager (SPM) - Recommended
+### Swift Package Manager (SPM)
 1. In Xcode, select `File > Add Package Dependencies`
 2. Enter the package URL: `https://github.com/customerio/customerio-ios.git`
 
 ### CocoaPods
 Add the pods to your Podfile:
-```pod
+```ruby
 pod 'CustomerIO/DataPipelines'  # Required
 pod 'CustomerIO/MessagingPushAPN'  # Optional, for APNS
 pod 'CustomerIO/MessagingPushFCM'  # Optional, for FCM
@@ -73,7 +72,7 @@ import CioMessagingPushAPN  // If using Apple Push Notifications
 
 2. The simplest way to integrate is by using our App Delegate Wrapper
 To find the site ID and API Key:
-  - open `https://fly.customer.io` in your browser
+  - open https://fly.customer.io in your browser
   - go to your Workspace Settings, then under the `Advanced` section, open `API and webhook credentials`
 
 
@@ -118,7 +117,6 @@ struct MainApp: App {
         WindowGroup {
         }
     }
-
 }
 ```
 
@@ -184,7 +182,7 @@ CustomerIO.shared.track(name: "checkout_started")
 
 If you've enabled automatic screen tracking with `.autoTrackUIKitScreenViews()`, the SDK will automatically track UIKit screen views. 
 
-For manual screen tracking:
+For manual screen tracking in UIKit and SwiftUI:
 ```swift
 CustomerIO.shared.screen(name: "Product Details", properties: ["product_id": "SKU-123"])
 ```
@@ -228,7 +226,7 @@ Note: The SDK will automatically register FCM tokens with Customer.io.
 
 ## 5. Initialize In-App Messaging
 To find the site ID:
-  - open `https://fly.customer.io` in your browser
+  - open https://fly.customer.io in your browser
   - go to your Workspace Settings, then under the `Advanced` section, open `API and webhook credentials`
 
 1. Initialize the In-App Messaging module after initializing the main SDK:
@@ -277,7 +275,7 @@ extension AppDelegate: InAppEventListener {
 
 ### Testing Push Notifications
 - To send a test push notification to your device:
-  - open `https://fly.customer.io` in your browser
+  - open https://fly.customer.io in your browser
   - go to your Workspace Settings, then under the `Messaging` section, open `Push`
 - Ensure your device token is registered by checking in the Customer.io workspace under the user's profile
 
