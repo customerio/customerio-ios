@@ -39,26 +39,3 @@ target 'Rich Push Notification Service Extension' do
   pod 'CustomerIOMessagingPushAPN', :path => sdk_local_path
 end 
 
-# Add experimental Swift feature flag for access level on imports needed by Firebase 11+
-post_install do |installer|
-  installer.pods_project.targets.each do |target|
-    # For debug purposes, print the target name
-    puts "Target: #{target.name}"
-    
-    # Apply the flag to all targets to ensure it's applied to Firebase targets
-    target.build_configurations.each do |config|
-      # For debug, print the current flags
-      puts "  Config: #{config.name}, Current flags: #{config.build_settings['OTHER_SWIFT_FLAGS']}"
-      
-      # Add the experimental feature flag for access level on imports
-      if config.build_settings['OTHER_SWIFT_FLAGS'].nil?
-        config.build_settings['OTHER_SWIFT_FLAGS'] = '-enable-experimental-feature AccessLevelOnImport'
-      else
-        config.build_settings['OTHER_SWIFT_FLAGS'] += ' -enable-experimental-feature AccessLevelOnImport'
-      end
-      
-      # For debug, print the updated flags
-      puts "  Updated flags: #{config.build_settings['OTHER_SWIFT_FLAGS']}"
-    end
-  end
-end
