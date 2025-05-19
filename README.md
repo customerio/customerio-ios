@@ -107,7 +107,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 ```
 
 ### SwiftUI integration
-Use `CioAppDelegateWrapper` for App's AppDelegate.
+Use `CioAppDelegateWrapper` for App's AppDelegate:
 
 ```swift
 @main
@@ -145,7 +145,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 }
 ```
-
 
 ## 3. Identify User and Track Events
 
@@ -292,12 +291,10 @@ extension AppDelegate: InAppEventListener {
 - Enable DEBUG logs with `.logLevel(CioLogLevel.debug)` (more details in section `Initialize SDK` above)
 - For more details about troubleshooting check full documentation at https://docs.customer.io/integrations/sdk/ios
 
-
 ## Sample apps
 For complete implementation examples, check out our sample apps in the repository:
 - [APN UIKit Sample](/Apps/APN-UIKit)
 - [FCM CocoaPods Sample](/Apps/CocoaPods-FCM)
-
 
 ## Migrating from an older SDK version? 
 
