@@ -5,6 +5,9 @@ protocol DataPipelinesLogger: AutoMockable {
     func logStoringBlankPushToken()
     func logRegisteringPushToken(token: String, userId: String?)
     func logPushTokenRefreshed()
+    func automaticTokenRegistrationForNewProfile(token: String, userId: String)
+    func logDeletingTokenDueToNewProfileIdentification()
+    func logTrackingDevicesAttributesWithoutValidToken()
 }
 
 // sourcery: InjectRegisterShared = "DataPipelinesLogger"
@@ -31,5 +34,17 @@ class DataPipelinesLoggerImpl: DataPipelinesLogger {
 
     public func logPushTokenRefreshed() {
         logger.debug("Token refreshed, deleting old token to avoid registering same device multiple times", Self.PUSH_TAG)
+    }
+
+    public func automaticTokenRegistrationForNewProfile(token: String, userId: String) {
+        logger.debug("Automatically registering device token: \(token) to newly identified profile: \(userId)", Self.PUSH_TAG)
+    }
+
+    public func logDeletingTokenDueToNewProfileIdentification() {
+        logger.debug("Deleting device token before identifying new profile", Self.PUSH_TAG)
+    }
+
+    public func logTrackingDevicesAttributesWithoutValidToken() {
+        logger.debug("No device token found. ignoring request to track device attributes", Self.PUSH_TAG)
     }
 }
