@@ -18,6 +18,7 @@ class UIKitExtensionsTest: UnitTest {
     func test_bundleIdOfView_givenViewFromHostApp_expectHostAppBundleId() {
         class MyViewController: UIViewController {}
 
-        XCTAssertEqual(MyViewController().bundleIdOfView, "CommonTests") // CommonTests is value because the ViewController class above exists in the Tests target named CommonTests.
+        let expected = Bundle(for: UIKitExtensionsTest.self).bundleIdentifier
+        XCTAssertEqual(MyViewController().bundleIdOfView, expected)
     }
 }
