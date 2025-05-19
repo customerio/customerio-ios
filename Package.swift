@@ -42,7 +42,7 @@ let package = Package(
         // https://web.archive.org/web/20220525200227/https://www.timc.dev/posts/understanding-swift-packages/
         //
         // Update to exact version until wrapper SDKs become part of testing pipeline.
-        .package(name: "Firebase", url: "https://github.com/firebase/firebase-ios-sdk.git", "8.7.0"..<"11.11.0"),
+        .package(name: "Firebase", url: "https://github.com/firebase/firebase-ios-sdk.git", from: "8.7.0"),
         
 
         // Make sure the version number is same for DataPipelines cocoapods.
