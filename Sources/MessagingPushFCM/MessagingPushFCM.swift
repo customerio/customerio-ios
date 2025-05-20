@@ -45,11 +45,28 @@ public protocol MessagingPushFCMInstance: AutoMockable {
     #endif
 }
 
+enum MessagingPushFCMDependenciesFactory {
+    static var apnAutoFetchDeviceTokenProvider: () -> FCMAutoFetchDeviceToken = {
+        FCMAutoFetchDeviceTokenImpl(messagingPushFCM: MessagingPushFCM.shared)
+    }
+
+    static var messagingPushProvider: () -> MessagingPushInstance = { MessagingPush.shared }
+
+    static func getAutoFetchDeviceToken() -> FCMAutoFetchDeviceToken {
+        apnAutoFetchDeviceTokenProvider()
+    }
+
+    static func getMessagingPush() -> MessagingPushInstance {
+        messagingPushProvider()
+    }
+}
+
 public class MessagingPushFCM: MessagingPushFCMInstance {
     static let shared = MessagingPushFCM()
+    static let apnAutoFetchDeviceToken: FCMAutoFetchDeviceToken = MessagingPushFCMDependenciesFactory.getAutoFetchDeviceToken()
 
     var messagingPush: MessagingPushInstance {
-        MessagingPush.shared
+        MessagingPushFCMDependenciesFactory.getMessagingPush()
     }
 
     public func registerDeviceToken(fcmToken: String?) {
@@ -92,8 +109,9 @@ public class MessagingPushFCM: MessagingPushFCMInstance {
         let implementation = MessagingPush.initialize(withConfig: config)
 
         let pushConfigOptions = MessagingPush.moduleConfig
-        if pushConfigOptions.autoFetchDeviceToken, !MessagingPush.appDelegateIntegratedExplicitely {
-            shared.setupAutoFetchDeviceToken()
+        if pushConfigOptions.autoFetchDeviceToken, !MessagingPush.appDelegateIntegratedExplicitly {
+//            shared.setupAutoFetchDeviceToken()
+            apnAutoFetchDeviceToken.setup()
         }
 
         return implementation

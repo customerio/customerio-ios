@@ -5,10 +5,23 @@ import Foundation
 import UIKit
 #endif
 
-extension MessagingPushFCM {
+// sourcery: AutoMockable
+protocol FCMAutoFetchDeviceToken {
+    func setup()
+}
+
+class FCMAutoFetchDeviceTokenImpl: FCMAutoFetchDeviceToken {
+    private let messagingPushFCM: MessagingPushFCMInstance
+
+    init(messagingPushFCM: MessagingPushFCMInstance) {
+        self.messagingPushFCM = messagingPushFCM
+    }
+
     @available(iOSApplicationExtension, unavailable)
-    func setupAutoFetchDeviceToken() {
+    func setup() {
         swizzleDidRegisterForRemoteNotifications()
+
+        // Register for push notifications to invoke`didRegisterForRemoteNotificationsWithDeviceToken` method
         UIApplication.shared.registerForRemoteNotifications()
     }
 
@@ -16,6 +29,7 @@ extension MessagingPushFCM {
     private func swizzleDidRegisterForRemoteNotifications() {
         let appDelegate = UIApplication.shared.delegate
         let appDelegateClass: AnyClass? = object_getClass(appDelegate)
+
         let originalSelector = #selector(UIApplicationDelegate.application(_:didRegisterForRemoteNotificationsWithDeviceToken:))
         let swizzledSelector = #selector(application(_:didRegisterForRemoteNotificationsWithDeviceToken:))
         swizzle(forOriginalClass: appDelegateClass, forSwizzledClass: MessagingPushFCM.self, original: originalSelector, new: swizzledSelector)
@@ -38,11 +52,12 @@ extension MessagingPushFCM {
         Messaging.messaging().apnsToken = deviceToken
         // Registers listener with FCM SDK to always have the latest FCM token.
         // Used to automatically register it with the SDK.
-        Messaging.messaging().token(completion: { token, _ in
+        Messaging.messaging().token(completion: { [weak self] token, _ in
             guard let token = token else {
                 return
             }
-            Self.shared.registerDeviceToken(fcmToken: token)
+//            Self.shared.registerDeviceToken(fcmToken: token)
+            self?.messagingPushFCM.registerDeviceToken(fcmToken: token)
         })
     }
 }

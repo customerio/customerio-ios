@@ -61,7 +61,7 @@ class CioAppDelegateAPNTests: XCTestCase {
 
         UNUserNotificationCenter.unswizzleNotificationCenter()
 
-        MessagingPush.appDelegateIntegratedExplicitely = false
+        MessagingPush.appDelegateIntegratedExplicitly = false
 
         super.tearDown()
     }

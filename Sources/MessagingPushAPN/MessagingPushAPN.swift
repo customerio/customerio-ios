@@ -1,5 +1,5 @@
 import CioInternalCommon
-import CioMessagingPush
+@_spi(Internal) import CioMessagingPush
 import Foundation
 #if canImport(UserNotifications)
 import UserNotifications
@@ -47,11 +47,28 @@ public protocol MessagingPushAPNInstance: AutoMockable {
     #endif
 }
 
+enum MessagingPushAPNDependenciesFactory {
+    static var apnAutoFetchDeviceTokenProvider: () -> APNAutoFetchDeviceToken = {
+        APNAutoFetchDeviceTokenImpl(messagingPushAPN: MessagingPushAPN.shared)
+    }
+
+    static var messagingPushProvider: () -> MessagingPushInstance = { MessagingPush.shared }
+
+    static func getAutoFetchDeviceToken() -> APNAutoFetchDeviceToken {
+        apnAutoFetchDeviceTokenProvider()
+    }
+
+    static func getMessagingPush() -> MessagingPushInstance {
+        messagingPushProvider()
+    }
+}
+
 public class MessagingPushAPN: MessagingPushAPNInstance {
-    static let shared = MessagingPushAPN()
+    static let shared: MessagingPushAPN = .init()
+    static let apnAutoFetchDeviceToken: APNAutoFetchDeviceToken = MessagingPushAPNDependenciesFactory.getAutoFetchDeviceToken()
 
     var messagingPush: MessagingPushInstance {
-        MessagingPush.shared
+        MessagingPushAPNDependenciesFactory.getMessagingPush()
     }
 
     public func registerDeviceToken(apnDeviceToken: Data) {
@@ -88,8 +105,9 @@ public class MessagingPushAPN: MessagingPushAPNInstance {
         let implementation = MessagingPush.initialize(withConfig: config)
 
         let pushConfigOptions = MessagingPush.moduleConfig
-        if pushConfigOptions.autoFetchDeviceToken {
-            shared.setupAutoFetchDeviceToken()
+        if pushConfigOptions.autoFetchDeviceToken, !MessagingPush.appDelegateIntegratedExplicitly {
+//            shared.setupAutoFetchDeviceToken()
+            apnAutoFetchDeviceToken.setup()
         }
 
         return implementation
