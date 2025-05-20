@@ -7,8 +7,15 @@ public protocol GistViewDelegate: AnyObject {
     func sizeChanged(message: Message, width: CGFloat, height: CGFloat)
 }
 
+/// Delegate protocol for handling view lifecycle events for GistView
+public protocol GistViewLifecycleDelegate: AnyObject {
+    /// Called when the GistView is about to be removed from its superview
+    func gistViewWillRemoveFromSuperview(_ gistView: GistView)
+}
+
 public class GistView: UIView {
     public weak var delegate: GistViewDelegate?
+    public weak var lifecycleDelegate: GistViewLifecycleDelegate?
     var message: Message?
 
     convenience init(message: Message, engineView: UIView) {
@@ -20,8 +27,10 @@ public class GistView: UIView {
 
     override public func removeFromSuperview() {
         super.removeFromSuperview()
-        if let _ = message {
-            DIGraphShared.shared.gistProvider.dismissMessage()
-        }
+        
+        // Notify lifecycle delegate that this view is being removed
+        // The delegate (InlineMessageManager or ModalMessageManager) can decide 
+        // what action to take based on the context
+        lifecycleDelegate?.gistViewWillRemoveFromSuperview(self)
     }
 }

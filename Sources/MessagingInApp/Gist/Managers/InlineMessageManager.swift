@@ -33,10 +33,13 @@ class InlineMessageManager: BaseMessageManager {
     public weak var inlineMessageDelegate: InlineMessageManagerDelegate?
 
     // Expose the GistView for embedding.
-    // Also set ourselves as the GistViewDelegate if not already set.
+    // Also set ourselves as the GistViewDelegate and lifecycle delegate if not already set.
     public var inlineMessageView: GistView {
         if gistView.delegate == nil {
             gistView.delegate = self
+        }
+        if gistView.lifecycleDelegate == nil {
+            gistView.lifecycleDelegate = self
         }
         return gistView
     }
@@ -131,5 +134,19 @@ extension InlineMessageManager: GistViewDelegate {
     /// you can forward that event here if the `GistView` notifies you:
     public func willChangeMessage(newTemplateId: String) {
         inlineMessageDelegate?.willChangeMessage(newTemplateId: newTemplateId)
+    }
+}
+
+// MARK: - GistViewLifecycleDelegate
+
+extension InlineMessageManager: GistViewLifecycleDelegate {
+    /// For inline messages, we want to dismiss the message when the view is removed from superview
+    func gistViewWillRemoveFromSuperview(_ gistView: GistView) {
+        logger.logWithModuleTag(
+            "GistView being removed from superview for inline message: \(currentMessage.describeForLogs)",
+            level: .debug
+        )
+        // Trigger dismissal when inline message view is removed
+        DIGraphShared.shared.gistProvider.dismissMessage()
     }
 }

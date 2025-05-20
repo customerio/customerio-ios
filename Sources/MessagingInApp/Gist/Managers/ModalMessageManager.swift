@@ -54,6 +54,9 @@ public class ModalMessageManager: BaseMessageManager {
             "Displaying modal message: \(currentMessage.describeForLogs)",
             level: .debug
         )
+        
+        // Set lifecycle delegate to handle removeFromSuperview event correctly for modal context
+        gistView.lifecycleDelegate = self
 
         let gistProperties = currentMessage.gistProperties
         modalViewManager = ModalViewManager(
@@ -114,5 +117,19 @@ public class ModalMessageManager: BaseMessageManager {
         elapsedTimer.start(
             title: "Displaying modal for message: \(currentMessage.messageId)"
         )
+    }
+}
+
+// MARK: - GistViewLifecycleDelegate
+
+extension ModalMessageManager: GistViewLifecycleDelegate {
+    /// For modal messages, we don't want to automatically dismiss when the view is removed from superview
+    /// because the modal dismissal is handled by the ModalViewManager and state system
+    func gistViewWillRemoveFromSuperview(_ gistView: GistView) {
+        logger.logWithModuleTag(
+            "GistView being removed from superview for modal message: \(currentMessage.describeForLogs). No action taken.",
+            level: .debug
+        )
+        // Intentionally not triggering dismissMessage() since modal dismissal is managed differently
     }
 }
