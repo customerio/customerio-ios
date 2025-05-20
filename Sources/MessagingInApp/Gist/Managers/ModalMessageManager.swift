@@ -54,7 +54,7 @@ public class ModalMessageManager: BaseMessageManager {
             "Displaying modal message: \(currentMessage.describeForLogs)",
             level: .debug
         )
-        
+
         // Set lifecycle delegate to handle removeFromSuperview event correctly for modal context
         gistView.lifecycleDelegate = self
 

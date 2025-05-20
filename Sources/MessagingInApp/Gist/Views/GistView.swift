@@ -27,9 +27,9 @@ public class GistView: UIView {
 
     override public func removeFromSuperview() {
         super.removeFromSuperview()
-        
+
         // Notify lifecycle delegate that this view is being removed
-        // The delegate (InlineMessageManager or ModalMessageManager) can decide 
+        // The delegate (InlineMessageManager or ModalMessageManager) can decide
         // what action to take based on the context
         lifecycleDelegate?.gistViewWillRemoveFromSuperview(self)
     }
