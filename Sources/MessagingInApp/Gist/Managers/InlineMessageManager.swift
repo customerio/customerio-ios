@@ -141,7 +141,7 @@ extension InlineMessageManager: GistViewDelegate {
 
 extension InlineMessageManager: GistViewLifecycleDelegate {
     /// For inline messages, we want to dismiss the message when the view is removed from superview
-    func gistViewWillRemoveFromSuperview(_ gistView: GistView) {
+    public func gistViewWillRemoveFromSuperview(_ gistView: GistView) {
         logger.logWithModuleTag(
             "GistView being removed from superview for inline message: \(currentMessage.describeForLogs)",
             level: .debug
