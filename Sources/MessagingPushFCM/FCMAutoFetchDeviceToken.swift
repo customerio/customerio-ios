@@ -11,6 +11,7 @@ protocol FCMAutoFetchDeviceToken {
 }
 
 class FCMAutoFetchDeviceTokenImpl: FCMAutoFetchDeviceToken {
+    private static var didSwizzle: Bool = false
     private let messagingPushFCM: MessagingPushFCMInstance
 
     init(messagingPushFCM: MessagingPushFCMInstance) {
@@ -19,6 +20,12 @@ class FCMAutoFetchDeviceTokenImpl: FCMAutoFetchDeviceToken {
 
     @available(iOSApplicationExtension, unavailable)
     func setup() {
+        guard !Self.didSwizzle else {
+            return
+        }
+
+        Self.didSwizzle = true
+
         swizzleDidRegisterForRemoteNotifications()
 
         // Register for push notifications to invoke`didRegisterForRemoteNotificationsWithDeviceToken` method

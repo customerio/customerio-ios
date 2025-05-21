@@ -7,6 +7,7 @@ protocol APNAutoFetchDeviceToken {
 }
 
 class APNAutoFetchDeviceTokenImpl: APNAutoFetchDeviceToken {
+    private static var didSwizzle: Bool = false
     private let messagingPushAPN: MessagingPushAPNInstance
 
     init(messagingPushAPN: MessagingPushAPNInstance) {
@@ -15,6 +16,12 @@ class APNAutoFetchDeviceTokenImpl: APNAutoFetchDeviceToken {
 
     @available(iOSApplicationExtension, unavailable)
     func setup() {
+        guard !Self.didSwizzle else {
+            return
+        }
+
+        Self.didSwizzle = true
+
         swizzleDidRegisterForRemoteNotifications()
         swizzleDidFailToRegisterForRemoteNofifications()
 

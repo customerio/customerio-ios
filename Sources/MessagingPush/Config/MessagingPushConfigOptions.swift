@@ -3,7 +3,7 @@ import CioInternalCommon
 /// Defines configuration options for the Customer.io Push Messaging module.
 ///
 /// Use `MessagingPushConfigBuilder` for constructing its instances. For detailed usage, see builder class documentation.
-public struct MessagingPushConfigOptions {
+public struct MessagingPushConfigOptions: Equatable {
     public let logLevel: CioLogLevel
     public let cdpApiKey: String
     public let region: Region
