@@ -113,10 +113,10 @@ extension DIGraphShared {
         _ = queueInventoryMemoryStore
         countDependenciesResolved += 1
 
-        _ = dateUtil
+        _ = sdkCommonLogger
         countDependenciesResolved += 1
 
-        _ = sdkInitializationLogger
+        _ = dateUtil
         countDependenciesResolved += 1
 
         _ = eventBus
@@ -282,7 +282,7 @@ extension DIGraphShared {
 
     @available(iOSApplicationExtension, unavailable)
     private func _get_deepLinkUtil() -> DeepLinkUtil {
-        DeepLinkUtilImpl(logger: logger, uiKitWrapper: uIKitWrapper)
+        DeepLinkUtilImpl(logger: sdkCommonLogger, uiKitWrapper: uIKitWrapper)
     }
 
     // DeviceMetricsGrabber
@@ -469,6 +469,16 @@ extension DIGraphShared {
         QueueInventoryMemoryStoreImpl()
     }
 
+    // SdkCommonLogger
+    public var sdkCommonLogger: SdkCommonLogger {
+        getOverriddenInstance() ??
+            newSdkCommonLogger
+    }
+
+    private var newSdkCommonLogger: SdkCommonLogger {
+        SdkCommonLoggerImpl(logger: logger)
+    }
+
     // DateUtil
     public var dateUtil: DateUtil {
         getOverriddenInstance() ??
@@ -477,16 +487,6 @@ extension DIGraphShared {
 
     private var newDateUtil: DateUtil {
         SdkDateUtil()
-    }
-
-    // SdkInitializationLogger
-    public var sdkInitializationLogger: SdkInitializationLogger {
-        getOverriddenInstance() ??
-            newSdkInitializationLogger
-    }
-
-    private var newSdkInitializationLogger: SdkInitializationLogger {
-        SdkInitializationLoggerImpl(logger: logger)
     }
 
     // EventBus (singleton)

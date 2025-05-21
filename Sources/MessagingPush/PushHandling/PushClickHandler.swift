@@ -16,12 +16,14 @@ protocol PushClickHandler: AutoMockable {
 class PushClickHandlerImpl: PushClickHandler {
     private let deepLinkUtil: DeepLinkUtil
     private let messagingPush: MessagingPushInstance
+    private let commonLogger: SdkCommonLogger
     private let pushLogger: PushNotificationLogger
 
-    init(deepLinkUtil: DeepLinkUtil, messagingPush: MessagingPushInstance, pushLogger: PushNotificationLogger) {
+    init(deepLinkUtil: DeepLinkUtil, messagingPush: MessagingPushInstance, pushLogger: PushNotificationLogger, commonLogger: SdkCommonLogger) {
         self.deepLinkUtil = deepLinkUtil
         self.messagingPush = messagingPush
         self.pushLogger = pushLogger
+        self.commonLogger = commonLogger
     }
 
     func trackPushMetrics(for push: PushNotification) {
@@ -34,9 +36,12 @@ class PushClickHandlerImpl: PushClickHandler {
     }
 
     func handleDeepLink(for push: PushNotification) {
-        if let deepLinkUrl = push.cioDeepLink?.url {
-            deepLinkUtil.handleDeepLink(deepLinkUrl)
+        guard let deepLinkUrl = push.cioDeepLink?.url else {
+            commonLogger.logDeepLinkWasNotHandled()
+            return
         }
+
+        deepLinkUtil.handleDeepLink(deepLinkUrl)
     }
 
     // There are files that are created just for displaying a rich push. After a push is interacted with, those files
