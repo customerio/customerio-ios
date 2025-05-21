@@ -8,11 +8,12 @@ class DeepLinkUtilTest: UnitTest {
     private var deepLinkUtil: DeepLinkUtilImpl!
 
     private let uiKitMock = UIKitWrapperMock()
+    private let loggerMock = SdkCommonLoggerMock()
 
     override func setUp() {
         super.setUp()
 
-        deepLinkUtil = DeepLinkUtilImpl(logger: log, uiKitWrapper: uiKitMock)
+        deepLinkUtil = DeepLinkUtilImpl(logger: loggerMock, uiKitWrapper: uiKitMock)
     }
 
     // MARK: handleDeepLink
@@ -26,6 +27,18 @@ class DeepLinkUtilTest: UnitTest {
         XCTAssertEqual(uiKitMock.openCallsCount, 1)
     }
 
+    func test_handleDeepLink_givenHostAppDoesNotHandleLink_expectLogDeepLinkHandledExternally() {
+        let url = URL(string: "https://customer.io")!
+        uiKitMock.continueNSUserActivityReturnValue = false
+
+        deepLinkUtil.handleDeepLink(url)
+
+        XCTAssertEqual(loggerMock.logHandlingNotificationDeepLinkCallsCount, 1)
+        XCTAssertEqual(loggerMock.logHandlingNotificationDeepLinkReceivedArguments, url)
+
+        XCTAssertEqual(loggerMock.logDeepLinkHandledExternallyCallsCount, 1)
+    }
+
     func test_handleDeepLink_givenHostAppHandlesLink_expectDoNotOpenLinkSystemCall() {
         uiKitMock.continueNSUserActivityReturnValue = true
 
@@ -33,6 +46,18 @@ class DeepLinkUtilTest: UnitTest {
 
         XCTAssertEqual(uiKitMock.continueNSUserActivityCallsCount, 1)
         XCTAssertFalse(uiKitMock.openCalled)
+    }
+
+    func test_handleDeepLink_givenHostAppHandlesLink_expectLogHandledByHostApp() {
+        let url = URL(string: "https://customer.io")!
+        uiKitMock.continueNSUserActivityReturnValue = true
+
+        deepLinkUtil.handleDeepLink(url)
+
+        XCTAssertEqual(loggerMock.logHandlingNotificationDeepLinkCallsCount, 1)
+        XCTAssertEqual(loggerMock.logHandlingNotificationDeepLinkReceivedArguments, url)
+
+        XCTAssertEqual(loggerMock.logDeepLinkHandledByHostAppCallsCount, 1)
     }
 
     func testHandleDeepLink_whenDLCallbackIsRegistered_expectDLCallbackToBeCalled() async {
@@ -49,5 +74,26 @@ class DeepLinkUtilTest: UnitTest {
 
         // Verification
         await fulfillment(of: [callbackExpectation], timeout: 1.0)
+    }
+
+    func testHandleDeepLink_whenDLCallbackIsRegistered_expectLogHandledByCallback() async {
+        // Setup
+        let url = URL(string: "https://customer.io")!
+        let callbackExpectation = XCTestExpectation(description: "callback expectation")
+        let deepLinkCallback: DeepLinkCallback = { _ in
+            callbackExpectation.fulfill()
+            return true
+        }
+        deepLinkUtil.setDeepLinkCallback(deepLinkCallback)
+
+        // Execution
+        deepLinkUtil.handleDeepLink(url)
+
+        // Verification
+        await fulfillment(of: [callbackExpectation], timeout: 1.0)
+        XCTAssertEqual(loggerMock.logHandlingNotificationDeepLinkCallsCount, 1)
+        XCTAssertEqual(loggerMock.logHandlingNotificationDeepLinkReceivedArguments, url)
+
+        XCTAssertEqual(loggerMock.logDeepLinkHandledByCallbackCallsCount, 1)
     }
 }

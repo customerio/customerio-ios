@@ -11,11 +11,11 @@ public typealias DeepLinkCallback = (URL) -> Bool
 // sourcery: InjectRegisterShared = "DeepLinkUtil"
 // sourcery: InjectSingleton
 public class DeepLinkUtilImpl: DeepLinkUtil {
-    private let logger: Logger
+    private let logger: SdkCommonLogger
     private let uiKit: UIKitWrapper
     private var deepLinkCallback: DeepLinkCallback?
 
-    init(logger: Logger, uiKitWrapper: UIKitWrapper) {
+    init(logger: SdkCommonLogger, uiKitWrapper: UIKitWrapper) {
         self.logger = logger
         self.uiKit = uiKitWrapper
     }
@@ -25,8 +25,7 @@ public class DeepLinkUtilImpl: DeepLinkUtil {
     }
 
     public func handleDeepLink(_ deepLinkUrl: URL) {
-        logger.info("Found a deep link inside of a push notification.")
-        logger.debug("deep link found in push: \(deepLinkUrl)")
+        logger.logHandlingNotificationDeepLink(url: deepLinkUrl)
 
         /*
          There are 2 types of deep links:
@@ -42,18 +41,13 @@ public class DeepLinkUtilImpl: DeepLinkUtil {
 
          If non of those 2 are available or return `false` (indicator that URL hasn't processed), we'll open URL through a sytem call.
          */
-        var isHandled = false
-        if let deepLinkCallback {
-            isHandled = deepLinkCallback(deepLinkUrl)
-            logger.debug("Handled by deep link callback. Deep link: \(deepLinkUrl)")
+        if let deepLinkCallback, deepLinkCallback(deepLinkUrl) {
+            logger.logDeepLinkHandledByCallback()
+        } else if uiKit.continueNSUserActivity(webpageURL: deepLinkUrl) {
+            logger.logDeepLinkHandledByHostApp()
         } else {
-            isHandled = uiKit.continueNSUserActivity(webpageURL: deepLinkUrl)
-            logger.debug("Handled by `application(_:continue:restorationHandler:)` call. Deep link: \(deepLinkUrl)")
-        }
-
-        if !isHandled {
-            logger.debug("Opening deep link through system call. Deep link: \(deepLinkUrl)")
             uiKit.open(url: deepLinkUrl)
+            logger.logDeepLinkHandledExternally()
         }
     }
 }

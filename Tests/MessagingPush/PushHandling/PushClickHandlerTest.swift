@@ -10,11 +10,12 @@ class PushClickHandlerTest: IntegrationTest {
 
     private let deepLinkUtilMock = DeepLinkUtilMock()
     private let messagingPushMock = MessagingPushInstanceMock()
+    private let commonLoggerMock = SdkCommonLoggerMock()
 
     override func setUp() {
         super.setUp()
 
-        pushClickHandler = PushClickHandlerImpl(deepLinkUtil: deepLinkUtilMock, messagingPush: messagingPushMock)
+        pushClickHandler = PushClickHandlerImpl(deepLinkUtil: deepLinkUtilMock, messagingPush: messagingPushMock, pushLogger: PushNotificationLoggerMock(), commonLogger: commonLoggerMock)
     }
 
     // MARK: handleDeepLink
@@ -35,6 +36,14 @@ class PushClickHandlerTest: IntegrationTest {
 
         XCTAssertEqual(deepLinkUtilMock.handleDeepLinkCallsCount, 1)
         XCTAssertEqual(deepLinkUtilMock.handleDeepLinkReceivedArguments, URL(string: givenDeepLink))
+    }
+
+    func test_handleDeepLink_givenNilDeepLinkAttached_expectLogNotHandled() {
+        let givenPush = PushNotificationStub.getPushSentFromCIO(deepLink: nil)
+
+        pushClickHandler.handleDeepLink(for: givenPush)
+
+        XCTAssertEqual(commonLoggerMock.logDeepLinkWasNotHandledCallsCount, 1)
     }
 
     // MARK: trackPushMetrics

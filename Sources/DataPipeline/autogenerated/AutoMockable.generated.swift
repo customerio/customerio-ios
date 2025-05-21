@@ -112,6 +112,17 @@ class DataPipelinesLoggerMock: DataPipelinesLogger, Mock {
         logPushTokenRefreshedCallsCount = 0
 
         mockCalled = false // do last as resetting properties above can make this true
+        automaticTokenRegistrationForNewProfileCallsCount = 0
+        automaticTokenRegistrationForNewProfileReceivedArguments = nil
+        automaticTokenRegistrationForNewProfileReceivedInvocations = []
+
+        mockCalled = false // do last as resetting properties above can make this true
+        logDeletingTokenDueToNewProfileIdentificationCallsCount = 0
+
+        mockCalled = false // do last as resetting properties above can make this true
+        logTrackingDevicesAttributesWithoutValidTokenCallsCount = 0
+
+        mockCalled = false // do last as resetting properties above can make this true
     }
 
     // MARK: - logStoringDevicePushToken
@@ -208,6 +219,75 @@ class DataPipelinesLoggerMock: DataPipelinesLogger, Mock {
         mockCalled = true
         logPushTokenRefreshedCallsCount += 1
         logPushTokenRefreshedClosure?()
+    }
+
+    // MARK: - automaticTokenRegistrationForNewProfile
+
+    /// Number of times the function was called.
+    @Atomic private(set) var automaticTokenRegistrationForNewProfileCallsCount = 0
+    /// `true` if the function was ever called.
+    var automaticTokenRegistrationForNewProfileCalled: Bool {
+        automaticTokenRegistrationForNewProfileCallsCount > 0
+    }
+
+    /// The arguments from the *last* time the function was called.
+    @Atomic private(set) var automaticTokenRegistrationForNewProfileReceivedArguments: (token: String, userId: String)?
+    /// Arguments from *all* of the times that the function was called.
+    @Atomic private(set) var automaticTokenRegistrationForNewProfileReceivedInvocations: [(token: String, userId: String)] = []
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     */
+    var automaticTokenRegistrationForNewProfileClosure: ((String, String) -> Void)?
+
+    /// Mocked function for `automaticTokenRegistrationForNewProfile(token: String, userId: String)`. Your opportunity to return a mocked value and check result of mock in test code.
+    func automaticTokenRegistrationForNewProfile(token: String, userId: String) {
+        mockCalled = true
+        automaticTokenRegistrationForNewProfileCallsCount += 1
+        automaticTokenRegistrationForNewProfileReceivedArguments = (token: token, userId: userId)
+        automaticTokenRegistrationForNewProfileReceivedInvocations.append((token: token, userId: userId))
+        automaticTokenRegistrationForNewProfileClosure?(token, userId)
+    }
+
+    // MARK: - logDeletingTokenDueToNewProfileIdentification
+
+    /// Number of times the function was called.
+    @Atomic private(set) var logDeletingTokenDueToNewProfileIdentificationCallsCount = 0
+    /// `true` if the function was ever called.
+    var logDeletingTokenDueToNewProfileIdentificationCalled: Bool {
+        logDeletingTokenDueToNewProfileIdentificationCallsCount > 0
+    }
+
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     */
+    var logDeletingTokenDueToNewProfileIdentificationClosure: (() -> Void)?
+
+    /// Mocked function for `logDeletingTokenDueToNewProfileIdentification()`. Your opportunity to return a mocked value and check result of mock in test code.
+    func logDeletingTokenDueToNewProfileIdentification() {
+        mockCalled = true
+        logDeletingTokenDueToNewProfileIdentificationCallsCount += 1
+        logDeletingTokenDueToNewProfileIdentificationClosure?()
+    }
+
+    // MARK: - logTrackingDevicesAttributesWithoutValidToken
+
+    /// Number of times the function was called.
+    @Atomic private(set) var logTrackingDevicesAttributesWithoutValidTokenCallsCount = 0
+    /// `true` if the function was ever called.
+    var logTrackingDevicesAttributesWithoutValidTokenCalled: Bool {
+        logTrackingDevicesAttributesWithoutValidTokenCallsCount > 0
+    }
+
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     */
+    var logTrackingDevicesAttributesWithoutValidTokenClosure: (() -> Void)?
+
+    /// Mocked function for `logTrackingDevicesAttributesWithoutValidToken()`. Your opportunity to return a mocked value and check result of mock in test code.
+    func logTrackingDevicesAttributesWithoutValidToken() {
+        mockCalled = true
+        logTrackingDevicesAttributesWithoutValidTokenCallsCount += 1
+        logTrackingDevicesAttributesWithoutValidTokenClosure?()
     }
 }
 
