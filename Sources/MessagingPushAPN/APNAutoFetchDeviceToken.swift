@@ -2,10 +2,12 @@ import Foundation
 import UIKit
 
 // sourcery: AutoMockable
+@available(iOSApplicationExtension, unavailable)
 protocol APNAutoFetchDeviceToken {
     func setup()
 }
 
+@available(iOSApplicationExtension, unavailable)
 class APNAutoFetchDeviceTokenImpl: APNAutoFetchDeviceToken {
     private static var didSwizzle: Bool = false
     private let messagingPushAPN: MessagingPushAPNInstance
@@ -14,7 +16,6 @@ class APNAutoFetchDeviceTokenImpl: APNAutoFetchDeviceToken {
         self.messagingPushAPN = messagingPushAPN
     }
 
-    @available(iOSApplicationExtension, unavailable)
     func setup() {
         guard !Self.didSwizzle else {
             return
@@ -29,7 +30,6 @@ class APNAutoFetchDeviceTokenImpl: APNAutoFetchDeviceToken {
         UIApplication.shared.registerForRemoteNotifications()
     }
 
-    @available(iOSApplicationExtension, unavailable)
     private func swizzleDidRegisterForRemoteNotifications() {
         let appDelegate = UIApplication.shared.delegate
         let appDelegateClass: AnyClass? = object_getClass(appDelegate)
@@ -39,7 +39,6 @@ class APNAutoFetchDeviceTokenImpl: APNAutoFetchDeviceToken {
         swizzle(forOriginalClass: appDelegateClass, forSwizzledClass: MessagingPushAPN.self, original: originalSelector, new: swizzledSelector)
     }
 
-    @available(iOSApplicationExtension, unavailable)
     private func swizzleDidFailToRegisterForRemoteNofifications() {
         let appDelegate = UIApplication.shared.delegate
         let appDelegateClass: AnyClass? = object_getClass(appDelegate)
@@ -61,14 +60,12 @@ class APNAutoFetchDeviceTokenImpl: APNAutoFetchDeviceToken {
     // Swizzled method for APN device token.
     @objc
     func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
-//        Self.shared.registerDeviceToken(apnDeviceToken: deviceToken)
         messagingPushAPN.registerDeviceToken(apnDeviceToken: deviceToken)
     }
 
     // Swizzled method for `didFailToRegisterForRemoteNotificationsWithError'
     @objc
     func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {
-//        MessagingPushAPN.shared.deleteDeviceToken()
         messagingPushAPN.deleteDeviceToken()
     }
 }

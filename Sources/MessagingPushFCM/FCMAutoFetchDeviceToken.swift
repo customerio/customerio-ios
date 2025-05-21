@@ -6,10 +6,12 @@ import UIKit
 #endif
 
 // sourcery: AutoMockable
+@available(iOSApplicationExtension, unavailable)
 protocol FCMAutoFetchDeviceToken {
     func setup()
 }
 
+@available(iOSApplicationExtension, unavailable)
 class FCMAutoFetchDeviceTokenImpl: FCMAutoFetchDeviceToken {
     private static var didSwizzle: Bool = false
     private let messagingPushFCM: MessagingPushFCMInstance
@@ -18,7 +20,6 @@ class FCMAutoFetchDeviceTokenImpl: FCMAutoFetchDeviceToken {
         self.messagingPushFCM = messagingPushFCM
     }
 
-    @available(iOSApplicationExtension, unavailable)
     func setup() {
         guard !Self.didSwizzle else {
             return
@@ -32,7 +33,6 @@ class FCMAutoFetchDeviceTokenImpl: FCMAutoFetchDeviceToken {
         UIApplication.shared.registerForRemoteNotifications()
     }
 
-    @available(iOSApplicationExtension, unavailable)
     private func swizzleDidRegisterForRemoteNotifications() {
         let appDelegate = UIApplication.shared.delegate
         let appDelegateClass: AnyClass? = object_getClass(appDelegate)
@@ -63,7 +63,6 @@ class FCMAutoFetchDeviceTokenImpl: FCMAutoFetchDeviceToken {
             guard let token = token else {
                 return
             }
-//            Self.shared.registerDeviceToken(fcmToken: token)
             self?.messagingPushFCM.registerDeviceToken(fcmToken: token)
         })
     }

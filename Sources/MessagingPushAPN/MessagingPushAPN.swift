@@ -56,10 +56,14 @@ enum MessagingPushAPNDependencies {
     }
 
     @available(iOS, unavailable)
+    @available(visionOS, unavailable)
+    @available(iOSApplicationExtension, introduced: 13.0)
+    @available(visionOSApplicationExtension, introduced: 1.0)
     static var initializeImplementationForExtension: MessagingPushInstanceImplementation = { config in
         MessagingPush.initializeForExtension(withConfig: config)
     }
 
+    @available(iOSApplicationExtension, unavailable)
     static var setupAutoFetchDeviceToken: () -> Void = {
         let pushConfigOptions = MessagingPush.moduleConfig
         if pushConfigOptions.autoFetchDeviceToken, !MessagingPush.appDelegateIntegratedExplicitly {
