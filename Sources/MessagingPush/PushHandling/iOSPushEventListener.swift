@@ -10,14 +10,16 @@ class IOSPushEventListener: PushEventHandler {
     private let pushClickHandler: PushClickHandler
     private let pushHistory: PushHistory
     private let logger: Logger
+    private let pushLogger: PushNotificationLogger
 
-    init(jsonAdapter: JsonAdapter, pushEventHandlerProxy: PushEventHandlerProxy, moduleConfig: MessagingPushConfigOptions, pushClickHandler: PushClickHandler, pushHistory: PushHistory, logger: Logger) {
+    init(jsonAdapter: JsonAdapter, pushEventHandlerProxy: PushEventHandlerProxy, moduleConfig: MessagingPushConfigOptions, pushClickHandler: PushClickHandler, pushHistory: PushHistory, logger: Logger, pushLogger: PushNotificationLogger) {
         self.jsonAdapter = jsonAdapter
         self.pushEventHandlerProxy = pushEventHandlerProxy
         self.moduleConfig = moduleConfig
         self.pushClickHandler = pushClickHandler
         self.pushHistory = pushHistory
         self.logger = logger
+        self.pushLogger = pushLogger
     }
 
     var identifier: String {
@@ -30,7 +32,7 @@ class IOSPushEventListener: PushEventHandler {
             return
         }
         let push = pushAction.push
-        logger.debug("On push action event. push action: \(pushAction))")
+        pushLogger.logClickedPushMessage(notification: push)
 
         guard !pushHistory.hasHandledPush(pushEvent: .didReceive, pushId: push.pushId, pushDeliveryDate: dateWhenPushDelivered) else {
             // push has already been handled. exit early
@@ -47,11 +49,11 @@ class IOSPushEventListener: PushEventHandler {
             // Forward the request to all other push click handlers in app to give them a chance to handle it.
 
             pushEventHandlerProxy.onPushAction(pushAction, completionHandler: completionHandler)
-            logger.debug("[onPushAction] early exist because the push wasn't sent by CIO: \(pushAction)")
+            pushLogger.logClickedNonCioPushMessage()
             return
         }
 
-        logger.debug("Push came from CIO. Handle the didReceive event on behalf of the customer.")
+        pushLogger.logClickedCioPushMessage()
 
         pushClickHandler.cleanupAfterPushInteractedWith(for: push)
 

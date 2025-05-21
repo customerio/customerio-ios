@@ -21,7 +21,8 @@ class PushEventHandlerTest: UnitTest {
             moduleConfig: diGraphShared.messagingPushConfigOptions,
             pushClickHandler: pushClickHandler,
             pushHistory: diGraphShared.pushHistory,
-            logger: diGraphShared.logger
+            logger: diGraphShared.logger,
+            pushLogger: diGraphShared.pushNotificationLogger
         )
     }
 

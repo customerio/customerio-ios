@@ -78,10 +78,14 @@ extension MessagingPushImplementation {
         didReceive response: UNNotificationResponse
     ) -> CustomerIOParsedPushPayload? {
         let push = UNNotificationWrapper(notification: response.notification)
+        pushLogger.logClickedPushMessage(notification: push)
 
         guard push.isPushSentFromCio else {
+            pushLogger.logClickedNonCioPushMessage()
             return nil
         }
+
+        pushLogger.logClickedCioPushMessage()
 
         if response.didClickOnPush {
             manualPushClickHandling(push: push)

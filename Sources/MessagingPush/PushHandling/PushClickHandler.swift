@@ -16,17 +16,20 @@ protocol PushClickHandler: AutoMockable {
 class PushClickHandlerImpl: PushClickHandler {
     private let deepLinkUtil: DeepLinkUtil
     private let messagingPush: MessagingPushInstance
+    private let pushLogger: PushNotificationLogger
 
-    init(deepLinkUtil: DeepLinkUtil, messagingPush: MessagingPushInstance) {
+    init(deepLinkUtil: DeepLinkUtil, messagingPush: MessagingPushInstance, pushLogger: PushNotificationLogger) {
         self.deepLinkUtil = deepLinkUtil
         self.messagingPush = messagingPush
+        self.pushLogger = pushLogger
     }
 
     func trackPushMetrics(for push: PushNotification) {
         guard let cioDelivery = push.cioDelivery else {
+            pushLogger.logClickedPushMessageWithEmptyDeliveryId()
             return
         }
-
+        pushLogger.logTrackingPushMessageOpened(deliveryId: cioDelivery.id)
         messagingPush.trackMetric(deliveryID: cioDelivery.id, event: .opened, deviceToken: cioDelivery.token)
     }
 

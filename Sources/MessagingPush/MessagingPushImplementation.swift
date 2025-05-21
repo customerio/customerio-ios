@@ -4,6 +4,7 @@ import Foundation
 class MessagingPushImplementation: MessagingPushInstance {
     let moduleConfig: MessagingPushConfigOptions
     let logger: Logger
+    let pushLogger: PushNotificationLogger
     let jsonAdapter: JsonAdapter
     let eventBusHandler: EventBusHandler
 
@@ -12,6 +13,7 @@ class MessagingPushImplementation: MessagingPushInstance {
         self.logger = diGraph.logger
         self.jsonAdapter = diGraph.jsonAdapter
         self.eventBusHandler = diGraph.eventBusHandler
+        self.pushLogger = diGraph.pushNotificationLogger
     }
 
     func deleteDeviceToken() {
