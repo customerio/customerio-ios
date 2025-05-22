@@ -11,9 +11,17 @@ protocol APNAutoFetchDeviceToken {
 class APNAutoFetchDeviceTokenImpl: APNAutoFetchDeviceToken {
     private static var didSwizzle: Bool = false
     private let messagingPushAPN: MessagingPushAPNInstance
+    private let appDelegate: () -> UIApplicationDelegate?
+    private let registerForRemoteNotification: () -> Void
 
-    init(messagingPushAPN: MessagingPushAPNInstance) {
+    init(
+        messagingPushAPN: MessagingPushAPNInstance,
+        appDelegate: @escaping () -> UIApplicationDelegate?,
+        registerForRemoteNotification: @escaping () -> Void
+    ) {
         self.messagingPushAPN = messagingPushAPN
+        self.appDelegate = appDelegate
+        self.registerForRemoteNotification = registerForRemoteNotification
     }
 
     func setup() {
@@ -23,28 +31,34 @@ class APNAutoFetchDeviceTokenImpl: APNAutoFetchDeviceToken {
 
         Self.didSwizzle = true
 
-        swizzleDidRegisterForRemoteNotifications()
-        swizzleDidFailToRegisterForRemoteNofifications()
+        guard let appDelegate = appDelegate() else {
+            return
+        }
 
-        // Register for push notifications to invoke`didRegisterForRemoteNotificationsWithDeviceToken` method
-        UIApplication.shared.registerForRemoteNotifications()
+        swizzleDidRegisterForRemoteNotifications(appDelegate: appDelegate)
+        swizzleDidFailToRegisterForRemoteNofifications(appDelegate: appDelegate)
+
+        registerForRemoteNotification()
     }
 
-    private func swizzleDidRegisterForRemoteNotifications() {
-        let appDelegate = UIApplication.shared.delegate
-        let appDelegateClass: AnyClass? = object_getClass(appDelegate)
+    private func swizzleDidRegisterForRemoteNotifications(appDelegate: UIApplicationDelegate) {
+        guard let appDelegateClass = object_getClass(appDelegate) else {
+            return
+        }
 
         let originalSelector = #selector(UIApplicationDelegate.application(_:didRegisterForRemoteNotificationsWithDeviceToken:))
         let swizzledSelector = #selector(application(_:didRegisterForRemoteNotificationsWithDeviceToken:))
-        swizzle(forOriginalClass: appDelegateClass, forSwizzledClass: MessagingPushAPN.self, original: originalSelector, new: swizzledSelector)
+        swizzle(forOriginalClass: appDelegateClass, forSwizzledClass: APNAutoFetchDeviceTokenImpl.self, original: originalSelector, new: swizzledSelector)
     }
 
-    private func swizzleDidFailToRegisterForRemoteNofifications() {
-        let appDelegate = UIApplication.shared.delegate
-        let appDelegateClass: AnyClass? = object_getClass(appDelegate)
+    private func swizzleDidFailToRegisterForRemoteNofifications(appDelegate: UIApplicationDelegate) {
+        guard let appDelegateClass = object_getClass(appDelegate) else {
+            return
+        }
+
         let originalSelectorForDidFail = #selector(UIApplicationDelegate.application(_:didFailToRegisterForRemoteNotificationsWithError:))
         let swizzledSelectorForDidFail = #selector(application(_:didFailToRegisterForRemoteNotificationsWithError:))
-        swizzle(forOriginalClass: appDelegateClass, forSwizzledClass: MessagingPushAPN.self, original: originalSelectorForDidFail, new: swizzledSelectorForDidFail)
+        swizzle(forOriginalClass: appDelegateClass, forSwizzledClass: APNAutoFetchDeviceTokenImpl.self, original: originalSelectorForDidFail, new: swizzledSelectorForDidFail)
     }
 
     private func swizzle(forOriginalClass: AnyClass?, forSwizzledClass: AnyClass?, original: Selector, new: Selector) {

@@ -1,6 +1,9 @@
 import CioInternalCommon
 @_spi(Internal) import CioMessagingPush
 import Foundation
+#if canImport(UIKit)
+import UIKit
+#endif
 #if canImport(UserNotifications)
 import UserNotifications
 #endif
@@ -65,11 +68,17 @@ enum MessagingPushAPNDependencies {
 
     @available(iOSApplicationExtension, unavailable)
     static var setupAutoFetchDeviceToken: () -> Void = {
+        #if canImport(UIKit)
         let pushConfigOptions = MessagingPush.moduleConfig
         if pushConfigOptions.autoFetchDeviceToken, !MessagingPush.appDelegateIntegratedExplicitly {
-            let apnAutoFetchDeviceToken = APNAutoFetchDeviceTokenImpl(messagingPushAPN: MessagingPushAPN.shared)
+            let apnAutoFetchDeviceToken = APNAutoFetchDeviceTokenImpl(
+                messagingPushAPN: MessagingPushAPN.shared,
+                appDelegate: { UIApplication.shared.delegate },
+                registerForRemoteNotification: UIApplication.shared.registerForRemoteNotifications
+            )
             apnAutoFetchDeviceToken.setup()
         }
+        #endif
     }
 
     static var messagingPushProvider: () -> MessagingPushInstance = { MessagingPush.shared }
