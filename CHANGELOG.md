@@ -1,3 +1,9 @@
+## [3.10.0](https://github.com/customerio/customerio-ios/compare/3.9.0...3.10.0) (2025-05-23)
+
+### Features
+
+* support for FCM 11.12.0 ([#918](https://github.com/customerio/customerio-ios/issues/918)) ([dcc21e0](https://github.com/customerio/customerio-ios/commit/dcc21e0a0f881b31057c379a935ab24a948d0069))
+
 ## [3.9.0](https://github.com/customerio/customerio-ios/compare/3.8.2...3.9.0) (2025-05-15)
 
 ### Features
