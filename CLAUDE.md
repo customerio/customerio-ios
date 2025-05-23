@@ -8,7 +8,7 @@ After completing planned changes to the code, ALWAYS build the code to make sure
 After making changes to Unit Tests, ALWAYS test changed test classes. Avoid testing the whole module or the whole SDK, unless absolutely necessary.
 
 ## Commands
-- Build the single module: `xcodebuild -scheme MODULE_NAME -configuration Debug -workspace ~/Development/customerio-ios/.swiftpm/xcode/package.xcworkspace -destination 'platform=iOS Simulator,id=SIMULATOR_ID' -allowProvisioningUpdates build`
+- Build single module: `xcodebuild -scheme MessagingPushAPN -configuration Debug -workspace ./.swiftpm/xcode/package.xcworkspace -destination 'platform=iOS Simulator,id=SIMULATOR_ID' -allowProvisioningUpdates build`
   - More details in section `Building` below
 - Test single file (with xcodebuild): `xcodebuild test-without-building -workspace ./.swiftpm/xcode/package.xcworkspace -destination 'platform=iOS Simulator,id=SIMULATOR_ID' -scheme Customer.io-Package -only-testing:TestSuiteName/TestClassName`
   - More details in section `Testing` below
@@ -24,7 +24,7 @@ After making changes to Unit Tests, ALWAYS test changed test classes. Avoid test
 - Always use constructor-based dependency injection pattern, and use `DIGraphShared` only for top level module initialization
 - Modular architecture (Common, DataPipeline, MessagingPush, etc.)
 - Document public APIs with doc comments
-- Always add doc comments to Protocol, no mether are those public or internal. When component implements protocol, do not repeat the same docs.
+- Always add doc comments to Protocol, no matter if those are public or internal. When component implements protocol, do not repeat the same docs.
 - Error handling: prefer `throws`/`do-try-catch`, but use Result types when existing code is using it
 - Avoid force unwrapping (!) except in tests
 - Keep methods small and focused
@@ -69,7 +69,7 @@ DataPipeline.shared.identify(userId: "customer-id")
 - Always use constructor based dependency injection pattern
 - `DIGraphShared` serves as the central dependency registry, which should be used only for top level module initialization
 - Modules obtain dependencies through constructor injection
-- Avoid Singleton pattern when ever you can
+- Avoid Singleton pattern whenever you can
 - Thread-safe access via `Swift Structured Concurrency` and `@Atomic` property wrapper
 - Testing uses override mechanism to substitute components
 
@@ -79,27 +79,27 @@ DataPipeline.shared.identify(userId: "customer-id")
 - Modules can react to events without direct dependencies
 - Key events include profile identification, device token registration, etc.
 
-## Building
-
-After completing planned changes to the code, ALWAYS compile to make sure it's working, before continuing to the next step.
-
-#### Detect available Simulators
-Before building the code, ALWAYS use following command to detect available Simulators:
+## Before Building and Testing
+Before building the code and running tests, ALWAYS use the following command to detect available simulators:
 ```bash
 xcrun simctl list devices available
 ```
 Prefer to use already Booted Simulators.
 
+## Building
+
+After completing planned changes to the code, ALWAYS compile to make sure it's working, before continuing to the next step.
+
 ### Building single module
 Example:
 ```bash
-xcodebuild -scheme MessagingPushAPN -configuration Debug -workspace ~/Development/customerio-ios/.swiftpm/xcode/package.xcworkspace -destination 'platform=iOS Simulator,id=SIMULATOR_ID' -allowProvisioningUpdates build
+xcodebuild -scheme MessagingPushAPN -configuration Debug -workspace ./.swiftpm/xcode/package.xcworkspace -destination 'platform=iOS Simulator,id=SIMULATOR_ID' -allowProvisioningUpdates build
 ```
 
 ### Building the whole SDK
 Example:
 ```bash
-xcodebuild -scheme Customer.io-Package -configuration Debug -workspace ~/Development/customerio-ios/.swiftpm/xcode/package.xcworkspace -destination 'platform=iOS Simulator,id=SIMULATOR_ID' -allowProvisioningUpdates build
+xcodebuild -scheme Customer.io-Package -configuration Debug -workspace ./.swiftpm/xcode/package.xcworkspace -destination 'platform=iOS Simulator,id=SIMULATOR_ID' -allowProvisioningUpdates build
 ```
 
 ## Testing
@@ -167,27 +167,15 @@ xcodebuild -scheme Customer.io-Package -configuration Debug -workspace ~/Develop
 
 ### Running Tests
 
-#### Detect available Simulators
-Before building or tests, ALWAYS use following command to detect available Simulators:
-```bash
-xcrun simctl list devices available
-```
-Prefer to use already Booted Simulators.
-
 #### Build the code before testing
-If you running the test for the first time in the session, or changes have been made, rebuild the code for testing.
+If you are running the test for the first time in the session, or changes have been made, rebuild the code for testing.
 Example:
 ```bash
-xcodebuild build-for-testing -destination 'platform=iOS Simulator,id=SIMULATOR_ID' -allowProvisioningUpdates -scheme Customer.io-Package -workspace ~/Development/customerio-ios/.swiftpm/xcode/package.xcworkspace
+xcodebuild build-for-testing -destination 'platform=iOS Simulator,id=SIMULATOR_ID' -allowProvisioningUpdates -scheme Customer.io-Package -workspace ./.swiftpm/xcode/package.xcworkspace
 ```
 
 #### Command Line with xcodebuild
 To run tests from the command line with xcodebuild:
-
-```bash
-xcodebuild test-without-building -workspace /path/to/package.xcworkspace -destination 'platform=iOS Simulator,id=SIMULATOR_ID' -scheme Customer.io-Package -only-testing:TestSuiteName/TestClassName
-```
-
 Example:
 ```bash
 xcodebuild test-without-building -workspace ./.swiftpm/xcode/package.xcworkspace -destination 'platform=iOS Simulator,id=A7D4BD50-572C-491A-9713-4A3B9DB04B44' -scheme Customer.io-Package -only-testing:MessagingPushTests/CioProviderAgnosticAppDelegateTests
