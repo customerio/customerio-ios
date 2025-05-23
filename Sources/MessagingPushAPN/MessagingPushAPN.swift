@@ -1,6 +1,9 @@
 import CioInternalCommon
-import CioMessagingPush
+@_spi(Internal) import CioMessagingPush
 import Foundation
+#if canImport(UIKit)
+import UIKit
+#endif
 #if canImport(UserNotifications)
 import UserNotifications
 #endif
@@ -47,11 +50,45 @@ public protocol MessagingPushAPNInstance: AutoMockable {
     #endif
 }
 
+typealias MessagingPushInstanceImplementation = (_ config: MessagingPushConfigOptions) -> MessagingPushInstance
+
+enum MessagingPushAPNDependencies {
+    @available(iOSApplicationExtension, unavailable)
+    static var initializeImplementation: MessagingPushInstanceImplementation = { config in
+        MessagingPush.initialize(withConfig: config)
+    }
+
+    @available(iOS, unavailable)
+    @available(visionOS, unavailable)
+    @available(iOSApplicationExtension, introduced: 13.0)
+    @available(visionOSApplicationExtension, introduced: 1.0)
+    static var initializeImplementationForExtension: MessagingPushInstanceImplementation = { config in
+        MessagingPush.initializeForExtension(withConfig: config)
+    }
+
+    @available(iOSApplicationExtension, unavailable)
+    static var setupAutoFetchDeviceToken: () -> Void = {
+        #if canImport(UIKit)
+        let pushConfigOptions = MessagingPush.moduleConfig
+        if pushConfigOptions.autoFetchDeviceToken, !MessagingPush.appDelegateIntegratedExplicitly {
+            let apnAutoFetchDeviceToken = APNAutoFetchDeviceTokenImpl(
+                messagingPushAPN: MessagingPushAPN.shared,
+                appDelegate: { UIApplication.shared.delegate },
+                registerForRemoteNotification: UIApplication.shared.registerForRemoteNotifications
+            )
+            apnAutoFetchDeviceToken.setup()
+        }
+        #endif
+    }
+
+    static var messagingPushProvider: () -> MessagingPushInstance = { MessagingPush.shared }
+}
+
 public class MessagingPushAPN: MessagingPushAPNInstance {
-    static let shared = MessagingPushAPN()
+    static let shared: MessagingPushAPN = .init()
 
     var messagingPush: MessagingPushInstance {
-        MessagingPush.shared
+        MessagingPushAPNDependencies.messagingPushProvider()
     }
 
     public func registerDeviceToken(apnDeviceToken: Data) {
@@ -84,13 +121,10 @@ public class MessagingPushAPN: MessagingPushAPNInstance {
     public static func initialize(
         withConfig config: MessagingPushConfigOptions = MessagingPushConfigBuilder().build()
     ) -> MessagingPushInstance {
-        // initialize parent module to initialize features shared by APN and FCM modules
-        let implementation = MessagingPush.initialize(withConfig: config)
-
-        let pushConfigOptions = MessagingPush.moduleConfig
-        if pushConfigOptions.autoFetchDeviceToken {
-            shared.setupAutoFetchDeviceToken()
-        }
+        // initialize module with features shared by APN and FCM modules
+        let implementation = MessagingPushAPNDependencies.initializeImplementation(config)
+        // Setup autoFetchDeviceToken
+        MessagingPushAPNDependencies.setupAutoFetchDeviceToken()
 
         return implementation
     }
@@ -102,7 +136,7 @@ public class MessagingPushAPN: MessagingPushAPNInstance {
     @available(visionOSApplicationExtension, introduced: 1.0)
     @discardableResult
     public static func initializeForExtension(withConfig config: MessagingPushConfigOptions) -> MessagingPushInstance {
-        let implementation = MessagingPush.initializeForExtension(withConfig: config)
+        let implementation = MessagingPushAPNDependencies.initializeImplementationForExtension(config)
         return implementation
     }
 
