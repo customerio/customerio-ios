@@ -64,7 +64,7 @@ platform :ios do
       sh("echo 'SDK_VERSION=#{new_sdk_version}' >> $GITHUB_ENV")
     end 
 
-    uses_cocoapods = File.exists?("../Podfile")
+    uses_cocoapods = File.exist?("../Podfile")
     if uses_cocoapods 
       UI.message "Project uses CocoaPods. Going to skip SPM dependency downloading."
     end 

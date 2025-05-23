@@ -78,7 +78,7 @@ runs:
     - name: Install tools from Gemfile (ruby language) used for building our apps with 
       uses: ruby/setup-ruby@354a1ad156761f5ee2b7b13fa8e09943a5e8d252 # v1.229.0
       with:
-        ruby-version: '3.0'
+        ruby-version: '3.2'
         bundler-cache: true # cache tools to make builds faster in future 
 
     - name: Capture Git Context

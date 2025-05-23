@@ -38,3 +38,4 @@ target 'Rich Push Notification Service Extension' do
   # We need to confirm that cocoapods customers can compile their apps with this pod installed. 
   pod 'CustomerIOMessagingPushAPN', :path => sdk_local_path
 end 
+
