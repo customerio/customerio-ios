@@ -63,7 +63,7 @@ class CioProviderAgnosticAppDelegateTests: XCTestCase {
 
         UNUserNotificationCenter.unswizzleNotificationCenter()
 
-        MessagingPush.appDelegateIntegratedExplicitely = false
+        MessagingPush.appDelegateIntegratedExplicitly = false
 
         super.tearDown()
     }
@@ -75,7 +75,7 @@ class CioProviderAgnosticAppDelegateTests: XCTestCase {
         let result = appDelegate.application(UIApplication.shared, didFinishLaunchingWithOptions: nil)
 
         // Verify behavior
-        XCTAssertTrue(MessagingPush.appDelegateIntegratedExplicitely)
+        XCTAssertTrue(MessagingPush.appDelegateIntegratedExplicitly)
         XCTAssertTrue(result)
         XCTAssertTrue(mockAppDelegate.didFinishLaunchingCalled)
         XCTAssertTrue(mockLogger.debugCallsCount == 1)

@@ -1,5 +1,5 @@
 import CioInternalCommon
-import CioMessagingPush
+@_spi(Internal) import CioMessagingPush
 import Foundation
 #if canImport(UserNotifications)
 import UserNotifications
@@ -88,7 +88,7 @@ public class MessagingPushAPN: MessagingPushAPNInstance {
         let implementation = MessagingPush.initialize(withConfig: config)
 
         let pushConfigOptions = MessagingPush.moduleConfig
-        if pushConfigOptions.autoFetchDeviceToken {
+        if pushConfigOptions.autoFetchDeviceToken, !MessagingPush.appDelegateIntegratedExplicitly {
             shared.setupAutoFetchDeviceToken()
         }
 

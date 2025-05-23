@@ -73,7 +73,7 @@ open class CioProviderAgnosticAppDelegate: CioAppDelegateType, UNUserNotificatio
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
     ) -> Bool {
-        MessagingPush.appDelegateIntegratedExplicitely = true
+        MessagingPush.appDelegateIntegratedExplicitly = true
 
         let result = wrappedAppDelegate?.application?(application, didFinishLaunchingWithOptions: launchOptions)
 
