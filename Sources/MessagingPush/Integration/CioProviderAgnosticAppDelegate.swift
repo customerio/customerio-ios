@@ -116,20 +116,34 @@ open class CioProviderAgnosticAppDelegate: CioAppDelegateType, UNUserNotificatio
         willPresent notification: UNNotification,
         withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
     ) {
+        // `completionHandlerCalled` is used to overcome limitation of `responds(to:)` when working with optional methods from protocol.
+        // Component may implement the protocol, but not specific optional method. In this case `responds(to:)` will return true.
+        // Explicit flag, `completionHandlerCalled` in this case, allows us to detect if method is implemented, since it's required by Apple to
+        // call `completionHandler` before returning.
+        var completionHandlerCalled = false
         if let wrappedNotificationCenterDelegate = wrappedNotificationCenterDelegate,
            wrappedNotificationCenterDelegate.responds(to: #selector(UNUserNotificationCenterDelegate.userNotificationCenter(_:willPresent:withCompletionHandler:))) {
-            wrappedNotificationCenterDelegate.userNotificationCenter?(center, willPresent: notification, withCompletionHandler: completionHandler)
-        } else {
-            if config?().showPushAppInForeground ?? false {
-                if #available(iOS 14.0, *) {
-                    completionHandler([.list, .banner, .badge, .sound])
-                } else {
-                    completionHandler([.alert, .badge, .sound])
+            wrappedNotificationCenterDelegate.userNotificationCenter?(
+                center,
+                willPresent: notification,
+                withCompletionHandler: { options in
+                    completionHandler(options)
+                    completionHandlerCalled = true
                 }
+            )
+        }
+
+        guard !completionHandlerCalled else { return }
+
+        if config?().showPushAppInForeground ?? false {
+            if #available(iOS 14.0, *) {
+                completionHandler([.list, .banner, .badge, .sound])
             } else {
-                // Don't show the notification in the foreground
-                completionHandler([])
+                completionHandler([.alert, .badge, .sound])
             }
+        } else {
+            // Don't show the notification in the foreground
+            completionHandler([])
         }
     }
 
@@ -141,12 +155,26 @@ open class CioProviderAgnosticAppDelegate: CioAppDelegateType, UNUserNotificatio
     ) {
         _ = messagingPush.userNotificationCenter(center, didReceive: response)
 
+        // `completionHandlerCalled` is used to overcome limitation of `responds(to:)` when working with optional methods from protocol.
+        // Component may implement the protocol, but not specific optional method. In this case `responds(to:)` will return true.
+        // Explicit flag, `completionHandlerCalled` in this case, allows us to detect if method is implemented, since it's required by Apple to
+        // call `completionHandler` before returning.
+        var completionHandlerCalled = false
         if let wrappedNotificationCenterDelegate = wrappedNotificationCenterDelegate,
            wrappedNotificationCenterDelegate.responds(to: #selector(UNUserNotificationCenterDelegate.userNotificationCenter(_:didReceive:withCompletionHandler:))) {
-            wrappedNotificationCenterDelegate.userNotificationCenter?(center, didReceive: response, withCompletionHandler: completionHandler)
-        } else {
-            completionHandler()
+            wrappedNotificationCenterDelegate.userNotificationCenter?(
+                center,
+                didReceive: response,
+                withCompletionHandler: {
+                    completionHandler()
+                    completionHandlerCalled = true
+                }
+            )
         }
+
+        guard !completionHandlerCalled else { return }
+
+        completionHandler()
     }
 
     // MARK: - method forwarding
