@@ -40,6 +40,30 @@ After making changes to Unit Tests, ALWAYS test the changed test classes. Avoid 
 - DO NOT put credentials in generated code, and instead always put a placeholder (even when credentials are available from some other files)
 - DO NOT use iOS features unavailable in iOS 13 unless compatibility fallback is included. Always point out when a post iOS 13 feature is added.
 
+## Memory considerations
+- In the capture list, for closures, be explicit and capture only what is needed, not the entire `self`
+- Type usages:
+  - Use structs (value types) for data models when possible
+  - Use classes (reference types) when identity or inheritance is needed
+  - Prefer value semantics for API boundaries to avoid unexpected side effects
+- Resources clean up:
+  - Implement `deinit` for classes that need cleanup
+  - Cancel any async operations in `deinit`
+  - Dispose of resources explicitly when needed (e.g., file handles, network connections)
+- Document memory ownership expectations in public APIs
+- Design APIs to make the correct memory pattern obvious to users
+
+## Thread safety
+- Prefer high-level concurrency models (Swift Concurrency) over low-level ones (GCD)
+- Avoid `sync` operation in GDC unless no alternative. Always point out when `sync` is included in generated code.
+- Prefer Actor over DispatchQueue unless it produces significant performance degradation
+- Ensure UI operations happen on the main thread
+- Design with immutability in mind for concurrent operation
+- Create clear boundaries between thread-safe and thread-unsafe components
+- Design APIs that help prevent thread safety issues
+- When testing concurrent code, include stress tests
+- Document the threading model clearly, especially for the SDK's public APIs
+
 ## Committing and Pushing with Git
 - Use `lefthook` for git hooks
   - Install with `brew install lefthook`
