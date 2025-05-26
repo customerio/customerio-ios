@@ -5,29 +5,47 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 # Customer.io iOS SDK - Developer Guide
 
 After completing planned changes to the code, ALWAYS build the code to make sure it's working, before continuing to the next step.
-After making changes to Unit Tests, ALWAYS test changed test classes. Avoid testing the whole module or the whole SDK, unless absolutely necessary.
+After making changes to Unit Tests, ALWAYS test the changed test classes. Avoid testing the whole module or the whole SDK, unless absolutely necessary.
 
 ## Commands
 - Build single module: `xcodebuild -scheme MessagingPushAPN -configuration Debug -workspace ./.swiftpm/xcode/package.xcworkspace -destination 'platform=iOS Simulator,id=SIMULATOR_ID' -allowProvisioningUpdates build`
-  - More details in section `Building` below
+  - More details in the section `Building` below
 - Test single file (with xcodebuild): `xcodebuild test-without-building -workspace ./.swiftpm/xcode/package.xcworkspace -destination 'platform=iOS Simulator,id=SIMULATOR_ID' -scheme Customer.io-Package -only-testing:TestSuiteName/TestClassName`
   - More details in section `Testing` below
 - Format: `make format` (run before lint)
 - Lint: `make lint`
 - Generate code and mocks: `make generate`
-  - After `make generate`, always run first `make format` and then `make lint`
+  - After `make generate`, always run `make format` first and then `make lint`
 
 ## Code Style
 - Swift 5.3+ with protocol-oriented design
 - Naming: CamelCase for types, camelCase for properties/methods
 - Descriptive method names (e.g., `identify`, `registerDeviceToken`)
-- Always use constructor-based dependency injection pattern, and use `DIGraphShared` only for top level module initialization
+- Always use a constructor-based dependency injection pattern, and use `DIGraphShared` only for top-level module initialization
 - Modular architecture (Common, DataPipeline, MessagingPush, etc.)
 - Document public APIs with doc comments
 - Always add doc comments to Protocol, no matter if those are public or internal. When component implements protocol, do not repeat the same docs.
 - Error handling: prefer `throws`/`do-try-catch`, but use Result types when existing code is using it
 - Avoid force unwrapping (!) except in tests
+- Always prefer `weak` over `unowned` for weak type of references. `unowned` could easily produce a crash if the lifecycle between components is changed.
+- Keep classes/structs/enums/actors small and with a single responsibility
 - Keep methods small and focused
+
+## Prohibited Actions
+- DO NOT manually edit any `.generated.swift` files
+- DO NOT expose internal modules to end users
+- DO NOT modify Package.swift unless asked for
+- DO NOT commit configuration files with actual credentials
+- DO NOT include files with credentials in the context sent to the model
+- DO NOT put credentials in generated code, and instead always put a placeholder (even when credentials are available from some other files)
+- DO NOT use iOS features unavailable in iOS 13 unless compatibility fallback is included. Always point out when a post iOS 13 feature is added.
+
+## Committing and Pushing with Git
+- Use `lefthook` for git hooks
+  - Install with `brew install lefthook`
+  - Configure with `lefthook install`
+- Before doing a commit, ensure that pre-commit from `.lefthook.yml` is installed
+- Before doing a push, ensure that pre-push from `.lefthook.yml` is installed
 
 ## Project Structure
 - `Sources/` - Main SDK code organized by modules:
@@ -66,12 +84,12 @@ DataPipeline.shared.identify(userId: "customer-id")
 ```
 
 ### Dependency Injection
-- Always use constructor based dependency injection pattern
-- `DIGraphShared` serves as the central dependency registry, which should be used only for top level module initialization
+- Always use a constructor-based dependency injection pattern
+- `DIGraphShared` serves as the central dependency registry, which should be used only for top-level module initialization
 - Modules obtain dependencies through constructor injection
-- Avoid Singleton pattern whenever you can
+- Avoid the Singleton pattern whenever you can
 - Thread-safe access via `Swift Structured Concurrency` and `@Atomic` property wrapper
-- Testing uses override mechanism to substitute components
+- Testing uses the override mechanism to substitute components
 
 ### Inter-Module Communication
 - Event-based architecture using `EventBus`
@@ -84,13 +102,13 @@ Before building the code and running tests, ALWAYS use the following command to 
 ```bash
 xcrun simctl list devices available
 ```
-Prefer to use already Booted Simulators.
+Prefer to use Booted Simulators.
 
 ## Building
 
 After completing planned changes to the code, ALWAYS compile to make sure it's working, before continuing to the next step.
 
-### Building single module
+### Building a single module
 Example:
 ```bash
 xcodebuild -scheme MessagingPushAPN -configuration Debug -workspace ./.swiftpm/xcode/package.xcworkspace -destination 'platform=iOS Simulator,id=SIMULATOR_ID' -allowProvisioningUpdates build
@@ -149,7 +167,7 @@ xcodebuild -scheme Customer.io-Package -configuration Debug -workspace ./.swiftp
 
 - **Async Testing Helpers**:
   - `waitForAsyncOperation`: Simplifies testing async code
-  - `runOnBackground`: Executes code in background 
+  - `runOnBackground`: Executes code in the background 
   - Thread util stubbing to make async code run synchronously
 
 - **Verification Utilities**:
@@ -161,7 +179,7 @@ xcodebuild -scheme Customer.io-Package -configuration Debug -workspace ./.swiftp
 
 - Extensive use of XCTest assertions
 - Test doubles follow AAA pattern (Arrange, Act, Assert)
-- Always use clear named test functions following `testMethodName_whenCondition_thenResult` format
+- Always use clearly named test functions following `testMethodName_whenCondition_thenResult` format
 - Tests check both state and behavior
 - Emphasis on test isolation through proper setup/teardown
 
