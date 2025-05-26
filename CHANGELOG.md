@@ -1,3 +1,9 @@
+## [3.10.1](https://github.com/customerio/customerio-ios/compare/3.10.0...3.10.1) (2025-05-26)
+
+### Bug Fixes
+
+* Fixed issue with duplicate internal call for setting device token ([#922](https://github.com/customerio/customerio-ios/issues/922)) ([0f5d7f0](https://github.com/customerio/customerio-ios/commit/0f5d7f01bdeaeaf8fb324367a5f0df110f64e301))
+
 ## [3.10.0](https://github.com/customerio/customerio-ios/compare/3.9.0...3.10.0) (2025-05-23)
 
 ### Features
