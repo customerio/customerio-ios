@@ -92,7 +92,7 @@ public class MessagingPushFCM: MessagingPushFCMInstance {
         let implementation = MessagingPush.initialize(withConfig: config)
 
         let pushConfigOptions = MessagingPush.moduleConfig
-        if pushConfigOptions.autoFetchDeviceToken, !MessagingPush.appDelegateIntegratedExplicitely {
+        if pushConfigOptions.autoFetchDeviceToken, !MessagingPush.appDelegateIntegratedExplicitly {
             shared.setupAutoFetchDeviceToken()
         }
 

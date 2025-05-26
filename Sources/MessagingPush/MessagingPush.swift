@@ -6,7 +6,7 @@ import Foundation
  So, performing an HTTP request to the API with a device token goes here.
   */
 public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, MessagingPushInstance {
-    @_spi(Internal) public static var appDelegateIntegratedExplicitely: Bool = false
+    @_spi(Internal) public static var appDelegateIntegratedExplicitly: Bool = false
 
     @Atomic public private(set) static var shared = MessagingPush()
     @Atomic public private(set) static var moduleConfig: MessagingPushConfigOptions = MessagingPushConfigBuilder().build()
@@ -59,7 +59,7 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
             Self.moduleConfig = config
             // Some part of the initialize is specific only to non-NSE targets.
             // Put those parts in this non-NSE initialize method.
-            if config.autoTrackPushEvents, !Self.appDelegateIntegratedExplicitely {
+            if config.autoTrackPushEvents, !Self.appDelegateIntegratedExplicitly {
                 DIGraphShared.shared.automaticPushClickHandling.start()
             }
 
