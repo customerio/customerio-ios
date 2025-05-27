@@ -1,3 +1,9 @@
+## [3.10.2](https://github.com/customerio/customerio-ios/compare/3.10.1...3.10.2) (2025-05-27)
+
+### Bug Fixes
+
+* multi screen views action handling ([#920](https://github.com/customerio/customerio-ios/issues/920)) ([0426e06](https://github.com/customerio/customerio-ios/commit/0426e0614c20b5aea68c8faebcdd60a5a557959a))
+
 ## [3.10.1](https://github.com/customerio/customerio-ios/compare/3.10.0...3.10.1) (2025-05-26)
 
 ### Bug Fixes
