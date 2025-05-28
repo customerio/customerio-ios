@@ -18,12 +18,13 @@ public class RichPushHttpClient: HttpClient {
     private let region: Region
 
     public func request(_ params: CioInternalCommon.HttpRequestParams, onComplete: @escaping (Result<Data, CioInternalCommon.HttpRequestError>) -> Void) {
+      let logger = self.logger
+      let jsonAdapter = self.jsonAdapter
         httpRequestRunner
             .request(
                 params: params,
                 session: getSessionForRequest(url: params.url)
-            ) { [weak self] data, response, error in
-                guard let self = self else { return }
+            ) { data, response, error in
 
                 if let error = error {
                     logger.error("Error sending request \(error.localizedDescription).")
@@ -48,7 +49,7 @@ public class RichPushHttpClient: HttpClient {
                         let unsuccessfulStatusCodeError: HttpRequestError =
                             .unsuccessfulStatusCode(
                                 httpResponse.statusCode,
-                                apiMessage: getErrorMessageFromServerResponse(responseBody: data)
+                                apiMessage: Self.getErrorMessageFromServerResponse(responseBody: data, jsonAdapter:jsonAdapter)
                             )
                         onComplete(.failure(unsuccessfulStatusCodeError))
                     }
@@ -66,7 +67,7 @@ public class RichPushHttpClient: HttpClient {
         return isRequestToCIOApi ? cioApiSession : publicSession
     }
 
-    private func getErrorMessageFromServerResponse(responseBody: Data?) -> String {
+  private static func getErrorMessageFromServerResponse(responseBody: Data?, jsonAdapter: JsonAdapter) -> String {
         guard let data = responseBody, var errorBodyString = data.string else {
             return "(server did not give a response)"
         }
