@@ -58,10 +58,15 @@ class Gist: GistProvider {
         // Keep a strong reference to the subscriber to prevent deallocation and continue receiving updates
         inAppMessageStoreSubscriber = {
             let subscriber = InAppMessageStoreSubscriber { state in
-                self.setupPollingAndFetch(skipMessageFetch: true, pollingInterval: state.pollInterval)
+                self.setupPollingAndFetch(skipMessageFetch: true, pollingInterval: state.pollInterval, isPaused: state.isPollingPaused)
             }
-            // Subscribe to changes in `pollInterval` property of `InAppMessageState`
-            inAppMessageManager.subscribe(keyPath: \.pollInterval, subscriber: subscriber)
+            // Subscribe to changes in both `pollInterval` and `isPollingPaused` properties
+            inAppMessageManager.subscribe(
+                comparator: { oldState, newState in
+                    oldState.pollInterval == newState.pollInterval && oldState.isPollingPaused == newState.isPollingPaused
+                },
+                subscriber: subscriber
+            )
             return subscriber
         }()
     }
@@ -103,7 +108,7 @@ class Gist: GistProvider {
             }
 
             inAppMessageManager.dispatch(action: .setUserIdentifier(user: userToken))
-            setupPollingAndFetch(skipMessageFetch: false, pollingInterval: state.pollInterval)
+            setupPollingAndFetch(skipMessageFetch: false, pollingInterval: state.pollInterval, isPaused: state.isPollingPaused)
         }
     }
 
@@ -124,29 +129,34 @@ class Gist: GistProvider {
         inAppMessageManager.fetchState { [weak self] state in
             guard let self else { return }
 
-            setupPollingAndFetch(skipMessageFetch: false, pollingInterval: state.pollInterval)
+            setupPollingAndFetch(skipMessageFetch: false, pollingInterval: state.pollInterval, isPaused: state.isPollingPaused)
         }
     }
 
-    private func setupPollingAndFetch(skipMessageFetch: Bool, pollingInterval: Double) {
-        logger.logWithModuleTag("Setting up polling with interval: \(pollingInterval) seconds and skipMessageFetch: \(skipMessageFetch)", level: .info)
+    private func setupPollingAndFetch(skipMessageFetch: Bool, pollingInterval: Double, isPaused: Bool = false) {
+        logger.logWithModuleTag("Setting up polling with interval: \(pollingInterval) seconds, skipMessageFetch: \(skipMessageFetch), isPaused: \(isPaused)", level: .info)
         invalidateTimer()
 
-        // Timer must be scheduled on the main thread
-        threadUtil.runMain {
-            self.queueTimer = Timer.scheduledTimer(
-                timeInterval: pollingInterval,
-                target: self,
-                selector: #selector(self.fetchUserMessages),
-                userInfo: nil,
-                repeats: true
-            )
-        }
-
-        if !skipMessageFetch {
+        // Only set up timer if polling is not paused
+        if !isPaused {
+            // Timer must be scheduled on the main thread
             threadUtil.runMain {
-                self.fetchUserMessages()
+                self.queueTimer = Timer.scheduledTimer(
+                    timeInterval: pollingInterval,
+                    target: self,
+                    selector: #selector(self.fetchUserMessages),
+                    userInfo: nil,
+                    repeats: true
+                )
             }
+
+            if !skipMessageFetch {
+                threadUtil.runMain {
+                    self.fetchUserMessages()
+                }
+            }
+        } else {
+            logger.logWithModuleTag("Polling is paused, timer not scheduled", level: .info)
         }
     }
 

@@ -32,6 +32,12 @@ private func reducer(action: InAppMessageAction, state: InAppMessageState) -> In
     case .setPollingInterval(let interval):
         return state.copy(pollInterval: interval)
 
+    case .pausePolling:
+        return state.copy(isPollingPaused: true)
+
+    case .resumePolling:
+        return state.copy(isPollingPaused: false)
+
     case .setUserIdentifier(let user):
         return state.copy(userId: user)
 

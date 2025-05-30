@@ -198,6 +198,38 @@ class MessagingInAppImplementationTest: IntegrationTest {
         messagingInApp.dismissMessage()
         XCTAssertEqual(gistProviderMock.dismissMessageCallsCount, 1)
     }
+
+    // MARK: pause/resume polling
+
+    func test_pausePolling_expectPauseActionDispatched() async {
+        await waitForExpectations(initializeModule())
+
+        messagingInApp.pausePolling()
+
+        // Verify that pause action was dispatched
+        XCTAssertEqual(inAppMessageManagerMock.dispatchCallsCount, 2) // 1 for initialize, 1 for pause
+
+        if let lastAction = inAppMessageManagerMock.dispatchReceivedInvocations.last?.action {
+            XCTAssertEqual(lastAction, .pausePolling)
+        } else {
+            XCTFail("Expected pause action to be dispatched")
+        }
+    }
+
+    func test_resumePolling_expectResumeActionDispatched() async {
+        await waitForExpectations(initializeModule())
+
+        messagingInApp.resumePolling()
+
+        // Verify that resume action was dispatched
+        XCTAssertEqual(inAppMessageManagerMock.dispatchCallsCount, 2) // 1 for initialize, 1 for resume
+
+        if let lastAction = inAppMessageManagerMock.dispatchReceivedInvocations.last?.action {
+            XCTAssertEqual(lastAction, .resumePolling)
+        } else {
+            XCTFail("Expected resume action to be dispatched")
+        }
+    }
 }
 
 extension MessagingInAppImplementationTest {

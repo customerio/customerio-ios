@@ -6,6 +6,10 @@ public protocol MessagingInAppInstance: AutoMockable {
     func setEventListener(_ eventListener: InAppEventListener?)
 
     func dismissMessage()
+
+    func pausePolling()
+
+    func resumePolling()
 }
 
 public class MessagingInApp: ModuleTopLevelObject<MessagingInAppInstance>, MessagingInAppInstance {
@@ -73,5 +77,17 @@ public class MessagingInApp: ModuleTopLevelObject<MessagingInAppInstance>, Messa
     // Dismiss in-app message
     public func dismissMessage() {
         implementation?.dismissMessage()
+    }
+
+    /// Pauses the polling for in-app messages. No new messages will be fetched from the server
+    /// until polling is resumed.
+    public func pausePolling() {
+        implementation?.pausePolling()
+    }
+
+    /// Resumes the polling for in-app messages. If polling was previously paused,
+    /// this will restart the periodic fetching of messages from the server.
+    public func resumePolling() {
+        implementation?.resumePolling()
     }
 }

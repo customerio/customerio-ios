@@ -61,4 +61,12 @@ class MessagingInAppImplementation: MessagingInAppInstance {
     func dismissMessage() {
         gist.dismissMessage()
     }
+
+    func pausePolling() {
+        inAppMessageManager.dispatch(action: .pausePolling)
+    }
+
+    func resumePolling() {
+        inAppMessageManager.dispatch(action: .resumePolling)
+    }
 }

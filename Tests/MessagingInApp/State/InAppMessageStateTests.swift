@@ -74,6 +74,7 @@ class InAppMessageStateTests: IntegrationTest {
         XCTAssertEqual(state.dataCenter, "")
         XCTAssertEqual(state.environment, .production)
         XCTAssertEqual(state.pollInterval, 600)
+        XCTAssertFalse(state.isPollingPaused)
         XCTAssertNil(state.userId)
         XCTAssertNil(state.currentRoute)
         XCTAssertEqual(state.modalMessageState, .initial)
@@ -102,6 +103,25 @@ class InAppMessageStateTests: IntegrationTest {
 
         let state = await inAppMessageManager.state
         XCTAssertEqual(state.currentRoute, "testRoute")
+    }
+
+    func test_pausePolling_expectPollingPausedStateUpdate() async {
+        await inAppMessageManager.dispatchAsync(action: .pausePolling)
+
+        let state = await inAppMessageManager.state
+        XCTAssertTrue(state.isPollingPaused)
+    }
+
+    func test_resumePolling_expectPollingResumedStateUpdate() async {
+        // First pause polling
+        await inAppMessageManager.dispatchAsync(action: .pausePolling)
+        var state = await inAppMessageManager.state
+        XCTAssertTrue(state.isPollingPaused)
+
+        // Then resume polling
+        await inAppMessageManager.dispatchAsync(action: .resumePolling)
+        state = await inAppMessageManager.state
+        XCTAssertFalse(state.isPollingPaused)
     }
 
     func test_processMessageQueue_expectMessagesAddedToQueue() async {

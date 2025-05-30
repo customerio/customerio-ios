@@ -870,6 +870,12 @@ public class MessagingInAppInstanceMock: MessagingInAppInstance, Mock {
         dismissMessageCallsCount = 0
 
         mockCalled = false // do last as resetting properties above can make this true
+        pausePollingCallsCount = 0
+
+        mockCalled = false // do last as resetting properties above can make this true
+        resumePollingCallsCount = 0
+
+        mockCalled = false // do last as resetting properties above can make this true
     }
 
     // MARK: - setEventListener
@@ -918,6 +924,48 @@ public class MessagingInAppInstanceMock: MessagingInAppInstance, Mock {
         mockCalled = true
         dismissMessageCallsCount += 1
         dismissMessageClosure?()
+    }
+
+    // MARK: - pausePolling
+
+    /// Number of times the function was called.
+    @Atomic public private(set) var pausePollingCallsCount = 0
+    /// `true` if the function was ever called.
+    public var pausePollingCalled: Bool {
+        pausePollingCallsCount > 0
+    }
+
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     */
+    public var pausePollingClosure: (() -> Void)?
+
+    /// Mocked function for `pausePolling()`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func pausePolling() {
+        mockCalled = true
+        pausePollingCallsCount += 1
+        pausePollingClosure?()
+    }
+
+    // MARK: - resumePolling
+
+    /// Number of times the function was called.
+    @Atomic public private(set) var resumePollingCallsCount = 0
+    /// `true` if the function was ever called.
+    public var resumePollingCalled: Bool {
+        resumePollingCallsCount > 0
+    }
+
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     */
+    public var resumePollingClosure: (() -> Void)?
+
+    /// Mocked function for `resumePolling()`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func resumePolling() {
+        mockCalled = true
+        resumePollingCallsCount += 1
+        resumePollingClosure?()
     }
 }
 
