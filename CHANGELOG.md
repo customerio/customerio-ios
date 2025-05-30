@@ -1,3 +1,10 @@
+## [3.10.3](https://github.com/customerio/customerio-ios/compare/3.10.2...3.10.3) (2025-05-30)
+
+### Bug Fixes
+
+* premature deallocation of the rich push http client ([1edb75c](https://github.com/customerio/customerio-ios/commit/1edb75c141fbc20e42266f2a27c0ea0ff5fdb7e9))
+* premature deallocation of the rich push http client ([#924](https://github.com/customerio/customerio-ios/issues/924)) ([9a985c1](https://github.com/customerio/customerio-ios/commit/9a985c1830990a8a2e68a44da5f7dbf4b7f47f62))
+
 ## [3.10.2](https://github.com/customerio/customerio-ios/compare/3.10.1...3.10.2) (2025-05-27)
 
 ### Bug Fixes
