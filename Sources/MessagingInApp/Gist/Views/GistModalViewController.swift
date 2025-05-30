@@ -33,11 +33,11 @@ class GistModalViewController: UIViewController, GistViewDelegate, DoNotTrackScr
 
         switch position {
         case .top:
-            verticalConstraint = gistView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor)
+            verticalConstraint = gistView.topAnchor.constraint(equalTo: view.topAnchor)
         case .center:
             verticalConstraint = gistView.centerYAnchor.constraint(equalTo: view.centerYAnchor)
         case .bottom:
-            verticalConstraint = gistView.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor)
+            verticalConstraint = gistView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         case .none:
             verticalConstraint = gistView.centerYAnchor.constraint(equalTo: view.centerYAnchor)
         }

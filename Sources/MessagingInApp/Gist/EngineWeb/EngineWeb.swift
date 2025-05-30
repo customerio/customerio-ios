@@ -62,6 +62,7 @@ public class EngineWeb: NSObject, EngineWebInstance {
         webView.isOpaque = false
         webView.backgroundColor = .clear
         webView.scrollView.backgroundColor = .clear
+        webView.scrollView.contentInsetAdjustmentBehavior = .never
     }
 
     /// Injects a JavaScript listener to handle messages from the web content.
