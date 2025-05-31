@@ -15,7 +15,7 @@ class GistTests: IntegrationTest {
 
     override func setUp() {
         super.setUp()
-        
+
         // Set up required mocks
         engineWebMock.underlyingView = UIView()
         diGraphShared.override(value: engineWebProvider, forType: EngineWebProvider.self)
@@ -71,7 +71,7 @@ class GistTests: IntegrationTest {
         // Given: User is identified and message fetching is not paused (default state)
         await inAppMessageManager.dispatch(action: .setUserIdentifier(user: "test-user")).value
         await inAppMessageManager.dispatch(action: .resumeMessageFetching).value
-        
+
         // Reset the mock to clear any previous calls
         gistQueueNetworkMock.resetMock()
 
@@ -87,7 +87,7 @@ class GistTests: IntegrationTest {
         // Given: User is identified and message fetching is paused
         await inAppMessageManager.dispatch(action: .setUserIdentifier(user: "test-user")).value
         await inAppMessageManager.dispatch(action: .pauseMessageFetching).value
-        
+
         // Reset the mock to clear any previous calls
         gistQueueNetworkMock.resetMock()
 
@@ -103,25 +103,25 @@ class GistTests: IntegrationTest {
         // Given: User is identified and message fetching starts paused
         await inAppMessageManager.dispatch(action: .setUserIdentifier(user: "test-user")).value
         await inAppMessageManager.dispatch(action: .pauseMessageFetching).value
-        
+
         // Reset the mock to clear any previous calls
         gistQueueNetworkMock.resetMock()
 
         // When: fetchUserMessages is called while paused
         gist.fetchUserMessages()
         await waitForAsync()
-        
+
         // Then: Network request should be blocked initially
         XCTAssertFalse(gistQueueNetworkMock.requestCalled, "Network request should be blocked when paused")
-        
+
         // And when: Message fetching is resumed
         await inAppMessageManager.dispatch(action: .resumeMessageFetching).value
         gistQueueNetworkMock.resetMock()
-        
+
         // And: fetchUserMessages is called again
         gist.fetchUserMessages()
         await waitForAsync()
-        
+
         // Then: Network request should now be made
         XCTAssertTrue(gistQueueNetworkMock.requestCalled, "Network request should be made after resuming")
     }
@@ -142,6 +142,6 @@ class GistTests: IntegrationTest {
     // MARK: - Helper Methods
 
     private func waitForAsync(timeout: TimeInterval = 1.0) async {
-        try? await Task.sleep(nanoseconds: UInt64(timeout * 0.1 * 1_000_000_000))
+        try? await Task.sleep(nanoseconds: UInt64(timeout * 0.1 * 1000000000))
     }
 }
