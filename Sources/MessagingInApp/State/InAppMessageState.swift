@@ -9,7 +9,7 @@ struct InAppMessageState: Equatable, CustomStringConvertible {
     let dataCenter: String
     let environment: GistEnvironment
     let pollInterval: Double
-    let isPollingPaused: Bool
+    let isMessageFetchingPaused: Bool
     let userId: String?
     let currentRoute: String?
     let modalMessageState: ModalMessageState
@@ -22,7 +22,7 @@ struct InAppMessageState: Equatable, CustomStringConvertible {
         dataCenter: String = "",
         environment: GistEnvironment = .production,
         pollInterval: Double = 600,
-        isPollingPaused: Bool = false,
+        isMessageFetchingPaused: Bool = false,
         userId: String? = nil,
         currentRoute: String? = nil,
         modalMessageState: ModalMessageState = .initial,
@@ -34,7 +34,7 @@ struct InAppMessageState: Equatable, CustomStringConvertible {
         self.dataCenter = dataCenter
         self.environment = environment
         self.pollInterval = pollInterval
-        self.isPollingPaused = isPollingPaused
+        self.isMessageFetchingPaused = isMessageFetchingPaused
         self.userId = userId
         self.currentRoute = currentRoute
         self.modalMessageState = modalMessageState
@@ -47,7 +47,7 @@ struct InAppMessageState: Equatable, CustomStringConvertible {
     /// It is useful when updating state with only a few properties and keeping the rest as is.
     func copy(
         pollInterval: Double? = nil,
-        isPollingPaused: Bool? = nil,
+        isMessageFetchingPaused: Bool? = nil,
         userId: String? = nil,
         currentRoute: String? = nil,
         modalMessageState: ModalMessageState? = nil,
@@ -60,7 +60,7 @@ struct InAppMessageState: Equatable, CustomStringConvertible {
             dataCenter: dataCenter,
             environment: environment,
             pollInterval: pollInterval ?? self.pollInterval,
-            isPollingPaused: isPollingPaused ?? self.isPollingPaused,
+            isMessageFetchingPaused: isMessageFetchingPaused ?? self.isMessageFetchingPaused,
             userId: userId ?? self.userId,
             currentRoute: currentRoute ?? self.currentRoute,
             modalMessageState: modalMessageState ?? self.modalMessageState,
@@ -75,7 +75,7 @@ struct InAppMessageState: Equatable, CustomStringConvertible {
             lhs.dataCenter == rhs.dataCenter &&
             lhs.environment == rhs.environment &&
             lhs.pollInterval == rhs.pollInterval &&
-            lhs.isPollingPaused == rhs.isPollingPaused &&
+            lhs.isMessageFetchingPaused == rhs.isMessageFetchingPaused &&
             lhs.userId == rhs.userId &&
             lhs.currentRoute == rhs.currentRoute &&
             lhs.modalMessageState == rhs.modalMessageState &&
@@ -90,7 +90,7 @@ struct InAppMessageState: Equatable, CustomStringConvertible {
             dataCenter: '\(dataCenter)',
             environment: \(environment),
             pollInterval: \(pollInterval),
-            isPollingPaused: \(isPollingPaused),
+            isMessageFetchingPaused: \(isMessageFetchingPaused),
             userId: \(String(describing: userId)),
             currentRoute: \(String(describing: currentRoute)),
             modalMessageState: \(modalMessageState),
@@ -121,7 +121,7 @@ extension InAppMessageState {
         putIfDifferent(\.dataCenter, as: "dataCenter")
         putIfDifferent(\.environment, as: "environment")
         putIfDifferent(\.pollInterval, as: "pollInterval")
-        putIfDifferent(\.isPollingPaused, as: "isPollingPaused")
+        putIfDifferent(\.isMessageFetchingPaused, as: "isMessageFetchingPaused")
         putIfDifferent(\.userId, as: "userId")
         putIfDifferent(\.currentRoute, as: "currentRoute")
         putIfDifferent(\.modalMessageState, as: "currentMessageState")

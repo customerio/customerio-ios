@@ -74,7 +74,7 @@ class InAppMessageStateTests: IntegrationTest {
         XCTAssertEqual(state.dataCenter, "")
         XCTAssertEqual(state.environment, .production)
         XCTAssertEqual(state.pollInterval, 600)
-        XCTAssertFalse(state.isPollingPaused)
+        XCTAssertFalse(state.isMessageFetchingPaused)
         XCTAssertNil(state.userId)
         XCTAssertNil(state.currentRoute)
         XCTAssertEqual(state.modalMessageState, .initial)
@@ -105,23 +105,23 @@ class InAppMessageStateTests: IntegrationTest {
         XCTAssertEqual(state.currentRoute, "testRoute")
     }
 
-    func test_pausePolling_expectPollingPausedStateUpdate() async {
-        await inAppMessageManager.dispatchAsync(action: .pausePolling)
+    func test_pauseMessageFetching_expectMessageFetchingPausedStateUpdate() async {
+        await inAppMessageManager.dispatchAsync(action: .pauseMessageFetching)
 
         let state = await inAppMessageManager.state
-        XCTAssertTrue(state.isPollingPaused)
+        XCTAssertTrue(state.isMessageFetchingPaused)
     }
 
-    func test_resumePolling_expectPollingResumedStateUpdate() async {
-        // First pause polling
-        await inAppMessageManager.dispatchAsync(action: .pausePolling)
+    func test_resumeMessageFetching_expectMessageFetchingResumedStateUpdate() async {
+        // First pause message fetching
+        await inAppMessageManager.dispatchAsync(action: .pauseMessageFetching)
         var state = await inAppMessageManager.state
-        XCTAssertTrue(state.isPollingPaused)
+        XCTAssertTrue(state.isMessageFetchingPaused)
 
-        // Then resume polling
-        await inAppMessageManager.dispatchAsync(action: .resumePolling)
+        // Then resume message fetching
+        await inAppMessageManager.dispatchAsync(action: .resumeMessageFetching)
         state = await inAppMessageManager.state
-        XCTAssertFalse(state.isPollingPaused)
+        XCTAssertFalse(state.isMessageFetchingPaused)
     }
 
     func test_processMessageQueue_expectMessagesAddedToQueue() async {

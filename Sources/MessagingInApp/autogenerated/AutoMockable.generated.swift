@@ -870,10 +870,10 @@ public class MessagingInAppInstanceMock: MessagingInAppInstance, Mock {
         dismissMessageCallsCount = 0
 
         mockCalled = false // do last as resetting properties above can make this true
-        pausePollingCallsCount = 0
+        pauseMessageFetchingCallsCount = 0
 
         mockCalled = false // do last as resetting properties above can make this true
-        resumePollingCallsCount = 0
+        resumeMessageFetchingCallsCount = 0
 
         mockCalled = false // do last as resetting properties above can make this true
     }
@@ -926,46 +926,46 @@ public class MessagingInAppInstanceMock: MessagingInAppInstance, Mock {
         dismissMessageClosure?()
     }
 
-    // MARK: - pausePolling
+    // MARK: - pauseMessageFetching
 
     /// Number of times the function was called.
-    @Atomic public private(set) var pausePollingCallsCount = 0
+    @Atomic public private(set) var pauseMessageFetchingCallsCount = 0
     /// `true` if the function was ever called.
-    public var pausePollingCalled: Bool {
-        pausePollingCallsCount > 0
+    public var pauseMessageFetchingCalled: Bool {
+        pauseMessageFetchingCallsCount > 0
     }
 
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
-    public var pausePollingClosure: (() -> Void)?
+    public var pauseMessageFetchingClosure: (() -> Void)?
 
-    /// Mocked function for `pausePolling()`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func pausePolling() {
+    /// Mocked function for `pauseMessageFetching()`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func pauseMessageFetching() {
         mockCalled = true
-        pausePollingCallsCount += 1
-        pausePollingClosure?()
+        pauseMessageFetchingCallsCount += 1
+        pauseMessageFetchingClosure?()
     }
 
-    // MARK: - resumePolling
+    // MARK: - resumeMessageFetching
 
     /// Number of times the function was called.
-    @Atomic public private(set) var resumePollingCallsCount = 0
+    @Atomic public private(set) var resumeMessageFetchingCallsCount = 0
     /// `true` if the function was ever called.
-    public var resumePollingCalled: Bool {
-        resumePollingCallsCount > 0
+    public var resumeMessageFetchingCalled: Bool {
+        resumeMessageFetchingCallsCount > 0
     }
 
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
-    public var resumePollingClosure: (() -> Void)?
+    public var resumeMessageFetchingClosure: (() -> Void)?
 
-    /// Mocked function for `resumePolling()`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func resumePolling() {
+    /// Mocked function for `resumeMessageFetching()`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func resumeMessageFetching() {
         mockCalled = true
-        resumePollingCallsCount += 1
-        resumePollingClosure?()
+        resumeMessageFetchingCallsCount += 1
+        resumeMessageFetchingClosure?()
     }
 }
 

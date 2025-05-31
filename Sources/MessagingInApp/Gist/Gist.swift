@@ -58,12 +58,12 @@ class Gist: GistProvider {
         // Keep a strong reference to the subscriber to prevent deallocation and continue receiving updates
         inAppMessageStoreSubscriber = {
             let subscriber = InAppMessageStoreSubscriber { state in
-                self.setupPollingAndFetch(skipMessageFetch: true, pollingInterval: state.pollInterval, isPaused: state.isPollingPaused)
+                self.setupPollingAndFetch(skipMessageFetch: true, pollingInterval: state.pollInterval)
             }
-            // Subscribe to changes in both `pollInterval` and `isPollingPaused` properties
+            // Subscribe to changes in `pollInterval` only - timer keeps running regardless of pause state
             inAppMessageManager.subscribe(
                 comparator: { oldState, newState in
-                    oldState.pollInterval == newState.pollInterval && oldState.isPollingPaused == newState.isPollingPaused
+                    oldState.pollInterval == newState.pollInterval
                 },
                 subscriber: subscriber
             )
@@ -108,7 +108,7 @@ class Gist: GistProvider {
             }
 
             inAppMessageManager.dispatch(action: .setUserIdentifier(user: userToken))
-            setupPollingAndFetch(skipMessageFetch: false, pollingInterval: state.pollInterval, isPaused: state.isPollingPaused)
+            setupPollingAndFetch(skipMessageFetch: false, pollingInterval: state.pollInterval)
         }
     }
 
@@ -129,40 +129,36 @@ class Gist: GistProvider {
         inAppMessageManager.fetchState { [weak self] state in
             guard let self else { return }
 
-            setupPollingAndFetch(skipMessageFetch: false, pollingInterval: state.pollInterval, isPaused: state.isPollingPaused)
+            setupPollingAndFetch(skipMessageFetch: false, pollingInterval: state.pollInterval)
         }
     }
 
-    private func setupPollingAndFetch(skipMessageFetch: Bool, pollingInterval: Double, isPaused: Bool = false) {
-        logger.logWithModuleTag("Setting up polling with interval: \(pollingInterval) seconds, skipMessageFetch: \(skipMessageFetch), isPaused: \(isPaused)", level: .info)
+    private func setupPollingAndFetch(skipMessageFetch: Bool, pollingInterval: Double) {
+        logger.logWithModuleTag("Setting up polling with interval: \(pollingInterval) seconds, skipMessageFetch: \(skipMessageFetch)", level: .info)
         invalidateTimer()
 
-        // Only set up timer if polling is not paused
-        if !isPaused {
-            // Timer must be scheduled on the main thread
-            threadUtil.runMain {
-                self.queueTimer = Timer.scheduledTimer(
-                    timeInterval: pollingInterval,
-                    target: self,
-                    selector: #selector(self.fetchUserMessages),
-                    userInfo: nil,
-                    repeats: true
-                )
-            }
+        // Always set up timer - it continues running even when in-app is paused
+        threadUtil.runMain {
+            self.queueTimer = Timer.scheduledTimer(
+                timeInterval: pollingInterval,
+                target: self,
+                selector: #selector(self.fetchUserMessages),
+                userInfo: nil,
+                repeats: true
+            )
+        }
 
-            if !skipMessageFetch {
-                threadUtil.runMain {
-                    self.fetchUserMessages()
-                }
+        if !skipMessageFetch {
+            threadUtil.runMain {
+                self.fetchUserMessages()
             }
-        } else {
-            logger.logWithModuleTag("Polling is paused, timer not scheduled", level: .info)
         }
     }
 
     /// Fetches the user messages from the remote service and dispatches actions to the `InAppMessageManager`.
     /// The method must be marked with `@objc` and public to be used as a selector in the `Timer` scheduled.
     /// Also, the method must be called on main thread since it checks the application state.
+    /// When in-app messaging is paused, the timer continues to run but network requests are skipped.
     @objc
     func fetchUserMessages() {
         logger.logWithModuleTag("Attempting to fetch user messages from remote service", level: .info)
@@ -171,10 +167,16 @@ class Gist: GistProvider {
             return
         }
 
-        logger.logWithModuleTag("Checking Gist queue service", level: .info)
         inAppMessageManager.fetchState { [weak self] state in
             guard let self else { return }
 
+            // Check if message fetching is paused before making network request
+            guard !state.isMessageFetchingPaused else {
+                logger.logWithModuleTag("Message fetching is paused, skipping network request", level: .info)
+                return
+            }
+
+            logger.logWithModuleTag("Checking Gist queue service", level: .info)
             fetchUserQueue(state: state)
         }
     }
