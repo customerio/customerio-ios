@@ -1,5 +1,6 @@
 // File that Danger runs to catch potential errors during PR reviews: https://danger.systems/js/
 import {message, danger, warn} from "danger"
+import {readFileSync} from "fs"
 
 // Warn about possible breaking changes being introduced in a pull request. 
 // Breaking changes should be documented when making a pull request. This is a reminder. 
