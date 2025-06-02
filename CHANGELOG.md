@@ -1,3 +1,9 @@
+## [3.10.4](https://github.com/customerio/customerio-ios/compare/3.10.3...3.10.4) (2025-06-02)
+
+### Bug Fixes
+
+* FCM version upper and lower bound   ([#929](https://github.com/customerio/customerio-ios/issues/929)) ([a0211d3](https://github.com/customerio/customerio-ios/commit/a0211d32739bc54eb6e503e4ad1846d14ddaa241))
+
 ## [3.10.3](https://github.com/customerio/customerio-ios/compare/3.10.2...3.10.3) (2025-05-30)
 
 ### Bug Fixes
