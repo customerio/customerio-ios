@@ -37,6 +37,6 @@ public extension CustomerIO {
     ///   - category: A category to the type of screen if it applies.
     ///   - properties: Any extra metadata associated with the screen. e.g. method of access, size, etc.
     func screen(title: String, category: String? = nil, properties: [String: Any]? = nil) {
-        DataPipeline.shared.analytics.screen(title: title, category: category, properties: properties)
+        DataPipeline.shared.analytics.screen(title: title, category: category, properties: properties?.sanitizedForJSON())
     }
 }
