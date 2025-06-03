@@ -34,8 +34,8 @@ class EventBusHandlerTest: UnitTest {
             return [] // Return an empty array or mock data as needed
         }
 
-        // Initialize the handler and keep a strong reference
-        let eventBusHandler = initializeEventBusHandler()
+        // Now initialize the handler
+        _ = initializeEventBusHandler()
 
         // Wait for the loadEvents operation to complete
         await fulfillment(of: [loadEventsExpectation], timeout: 5.0)

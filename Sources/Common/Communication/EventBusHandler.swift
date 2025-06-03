@@ -17,28 +17,10 @@ public protocol EventBusHandler {
 // sourcery: InjectSingleton
 // swiftlint:enable orphaned_doc_comment
 public class CioEventBusHandler: EventBusHandler {
-    actor TaskBag {
-        private var tasks: [Task<Void, Never>] = []
-
-        // Create and store task in one go
-        func addTask(operation: @escaping () async -> Void) {
-            let task = Task {
-                await operation()
-            }
-            tasks.append(task)
-        }
-
-        func cancelAll() {
-            tasks.forEach { $0.cancel() }
-        }
-    }
-
     private let eventBus: EventBus
     private let eventCache: EventCache
     let eventStorage: EventStorage
     let logger: Logger
-
-    private let taskBag = TaskBag()
 
     /// Initializes the EventBusHandler with dependencies for event bus and storage.
     /// - Parameters:
@@ -57,15 +39,7 @@ public class CioEventBusHandler: EventBusHandler {
         self.eventStorage = eventStorage
         self.logger = logger
         Task {
-            await taskBag.addTask { [weak self] in
-                await self?.loadEventsFromStorage()
-            }
-        }
-    }
-
-    deinit {
-        Task.detached { [taskBag] in
-            await taskBag.cancelAll()
+            await loadEventsFromStorage()
         }
     }
 
@@ -98,10 +72,8 @@ public class CioEventBusHandler: EventBusHandler {
         }
 
         Task {
-            await taskBag.addTask { [weak self] in
-                await self?.eventBus.addObserver(eventType.key, action: adaptedAction)
-                await self?.replayEvents(forType: eventType, action: adaptedAction)
-            }
+            await eventBus.addObserver(eventType.key, action: adaptedAction)
+            await replayEvents(forType: eventType, action: adaptedAction)
         }
     }
 
@@ -109,9 +81,7 @@ public class CioEventBusHandler: EventBusHandler {
     /// - Parameter eventType: The event type for which to remove the observer.
     public func removeObserver<E: EventRepresentable>(for eventType: E.Type) {
         Task {
-            await taskBag.addTask { [weak self] in
-                await self?.eventBus.removeObserver(for: E.key)
-            }
+            await eventBus.removeObserver(for: E.key)
         }
     }
 
@@ -136,9 +106,7 @@ public class CioEventBusHandler: EventBusHandler {
     /// - Parameter event: The event to post.
     public func postEvent<E: EventRepresentable>(_ event: E) {
         Task {
-            await taskBag.addTask { [weak self] in
-                await self?.postEventAndWait(event)
-            }
+            await postEventAndWait(event)
         }
     }
 
