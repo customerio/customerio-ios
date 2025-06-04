@@ -1,3 +1,9 @@
+## [3.10.5](https://github.com/customerio/customerio-ios/compare/3.10.4...3.10.5) (2025-06-04)
+
+### Bug Fixes
+
+* Fix in-app messages not overlaying safe area top and bottom ([#925](https://github.com/customerio/customerio-ios/issues/925)) ([8ed7d7b](https://github.com/customerio/customerio-ios/commit/8ed7d7b828a38eb4c6bdffd5db0ccaa5ddf0cd72))
+
 ## [3.10.4](https://github.com/customerio/customerio-ios/compare/3.10.3...3.10.4) (2025-06-02)
 
 ### Bug Fixes

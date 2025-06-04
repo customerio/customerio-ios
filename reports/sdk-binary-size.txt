@@ -21,7 +21,7 @@
    1.1%  10.1Ki   1.1%  10.1Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/DataPipeline/DataPipeline.swift
    1.1%  10.1Ki   1.1%  10.1Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/MessagingPush/PushHandling/PushEventHandlerProxy.swift
    1.1%  9.42Ki   1.1%  9.42Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/MessagingInApp/State/InAppMessageReducer.swift
-   1.0%  9.27Ki   1.0%  9.27Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/MessagingInApp/Gist/EngineWeb/EngineWeb.swift
+   1.1%  9.31Ki   1.1%  9.31Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/MessagingInApp/Gist/EngineWeb/EngineWeb.swift
    1.0%  9.16Ki   1.0%  9.16Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/Common/Util/JsonAdapter.swift
    1.0%  8.46Ki   1.0%  8.46Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/MessagingPush/Integration/CioProviderAgnosticAppDelegate.swift
    1.0%  8.39Ki   1.0%  8.39Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/Common/CustomerIOInstance.swift
@@ -57,10 +57,10 @@
    0.4%  3.87Ki   0.4%  3.87Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/Common/Service/HttpRequestRunner.swift
    0.4%  3.87Ki   0.4%  3.87Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/MessagingPush/PushHandling/iOSPushEventListener.swift
    0.4%  3.59Ki   0.4%  3.59Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/MessagingInApp/Gist/GistDelegate.swift
-   0.4%  3.59Ki   0.4%  3.59Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/MessagingInApp/Gist/Views/GistModalViewController.swift
    0.4%  3.53Ki   0.4%  3.53Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/MessagingInApp/Gist/Network/GistQueueNetwork.swift
    0.4%  3.52Ki   0.4%  3.52Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/MessagingInApp/Gist/EngineWeb/EngineWebConfiguration.swift
    0.4%  3.48Ki   0.4%  3.48Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/MessagingPush/MessagingPush.swift
+   0.4%  3.46Ki   0.4%  3.46Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/MessagingInApp/Gist/Views/GistModalViewController.swift
    0.4%  3.37Ki   0.4%  3.37Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/MessagingInApp/Gist/Managers/ModalMessageManager.swift
    0.4%  3.36Ki   0.4%  3.36Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/Common/Extensions/StringExtensions.swift
    0.4%  3.32Ki   0.4%  3.32Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/Common/Module/ModuleTopLevelObject.swift
@@ -80,7 +80,7 @@
    0.3%  2.44Ki   0.3%  2.44Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/Common/Service/HttpRequestError.swift
    0.3%  2.41Ki   0.3%  2.41Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/DataPipeline/Util/DeviceAttributesProvider.swift
    0.3%  2.21Ki   0.3%  2.21Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/MessagingInApp/Gist/Network/BaseNetwork.swift
-   0.2%  2.21Ki   0.2%  2.21Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/MessagingPushAPN/Integration/CioAppDelegateAPN.swift
+   0.3%  2.21Ki   0.3%  2.21Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/MessagingPushAPN/Integration/CioAppDelegateAPN.swift
    0.2%  2.12Ki   0.2%  2.12Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/Common/Background Queue/Task Data/IdentifyProfileQueueTaskData.swift
    0.2%  2.12Ki   0.2%  2.12Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/Common/Util/DeviceInfo.swift
    0.2%  2.11Ki   0.2%  2.11Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/Common/DIManager.swift
