@@ -35,6 +35,27 @@ public class InlineMessageUIView: UIView, GistInlineMessageUIViewDelegate {
     // Delegate to handle custom action button tap.
     public weak var onActionDelegate: InlineMessageUIViewDelegate?
 
+    /// The tint color used for progress indicators and loading states within the inline message view.
+    ///
+    /// This color is applied to:
+    /// - Activity indicators shown during message loading
+    /// - Progress-related UI elements in the web content
+    /// - The underlying WKWebView's tint color
+    ///
+    /// Setting this property will immediately apply the color to existing UI elements.
+    @IBInspectable public var progressTintColor: UIColor? {
+        didSet {
+            // Ensure UI updates happen on main thread
+            if Thread.isMainThread {
+                applyProgressTintColor()
+            } else {
+                DispatchQueue.main.async { [weak self] in
+                    self?.applyProgressTintColor()
+                }
+            }
+        }
+    }
+
     var runningHeightChangeAnimation: UIViewPropertyAnimator?
     var runningCrossFadeAnimation: UIViewPropertyAnimator?
 
@@ -52,6 +73,12 @@ public class InlineMessageUIView: UIView, GistInlineMessageUIViewDelegate {
 
         // Setup the View and display a message, if one available. Since an elementId has been set.
         setupView()
+    }
+
+    /// Convenience initializer that also sets the progress tint color
+    public convenience init(elementId: String, progressTintColor: UIColor?) {
+        self.init(elementId: elementId)
+        self.progressTintColor = progressTintColor
     }
 
     // This is called when the View is created from a Storyboard.
@@ -96,6 +123,9 @@ public class InlineMessageUIView: UIView, GistInlineMessageUIViewDelegate {
 
         heightConstraint?.constant = 0 // start at height 0 so the View does not show.
         getRootSuperview()?.layoutIfNeeded() // Since we modified constraint, perform a UI refresh to apply the change.
+
+        // Apply progress tint color if already set
+        applyProgressTintColor()
     }
 
     public func onMessageRendered(width: CGFloat, height: CGFloat) {
@@ -150,6 +180,11 @@ public class InlineMessageUIView: UIView, GistInlineMessageUIViewDelegate {
         let activityIndicator = UIActivityIndicatorView(style: .large)
         activityIndicator.startAnimating()
         activityIndicator.isHidden = true // start hidden so when we add the subview, it does not cause a flicker in the UI. Wait to show it when the animation begins.
+
+        // Apply progress tint color if set
+        if let color = progressTintColor {
+            activityIndicator.color = color
+        }
 
         addSubview(activityIndicator)
         assert(messageRenderingLoadingView != nil, "Expect activity indicator to be added as a subview")
@@ -209,5 +244,19 @@ public class InlineMessageUIView: UIView, GistInlineMessageUIViewDelegate {
         }
 
         runningCrossFadeAnimation?.startAnimation()
+    }
+
+    // MARK: - Progress Tint Color
+
+    private func applyProgressTintColor() {
+        guard let color = progressTintColor else { return }
+
+        // Apply to loading view (activity indicator)
+        if let activityIndicator = messageRenderingLoadingView as? UIActivityIndicatorView {
+            activityIndicator.color = color
+        }
+
+        // Propagate to the internal Gist view
+        inAppMessageView?.progressTintColor = color
     }
 }

@@ -15,6 +15,7 @@ import SwiftUI
 public struct InlineMessage: View {
     let elementId: String
     let onActionClick: ((InAppMessage, String, String) -> Void)?
+    let progressTintColor: Color?
 
     @State private var height: CGFloat = 0
     @State private var isChangingMessages = false
@@ -22,6 +23,14 @@ public struct InlineMessage: View {
     public init(elementId: String, onActionClick: ((InAppMessage, String, String) -> Void)? = nil) {
         self.elementId = elementId
         self.onActionClick = onActionClick
+        self.progressTintColor = nil
+    }
+
+    /// Initializer with progress tint color support
+    public init(elementId: String, progressTintColor: Color?, onActionClick: ((InAppMessage, String, String) -> Void)? = nil) {
+        self.elementId = elementId
+        self.onActionClick = onActionClick
+        self.progressTintColor = progressTintColor
     }
 
     public var body: some View {
@@ -30,7 +39,7 @@ public struct InlineMessage: View {
 
         // The ZStack is used to overlay the loading indicator on top of the in-app message view.
         ZStack {
-            InlineMessageUIViewRepresentable(elementId: elementId, onActionClick: onActionClick, onHeightChange: { newHeight in
+            InlineMessageUIViewRepresentable(elementId: elementId, progressTintColor: progressTintColor, onActionClick: onActionClick, onHeightChange: { newHeight in
                 isChangingMessages = false // if the loading view is currently being shown, hide it.
 
                 withAnimation(.easeIn(duration: 0.3)) {
@@ -57,12 +66,14 @@ public struct InlineMessage: View {
 // Mostly used to send events between the two frameworks: SwiftUI <--> UIKit.
 struct InlineMessageUIViewRepresentable: UIViewRepresentable {
     public var elementId: String
+    public var progressTintColor: Color?
     public var onActionClick: ((InAppMessage, String, String) -> Void)?
     public var onHeightChange: (CGFloat) -> Void
     public var willChangeMessage: ((newTemplateId: String, onComplete: () -> Void)) -> Void
 
-    public init(elementId: String, onActionClick: ((InAppMessage, String, String) -> Void)?, onHeightChange: @escaping ((CGFloat) -> Void), willChangeMessage: @escaping ((newTemplateId: String, onComplete: () -> Void)) -> Void) {
+    public init(elementId: String, progressTintColor: Color? = nil, onActionClick: ((InAppMessage, String, String) -> Void)?, onHeightChange: @escaping ((CGFloat) -> Void), willChangeMessage: @escaping ((newTemplateId: String, onComplete: () -> Void)) -> Void) {
         self.elementId = elementId
+        self.progressTintColor = progressTintColor
         self.onActionClick = onActionClick
         self.onHeightChange = onHeightChange
         self.willChangeMessage = willChangeMessage
@@ -73,6 +84,11 @@ struct InlineMessageUIViewRepresentable: UIViewRepresentable {
 
         inlineMessageView.delegate = context.coordinator
 
+        // Apply progress tint color if provided
+        if let progressTintColor = progressTintColor {
+            inlineMessageView.progressTintColor = UIColor(progressTintColor)
+        }
+
         // Set the compression resistance of the content view to low so that the content view can be compressed to fit the available space.
         // This fixes an issue where you rotate screen from portrait to landscape and back to portrait. Without this change, the view remains in landscape mode.
         inlineMessageView.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
@@ -80,7 +96,14 @@ struct InlineMessageUIViewRepresentable: UIViewRepresentable {
         return inlineMessageView
     }
 
-    public func updateUIView(_ uiView: GistInlineMessageUIView, context: Context) {}
+    public func updateUIView(_ uiView: GistInlineMessageUIView, context: Context) {
+        // Update progress tint color if it has changed
+        if let progressTintColor = progressTintColor {
+            uiView.progressTintColor = UIColor(progressTintColor)
+        } else {
+            uiView.progressTintColor = nil
+        }
+    }
 
     public static func dismantleUIView(_ uiView: GistInlineMessageUIView, coordinator: Coordinator) {
         uiView.teardownView()

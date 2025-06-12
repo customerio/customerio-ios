@@ -18,6 +18,13 @@ public class GistView: UIView {
     public weak var lifecycleDelegate: GistViewLifecycleDelegate?
     var message: Message?
 
+    // Progress tint color for the web content
+    public var progressTintColor: UIColor? {
+        didSet {
+            applyProgressTintColor()
+        }
+    }
+
     convenience init(message: Message, engineView: UIView) {
         self.init()
         self.message = message
@@ -32,5 +39,26 @@ public class GistView: UIView {
         // The delegate (InlineMessageManager or ModalMessageManager) can decide
         // what action to take based on the context
         lifecycleDelegate?.gistViewWillRemoveFromSuperview(self)
+    }
+
+    // MARK: - Progress Tint Color
+
+    private func applyProgressTintColor() {
+        guard let color = progressTintColor else { return }
+
+        // Set the main tint color
+        tintColor = color
+
+        // Apply to the engine view (which should be the WKWebView)
+        subviews.forEach { subview in
+            subview.tintColor = color
+
+            // If this is a WKWebView, also apply to its scroll view
+            if let webView = subview as? NSObject,
+               webView.responds(to: Selector("scrollView")),
+               let scrollView = webView.value(forKey: "scrollView") as? UIScrollView {
+                scrollView.tintColor = color
+            }
+        }
     }
 }

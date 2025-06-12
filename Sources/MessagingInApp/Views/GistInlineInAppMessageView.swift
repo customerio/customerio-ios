@@ -45,6 +45,13 @@ class GistInlineMessageUIView: UIView {
         }
     }
 
+    // Progress tint color for web content loading indicators
+    public var progressTintColor: UIColor? {
+        didSet {
+            applyProgressTintColor()
+        }
+    }
+
     private var contentSize: CGSize = .zero {
         didSet {
             // Notify the system that the intrinsic content size has changed
@@ -211,6 +218,11 @@ class GistInlineMessageUIView: UIView {
         ])
 
         inlineMessageManager = newInlineMessageManager
+
+        // Apply progress tint color to the newly created view
+        if let color = progressTintColor {
+            inlineView.progressTintColor = color
+        }
     }
 
     private func stopShowingMessageAndCleanup(messageState: InlineMessageState) {
@@ -258,5 +270,14 @@ extension GistInlineMessageUIView: InlineMessageManagerDelegate {
         }
 
         return delegate.onInlineButtonAction(message: message, currentRoute: currentRoute, action: action, name: name)
+    }
+
+    // MARK: - Progress Tint Color
+
+    private func applyProgressTintColor() {
+        guard let color = progressTintColor else { return }
+
+        // Propagate to the GistView
+        inAppMessageView?.progressTintColor = color
     }
 }
