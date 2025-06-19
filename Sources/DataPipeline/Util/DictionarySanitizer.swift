@@ -31,14 +31,14 @@ extension Dictionary where Key == String, Value == Any {
     private func sanitizeValue(_ value: Any, logger: Logger) -> Any? {
         switch value {
         case let number as Double:
-            if number.isNaN || number.isInfinite {
+            if number.isInvalidJsonNumber() {
                 logger.error("Removed unsupported numeric value")
                 return nil
             } else {
                 return number
             }
         case let number as Float:
-            if number.isNaN || number.isInfinite {
+            if number.isInvalidJsonNumber() {
                 logger.error("Removed unsupported numeric value")
                 return nil
             } else {
@@ -46,10 +46,10 @@ extension Dictionary where Key == String, Value == Any {
             }
         case let dict as [String: Any]:
             let sanitized = dict.sanitizedForJSON(logger: logger)
-            return sanitized.isEmpty ? nil : sanitized
+            return sanitized.nilIfEmpty
         case let array as [Any]:
             let sanitized = sanitizeArray(array, logger: logger)
-            return sanitized.isEmpty ? nil : sanitized
+            return sanitized.nilIfEmpty
         default:
             return value
         }
@@ -78,18 +78,18 @@ extension Array where Element == Any {
         compactMap { value in
             if let dict = value as? [String: Any] {
                 let sanitized = dict.sanitizedForJSON(logger: logger)
-                return sanitized.isEmpty ? nil : sanitized
+                return sanitized.nilIfEmpty
             } else if let array = value as? [Any] {
                 let sanitized = array.sanitizedForJSON(logger: logger)
-                return sanitized.isEmpty ? nil : sanitized
+                return sanitized.nilIfEmpty
             } else if let number = value as? Double {
-                if number.isNaN || number.isInfinite {
+                if number.isInvalidJsonNumber() {
                     logger.error("Removed unsupported numeric value")
                     return nil
                 }
                 return number
             } else if let number = value as? Float {
-                if number.isNaN || number.isInfinite {
+                if number.isInvalidJsonNumber() {
                     logger.error("Removed unsupported numeric value")
                     return nil
                 }
@@ -98,5 +98,23 @@ extension Array where Element == Any {
                 return value
             }
         }
+    }
+}
+
+private extension Float {
+    func isInvalidJsonNumber() -> Bool {
+        isNaN || isInfinite
+    }
+}
+
+private extension Double {
+    func isInvalidJsonNumber() -> Bool {
+        isNaN || isInfinite
+    }
+}
+
+extension Collection {
+    var nilIfEmpty: Self? {
+        isEmpty ? nil : self
     }
 }
