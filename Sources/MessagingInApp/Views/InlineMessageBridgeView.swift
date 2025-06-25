@@ -111,9 +111,7 @@ public class InlineMessageBridgeView: UIView {
         let inlineInAppMessageView = GistInlineMessageUIView(elementId: elementId)
         inlineInAppMessageView.delegate = self
         inlineInAppMessageView.constrainToFillParent(self)
-
-        heightConstraint?.constant = 0 // start at height 0 so the View does not show.
-        getRootSuperview()?.layoutIfNeeded() // Since we modified constraint, perform a UI refresh to apply the change.
+        onNoMessageToDisplay()
     }
 }
 
@@ -139,6 +137,7 @@ extension InlineMessageBridgeView: GistInlineMessageUIViewDelegate {
     }
 
     public func onNoMessageToDisplay() {
+        delegate?.onMessageRendered(width: 0, height: 0)
         delegate?.onNoMessageToDisplay()
         lastRenderedWidth = nil
         lastRenderedHeight = nil

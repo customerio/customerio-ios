@@ -180,10 +180,14 @@ extension InlineMessageBridgeViewTest {
         bridgeView.onNoMessageToDisplay()
 
         XCTAssertEqual(mockDelegate.onNoMessageToDisplayCallsCount, 1)
+        // Should also call onMessageRendered with 0,0 dimensions
+        XCTAssertEqual(mockDelegate.onMessageRenderedCallsCount, 2)
+        XCTAssertEqual(mockDelegate.onMessageRenderedReceivedInvocations.last?.width, 0)
+        XCTAssertEqual(mockDelegate.onMessageRenderedReceivedInvocations.last?.height, 0)
 
         // After clearing cache, same dimensions should notify again
         bridgeView.onMessageRendered(width: 300, height: 200)
-        XCTAssertEqual(mockDelegate.onMessageRenderedCallsCount, 2)
+        XCTAssertEqual(mockDelegate.onMessageRenderedCallsCount, 3)
     }
 
     func testOnInlineButtonAction_shouldNotifyDelegateAndReturnResult() {
