@@ -1,3 +1,9 @@
+## [3.10.6](https://github.com/customerio/customerio-ios/compare/3.10.5...3.10.6) (2025-06-25)
+
+### Bug Fixes
+
+* Sanitize unsupported numeric values ([#930](https://github.com/customerio/customerio-ios/issues/930)) ([2a848e4](https://github.com/customerio/customerio-ios/commit/2a848e4ad5b2e9b215f23339bf29c9ffddd6d18e))
+
 ## [3.10.5](https://github.com/customerio/customerio-ios/compare/3.10.4...3.10.5) (2025-06-04)
 
 ### Bug Fixes
