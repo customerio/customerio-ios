@@ -69,9 +69,7 @@ struct InlineMessageUIViewRepresentable: UIViewRepresentable {
     }
 
     public func makeUIView(context: Context) -> GistInlineMessageUIView {
-        let inlineMessageView = GistInlineMessageUIView(elementId: elementId)
-
-        inlineMessageView.delegate = context.coordinator
+        let inlineMessageView = context.coordinator.createGistMessageView(elementId: elementId)
 
         // Set the compression resistance of the content view to low so that the content view can be compressed to fit the available space.
         // This fixes an issue where you rotate screen from portrait to landscape and back to portrait. Without this change, the view remains in landscape mode.
@@ -90,7 +88,7 @@ struct InlineMessageUIViewRepresentable: UIViewRepresentable {
         Coordinator(self)
     }
 
-    class Coordinator: NSObject, GistInlineMessageUIViewDelegate {
+    class Coordinator: NSObject, InlineMessageViewProtocol {
         var parent: InlineMessageUIViewRepresentable
 
         init(_ parent: InlineMessageUIViewRepresentable) {

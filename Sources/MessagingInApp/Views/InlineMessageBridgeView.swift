@@ -32,7 +32,7 @@ public protocol InlineMessageBridgeViewDelegate: AnyObject, AutoMockable {
 /// bridgeView.attachToParent(parent: parentView, delegate: delegateImpl)
 /// bridgeView.elementId = "elementId"
 /// ```
-public class InlineMessageBridgeView: UIView {
+public class InlineMessageBridgeView: UIView, InlineMessageViewProtocol {
     /// The element ID used to identify which inline message to display.
     /// Setting this property triggers view setup.
     public var elementId: String? {
@@ -49,11 +49,6 @@ public class InlineMessageBridgeView: UIView {
 
     /// Cached height of the last rendered message to prevent unnecessary updates.
     private var lastRenderedHeight: CGFloat?
-
-    /// The underlying Gist inline message view that renders the actual content.
-    private var inAppMessageView: GistInlineMessageUIView? {
-        subviews.compactMap { $0 as? GistInlineMessageUIView }.first
-    }
 
     /// Initializes a new inline message bridge view.
     public init() {
@@ -108,16 +103,13 @@ public class InlineMessageBridgeView: UIView {
         }
 
         // Create new inline message view
-        let inlineInAppMessageView = GistInlineMessageUIView(elementId: elementId)
-        inlineInAppMessageView.delegate = self
+        let inlineInAppMessageView = createGistMessageView(elementId: elementId)
         inlineInAppMessageView.constrainToFillParent(self)
         onNoMessageToDisplay()
     }
-}
 
-// MARK: - GistInlineMessageUIViewDelegate Implementation
+    // MARK: - GistInlineMessageUIViewDelegate Implementation
 
-extension InlineMessageBridgeView: GistInlineMessageUIViewDelegate {
     public func onMessageRendered(width: CGFloat, height: CGFloat) {
         // Prevent unnecessary updates if dimensions haven't changed to avoid flicker
         guard let inAppMessageView = inAppMessageView,
@@ -148,8 +140,7 @@ extension InlineMessageBridgeView: GistInlineMessageUIViewDelegate {
     ) -> Bool {
         delegate?.onActionClick(
             message: InAppMessage(gistMessage: message), actionValue: action, actionName: name
-        )
-            ?? false
+        ) ?? false
     }
 
     public func willChangeMessage(newTemplateId: String, onComplete: @escaping () -> Void) {
