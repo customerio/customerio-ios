@@ -10,7 +10,7 @@ public protocol InlineMessageBridgeViewDelegate: AnyObject, AutoMockable {
     func onActionClick(message: InAppMessage, actionValue: String, actionName: String) -> Bool
 
     /// Called when a message has been rendered with specific dimensions.
-    func onMessageRendered(width: CGFloat, height: CGFloat)
+    func onMessageSizeChanged(width: CGFloat, height: CGFloat)
 
     /// Called when there is no message available to display.
     func onNoMessageToDisplay()
@@ -124,12 +124,12 @@ public class InlineMessageBridgeView: UIView, InlineMessageViewProtocol {
         inAppMessageView.isHidden = false
 
         // Notify delegate of the rendered message dimensions
-        delegate?.onMessageRendered(width: width, height: height)
+        delegate?.onMessageSizeChanged(width: width, height: height)
         delegate?.onFinishLoading()
     }
 
     public func onNoMessageToDisplay() {
-        delegate?.onMessageRendered(width: 0, height: 0)
+        delegate?.onMessageSizeChanged(width: 0, height: 0)
         delegate?.onNoMessageToDisplay()
         lastRenderedWidth = nil
         lastRenderedHeight = nil

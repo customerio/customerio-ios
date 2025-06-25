@@ -122,9 +122,9 @@ extension InlineMessageBridgeViewTest {
         bridgeView.delegate = mockDelegate
         bridgeView.onMessageRendered(width: width, height: height)
 
-        XCTAssertEqual(mockDelegate.onMessageRenderedCallsCount, 1)
-        XCTAssertEqual(mockDelegate.onMessageRenderedReceivedArguments?.width, width)
-        XCTAssertEqual(mockDelegate.onMessageRenderedReceivedArguments?.height, height)
+        XCTAssertEqual(mockDelegate.onMessageSizeChangedCallsCount, 1)
+        XCTAssertEqual(mockDelegate.onMessageSizeChangedReceivedArguments?.width, width)
+        XCTAssertEqual(mockDelegate.onMessageSizeChangedReceivedArguments?.height, height)
         XCTAssertEqual(mockDelegate.onFinishLoadingCallsCount, 1)
     }
 
@@ -142,7 +142,7 @@ extension InlineMessageBridgeViewTest {
         // Second call with same dimensions should not notify
         bridgeView.onMessageRendered(width: width, height: height)
 
-        XCTAssertEqual(mockDelegate.onMessageRenderedCallsCount, 1)
+        XCTAssertEqual(mockDelegate.onMessageSizeChangedCallsCount, 1)
         XCTAssertEqual(mockDelegate.onFinishLoadingCallsCount, 1)
     }
 
@@ -154,7 +154,7 @@ extension InlineMessageBridgeViewTest {
         bridgeView.onMessageRendered(width: 300, height: 200)
         bridgeView.onMessageRendered(width: 400, height: 300)
 
-        XCTAssertEqual(mockDelegate.onMessageRenderedCallsCount, 2)
+        XCTAssertEqual(mockDelegate.onMessageSizeChangedCallsCount, 2)
         XCTAssertEqual(mockDelegate.onFinishLoadingCallsCount, 2)
     }
 
@@ -165,7 +165,7 @@ extension InlineMessageBridgeViewTest {
         bridgeView.onMessageRendered(width: 300, height: 200)
 
         // Should not notify delegate when inAppMessageView is nil
-        XCTAssertEqual(mockDelegate.onMessageRenderedCallsCount, 0)
+        XCTAssertEqual(mockDelegate.onMessageSizeChangedCallsCount, 0)
         XCTAssertEqual(mockDelegate.onFinishLoadingCallsCount, 0)
     }
 
@@ -181,13 +181,13 @@ extension InlineMessageBridgeViewTest {
 
         XCTAssertEqual(mockDelegate.onNoMessageToDisplayCallsCount, 1)
         // Should also call onMessageRendered with 0,0 dimensions
-        XCTAssertEqual(mockDelegate.onMessageRenderedCallsCount, 2)
-        XCTAssertEqual(mockDelegate.onMessageRenderedReceivedInvocations.last?.width, 0)
-        XCTAssertEqual(mockDelegate.onMessageRenderedReceivedInvocations.last?.height, 0)
+        XCTAssertEqual(mockDelegate.onMessageSizeChangedCallsCount, 2)
+        XCTAssertEqual(mockDelegate.onMessageSizeChangedReceivedInvocations.last?.width, 0)
+        XCTAssertEqual(mockDelegate.onMessageSizeChangedReceivedInvocations.last?.height, 0)
 
         // After clearing cache, same dimensions should notify again
         bridgeView.onMessageRendered(width: 300, height: 200)
-        XCTAssertEqual(mockDelegate.onMessageRenderedCallsCount, 3)
+        XCTAssertEqual(mockDelegate.onMessageSizeChangedCallsCount, 3)
     }
 
     func testOnInlineButtonAction_shouldNotifyDelegateAndReturnResult() {

@@ -816,9 +816,9 @@ public class InlineMessageBridgeViewDelegateMock: InlineMessageBridgeViewDelegat
         onActionClickReceivedInvocations = []
 
         mockCalled = false // do last as resetting properties above can make this true
-        onMessageRenderedCallsCount = 0
-        onMessageRenderedReceivedArguments = nil
-        onMessageRenderedReceivedInvocations = []
+        onMessageSizeChangedCallsCount = 0
+        onMessageSizeChangedReceivedArguments = nil
+        onMessageSizeChangedReceivedInvocations = []
 
         mockCalled = false // do last as resetting properties above can make this true
         onNoMessageToDisplayCallsCount = 0
@@ -865,31 +865,31 @@ public class InlineMessageBridgeViewDelegateMock: InlineMessageBridgeViewDelegat
         return onActionClickClosure.map { $0(message, actionValue, actionName) } ?? onActionClickReturnValue
     }
 
-    // MARK: - onMessageRendered
+    // MARK: - onMessageSizeChanged
 
     /// Number of times the function was called.
-    @Atomic public private(set) var onMessageRenderedCallsCount = 0
+    @Atomic public private(set) var onMessageSizeChangedCallsCount = 0
     /// `true` if the function was ever called.
-    public var onMessageRenderedCalled: Bool {
-        onMessageRenderedCallsCount > 0
+    public var onMessageSizeChangedCalled: Bool {
+        onMessageSizeChangedCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    @Atomic public private(set) var onMessageRenderedReceivedArguments: (width: CGFloat, height: CGFloat)?
+    @Atomic public private(set) var onMessageSizeChangedReceivedArguments: (width: CGFloat, height: CGFloat)?
     /// Arguments from *all* of the times that the function was called.
-    @Atomic public private(set) var onMessageRenderedReceivedInvocations: [(width: CGFloat, height: CGFloat)] = []
+    @Atomic public private(set) var onMessageSizeChangedReceivedInvocations: [(width: CGFloat, height: CGFloat)] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
-    public var onMessageRenderedClosure: ((CGFloat, CGFloat) -> Void)?
+    public var onMessageSizeChangedClosure: ((CGFloat, CGFloat) -> Void)?
 
-    /// Mocked function for `onMessageRendered(width: CGFloat, height: CGFloat)`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func onMessageRendered(width: CGFloat, height: CGFloat) {
+    /// Mocked function for `onMessageSizeChanged(width: CGFloat, height: CGFloat)`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func onMessageSizeChanged(width: CGFloat, height: CGFloat) {
         mockCalled = true
-        onMessageRenderedCallsCount += 1
-        onMessageRenderedReceivedArguments = (width: width, height: height)
-        onMessageRenderedReceivedInvocations.append((width: width, height: height))
-        onMessageRenderedClosure?(width, height)
+        onMessageSizeChangedCallsCount += 1
+        onMessageSizeChangedReceivedArguments = (width: width, height: height)
+        onMessageSizeChangedReceivedInvocations.append((width: width, height: height))
+        onMessageSizeChangedClosure?(width, height)
     }
 
     // MARK: - onNoMessageToDisplay
