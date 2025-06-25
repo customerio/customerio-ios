@@ -72,12 +72,12 @@ public class DataPipeline: ModuleTopLevelObject<DataPipelineInstance>, DataPipel
         set {
             guard var implementation = implementation else { return }
 
-            implementation.profileAttributes = newValue
+            implementation.profileAttributes = newValue.sanitizedForJSON()
         }
     }
 
     public func identify(userId: String, traits: [String: Any]?) {
-        implementation?.identify(userId: userId, traits: traits)
+        implementation?.identify(userId: userId, traits: traits?.sanitizedForJSON())
     }
 
     public func identify<RequestBody: Codable>(userId: String, traits: RequestBody?) {
@@ -93,7 +93,7 @@ public class DataPipeline: ModuleTopLevelObject<DataPipelineInstance>, DataPipel
         set {
             guard var implementation = implementation else { return }
 
-            implementation.deviceAttributes = newValue
+            implementation.deviceAttributes = newValue.sanitizedForJSON()
         }
     }
 
@@ -110,7 +110,7 @@ public class DataPipeline: ModuleTopLevelObject<DataPipelineInstance>, DataPipel
     }
 
     public func track(name: String, properties: [String: Any]?) {
-        implementation?.track(name: name, properties: properties)
+        implementation?.track(name: name, properties: properties?.sanitizedForJSON())
     }
 
     public func track<RequestBody: Codable>(name: String, properties: RequestBody?) {
@@ -118,7 +118,7 @@ public class DataPipeline: ModuleTopLevelObject<DataPipelineInstance>, DataPipel
     }
 
     public func screen(title: String, properties: [String: Any]?) {
-        implementation?.screen(title: title, properties: properties)
+        implementation?.screen(title: title, properties: properties?.sanitizedForJSON())
     }
 
     public func screen<RequestBody: Codable>(title: String, properties: RequestBody?) {
