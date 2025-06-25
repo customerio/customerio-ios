@@ -105,7 +105,6 @@ public class InlineMessageBridgeView: UIView, InlineMessageViewProtocol {
         // Create new inline message view
         let inlineInAppMessageView = createGistMessageView(elementId: elementId)
         inlineInAppMessageView.constrainToFillParent(self)
-        onNoMessageToDisplay()
     }
 
     // MARK: - GistInlineMessageUIViewDelegate Implementation
