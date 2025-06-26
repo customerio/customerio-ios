@@ -176,7 +176,7 @@ extension EngineWeb: WKNavigationDelegate {
                     self?.logger.logWithModuleTag("JavaScript execution error: \(error)", level: .error)
                     self?.delegate?.error()
                 } else {
-                    self?.logger.logWithModuleTag("Configuration injected successfully", level: .error)
+                    self?.logger.logWithModuleTag("Configuration injected successfully", level: .info)
                 }
             }
         } catch {
