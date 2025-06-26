@@ -87,7 +87,12 @@ public class InlineMessageBridgeView: UIView, InlineMessageViewProtocol {
     /// Called every time the wrapper view is detached from a screen.
     /// Cleans up resources to prevent memory leaks.
     public func onViewDetached() {
-        inAppMessageView?.teardownView()
+        if let inAppMessageView = inAppMessageView {
+            inAppMessageView.removeFromSuperview()
+            inAppMessageView.teardownView()
+        }
+        lastRenderedWidth = nil
+        lastRenderedHeight = nil
     }
 
     /// Sets up the underlying Gist inline message view if needed.
