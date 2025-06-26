@@ -1,3 +1,9 @@
+## [3.10.7](https://github.com/customerio/customerio-ios/compare/3.10.6...3.10.7) (2025-06-26)
+
+### Bug Fixes
+
+* add bridge classes for cross platform inline messaging support ([#933](https://github.com/customerio/customerio-ios/issues/933)) ([2a4dbb9](https://github.com/customerio/customerio-ios/commit/2a4dbb98a8cfe6a3eea6e5fd6adf61a0015d0fb8))
+
 ## [3.10.6](https://github.com/customerio/customerio-ios/compare/3.10.5...3.10.6) (2025-06-25)
 
 ### Bug Fixes
