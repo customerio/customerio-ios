@@ -32,6 +32,12 @@ private func reducer(action: InAppMessageAction, state: InAppMessageState) -> In
     case .setPollingInterval(let interval):
         return state.copy(pollInterval: interval)
 
+    case .pauseMessageFetching:
+        return state.copy(isMessageFetchingPaused: true)
+
+    case .resumeMessageFetching:
+        return state.copy(isMessageFetchingPaused: false)
+
     case .setUserIdentifier(let user):
         return state.copy(userId: user)
 
