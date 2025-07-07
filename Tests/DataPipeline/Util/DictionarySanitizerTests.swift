@@ -328,4 +328,54 @@ class DictionarySanitizerTests: UnitTest {
             XCTFail("Expected nestedArray to be an array")
         }
     }
+
+    func test_sanitizedForJSON_givenDictionaryWithBooleans_expectBooleansPreserved() {
+        // Given
+        let dictionary: [String: Any] = [
+            "trueValue": true,
+            "falseValue": false,
+            "nestedDict": [
+                "nestedTrue": true,
+                "nestedFalse": false
+            ],
+            "mixedArray": [true, 42, "string", false]
+        ]
+
+        // When
+        let sanitized = dictionary.sanitizedForJSON(logger: loggerMock)
+
+        // Then
+        XCTAssertEqual(sanitized.count, dictionary.count)
+
+        // Verify boolean values are preserved
+        XCTAssertTrue(sanitized["trueValue"] is Bool, "True value should remain a Bool type")
+        XCTAssertEqual(sanitized["trueValue"] as? Bool, true)
+
+        XCTAssertTrue(sanitized["falseValue"] is Bool, "False value should remain a Bool type")
+        XCTAssertEqual(sanitized["falseValue"] as? Bool, false)
+
+        // Verify nested dictionary booleans
+        if let nestedDict = sanitized["nestedDict"] as? [String: Any] {
+            XCTAssertTrue(nestedDict["nestedTrue"] is Bool, "Nested true should remain a Bool type")
+            XCTAssertEqual(nestedDict["nestedTrue"] as? Bool, true)
+
+            XCTAssertTrue(nestedDict["nestedFalse"] is Bool, "Nested false should remain a Bool type")
+            XCTAssertEqual(nestedDict["nestedFalse"] as? Bool, false)
+        } else {
+            XCTFail("Expected nestedDict to be a dictionary")
+        }
+
+        // Verify array booleans
+        if let mixedArray = sanitized["mixedArray"] as? [Any] {
+            XCTAssertEqual(mixedArray.count, 4)
+            XCTAssertTrue(mixedArray[0] is Bool, "First array element should be a Bool")
+            XCTAssertEqual(mixedArray[0] as? Bool, true)
+            XCTAssertEqual(mixedArray[1] as? Int, 42)
+            XCTAssertEqual(mixedArray[2] as? String, "string")
+            XCTAssertTrue(mixedArray[3] is Bool, "Fourth array element should be a Bool")
+            XCTAssertEqual(mixedArray[3] as? Bool, false)
+        } else {
+            XCTFail("Expected mixedArray to be an array")
+        }
+    }
 }
