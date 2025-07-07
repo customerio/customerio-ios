@@ -35,14 +35,14 @@ extension Dictionary where Key == String, Value == Any {
                 logger.error("Removed unsupported numeric value")
                 return nil
             } else {
-                return number
+                return value
             }
         case let number as Float:
             if number.isInvalidJsonNumber() {
                 logger.error("Removed unsupported numeric value")
                 return nil
             } else {
-                return number
+                return value
             }
         case let dict as [String: Any]:
             let sanitized = dict.sanitizedForJSON(logger: logger)
@@ -87,13 +87,13 @@ extension Array where Element == Any {
                     logger.error("Removed unsupported numeric value")
                     return nil
                 }
-                return number
+                return value
             } else if let number = value as? Float {
                 if number.isInvalidJsonNumber() {
                     logger.error("Removed unsupported numeric value")
                     return nil
                 }
-                return number
+                return value
             } else {
                 return value
             }

@@ -250,4 +250,82 @@ class DictionarySanitizerTests: UnitTest {
             XCTFail("Expected dictKey to be a dictionary")
         }
     }
+
+    func test_sanitizedForJSON_givenIntegerValues_expectIntegersRemainIntegers() {
+        // Given
+        let dictionary: [String: Any] = [
+            "intValue": 1,
+            "anotherIntValue": 42,
+            "zeroValue": 0,
+            "largeIntValue": 9999999
+        ]
+
+        // When
+        let sanitized = dictionary.sanitizedForJSON(logger: loggerMock)
+
+        // Then
+        XCTAssertEqual(sanitized.count, dictionary.count)
+
+        // Verify that integers remain integers (not converted to Double/Float)
+        XCTAssertTrue(sanitized["intValue"] is Int, "Integer should remain an Int type")
+        XCTAssertFalse(sanitized["intValue"] is Double, "Integer should not be converted to Double")
+        XCTAssertFalse(sanitized["intValue"] is Float, "Integer should not be converted to Float")
+        XCTAssertEqual(sanitized["intValue"] as? Int, 1)
+
+        XCTAssertTrue(sanitized["anotherIntValue"] is Int, "Integer should remain an Int type")
+        XCTAssertEqual(sanitized["anotherIntValue"] as? Int, 42)
+
+        XCTAssertTrue(sanitized["zeroValue"] is Int, "Zero should remain an Int type")
+        XCTAssertEqual(sanitized["zeroValue"] as? Int, 0)
+
+        XCTAssertTrue(sanitized["largeIntValue"] is Int, "Large integer should remain an Int type")
+        XCTAssertEqual(sanitized["largeIntValue"] as? Int, 9999999)
+    }
+
+    func test_sanitizedForJSON_givenNestedIntegerValues_expectIntegersRemainIntegers() {
+        // Given
+        let dictionary: [String: Any] = [
+            "topLevelInt": 100,
+            "nestedDict": [
+                "nestedInt": 1,
+                "anotherNestedInt": 42
+            ],
+            "nestedArray": [1, 2, 3, 4, 5]
+        ]
+
+        // When
+        let sanitized = dictionary.sanitizedForJSON(logger: loggerMock)
+
+        // Then
+        XCTAssertEqual(sanitized.count, dictionary.count)
+
+        // Verify top-level integer
+        XCTAssertTrue(sanitized["topLevelInt"] is Int, "Top-level integer should remain an Int type")
+        XCTAssertEqual(sanitized["topLevelInt"] as? Int, 100)
+
+        // Verify nested dictionary integers
+        if let nestedDict = sanitized["nestedDict"] as? [String: Any] {
+            XCTAssertTrue(nestedDict["nestedInt"] is Int, "Nested integer should remain an Int type")
+            XCTAssertFalse(nestedDict["nestedInt"] is Double, "Nested integer should not be converted to Double")
+            XCTAssertEqual(nestedDict["nestedInt"] as? Int, 1)
+
+            XCTAssertTrue(nestedDict["anotherNestedInt"] is Int, "Nested integer should remain an Int type")
+            XCTAssertEqual(nestedDict["anotherNestedInt"] as? Int, 42)
+        } else {
+            XCTFail("Expected nestedDict to be a dictionary")
+        }
+
+        // Verify array integers
+        if let nestedArray = sanitized["nestedArray"] as? [Any] {
+            XCTAssertEqual(nestedArray.count, 5)
+
+            for (index, value) in nestedArray.enumerated() {
+                XCTAssertTrue(value is Int, "Array integer at index \(index) should remain an Int type")
+                XCTAssertFalse(value is Double, "Array integer at index \(index) should not be converted to Double")
+                XCTAssertEqual(value as? Int, index + 1)
+            }
+        } else {
+            XCTFail("Expected nestedArray to be an array")
+        }
+    }
 }
