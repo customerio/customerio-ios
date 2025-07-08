@@ -30,19 +30,21 @@ extension Dictionary where Key == String, Value == Any {
      */
     private func sanitizeValue(_ value: Any, logger: Logger) -> Any? {
         switch value {
+        case is Bool:
+            return value
         case let number as Double:
             if number.isInvalidJsonNumber() {
                 logger.error("Removed unsupported numeric value")
                 return nil
             } else {
-                return number
+                return value
             }
         case let number as Float:
             if number.isInvalidJsonNumber() {
                 logger.error("Removed unsupported numeric value")
                 return nil
             } else {
-                return number
+                return value
             }
         case let dict as [String: Any]:
             let sanitized = dict.sanitizedForJSON(logger: logger)
@@ -82,18 +84,20 @@ extension Array where Element == Any {
             } else if let array = value as? [Any] {
                 let sanitized = array.sanitizedForJSON(logger: logger)
                 return sanitized.nilIfEmpty
+            } else if value is Bool {
+                return value
             } else if let number = value as? Double {
                 if number.isInvalidJsonNumber() {
                     logger.error("Removed unsupported numeric value")
                     return nil
                 }
-                return number
+                return value
             } else if let number = value as? Float {
                 if number.isInvalidJsonNumber() {
                     logger.error("Removed unsupported numeric value")
                     return nil
                 }
-                return number
+                return value
             } else {
                 return value
             }

@@ -250,4 +250,132 @@ class DictionarySanitizerTests: UnitTest {
             XCTFail("Expected dictKey to be a dictionary")
         }
     }
+
+    func test_sanitizedForJSON_givenIntegerValues_expectIntegersRemainIntegers() {
+        // Given
+        let dictionary: [String: Any] = [
+            "intValue": 1,
+            "anotherIntValue": 42,
+            "zeroValue": 0,
+            "largeIntValue": 9999999
+        ]
+
+        // When
+        let sanitized = dictionary.sanitizedForJSON(logger: loggerMock)
+
+        // Then
+        XCTAssertEqual(sanitized.count, dictionary.count)
+
+        // Verify that integers remain integers (not converted to Double/Float)
+        XCTAssertTrue(sanitized["intValue"] is Int, "Integer should remain an Int type")
+        XCTAssertFalse(sanitized["intValue"] is Double, "Integer should not be converted to Double")
+        XCTAssertFalse(sanitized["intValue"] is Float, "Integer should not be converted to Float")
+        XCTAssertEqual(sanitized["intValue"] as? Int, 1)
+
+        XCTAssertTrue(sanitized["anotherIntValue"] is Int, "Integer should remain an Int type")
+        XCTAssertEqual(sanitized["anotherIntValue"] as? Int, 42)
+
+        XCTAssertTrue(sanitized["zeroValue"] is Int, "Zero should remain an Int type")
+        XCTAssertEqual(sanitized["zeroValue"] as? Int, 0)
+
+        XCTAssertTrue(sanitized["largeIntValue"] is Int, "Large integer should remain an Int type")
+        XCTAssertEqual(sanitized["largeIntValue"] as? Int, 9999999)
+    }
+
+    func test_sanitizedForJSON_givenNestedIntegerValues_expectIntegersRemainIntegers() {
+        // Given
+        let dictionary: [String: Any] = [
+            "topLevelInt": 100,
+            "nestedDict": [
+                "nestedInt": 1,
+                "anotherNestedInt": 42
+            ],
+            "nestedArray": [1, 2, 3, 4, 5]
+        ]
+
+        // When
+        let sanitized = dictionary.sanitizedForJSON(logger: loggerMock)
+
+        // Then
+        XCTAssertEqual(sanitized.count, dictionary.count)
+
+        // Verify top-level integer
+        XCTAssertTrue(sanitized["topLevelInt"] is Int, "Top-level integer should remain an Int type")
+        XCTAssertEqual(sanitized["topLevelInt"] as? Int, 100)
+
+        // Verify nested dictionary integers
+        if let nestedDict = sanitized["nestedDict"] as? [String: Any] {
+            XCTAssertTrue(nestedDict["nestedInt"] is Int, "Nested integer should remain an Int type")
+            XCTAssertFalse(nestedDict["nestedInt"] is Double, "Nested integer should not be converted to Double")
+            XCTAssertEqual(nestedDict["nestedInt"] as? Int, 1)
+
+            XCTAssertTrue(nestedDict["anotherNestedInt"] is Int, "Nested integer should remain an Int type")
+            XCTAssertEqual(nestedDict["anotherNestedInt"] as? Int, 42)
+        } else {
+            XCTFail("Expected nestedDict to be a dictionary")
+        }
+
+        // Verify array integers
+        if let nestedArray = sanitized["nestedArray"] as? [Any] {
+            XCTAssertEqual(nestedArray.count, 5)
+
+            for (index, value) in nestedArray.enumerated() {
+                XCTAssertTrue(value is Int, "Array integer at index \(index) should remain an Int type")
+                XCTAssertFalse(value is Double, "Array integer at index \(index) should not be converted to Double")
+                XCTAssertEqual(value as? Int, index + 1)
+            }
+        } else {
+            XCTFail("Expected nestedArray to be an array")
+        }
+    }
+
+    func test_sanitizedForJSON_givenDictionaryWithBooleans_expectBooleansPreserved() {
+        // Given
+        let dictionary: [String: Any] = [
+            "trueValue": true,
+            "falseValue": false,
+            "nestedDict": [
+                "nestedTrue": true,
+                "nestedFalse": false
+            ],
+            "mixedArray": [true, 42, "string", false]
+        ]
+
+        // When
+        let sanitized = dictionary.sanitizedForJSON(logger: loggerMock)
+
+        // Then
+        XCTAssertEqual(sanitized.count, dictionary.count)
+
+        // Verify boolean values are preserved
+        XCTAssertTrue(sanitized["trueValue"] is Bool, "True value should remain a Bool type")
+        XCTAssertEqual(sanitized["trueValue"] as? Bool, true)
+
+        XCTAssertTrue(sanitized["falseValue"] is Bool, "False value should remain a Bool type")
+        XCTAssertEqual(sanitized["falseValue"] as? Bool, false)
+
+        // Verify nested dictionary booleans
+        if let nestedDict = sanitized["nestedDict"] as? [String: Any] {
+            XCTAssertTrue(nestedDict["nestedTrue"] is Bool, "Nested true should remain a Bool type")
+            XCTAssertEqual(nestedDict["nestedTrue"] as? Bool, true)
+
+            XCTAssertTrue(nestedDict["nestedFalse"] is Bool, "Nested false should remain a Bool type")
+            XCTAssertEqual(nestedDict["nestedFalse"] as? Bool, false)
+        } else {
+            XCTFail("Expected nestedDict to be a dictionary")
+        }
+
+        // Verify array booleans
+        if let mixedArray = sanitized["mixedArray"] as? [Any] {
+            XCTAssertEqual(mixedArray.count, 4)
+            XCTAssertTrue(mixedArray[0] is Bool, "First array element should be a Bool")
+            XCTAssertEqual(mixedArray[0] as? Bool, true)
+            XCTAssertEqual(mixedArray[1] as? Int, 42)
+            XCTAssertEqual(mixedArray[2] as? String, "string")
+            XCTAssertTrue(mixedArray[3] is Bool, "Fourth array element should be a Bool")
+            XCTAssertEqual(mixedArray[3] as? Bool, false)
+        } else {
+            XCTFail("Expected mixedArray to be an array")
+        }
+    }
 }
