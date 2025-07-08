@@ -1,3 +1,9 @@
+## [3.10.8](https://github.com/customerio/customerio-ios/compare/3.10.7...3.10.8) (2025-07-08)
+
+### Bug Fixes
+
+* Preserve numeric types when doing sanitization for JSON ([#935](https://github.com/customerio/customerio-ios/issues/935)) ([cbf95fd](https://github.com/customerio/customerio-ios/commit/cbf95fdbdf72142f5b711ce9e0cb0ad81835ff41))
+
 ## [3.10.7](https://github.com/customerio/customerio-ios/compare/3.10.6...3.10.7) (2025-06-26)
 
 ### Bug Fixes
