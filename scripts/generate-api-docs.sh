@@ -15,7 +15,6 @@ NC='\033[0m' # No Color
 
 # Configuration
 DOCS_DIR="api-docs"
-WORKSPACE="./.swiftpm/xcode/package.xcworkspace"
 DESTINATION="platform=iOS Simulator,name=iPhone 16"
 FORMATTER_SCRIPT="./scripts/format-api-docs.rb"
 
@@ -29,29 +28,6 @@ declare -a MODULES=(
 )
 
 echo -e "${BLUE}🚀 Starting API documentation generation...${NC}"
-
-# Check prerequisites
-echo -e "${YELLOW}📋 Checking prerequisites...${NC}"
-
-# Check if sourcekitten is available
-if ! command -v sourcekitten &> /dev/null; then
-    echo -e "${RED}❌ sourcekitten is not installed. Install with: brew install sourcekitten${NC}"
-    exit 1
-fi
-
-# Check if Ruby formatter exists
-if [ ! -f "$FORMATTER_SCRIPT" ]; then
-    echo -e "${RED}❌ Ruby formatter script not found at $FORMATTER_SCRIPT${NC}"
-    exit 1
-fi
-
-# Check if workspace exists
-if [ ! -d "$WORKSPACE" ]; then
-    echo -e "${RED}❌ Workspace not found at $WORKSPACE${NC}"
-    exit 1
-fi
-
-echo -e "${GREEN}✅ All prerequisites met${NC}"
 
 # Create docs directory
 echo -e "${YELLOW}📁 Creating documentation directory...${NC}"
@@ -83,7 +59,6 @@ for module_config in "${MODULES[@]}"; do
     if sourcekitten doc \
         --module-name "$module_name" \
         -- \
-        -workspace "$WORKSPACE" \
         -scheme "$scheme_name" \
         -destination "$DESTINATION" > "$RAW_JSON_FILE"; then
         
@@ -107,40 +82,3 @@ for module_config in "${MODULES[@]}"; do
         continue
     fi
 done
-
-# Generate summary
-echo -e "\n${BLUE}📊 Documentation Summary${NC}"
-echo -e "${BLUE}========================${NC}"
-
-total_modules=${#MODULES[@]}
-generated_formatted=0
-
-for module_config in "${MODULES[@]}"; do
-    IFS=':' read -r scheme_name module_name <<< "$module_config"
-    
-    formatted_file="$DOCS_DIR/${module_name}.api"
-    
-    if [ -f "$formatted_file" ]; then
-        ((generated_formatted++))
-        formatted_size=$(du -h "$formatted_file" | cut -f1)
-        line_count=$(wc -l < "$formatted_file")
-        echo -e "${GREEN}✅ $module_name${NC} - $formatted_size ($line_count lines)"
-    else
-        echo -e "${RED}❌ $module_name${NC} - Missing"
-    fi
-done
-
-echo -e "\n${BLUE}📈 Results:${NC}"
-echo -e "   Modules processed: $total_modules"
-echo -e "   API docs generated: $generated_formatted/$total_modules"
-
-if [ $generated_formatted -eq $total_modules ]; then
-    echo -e "\n${GREEN}🎉 All documentation generated successfully!${NC}"
-    echo -e "${GREEN}📂 Documentation available in: $DOCS_DIR/${NC}"
-else
-    echo -e "\n${YELLOW}⚠️  Some documentation files failed to generate. Check output above.${NC}"
-fi
-
-echo -e "\n${BLUE}📝 Usage:${NC}"
-echo -e "   View API docs: ${YELLOW}cat $DOCS_DIR/<ModuleName>.api${NC}"
-echo -e "   Re-run script: ${YELLOW}./scripts/generate-api-docs.sh${NC}"
