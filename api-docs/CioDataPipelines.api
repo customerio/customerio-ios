@@ -1,0 +1,76 @@
+public final class CioDataPipelines.AutoTrackingScreenViews {
+	public final val type: PluginType;
+	public var analytics: Analytics?;
+	public var diGraph: DIGraphShared;
+	public var filterAutoScreenViewEvents: ((UIViewController) -> Boolean)?;
+	public var autoScreenViewBody: (() -> Map<String, Any>)?;
+	public fun init(
+    filterAutoScreenViewEvents: ((UIViewController) -> Boolean)? = nil,
+    autoScreenViewBody: (() -> List<String: Any>)? = nil
+);
+}
+public final class CioDataPipelines.CustomerIODestination {
+}
+public final class CioDataPipelines.DataPipeline {
+	public var analytics: Analytics;
+	public var shared: DataPipeline;
+	public var moduleConfig: DataPipelineConfigOptions?;
+	public var profileAttributes: Map<String, Any>;
+	public var deviceAttributes: Map<String, Any>;
+	public var registeredDeviceToken: String?;
+	public fun func setUpSharedInstanceForUnitTest(implementation: DataPipelineInstance, config: DataPipelineConfigOptions) -> DataPipelineInstance;
+	public fun func setUpSharedInstanceForIntegrationTest(diGraphShared: DIGraphShared, config: DataPipelineConfigOptions) -> DataPipelineInstance;
+	public fun func initialize(moduleConfig: DataPipelineConfigOptions) -> DataPipelineInstance;
+	public fun func identify(userId: String, traits: List<String: Any>?);
+	public fun func identify<RequestBody: Codable>(userId: String, traits: RequestBody?);
+	public fun func clearIdentify();
+	public fun func registerDeviceToken(_ deviceToken: String);
+	public fun func deleteDeviceToken();
+	public fun func track(name: String, properties: List<String: Any>?);
+	public fun func track<RequestBody: Codable>(name: String, properties: RequestBody?);
+	public fun func screen(title: String, properties: List<String: Any>?);
+	public fun func screen<RequestBody: Codable>(title: String, properties: RequestBody?);
+	public fun func trackMetric(deliveryID: String, event: Metric, deviceToken: String);
+}
+public final class CioDataPipelines.DataPipelineConfigOptions {
+	public final val cdpApiKey: String;
+	public final val apiHost: String;
+	public final val cdnHost: String;
+	public final val flushAt: Int;
+	public final val flushInterval: Double;
+	public final val autoAddCustomerIODestination: Boolean;
+	public final val flushPolicies: List<any FlushPolicy>;
+	public final val trackApplicationLifecycleEvents: Boolean;
+	public final val autoTrackDeviceAttributes: Boolean;
+	public final val migrationSiteId: String?;
+	public final val screenViewUse: ScreenView;
+}
+public interface CioDataPipelines.DataPipelineInstance {
+	public var analytics: Analytics;
+}
+public final class CioDataPipelines.SDKConfigBuilder {
+	public fun init(cdpApiKey: String);
+	public fun func region(_ region: Region) -> SDKConfigBuilder;
+	public fun func autoTrackUIKitScreenViews(
+    enabled: Boolean = true,
+    autoScreenViewBody: (() -> List<String: Any>)? = nil,
+    filterAutoScreenViewEvents: ((UIViewController) -> Boolean)? = nil
+) -> SDKConfigBuilder;
+	public fun func logLevel(_ logLevel: CioLogLevel) -> SDKConfigBuilder;
+	public fun func apiHost(_ apiHost: String) -> SDKConfigBuilder;
+	public fun func cdnHost(_ cdnHost: String) -> SDKConfigBuilder;
+	public fun func flushAt(_ flushAt: Int) -> SDKConfigBuilder;
+	public fun func flushInterval(_ flushInterval: Seconds) -> SDKConfigBuilder;
+	public fun func flushPolicies(_ policies: List<FlushPolicy>) -> SDKConfigBuilder;
+	public fun func trackApplicationLifecycleEvents(_ track: Boolean) -> SDKConfigBuilder;
+	public fun func autoTrackDeviceAttributes(_ autoTrack: Boolean) -> SDKConfigBuilder;
+	public fun func migrationSiteId(_ siteId: String) -> SDKConfigBuilder;
+	public fun func screenViewUse(screenView: ScreenView) -> SDKConfigBuilder;
+	public fun func deepLinkCallback(_ callback: @escaping DeepLinkCallback) -> SDKConfigBuilder;
+	public fun func build() -> SDKConfigBuilderResult;
+}
+public interface CioDataPipelines.SDKConfigBuilderResult {
+	public var sdkConfig: SdkConfig;
+	public var dataPipelineConfig: DataPipelineConfigOptions;
+	public var deepLinkCallback: ((URL) -> Boolean)?;
+}

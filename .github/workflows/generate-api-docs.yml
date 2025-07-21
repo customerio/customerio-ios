@@ -1,0 +1,29 @@
+name: Generate API Documentation
+
+on: [pull_request]
+
+concurrency: # cancel previous workflow run if one exists
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+  
+jobs:
+  generate-api-docs:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: ./.github/actions/setup-ios
+      
+      - name: Install sourcekitten
+        run: brew install sourcekitten
+      
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@354a1ad156761f5ee2b7b13fa8e09943a5e8d252 # v1.229.0
+        with:
+          ruby-version: '3.2'
+          bundler-cache: false # we don't need bundler for this workflow
+      
+      - name: Generate API documentation
+        run: |
+          # Run the API docs generation script
+          ./scripts/generate-api-docs.sh

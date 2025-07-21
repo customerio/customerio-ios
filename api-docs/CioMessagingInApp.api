@@ -1,0 +1,160 @@
+public final class AnyEncodable {
+	public var value: Any;
+}
+public final class CioMessagingInApp.AnyEncodable {
+	public final val value: Any;
+	public fun init<T>(_ value: T?);
+}
+public interface CioMessagingInApp.AnyStoreSubscriber {
+	public fun func _newState(state: Any);
+}
+public final class CioMessagingInApp.EngineWeb {
+	public var delegate: (any EngineWebDelegate)?;
+	public var view: UIView;
+	public var currentRoute: String;
+	public fun func cleanEngineWeb();
+}
+public interface CioMessagingInApp.EngineWebDelegate {
+	public fun func bootstrapped();
+	public fun func tap(name: String, action: String, system: Boolean);
+	public fun func routeChanged(newRoute: String);
+	public fun func routeError(route: String);
+	public fun func routeLoaded(route: String);
+	public fun func sizeChanged(width: CGFloat, height: CGFloat);
+	public fun func error();
+}
+public interface CioMessagingInApp.GistDelegate {
+	public fun func embedMessage(message: Message, elementId: String);
+	public fun func messageShown(message: Message);
+	public fun func messageDismissed(message: Message);
+	public fun func messageError(message: Message);
+	public fun func action(message: Message, currentRoute: String, action: String, name: String);
+	public fun func setEventListener(_ eventListener: InAppEventListener?);
+}
+public enum CioMessagingInApp.GistEnvironment {
+}
+public final class CioMessagingInApp.GistProperties {
+	public final val routeRule: String?;
+	public final val elementId: String?;
+	public final val campaignId: String?;
+	public final val position: MessagePosition;
+	public final val persistent: Boolean?;
+	public final val overlayColor: String?;
+}
+public final class CioMessagingInApp.GistView {
+	public var delegate: (any GistViewDelegate)?;
+	public var lifecycleDelegate: (any GistViewLifecycleDelegate)?;
+	public fun override func removeFromSuperview();
+}
+public interface CioMessagingInApp.GistViewDelegate {
+	public fun func action(message: Message, currentRoute: String, action: String, name: String);
+	public fun func sizeChanged(message: Message, width: CGFloat, height: CGFloat);
+}
+public interface CioMessagingInApp.GistViewLifecycleDelegate {
+	public fun func gistViewWillRemoveFromSuperview(_ gistView: GistView);
+}
+public final class CioMessagingInApp.HTTPMethod {
+	public final val delete: HTTPMethod;
+	public final val get: HTTPMethod;
+	public final val patch: HTTPMethod;
+	public final val post: HTTPMethod;
+	public final val put: HTTPMethod;
+	public final val rawValue: String;
+	public fun init(rawValue: String);
+}
+public interface CioMessagingInApp.InAppEventListener {
+	public fun func messageShown(message: InAppMessage);
+	public fun func messageDismissed(message: InAppMessage);
+	public fun func errorWithMessage(message: InAppMessage);
+	public fun func messageActionTaken(message: InAppMessage, actionValue: String, actionName: String);
+}
+public final class CioMessagingInApp.InAppMessage {
+	public final val messageId: String;
+	public final val deliveryId: String?;
+	public final val elementId: String?;
+}
+public final class CioMessagingInApp.InlineMessage {
+	public var body: some View;
+	public fun init(elementId: String, onActionClick: ((InAppMessage, String, String) -> Unit)? = nil);
+}
+public final class CioMessagingInApp.InlineMessageBridgeView {
+	public var elementId: String?;
+	public var delegate: (any InlineMessageBridgeViewDelegate)?;
+	public fun init();
+	public fun deinit;
+	public fun func attachToParent(parent: UIView, delegate: InlineMessageBridgeViewDelegate);
+	public fun func onViewAttached();
+	public fun func onViewDetached();
+	public fun func onMessageRendered(width: CGFloat, height: CGFloat);
+	public fun func onNoMessageToDisplay();
+	public fun func onInlineButtonAction(
+    message: Message, currentRoute: String, action: String, name: String
+) -> Boolean;
+	public fun func willChangeMessage(newTemplateId: String, onComplete: @escaping () -> Unit);
+}
+public interface CioMessagingInApp.InlineMessageBridgeViewDelegate {
+	public fun func onActionClick(message: InAppMessage, actionValue: String, actionName: String) -> Boolean;
+	public fun func onMessageSizeChanged(width: CGFloat, height: CGFloat);
+	public fun func onNoMessageToDisplay();
+	public fun func onStartLoading(onComplete: @escaping () -> Unit);
+	public fun func onFinishLoading();
+}
+public final class CioMessagingInApp.InlineMessageUIView {
+	public var elementId: String?;
+	public var onActionDelegate: (any InlineMessageUIViewDelegate)?;
+	public fun init(elementId: String);
+	public fun deinit;
+	public fun func onMessageRendered(width: CGFloat, height: CGFloat);
+	public fun func onNoMessageToDisplay();
+	public fun func onInlineButtonAction(message: Message, currentRoute: String, action: String, name: String) -> Boolean;
+	public fun func willChangeMessage(newTemplateId: String, onComplete: @escaping () -> Unit);
+}
+public interface CioMessagingInApp.InlineMessageUIViewDelegate {
+	public fun func onActionClick(message: InAppMessage, actionValue: String, actionName: String);
+}
+public final class CioMessagingInApp.Message {
+	public var isEmbedded: Boolean;
+	public var elementId: String?;
+	public fun init(
+    messageId: String,
+    queueId: String? = nil,
+    priority: Int? = nil,
+    properties: List<String: Any>?
+);
+}
+public enum CioMessagingInApp.MessagePosition {
+}
+public final class CioMessagingInApp.MessagingInApp {
+	public var shared: MessagingInApp;
+	public fun func initialize(withConfig config: MessagingInAppConfigOptions) -> MessagingInAppInstance;
+	public fun func setEventListener(_ eventListener: InAppEventListener?);
+	public fun func dismissMessage();
+}
+public final class CioMessagingInApp.MessagingInAppConfigBuilder {
+	public fun init(siteId: String, region: Region);
+	public fun func build() -> MessagingInAppConfigOptions;
+}
+public enum CioMessagingInApp.MessagingInAppConfigBuilderError {
+}
+public final class CioMessagingInApp.MessagingInAppConfigOptions {
+	public final val siteId: String;
+	public final val region: Region;
+}
+public interface CioMessagingInApp.MessagingInAppInstance {
+	public fun func setEventListener(_ eventListener: InAppEventListener?);
+	public fun func dismissMessage();
+}
+public final class CioMessagingInApp.ModalMessageManager {
+	public fun deinit;
+	public fun func subscribeToInAppMessageState();
+	public fun func showMessage();
+}
+public interface CioMessagingInApp.StoreSubscriber {
+	public fun func newState(state: StoreSubscriberStateType);
+}
+public final class CioMessagingInApp.Subscription {
+	public var observer: ((State?, State) -> ())?;
+	public fun init(sink: @escaping (@escaping (State?, State) -> Unit) -> Unit);
+	public fun func skipRepeats(_ isRepeat: @escaping (_ oldState: State, _ newState: State) -> Boolean)
+    -> Subscription<State>;
+}

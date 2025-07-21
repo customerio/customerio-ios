@@ -1,0 +1,50 @@
+public interface CioMessagingPushFCM.FirebaseMessagingIntegration {
+	public var delegate: (any MessagingDelegate)?;
+	public var apnsToken: Data?;
+}
+public final class CioMessagingPushFCM.MessagingPushFCM {
+	public fun func registerDeviceToken(fcmToken: String?);
+	public fun func messaging(_ messaging: Any, didReceiveRegistrationToken fcmToken: String?);
+	public fun func application(_ application: Any, didFailToRegisterForRemoteNotificationsWithError error: Error);
+	public fun func deleteDeviceToken();
+	public fun func trackMetric(deliveryID: String, event: Metric, deviceToken: String);
+	public fun func initialize(
+    withConfig config: MessagingPushConfigOptions = MessagingPushConfigBuilder().build()
+) -> MessagingPushInstance;
+	public fun func didReceive(
+    _ request: UNNotificationRequest,
+    withContentHandler contentHandler: @escaping (UNNotificationContent) -> Unit
+) -> Boolean;
+	public fun func serviceExtensionTimeWillExpire();
+	public fun func userNotificationCenter(
+    _ center: UNUserNotificationCenter,
+    didReceive response: UNNotificationResponse
+) -> CustomerIOParsedPushPayload?;
+	public fun func userNotificationCenter(
+    _ center: UNUserNotificationCenter,
+    didReceive response: UNNotificationResponse,
+    withCompletionHandler completionHandler: @escaping () -> Unit
+) -> Boolean;
+}
+public interface CioMessagingPushFCM.MessagingPushFCMInstance {
+	public fun func registerDeviceToken(fcmToken: String?);
+	public fun func messaging(
+    _ messaging: Any,
+    didReceiveRegistrationToken fcmToken: String?
+);
+	public fun func application(
+    _ application: Any,
+    didFailToRegisterForRemoteNotificationsWithError error: Error
+);
+	public fun func deleteDeviceToken();
+	public fun func trackMetric(
+    deliveryID: String,
+    event: Metric,
+    deviceToken: String
+);
+	public fun func didReceive(
+    _ request: UNNotificationRequest,
+    withContentHandler contentHandler: @escaping (UNNotificationContent) -> Unit
+) -> Boolean;
+	public fun func serviceExtensionTimeWillExpire();
+}
