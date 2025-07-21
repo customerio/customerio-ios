@@ -22,7 +22,7 @@ jobs:
       run: xcrun xcodebuild -list
 
     - name: Setup Ruby to run Fastlane 
-      uses: ruby/setup-ruby@354a1ad156761f5ee2b7b13fa8e09943a5e8d252 # v1.229.0
+      uses: ruby/setup-ruby@a9bfc2ecf3dd40734a9418f89a7e9d484c32b990 # v1.248.0
       with:
         ruby-version: '3.2'
         bundler-cache: true # install dependencies in Gemfile, including Fastlane. 
@@ -39,7 +39,7 @@ jobs:
         xcresultparser --output-format cobertura "Customer.io-Package.xcresult" > ".build/coverage.xml"
   
     - name: Upload code coverage report 
-      uses: codecov/codecov-action@0f8570b1a125f4937846a11fcfa3bcd548bd8c97 # v4.6.0
+      uses: codecov/codecov-action@b9fd7d16f6d7d1b5d2bec1a2887e65ceed900238 # v4.6.0
       env:
         CODECOV_TOKEN: ${{ secrets.CODECOV_UPLOAD_TOKEN }} 
       with: 
@@ -54,7 +54,7 @@ jobs:
         path: test-report.*
       if: ${{ always() }}
     - name: Publish test results
-      uses: mikepenz/action-junit-report@db71d41eb79864e25ab0337e395c352e84523afe  # v4.3.1
+      uses: mikepenz/action-junit-report@3585e9575db828022551b4231f165eb59a0e74e3  # v5.6.2
       with:
         check_name: XCode macOS tests - Results
         report_paths: test-report.xml
