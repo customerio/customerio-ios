@@ -7,7 +7,7 @@ public protocol DeepLinkUtil: AutoMockable {
 
 public extension DeepLinkUtil {
     @_spi(Internal) func setDeepLinkCallback(_ callback: @escaping DeepLinkCallback) {
-        // Default empty implementation required for SPI compliance in Swift 5.9+ with BUILD_LIBRARY_FOR_DISTRIBUTION
+        // Default empty implementation required for SPI compliance in Swift 5.9+ with BUILD_LIBRARY_FOR_DISTRIBUTION=YES
     }
 }
 
