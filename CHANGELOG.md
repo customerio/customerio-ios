@@ -1,3 +1,9 @@
+## [3.10.9](https://github.com/customerio/customerio-ios/compare/3.10.8...3.10.9) (2025-07-21)
+
+### Bug Fixes
+
+* add default implementation for SPI methods ([#936](https://github.com/customerio/customerio-ios/issues/936)) ([c7ba900](https://github.com/customerio/customerio-ios/commit/c7ba900e4e5d1c17e8fd598b645784d2f7e95c00))
+
 ## [3.10.8](https://github.com/customerio/customerio-ios/compare/3.10.7...3.10.8) (2025-07-08)
 
 ### Bug Fixes
