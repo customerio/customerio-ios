@@ -1,3 +1,9 @@
+## [3.11.0](https://github.com/customerio/customerio-ios/compare/3.10.9...3.11.0) (2025-07-22)
+
+### Features
+
+* allow Firebase 12 support ([#938](https://github.com/customerio/customerio-ios/issues/938)) ([3a417ec](https://github.com/customerio/customerio-ios/commit/3a417ecc8d77cb77b0cf38c2b6d77d22c884b8d9))
+
 ## [3.10.9](https://github.com/customerio/customerio-ios/compare/3.10.8...3.10.9) (2025-07-21)
 
 ### Bug Fixes
