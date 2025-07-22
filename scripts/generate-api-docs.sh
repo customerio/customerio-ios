@@ -20,18 +20,31 @@ FORMATTER_SCRIPT="./scripts/format-api-docs.rb"
 
 # Module configuration: scheme_name:module_name
 # Based on Package.swift and available schemes
-declare -a MODULES=(
+# Public modules (have dedicated schemes)
+declare -a PUBLIC_MODULES=(
     "DataPipelines:CioDataPipelines"
+    "Customer.io-Package:CioMessagingPush"
     "MessagingPushAPN:CioMessagingPushAPN" 
     "MessagingPushFCM:CioMessagingPushFCM"
     "MessagingInApp:CioMessagingInApp"
 )
+
+# Internal modules (use main package scheme)
+# These contain public APIs that customers use despite being internal modules
+declare -a INTERNAL_MODULES=(
+    "Customer.io-Package:CioInternalCommon"
+    "Customer.io-Package:CioTrackingMigration"
+)
+
+# Combine all modules
+declare -a MODULES=("${PUBLIC_MODULES[@]}" "${INTERNAL_MODULES[@]}")
 
 echo -e "${BLUE}🚀 Starting API documentation generation...${NC}"
 
 # Create docs directory
 echo -e "${YELLOW}📁 Creating documentation directory...${NC}"
 mkdir -p "$DOCS_DIR"
+mkdir -p "$DOCS_DIR/internal"
 
 # Check available simulators
 echo -e "${YELLOW}📱 Checking available simulators...${NC}"
@@ -50,9 +63,17 @@ for module_config in "${MODULES[@]}"; do
     
     echo -e "\n${BLUE}📖 Generating documentation for $module_name (scheme: $scheme_name)...${NC}"
     
-    # File paths
-    RAW_JSON_FILE="$DOCS_DIR/${module_name}.json"
-    FORMATTED_FILE="$DOCS_DIR/${module_name}.api"
+    # Check if this is an internal module by looking for it in INTERNAL_MODULES
+    if [[ "${INTERNAL_MODULES[*]}" =~ ":${module_name}" ]]; then
+        # Internal module - save to internal subdirectory
+        RAW_JSON_FILE="$DOCS_DIR/internal/${module_name}.json"
+        FORMATTED_FILE="$DOCS_DIR/internal/${module_name}.api"
+        echo -e "${YELLOW}   📁 Internal module - docs will be saved to internal/${NC}"
+    else
+        # Public module - save to main directory
+        RAW_JSON_FILE="$DOCS_DIR/${module_name}.json"
+        FORMATTED_FILE="$DOCS_DIR/${module_name}.api"
+    fi
     
     # Generate raw JSON documentation using sourcekitten
     echo -e "${YELLOW}   🔍 Extracting API with sourcekitten...${NC}"
@@ -82,3 +103,5 @@ for module_config in "${MODULES[@]}"; do
         continue
     fi
 done
+
+echo -e "\n${GREEN}🎉 API documentation generation complete!${NC}"

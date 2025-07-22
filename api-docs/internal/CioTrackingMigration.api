@@ -1,0 +1,16 @@
+public interface CioTrackingMigration.DataPipelineMigrationAction {
+	public fun func processAlreadyIdentifiedUser(identifier: String);
+	public fun func processIdentifyFromBGQ(identifier: String, timestamp: String, body: List<String: Any>?);
+	public fun func processScreenEventFromBGQ(identifier: String, name: String, timestamp: String?, properties: List<String: Any>);
+	public fun func processEventFromBGQ(identifier: String, name: String, timestamp: String?, properties: List<String: Any>);
+	public fun func processDeleteTokenFromBGQ(identifier: String, token: String, timestamp: String);
+	public fun func processRegisterDeviceFromBGQ(identifier: String, token: String, timestamp: String, attributes: List<String: Any>?);
+	public fun func processMetricsFromBGQ(token: String?, event: String, deliveryId: String, timestamp: String, metaData: List<String: Any>);
+}
+public final class CioTrackingMigration.DataPipelineMigrationAssistant {
+	public var migrationHandler: any DataPipelineMigrationAction;
+	public fun init(handler: DataPipelineMigrationAction);
+	public fun func performMigration(siteId: String);
+}
+public final class CioTrackingMigration.TrackEventTypeForAnalytics {
+}
