@@ -1,4 +1,4 @@
-platform :ios, '13.0'
+platform :ios, '15.0'
 use_frameworks!
 
 # Always install the SDK from the local source code so the sample app tests this specific commit of the code. 
