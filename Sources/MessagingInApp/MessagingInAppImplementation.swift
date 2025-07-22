@@ -61,4 +61,12 @@ class MessagingInAppImplementation: MessagingInAppInstance {
     func dismissMessage() {
         gist.dismissMessage()
     }
+
+    func pauseMessageFetching() {
+        inAppMessageManager.dispatch(action: .pauseMessageFetching)
+    }
+
+    func resumeMessageFetching() {
+        inAppMessageManager.dispatch(action: .resumeMessageFetching)
+    }
 }
