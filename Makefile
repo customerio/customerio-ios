@@ -23,6 +23,10 @@ format:
 	./binny swiftformat . --swiftversion 5.3 && ./binny swiftlint lint --fix
 
 # Check what code has not yet had documentation written for it. 
+
+# Generate API documentation for all modules using sourcekitten and format with Ruby script
+generate_api_docs:
+	./scripts/generate-api-docs.sh
 # Jazzy is a great tool that generates docs, yes, but also tells you what public facing code is missing docs. 
 # This command will simply show you the output of the undocumented code of jazzy. It's not the most human-readable but it will do for now. 
 check-undocumented:

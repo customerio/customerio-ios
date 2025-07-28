@@ -1,0 +1,88 @@
+public final class CioMessagingPush.MessagingPush {
+	public var appDelegateIntegratedExplicitly: Boolean;
+	public var shared: MessagingPush;
+	public var moduleConfig: MessagingPushConfigOptions;
+	public fun func initialize(withConfig config: MessagingPushConfigOptions = MessagingPushConfigBuilder().build()) -> MessagingPushInstance;
+	public fun func registerDeviceToken(_ deviceToken: String);
+	public fun func deleteDeviceToken();
+	public fun func trackMetric(
+    deliveryID: String,
+    event: Metric,
+    deviceToken: String
+);
+}
+public final class CioMessagingPush.MessagingPushConfigBuilder {
+	public fun init();
+	public fun func autoFetchDeviceToken(_ value: Boolean) -> MessagingPushConfigBuilder;
+	public fun func autoTrackPushEvents(_ value: Boolean) -> MessagingPushConfigBuilder;
+	public fun func showPushAppInForeground(_ value: Boolean) -> MessagingPushConfigBuilder;
+	public fun func build() -> MessagingPushConfigOptions;
+}
+public final class CioMessagingPush.MessagingPushConfigOptions {
+	public final val logLevel: CioLogLevel;
+	public final val cdpApiKey: String;
+	public final val region: Region;
+	public final val autoFetchDeviceToken: Boolean;
+	public final val autoTrackPushEvents: Boolean;
+	public final val showPushAppInForeground: Boolean;
+}
+public interface CioMessagingPush.MessagingPushInstance {
+	public fun func registerDeviceToken(_ deviceToken: String);
+	public fun func deleteDeviceToken();
+	public fun func trackMetric(
+    deliveryID: String,
+    event: Metric,
+    deviceToken: String
+);
+	public fun func didReceive(
+    _ request: UNNotificationRequest,
+    withContentHandler contentHandler: @escaping (UNNotificationContent) -> Unit
+) -> Boolean;
+	public fun func serviceExtensionTimeWillExpire();
+	public fun func userNotificationCenter(
+    _ center: UNUserNotificationCenter,
+    didReceive response: UNNotificationResponse,
+    withCompletionHandler completionHandler: @escaping () -> Unit
+) -> Boolean;
+	public fun func userNotificationCenter(
+    _ center: UNUserNotificationCenter,
+    didReceive response: UNNotificationResponse
+) -> CustomerIOParsedPushPayload?;
+}
+public final class CioMessagingPush.PushAttachment {
+	public final val identifier: String;
+	public final val localFileUrl: URL;
+}
+public interface CioMessagingPush.PushNotification {
+	public var pushId: String;
+	public var deliveryDate: Date?;
+	public var title: String;
+	public var body: String;
+	public var data: List<AnyHashable : Any>;
+	public var attachments: List<PushAttachment>;
+}
+public interface CioMessagingPush.PushNotificationAction {
+	public var push: any PushNotification;
+	public var didClickOnPush: Boolean;
+}
+public final class CioMessagingPush.RichPushHttpClient {
+	public fun func request(_ params: CioInternalCommon.HttpRequestParams, onComplete: @escaping (Result<Data, CioInternalCommon.HttpRequestError>) -> Unit);
+	public fun func downloadFile(url: URL, fileType: DownloadFileType, onComplete: @escaping (URL?) -> Unit);
+	public fun func cancel(finishTasks: Boolean);
+	public fun deinit;
+}
+public final class CioMessagingPush.UNNotificationWrapper {
+	public var notificationContent: UNNotificationContent;
+	public final val notification: UNNotification?;
+	public final val notificationRequest: UNNotificationRequest;
+	public var pushId: String;
+	public var deliveryDate: Date?;
+	public var title: String;
+	public var body: String;
+	public var data: List<AnyHashable : Any>;
+	public var attachments: List<PushAttachment>;
+	public var notificationCenterAttachments: List<UNNotificationAttachment>;
+}
+public interface CioMessagingPush.UserNotificationCenterIntegration {
+	public var delegate: (any UNUserNotificationCenterDelegate)?;
+}

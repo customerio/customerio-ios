@@ -1,0 +1,546 @@
+public final class CioInternalCommon.AnyEncodable {
+	public final val value: any Encodable;
+	public fun init(_ encodable: Encodable);
+	public fun func encode(to encoder: Encoder) throws;
+}
+public final class CioInternalCommon.Atomic {
+	public var wrappedValue: DataType;
+	public fun init(wrappedValue: DataType);
+}
+public enum CioInternalCommon.CIOApiEndpoint {
+}
+public final class CioInternalCommon.CIODeviceInfo {
+	public var deviceManufacturer: String;
+	public var deviceModel: String?;
+	public var osVersion: String?;
+	public var osName: String?;
+	public var customerAppName: String;
+	public var customerAppVersion: String;
+	public var customerBundleId: String;
+	public var deviceLocale: String;
+	public fun func isPushSubscribed(completion: @escaping (Boolean) -> Unit);
+}
+public final class CioInternalCommon.CioEventBusHandler {
+	public fun init(
+    eventBus: EventBus,
+    eventCache: EventCache,
+    eventStorage: EventStorage,
+    logger: Logger
+);
+	public fun deinit;
+	public fun func loadEventsFromStorage() async;
+	public fun func addObserver<E: EventRepresentable>(_ eventType: E.Type, action: @escaping (E) -> Unit);
+	public fun func removeObserver<E: EventRepresentable>(for eventType: E.Type);
+	public fun func postEvent<E: EventRepresentable>(_ event: E);
+	public fun func postEventAndWait<E: EventRepresentable>(_ event: E) async;
+	public fun func removeFromStorage<E: EventRepresentable>(_ event: E) async;
+}
+public enum CioInternalCommon.CioLogLevel {
+}
+public final class CioInternalCommon.CioProfileStore {
+	public fun func getProfileId(siteId: String) -> String?;
+	public fun func deleteProfileId(siteId: String);
+}
+public final class CioInternalCommon.CioQueue {
+	public fun func getAllStoredTasks(siteId: String) -> List<QueueTaskMetadata>;
+	public fun func getTaskDetail(_ task: QueueTaskMetadata, siteId: String) -> TaskDetail?;
+	public fun func deleteProcessedTask(_ task: QueueTaskMetadata, siteId: String);
+}
+public final class CioInternalCommon.CioSharedDataStore {
+	public var pushDeviceToken: String?;
+	public fun init(keyValueStorage: SharedKeyValueStorage);
+	public fun func deleteAll();
+}
+public final class CioInternalCommon.CioThreadUtil {
+	public fun func runMain(_ block: @escaping () -> Unit);
+	public fun func runBackground(_ block: @escaping () -> Unit);
+}
+public final class CioInternalCommon.CreateQueueStorageTaskResult {
+	public final val success: Boolean;
+	public final val queueStatus: QueueStatus;
+	public final val createdTask: QueueTaskMetadata?;
+}
+public final class CioInternalCommon.CustomerIO {
+	public var version: String;
+	public var shared: CustomerIO;
+	public var implementation: (any CustomerIOInstance)?;
+	public var profileAttributes: Map<String, Any>;
+	public var deviceAttributes: Map<String, Any>;
+	public var registeredDeviceToken: String?;
+	public fun func resetSharedTestEnvironment();
+	public fun func initializeSharedInstance(with implementation: CustomerIOInstance);
+	public fun func identify(userId: String, traits: List<String: Any>? = nil);
+	public fun func identify<RequestBody: Codable>(userId: String, traits: RequestBody?);
+	public fun func clearIdentify();
+	public fun func registerDeviceToken(_ deviceToken: String);
+	public fun func deleteDeviceToken();
+	public fun func track(name: String, properties: List<String: Any>? = nil);
+	public fun func track<RequestBody: Codable>(name: String, properties: RequestBody?);
+	public fun func screen(title: String, properties: List<String: Any>? = nil);
+	public fun func screen<RequestBody: Codable>(title: String, properties: RequestBody?);
+	public fun func trackMetric(deliveryID: String, event: Metric, deviceToken: String);
+}
+public interface CioInternalCommon.CustomerIOInstance {
+	public var profileAttributes: Map<String, Any>;
+	public var deviceAttributes: Map<String, Any>;
+	public var registeredDeviceToken: String?;
+	public fun func identify(userId: String, traits: List<String: Any>?);
+	public fun func identify<RequestBody: Codable>(
+    userId: String,
+    // sourcery:Type=AnyEncodable
+    // sourcery:TypeCast="AnyEncodable(traits)"
+    traits: RequestBody?
+);
+	public fun func clearIdentify();
+	public fun func registerDeviceToken(_ deviceToken: String);
+	public fun func deleteDeviceToken();
+	public fun func track(name: String, properties: List<String: Any>?);
+	public fun func track<RequestBody: Codable>(
+    name: String,
+    // sourcery:Type=AnyEncodable
+    // sourcery:TypeCast="AnyEncodable(properties)"
+    properties: RequestBody?
+);
+	public fun func screen(title: String, properties: List<String: Any>?);
+	public fun func screen<RequestBody: Codable>(
+    title: String,
+    // sourcery:Type=AnyEncodable
+    // sourcery:TypeCast="AnyEncodable(properties)"
+    properties: RequestBody?
+);
+	public fun func trackMetric(deliveryID: String, event: Metric, deviceToken: String);
+}
+public final class CioInternalCommon.CustomerIOSdkClient {
+	public final val source: String;
+	public final val sdkVersion: String;
+	public fun init(source: String, sdkVersion: String);
+}
+public final class CioInternalCommon.DIGraphShared {
+	public final val shared: DIGraphShared;
+	public final val singletons: Map<String, Any>;
+	public var overrides: Map<String, Any>;
+}
+public interface CioInternalCommon.DIManager {
+	public var overrides: Map<String, Any>;
+	public final val singletons: Map<String, Any>;
+	public fun func override<T: Any>(value: T, forType type: T.Type);
+	public fun func getOverriddenInstance<T: Any>() -> T?;
+	public fun func reset();
+}
+public enum CioInternalCommon.DateFormat {
+}
+public interface CioInternalCommon.DateUtil {
+	public var now: Date;
+}
+public interface CioInternalCommon.DeepLinkUtil {
+	public fun @_spi(Internal) func setDeepLinkCallback(_ callback: @escaping DeepLinkCallback);
+	public fun func handleDeepLink(_ deepLinkUrl: URL);
+}
+public final class CioInternalCommon.DeepLinkUtilImpl {
+	public fun @_spi(Internal) func setDeepLinkCallback(_ callback: @escaping DeepLinkCallback);
+	public fun func handleDeepLink(_ deepLinkUrl: URL);
+}
+public final class CioInternalCommon.DeleteDeviceTokenEvent {
+	public final val storageId: String;
+	public final val params: List<String : String>;
+	public final val timestamp: Date;
+	public fun init(storageId: String = UUID().uuidString, timestamp: Date = Date(), params: List<String: String> = List<:>);
+}
+public final class CioInternalCommon.DeletePushNotificationQueueTaskData {
+	public final val profileIdentifier: String;
+	public final val deviceToken: String;
+	public fun init(profileIdentifier: String, deviceToken: String);
+}
+public final class CioInternalCommon.DeliveryPayload {
+	public final val deliveryId: String;
+	public final val event: InAppMetric;
+	public final val timestamp: Date;
+	public final val metaData: List<String : String>;
+}
+public interface CioInternalCommon.DeviceInfo {
+	public var deviceManufacturer: String;
+	public var deviceModel: String?;
+	public var osVersion: String?;
+	public var osName: String?;
+	public var customerAppName: String;
+	public var customerAppVersion: String;
+	public var customerBundleId: String;
+	public var deviceLocale: String;
+	public fun func isPushSubscribed(completion: @escaping (Boolean) -> Unit);
+}
+public interface CioInternalCommon.DoNotTrackScreenViewEvent {
+}
+public enum CioInternalCommon.DownloadFileType {
+}
+public final class CioInternalCommon.EmptyRequestBody {
+	public fun init();
+}
+public final class CioInternalCommon.ErrorMessageResponse {
+	public final val meta: ErrorMessageResponse.Meta;
+}
+public final class CioInternalCommon.ErrorsMessageResponse {
+	public final val meta: ErrorsMessageResponse.Meta;
+}
+public interface CioInternalCommon.EventBus {
+	public fun func post(_ event: AnyEventRepresentable) async -> Boolean;
+	public fun func addObserver(_ eventType: String, action: @escaping (AnyEventRepresentable) -> Unit) async;
+	public fun func removeObserver(for eventType: String) async;
+}
+public interface CioInternalCommon.EventBusHandler {
+	public fun func loadEventsFromStorage() async;
+	public fun func addObserver<E: EventRepresentable>(_ eventType: E.Type, action: @escaping (E) -> Unit);
+	public fun func removeObserver<E: EventRepresentable>(for eventType: E.Type);
+	public fun func postEvent<E: EventRepresentable>(_ event: E);
+	public fun func postEventAndWait<E: EventRepresentable>(_ event: E) async;
+	public fun func removeFromStorage<E: EventRepresentable>(_ event: E) async;
+}
+public interface CioInternalCommon.EventCache {
+	public fun func addEvent(event: AnyEventRepresentable) async;
+	public fun func storeEvents(_ events: List<AnyEventRepresentable>, forKey key: String) async;
+	public fun func getEvent(_ key: String) async -> List<AnyEventRepresentable>;
+	public fun func removeAllEventsForKey(_ key: String) async;
+}
+public interface CioInternalCommon.EventRepresentable {
+	public var key: String;
+	public var storageId: String;
+	public var params: List<String : String>;
+	public var timestamp: Date;
+}
+public interface CioInternalCommon.EventStorage {
+	public fun func store(event: AnyEventRepresentable) async throws;
+	public fun func retrieve(eventType: String, storageId: String) async throws -> AnyEventRepresentable?;
+	public fun func loadEvents(ofType type: String) async throws -> List<AnyEventRepresentable>;
+	public fun func remove(ofType eventType: String, withStorageId storageId: String) async;
+	public fun func removeAll() async;
+}
+public enum CioInternalCommon.EventTypesRegistry {
+}
+public final class CioInternalCommon.FileManagerFileStorage {
+	public fun func save(siteId: String, type: FileType, contents: Data, fileId: String?) -> Boolean;
+	public fun func get(siteId: String, type: FileType, fileId: String?) -> Data?;
+	public fun func delete(siteId: String, type: FileType, fileId: String) -> Boolean;
+}
+public final class CioInternalCommon.FileManagerQueueStorage {
+	public fun func getInventory(siteId: String) -> List<QueueTaskMetadata>;
+	public fun func saveInventory(_ newInventory: List<QueueTaskMetadata>, siteId: String) -> Boolean;
+	public fun func get(storageId: String, siteId: String) -> QueueTask?;
+	public fun func delete(storageId: String, siteId: String) -> Boolean;
+}
+public interface CioInternalCommon.FileStorage {
+	public fun func save(siteId: String, type: FileType, contents: Data, fileId: String?) -> Boolean;
+	public fun func get(siteId: String, type: FileType, fileId: String?) -> Data?;
+	public fun func delete(siteId: String, type: FileType, fileId: String) -> Boolean;
+}
+public enum CioInternalCommon.FileType {
+}
+public interface CioInternalCommon.GlobalDataStore {
+	public var pushDeviceToken: String?;
+	public fun func deleteAll();
+}
+public interface CioInternalCommon.HttpClient {
+	public fun func request(
+    _ params: HttpRequestParams,
+    onComplete: @escaping (Result<Data, HttpRequestError>) -> Unit
+);
+	public fun func downloadFile(url: URL, fileType: DownloadFileType, onComplete: @escaping (URL?) -> Unit);
+	public fun func cancel(finishTasks: Boolean);
+}
+public enum CioInternalCommon.HttpRequestError {
+}
+public final class CioInternalCommon.HttpRequestParams {
+	public final val method: String;
+	public final val url: URL;
+	public final val headers: List<String : String>?;
+	public final val body: Data?;
+	public fun init?(endpoint: CIOApiEndpoint, baseUrl: String, headers: HttpHeaders?, body: Data?);
+	public fun init(method: String, url: URL, headers: HttpHeaders?, body: Data?);
+}
+public interface CioInternalCommon.HttpRequestRunner {
+	public fun func request(
+    params: HttpRequestParams,
+    session: URLSession,
+    onComplete: @escaping (Data?, HTTPURLResponse?, Error?) -> Unit
+);
+	public fun func downloadFile(url: URL, fileType: DownloadFileType, session: URLSession, onComplete: @escaping (URL?) -> Unit);
+}
+public final class CioInternalCommon.IdentifyProfileQueueTaskData {
+	public final val identifier: String;
+	public final val attributesJsonString: String?;
+	public fun init(identifier: String, attributesJsonString: String?);
+}
+public enum CioInternalCommon.InAppMetric {
+}
+public final class CioInternalCommon.JsonAdapter {
+	public fun func fromDictionary<T: Decodable>(_ dictionary: List<AnyHashable: Any>) -> T?;
+	public fun func fromDictionary<T: Decodable>(_ dictionary: List<[AnyHashable: Any>]) -> T?;
+	public fun func fromDictionary(_ dictionary: List<AnyHashable: Any>) -> Data?;
+	public fun func fromDictionary(_ dictionary: List<[AnyHashable: Any>]) -> Data?;
+	public fun func toDictionary<T: Encodable>(_ obj: T) -> List<AnyHashable: Any>?;
+	public fun func fromJsonString(_ jsonString: String) -> List<String: Any>?;
+	public fun func fromJson<T: Decodable>(_ json: Data, logErrors: Boolean = true) -> T?;
+	public fun func toJson<T: Encodable>(_ obj: T) -> Data?;
+	public fun func toJsonString<T: Encodable>(
+    _ obj: T,
+    nilIfEmpty: Boolean = true
+) -> String?;
+}
+public enum CioInternalCommon.KeyValueStorageKey {
+}
+public final class CioInternalCommon.Lock {
+	public fun func unsafeInit() -> Lock;
+	public fun func lock();
+	public fun func unlock();
+}
+public final class CioInternalCommon.LockManager {
+	public fun func getLock(id: LockReference) -> Lock;
+}
+public enum CioInternalCommon.LockReference {
+}
+public interface CioInternalCommon.Logger {
+	public var logLevel: CioLogLevel;
+	public fun func setLogDispatcher(_ dispatcher: ((CioLogLevel, String) -> Unit)?);
+	public fun func setLogLevel(_ level: CioLogLevel);
+	public fun func debug(_ message: String, _ tag: String?);
+	public fun func info(_ message: String, _ tag: String?);
+	public fun func error(_ message: String, _ tag: String?, _ throwable: Error?);
+}
+public final class CioInternalCommon.LoggerImpl {
+	public var logLevel: CioLogLevel;
+	public fun func setLogLevel(_ level: CioLogLevel);
+	public fun func setLogDispatcher(_ dispatcher: ((CioLogLevel, String) -> Unit)?);
+	public fun func debug(_ message: String, _ tag: String?);
+	public fun func info(_ message: String, _ tag: String? = nil);
+	public fun func error(_ message: String, _ tag: String?, _ error: Error?);
+}
+public enum CioInternalCommon.Metric {
+}
+public final class CioInternalCommon.MetricRequest {
+	public final val deliveryId: String;
+	public final val event: Metric;
+	public final val deviceToken: String;
+	public final val timestamp: Date;
+	public fun init(deliveryId: String, event: Metric, deviceToken: String, timestamp: Date);
+}
+public interface CioInternalCommon.Mock {
+	public fun func resetMock();
+}
+public final class CioInternalCommon.Mocks {
+	public var shared: Mocks;
+	public fun func add(mock: Mock);
+	public fun func resetAll();
+}
+public final class CioInternalCommon.NewSubscriptionEvent {
+	public final val storageId: String;
+	public final val params: List<String : String>;
+	public final val subscribedEventType: String;
+	public final val timestamp: Date;
+}
+public final class CioInternalCommon.ProfileIdentifiedEvent {
+	public final val storageId: String;
+	public final val params: List<String : String>;
+	public final val identifier: String;
+	public final val timestamp: Date;
+	public fun init(storageId: String = UUID().uuidString, identifier: String, timestamp: Date = Date(), params: List<String: String> = List<:>);
+}
+public interface CioInternalCommon.ProfileStore {
+	public fun func getProfileId(siteId: String) -> String?;
+	public fun func deleteProfileId(siteId: String);
+}
+public interface CioInternalCommon.Queue {
+	public fun func getAllStoredTasks(siteId: String) -> List<QueueTaskMetadata>;
+	public fun func getTaskDetail(_ task: QueueTaskMetadata, siteId: String) -> TaskDetail?;
+	public fun func deleteProcessedTask(_ task: QueueTaskMetadata, siteId: String);
+}
+public final class CioInternalCommon.QueueStatus {
+}
+public interface CioInternalCommon.QueueStorage {
+	public fun func getInventory(siteId: String) -> List<QueueTaskMetadata>;
+	public fun func get(storageId: String, siteId: String) -> QueueTask?;
+	public fun func delete(storageId: String, siteId: String) -> Boolean;
+}
+public final class CioInternalCommon.QueueTask {
+	public final val storageId: String;
+	public final val type: String;
+	public final val data: Data;
+	public final val runResults: QueueTaskRunResults;
+}
+public final class CioInternalCommon.QueueTaskMetadata {
+}
+public final class CioInternalCommon.QueueTaskRunResults {
+}
+public enum CioInternalCommon.QueueTaskType {
+}
+public enum CioInternalCommon.Region {
+}
+public final class CioInternalCommon.RegisterDeviceTokenEvent {
+	public final val storageId: String;
+	public final val params: List<String : String>;
+	public final val token: String;
+	public final val timestamp: Date;
+	public fun init(storageId: String = UUID().uuidString, token: String, timestamp: Date = Date(), params: List<String: String> = List<:>);
+}
+public final class CioInternalCommon.RegisterPushNotificationQueueTaskData {
+	public final val profileIdentifier: String;
+	public final val attributesJsonString: String?;
+	public fun init(profileIdentifier: String, attributesJsonString: String?);
+}
+public final class CioInternalCommon.ResetEvent {
+	public final val storageId: String;
+	public final val params: List<String : String>;
+	public final val timestamp: Date;
+	public fun init(storageId: String = UUID().uuidString, timestamp: Date = Date(), params: List<String: String> = List<:>);
+}
+public interface CioInternalCommon.SandboxedSiteIdKeyValueStorage {
+	public fun func string(_ key: KeyValueStorageKey, siteId: String) -> String?;
+	public fun func setString(_ value: String?, forKey key: KeyValueStorageKey, siteId: String);
+}
+public enum CioInternalCommon.ScreenView {
+	public fun func getScreenView(_ screenView: String?, fallback: ScreenView = .all) -> ScreenView;
+}
+public final class CioInternalCommon.ScreenViewedEvent {
+	public final val storageId: String;
+	public final val params: List<String : String>;
+	public final val name: String;
+	public final val timestamp: Date;
+	public fun init(storageId: String = UUID().uuidString, name: String, timestamp: Date = Date(), params: List<String: String> = List<:>);
+}
+public interface CioInternalCommon.SdkClient {
+	public var source: String;
+	public var sdkVersion: String;
+}
+public interface CioInternalCommon.SdkCommonLogger {
+	public fun func coreSdkInitStart();
+	public fun func coreSdkInitSuccess();
+	public fun func moduleInitStart(_ moduleName: String);
+	public fun func moduleInitSuccess(_ moduleName: String);
+	public fun func logHandlingNotificationDeepLink(url: URL);
+	public fun func logDeepLinkHandledByCallback();
+	public fun func logDeepLinkHandledByHostApp();
+	public fun func logDeepLinkHandledExternally();
+	public fun func logDeepLinkWasNotHandled();
+}
+public final class CioInternalCommon.SdkCommonLoggerImpl {
+	public fun func coreSdkInitStart();
+	public fun func coreSdkInitSuccess();
+	public fun func moduleInitStart(_ moduleName: String);
+	public fun func moduleInitSuccess(_ moduleName: String);
+	public fun func logHandlingNotificationDeepLink(url: URL);
+	public fun func logDeepLinkHandledByCallback();
+	public fun func logDeepLinkHandledByHostApp();
+	public fun func logDeepLinkHandledExternally();
+	public fun func logDeepLinkWasNotHandled();
+}
+public final class CioInternalCommon.SdkConfig {
+	public final val logLevel: CioLogLevel;
+}
+public final class CioInternalCommon.SdkDateUtil {
+	public var now: Date;
+}
+public enum CioInternalCommon.SdkVersion {
+	public final val version: String;
+}
+public interface CioInternalCommon.SharedKeyValueStorage {
+	public fun func integer(_ key: KeyValueStorageKey) -> Int?;
+	public fun func setInt(_ value: Int?, forKey key: KeyValueStorageKey);
+	public fun func double(_ key: KeyValueStorageKey) -> Double?;
+	public fun func setDouble(_ value: Double?, forKey key: KeyValueStorageKey);
+	public fun func string(_ key: KeyValueStorageKey) -> String?;
+	public fun func setString(_ value: String?, forKey key: KeyValueStorageKey);
+	public fun func date(_ key: KeyValueStorageKey) -> Date?;
+	public fun func setDate(_ value: Date?, forKey key: KeyValueStorageKey);
+	public fun func data(_ key: KeyValueStorageKey) -> Data?;
+	public fun func setData(_ value: Data?, forKey key: KeyValueStorageKey);
+	public fun func deleteAll();
+}
+public final class CioInternalCommon.StringAnyEncodable {
+	public fun init(logger: Logger, _ data: List<String: Any>);
+	public fun func encode(to encoder: Encoder) throws;
+}
+public interface CioInternalCommon.SystemLogger {
+	public fun func log(_ message: String, _ level: CioLogLevel);
+}
+public final class CioInternalCommon.SystemLoggerImpl {
+	public final val logSubsystem: String;
+	public final val logCategory: String;
+	public fun func log(_ message: String, _ level: CioLogLevel);
+}
+public final class CioInternalCommon.TaskDetail {
+	public final val data: Data;
+	public final val taskType: QueueTaskType;
+	public final val timestamp: Date;
+}
+public interface CioInternalCommon.ThreadUtil {
+	public fun func runBackground(_ block: @escaping () -> Unit);
+	public fun func runMain(_ block: @escaping () -> Unit);
+}
+public final class CioInternalCommon.TrackDeliveryEventRequestBody {
+	public final val payload: DeliveryPayload;
+}
+public final class CioInternalCommon.TrackEventQueueTaskData {
+	public final val identifier: String;
+	public final val attributesJsonString: String;
+	public fun init(identifier: String, attributesJsonString: String);
+}
+public final class CioInternalCommon.TrackInAppMetricEvent {
+	public final val storageId: String;
+	public final val params: List<String : String>;
+	public final val deliveryID: String;
+	public final val event: String;
+	public final val timestamp: Date;
+	public fun init(storageId: String = UUID().uuidString, deliveryID: String, event: String, timestamp: Date = Date(), params: List<String: String> = List<:>);
+}
+public final class CioInternalCommon.TrackMetricEvent {
+	public final val storageId: String;
+	public final val params: List<String : String>;
+	public final val deliveryID: String;
+	public final val event: String;
+	public final val deviceToken: String;
+	public final val timestamp: Date;
+	public fun init(storageId: String = UUID().uuidString, deliveryID: String, event: String, deviceToken: String, timestamp: Date = Date(), params: List<String: String> = List<:>);
+}
+public interface CioInternalCommon.UIKitWrapper {
+	public fun func open(url: URL);
+	public fun func continueNSUserActivity(webpageURL: URL) -> Boolean;
+}
+public final class CioInternalCommon.UIKitWrapperImpl {
+	public fun func open(url: URL);
+	public fun func continueNSUserActivity(webpageURL: URL) -> Boolean;
+}
+public final class CioInternalCommon.UrlRequestHttpRequestRunner {
+	public fun func request(
+    params: HttpRequestParams,
+    session: URLSession,
+    onComplete: @escaping (Data?, HTTPURLResponse?, Error?) -> Unit
+);
+	public fun func downloadFile(
+    url: URL,
+    fileType: DownloadFileType,
+    session: URLSession,
+    onComplete: @escaping (URL?) -> Unit
+);
+}
+public interface CioInternalCommon.UserAgentUtil {
+	public fun func getUserAgentHeaderValue() -> String;
+	public fun func getNSEUserAgentHeaderValue() -> String;
+}
+public final class CioInternalCommon.UserAgentUtilImpl {
+	public fun func getUserAgentHeaderValue() -> String;
+	public fun func getNSEUserAgentHeaderValue() -> String;
+}
+public final class CioInternalCommon.UserDefaultsSandboxedSiteIdKVStore {
+	public fun func string(_ key: KeyValueStorageKey, siteId: String) -> String?;
+	public fun func setString(_ value: String?, forKey key: KeyValueStorageKey, siteId: String);
+}
+public final class CioInternalCommon.UserDefaultsSharedKeyValueStorage {
+	public fun func integer(_ key: KeyValueStorageKey) -> Int?;
+	public fun func setInt(_ value: Int?, forKey key: KeyValueStorageKey);
+	public fun func double(_ key: KeyValueStorageKey) -> Double?;
+	public fun func setDouble(_ value: Double?, forKey key: KeyValueStorageKey);
+	public fun func string(_ key: KeyValueStorageKey) -> String?;
+	public fun func setString(_ value: String?, forKey key: KeyValueStorageKey);
+	public fun func date(_ key: KeyValueStorageKey) -> Date?;
+	public fun func setDate(_ value: Date?, forKey key: KeyValueStorageKey);
+	public fun func data(_ key: KeyValueStorageKey) -> Data?;
+	public fun func setData(_ value: Data?, forKey key: KeyValueStorageKey);
+	public fun func deleteAll();
+}

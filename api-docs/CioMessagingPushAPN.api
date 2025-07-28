@@ -1,0 +1,46 @@
+public final class CioMessagingPushAPN.MessagingPushAPN {
+	public fun func registerDeviceToken(apnDeviceToken: Data);
+	public fun func application(_ application: Any, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data);
+	public fun func application(_ application: Any, didFailToRegisterForRemoteNotificationsWithError error: Error);
+	public fun func deleteDeviceToken();
+	public fun func trackMetric(deliveryID: String, event: Metric, deviceToken: String);
+	public fun func initialize(
+    withConfig config: MessagingPushConfigOptions = MessagingPushConfigBuilder().build()
+) -> MessagingPushInstance;
+	public fun func didReceive(
+    _ request: UNNotificationRequest,
+    withContentHandler contentHandler: @escaping (UNNotificationContent) -> Unit
+) -> Boolean;
+	public fun func serviceExtensionTimeWillExpire();
+	public fun func userNotificationCenter(
+    _ center: UNUserNotificationCenter,
+    didReceive response: UNNotificationResponse
+) -> CustomerIOParsedPushPayload?;
+	public fun func userNotificationCenter(
+    _ center: UNUserNotificationCenter,
+    didReceive response: UNNotificationResponse,
+    withCompletionHandler completionHandler: @escaping () -> Unit
+) -> Boolean;
+}
+public interface CioMessagingPushAPN.MessagingPushAPNInstance {
+	public fun func registerDeviceToken(apnDeviceToken: Data);
+	public fun func application(
+    _ application: Any,
+    didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data
+);
+	public fun func application(
+    _ application: Any,
+    didFailToRegisterForRemoteNotificationsWithError error: Error
+);
+	public fun func deleteDeviceToken();
+	public fun func trackMetric(
+    deliveryID: String,
+    event: Metric,
+    deviceToken: String
+);
+	public fun func didReceive(
+    _ request: UNNotificationRequest,
+    withContentHandler contentHandler: @escaping (UNNotificationContent) -> Unit
+) -> Boolean;
+	public fun func serviceExtensionTimeWillExpire();
+}
