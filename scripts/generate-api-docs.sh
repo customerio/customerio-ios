@@ -15,46 +15,77 @@ NC='\033[0m' # No Color
 
 # Configuration
 DOCS_DIR="api-docs"
-DESTINATION="platform=iOS Simulator,name=iPhone 16"
 FORMATTER_SCRIPT="./scripts/format-api-docs.rb"
 
 # Module configuration: scheme_name:module_name
 # Based on Package.swift and available schemes
-# Public modules (have dedicated schemes)
+# Public modules (always available)
 declare -a PUBLIC_MODULES=(
     "DataPipelines:CioDataPipelines"
-    "Customer.io-Package:CioMessagingPush"
     "MessagingPushAPN:CioMessagingPushAPN" 
     "MessagingPushFCM:CioMessagingPushFCM"
     "MessagingInApp:CioMessagingInApp"
 )
 
-# Internal modules (use main package scheme)
-# These contain public APIs that customers use despite being internal modules
-declare -a INTERNAL_MODULES=(
-    "Customer.io-Package:CioInternalCommon"
-    "Customer.io-Package:CioTrackingMigration"
-)
+# Internal modules (only available when CI environment variable is set)
+# These are conditionally added to Package.swift products array in CI
+declare -a INTERNAL_MODULES=()
+
+# Check if we're in CI environment, these modules are only added on CI as products, check Package.swift
+if [ -n "$CI" ]; then
+    echo -e "${GREEN}✅ Internal modules detected - adding to generation list${NC}"
+    INTERNAL_MODULES+=(
+        "InternalCommon:CioInternalCommon"
+        "Migration:CioTrackingMigration"
+    )
+else
+    echo -e "${YELLOW}⚠️  Internal modules not available (not in CI environment)${NC}"
+fi
 
 # Combine all modules
 declare -a MODULES=("${PUBLIC_MODULES[@]}" "${INTERNAL_MODULES[@]}")
 
+# Track module failures
+FAILED_MODULES=()
+OVERALL_SUCCESS=true
+
 echo -e "${BLUE}🚀 Starting API documentation generation...${NC}"
 
+# Validate Package.swift exists (required for Swift Package Manager builds)
+if [ ! -f "Package.swift" ]; then
+    echo -e "${RED}❌ Package.swift not found in current directory${NC}"
+    echo -e "${YELLOW}💡 Make sure you're running this from the project root${NC}"
+    exit 1
+fi
+echo -e "${GREEN}✅ Package.swift found - using Swift Package Manager build${NC}"
+
+
+find_ios_simulator() {
+    # Just grab the first available iPhone simulator
+    local simulator_line=$(xcrun simctl list devices available | grep "iPhone" | head -1)
+    
+    if [ -n "$simulator_line" ]; then
+        # Extract the device ID from the line
+        local device_id=$(echo "$simulator_line" | sed 's/.*(\([A-F0-9-]*\)).*/\1/')
+        echo "platform=iOS Simulator,id=$device_id"
+        return 0
+    else
+        # Fallback to a generic destination if no simulators found
+        echo "platform=iOS Simulator,name=iPhone SE (3rd generation)"
+        return 1
+    fi
+}
+
+DESTINATION=$(find_ios_simulator)
+if [ $? -eq 0 ]; then
+    echo -e "${GREEN}✅ Using destination: $DESTINATION${NC}"
+else
+    echo -e "${YELLOW}⚠️  Using fallback destination: $DESTINATION${NC}"
+fi
+
 # Create docs directory
-echo -e "${YELLOW}📁 Creating documentation directory...${NC}"
 mkdir -p "$DOCS_DIR"
 mkdir -p "$DOCS_DIR/internal"
-
-# Check available simulators
-echo -e "${YELLOW}📱 Checking available simulators...${NC}"
-BOOTED_SIMULATOR=$(xcrun simctl list devices | grep "Booted" | head -1 | sed 's/.*(\([^)]*\)).*/\1/' || echo "")
-if [ -n "$BOOTED_SIMULATOR" ]; then
-    DESTINATION="platform=iOS Simulator,id=$BOOTED_SIMULATOR"
-    echo -e "${GREEN}✅ Using booted simulator: $BOOTED_SIMULATOR${NC}"
-else
-    echo -e "${YELLOW}⚠️  No booted simulator found, using default: iPhone 16${NC}"
-fi
 
 # Generate documentation for each module
 for module_config in "${MODULES[@]}"; do
@@ -68,7 +99,7 @@ for module_config in "${MODULES[@]}"; do
         # Internal module - save to internal subdirectory
         RAW_JSON_FILE="$DOCS_DIR/internal/${module_name}.json"
         FORMATTED_FILE="$DOCS_DIR/internal/${module_name}.api"
-        echo -e "${YELLOW}   📁 Internal module - docs will be saved to internal/${NC}"
+
     else
         # Public module - save to main directory
         RAW_JSON_FILE="$DOCS_DIR/${module_name}.json"
@@ -77,31 +108,60 @@ for module_config in "${MODULES[@]}"; do
     
     # Generate raw JSON documentation using sourcekitten
     echo -e "${YELLOW}   🔍 Extracting API with sourcekitten...${NC}"
+    
+    # Try generating the documentation and capture any errors
     if sourcekitten doc \
         --module-name "$module_name" \
         -- \
         -scheme "$scheme_name" \
-        -destination "$DESTINATION" > "$RAW_JSON_FILE"; then
-        
-        echo -e "${GREEN}   ✅ Raw JSON generated: $RAW_JSON_FILE${NC}"
+        -destination "$DESTINATION" > "$RAW_JSON_FILE" 2>/tmp/sourcekitten_error.log; then
         
         # Format the documentation using Ruby script
-        echo -e "${YELLOW}   🎨 Formatting documentation...${NC}"
         if ruby "$FORMATTER_SCRIPT" "$RAW_JSON_FILE" > "$FORMATTED_FILE"; then
-            echo -e "${GREEN}   ✅ Formatted documentation: $FORMATTED_FILE${NC}"
+            echo -e "${GREEN}   ✅ Generated: $FORMATTED_FILE${NC}"
             # Remove the intermediate JSON file after successful formatting
             rm "$RAW_JSON_FILE"
-            echo -e "${GREEN}   🗑️  Removed intermediate JSON file${NC}"
         else
             echo -e "${RED}   ❌ Failed to format documentation for $module_name${NC}"
             # Keep the raw JSON even if formatting fails
+            FAILED_MODULES+=("$module_name (formatting failed)")
+            OVERALL_SUCCESS=false
             continue
         fi
         
     else
         echo -e "${RED}   ❌ Failed to generate raw documentation for $module_name${NC}"
+        
+        # Show the actual error from sourcekitten/xcodebuild
+        if [ -f "/tmp/sourcekitten_error.log" ]; then
+            echo -e "${RED}   🔍 Error details:${NC}"
+            tail -10 /tmp/sourcekitten_error.log | sed 's/^/      /'
+        fi
+        
+        echo -e "${YELLOW}   💡 Try running manually to debug:${NC}"
+        echo -e "${YELLOW}      sourcekitten doc --module-name \"$module_name\" -- -scheme \"$scheme_name\" -destination \"$DESTINATION\"${NC}"
+        
+        # Track this failure
+        FAILED_MODULES+=("$module_name (sourcekitten failed)")
+        OVERALL_SUCCESS=false
         continue
     fi
 done
 
-echo -e "\n${GREEN}🎉 API documentation generation complete!${NC}"
+echo -e "\n${BLUE}📊 API Documentation Generation Summary${NC}"
+printf '=%.0s' {1..50}
+echo
+
+if [ "$OVERALL_SUCCESS" = true ]; then
+    echo -e "${GREEN}🎉 All modules successfully generated!${NC}"
+    echo -e "${GREEN}✅ API documentation generation complete!${NC}"
+else
+    echo -e "${RED}⚠️  Some modules failed to generate documentation${NC}"
+    echo -e "\n${RED}Failed modules (${#FAILED_MODULES[@]}):${NC}"
+    for failed_module in "${FAILED_MODULES[@]}"; do
+        echo -e "  ${RED}❌ $failed_module${NC}"
+    done
+    
+    echo -e "\n${RED}❌ API documentation generation failed for some modules${NC}"
+    exit 1
+fi
