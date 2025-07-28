@@ -128,6 +128,12 @@ public class DataPipeline: ModuleTopLevelObject<DataPipelineInstance>, DataPipel
     public func trackMetric(deliveryID: String, event: Metric, deviceToken: String) {
         implementation?.trackMetric(deliveryID: deliveryID, event: event, deviceToken: deviceToken)
     }
+
+    /// Test method to verify API change detection system
+    /// - Returns: A test string indicating the API detection system is working
+    public func testApiChangeDetection() -> String {
+        "API change detection system is working correctly!"
+    }
 }
 
 // MARK: Background queue migration
