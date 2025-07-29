@@ -22,8 +22,6 @@ public class CioEventBusHandler: EventBusHandler {
     let eventStorage: EventStorage
     let logger: Logger
 
-    @Atomic private var taskBag: TaskBag = []
-
     /// Initializes the EventBusHandler with dependencies for event bus and storage.
     /// - Parameters:
     ///   - eventBus: An instance of EventBus to handle event posting and observer management.
@@ -40,11 +38,9 @@ public class CioEventBusHandler: EventBusHandler {
         self.eventCache = eventCache
         self.eventStorage = eventStorage
         self.logger = logger
-        taskBag += Task { await loadEventsFromStorage() }
-    }
-
-    deinit {
-        taskBag.cancelAll()
+        Task {
+            await loadEventsFromStorage()
+        }
     }
 
     /// Loads events from persistent storage into in-memory storage for quick access and event replay.
@@ -75,7 +71,7 @@ public class CioEventBusHandler: EventBusHandler {
             }
         }
 
-        taskBag += Task {
+        Task {
             await eventBus.addObserver(eventType.key, action: adaptedAction)
             await replayEvents(forType: eventType, action: adaptedAction)
         }
@@ -84,7 +80,9 @@ public class CioEventBusHandler: EventBusHandler {
     /// Removes an observer for a specific event type.
     /// - Parameter eventType: The event type for which to remove the observer.
     public func removeObserver<E: EventRepresentable>(for eventType: E.Type) {
-        taskBag += Task { await eventBus.removeObserver(for: E.key) }
+        Task {
+            await eventBus.removeObserver(for: E.key)
+        }
     }
 
     /// Replays events of a specific type to any new observers, ensuring they receive past events.
@@ -107,7 +105,7 @@ public class CioEventBusHandler: EventBusHandler {
     /// Posts an event to the EventBus and stores it if there are no observers.
     /// - Parameter event: The event to post.
     public func postEvent<E: EventRepresentable>(_ event: E) {
-        taskBag += Task {
+        Task {
             await postEventAndWait(event)
         }
     }
