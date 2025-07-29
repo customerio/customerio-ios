@@ -114,7 +114,7 @@ for module_config in "${MODULES[@]}"; do
         --module-name "$module_name" \
         -- \
         -scheme "$scheme_name" \
-        -destination "$DESTINATION" > "$RAW_JSON_FILE" 2>/tmp/sourcekitten_error.log; then
+        -destination "$DESTINATION" > "$RAW_JSON_FILE" 2>/tmp/sourcekitten_error_${module_name}.log; then
         
         # Format the documentation using Ruby script
         if ruby "$FORMATTER_SCRIPT" "$RAW_JSON_FILE" > "$FORMATTED_FILE"; then
@@ -133,13 +133,13 @@ for module_config in "${MODULES[@]}"; do
         echo -e "${RED}   ❌ Failed to generate raw documentation for $module_name${NC}"
         
         # Show the actual error from sourcekitten/xcodebuild
-        if [ -f "/tmp/sourcekitten_error.log" ]; then
+        if [ -f "/tmp/sourcekitten_error_${module_name}.log" ]; then
             echo -e "${RED}   🔍 Error details:${NC}"
-            tail -10 /tmp/sourcekitten_error.log | sed 's/^/      /'
+            tail -10 /tmp/sourcekitten_error_${module_name}.log | sed 's/^/      /'
         fi
         
         echo -e "${YELLOW}   💡 Try running manually to debug:${NC}"
-        echo -e "${YELLOW}      sourcekitten doc --module-name \"$module_name\" -- -scheme \"$scheme_name\" -destination \"$DESTINATION\"${NC}"
+        echo -e "${YELLOW}      sourcekitten doc --module-name \"$module_name\" -- -scheme \"$scheme_name\" -destination \"$DESTINATION\" 2>/tmp/sourcekitten_error_${module_name}.log${NC}"
         
         # Track this failure
         FAILED_MODULES+=("$module_name (sourcekitten failed)")
