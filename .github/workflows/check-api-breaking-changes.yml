@@ -1,0 +1,37 @@
+name: Check for API Breaking Changes
+
+on: [pull_request]
+
+concurrency: # cancel previous workflow run if one exists
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+  
+jobs:
+  check-api-breaking-changes:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: ./.github/actions/setup-ios
+      
+      - name: Install sourcekitten
+        run: brew install sourcekitten
+      
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@354a1ad156761f5ee2b7b13fa8e09943a5e8d252 # v1.229.0
+        with:
+          ruby-version: '3.2'
+          bundler-cache: false # we don't need bundler for this workflow
+      
+      # Firebase 12+ requires iOS 15+ minimum deployment target, but our SDK supports iOS 13+
+      # This script temporarily updates Package.swift to use iOS 15+ for CI testing only
+      # while keeping the SDK's public API at iOS 13+ for customers
+      - name: Update iOS deployment target for Firebase 12+ compatibility
+        run: |
+          brew install sd
+          ./scripts/update-ios-deployment-target-for-ci.sh
+
+      - name: Check for API changes
+        run: |
+          # Run the API change detection script
+          ruby scripts/check-api-changes.rb
