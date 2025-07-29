@@ -37,6 +37,7 @@ if [ -n "$CI" ]; then
     INTERNAL_MODULES+=(
         "InternalCommon:CioInternalCommon"
         "Migration:CioTrackingMigration"
+        "Customer.io-Package:CioMessagingPush"
     )
 else
     echo -e "${YELLOW}⚠️  Internal modules not available (not in CI environment)${NC}"
