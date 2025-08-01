@@ -192,7 +192,7 @@ extension DIGraphShared {
     }
 
     private var newRichPushDeliveryTracker: RichPushDeliveryTracker {
-        RichPushDeliveryTracker(httpClient: httpClient, logger: logger)
+        RichPushDeliveryTrackerImpl(httpClient: httpClient, logger: logger)
     }
 
     // HttpClient

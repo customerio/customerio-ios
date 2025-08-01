@@ -10,6 +10,8 @@ protocol PushNotificationLogger: AutoMockable {
     func logReceivedPushMessageWithEmptyDeliveryId()
     func logTrackingPushMessageDelivered(deliveryId: String)
     func logPushMetricsAutoTrackingDisabled()
+    func logPushMetricTracked(deliveryId: String, event: String)
+    func logPushMetricTrackingFailed(deliveryId: String, event: String, error: Error)
 
     func logClickedPushMessage(notification: PushNotification)
     func logClickedCioPushMessage()
@@ -52,6 +54,14 @@ class PushNotificationLoggerImpl: PushNotificationLogger {
 
     public func logPushMetricsAutoTrackingDisabled() {
         logger.debug("Received message but auto tracking is disabled", Self.PUSH_TAG)
+    }
+
+    public func logPushMetricTracked(deliveryId: String, event: String) {
+        logger.debug("Successfully tracked push metric '\(event)' for deliveryId: \(deliveryId)", Self.PUSH_TAG)
+    }
+
+    public func logPushMetricTrackingFailed(deliveryId: String, event: String, error: Error) {
+        logger.error("Failed to track push metric '\(event)' for deliveryId: \(deliveryId)", Self.PUSH_TAG, error)
     }
 
     // MARK: Click handling
