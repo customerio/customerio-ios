@@ -83,6 +83,39 @@ class PushNotificationLoggerTests: UnitTest {
         )
     }
 
+    func test_logPushMetricTracked_logsExpectedMessage() {
+        let deliveryId = "abc123"
+        let event = "delivered"
+
+        logger.logPushMetricTracked(deliveryId: deliveryId, event: event)
+
+        XCTAssertEqual(loggerMock.debugReceivedInvocations.count, 1)
+        XCTAssertEqual(loggerMock.debugReceivedInvocations.first?.tag, "Push")
+        XCTAssertEqual(
+            loggerMock.debugReceivedInvocations.first?.message,
+            "Successfully tracked push metric '\(event)' for deliveryId: \(deliveryId)"
+        )
+    }
+
+    func test_logPushMetricTrackingFailed_logsExpectedMessage() {
+        let deliveryId = "abc123"
+        let event = "delivered"
+        let error = NSError(domain: "TestError", code: 123, userInfo: [NSLocalizedDescriptionKey: "Test error"])
+
+        logger.logPushMetricTrackingFailed(deliveryId: deliveryId, event: event, error: error)
+
+        XCTAssertEqual(loggerMock.errorReceivedInvocations.count, 1)
+        XCTAssertEqual(loggerMock.errorReceivedInvocations.first?.tag, "Push")
+        XCTAssertEqual(
+            loggerMock.errorReceivedInvocations.first?.message,
+            "Failed to track push metric '\(event)' for deliveryId: \(deliveryId)"
+        )
+        XCTAssertEqual(
+            loggerMock.errorReceivedInvocations.first?.throwable as? NSError,
+            error
+        )
+    }
+
     func test_logClickedPushMessage_logsExpectedMessage() {
         let notification = PushNotificationStub.getPushSentFromCIO()
 

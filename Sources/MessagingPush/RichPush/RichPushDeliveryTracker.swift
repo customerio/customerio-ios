@@ -1,8 +1,12 @@
 import CioInternalCommon
 import Foundation
 
+protocol RichPushDeliveryTracker: AutoMockable {
+    func trackMetric(token: String, event: Metric, deliveryId: String, timestamp: String?, onComplete: @escaping (Result<Void, HttpRequestError>) -> Void)
+}
+
 // sourcery: InjectRegisterShared = "RichPushDeliveryTracker"
-class RichPushDeliveryTracker {
+class RichPushDeliveryTrackerImpl: RichPushDeliveryTracker {
     let httpClient: HttpClient
     let logger: Logger
     let region: Region
