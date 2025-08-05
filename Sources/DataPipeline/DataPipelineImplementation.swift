@@ -201,9 +201,13 @@ class DataPipelineImplementation: DataPipelineInstance {
     var deviceAttributes: [String: Any] {
         get { [:] }
         set {
-            logger.info("updating device attributes")
-            addDeviceAttributes(token: contextPlugin.deviceToken, attributes: newValue)
+            setDeviceAttributes(newValue)
         }
+    }
+
+    func setDeviceAttributes(_ attributes: [String: Any]) {
+        logger.info("updating device attributes")
+        addDeviceAttributes(token: contextPlugin.deviceToken, attributes: attributes)
     }
 
     /// Internal method for passing device token to the plugin and updating device attributes
