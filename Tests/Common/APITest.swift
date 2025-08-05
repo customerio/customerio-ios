@@ -64,6 +64,7 @@ class CommonAPITest: UnitTest {
 
         // profile attributes
         mock.profileAttributes = dictionaryData
+        mock.setProfileAttributes(dictionaryData)
 
         // device attributes
         mock.deviceAttributes = dictionaryData

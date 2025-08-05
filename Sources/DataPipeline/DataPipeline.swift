@@ -67,13 +67,14 @@ public class DataPipeline: ModuleTopLevelObject<DataPipelineInstance>, DataPipel
 
     // MARK: - DataPipelineInstance implementation
 
+    @available(*, deprecated, message: "Use setProfileAttributes() instead")
     public var profileAttributes: [String: Any] {
-        get { implementation?.profileAttributes ?? [:] }
-        set {
-            guard var implementation = implementation else { return }
+        get { [:] }
+        set { setProfileAttributes(newValue) }
+    }
 
-            implementation.profileAttributes = newValue.sanitizedForJSON()
-        }
+    public func setProfileAttributes(_ attributes: [String: Any]) {
+        implementation?.setProfileAttributes(attributes.sanitizedForJSON())
     }
 
     public func identify(userId: String, traits: [String: Any]?) {

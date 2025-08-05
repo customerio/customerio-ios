@@ -7,7 +7,14 @@ public protocol CustomerIOInstance: AutoMockable {
      Modify attributes to an already identified profile.
      Note: The getter of this field returns an empty dictionary. This is a setter only field.
      */
+    @available(*, deprecated, message: "Use setProfileAttributes() instead")
     var profileAttributes: [String: Any] { get set }
+
+    /**
+     Set profile attributes for the currently identified customer.
+     - Parameter attributes: Dictionary of attributes to set for the profile.
+     */
+    func setProfileAttributes(_ attributes: [String: Any])
 
     /**
      Identify a customer (aka: Add or update a profile).
@@ -214,9 +221,14 @@ public class CustomerIO: CustomerIOInstance {
 
     // MARK: - CustomerIOInstance implementation
 
+    @available(*, deprecated, message: "Use setProfileAttributes() instead")
     public var profileAttributes: [String: Any] {
-        get { implementation?.profileAttributes ?? [:] }
-        set { implementation?.profileAttributes = newValue }
+        get { [:] }
+        set { setProfileAttributes(newValue) }
+    }
+
+    public func setProfileAttributes(_ attributes: [String: Any]) {
+        implementation?.setProfileAttributes(attributes)
     }
 
     public func identify(userId: String, traits: [String: Any]? = nil) {

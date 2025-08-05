@@ -38,7 +38,7 @@ struct CustomAttributeView: View {
                     hideKeyboard() // makes all textfields lose focus so that @State variables are up-to-date with the textfield values.
 
                     if attributeType == .profile {
-                        CustomerIO.shared.profileAttributes = [name: value]
+                        CustomerIO.shared.setProfileAttributes([name: value])
                     }
 
                     if attributeType == .device {

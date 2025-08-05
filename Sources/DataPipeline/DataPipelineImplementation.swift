@@ -134,16 +134,19 @@ class DataPipelineImplementation: DataPipelineInstance {
         analytics.screen(title: title, properties: properties)
     }
 
+    @available(*, deprecated, message: "Use setProfileAttributes() instead")
     var profileAttributes: [String: Any] {
-        get { analytics.traits() ?? [:] }
-        set {
-            let userId = registeredUserId
-            guard let userId = userId else {
-                logger.error("No user identified. If you don't have a userId but want to record traits, please pass traits using identify(body: Codable)")
-                return
-            }
-            commonIdentifyProfile(userId: userId, attributesDict: newValue)
+        get { [:] }
+        set { setProfileAttributes(newValue) }
+    }
+
+    func setProfileAttributes(_ attributes: [String: Any]) {
+        let userId = registeredUserId
+        guard let userId = userId else {
+            logger.error("No user identified. If you don't have a userId but want to record traits, please pass traits using identify(body: Codable)")
+            return
         }
+        commonIdentifyProfile(userId: userId, attributesDict: attributes)
     }
 
     private func commonIdentifyProfile(userId: String, attributesDict: [String: Any]? = nil, attributesCodable: Codable? = nil) {

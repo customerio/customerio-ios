@@ -210,6 +210,11 @@ public class CustomerIOInstanceMock: CustomerIOInstance, Mock {
         registeredDeviceToken = nil
         registeredDeviceTokenGetCallsCount = 0
         registeredDeviceTokenSetCallsCount = 0
+        setProfileAttributesCallsCount = 0
+        setProfileAttributesReceivedArguments = nil
+        setProfileAttributesReceivedInvocations = []
+
+        mockCalled = false // do last as resetting properties above can make this true
         identifyCallsCount = 0
         identifyReceivedArguments = nil
         identifyReceivedInvocations = []
@@ -253,6 +258,33 @@ public class CustomerIOInstanceMock: CustomerIOInstance, Mock {
         trackMetricReceivedInvocations = []
 
         mockCalled = false // do last as resetting properties above can make this true
+    }
+
+    // MARK: - setProfileAttributes
+
+    /// Number of times the function was called.
+    @Atomic public private(set) var setProfileAttributesCallsCount = 0
+    /// `true` if the function was ever called.
+    public var setProfileAttributesCalled: Bool {
+        setProfileAttributesCallsCount > 0
+    }
+
+    /// The arguments from the *last* time the function was called.
+    @Atomic public private(set) var setProfileAttributesReceivedArguments: [String: Any]?
+    /// Arguments from *all* of the times that the function was called.
+    @Atomic public private(set) var setProfileAttributesReceivedInvocations: [[String: Any]] = []
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     */
+    public var setProfileAttributesClosure: (([String: Any]) -> Void)?
+
+    /// Mocked function for `setProfileAttributes(_ attributes: [String: Any])`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func setProfileAttributes(_ attributes: [String: Any]) {
+        mockCalled = true
+        setProfileAttributesCallsCount += 1
+        setProfileAttributesReceivedArguments = attributes
+        setProfileAttributesReceivedInvocations.append(attributes)
+        setProfileAttributesClosure?(attributes)
     }
 
     // MARK: - identify
