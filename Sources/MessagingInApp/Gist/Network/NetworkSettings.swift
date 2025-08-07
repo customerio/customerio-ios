@@ -4,14 +4,16 @@ protocol NetworkSettings {
     var renderer: String { get }
 }
 
+//TODO: Before merging, all these URLs need to be updated to CIO domains.
+
 struct NetworkSettingsProduction: NetworkSettings {
-    let queueAPI = "https://gist-queue-consumer-api.cloud.gist.build"
+    let queueAPI = "https://consumer.cloud.gist.build"
     let engineAPI = "https://engine.api.gist.build"
     let renderer = "https://renderer.gist.build/3.0"
 }
 
 struct NetworkSettingsDevelopment: NetworkSettings {
-    let queueAPI = "https://gist-queue-consumer-api.cloud.dev.gist.build"
+    let queueAPI = "https://consumer.cloud.dev.gist.build"
     let engineAPI = "https://engine.api.dev.gist.build"
     let renderer = "https://renderer.gist.build/3.0"
 }
