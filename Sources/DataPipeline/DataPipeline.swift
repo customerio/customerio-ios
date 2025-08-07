@@ -89,12 +89,14 @@ public class DataPipeline: ModuleTopLevelObject<DataPipelineInstance>, DataPipel
     }
 
     public var deviceAttributes: [String: Any] {
-        get { implementation?.deviceAttributes ?? [:] }
+        get { [:] }
         set {
-            guard var implementation = implementation else { return }
-
-            implementation.deviceAttributes = newValue.sanitizedForJSON()
+            implementation?.setDeviceAttributes(newValue.sanitizedForJSON())
         }
+    }
+
+    public func setDeviceAttributes(_ attributes: [String: Any]) {
+        implementation?.setDeviceAttributes(attributes.sanitizedForJSON())
     }
 
     public var registeredDeviceToken: String? {

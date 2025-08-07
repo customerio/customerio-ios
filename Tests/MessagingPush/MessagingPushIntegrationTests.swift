@@ -12,8 +12,8 @@ class MessagingPushIntegrationTests: IntegrationTest {
     // Test exists in non-tracking module because non-tracking modules are what read CustomerIO.shared in their
     // code-bases which causes the SDK crashes.
     func test_modifyingCustomerIO_expectNoError() {
-        CustomerIO.shared.deviceAttributes = [
+        CustomerIO.shared.setDeviceAttributes([
             "foo": "bar"
-        ]
+        ])
     }
 }

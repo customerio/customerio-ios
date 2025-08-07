@@ -222,6 +222,11 @@ public class CustomerIOInstanceMock: CustomerIOInstance, Mock {
         clearIdentifyCallsCount = 0
 
         mockCalled = false // do last as resetting properties above can make this true
+        setDeviceAttributesCallsCount = 0
+        setDeviceAttributesReceivedArguments = nil
+        setDeviceAttributesReceivedInvocations = []
+
+        mockCalled = false // do last as resetting properties above can make this true
         registerDeviceTokenCallsCount = 0
         registerDeviceTokenReceivedArguments = nil
         registerDeviceTokenReceivedInvocations = []
@@ -321,6 +326,33 @@ public class CustomerIOInstanceMock: CustomerIOInstance, Mock {
         mockCalled = true
         clearIdentifyCallsCount += 1
         clearIdentifyClosure?()
+    }
+
+    // MARK: - setDeviceAttributes
+
+    /// Number of times the function was called.
+    @Atomic public private(set) var setDeviceAttributesCallsCount = 0
+    /// `true` if the function was ever called.
+    public var setDeviceAttributesCalled: Bool {
+        setDeviceAttributesCallsCount > 0
+    }
+
+    /// The arguments from the *last* time the function was called.
+    @Atomic public private(set) var setDeviceAttributesReceivedArguments: [String: Any]?
+    /// Arguments from *all* of the times that the function was called.
+    @Atomic public private(set) var setDeviceAttributesReceivedInvocations: [[String: Any]] = []
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     */
+    public var setDeviceAttributesClosure: (([String: Any]) -> Void)?
+
+    /// Mocked function for `setDeviceAttributes(_ attributes: [String: Any])`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func setDeviceAttributes(_ attributes: [String: Any]) {
+        mockCalled = true
+        setDeviceAttributesCallsCount += 1
+        setDeviceAttributesReceivedArguments = attributes
+        setDeviceAttributesReceivedInvocations.append(attributes)
+        setDeviceAttributesClosure?(attributes)
     }
 
     // MARK: - registerDeviceToken

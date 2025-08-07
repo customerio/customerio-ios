@@ -62,8 +62,21 @@ public protocol CustomerIOInstance: AutoMockable {
      ```
      CustomerIO.shared.deviceAttributes = ["foo" : "bar"]
      ```
+     @deprecated Use `setDeviceAttributes` method instead. This property getter always returns an empty dictionary.
      */
+    @available(*, deprecated, message: "Use setDeviceAttributes method instead. This property getter always returns an empty dictionary.")
     var deviceAttributes: [String: Any] { get set }
+
+    /**
+     Set additional and custom device attributes apart from the ones the SDK is programmed to send to customer workspace.
+     Example use:
+     ```
+     CustomerIO.shared.setDeviceAttributes(["foo": "bar"])
+     ```
+     - Parameters:
+     - attributes: Dictionary of custom device attributes to set.
+     */
+    func setDeviceAttributes(_ attributes: [String: Any])
 
     /**
      Use `registeredDeviceToken` to fetch the current FCM/APN device token.
@@ -232,8 +245,12 @@ public class CustomerIO: CustomerIOInstance {
     }
 
     public var deviceAttributes: [String: Any] {
-        get { implementation?.deviceAttributes ?? [:] }
-        set { implementation?.deviceAttributes = newValue }
+        get { [:] }
+        set { implementation?.setDeviceAttributes(newValue) }
+    }
+
+    public func setDeviceAttributes(_ attributes: [String: Any]) {
+        implementation?.setDeviceAttributes(attributes)
     }
 
     public var registeredDeviceToken: String? {

@@ -294,7 +294,7 @@ class CDPInteractionDefaultConfigTests: DataPipelineInteractionTests {
         ]
         mockDeviceAttributes(defaultAttributes: givenDefaultAttributes)
 
-        customerIO.deviceAttributes = [:]
+        customerIO.setDeviceAttributes([:])
 
         customerIO.track(name: String.random)
 

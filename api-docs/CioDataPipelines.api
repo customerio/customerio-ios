@@ -24,6 +24,7 @@ public final class CioDataPipelines.DataPipeline {
 	public fun func identify(userId: String, traits: List<String: Any>?);
 	public fun func identify<RequestBody: Codable>(userId: String, traits: RequestBody?);
 	public fun func clearIdentify();
+	public fun func setDeviceAttributes(_ attributes: List<String: Any>);
 	public fun func registerDeviceToken(_ deviceToken: String);
 	public fun func deleteDeviceToken();
 	public fun func track(name: String, properties: List<String: Any>?);
