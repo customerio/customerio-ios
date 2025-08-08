@@ -44,6 +44,7 @@ public protocol CustomerIOInstance: AutoMockable {
     // swiftlint:enable orphaned_doc_comment
     // sourcery:Name=identifyEncodable
     // sourcery:DuplicateMethod=identify
+    @available(*, deprecated, message: "Use 'identify(userId:traits:)' with [String: Any] traits parameter instead. Support for Codable traits will be removed in a future version.")
     func identify<RequestBody: Codable>(
         userId: String,
         // sourcery:Type=AnyEncodable
@@ -128,6 +129,7 @@ public protocol CustomerIOInstance: AutoMockable {
     // swiftlint:enable orphaned_doc_comment
     // sourcery:Name=trackEncodable
     // sourcery:DuplicateMethod=track
+    @available(*, deprecated, message: "Use 'track(name:properties:)' with [String: Any] properties parameter instead. Support for Codable properties will be removed in a future version.")
     func track<RequestBody: Codable>(
         name: String,
         // sourcery:Type=AnyEncodable
@@ -157,6 +159,7 @@ public protocol CustomerIOInstance: AutoMockable {
     // swiftlint:enable orphaned_doc_comment
     // sourcery:Name=screenEncodable
     // sourcery:DuplicateMethod=screen
+    @available(*, deprecated, message: "Use 'screen(title:properties:)' with [String: Any] properties parameter instead. Support for Codable properties will be removed in a future version.")
     func screen<RequestBody: Codable>(
         title: String,
         // sourcery:Type=AnyEncodable
@@ -248,6 +251,7 @@ public class CustomerIO: CustomerIOInstance {
         implementation?.identify(userId: userId, traits: traits)
     }
 
+    @available(*, deprecated, message: "Use 'identify(userId:traits:)' with [String: Any] traits parameter instead. Support for Codable traits will be removed in a future version.")
     public func identify<RequestBody: Codable>(userId: String, traits: RequestBody?) {
         implementation?.identify(userId: userId, traits: traits)
     }
@@ -281,6 +285,7 @@ public class CustomerIO: CustomerIOInstance {
         implementation?.track(name: name, properties: properties)
     }
 
+    @available(*, deprecated, message: "Use 'track(name:properties:)' with [String: Any] properties parameter instead. Support for Codable properties will be removed in a future version.")
     public func track<RequestBody: Codable>(name: String, properties: RequestBody?) {
         implementation?.track(name: name, properties: properties)
     }
@@ -289,6 +294,7 @@ public class CustomerIO: CustomerIOInstance {
         implementation?.screen(title: title, properties: properties)
     }
 
+    @available(*, deprecated, message: "Use 'screen(title:properties:)' with [String: Any] properties parameter instead. Support for Codable properties will be removed in a future version.")
     public func screen<RequestBody: Codable>(title: String, properties: RequestBody?) {
         implementation?.screen(title: title, properties: properties)
     }
