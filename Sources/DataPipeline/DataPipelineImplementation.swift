@@ -136,7 +136,7 @@ class DataPipelineImplementation: DataPipelineInstance {
 
     @available(*, deprecated, message: "Use setProfileAttributes() instead")
     var profileAttributes: [String: Any] {
-        get { [:] }
+        get { analytics.traits() ?? [:] }
         set { setProfileAttributes(newValue) }
     }
 

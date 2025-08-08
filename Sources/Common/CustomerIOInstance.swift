@@ -223,7 +223,7 @@ public class CustomerIO: CustomerIOInstance {
 
     @available(*, deprecated, message: "Use setProfileAttributes() instead")
     public var profileAttributes: [String: Any] {
-        get { [:] }
+        get { implementation?.profileAttributes ?? [:] }
         set { setProfileAttributes(newValue) }
     }
 
