@@ -55,8 +55,8 @@ class ApiChangeDetector
       exit 1
     end
     
-    # Run the generation script
-    success = system(@generation_script)
+    # Always set CI=1 to ensure internal modules are generated for complete comparison
+    success = system({'CI' => '1'}, @generation_script)
     
     if success
       puts colorize("✅ API documentation generation completed", :green)
@@ -159,7 +159,7 @@ class ApiChangeDetector
     puts colorize("💡 Next steps:", :blue)
     puts "1. Review the API changes above"
     puts "2. If changes are intentional:"
-    puts "   - Update API docs baseline by running `./scripts/generate-api-docs.sh`"
+    puts "   - Update API docs baseline by running `CI=1 ./scripts/generate-api-docs.sh`"
     puts "3. If changes are unintentional:"
     puts "   - Revert API changes"
     
