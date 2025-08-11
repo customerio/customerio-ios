@@ -4,7 +4,7 @@ protocol NetworkSettings {
     var renderer: String { get }
 }
 
-//TODO: Before merging, all these URLs need to be updated to CIO domains.
+// TODO: Before merging, all these URLs need to be updated to CIO domains.
 
 struct NetworkSettingsProduction: NetworkSettings {
     let queueAPI = "https://consumer.cloud.gist.build"

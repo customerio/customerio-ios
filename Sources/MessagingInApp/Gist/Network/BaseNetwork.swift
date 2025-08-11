@@ -9,7 +9,7 @@ enum GistNetworkError: Error {
 
 enum BaseNetwork {
     private static let sessionIdParameterName = "sessionId"
-    
+
     static func request(
         _ request: GistNetworkRequest,
         urlRequest: URLRequest,
@@ -18,9 +18,9 @@ enum BaseNetwork {
     ) throws {
         var urlRequest = urlRequest
         urlRequest.cachePolicy = .reloadIgnoringCacheData
-        
+
         var components = URLComponents(string: baseURL.appendingPathComponent(request.path).absoluteString)
-        
+
         // Always add sessionId as a query parameter
         var queryItems = [URLQueryItem(name: sessionIdParameterName, value: SessionManager.shared.sessionId)]
         switch request.parameters {
@@ -35,11 +35,11 @@ enum BaseNetwork {
         case .none:
             break
         }
-        
+
         // Apply query parameters
         components?.queryItems = queryItems
         urlRequest.url = components?.url
-        
+
         URLSession.shared.dataTask(with: urlRequest, completionHandler: { data, response, error in
             if let error = error { completionHandler(.failure(error)) }
             guard let data = data, let response = response as? HTTPURLResponse,
