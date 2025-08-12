@@ -11,7 +11,7 @@ public extension CustomerIO {
     /// Associate a user with their unique ID and record traits about them.
     /// - Parameters:
     ///   - traits: A dictionary of traits you know about the user. Things like: email, name, plan, etc.
-    @available(*, deprecated, message: "Use 'identify(userId:traits:)' with [String: Any] traits parameter instead. Support for Codable traits will be removed in a future version.")
+    @available(*, deprecated, message: "Use 'setProfileAttributes(_:)' with [String: Any] instead. Support for Codable traits will be removed in a future version.")
     func identify<T: Codable>(traits: T) {
         DataPipeline.shared.analytics.identify(traits: traits)
     }

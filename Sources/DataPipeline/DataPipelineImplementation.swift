@@ -143,7 +143,11 @@ class DataPipelineImplementation: DataPipelineInstance {
     func setProfileAttributes(_ attributes: [String: Any]) {
         let userId = registeredUserId
         guard let userId = userId else {
-            logger.error("No user identified. If you don't have a userId but want to record traits, please pass traits using identify(body: Codable)")
+            if let jsonTraits = try? JSON(attributes) {
+                analytics.identify(traits: jsonTraits)
+            } else {
+                logger.error("Failed to convert attributes to JSON format for identify call")
+            }
             return
         }
         commonIdentifyProfile(userId: userId, attributesDict: attributes)
