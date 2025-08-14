@@ -5,15 +5,15 @@ protocol NetworkSettings {
 }
 
 struct NetworkSettingsProduction: NetworkSettings {
-    let queueAPI = "https://gist-queue-consumer-api.cloud.gist.build"
+    let queueAPI = "https://consumer.inapp.customer.io"
     let engineAPI = "https://engine.api.gist.build"
-    let renderer = "https://renderer.gist.build/3.0"
+    let renderer = "https://renderer.inapp.customer.io/3.0"
 }
 
 struct NetworkSettingsDevelopment: NetworkSettings {
-    let queueAPI = "https://gist-queue-consumer-api.cloud.dev.gist.build"
+    let queueAPI = "https://consumer.dev.inapp.customer.io"
     let engineAPI = "https://engine.api.dev.gist.build"
-    let renderer = "https://renderer.gist.build/3.0"
+    let renderer = "https://renderer.inapp.customer.io/3.0"
 }
 
 struct NetworkSettingsLocal: NetworkSettings {
