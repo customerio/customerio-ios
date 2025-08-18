@@ -1,3 +1,9 @@
+## [3.12.0](https://github.com/customerio/customerio-ios/compare/3.11.0...3.12.0) (2025-08-18)
+
+### Features
+
+* Added support for queue sticky sessions ([#946](https://github.com/customerio/customerio-ios/issues/946)) ([4b42003](https://github.com/customerio/customerio-ios/commit/4b420032758794ed2874aa921e1907452a29c9d6))
+
 ## [3.11.0](https://github.com/customerio/customerio-ios/compare/3.10.9...3.11.0) (2025-07-22)
 
 ### Features
