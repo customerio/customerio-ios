@@ -74,7 +74,7 @@ jobs:
     permissions:
       pull-requests: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: ./.github/actions/generate-sdk-size-report
         id: generate-sdk-size-report
