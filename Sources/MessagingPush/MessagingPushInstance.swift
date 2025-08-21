@@ -33,30 +33,7 @@ public protocol MessagingPushInstance: AutoMockable {
     func serviceExtensionTimeWillExpire()
     #endif
 
-    #if canImport(UserNotifications) && canImport(UIKit)
-
-    /*
-     A push notification was interacted with.
-
-     - returns: If the SDK called the completion handler for you indicating if the SDK took care of the request or not.
-     */
-    // @available(iOSApplicationExtension, unavailable)
-    //
-    // sourcery:IfCanImport=UserNotifications,UIKit
-    // sourcery:Name=userNotificationCenter_withCompletion
-    func userNotificationCenter(
-        _ center: UNUserNotificationCenter,
-        didReceive response: UNNotificationResponse,
-        withCompletionHandler completionHandler: @escaping () -> Void
-    ) -> Bool
-
-    // @available(iOSApplicationExtension, unavailable)
-    //
-    // sourcery:IfCanImport=UserNotifications,UIKit
-    // sourcery:Name=userNotificationCenter
-    func userNotificationCenter(
-        _ center: UNUserNotificationCenter,
-        didReceive response: UNNotificationResponse
-    ) -> CustomerIOParsedPushPayload?
-    #endif
+    // Note: userNotificationCenter methods removed from protocol due to
+    // @available(iOSApplicationExtension, unavailable) compatibility issues.
+    // These methods are implemented as extensions on concrete types where needed.
 }
