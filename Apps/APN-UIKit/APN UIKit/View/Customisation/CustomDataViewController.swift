@@ -85,7 +85,7 @@ class CustomDataViewController: BaseViewController {
             CustomerIO.shared.deviceAttributes = [propName: propValue]
             toastMessage = "Device attribute set successfully."
         } else if source == .profileAttributes {
-            CustomerIO.shared.profileAttributes = [propName: propValue]
+            CustomerIO.shared.setProfileAttributes([propName: propValue])
             toastMessage = "Profile attribute set successfully."
         }
         if canEventFail() {

@@ -134,16 +134,23 @@ class DataPipelineImplementation: DataPipelineInstance {
         analytics.screen(title: title, properties: properties)
     }
 
+    @available(*, deprecated, message: "Use setProfileAttributes() instead")
     var profileAttributes: [String: Any] {
         get { analytics.traits() ?? [:] }
-        set {
-            let userId = registeredUserId
-            guard let userId = userId else {
-                logger.error("No user identified. If you don't have a userId but want to record traits, please pass traits using identify(body: Codable)")
-                return
+        set { setProfileAttributes(newValue) }
+    }
+
+    func setProfileAttributes(_ attributes: [String: Any]) {
+        let userId = registeredUserId
+        guard let userId = userId else {
+            if let jsonTraits = try? JSON(attributes) {
+                analytics.identify(traits: jsonTraits)
+            } else {
+                logger.error("Failed to convert attributes to JSON format for identify call")
             }
-            commonIdentifyProfile(userId: userId, attributesDict: newValue)
+            return
         }
+        commonIdentifyProfile(userId: userId, attributesDict: attributes)
     }
 
     private func commonIdentifyProfile(userId: String, attributesDict: [String: Any]? = nil, attributesCodable: Codable? = nil) {
@@ -198,12 +205,17 @@ class DataPipelineImplementation: DataPipelineInstance {
         }
     }
 
+    @available(*, deprecated, message: "Use setDeviceAttributes method instead. This property getter always returns an empty dictionary.")
     var deviceAttributes: [String: Any] {
         get { [:] }
         set {
-            logger.info("updating device attributes")
-            addDeviceAttributes(token: contextPlugin.deviceToken, attributes: newValue)
+            setDeviceAttributes(newValue)
         }
+    }
+
+    func setDeviceAttributes(_ attributes: [String: Any]) {
+        logger.info("updating device attributes")
+        addDeviceAttributes(token: contextPlugin.deviceToken, attributes: attributes)
     }
 
     /// Internal method for passing device token to the plugin and updating device attributes

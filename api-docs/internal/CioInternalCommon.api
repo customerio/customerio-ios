@@ -69,9 +69,11 @@ public final class CioInternalCommon.CustomerIO {
 	public var registeredDeviceToken: String?;
 	public fun func resetSharedTestEnvironment();
 	public fun func initializeSharedInstance(with implementation: CustomerIOInstance);
+	public fun func setProfileAttributes(_ attributes: List<String: Any>);
 	public fun func identify(userId: String, traits: List<String: Any>? = nil);
 	public fun func identify<RequestBody: Codable>(userId: String, traits: RequestBody?);
 	public fun func clearIdentify();
+	public fun func setDeviceAttributes(_ attributes: List<String: Any>);
 	public fun func registerDeviceToken(_ deviceToken: String);
 	public fun func deleteDeviceToken();
 	public fun func track(name: String, properties: List<String: Any>? = nil);
@@ -84,6 +86,7 @@ public interface CioInternalCommon.CustomerIOInstance {
 	public var profileAttributes: Map<String, Any>;
 	public var deviceAttributes: Map<String, Any>;
 	public var registeredDeviceToken: String?;
+	public fun func setProfileAttributes(_ attributes: List<String: Any>);
 	public fun func identify(userId: String, traits: List<String: Any>?);
 	public fun func identify<RequestBody: Codable>(
     userId: String,
@@ -92,6 +95,7 @@ public interface CioInternalCommon.CustomerIOInstance {
     traits: RequestBody?
 );
 	public fun func clearIdentify();
+	public fun func setDeviceAttributes(_ attributes: List<String: Any>);
 	public fun func registerDeviceToken(_ deviceToken: String);
 	public fun func deleteDeviceToken();
 	public fun func track(name: String, properties: List<String: Any>?);

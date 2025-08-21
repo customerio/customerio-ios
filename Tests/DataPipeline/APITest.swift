@@ -58,8 +58,10 @@ class DataPipelineAPITest: UnitTest {
 
         // profile attributes
         CustomerIO.shared.profileAttributes = dictionaryData
+        CustomerIO.shared.setProfileAttributes(dictionaryData)
 
         // device attributes
+        CustomerIO.shared.setDeviceAttributes(dictionaryData)
         CustomerIO.shared.deviceAttributes = dictionaryData
 
         // plugins

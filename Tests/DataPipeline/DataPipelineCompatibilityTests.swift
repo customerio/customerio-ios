@@ -180,7 +180,7 @@ class DataPipelineCompatibilityTests: IntegrationTest {
 
         customerIO.identify(userId: givenIdentifier)
         customerIO.registerDeviceToken(givenToken)
-        customerIO.deviceAttributes = customAttributes
+        customerIO.setDeviceAttributes(customAttributes)
 
         let allEvents = readTypeFromStorage(key: Storage.Constants.events)
         let filteredEvents = allEvents.filter { $0.eventType == "track" }

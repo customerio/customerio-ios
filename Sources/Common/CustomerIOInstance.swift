@@ -7,7 +7,14 @@ public protocol CustomerIOInstance: AutoMockable {
      Modify attributes to an already identified profile.
      Note: The getter of this field returns an empty dictionary. This is a setter only field.
      */
+    @available(*, deprecated, message: "Use setProfileAttributes() instead")
     var profileAttributes: [String: Any] { get set }
+
+    /**
+     Set profile attributes for the currently identified customer.
+     - Parameter attributes: Dictionary of attributes to set for the profile.
+     */
+    func setProfileAttributes(_ attributes: [String: Any])
 
     /**
      Identify a customer (aka: Add or update a profile).
@@ -37,6 +44,7 @@ public protocol CustomerIOInstance: AutoMockable {
     // swiftlint:enable orphaned_doc_comment
     // sourcery:Name=identifyEncodable
     // sourcery:DuplicateMethod=identify
+    @available(*, deprecated, message: "Use 'identify(userId:traits:)' with [String: Any] traits parameter instead. Support for Codable traits will be removed in a future version.")
     func identify<RequestBody: Codable>(
         userId: String,
         // sourcery:Type=AnyEncodable
@@ -62,8 +70,21 @@ public protocol CustomerIOInstance: AutoMockable {
      ```
      CustomerIO.shared.deviceAttributes = ["foo" : "bar"]
      ```
+     @deprecated Use `setDeviceAttributes` method instead. This property getter always returns an empty dictionary.
      */
+    @available(*, deprecated, message: "Use setDeviceAttributes method instead. This property getter always returns an empty dictionary.")
     var deviceAttributes: [String: Any] { get set }
+
+    /**
+     Set additional and custom device attributes apart from the ones the SDK is programmed to send to customer workspace.
+     Example use:
+     ```
+     CustomerIO.shared.setDeviceAttributes(["foo": "bar"])
+     ```
+     - Parameters:
+     - attributes: Dictionary of custom device attributes to set.
+     */
+    func setDeviceAttributes(_ attributes: [String: Any])
 
     /**
      Use `registeredDeviceToken` to fetch the current FCM/APN device token.
@@ -108,6 +129,7 @@ public protocol CustomerIOInstance: AutoMockable {
     // swiftlint:enable orphaned_doc_comment
     // sourcery:Name=trackEncodable
     // sourcery:DuplicateMethod=track
+    @available(*, deprecated, message: "Use 'track(name:properties:)' with [String: Any] properties parameter instead. Support for Codable properties will be removed in a future version.")
     func track<RequestBody: Codable>(
         name: String,
         // sourcery:Type=AnyEncodable
@@ -137,6 +159,7 @@ public protocol CustomerIOInstance: AutoMockable {
     // swiftlint:enable orphaned_doc_comment
     // sourcery:Name=screenEncodable
     // sourcery:DuplicateMethod=screen
+    @available(*, deprecated, message: "Use 'screen(title:properties:)' with [String: Any] properties parameter instead. Support for Codable properties will be removed in a future version.")
     func screen<RequestBody: Codable>(
         title: String,
         // sourcery:Type=AnyEncodable
@@ -214,15 +237,21 @@ public class CustomerIO: CustomerIOInstance {
 
     // MARK: - CustomerIOInstance implementation
 
+    @available(*, deprecated, message: "Use setProfileAttributes() instead")
     public var profileAttributes: [String: Any] {
         get { implementation?.profileAttributes ?? [:] }
-        set { implementation?.profileAttributes = newValue }
+        set { setProfileAttributes(newValue) }
+    }
+
+    public func setProfileAttributes(_ attributes: [String: Any]) {
+        implementation?.setProfileAttributes(attributes)
     }
 
     public func identify(userId: String, traits: [String: Any]? = nil) {
         implementation?.identify(userId: userId, traits: traits)
     }
 
+    @available(*, deprecated, message: "Use 'identify(userId:traits:)' with [String: Any] traits parameter instead. Support for Codable traits will be removed in a future version.")
     public func identify<RequestBody: Codable>(userId: String, traits: RequestBody?) {
         implementation?.identify(userId: userId, traits: traits)
     }
@@ -232,8 +261,12 @@ public class CustomerIO: CustomerIOInstance {
     }
 
     public var deviceAttributes: [String: Any] {
-        get { implementation?.deviceAttributes ?? [:] }
-        set { implementation?.deviceAttributes = newValue }
+        get { [:] }
+        set { implementation?.setDeviceAttributes(newValue) }
+    }
+
+    public func setDeviceAttributes(_ attributes: [String: Any]) {
+        implementation?.setDeviceAttributes(attributes)
     }
 
     public var registeredDeviceToken: String? {
@@ -252,6 +285,7 @@ public class CustomerIO: CustomerIOInstance {
         implementation?.track(name: name, properties: properties)
     }
 
+    @available(*, deprecated, message: "Use 'track(name:properties:)' with [String: Any] properties parameter instead. Support for Codable properties will be removed in a future version.")
     public func track<RequestBody: Codable>(name: String, properties: RequestBody?) {
         implementation?.track(name: name, properties: properties)
     }
@@ -260,6 +294,7 @@ public class CustomerIO: CustomerIOInstance {
         implementation?.screen(title: title, properties: properties)
     }
 
+    @available(*, deprecated, message: "Use 'screen(title:properties:)' with [String: Any] properties parameter instead. Support for Codable properties will be removed in a future version.")
     public func screen<RequestBody: Codable>(title: String, properties: RequestBody?) {
         implementation?.screen(title: title, properties: properties)
     }

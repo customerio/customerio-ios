@@ -67,13 +67,14 @@ public class DataPipeline: ModuleTopLevelObject<DataPipelineInstance>, DataPipel
 
     // MARK: - DataPipelineInstance implementation
 
+    @available(*, deprecated, message: "Use setProfileAttributes() instead")
     public var profileAttributes: [String: Any] {
         get { implementation?.profileAttributes ?? [:] }
-        set {
-            guard var implementation = implementation else { return }
+        set { setProfileAttributes(newValue) }
+    }
 
-            implementation.profileAttributes = newValue.sanitizedForJSON()
-        }
+    public func setProfileAttributes(_ attributes: [String: Any]) {
+        implementation?.setProfileAttributes(attributes.sanitizedForJSON())
     }
 
     public func identify(userId: String, traits: [String: Any]?) {
@@ -88,13 +89,16 @@ public class DataPipeline: ModuleTopLevelObject<DataPipelineInstance>, DataPipel
         implementation?.clearIdentify()
     }
 
+    @available(*, deprecated, message: "Use setDeviceAttributes method instead. This property getter always returns an empty dictionary.")
     public var deviceAttributes: [String: Any] {
-        get { implementation?.deviceAttributes ?? [:] }
+        get { [:] }
         set {
-            guard var implementation = implementation else { return }
-
-            implementation.deviceAttributes = newValue.sanitizedForJSON()
+            implementation?.setDeviceAttributes(newValue.sanitizedForJSON())
         }
+    }
+
+    public func setDeviceAttributes(_ attributes: [String: Any]) {
+        implementation?.setDeviceAttributes(attributes.sanitizedForJSON())
     }
 
     public var registeredDeviceToken: String? {
