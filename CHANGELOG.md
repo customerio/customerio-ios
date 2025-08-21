@@ -1,3 +1,9 @@
+## [3.13.0](https://github.com/customerio/customerio-ios/compare/3.12.0...3.13.0) (2025-08-21)
+
+### Features
+
+* Align public API with other CIO SDK platforms ([#948](https://github.com/customerio/customerio-ios/issues/948)) ([b63efd7](https://github.com/customerio/customerio-ios/commit/b63efd789f27afe803a879e500ed28fabb344f14))
+
 ## [3.12.0](https://github.com/customerio/customerio-ios/compare/3.11.0...3.12.0) (2025-08-18)
 
 ### Features
