@@ -89,6 +89,7 @@ public class DataPipeline: ModuleTopLevelObject<DataPipelineInstance>, DataPipel
         implementation?.clearIdentify()
     }
 
+    @available(*, deprecated, message: "Use setDeviceAttributes method instead. This property getter always returns an empty dictionary.")
     public var deviceAttributes: [String: Any] {
         get { [:] }
         set {

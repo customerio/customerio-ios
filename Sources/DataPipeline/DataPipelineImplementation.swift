@@ -205,6 +205,7 @@ class DataPipelineImplementation: DataPipelineInstance {
         }
     }
 
+    @available(*, deprecated, message: "Use setDeviceAttributes method instead. This property getter always returns an empty dictionary.")
     var deviceAttributes: [String: Any] {
         get { [:] }
         set {
