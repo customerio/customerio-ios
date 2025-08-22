@@ -57,7 +57,7 @@ public extension MessagingPush {
 }
 
 @available(iOSApplicationExtension, unavailable)
-public extension MessagingPushImplementation {
+extension MessagingPushImplementation {
     /**
      A push notification was interacted with.
 
@@ -105,7 +105,7 @@ public extension MessagingPushImplementation {
 
     // Function that contains the logic for when a customer is wanting to manual handle a push click event.
     // Function created for logic to be testable since automated test suite crashes when trying to access some UserNotification framework classes such as UNUserNotificationCenter.
-    internal func manualPushClickHandling(push: PushNotification) {
+    func manualPushClickHandling(push: PushNotification) {
         // A hack to get an instance of pushClickHandler without making it a property of the MessagingPushImplementation class. pushClickHandler is not available to app extensions but MessagingPushImplementation is.
         // We get around this by getting a instance in this function, only.
         let pushClickHandler = DIGraphShared.shared.pushClickHandler
