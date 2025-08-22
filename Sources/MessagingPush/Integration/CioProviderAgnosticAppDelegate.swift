@@ -155,7 +155,7 @@ open class CioProviderAgnosticAppDelegate: CioAppDelegateType, UNUserNotificatio
     ) {
         // Cast to concrete type since method was removed from protocol
         if let concreteMessagingPush = messagingPush as? MessagingPushImplementation {
-          _ = concreteMessagingPush.userNotificationCenter(center, didReceive: response)
+            _ = concreteMessagingPush.userNotificationCenter(center, didReceive: response)
         }
 
         // `completionHandlerCalled` is used to overcome limitation of `responds(to:)` when working with optional methods from protocol.

@@ -32,8 +32,4 @@ public protocol MessagingPushInstance: AutoMockable {
     // sourcery:IfCanImport=UserNotifications
     func serviceExtensionTimeWillExpire()
     #endif
-
-    // Note: userNotificationCenter methods removed from protocol due to
-    // @available(iOSApplicationExtension, unavailable) compatibility issues.
-    // These methods are implemented as extensions on concrete types where needed.
 }

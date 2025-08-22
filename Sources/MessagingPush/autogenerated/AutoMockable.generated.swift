@@ -298,7 +298,7 @@ public class MessagingPushInstanceMock: MessagingPushInstance, Mock {
         serviceExtensionTimeWillExpireClosure?()
     }
     #endif
-    
+
     // Note: userNotificationCenter mocks removed due to protocol availability conflicts
 }
 

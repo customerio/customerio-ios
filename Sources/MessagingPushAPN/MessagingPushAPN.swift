@@ -134,7 +134,7 @@ public class MessagingPushAPN: MessagingPushAPNInstance {
         didReceive response: UNNotificationResponse
     ) -> CustomerIOParsedPushPayload? {
         // Use concrete MessagingPush instance since method was removed from protocol
-        return MessagingPush.shared.userNotificationCenter(center, didReceive: response)
+        MessagingPush.shared.userNotificationCenter(center, didReceive: response)
     }
 
     @available(iOSApplicationExtension, unavailable)
@@ -144,7 +144,7 @@ public class MessagingPushAPN: MessagingPushAPNInstance {
         withCompletionHandler completionHandler: @escaping () -> Void
     ) -> Bool {
         // Use concrete MessagingPush instance since method was removed from protocol
-        return MessagingPush.shared.userNotificationCenter(center, didReceive: response, withCompletionHandler: completionHandler)
+        MessagingPush.shared.userNotificationCenter(center, didReceive: response, withCompletionHandler: completionHandler)
     }
     #endif
 }

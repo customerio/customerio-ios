@@ -50,20 +50,20 @@ public extension MessagingPush {
 
         // Cast to concrete type since method was removed from protocol
         guard let concreteImplementation = implementation as? MessagingPushImplementation else {
-          return nil
+            return nil
         }
         return concreteImplementation.userNotificationCenter(center, didReceive: response)
     }
 }
 
 @available(iOSApplicationExtension, unavailable)
-extension MessagingPushImplementation {
+public extension MessagingPushImplementation {
     /**
      A push notification was interacted with.
 
      - returns: If the SDK called the completion handler for you indicating if the SDK took care of the request or not.
      */
-    public func userNotificationCenter(
+    func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         didReceive response: UNNotificationResponse,
         withCompletionHandler completionHandler: @escaping () -> Void
@@ -82,7 +82,7 @@ extension MessagingPushImplementation {
         return true
     }
 
-    public func userNotificationCenter(
+    func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         didReceive response: UNNotificationResponse
     ) -> CustomerIOParsedPushPayload? {
@@ -105,7 +105,7 @@ extension MessagingPushImplementation {
 
     // Function that contains the logic for when a customer is wanting to manual handle a push click event.
     // Function created for logic to be testable since automated test suite crashes when trying to access some UserNotification framework classes such as UNUserNotificationCenter.
-    func manualPushClickHandling(push: PushNotification) {
+    internal func manualPushClickHandling(push: PushNotification) {
         // A hack to get an instance of pushClickHandler without making it a property of the MessagingPushImplementation class. pushClickHandler is not available to app extensions but MessagingPushImplementation is.
         // We get around this by getting a instance in this function, only.
         let pushClickHandler = DIGraphShared.shared.pushClickHandler
