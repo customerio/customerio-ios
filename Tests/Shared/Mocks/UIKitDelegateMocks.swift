@@ -11,6 +11,9 @@ public class MockAppDelegate: NSObject, UIApplicationDelegate {
     public var launchOptionsReceived: [UIApplication.LaunchOptionsKey: Any]?
     public var deviceTokenReceived: Data?
     public var errorReceived: Error?
+    public var openUrlCalled = false
+    public var urlReceived: URL?
+    public var optionsReceived: [UIApplication.OpenURLOptionsKey: Any]?
 
     public func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         didFinishLaunchingCalled = true
@@ -34,6 +37,13 @@ public class MockAppDelegate: NSObject, UIApplicationDelegate {
 
     public func application(_ application: UIApplication, continue userActivity: NSUserActivity, restorationHandler: @escaping ([UIUserActivityRestoring]?) -> Void) -> Bool {
         continueUserActivityCalled = true
+        return true
+    }
+
+    public func application(_ app: UIApplication, open url: URL, options: [UIApplication.OpenURLOptionsKey: Any] = [:]) -> Bool {
+        openUrlCalled = true
+        urlReceived = url
+        optionsReceived = options
         return true
     }
 }
