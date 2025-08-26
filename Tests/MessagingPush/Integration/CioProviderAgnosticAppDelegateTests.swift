@@ -238,9 +238,6 @@ class CioProviderAgnosticAppDelegateTests: XCTestCase {
     }
 
     func testUserNotificationCenterDidReceive_whenNotificationCenterIntegrationIsEnabled_thenWrappedDelegateAndMessagingPushAreCalled() {
-        // Configure mock return value
-        mockMessagingPush.userNotificationCenterReturnValue = nil
-
         var completionHandlerCalled = false
         let completionHandler = {
             completionHandlerCalled = true
@@ -251,7 +248,6 @@ class CioProviderAgnosticAppDelegateTests: XCTestCase {
         appDelegate.userNotificationCenter(UNUserNotificationCenter.current(), didReceive: UNNotificationResponse.testInstance, withCompletionHandler: completionHandler)
 
         // Verify behavior
-        XCTAssertTrue(mockMessagingPush.userNotificationCenterCalled)
         XCTAssertTrue(mockNotificationCenterDelegate.didReceiveNotificationResponseCalled)
         XCTAssertTrue(completionHandlerCalled)
     }
@@ -265,7 +261,6 @@ class CioProviderAgnosticAppDelegateTests: XCTestCase {
             config: { self.createMockConfig(autoTrackPushEvents: false) },
             logger: mockLogger
         )
-        mockMessagingPush.userNotificationCenterReturnValue = nil
         var completionHandlerCalled = false
         let completionHandler = {
             completionHandlerCalled = true

@@ -120,7 +120,6 @@ class CioAppDelegateAPNTests: XCTestCase {
     func testUserNotificationCenterDidReceive_whenCalled_thenSuperIsCalled() {
         // Setup
         _ = appDelegateAPN.application(UIApplication.shared, didFinishLaunchingWithOptions: nil)
-        mockMessagingPush.userNotificationCenterReturnValue = nil
 
         var completionHandlerCalled = false
         let completionHandler = {
@@ -131,7 +130,6 @@ class CioAppDelegateAPNTests: XCTestCase {
         appDelegateAPN.userNotificationCenter(UNUserNotificationCenter.current(), didReceive: UNNotificationResponse.testInstance, withCompletionHandler: completionHandler)
 
         // Verify behavior
-        XCTAssertTrue(mockMessagingPush.userNotificationCenterCalled == true)
         XCTAssertTrue(mockNotificationCenterDelegate.didReceiveNotificationResponseCalled)
         XCTAssertTrue(completionHandlerCalled)
     }

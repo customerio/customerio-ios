@@ -23,17 +23,13 @@ public extension MessagingPush {
         didReceive response: UNNotificationResponse,
         withCompletionHandler completionHandler: @escaping () -> Void
     ) -> Bool {
-        guard let implementation = implementation else {
+        // Cast to concrete type since method was removed from protocol
+        guard let implementation = implementation as? MessagingPushImplementation else {
             completionHandler()
             return false
         }
 
-        // Cast to concrete type since method was removed from protocol
-        guard let concreteImplementation = implementation as? MessagingPushImplementation else {
-            completionHandler()
-            return false
-        }
-        return concreteImplementation.userNotificationCenter(
+        return implementation.userNotificationCenter(
             center,
             didReceive: response,
             withCompletionHandler: completionHandler
@@ -44,15 +40,12 @@ public extension MessagingPush {
         _ center: UNUserNotificationCenter,
         didReceive response: UNNotificationResponse
     ) -> CustomerIOParsedPushPayload? {
-        guard let implementation = implementation else {
+        // Cast to concrete type since method was removed from protocol
+        guard let implementation = implementation as? MessagingPushImplementation else {
             return nil
         }
 
-        // Cast to concrete type since method was removed from protocol
-        guard let concreteImplementation = implementation as? MessagingPushImplementation else {
-            return nil
-        }
-        return concreteImplementation.userNotificationCenter(center, didReceive: response)
+        return implementation.userNotificationCenter(center, didReceive: response)
     }
 }
 
