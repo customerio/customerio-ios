@@ -7,7 +7,7 @@ jobs:
     name: Assert that code has been linted and formatted before merging
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Install binny to run lint tools 
         run: |
           curl -L --output binny https://github.com/customerio/binny/releases/download/latest/binny-macos-x86_64
