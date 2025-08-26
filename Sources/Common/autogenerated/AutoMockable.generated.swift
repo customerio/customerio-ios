@@ -331,6 +331,7 @@ public class CustomerIOInstanceMock: CustomerIOInstance, Mock {
     public var identifyEncodableClosure: ((String, AnyEncodable) -> Void)?
 
     /// Mocked function for `identify<RequestBody: Codable>(userId: String, traits: RequestBody?)`. Your opportunity to return a mocked value and check result of mock in test code.
+    @available(*, deprecated, message: "Use 'identify(userId:traits:)' with [String: Any] traits parameter instead. Support for Codable traits will be removed in a future version.")
     public func identify<RequestBody: Codable>(userId: String, traits: RequestBody?) {
         mockCalled = true
         identifyCallsCount += 1
@@ -474,6 +475,7 @@ public class CustomerIOInstanceMock: CustomerIOInstance, Mock {
     public var trackEncodableClosure: ((String, AnyEncodable) -> Void)?
 
     /// Mocked function for `track<RequestBody: Codable>(name: String, properties: RequestBody?)`. Your opportunity to return a mocked value and check result of mock in test code.
+    @available(*, deprecated, message: "Use 'track(name:properties:)' with [String: Any] properties parameter instead. Support for Codable properties will be removed in a future version.")
     public func track<RequestBody: Codable>(name: String, properties: RequestBody?) {
         mockCalled = true
         trackCallsCount += 1
@@ -521,6 +523,7 @@ public class CustomerIOInstanceMock: CustomerIOInstance, Mock {
     public var screenEncodableClosure: ((String, AnyEncodable) -> Void)?
 
     /// Mocked function for `screen<RequestBody: Codable>(title: String, properties: RequestBody?)`. Your opportunity to return a mocked value and check result of mock in test code.
+    @available(*, deprecated, message: "Use 'screen(title:properties:)' with [String: Any] properties parameter instead. Support for Codable properties will be removed in a future version.")
     public func screen<RequestBody: Codable>(title: String, properties: RequestBody?) {
         mockCalled = true
         screenCallsCount += 1

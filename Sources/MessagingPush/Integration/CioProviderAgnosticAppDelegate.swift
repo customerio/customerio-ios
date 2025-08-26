@@ -31,6 +31,7 @@ open class CioProviderAgnosticAppDelegate: CioAppDelegateType, UNUserNotificatio
         #selector(UIApplicationDelegate.application(_:didRegisterForRemoteNotificationsWithDeviceToken:)),
         #selector(UIApplicationDelegate.application(_:didFailToRegisterForRemoteNotificationsWithError:)),
         #selector(UIApplicationDelegate.application(_:continue:restorationHandler:)),
+        #selector(UIApplicationDelegate.application(_:open:options:)),
         // UNUserNotificationCenterDelegate
         #selector(UNUserNotificationCenterDelegate.userNotificationCenter(_:willPresent:withCompletionHandler:)),
         #selector(UNUserNotificationCenterDelegate.userNotificationCenter(_:didReceive:withCompletionHandler:)),
@@ -213,5 +214,13 @@ extension CioProviderAgnosticAppDelegate {
     @objc
     open func application(_ application: UIApplication, continue userActivity: NSUserActivity, restorationHandler: @escaping ([any UIUserActivityRestoring]?) -> Void) -> Bool {
         wrappedAppDelegate?.application?(application, continue: userActivity, restorationHandler: restorationHandler) ?? false
+    }
+
+    open func application(
+        _ app: UIApplication,
+        open url: URL,
+        options: [UIApplication.OpenURLOptionsKey: Any] = [:]
+    ) -> Bool {
+        wrappedAppDelegate?.application?(app, open: url, options: options) ?? false
     }
 }
