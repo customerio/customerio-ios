@@ -154,7 +154,7 @@ open class CioProviderAgnosticAppDelegate: CioAppDelegateType, UNUserNotificatio
         withCompletionHandler completionHandler: @escaping () -> Void
     ) {
         // Cast to concrete type since method was removed from protocol
-        if let implementation = messagingPush as? MessagingPushImplementation {
+        if let implementation = messagingPush as? MessagingPush {
             _ = implementation.userNotificationCenter(center, didReceive: response)
         }
 
