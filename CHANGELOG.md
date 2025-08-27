@@ -1,3 +1,9 @@
+## [3.13.1](https://github.com/customerio/customerio-ios/compare/3.13.0...3.13.1) (2025-08-27)
+
+### Bug Fixes
+
+* build issues on xcode 26 beta ([#949](https://github.com/customerio/customerio-ios/issues/949)) ([f5674b5](https://github.com/customerio/customerio-ios/commit/f5674b5ef7eedcbe9f8512a654e8fc0b773b8447))
+
 ## [3.13.0](https://github.com/customerio/customerio-ios/compare/3.12.0...3.13.0) (2025-08-21)
 
 ### Features
