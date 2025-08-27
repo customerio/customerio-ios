@@ -30,7 +30,9 @@ func userAuthenticationMiddleware() -> InAppMessageMiddleware {
         case .initialize,
              .setUserIdentifier,
              .setPageRoute,
-             .resetState:
+             .resetState,
+             .pauseMessageFetching,
+             .resumeMessageFetching:
             return next(action)
 
         default:
