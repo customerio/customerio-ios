@@ -183,7 +183,6 @@ class CioAppDelegateFCMTests: XCTestCase {
 
     func testUserNotificationCenterDidReceive_whenCalled_thenSuperIsCalled() {
         // Setup
-        mockMessagingPush.userNotificationCenterReturnValue = nil
         _ = appDelegateFCM.application(UIApplication.shared, didFinishLaunchingWithOptions: nil)
 
         var completionHandlerCalled = false
@@ -195,7 +194,6 @@ class CioAppDelegateFCMTests: XCTestCase {
         appDelegateFCM.userNotificationCenter(UNUserNotificationCenter.current(), didReceive: UNNotificationResponse.testInstance, withCompletionHandler: completionHandler)
 
         // Verify behavior
-        XCTAssertTrue(mockMessagingPush.userNotificationCenterCalled == true)
         XCTAssertTrue(mockNotificationCenterDelegate.didReceiveNotificationResponseCalled)
         XCTAssertTrue(completionHandlerCalled)
     }

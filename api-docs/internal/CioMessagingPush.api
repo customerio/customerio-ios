@@ -39,15 +39,6 @@ public interface CioMessagingPush.MessagingPushInstance {
     withContentHandler contentHandler: @escaping (UNNotificationContent) -> Unit
 ) -> Boolean;
 	public fun func serviceExtensionTimeWillExpire();
-	public fun func userNotificationCenter(
-    _ center: UNUserNotificationCenter,
-    didReceive response: UNNotificationResponse,
-    withCompletionHandler completionHandler: @escaping () -> Unit
-) -> Boolean;
-	public fun func userNotificationCenter(
-    _ center: UNUserNotificationCenter,
-    didReceive response: UNNotificationResponse
-) -> CustomerIOParsedPushPayload?;
 }
 public final class CioMessagingPush.PushAttachment {
 	public final val identifier: String;

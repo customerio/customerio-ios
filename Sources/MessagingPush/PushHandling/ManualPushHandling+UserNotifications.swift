@@ -23,7 +23,8 @@ public extension MessagingPush {
         didReceive response: UNNotificationResponse,
         withCompletionHandler completionHandler: @escaping () -> Void
     ) -> Bool {
-        guard let implementation = implementation else {
+        // Cast to concrete type since method was removed from protocol
+        guard let implementation = implementation as? MessagingPushImplementation else {
             completionHandler()
             return false
         }
@@ -39,7 +40,8 @@ public extension MessagingPush {
         _ center: UNUserNotificationCenter,
         didReceive response: UNNotificationResponse
     ) -> CustomerIOParsedPushPayload? {
-        guard let implementation = implementation else {
+        // Cast to concrete type since method was removed from protocol
+        guard let implementation = implementation as? MessagingPushImplementation else {
             return nil
         }
 
@@ -60,7 +62,7 @@ extension MessagingPushImplementation {
         withCompletionHandler completionHandler: @escaping () -> Void
     ) -> Bool {
         // to keep this code DRY, forward the request to another function to perform all the logic:
-        guard let _ = userNotificationCenter(center, didReceive: response) else {
+        guard userNotificationCenter(center, didReceive: response) != nil else {
             // push did not come from CIO
             // Do not call completionHandler() because push did not come from CIO. Another service might have sent it so
             // allow another SDK
@@ -73,7 +75,7 @@ extension MessagingPushImplementation {
         return true
     }
 
-    public func userNotificationCenter(
+    func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         didReceive response: UNNotificationResponse
     ) -> CustomerIOParsedPushPayload? {

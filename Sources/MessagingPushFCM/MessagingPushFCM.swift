@@ -137,7 +137,8 @@ public class MessagingPushFCM: MessagingPushFCMInstance {
         _ center: UNUserNotificationCenter,
         didReceive response: UNNotificationResponse
     ) -> CustomerIOParsedPushPayload? {
-        messagingPush.userNotificationCenter(center, didReceive: response)
+        // Use concrete MessagingPush instance since method was removed from protocol
+        MessagingPush.shared.userNotificationCenter(center, didReceive: response)
     }
 
     @available(iOSApplicationExtension, unavailable)
@@ -146,7 +147,8 @@ public class MessagingPushFCM: MessagingPushFCMInstance {
         didReceive response: UNNotificationResponse,
         withCompletionHandler completionHandler: @escaping () -> Void
     ) -> Bool {
-        messagingPush.userNotificationCenter(center, didReceive: response, withCompletionHandler: completionHandler)
+        // Use concrete MessagingPush instance since method was removed from protocol
+        MessagingPush.shared.userNotificationCenter(center, didReceive: response, withCompletionHandler: completionHandler)
     }
     #endif
 }
