@@ -34,7 +34,7 @@ if (ProcessInfo.processInfo.environment["CI"] != nil) { // true if running on a 
 let package = Package(
     name: "Customer.io",
     platforms: [
-        .iOS(.v13)
+        .iOS(.v15)
     ],
     products: products,
     dependencies: [
@@ -42,7 +42,7 @@ let package = Package(
         // https://web.archive.org/web/20220525200227/https://www.timc.dev/posts/understanding-swift-packages/
         //
         // Update to exact version until wrapper SDKs become part of testing pipeline.
-        .package(name: "Firebase", url: "https://github.com/firebase/firebase-ios-sdk.git", "8.7.0"..<"13.0.0"),
+        .package(name: "Firebase", url: "https://github.com/firebase/firebase-ios-sdk.git", from: "12.0.0"),
         
 
         // Make sure the version number is same for DataPipelines cocoapods.
