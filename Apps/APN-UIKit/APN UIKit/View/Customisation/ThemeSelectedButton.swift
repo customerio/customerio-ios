@@ -16,11 +16,11 @@ class ThemeSelectedButton: UIButton {
     }
 
     private func setup() {
-        // Modern styling
+        // Improve styling
         layer.cornerRadius = 12
         clipsToBounds = false
 
-        // Beautiful shadow
+        // Apply shadows
         applyShadow()
 
         // Typography
@@ -53,6 +53,9 @@ class ThemeSelectedButton: UIButton {
     }
 
     private func updateAppearance() {
+        // Set text colors immediately to avoid readability issues
+        setTitleColors(isSelected ? Self.primaryTextColor : Self.primaryColor)
+
         UIView.animate(withDuration: 0.2, delay: 0, options: [.curveEaseInOut], animations: {
             if self.isSelected {
                 self.backgroundColor = Self.primaryColor
@@ -63,9 +66,7 @@ class ThemeSelectedButton: UIButton {
                 self.layer.borderColor = Self.primaryColor.withAlphaComponent(0.3).cgColor
                 self.transform = .identity
             }
-        }) { _ in
-            self.setTitleColors(self.isSelected ? Self.primaryTextColor : Self.primaryColor)
-        }
+        })
     }
 
     private func setTitleColors(_ color: UIColor) {
@@ -91,11 +92,7 @@ class ThemeSelectedButton: UIButton {
 
     @objc private func touchUp() {
         UIView.animate(withDuration: 0.1) {
-            if self.isSelected {
-                self.transform = CGAffineTransform(scaleX: 0.98, y: 0.98)
-            } else {
-                self.transform = .identity
-            }
+            // Let updateAppearance() handle transform animation, just restore alpha
             self.alpha = 1.0
         }
     }
