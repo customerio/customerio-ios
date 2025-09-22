@@ -91,8 +91,11 @@ class ThemeSelectedButton: UIButton {
     }
 
     @objc private func touchUp() {
+        // Immediately set correct transform state, then animate alpha
+        let targetTransform: CGAffineTransform = isSelected ? CGAffineTransform(scaleX: 0.98, y: 0.98) : .identity
+        transform = targetTransform
+
         UIView.animate(withDuration: 0.1) {
-            // Let updateAppearance() handle transform animation, just restore alpha
             self.alpha = 1.0
         }
     }
