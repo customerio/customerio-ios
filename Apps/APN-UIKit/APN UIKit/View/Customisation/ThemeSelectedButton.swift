@@ -2,14 +2,8 @@ import UIKit
 
 class ThemeSelectedButton: UIButton {
     // Default colors
-    var defaultBackgroundColor = UIColor(red: 60.0 / 255, green: 67.0 / 255, blue: 125.0 / 255, alpha: 0.7)
-    var defaultTitleColor: UIColor = .white
-
-    // Selected colors
-    var selectedBackgroundColor = UIColor(red: 60.0 / 255, green: 67.0 / 255, blue: 125.0 / 255, alpha: 1.0)
-
-    // Highlight color
-    var highlightTitleColor: UIColor = .white.withAlphaComponent(0.7)
+    private static var primaryColor = UIColor(red: 60.0 / 255, green: 67.0 / 255, blue: 125.0 / 255, alpha: 1.0)
+    private static var primaryTextColor: UIColor = .white
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -21,28 +15,88 @@ class ThemeSelectedButton: UIButton {
         setup()
     }
 
-    func setup() {
-        layer.cornerRadius = 5
-        frame.size.height = 50
+    private func setup() {
+        // Improve styling
+        layer.cornerRadius = 12
+        clipsToBounds = false
 
-        // Added to prevent automatic tinging for selected state
-        tintColor = .clear
+        // Apply shadows
+        applyShadow()
 
-        // Configure colors for all states
-        setTitleColor(defaultTitleColor, for: .normal)
-        setTitleColor(defaultTitleColor, for: .selected)
-        setTitleColor(highlightTitleColor, for: .highlighted)
-        setTitleColor(highlightTitleColor, for: [.highlighted, .selected])
+        // Typography
+        titleLabel?.font = UIFont.systemFont(ofSize: 17, weight: .semibold)
+        titleLabel?.textAlignment = .center
 
-        // Set background color for normal state
-        backgroundColor = defaultBackgroundColor
+        // Configure initial appearance
+        configureAppearance(
+            backgroundColor: Self.primaryColor.withAlphaComponent(0.1),
+            titleColor: Self.primaryColor,
+            borderColor: Self.primaryColor.withAlphaComponent(0.3)
+        )
+
+        // Add touch animations
+        addTarget(self, action: #selector(touchDown), for: .touchDown)
+        addTarget(self, action: #selector(touchUp), for: [.touchUpInside, .touchUpOutside, .touchCancel])
+    }
+
+    private func configureAppearance(backgroundColor: UIColor, titleColor: UIColor, borderColor: UIColor) {
+        self.backgroundColor = backgroundColor
+        setTitleColor(titleColor, for: .normal)
+        layer.borderWidth = 1.5
+        layer.borderColor = borderColor.cgColor
     }
 
     override var isSelected: Bool {
         didSet {
-            backgroundColor = isSelected ? selectedBackgroundColor : defaultBackgroundColor
-            setBackgroundImage(nil, for: .normal)
-            setBackgroundImage(nil, for: .selected)
+            updateAppearance()
+        }
+    }
+
+    private func updateAppearance() {
+        // Set text colors immediately to avoid readability issues
+        setTitleColors(isSelected ? Self.primaryTextColor : Self.primaryColor)
+
+        UIView.animate(withDuration: 0.2, delay: 0, options: [.curveEaseInOut], animations: {
+            if self.isSelected {
+                self.backgroundColor = Self.primaryColor
+                self.layer.borderColor = Self.primaryColor.cgColor
+                self.transform = CGAffineTransform(scaleX: 0.98, y: 0.98)
+            } else {
+                self.backgroundColor = Self.primaryColor.withAlphaComponent(0.1)
+                self.layer.borderColor = Self.primaryColor.withAlphaComponent(0.3).cgColor
+                self.transform = .identity
+            }
+        })
+    }
+
+    private func setTitleColors(_ color: UIColor) {
+        setTitleColor(color, for: .normal)
+        setTitleColor(color, for: .selected)
+        setTitleColor(color, for: .highlighted)
+        tintColor = color
+    }
+
+    private func applyShadow() {
+        layer.shadowColor = UIColor.black.cgColor
+        layer.shadowOffset = CGSize(width: 0, height: 2)
+        layer.shadowRadius = 8
+        layer.shadowOpacity = 0.15
+    }
+
+    @objc private func touchDown() {
+        UIView.animate(withDuration: 0.1) {
+            self.transform = CGAffineTransform(scaleX: 0.95, y: 0.95)
+            self.alpha = 0.8
+        }
+    }
+
+    @objc private func touchUp() {
+        // Immediately set correct transform state, then animate alpha
+        let targetTransform: CGAffineTransform = isSelected ? CGAffineTransform(scaleX: 0.98, y: 0.98) : .identity
+        transform = targetTransform
+
+        UIView.animate(withDuration: 0.1) {
+            self.alpha = 1.0
         }
     }
 }
