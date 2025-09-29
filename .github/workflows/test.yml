@@ -15,14 +15,14 @@ jobs:
     permissions:
       checks: write # Need write permission to add test result check.
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - uses: ./.github/actions/setup-ios
     # If running tests fails, sometimes it's because of scheme name is wrong. This gives us all available schemes. 
     - name: Get XCode schemes 
       run: xcrun xcodebuild -list
 
     - name: Setup Ruby to run Fastlane 
-      uses: ruby/setup-ruby@354a1ad156761f5ee2b7b13fa8e09943a5e8d252 # v1.229.0
+      uses: ruby/setup-ruby@0481980f17b760ef6bca5e8c55809102a0af1e5a # v1.263.0
       with:
         ruby-version: '3.2'
         bundler-cache: true # install dependencies in Gemfile, including Fastlane. 
@@ -48,7 +48,7 @@ jobs:
         xcresultparser --output-format cobertura "Customer.io-Package.xcresult" > ".build/coverage.xml"
   
     - name: Upload code coverage report 
-      uses: codecov/codecov-action@0f8570b1a125f4937846a11fcfa3bcd548bd8c97 # v4.6.0
+      uses: codecov/codecov-action@b9fd7d16f6d7d1b5d2bec1a2887e65ceed900238 # v4.6.0
       env:
         CODECOV_TOKEN: ${{ secrets.CODECOV_UPLOAD_TOKEN }} 
       with: 
@@ -63,7 +63,7 @@ jobs:
         path: test-report.*
       if: ${{ always() }}
     - name: Publish test results
-      uses: mikepenz/action-junit-report@db71d41eb79864e25ab0337e395c352e84523afe  # v4.3.1
+      uses: mikepenz/action-junit-report@3585e9575db828022551b4231f165eb59a0e74e3  # v5.6.2
       with:
         check_name: XCode macOS tests - Results
         report_paths: test-report.xml
