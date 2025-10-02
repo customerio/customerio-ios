@@ -49,12 +49,13 @@ class AnonymousMessageManagerImpl: AnonymousMessageManager {
         let anonymousMessages = messages.filter(\.isAnonymousMessage)
 
         if anonymousMessages.isEmpty {
-            logger.logWithModuleTag("No anonymous messages in response, clearing local store", level: .debug)
+            logger.logWithModuleTag("No anonymous messages in server response - clearing local storage as anonymous messages have expired", level: .debug)
             clearAllAnonymousData()
             return
         }
 
-        logger.logWithModuleTag("Storing \(anonymousMessages.count) anonymous messages locally", level: .debug)
+        // Get previous messages for cleanup comparison
+        let previousMessages = (try? getStoredMessages()) ?? []
 
         // Store messages as JSON
         do {
@@ -65,9 +66,10 @@ class AnonymousMessageManagerImpl: AnonymousMessageManager {
             let expiryTime = dateUtil.now.timeIntervalSince1970 * 1000 + cacheExpiryDuration
             keyValueStorage.setDouble(expiryTime, forKey: .broadcastMessagesExpiry)
 
+            logger.logWithModuleTag("Saved \(anonymousMessages.count) anonymous messages to local store", level: .debug)
+
             // Clean up tracking data for messages no longer in the response
-            let currentMessageIds = Set(anonymousMessages.map(\.messageId))
-            cleanupRemovedMessagesTracking(currentMessageIds: currentMessageIds)
+            cleanupExpiredAnonymousTracking(currentMessages: anonymousMessages, previousMessages: previousMessages)
         } catch {
             logger.logWithModuleTag("Failed to serialize anonymous messages: \(error)", level: .error)
         }
@@ -82,49 +84,99 @@ class AnonymousMessageManagerImpl: AnonymousMessageManager {
         }
 
         // Retrieve stored messages
-        guard let messagesJson = keyValueStorage.string(.broadcastMessages) else {
+        guard let storedMessages = try? getStoredMessages() else {
             logger.logWithModuleTag("No anonymous messages in local store", level: .debug)
             return []
         }
 
-        do {
-            let storedMessages = try deserializeMessages(messagesJson)
-            logger.logWithModuleTag("Retrieved \(storedMessages.count) anonymous messages from local store", level: .debug)
+        logger.logWithModuleTag("Retrieved \(storedMessages.count) anonymous messages from local store", level: .debug)
 
-            // Filter based on eligibility rules
-            let eligibleMessages = storedMessages.filter { message in
-                isMessageEligible(message)
-            }
-
-            logger.logWithModuleTag("\(eligibleMessages.count) anonymous messages are eligible to display", level: .debug)
-            return eligibleMessages
-        } catch {
-            logger.logWithModuleTag("Failed to deserialize anonymous messages: \(error)", level: .error)
-            return []
+        // Filter based on eligibility rules
+        let eligibleMessages = storedMessages.filter { message in
+            isMessageEligible(message)
         }
+
+        logger.logWithModuleTag("\(eligibleMessages.count) anonymous messages are eligible to display", level: .debug)
+        return eligibleMessages
     }
 
     func markAnonymousAsSeen(messageId: String) {
-        updateTracking(for: messageId) { tracking in
-            tracking.timesShown += 1
-            logger.logWithModuleTag("Anonymous message \(messageId) shown \(tracking.timesShown) time(s)", level: .debug)
+        logger.logWithModuleTag("Marking anonymous message \(messageId) as seen", level: .debug)
+
+        // Get frequency details from stored message JSON
+        guard let frequency = getAnonymousFrequency(messageId: messageId) else {
+            logger.logWithModuleTag("Could not find anonymous message details for \(messageId)", level: .debug)
+            return
+        }
+
+        // Increment times shown counter
+        var trackingData = getTrackingData()
+        var messageTracking = trackingData.tracking[messageId] ?? MessageTracking()
+        messageTracking.timesShown += 1
+        trackingData.tracking[messageId] = messageTracking
+        setTrackingData(trackingData)
+
+        let numberOfTimesShown = messageTracking.timesShown
+
+        // Apply frequency rules
+        if frequency.count == 1 {
+            // Mark as permanently dismissed for count=1
+            var updatedTracking = getTrackingData()
+            var updatedMessageTracking = updatedTracking.tracking[messageId] ?? MessageTracking()
+            updatedMessageTracking.dismissed = true
+            updatedTracking.tracking[messageId] = updatedMessageTracking
+            setTrackingData(updatedTracking)
+            logger.logWithModuleTag("Marked anonymous message \(messageId) as permanently dismissed (count=1)", level: .debug)
+        } else if frequency.delay > 0 {
+            // Set next show time based on delay
+            let currentTime = dateUtil.now.timeIntervalSince1970 * 1000
+            let nextShowTimeMillis = currentTime + Double(frequency.delay * 1000)
+            var updatedTracking = getTrackingData()
+            var updatedMessageTracking = updatedTracking.tracking[messageId] ?? MessageTracking()
+            updatedMessageTracking.nextShowTime = nextShowTimeMillis
+            updatedTracking.tracking[messageId] = updatedMessageTracking
+            setTrackingData(updatedTracking)
+
+            let nextShowDate = Date(timeIntervalSince1970: nextShowTimeMillis / 1000)
+            logger.logWithModuleTag("Marked anonymous message \(messageId) as seen, shown \(numberOfTimesShown) times, next show time: \(nextShowDate)", level: .debug)
+        } else {
+            logger.logWithModuleTag("Marked anonymous message \(messageId) as seen, shown \(numberOfTimesShown) times, no delay restriction", level: .debug)
         }
     }
 
     func markAnonymousAsDismissed(messageId: String) {
-        updateTracking(for: messageId) { tracking in
-            tracking.dismissed = true
-            logger.logWithModuleTag("Anonymous message \(messageId) marked as dismissed", level: .debug)
+        logger.logWithModuleTag("Marking anonymous message \(messageId) as dismissed", level: .debug)
+
+        // Get frequency details from stored message JSON
+        guard let frequency = getAnonymousFrequency(messageId: messageId) else {
+            logger.logWithModuleTag("Could not find anonymous message details for \(messageId)", level: .debug)
+            return
         }
+
+        // Check ignoreDismiss flag from message
+        if frequency.ignoreDismiss {
+            logger.logWithModuleTag("Anonymous message \(messageId) is set to ignore dismiss", level: .debug)
+            return
+        }
+
+        // Mark as dismissed
+        var trackingData = getTrackingData()
+        var messageTracking = trackingData.tracking[messageId] ?? MessageTracking()
+        messageTracking.dismissed = true
+        trackingData.tracking[messageId] = messageTracking
+        setTrackingData(trackingData)
+        logger.logWithModuleTag("Marked anonymous message \(messageId) as dismissed and will not show again", level: .debug)
     }
 
     func clearAllAnonymousData() {
-        logger.logWithModuleTag("Clearing all anonymous message data", level: .debug)
+        logger.logWithModuleTag("Cleared all anonymous message storage", level: .debug)
 
-        // Clear message list, expiry, and tracking
+        // Clear message list and expiry only - tracking data is intentionally kept
         keyValueStorage.setString(nil, forKey: .broadcastMessages)
         keyValueStorage.setDouble(nil, forKey: .broadcastMessagesExpiry)
-        keyValueStorage.setString(nil, forKey: .broadcastMessagesTracking)
+
+        // Note: Individual message tracking (times shown, dismissed, next show time) is intentionally kept
+        // This is useful if the same message returns in the future
     }
 
     // MARK: - Private Helper Methods
@@ -146,15 +198,15 @@ class AnonymousMessageManagerImpl: AnonymousMessageManager {
         let messageId = message.messageId
         let frequency = broadcast.frequency
 
-        // Check if message is in delay period
-        if isAnonymousInDelayPeriod(messageId: messageId) {
-            logger.logWithModuleTag("Anonymous message \(messageId) in delay period", level: .debug)
+        // Check dismiss status (matches Android order)
+        if isAnonymousDismissed(messageId: messageId), !frequency.ignoreDismiss {
+            logger.logWithModuleTag("Anonymous message \(messageId) dismissed and ignoreDismiss=false", level: .debug)
             return false
         }
 
-        // Check dismiss status
-        if isAnonymousDismissed(messageId: messageId), !frequency.ignoreDismiss {
-            logger.logWithModuleTag("Anonymous message \(messageId) dismissed and ignoreDismiss=false", level: .debug)
+        // Check if message is in delay period
+        if isAnonymousInDelayPeriod(messageId: messageId) {
+            logger.logWithModuleTag("Anonymous message \(messageId) in delay period", level: .debug)
             return false
         }
 
@@ -166,20 +218,6 @@ class AnonymousMessageManagerImpl: AnonymousMessageManager {
         }
 
         return true
-    }
-
-    private func cleanupRemovedMessagesTracking(currentMessageIds: Set<String>) {
-        var trackingData = getTrackingData()
-        let trackedMessageIds = Set(trackingData.tracking.keys)
-        let removedMessageIds = trackedMessageIds.subtracting(currentMessageIds)
-
-        guard !removedMessageIds.isEmpty else { return }
-
-        // Remove tracking for messages no longer in the current set
-        removedMessageIds.forEach { trackingData.tracking.removeValue(forKey: $0) }
-        setTrackingData(trackingData)
-
-        logger.logWithModuleTag("Cleaned up tracking for \(removedMessageIds.count) removed messages", level: .debug)
     }
 
     // MARK: - Storage Access Helpers
@@ -237,6 +275,35 @@ class AnonymousMessageManagerImpl: AnonymousMessageManager {
         }
 
         logger.logWithModuleTag("Anonymous message \(messageId) next show time set to \(nextShowTime)", level: .debug)
+    }
+
+    private func getAnonymousFrequency(messageId: String) -> BroadcastFrequency? {
+        guard let storedMessages = try? getStoredMessages() else {
+            return nil
+        }
+        let message = storedMessages.first { $0.messageId == messageId }
+        return message?.gistProperties.broadcast?.frequency
+    }
+
+    private func getStoredMessages() throws -> [Message] {
+        guard let jsonString = keyValueStorage.string(.broadcastMessages) else {
+            return []
+        }
+        return try deserializeMessages(jsonString)
+    }
+
+    private func cleanupExpiredAnonymousTracking(currentMessages: [Message], previousMessages: [Message]) {
+        let currentMessageIds = Set(currentMessages.map(\.messageId))
+        let previousMessageIds = Set(previousMessages.map(\.messageId))
+        let expiredMessageIds = previousMessageIds.subtracting(currentMessageIds)
+
+        guard !expiredMessageIds.isEmpty else { return }
+
+        var trackingData = getTrackingData()
+        expiredMessageIds.forEach { trackingData.tracking.removeValue(forKey: $0) }
+        setTrackingData(trackingData)
+
+        logger.logWithModuleTag("Cleaned up tracking for \(expiredMessageIds.count) expired messages", level: .debug)
     }
 
     // MARK: - Serialization

@@ -91,11 +91,11 @@ public class Message {
         self.messageId = messageId
         self.queueId = queueId
         self.priority = priority
-        self.gistProperties = Message.parseGistProperties(from: properties?["gist"] as? [String: Any])
+        self.gistProperties = Message.parseGistProperties(from: properties?["gist"] as? [String: Any], messageId: messageId, queueId: queueId)
         self.properties = properties ?? [:]
     }
 
-    private static func parseGistProperties(from gist: [String: Any]?) -> GistProperties {
+    private static func parseGistProperties(from gist: [String: Any]?, messageId: String, queueId: String?) -> GistProperties {
         let defaultPosition = MessagePosition.center
         guard let gist = gist else {
             return GistProperties(routeRule: nil, elementId: nil, campaignId: nil, position: defaultPosition, persistent: false, overlayColor: nil, broadcast: nil)
@@ -107,7 +107,7 @@ public class Message {
         let campaignId = gist["campaignId"] as? String
         let persistent = gist["persistent"] as? Bool ?? false
         let overlayColor = gist["overlayColor"] as? String
-        let broadcast = parseBroadcastProperties(from: gist["broadcast"] as? [String: Any])
+        let broadcast = parseBroadcastProperties(from: gist["broadcast"] as? [String: Any], messageId: messageId, queueId: queueId)
 
         return GistProperties(
             routeRule: routeRule,
@@ -120,13 +120,14 @@ public class Message {
         )
     }
 
-    private static func parseBroadcastProperties(from broadcast: [String: Any]?) -> BroadcastProperties? {
+    private static func parseBroadcastProperties(from broadcast: [String: Any]?, messageId: String, queueId: String?) -> BroadcastProperties? {
         guard let broadcast = broadcast,
               let frequencyDict = broadcast["frequency"] as? [String: Any]
         else {
             return nil
         }
 
+        // Get count and delay with defaults of 0
         let count = frequencyDict["count"] as? Int ?? 0
         let delay = frequencyDict["delay"] as? Int ?? 0
         let ignoreDismiss = frequencyDict["ignoreDismiss"] as? Bool ?? false
