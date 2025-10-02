@@ -46,8 +46,9 @@ class AnonymousMessageManagerImpl: AnonymousMessageManager {
         let anonymousMessages = messages.filter(\.isAnonymousMessage)
 
         if anonymousMessages.isEmpty {
+            let previousMessages = (try? getStoredMessages()) ?? []
             logger.logWithModuleTag("No anonymous messages in server response - clearing local storage as anonymous messages have expired", level: .debug)
-            clearAllAnonymousData()
+            clearAllAnonymousData(previousMessages: previousMessages)
             return
         }
 
@@ -75,8 +76,9 @@ class AnonymousMessageManagerImpl: AnonymousMessageManager {
     func getEligibleAnonymousMessages() -> [Message] {
         // Check if cache has expired
         if isAnonymousMessagesExpired() {
+            let previousMessages = (try? getStoredMessages()) ?? []
             logger.logWithModuleTag("Anonymous messages cache expired", level: .debug)
-            clearAllAnonymousData()
+            clearAllAnonymousData(previousMessages: previousMessages)
             return []
         }
 
@@ -159,15 +161,19 @@ class AnonymousMessageManagerImpl: AnonymousMessageManager {
         logger.logWithModuleTag("Marked anonymous message \(messageId) as dismissed and will not show again", level: .debug)
     }
 
-    private func clearAllAnonymousData() {
-        logger.logWithModuleTag("Cleared all anonymous message storage", level: .debug)
-
-        // Clear message list and expiry only - tracking data is intentionally kept
+    private func clearAllAnonymousData(previousMessages: [Message]) {
+        // Clear message storage
         keyValueStorage.setString(nil, forKey: .broadcastMessages)
         keyValueStorage.setDouble(nil, forKey: .broadcastMessagesExpiry)
 
-        // Note: Individual message tracking (times shown, dismissed, next show time) is intentionally kept
-        // This is useful if the same message returns in the future
+        // Clean up tracking data for all previous anonymous messages
+        let messageIds = Set(previousMessages.map(\.messageId))
+        messageIds.forEach { messageId in
+            clearAnonymousTracking(messageId: messageId)
+            logger.logWithModuleTag("Cleaned up tracking data for expired anonymous message: \(messageId)", level: .debug)
+        }
+
+        logger.logWithModuleTag("Cleared all anonymous message storage and tracking data", level: .debug)
     }
 
     // MARK: - Private Helper Methods
@@ -272,6 +278,12 @@ class AnonymousMessageManagerImpl: AnonymousMessageManager {
         return try deserializeMessages(jsonString)
     }
 
+    private func clearAnonymousTracking(messageId: String) {
+        var trackingData = getTrackingData()
+        trackingData.tracking.removeValue(forKey: messageId)
+        setTrackingData(trackingData)
+    }
+
     private func cleanupExpiredAnonymousTracking(currentMessages: [Message], previousMessages: [Message]) {
         let currentMessageIds = Set(currentMessages.map(\.messageId))
         let previousMessageIds = Set(previousMessages.map(\.messageId))
@@ -279,9 +291,10 @@ class AnonymousMessageManagerImpl: AnonymousMessageManager {
 
         guard !expiredMessageIds.isEmpty else { return }
 
-        var trackingData = getTrackingData()
-        expiredMessageIds.forEach { trackingData.tracking.removeValue(forKey: $0) }
-        setTrackingData(trackingData)
+        expiredMessageIds.forEach { expiredId in
+            clearAnonymousTracking(messageId: expiredId)
+            logger.logWithModuleTag("Cleaned up tracking data for expired anonymous message: \(expiredId)", level: .debug)
+        }
 
         logger.logWithModuleTag("Cleaned up tracking for \(expiredMessageIds.count) expired messages", level: .debug)
     }

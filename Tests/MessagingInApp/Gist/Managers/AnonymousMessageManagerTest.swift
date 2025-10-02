@@ -17,6 +17,61 @@ class AnonymousMessageManagerTest: UnitTest {
         )
     }
 
+    // MARK: - Cleanup Bug Fix Tests
+
+    func test_cleanup_cacheExpiry_expectTrackingDataCleared() {
+        // Given: Message with tracking data
+        let message = createAnonymousMessage(messageId: "expiry-test", count: 5, delay: 10)
+        manager.updateAnonymousMessagesLocalStore(messages: [message])
+        manager.markAnonymousAsSeen(messageId: "expiry-test")
+        manager.markAnonymousAsDismissed(messageId: "expiry-test")
+
+        // Verify tracking exists
+        let trackingBefore = diGraphShared.sharedKeyValueStorage.string(.broadcastMessagesTracking)
+        XCTAssertNotNil(trackingBefore)
+        XCTAssertTrue(trackingBefore!.contains("expiry-test"))
+
+        // When: Cache expires (61 minutes pass)
+        let sixtyOneMinutesLater = dateUtilStub.givenNow.addingTimeInterval(61 * 60)
+        dateUtilStub.givenNow = sixtyOneMinutesLater
+
+        // Get eligible messages (triggers cleanup)
+        let eligible = manager.getEligibleAnonymousMessages()
+        XCTAssertEqual(eligible.count, 0)
+
+        // Then: Tracking data should be cleared
+        let trackingAfter = diGraphShared.sharedKeyValueStorage.string(.broadcastMessagesTracking)
+        if let trackingJson = trackingAfter,
+           let data = trackingJson.data(using: .utf8),
+           let tracking = try? JSONDecoder().decode(MessagesTrackingData.self, from: data) {
+            XCTAssertFalse(tracking.tracking.keys.contains("expiry-test"), "Tracking should be cleared on expiry")
+        }
+    }
+
+    func test_cleanup_idReusePrevention_expectCleanState() {
+        // This test verifies the critical bug fix:
+        // When messages are cleared and then reintroduced with same ID,
+        // they should not inherit stale tracking state
+
+        // Given: Message "reused-id" is shown and dismissed
+        let message1 = createAnonymousMessage(messageId: "reused-id", count: 5, delay: 0)
+        manager.updateAnonymousMessagesLocalStore(messages: [message1])
+        manager.markAnonymousAsSeen(messageId: "reused-id")
+        manager.markAnonymousAsDismissed(messageId: "reused-id")
+
+        // When: Server clears all anonymous messages
+        manager.updateAnonymousMessagesLocalStore(messages: [])
+
+        // Then: Later, same ID is reintroduced
+        let message2 = createAnonymousMessage(messageId: "reused-id", count: 5, delay: 0)
+        manager.updateAnonymousMessagesLocalStore(messages: [message2])
+
+        // The reused message should be eligible (not dismissed from previous state)
+        let eligible = manager.getEligibleAnonymousMessages()
+        XCTAssertEqual(eligible.count, 1, "Reused ID should start with clean state")
+        XCTAssertEqual(eligible.first?.messageId, "reused-id")
+    }
+
     // MARK: - Message Parsing Tests
 
     func test_parseBroadcastProperties_givenValidFrequency_expectCorrectParsing() {
@@ -411,9 +466,17 @@ class AnonymousMessageManagerTest: UnitTest {
     }
 
     func test_edgeCase_noAnonymousMessages_expectClearAll() {
-        // Given: Anonymous messages exist
+        // Given: Anonymous messages exist with tracking data
         let message = createAnonymousMessage(messageId: "temp-msg", count: 0, delay: 0)
         manager.updateAnonymousMessagesLocalStore(messages: [message])
+
+        // Mark as seen to create tracking data
+        manager.markAnonymousAsSeen(messageId: "temp-msg")
+
+        // Verify tracking data exists
+        let trackingDataBefore = diGraphShared.sharedKeyValueStorage.string(.broadcastMessagesTracking)
+        XCTAssertNotNil(trackingDataBefore)
+        XCTAssertTrue(trackingDataBefore!.contains("temp-msg"))
 
         // When: Server returns empty anonymous message list
         manager.updateAnonymousMessagesLocalStore(messages: [])
@@ -421,6 +484,13 @@ class AnonymousMessageManagerTest: UnitTest {
         // Then: All data should be cleared
         XCTAssertNil(diGraphShared.sharedKeyValueStorage.string(.broadcastMessages))
         XCTAssertNil(diGraphShared.sharedKeyValueStorage.double(.broadcastMessagesExpiry))
+
+        let trackingDataAfter = diGraphShared.sharedKeyValueStorage.string(.broadcastMessagesTracking)
+        if let trackingJson = trackingDataAfter,
+           let data = trackingJson.data(using: .utf8),
+           let tracking = try? JSONDecoder().decode(MessagesTrackingData.self, from: data) {
+            XCTAssertFalse(tracking.tracking.keys.contains("temp-msg"), "Tracking data for temp-msg should be removed")
+        }
     }
 
     func test_edgeCase_mixedAnonymousAndRegular_expectOnlyAnonymousStored() {
