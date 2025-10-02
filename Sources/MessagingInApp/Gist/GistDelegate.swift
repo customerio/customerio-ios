@@ -39,7 +39,9 @@ class GistDelegateImpl: GistDelegate {
         logger.logWithModuleTag("Message shown: \(message.describeForLogs)", level: .debug)
 
         if let deliveryId = message.campaignDeliveryId {
-            eventBusHandler.postEvent(TrackInAppMetricEvent(deliveryID: deliveryId, event: InAppMetric.opened.rawValue))
+            eventBusHandler.dispatch { handler in
+                await handler.postEvent(TrackInAppMetricEvent(deliveryID: deliveryId, event: InAppMetric.opened.rawValue))
+            }
         }
         // To ensure the keyboard is dismissed on displaying an in-app message,
         // Update UI on main thread only.
@@ -69,7 +71,9 @@ class GistDelegateImpl: GistDelegate {
         // a close action does not count as a clicked action.
         if action != "gist://close" {
             if let deliveryId = message.campaignDeliveryId {
-                eventBusHandler.postEvent(TrackInAppMetricEvent(deliveryID: deliveryId, event: InAppMetric.clicked.rawValue, params: ["actionName": name, "actionValue": action]))
+                eventBusHandler.dispatch { handler in
+                    await handler.postEvent(TrackInAppMetricEvent(deliveryID: deliveryId, event: InAppMetric.clicked.rawValue, params: ["actionName": name, "actionValue": action]))
+                }
             }
         }
 

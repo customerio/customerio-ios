@@ -17,15 +17,21 @@ class MessagingPushImplementation: MessagingPushInstance {
     }
 
     func deleteDeviceToken() {
-        eventBusHandler.postEvent(DeleteDeviceTokenEvent())
+        eventBusHandler.dispatch { handler in
+            await handler.postEvent(DeleteDeviceTokenEvent())
+        }
     }
 
     func registerDeviceToken(_ deviceToken: String) {
-        eventBusHandler.postEvent(RegisterDeviceTokenEvent(token: deviceToken))
+        eventBusHandler.dispatch { handler in
+            await handler.postEvent(RegisterDeviceTokenEvent(token: deviceToken))
+        }
     }
 
     func trackMetric(deliveryID: String, event: Metric, deviceToken: String) {
-        eventBusHandler.postEvent(TrackMetricEvent(deliveryID: deliveryID, event: event.rawValue, deviceToken: deviceToken))
+        eventBusHandler.dispatch { handler in
+            await handler.postEvent(TrackMetricEvent(deliveryID: deliveryID, event: event.rawValue, deviceToken: deviceToken))
+        }
     }
 
     func trackMetricFromNSE(

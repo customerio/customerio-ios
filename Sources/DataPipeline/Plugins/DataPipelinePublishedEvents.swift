@@ -17,19 +17,25 @@ class DataPipelinePublishedEvents: EventPlugin {
 
     func identify(event: IdentifyEvent) -> IdentifyEvent? {
         if let identifier = event.userId ?? event.anonymousId {
-            eventBusHandler.postEvent(ProfileIdentifiedEvent(identifier: identifier))
+            eventBusHandler.dispatch { handler in
+                await handler.postEvent(ProfileIdentifiedEvent(identifier: identifier))
+            }
         }
         return event
     }
 
     func screen(event: ScreenEvent) -> ScreenEvent? {
         if let name = event.name {
-            eventBusHandler.postEvent(ScreenViewedEvent(name: name))
+            eventBusHandler.dispatch { handler in
+                await handler.postEvent(ScreenViewedEvent(name: name))
+            }
         }
         return event
     }
 
     func reset() {
-        eventBusHandler.postEvent(ResetEvent())
+        eventBusHandler.dispatch { handler in
+            await handler.postEvent(ResetEvent())
+        }
     }
 }

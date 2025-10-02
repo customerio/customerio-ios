@@ -83,6 +83,9 @@ extension DIGraphShared {
         _ = deepLinkUtil
         countDependenciesResolved += 1
 
+        _ = concurrencySupport
+        countDependenciesResolved += 1
+
         _ = deviceMetricsGrabber
         countDependenciesResolved += 1
 
@@ -175,7 +178,7 @@ extension DIGraphShared {
     }
 
     private func _get_eventBusHandler() -> EventBusHandler {
-        CioEventBusHandler(eventBus: eventBus, eventCache: eventCache, eventStorage: eventStorage, logger: logger)
+        CioEventBusHandler(eventBus: eventBus, eventCache: eventCache, eventStorage: eventStorage, logger: logger, concurrency: concurrencySupport)
     }
 
     // ProfileStore
@@ -283,6 +286,30 @@ extension DIGraphShared {
     @available(iOSApplicationExtension, unavailable)
     private func _get_deepLinkUtil() -> DeepLinkUtil {
         DeepLinkUtilImpl(logger: sdkCommonLogger, uiKitWrapper: uIKitWrapper)
+    }
+
+    // ConcurrencySupport (singleton)
+    public var concurrencySupport: ConcurrencySupport {
+        getOverriddenInstance() ??
+            sharedConcurrencySupport
+    }
+
+    public var sharedConcurrencySupport: ConcurrencySupport {
+        // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
+        // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
+        DispatchQueue(label: "DIGraphShared_ConcurrencySupport_singleton_access").sync {
+            if let overridenDep: ConcurrencySupport = getOverriddenInstance() {
+                return overridenDep
+            }
+            let existingSingletonInstance = self.singletons[String(describing: ConcurrencySupport.self)] as? ConcurrencySupport
+            let instance = existingSingletonInstance ?? _get_concurrencySupport()
+            self.singletons[String(describing: ConcurrencySupport.self)] = instance
+            return instance
+        }
+    }
+
+    private func _get_concurrencySupport() -> ConcurrencySupport {
+        DefaultConcurrencySupport()
     }
 
     // DeviceMetricsGrabber

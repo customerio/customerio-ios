@@ -4,7 +4,7 @@ import Foundation
 ///
 /// This protocol specifies the methods for storing, loading, and removing events,
 /// facilitating the management of event persistence.
-public protocol EventStorage: AutoMockable {
+public protocol EventStorage: AutoMockable, Sendable {
     /// Stores an event asynchronously.
     /// - Parameter event: The event to be stored.
     func store(event: AnyEventRepresentable) async throws

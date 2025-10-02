@@ -91,7 +91,7 @@ class GistDelegateImplTests: UnitTest {
         XCTAssertEqual(mockEventListener.errorWithMessageReceivedArguments?.messageId, "test-message-id", "Message ID should match")
     }
 
-    func testActionWithNormalAction() {
+    func testActionWithNormalAction() async {
         let message = Message(messageId: "test-message-id", campaignId: "test-delivery-id")
         let action = "https://customerio.com"
         let name = "Visit Website"
@@ -106,12 +106,9 @@ class GistDelegateImplTests: UnitTest {
             XCTAssertEqual(postedEvent.deliveryID, "test-delivery-id", "DeliveryID should match campaign ID")
             XCTAssertEqual(postedEvent.event, InAppMetric.clicked.rawValue, "Event should be 'clicked'")
 
-            if let params = postedEvent.params as? [String: String] {
-                XCTAssertEqual(params["actionName"], "Visit Website", "Action name should match")
-                XCTAssertEqual(params["actionValue"], "https://customerio.com", "Action value should match")
-            } else {
-                XCTFail("Event params should be a dictionary of [String: String]")
-            }
+            let params = postedEvent.params
+            XCTAssertEqual(params["actionName"], "Visit Website", "Action name should match")
+            XCTAssertEqual(params["actionValue"], "https://customerio.com", "Action value should match")
         } else {
             XCTFail("Event posted should be TrackInAppMetricEvent")
         }

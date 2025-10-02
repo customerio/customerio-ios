@@ -5,7 +5,7 @@ import Foundation
 /// This protocol outlines the core functionalities of an event bus, including posting events,
 /// adding observers, and managing observers. It is designed to support type-safe event handling
 /// and asynchronous execution
-public protocol EventBus: AutoMockable {
+public protocol EventBus: AutoMockable, Sendable {
     /// Posts an event to all registered observers.
     ///
     /// - Parameters:
@@ -18,7 +18,7 @@ public protocol EventBus: AutoMockable {
     /// - Parameters:
     ///   - eventType: The event type to observe.
     ///   - action: The action to execute when the event is observed.
-    func addObserver(_ eventType: String, action: @escaping (AnyEventRepresentable) -> Void) async
+    func addObserver(_ eventType: String, action: @escaping @Sendable (AnyEventRepresentable) -> Void) async
     /// Removes all observers for a specific event type.
     ///
     /// - Parameter eventType: The event type for which to remove observers.
@@ -83,7 +83,7 @@ actor SharedEventBus: EventBus {
     /// - Parameter event: The event to be posted.
     /// - Returns: True if the event has been posted to any observers, false otherwise.
     @discardableResult
-    func post(_ event: AnyEventRepresentable) -> Bool {
+    func post(_ event: AnyEventRepresentable) async -> Bool {
         let key = event.key
         if let observerList = holder.observers[key], !observerList.isEmpty {
             holder.notificationCenter.post(name: NSNotification.Name(key), object: event)
@@ -97,7 +97,7 @@ actor SharedEventBus: EventBus {
     /// - Parameters:
     ///   - eventType: The type of the event to observe.
     ///   - action: The action to be executed when the event is received.
-    func addObserver(_ eventType: String, action: @escaping (AnyEventRepresentable) -> Void) async {
+    func addObserver(_ eventType: String, action: @escaping @Sendable (AnyEventRepresentable) -> Void) async {
         let observer = holder.notificationCenter.addObserver(forName: NSNotification.Name(eventType), object: nil, queue: nil) { notification in
             if let event = notification.object as? AnyEventRepresentable {
                 action(event)
@@ -114,7 +114,7 @@ actor SharedEventBus: EventBus {
     /// Removes all observers for a specific event type.
     ///
     /// - Parameter eventType: The event type for which to remove all observers.
-    func removeObserver(for eventType: String) {
+    func removeObserver(for eventType: String) async {
         if let observerList = holder.observers[eventType] {
             for observer in observerList {
                 holder.notificationCenter.removeObserver(observer)

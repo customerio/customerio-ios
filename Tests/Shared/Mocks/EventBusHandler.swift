@@ -2,89 +2,103 @@ import CioInternalCommon
 
 /// Mock of the EventBusHandler class, designed to mimic AutoMockable
 /// Once the class is generated using AutoMockable, it should seamlessly replace the current implementation without any issues
-public class EventBusHandlerMock: EventBusHandler, Mock {
-    public var mockCalled: Bool = false
+public actor EventBusHandlerMock: EventBusHandler, Mock {
+    /// Thread-safe storage for tracking mock invocations
+    private struct MockData {
+        var mockCalled = false
+        var trackTaskCallsCount = 0
+        var loadEventsFromStorageCallsCount = 0
+        var addObserverCallsCount = 0
+        var removeObserverCallsCount = 0
+        var postEventCallsCount = 0
+        var removeFromStorageCallsCount = 0
+        var postEventArguments: (any EventRepresentable)?
+    }
 
-    public init() {
+    private let concurrency: ConcurrencySupport
+    private let storage = ThreadSafeBoxedValue(MockData())
+
+    public nonisolated var mockCalled: Bool { storage.withValue { $0.mockCalled } }
+    public nonisolated var trackTaskCallsCount: Int { storage.withValue { $0.trackTaskCallsCount } }
+    public nonisolated var loadEventsFromStorageCallsCount: Int { storage.withValue { $0.loadEventsFromStorageCallsCount } }
+    public nonisolated var addObserverCallsCount: Int { storage.withValue { $0.addObserverCallsCount } }
+    public nonisolated var removeObserverCallsCount: Int { storage.withValue { $0.removeObserverCallsCount } }
+    public nonisolated var postEventCallsCount: Int { storage.withValue { $0.postEventCallsCount } }
+    public nonisolated var removeFromStorageCallsCount: Int { storage.withValue { $0.removeFromStorageCallsCount } }
+    public nonisolated var postEventArguments: (any EventRepresentable)? { storage.withValue { $0.postEventArguments } }
+
+    public nonisolated var trackTaskCalled: Bool { trackTaskCallsCount > 0 }
+    public nonisolated var loadEventsFromStorageCalled: Bool { loadEventsFromStorageCallsCount > 0 }
+    public nonisolated var addObserverCalled: Bool { addObserverCallsCount > 0 }
+    public nonisolated var removeObserverCalled: Bool { removeObserverCallsCount > 0 }
+    public nonisolated var postEventCalled: Bool { postEventCallsCount > 0 }
+    public nonisolated var removeFromStorageCalled: Bool { removeFromStorageCallsCount > 0 }
+
+    public init(concurrency: ConcurrencySupport = DIGraphShared.shared.concurrencySupport) {
+        self.concurrency = concurrency
         Mocks.shared.add(mock: self)
     }
 
-    public func resetMock() {
-        mockCalled = false
-        loadEventsFromStorageCallsCount = 0
-        addObserverCallsCount = 0
-        removeObserverCallsCount = 0
-        postEventCallsCount = 0
-        removeFromStorageCallsCount = 0
-        removeAllObserversCallsCount = 0
+    /// Thread-safe access to mutate mock tracking data
+    private nonisolated func withMockData(_ body: (inout MockData) -> Void) {
+        storage.withValue(body)
     }
 
-    public private(set) var loadEventsFromStorageCallsCount = 0
-    public var loadEventsFromStorageCalled: Bool { loadEventsFromStorageCallsCount > 0 }
+    public nonisolated func resetMock() {
+        withMockData { $0 = MockData() }
+    }
+
+    @discardableResult
+    public nonisolated func dispatch(
+        _ operation: @Sendable @escaping (isolated EventBusHandler) async -> Void
+    ) -> Task<Void, Error> {
+        let result = concurrency.execute(on: self, operation)
+        concurrency.execute(on: self) {
+            $0.disposeWithLifecycle(result)
+        }
+        return result
+    }
+
+    public func disposeWithLifecycle(_ task: Task<Void, Error>) {
+        withMockData {
+            $0.mockCalled = true
+            $0.trackTaskCallsCount += 1
+        }
+    }
 
     public func loadEventsFromStorage() async {
-        mockCalled = true
-        loadEventsFromStorageCallsCount += 1
+        withMockData {
+            $0.mockCalled = true
+            $0.loadEventsFromStorageCallsCount += 1
+        }
     }
 
-    public private(set) var addObserverCallsCount = 0
-    public var addObserverCalled: Bool { addObserverCallsCount > 0 }
-
-    public func addObserver<E>(_ eventType: E.Type, action: @escaping (E) -> Void) where E: CioInternalCommon.EventRepresentable {
-        mockCalled = true
-        addObserverCallsCount += 1
+    public func addObserver<E>(_ eventType: E.Type, action: @escaping @Sendable (E) -> Void) async where E: CioInternalCommon.EventRepresentable {
+        withMockData {
+            $0.mockCalled = true
+            $0.addObserverCallsCount += 1
+        }
     }
 
-    public private(set) var removeObserverCallsCount = 0
-    public var removeObserverCalled: Bool { removeObserverCallsCount > 0 }
-
-    public func removeObserver<E>(for eventType: E.Type) where E: CioInternalCommon.EventRepresentable {
-        mockCalled = true
-        removeObserverCallsCount += 1
+    public func removeObserver<E>(for eventType: E.Type) async where E: CioInternalCommon.EventRepresentable {
+        withMockData {
+            $0.mockCalled = true
+            $0.removeObserverCallsCount += 1
+        }
     }
 
-    public private(set) var postEventCallsCount = 0
-    public var postEventCalled: Bool { postEventCallsCount > 0 }
-    public private(set) var postEventArguments: (any EventRepresentable)?
-
-    public func postEvent<E: EventRepresentable>(_ event: E) {
-        mockCalled = true
-        postEventCallsCount += 1
-        postEventArguments = event
+    public func postEvent<E: EventRepresentable>(_ event: E) async {
+        withMockData {
+            $0.mockCalled = true
+            $0.postEventCallsCount += 1
+            $0.postEventArguments = event
+        }
     }
-
-    public func postEventAndWait<E>(_ event: E) async where E: EventRepresentable {
-        mockCalled = true
-        postEventCallsCount += 1
-        postEventArguments = event
-    }
-
-    public private(set) var removeFromStorageCallsCount = 0
-    public var removeFromStorageCalled: Bool { removeFromStorageCallsCount > 0 }
 
     public func removeFromStorage<E>(_ event: E) async where E: CioInternalCommon.EventRepresentable {
-        mockCalled = true
-        removeFromStorageCallsCount += 1
-    }
-
-    // MARK: - removeAllObservers
-
-    /// Number of times the function was called.
-    @Atomic public private(set) var removeAllObserversCallsCount = 0
-    /// `true` if the function was ever called.
-    public var removeAllObserversCalled: Bool {
-        removeAllObserversCallsCount > 0
-    }
-
-    /**
-     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
-     */
-    public var removeAllObserversClosure: (() -> Void)?
-
-    /// Mocked function for `removeAllObservers()`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func removeAllObservers() {
-        mockCalled = true
-        removeAllObserversCallsCount += 1
-        removeAllObserversClosure?()
+        withMockData {
+            $0.mockCalled = true
+            $0.removeFromStorageCallsCount += 1
+        }
     }
 }

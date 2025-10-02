@@ -70,23 +70,33 @@ class DataPipelineImplementation: DataPipelineInstance {
 
     private func postProfileAlreadyIdentified() {
         if let siteId = moduleConfig.migrationSiteId, let identifier = profileStore.getProfileId(siteId: siteId) {
-            eventBusHandler.postEvent(ProfileIdentifiedEvent(identifier: identifier))
+            eventBusHandler.dispatch { handler in
+                await handler.postEvent(ProfileIdentifiedEvent(identifier: identifier))
+            }
         } else if let identifier = analytics.userId {
-            eventBusHandler.postEvent(ProfileIdentifiedEvent(identifier: identifier))
+            eventBusHandler.dispatch { handler in
+                await handler.postEvent(ProfileIdentifiedEvent(identifier: identifier))
+            }
         }
     }
 
     private func subscribeToJourneyEvents() {
-        eventBusHandler.addObserver(TrackMetricEvent.self) { metric in
-            self.trackPushMetric(deliveryID: metric.deliveryID, event: metric.event, deviceToken: metric.deviceToken)
+        eventBusHandler.dispatch { handler in
+            await handler.addObserver(TrackMetricEvent.self) { metric in
+                self.trackPushMetric(deliveryID: metric.deliveryID, event: metric.event, deviceToken: metric.deviceToken)
+            }
         }
 
-        eventBusHandler.addObserver(TrackInAppMetricEvent.self) { metric in
-            self.trackInAppMetric(deliveryID: metric.deliveryID, event: metric.event, metaData: metric.params)
+        eventBusHandler.dispatch { handler in
+            await handler.addObserver(TrackInAppMetricEvent.self) { metric in
+                self.trackInAppMetric(deliveryID: metric.deliveryID, event: metric.event, metaData: metric.params)
+            }
         }
 
-        eventBusHandler.addObserver(RegisterDeviceTokenEvent.self) { event in
-            self.registerDeviceToken(event.token)
+        eventBusHandler.dispatch { handler in
+            await handler.addObserver(RegisterDeviceTokenEvent.self) { event in
+                self.registerDeviceToken(event.token)
+            }
         }
     }
 
