@@ -30,9 +30,21 @@ class GistQueueNetworkImpl: GistQueueNetwork {
         urlRequest.addValue(state.dataCenter, forHTTPHeaderField: HTTPHeader.cioDataCenter.rawValue)
         urlRequest.addValue(sdkClient.sdkVersion, forHTTPHeaderField: HTTPHeader.cioClientVersion.rawValue)
         urlRequest.addValue(sdkClient.source.lowercased() + "-apple", forHTTPHeaderField: HTTPHeader.cioClientPlatform.rawValue)
-        if let userToken = state.userId {
-            urlRequest.addValue(Data(userToken.utf8).base64EncodedString(), forHTTPHeaderField: HTTPHeader.userToken.rawValue)
+
+        // Set user token: use userId if available, otherwise use anonymousId
+        let isAnonymous: Bool
+        if let userId = state.userId {
+            urlRequest.addValue(Data(userId.utf8).base64EncodedString(), forHTTPHeaderField: HTTPHeader.userToken.rawValue)
+            isAnonymous = false
+        } else if let anonymousId = state.anonymousId {
+            urlRequest.addValue(Data(anonymousId.utf8).base64EncodedString(), forHTTPHeaderField: HTTPHeader.userToken.rawValue)
+            isAnonymous = true
+        } else {
+            isAnonymous = true
         }
+
+        // Add anonymous header to indicate if user is anonymous
+        urlRequest.addValue(String(isAnonymous), forHTTPHeaderField: HTTPHeader.userAnonymous.rawValue)
         urlRequest.addValue(ContentTypes.json.rawValue, forHTTPHeaderField: HTTPHeader.contentType.rawValue)
 
         try BaseNetwork.request(

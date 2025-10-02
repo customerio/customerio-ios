@@ -1,3 +1,4 @@
+import CioDataPipelines
 import CioInternalCommon
 import Foundation
 
@@ -50,6 +51,26 @@ class MessagingInAppImplementation: MessagingInAppInstance {
             self.logger.logWithModuleTag("removing profile for in-app", level: .debug)
 
             self.gist.resetState()
+        }
+
+        // Set anonymous ID from Segment Analytics SDK if available
+        // This happens when SDK initializes without an identified user
+        initializeAnonymousId()
+    }
+
+    private func initializeAnonymousId() {
+        // Get anonymous ID from DataPipeline (which wraps Segment Analytics)
+        threadUtil.runMain { [weak self] in
+            guard let self = self else { return }
+
+            // Access the anonymous ID from DataPipeline/CustomerIO
+            // This is available immediately after SDK initialization
+            let anonymousId = DataPipeline.shared.analytics.anonymousId
+
+            if !anonymousId.isEmpty {
+                self.logger.logWithModuleTag("setting anonymous ID for in-app: \(anonymousId)", level: .debug)
+                self.gist.setAnonymousId(anonymousId)
+            }
         }
     }
 

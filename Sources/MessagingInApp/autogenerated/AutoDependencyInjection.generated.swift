@@ -55,6 +55,9 @@ extension DIGraphShared {
     func testDependenciesAbleToResolve() -> Int {
         var countDependenciesResolved = 0
 
+        _ = anonymousMessageManager
+        countDependenciesResolved += 1
+
         _ = engineWebProvider
         countDependenciesResolved += 1
 
@@ -80,6 +83,30 @@ extension DIGraphShared {
     }
 
     // Handle classes annotated with InjectRegisterShared
+    // AnonymousMessageManager (singleton)
+    var anonymousMessageManager: AnonymousMessageManager {
+        getOverriddenInstance() ??
+            sharedAnonymousMessageManager
+    }
+
+    var sharedAnonymousMessageManager: AnonymousMessageManager {
+        // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
+        // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
+        DispatchQueue(label: "DIGraphShared_AnonymousMessageManager_singleton_access").sync {
+            if let overridenDep: AnonymousMessageManager = getOverriddenInstance() {
+                return overridenDep
+            }
+            let existingSingletonInstance = self.singletons[String(describing: AnonymousMessageManager.self)] as? AnonymousMessageManager
+            let instance = existingSingletonInstance ?? _get_anonymousMessageManager()
+            self.singletons[String(describing: AnonymousMessageManager.self)] = instance
+            return instance
+        }
+    }
+
+    private func _get_anonymousMessageManager() -> AnonymousMessageManager {
+        AnonymousMessageManagerImpl(keyValueStorage: sharedKeyValueStorage, dateUtil: dateUtil, logger: logger)
+    }
+
     // EngineWebProvider
     var engineWebProvider: EngineWebProvider {
         getOverriddenInstance() ??
@@ -169,7 +196,7 @@ extension DIGraphShared {
     }
 
     private func _get_inAppMessageManager() -> InAppMessageManager {
-        InAppMessageStoreManager(logger: logger, threadUtil: threadUtil, logManager: logManager, gistDelegate: gistDelegate)
+        InAppMessageStoreManager(logger: logger, threadUtil: threadUtil, logManager: logManager, gistDelegate: gistDelegate, anonymousMessageManager: anonymousMessageManager)
     }
 
     // LogManager
@@ -203,7 +230,7 @@ extension DIGraphShared {
     }
 
     private func _get_queueManager() -> QueueManager {
-        QueueManager(keyValueStore: sharedKeyValueStorage, gistQueueNetwork: gistQueueNetwork, inAppMessageManager: inAppMessageManager, logger: logger)
+        QueueManager(keyValueStore: sharedKeyValueStorage, gistQueueNetwork: gistQueueNetwork, inAppMessageManager: inAppMessageManager, anonymousMessageManager: anonymousMessageManager, logger: logger)
     }
 }
 

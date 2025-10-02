@@ -5,6 +5,7 @@ import UIKit
 // wrapper around Gist SDK to make it mockable
 protocol GistProvider: AutoMockable {
     func setUserToken(_ userToken: String)
+    func setAnonymousId(_ anonymousId: String)
     func setCurrentRoute(_ currentRoute: String)
     func fetchUserMessagesFromRemoteQueue()
     func resetState()
@@ -107,6 +108,17 @@ class Gist: GistProvider {
         }
     }
 
+    func setAnonymousId(_ anonymousId: String) {
+        inAppMessageManager.fetchState { [self] state in
+            if state.anonymousId == anonymousId {
+                return
+            }
+
+            inAppMessageManager.dispatch(action: .setAnonymousIdentifier(anonymousId: anonymousId))
+            setupPollingAndFetch(skipMessageFetch: false, pollingInterval: state.pollInterval)
+        }
+    }
+
     func setCurrentRoute(_ currentRoute: String) {
         inAppMessageManager.fetchState { [self] state in
             if state.currentRoute == currentRoute {
@@ -170,8 +182,9 @@ class Gist: GistProvider {
     }
 
     private func fetchUserQueue(state: InAppMessageState) {
-        guard let _ = state.userId else {
-            logger.logWithModuleTag("User token not set, skipping fetch user queue.", level: .debug)
+        // Allow fetching with either userId or anonymousId
+        guard state.userId != nil || state.anonymousId != nil else {
+            logger.logWithModuleTag("Neither user token nor anonymous ID set, skipping fetch user queue.", level: .debug)
             return
         }
 

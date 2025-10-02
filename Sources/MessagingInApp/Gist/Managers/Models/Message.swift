@@ -1,6 +1,32 @@
 import CioInternalCommon
 import Foundation
 
+/// Represents the frequency control for anonymous (broadcast) messages.
+/// Controls how often and when a message can be shown to anonymous users.
+public class BroadcastFrequency {
+    /// Number of times to show the message. 0 = unlimited, >0 = max times to show
+    public let count: Int
+    /// Delay in seconds between shows
+    public let delay: Int
+    /// If true, show message even after user dismisses it
+    public let ignoreDismiss: Bool
+
+    init(count: Int, delay: Int, ignoreDismiss: Bool = false) {
+        self.count = count
+        self.delay = delay
+        self.ignoreDismiss = ignoreDismiss
+    }
+}
+
+/// Represents properties specific to anonymous (broadcast) messages.
+public class BroadcastProperties {
+    public let frequency: BroadcastFrequency
+
+    init(frequency: BroadcastFrequency) {
+        self.frequency = frequency
+    }
+}
+
 public class GistProperties {
     public let routeRule: String?
     public let elementId: String?
@@ -8,6 +34,8 @@ public class GistProperties {
     public let position: MessagePosition
     public let persistent: Bool?
     public let overlayColor: String?
+    /// If present, this is an anonymous (broadcast) message
+    public let broadcast: BroadcastProperties?
 
     init(
         routeRule: String?,
@@ -15,7 +43,8 @@ public class GistProperties {
         campaignId: String?,
         position: MessagePosition,
         persistent: Bool?,
-        overlayColor: String?
+        overlayColor: String?,
+        broadcast: BroadcastProperties? = nil
     ) {
         self.routeRule = routeRule
         self.elementId = elementId
@@ -23,6 +52,7 @@ public class GistProperties {
         self.campaignId = campaignId
         self.persistent = persistent
         self.overlayColor = overlayColor
+        self.broadcast = broadcast
     }
 }
 
@@ -42,6 +72,11 @@ public class Message {
         gistProperties.elementId
     }
 
+    /// Returns true if this is an anonymous (broadcast) message
+    public var isAnonymousMessage: Bool {
+        gistProperties.broadcast != nil
+    }
+
     public init(
         messageId: String,
         queueId: String? = nil,
@@ -58,7 +93,7 @@ public class Message {
     private static func parseGistProperties(from gist: [String: Any]?) -> GistProperties {
         let defaultPosition = MessagePosition.center
         guard let gist = gist else {
-            return GistProperties(routeRule: nil, elementId: nil, campaignId: nil, position: defaultPosition, persistent: false, overlayColor: nil)
+            return GistProperties(routeRule: nil, elementId: nil, campaignId: nil, position: defaultPosition, persistent: false, overlayColor: nil, broadcast: nil)
         }
 
         let position = (gist["position"] as? String).flatMap(MessagePosition.init) ?? defaultPosition
@@ -67,6 +102,7 @@ public class Message {
         let campaignId = gist["campaignId"] as? String
         let persistent = gist["persistent"] as? Bool ?? false
         let overlayColor = gist["overlayColor"] as? String
+        let broadcast = parseBroadcastProperties(from: gist["broadcast"] as? [String: Any])
 
         return GistProperties(
             routeRule: routeRule,
@@ -74,8 +110,24 @@ public class Message {
             campaignId: campaignId,
             position: position,
             persistent: persistent,
-            overlayColor: overlayColor
+            overlayColor: overlayColor,
+            broadcast: broadcast
         )
+    }
+
+    private static func parseBroadcastProperties(from broadcast: [String: Any]?) -> BroadcastProperties? {
+        guard let broadcast = broadcast,
+              let frequencyDict = broadcast["frequency"] as? [String: Any]
+        else {
+            return nil
+        }
+
+        let count = frequencyDict["count"] as? Int ?? 0
+        let delay = frequencyDict["delay"] as? Int ?? 0
+        let ignoreDismiss = frequencyDict["ignoreDismiss"] as? Bool ?? false
+
+        let frequency = BroadcastFrequency(count: count, delay: delay, ignoreDismiss: ignoreDismiss)
+        return BroadcastProperties(frequency: frequency)
     }
 }
 

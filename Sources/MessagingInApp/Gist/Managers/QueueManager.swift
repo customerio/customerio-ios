@@ -7,6 +7,7 @@ class QueueManager {
     private var keyValueStore: SharedKeyValueStorage
     private let gistQueueNetwork: GistQueueNetwork
     private let inAppMessageManager: InAppMessageManager
+    private let anonymousMessageManager: AnonymousMessageManager
     private let logger: Logger
 
     private var cachedFetchUserQueueResponse: Data? {
@@ -18,10 +19,17 @@ class QueueManager {
         }
     }
 
-    init(keyValueStore: SharedKeyValueStorage, gistQueueNetwork: GistQueueNetwork, inAppMessageManager: InAppMessageManager, logger: Logger) {
+    init(
+        keyValueStore: SharedKeyValueStorage,
+        gistQueueNetwork: GistQueueNetwork,
+        inAppMessageManager: InAppMessageManager,
+        anonymousMessageManager: AnonymousMessageManager,
+        logger: Logger
+    ) {
         self.keyValueStore = keyValueStore
         self.gistQueueNetwork = gistQueueNetwork
         self.inAppMessageManager = inAppMessageManager
+        self.anonymousMessageManager = anonymousMessageManager
         self.logger = logger
     }
 
@@ -44,8 +52,9 @@ class QueueManager {
 
                         do {
                             let userQueue = try self.parseResponseBody(lastCachedResponse)
+                            let processedQueue = self.processAnonymousMessages(userQueue)
 
-                            completionHandler(.success(userQueue))
+                            completionHandler(.success(processedQueue))
                         } catch {
                             completionHandler(.failure(error))
                         }
@@ -54,8 +63,9 @@ class QueueManager {
                             let userQueue = try self.parseResponseBody(data)
 
                             self.cachedFetchUserQueueResponse = data
+                            let processedQueue = self.processAnonymousMessages(userQueue)
 
-                            completionHandler(.success(userQueue))
+                            completionHandler(.success(processedQueue))
                         } catch {
                             completionHandler(.failure(error))
                         }
@@ -68,6 +78,54 @@ class QueueManager {
         } catch {
             logger.logWithModuleTag("Gist queue fetch response error: \(error)", level: .debug)
             completionHandler(.failure(error))
+        }
+    }
+
+    /// Processes anonymous messages from the server response.
+    /// - Stores anonymous messages locally with expiry
+    /// - Filters out server-provided anonymous messages from the queue
+    /// - Retrieves eligible anonymous messages from local storage
+    /// - Combines regular messages with eligible anonymous messages
+    private func processAnonymousMessages(_ userQueue: [UserQueueResponse]?) -> [UserQueueResponse]? {
+        guard let userQueue = userQueue else {
+            return nil
+        }
+
+        // Convert to Message objects for easier processing
+        let allMessages = userQueue.map { $0.toMessage() }
+
+        // Separate anonymous and regular messages
+        let anonymousMessages = allMessages.filter(\.isAnonymousMessage)
+        let regularMessages = allMessages.filter { !$0.isAnonymousMessage }
+
+        // Update local store with anonymous messages from server
+        anonymousMessageManager.updateAnonymousMessagesLocalStore(messages: anonymousMessages)
+
+        // Get eligible anonymous messages from local storage
+        let eligibleAnonymousMessages = anonymousMessageManager.getEligibleAnonymousMessages()
+
+        // Combine regular messages with eligible anonymous messages
+        let combinedMessages = regularMessages + eligibleAnonymousMessages
+
+        logger.logWithModuleTag(
+            "Processed messages: \(regularMessages.count) regular + \(eligibleAnonymousMessages.count) eligible anonymous = \(combinedMessages.count) total",
+            level: .debug
+        )
+
+        // Convert back to UserQueueResponse
+        return combinedMessages.compactMap { message -> UserQueueResponse? in
+            guard let queueId = message.queueId,
+                  let priority = message.priority
+            else {
+                return nil
+            }
+
+            return UserQueueResponse(
+                queueId: queueId,
+                priority: priority,
+                messageId: message.messageId,
+                properties: message.properties
+            )
         }
     }
 
