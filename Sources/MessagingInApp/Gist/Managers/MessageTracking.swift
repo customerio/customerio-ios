@@ -1,6 +1,6 @@
 import Foundation
 
-/// Tracking data for a single anonymous message
+/// Tracking data for a single anonymous message (internal implementation detail)
 struct MessageTracking: Codable {
     var timesShown: Int
     var dismissed: Bool
@@ -13,7 +13,7 @@ struct MessageTracking: Codable {
     }
 }
 
-/// Container for all message tracking data
+/// Container for all message tracking data (internal implementation detail)
 struct MessagesTrackingData: Codable {
     var tracking: [String: MessageTracking]
 

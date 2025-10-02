@@ -3,13 +3,18 @@ import Foundation
 
 /// Represents the frequency control for anonymous (broadcast) messages.
 /// Controls how often and when a message can be shown to anonymous users.
-public class BroadcastFrequency {
+class BroadcastFrequency {
     /// Number of times to show the message. 0 = unlimited, >0 = max times to show
-    public let count: Int
+    let count: Int
     /// Delay in seconds between shows
-    public let delay: Int
+    let delay: Int
     /// If true, show message even after user dismisses it
-    public let ignoreDismiss: Bool
+    let ignoreDismiss: Bool
+
+    /// Returns true if frequency has a count limit (count > 0)
+    var isEmpty: Bool {
+        count == 0
+    }
 
     init(count: Int, delay: Int, ignoreDismiss: Bool = false) {
         self.count = count
@@ -19,8 +24,8 @@ public class BroadcastFrequency {
 }
 
 /// Represents properties specific to anonymous (broadcast) messages.
-public class BroadcastProperties {
-    public let frequency: BroadcastFrequency
+class BroadcastProperties {
+    let frequency: BroadcastFrequency
 
     init(frequency: BroadcastFrequency) {
         self.frequency = frequency
@@ -35,7 +40,7 @@ public class GistProperties {
     public let persistent: Bool?
     public let overlayColor: String?
     /// If present, this is an anonymous (broadcast) message
-    public let broadcast: BroadcastProperties?
+    let broadcast: BroadcastProperties?
 
     init(
         routeRule: String?,
@@ -73,7 +78,7 @@ public class Message {
     }
 
     /// Returns true if this is an anonymous (broadcast) message
-    public var isAnonymousMessage: Bool {
+    var isAnonymousMessage: Bool {
         gistProperties.broadcast != nil
     }
 
