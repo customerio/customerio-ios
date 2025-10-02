@@ -127,11 +127,15 @@ public class Message {
             return nil
         }
 
-        // Get count and delay with defaults of 0
-        let count = frequencyDict["count"] as? Int ?? 0
-        let delay = frequencyDict["delay"] as? Int ?? 0
-        let ignoreDismiss = frequencyDict["ignoreDismiss"] as? Bool ?? false
+        // Count and delay are required - no defaults
+        guard let count = frequencyDict["count"] as? Int,
+              let delay = frequencyDict["delay"] as? Int
+        else {
+            DIGraphShared.shared.logger.debug("Skipping anonymous message frequency parsing due to missing count or delay for messageId=\(messageId) queueId=\(queueId ?? "nil")")
+            return nil
+        }
 
+        let ignoreDismiss = frequencyDict["ignoreDismiss"] as? Bool ?? false
         let frequency = BroadcastFrequency(count: count, delay: delay, ignoreDismiss: ignoreDismiss)
         return BroadcastProperties(frequency: frequency)
     }

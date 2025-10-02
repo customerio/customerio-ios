@@ -55,7 +55,7 @@ class AnonymousMessageManagerTest: UnitTest {
         XCTAssertFalse(message.isAnonymousMessage)
     }
 
-    func test_parseBroadcastProperties_givenDefaults_expectZeroValues() {
+    func test_parseBroadcastProperties_givenMissingCountDelay_expectNil() {
         let properties: [String: Any] = [
             "gist": [
                 "broadcast": [
@@ -66,10 +66,9 @@ class AnonymousMessageManagerTest: UnitTest {
 
         let message = Message(messageId: "test-msg", properties: properties)
 
-        XCTAssertNotNil(message.gistProperties.broadcast)
-        XCTAssertEqual(message.gistProperties.broadcast?.frequency.count, 0)
-        XCTAssertEqual(message.gistProperties.broadcast?.frequency.delay, 0)
-        XCTAssertEqual(message.gistProperties.broadcast?.frequency.ignoreDismiss, false)
+        // When count/delay are missing, broadcast should be nil
+        XCTAssertNil(message.gistProperties.broadcast)
+        XCTAssertFalse(message.isAnonymousMessage)
     }
 
     // MARK: - Frequency Control Tests
