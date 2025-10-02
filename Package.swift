@@ -1,4 +1,4 @@
-// swift-tools-version:5.5
+// swift-tools-version:5.9
 
 /**
  Manifest file for Swift Package Manager. This file defines our Swift Package for customers to install our SDK modules into their app. 
@@ -52,7 +52,10 @@ let package = Package(
         // Common - Code used by multiple modules in the SDK project.
         // this module is *not* exposed to the public. It's used internally. 
         .target(name: "CioInternalCommon",
-                path: "Sources/Common"),
+                path: "Sources/Common",
+                swiftSettings: [
+                    .enableExperimentalFeature("StrictConcurrency")
+                ]),
         .testTarget(name: "CommonTests",
                     dependencies: ["CioInternalCommon", "SharedTests"],
                     path: "Tests/Common"),
