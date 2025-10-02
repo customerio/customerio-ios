@@ -110,32 +110,26 @@ class AnonymousMessageManagerImpl: AnonymousMessageManager {
         }
 
         // Increment times shown counter
-        var trackingData = getTrackingData()
-        var messageTracking = trackingData.tracking[messageId] ?? MessageTracking()
-        messageTracking.timesShown += 1
-        trackingData.tracking[messageId] = messageTracking
-        setTrackingData(trackingData)
-
-        let numberOfTimesShown = messageTracking.timesShown
+        var numberOfTimesShown = 0
+        updateTracking(for: messageId) { tracking in
+            tracking.timesShown += 1
+            numberOfTimesShown = tracking.timesShown
+        }
 
         // Apply frequency rules
         if frequency.count == 1 {
             // Mark as permanently dismissed for count=1
-            var updatedTracking = getTrackingData()
-            var updatedMessageTracking = updatedTracking.tracking[messageId] ?? MessageTracking()
-            updatedMessageTracking.dismissed = true
-            updatedTracking.tracking[messageId] = updatedMessageTracking
-            setTrackingData(updatedTracking)
+            updateTracking(for: messageId) { tracking in
+                tracking.dismissed = true
+            }
             logger.logWithModuleTag("Marked anonymous message \(messageId) as permanently dismissed (count=1)", level: .debug)
         } else if frequency.delay > 0 {
             // Set next show time based on delay
             let currentTime = dateUtil.now.timeIntervalSince1970 * 1000
             let nextShowTimeMillis = currentTime + Double(frequency.delay * 1000)
-            var updatedTracking = getTrackingData()
-            var updatedMessageTracking = updatedTracking.tracking[messageId] ?? MessageTracking()
-            updatedMessageTracking.nextShowTime = nextShowTimeMillis
-            updatedTracking.tracking[messageId] = updatedMessageTracking
-            setTrackingData(updatedTracking)
+            updateTracking(for: messageId) { tracking in
+                tracking.nextShowTime = nextShowTimeMillis
+            }
 
             let nextShowDate = Date(timeIntervalSince1970: nextShowTimeMillis / 1000)
             logger.logWithModuleTag("Marked anonymous message \(messageId) as seen, shown \(numberOfTimesShown) times, next show time: \(nextShowDate)", level: .debug)

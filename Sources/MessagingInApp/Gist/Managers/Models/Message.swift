@@ -135,6 +135,12 @@ public class Message {
             return nil
         }
 
+        // Defensive validation: reject negative values
+        guard count >= 0, delay >= 0 else {
+            DIGraphShared.shared.logger.debug("Skipping anonymous message frequency parsing due to negative count or delay for messageId=\(messageId) queueId=\(queueId ?? "nil")")
+            return nil
+        }
+
         let ignoreDismiss = frequencyDict["ignoreDismiss"] as? Bool ?? false
         let frequency = BroadcastFrequency(count: count, delay: delay, ignoreDismiss: ignoreDismiss)
         return BroadcastProperties(frequency: frequency)

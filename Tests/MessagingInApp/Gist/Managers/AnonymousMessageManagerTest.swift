@@ -481,4 +481,46 @@ class AnonymousMessageManagerTest: UnitTest {
         dateUtilStub.givenNow = Date()
         manager.updateAnonymousMessagesLocalStore(messages: messages)
     }
+
+    // MARK: - Defensive Validation Tests
+
+    func test_parseBroadcastProperties_givenNegativeCount_expectNil() {
+        // Given: Message with negative count
+        let properties: [String: Any] = [
+            "gist": [
+                "broadcast": [
+                    "frequency": [
+                        "count": -1,
+                        "delay": 10
+                    ]
+                ]
+            ]
+        ]
+
+        // When: Create message
+        let message = Message(messageId: "test-msg", queueId: "queue-1", priority: 1, properties: properties)
+
+        // Then: Should not parse as anonymous message
+        XCTAssertFalse(message.isAnonymousMessage)
+    }
+
+    func test_parseBroadcastProperties_givenNegativeDelay_expectNil() {
+        // Given: Message with negative delay
+        let properties: [String: Any] = [
+            "gist": [
+                "broadcast": [
+                    "frequency": [
+                        "count": 3,
+                        "delay": -10
+                    ]
+                ]
+            ]
+        ]
+
+        // When: Create message
+        let message = Message(messageId: "test-msg", queueId: "queue-1", priority: 1, properties: properties)
+
+        // Then: Should not parse as anonymous message
+        XCTAssertFalse(message.isAnonymousMessage)
+    }
 }
