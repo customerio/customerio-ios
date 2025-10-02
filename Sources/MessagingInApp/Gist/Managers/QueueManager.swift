@@ -37,7 +37,7 @@ class QueueManager {
         cachedFetchUserQueueResponse = nil
     }
 
-    func fetchUserQueue(state: InAppMessageState, completionHandler: @escaping (Result<[UserQueueResponse]?, Error>) -> Void) {
+    func fetchUserQueue(state: InAppMessageState, completionHandler: @escaping (Result<[Message]?, Error>) -> Void) {
         do {
             try gistQueueNetwork.request(state: state, request: QueueEndpoint.getUserQueue, completionHandler: { response in
                 switch response {
@@ -86,7 +86,7 @@ class QueueManager {
     /// - Filters out server-provided anonymous messages from the queue
     /// - Retrieves eligible anonymous messages from local storage
     /// - Combines regular messages with eligible anonymous messages
-    private func processAnonymousMessages(_ userQueue: [UserQueueResponse]?) -> [UserQueueResponse]? {
+    private func processAnonymousMessages(_ userQueue: [UserQueueResponse]?) -> [Message]? {
         guard let userQueue = userQueue else {
             return nil
         }
@@ -115,21 +115,7 @@ class QueueManager {
             level: .debug
         )
 
-        // Convert back to UserQueueResponse
-        return combinedMessages.compactMap { message -> UserQueueResponse? in
-            guard let queueId = message.queueId,
-                  let priority = message.priority
-            else {
-                return nil
-            }
-
-            return UserQueueResponse(
-                queueId: queueId,
-                priority: priority,
-                messageId: message.messageId,
-                properties: message.properties
-            )
-        }
+        return combinedMessages
     }
 
     private func parseResponseBody(_ responseBody: Data) throws -> [UserQueueResponse] {

@@ -197,11 +197,11 @@ class Gist: GistProvider {
                     logger.logWithModuleTag("No changes to remote queue", level: .info)
                     inAppMessageManager.dispatch(action: .clearMessageQueue)
 
-                case .success(let responses):
-                    guard let responses else { return }
+                case .success(let messages):
+                    guard let messages else { return }
 
-                    logger.logWithModuleTag("Gist queue service found \(responses.count) new messages", level: .info)
-                    inAppMessageManager.dispatch(action: .processMessageQueue(messages: responses.map { $0.toMessage() }))
+                    logger.logWithModuleTag("Gist queue service found \(messages.count) new messages", level: .info)
+                    inAppMessageManager.dispatch(action: .processMessageQueue(messages: messages))
 
                 case .failure(let error):
                     logger.logWithModuleTag("Error fetching messages from Gist queue service. \(error.localizedDescription)", level: .error)

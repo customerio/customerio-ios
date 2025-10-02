@@ -72,6 +72,75 @@ class AnonymousMessageManagerTest: UnitTest {
         XCTAssertEqual(eligible.first?.messageId, "reused-id")
     }
 
+    // MARK: - Bug Fix: Messages with nil queueId/priority
+
+    func test_bugFix_anonymousMessagesWithNilQueueId_expectNotDropped() {
+        // This test verifies the critical bug fix where anonymous messages with nil queueId
+        // were being dropped during UserQueueResponse conversion in processAnonymousMessages
+
+        // Given: Anonymous message with nil queueId (can happen from local storage)
+        let properties: [String: Any] = [
+            "gist": [
+                "broadcast": [
+                    "frequency": [
+                        "count": 0, // unlimited
+                        "delay": 0,
+                        "ignoreDismiss": false
+                    ]
+                ]
+            ]
+        ]
+
+        let messageWithNilQueueId = Message(
+            messageId: "msg-nil-queueid",
+            queueId: nil, // Explicitly nil
+            priority: 1,
+            properties: properties
+        )
+
+        // When: Update local store with this message
+        manager.updateAnonymousMessagesLocalStore(messages: [messageWithNilQueueId])
+
+        // Then: Message should still be eligible (not dropped)
+        let eligible = manager.getEligibleAnonymousMessages()
+        XCTAssertEqual(eligible.count, 1, "Message with nil queueId should not be dropped")
+        XCTAssertEqual(eligible.first?.messageId, "msg-nil-queueid")
+        XCTAssertNil(eligible.first?.queueId, "queueId should remain nil")
+    }
+
+    func test_bugFix_anonymousMessagesWithNilPriority_expectNotDropped() {
+        // This test verifies anonymous messages with nil priority are processed correctly
+
+        // Given: Anonymous message with nil priority
+        let properties: [String: Any] = [
+            "gist": [
+                "broadcast": [
+                    "frequency": [
+                        "count": 5,
+                        "delay": 0,
+                        "ignoreDismiss": false
+                    ]
+                ]
+            ]
+        ]
+
+        let messageWithNilPriority = Message(
+            messageId: "msg-nil-priority",
+            queueId: "queue-123",
+            priority: nil, // Explicitly nil
+            properties: properties
+        )
+
+        // When: Update local store with this message
+        manager.updateAnonymousMessagesLocalStore(messages: [messageWithNilPriority])
+
+        // Then: Message should still be eligible (not dropped)
+        let eligible = manager.getEligibleAnonymousMessages()
+        XCTAssertEqual(eligible.count, 1, "Message with nil priority should not be dropped")
+        XCTAssertEqual(eligible.first?.messageId, "msg-nil-priority")
+        XCTAssertNil(eligible.first?.priority, "priority should remain nil")
+    }
+
     // MARK: - Message Parsing Tests
 
     func test_parseBroadcastProperties_givenValidFrequency_expectCorrectParsing() {
