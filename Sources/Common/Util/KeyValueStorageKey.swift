@@ -10,4 +10,5 @@ public enum KeyValueStorageKey: String {
     // Anonymous message storage keys (using "broadcast_" prefix for backward compatibility)
     case broadcastMessages = "broadcast_messages"
     case broadcastMessagesExpiry = "broadcast_messages_expiry"
+    case broadcastMessagesTracking = "broadcast_messages_tracking"
 }

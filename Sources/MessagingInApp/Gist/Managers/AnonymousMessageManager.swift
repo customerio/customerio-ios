@@ -66,7 +66,8 @@ class AnonymousMessageManagerImpl: AnonymousMessageManager {
             keyValueStorage.setDouble(expiryTime, forKey: .broadcastMessagesExpiry)
 
             // Clean up tracking data for messages no longer in the response
-            cleanupRemovedMessagesTracking(currentMessages: anonymousMessages)
+            let currentMessageIds = Set(anonymousMessages.map(\.messageId))
+            cleanupRemovedMessagesTracking(currentMessageIds: currentMessageIds)
         } catch {
             logger.logWithModuleTag("Failed to serialize anonymous messages: \(error)", level: .error)
         }
@@ -104,27 +105,26 @@ class AnonymousMessageManagerImpl: AnonymousMessageManager {
     }
 
     func markAnonymousAsSeen(messageId: String) {
-        let currentCount = getAnonymousTimesShown(messageId: messageId)
-        let newCount = currentCount + 1
-
-        keyValueStorage.setInteger(newCount, forKey: timesShownKey(messageId: messageId))
-        logger.logWithModuleTag("Anonymous message \(messageId) shown \(newCount) time(s)", level: .debug)
+        updateTracking(for: messageId) { tracking in
+            tracking.timesShown += 1
+            logger.logWithModuleTag("Anonymous message \(messageId) shown \(tracking.timesShown) time(s)", level: .debug)
+        }
     }
 
     func markAnonymousAsDismissed(messageId: String) {
-        keyValueStorage.setBool(true, forKey: dismissedKey(messageId: messageId))
-        logger.logWithModuleTag("Anonymous message \(messageId) marked as dismissed", level: .debug)
+        updateTracking(for: messageId) { tracking in
+            tracking.dismissed = true
+            logger.logWithModuleTag("Anonymous message \(messageId) marked as dismissed", level: .debug)
+        }
     }
 
     func clearAllAnonymousData() {
         logger.logWithModuleTag("Clearing all anonymous message data", level: .debug)
 
-        // Clear message list and expiry
-        keyValueStorage.removeValue(forKey: .broadcastMessages)
-        keyValueStorage.removeValue(forKey: .broadcastMessagesExpiry)
-
-        // Note: Individual message tracking (times shown, dismissed, next show time) is intentionally kept
-        // This is useful if the same message returns in the future
+        // Clear message list, expiry, and tracking
+        keyValueStorage.setString(nil, forKey: .broadcastMessages)
+        keyValueStorage.setDouble(nil, forKey: .broadcastMessagesExpiry)
+        keyValueStorage.setString(nil, forKey: .broadcastMessagesTracking)
     }
 
     // MARK: - Private Helper Methods
@@ -168,76 +168,75 @@ class AnonymousMessageManagerImpl: AnonymousMessageManager {
         return true
     }
 
-    private func cleanupRemovedMessagesTracking(currentMessages: [Message]) {
-        // Get all stored messages
-        guard let messagesJson = keyValueStorage.string(.broadcastMessages),
-              let storedMessages = try? deserializeMessages(messagesJson)
-        else {
-            return
-        }
+    private func cleanupRemovedMessagesTracking(currentMessageIds: Set<String>) {
+        var trackingData = getTrackingData()
+        let trackedMessageIds = Set(trackingData.tracking.keys)
+        let removedMessageIds = trackedMessageIds.subtracting(currentMessageIds)
 
-        let currentMessageIds = Set(currentMessages.map(\.messageId))
-        let storedMessageIds = Set(storedMessages.map(\.messageId))
+        guard !removedMessageIds.isEmpty else { return }
 
-        // Find messages that were removed
-        let removedMessageIds = storedMessageIds.subtracting(currentMessageIds)
+        // Remove tracking for messages no longer in the current set
+        removedMessageIds.forEach { trackingData.tracking.removeValue(forKey: $0) }
+        setTrackingData(trackingData)
 
-        // Clear tracking for removed messages
-        for messageId in removedMessageIds {
-            clearAnonymousTracking(messageId: messageId)
-        }
-
-        if !removedMessageIds.isEmpty {
-            logger.logWithModuleTag("Cleaned up tracking for \(removedMessageIds.count) removed messages", level: .debug)
-        }
-    }
-
-    private func clearAnonymousTracking(messageId: String) {
-        keyValueStorage.removeValue(forKey: timesShownKey(messageId: messageId))
-        keyValueStorage.removeValue(forKey: dismissedKey(messageId: messageId))
-        keyValueStorage.removeValue(forKey: nextShowTimeKey(messageId: messageId))
+        logger.logWithModuleTag("Cleaned up tracking for \(removedMessageIds.count) removed messages", level: .debug)
     }
 
     // MARK: - Storage Access Helpers
 
+    private func getTrackingData() -> MessagesTrackingData {
+        guard let jsonString = keyValueStorage.string(.broadcastMessagesTracking),
+              let jsonData = jsonString.data(using: .utf8),
+              let trackingData = try? JSONDecoder().decode(MessagesTrackingData.self, from: jsonData)
+        else {
+            return MessagesTrackingData()
+        }
+        return trackingData
+    }
+
+    private func setTrackingData(_ data: MessagesTrackingData) {
+        guard let jsonData = try? JSONEncoder().encode(data),
+              let jsonString = String(data: jsonData, encoding: .utf8)
+        else {
+            logger.logWithModuleTag("Failed to encode tracking data", level: .error)
+            return
+        }
+        keyValueStorage.setString(jsonString, forKey: .broadcastMessagesTracking)
+    }
+
+    private func updateTracking(for messageId: String, update: (inout MessageTracking) -> Void) {
+        var trackingData = getTrackingData()
+        var messageTracking = trackingData.tracking[messageId] ?? MessageTracking()
+        update(&messageTracking)
+        trackingData.tracking[messageId] = messageTracking
+        setTrackingData(trackingData)
+    }
+
     private func getAnonymousTimesShown(messageId: String) -> Int {
-        keyValueStorage.integer(timesShownKey(messageId: messageId)) ?? 0
+        getTrackingData().tracking[messageId]?.timesShown ?? 0
     }
 
     private func isAnonymousDismissed(messageId: String) -> Bool {
-        keyValueStorage.bool(dismissedKey(messageId: messageId)) ?? false
+        getTrackingData().tracking[messageId]?.dismissed ?? false
     }
 
     private func isAnonymousInDelayPeriod(messageId: String) -> Bool {
-        guard let nextShowTime = keyValueStorage.double(nextShowTimeKey(messageId: messageId)) else {
+        guard let nextShowTime = getTrackingData().tracking[messageId]?.nextShowTime else {
             return false
         }
-
         let currentTime = dateUtil.now.timeIntervalSince1970 * 1000
         return currentTime < nextShowTime
     }
 
     func setAnonymousNextShowTime(messageId: String, delay: Int) {
         let currentTime = dateUtil.now.timeIntervalSince1970 * 1000
-        let nextShowTime = currentTime + Double(delay * 1000) // Convert seconds to milliseconds
+        let nextShowTime = currentTime + Double(delay * 1000)
 
-        keyValueStorage.setDouble(nextShowTime, forKey: nextShowTimeKey(messageId: messageId))
+        updateTracking(for: messageId) { tracking in
+            tracking.nextShowTime = nextShowTime
+        }
+
         logger.logWithModuleTag("Anonymous message \(messageId) next show time set to \(nextShowTime)", level: .debug)
-    }
-
-    // MARK: - Storage Key Helpers
-
-    private func timesShownKey(messageId: String) -> KeyValueStorageKey {
-        // Using custom string keys for per-message tracking since enum can't be dynamic
-        KeyValueStorageKey(rawValue: "broadcast_times_shown_\(messageId)") ?? .broadcastMessages
-    }
-
-    private func dismissedKey(messageId: String) -> KeyValueStorageKey {
-        KeyValueStorageKey(rawValue: "broadcast_dismissed_\(messageId)") ?? .broadcastMessages
-    }
-
-    private func nextShowTimeKey(messageId: String) -> KeyValueStorageKey {
-        KeyValueStorageKey(rawValue: "broadcast_next_show_time_\(messageId)") ?? .broadcastMessages
     }
 
     // MARK: - Serialization

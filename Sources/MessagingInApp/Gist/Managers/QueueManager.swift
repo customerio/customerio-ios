@@ -91,12 +91,15 @@ class QueueManager {
             return nil
         }
 
-        // Convert to Message objects for easier processing
+        // Convert to Message objects and separate anonymous from regular in one pass
         let allMessages = userQueue.map { $0.toMessage() }
-
-        // Separate anonymous and regular messages
-        let anonymousMessages = allMessages.filter(\.isAnonymousMessage)
-        let regularMessages = allMessages.filter { !$0.isAnonymousMessage }
+        let (anonymousMessages, regularMessages) = allMessages.reduce(into: ([Message](), [Message]())) { result, message in
+            if message.isAnonymousMessage {
+                result.0.append(message)
+            } else {
+                result.1.append(message)
+            }
+        }
 
         // Update local store with anonymous messages from server
         anonymousMessageManager.updateAnonymousMessagesLocalStore(messages: anonymousMessages)
