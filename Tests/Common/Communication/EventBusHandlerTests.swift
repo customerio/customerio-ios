@@ -385,9 +385,9 @@ class EventBusHandlerTest: UnitTest {
         let replayExpectation = XCTestExpectation(description: "Waiting for replayEvents to complete")
         let replayedEventsCount = ThreadSafeBoxedValue(0)
         await eventBusHandler.addObserver(TrackMetricEvent.self) { _ in
-            replayedEventsCount.withValue { $0 += 1 }
-            replayedEventsCount.withValue {
-                if $0 == events.count {
+            replayedEventsCount.withValue { count in
+                count += 1
+                if count == events.count {
                     replayExpectation.fulfill()
                 }
             }
