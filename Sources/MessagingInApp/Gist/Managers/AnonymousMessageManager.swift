@@ -18,9 +18,6 @@ protocol AnonymousMessageManager: AutoMockable {
 
     /// Marks an anonymous message as dismissed
     func markAnonymousAsDismissed(messageId: String)
-
-    /// Clears all anonymous message data from local storage
-    func clearAllAnonymousData()
 }
 
 // sourcery: InjectRegisterShared = "AnonymousMessageManager"
@@ -162,7 +159,7 @@ class AnonymousMessageManagerImpl: AnonymousMessageManager {
         logger.logWithModuleTag("Marked anonymous message \(messageId) as dismissed and will not show again", level: .debug)
     }
 
-    func clearAllAnonymousData() {
+    private func clearAllAnonymousData() {
         logger.logWithModuleTag("Cleared all anonymous message storage", level: .debug)
 
         // Clear message list and expiry only - tracking data is intentionally kept
@@ -260,17 +257,6 @@ class AnonymousMessageManagerImpl: AnonymousMessageManager {
         return currentTime < nextShowTime
     }
 
-    func setAnonymousNextShowTime(messageId: String, delay: Int) {
-        let currentTime = dateUtil.now.timeIntervalSince1970 * 1000
-        let nextShowTime = currentTime + Double(delay * 1000)
-
-        updateTracking(for: messageId) { tracking in
-            tracking.nextShowTime = nextShowTime
-        }
-
-        logger.logWithModuleTag("Anonymous message \(messageId) next show time set to \(nextShowTime)", level: .debug)
-    }
-
     private func getAnonymousFrequency(messageId: String) -> BroadcastFrequency? {
         guard let storedMessages = try? getStoredMessages() else {
             return nil
@@ -345,22 +331,6 @@ class AnonymousMessageManagerImpl: AnonymousMessageManager {
                 priority: priority,
                 properties: properties
             )
-        }
-    }
-}
-
-// MARK: - Extension for tracking after display
-
-extension AnonymousMessageManagerImpl {
-    /// Called after an anonymous message is displayed to update delay period
-    func onAnonymousMessageDisplayed(message: Message) {
-        guard let broadcast = message.gistProperties.broadcast else {
-            return
-        }
-
-        let delay = broadcast.frequency.delay
-        if delay > 0 {
-            setAnonymousNextShowTime(messageId: message.messageId, delay: delay)
         }
     }
 }

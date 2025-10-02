@@ -115,9 +115,6 @@ class AnonymousMessageManagerMock: AnonymousMessageManager, Mock {
         markAnonymousAsDismissedReceivedInvocations = []
 
         mockCalled = false // do last as resetting properties above can make this true
-        clearAllAnonymousDataCallsCount = 0
-
-        mockCalled = false // do last as resetting properties above can make this true
     }
 
     // MARK: - updateAnonymousMessagesLocalStore
@@ -224,27 +221,6 @@ class AnonymousMessageManagerMock: AnonymousMessageManager, Mock {
         markAnonymousAsDismissedReceivedArguments = messageId
         markAnonymousAsDismissedReceivedInvocations.append(messageId)
         markAnonymousAsDismissedClosure?(messageId)
-    }
-
-    // MARK: - clearAllAnonymousData
-
-    /// Number of times the function was called.
-    @Atomic private(set) var clearAllAnonymousDataCallsCount = 0
-    /// `true` if the function was ever called.
-    var clearAllAnonymousDataCalled: Bool {
-        clearAllAnonymousDataCallsCount > 0
-    }
-
-    /**
-     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
-     */
-    var clearAllAnonymousDataClosure: (() -> Void)?
-
-    /// Mocked function for `clearAllAnonymousData()`. Your opportunity to return a mocked value and check result of mock in test code.
-    func clearAllAnonymousData() {
-        mockCalled = true
-        clearAllAnonymousDataCallsCount += 1
-        clearAllAnonymousDataClosure?()
     }
 }
 

@@ -126,11 +126,6 @@ func messageMetricsMiddleware(logger: Logger, logManager: LogManager, anonymousM
             if message.isAnonymousMessage {
                 logger.logWithModuleTag("Anonymous message shown, tracking locally: \(message.describeForLogs)", level: .debug)
                 anonymousMessageManager.markAnonymousAsSeen(messageId: message.messageId)
-
-                // Update delay period if configured
-                if let anonymousManager = anonymousMessageManager as? AnonymousMessageManagerImpl {
-                    anonymousManager.onAnonymousMessageDisplayed(message: message)
-                }
             }
 
             // Log message view only if message should be tracked as shown on display action

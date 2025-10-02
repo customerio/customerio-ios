@@ -15,9 +15,6 @@ class AnonymousMessageManagerTest: UnitTest {
             dateUtil: dateUtilStub,
             logger: diGraphShared.logger
         )
-
-        // Clear any leftover data from previous tests
-        manager.clearAllAnonymousData()
     }
 
     // MARK: - Message Parsing Tests
@@ -142,7 +139,6 @@ class AnonymousMessageManagerTest: UnitTest {
 
         // When: Message is shown
         manager.markAnonymousAsSeen(messageId: "nodelay-msg")
-        manager.onAnonymousMessageDisplayed(message: message)
 
         // Then: Should be immediately eligible again
         let eligibleMessages = manager.getEligibleAnonymousMessages()
@@ -157,7 +153,6 @@ class AnonymousMessageManagerTest: UnitTest {
 
         // When: Message is shown
         manager.markAnonymousAsSeen(messageId: "delay-msg")
-        manager.onAnonymousMessageDisplayed(message: message)
 
         // Then: Should NOT be eligible during delay period
         var eligibleMessages = manager.getEligibleAnonymousMessages()
@@ -182,7 +177,6 @@ class AnonymousMessageManagerTest: UnitTest {
 
         // When: Message is shown
         manager.markAnonymousAsSeen(messageId: "longdelay-msg")
-        manager.onAnonymousMessageDisplayed(message: message)
 
         // Then: Should not be eligible for 1 hour
         var eligibleMessages = manager.getEligibleAnonymousMessages()
@@ -292,7 +286,6 @@ class AnonymousMessageManagerTest: UnitTest {
         XCTAssertEqual(eligibleMessages.count, 1, "Should be eligible for first show")
 
         manager.markAnonymousAsSeen(messageId: "combo-msg")
-        manager.onAnonymousMessageDisplayed(message: message)
 
         // During delay period after first show
         eligibleMessages = manager.getEligibleAnonymousMessages()
@@ -305,7 +298,6 @@ class AnonymousMessageManagerTest: UnitTest {
 
         // Second show
         manager.markAnonymousAsSeen(messageId: "combo-msg")
-        manager.onAnonymousMessageDisplayed(message: message)
 
         // After reaching frequency limit
         dateUtilStub.givenNow = Date(timeIntervalSince1970: 5022)
@@ -336,7 +328,6 @@ class AnonymousMessageManagerTest: UnitTest {
         // Show 1
         manager.markAnonymousAsSeen(messageId: "complex-msg")
         manager.markAnonymousAsDismissed(messageId: "complex-msg") // User dismisses
-        manager.onAnonymousMessageDisplayed(message: message)
 
         // During delay - should not be eligible
         var eligibleMessages = manager.getEligibleAnonymousMessages()
@@ -349,11 +340,9 @@ class AnonymousMessageManagerTest: UnitTest {
 
         // Show 2 and 3
         manager.markAnonymousAsSeen(messageId: "complex-msg")
-        manager.onAnonymousMessageDisplayed(message: message)
         dateUtilStub.givenNow = Date(timeIntervalSince1970: 8012)
 
         manager.markAnonymousAsSeen(messageId: "complex-msg")
-        manager.onAnonymousMessageDisplayed(message: message)
         dateUtilStub.givenNow = Date(timeIntervalSince1970: 8018)
 
         // After 3 shows - should not be eligible (reached frequency limit)
@@ -386,8 +375,7 @@ class AnonymousMessageManagerTest: UnitTest {
 
         // Mark some as seen/dismissed
         manager.markAnonymousAsSeen(messageId: "not-eligible-1") // Reached limit (count=1)
-        manager.markAnonymousAsSeen(messageId: "not-eligible-2")
-        manager.onAnonymousMessageDisplayed(message: notEligible2) // In delay period
+        manager.markAnonymousAsSeen(messageId: "not-eligible-2") // In delay period
 
         // When: Getting eligible messages
         let eligibleMessages = manager.getEligibleAnonymousMessages()
