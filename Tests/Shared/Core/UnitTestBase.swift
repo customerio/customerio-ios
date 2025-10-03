@@ -99,9 +99,7 @@ open class UnitTestBase<Component>: XCTestCase {
     override open func tearDown() {
         // need to remove the observers for integration tests that utilizes actual NotificationCenter
         // otherwise, results are flaky
-        diGraphShared.concurrencySupport.execute(on: diGraphShared.eventBusObserversHolder) {
-            $0.removeAllObservers()
-        }
+        diGraphShared.eventBusObserversHolder.removeAllObservers()
 
         cleanupTestEnvironment()
         super.tearDown()

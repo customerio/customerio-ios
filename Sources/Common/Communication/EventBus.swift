@@ -36,7 +36,7 @@ public protocol EventBus: AutoMockable, Sendable {
 // sourcery: InjectRegisterShared = "EventBusObserversHolder"
 // sourcery: InjectSingleton
 // swiftlint:enable orphaned_doc_comment
-actor EventBusObserversHolder {
+class EventBusObserversHolder {
     /// NotificationCenter instance used for observer management.
     let notificationCenter: NotificationCenter = .default
 
@@ -109,7 +109,7 @@ actor SharedEventBus: EventBus {
     @discardableResult
     func post(_ event: AnyEventRepresentable) async -> Bool {
         let key = event.key
-        if let observerList = await holder.getObservers(for: key), !observerList.isEmpty {
+        if let observerList = holder.getObservers(for: key), !observerList.isEmpty {
             holder.notificationCenter.post(name: NSNotification.Name(key), object: event)
             return true
         }
@@ -128,14 +128,14 @@ actor SharedEventBus: EventBus {
             }
         }
         // Store the observer reference for later management.
-        await holder.addObserver(observer, for: eventType)
+        holder.addObserver(observer, for: eventType)
     }
 
     /// Removes all observers for a specific event type.
     ///
     /// - Parameter eventType: The event type for which to remove all observers.
     func removeObserver(for eventType: String) async {
-        if let observerList = await holder.removeObservers(for: eventType) {
+        if let observerList = holder.removeObservers(for: eventType) {
             for observer in observerList {
                 holder.notificationCenter.removeObserver(observer)
             }
