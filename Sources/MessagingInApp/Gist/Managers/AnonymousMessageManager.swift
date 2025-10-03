@@ -209,7 +209,7 @@ class AnonymousMessageManagerImpl: AnonymousMessageManager {
 
         // Check frequency limit
         let timesShown = getAnonymousTimesShown(messageId: messageId)
-        if !frequency.isEmpty, timesShown >= frequency.count {
+        if !frequency.isUnlimited, timesShown >= frequency.count {
             logger.logWithModuleTag("Anonymous message \(messageId) reached frequency limit (\(frequency.count))", level: .debug)
             return false
         }

@@ -11,8 +11,8 @@ class BroadcastFrequency {
     /// If true, show message even after user dismisses it
     let ignoreDismiss: Bool
 
-    /// Returns true if frequency has a count limit (count > 0)
-    var isEmpty: Bool {
+    /// Returns true if frequency is unlimited (count == 0)
+    var isUnlimited: Bool {
         count == 0
     }
 
