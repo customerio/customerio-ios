@@ -22,6 +22,7 @@ public enum ConcurrencySupportStub {
 // MARK: - Blocking Stub
 
 /// Blocking implementation that executes tasks synchronously.
+/// Times out after 5 seconds to prevent intermittent test hangs.
 private final class BlockingStub: ConcurrencySupport {
     @discardableResult
     func execute<Caller: Actor, Result: Sendable>(
@@ -41,7 +42,13 @@ private final class BlockingStub: ConcurrencySupport {
             }
         }
 
-        semaphore.wait()
+        let timeout = DispatchTime.now() + .seconds(5)
+        let result = semaphore.wait(timeout: timeout)
+
+        if result == .timedOut {
+            DIGraphShared.shared.logger.error("BlockingStub: Operation timed out after 5 seconds")
+        }
+
         return task
     }
 }
