@@ -36,13 +36,34 @@ public protocol EventBus: AutoMockable, Sendable {
 // sourcery: InjectRegisterShared = "EventBusObserversHolder"
 // sourcery: InjectSingleton
 // swiftlint:enable orphaned_doc_comment
-class EventBusObserversHolder {
+actor EventBusObserversHolder {
     /// NotificationCenter instance used for observer management.
     let notificationCenter: NotificationCenter = .default
 
     /// Dictionary holding arrays of observer tokens for each event type.
     /// The keys are event types (as String), and the values are arrays of NotificationCenter tokens.
-    var observers: [String: [NSObjectProtocol]] = [:]
+    private var observers: [String: [NSObjectProtocol]] = [:]
+
+    /// Gets the list of observers for a specific event type.
+    func getObservers(for eventType: String) -> [NSObjectProtocol]? {
+        observers[eventType]
+    }
+
+    /// Adds an observer for a specific event type.
+    func addObserver(_ observer: NSObjectProtocol, for eventType: String) {
+        if observers[eventType] != nil {
+            observers[eventType]?.append(observer)
+        } else {
+            observers[eventType] = [observer]
+        }
+    }
+
+    /// Removes all observers for a specific event type.
+    func removeObservers(for eventType: String) -> [NSObjectProtocol]? {
+        let observerList = observers[eventType]
+        observers[eventType] = nil
+        return observerList
+    }
 
     /// Removes all observers from the EventBus.
     ///
@@ -57,7 +78,10 @@ class EventBusObserversHolder {
     /// Deinitializer for EventBusObserversHolder.
     /// Ensures that all observers are removed from NotificationCenter upon deinitialization.
     deinit {
-        self.removeAllObservers()
+        let eventObservers = observers
+        eventObservers.forEach { _, observerList in
+            observerList.forEach(notificationCenter.removeObserver)
+        }
     }
 }
 
@@ -85,7 +109,7 @@ actor SharedEventBus: EventBus {
     @discardableResult
     func post(_ event: AnyEventRepresentable) async -> Bool {
         let key = event.key
-        if let observerList = holder.observers[key], !observerList.isEmpty {
+        if let observerList = await holder.getObservers(for: key), !observerList.isEmpty {
             holder.notificationCenter.post(name: NSNotification.Name(key), object: event)
             return true
         }
@@ -104,22 +128,17 @@ actor SharedEventBus: EventBus {
             }
         }
         // Store the observer reference for later management.
-        if holder.observers[eventType] != nil {
-            holder.observers[eventType]?.append(observer)
-        } else {
-            holder.observers[eventType] = [observer]
-        }
+        await holder.addObserver(observer, for: eventType)
     }
 
     /// Removes all observers for a specific event type.
     ///
     /// - Parameter eventType: The event type for which to remove all observers.
     func removeObserver(for eventType: String) async {
-        if let observerList = holder.observers[eventType] {
+        if let observerList = await holder.removeObservers(for: eventType) {
             for observer in observerList {
                 holder.notificationCenter.removeObserver(observer)
             }
-            holder.observers[eventType] = nil
         }
     }
 }
