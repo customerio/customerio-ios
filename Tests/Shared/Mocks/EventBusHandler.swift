@@ -1,4 +1,5 @@
 import CioInternalCommon
+import Foundation
 
 /// Mock of the EventBusHandler class, designed to mimic AutoMockable
 /// Once the class is generated using AutoMockable, it should seamlessly replace the current implementation without any issues
@@ -52,11 +53,23 @@ public actor EventBusHandlerMock: EventBusHandler, Mock {
     public nonisolated func dispatch(
         _ operation: @Sendable @escaping (isolated EventBusHandler) async -> Void
     ) -> Task<Void, Error> {
-        let result = concurrency.execute(on: self, operation)
-        concurrency.execute(on: self) {
-            $0.disposeWithLifecycle(result)
+        let semaphore = DispatchSemaphore(value: 0)
+        let task = concurrency.execute(on: self) {
+            await operation($0)
+            semaphore.signal()
         }
-        return result
+        concurrency.execute(on: self) {
+            $0.disposeWithLifecycle(task)
+        }
+
+        let timeout = DispatchTime.now() + .seconds(5)
+        let result = semaphore.wait(timeout: timeout)
+
+        if result == .timedOut {
+            DIGraphShared.shared.logger.error("EventBusHandlerMock: Operation timed out after 5 seconds")
+        }
+
+        return task
     }
 
     public func disposeWithLifecycle(_ task: Task<Void, Error>) {
