@@ -72,13 +72,14 @@ class AnonymousMessageManagerTest: UnitTest {
         XCTAssertEqual(eligible.first?.messageId, "reused-id")
     }
 
-    // MARK: - Bug Fix: Messages with nil queueId/priority
+    // MARK: - Edge Cases: Messages with nil queueId/priority
 
-    func test_bugFix_anonymousMessagesWithNilQueueId_expectNotDropped() {
-        // This test verifies the critical bug fix where anonymous messages with nil queueId
-        // were being dropped during UserQueueResponse conversion in processAnonymousMessages
+    func test_edgeCase_messagesWithNilQueueId_expectNotDropped() {
+        // This test verifies that messages with nil queueId are handled correctly during
+        // serialization/deserialization. This edge case was discovered during testing
+        // to ensure optional fields don't cause messages to be dropped.
 
-        // Given: Anonymous message with nil queueId (can happen from local storage)
+        // Given: Anonymous message with nil queueId (optional field)
         let properties: [String: Any] = [
             "gist": [
                 "broadcast": [
@@ -108,10 +109,12 @@ class AnonymousMessageManagerTest: UnitTest {
         XCTAssertNil(eligible.first?.queueId, "queueId should remain nil")
     }
 
-    func test_bugFix_anonymousMessagesWithNilPriority_expectNotDropped() {
-        // This test verifies anonymous messages with nil priority are processed correctly
+    func test_edgeCase_messagesWithNilPriority_expectNotDropped() {
+        // This test verifies that messages with nil priority are handled correctly during
+        // serialization/deserialization. This edge case was discovered during testing
+        // to ensure optional fields don't cause messages to be dropped.
 
-        // Given: Anonymous message with nil priority
+        // Given: Anonymous message with nil priority (optional field)
         let properties: [String: Any] = [
             "gist": [
                 "broadcast": [

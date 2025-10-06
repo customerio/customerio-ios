@@ -59,8 +59,8 @@ func routeMatchingMiddleware(logger: Logger) -> InAppMessageMiddleware {
         }
 
         // Require either userId or anonymousId to be present
-        let hasUserId = state.userId != nil && !state.userId!.isBlankOrEmpty()
-        let hasAnonymousId = state.anonymousId != nil && !state.anonymousId!.isBlankOrEmpty()
+        let hasUserId = state.userId.map { !$0.isBlankOrEmpty() } ?? false
+        let hasAnonymousId = state.anonymousId.map { !$0.isBlankOrEmpty() } ?? false
         guard hasUserId || hasAnonymousId else {
             return next(action)
         }
