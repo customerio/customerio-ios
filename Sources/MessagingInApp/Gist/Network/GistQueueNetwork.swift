@@ -32,15 +32,16 @@ class GistQueueNetworkImpl: GistQueueNetwork {
         urlRequest.addValue(sdkClient.source.lowercased() + "-apple", forHTTPHeaderField: HTTPHeader.cioClientPlatform.rawValue)
 
         // Set user token: use userId if available, otherwise use anonymousId
+        // At least one identifier is required to make a request
         let isAnonymous: Bool
-        if let userId = state.userId {
+        if let userId = state.userId, !userId.isBlankOrEmpty() {
             urlRequest.addValue(Data(userId.utf8).base64EncodedString(), forHTTPHeaderField: HTTPHeader.userToken.rawValue)
             isAnonymous = false
-        } else if let anonymousId = state.anonymousId {
+        } else if let anonymousId = state.anonymousId, !anonymousId.isBlankOrEmpty() {
             urlRequest.addValue(Data(anonymousId.utf8).base64EncodedString(), forHTTPHeaderField: HTTPHeader.userToken.rawValue)
             isAnonymous = true
         } else {
-            isAnonymous = true
+            throw GistNetworkRequestError.missingUserIdentifier
         }
 
         // Add anonymous header to indicate if user is anonymous
