@@ -28,7 +28,7 @@ class AnonymousMessageManagerImpl: AnonymousMessageManager {
     private let logger: Logger
 
     // Cache expiry duration: 60 minutes in milliseconds
-    private let cacheExpiryDuration: TimeInterval = 60 * 60 * 1000
+    private let cacheExpiryDurationMillis: Double = 60 * 60 * 1000
 
     init(
         keyValueStorage: SharedKeyValueStorage,
@@ -60,7 +60,7 @@ class AnonymousMessageManagerImpl: AnonymousMessageManager {
             keyValueStorage.setString(messagesData, forKey: .broadcastMessages)
 
             // Set expiry timestamp (current time + 60 minutes)
-            let expiryTime = dateUtil.now.millisecondsSince1970 + cacheExpiryDuration
+            let expiryTime = dateUtil.now.millisecondsSince1970 + cacheExpiryDurationMillis
             keyValueStorage.setDouble(expiryTime, forKey: .broadcastMessagesExpiry)
 
             logger.logWithModuleTag("Saved \(anonymousMessages.count) anonymous messages to local store", level: .debug)
