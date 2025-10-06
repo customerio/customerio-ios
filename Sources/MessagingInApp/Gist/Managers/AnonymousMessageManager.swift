@@ -60,7 +60,7 @@ class AnonymousMessageManagerImpl: AnonymousMessageManager {
             keyValueStorage.setString(messagesData, forKey: .broadcastMessages)
 
             // Set expiry timestamp (current time + 60 minutes)
-            let expiryTime = dateUtil.now.timeIntervalSince1970 * 1000 + cacheExpiryDuration
+            let expiryTime = dateUtil.now.millisecondsSince1970 + cacheExpiryDuration
             keyValueStorage.setDouble(expiryTime, forKey: .broadcastMessagesExpiry)
 
             logger.logWithModuleTag("Saved \(anonymousMessages.count) anonymous messages to local store", level: .debug)
@@ -123,13 +123,13 @@ class AnonymousMessageManagerImpl: AnonymousMessageManager {
             logger.logWithModuleTag("Marked anonymous message \(messageId) as permanently dismissed (count=1)", level: .debug)
         } else if frequency.delay > 0 {
             // Set next show time based on delay
-            let currentTime = dateUtil.now.timeIntervalSince1970 * 1000
-            let nextShowTimeMillis = currentTime + Double(frequency.delay * 1000)
+            let delayMilliseconds = Double(frequency.delay * 1000)
+            let nextShowTimeMillis = dateUtil.now.millisecondsSince1970 + delayMilliseconds
             updateTracking(for: messageId) { tracking in
                 tracking.nextShowTime = nextShowTimeMillis
             }
 
-            let nextShowDate = Date(timeIntervalSince1970: nextShowTimeMillis / 1000)
+            let nextShowDate = Date.fromMillisecondsSince1970(nextShowTimeMillis)
             logger.logWithModuleTag("Marked anonymous message \(messageId) as seen, shown \(numberOfTimesShown) times, next show time: \(nextShowDate)", level: .debug)
         } else {
             logger.logWithModuleTag("Marked anonymous message \(messageId) as seen, shown \(numberOfTimesShown) times, no delay restriction", level: .debug)
@@ -182,7 +182,7 @@ class AnonymousMessageManagerImpl: AnonymousMessageManager {
             return true // If no expiry time is set, consider it expired
         }
 
-        let currentTime = dateUtil.now.timeIntervalSince1970 * 1000
+        let currentTime = dateUtil.now.millisecondsSince1970
         return currentTime >= expiryTime
     }
 
@@ -258,7 +258,7 @@ class AnonymousMessageManagerImpl: AnonymousMessageManager {
         guard let nextShowTime = getTrackingData().tracking[messageId]?.nextShowTime else {
             return false
         }
-        let currentTime = dateUtil.now.timeIntervalSince1970 * 1000
+        let currentTime = dateUtil.now.millisecondsSince1970
         return currentTime < nextShowTime
     }
 

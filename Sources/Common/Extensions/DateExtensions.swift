@@ -72,4 +72,19 @@ extension Date {
 
         return Date.fromFormat(.iso8601noMilliseconds, string: nowString)!
     }
+
+    /// Converts Date to milliseconds since 1970 (Unix epoch in milliseconds)
+    public var millisecondsSince1970: Double {
+        timeIntervalSince1970 * 1000
+    }
+
+    /// Creates a Date from milliseconds since 1970 (Unix epoch in milliseconds)
+    public static func fromMillisecondsSince1970(_ milliseconds: Double) -> Date {
+        Date(timeIntervalSince1970: milliseconds / 1000)
+    }
+
+    /// Adds milliseconds to the current date
+    public func addingMilliseconds(_ milliseconds: Double) -> Date {
+        Date(timeIntervalSince1970: timeIntervalSince1970 + (milliseconds / 1000))
+    }
 }
