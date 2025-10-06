@@ -45,15 +45,14 @@ class AnonymousMessageManagerImpl: AnonymousMessageManager {
     func updateMessagesLocalStore(messages: [Message]) {
         let anonymousMessages = messages.filter(\.isAnonymousMessage)
 
+        // Get previous messages for cleanup comparison
+        let previousMessages = (try? getStoredMessages()) ?? []
+
         if anonymousMessages.isEmpty {
-            let previousMessages = (try? getStoredMessages()) ?? []
             logger.logWithModuleTag("No anonymous messages in server response - clearing local storage as anonymous messages have expired", level: .debug)
             clearAllAnonymousData(previousMessages: previousMessages)
             return
         }
-
-        // Get previous messages for cleanup comparison
-        let previousMessages = (try? getStoredMessages()) ?? []
 
         // Store messages as JSON
         do {
