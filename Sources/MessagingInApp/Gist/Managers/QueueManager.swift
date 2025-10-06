@@ -102,10 +102,10 @@ class QueueManager {
         }
 
         // Update local store with anonymous messages from server
-        anonymousMessageManager.updateAnonymousMessagesLocalStore(messages: anonymousMessages)
+        anonymousMessageManager.updateMessagesLocalStore(messages: anonymousMessages)
 
         // Get eligible anonymous messages from local storage
-        let eligibleAnonymousMessages = anonymousMessageManager.getEligibleAnonymousMessages()
+        let eligibleAnonymousMessages = anonymousMessageManager.getEligibleMessages()
 
         // Combine regular messages with eligible anonymous messages
         let combinedMessages = regularMessages + eligibleAnonymousMessages

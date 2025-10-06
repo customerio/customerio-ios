@@ -7,17 +7,17 @@ import Foundation
 ///
 /// Storage keys use "broadcast_" prefix for backward compatibility with existing user data.
 protocol AnonymousMessageManager: AutoMockable {
-    /// Updates the local store of anonymous messages with a 60-minute expiry
-    func updateAnonymousMessagesLocalStore(messages: [Message])
+    /// Updates the local store of messages with a 60-minute expiry
+    func updateMessagesLocalStore(messages: [Message])
 
-    /// Returns all eligible anonymous messages based on frequency, delay, and dismiss rules
-    func getEligibleAnonymousMessages() -> [Message]
+    /// Returns all eligible messages based on frequency, delay, and dismiss rules
+    func getEligibleMessages() -> [Message]
 
-    /// Marks an anonymous message as seen (increments view counter)
-    func markAnonymousAsSeen(messageId: String)
+    /// Marks a message as seen (increments view counter)
+    func markMessageAsSeen(messageId: String)
 
-    /// Marks an anonymous message as dismissed
-    func markAnonymousAsDismissed(messageId: String)
+    /// Marks a message as dismissed
+    func markMessageAsDismissed(messageId: String)
 }
 
 // sourcery: InjectRegisterShared = "AnonymousMessageManager"
@@ -42,7 +42,7 @@ class AnonymousMessageManagerImpl: AnonymousMessageManager {
 
     // MARK: - Public Methods
 
-    func updateAnonymousMessagesLocalStore(messages: [Message]) {
+    func updateMessagesLocalStore(messages: [Message]) {
         let anonymousMessages = messages.filter(\.isAnonymousMessage)
 
         if anonymousMessages.isEmpty {
@@ -73,7 +73,7 @@ class AnonymousMessageManagerImpl: AnonymousMessageManager {
         }
     }
 
-    func getEligibleAnonymousMessages() -> [Message] {
+    func getEligibleMessages() -> [Message] {
         // Check if cache has expired
         if isAnonymousMessagesExpired() {
             let previousMessages = (try? getStoredMessages()) ?? []
@@ -99,7 +99,7 @@ class AnonymousMessageManagerImpl: AnonymousMessageManager {
         return eligibleMessages
     }
 
-    func markAnonymousAsSeen(messageId: String) {
+    func markMessageAsSeen(messageId: String) {
         logger.logWithModuleTag("Marking anonymous message \(messageId) as seen", level: .debug)
 
         // Get frequency details from stored message JSON
@@ -137,7 +137,7 @@ class AnonymousMessageManagerImpl: AnonymousMessageManager {
         }
     }
 
-    func markAnonymousAsDismissed(messageId: String) {
+    func markMessageAsDismissed(messageId: String) {
         logger.logWithModuleTag("Marking anonymous message \(messageId) as dismissed", level: .debug)
 
         // Get frequency details from stored message JSON

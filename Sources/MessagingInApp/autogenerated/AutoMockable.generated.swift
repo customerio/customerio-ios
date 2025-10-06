@@ -97,130 +97,130 @@ class AnonymousMessageManagerMock: AnonymousMessageManager, Mock {
     }
 
     public func resetMock() {
-        updateAnonymousMessagesLocalStoreCallsCount = 0
-        updateAnonymousMessagesLocalStoreReceivedArguments = nil
-        updateAnonymousMessagesLocalStoreReceivedInvocations = []
+        updateMessagesLocalStoreCallsCount = 0
+        updateMessagesLocalStoreReceivedArguments = nil
+        updateMessagesLocalStoreReceivedInvocations = []
 
         mockCalled = false // do last as resetting properties above can make this true
-        getEligibleAnonymousMessagesCallsCount = 0
+        getEligibleMessagesCallsCount = 0
 
         mockCalled = false // do last as resetting properties above can make this true
-        markAnonymousAsSeenCallsCount = 0
-        markAnonymousAsSeenReceivedArguments = nil
-        markAnonymousAsSeenReceivedInvocations = []
+        markMessageAsSeenCallsCount = 0
+        markMessageAsSeenReceivedArguments = nil
+        markMessageAsSeenReceivedInvocations = []
 
         mockCalled = false // do last as resetting properties above can make this true
-        markAnonymousAsDismissedCallsCount = 0
-        markAnonymousAsDismissedReceivedArguments = nil
-        markAnonymousAsDismissedReceivedInvocations = []
+        markMessageAsDismissedCallsCount = 0
+        markMessageAsDismissedReceivedArguments = nil
+        markMessageAsDismissedReceivedInvocations = []
 
         mockCalled = false // do last as resetting properties above can make this true
     }
 
-    // MARK: - updateAnonymousMessagesLocalStore
+    // MARK: - updateMessagesLocalStore
 
     /// Number of times the function was called.
-    @Atomic private(set) var updateAnonymousMessagesLocalStoreCallsCount = 0
+    @Atomic private(set) var updateMessagesLocalStoreCallsCount = 0
     /// `true` if the function was ever called.
-    var updateAnonymousMessagesLocalStoreCalled: Bool {
-        updateAnonymousMessagesLocalStoreCallsCount > 0
+    var updateMessagesLocalStoreCalled: Bool {
+        updateMessagesLocalStoreCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    @Atomic private(set) var updateAnonymousMessagesLocalStoreReceivedArguments: [Message]?
+    @Atomic private(set) var updateMessagesLocalStoreReceivedArguments: [Message]?
     /// Arguments from *all* of the times that the function was called.
-    @Atomic private(set) var updateAnonymousMessagesLocalStoreReceivedInvocations: [[Message]] = []
+    @Atomic private(set) var updateMessagesLocalStoreReceivedInvocations: [[Message]] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
-    var updateAnonymousMessagesLocalStoreClosure: (([Message]) -> Void)?
+    var updateMessagesLocalStoreClosure: (([Message]) -> Void)?
 
-    /// Mocked function for `updateAnonymousMessagesLocalStore(messages: [Message])`. Your opportunity to return a mocked value and check result of mock in test code.
-    func updateAnonymousMessagesLocalStore(messages: [Message]) {
+    /// Mocked function for `updateMessagesLocalStore(messages: [Message])`. Your opportunity to return a mocked value and check result of mock in test code.
+    func updateMessagesLocalStore(messages: [Message]) {
         mockCalled = true
-        updateAnonymousMessagesLocalStoreCallsCount += 1
-        updateAnonymousMessagesLocalStoreReceivedArguments = messages
-        updateAnonymousMessagesLocalStoreReceivedInvocations.append(messages)
-        updateAnonymousMessagesLocalStoreClosure?(messages)
+        updateMessagesLocalStoreCallsCount += 1
+        updateMessagesLocalStoreReceivedArguments = messages
+        updateMessagesLocalStoreReceivedInvocations.append(messages)
+        updateMessagesLocalStoreClosure?(messages)
     }
 
-    // MARK: - getEligibleAnonymousMessages
+    // MARK: - getEligibleMessages
 
     /// Number of times the function was called.
-    @Atomic private(set) var getEligibleAnonymousMessagesCallsCount = 0
+    @Atomic private(set) var getEligibleMessagesCallsCount = 0
     /// `true` if the function was ever called.
-    var getEligibleAnonymousMessagesCalled: Bool {
-        getEligibleAnonymousMessagesCallsCount > 0
+    var getEligibleMessagesCalled: Bool {
+        getEligibleMessagesCallsCount > 0
     }
 
     /// Value to return from the mocked function.
-    var getEligibleAnonymousMessagesReturnValue: [Message]!
+    var getEligibleMessagesReturnValue: [Message]!
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      The closure has first priority to return a value for the mocked function. If the closure returns `nil`,
-     then the mock will attempt to return the value for `getEligibleAnonymousMessagesReturnValue`
+     then the mock will attempt to return the value for `getEligibleMessagesReturnValue`
      */
-    var getEligibleAnonymousMessagesClosure: (() -> [Message])?
+    var getEligibleMessagesClosure: (() -> [Message])?
 
-    /// Mocked function for `getEligibleAnonymousMessages()`. Your opportunity to return a mocked value and check result of mock in test code.
-    func getEligibleAnonymousMessages() -> [Message] {
+    /// Mocked function for `getEligibleMessages()`. Your opportunity to return a mocked value and check result of mock in test code.
+    func getEligibleMessages() -> [Message] {
         mockCalled = true
-        getEligibleAnonymousMessagesCallsCount += 1
-        return getEligibleAnonymousMessagesClosure.map { $0() } ?? getEligibleAnonymousMessagesReturnValue
+        getEligibleMessagesCallsCount += 1
+        return getEligibleMessagesClosure.map { $0() } ?? getEligibleMessagesReturnValue
     }
 
-    // MARK: - markAnonymousAsSeen
+    // MARK: - markMessageAsSeen
 
     /// Number of times the function was called.
-    @Atomic private(set) var markAnonymousAsSeenCallsCount = 0
+    @Atomic private(set) var markMessageAsSeenCallsCount = 0
     /// `true` if the function was ever called.
-    var markAnonymousAsSeenCalled: Bool {
-        markAnonymousAsSeenCallsCount > 0
+    var markMessageAsSeenCalled: Bool {
+        markMessageAsSeenCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    @Atomic private(set) var markAnonymousAsSeenReceivedArguments: String?
+    @Atomic private(set) var markMessageAsSeenReceivedArguments: String?
     /// Arguments from *all* of the times that the function was called.
-    @Atomic private(set) var markAnonymousAsSeenReceivedInvocations: [String] = []
+    @Atomic private(set) var markMessageAsSeenReceivedInvocations: [String] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
-    var markAnonymousAsSeenClosure: ((String) -> Void)?
+    var markMessageAsSeenClosure: ((String) -> Void)?
 
-    /// Mocked function for `markAnonymousAsSeen(messageId: String)`. Your opportunity to return a mocked value and check result of mock in test code.
-    func markAnonymousAsSeen(messageId: String) {
+    /// Mocked function for `markMessageAsSeen(messageId: String)`. Your opportunity to return a mocked value and check result of mock in test code.
+    func markMessageAsSeen(messageId: String) {
         mockCalled = true
-        markAnonymousAsSeenCallsCount += 1
-        markAnonymousAsSeenReceivedArguments = messageId
-        markAnonymousAsSeenReceivedInvocations.append(messageId)
-        markAnonymousAsSeenClosure?(messageId)
+        markMessageAsSeenCallsCount += 1
+        markMessageAsSeenReceivedArguments = messageId
+        markMessageAsSeenReceivedInvocations.append(messageId)
+        markMessageAsSeenClosure?(messageId)
     }
 
-    // MARK: - markAnonymousAsDismissed
+    // MARK: - markMessageAsDismissed
 
     /// Number of times the function was called.
-    @Atomic private(set) var markAnonymousAsDismissedCallsCount = 0
+    @Atomic private(set) var markMessageAsDismissedCallsCount = 0
     /// `true` if the function was ever called.
-    var markAnonymousAsDismissedCalled: Bool {
-        markAnonymousAsDismissedCallsCount > 0
+    var markMessageAsDismissedCalled: Bool {
+        markMessageAsDismissedCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    @Atomic private(set) var markAnonymousAsDismissedReceivedArguments: String?
+    @Atomic private(set) var markMessageAsDismissedReceivedArguments: String?
     /// Arguments from *all* of the times that the function was called.
-    @Atomic private(set) var markAnonymousAsDismissedReceivedInvocations: [String] = []
+    @Atomic private(set) var markMessageAsDismissedReceivedInvocations: [String] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
-    var markAnonymousAsDismissedClosure: ((String) -> Void)?
+    var markMessageAsDismissedClosure: ((String) -> Void)?
 
-    /// Mocked function for `markAnonymousAsDismissed(messageId: String)`. Your opportunity to return a mocked value and check result of mock in test code.
-    func markAnonymousAsDismissed(messageId: String) {
+    /// Mocked function for `markMessageAsDismissed(messageId: String)`. Your opportunity to return a mocked value and check result of mock in test code.
+    func markMessageAsDismissed(messageId: String) {
         mockCalled = true
-        markAnonymousAsDismissedCallsCount += 1
-        markAnonymousAsDismissedReceivedArguments = messageId
-        markAnonymousAsDismissedReceivedInvocations.append(messageId)
-        markAnonymousAsDismissedClosure?(messageId)
+        markMessageAsDismissedCallsCount += 1
+        markMessageAsDismissedReceivedArguments = messageId
+        markMessageAsDismissedReceivedInvocations.append(messageId)
+        markMessageAsDismissedClosure?(messageId)
     }
 }
 

@@ -22,9 +22,9 @@ class AnonymousMessageManagerTest: UnitTest {
     func test_cleanup_cacheExpiry_expectTrackingDataCleared() {
         // Given: Message with tracking data
         let message = createAnonymousMessage(messageId: "expiry-test", count: 5, delay: 10)
-        manager.updateAnonymousMessagesLocalStore(messages: [message])
-        manager.markAnonymousAsSeen(messageId: "expiry-test")
-        manager.markAnonymousAsDismissed(messageId: "expiry-test")
+        manager.updateMessagesLocalStore(messages: [message])
+        manager.markMessageAsSeen(messageId: "expiry-test")
+        manager.markMessageAsDismissed(messageId: "expiry-test")
 
         // Verify tracking exists
         let trackingBefore = diGraphShared.sharedKeyValueStorage.string(.broadcastMessagesTracking)
@@ -36,7 +36,7 @@ class AnonymousMessageManagerTest: UnitTest {
         dateUtilStub.givenNow = sixtyOneMinutesLater
 
         // Get eligible messages (triggers cleanup)
-        let eligible = manager.getEligibleAnonymousMessages()
+        let eligible = manager.getEligibleMessages()
         XCTAssertEqual(eligible.count, 0)
 
         // Then: Tracking data should be cleared
@@ -55,19 +55,19 @@ class AnonymousMessageManagerTest: UnitTest {
 
         // Given: Message "reused-id" is shown and dismissed
         let message1 = createAnonymousMessage(messageId: "reused-id", count: 5, delay: 0)
-        manager.updateAnonymousMessagesLocalStore(messages: [message1])
-        manager.markAnonymousAsSeen(messageId: "reused-id")
-        manager.markAnonymousAsDismissed(messageId: "reused-id")
+        manager.updateMessagesLocalStore(messages: [message1])
+        manager.markMessageAsSeen(messageId: "reused-id")
+        manager.markMessageAsDismissed(messageId: "reused-id")
 
         // When: Server clears all anonymous messages
-        manager.updateAnonymousMessagesLocalStore(messages: [])
+        manager.updateMessagesLocalStore(messages: [])
 
         // Then: Later, same ID is reintroduced
         let message2 = createAnonymousMessage(messageId: "reused-id", count: 5, delay: 0)
-        manager.updateAnonymousMessagesLocalStore(messages: [message2])
+        manager.updateMessagesLocalStore(messages: [message2])
 
         // The reused message should be eligible (not dismissed from previous state)
-        let eligible = manager.getEligibleAnonymousMessages()
+        let eligible = manager.getEligibleMessages()
         XCTAssertEqual(eligible.count, 1, "Reused ID should start with clean state")
         XCTAssertEqual(eligible.first?.messageId, "reused-id")
     }
@@ -99,10 +99,10 @@ class AnonymousMessageManagerTest: UnitTest {
         )
 
         // When: Update local store with this message
-        manager.updateAnonymousMessagesLocalStore(messages: [messageWithNilQueueId])
+        manager.updateMessagesLocalStore(messages: [messageWithNilQueueId])
 
         // Then: Message should still be eligible (not dropped)
-        let eligible = manager.getEligibleAnonymousMessages()
+        let eligible = manager.getEligibleMessages()
         XCTAssertEqual(eligible.count, 1, "Message with nil queueId should not be dropped")
         XCTAssertEqual(eligible.first?.messageId, "msg-nil-queueid")
         XCTAssertNil(eligible.first?.queueId, "queueId should remain nil")
@@ -132,10 +132,10 @@ class AnonymousMessageManagerTest: UnitTest {
         )
 
         // When: Update local store with this message
-        manager.updateAnonymousMessagesLocalStore(messages: [messageWithNilPriority])
+        manager.updateMessagesLocalStore(messages: [messageWithNilPriority])
 
         // Then: Message should still be eligible (not dropped)
-        let eligible = manager.getEligibleAnonymousMessages()
+        let eligible = manager.getEligibleMessages()
         XCTAssertEqual(eligible.count, 1, "Message with nil priority should not be dropped")
         XCTAssertEqual(eligible.first?.messageId, "msg-nil-priority")
         XCTAssertNil(eligible.first?.priority, "priority should remain nil")
@@ -200,14 +200,14 @@ class AnonymousMessageManagerTest: UnitTest {
         storeMessages([message])
 
         // When: Message is shown multiple times
-        manager.markAnonymousAsSeen(messageId: "unlimited-msg")
-        manager.markAnonymousAsSeen(messageId: "unlimited-msg")
-        manager.markAnonymousAsSeen(messageId: "unlimited-msg")
-        manager.markAnonymousAsSeen(messageId: "unlimited-msg")
-        manager.markAnonymousAsSeen(messageId: "unlimited-msg")
+        manager.markMessageAsSeen(messageId: "unlimited-msg")
+        manager.markMessageAsSeen(messageId: "unlimited-msg")
+        manager.markMessageAsSeen(messageId: "unlimited-msg")
+        manager.markMessageAsSeen(messageId: "unlimited-msg")
+        manager.markMessageAsSeen(messageId: "unlimited-msg")
 
         // Then: Should still be eligible
-        let eligibleMessages = manager.getEligibleAnonymousMessages()
+        let eligibleMessages = manager.getEligibleMessages()
         XCTAssertEqual(eligibleMessages.count, 1)
         XCTAssertEqual(eligibleMessages.first?.messageId, "unlimited-msg")
     }
@@ -218,14 +218,14 @@ class AnonymousMessageManagerTest: UnitTest {
         storeMessages([message])
 
         // When: Message has not been shown yet
-        var eligibleMessages = manager.getEligibleAnonymousMessages()
+        var eligibleMessages = manager.getEligibleMessages()
         XCTAssertEqual(eligibleMessages.count, 1)
 
         // When: Message is shown once
-        manager.markAnonymousAsSeen(messageId: "once-msg")
+        manager.markMessageAsSeen(messageId: "once-msg")
 
         // Then: Should no longer be eligible
-        eligibleMessages = manager.getEligibleAnonymousMessages()
+        eligibleMessages = manager.getEligibleMessages()
         XCTAssertEqual(eligibleMessages.count, 0)
     }
 
@@ -235,22 +235,22 @@ class AnonymousMessageManagerTest: UnitTest {
         storeMessages([message])
 
         // When: Message shown 0 times - eligible
-        var eligibleMessages = manager.getEligibleAnonymousMessages()
+        var eligibleMessages = manager.getEligibleMessages()
         XCTAssertEqual(eligibleMessages.count, 1)
 
         // When: Message shown 1 time - still eligible
-        manager.markAnonymousAsSeen(messageId: "limited-msg")
-        eligibleMessages = manager.getEligibleAnonymousMessages()
+        manager.markMessageAsSeen(messageId: "limited-msg")
+        eligibleMessages = manager.getEligibleMessages()
         XCTAssertEqual(eligibleMessages.count, 1)
 
         // When: Message shown 2 times - still eligible
-        manager.markAnonymousAsSeen(messageId: "limited-msg")
-        eligibleMessages = manager.getEligibleAnonymousMessages()
+        manager.markMessageAsSeen(messageId: "limited-msg")
+        eligibleMessages = manager.getEligibleMessages()
         XCTAssertEqual(eligibleMessages.count, 1)
 
         // When: Message shown 3 times - no longer eligible (reached limit)
-        manager.markAnonymousAsSeen(messageId: "limited-msg")
-        eligibleMessages = manager.getEligibleAnonymousMessages()
+        manager.markMessageAsSeen(messageId: "limited-msg")
+        eligibleMessages = manager.getEligibleMessages()
         XCTAssertEqual(eligibleMessages.count, 0)
     }
 
@@ -262,10 +262,10 @@ class AnonymousMessageManagerTest: UnitTest {
         storeMessages([message])
 
         // When: Message is shown
-        manager.markAnonymousAsSeen(messageId: "nodelay-msg")
+        manager.markMessageAsSeen(messageId: "nodelay-msg")
 
         // Then: Should be immediately eligible again
-        let eligibleMessages = manager.getEligibleAnonymousMessages()
+        let eligibleMessages = manager.getEligibleMessages()
         XCTAssertEqual(eligibleMessages.count, 1)
     }
 
@@ -276,20 +276,20 @@ class AnonymousMessageManagerTest: UnitTest {
         dateUtilStub.givenNow = Date(timeIntervalSince1970: 1000) // Set current time
 
         // When: Message is shown
-        manager.markAnonymousAsSeen(messageId: "delay-msg")
+        manager.markMessageAsSeen(messageId: "delay-msg")
 
         // Then: Should NOT be eligible during delay period
-        var eligibleMessages = manager.getEligibleAnonymousMessages()
+        var eligibleMessages = manager.getEligibleMessages()
         XCTAssertEqual(eligibleMessages.count, 0)
 
         // When: Time advances by 20 seconds (still in delay period)
         dateUtilStub.givenNow = Date(timeIntervalSince1970: 1020)
-        eligibleMessages = manager.getEligibleAnonymousMessages()
+        eligibleMessages = manager.getEligibleMessages()
         XCTAssertEqual(eligibleMessages.count, 0)
 
         // When: Time advances by 30+ seconds (delay period expired)
         dateUtilStub.givenNow = Date(timeIntervalSince1970: 1031)
-        eligibleMessages = manager.getEligibleAnonymousMessages()
+        eligibleMessages = manager.getEligibleMessages()
         XCTAssertEqual(eligibleMessages.count, 1)
     }
 
@@ -300,20 +300,20 @@ class AnonymousMessageManagerTest: UnitTest {
         dateUtilStub.givenNow = Date(timeIntervalSince1970: 10000)
 
         // When: Message is shown
-        manager.markAnonymousAsSeen(messageId: "longdelay-msg")
+        manager.markMessageAsSeen(messageId: "longdelay-msg")
 
         // Then: Should not be eligible for 1 hour
-        var eligibleMessages = manager.getEligibleAnonymousMessages()
+        var eligibleMessages = manager.getEligibleMessages()
         XCTAssertEqual(eligibleMessages.count, 0)
 
         // When: 59 minutes pass (still in delay)
         dateUtilStub.givenNow = Date(timeIntervalSince1970: 10000 + 3540)
-        eligibleMessages = manager.getEligibleAnonymousMessages()
+        eligibleMessages = manager.getEligibleMessages()
         XCTAssertEqual(eligibleMessages.count, 0)
 
         // When: 1 hour+ passes
         dateUtilStub.givenNow = Date(timeIntervalSince1970: 10000 + 3601)
-        eligibleMessages = manager.getEligibleAnonymousMessages()
+        eligibleMessages = manager.getEligibleMessages()
         XCTAssertEqual(eligibleMessages.count, 1)
     }
 
@@ -325,14 +325,14 @@ class AnonymousMessageManagerTest: UnitTest {
         storeMessages([message])
 
         // When: Message is eligible initially
-        var eligibleMessages = manager.getEligibleAnonymousMessages()
+        var eligibleMessages = manager.getEligibleMessages()
         XCTAssertEqual(eligibleMessages.count, 1)
 
         // When: User dismisses the message
-        manager.markAnonymousAsDismissed(messageId: "dismiss-msg")
+        manager.markMessageAsDismissed(messageId: "dismiss-msg")
 
         // Then: Should no longer be eligible
-        eligibleMessages = manager.getEligibleAnonymousMessages()
+        eligibleMessages = manager.getEligibleMessages()
         XCTAssertEqual(eligibleMessages.count, 0)
     }
 
@@ -342,14 +342,14 @@ class AnonymousMessageManagerTest: UnitTest {
         storeMessages([message])
 
         // When: Message is eligible initially
-        var eligibleMessages = manager.getEligibleAnonymousMessages()
+        var eligibleMessages = manager.getEligibleMessages()
         XCTAssertEqual(eligibleMessages.count, 1)
 
         // When: User dismisses the message
-        manager.markAnonymousAsDismissed(messageId: "ignore-msg")
+        manager.markMessageAsDismissed(messageId: "ignore-msg")
 
         // Then: Should STILL be eligible (ignoreDismiss flag)
-        eligibleMessages = manager.getEligibleAnonymousMessages()
+        eligibleMessages = manager.getEligibleMessages()
         XCTAssertEqual(eligibleMessages.count, 1)
     }
 
@@ -359,13 +359,13 @@ class AnonymousMessageManagerTest: UnitTest {
         // Given: Messages stored with expiry in 60 minutes
         let message = createAnonymousMessage(messageId: "fresh-msg", count: 0, delay: 0)
         dateUtilStub.givenNow = Date(timeIntervalSince1970: 1000)
-        manager.updateAnonymousMessagesLocalStore(messages: [message])
+        manager.updateMessagesLocalStore(messages: [message])
 
         // When: 30 minutes pass (still within 60 min TTL)
         dateUtilStub.givenNow = Date(timeIntervalSince1970: 1000 + 1800) // +30 min
 
         // Then: Messages should still be available
-        let eligibleMessages = manager.getEligibleAnonymousMessages()
+        let eligibleMessages = manager.getEligibleMessages()
         XCTAssertEqual(eligibleMessages.count, 1)
     }
 
@@ -373,13 +373,13 @@ class AnonymousMessageManagerTest: UnitTest {
         // Given: Messages stored at time 1000
         let message = createAnonymousMessage(messageId: "expired-msg", count: 0, delay: 0)
         dateUtilStub.givenNow = Date(timeIntervalSince1970: 1000)
-        manager.updateAnonymousMessagesLocalStore(messages: [message])
+        manager.updateMessagesLocalStore(messages: [message])
 
         // When: 61 minutes pass (past 60 min TTL)
         dateUtilStub.givenNow = Date(timeIntervalSince1970: 1000 + 3660) // +61 min
 
         // Then: Messages should be expired
-        let eligibleMessages = manager.getEligibleAnonymousMessages()
+        let eligibleMessages = manager.getEligibleMessages()
         XCTAssertEqual(eligibleMessages.count, 0)
     }
 
@@ -387,13 +387,13 @@ class AnonymousMessageManagerTest: UnitTest {
         // Given: Messages stored at time 1000
         let message = createAnonymousMessage(messageId: "exact-msg", count: 0, delay: 0)
         dateUtilStub.givenNow = Date(timeIntervalSince1970: 1000)
-        manager.updateAnonymousMessagesLocalStore(messages: [message])
+        manager.updateMessagesLocalStore(messages: [message])
 
         // When: Exactly 60 minutes pass
         dateUtilStub.givenNow = Date(timeIntervalSince1970: 1000 + 3600) // +60 min exactly
 
         // Then: Messages should be expired (>= check)
-        let eligibleMessages = manager.getEligibleAnonymousMessages()
+        let eligibleMessages = manager.getEligibleMessages()
         XCTAssertEqual(eligibleMessages.count, 0)
     }
 
@@ -406,26 +406,26 @@ class AnonymousMessageManagerTest: UnitTest {
         dateUtilStub.givenNow = Date(timeIntervalSince1970: 5000)
 
         // First show
-        var eligibleMessages = manager.getEligibleAnonymousMessages()
+        var eligibleMessages = manager.getEligibleMessages()
         XCTAssertEqual(eligibleMessages.count, 1, "Should be eligible for first show")
 
-        manager.markAnonymousAsSeen(messageId: "combo-msg")
+        manager.markMessageAsSeen(messageId: "combo-msg")
 
         // During delay period after first show
-        eligibleMessages = manager.getEligibleAnonymousMessages()
+        eligibleMessages = manager.getEligibleMessages()
         XCTAssertEqual(eligibleMessages.count, 0, "Should not be eligible during delay period")
 
         // After delay period, before second show
         dateUtilStub.givenNow = Date(timeIntervalSince1970: 5011)
-        eligibleMessages = manager.getEligibleAnonymousMessages()
+        eligibleMessages = manager.getEligibleMessages()
         XCTAssertEqual(eligibleMessages.count, 1, "Should be eligible for second show after delay")
 
         // Second show
-        manager.markAnonymousAsSeen(messageId: "combo-msg")
+        manager.markMessageAsSeen(messageId: "combo-msg")
 
         // After reaching frequency limit
         dateUtilStub.givenNow = Date(timeIntervalSince1970: 5022)
-        eligibleMessages = manager.getEligibleAnonymousMessages()
+        eligibleMessages = manager.getEligibleMessages()
         XCTAssertEqual(eligibleMessages.count, 0, "Should not be eligible after reaching count limit")
     }
 
@@ -435,11 +435,11 @@ class AnonymousMessageManagerTest: UnitTest {
         storeMessages([message])
 
         // When: Message shown once then dismissed
-        manager.markAnonymousAsSeen(messageId: "dismiss-freq-msg")
-        manager.markAnonymousAsDismissed(messageId: "dismiss-freq-msg")
+        manager.markMessageAsSeen(messageId: "dismiss-freq-msg")
+        manager.markMessageAsDismissed(messageId: "dismiss-freq-msg")
 
         // Then: Should not be eligible even though frequency limit not reached
-        let eligibleMessages = manager.getEligibleAnonymousMessages()
+        let eligibleMessages = manager.getEligibleMessages()
         XCTAssertEqual(eligibleMessages.count, 0)
     }
 
@@ -450,27 +450,27 @@ class AnonymousMessageManagerTest: UnitTest {
         dateUtilStub.givenNow = Date(timeIntervalSince1970: 8000)
 
         // Show 1
-        manager.markAnonymousAsSeen(messageId: "complex-msg")
-        manager.markAnonymousAsDismissed(messageId: "complex-msg") // User dismisses
+        manager.markMessageAsSeen(messageId: "complex-msg")
+        manager.markMessageAsDismissed(messageId: "complex-msg") // User dismisses
 
         // During delay - should not be eligible
-        var eligibleMessages = manager.getEligibleAnonymousMessages()
+        var eligibleMessages = manager.getEligibleMessages()
         XCTAssertEqual(eligibleMessages.count, 0)
 
         // After delay - should be eligible (ignoreDismiss=true)
         dateUtilStub.givenNow = Date(timeIntervalSince1970: 8006)
-        eligibleMessages = manager.getEligibleAnonymousMessages()
+        eligibleMessages = manager.getEligibleMessages()
         XCTAssertEqual(eligibleMessages.count, 1)
 
         // Show 2 and 3
-        manager.markAnonymousAsSeen(messageId: "complex-msg")
+        manager.markMessageAsSeen(messageId: "complex-msg")
         dateUtilStub.givenNow = Date(timeIntervalSince1970: 8012)
 
-        manager.markAnonymousAsSeen(messageId: "complex-msg")
+        manager.markMessageAsSeen(messageId: "complex-msg")
         dateUtilStub.givenNow = Date(timeIntervalSince1970: 8018)
 
         // After 3 shows - should not be eligible (reached frequency limit)
-        eligibleMessages = manager.getEligibleAnonymousMessages()
+        eligibleMessages = manager.getEligibleMessages()
         XCTAssertEqual(eligibleMessages.count, 0)
     }
 
@@ -478,10 +478,10 @@ class AnonymousMessageManagerTest: UnitTest {
 
     func test_edgeCase_emptyMessageList_expectNoErrors() {
         // Given: No messages
-        manager.updateAnonymousMessagesLocalStore(messages: [])
+        manager.updateMessagesLocalStore(messages: [])
 
         // When: Getting eligible messages
-        let eligibleMessages = manager.getEligibleAnonymousMessages()
+        let eligibleMessages = manager.getEligibleMessages()
 
         // Then: Should return empty array
         XCTAssertEqual(eligibleMessages.count, 0)
@@ -498,11 +498,11 @@ class AnonymousMessageManagerTest: UnitTest {
         dateUtilStub.givenNow = Date(timeIntervalSince1970: 2000)
 
         // Mark some as seen/dismissed
-        manager.markAnonymousAsSeen(messageId: "not-eligible-1") // Reached limit (count=1)
-        manager.markAnonymousAsSeen(messageId: "not-eligible-2") // In delay period
+        manager.markMessageAsSeen(messageId: "not-eligible-1") // Reached limit (count=1)
+        manager.markMessageAsSeen(messageId: "not-eligible-2") // In delay period
 
         // When: Getting eligible messages
-        let eligibleMessages = manager.getEligibleAnonymousMessages()
+        let eligibleMessages = manager.getEligibleMessages()
 
         // Then: Only eligible ones returned
         XCTAssertEqual(eligibleMessages.count, 2)
@@ -515,21 +515,21 @@ class AnonymousMessageManagerTest: UnitTest {
         // Given: Initial messages with tracking data
         let message1 = createAnonymousMessage(messageId: "msg-1", count: 0, delay: 0)
         let message2 = createAnonymousMessage(messageId: "msg-2", count: 0, delay: 0)
-        manager.updateAnonymousMessagesLocalStore(messages: [message1, message2])
+        manager.updateMessagesLocalStore(messages: [message1, message2])
 
-        manager.markAnonymousAsSeen(messageId: "msg-1")
-        manager.markAnonymousAsSeen(messageId: "msg-2")
-        manager.markAnonymousAsDismissed(messageId: "msg-1")
+        manager.markMessageAsSeen(messageId: "msg-1")
+        manager.markMessageAsSeen(messageId: "msg-2")
+        manager.markMessageAsDismissed(messageId: "msg-1")
 
         // Verify tracking exists by checking eligible messages
-        var eligibleCount = manager.getEligibleAnonymousMessages().count
+        var eligibleCount = manager.getEligibleMessages().count
         XCTAssertGreaterThan(eligibleCount, 0)
 
         // When: Update with only msg-2 (msg-1 removed)
-        manager.updateAnonymousMessagesLocalStore(messages: [message2])
+        manager.updateMessagesLocalStore(messages: [message2])
 
         // Then: Only msg-2 should be available
-        let eligibleMessages = manager.getEligibleAnonymousMessages()
+        let eligibleMessages = manager.getEligibleMessages()
         XCTAssertEqual(eligibleMessages.count, 1)
         XCTAssertEqual(eligibleMessages.first?.messageId, "msg-2")
     }
@@ -537,10 +537,10 @@ class AnonymousMessageManagerTest: UnitTest {
     func test_edgeCase_noAnonymousMessages_expectClearAll() {
         // Given: Anonymous messages exist with tracking data
         let message = createAnonymousMessage(messageId: "temp-msg", count: 0, delay: 0)
-        manager.updateAnonymousMessagesLocalStore(messages: [message])
+        manager.updateMessagesLocalStore(messages: [message])
 
         // Mark as seen to create tracking data
-        manager.markAnonymousAsSeen(messageId: "temp-msg")
+        manager.markMessageAsSeen(messageId: "temp-msg")
 
         // Verify tracking data exists
         let trackingDataBefore = diGraphShared.sharedKeyValueStorage.string(.broadcastMessagesTracking)
@@ -548,7 +548,7 @@ class AnonymousMessageManagerTest: UnitTest {
         XCTAssertTrue(trackingDataBefore!.contains("temp-msg"))
 
         // When: Server returns empty anonymous message list
-        manager.updateAnonymousMessagesLocalStore(messages: [])
+        manager.updateMessagesLocalStore(messages: [])
 
         // Then: All data should be cleared
         XCTAssertNil(diGraphShared.sharedKeyValueStorage.string(.broadcastMessages))
@@ -568,10 +568,10 @@ class AnonymousMessageManagerTest: UnitTest {
         let regularMsg = Message(messageId: "regular-msg", priority: 1, queueId: "queue-1")
 
         // When: Updating store
-        manager.updateAnonymousMessagesLocalStore(messages: [anonymousMsg, regularMsg])
+        manager.updateMessagesLocalStore(messages: [anonymousMsg, regularMsg])
 
         // Then: Only anonymous message should be stored
-        let eligibleMessages = manager.getEligibleAnonymousMessages()
+        let eligibleMessages = manager.getEligibleMessages()
         XCTAssertEqual(eligibleMessages.count, 1)
         XCTAssertEqual(eligibleMessages.first?.messageId, "anon-msg")
     }
@@ -606,7 +606,7 @@ class AnonymousMessageManagerTest: UnitTest {
 
     private func storeMessages(_ messages: [Message]) {
         dateUtilStub.givenNow = Date()
-        manager.updateAnonymousMessagesLocalStore(messages: messages)
+        manager.updateMessagesLocalStore(messages: messages)
     }
 
     // MARK: - Defensive Validation Tests

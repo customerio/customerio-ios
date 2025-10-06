@@ -125,7 +125,7 @@ func messageMetricsMiddleware(logger: Logger, logManager: LogManager, anonymousM
             // Handle anonymous message tracking
             if message.isAnonymousMessage {
                 logger.logWithModuleTag("Anonymous message shown, tracking locally: \(message.describeForLogs)", level: .debug)
-                anonymousMessageManager.markAnonymousAsSeen(messageId: message.messageId)
+                anonymousMessageManager.markMessageAsSeen(messageId: message.messageId)
             }
 
             // Log message view only if message should be tracked as shown on display action
@@ -140,7 +140,7 @@ func messageMetricsMiddleware(logger: Logger, logManager: LogManager, anonymousM
             // Handle anonymous message dismissal tracking
             if message.isAnonymousMessage, shouldLog {
                 logger.logWithModuleTag("Anonymous message dismissed, tracking locally: \(message.describeForLogs)", level: .debug)
-                anonymousMessageManager.markAnonymousAsDismissed(messageId: message.messageId)
+                anonymousMessageManager.markMessageAsDismissed(messageId: message.messageId)
             }
 
             // Log message close only if message should be tracked as shown on dismiss action
