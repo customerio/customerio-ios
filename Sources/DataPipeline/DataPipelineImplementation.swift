@@ -73,7 +73,7 @@ class DataPipelineImplementation: DataPipelineInstance {
             eventBusHandler.postEvent(ProfileIdentifiedEvent(identifier: identifier))
         } else if let identifier = analytics.userId {
             eventBusHandler.postEvent(ProfileIdentifiedEvent(identifier: identifier))
-        } else {
+        } else if !analytics.anonymousId.isEmpty {
             eventBusHandler.postEvent(AnonymousProfileIdentifiedEvent(identifier: analytics.anonymousId))
         }
     }
