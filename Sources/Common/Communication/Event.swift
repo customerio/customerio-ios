@@ -43,6 +43,7 @@ public enum EventTypesRegistry {
         // Add all your event types here
         [
             ProfileIdentifiedEvent.self,
+            AnonymousProfileIdentifiedEvent.self,
             ScreenViewedEvent.self,
             ResetEvent.self,
             TrackMetricEvent.self,
@@ -57,6 +58,8 @@ public enum EventTypesRegistry {
         switch key {
         case ProfileIdentifiedEvent.key:
             return ProfileIdentifiedEvent.self
+        case AnonymousProfileIdentifiedEvent.key:
+            return AnonymousProfileIdentifiedEvent.self
         case ScreenViewedEvent.key:
             return ScreenViewedEvent.self
         case ResetEvent.key:
@@ -83,6 +86,20 @@ public enum EventTypesRegistry {
 // They must include `storageId`, `params`, and any other relevant information.
 
 public struct ProfileIdentifiedEvent: EventRepresentable {
+    public let storageId: String
+    public let params: [String: String]
+    public let identifier: String
+    public let timestamp: Date
+
+    public init(storageId: String = UUID().uuidString, identifier: String, timestamp: Date = Date(), params: [String: String] = [:]) {
+        self.storageId = storageId
+        self.identifier = identifier
+        self.timestamp = timestamp
+        self.params = params
+    }
+}
+
+public struct AnonymousProfileIdentifiedEvent: EventRepresentable {
     public let storageId: String
     public let params: [String: String]
     public let identifier: String
