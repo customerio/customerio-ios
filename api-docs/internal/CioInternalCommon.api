@@ -1,3 +1,10 @@
+public final class CioInternalCommon.AnonymousProfileIdentifiedEvent {
+	public final val storageId: String;
+	public final val params: List<String : String>;
+	public final val identifier: String;
+	public final val timestamp: Date;
+	public fun init(storageId: String = UUID().uuidString, identifier: String, timestamp: Date = Date(), params: List<String: String> = List<:>);
+}
 public final class CioInternalCommon.AnyEncodable {
 	public final val value: any Encodable;
 	public fun init(_ encodable: Encodable);
