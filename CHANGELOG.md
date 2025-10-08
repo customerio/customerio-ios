@@ -1,3 +1,9 @@
+## [3.14.0](https://github.com/customerio/customerio-ios/compare/3.13.1...3.14.0) (2025-10-08)
+
+### Features
+
+* in-app anonymous support ([#956](https://github.com/customerio/customerio-ios/issues/956)) ([ca93707](https://github.com/customerio/customerio-ios/commit/ca93707b5471ea5ceb0ec40a9a78e32dcb8eda26))
+
 ## [3.13.1](https://github.com/customerio/customerio-ios/compare/3.13.0...3.13.1) (2025-08-27)
 
 ### Bug Fixes
