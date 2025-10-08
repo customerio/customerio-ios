@@ -7,6 +7,7 @@ class QueueManager {
     private var keyValueStore: SharedKeyValueStorage
     private let gistQueueNetwork: GistQueueNetwork
     private let inAppMessageManager: InAppMessageManager
+    private let anonymousMessageManager: AnonymousMessageManager
     private let logger: Logger
 
     private var cachedFetchUserQueueResponse: Data? {
@@ -18,10 +19,17 @@ class QueueManager {
         }
     }
 
-    init(keyValueStore: SharedKeyValueStorage, gistQueueNetwork: GistQueueNetwork, inAppMessageManager: InAppMessageManager, logger: Logger) {
+    init(
+        keyValueStore: SharedKeyValueStorage,
+        gistQueueNetwork: GistQueueNetwork,
+        inAppMessageManager: InAppMessageManager,
+        anonymousMessageManager: AnonymousMessageManager,
+        logger: Logger
+    ) {
         self.keyValueStore = keyValueStore
         self.gistQueueNetwork = gistQueueNetwork
         self.inAppMessageManager = inAppMessageManager
+        self.anonymousMessageManager = anonymousMessageManager
         self.logger = logger
     }
 
@@ -29,7 +37,7 @@ class QueueManager {
         cachedFetchUserQueueResponse = nil
     }
 
-    func fetchUserQueue(state: InAppMessageState, completionHandler: @escaping (Result<[UserQueueResponse]?, Error>) -> Void) {
+    func fetchUserQueue(state: InAppMessageState, completionHandler: @escaping (Result<[Message]?, Error>) -> Void) {
         do {
             try gistQueueNetwork.request(state: state, request: QueueEndpoint.getUserQueue, completionHandler: { response in
                 switch response {
@@ -44,8 +52,9 @@ class QueueManager {
 
                         do {
                             let userQueue = try self.parseResponseBody(lastCachedResponse)
+                            let processedQueue = self.processAnonymousMessages(userQueue)
 
-                            completionHandler(.success(userQueue))
+                            completionHandler(.success(processedQueue))
                         } catch {
                             completionHandler(.failure(error))
                         }
@@ -54,8 +63,9 @@ class QueueManager {
                             let userQueue = try self.parseResponseBody(data)
 
                             self.cachedFetchUserQueueResponse = data
+                            let processedQueue = self.processAnonymousMessages(userQueue)
 
-                            completionHandler(.success(userQueue))
+                            completionHandler(.success(processedQueue))
                         } catch {
                             completionHandler(.failure(error))
                         }
@@ -69,6 +79,43 @@ class QueueManager {
             logger.logWithModuleTag("Gist queue fetch response error: \(error)", level: .debug)
             completionHandler(.failure(error))
         }
+    }
+
+    /// Processes anonymous messages from the server response.
+    /// - Stores anonymous messages locally with expiry
+    /// - Filters out server-provided anonymous messages from the queue
+    /// - Retrieves eligible anonymous messages from local storage
+    /// - Combines regular messages with eligible anonymous messages
+    private func processAnonymousMessages(_ userQueue: [UserQueueResponse]?) -> [Message]? {
+        guard let userQueue = userQueue else {
+            return nil
+        }
+
+        // Convert to Message objects and separate anonymous from regular in one pass
+        let allMessages = userQueue.map { $0.toMessage() }
+        let (anonymousMessages, regularMessages) = allMessages.reduce(into: ([Message](), [Message]())) { result, message in
+            if message.isAnonymousMessage {
+                result.0.append(message)
+            } else {
+                result.1.append(message)
+            }
+        }
+
+        // Update local store with anonymous messages from server
+        anonymousMessageManager.updateMessagesLocalStore(messages: anonymousMessages)
+
+        // Get eligible anonymous messages from local storage
+        let eligibleAnonymousMessages = anonymousMessageManager.getEligibleMessages()
+
+        // Combine regular messages with eligible anonymous messages
+        let combinedMessages = regularMessages + eligibleAnonymousMessages
+
+        logger.logWithModuleTag(
+            "Processed messages: \(regularMessages.count) regular + \(eligibleAnonymousMessages.count) eligible anonymous = \(combinedMessages.count) total",
+            level: .debug
+        )
+
+        return combinedMessages
     }
 
     private func parseResponseBody(_ responseBody: Data) throws -> [UserQueueResponse] {

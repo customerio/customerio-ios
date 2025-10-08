@@ -1,6 +1,37 @@
 import CioInternalCommon
 import Foundation
 
+/// Represents the frequency control for anonymous (broadcast) messages.
+/// Controls how often and when a message can be shown to anonymous users.
+class BroadcastFrequency {
+    /// Number of times to show the message. 0 = unlimited, >0 = max times to show
+    let count: Int
+    /// Delay in seconds between shows
+    let delay: Int
+    /// If true, show message even after user dismisses it
+    let ignoreDismiss: Bool
+
+    /// Returns true if frequency is unlimited (count == 0)
+    var isUnlimited: Bool {
+        count == 0
+    }
+
+    init(count: Int, delay: Int, ignoreDismiss: Bool = false) {
+        self.count = count
+        self.delay = delay
+        self.ignoreDismiss = ignoreDismiss
+    }
+}
+
+/// Represents properties specific to anonymous (broadcast) messages.
+class BroadcastProperties {
+    let frequency: BroadcastFrequency
+
+    init(frequency: BroadcastFrequency) {
+        self.frequency = frequency
+    }
+}
+
 public class GistProperties {
     public let routeRule: String?
     public let elementId: String?
@@ -8,6 +39,8 @@ public class GistProperties {
     public let position: MessagePosition
     public let persistent: Bool?
     public let overlayColor: String?
+    /// If present, this is an anonymous (broadcast) message
+    let broadcast: BroadcastProperties?
 
     init(
         routeRule: String?,
@@ -15,7 +48,8 @@ public class GistProperties {
         campaignId: String?,
         position: MessagePosition,
         persistent: Bool?,
-        overlayColor: String?
+        overlayColor: String?,
+        broadcast: BroadcastProperties? = nil
     ) {
         self.routeRule = routeRule
         self.elementId = elementId
@@ -23,6 +57,7 @@ public class GistProperties {
         self.campaignId = campaignId
         self.persistent = persistent
         self.overlayColor = overlayColor
+        self.broadcast = broadcast
     }
 }
 
@@ -42,6 +77,11 @@ public class Message {
         gistProperties.elementId
     }
 
+    /// Returns true if this is an anonymous (broadcast) message
+    var isAnonymousMessage: Bool {
+        gistProperties.broadcast != nil
+    }
+
     public init(
         messageId: String,
         queueId: String? = nil,
@@ -51,14 +91,14 @@ public class Message {
         self.messageId = messageId
         self.queueId = queueId
         self.priority = priority
-        self.gistProperties = Message.parseGistProperties(from: properties?["gist"] as? [String: Any])
+        self.gistProperties = Message.parseGistProperties(from: properties?["gist"] as? [String: Any], messageId: messageId, queueId: queueId)
         self.properties = properties ?? [:]
     }
 
-    private static func parseGistProperties(from gist: [String: Any]?) -> GistProperties {
+    private static func parseGistProperties(from gist: [String: Any]?, messageId: String, queueId: String?) -> GistProperties {
         let defaultPosition = MessagePosition.center
         guard let gist = gist else {
-            return GistProperties(routeRule: nil, elementId: nil, campaignId: nil, position: defaultPosition, persistent: false, overlayColor: nil)
+            return GistProperties(routeRule: nil, elementId: nil, campaignId: nil, position: defaultPosition, persistent: false, overlayColor: nil, broadcast: nil)
         }
 
         let position = (gist["position"] as? String).flatMap(MessagePosition.init) ?? defaultPosition
@@ -67,6 +107,7 @@ public class Message {
         let campaignId = gist["campaignId"] as? String
         let persistent = gist["persistent"] as? Bool ?? false
         let overlayColor = gist["overlayColor"] as? String
+        let broadcast = parseBroadcastProperties(from: gist["broadcast"] as? [String: Any], messageId: messageId, queueId: queueId)
 
         return GistProperties(
             routeRule: routeRule,
@@ -74,8 +115,35 @@ public class Message {
             campaignId: campaignId,
             position: position,
             persistent: persistent,
-            overlayColor: overlayColor
+            overlayColor: overlayColor,
+            broadcast: broadcast
         )
+    }
+
+    private static func parseBroadcastProperties(from broadcast: [String: Any]?, messageId: String, queueId: String?) -> BroadcastProperties? {
+        guard let broadcast = broadcast,
+              let frequencyDict = broadcast["frequency"] as? [String: Any]
+        else {
+            return nil
+        }
+
+        // Count and delay are required - no defaults
+        guard let count = frequencyDict["count"] as? Int,
+              let delay = frequencyDict["delay"] as? Int
+        else {
+            DIGraphShared.shared.logger.debug("Skipping anonymous message frequency parsing due to missing count or delay for messageId=\(messageId) queueId=\(queueId ?? "nil")")
+            return nil
+        }
+
+        // Defensive validation: reject negative values
+        guard count >= 0, delay >= 0 else {
+            DIGraphShared.shared.logger.debug("Skipping anonymous message frequency parsing due to negative count or delay for messageId=\(messageId) queueId=\(queueId ?? "nil")")
+            return nil
+        }
+
+        let ignoreDismiss = frequencyDict["ignoreDismiss"] as? Bool ?? false
+        let frequency = BroadcastFrequency(count: count, delay: delay, ignoreDismiss: ignoreDismiss)
+        return BroadcastProperties(frequency: frequency)
     }
 }
 

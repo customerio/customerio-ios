@@ -36,8 +36,12 @@ class MessagingInAppImplementation: MessagingInAppInstance {
         // module was added later on, we can notify gist about it.
         eventBusHandler.addObserver(ProfileIdentifiedEvent.self) { event in
             self.logger.logWithModuleTag("registering profile \(event.identifier) for in-app", level: .debug)
-
             self.gist.setUserToken(event.identifier)
+        }
+
+        eventBusHandler.addObserver(AnonymousProfileIdentifiedEvent.self) { event in
+            self.logger.logWithModuleTag("registering anonymous profile \(event.identifier) for in-app", level: .debug)
+            self.gist.setAnonymousId(event.identifier)
         }
 
         eventBusHandler.addObserver(ScreenViewedEvent.self) { event in

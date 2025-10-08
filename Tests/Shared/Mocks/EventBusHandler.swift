@@ -15,6 +15,7 @@ public class EventBusHandlerMock: EventBusHandler, Mock {
         addObserverCallsCount = 0
         removeObserverCallsCount = 0
         postEventCallsCount = 0
+        postEventReceivedInvocations = []
         removeFromStorageCallsCount = 0
         removeAllObserversCallsCount = 0
     }
@@ -46,17 +47,20 @@ public class EventBusHandlerMock: EventBusHandler, Mock {
     public private(set) var postEventCallsCount = 0
     public var postEventCalled: Bool { postEventCallsCount > 0 }
     public private(set) var postEventArguments: (any EventRepresentable)?
+    public private(set) var postEventReceivedInvocations: [any EventRepresentable] = []
 
     public func postEvent<E: EventRepresentable>(_ event: E) {
         mockCalled = true
         postEventCallsCount += 1
         postEventArguments = event
+        postEventReceivedInvocations.append(event)
     }
 
     public func postEventAndWait<E>(_ event: E) async where E: EventRepresentable {
         mockCalled = true
         postEventCallsCount += 1
         postEventArguments = event
+        postEventReceivedInvocations.append(event)
     }
 
     public private(set) var removeFromStorageCallsCount = 0
