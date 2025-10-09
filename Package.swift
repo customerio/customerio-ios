@@ -63,7 +63,10 @@ let package = Package(
         // this module handles Journeys tasks migration to Datapipeline.
         .target(name: "CioTrackingMigration",
                 dependencies: ["CioInternalCommon"],
-                path: "Sources/Migration"),
+                path: "Sources/Migration",
+                swiftSettings: [
+                    .enableExperimentalFeature("StrictConcurrency")
+                ]),
         .testTarget(name: "MigrationTests",
                     dependencies: ["CioTrackingMigration", "SharedTests"],
                     path: "Tests/Migration"),
@@ -78,7 +81,10 @@ let package = Package(
         // Messaging Push 
         .target(name: "CioMessagingPush",
                 dependencies: ["CioInternalCommon"],
-                path: "Sources/MessagingPush"),
+                path: "Sources/MessagingPush",
+                swiftSettings: [
+                    .enableExperimentalFeature("StrictConcurrency")
+                ]),
         .testTarget(name: "MessagingPushTests",
                     dependencies: ["CioMessagingPush", "SharedTests"],
                     path: "Tests/MessagingPush"),
@@ -89,6 +95,9 @@ let package = Package(
                     .product(name: "CioAnalytics", package: "CioAnalytics")],
                 path: "Sources/DataPipeline", resources: [
                     .process("Resources/PrivacyInfo.xcprivacy"),
+                ],
+                swiftSettings: [
+                    .enableExperimentalFeature("StrictConcurrency")
                 ]),
         .testTarget(name: "DataPipelineTests",
                     dependencies: ["CioDataPipelines", "SharedTests"],
@@ -100,6 +109,9 @@ let package = Package(
                 path: "Sources/MessagingPushAPN",
                 resources: [
                     .process("Resources/PrivacyInfo.xcprivacy"),
+                ],
+                swiftSettings: [
+                    .enableExperimentalFeature("StrictConcurrency")
                 ]),
         .testTarget(name: "MessagingPushAPNTests",
                     dependencies: ["CioMessagingPushAPN", "SharedTests"],
@@ -110,6 +122,9 @@ let package = Package(
                 path: "Sources/MessagingPushFCM",
                 resources: [
                     .process("Resources/PrivacyInfo.xcprivacy"),
+                ],
+                swiftSettings: [
+                    .enableExperimentalFeature("StrictConcurrency")
                 ]),
         .testTarget(name: "MessagingPushFCMTests",
                     dependencies: ["CioMessagingPushFCM", "SharedTests"],
@@ -121,6 +136,9 @@ let package = Package(
                 path: "Sources/MessagingInApp",
                 resources: [
                     .process("Resources/PrivacyInfo.xcprivacy"),
+                ],
+                swiftSettings: [
+                    .enableExperimentalFeature("StrictConcurrency")
                 ]),
         .testTarget(name: "MessagingInAppTests",
                     dependencies: ["CioMessagingInApp", "SharedTests"],
