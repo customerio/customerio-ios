@@ -1,6 +1,10 @@
-public interface CioMessagingPushFCM.FirebaseMessagingIntegration {
-	public var delegate: (any MessagingDelegate)?;
+public interface CioMessagingPushFCM.FirebaseService {
 	public var apnsToken: Data?;
+	public var delegate: (any FirebaseServiceDelegate)?;
+	public fun func fetchToken(completion: @escaping (String?, Error?) -> Unit);
+}
+public interface CioMessagingPushFCM.FirebaseServiceDelegate {
+	public fun func didReceiveRegistrationToken(_ token: String?);
 }
 public final class CioMessagingPushFCM.MessagingPushFCM {
 	public fun func registerDeviceToken(fcmToken: String?);
@@ -8,8 +12,9 @@ public final class CioMessagingPushFCM.MessagingPushFCM {
 	public fun func application(_ application: Any, didFailToRegisterForRemoteNotificationsWithError error: Error);
 	public fun func deleteDeviceToken();
 	public fun func trackMetric(deliveryID: String, event: Metric, deviceToken: String);
-	public fun func initialize(
-    withConfig config: MessagingPushConfigOptions = MessagingPushConfigBuilder().build()
+	public fun func internalSetup(
+    withConfig config: MessagingPushConfigOptions = MessagingPushConfigBuilder().build(),
+    firebaseService: FirebaseService
 ) -> MessagingPushInstance;
 	public fun func didReceive(
     _ request: UNNotificationRequest,

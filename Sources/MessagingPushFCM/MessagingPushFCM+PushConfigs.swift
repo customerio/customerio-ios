@@ -1,5 +1,3 @@
-import FirebaseCore
-import FirebaseMessaging
 import Foundation
 #if canImport(UIKit)
 import UIKit
@@ -35,10 +33,10 @@ extension MessagingPushFCM {
     // Fetch the FCM token using the Firebase delegate method when the APN token is set.
     @objc
     func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
-        Messaging.messaging().apnsToken = deviceToken
+        firebaseService?.apnsToken = deviceToken
         // Registers listener with FCM SDK to always have the latest FCM token.
         // Used to automatically register it with the SDK.
-        Messaging.messaging().token(completion: { token, _ in
+        firebaseService?.fetchToken(completion: { token, _ in
             guard let token = token else {
                 return
             }

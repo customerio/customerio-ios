@@ -52,6 +52,8 @@ public class MessagingPushFCM: MessagingPushFCMInstance {
         MessagingPush.shared
     }
 
+    var firebaseService: FirebaseService?
+
     public func registerDeviceToken(fcmToken: String?) {
         guard let deviceToken = fcmToken else {
             return
@@ -85,11 +87,14 @@ public class MessagingPushFCM: MessagingPushFCMInstance {
      */
     @discardableResult
     @available(iOSApplicationExtension, unavailable)
-    public static func initialize(
-        withConfig config: MessagingPushConfigOptions = MessagingPushConfigBuilder().build()
+    public static func internalSetup(
+        withConfig config: MessagingPushConfigOptions = MessagingPushConfigBuilder().build(),
+        firebaseService: FirebaseService
     ) -> MessagingPushInstance {
         // initialize parent module to initialize features shared by APN and FCM modules
         let implementation = MessagingPush.initialize(withConfig: config)
+
+        shared.firebaseService = firebaseService
 
         let pushConfigOptions = MessagingPush.moduleConfig
         if pushConfigOptions.autoFetchDeviceToken, !MessagingPush.appDelegateIntegratedExplicitly {
