@@ -30,12 +30,6 @@ jobs:
     - name: Install sd for script dependencies
       run: brew install sd
 
-    # Firebase 12+ requires iOS 15+ minimum deployment target, but our SDK supports iOS 13+
-    # This script temporarily updates Package.swift to use iOS 15+ for CI testing only
-    # while keeping the SDK's public API at iOS 13+ for customers
-    - name: Update iOS deployment target for Firebase 12+ compatibility
-      run: ./scripts/update-ios-deployment-target-for-ci.sh
-
     - name: Run tests 
       uses: maierj/fastlane-action@5a3b971aaa26776459bb26894d6c1a1a84a311a7 # v3.1.0
       with:
