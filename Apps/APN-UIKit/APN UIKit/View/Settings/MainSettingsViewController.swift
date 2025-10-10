@@ -2,6 +2,16 @@ import CioDataPipelines
 import UIKit
 import UserNotifications
 
+enum BooleanSettingType: Int {
+    case autoTrackDeviceAttributes = 1
+    case autoTrackUIKitScreenViews = 2
+    case trackApplicationLifecycleEvents = 3
+    case screenViewUse = 4
+    case autoFetchDeviceToken = 5
+    case autoTrackPushEvents = 6
+    case showPushAppInForeground = 7
+}
+
 class MainSettingsViewController: BaseViewController {
     static func newInstance() -> MainSettingsViewController {
         UIStoryboard.getViewController(identifier: "MainSettingsViewController")
@@ -134,92 +144,45 @@ class MainSettingsViewController: BaseViewController {
     }
 
     private func configureDataPipelineButtonActions() {
-        // region
-        regionUSButton.addAction(UIAction(handler: { [weak self] _ in
-            self?.updateRegion(.US)
-        }), for: .touchUpInside)
-        regionEUButton.addAction(UIAction(handler: { [weak self] _ in
-            self?.updateRegion(.EU)
-        }), for: .touchUpInside)
+        configureRegionButtons()
+        configureBooleanButtons()
+        configureLogLevelButtons()
+    }
 
-        // autoTrackDeviceAttributes
-        autoTrackDeviceAttributesTrueButton.addAction(UIAction(handler: { [weak self] _ in
-            self?.updateAutoTrackDeviceAttributes(true)
-        }), for: .touchUpInside)
-        autoTrackDeviceAttributesFalseButton.addAction(UIAction(handler: { [weak self] _ in
-            self?.updateAutoTrackDeviceAttributes(false)
-        }), for: .touchUpInside)
+    private func configureRegionButtons() {
+        regionUSButton.addTarget(self, action: #selector(regionButtonTapped(_:)), for: .touchUpInside)
+        regionEUButton.addTarget(self, action: #selector(regionButtonTapped(_:)), for: .touchUpInside)
+    }
 
-        // autoTrackUIKitScreenView
-        autoTrackUIKitScreenViewTrueButton.addAction(UIAction(handler: { [weak self] _ in
-            self?.updateAutoTrackUIKitScreenViews(true)
-        }), for: .touchUpInside)
-        autoTrackUIKitScreenViewFalseButton.addAction(UIAction(handler: { [weak self] _ in
-            self?.updateAutoTrackUIKitScreenViews(false)
-        }), for: .touchUpInside)
+    private func configureBooleanButtons() {
+        configureBooleanButtonPair(autoTrackDeviceAttributesTrueButton, autoTrackDeviceAttributesFalseButton, type: .autoTrackDeviceAttributes)
+        configureBooleanButtonPair(autoTrackUIKitScreenViewTrueButton, autoTrackUIKitScreenViewFalseButton, type: .autoTrackUIKitScreenViews)
+        configureBooleanButtonPair(trackApplicationLifecycleEventsTrueButton, trackApplicationLifecycleEventsFalseButton, type: .trackApplicationLifecycleEvents)
+        configureBooleanButtonPair(screenViewUseAllButton, screenViewUseInAppButton, type: .screenViewUse)
+    }
 
-        // trackApplicationLifecycleEvents
-        trackApplicationLifecycleEventsTrueButton.addAction(UIAction(handler: { [weak self] _ in
-            self?.updateTrackApplicationLifecycleEvents(true)
-        }), for: .touchUpInside)
-        trackApplicationLifecycleEventsFalseButton.addAction(UIAction(handler: { [weak self] _ in
-            self?.updateTrackApplicationLifecycleEvents(false)
-        }), for: .touchUpInside)
+    private func configureLogLevelButtons() {
+        logLevelErrorButton.addTarget(self, action: #selector(logLevelButtonTapped(_:)), for: .touchUpInside)
+        logLevelInfoButton.addTarget(self, action: #selector(logLevelButtonTapped(_:)), for: .touchUpInside)
+        logLevelDebugButton.addTarget(self, action: #selector(logLevelButtonTapped(_:)), for: .touchUpInside)
+    }
 
-        // screenViewUse
-        screenViewUseAllButton.addAction(UIAction(handler: { [weak self] _ in
-            self?.updateScreenViewUse(.All)
-        }), for: .touchUpInside)
-        screenViewUseInAppButton.addAction(UIAction(handler: { [weak self] _ in
-            self?.updateScreenViewUse(.InApp)
-        }), for: .touchUpInside)
-
-        // logLevel
-        logLevelErrorButton.addAction(UIAction(handler: { [weak self] _ in
-            self?.updateLogLevel(.Error)
-        }), for: .touchUpInside)
-        logLevelInfoButton.addAction(UIAction(handler: { [weak self] _ in
-            self?.updateLogLevel(.Info)
-        }), for: .touchUpInside)
-        logLevelDebugButton.addAction(UIAction(handler: { [weak self] _ in
-            self?.updateLogLevel(.Debug)
-        }), for: .touchUpInside)
+    private func configureBooleanButtonPair(_ trueButton: UIButton, _ falseButton: UIButton, type: BooleanSettingType) {
+        trueButton.addTarget(self, action: #selector(booleanButtonTapped(_:)), for: .touchUpInside)
+        falseButton.addTarget(self, action: #selector(booleanButtonTapped(_:)), for: .touchUpInside)
+        trueButton.tag = type.rawValue
+        falseButton.tag = type.rawValue
     }
 
     private func configureMessagingPushAPNButtonActions() {
-        // autoFetchDeviceToken
-        autoFetchDeviceTokenTrueButton.addAction(UIAction(handler: { [weak self] _ in
-            self?.updateAutoFetchDeviceToken(true)
-        }), for: .touchUpInside)
-        autoFetchDeviceTokenFalseButton.addAction(UIAction(handler: { [weak self] _ in
-            self?.updateAutoFetchDeviceToken(false)
-        }), for: .touchUpInside)
-
-        // autoTrackPushEvents
-        autoTrackPushEventsTrueButton.addAction(UIAction(handler: { [weak self] _ in
-            self?.updateAutoTrackPushEvents(true)
-        }), for: .touchUpInside)
-        autoTrackPushEventsFalseButton.addAction(UIAction(handler: { [weak self] _ in
-            self?.updateAutoTrackPushEvents(false)
-        }), for: .touchUpInside)
-
-        // showPushAppInForeground
-        showPushAppInForegroundTrueButton.addAction(UIAction(handler: { [weak self] _ in
-            self?.updateShowPushAppInForeground(true)
-        }), for: .touchUpInside)
-        showPushAppInForegroundFalseButton.addAction(UIAction(handler: { [weak self] _ in
-            self?.updateShowPushAppInForeground(false)
-        }), for: .touchUpInside)
+        configureBooleanButtonPair(autoFetchDeviceTokenTrueButton, autoFetchDeviceTokenFalseButton, type: .autoFetchDeviceToken)
+        configureBooleanButtonPair(autoTrackPushEventsTrueButton, autoTrackPushEventsFalseButton, type: .autoTrackPushEvents)
+        configureBooleanButtonPair(showPushAppInForegroundTrueButton, showPushAppInForegroundFalseButton, type: .showPushAppInForeground)
     }
 
     private func configureMessagingInAppButtonActions() {
-        // inAppRegion
-        inAppRegionUSButton.addAction(UIAction(handler: { [weak self] _ in
-            self?.updateInAppRegion(.US)
-        }), for: .touchUpInside)
-        inAppRegionEUButton.addAction(UIAction(handler: { [weak self] _ in
-            self?.updateInAppRegion(.EU)
-        }), for: .touchUpInside)
+        inAppRegionUSButton.addTarget(self, action: #selector(inAppRegionButtonTapped(_:)), for: .touchUpInside)
+        inAppRegionEUButton.addTarget(self, action: #selector(inAppRegionButtonTapped(_:)), for: .touchUpInside)
     }
 
     private func updateRegion(_ value: Region) {
@@ -270,6 +233,53 @@ class MainSettingsViewController: BaseViewController {
     private func updateInAppRegion(_ value: Region) {
         settingsViewModel.inAppRegionUpdated(value)
         setInitialValues()
+    }
+
+    // MARK: - Generic Action Methods
+
+    @objc private func regionButtonTapped(_ sender: UIButton) {
+        let region: Region = sender == regionUSButton ? .US : .EU
+        updateRegion(region)
+    }
+
+    @objc private func booleanButtonTapped(_ sender: UIButton) {
+        guard let settingType = BooleanSettingType(rawValue: sender.tag) else { return }
+
+        let isTrueButton = sender.titleLabel?.text?.contains("True") == true ||
+            sender.titleLabel?.text?.contains("All") == true
+
+        switch settingType {
+        case .autoTrackDeviceAttributes:
+            updateAutoTrackDeviceAttributes(isTrueButton)
+        case .autoTrackUIKitScreenViews:
+            updateAutoTrackUIKitScreenViews(isTrueButton)
+        case .trackApplicationLifecycleEvents:
+            updateTrackApplicationLifecycleEvents(isTrueButton)
+        case .screenViewUse:
+            updateScreenViewUse(isTrueButton ? .All : .InApp)
+        case .autoFetchDeviceToken:
+            updateAutoFetchDeviceToken(isTrueButton)
+        case .autoTrackPushEvents:
+            updateAutoTrackPushEvents(isTrueButton)
+        case .showPushAppInForeground:
+            updateShowPushAppInForeground(isTrueButton)
+        }
+    }
+
+    @objc private func logLevelButtonTapped(_ sender: UIButton) {
+        let logLevel: LogLevel
+        switch sender {
+        case logLevelErrorButton: logLevel = .Error
+        case logLevelInfoButton: logLevel = .Info
+        case logLevelDebugButton: logLevel = .Debug
+        default: return
+        }
+        updateLogLevel(logLevel)
+    }
+
+    @objc private func inAppRegionButtonTapped(_ sender: UIButton) {
+        let region: Region = sender == inAppRegionUSButton ? .US : .EU
+        updateInAppRegion(region)
     }
 
     // MARK: - Actions
