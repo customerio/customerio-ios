@@ -14,6 +14,7 @@ import XCTest
 class MessagingPushFCMAPITest: UnitTest {
     // Test that public functions are accessible by mocked instances
     let mock = MessagingPushFCMInstanceMock()
+    let mockFirebaseService = MockFirebaseService()
 
     func test_allPublicFunctions() throws {
         try skipRunningTest()
@@ -23,9 +24,9 @@ class MessagingPushFCMAPITest: UnitTest {
         MessagingPush.initialize()
         MessagingPush.initialize(withConfig: MessagingPushConfigBuilder().build())
 
-        // MessagingPushFCM should be able to be initialized with the same initialize() function as MessagingPush.
-        MessagingPushFCM.initialize()
-        MessagingPushFCM.initialize(withConfig: MessagingPushConfigBuilder().build())
+        // MessagingPushFCM should be able to be initialized with the new internalSetup function that requires FirebaseService.
+        MessagingPushFCM.internalSetup(firebaseService: mockFirebaseService)
+        MessagingPushFCM.internalSetup(withConfig: MessagingPushConfigBuilder().build(), firebaseService: mockFirebaseService)
 
         // This is the `initialize()` function that's available to Notification Service Extension and not available
         // to other targets (such as iOS).

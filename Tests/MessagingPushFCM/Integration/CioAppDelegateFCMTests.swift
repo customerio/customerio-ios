@@ -1,7 +1,6 @@
 @testable import CioInternalCommon
 @_spi(Internal) @testable import CioMessagingPush
 @testable import CioMessagingPushFCM
-import FirebaseMessaging
 import SharedTests
 import UIKit
 import UserNotifications
@@ -15,8 +14,8 @@ class CioAppDelegateFCMTests: XCTestCase {
     var mockAppDelegate: MockAppDelegate!
     var mockNotificationCenter: UserNotificationCenterIntegrationMock!
     var mockNotificationCenterDelegate: MockNotificationCenterDelegate!
-    var mockMessaging: FirebaseMessagingIntegrationMock!
-    var mockMessagingDelegate: MockMessagingDelegate!
+    var mockFirebaseService: MockFirebaseService!
+    var mockFirebaseServiceDelegate: MockFirebaseServiceDelegate!
     var mockLogger: LoggerMock!
 
     // Mock config for testing
@@ -35,7 +34,6 @@ class CioAppDelegateFCMTests: XCTestCase {
         super.setUp()
 
         UNUserNotificationCenter.swizzleNotificationCenter()
-        Messaging.swizzleMessaging()
 
         mockMessagingPush = MessagingPushFCMMock()
 
@@ -45,16 +43,18 @@ class CioAppDelegateFCMTests: XCTestCase {
         mockNotificationCenterDelegate = MockNotificationCenterDelegate()
         mockNotificationCenter.delegate = mockNotificationCenterDelegate
 
-        mockMessaging = FirebaseMessagingIntegrationMock()
-        mockMessagingDelegate = MockMessagingDelegate()
-        mockMessaging.delegate = mockMessagingDelegate
+        mockFirebaseService = MockFirebaseService()
+        mockFirebaseServiceDelegate = MockFirebaseServiceDelegate()
+        mockFirebaseService.delegate = mockFirebaseServiceDelegate
 
         mockLogger = LoggerMock()
+
+        // Set up the FirebaseService on MessagingPushFCM.shared
+        MessagingPushFCM.shared.firebaseService = mockFirebaseService
 
         appDelegateFCM = CioAppDelegate(
             messagingPush: mockMessagingPush,
             userNotificationCenter: { self.mockNotificationCenter },
-            firebaseMessaging: { self.mockMessaging },
             appDelegate: mockAppDelegate,
             config: { self.createMockConfig() },
             logger: mockLogger
@@ -66,20 +66,20 @@ class CioAppDelegateFCMTests: XCTestCase {
         mockAppDelegate = nil
         mockNotificationCenter = nil
         mockNotificationCenterDelegate = nil
-        mockMessaging = nil
-        mockMessagingDelegate = nil
+        mockFirebaseService = nil
+        mockFirebaseServiceDelegate = nil
         mockLogger = nil
         appDelegateFCM = nil
 
-        Messaging.unswizzleMessaging()
+        // Clean up MessagingPushFCM.shared.firebaseService
+        MessagingPushFCM.shared.firebaseService = nil
+
         UNUserNotificationCenter.unswizzleNotificationCenter()
 
         MessagingPush.appDelegateIntegratedExplicitly = false
 
         super.tearDown()
     }
-
-    // MARK: - Tests for FCM-specific functionality
 
     func testDidFinishLaunching_whenCalled_thenSuperIsCalled() {
         // Call the method
@@ -94,24 +94,23 @@ class CioAppDelegateFCMTests: XCTestCase {
         })
     }
 
-    func testDidFinishLaunching_whenCalled_thenMessagingDelegateIsSet() {
+    func testDidFinishLaunching_whenCalled_thenFirebaseServiceDelegateIsSet() {
         // Call the method
         _ = appDelegateFCM.application(UIApplication.shared, didFinishLaunchingWithOptions: nil)
 
-        // Verify behavior
-        XCTAssertTrue(mockMessaging.delegate === appDelegateFCM)
+        // Verify behavior - the CioAppDelegate should be set as the delegate on the FirebaseService
+        XCTAssertTrue(mockFirebaseService.delegate === appDelegateFCM)
     }
 
-    func testDidFinishLaunchings_whenAutoFetchDeviceTokenIsDesabled_thenMessagingDelegateIsNotSet() {
+    func testDidFinishLaunchings_whenAutoFetchDeviceTokenIsDesabled_thenFirebaseServiceDelegateIsNotSet() {
         appDelegateFCM = CioAppDelegate(
             messagingPush: mockMessagingPush,
             userNotificationCenter: { self.mockNotificationCenter },
-            firebaseMessaging: { self.mockMessaging },
             appDelegate: mockAppDelegate,
             config: { self.createMockConfig(autoFetchDeviceToken: false) },
             logger: mockLogger
         )
-        mockMessaging.delegate = nil
+        mockFirebaseService.delegate = nil
 
         // Call didFinishLaunching
         let result = appDelegateFCM.application(UIApplication.shared, didFinishLaunchingWithOptions: nil)
@@ -119,31 +118,31 @@ class CioAppDelegateFCMTests: XCTestCase {
         // Verify behavior
         XCTAssertTrue(result)
         XCTAssertTrue(mockAppDelegate.didFinishLaunchingCalled)
-        XCTAssertNil(mockMessaging.delegate)
+        XCTAssertNil(mockFirebaseService.delegate)
     }
 
-    // MARK: - Test MessagingDelegate
+    // MARK: - Test FirebaseServiceDelegate
 
-    func testMessagingDidReceiveRegistrationToken_whenCalled_thenWrappedMessagingDelegateIsCalled() {
+    func testDidReceiveRegistrationToken_whenCalled_thenWrappedFirebaseServiceDelegateIsCalled() {
         // Setup
         let fcmToken = "test-fcm-token"
         _ = appDelegateFCM.application(UIApplication.shared, didFinishLaunchingWithOptions: nil)
 
         // Call method directly
-        appDelegateFCM.messaging(Messaging.messagingMock(), didReceiveRegistrationToken: fcmToken)
+        appDelegateFCM.didReceiveRegistrationToken(fcmToken)
 
-        // Verify behavior
-        XCTAssertTrue(mockMessagingDelegate.didReceiveRegistrationTokenCalled)
-        XCTAssertEqual(mockMessagingDelegate.fcmTokenReceived, fcmToken)
+        // Verify behavior - the wrapped delegate should be called
+        XCTAssertTrue(mockFirebaseServiceDelegate.didReceiveRegistrationTokenCalled)
+        XCTAssertEqual(mockFirebaseServiceDelegate.receivedToken, fcmToken)
     }
 
-    func testMessagingDidReceiveRegistrationToken_whenCalled_thenTokenIsForwardedToCIO() {
+    func testDidReceiveRegistrationToken_whenCalled_thenTokenIsForwardedToCIO() {
         // Setup
         let fcmToken = "test-fcm-token"
         _ = appDelegateFCM.application(UIApplication.shared, didFinishLaunchingWithOptions: nil)
 
         // Call method directly
-        appDelegateFCM.messaging(Messaging.messagingMock(), didReceiveRegistrationToken: fcmToken)
+        appDelegateFCM.didReceiveRegistrationToken(fcmToken)
 
         // Verify behavior
         XCTAssertTrue(mockMessagingPush.registerDeviceTokenFCMCalled)
