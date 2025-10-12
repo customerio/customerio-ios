@@ -28,10 +28,13 @@ open class CioAppDelegate: CioProviderAgnosticAppDelegate, FirebaseServiceDelega
     ) -> Bool {
         let result = super.application(application, didFinishLaunchingWithOptions: launchOptions)
 
-        if config?().autoFetchDeviceToken ?? false,
-           var service = MessagingPushFCM.shared.firebaseService {
-            wrappedFirebaseDelegate = service.delegate
-            service.delegate = self
+        if config?().autoFetchDeviceToken ?? false {
+            if var service = MessagingPushFCM.shared.firebaseService {
+                wrappedFirebaseDelegate = service.delegate
+                service.delegate = self
+            } else {
+                DIGraphShared.shared.logger.error("CIO: firebaseService is nil. Make sure to initialize the MessagingPushFCM SDK before use.")
+            }
         }
 
         return result
