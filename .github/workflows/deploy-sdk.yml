@@ -26,7 +26,7 @@ jobs:
       sdk-size-report: ${{ steps.generate-sdk-size-report.outputs.sdk-size-report }}
       sdk-size-including-dependencies-report: ${{ steps.generate-sdk-size-report.outputs.sdk-size-including-dependencies-report }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: ./.github/actions/generate-sdk-size-report
         id: generate-sdk-size-report
@@ -42,7 +42,7 @@ jobs:
       new_release_published: ${{ steps.semantic-release.outputs.new_release_published }}
       new_release_version: ${{ steps.semantic-release.outputs.new_release_version }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       # CLI to replace strings in files. The CLI recommends using `cargo install` which is slow. This Action is fast because it downloads pre-built binaries.
       # If using sd on macos, "brew install" works great. for Linux, this is the recommended way.
@@ -82,7 +82,7 @@ jobs:
       # 2. Updates metadata files. Such as updating the version number in package.json and adding entries to CHANGELOG.md file.
       # 3. Create git tag and push it to github.
       - name: Deploy git tag via semantic-release
-        uses: cycjimmy/semantic-release-action@0a51e81a6baff2acad3ee88f4121c589c73d0f0e # v4.2.0
+        uses: cycjimmy/semantic-release-action@ba330626c4750c19d8299de843f05c7aa5574f62 # v5.0.2
         id: semantic-release
         with:
           # version numbers below can be in many forms: M, M.m, M.m.p
@@ -98,7 +98,7 @@ jobs:
           GITHUB_TOKEN: ${{ steps.generate_token.outputs.token }}
 
       - name: Notify team of git tag being created
-        uses: slackapi/slack-github-action@70cd7be8e40a46e8b0eced40b0de447bdb42f68e # v1.26.0
+        uses: slackapi/slack-github-action@91efab103c0de0a537f72a35f6b8cda0ee76bf0a # v2.1.1
         if: steps.semantic-release.outputs.new_release_published == 'true' # only run if a git tag was made.
         with:
           # Use block kit for format of the JSON payloads: https://app.slack.com/block-kit-builder
@@ -135,7 +135,7 @@ jobs:
           SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
 
       - name: Notify team of failure
-        uses: slackapi/slack-github-action@70cd7be8e40a46e8b0eced40b0de447bdb42f68e # v1.26.0
+        uses: slackapi/slack-github-action@91efab103c0de0a537f72a35f6b8cda0ee76bf0a # v2.1.1
         if: ${{ failure() }} # only run this if any previous step failed
         with:
           # Use block kit for format of the JSON payloads: https://app.slack.com/block-kit-builder
@@ -181,13 +181,13 @@ jobs:
     runs-on: macos-14
     steps:
       - name: Checkout git tag that got created in previous step
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         if: ${{ needs.deploy-git-tag.outputs.new_release_published == 'true' }}
         with:
           ref: ${{ needs.deploy-git-tag.outputs.new_release_git_head }}
 
       - name: Checkout git tag that was previously created
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         if: ${{ github.event_name == 'workflow_dispatch' }}
         with:
           ref: ${{ inputs.existing-git-tag }}
@@ -225,7 +225,7 @@ jobs:
         run: ./scripts/push-cocoapod.sh CustomerIO.podspec
 
       - name: Notify team of successful deployment
-        uses: slackapi/slack-github-action@70cd7be8e40a46e8b0eced40b0de447bdb42f68e # v1.26.0
+        uses: slackapi/slack-github-action@91efab103c0de0a537f72a35f6b8cda0ee76bf0a # v2.1.1
         if: ${{ success() }}
         with:
           # Use block kit for format of the JSON payloads: https://app.slack.com/block-kit-builder
@@ -262,7 +262,7 @@ jobs:
           SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
 
       - name: Notify team of failure
-        uses: slackapi/slack-github-action@70cd7be8e40a46e8b0eced40b0de447bdb42f68e # v1.26.0
+        uses: slackapi/slack-github-action@91efab103c0de0a537f72a35f6b8cda0ee76bf0a # v2.1.1
         if: ${{ failure() }} # only run this if any previous step failed
         with:
           # Use block kit for format of the JSON payloads: https://app.slack.com/block-kit-builder

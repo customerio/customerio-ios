@@ -10,7 +10,7 @@ jobs:
   check-api-breaking-changes:
     runs-on: macos-14
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       
       - uses: ./.github/actions/setup-ios
       
@@ -18,7 +18,7 @@ jobs:
         run: brew install sourcekitten
       
       - name: Setup Ruby
-        uses: ruby/setup-ruby@354a1ad156761f5ee2b7b13fa8e09943a5e8d252 # v1.229.0
+        uses: ruby/setup-ruby@ab177d40ee5483edb974554986f56b33477e21d0 # v1.265.0
         with:
           ruby-version: '3.2'
           bundler-cache: false # we don't need bundler for this workflow
