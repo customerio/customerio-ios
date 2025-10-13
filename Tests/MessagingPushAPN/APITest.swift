@@ -18,14 +18,16 @@ class MessagingPushAPNAPITest: UnitTest {
     func test_allPublicFunctions() throws {
         try skipRunningTest()
 
-        // Config is optional because MessagingPushConfigOptions does not have any required fields.
-        // Providing default value for config makes it easier for customers to initialize MessagingPush module.
-        MessagingPush.initialize()
-        MessagingPush.initialize(withConfig: MessagingPushConfigBuilder().build())
+        MainActor.assumeIsolated {
+            // Config is optional because MessagingPushConfigOptions does not have any required fields.
+            // Providing default value for config makes it easier for customers to initialize MessagingPush module.
+            MessagingPush.initialize()
+            MessagingPush.initialize(withConfig: MessagingPushConfigBuilder().build())
 
-        // MessagingPushAPN should be able to be initialized with the same initialize() function as MessagingPush.
-        MessagingPushAPN.initialize()
-        MessagingPushAPN.initialize(withConfig: MessagingPushConfigBuilder().build())
+            // MessagingPushAPN should be able to be initialized with the same initialize() function as MessagingPush.
+            MessagingPushAPN.initialize()
+            MessagingPushAPN.initialize(withConfig: MessagingPushConfigBuilder().build())
+        }
 
         // This is the `initialize()` function that's available to Notification Service Extension and not available
         // to other targets (such as iOS).

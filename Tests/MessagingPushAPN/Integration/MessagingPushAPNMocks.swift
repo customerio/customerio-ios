@@ -3,7 +3,7 @@
 @testable import CioMessagingPushAPN
 import Foundation
 
-class MessagingPushAPNMock: MessagingPushInstanceMock, MessagingPushAPNInstance {
+class MessagingPushAPNMock: MessagingPushInstanceMock, MessagingPushAPNInstance, @unchecked Sendable {
     // MARK: - registerDeviceToken
 
     /// Number of times the function was called.

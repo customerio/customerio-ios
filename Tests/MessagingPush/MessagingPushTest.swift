@@ -4,6 +4,7 @@ import Foundation
 import SharedTests
 import XCTest
 
+@MainActor
 class MessagingPushTest: IntegrationTest {
     override func initializeSDKComponents() -> MessagingPushInstance? {
         // We want to manually initialize the module in test functions. So, override this function to disable automatic module initialization.

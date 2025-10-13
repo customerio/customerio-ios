@@ -5,6 +5,7 @@ import UIKit
 import UserNotifications
 import XCTest
 
+@MainActor
 class CioProviderAgnosticAppDelegateTests: XCTestCase {
     // Mock Classes
     var mockMessagingPush: MessagingPushInstanceMock!
@@ -29,6 +30,7 @@ class CioProviderAgnosticAppDelegateTests: XCTestCase {
         )
     }
 
+    @MainActor
     override func setUp() {
         super.setUp()
 
@@ -53,6 +55,7 @@ class CioProviderAgnosticAppDelegateTests: XCTestCase {
         )
     }
 
+    @MainActor
     override func tearDown() {
         mockMessagingPush = nil
         mockAppDelegate = nil
@@ -178,9 +181,9 @@ class CioProviderAgnosticAppDelegateTests: XCTestCase {
 
     func testUserNotificationCenterWillPresent_whenWrappedDelegateDoesntImplementMethod_thenDefaultHandlingIsUsed() {
         // Setup
-        var completionHandlerCalled = false
-        var presentationOptions: UNNotificationPresentationOptions?
-        let completionHandler: (UNNotificationPresentationOptions) -> Void = { options in
+        nonisolated(unsafe) var completionHandlerCalled = false
+        nonisolated(unsafe) var presentationOptions: UNNotificationPresentationOptions?
+        let completionHandler: @Sendable (UNNotificationPresentationOptions) -> Void = { options in
             completionHandlerCalled = true
             presentationOptions = options
         }

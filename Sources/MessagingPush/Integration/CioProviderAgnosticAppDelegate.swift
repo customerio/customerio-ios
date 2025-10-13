@@ -22,10 +22,12 @@ private extension UIApplication {
 }
 
 @available(iOSApplicationExtension, unavailable)
-open class CioProviderAgnosticAppDelegate: CioAppDelegateType, UNUserNotificationCenterDelegate {
+@MainActor
+open class CioProviderAgnosticAppDelegate: CioAppDelegateType, @MainActor UNUserNotificationCenterDelegate {
     @_spi(Internal) public let messagingPush: MessagingPushInstance
     @_spi(Internal) public let logger: Logger
-    @_spi(Internal) public var implementedOptionalMethods: Set<Selector> = [
+    // This property is set once and never mutated, safe to mark as nonisolated
+    @_spi(Internal) public nonisolated(unsafe) var implementedOptionalMethods: Set<Selector> = [
         // UIApplicationDelegate
         #selector(UIApplicationDelegate.application(_:didFinishLaunchingWithOptions:)),
         #selector(UIApplicationDelegate.application(_:didRegisterForRemoteNotificationsWithDeviceToken:)),
@@ -41,7 +43,7 @@ open class CioProviderAgnosticAppDelegate: CioAppDelegateType, UNUserNotificatio
     @_spi(Internal) public var config: ConfigInstance?
 
     private var userNotificationCenter: UserNotificationCenterInstance?
-    private let wrappedAppDelegate: UIApplicationDelegate?
+    private nonisolated(unsafe) let wrappedAppDelegate: UIApplicationDelegate?
     private var wrappedNotificationCenterDelegate: UNUserNotificationCenterDelegate?
 
     override public convenience init() {
@@ -115,13 +117,13 @@ open class CioProviderAgnosticAppDelegate: CioAppDelegateType, UNUserNotificatio
     open func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         willPresent notification: UNNotification,
-        withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
+        withCompletionHandler completionHandler: @escaping @Sendable (UNNotificationPresentationOptions) -> Void
     ) {
         // `completionHandlerCalled` is used to overcome limitation of `responds(to:)` when working with optional methods from protocol.
         // Component may implement the protocol, but not specific optional method. In this case `responds(to:)` will return true.
         // Explicit flag, `completionHandlerCalled` in this case, allows us to detect if method is implemented, since it's required by Apple to
         // call `completionHandler` before returning.
-        var completionHandlerCalled = false
+        nonisolated(unsafe) var completionHandlerCalled = false
         if let wrappedNotificationCenterDelegate = wrappedNotificationCenterDelegate,
            wrappedNotificationCenterDelegate.responds(to: #selector(UNUserNotificationCenterDelegate.userNotificationCenter(_:willPresent:withCompletionHandler:))) {
             wrappedNotificationCenterDelegate.userNotificationCenter?(
@@ -152,7 +154,7 @@ open class CioProviderAgnosticAppDelegate: CioAppDelegateType, UNUserNotificatio
     open func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         didReceive response: UNNotificationResponse,
-        withCompletionHandler completionHandler: @escaping () -> Void
+        withCompletionHandler completionHandler: @escaping @Sendable () -> Void
     ) {
         // Cast to concrete type since method was removed from protocol
         if let implementation = messagingPush as? MessagingPush {
@@ -163,7 +165,7 @@ open class CioProviderAgnosticAppDelegate: CioAppDelegateType, UNUserNotificatio
         // Component may implement the protocol, but not specific optional method. In this case `responds(to:)` will return true.
         // Explicit flag, `completionHandlerCalled` in this case, allows us to detect if method is implemented, since it's required by Apple to
         // call `completionHandler` before returning.
-        var completionHandlerCalled = false
+        nonisolated(unsafe) var completionHandlerCalled = false
         if let wrappedNotificationCenterDelegate = wrappedNotificationCenterDelegate,
            wrappedNotificationCenterDelegate.responds(to: #selector(UNUserNotificationCenterDelegate.userNotificationCenter(_:didReceive:withCompletionHandler:))) {
             wrappedNotificationCenterDelegate.userNotificationCenter?(

@@ -8,7 +8,7 @@ import UserNotifications
 // Some functions are copied from MessagingPush because
 // 1. This allows the generated mock to contain these functions
 // 2. Customers do not need to `import CioMessaginPush`. Only 1 import: `CioMessaginPushAPN`.
-public protocol MessagingPushAPNInstance: AutoMockable {
+public protocol MessagingPushAPNInstance: AutoMockable, Sendable {
     func registerDeviceToken(apnDeviceToken: Data)
 
     // sourcery:Name=didRegisterForRemoteNotifications
@@ -47,7 +47,7 @@ public protocol MessagingPushAPNInstance: AutoMockable {
     #endif
 }
 
-public class MessagingPushAPN: MessagingPushAPNInstance {
+public final class MessagingPushAPN: MessagingPushAPNInstance {
     static let shared = MessagingPushAPN()
 
     var messagingPush: MessagingPushInstance {
@@ -79,6 +79,7 @@ public class MessagingPushAPN: MessagingPushAPNInstance {
      Configure `MessagingPushAPN`.
      Call this function in your app if you want to configure the module.
      */
+    @MainActor
     @discardableResult
     @available(iOSApplicationExtension, unavailable)
     public static func initialize(

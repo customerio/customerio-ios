@@ -6,7 +6,7 @@ import Foundation
  So, performing an HTTP request to the API with a device token goes here.
   */
 public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, MessagingPushInstance {
-    @_spi(Internal) public static var appDelegateIntegratedExplicitly: Bool = false
+    @MainActor @_spi(Internal) public static var appDelegateIntegratedExplicitly: Bool = false
 
     @Atomic public private(set) static var shared = MessagingPush()
     @Atomic public private(set) static var moduleConfig: MessagingPushConfigOptions = MessagingPushConfigBuilder().build()
@@ -51,6 +51,7 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
      Initialize the shared `instance` of `MessagingPush`.
      Call this function when your app launches, before using `MessagingPush.shared`.
      */
+    @MainActor
     @discardableResult
     @available(iOSApplicationExtension, unavailable)
     public static func initialize(withConfig config: MessagingPushConfigOptions = MessagingPushConfigBuilder().build()) -> MessagingPushInstance {

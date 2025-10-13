@@ -7,12 +7,14 @@ import UIKit
 
 extension MessagingPushFCM {
     @available(iOSApplicationExtension, unavailable)
+    @MainActor
     func setupAutoFetchDeviceToken() {
         swizzleDidRegisterForRemoteNotifications()
         UIApplication.shared.registerForRemoteNotifications()
     }
 
     @available(iOSApplicationExtension, unavailable)
+    @MainActor
     private func swizzleDidRegisterForRemoteNotifications() {
         let appDelegate = UIApplication.shared.delegate
         let appDelegateClass: AnyClass? = object_getClass(appDelegate)

@@ -6,6 +6,7 @@ import UIKit
 import UserNotifications
 import XCTest
 
+@MainActor
 class CioAppDelegateAPNTests: XCTestCase {
     var appDelegateAPN: CioAppDelegate!
 
@@ -27,6 +28,7 @@ class CioAppDelegateAPNTests: XCTestCase {
         )
     }
 
+    @MainActor
     override func setUp() {
         super.setUp()
 
@@ -51,6 +53,7 @@ class CioAppDelegateAPNTests: XCTestCase {
         )
     }
 
+    @MainActor
     override func tearDown() {
         mockMessagingPush = nil
         mockAppDelegate = nil
@@ -121,8 +124,8 @@ class CioAppDelegateAPNTests: XCTestCase {
         // Setup
         _ = appDelegateAPN.application(UIApplication.shared, didFinishLaunchingWithOptions: nil)
 
-        var completionHandlerCalled = false
-        let completionHandler = {
+        nonisolated(unsafe) var completionHandlerCalled = false
+        let completionHandler: @Sendable () -> Void = {
             completionHandlerCalled = true
         }
 

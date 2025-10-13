@@ -134,7 +134,7 @@ class UNUserNotificationCenterDelegateWrapper: PushEventHandler, CustomStringCon
         self.delegate = delegate
     }
 
-    func onPushAction(_ pushAction: PushNotificationAction, completionHandler: @escaping () -> Void) {
+    func onPushAction(_ pushAction: PushNotificationAction, completionHandler: @Sendable @escaping () -> Void) {
         guard let userNotificationsWrapperInstance = pushAction as? UNNotificationResponseWrapper else {
             return
         }
@@ -146,7 +146,7 @@ class UNUserNotificationCenterDelegateWrapper: PushEventHandler, CustomStringCon
         }
     }
 
-    func shouldDisplayPushAppInForeground(_ push: PushNotification, completionHandler: @escaping (Bool) -> Void) {
+    func shouldDisplayPushAppInForeground(_ push: PushNotification, completionHandler: @Sendable @escaping (Bool) -> Void) {
         guard let unnotification = (push as? UNNotificationWrapper)?.notification else {
             return
         }

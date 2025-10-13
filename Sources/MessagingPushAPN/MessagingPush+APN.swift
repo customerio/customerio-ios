@@ -7,7 +7,7 @@ import UserNotifications
 /**
  Convenient extensions so singleton instances of `MessagingPush` can access functions from `MessagingPushAPN`.
   */
-extension MessagingPush: MessagingPushAPNInstance {
+extension MessagingPush: MessagingPushAPNInstance, @unchecked Sendable {
     public func registerDeviceToken(apnDeviceToken: Data) {
         MessagingPushAPN.shared.registerDeviceToken(apnDeviceToken: apnDeviceToken)
     }

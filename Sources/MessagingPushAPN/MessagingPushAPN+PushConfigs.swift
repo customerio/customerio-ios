@@ -2,6 +2,7 @@ import Foundation
 import UIKit
 
 extension MessagingPushAPN {
+    @MainActor
     @available(iOSApplicationExtension, unavailable)
     func setupAutoFetchDeviceToken() {
         // Swizzle method `didRegisterForRemoteNotificationsWithDeviceToken`
@@ -10,6 +11,7 @@ extension MessagingPushAPN {
         UIApplication.shared.registerForRemoteNotifications()
     }
 
+    @MainActor
     @available(iOSApplicationExtension, unavailable)
     private func swizzleDidRegisterForRemoteNotifications() {
         let appDelegate = UIApplication.shared.delegate

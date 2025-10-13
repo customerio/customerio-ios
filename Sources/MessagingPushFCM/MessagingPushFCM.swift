@@ -8,7 +8,7 @@ import UserNotifications
 // Some functions are copied from MessagingPush because
 // 1. This allows the generated mock to contain these functions
 // 2. Customers do not need to `import CioMessaginPush`. Only 1 import: `CioMessaginPushFCM`.
-public protocol MessagingPushFCMInstance: AutoMockable {
+public protocol MessagingPushFCMInstance: AutoMockable, Sendable {
     func registerDeviceToken(fcmToken: String?)
 
     // sourcery:Name=didReceiveRegistrationToken
@@ -45,7 +45,7 @@ public protocol MessagingPushFCMInstance: AutoMockable {
     #endif
 }
 
-public class MessagingPushFCM: MessagingPushFCMInstance {
+public final class MessagingPushFCM: MessagingPushFCMInstance {
     static let shared = MessagingPushFCM()
 
     var messagingPush: MessagingPushInstance {
@@ -83,6 +83,7 @@ public class MessagingPushFCM: MessagingPushFCMInstance {
      Call this function in your app if you want to initialize and configure the module to
      auto-fetch device token and auto-register device with Customer.io.
      */
+    @MainActor
     @discardableResult
     @available(iOSApplicationExtension, unavailable)
     public static func initialize(
