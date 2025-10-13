@@ -1,4 +1,4 @@
-// swift-tools-version:5.5
+// swift-tools-version:5.9
 
 import PackageDescription
 
@@ -24,7 +24,8 @@ let package = Package(
                 .product(name: "MessagingPushAPN", package: "customerio-ios"),
                 .product(name: "MessagingInApp", package: "customerio-ios")
             ],
-            path: "Source"
+            path: "Source",
+            swiftSettings: [.unsafeFlags(["-strict-concurrency=complete"])]
         )
     ]
 )

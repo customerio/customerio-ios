@@ -22,6 +22,7 @@ public class UIKitWrapperImpl: UIKitWrapper {
         #endif
     }
 
+    @MainActor
     public func continueNSUserActivity(webpageURL: URL) -> Bool {
         #if canImport(UIKit)
         guard isLinkValidNSUserActivityLink(webpageURL) else {
