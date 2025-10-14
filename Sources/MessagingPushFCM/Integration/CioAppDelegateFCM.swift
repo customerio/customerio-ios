@@ -29,7 +29,7 @@ open class CioAppDelegate: CioProviderAgnosticAppDelegate, FirebaseServiceDelega
         let result = super.application(application, didFinishLaunchingWithOptions: launchOptions)
 
         if config?().autoFetchDeviceToken ?? false {
-            if var service = MessagingPushFCM.shared.firebaseService {
+            if var service = MessagingPushFCM.shared.firebaseMessaging() {
                 wrappedFirebaseDelegate = service.delegate
                 service.delegate = self
             } else {

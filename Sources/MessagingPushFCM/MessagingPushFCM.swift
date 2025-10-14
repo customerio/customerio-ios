@@ -54,6 +54,10 @@ public class MessagingPushFCM: MessagingPushFCMInstance {
 
     var firebaseService: FirebaseService?
 
+    func firebaseMessaging() -> FirebaseService? {
+        firebaseService
+    }
+
     public func registerDeviceToken(fcmToken: String?) {
         guard let deviceToken = fcmToken else {
             return

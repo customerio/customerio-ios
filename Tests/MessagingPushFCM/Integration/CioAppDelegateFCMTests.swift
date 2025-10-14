@@ -102,7 +102,7 @@ class CioAppDelegateFCMTests: XCTestCase {
         XCTAssertTrue(mockFirebaseService.delegate === appDelegateFCM)
     }
 
-    func testDidFinishLaunchings_whenAutoFetchDeviceTokenIsDesabled_thenFirebaseServiceDelegateIsNotSet() {
+    func testDidFinishLaunchings_whenAutoFetchDeviceTokenIsDisabled_thenFirebaseServiceDelegateIsNotSet() {
         appDelegateFCM = CioAppDelegate(
             messagingPush: mockMessagingPush,
             userNotificationCenter: { self.mockNotificationCenter },
