@@ -12,7 +12,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - uses: ./.github/actions/setup-ios
+      - uses: customerio/mobile-ci-tools/github-actions/ios/setup-ios/v1@shared-ios-ci
       
       - name: Install sourcekitten
         run: brew install sourcekitten

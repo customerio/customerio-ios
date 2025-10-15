@@ -67,7 +67,7 @@ outputs:
 runs:
   using: "composite"
   steps:
-    - uses: ./.github/actions/setup-ios
+    - uses: customerio/mobile-ci-tools/github-actions/ios/setup-ios/v1@shared-ios-ci
 
     - name: Install CLI tools used in CI script 
       shell: bash
