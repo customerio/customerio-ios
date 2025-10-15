@@ -1,7 +1,7 @@
 import Foundation
 
 /// A protocol to abstract Firebase functionality without Firebase dependencies
-public protocol FirebaseService {
+public protocol FirebaseService: AnyObject {
     /// The current APNS token set on the Firebase service
     var apnsToken: Data? { get set }
 
