@@ -67,7 +67,7 @@ outputs:
 runs:
   using: "composite"
   steps:
-    - uses: customerio/mobile-ci-tools/github-actions/ios/setup-ios/v1@shared-ios-ci
+    - uses: customerio/mobile-ci-tools/github-actions/ios/setup-ios/v1@main
 
     - name: Install CLI tools used in CI script 
       shell: bash
@@ -122,9 +122,9 @@ runs:
       uses: actions/cache@v4
       with:
         path: Apps/${{ inputs.sample-app }}/Pods
-        key: ${{ runner.os }}-${{ inputs.sample-app}}-Pods-${{ github.ref }}
+        key: ${{ runner.os }}-${{ inputs.sample-app}}-Pods-${{ hashFiles('Apps/${{ inputs.sample-app }}/Podfile.lock') }}
         restore-keys: |
-          ${{ runner.os }}-${{ inputs.sample-app}}-Pods
+          ${{ runner.os }}-${{ inputs.sample-app}}-Pods-
 
     - name: Cache SPM downloaded dependencies for faster builds in the future 
       if: steps.check_podfile_exists.outputs.files_exists == 'false'

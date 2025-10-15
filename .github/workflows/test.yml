@@ -11,11 +11,10 @@ concurrency: # cancel previous workflow run if one exists.
 
 jobs:
   test:
-    uses: customerio/mobile-ci-tools/.github/workflows/ios-test.yml@shared-ios-ci
+    uses: customerio/mobile-ci-tools/.github/workflows/ios-test.yml@main
     with:
       scheme: 'Customer.io-Package'
       xcresult-name: 'Customer.io-Package.xcresult'
     secrets:
       CODECOV_UPLOAD_TOKEN: ${{ secrets.CODECOV_UPLOAD_TOKEN }}  
   
-
