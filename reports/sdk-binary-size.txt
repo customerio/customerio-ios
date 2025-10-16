@@ -181,5 +181,5 @@
    0.0%      28   0.0%      28    /Users/runner/work/customerio-ios/customerio-ios/Sources/Common/Version.swift
    0.0%       8   0.0%       8    /Users/runner/work/customerio-ios/customerio-ios/Sources/Common/Extensions/ErrorExtension.swift
  100.0%   935Ki 100.0%   935Ki    TOTAL
-Filtering enabled (source_filter); omitted file = 1.95Mi, vm = 2.04Mi of entries
+Filtering enabled (source_filter); omitted file = 1.99Mi, vm = 2.07Mi of entries
 

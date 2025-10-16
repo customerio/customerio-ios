@@ -1,3 +1,13 @@
+## [4.0.0](https://github.com/customerio/customerio-ios/compare/3.14.0...4.0.0) (2025-10-16)
+
+### ⚠ BREAKING CHANGES
+
+* Move Firebase direct depdency out of main iOS SDK (#960)
+
+### Features
+
+* Move Firebase direct depdency out of main iOS SDK ([#960](https://github.com/customerio/customerio-ios/issues/960)) ([361964e](https://github.com/customerio/customerio-ios/commit/361964edc4628590ad896dcbf6a3b1ca82cd20bb))
+
 ## [3.14.0](https://github.com/customerio/customerio-ios/compare/3.13.1...3.14.0) (2025-10-08)
 
 ### Features
