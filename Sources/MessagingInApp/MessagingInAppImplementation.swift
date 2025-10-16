@@ -37,15 +37,20 @@ class MessagingInAppImplementation: MessagingInAppInstance {
         eventBusHandler.dispatch { handler in
             await handler.addObserver(ProfileIdentifiedEvent.self) { event in
                 self.logger.logWithModuleTag("registering profile \(event.identifier) for in-app", level: .debug)
-
                 self.gist.setUserToken(event.identifier)
+            }
+        }
+
+        eventBusHandler.dispatch { handler in
+            await handler.addObserver(AnonymousProfileIdentifiedEvent.self) { event in
+                self.logger.logWithModuleTag("registering anonymous profile \(event.identifier) for in-app", level: .debug)
+                self.gist.setAnonymousId(event.identifier)
             }
         }
 
         eventBusHandler.dispatch { handler in
             await handler.addObserver(ScreenViewedEvent.self) { event in
                 self.logger.logWithModuleTag("setting route for in-app to \(event.name)", level: .debug)
-
                 self.gist.setCurrentRoute(event.name)
             }
         }

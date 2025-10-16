@@ -1,8 +1,8 @@
 import CioDataPipelines
+import CioFirebaseWrapper
 import CioMessagingInApp
 import CioMessagingPushFCM
 import FirebaseCore
-import FirebaseMessaging
 import Foundation
 import SampleAppsCommon
 import UIKit
@@ -18,7 +18,6 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         // Follow setup guide for setting up FCM push: https://firebase.google.com/docs/cloud-messaging/ios/client
         // The FCM SDK provides a device token to the app that you then send to the Customer.io SDK.
 
-        // First, initialize your SDKs.
         // Initialize the Firebase SDK.
         FirebaseApp.configure()
 
@@ -64,10 +63,6 @@ class AppDelegate: NSObject, UIApplicationDelegate {
                 .build()
         )
 
-        // Manually get FCM device token. Then, we will forward to the Customer.io SDK.
-        // This is NOT necessary if CioAppDelegateWrapper is used with `autoFetchDeviceToken` set as `true`.
-        Messaging.messaging().delegate = self
-
         /*
          Next line of code is used for testing how Firebase behaves when another object is set as the delegate for `UNUserNotificationCenter`.
          This is not necessary for the Customer.io SDK to work.
@@ -85,10 +80,6 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         return true
     }
 
-    func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
-        Messaging.messaging().apnsToken = deviceToken
-    }
-
     // IMPORTANT: If FCM is used with enabled swizzling (default state) it will not call this method in SwiftUI based apps.
     //            Use `deepLinkCallback` on SDKConfigBuilder, as that works in all scenarios.
     func application(_ application: UIApplication, continue userActivity: NSUserActivity, restorationHandler: @escaping ([any UIUserActivityRestoring]?) -> Void) -> Bool {
@@ -99,14 +90,6 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         // By returning `false` we are indicating to iOS that not no screen is shown in associateion to provided URL.
         // Same information is used by CIO `deepLinkCallback` to open URL in the browser
         return false
-    }
-}
-
-extension AppDelegate: MessagingDelegate {
-    // Function that is called when a new FCM device token is assigned to device.
-    func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
-        // This is NOT necessary if CioAppDelegateWrapper is used with `autoFetchDeviceToken` set as `true`.
-//        MessagingPush.shared.registerDeviceToken(fcmToken: fcmToken)
     }
 }
 

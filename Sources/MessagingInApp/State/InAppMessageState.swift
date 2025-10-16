@@ -10,6 +10,7 @@ struct InAppMessageState: Equatable, CustomStringConvertible {
     let environment: GistEnvironment
     let pollInterval: Double
     let userId: String?
+    let anonymousId: String?
     let currentRoute: String?
     let modalMessageState: ModalMessageState
     let embeddedMessagesState: EmbeddedMessagesState
@@ -22,6 +23,7 @@ struct InAppMessageState: Equatable, CustomStringConvertible {
         environment: GistEnvironment = .production,
         pollInterval: Double = 600,
         userId: String? = nil,
+        anonymousId: String? = nil,
         currentRoute: String? = nil,
         modalMessageState: ModalMessageState = .initial,
         embeddedMessagesState: EmbeddedMessagesState = EmbeddedMessagesState(),
@@ -33,6 +35,7 @@ struct InAppMessageState: Equatable, CustomStringConvertible {
         self.environment = environment
         self.pollInterval = pollInterval
         self.userId = userId
+        self.anonymousId = anonymousId
         self.currentRoute = currentRoute
         self.modalMessageState = modalMessageState
         self.embeddedMessagesState = embeddedMessagesState
@@ -45,6 +48,7 @@ struct InAppMessageState: Equatable, CustomStringConvertible {
     func copy(
         pollInterval: Double? = nil,
         userId: String? = nil,
+        anonymousId: String? = nil,
         currentRoute: String? = nil,
         modalMessageState: ModalMessageState? = nil,
         embeddedMessagesState: EmbeddedMessagesState? = nil,
@@ -57,6 +61,7 @@ struct InAppMessageState: Equatable, CustomStringConvertible {
             environment: environment,
             pollInterval: pollInterval ?? self.pollInterval,
             userId: userId ?? self.userId,
+            anonymousId: anonymousId ?? self.anonymousId,
             currentRoute: currentRoute ?? self.currentRoute,
             modalMessageState: modalMessageState ?? self.modalMessageState,
             embeddedMessagesState: embeddedMessagesState ?? self.embeddedMessagesState,
@@ -71,6 +76,7 @@ struct InAppMessageState: Equatable, CustomStringConvertible {
             lhs.environment == rhs.environment &&
             lhs.pollInterval == rhs.pollInterval &&
             lhs.userId == rhs.userId &&
+            lhs.anonymousId == rhs.anonymousId &&
             lhs.currentRoute == rhs.currentRoute &&
             lhs.modalMessageState == rhs.modalMessageState &&
             lhs.messagesInQueue == rhs.messagesInQueue &&
@@ -85,6 +91,7 @@ struct InAppMessageState: Equatable, CustomStringConvertible {
             environment: \(environment),
             pollInterval: \(pollInterval),
             userId: \(String(describing: userId)),
+            anonymousId: \(String(describing: anonymousId)),
             currentRoute: \(String(describing: currentRoute)),
             modalMessageState: \(modalMessageState),
             embeddedMessagesState: \(embeddedMessagesState),
@@ -115,6 +122,7 @@ extension InAppMessageState {
         putIfDifferent(\.environment, as: "environment")
         putIfDifferent(\.pollInterval, as: "pollInterval")
         putIfDifferent(\.userId, as: "userId")
+        putIfDifferent(\.anonymousId, as: "anonymousId")
         putIfDifferent(\.currentRoute, as: "currentRoute")
         putIfDifferent(\.modalMessageState, as: "currentMessageState")
         putIfDifferent(\.embeddedMessagesState, as: "embeddedMessagesState")

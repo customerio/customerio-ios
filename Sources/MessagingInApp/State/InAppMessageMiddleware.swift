@@ -25,21 +25,27 @@ func userAuthenticationMiddleware() -> InAppMessageMiddleware {
     middleware { _, getState, next, action in
         let state = getState()
 
-        // Block actions that require valid userId unless userId is set.
+        // Block actions that require valid userId or anonymousId unless at least one is set.
         switch action {
         case .initialize,
              .setUserIdentifier,
+             .setAnonymousIdentifier,
              .setPageRoute,
              .resetState:
             return next(action)
 
         default:
             let userId = state.userId
-            guard let userId = userId, !userId.isBlankOrEmpty() else {
-                return next(.reportError(message: "Blocked action: \(action) because userId (\(String(describing: userId))) is invalid"))
-            }
+            let anonymousId = state.anonymousId
 
-            return next(action)
+            // Allow action if either userId or anonymousId is valid
+            if let userId = userId, !userId.isBlankOrEmpty() {
+                return next(action)
+            } else if let anonymousId = anonymousId, !anonymousId.isBlankOrEmpty() {
+                return next(action)
+            } else {
+                return next(.reportError(message: "Blocked action: \(action) because neither userId (\(String(describing: userId))) nor anonymousId (\(String(describing: anonymousId))) is valid"))
+            }
         }
     }
 }
@@ -47,8 +53,15 @@ func userAuthenticationMiddleware() -> InAppMessageMiddleware {
 func routeMatchingMiddleware(logger: Logger) -> InAppMessageMiddleware {
     middleware { dispatch, getState, next, action in
         let state = getState()
-        // Check for page rule match if the action is setting new route and userId is set.
-        guard case .setPageRoute(let currentRoute) = action, let userId = state.userId, !userId.isBlankOrEmpty() else {
+        // Check for page rule match if the action is setting new route and either userId or anonymousId is set.
+        guard case .setPageRoute(let currentRoute) = action else {
+            return next(action)
+        }
+
+        // Require either userId or anonymousId to be present
+        let hasUserId = state.userId.map { !$0.isBlankOrEmpty() } ?? false
+        let hasAnonymousId = state.anonymousId.map { !$0.isBlankOrEmpty() } ?? false
+        guard hasUserId || hasAnonymousId else {
             return next(action)
         }
 
@@ -104,11 +117,17 @@ private func logMessageView(logger: Logger, logManager: LogManager, state: InApp
     }
 }
 
-func messageMetricsMiddleware(logger: Logger, logManager: LogManager) -> InAppMessageMiddleware {
+func messageMetricsMiddleware(logger: Logger, logManager: LogManager, anonymousMessageManager: AnonymousMessageManager) -> InAppMessageMiddleware {
     middleware { _, getState, next, action in
         let state = getState()
         switch action {
         case .displayMessage(let message):
+            // Handle anonymous message tracking
+            if message.isAnonymousMessage {
+                logger.logWithModuleTag("Anonymous message shown, tracking locally: \(message.describeForLogs)", level: .debug)
+                anonymousMessageManager.markMessageAsSeen(messageId: message.messageId)
+            }
+
             // Log message view only if message should be tracked as shown on display action
             if action.shouldMarkMessageAsShown {
                 logger.logWithModuleTag("Message shown, logging view for message: \(message.describeForLogs)", level: .debug)
@@ -118,6 +137,12 @@ func messageMetricsMiddleware(logger: Logger, logManager: LogManager) -> InAppMe
             }
 
         case .dismissMessage(let message, let shouldLog, let viaCloseAction):
+            // Handle anonymous message dismissal tracking
+            if message.isAnonymousMessage, shouldLog {
+                logger.logWithModuleTag("Anonymous message dismissed, tracking locally: \(message.describeForLogs)", level: .debug)
+                anonymousMessageManager.markMessageAsDismissed(messageId: message.messageId)
+            }
+
             // Log message close only if message should be tracked as shown on dismiss action
             if action.shouldMarkMessageAsShown {
                 logger.logWithModuleTag("Persistent message dismissed, logging view for message: \(message.describeForLogs), shouldLog: \(shouldLog), viaCloseAction: \(viaCloseAction)", level: .debug)

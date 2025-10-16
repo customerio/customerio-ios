@@ -1,6 +1,6 @@
 Pod::Spec.new do |spec|
   spec.name         = "CustomerIOMessagingPushFCM"
-  spec.version      = "3.13.1" # Don't modify this line - it's automatically updated
+  spec.version      = "4.0.0" # Don't modify this line - it's automatically updated
   spec.summary      = "Official Customer.io SDK for iOS."
   spec.homepage     = "https://github.com/customerio/customerio-ios"
   spec.documentation_url = 'https://customer.io/docs/sdk/ios/'
@@ -27,8 +27,5 @@ Pod::Spec.new do |spec|
   
   spec.dependency "CustomerIOMessagingPush", "= #{spec.version.to_s}"  
 
-  # Add FCM SDK as a dependency, as our SDK is designed to be compatible with it. 
-  # No version is specified which means that by default, the latest version is installed for customers. 
-  # Customers can override this by adding the pod to their Podfile themselves to specify a version they want to use. 
-  spec.dependency "FirebaseMessaging", ">= 8.7.0", "< 13.0.0"
+  # Firebase dependency removed - now handled by CioFirebaseWrapper package
 end

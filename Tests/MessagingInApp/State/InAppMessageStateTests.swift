@@ -31,7 +31,8 @@ class InAppMessageStateTests: IntegrationTest {
             logger: diGraphShared.logger,
             threadUtil: diGraphShared.threadUtil,
             logManager: diGraphShared.logManager,
-            gistDelegate: diGraphShared.gistDelegate
+            gistDelegate: diGraphShared.gistDelegate,
+            anonymousMessageManager: diGraphShared.anonymousMessageManager
         )
 
         diGraphShared.override(value: inAppMessageManager, forType: InAppMessageManager.self)
@@ -40,6 +41,7 @@ class InAppMessageStateTests: IntegrationTest {
             keyValueStore: diGraphShared.sharedKeyValueStorage,
             gistQueueNetwork: gistQueueNetworkMock,
             inAppMessageManager: inAppMessageManager,
+            anonymousMessageManager: diGraphShared.anonymousMessageManager,
             logger: diGraphShared.logger
         )
 

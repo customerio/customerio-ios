@@ -56,10 +56,8 @@ class DataPipelineImplementation: DataPipelineInstance {
 
         // plugin to update context properties for each request
         analytics.add(plugin: contextPlugin)
-
         // plugin to publish data pipeline events
         analytics.add(plugin: DataPipelinePublishedEvents(diGraph: diGraph))
-
         // Add plugin to filter events based on SDK configuration
         analytics.add(plugin: ScreenFilterPlugin(screenViewUse: moduleConfig.screenViewUse))
 
@@ -69,6 +67,7 @@ class DataPipelineImplementation: DataPipelineInstance {
     }
 
     private func postProfileAlreadyIdentified() {
+        let anonymousId = analytics.anonymousId
         if let siteId = moduleConfig.migrationSiteId, let identifier = profileStore.getProfileId(siteId: siteId) {
             eventBusHandler.dispatch { handler in
                 await handler.postEvent(ProfileIdentifiedEvent(identifier: identifier))
@@ -76,6 +75,10 @@ class DataPipelineImplementation: DataPipelineInstance {
         } else if let identifier = analytics.userId {
             eventBusHandler.dispatch { handler in
                 await handler.postEvent(ProfileIdentifiedEvent(identifier: identifier))
+            }
+        } else if !anonymousId.isEmpty {
+            eventBusHandler.dispatch { handler in
+                await handler.postEvent(AnonymousProfileIdentifiedEvent(identifier: anonymousId))
             }
         }
     }

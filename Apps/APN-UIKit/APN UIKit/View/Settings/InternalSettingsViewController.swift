@@ -54,12 +54,16 @@ class InternalSettingsViewController: BaseViewController {
 
     func configureButtonActions() {
         // testMode
-        testModeYesButton.addAction(UIAction(handler: { [weak self] _ in
-            self?.setTestMode(true)
-        }), for: .touchUpInside)
-        testModeNoButton.addAction(UIAction(handler: { [weak self] _ in
-            self?.setTestMode(false)
-        }), for: .touchUpInside)
+        testModeYesButton.addTarget(self, action: #selector(testModeYesTapped), for: .touchUpInside)
+        testModeNoButton.addTarget(self, action: #selector(testModeNoTapped), for: .touchUpInside)
+    }
+
+    @objc private func testModeYesTapped() {
+        setTestMode(true)
+    }
+
+    @objc private func testModeNoTapped() {
+        setTestMode(false)
     }
 
     func setTestMode(_ testMode: Bool) {

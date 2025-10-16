@@ -35,6 +35,9 @@ private func reducer(action: InAppMessageAction, state: InAppMessageState) -> In
     case .setUserIdentifier(let user):
         return state.copy(userId: user)
 
+    case .setAnonymousIdentifier(let anonymousId):
+        return state.copy(anonymousId: anonymousId)
+
     case .setPageRoute(let route):
         return state.copy(currentRoute: route)
 

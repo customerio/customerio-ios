@@ -130,9 +130,11 @@ class CDPInteractionDefaultConfigTests: DataPipelineInteractionTests {
         XCTAssertEqual(outputReader.events.count, 1)
         XCTAssertEqual(outputReader.identifyEvents.count, 1)
 
-        XCTAssertEqual(eventBusHandlerMock.postEventCallsCount, 1)
-        guard let postEventArgument = eventBusHandlerMock.postEventArguments as? ProfileIdentifiedEvent else {
-            XCTFail("captured arguments must not be nil")
+        // Expect 2 events: AnonymousProfileIdentifiedEvent on init + ProfileIdentifiedEvent on identify
+        XCTAssertEqual(eventBusHandlerMock.postEventCallsCount, 2)
+        // Verify the last event is ProfileIdentifiedEvent with correct identifier
+        guard let postEventArgument = eventBusHandlerMock.postEventReceivedInvocations.last as? ProfileIdentifiedEvent else {
+            XCTFail("last event must be ProfileIdentifiedEvent")
             return
         }
         XCTAssertEqual(postEventArgument.identifier, givenIdentifier)
@@ -379,9 +381,11 @@ class CDPInteractionDefaultConfigTests: DataPipelineInteractionTests {
 
         XCTAssertEqual(outputReader.events.count, 1)
 
-        XCTAssertEqual(eventBusHandlerMock.postEventCallsCount, 1)
-        guard let postEventArgument = eventBusHandlerMock.postEventArguments as? ScreenViewedEvent else {
-            XCTFail("captured arguments must not be nil")
+        // Expect 2 events: AnonymousProfileIdentifiedEvent on init + ScreenViewedEvent on screen call
+        XCTAssertEqual(eventBusHandlerMock.postEventCallsCount, 2)
+        // Verify the last event is ScreenViewedEvent with correct name
+        guard let postEventArgument = eventBusHandlerMock.postEventReceivedInvocations.last as? ScreenViewedEvent else {
+            XCTFail("last event must be ScreenViewedEvent")
             return
         }
         XCTAssertEqual(postEventArgument.name, givenScreen)
