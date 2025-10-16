@@ -9,25 +9,23 @@ class RichPushRequestHandler {
     private init() {}
 
     func startRequest(
-        push: PushNotification,
-        completionHandler: @escaping (PushNotification) -> Void
-    ) {
+        push: PushNotification
+    ) async -> PushNotification? {
         let requestId = push.pushId
 
         let existingRequest = requests[requestId]
-        if existingRequest != nil { return }
+        if existingRequest != nil { return nil }
 
         let diGraph = DIGraphShared.shared
         let httpClient = diGraph.httpClient
 
         let newRequest = RichPushRequest(
             push: push,
-            httpClient: httpClient,
-            completionHandler: completionHandler
+            httpClient: httpClient
         )
         requests[requestId] = newRequest
 
-        newRequest.start()
+        return await newRequest.start()
     }
 
     func stopAll() {

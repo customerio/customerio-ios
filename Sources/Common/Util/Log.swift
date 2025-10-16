@@ -48,7 +48,7 @@ public extension Logger {
 /// error - only log when there is an error in the SDK (default)
 /// info - basic SDK informion. Somewhat noisy. Recommended to start debugging SDK.
 /// debug - most noisy. See all of the logs made from the SDK.
-public enum CioLogLevel: String, CaseIterable {
+public enum CioLogLevel: String, CaseIterable, Sendable {
     case none
     case error
     case info

@@ -17,46 +17,88 @@ public class RichPushHttpClient: HttpClient {
 
     private let region: Region
 
-    public func request(_ params: CioInternalCommon.HttpRequestParams, onComplete: @escaping (Result<Data, CioInternalCommon.HttpRequestError>) -> Void) {
-        let logger = self.logger
-        let jsonAdapter = self.jsonAdapter
-        httpRequestRunner
-            .request(
-                params: params,
-                session: getSessionForRequest(url: params.url)
-            ) { data, response, error in
+    public func request(_ params: CioInternalCommon.HttpRequestParams) async -> Result<Data, CioInternalCommon.HttpRequestError> {
+//        let logger = self.logger
+//        let jsonAdapter = self.jsonAdapter
+        
+        do {
+            let (data, response) = try await httpRequestRunner.request(params: params, session: getSessionForRequest(url: params.url))
+            
+            if let httpResponse = response as? HTTPURLResponse {
+                if httpResponse.statusCode < 300 {
+//                    guard let data = data else {
+//                        return onComplete(.failure(.noRequestMade(nil)))
+//                    }
 
-                if let error = error {
-                    logger.error("Error sending request \(error.localizedDescription).")
-                    if let error = self.isUrlError(error) {
-                        return onComplete(.failure(error))
-                    }
-
-                    return onComplete(.failure(.noRequestMade(error)))
-                } else if let httpResponse = response {
-                    if httpResponse.statusCode < 300 {
-                        guard let data = data else {
-                            return onComplete(.failure(.noRequestMade(nil)))
-                        }
-
-                        onComplete(.success(data))
-                    } else {
-                        logger.error("""
-                        \(httpResponse.statusCode) HTTP status code response.
-                        Error description: \(httpResponse.description)
-                        """)
-
-                        let unsuccessfulStatusCodeError: HttpRequestError =
-                            .unsuccessfulStatusCode(
-                                httpResponse.statusCode,
-                                apiMessage: Self.getErrorMessageFromServerResponse(responseBody: data, jsonAdapter: jsonAdapter)
-                            )
-                        onComplete(.failure(unsuccessfulStatusCodeError))
-                    }
+//                    onComplete(.success(data))
+                    return .success(data)
                 } else {
-                    onComplete(.failure(.noRequestMade(nil)))
+                    logger.error("""
+                    \(httpResponse.statusCode) HTTP status code response.
+                    Error description: \(httpResponse.description)
+                    """)
+
+                    let unsuccessfulStatusCodeError: HttpRequestError =
+                        .unsuccessfulStatusCode(
+                            httpResponse.statusCode,
+                            apiMessage: Self.getErrorMessageFromServerResponse(responseBody: data, jsonAdapter: jsonAdapter)
+                        )
+//                    onComplete(.failure(unsuccessfulStatusCodeError))
+                    return .failure(unsuccessfulStatusCodeError)
                 }
+            } else {
+//                onComplete(.failure(.noRequestMade(nil)))
+                return .failure(.noRequestMade(nil))
             }
+            
+        } catch {
+            logger.error("Error sending request \(error.localizedDescription).")
+            if let error = self.isUrlError(error) {
+//                return onComplete(.failure(error))
+                return .failure(error)
+            }
+
+//            return onComplete(.failure(.noRequestMade(error)))
+            return .failure(.noRequestMade(error))
+        }
+        
+//        httpRequestRunner
+//            .request(
+//                params: params,
+//                session: getSessionForRequest(url: params.url)
+//            ) { data, response, error in
+//
+//                if let error = error {
+//                    logger.error("Error sending request \(error.localizedDescription).")
+//                    if let error = self.isUrlError(error) {
+//                        return onComplete(.failure(error))
+//                    }
+//
+//                    return onComplete(.failure(.noRequestMade(error)))
+//                } else if let httpResponse = response {
+//                    if httpResponse.statusCode < 300 {
+//                        guard let data = data else {
+//                            return onComplete(.failure(.noRequestMade(nil)))
+//                        }
+//
+//                        onComplete(.success(data))
+//                    } else {
+//                        logger.error("""
+//                        \(httpResponse.statusCode) HTTP status code response.
+//                        Error description: \(httpResponse.description)
+//                        """)
+//
+//                        let unsuccessfulStatusCodeError: HttpRequestError =
+//                            .unsuccessfulStatusCode(
+//                                httpResponse.statusCode,
+//                                apiMessage: Self.getErrorMessageFromServerResponse(responseBody: data, jsonAdapter: jsonAdapter)
+//                            )
+//                        onComplete(.failure(unsuccessfulStatusCodeError))
+//                    }
+//                } else {
+//                    onComplete(.failure(.noRequestMade(nil)))
+//                }
+//            }
     }
 
     func getSessionForRequest(url: URL) -> URLSession {
@@ -100,12 +142,11 @@ public class RichPushHttpClient: HttpClient {
         }
     }
 
-    public func downloadFile(url: URL, fileType: DownloadFileType, onComplete: @escaping (URL?) -> Void) {
-        httpRequestRunner.downloadFile(
+    public func downloadFile(url: URL, fileType: DownloadFileType) async -> URL? {
+        return await httpRequestRunner.downloadFile(
             url: url,
             fileType: fileType,
-            session: getSessionForRequest(url: url),
-            onComplete: onComplete
+            session: getSessionForRequest(url: url)
         )
     }
 

@@ -30,9 +30,9 @@ extension MessagingPush: MessagingPushAPNInstance, @unchecked Sendable {
     @discardableResult
     public func didReceive(
         _ request: UNNotificationRequest,
-        withContentHandler contentHandler: @escaping (UNNotificationContent) -> Void
-    ) -> Bool {
-        MessagingPushAPN.shared.didReceive(request, withContentHandler: contentHandler)
+        withContentHandler contentHandler: @escaping @Sendable (UNNotificationContent) -> Void
+    ) async -> Bool {
+        await MessagingPushAPN.shared.didReceive(request, withContentHandler: contentHandler)
     }
 
     public func serviceExtensionTimeWillExpire() {

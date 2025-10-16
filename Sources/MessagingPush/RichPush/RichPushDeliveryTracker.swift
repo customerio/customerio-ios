@@ -2,7 +2,9 @@ import CioInternalCommon
 import Foundation
 
 protocol RichPushDeliveryTracker: AutoMockable {
-    func trackMetric(token: String, event: Metric, deliveryId: String, timestamp: String?, onComplete: @escaping (Result<Void, HttpRequestError>) -> Void)
+//    func trackMetric(token: String, event: Metric, deliveryId: String, timestamp: String?, onComplete: @escaping (Result<Void, HttpRequestError>) -> Void)
+    
+    func trackMetric(token: String, event: Metric, deliveryId: String, timestamp: String?) async -> Result<Void, HttpRequestError>
 }
 
 // sourcery: InjectRegisterShared = "RichPushDeliveryTracker"
@@ -17,7 +19,7 @@ class RichPushDeliveryTrackerImpl: RichPushDeliveryTracker {
         self.region = MessagingPush.moduleConfig.region
     }
 
-    func trackMetric(token: String, event: Metric, deliveryId: String, timestamp: String? = nil, onComplete: @escaping (Result<Void, HttpRequestError>) -> Void) {
+    func trackMetric(token: String, event: Metric, deliveryId: String, timestamp: String? = nil) async -> Result<Void, HttpRequestError> {
         let properties: [String: Any] = [
             "anonymousId": deliveryId,
             "properties": [
@@ -36,14 +38,21 @@ class RichPushDeliveryTrackerImpl: RichPushDeliveryTracker {
             body: try? JSONSerialization.data(withJSONObject: properties)
         ) else {
             logger.error("Error constructing HTTP request. Endpoint: \(endpoint)")
-            return onComplete(.failure(.noRequestMade(nil)))
+//            return onComplete(.failure(.noRequestMade(nil)))
+            return .failure(.noRequestMade(nil))
         }
 
-        httpClient.request(httpParams) { result in
-            switch result {
-            case .success: onComplete(.success(()))
-            case .failure(let httpError): onComplete(.failure(httpError))
-            }
+        let result = await httpClient.request(httpParams)
+        switch result {
+        case .success: return .success(())
+        case .failure(let httpError): return .failure(httpError)
         }
+        
+//        httpClient.request(httpParams) { result in
+//            switch result {
+//            case .success: onComplete(.success(()))
+//            case .failure(let httpError): onComplete(.failure(httpError))
+//            }
+//        }
     }
 }

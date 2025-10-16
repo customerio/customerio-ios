@@ -2,40 +2,42 @@ import CioInternalCommon
 import Foundation
 
 class RichPushRequest {
-    private let completionHandler: (PushNotification) -> Void
     private var push: PushNotification
     private let httpClient: HttpClient
 
     init(
         push: PushNotification,
-        httpClient: HttpClient,
-        completionHandler: @escaping (PushNotification) -> Void
+        httpClient: HttpClient
     ) {
-        self.completionHandler = completionHandler
         self.push = push
         self.httpClient = httpClient
     }
 
-    func start() {
+    func start() async -> PushNotification {
         guard let image = push.cioImage?.url else {
             // no async operations or modifications to the notification to do. Therefore, let's just finish.
             return finishImmediately()
         }
-
-        httpClient.downloadFile(url: image, fileType: .richPushImage) { [weak self] localFilePath in
-            guard let self = self else { return }
-
-            if let localFilePath = localFilePath {
-                self.push.cioRichPushImageFile = localFilePath
-            }
-
-            self.finishImmediately()
+        
+        let localFilePath = await httpClient.downloadFile(url: image, fileType: .richPushImage)
+        if let localFilePath = localFilePath {
+            self.push.cioRichPushImageFile = localFilePath
         }
+        return finishImmediately()
+
+//        httpClient.downloadFile(url: image, fileType: .richPushImage) { [weak self] localFilePath in
+//            guard let self = self else { return }
+//
+//            if let localFilePath = localFilePath {
+//                self.push.cioRichPushImageFile = localFilePath
+//            }
+//
+//            self.finishImmediately()
+//        }
     }
 
-    func finishImmediately() {
+    func finishImmediately() -> PushNotification {
         httpClient.cancel(finishTasks: false)
-
-        completionHandler(push)
+        return push
     }
 }

@@ -10,9 +10,8 @@ public protocol HttpRequestRunner: AutoMockable {
     func request(
         params: HttpRequestParams,
         session: URLSession,
-        onComplete: @escaping (Data?, HTTPURLResponse?, Error?) -> Void
-    )
-    func downloadFile(url: URL, fileType: DownloadFileType, session: URLSession, onComplete: @escaping (URL?) -> Void)
+    ) async throws -> (Data, URLResponse)
+    func downloadFile(url: URL, fileType: DownloadFileType, session: URLSession) async -> URL?
 }
 
 // sourcery: InjectRegisterShared = "HttpRequestRunner"
@@ -22,43 +21,33 @@ public class UrlRequestHttpRequestRunner: HttpRequestRunner {
      */
     public func request(
         params: HttpRequestParams,
-        session: URLSession,
-        onComplete: @escaping (Data?, HTTPURLResponse?, Error?) -> Void
-    ) {
-        var request = URLRequest(url: params.url)
-        request.httpMethod = params.method
-        request.httpBody = params.body
-        params.headers?.forEach { key, value in
-            request.setValue(value, forHTTPHeaderField: key)
+        session: URLSession) async throws -> (Data, URLResponse) {
+            
+            var request = URLRequest(url: params.url)
+            request.httpMethod = params.method
+            request.httpBody = params.body
+            params.headers?.forEach { key, value in
+                request.setValue(value, forHTTPHeaderField: key)
+            }
+            
+            return try await session.data(for: request)
         }
-
-        session.dataTask(with: request) { data, response, error in
-            /*
-             /// uncomment when running HTTP tests on local machine for debugging
-             print("----------------- HTTP logs start -----------------")
-             print("\(request.httpMethod) - \(request.url?.absoluteString)")
-             print("Request body: \(request.httpBody?.string)")
-             print(data?.string)
-             print(error?.localizedDescription)
-             print("----------------- HTTP logs end   -----------------")
-             */
-            onComplete(data, response as? HTTPURLResponse, error)
-        }.resume()
-    }
+    
 
     public func downloadFile(
         url: URL,
         fileType: DownloadFileType,
-        session: URLSession,
-        onComplete: @escaping (URL?) -> Void
-    ) {
+        session: URLSession
+    ) async -> URL? {
         let directoryURL = fileType.directoryToSaveFiles(fileManager: FileManager.default)
-
-        session.downloadTask(with: url) { tempLocation, response, _ in
-            guard let tempLocation = tempLocation, let suggestedFileName = response?.suggestedFilename else {
-                return onComplete(nil)
+        
+        do {
+            let (tempLocation, response) = try await session.download(from: url)
+            
+            guard let suggestedFileName = response.suggestedFilename else {
+                return nil
             }
-
+            
             // create a unique file name so when trying to move temp file to destination it doesn't give an exception
             let uniqueFileName = UUID().uuidString + "_" + suggestedFileName
             let destinationURL = directoryURL
@@ -77,10 +66,41 @@ public class UrlRequestHttpRequestRunner: HttpRequestRunner {
             } catch {
                 // XXX: log error when error handling for the customer enabled
 
-                return onComplete(nil)
+                return nil
             }
 
-            onComplete(destinationURL)
-        }.resume()
+            return destinationURL
+        } catch {
+            return nil
+        }
+
+//        session.downloadTask(with: url) { tempLocation, response, _ in
+//            guard let tempLocation = tempLocation, let suggestedFileName = response?.suggestedFilename else {
+//                return onComplete(nil)
+//            }
+//
+//            // create a unique file name so when trying to move temp file to destination it doesn't give an exception
+//            let uniqueFileName = UUID().uuidString + "_" + suggestedFileName
+//            let destinationURL = directoryURL
+//                .appendingPathComponent(uniqueFileName)
+//
+//            do {
+//                // confirm that directories all created because we may have created a new sub-directory
+//                try FileManager.default.createDirectory(
+//                    at: directoryURL,
+//                    withIntermediateDirectories: true,
+//                    attributes: nil
+//                )
+//
+//                // Now attempt the move
+//                try FileManager.default.moveItem(at: tempLocation, to: destinationURL)
+//            } catch {
+//                // XXX: log error when error handling for the customer enabled
+//
+//                return onComplete(nil)
+//            }
+//
+//            onComplete(destinationURL)
+//        }.resume()
     }
 }

@@ -7,7 +7,7 @@ import Foundation
 
  The SDK will route traffic to the correct data center location depending on the `Region` that you use.
  */
-public enum Region: String, Equatable {
+public enum Region: String, Equatable, Sendable {
     /// The United States (US) data center
     case US
     /// The European Union (EU) data center

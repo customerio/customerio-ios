@@ -7,7 +7,7 @@ import UserNotifications
 /**
  Convenient extensions so singleton instances of `MessagingPush` can access functions from `MessagingPushFCM`.
  */
-extension MessagingPush: MessagingPushFCMInstance {
+extension MessagingPush: MessagingPushFCMInstance, @unchecked Sendable {
     public func registerDeviceToken(fcmToken: String?) {
         MessagingPushFCM.shared.registerDeviceToken(fcmToken: fcmToken)
     }
@@ -31,8 +31,8 @@ extension MessagingPush: MessagingPushFCMInstance {
     public func didReceive(
         _ request: UNNotificationRequest,
         withContentHandler contentHandler: @escaping (UNNotificationContent) -> Void
-    ) -> Bool {
-        MessagingPushFCM.shared.didReceive(request, withContentHandler: contentHandler)
+    ) async -> Bool {
+        await MessagingPushFCM.shared.didReceive(request, withContentHandler: contentHandler)
     }
 
     public func serviceExtensionTimeWillExpire() {

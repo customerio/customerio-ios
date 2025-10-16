@@ -1,15 +1,15 @@
 import CioMessagingPushAPN
-import UserNotifications
+@preconcurrency import UserNotifications
 
 class NotificationService: UNNotificationServiceExtension {
-    override func didReceive(_ request: UNNotificationRequest, withContentHandler contentHandler: @escaping (UNNotificationContent) -> Void) {
+    override func didReceive(_ request: UNNotificationRequest, withContentHandler contentHandler: @Sendable @escaping (UNNotificationContent) -> Void) {
         MessagingPushAPN.initializeForExtension(
             withConfig: MessagingPushConfigBuilder(cdpApiKey: BuildEnvironment.CustomerIO.cdpApiKey)
                 .logLevel(.debug)
                 .build()
         )
 
-        MessagingPush.shared.didReceive(request, withContentHandler: contentHandler)
+        Task { await MessagingPush.shared.didReceive(request, withContentHandler: contentHandler) }
     }
 
     override func serviceExtensionTimeWillExpire() {

@@ -27,7 +27,7 @@ import Foundation
 ///   .build()
 /// // Use `config` for initializing the push module in NotificationServiceExtension...
 /// ```
-public class MessagingPushConfigBuilder {
+public final class MessagingPushConfigBuilder: Sendable {
     // configuration options for SdkConfig
     private var logLevel: CioLogLevel = .error
 

@@ -38,8 +38,8 @@ public protocol MessagingPushAPNInstance: AutoMockable, Sendable {
     // sourcery:IfCanImport=UserNotifications
     func didReceive(
         _ request: UNNotificationRequest,
-        withContentHandler contentHandler: @escaping (UNNotificationContent) -> Void
-    ) -> Bool
+        withContentHandler contentHandler: @escaping @Sendable (UNNotificationContent) -> Void
+    ) async -> Bool
 
     // Used for rich push
     // sourcery:IfCanImport=UserNotifications
@@ -117,8 +117,8 @@ public final class MessagingPushAPN: MessagingPushAPNInstance {
     public func didReceive(
         _ request: UNNotificationRequest,
         withContentHandler contentHandler: @escaping (UNNotificationContent) -> Void
-    ) -> Bool {
-        messagingPush.didReceive(request, withContentHandler: contentHandler)
+    ) async -> Bool {
+        await messagingPush.didReceive(request, withContentHandler: contentHandler)
     }
 
     /**

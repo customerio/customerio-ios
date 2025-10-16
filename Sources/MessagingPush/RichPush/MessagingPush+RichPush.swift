@@ -15,14 +15,14 @@ public extension MessagingPush {
     @discardableResult
     func didReceive(
         _ request: UNNotificationRequest,
-        withContentHandler contentHandler: @escaping (UNNotificationContent) -> Void
-    ) -> Bool {
+        withContentHandler contentHandler: @escaping @Sendable (UNNotificationContent) -> Void
+    ) async -> Bool {
         guard let implementation = implementation else {
             contentHandler(request.content)
             return false
         }
 
-        return implementation.didReceive(request, withContentHandler: contentHandler)
+        return await implementation.didReceive(request, withContentHandler: contentHandler)
     }
 
     /**
@@ -46,7 +46,7 @@ extension MessagingPushImplementation {
     func didReceive(
         _ request: UNNotificationRequest,
         withContentHandler contentHandler: @escaping (UNNotificationContent) -> Void
-    ) -> Bool {
+    ) async -> Bool {
         let push = UNNotificationWrapper(notificationRequest: request)
         pushLogger.logReceivedPushMessage(notification: push)
 
@@ -57,25 +57,36 @@ extension MessagingPushImplementation {
 
         pushLogger.logReceivedCioPushMessage()
 
+        // We need to make this parallel because this now changes behavior to being serial
+        // Hint: Use async let
         if moduleConfig.autoTrackPushEvents {
             pushLogger.logTrackingPushMessageDelivered(deliveryId: pushCioDeliveryInfo.id)
 
-            trackMetricFromNSE(deliveryID: pushCioDeliveryInfo.id, event: .delivered, deviceToken: pushCioDeliveryInfo.token)
+            await trackMetricFromNSE(deliveryID: pushCioDeliveryInfo.id, event: .delivered, deviceToken: pushCioDeliveryInfo.token)
         } else {
             pushLogger.logPushMetricsAutoTrackingDisabled()
         }
+        
+        let composedRichPush = await RichPushRequestHandler.shared.startRequest(push: push)
+        logger.debug("rich push was composed \(String(describing: composedRichPush)).")
 
-        RichPushRequestHandler.shared.startRequest(
-            push: push
-        ) { composedRichPush in
-            self.logger.debug("rich push was composed \(composedRichPush).")
-
-            // This conditional will only work in production and not in automated tests. But this file cannot be in automated tests so this conditional is OK for now.
-            if let composedRichPush = composedRichPush as? UNNotificationWrapper {
-                self.logger.info("Customer.io push processing is done!")
-                contentHandler(composedRichPush.notificationContent)
-            }
+        // This conditional will only work in production and not in automated tests. But this file cannot be in automated tests so this conditional is OK for now.
+        if let composedRichPush = composedRichPush as? UNNotificationWrapper {
+            self.logger.info("Customer.io push processing is done!")
+            contentHandler(composedRichPush.notificationContent)
         }
+        
+//        RichPushRequestHandler.shared.startRequest(
+//            push: push
+//        ) { composedRichPush in
+//            self.logger.debug("rich push was composed \(composedRichPush).")
+//
+//            // This conditional will only work in production and not in automated tests. But this file cannot be in automated tests so this conditional is OK for now.
+//            if let composedRichPush = composedRichPush as? UNNotificationWrapper {
+//                self.logger.info("Customer.io push processing is done!")
+//                contentHandler(composedRichPush.notificationContent)
+//            }
+//        }
 
         return true
     }

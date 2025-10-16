@@ -38,7 +38,7 @@ public protocol MessagingPushFCMInstance: AutoMockable, Sendable {
     func didReceive(
         _ request: UNNotificationRequest,
         withContentHandler contentHandler: @escaping (UNNotificationContent) -> Void
-    ) -> Bool
+    ) async -> Bool
 
     // sourcery:IfCanImport=UserNotifications
     func serviceExtensionTimeWillExpire()
@@ -121,8 +121,8 @@ public final class MessagingPushFCM: MessagingPushFCMInstance {
     public func didReceive(
         _ request: UNNotificationRequest,
         withContentHandler contentHandler: @escaping (UNNotificationContent) -> Void
-    ) -> Bool {
-        messagingPush.didReceive(request, withContentHandler: contentHandler)
+    ) async -> Bool {
+        await messagingPush.didReceive(request, withContentHandler: contentHandler)
     }
 
     /**
