@@ -12,7 +12,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - uses: ./.github/actions/setup-ios
+      - uses: customerio/mobile-ci-tools/github-actions/ios/setup-ios/v1@main
       
       - name: Install sourcekitten
         run: brew install sourcekitten
@@ -22,14 +22,6 @@ jobs:
         with:
           ruby-version: '3.2'
           bundler-cache: false # we don't need bundler for this workflow
-      
-      # Firebase 12+ requires iOS 15+ minimum deployment target, but our SDK supports iOS 13+
-      # This script temporarily updates Package.swift to use iOS 15+ for CI testing only
-      # while keeping the SDK's public API at iOS 13+ for customers
-      - name: Update iOS deployment target for Firebase 12+ compatibility
-        run: |
-          brew install sd
-          ./scripts/update-ios-deployment-target-for-ci.sh
 
       - name: Check for API changes
         run: |
