@@ -14,6 +14,7 @@ public actor EventBusHandlerMock: EventBusHandler, Mock {
         var postEventCallsCount = 0
         var removeFromStorageCallsCount = 0
         var postEventArguments: (any EventRepresentable)?
+        var postEventReceivedInvocations: [any EventRepresentable] = []
     }
 
     private let concurrency: ConcurrencySupport
@@ -27,6 +28,7 @@ public actor EventBusHandlerMock: EventBusHandler, Mock {
     public nonisolated var postEventCallsCount: Int { storage.withValue { $0.postEventCallsCount } }
     public nonisolated var removeFromStorageCallsCount: Int { storage.withValue { $0.removeFromStorageCallsCount } }
     public nonisolated var postEventArguments: (any EventRepresentable)? { storage.withValue { $0.postEventArguments } }
+    public nonisolated var postEventReceivedInvocations: [any EventRepresentable] { storage.withValue { $0.postEventReceivedInvocations } }
 
     public nonisolated var trackTaskCalled: Bool { trackTaskCallsCount > 0 }
     public nonisolated var loadEventsFromStorageCalled: Bool { loadEventsFromStorageCallsCount > 0 }
@@ -105,6 +107,7 @@ public actor EventBusHandlerMock: EventBusHandler, Mock {
             $0.mockCalled = true
             $0.postEventCallsCount += 1
             $0.postEventArguments = event
+            $0.postEventReceivedInvocations.append(event)
         }
     }
 
