@@ -16,8 +16,7 @@ target 'test cocoapods' do
   pod 'CustomerIOMessagingPushAPN', :path => sdk_local_path
   pod 'CustomerIOTrackingMigration', :path => sdk_local_path
 
-  # Add customerio-ios-fcm wrapper from GitHub
-  pod 'CioFirebaseWrapper', :git => 'https://github.com/customerio/customerio-ios-fcm.git', :branch => 'fix-min-deployment'
+  pod 'CioFirebaseWrapper', '~> 1.0.0'
 
   # The "CustomerIOMessagingPushFCM" SDK installs the FCM SDK for you, defaulting to the latest version. 
   # If your app needs to use a specific version of the FCM SDK, you can add the line below to your app's Podfile 
