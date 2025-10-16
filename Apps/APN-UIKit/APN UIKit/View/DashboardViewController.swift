@@ -1,4 +1,5 @@
 import CioDataPipelines
+import CioInternalCommon
 import UIKit
 
 class DashboardViewController: BaseViewController {
@@ -139,11 +140,15 @@ class DashboardViewController: BaseViewController {
     }
 
     @IBAction func setDeviceAttributes(_ sender: UIButton) {
-        dashboardRouter?.routeToCustomDataScreen(forSource: .deviceAttributes)
+//        dashboardRouter?.routeToCustomDataScreen(forSource: .deviceAttributes)
+        let sseClient = CioInternalCommon.DIGraphShared.shared.gistSSEClient
+        Task { try? await sseClient.startListening() }
     }
 
     @IBAction func setProfileAttributes(_ sender: UIButton) {
-        dashboardRouter?.routeToCustomDataScreen(forSource: .profileAttributes)
+//        dashboardRouter?.routeToCustomDataScreen(forSource: .profileAttributes)
+        let sseClient = CioInternalCommon.DIGraphShared.shared.gistSSEClient
+        sseClient.stopListening()
     }
 
     @IBAction func openInlineSwiftUiExamples(_ sender: UIButton) {

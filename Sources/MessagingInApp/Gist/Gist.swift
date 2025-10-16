@@ -145,15 +145,15 @@ class Gist: GistProvider {
         invalidateTimer()
 
         // Timer must be scheduled on the main thread
-        threadUtil.runMain {
-            self.queueTimer = Timer.scheduledTimer(
-                timeInterval: pollingInterval,
-                target: self,
-                selector: #selector(self.fetchUserMessages),
-                userInfo: nil,
-                repeats: true
-            )
-        }
+//        threadUtil.runMain {
+//            self.queueTimer = Timer.scheduledTimer(
+//                timeInterval: pollingInterval,
+//                target: self,
+//                selector: #selector(self.fetchUserMessages),
+//                userInfo: nil,
+//                repeats: true
+//            )
+//        }
 
         if !skipMessageFetch {
             threadUtil.runMain {

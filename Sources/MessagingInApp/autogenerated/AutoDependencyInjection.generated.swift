@@ -70,6 +70,9 @@ extension DIGraphShared {
         _ = gistQueueNetwork
         countDependenciesResolved += 1
 
+        _ = gistSSEClient
+        countDependenciesResolved += 1
+
         _ = inAppMessageManager
         countDependenciesResolved += 1
 
@@ -173,6 +176,16 @@ extension DIGraphShared {
 
     private var newGistQueueNetwork: GistQueueNetwork {
         GistQueueNetworkImpl()
+    }
+
+    // GistSSEClient
+    public var gistSSEClient: GistSSEClient {
+        getOverriddenInstance() ??
+            newGistSSEClient
+    }
+
+    private var newGistSSEClient: GistSSEClient {
+        GistSSEClient(logger: logger, inAppMessageManager: inAppMessageManager)
     }
 
     // InAppMessageManager (singleton)
