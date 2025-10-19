@@ -27,6 +27,7 @@ extension MessagingPush: MessagingPushAPNInstance, @unchecked Sendable {
     }
 
     #if canImport(UserNotifications)
+    // This shouldn't be async and it should create a task instead of forcing customers to do that
     @discardableResult
     public func didReceive(
         _ request: UNNotificationRequest,

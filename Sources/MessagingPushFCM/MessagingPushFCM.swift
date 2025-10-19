@@ -37,7 +37,7 @@ public protocol MessagingPushFCMInstance: AutoMockable, Sendable {
     // sourcery:IfCanImport=UserNotifications
     func didReceive(
         _ request: UNNotificationRequest,
-        withContentHandler contentHandler: @escaping (UNNotificationContent) -> Void
+        withContentHandler contentHandler: @escaping @Sendable (UNNotificationContent) -> Void
     ) async -> Bool
 
     // sourcery:IfCanImport=UserNotifications
@@ -120,7 +120,7 @@ public final class MessagingPushFCM: MessagingPushFCMInstance {
     @discardableResult
     public func didReceive(
         _ request: UNNotificationRequest,
-        withContentHandler contentHandler: @escaping (UNNotificationContent) -> Void
+        withContentHandler contentHandler: @escaping @Sendable (UNNotificationContent) -> Void
     ) async -> Bool {
         await messagingPush.didReceive(request, withContentHandler: contentHandler)
     }

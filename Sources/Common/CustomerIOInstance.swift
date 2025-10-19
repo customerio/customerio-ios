@@ -196,7 +196,10 @@ public class CustomerIO: CustomerIOInstance {
 
      Note: Don't forget to call `CustomerIO.initialize()` before using this!
      */
-    @Atomic public private(set) static var shared = CustomerIO()
+    nonisolated(unsafe) private static var _shared = EnhancedSynchronized(CustomerIO())
+    public static var shared: CustomerIO {
+        _shared.get()
+    }
 
     // Only assign a value to this *when the SDK is initialzied*.
     // It's assumed that if this instance is not-nil, the SDK has been initialized.
@@ -217,7 +220,7 @@ public class CustomerIO: CustomerIOInstance {
     }
 
     public static func resetSharedTestEnvironment() {
-        shared = CustomerIO()
+        _shared.set(CustomerIO())
     }
     #endif
 

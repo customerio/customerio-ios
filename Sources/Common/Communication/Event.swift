@@ -5,7 +5,7 @@ public typealias AnyEventRepresentable = any EventRepresentable
 /// Protocol defining the structure and requirements of events in the system.
 /// Conformance to this protocol ensures compatibility with the EventBus system.
 /// Events can carry additional data through a `params` dictionary, offering flexibility for different use cases.
-public protocol EventRepresentable: Equatable, Codable {
+public protocol EventRepresentable: Equatable, Codable, Sendable {
     /// A unique key representing the event type.
     /// This is used to differentiate and manage different kinds of events.
     var key: String { get }

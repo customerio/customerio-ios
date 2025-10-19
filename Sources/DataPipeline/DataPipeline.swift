@@ -14,9 +14,16 @@ public class DataPipeline: ModuleTopLevelObject<DataPipelineInstance>, DataPipel
     public var analytics: CioAnalytics.Analytics {
         implementation?.analytics ?? Analytics(configuration: Configuration(writeKey: "DEADINSTANCE"))
     }
+    
+    nonisolated(unsafe) private static var _shared = EnhancedSynchronized(DataPipeline())
+    nonisolated(unsafe) private static var _moduleConfig = EnhancedSynchronized<DataPipelineConfigOptions?>(nil)
 
-    @CioInternalCommon.Atomic public private(set) static var shared = DataPipeline()
-    @CioInternalCommon.Atomic public private(set) static var moduleConfig: DataPipelineConfigOptions!
+    public static var shared: DataPipeline {
+        _shared.get()
+    }
+    public static var moduleConfig: DataPipelineConfigOptions {
+        _moduleConfig.get()!
+    }
 
     private static let moduleName = "DataPipeline"
 
@@ -31,7 +38,7 @@ public class DataPipeline: ModuleTopLevelObject<DataPipelineInstance>, DataPipel
     @discardableResult
     public static func setUpSharedInstanceForUnitTest(implementation: DataPipelineInstance, config: DataPipelineConfigOptions) -> DataPipelineInstance {
         // initialize static properties before implementation creation, as they may be directly used by other classes
-        moduleConfig = config
+        _moduleConfig.set(config)
         shared._implementation = implementation
 
         return implementation
@@ -44,8 +51,8 @@ public class DataPipeline: ModuleTopLevelObject<DataPipelineInstance>, DataPipel
     }
 
     static func resetTestEnvironment() {
-        moduleConfig = nil
-        shared = DataPipeline()
+        _moduleConfig.set(nil)
+        _shared.set(DataPipeline())
     }
     #endif
 
@@ -57,7 +64,7 @@ public class DataPipeline: ModuleTopLevelObject<DataPipelineInstance>, DataPipel
     @discardableResult
     public static func initialize(moduleConfig: DataPipelineConfigOptions) -> DataPipelineInstance {
         shared.initializeModuleIfNotAlready {
-            Self.moduleConfig = moduleConfig
+            _moduleConfig.set(moduleConfig)
 
             return DataPipelineImplementation(diGraph: DIGraphShared.shared, moduleConfig: moduleConfig)
         }

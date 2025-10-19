@@ -25,7 +25,7 @@ public protocol MessagingPushInstance: AutoMockable {
     // sourcery:IfCanImport=UserNotifications
     func didReceive(
         _ request: UNNotificationRequest,
-        withContentHandler contentHandler: @escaping (UNNotificationContent) -> Void
+        withContentHandler contentHandler: @escaping @Sendable (UNNotificationContent) -> Void
     ) async -> Bool
 
     // Used for rich push

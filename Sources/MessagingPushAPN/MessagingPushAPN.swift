@@ -116,7 +116,7 @@ public final class MessagingPushAPN: MessagingPushAPNInstance {
     @discardableResult
     public func didReceive(
         _ request: UNNotificationRequest,
-        withContentHandler contentHandler: @escaping (UNNotificationContent) -> Void
+        withContentHandler contentHandler: @escaping @Sendable (UNNotificationContent) -> Void
     ) async -> Bool {
         await messagingPush.didReceive(request, withContentHandler: contentHandler)
     }

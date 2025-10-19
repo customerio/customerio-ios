@@ -57,25 +57,29 @@ let package = Package(
         .testTarget(name: "CommonTests",
                     dependencies: ["CioInternalCommon", "SharedTests"],
                     path: "Tests/Common",
-                    swiftSettings: [.unsafeFlags(["-strict-concurrency=complete"])]),
+//                    swiftSettings: [.unsafeFlags(["-strict-concurrency=complete"])]
+                   ),
         // Migration
         // this module handles Journeys tasks migration to Datapipeline.
         .target(name: "CioTrackingMigration",
                 dependencies: ["CioInternalCommon"],
                 path: "Sources/Migration",
-                swiftSettings: [.unsafeFlags(["-strict-concurrency=complete"])]),
+                swiftSettings: [.unsafeFlags(["-strict-concurrency=complete"])]
+               ),
         .testTarget(name: "MigrationTests",
                     dependencies: ["CioTrackingMigration", "SharedTests"],
                     path: "Tests/Migration",
-                    swiftSettings: [.unsafeFlags(["-strict-concurrency=complete"])]),
-        // shared code dependency that other test targets use. 
+//                    swiftSettings: [.unsafeFlags(["-strict-concurrency=complete"])]
+                   ),
+        // shared code dependency that other test targets use.
         .target(name: "SharedTests",
                 dependencies: ["CioInternalCommon"],
                 path: "Tests/Shared",
                 resources: [
                     .copy("SampleDataFiles") // static files that are used in test functions.
                 ],
-                swiftSettings: [.unsafeFlags(["-strict-concurrency=complete"])]),
+//                swiftSettings: [.unsafeFlags(["-strict-concurrency=complete"])]
+               ),
 
         // Messaging Push 
         .target(name: "CioMessagingPush",
@@ -85,7 +89,8 @@ let package = Package(
         .testTarget(name: "MessagingPushTests",
                     dependencies: ["CioMessagingPush", "SharedTests"],
                     path: "Tests/MessagingPush",
-                    swiftSettings: [.unsafeFlags(["-strict-concurrency=complete"])]),
+//                    swiftSettings: [.unsafeFlags(["-strict-concurrency=complete"])]
+                   ),
         
         // Data Pipeline
         .target(name: "CioDataPipelines",
@@ -94,11 +99,13 @@ let package = Package(
                 path: "Sources/DataPipeline", resources: [
                     .process("Resources/PrivacyInfo.xcprivacy"),
                 ],
-                swiftSettings: [.unsafeFlags(["-strict-concurrency=complete"])]),
+                swiftSettings: [.unsafeFlags(["-strict-concurrency=complete"])]
+               ),
         .testTarget(name: "DataPipelineTests",
                     dependencies: ["CioDataPipelines", "SharedTests"],
                     path: "Tests/DataPipeline",
-                    swiftSettings: [.unsafeFlags(["-strict-concurrency=complete"])]),
+//                    swiftSettings: [.unsafeFlags(["-strict-concurrency=complete"])]
+                   ),
 
         // APN
         .target(name: "CioMessagingPushAPN",
@@ -111,8 +118,9 @@ let package = Package(
         .testTarget(name: "MessagingPushAPNTests",
                     dependencies: ["CioMessagingPushAPN", "SharedTests"],
                     path: "Tests/MessagingPushAPN",
-                    swiftSettings: [.unsafeFlags(["-strict-concurrency=complete"])]),
-        // FCM 
+//                    swiftSettings: [.unsafeFlags(["-strict-concurrency=complete"])]
+                   ),
+        // FCM
         .target(name: "CioMessagingPushFCM",
                 dependencies: ["CioMessagingPush", .product(name: "FirebaseMessaging", package: "Firebase")],
                 path: "Sources/MessagingPushFCM",
@@ -123,7 +131,8 @@ let package = Package(
         .testTarget(name: "MessagingPushFCMTests",
                     dependencies: ["CioMessagingPushFCM", "SharedTests"],
                     path: "Tests/MessagingPushFCM",
-                    swiftSettings: [.unsafeFlags(["-strict-concurrency=complete"])]),
+//                    swiftSettings: [.unsafeFlags(["-strict-concurrency=complete"])]
+                   ),
 
         // Messaging in-app
         .target(name: "CioMessagingInApp",
@@ -132,10 +141,12 @@ let package = Package(
                 resources: [
                     .process("Resources/PrivacyInfo.xcprivacy"),
                 ],
-                swiftSettings: [.unsafeFlags(["-strict-concurrency=complete"])]),
+                swiftSettings: [.unsafeFlags(["-strict-concurrency=complete"])]
+               ),
         .testTarget(name: "MessagingInAppTests",
                     dependencies: ["CioMessagingInApp", "SharedTests"],
                     path: "Tests/MessagingInApp",
-                    swiftSettings: [.unsafeFlags(["-strict-concurrency=complete"])]),
+//                    swiftSettings: [.unsafeFlags(["-strict-concurrency=complete"])]
+                   ),
     ]
 )

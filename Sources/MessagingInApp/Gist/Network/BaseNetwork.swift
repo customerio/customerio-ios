@@ -22,7 +22,7 @@ enum BaseNetwork {
         var components = URLComponents(string: baseURL.appendingPathComponent(request.path).absoluteString)
 
         // Always add sessionId as a query parameter
-        var queryItems = [URLQueryItem(name: sessionIdParameterName, value: SessionManager.shared.sessionId)]
+        let queryItems = [URLQueryItem(name: sessionIdParameterName, value: SessionManager.shared.sessionId)]
         switch request.parameters {
         case .body(let body):
             urlRequest.httpBody = try JSONSerialization.data(withJSONObject: body.asDictionary(), options: [])

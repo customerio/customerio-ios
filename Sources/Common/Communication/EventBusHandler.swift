@@ -3,7 +3,7 @@ import Foundation
 
 public protocol EventBusHandler {
     func loadEventsFromStorage() async
-    func addObserver<E: EventRepresentable>(_ eventType: E.Type, action: @escaping (E) -> Void)
+    func addObserver<E: EventRepresentable>(_ eventType: E.Type, action: @escaping @Sendable (E) -> Void)
     func removeObserver<E: EventRepresentable>(for eventType: E.Type)
     func postEvent<E: EventRepresentable>(_ event: E)
     func postEventAndWait<E: EventRepresentable>(_ event: E) async
@@ -16,13 +16,11 @@ public protocol EventBusHandler {
 // sourcery: InjectRegisterShared = "EventBusHandler"
 // sourcery: InjectSingleton
 // swiftlint:enable orphaned_doc_comment
-public class CioEventBusHandler: EventBusHandler {
+public final class CioEventBusHandler: EventBusHandler, Sendable {
     private let eventBus: EventBus
     private let eventCache: EventCache
     let eventStorage: EventStorage
     let logger: Logger
-
-    @Atomic private var taskBag: TaskBag = []
 
     /// Initializes the EventBusHandler with dependencies for event bus and storage.
     /// - Parameters:
@@ -40,11 +38,6 @@ public class CioEventBusHandler: EventBusHandler {
         self.eventCache = eventCache
         self.eventStorage = eventStorage
         self.logger = logger
-        taskBag += Task { await loadEventsFromStorage() }
-    }
-
-    deinit {
-        taskBag.cancelAll()
     }
 
     /// Loads events from persistent storage into in-memory storage for quick access and event replay.
@@ -64,10 +57,10 @@ public class CioEventBusHandler: EventBusHandler {
     /// - Parameters:
     ///   - eventType: The event type to observe.
     ///   - action: The action to execute when the event is observed.
-    public func addObserver<E: EventRepresentable>(_ eventType: E.Type, action: @escaping (E) -> Void) {
+    public func addObserver<E: EventRepresentable>(_ eventType: E.Type, action: @escaping @Sendable (E) -> Void) {
         logger.debug("EventBusHandler: Adding observer for event type - \(eventType)")
 
-        let adaptedAction: (AnyEventRepresentable) -> Void = { event in
+        let adaptedAction: @Sendable (AnyEventRepresentable) -> Void = { event in
             if let specificEvent = event as? E {
                 action(specificEvent)
             } else {
@@ -75,7 +68,7 @@ public class CioEventBusHandler: EventBusHandler {
             }
         }
 
-        taskBag += Task {
+        Task {
             await eventBus.addObserver(eventType.key, action: adaptedAction)
             await replayEvents(forType: eventType, action: adaptedAction)
         }
@@ -84,7 +77,7 @@ public class CioEventBusHandler: EventBusHandler {
     /// Removes an observer for a specific event type.
     /// - Parameter eventType: The event type for which to remove the observer.
     public func removeObserver<E: EventRepresentable>(for eventType: E.Type) {
-        taskBag += Task { await eventBus.removeObserver(for: E.key) }
+        Task { await eventBus.removeObserver(for: E.key) }
     }
 
     /// Replays events of a specific type to any new observers, ensuring they receive past events.
@@ -107,7 +100,7 @@ public class CioEventBusHandler: EventBusHandler {
     /// Posts an event to the EventBus and stores it if there are no observers.
     /// - Parameter event: The event to post.
     public func postEvent<E: EventRepresentable>(_ event: E) {
-        taskBag += Task {
+        Task {
             await postEventAndWait(event)
         }
     }

@@ -3,12 +3,12 @@ import Foundation
 import os.log
 #endif
 
-public protocol SystemLogger: AutoMockable {
+public protocol SystemLogger: AutoMockable, Sendable {
     func log(_ message: String, _ level: CioLogLevel)
 }
 
 // sourcery: InjectRegisterShared = "SystemLogger"
-public class SystemLoggerImpl: SystemLogger {
+public class SystemLoggerImpl: SystemLogger, @unchecked Sendable {
     // allows filtering in Console mac app
     public let logSubsystem = "io.customer.sdk"
     public let logCategory = "CIO"

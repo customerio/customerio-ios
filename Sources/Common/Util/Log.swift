@@ -4,7 +4,7 @@ import os.log
 #endif
 
 /// mockable logger + abstract that allows you to log to multiple places if you wish
-public protocol Logger: AutoMockable {
+public protocol Logger: AutoMockable, Sendable {
     /// Represents the current log level of the logger. The log level
     /// controls the verbosity of the logs that are output. Only messages
     /// at this level or higher will be logged.
@@ -13,7 +13,7 @@ public protocol Logger: AutoMockable {
     /// Default implementation is to print logs to XCode Debug Area.
     /// In wrapper SDKs, this will be overridden to emit logs to more user-friendly channels like console, etc.
     /// - Parameter dispatcher: Dispatcher to handle log events based on the log level, pass null to reset to default.
-    func setLogDispatcher(_ dispatcher: ((CioLogLevel, String) -> Void)?)
+    func setLogDispatcher(_ dispatcher: (@Sendable (CioLogLevel, String) -> Void)?)
     /// Sets the logger's verbosity level to control which messages are logged.
     /// Levels range from `.debug` (most verbose) to `.error` (least verbose).
     /// - Parameter level: The `CioLogLevel` for logging output verbosity.
@@ -81,9 +81,10 @@ public enum CioLogLevel: String, CaseIterable, Sendable {
 // log messages to console.
 // sourcery: InjectRegisterShared = "Logger"
 // sourcery: InjectSingleton
-public class LoggerImpl: Logger {
+public final class LoggerImpl: Logger, @unchecked Sendable {
     private let systemLogger: SystemLogger
-    public var logLevel: CioLogLevel = .error
+    @Atomic public private(set) var logLevel: CioLogLevel = .error
+    @Atomic private var logDispatcher: (@Sendable (CioLogLevel, String) -> Void)?
 
     init(logger: SystemLogger) {
         self.systemLogger = logger
@@ -93,9 +94,7 @@ public class LoggerImpl: Logger {
         logLevel = level
     }
 
-    private var logDispatcher: ((CioLogLevel, String) -> Void)?
-
-    public func setLogDispatcher(_ dispatcher: ((CioLogLevel, String) -> Void)?) {
+    public func setLogDispatcher(_ dispatcher: (@Sendable (CioLogLevel, String) -> Void)?) {
         logDispatcher = dispatcher
     }
 
@@ -115,7 +114,12 @@ public class LoggerImpl: Logger {
         if !logLevel.shouldLog(level) { return }
 
         let formattedMessage = formatMessage(message, tag, error)
-        logDispatcher?(level, message) ?? systemLogger.log(formattedMessage, level)
+        let dispatcher = logDispatcher
+        if let dispatcher {
+            dispatcher(level, message)
+        } else {
+            systemLogger.log(formattedMessage, level)
+        }
     }
 
     private func formatMessage(_ message: String, _ tag: String? = nil, _ error: Error? = nil) -> String {

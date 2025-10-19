@@ -5,7 +5,7 @@ import Foundation
 /// This protocol outlines the core functionalities of an event bus, including posting events,
 /// adding observers, and managing observers. It is designed to support type-safe event handling
 /// and asynchronous execution
-public protocol EventBus: AutoMockable {
+public protocol EventBus: AutoMockable, Sendable {
     /// Posts an event to all registered observers.
     ///
     /// - Parameters:
@@ -18,7 +18,7 @@ public protocol EventBus: AutoMockable {
     /// - Parameters:
     ///   - eventType: The event type to observe.
     ///   - action: The action to execute when the event is observed.
-    func addObserver(_ eventType: String, action: @escaping (AnyEventRepresentable) -> Void) async
+    func addObserver(_ eventType: String, action: @escaping @Sendable (AnyEventRepresentable) -> Void) async
     /// Removes all observers for a specific event type.
     ///
     /// - Parameter eventType: The event type for which to remove observers.
@@ -97,7 +97,7 @@ actor SharedEventBus: EventBus {
     /// - Parameters:
     ///   - eventType: The type of the event to observe.
     ///   - action: The action to be executed when the event is received.
-    func addObserver(_ eventType: String, action: @escaping (AnyEventRepresentable) -> Void) async {
+    func addObserver(_ eventType: String, action: @escaping @Sendable (AnyEventRepresentable) -> Void) async {
         let observer = holder.notificationCenter.addObserver(forName: NSNotification.Name(eventType), object: nil, queue: nil) { notification in
             if let event = notification.object as? AnyEventRepresentable {
                 action(event)

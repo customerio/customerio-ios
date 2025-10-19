@@ -295,9 +295,9 @@ public class MessagingPushAPNInstanceMock: MessagingPushAPNInstance, Mock {
      */
     public var didReceiveNotificationRequestClosure: ((UNNotificationRequest, @escaping (UNNotificationContent) -> Void) -> Bool)?
 
-    /// Mocked function for `didReceive(_ request: UNNotificationRequest, withContentHandler contentHandler: @escaping (UNNotificationContent) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
+    /// Mocked function for `didReceive(_ request: UNNotificationRequest, withContentHandler contentHandler: @Sendable @escaping (UNNotificationContent) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
     @discardableResult
-    public func didReceive(_ request: UNNotificationRequest, withContentHandler contentHandler: @escaping (UNNotificationContent) -> Void) -> Bool {
+    public func didReceive(_ request: UNNotificationRequest, withContentHandler contentHandler: @Sendable @escaping (UNNotificationContent) -> Void) -> Bool {
         self.mockCalled = true
         didReceiveNotificationRequestCallsCount += 1
         didReceiveNotificationRequestReceivedArguments = (request: request, contentHandler: contentHandler)

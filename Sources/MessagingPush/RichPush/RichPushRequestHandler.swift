@@ -2,9 +2,10 @@ import CioInternalCommon
 import Foundation
 
 class RichPushRequestHandler {
-    static let shared = RichPushRequestHandler()
+    
+    nonisolated(unsafe) static let shared = RichPushRequestHandler()
 
-    @Atomic private var requests: [String: RichPushRequest] = [:]
+    private var requests = EnhancedSynchronized<[String: RichPushRequest]>([:])
 
     private init() {}
 
@@ -13,26 +14,37 @@ class RichPushRequestHandler {
     ) async -> PushNotification? {
         let requestId = push.pushId
 
-        let existingRequest = requests[requestId]
-        if existingRequest != nil { return nil }
-
-        let diGraph = DIGraphShared.shared
-        let httpClient = diGraph.httpClient
-
-        let newRequest = RichPushRequest(
-            push: push,
-            httpClient: httpClient
-        )
-        requests[requestId] = newRequest
-
-        return await newRequest.start()
+        // Atomic check-and-create operation with return value
+        let newRequest: RichPushRequest? = requests.mutate { dict in
+            // If already exists, return nil (no new request)
+            if dict[requestId] != nil {
+                return nil
+            }
+            
+            // Create and store new request atomically
+            let diGraph = DIGraphShared.shared
+            let httpClient = diGraph.httpClient
+            
+            let request = RichPushRequest(
+                push: push,
+                httpClient: httpClient
+            )
+            
+            dict[requestId] = request
+            return request
+        }
+        
+        // If no new request was created (already existed), return nil
+        guard let request = newRequest else { return nil }
+        
+        return await request.start()
     }
 
     func stopAll() {
-        requests.forEach {
+        requests.get().forEach {
             $0.value.finishImmediately()
         }
 
-        requests = [:]
+        requests.set([:])
     }
 }

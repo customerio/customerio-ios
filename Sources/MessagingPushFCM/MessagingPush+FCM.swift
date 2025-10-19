@@ -30,7 +30,7 @@ extension MessagingPush: MessagingPushFCMInstance, @unchecked Sendable {
     @discardableResult
     public func didReceive(
         _ request: UNNotificationRequest,
-        withContentHandler contentHandler: @escaping (UNNotificationContent) -> Void
+        withContentHandler contentHandler: @escaping @Sendable (UNNotificationContent) -> Void
     ) async -> Bool {
         await MessagingPushFCM.shared.didReceive(request, withContentHandler: contentHandler)
     }

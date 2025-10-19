@@ -7,9 +7,16 @@ import Foundation
   */
 public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, MessagingPushInstance {
     @MainActor @_spi(Internal) public static var appDelegateIntegratedExplicitly: Bool = false
+    
+    nonisolated(unsafe) private static var _shared = EnhancedSynchronized(MessagingPush())
+    nonisolated(unsafe) private static var _moduleConfig = EnhancedSynchronized(MessagingPushConfigBuilder().build())
 
-    @Atomic public private(set) static var shared = MessagingPush()
-    @Atomic public private(set) static var moduleConfig: MessagingPushConfigOptions = MessagingPushConfigBuilder().build()
+    public static var shared: MessagingPush {
+        _shared.get()
+    }
+    public static var moduleConfig: MessagingPushConfigOptions {
+        _moduleConfig.get()
+    }
 
     private static let moduleName = "MessagingPush"
 
@@ -28,7 +35,7 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
     @discardableResult
     static func setUpSharedInstanceForUnitTest(implementation: MessagingPushInstance, diGraphShared: DIGraphShared, config: MessagingPushConfigOptions) -> MessagingPushInstance {
         // initialize static properties before implementation creation, as they may be directly used by other classes
-        moduleConfig = config
+        _moduleConfig.set(config)
         shared.globalDataStore = diGraphShared.globalDataStore
         shared._implementation = implementation
         return implementation
@@ -36,14 +43,14 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
 
     @discardableResult
     static func setUpSharedInstanceForIntegrationTest(diGraphShared: DIGraphShared, config: MessagingPushConfigOptions) -> MessagingPushInstance {
-        moduleConfig = config
+        _moduleConfig.set(config)
         let implementation = MessagingPushImplementation(diGraph: diGraphShared, moduleConfig: config)
         return setUpSharedInstanceForUnitTest(implementation: implementation, diGraphShared: diGraphShared, config: config)
     }
 
     static func resetTestEnvironment() {
-        moduleConfig = MessagingPushConfigBuilder().build()
-        shared = MessagingPush()
+        _moduleConfig.set(MessagingPushConfigBuilder().build())
+        _shared.set(MessagingPush())
     }
     #endif
 
@@ -57,7 +64,7 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
     public static func initialize(withConfig config: MessagingPushConfigOptions = MessagingPushConfigBuilder().build()) -> MessagingPushInstance {
         shared.initializeModuleIfNotAlready {
             // set moduleConfig before creating implementation instance as dependencies inside instance may directly use moduleConfig from MessagingPush.
-            Self.moduleConfig = config
+            _moduleConfig.set(config)
             // Some part of the initialize is specific only to non-NSE targets.
             // Put those parts in this non-NSE initialize method.
             if config.autoTrackPushEvents, !Self.appDelegateIntegratedExplicitly {
@@ -79,7 +86,7 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
     public static func initializeForExtension(withConfig config: MessagingPushConfigOptions) -> MessagingPushInstance {
         shared.initializeModuleIfNotAlready {
             // set moduleConfig before creating implementation instance as dependencies inside instance may directly use moduleConfig from MessagingPush.
-            Self.moduleConfig = config
+            _moduleConfig.set(config)
             // set logLevel of shared logger only when module is initialized from NotificationServiceExtension.
             DIGraphShared.shared.logger.setLogLevel(config.logLevel)
             return shared.getImplementation(config: config)
