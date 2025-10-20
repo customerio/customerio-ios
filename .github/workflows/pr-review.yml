@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     name: Danger 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Run danger 
         run: npx danger@11 ci --dangerfile dangerfile.js
         env:
