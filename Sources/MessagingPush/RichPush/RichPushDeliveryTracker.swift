@@ -3,7 +3,7 @@ import Foundation
 
 protocol RichPushDeliveryTracker: AutoMockable {
 //    func trackMetric(token: String, event: Metric, deliveryId: String, timestamp: String?, onComplete: @escaping (Result<Void, HttpRequestError>) -> Void)
-    
+
     func trackMetric(token: String, event: Metric, deliveryId: String, timestamp: String?) async -> Result<Void, HttpRequestError>
 }
 
@@ -47,7 +47,7 @@ class RichPushDeliveryTrackerImpl: RichPushDeliveryTracker {
         case .success: return .success(())
         case .failure(let httpError): return .failure(httpError)
         }
-        
+
 //        httpClient.request(httpParams) { result in
 //            switch result {
 //            case .success: onComplete(.success(()))

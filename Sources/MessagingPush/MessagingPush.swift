@@ -7,13 +7,14 @@ import Foundation
   */
 public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, MessagingPushInstance {
     @MainActor @_spi(Internal) public static var appDelegateIntegratedExplicitly: Bool = false
-    
-    nonisolated(unsafe) private static var _shared = EnhancedSynchronized(MessagingPush())
-    nonisolated(unsafe) private static var _moduleConfig = EnhancedSynchronized(MessagingPushConfigBuilder().build())
+
+    private nonisolated(unsafe) static var _shared = EnhancedSynchronized(MessagingPush())
+    private nonisolated(unsafe) static var _moduleConfig = EnhancedSynchronized(MessagingPushConfigBuilder().build())
 
     public static var shared: MessagingPush {
         _shared.get()
     }
+
     public static var moduleConfig: MessagingPushConfigOptions {
         _moduleConfig.get()
     }

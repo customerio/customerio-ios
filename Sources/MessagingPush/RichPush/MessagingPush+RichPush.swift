@@ -16,13 +16,18 @@ public extension MessagingPush {
     func didReceive(
         _ request: UNNotificationRequest,
         withContentHandler contentHandler: @escaping @Sendable (UNNotificationContent) -> Void
-    ) async -> Bool {
+    ) -> Bool {
         guard let implementation = implementation else {
             contentHandler(request.content)
             return false
         }
 
-        return await implementation.didReceive(request, withContentHandler: contentHandler)
+        // Spin off async work in a Task to avoid forcing callers to use await
+        Task {
+            await implementation.didReceive(request, withContentHandler: contentHandler)
+        }
+        
+        return true
     }
 
     /**
@@ -66,16 +71,16 @@ extension MessagingPushImplementation {
         } else {
             pushLogger.logPushMetricsAutoTrackingDisabled()
         }
-        
+
         let composedRichPush = await RichPushRequestHandler.shared.startRequest(push: push)
         logger.debug("rich push was composed \(String(describing: composedRichPush)).")
 
         // This conditional will only work in production and not in automated tests. But this file cannot be in automated tests so this conditional is OK for now.
         if let composedRichPush = composedRichPush as? UNNotificationWrapper {
-            self.logger.info("Customer.io push processing is done!")
+            logger.info("Customer.io push processing is done!")
             contentHandler(composedRichPush.notificationContent)
         }
-        
+
 //        RichPushRequestHandler.shared.startRequest(
 //            push: push
 //        ) { composedRichPush in

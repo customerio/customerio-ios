@@ -20,10 +20,10 @@ public class RichPushHttpClient: HttpClient {
     public func request(_ params: CioInternalCommon.HttpRequestParams) async -> Result<Data, CioInternalCommon.HttpRequestError> {
 //        let logger = self.logger
 //        let jsonAdapter = self.jsonAdapter
-        
+
         do {
             let (data, response) = try await httpRequestRunner.request(params: params, session: getSessionForRequest(url: params.url))
-            
+
             if let httpResponse = response as? HTTPURLResponse {
                 if httpResponse.statusCode < 300 {
 //                    guard let data = data else {
@@ -50,10 +50,10 @@ public class RichPushHttpClient: HttpClient {
 //                onComplete(.failure(.noRequestMade(nil)))
                 return .failure(.noRequestMade(nil))
             }
-            
+
         } catch {
             logger.error("Error sending request \(error.localizedDescription).")
-            if let error = self.isUrlError(error) {
+            if let error = isUrlError(error) {
 //                return onComplete(.failure(error))
                 return .failure(error)
             }
@@ -61,7 +61,7 @@ public class RichPushHttpClient: HttpClient {
 //            return onComplete(.failure(.noRequestMade(error)))
             return .failure(.noRequestMade(error))
         }
-        
+
 //        httpRequestRunner
 //            .request(
 //                params: params,
@@ -143,7 +143,7 @@ public class RichPushHttpClient: HttpClient {
     }
 
     public func downloadFile(url: URL, fileType: DownloadFileType) async -> URL? {
-        return await httpRequestRunner.downloadFile(
+        await httpRequestRunner.downloadFile(
             url: url,
             fileType: fileType,
             session: getSessionForRequest(url: url)

@@ -26,16 +26,16 @@ class MessagingPushImplementationTest: UnitTest {
 
     // MARK: trackMetricFromNSE
 
-    func test_trackMetricFromNSE_givenSuccess_expectLogSuccessMessage() {
+    func test_trackMetricFromNSE_givenSuccess_expectLogSuccessMessage() async {
         let deliveryId = "test-delivery-id"
         let event = Metric.delivered
         let deviceToken = "test-device-token"
 
-        richPushDeliveryTrackerMock.trackMetricClosure = { _, _, _, _, completion in
-            completion(.success(()))
+        richPushDeliveryTrackerMock.trackMetricClosure = { _, _, _, _ in
+            return Result<Void, HttpRequestError>.success(())
         }
 
-        implementation.trackMetricFromNSE(deliveryID: deliveryId, event: event, deviceToken: deviceToken)
+        await implementation.trackMetricFromNSE(deliveryID: deliveryId, event: event, deviceToken: deviceToken)
 
         XCTAssertEqual(richPushDeliveryTrackerMock.trackMetricCallsCount, 1)
         XCTAssertEqual(richPushDeliveryTrackerMock.trackMetricReceivedInvocations.first?.token, deviceToken)
@@ -50,17 +50,17 @@ class MessagingPushImplementationTest: UnitTest {
         XCTAssertEqual(pushLoggerMock.logPushMetricTrackingFailedCallsCount, 0)
     }
 
-    func test_trackMetricFromNSE_givenFailure_expectLogErrorMessage() {
+    func test_trackMetricFromNSE_givenFailure_expectLogErrorMessage() async {
         let deliveryId = "test-delivery-id"
         let event = Metric.delivered
         let deviceToken = "test-device-token"
         let testError = HttpRequestError.noRequestMade(nil)
 
-        richPushDeliveryTrackerMock.trackMetricClosure = { _, _, _, _, completion in
-            completion(.failure(testError))
+        richPushDeliveryTrackerMock.trackMetricClosure = { _, _, _, _ in
+            return Result<Void, HttpRequestError>.failure(testError)
         }
 
-        implementation.trackMetricFromNSE(deliveryID: deliveryId, event: event, deviceToken: deviceToken)
+        await implementation.trackMetricFromNSE(deliveryID: deliveryId, event: event, deviceToken: deviceToken)
 
         XCTAssertEqual(richPushDeliveryTrackerMock.trackMetricCallsCount, 1)
         XCTAssertEqual(richPushDeliveryTrackerMock.trackMetricReceivedInvocations.first?.token, deviceToken)

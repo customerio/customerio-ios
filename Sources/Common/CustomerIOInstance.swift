@@ -196,7 +196,7 @@ public class CustomerIO: CustomerIOInstance {
 
      Note: Don't forget to call `CustomerIO.initialize()` before using this!
      */
-    nonisolated(unsafe) private static var _shared = EnhancedSynchronized(CustomerIO())
+    private nonisolated(unsafe) static var _shared = EnhancedSynchronized(CustomerIO())
     public static var shared: CustomerIO {
         _shared.get()
     }

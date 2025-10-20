@@ -50,23 +50,31 @@ public class HttpRequestRunnerStub {
 extension HttpRequestRunnerStub: HttpRequestRunner {
     public func request(
         params: HttpRequestParams,
-        session: URLSession,
-        onComplete: @escaping (Data?, HTTPURLResponse?, Error?) -> Void
-    ) {
+        session: URLSession
+    ) async throws -> (Data, URLResponse) {
         requestCallsCount += 1
         requestsParams.append(params)
 
         let queueNextResponse = responseToAlwaysReturn ?? responseQueue.removeFirst()
-
-        onComplete(queueNextResponse.data, queueNextResponse.response, queueNextResponse.error)
+        
+        if let error = queueNextResponse.error {
+            throw error
+        }
+        
+        guard let data = queueNextResponse.data, let response = queueNextResponse.response else {
+            throw URLError(.badServerResponse)
+        }
+        
+        return (data, response)
     }
 
     public func downloadFile(
         url: URL,
         fileType: DownloadFileType,
-        session: URLSession,
-        onComplete: @escaping (URL?) -> Void
-    ) {}
+        session: URLSession
+    ) async -> URL? {
+        return nil
+    }
 
     private struct HttpResponse {
         let data: Data?

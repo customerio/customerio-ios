@@ -21,18 +21,17 @@ public class UrlRequestHttpRequestRunner: HttpRequestRunner {
      */
     public func request(
         params: HttpRequestParams,
-        session: URLSession) async throws -> (Data, URLResponse) {
-            
-            var request = URLRequest(url: params.url)
-            request.httpMethod = params.method
-            request.httpBody = params.body
-            params.headers?.forEach { key, value in
-                request.setValue(value, forHTTPHeaderField: key)
-            }
-            
-            return try await session.data(for: request)
+        session: URLSession
+    ) async throws -> (Data, URLResponse) {
+        var request = URLRequest(url: params.url)
+        request.httpMethod = params.method
+        request.httpBody = params.body
+        params.headers?.forEach { key, value in
+            request.setValue(value, forHTTPHeaderField: key)
         }
-    
+
+        return try await session.data(for: request)
+    }
 
     public func downloadFile(
         url: URL,
@@ -40,14 +39,14 @@ public class UrlRequestHttpRequestRunner: HttpRequestRunner {
         session: URLSession
     ) async -> URL? {
         let directoryURL = fileType.directoryToSaveFiles(fileManager: FileManager.default)
-        
+
         do {
             let (tempLocation, response) = try await session.download(from: url)
-            
+
             guard let suggestedFileName = response.suggestedFilename else {
                 return nil
             }
-            
+
             // create a unique file name so when trying to move temp file to destination it doesn't give an exception
             let uniqueFileName = UUID().uuidString + "_" + suggestedFileName
             let destinationURL = directoryURL

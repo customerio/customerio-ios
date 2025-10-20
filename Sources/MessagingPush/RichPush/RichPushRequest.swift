@@ -18,10 +18,10 @@ class RichPushRequest {
             // no async operations or modifications to the notification to do. Therefore, let's just finish.
             return finishImmediately()
         }
-        
+
         let localFilePath = await httpClient.downloadFile(url: image, fileType: .richPushImage)
         if let localFilePath = localFilePath {
-            self.push.cioRichPushImageFile = localFilePath
+            push.cioRichPushImageFile = localFilePath
         }
         return finishImmediately()
 

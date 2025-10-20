@@ -12,12 +12,20 @@ import Foundation
 public struct Atomic<DataType: Any> {
     fileprivate let exclusiveAccessQueue = DispatchQueue(label: "Atomic \(UUID())", qos: .userInteractive)
 
-    fileprivate var unsafeValue: DataType
+    // Use a class wrapper to avoid Swift's exclusivity checking on struct mutation
+    fileprivate final class ValueBox {
+        var value: DataType
+        init(_ value: DataType) {
+            self.value = value
+        }
+    }
+    
+    fileprivate let box: ValueBox
 
     /// Safely accesses the unsafe value from within the context of its exclusive-access queue
     public var wrappedValue: DataType {
-        get { exclusiveAccessQueue.sync { unsafeValue } }
-        set { exclusiveAccessQueue.sync { unsafeValue = newValue } }
+        get { exclusiveAccessQueue.sync { box.value } }
+        set { exclusiveAccessQueue.sync { box.value = newValue } }
     }
 
     /**
@@ -26,6 +34,6 @@ public struct Atomic<DataType: Any> {
      like this: `@Atomic var foo = Foo()`
      */
     public init(wrappedValue: DataType) {
-        self.unsafeValue = wrappedValue
+        self.box = ValueBox(wrappedValue)
     }
 }

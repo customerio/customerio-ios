@@ -14,13 +14,14 @@ public class DataPipeline: ModuleTopLevelObject<DataPipelineInstance>, DataPipel
     public var analytics: CioAnalytics.Analytics {
         implementation?.analytics ?? Analytics(configuration: Configuration(writeKey: "DEADINSTANCE"))
     }
-    
-    nonisolated(unsafe) private static var _shared = EnhancedSynchronized(DataPipeline())
-    nonisolated(unsafe) private static var _moduleConfig = EnhancedSynchronized<DataPipelineConfigOptions?>(nil)
+
+    private nonisolated(unsafe) static var _shared = EnhancedSynchronized(DataPipeline())
+    private nonisolated(unsafe) static var _moduleConfig = EnhancedSynchronized<DataPipelineConfigOptions?>(nil)
 
     public static var shared: DataPipeline {
         _shared.get()
     }
+
     public static var moduleConfig: DataPipelineConfigOptions {
         _moduleConfig.get()!
     }

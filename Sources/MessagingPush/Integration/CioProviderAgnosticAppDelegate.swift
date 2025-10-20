@@ -85,7 +85,8 @@ open class CioProviderAgnosticAppDelegate: CioAppDelegateType, @MainActor UNUser
         }
 
         if config?().autoTrackPushEvents ?? false,
-           var center = userNotificationCenter?() {
+           var center = userNotificationCenter?()
+        {
             wrappedNotificationCenterDelegate = center.delegate
             center.delegate = self
         }
@@ -125,7 +126,8 @@ open class CioProviderAgnosticAppDelegate: CioAppDelegateType, @MainActor UNUser
         // call `completionHandler` before returning.
         nonisolated(unsafe) var completionHandlerCalled = false
         if let wrappedNotificationCenterDelegate = wrappedNotificationCenterDelegate,
-           wrappedNotificationCenterDelegate.responds(to: #selector(UNUserNotificationCenterDelegate.userNotificationCenter(_:willPresent:withCompletionHandler:))) {
+           wrappedNotificationCenterDelegate.responds(to: #selector(UNUserNotificationCenterDelegate.userNotificationCenter(_:willPresent:withCompletionHandler:)))
+        {
             wrappedNotificationCenterDelegate.userNotificationCenter?(
                 center,
                 willPresent: notification,
@@ -167,7 +169,8 @@ open class CioProviderAgnosticAppDelegate: CioAppDelegateType, @MainActor UNUser
         // call `completionHandler` before returning.
         nonisolated(unsafe) var completionHandlerCalled = false
         if let wrappedNotificationCenterDelegate = wrappedNotificationCenterDelegate,
-           wrappedNotificationCenterDelegate.responds(to: #selector(UNUserNotificationCenterDelegate.userNotificationCenter(_:didReceive:withCompletionHandler:))) {
+           wrappedNotificationCenterDelegate.responds(to: #selector(UNUserNotificationCenterDelegate.userNotificationCenter(_:didReceive:withCompletionHandler:)))
+        {
             wrappedNotificationCenterDelegate.userNotificationCenter?(
                 center,
                 didReceive: response,
@@ -199,7 +202,8 @@ open class CioProviderAgnosticAppDelegate: CioAppDelegateType, @MainActor UNUser
             return self
         }
         if let wrappedAppDelegate = wrappedAppDelegate,
-           wrappedAppDelegate.responds(to: aSelector) {
+           wrappedAppDelegate.responds(to: aSelector)
+        {
             return wrappedAppDelegate
         }
         return nil
