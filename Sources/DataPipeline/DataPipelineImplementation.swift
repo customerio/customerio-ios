@@ -69,37 +69,23 @@ class DataPipelineImplementation: DataPipelineInstance {
     private func postProfileAlreadyIdentified() {
         let anonymousId = analytics.anonymousId
         if let siteId = moduleConfig.migrationSiteId, let identifier = profileStore.getProfileId(siteId: siteId) {
-            eventBusHandler.dispatch { handler in
-                await handler.postEvent(ProfileIdentifiedEvent(identifier: identifier))
-            }
+            eventBusHandler.postEvent(ProfileIdentifiedEvent(identifier: identifier))
         } else if let identifier = analytics.userId {
-            eventBusHandler.dispatch { handler in
-                await handler.postEvent(ProfileIdentifiedEvent(identifier: identifier))
-            }
+            eventBusHandler.postEvent(ProfileIdentifiedEvent(identifier: identifier))
         } else if !anonymousId.isEmpty {
-            eventBusHandler.dispatch { handler in
-                await handler.postEvent(AnonymousProfileIdentifiedEvent(identifier: anonymousId))
-            }
+            eventBusHandler.postEvent(AnonymousProfileIdentifiedEvent(identifier: anonymousId))
         }
     }
 
     private func subscribeToJourneyEvents() {
-        eventBusHandler.dispatch { handler in
-            await handler.addObserver(TrackMetricEvent.self) { metric in
-                self.trackPushMetric(deliveryID: metric.deliveryID, event: metric.event, deviceToken: metric.deviceToken)
-            }
+        eventBusHandler.addObserver(TrackMetricEvent.self) { metric in
+            self.trackPushMetric(deliveryID: metric.deliveryID, event: metric.event, deviceToken: metric.deviceToken)
         }
-
-        eventBusHandler.dispatch { handler in
-            await handler.addObserver(TrackInAppMetricEvent.self) { metric in
-                self.trackInAppMetric(deliveryID: metric.deliveryID, event: metric.event, metaData: metric.params)
-            }
+        eventBusHandler.addObserver(TrackInAppMetricEvent.self) { metric in
+            self.trackInAppMetric(deliveryID: metric.deliveryID, event: metric.event, metaData: metric.params)
         }
-
-        eventBusHandler.dispatch { handler in
-            await handler.addObserver(RegisterDeviceTokenEvent.self) { event in
-                self.registerDeviceToken(event.token)
-            }
+        eventBusHandler.addObserver(RegisterDeviceTokenEvent.self) { event in
+            self.registerDeviceToken(event.token)
         }
     }
 

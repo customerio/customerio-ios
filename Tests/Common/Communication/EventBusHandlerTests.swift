@@ -20,7 +20,7 @@ class EventBusHandlerTest: UnitTest {
             eventCache: mockEventCache,
             eventStorage: mockEventStorage,
             logger: log,
-            concurrency: diGraphShared.concurrencySupport
+            taskExecutor: diGraphShared.taskExecutor
         )
     }
 

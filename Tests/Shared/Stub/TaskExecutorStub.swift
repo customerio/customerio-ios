@@ -1,14 +1,14 @@
 import CioInternalCommon
 import Foundation
 
-/// Test stubs for ConcurrencySupport providing different execution behaviors.
+/// Test stubs for TaskExecutor providing different execution behaviors.
 ///
-/// Use `ConcurrencySupportStub.blocking` for simple synchronous execution,
-/// or `ConcurrencySupportStub.controllable()` for fine-grained control over task completion.
-public enum ConcurrencySupportStub {
+/// Use `TaskExecutorStub.blocking` for simple synchronous execution,
+/// or `TaskExecutorStub.controllable()` for fine-grained control over task completion.
+public enum TaskExecutorStub {
     /// Creates a blocking stub that executes operations synchronously.
     /// Similar to runBlocking in Android - blocks the calling thread until the task completes.
-    public static var blocking: ConcurrencySupport {
+    public static var blocking: TaskExecutor {
         BlockingStub()
     }
 
@@ -23,17 +23,17 @@ public enum ConcurrencySupportStub {
 
 /// Blocking implementation that executes tasks synchronously.
 /// Times out after 5 seconds to prevent intermittent test hangs.
-private final class BlockingStub: ConcurrencySupport {
+private final class BlockingStub: TaskExecutor {
     @discardableResult
-    func execute<Caller: Actor, Result: Sendable>(
-        on actor: Caller,
-        _ operation: @Sendable @escaping (isolated Caller) async throws -> Result
+    func execute<Target: AnyObject, Result: Sendable>(
+        on target: Target,
+        _ operation: @Sendable @escaping (Target) async throws -> Result
     ) -> Task<Result, Error> {
         let semaphore = DispatchSemaphore(value: 0)
 
         let task = Task<Result, Error> {
             do {
-                let result = try await operation(actor)
+                let result = try await operation(target)
                 semaphore.signal()
                 return result
             } catch {
@@ -56,7 +56,7 @@ private final class BlockingStub: ConcurrencySupport {
 // MARK: - Controllable Stub
 
 /// Controllable implementation that allows manual control over task completion.
-public final class ControllableStub: ConcurrencySupport {
+public final class ControllableStub: TaskExecutor {
     private struct PendingTask {
         let continuation: CheckedContinuation<Void, Never>
     }
@@ -89,9 +89,9 @@ public final class ControllableStub: ConcurrencySupport {
     }
 
     @discardableResult
-    public func execute<Caller: Actor, Result: Sendable>(
-        on actor: Caller,
-        _ operation: @Sendable @escaping (isolated Caller) async throws -> Result
+    public func execute<Target: AnyObject, Result: Sendable>(
+        on target: Target,
+        _ operation: @Sendable @escaping (Target) async throws -> Result
     ) -> Task<Result, Error> {
         let task = Task<Result, Error> {
             // Wait for the test to release this task using continuations
@@ -100,7 +100,7 @@ public final class ControllableStub: ConcurrencySupport {
             }
 
             // Now execute the operation
-            return try await operation(actor)
+            return try await operation(target)
         }
 
         return task

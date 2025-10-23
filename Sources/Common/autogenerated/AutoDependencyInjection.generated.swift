@@ -83,7 +83,7 @@ extension DIGraphShared {
         _ = deepLinkUtil
         countDependenciesResolved += 1
 
-        _ = concurrencySupport
+        _ = taskExecutor
         countDependenciesResolved += 1
 
         _ = deviceMetricsGrabber
@@ -178,7 +178,7 @@ extension DIGraphShared {
     }
 
     private func _get_eventBusHandler() -> EventBusHandler {
-        CioEventBusHandler(eventBus: eventBus, eventCache: eventCache, eventStorage: eventStorage, logger: logger, concurrency: concurrencySupport)
+        CioEventBusHandler(eventBus: eventBus, eventCache: eventCache, eventStorage: eventStorage, logger: logger, taskExecutor: taskExecutor)
     }
 
     // ProfileStore
@@ -288,28 +288,28 @@ extension DIGraphShared {
         DeepLinkUtilImpl(logger: sdkCommonLogger, uiKitWrapper: uIKitWrapper)
     }
 
-    // ConcurrencySupport (singleton)
-    public var concurrencySupport: ConcurrencySupport {
+    // TaskExecutor (singleton)
+    public var taskExecutor: TaskExecutor {
         getOverriddenInstance() ??
-            sharedConcurrencySupport
+            sharedTaskExecutor
     }
 
-    public var sharedConcurrencySupport: ConcurrencySupport {
+    public var sharedTaskExecutor: TaskExecutor {
         // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
         // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
-        DispatchQueue(label: "DIGraphShared_ConcurrencySupport_singleton_access").sync {
-            if let overridenDep: ConcurrencySupport = getOverriddenInstance() {
+        DispatchQueue(label: "DIGraphShared_TaskExecutor_singleton_access").sync {
+            if let overridenDep: TaskExecutor = getOverriddenInstance() {
                 return overridenDep
             }
-            let existingSingletonInstance = self.singletons[String(describing: ConcurrencySupport.self)] as? ConcurrencySupport
-            let instance = existingSingletonInstance ?? _get_concurrencySupport()
-            self.singletons[String(describing: ConcurrencySupport.self)] = instance
+            let existingSingletonInstance = self.singletons[String(describing: TaskExecutor.self)] as? TaskExecutor
+            let instance = existingSingletonInstance ?? _get_taskExecutor()
+            self.singletons[String(describing: TaskExecutor.self)] = instance
             return instance
         }
     }
 
-    private func _get_concurrencySupport() -> ConcurrencySupport {
-        DefaultConcurrencySupport()
+    private func _get_taskExecutor() -> TaskExecutor {
+        DefaultTaskExecutor()
     }
 
     // DeviceMetricsGrabber

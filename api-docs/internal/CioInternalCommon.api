@@ -33,17 +33,13 @@ public final class CioInternalCommon.CioEventBusHandler {
     eventCache: EventCache,
     eventStorage: EventStorage,
     logger: Logger,
-    concurrency: ConcurrencySupport
+    taskExecutor: TaskExecutor
 );
-	public fun deinit;
-	public fun func disposeWithLifecycle(_ task: Task<Unit, any Error>);
-	public fun nonisolated func dispatch(
-    _ operation: @Sendable @escaping (isolated EventBusHandler) async -> Unit
-) -> Task<Unit, Error>;
 	public fun func loadEventsFromStorage() async;
-	public fun func addObserver<E: EventRepresentable>(_ eventType: E.Type, action: @escaping @Sendable (E) -> Unit) async;
-	public fun func removeObserver<E: EventRepresentable>(for eventType: E.Type) async;
-	public fun func postEvent<E: EventRepresentable>(_ event: E) async;
+	public fun func addObserver<E: EventRepresentable>(_ eventType: E.Type, action: @escaping @Sendable (E) -> Unit);
+	public fun func removeObserver<E: EventRepresentable>(for eventType: E.Type);
+	public fun func postEvent<E: EventRepresentable>(_ event: E);
+	public fun func postEventAndWait<E: EventRepresentable>(_ event: E) async;
 	public fun func removeFromStorage<E: EventRepresentable>(_ event: E) async;
 }
 public enum CioInternalCommon.CioLogLevel {
@@ -65,12 +61,6 @@ public final class CioInternalCommon.CioSharedDataStore {
 public final class CioInternalCommon.CioThreadUtil {
 	public fun func runMain(_ block: @escaping () -> Unit);
 	public fun func runBackground(_ block: @escaping () -> Unit);
-}
-public interface CioInternalCommon.ConcurrencySupport {
-	public fun func execute<Caller: Actor, Result: Sendable>(
-    on actor: Caller,
-    _ operation: @Sendable @escaping (isolated Caller) async throws -> Result
-) -> Task<Result, Error>;
 }
 public final class CioInternalCommon.CreateQueueStorageTaskResult {
 	public final val success: Boolean;
@@ -161,10 +151,10 @@ public final class CioInternalCommon.DeepLinkUtilImpl {
 	public fun @_spi(Internal) func setDeepLinkCallback(_ callback: @escaping DeepLinkCallback);
 	public fun func handleDeepLink(_ deepLinkUrl: URL);
 }
-public final class CioInternalCommon.DefaultConcurrencySupport {
-	public fun func execute<Caller: Actor, Result: Sendable>(
-    on actor: Caller,
-    _ operation: @Sendable @escaping (isolated Caller) async throws -> Result
+public final class CioInternalCommon.DefaultTaskExecutor {
+	public fun func execute<Target: AnyObject, Result: Sendable>(
+    on target: Target,
+    _ operation: @Sendable @escaping (Target) async throws -> Result
 ) -> Task<Result, Error>;
 }
 public final class CioInternalCommon.DeleteDeviceTokenEvent {
@@ -214,14 +204,11 @@ public interface CioInternalCommon.EventBus {
 	public fun func removeObserver(for eventType: String) async;
 }
 public interface CioInternalCommon.EventBusHandler {
-	public fun func disposeWithLifecycle(_ task: Task<Unit, Error>);
-	public fun nonisolated func dispatch(
-    _ operation: @Sendable @escaping (isolated EventBusHandler) async -> Unit
-) -> Task<Unit, Error>;
 	public fun func loadEventsFromStorage() async;
-	public fun func addObserver<E: EventRepresentable>(_ eventType: E.Type, action: @escaping @Sendable (E) -> Unit) async;
-	public fun func removeObserver<E: EventRepresentable>(for eventType: E.Type) async;
-	public fun func postEvent<E: EventRepresentable>(_ event: E) async;
+	public fun func addObserver<E: EventRepresentable>(_ eventType: E.Type, action: @escaping @Sendable (E) -> Unit);
+	public fun func removeObserver<E: EventRepresentable>(for eventType: E.Type);
+	public fun func postEvent<E: EventRepresentable>(_ event: E);
+	public fun func postEventAndWait<E: EventRepresentable>(_ event: E) async;
 	public fun func removeFromStorage<E: EventRepresentable>(_ event: E) async;
 }
 public interface CioInternalCommon.EventCache {
@@ -498,6 +485,12 @@ public final class CioInternalCommon.TaskDetail {
 	public final val data: Data;
 	public final val taskType: QueueTaskType;
 	public final val timestamp: Date;
+}
+public interface CioInternalCommon.TaskExecutor {
+	public fun func execute<Target: AnyObject, Result: Sendable>(
+    on target: Target,
+    _ operation: @Sendable @escaping (Target) async throws -> Result
+) -> Task<Result, Error>;
 }
 public final class CioInternalCommon.ThreadSafeBoxedValue {
 	public fun init(_ value: Value);

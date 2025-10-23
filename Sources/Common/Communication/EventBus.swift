@@ -78,10 +78,7 @@ class EventBusObserversHolder {
     /// Deinitializer for EventBusObserversHolder.
     /// Ensures that all observers are removed from NotificationCenter upon deinitialization.
     deinit {
-        let eventObservers = observers
-        eventObservers.forEach { _, observerList in
-            observerList.forEach(notificationCenter.removeObserver)
-        }
+        removeAllObservers()
     }
 }
 
