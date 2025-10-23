@@ -35,7 +35,7 @@ class DataPipelineEventBustTests: IntegrationTest {
 
         let givenMetricEvent = TrackMetricEvent(deliveryID: givenDeliveryID, event: givenMetric, deviceToken: givenDeviceToken)
 
-        await eventBusHandler.postEvent(givenMetricEvent)
+        await eventBusHandler.postEventAndWait(givenMetricEvent)
 
         let expectedData: [String: Any] = [
             "metric": givenMetric,
@@ -63,7 +63,7 @@ class DataPipelineEventBustTests: IntegrationTest {
 
         deviceAttributesMock.getDefaultDeviceAttributesClosure = { $0([:]) }
 
-        await eventBusHandler.postEvent(givenRegisterEvent)
+        await eventBusHandler.postEventAndWait(givenRegisterEvent)
 
         guard let trackEvent = outputReader.lastEvent as? TrackEvent else {
             XCTFail("recorded event is not an instance of TrackEvent")

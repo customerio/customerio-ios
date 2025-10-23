@@ -18,7 +18,8 @@ public final class CioEventBusHandler: EventBusHandler {
     private let eventBus: EventBus
     private let eventCache: EventCache
     let eventStorage: EventStorage
-    let logger: Logger
+    // [Swift6] Logger is not Sendable yet, but safe because it's immutable and loggers are thread-safe by design
+    nonisolated(unsafe) let logger: Logger
 
     private let taskExecutor: TaskExecutor
 

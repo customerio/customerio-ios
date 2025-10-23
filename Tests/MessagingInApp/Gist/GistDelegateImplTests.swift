@@ -91,7 +91,7 @@ class GistDelegateImplTests: UnitTest {
         XCTAssertEqual(mockEventListener.errorWithMessageReceivedArguments?.messageId, "test-message-id", "Message ID should match")
     }
 
-    func testActionWithNormalAction() async {
+    func testActionWithNormalAction() {
         let message = Message(messageId: "test-message-id", campaignId: "test-delivery-id")
         let action = "https://customerio.com"
         let name = "Visit Website"

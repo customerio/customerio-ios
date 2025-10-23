@@ -78,7 +78,7 @@ class EventBusObserversHolder {
     /// Deinitializer for EventBusObserversHolder.
     /// Ensures that all observers are removed from NotificationCenter upon deinitialization.
     deinit {
-        removeAllObservers()
+        self.removeAllObservers()
     }
 }
 

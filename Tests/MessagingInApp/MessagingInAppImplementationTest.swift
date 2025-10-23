@@ -202,6 +202,6 @@ class MessagingInAppImplementationTest: IntegrationTest {
 
 extension MessagingInAppImplementationTest {
     func postEventAndWait<E: EventRepresentable>(event: E) async {
-        await eventBusHandler.postEvent(event)
+        await eventBusHandler.postEventAndWait(event)
     }
 }

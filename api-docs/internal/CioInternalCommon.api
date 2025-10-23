@@ -492,10 +492,6 @@ public interface CioInternalCommon.TaskExecutor {
     _ operation: @Sendable @escaping (Target) async throws -> Result
 ) -> Task<Result, Error>;
 }
-public final class CioInternalCommon.ThreadSafeBoxedValue {
-	public fun init(_ value: Value);
-	public fun func withValue<T>(_ body: (inout Value) -> T) -> T;
-}
 public interface CioInternalCommon.ThreadUtil {
 	public fun func runBackground(_ block: @escaping () -> Unit);
 	public fun func runMain(_ block: @escaping () -> Unit);

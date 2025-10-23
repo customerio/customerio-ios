@@ -11,72 +11,62 @@ public final class EventBusHandlerMock: EventBusHandler, Mock {
         var addObserverCallsCount = 0
         var removeObserverCallsCount = 0
         var postEventCallsCount = 0
-        var removeFromStorageCallsCount = 0
-        var removeAllObserversCallsCount = 0
         var postEventArguments: (any EventRepresentable)?
         var postEventReceivedInvocations: [any EventRepresentable] = []
+        var removeFromStorageCallsCount = 0
+        var removeAllObserversCallsCount = 0
         var removeAllObserversClosure: (() -> Void)?
     }
 
     private let storage = ThreadSafeBoxedValue(MockData())
 
     public var mockCalled: Bool { storage.withValue { $0.mockCalled } }
-    public var loadEventsFromStorageCallsCount: Int { storage.withValue { $0.loadEventsFromStorageCallsCount } }
-    public var loadEventsFromStorageCalled: Bool { loadEventsFromStorageCallsCount > 0 }
-    public var addObserverCallsCount: Int { storage.withValue { $0.addObserverCallsCount } }
-    public var addObserverCalled: Bool { addObserverCallsCount > 0 }
-    public var removeObserverCallsCount: Int { storage.withValue { $0.removeObserverCallsCount } }
-    public var removeObserverCalled: Bool { removeObserverCallsCount > 0 }
-    public var postEventCallsCount: Int { storage.withValue { $0.postEventCallsCount } }
-    public var postEventCalled: Bool { postEventCallsCount > 0 }
-    public var postEventArguments: (any EventRepresentable)? { storage.withValue { $0.postEventArguments } }
-    public var postEventReceivedInvocations: [any EventRepresentable] { storage.withValue { $0.postEventReceivedInvocations } }
-    public var removeFromStorageCallsCount: Int { storage.withValue { $0.removeFromStorageCallsCount } }
-    public var removeFromStorageCalled: Bool { removeFromStorageCallsCount > 0 }
-    public var removeAllObserversCallsCount: Int { storage.withValue { $0.removeAllObserversCallsCount } }
-    public var removeAllObserversCalled: Bool { removeAllObserversCallsCount > 0 }
-
-    public var removeAllObserversClosure: (() -> Void)? {
-        get { storage.withValue { $0.removeAllObserversClosure } }
-        set { storage.withValue { $0.removeAllObserversClosure = newValue } }
-    }
 
     public init() {
         Mocks.shared.add(mock: self)
     }
 
-    /// Thread-safe access to mutate mock tracking data
-    private func withMockData(_ body: (inout MockData) -> Void) {
-        storage.withValue(body)
+    public func resetMock() {
+        storage.withValue { $0 = MockData() }
     }
 
-    public func resetMock() {
-        withMockData { $0 = MockData() }
-    }
+    public var loadEventsFromStorageCallsCount: Int { storage.withValue { $0.loadEventsFromStorageCallsCount } }
+    public var loadEventsFromStorageCalled: Bool { loadEventsFromStorageCallsCount > 0 }
 
     public func loadEventsFromStorage() async {
-        withMockData {
+        storage.withValue {
             $0.mockCalled = true
             $0.loadEventsFromStorageCallsCount += 1
         }
     }
 
+    public var addObserverCallsCount: Int { storage.withValue { $0.addObserverCallsCount } }
+    public var addObserverCalled: Bool { addObserverCallsCount > 0 }
+
     public func addObserver<E>(_ eventType: E.Type, action: @escaping @Sendable (E) -> Void) where E: CioInternalCommon.EventRepresentable {
-        withMockData {
+        storage.withValue {
             $0.mockCalled = true
             $0.addObserverCallsCount += 1
         }
     }
 
+    public var removeObserverCallsCount: Int { storage.withValue { $0.removeObserverCallsCount } }
+    public var removeObserverCalled: Bool { removeObserverCallsCount > 0 }
+
     public func removeObserver<E>(for eventType: E.Type) where E: CioInternalCommon.EventRepresentable {
-        withMockData {
+        storage.withValue {
             $0.mockCalled = true
             $0.removeObserverCallsCount += 1
         }
     }
 
+    public var postEventCallsCount: Int { storage.withValue { $0.postEventCallsCount } }
+    public var postEventCalled: Bool { postEventCallsCount > 0 }
+    public var postEventArguments: (any EventRepresentable)? { storage.withValue { $0.postEventArguments } }
+    public var postEventReceivedInvocations: [any EventRepresentable] { storage.withValue { $0.postEventReceivedInvocations } }
+
     public func postEvent<E: EventRepresentable>(_ event: E) {
-        withMockData {
+        storage.withValue {
             $0.mockCalled = true
             $0.postEventCallsCount += 1
             $0.postEventArguments = event
@@ -88,19 +78,31 @@ public final class EventBusHandlerMock: EventBusHandler, Mock {
         postEvent(event)
     }
 
+    public var removeFromStorageCallsCount: Int { storage.withValue { $0.removeFromStorageCallsCount } }
+    public var removeFromStorageCalled: Bool { removeFromStorageCallsCount > 0 }
+
     public func removeFromStorage<E>(_ event: E) async where E: CioInternalCommon.EventRepresentable {
-        withMockData {
+        storage.withValue {
             $0.mockCalled = true
             $0.removeFromStorageCallsCount += 1
         }
     }
 
+    // MARK: - removeAllObservers
+
+    public var removeAllObserversCallsCount: Int { storage.withValue { $0.removeAllObserversCallsCount } }
+    public var removeAllObserversCalled: Bool { removeAllObserversCallsCount > 0 }
+
+    public var removeAllObserversClosure: (() -> Void)? {
+        get { storage.withValue { $0.removeAllObserversClosure } }
+        set { storage.withValue { $0.removeAllObserversClosure = newValue } }
+    }
+
     public func removeAllObservers() {
-        withMockData {
+        storage.withValue {
             $0.mockCalled = true
             $0.removeAllObserversCallsCount += 1
         }
-        // Read the closure after updating counts
         let closure = storage.withValue { $0.removeAllObserversClosure }
         closure?()
     }
