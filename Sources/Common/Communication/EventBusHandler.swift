@@ -85,9 +85,7 @@ public final class CioEventBusHandler: EventBusHandler {
             if let specificEvent = event as? E {
                 action(specificEvent)
             } else {
-                self.execute { handler in
-                    handler.logger.debug("Error: Event type did not match")
-                }
+                self.logger.debug("Error: Event type did not match")
             }
         }
 
