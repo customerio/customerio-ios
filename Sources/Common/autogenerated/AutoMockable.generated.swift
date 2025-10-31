@@ -1143,8 +1143,8 @@ public class EventBusMock: EventBus, Mock {
      */
     public var addObserverClosure: ((String, @escaping (AnyEventRepresentable) -> Void) -> Void)?
 
-    /// Mocked function for `addObserver(_ eventType: String, action: @escaping (AnyEventRepresentable) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func addObserver(_ eventType: String, action: @escaping (AnyEventRepresentable) -> Void) {
+    /// Mocked function for `addObserver(_ eventType: String, action: @Sendable @escaping (AnyEventRepresentable) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func addObserver(_ eventType: String, action: @Sendable @escaping (AnyEventRepresentable) -> Void) {
         mockCalled = true
         addObserverCallsCount += 1
         addObserverReceivedArguments = (eventType: eventType, action: action)

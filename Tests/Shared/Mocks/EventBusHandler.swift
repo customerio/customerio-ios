@@ -1,94 +1,109 @@
 import CioInternalCommon
+import Foundation
 
 /// Mock of the EventBusHandler class, designed to mimic AutoMockable
 /// Once the class is generated using AutoMockable, it should seamlessly replace the current implementation without any issues
-public class EventBusHandlerMock: EventBusHandler, Mock {
-    public var mockCalled: Bool = false
+public final class EventBusHandlerMock: EventBusHandler, Mock {
+    /// Thread-safe storage for tracking mock invocations
+    private struct MockData {
+        var mockCalled = false
+        var loadEventsFromStorageCallsCount = 0
+        var addObserverCallsCount = 0
+        var removeObserverCallsCount = 0
+        var postEventCallsCount = 0
+        var postEventArguments: (any EventRepresentable)?
+        var postEventReceivedInvocations: [any EventRepresentable] = []
+        var removeFromStorageCallsCount = 0
+        var removeAllObserversCallsCount = 0
+        var removeAllObserversClosure: (() -> Void)?
+    }
+
+    private let storage = ThreadSafeBoxedValue(MockData())
+
+    public var mockCalled: Bool { storage.withValue { $0.mockCalled } }
 
     public init() {
         Mocks.shared.add(mock: self)
     }
 
     public func resetMock() {
-        mockCalled = false
-        loadEventsFromStorageCallsCount = 0
-        addObserverCallsCount = 0
-        removeObserverCallsCount = 0
-        postEventCallsCount = 0
-        postEventReceivedInvocations = []
-        removeFromStorageCallsCount = 0
-        removeAllObserversCallsCount = 0
+        storage.withValue { $0 = MockData() }
     }
 
-    public private(set) var loadEventsFromStorageCallsCount = 0
+    public var loadEventsFromStorageCallsCount: Int { storage.withValue { $0.loadEventsFromStorageCallsCount } }
     public var loadEventsFromStorageCalled: Bool { loadEventsFromStorageCallsCount > 0 }
 
     public func loadEventsFromStorage() async {
-        mockCalled = true
-        loadEventsFromStorageCallsCount += 1
+        storage.withValue {
+            $0.mockCalled = true
+            $0.loadEventsFromStorageCallsCount += 1
+        }
     }
 
-    public private(set) var addObserverCallsCount = 0
+    public var addObserverCallsCount: Int { storage.withValue { $0.addObserverCallsCount } }
     public var addObserverCalled: Bool { addObserverCallsCount > 0 }
 
-    public func addObserver<E>(_ eventType: E.Type, action: @escaping (E) -> Void) where E: CioInternalCommon.EventRepresentable {
-        mockCalled = true
-        addObserverCallsCount += 1
+    public func addObserver<E>(_ eventType: E.Type, action: @escaping @Sendable (E) -> Void) where E: CioInternalCommon.EventRepresentable {
+        storage.withValue {
+            $0.mockCalled = true
+            $0.addObserverCallsCount += 1
+        }
     }
 
-    public private(set) var removeObserverCallsCount = 0
+    public var removeObserverCallsCount: Int { storage.withValue { $0.removeObserverCallsCount } }
     public var removeObserverCalled: Bool { removeObserverCallsCount > 0 }
 
     public func removeObserver<E>(for eventType: E.Type) where E: CioInternalCommon.EventRepresentable {
-        mockCalled = true
-        removeObserverCallsCount += 1
+        storage.withValue {
+            $0.mockCalled = true
+            $0.removeObserverCallsCount += 1
+        }
     }
 
-    public private(set) var postEventCallsCount = 0
+    public var postEventCallsCount: Int { storage.withValue { $0.postEventCallsCount } }
     public var postEventCalled: Bool { postEventCallsCount > 0 }
-    public private(set) var postEventArguments: (any EventRepresentable)?
-    public private(set) var postEventReceivedInvocations: [any EventRepresentable] = []
+    public var postEventArguments: (any EventRepresentable)? { storage.withValue { $0.postEventArguments } }
+    public var postEventReceivedInvocations: [any EventRepresentable] { storage.withValue { $0.postEventReceivedInvocations } }
 
     public func postEvent<E: EventRepresentable>(_ event: E) {
-        mockCalled = true
-        postEventCallsCount += 1
-        postEventArguments = event
-        postEventReceivedInvocations.append(event)
+        storage.withValue {
+            $0.mockCalled = true
+            $0.postEventCallsCount += 1
+            $0.postEventArguments = event
+            $0.postEventReceivedInvocations.append(event)
+        }
     }
 
     public func postEventAndWait<E>(_ event: E) async where E: EventRepresentable {
-        mockCalled = true
-        postEventCallsCount += 1
-        postEventArguments = event
-        postEventReceivedInvocations.append(event)
+        postEvent(event)
     }
 
-    public private(set) var removeFromStorageCallsCount = 0
+    public var removeFromStorageCallsCount: Int { storage.withValue { $0.removeFromStorageCallsCount } }
     public var removeFromStorageCalled: Bool { removeFromStorageCallsCount > 0 }
 
     public func removeFromStorage<E>(_ event: E) async where E: CioInternalCommon.EventRepresentable {
-        mockCalled = true
-        removeFromStorageCallsCount += 1
+        storage.withValue {
+            $0.mockCalled = true
+            $0.removeFromStorageCallsCount += 1
+        }
     }
 
     // MARK: - removeAllObservers
 
-    /// Number of times the function was called.
-    @Atomic public private(set) var removeAllObserversCallsCount = 0
-    /// `true` if the function was ever called.
-    public var removeAllObserversCalled: Bool {
-        removeAllObserversCallsCount > 0
+    public var removeAllObserversCallsCount: Int { storage.withValue { $0.removeAllObserversCallsCount } }
+    public var removeAllObserversCalled: Bool { removeAllObserversCallsCount > 0 }
+
+    public var removeAllObserversClosure: (() -> Void)? {
+        get { storage.withValue { $0.removeAllObserversClosure } }
+        set { storage.withValue { $0.removeAllObserversClosure = newValue } }
     }
 
-    /**
-     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
-     */
-    public var removeAllObserversClosure: (() -> Void)?
-
-    /// Mocked function for `removeAllObservers()`. Your opportunity to return a mocked value and check result of mock in test code.
     public func removeAllObservers() {
-        mockCalled = true
-        removeAllObserversCallsCount += 1
-        removeAllObserversClosure?()
+        storage.withValue {
+            $0.mockCalled = true
+            $0.removeAllObserversCallsCount += 1
+        }
+        let closure = storage.withValue { $0.removeAllObserversClosure }
+        closure?()
     }
 }

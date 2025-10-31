@@ -86,9 +86,11 @@ open class UnitTestBase<Component>: XCTestCase {
     open func setUpDependencies() {
         dateUtilStub = DateUtilStub()
         threadUtilStub = ThreadUtilStub()
+        let taskExecutorStub = TaskExecutorStub.blocking
 
         // make default behavior of tests to run async code in synchronous way to make tests more predictable.
         diGraphShared.override(value: threadUtilStub, forType: ThreadUtil.self)
+        diGraphShared.override(value: taskExecutorStub, forType: TaskExecutor.self)
     }
 
     @discardableResult

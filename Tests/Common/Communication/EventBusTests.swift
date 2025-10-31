@@ -87,7 +87,7 @@ class EventBusTests: UnitTest {
 
     // MARK: - Observer Removal Tests
 
-    func test_removeAllObservers_givenAllObserversRemoved_expectNoObserversNotified() async {
+    func test_removeObserver_givenObserverRemoved_expectObserverNotNotified() async {
         let exp = XCTestExpectation(description: "Event received")
         exp.isInverted = true
 

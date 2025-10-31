@@ -32,11 +32,11 @@ public final class CioInternalCommon.CioEventBusHandler {
     eventBus: EventBus,
     eventCache: EventCache,
     eventStorage: EventStorage,
-    logger: Logger
+    logger: Logger,
+    taskExecutor: TaskExecutor
 );
-	public fun deinit;
 	public fun func loadEventsFromStorage() async;
-	public fun func addObserver<E: EventRepresentable>(_ eventType: E.Type, action: @escaping (E) -> Unit);
+	public fun func addObserver<E: EventRepresentable>(_ eventType: E.Type, action: @escaping @Sendable (E) -> Unit);
 	public fun func removeObserver<E: EventRepresentable>(for eventType: E.Type);
 	public fun func postEvent<E: EventRepresentable>(_ event: E);
 	public fun func postEventAndWait<E: EventRepresentable>(_ event: E) async;
@@ -151,6 +151,12 @@ public final class CioInternalCommon.DeepLinkUtilImpl {
 	public fun @_spi(Internal) func setDeepLinkCallback(_ callback: @escaping DeepLinkCallback);
 	public fun func handleDeepLink(_ deepLinkUrl: URL);
 }
+public final class CioInternalCommon.DefaultTaskExecutor {
+	public fun func execute<Target: AnyObject, Result: Sendable>(
+    on target: Target,
+    _ operation: @Sendable @escaping (Target) async throws -> Result
+) -> Task<Result, Error>;
+}
 public final class CioInternalCommon.DeleteDeviceTokenEvent {
 	public final val storageId: String;
 	public final val params: List<String : String>;
@@ -194,12 +200,12 @@ public final class CioInternalCommon.ErrorsMessageResponse {
 }
 public interface CioInternalCommon.EventBus {
 	public fun func post(_ event: AnyEventRepresentable) async -> Boolean;
-	public fun func addObserver(_ eventType: String, action: @escaping (AnyEventRepresentable) -> Unit) async;
+	public fun func addObserver(_ eventType: String, action: @escaping @Sendable (AnyEventRepresentable) -> Unit) async;
 	public fun func removeObserver(for eventType: String) async;
 }
 public interface CioInternalCommon.EventBusHandler {
 	public fun func loadEventsFromStorage() async;
-	public fun func addObserver<E: EventRepresentable>(_ eventType: E.Type, action: @escaping (E) -> Unit);
+	public fun func addObserver<E: EventRepresentable>(_ eventType: E.Type, action: @escaping @Sendable (E) -> Unit);
 	public fun func removeObserver<E: EventRepresentable>(for eventType: E.Type);
 	public fun func postEvent<E: EventRepresentable>(_ event: E);
 	public fun func postEventAndWait<E: EventRepresentable>(_ event: E) async;
@@ -479,6 +485,12 @@ public final class CioInternalCommon.TaskDetail {
 	public final val data: Data;
 	public final val taskType: QueueTaskType;
 	public final val timestamp: Date;
+}
+public interface CioInternalCommon.TaskExecutor {
+	public fun func execute<Target: AnyObject, Result: Sendable>(
+    on target: Target,
+    _ operation: @Sendable @escaping (Target) async throws -> Result
+) -> Task<Result, Error>;
 }
 public interface CioInternalCommon.ThreadUtil {
 	public fun func runBackground(_ block: @escaping () -> Unit);

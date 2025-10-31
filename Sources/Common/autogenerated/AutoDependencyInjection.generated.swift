@@ -83,6 +83,9 @@ extension DIGraphShared {
         _ = deepLinkUtil
         countDependenciesResolved += 1
 
+        _ = taskExecutor
+        countDependenciesResolved += 1
+
         _ = deviceMetricsGrabber
         countDependenciesResolved += 1
 
@@ -175,7 +178,7 @@ extension DIGraphShared {
     }
 
     private func _get_eventBusHandler() -> EventBusHandler {
-        CioEventBusHandler(eventBus: eventBus, eventCache: eventCache, eventStorage: eventStorage, logger: logger)
+        CioEventBusHandler(eventBus: eventBus, eventCache: eventCache, eventStorage: eventStorage, logger: logger, taskExecutor: taskExecutor)
     }
 
     // ProfileStore
@@ -283,6 +286,30 @@ extension DIGraphShared {
     @available(iOSApplicationExtension, unavailable)
     private func _get_deepLinkUtil() -> DeepLinkUtil {
         DeepLinkUtilImpl(logger: sdkCommonLogger, uiKitWrapper: uIKitWrapper)
+    }
+
+    // TaskExecutor (singleton)
+    public var taskExecutor: TaskExecutor {
+        getOverriddenInstance() ??
+            sharedTaskExecutor
+    }
+
+    public var sharedTaskExecutor: TaskExecutor {
+        // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
+        // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
+        DispatchQueue(label: "DIGraphShared_TaskExecutor_singleton_access").sync {
+            if let overridenDep: TaskExecutor = getOverriddenInstance() {
+                return overridenDep
+            }
+            let existingSingletonInstance = self.singletons[String(describing: TaskExecutor.self)] as? TaskExecutor
+            let instance = existingSingletonInstance ?? _get_taskExecutor()
+            self.singletons[String(describing: TaskExecutor.self)] = instance
+            return instance
+        }
+    }
+
+    private func _get_taskExecutor() -> TaskExecutor {
+        DefaultTaskExecutor()
     }
 
     // DeviceMetricsGrabber

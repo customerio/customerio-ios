@@ -1,6 +1,6 @@
 import Foundation
 
-public protocol EventCache: AutoMockable {
+public protocol EventCache: AutoMockable, Sendable {
     func addEvent(event: AnyEventRepresentable) async
     func storeEvents(_ events: [AnyEventRepresentable], forKey key: String) async
     func getEvent(_ key: String) async -> [AnyEventRepresentable]

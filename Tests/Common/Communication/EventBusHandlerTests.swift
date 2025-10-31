@@ -19,24 +19,14 @@ class EventBusHandlerTest: UnitTest {
             eventBus: mockEventBus,
             eventCache: mockEventCache,
             eventStorage: mockEventStorage,
-            logger: log
+            logger: log,
+            taskExecutor: diGraphShared.taskExecutor
         )
     }
 
     func test_initialization_givenEventBusHandler_expectEventsLoadedFromStorage() async throws {
+        // Initializing the handler will trigger loadEvents call (blocking stub executes synchronously)
         _ = initializeEventBusHandler()
-
-        // Expectation to wait for loadEvents to complete
-        let loadEventsExpectation = XCTestExpectation(description: "Waiting for loadEvents to complete")
-
-        // Mock action to fulfill the expectation
-        mockEventStorage.loadEventsClosure = { _ in
-            loadEventsExpectation.fulfill()
-            return [] // Return an empty array or mock data as needed
-        }
-
-        // Wait for the loadEvents operation to complete
-        await fulfillment(of: [loadEventsExpectation], timeout: 5.0)
 
         // Then (Actual): Verify that loadEvents was called for all event types
         XCTAssertEqual(mockEventStorage.loadEventsCallsCount, EventTypesRegistry.allEventTypes().count, "loadEvents should be called once during initialization")

@@ -56,10 +56,8 @@ class DataPipelineImplementation: DataPipelineInstance {
 
         // plugin to update context properties for each request
         analytics.add(plugin: contextPlugin)
-
         // plugin to publish data pipeline events
         analytics.add(plugin: DataPipelinePublishedEvents(diGraph: diGraph))
-
         // Add plugin to filter events based on SDK configuration
         analytics.add(plugin: ScreenFilterPlugin(screenViewUse: moduleConfig.screenViewUse))
 
@@ -69,12 +67,13 @@ class DataPipelineImplementation: DataPipelineInstance {
     }
 
     private func postProfileAlreadyIdentified() {
+        let anonymousId = analytics.anonymousId
         if let siteId = moduleConfig.migrationSiteId, let identifier = profileStore.getProfileId(siteId: siteId) {
             eventBusHandler.postEvent(ProfileIdentifiedEvent(identifier: identifier))
         } else if let identifier = analytics.userId {
             eventBusHandler.postEvent(ProfileIdentifiedEvent(identifier: identifier))
-        } else if !analytics.anonymousId.isEmpty {
-            eventBusHandler.postEvent(AnonymousProfileIdentifiedEvent(identifier: analytics.anonymousId))
+        } else if !anonymousId.isEmpty {
+            eventBusHandler.postEvent(AnonymousProfileIdentifiedEvent(identifier: anonymousId))
         }
     }
 
@@ -82,11 +81,9 @@ class DataPipelineImplementation: DataPipelineInstance {
         eventBusHandler.addObserver(TrackMetricEvent.self) { metric in
             self.trackPushMetric(deliveryID: metric.deliveryID, event: metric.event, deviceToken: metric.deviceToken)
         }
-
         eventBusHandler.addObserver(TrackInAppMetricEvent.self) { metric in
             self.trackInAppMetric(deliveryID: metric.deliveryID, event: metric.event, metaData: metric.params)
         }
-
         eventBusHandler.addObserver(RegisterDeviceTokenEvent.self) { event in
             self.registerDeviceToken(event.token)
         }
