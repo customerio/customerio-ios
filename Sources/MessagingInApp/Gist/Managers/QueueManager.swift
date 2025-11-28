@@ -43,6 +43,7 @@ class QueueManager {
                 switch response {
                 case .success(let (data, response)):
                     self.updatePollingInterval(headers: response.allHeaderFields)
+                    self.updateSseFlag(headers: response.allHeaderFields)
                     self.logger.logWithModuleTag("Gist queue fetch response: \(response.statusCode)", level: .debug)
                     switch response.statusCode {
                     case 304:
@@ -139,6 +140,28 @@ class QueueManager {
 
             logger.logWithModuleTag("Updating polling interval to: \(newPollingInterval) seconds", level: .debug)
             inAppMessageManager.dispatch(action: .setPollingInterval(interval: newPollingInterval))
+        }
+    }
+
+    private func updateSseFlag(headers: [AnyHashable: Any]) {
+        // Check for SSE flag in headers
+        if let sseHeaderValue = headers["x-cio-use-sse"] as? String {
+            logger.logWithModuleTag("X-CIO-Use-SSE header found with value: '\(sseHeaderValue)'", level: .info)
+            let useSse = sseHeaderValue.lowercased() == "true"
+
+            inAppMessageManager.fetchState { [weak self] state in
+                guard let self = self else { return }
+
+                // Only update if the value has changed
+                if state.useSse != useSse {
+                    logger.logWithModuleTag("SSE flag changing from \(state.useSse) to \(useSse)", level: .info)
+                    inAppMessageManager.dispatch(action: .setSseEnabled(enabled: useSse))
+                } else {
+                    logger.logWithModuleTag("SSE flag unchanged, remains: \(useSse)", level: .debug)
+                }
+            }
+        } else {
+            logger.logWithModuleTag("X-CIO-Use-SSE header not present in response", level: .debug)
         }
     }
 }

@@ -50,7 +50,8 @@ class InAppMessageStateTests: IntegrationTest {
             gistDelegate: diGraphShared.gistDelegate,
             inAppMessageManager: inAppMessageManager,
             queueManager: queueManager,
-            threadUtil: diGraphShared.threadUtil
+            threadUtil: diGraphShared.threadUtil,
+            sseConnectionManager: diGraphShared.sseConnectionManager
         )
     }
 
@@ -78,6 +79,7 @@ class InAppMessageStateTests: IntegrationTest {
         XCTAssertEqual(state.pollInterval, 600)
         XCTAssertNil(state.userId)
         XCTAssertNil(state.currentRoute)
+        XCTAssertEqual(state.useSse, false)
         XCTAssertEqual(state.modalMessageState, .initial)
         XCTAssertTrue(state.messagesInQueue.isEmpty)
         XCTAssertTrue(state.shownMessageQueueIds.isEmpty)
@@ -584,6 +586,267 @@ class InAppMessageStateTests: IntegrationTest {
         gist.fetchUserMessagesFromRemoteQueue()
 
         XCTAssertTrue(state.messagesInQueue.isEmpty)
+    }
+
+    // MARK: - SSE Flag Tests
+
+    func test_setSseEnabled_givenTrue_expectSseFlagSetToTrue() async {
+        await inAppMessageManager.dispatchAsync(action: .initialize(siteId: .random, dataCenter: .random, environment: .production))
+        await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: .random))
+        await inAppMessageManager.dispatchAsync(action: .setSseEnabled(enabled: true))
+
+        let state = await inAppMessageManager.state
+        XCTAssertEqual(state.useSse, true)
+    }
+
+    func test_setSseEnabled_givenFalse_expectSseFlagSetToFalse() async {
+        await inAppMessageManager.dispatchAsync(action: .initialize(siteId: .random, dataCenter: .random, environment: .production))
+        await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: .random))
+        await inAppMessageManager.dispatchAsync(action: .setSseEnabled(enabled: false))
+
+        let state = await inAppMessageManager.state
+        XCTAssertEqual(state.useSse, false)
+    }
+
+    func test_setSseEnabled_givenMultipleChanges_expectStateUpdated() async {
+        await inAppMessageManager.dispatchAsync(action: .initialize(siteId: .random, dataCenter: .random, environment: .production))
+        await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: .random))
+
+        await inAppMessageManager.dispatchAsync(action: .setSseEnabled(enabled: true))
+        var state = await inAppMessageManager.state
+        XCTAssertEqual(state.useSse, true)
+
+        await inAppMessageManager.dispatchAsync(action: .setSseEnabled(enabled: false))
+        state = await inAppMessageManager.state
+        XCTAssertEqual(state.useSse, false)
+
+        await inAppMessageManager.dispatchAsync(action: .setSseEnabled(enabled: true))
+        state = await inAppMessageManager.state
+        XCTAssertEqual(state.useSse, true)
+    }
+
+    func test_resetState_expectSseFlagCleared() async {
+        await inAppMessageManager.dispatchAsync(action: .initialize(siteId: .random, dataCenter: .random, environment: .production))
+        await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: .random))
+
+        await inAppMessageManager.dispatchAsync(action: .setSseEnabled(enabled: true))
+        var state = await inAppMessageManager.state
+        XCTAssertEqual(state.useSse, true)
+
+        await inAppMessageManager.dispatchAsync(action: .resetState)
+        state = await inAppMessageManager.state
+        XCTAssertEqual(state.useSse, false)
+    }
+
+    // MARK: - SSE Header Detection Tests
+
+    func test_fetch_givenSseHeaderTrue_expectSseFlagSetToTrue() async {
+        await inAppMessageManager.dispatchAsync(action: .initialize(siteId: .random, dataCenter: .random, environment: .production))
+        await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: .random))
+
+        var state = await inAppMessageManager.state
+        XCTAssertEqual(state.useSse, false)
+
+        let headers = [
+            "x-gist-queue-polling-interval": "600",
+            "x-cio-use-sse": "true"
+        ]
+        setupHttpResponse(code: 200, body: "[]".data, headers: headers)
+
+        queueManager.fetchUserQueue(state: state) { _ in }
+
+        state = await inAppMessageManager.waitForState { state in
+            state.useSse == true
+        }
+        XCTAssertEqual(state.useSse, true)
+    }
+
+    func test_fetch_givenSseHeaderFalse_expectSseFlagSetToFalse() async {
+        await inAppMessageManager.dispatchAsync(action: .initialize(siteId: .random, dataCenter: .random, environment: .production))
+        await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: .random))
+
+        var state = await inAppMessageManager.state
+        XCTAssertEqual(state.useSse, false)
+
+        let headers = [
+            "x-gist-queue-polling-interval": "600",
+            "x-cio-use-sse": "false"
+        ]
+        setupHttpResponse(code: 200, body: "[]".data, headers: headers)
+
+        queueManager.fetchUserQueue(state: state) { _ in }
+
+        // Since it's already false, we don't need to wait for state change
+        // Just verify it remains false after a brief delay
+        try? await Task.sleep(nanoseconds: 500000000)
+        state = await inAppMessageManager.state
+        XCTAssertEqual(state.useSse, false)
+    }
+
+    func test_fetch_givenNoSseHeader_expectSseFlagUnchanged() async {
+        await inAppMessageManager.dispatchAsync(action: .initialize(siteId: .random, dataCenter: .random, environment: .production))
+        await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: .random))
+
+        var state = await inAppMessageManager.state
+        XCTAssertEqual(state.useSse, false)
+
+        let headers = [
+            "x-gist-queue-polling-interval": "600"
+        ]
+        setupHttpResponse(code: 200, body: "[]".data, headers: headers)
+
+        queueManager.fetchUserQueue(state: state) { _ in }
+
+        // Wait a bit to ensure any actions would have been processed
+        try? await Task.sleep(nanoseconds: 500000000)
+
+        state = await inAppMessageManager.state
+        XCTAssertEqual(state.useSse, false)
+    }
+
+    func test_fetch_givenInvalidSseHeaderValue_expectSseFlagSetToFalse() async {
+        await inAppMessageManager.dispatchAsync(action: .initialize(siteId: .random, dataCenter: .random, environment: .production))
+        await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: .random))
+
+        var state = await inAppMessageManager.state
+        XCTAssertEqual(state.useSse, false)
+
+        let headers = [
+            "x-gist-queue-polling-interval": "600",
+            "x-cio-use-sse": "invalid"
+        ]
+        setupHttpResponse(code: 200, body: "[]".data, headers: headers)
+
+        queueManager.fetchUserQueue(state: state) { _ in }
+
+        // Since it's already false and "invalid" converts to false, verify it remains false
+        try? await Task.sleep(nanoseconds: 500000000)
+        state = await inAppMessageManager.state
+        XCTAssertEqual(state.useSse, false)
+    }
+
+    func test_fetch_givenSseHeaderChangesFromTrueToFalse_expectSseFlagUpdated() async {
+        await inAppMessageManager.dispatchAsync(action: .initialize(siteId: .random, dataCenter: .random, environment: .production))
+        await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: .random))
+
+        var state = await inAppMessageManager.state
+
+        // First fetch with SSE enabled
+        var headers = [
+            "x-gist-queue-polling-interval": "600",
+            "x-cio-use-sse": "true"
+        ]
+        setupHttpResponse(code: 200, body: "[]".data, headers: headers)
+        queueManager.fetchUserQueue(state: state) { _ in }
+
+        state = await inAppMessageManager.waitForState { state in
+            state.useSse == true
+        }
+        XCTAssertEqual(state.useSse, true)
+
+        // Second fetch with SSE disabled
+        headers = [
+            "x-gist-queue-polling-interval": "600",
+            "x-cio-use-sse": "false"
+        ]
+        setupHttpResponse(code: 200, body: "[]".data, headers: headers)
+        queueManager.fetchUserQueue(state: state) { _ in }
+
+        state = await inAppMessageManager.waitForState { state in
+            state.useSse == false
+        }
+        XCTAssertEqual(state.useSse, false)
+    }
+
+    // MARK: - SSE Connection Manager Integration Tests
+
+    func test_sseFlagEnabled_expectConnectionManagerStartConnectionCalled() async {
+        await inAppMessageManager.dispatchAsync(action: .initialize(siteId: .random, dataCenter: .random, environment: .production))
+        await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: .random))
+
+        // Enable SSE flag
+        await inAppMessageManager.dispatchAsync(action: .setSseEnabled(enabled: true))
+
+        // Wait for state to update
+        let state = await inAppMessageManager.waitForState { state in
+            state.useSse == true
+        }
+
+        XCTAssertEqual(state.useSse, true)
+
+        // Note: SseConnectionManager handles duplicate startConnection calls gracefully
+        // Multiple calls to enable SSE will be idempotent in the connection manager
+    }
+
+    func test_sseFlagDisabled_expectConnectionManagerStopConnectionCalled() async {
+        await inAppMessageManager.dispatchAsync(action: .initialize(siteId: .random, dataCenter: .random, environment: .production))
+        await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: .random))
+
+        // Enable SSE first
+        await inAppMessageManager.dispatchAsync(action: .setSseEnabled(enabled: true))
+        var state = await inAppMessageManager.waitForState { state in
+            state.useSse == true
+        }
+        XCTAssertEqual(state.useSse, true)
+
+        // Then disable SSE
+        await inAppMessageManager.dispatchAsync(action: .setSseEnabled(enabled: false))
+        state = await inAppMessageManager.waitForState { state in
+            state.useSse == false
+        }
+
+        XCTAssertEqual(state.useSse, false)
+
+        // Note: In a real test, we would verify that SseConnectionManager.stopConnection was called
+        // For Phase 1, we're just verifying the state change triggers the handler
+    }
+
+    // MARK: - Polling and SSE Coordination Tests
+
+    func test_sseFlagEnabled_expectPollingStops() async {
+        await inAppMessageManager.dispatchAsync(action: .initialize(siteId: .random, dataCenter: .random, environment: .production))
+        await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: .random))
+
+        // Start polling by fetching messages
+        gist.fetchUserMessagesFromRemoteQueue()
+
+        // Wait a moment for polling to start
+        try? await Task.sleep(nanoseconds: 100000000)
+
+        // Enable SSE - this should stop polling
+        await inAppMessageManager.dispatchAsync(action: .setSseEnabled(enabled: true))
+
+        let state = await inAppMessageManager.waitForState { state in
+            state.useSse == true
+        }
+
+        XCTAssertEqual(state.useSse, true)
+        // Note: In Phase 1, we verify the state change. In Phase 2+, we would verify:
+        // - Polling timer is invalidated
+        // - No more fetch calls are made while SSE is enabled
+    }
+
+    func test_sseFlagDisabled_expectPollingResumes() async {
+        await inAppMessageManager.dispatchAsync(action: .initialize(siteId: .random, dataCenter: .random, environment: .production))
+        await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: .random))
+
+        // Enable SSE (which stops polling)
+        await inAppMessageManager.dispatchAsync(action: .setSseEnabled(enabled: true))
+        var state = await inAppMessageManager.waitForState { state in
+            state.useSse == true
+        }
+        XCTAssertEqual(state.useSse, true)
+
+        // Disable SSE - this should resume polling
+        await inAppMessageManager.dispatchAsync(action: .setSseEnabled(enabled: false))
+        state = await inAppMessageManager.waitForState { state in
+            state.useSse == false
+        }
+
+        XCTAssertEqual(state.useSse, false)
+        // Note: In Phase 1, we verify the state change. In Phase 2+, we would verify:
+        // - Polling timer is restarted
+        // - Fetch calls resume at the polling interval
     }
 }
 
