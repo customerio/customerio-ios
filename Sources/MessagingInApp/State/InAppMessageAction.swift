@@ -5,6 +5,8 @@ import Foundation
 enum InAppMessageAction: Equatable {
     case initialize(siteId: String, dataCenter: String, environment: GistEnvironment)
     case setPollingInterval(interval: Double)
+    case pauseMessageFetching
+    case resumeMessageFetching
     case setUserIdentifier(user: String)
     case setAnonymousIdentifier(anonymousId: String)
     case setPageRoute(route: String)
@@ -33,6 +35,12 @@ enum InAppMessageAction: Equatable {
 
         case (.setPollingInterval(let lhsInterval), .setPollingInterval(let rhsInterval)):
             return lhsInterval == rhsInterval
+
+        case (.pauseMessageFetching, .pauseMessageFetching):
+            return true
+
+        case (.resumeMessageFetching, .resumeMessageFetching):
+            return true
 
         case (.setUserIdentifier(let lhsUser), .setUserIdentifier(let rhsUser)):
             return lhsUser == rhsUser

@@ -61,8 +61,13 @@ class Gist: GistProvider {
             let subscriber = InAppMessageStoreSubscriber { state in
                 self.setupPollingAndFetch(skipMessageFetch: true, pollingInterval: state.pollInterval)
             }
-            // Subscribe to changes in `pollInterval` property of `InAppMessageState`
-            inAppMessageManager.subscribe(keyPath: \.pollInterval, subscriber: subscriber)
+            // Subscribe to changes in `pollInterval` only - timer keeps running regardless of pause state
+            inAppMessageManager.subscribe(
+                comparator: { oldState, newState in
+                    oldState.pollInterval == newState.pollInterval
+                },
+                subscriber: subscriber
+            )
             return subscriber
         }()
     }
@@ -141,10 +146,10 @@ class Gist: GistProvider {
     }
 
     private func setupPollingAndFetch(skipMessageFetch: Bool, pollingInterval: Double) {
-        logger.logWithModuleTag("Setting up polling with interval: \(pollingInterval) seconds and skipMessageFetch: \(skipMessageFetch)", level: .info)
+        logger.logWithModuleTag("Setting up polling with interval: \(pollingInterval) seconds, skipMessageFetch: \(skipMessageFetch)", level: .info)
         invalidateTimer()
 
-        // Timer must be scheduled on the main thread
+        // Always set up timer - it continues running even when in-app is paused
         threadUtil.runMain {
             self.queueTimer = Timer.scheduledTimer(
                 timeInterval: pollingInterval,
@@ -165,6 +170,7 @@ class Gist: GistProvider {
     /// Fetches the user messages from the remote service and dispatches actions to the `InAppMessageManager`.
     /// The method must be marked with `@objc` and public to be used as a selector in the `Timer` scheduled.
     /// Also, the method must be called on main thread since it checks the application state.
+    /// When in-app messaging is paused, the timer continues to run but network requests are skipped.
     @objc
     func fetchUserMessages() {
         logger.logWithModuleTag("Attempting to fetch user messages from remote service", level: .info)
@@ -173,10 +179,16 @@ class Gist: GistProvider {
             return
         }
 
-        logger.logWithModuleTag("Checking Gist queue service", level: .info)
         inAppMessageManager.fetchState { [weak self] state in
             guard let self else { return }
 
+            // Check if message fetching is paused before making network request
+            guard !state.isMessageFetchingPaused else {
+                logger.logWithModuleTag("Message fetching is paused, skipping network request", level: .info)
+                return
+            }
+
+            logger.logWithModuleTag("Checking Gist queue service", level: .info)
             fetchUserQueue(state: state)
         }
     }

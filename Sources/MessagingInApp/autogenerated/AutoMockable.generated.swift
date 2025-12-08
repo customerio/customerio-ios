@@ -1212,6 +1212,12 @@ public class MessagingInAppInstanceMock: MessagingInAppInstance, Mock {
         dismissMessageCallsCount = 0
 
         mockCalled = false // do last as resetting properties above can make this true
+        pauseMessageFetchingCallsCount = 0
+
+        mockCalled = false // do last as resetting properties above can make this true
+        resumeMessageFetchingCallsCount = 0
+
+        mockCalled = false // do last as resetting properties above can make this true
     }
 
     // MARK: - setEventListener
@@ -1260,6 +1266,48 @@ public class MessagingInAppInstanceMock: MessagingInAppInstance, Mock {
         mockCalled = true
         dismissMessageCallsCount += 1
         dismissMessageClosure?()
+    }
+
+    // MARK: - pauseMessageFetching
+
+    /// Number of times the function was called.
+    @Atomic public private(set) var pauseMessageFetchingCallsCount = 0
+    /// `true` if the function was ever called.
+    public var pauseMessageFetchingCalled: Bool {
+        pauseMessageFetchingCallsCount > 0
+    }
+
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     */
+    public var pauseMessageFetchingClosure: (() -> Void)?
+
+    /// Mocked function for `pauseMessageFetching()`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func pauseMessageFetching() {
+        mockCalled = true
+        pauseMessageFetchingCallsCount += 1
+        pauseMessageFetchingClosure?()
+    }
+
+    // MARK: - resumeMessageFetching
+
+    /// Number of times the function was called.
+    @Atomic public private(set) var resumeMessageFetchingCallsCount = 0
+    /// `true` if the function was ever called.
+    public var resumeMessageFetchingCalled: Bool {
+        resumeMessageFetchingCallsCount > 0
+    }
+
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     */
+    public var resumeMessageFetchingClosure: (() -> Void)?
+
+    /// Mocked function for `resumeMessageFetching()`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func resumeMessageFetching() {
+        mockCalled = true
+        resumeMessageFetchingCallsCount += 1
+        resumeMessageFetchingClosure?()
     }
 }
 

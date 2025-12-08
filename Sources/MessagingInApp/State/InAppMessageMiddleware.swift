@@ -31,7 +31,9 @@ func userAuthenticationMiddleware() -> InAppMessageMiddleware {
              .setUserIdentifier,
              .setAnonymousIdentifier,
              .setPageRoute,
-             .resetState:
+             .resetState,
+             .pauseMessageFetching,
+             .resumeMessageFetching:
             return next(action)
 
         default:

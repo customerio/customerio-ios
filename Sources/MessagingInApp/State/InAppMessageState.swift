@@ -9,6 +9,7 @@ struct InAppMessageState: Equatable, CustomStringConvertible {
     let dataCenter: String
     let environment: GistEnvironment
     let pollInterval: Double
+    let isMessageFetchingPaused: Bool
     let userId: String?
     let anonymousId: String?
     let currentRoute: String?
@@ -22,6 +23,7 @@ struct InAppMessageState: Equatable, CustomStringConvertible {
         dataCenter: String = "",
         environment: GistEnvironment = .production,
         pollInterval: Double = 600,
+        isMessageFetchingPaused: Bool = false,
         userId: String? = nil,
         anonymousId: String? = nil,
         currentRoute: String? = nil,
@@ -34,6 +36,7 @@ struct InAppMessageState: Equatable, CustomStringConvertible {
         self.dataCenter = dataCenter
         self.environment = environment
         self.pollInterval = pollInterval
+        self.isMessageFetchingPaused = isMessageFetchingPaused
         self.userId = userId
         self.anonymousId = anonymousId
         self.currentRoute = currentRoute
@@ -47,6 +50,7 @@ struct InAppMessageState: Equatable, CustomStringConvertible {
     /// It is useful when updating state with only a few properties and keeping the rest as is.
     func copy(
         pollInterval: Double? = nil,
+        isMessageFetchingPaused: Bool? = nil,
         userId: String? = nil,
         anonymousId: String? = nil,
         currentRoute: String? = nil,
@@ -60,6 +64,7 @@ struct InAppMessageState: Equatable, CustomStringConvertible {
             dataCenter: dataCenter,
             environment: environment,
             pollInterval: pollInterval ?? self.pollInterval,
+            isMessageFetchingPaused: isMessageFetchingPaused ?? self.isMessageFetchingPaused,
             userId: userId ?? self.userId,
             anonymousId: anonymousId ?? self.anonymousId,
             currentRoute: currentRoute ?? self.currentRoute,
@@ -75,6 +80,7 @@ struct InAppMessageState: Equatable, CustomStringConvertible {
             lhs.dataCenter == rhs.dataCenter &&
             lhs.environment == rhs.environment &&
             lhs.pollInterval == rhs.pollInterval &&
+            lhs.isMessageFetchingPaused == rhs.isMessageFetchingPaused &&
             lhs.userId == rhs.userId &&
             lhs.anonymousId == rhs.anonymousId &&
             lhs.currentRoute == rhs.currentRoute &&
@@ -90,6 +96,7 @@ struct InAppMessageState: Equatable, CustomStringConvertible {
             dataCenter: '\(dataCenter)',
             environment: \(environment),
             pollInterval: \(pollInterval),
+            isMessageFetchingPaused: \(isMessageFetchingPaused),
             userId: \(String(describing: userId)),
             anonymousId: \(String(describing: anonymousId)),
             currentRoute: \(String(describing: currentRoute)),
@@ -121,6 +128,7 @@ extension InAppMessageState {
         putIfDifferent(\.dataCenter, as: "dataCenter")
         putIfDifferent(\.environment, as: "environment")
         putIfDifferent(\.pollInterval, as: "pollInterval")
+        putIfDifferent(\.isMessageFetchingPaused, as: "isMessageFetchingPaused")
         putIfDifferent(\.userId, as: "userId")
         putIfDifferent(\.anonymousId, as: "anonymousId")
         putIfDifferent(\.currentRoute, as: "currentRoute")
