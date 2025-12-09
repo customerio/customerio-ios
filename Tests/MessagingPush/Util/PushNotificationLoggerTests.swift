@@ -111,8 +111,8 @@ class PushNotificationLoggerTests: UnitTest {
             "Failed to track push metric '\(event)' for deliveryId: \(deliveryId)"
         )
         XCTAssertEqual(
-            loggerMock.errorReceivedInvocations.first?.throwable as? NSError,
-            error
+            loggerMock.errorReceivedInvocations.first?.throwable as? String,
+            error.localizedDescription
         )
     }
 

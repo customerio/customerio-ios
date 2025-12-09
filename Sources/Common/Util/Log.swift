@@ -4,7 +4,7 @@ import os.log
 #endif
 
 /// mockable logger + abstract that allows you to log to multiple places if you wish
-public protocol Logger: AutoMockable {
+public protocol Logger {
     /// Represents the current log level of the logger. The log level
     /// controls the verbosity of the logs that are output. Only messages
     /// at this level or higher will be logged.
@@ -18,29 +18,44 @@ public protocol Logger: AutoMockable {
     /// Levels range from `.debug` (most verbose) to `.error` (least verbose).
     /// - Parameter level: The `CioLogLevel` for logging output verbosity.
     func setLogLevel(_ level: CioLogLevel)
-    /// the noisey log level. Feel free to spam this log level with any
-    /// information about the SDK that would be useful for debugging the SDK.
-    func debug(_ message: String, _ tag: String?)
-    /// Not noisy log messages. Good for general information such as
-    /// when the background queue begins and ends running but use `debug`
-    /// for the status of each background queue task running.
-    func info(_ message: String, _ tag: String?)
-    /// the SDK is in an unstable state that you want to notify
-    /// the customer or our development team about.
-    func error(_ message: String, _ tag: String?, _ throwable: Error?)
+
+    /// Outputs a message to the log with the designated log level and optional tag.
+    /// - Parameter level: The level the log message should be considered.
+    /// - Parameter message: The message to log.
+    /// - Parameter tag: A tag to include with the logged message to simplify filtering later.
+    /// - Parameter context: An object that may help with debugging and a label to describe it. Most often, this content is a thrown object, like an error, but it can be anything useful.
+    func log(_ level: CioLogLevel, _ message: @autoclosure () -> String, _ tag: String?, context: (label: String, content: CustomStringConvertible)?)
 }
 
 public extension Logger {
-    func debug(_ message: String) {
-        debug(message, nil)
+
+    /// Outputs a message to the log with the designated log level and optional tag.
+    /// - Parameter level: The level the log message should be considered.
+    /// - Parameter message: The message to log.
+    /// - Parameter tag: A label to include with the logged message to simplify filtering later.
+    func log(_ level: CioLogLevel, _ message: @autoclosure () -> String, _ tag: String? = nil) {
+        log(level, message(), tag, context: nil)
     }
 
-    func info(_ message: String) {
-        info(message, nil)
+    
+    /// the noisey log level. Feel free to spam this log level with any
+    /// information about the SDK that would be useful for debugging the SDK.
+    func debug(_ message: String, _ tag: String? = nil, context: (label: String, content: CustomStringConvertible)? = nil) {
+        log(.debug, message, tag, context: context)
+    }
+    
+    /// Not noisy log messages. Good for general information such as
+    /// when the background queue begins and ends running but use `debug`
+    /// for the status of each background queue task running.
+    func info(_ message: String, _ tag: String? = nil, context: (label: String, content: CustomStringConvertible)? = nil) {
+        log(.info, message, tag, context: context)
     }
 
-    func error(_ message: String) {
-        error(message, nil, nil)
+    /// the SDK is in an unstable state that you want to notify
+    /// the customer or our development team about.
+    func error(_ message: String, _ tag: String? = nil, _ throwable: Error? = nil) {
+        let context = throwable.map { (label: "Error", content: $0.localizedDescription) }
+        log(.error, message, tag, context: context)
     }
 }
 
@@ -78,61 +93,6 @@ public enum CioLogLevel: String, CaseIterable {
     #endif
 }
 
-// log messages to console.
-// sourcery: InjectRegisterShared = "Logger"
-// sourcery: InjectSingleton
-public class LoggerImpl: Logger {
-    private let systemLogger: SystemLogger
-    public var logLevel: CioLogLevel = .error
-
-    init(logger: SystemLogger) {
-        self.systemLogger = logger
-    }
-
-    public func setLogLevel(_ level: CioLogLevel) {
-        logLevel = level
-    }
-
-    private var logDispatcher: ((CioLogLevel, String) -> Void)?
-
-    public func setLogDispatcher(_ dispatcher: ((CioLogLevel, String) -> Void)?) {
-        logDispatcher = dispatcher
-    }
-
-    public func debug(_ message: String, _ tag: String?) {
-        printMessage(message, .debug, tag, nil)
-    }
-
-    public func info(_ message: String, _ tag: String? = nil) {
-        printMessage("\(message)", .info, tag, nil)
-    }
-
-    public func error(_ message: String, _ tag: String?, _ error: Error?) {
-        printMessage("\(message)", .error, tag, error)
-    }
-
-    private func printMessage(_ message: String, _ level: CioLogLevel, _ tag: String?, _ error: Error?) {
-        if !logLevel.shouldLog(level) { return }
-
-        let formattedMessage = formatMessage(message, tag, error)
-        logDispatcher?(level, message) ?? systemLogger.log(formattedMessage, level)
-    }
-
-    private func formatMessage(_ message: String, _ tag: String? = nil, _ error: Error? = nil) -> String {
-        var formatted = message
-
-        if let tag = tag {
-            formatted = "[\(tag)] \(formatted)"
-        }
-
-        if let error = error {
-            formatted += " Error: \(error.localizedDescription)"
-        }
-
-        return formatted
-    }
-}
-
 public extension CioLogLevel {
     static func getLogLevel(for value: String) -> CioLogLevel? {
         switch value.lowercased() {
@@ -149,3 +109,52 @@ public extension CioLogLevel {
         }
     }
 }
+
+// log messages to console.
+// sourcery: InjectRegisterShared = "Logger"
+// sourcery: InjectSingleton
+public class LoggerImpl: Logger {
+    private let systemLogger: SystemLogger
+    private var logDispatcher: ((CioLogLevel, String) -> Void)?
+
+    public var logLevel: CioLogLevel = .error
+
+    init(logger: SystemLogger) {
+        self.systemLogger = logger
+    }
+
+    public func setLogLevel(_ level: CioLogLevel) {
+        logLevel = level
+    }
+
+
+    public func setLogDispatcher(_ dispatcher: ((CioLogLevel, String) -> Void)?) {
+        logDispatcher = dispatcher
+    }
+
+    
+    public func log(_ level: CioLogLevel, _ message: @autoclosure () -> String, _ tag: String?, context: (label: String, content: CustomStringConvertible)?) {
+        guard logLevel.shouldLog(level) else {
+            return
+        }
+        
+        let formattedMessage = formatMessage(tag: tag, message: message(), context: context)
+        logDispatcher?(level, formattedMessage) ?? systemLogger.log(formattedMessage, level)
+    }
+    
+    private func formatMessage(tag: String? = nil, message: String, context: (label: String, content: CustomStringConvertible)?) -> String {
+
+        var components: [String] = []
+        
+        if let tag {
+            components.append("[\(tag)]")
+        }
+        components.append(message)
+        if let context = context {
+            components.append("\(context.label): \(context.content)")
+        }
+        let formatted = components.joined(separator: " ")
+        return formatted
+    }
+}
+

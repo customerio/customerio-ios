@@ -2010,6 +2010,37 @@ public class LoggerMock: Logger, Mock {
         mockCalled = false // do last as resetting properties above can make this true
     }
 
+    public func log(_ level: CioLogLevel, _ message: @autoclosure () -> String, _ tag: String?, context: (label: String, content: CustomStringConvertible)?) {
+        
+        mockCalled = true
+
+        let message = message()
+        
+        switch level {
+        case .debug:
+            debugCallsCount += 1
+            debugReceivedArguments = (message: message, tag: tag)
+            debugReceivedInvocations.append((message: message, tag: tag))
+            debugClosure?(message, tag)
+
+        case .info:
+            infoCallsCount += 1
+            infoReceivedArguments = (message: message, tag: tag)
+            infoReceivedInvocations.append((message: message, tag: tag))
+            infoClosure?(message, tag)
+
+        case .error:
+            errorCallsCount += 1
+            errorReceivedArguments = (message: message, tag: tag, throwable: context?.content)
+            errorReceivedInvocations.append((message: message, tag: tag, throwable: context?.content))
+            errorClosure?(message, tag, context?.content.description)
+
+        default:
+            _ = ""
+        }
+    }
+
+    
     // MARK: - setLogDispatcher
 
     /// Number of times the function was called.
@@ -2082,14 +2113,6 @@ public class LoggerMock: Logger, Mock {
      */
     public var debugClosure: ((String, String?) -> Void)?
 
-    /// Mocked function for `debug(_ message: String, _ tag: String?)`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func debug(_ message: String, _ tag: String?) {
-        mockCalled = true
-        debugCallsCount += 1
-        debugReceivedArguments = (message: message, tag: tag)
-        debugReceivedInvocations.append((message: message, tag: tag))
-        debugClosure?(message, tag)
-    }
 
     // MARK: - info
 
@@ -2109,15 +2132,6 @@ public class LoggerMock: Logger, Mock {
      */
     public var infoClosure: ((String, String?) -> Void)?
 
-    /// Mocked function for `info(_ message: String, _ tag: String?)`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func info(_ message: String, _ tag: String?) {
-        mockCalled = true
-        infoCallsCount += 1
-        infoReceivedArguments = (message: message, tag: tag)
-        infoReceivedInvocations.append((message: message, tag: tag))
-        infoClosure?(message, tag)
-    }
-
     // MARK: - error
 
     /// Number of times the function was called.
@@ -2128,22 +2142,14 @@ public class LoggerMock: Logger, Mock {
     }
 
     /// The arguments from the *last* time the function was called.
-    @Atomic public private(set) var errorReceivedArguments: (message: String, tag: String?, throwable: Error?)?
+    @Atomic public private(set) var errorReceivedArguments: (message: String, tag: String?, throwable: Any?)?
     /// Arguments from *all* of the times that the function was called.
-    @Atomic public private(set) var errorReceivedInvocations: [(message: String, tag: String?, throwable: Error?)] = []
+    @Atomic public private(set) var errorReceivedInvocations: [(message: String, tag: String?, throwable: Any?)] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
-    public var errorClosure: ((String, String?, Error?) -> Void)?
+    public var errorClosure: ((String, String?, Any?) -> Void)?
 
-    /// Mocked function for `error(_ message: String, _ tag: String?, _ throwable: Error?)`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func error(_ message: String, _ tag: String?, _ throwable: Error?) {
-        mockCalled = true
-        errorCallsCount += 1
-        errorReceivedArguments = (message: message, tag: tag, throwable: throwable)
-        errorReceivedInvocations.append((message: message, tag: tag, throwable: throwable))
-        errorClosure?(message, tag, throwable)
-    }
 }
 
 /**
