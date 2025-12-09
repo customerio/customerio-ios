@@ -13,7 +13,7 @@ public protocol Logger {
     /// Default implementation is to print logs to XCode Debug Area.
     /// In wrapper SDKs, this will be overridden to emit logs to more user-friendly channels like console, etc.
     /// - Parameter dispatcher: Dispatcher to handle log events based on the log level, pass null to reset to default.
-    func setLogDispatcher(_ dispatcher: ((CioLogLevel, String) -> Void)?)
+//    func setLogDispatcher(_ dispatcher: ((CioLogLevel, String) -> Void)?)
     /// Sets the logger's verbosity level to control which messages are logged.
     /// Levels range from `.debug` (most verbose) to `.error` (least verbose).
     /// - Parameter level: The `CioLogLevel` for logging output verbosity.
@@ -114,24 +114,17 @@ public extension CioLogLevel {
 // sourcery: InjectRegisterShared = "Logger"
 // sourcery: InjectSingleton
 public class LoggerImpl: Logger {
-    private let systemLogger: SystemLogger
-    private var logDispatcher: ((CioLogLevel, String) -> Void)?
 
+    public var outputter: LogOutputter
     public var logLevel: CioLogLevel = .error
 
-    init(logger: SystemLogger) {
-        self.systemLogger = logger
+    init(outputter: LogOutputter = SystemLogOutputter()) {
+        self.outputter = outputter
     }
 
     public func setLogLevel(_ level: CioLogLevel) {
         logLevel = level
     }
-
-
-    public func setLogDispatcher(_ dispatcher: ((CioLogLevel, String) -> Void)?) {
-        logDispatcher = dispatcher
-    }
-
     
     public func log(_ level: CioLogLevel, _ message: @autoclosure () -> String, _ tag: String?, context: (label: String, content: CustomStringConvertible)?) {
         guard logLevel.shouldLog(level) else {
@@ -139,7 +132,7 @@ public class LoggerImpl: Logger {
         }
         
         let formattedMessage = formatMessage(tag: tag, message: message(), context: context)
-        logDispatcher?(level, formattedMessage) ?? systemLogger.log(formattedMessage, level)
+        outputter.output(level: level, formattedMessage)
     }
     
     private func formatMessage(tag: String? = nil, message: String, context: (label: String, content: CustomStringConvertible)?) -> String {

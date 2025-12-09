@@ -442,7 +442,7 @@ extension DIGraphShared {
     }
 
     private func _get_logger() -> Logger {
-        LoggerImpl(logger: systemLogger)
+        LoggerImpl()
     }
 
     // QueueInventoryMemoryStore (singleton)

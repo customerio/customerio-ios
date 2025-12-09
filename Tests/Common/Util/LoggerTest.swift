@@ -5,41 +5,40 @@ import XCTest
 
 class LoggerTest: UnitTest {
     private var logger: Logger!
-    private let systemLoggerMock = SystemLoggerMock()
+    private var outputter: AccumulatorLogOutputter!
 
     override func setUp() {
         super.setUp()
 
-        logger = LoggerImpl(logger: systemLoggerMock)
+        outputter = AccumulatorLogOutputter()
+        logger = LoggerImpl(outputter: outputter)
     }
 
-    func test_all_givenNoneLogLevel_expectNothingShouldBeLogged() {
-        let dispatcherMock = DispatcherMock()
+    func testLogLevelNoneWithoutTags() {
+        outputter.clear()
         logger.setLogLevel(.none)
-        logger.setLogDispatcher(dispatcherMock.closure)
 
         logger.debug("Test debug message")
         logger.info("Test info message")
         logger.error("Test error message")
 
-        XCTAssertFalse(systemLoggerMock.mockCalled)
-        XCTAssertFalse(dispatcherMock.hasInvocations())
+        XCTAssertFalse(outputter.hasMessages)
     }
 
-    func test_allWithTag_givenNoneLogLevel_expectNothingShouldBeLogged() {
-        let dispatcherMock = DispatcherMock()
+    func testLogLevelNoneWithTags() {
+        outputter.clear()
         logger.setLogLevel(.none)
-        logger.setLogDispatcher(dispatcherMock.closure)
 
         logger.debug("Test debug message", "anyTag")
         logger.info("Test info message", "anyTag")
         logger.error("Test error message", "anyTag", nil)
 
-        XCTAssertFalse(systemLoggerMock.mockCalled)
-        XCTAssertFalse(dispatcherMock.hasInvocations())
+        
+        XCTAssertFalse(outputter.hasMessages)
     }
 
-    func test_all_givenErrorLogLevel_expectOnlyErrorLog() {
+    func testLogLevelErrorWithoutTags() {
+        outputter.clear()
         logger.setLogLevel(.error)
 
         logger.debug("Test debug message")
@@ -47,24 +46,39 @@ class LoggerTest: UnitTest {
         let errorMessage = "Test error message"
         logger.error(errorMessage)
 
-        XCTAssertEqual(systemLoggerMock.logCallsCount, 1)
-        XCTAssertEqual(systemLoggerMock.logReceivedInvocations.first?.level, .error)
-        XCTAssertEqual(systemLoggerMock.logReceivedInvocations.first?.message, errorMessage)
+        XCTAssertTrue(outputter.hasMessages)
+        XCTAssertEqual(outputter.messages.count, 1)
+        XCTAssertEqual(outputter.debugMessages.count, 0)
+        XCTAssertEqual(outputter.infoMessages.count, 0)
+        XCTAssertEqual(outputter.errorMessages.count, 1)
+
+        let first = outputter.messages.first
+        XCTAssertEqual(first?.0, .error)
+        XCTAssertEqual(first?.1, errorMessage)
     }
 
-    func test_allWithTag_givenErrorLogLevel_expectOnlyErrorLog() {
+    func testLogLevelErrorWithTags() {
+        outputter.clear()
         logger.setLogLevel(.error)
 
-        logger.debug("Test debug message", "MyTag")
-        logger.info("Test info message", "MyTag")
-        logger.error("Test error message", "MyTag", nil)
+        logger.debug("Test debug message", "DebugTag")
+        logger.info("Test info message", "InfoTag")
+        logger.error("Test error message", "ErrorTag")
 
-        XCTAssertEqual(systemLoggerMock.logCallsCount, 1)
-        XCTAssertEqual(systemLoggerMock.logReceivedInvocations.first?.level, .error)
-        XCTAssertEqual(systemLoggerMock.logReceivedInvocations.first?.message, "[MyTag] Test error message")
+        XCTAssertTrue(outputter.hasMessages)
+        XCTAssertEqual(outputter.messages.count, 1)
+        XCTAssertEqual(outputter.debugMessages.count, 0)
+        XCTAssertEqual(outputter.infoMessages.count, 0)
+        XCTAssertEqual(outputter.errorMessages.count, 1)
+
+        let first = outputter.messages.first
+        XCTAssertEqual(first?.0, .error)
+        XCTAssertEqual(first?.1, "[ErrorTag] Test error message")
     }
 
-    func test_allWithTagAndError_givenErrorLogLevel_expectOnlyErrorLog() {
+    func testLogLevelErrorWithTagsAndError() {
+        outputter.clear()
+        
         let error = NSError(
             domain: "io.customer",
             code: 12,
@@ -72,32 +86,24 @@ class LoggerTest: UnitTest {
         )
         logger.setLogLevel(.error)
 
-        logger.debug("Test debug message", "MyTag")
-        logger.info("Test info message", "MyTag")
-        logger.error("Test error message", "MyTag", error)
+        logger.debug("Test debug message", "DebugTag")
+        logger.info("Test info message", "InfoTag")
+        logger.error("Test error message", "ErrorTag", error)
 
-        XCTAssertEqual(systemLoggerMock.logCallsCount, 1)
-        XCTAssertEqual(systemLoggerMock.logReceivedInvocations.first?.level, .error)
-        XCTAssertEqual(systemLoggerMock.logReceivedInvocations.first?.message, "[MyTag] Test error message Error: Localized error")
+        
+        XCTAssertTrue(outputter.hasMessages)
+        XCTAssertEqual(outputter.messages.count, 1)
+        XCTAssertEqual(outputter.debugMessages.count, 0)
+        XCTAssertEqual(outputter.infoMessages.count, 0)
+        XCTAssertEqual(outputter.errorMessages.count, 1)
+
+        let first = outputter.messages.first
+        XCTAssertEqual(first?.0, .error)
+        XCTAssertEqual(first?.1, "[ErrorTag] Test error message Error: Localized error")
     }
 
-    func test_allWithDispatcher_givenErrorLogLevel_expectOnlyErrorLog() {
-        let dispatcherMock = DispatcherMock()
-        logger.setLogLevel(.error)
-        logger.setLogDispatcher(dispatcherMock.closure)
-
-        logger.debug("Test debug message")
-        logger.info("Test info message")
-        let errorMessage = "Test error message"
-        logger.error(errorMessage)
-
-        XCTAssertEqual(dispatcherMock.inovcationsCount(), 1)
-        let invocations = dispatcherMock.invocations(for: .error)
-        XCTAssertEqual(invocations.first?.level, .error)
-        XCTAssertEqual(invocations.first?.message, errorMessage)
-    }
-
-    func test_all_givenInfoLogLevel_expectOnlyErrorLog() {
+    func testLogLevelInfoWithoutTags() {
+        outputter.clear()
         logger.setLogLevel(.info)
 
         logger.debug("Test debug message")
@@ -106,54 +112,48 @@ class LoggerTest: UnitTest {
         let errorMessage = "Test error message"
         logger.error(errorMessage)
 
-        XCTAssertEqual(systemLoggerMock.logCallsCount, 2)
+        
+        XCTAssertTrue(outputter.hasMessages)
+        XCTAssertEqual(outputter.messages.count, 2)
+        XCTAssertEqual(outputter.debugMessages.count, 0)
+        XCTAssertEqual(outputter.infoMessages.count, 1)
+        XCTAssertEqual(outputter.errorMessages.count, 1)
 
-        XCTAssertEqual(systemLoggerMock.logReceivedInvocations[0].level, .info)
-        XCTAssertEqual(systemLoggerMock.logReceivedInvocations[0].message, infoMessage)
+        let first = outputter.messages[0]
+        XCTAssertEqual(first.0, .info)
+        XCTAssertEqual(first.1, infoMessage)
 
-        XCTAssertEqual(systemLoggerMock.logReceivedInvocations[1].level, .error)
-        XCTAssertEqual(systemLoggerMock.logReceivedInvocations[1].message, errorMessage)
+        let second = outputter.messages[1]
+        XCTAssertEqual(second.0, .error)
+        XCTAssertEqual(second.1, errorMessage)
     }
 
-    func test_allWithTag_givenInfoLogLevel_expectOnlyErrorLog() {
+    func testLogLevelInfoWithTags() {
+        outputter.clear()
         logger.setLogLevel(.info)
 
-        logger.debug("Test debug message", "SomeTag")
-        logger.info("Test info message", "Tag")
-        logger.error("Test error message", "MyTag", nil)
+        logger.debug("Test debug message", "DebugTag")
+        logger.info("Test info message", "InfoTag")
+        logger.error("Test error message", "ErrorTag")
+        
+        XCTAssertTrue(outputter.hasMessages)
+        XCTAssertEqual(outputter.messages.count, 2)
+        XCTAssertEqual(outputter.debugMessages.count, 0)
+        XCTAssertEqual(outputter.infoMessages.count, 1)
+        XCTAssertEqual(outputter.errorMessages.count, 1)
 
-        XCTAssertEqual(systemLoggerMock.logCallsCount, 2)
+        let first = outputter.messages[0]
+        XCTAssertEqual(first.0, .info)
+        XCTAssertEqual(first.1, "[InfoTag] Test info message")
 
-        XCTAssertEqual(systemLoggerMock.logReceivedInvocations[0].level, .info)
-        XCTAssertEqual(systemLoggerMock.logReceivedInvocations[0].message, "[Tag] Test info message")
-
-        XCTAssertEqual(systemLoggerMock.logReceivedInvocations[1].level, .error)
-        XCTAssertEqual(systemLoggerMock.logReceivedInvocations[1].message, "[MyTag] Test error message")
+        let second = outputter.messages[1]
+        XCTAssertEqual(second.0, .error)
+        XCTAssertEqual(second.1, "[ErrorTag] Test error message")
     }
 
-    func test_allWithDispatcher_givenInfoLogLevel_expectOnlyErrorLog() {
-        let dispatcherMock = DispatcherMock()
-        logger.setLogLevel(.info)
-        logger.setLogDispatcher(dispatcherMock.closure)
-
-        logger.debug("Test debug message")
-        let infoMessage = "Test info message"
-        logger.info(infoMessage)
-        let errorMessage = "Test error message"
-        logger.error(errorMessage)
-
-        XCTAssertEqual(dispatcherMock.inovcationsCount(), 2)
-
-        let infoInvocation = dispatcherMock.invocations(for: .info)
-        XCTAssertEqual(infoInvocation.first?.level, .info)
-        XCTAssertEqual(infoInvocation.first?.message, infoMessage)
-
-        let errorInvocation = dispatcherMock.invocations(for: .error)
-        XCTAssertEqual(errorInvocation.first?.level, .error)
-        XCTAssertEqual(errorInvocation.first?.message, errorMessage)
-    }
-
-    func test_all_givenDebugLogLevel_expectOnlyErrorLog() {
+    func testLogLevelDebugWithoutTags() {
+        
+        outputter.clear()
         logger.setLogLevel(.debug)
 
         let debugMessage = "Test debug message"
@@ -163,88 +163,86 @@ class LoggerTest: UnitTest {
         let errorMessage = "Test error message"
         logger.error(errorMessage)
 
-        XCTAssertEqual(systemLoggerMock.logCallsCount, 3)
+        
+        XCTAssertTrue(outputter.hasMessages)
+        XCTAssertEqual(outputter.messages.count, 3)
+        XCTAssertEqual(outputter.debugMessages.count, 1)
+        XCTAssertEqual(outputter.infoMessages.count, 1)
+        XCTAssertEqual(outputter.errorMessages.count, 1)
 
-        XCTAssertEqual(systemLoggerMock.logReceivedInvocations[0].level, .debug)
-        XCTAssertEqual(systemLoggerMock.logReceivedInvocations[0].message, debugMessage)
+        let first = outputter.messages[0]
+        XCTAssertEqual(first.0, .debug)
+        XCTAssertEqual(first.1, debugMessage)
+        XCTAssertEqual(outputter.firstDebugMessage, debugMessage)
 
-        XCTAssertEqual(systemLoggerMock.logReceivedInvocations[1].level, .info)
-        XCTAssertEqual(systemLoggerMock.logReceivedInvocations[1].message, infoMessage)
+        let second = outputter.messages[1]
+        XCTAssertEqual(second.0, .info)
+        XCTAssertEqual(second.1, infoMessage)
+        XCTAssertEqual(outputter.firstInfoMessage, infoMessage)
 
-        XCTAssertEqual(systemLoggerMock.logReceivedInvocations[2].level, .error)
-        XCTAssertEqual(systemLoggerMock.logReceivedInvocations[2].message, errorMessage)
+        let third = outputter.messages[2]
+        XCTAssertEqual(third.0, .error)
+        XCTAssertEqual(third.1, errorMessage)
+        XCTAssertEqual(outputter.firstErrorMessage, errorMessage)
     }
 
-    func test_allWithTag_givenDebugLogLevel_expectOnlyErrorLog() {
+    func testLogLevelDebugWithTags() {
         logger.setLogLevel(.debug)
 
-        logger.debug("Test debug message", "SomeTag")
-        logger.info("Test info message", "Tag")
-        logger.error("Test error message", "MyTag", nil)
+        logger.debug("Test debug message", "DebugTag")
+        logger.info("Test info message", "InfoTag")
+        logger.error("Test error message", "ErrorTag")
 
-        XCTAssertEqual(systemLoggerMock.logCallsCount, 3)
+        
+        XCTAssertTrue(outputter.hasMessages)
+        XCTAssertEqual(outputter.messages.count, 3)
+        XCTAssertEqual(outputter.debugMessages.count, 1)
+        XCTAssertEqual(outputter.infoMessages.count, 1)
+        XCTAssertEqual(outputter.errorMessages.count, 1)
 
-        XCTAssertEqual(systemLoggerMock.logReceivedInvocations[0].level, .debug)
-        XCTAssertEqual(systemLoggerMock.logReceivedInvocations[0].message, "[SomeTag] Test debug message")
+        let first = outputter.messages[0]
+        let debugMessage = "[DebugTag] Test debug message"
+        XCTAssertEqual(first.0, .debug)
+        XCTAssertEqual(first.1, debugMessage)
+        XCTAssertEqual(outputter.firstDebugMessage, debugMessage)
 
-        XCTAssertEqual(systemLoggerMock.logReceivedInvocations[1].level, .info)
-        XCTAssertEqual(systemLoggerMock.logReceivedInvocations[1].message, "[Tag] Test info message")
+        let second = outputter.messages[1]
+        let infoMessage = "[InfoTag] Test info message"
+        XCTAssertEqual(second.0, .info)
+        XCTAssertEqual(second.1, infoMessage)
+        XCTAssertEqual(outputter.firstInfoMessage, infoMessage)
 
-        XCTAssertEqual(systemLoggerMock.logReceivedInvocations[2].level, .error)
-        XCTAssertEqual(systemLoggerMock.logReceivedInvocations[2].message, "[MyTag] Test error message")
-    }
-
-    func test_allWithDispatcher_givenDebugLogLevel_expectOnlyErrorLog() {
-        let dispatcherMock = DispatcherMock()
-        logger.setLogLevel(.debug)
-        logger.setLogDispatcher(dispatcherMock.closure)
-
-        let debugMessage = "Test debug message"
-        logger.debug(debugMessage)
-        let infoMessage = "Test info message"
-        logger.info(infoMessage)
-        let errorMessage = "Test error message"
-        logger.error(errorMessage)
-
-        XCTAssertEqual(dispatcherMock.inovcationsCount(), 3)
-
-        let debugInvocation = dispatcherMock.invocations(for: .debug)
-        XCTAssertEqual(debugInvocation.first?.level, .debug)
-        XCTAssertEqual(debugInvocation.first?.message, debugMessage)
-
-        let infoInvocation = dispatcherMock.invocations(for: .info)
-        XCTAssertEqual(infoInvocation.first?.level, .info)
-        XCTAssertEqual(infoInvocation.first?.message, infoMessage)
-
-        let errorInvocation = dispatcherMock.invocations(for: .error)
-        XCTAssertEqual(errorInvocation.first?.level, .error)
-        XCTAssertEqual(errorInvocation.first?.message, errorMessage)
+        let third = outputter.messages[2]
+        let errorMessage = "[ErrorTag] Test error message"
+        XCTAssertEqual(third.0, .error)
+        XCTAssertEqual(third.1, errorMessage)
+        XCTAssertEqual(outputter.firstErrorMessage, errorMessage)
     }
 }
 
-class DispatcherMock {
-    struct Invocation {
-        let level: CioLogLevel
-        let message: String
-    }
-
-    private(set) var invocations: [Invocation] = []
-
-    var closure: (CioLogLevel, String) -> Void {
-        { [weak self] level, message in
-            self?.invocations.append(Invocation(level: level, message: message))
-        }
-    }
-
-    func invocations(for level: CioLogLevel) -> [Invocation] {
-        invocations.filter { $0.level == level }
-    }
-
-    func inovcationsCount() -> Int {
-        invocations.count
-    }
-
-    func hasInvocations() -> Bool {
-        !invocations.isEmpty
-    }
-}
+//class DispatcherMock {
+//    struct Invocation {
+//        let level: CioLogLevel
+//        let message: String
+//    }
+//
+//    private(set) var invocations: [Invocation] = []
+//
+//    var closure: (CioLogLevel, String) -> Void {
+//        { [weak self] level, message in
+//            self?.invocations.append(Invocation(level: level, message: message))
+//        }
+//    }
+//
+//    func invocations(for level: CioLogLevel) -> [Invocation] {
+//        invocations.filter { $0.level == level }
+//    }
+//
+//    func inovcationsCount() -> Int {
+//        invocations.count
+//    }
+//
+//    func hasInvocations() -> Bool {
+//        !invocations.isEmpty
+//    }
+//}

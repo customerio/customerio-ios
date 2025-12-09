@@ -14,7 +14,7 @@ class CioAppDelegateAPNTests: XCTestCase {
     var mockAppDelegate: MockAppDelegate!
     var mockNotificationCenter: UserNotificationCenterIntegrationMock!
     var mockNotificationCenterDelegate: MockNotificationCenterDelegate!
-    var mockLogger: LoggerMock!
+    var outputter: AccumulatorLogOutputter!
 
     func createMockConfig(autoFetchDeviceToken: Bool = true, autoTrackPushEvents: Bool = true) -> MessagingPushConfigOptions {
         MessagingPushConfigOptions(
@@ -36,8 +36,8 @@ class CioAppDelegateAPNTests: XCTestCase {
         mockAppDelegate = MockAppDelegate()
         mockNotificationCenter = UserNotificationCenterIntegrationMock()
         mockNotificationCenterDelegate = MockNotificationCenterDelegate()
-        mockLogger = LoggerMock()
-
+        outputter = AccumulatorLogOutputter()
+        
         // Configure mock notification center with a delegate
         mockNotificationCenter.delegate = mockNotificationCenterDelegate
 
@@ -47,7 +47,7 @@ class CioAppDelegateAPNTests: XCTestCase {
             userNotificationCenter: { self.mockNotificationCenter },
             appDelegate: mockAppDelegate,
             config: { self.createMockConfig() },
-            logger: mockLogger
+            logger: LoggerImpl(outputter: outputter)
         )
     }
 
@@ -56,8 +56,8 @@ class CioAppDelegateAPNTests: XCTestCase {
         mockAppDelegate = nil
         mockNotificationCenter = nil
         mockNotificationCenterDelegate = nil
-        mockLogger = nil
         appDelegateAPN = nil
+        outputter = nil
 
         UNUserNotificationCenter.unswizzleNotificationCenter()
 
@@ -94,9 +94,10 @@ class CioAppDelegateAPNTests: XCTestCase {
         // Verify behavior
         XCTAssertTrue(result)
         XCTAssertTrue(mockAppDelegate.didFinishLaunchingCalled)
-        XCTAssertTrue(mockLogger.debugCallsCount == 1)
-        XCTAssertTrue(mockLogger.debugReceivedInvocations.contains {
-            $0.message.contains("CIO: Registering for remote notifications")
+        let debugMessages = outputter.debugMessages
+        XCTAssertTrue(debugMessages.count == 1)
+        XCTAssertTrue(debugMessages.contains {
+            $0.contains("CIO: Registering for remote notifications")
         })
         XCTAssertTrue(mockNotificationCenter.delegate === appDelegateAPN)
     }

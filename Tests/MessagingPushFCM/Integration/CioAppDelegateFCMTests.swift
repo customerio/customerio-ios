@@ -16,7 +16,9 @@ class CioAppDelegateFCMTests: XCTestCase {
     var mockNotificationCenterDelegate: MockNotificationCenterDelegate!
     var mockFirebaseService: MockFirebaseService!
     var mockFirebaseServiceDelegate: MockFirebaseServiceDelegate!
-    var mockLogger: LoggerMock!
+    var outputter: AccumulatorLogOutputter!
+    
+    var logger: Logger!
 
     // Mock config for testing
     func createMockConfig(autoFetchDeviceToken: Bool = true, autoTrackPushEvents: Bool = true) -> MessagingPushConfigOptions {
@@ -47,7 +49,8 @@ class CioAppDelegateFCMTests: XCTestCase {
         mockFirebaseServiceDelegate = MockFirebaseServiceDelegate()
         mockFirebaseService.delegate = mockFirebaseServiceDelegate
 
-        mockLogger = LoggerMock()
+        outputter = AccumulatorLogOutputter()
+        logger = LoggerImpl(outputter: outputter)
 
         // Set up the FirebaseService on MessagingPushFCM.shared
         MessagingPushFCM.shared.firebaseService = mockFirebaseService
@@ -57,7 +60,7 @@ class CioAppDelegateFCMTests: XCTestCase {
             userNotificationCenter: { self.mockNotificationCenter },
             appDelegate: mockAppDelegate,
             config: { self.createMockConfig() },
-            logger: mockLogger
+            logger: logger
         )
     }
 
@@ -68,7 +71,8 @@ class CioAppDelegateFCMTests: XCTestCase {
         mockNotificationCenterDelegate = nil
         mockFirebaseService = nil
         mockFirebaseServiceDelegate = nil
-        mockLogger = nil
+        logger = nil
+        outputter = nil
         appDelegateFCM = nil
 
         // Clean up MessagingPushFCM.shared.firebaseService
@@ -89,8 +93,8 @@ class CioAppDelegateFCMTests: XCTestCase {
         XCTAssertTrue(result)
         XCTAssertTrue(mockAppDelegate.didFinishLaunchingCalled)
         // -- `registerForRemoteNotifications` is called
-        XCTAssertTrue(mockLogger.debugReceivedInvocations.contains {
-            $0.message.contains("CIO: Registering for remote notifications")
+        XCTAssertTrue(outputter.debugMessages.contains {
+            $0.contains("CIO: Registering for remote notifications")
         })
     }
 
@@ -108,7 +112,7 @@ class CioAppDelegateFCMTests: XCTestCase {
             userNotificationCenter: { self.mockNotificationCenter },
             appDelegate: mockAppDelegate,
             config: { self.createMockConfig(autoFetchDeviceToken: false) },
-            logger: mockLogger
+            logger: logger
         )
         mockFirebaseService.delegate = nil
 
