@@ -50,7 +50,8 @@ class CioAppDelegateFCMTests: XCTestCase {
         mockFirebaseService.delegate = mockFirebaseServiceDelegate
 
         outputter = AccumulatorLogOutputter()
-        logger = LoggerImpl(outputter: outputter)
+        logger = StandardLogger(outputter: outputter)
+        logger.logLevel = .debug
 
         // Set up the FirebaseService on MessagingPushFCM.shared
         MessagingPushFCM.shared.firebaseService = mockFirebaseService

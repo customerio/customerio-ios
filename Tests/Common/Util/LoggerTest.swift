@@ -11,12 +11,12 @@ class LoggerTest: UnitTest {
         super.setUp()
 
         outputter = AccumulatorLogOutputter()
-        logger = LoggerImpl(outputter: outputter)
+        logger = StandardLogger(outputter: outputter)
     }
 
     func testLogLevelNoneWithoutTags() {
         outputter.clear()
-        logger.setLogLevel(.none)
+        logger.logLevel = .none
 
         logger.debug("Test debug message")
         logger.info("Test info message")
@@ -27,7 +27,7 @@ class LoggerTest: UnitTest {
 
     func testLogLevelNoneWithTags() {
         outputter.clear()
-        logger.setLogLevel(.none)
+        logger.logLevel = .none
 
         logger.debug("Test debug message", "anyTag")
         logger.info("Test info message", "anyTag")
@@ -39,7 +39,7 @@ class LoggerTest: UnitTest {
 
     func testLogLevelErrorWithoutTags() {
         outputter.clear()
-        logger.setLogLevel(.error)
+        logger.logLevel = .error
 
         logger.debug("Test debug message")
         logger.info("Test info message")
@@ -59,7 +59,7 @@ class LoggerTest: UnitTest {
 
     func testLogLevelErrorWithTags() {
         outputter.clear()
-        logger.setLogLevel(.error)
+        logger.logLevel = .error
 
         logger.debug("Test debug message", "DebugTag")
         logger.info("Test info message", "InfoTag")
@@ -84,7 +84,7 @@ class LoggerTest: UnitTest {
             code: 12,
             userInfo: [NSLocalizedDescriptionKey: "Localized error"]
         )
-        logger.setLogLevel(.error)
+        logger.logLevel = .error
 
         logger.debug("Test debug message", "DebugTag")
         logger.info("Test info message", "InfoTag")
@@ -104,7 +104,7 @@ class LoggerTest: UnitTest {
 
     func testLogLevelInfoWithoutTags() {
         outputter.clear()
-        logger.setLogLevel(.info)
+        logger.logLevel = .info
 
         logger.debug("Test debug message")
         let infoMessage = "Test info message"
@@ -130,7 +130,7 @@ class LoggerTest: UnitTest {
 
     func testLogLevelInfoWithTags() {
         outputter.clear()
-        logger.setLogLevel(.info)
+        logger.logLevel = .info
 
         logger.debug("Test debug message", "DebugTag")
         logger.info("Test info message", "InfoTag")
@@ -154,7 +154,7 @@ class LoggerTest: UnitTest {
     func testLogLevelDebugWithoutTags() {
         
         outputter.clear()
-        logger.setLogLevel(.debug)
+        logger.logLevel = .debug
 
         let debugMessage = "Test debug message"
         logger.debug(debugMessage)
@@ -187,7 +187,7 @@ class LoggerTest: UnitTest {
     }
 
     func testLogLevelDebugWithTags() {
-        logger.setLogLevel(.debug)
+        logger.logLevel = .debug
 
         logger.debug("Test debug message", "DebugTag")
         logger.info("Test info message", "InfoTag")

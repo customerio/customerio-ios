@@ -41,13 +41,16 @@ class CioAppDelegateAPNTests: XCTestCase {
         // Configure mock notification center with a delegate
         mockNotificationCenter.delegate = mockNotificationCenterDelegate
 
+        let logger = StandardLogger(outputter: outputter)
+        logger.logLevel = .debug
+        
         // Create CioAppDelegate with mocks
         appDelegateAPN = CioAppDelegate(
             messagingPush: mockMessagingPush,
             userNotificationCenter: { self.mockNotificationCenter },
             appDelegate: mockAppDelegate,
             config: { self.createMockConfig() },
-            logger: LoggerImpl(outputter: outputter)
+            logger: logger
         )
     }
 

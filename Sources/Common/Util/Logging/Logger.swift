@@ -3,19 +3,25 @@ import Foundation
 import os.log
 #endif
 
-/// mockable logger + abstract that allows you to log to multiple places if you wish
+/// Protocol to be implemented by custom loggers, if needed. In most cases, `StandardLogger` can accomplish most
+/// logging goals with the correct `LogOutputter` used.
 public protocol Logger {
     /// Represents the current log level of the logger. The log level
     /// controls the verbosity of the logs that are output. Only messages
-    /// at this level or higher will be logged.
-    var logLevel: CioLogLevel { get }
+    /// at this level or higher will be logged. While this can be set at any
+    /// time, it is best to set this at launch and leave it
+    var logLevel: CioLogLevel { get set }
+    
     /// Sets the dispatcher to handle log events based on the log level.
     /// Default implementation is to print logs to XCode Debug Area.
     /// In wrapper SDKs, this will be overridden to emit logs to more user-friendly channels like console, etc.
     /// - Parameter dispatcher: Dispatcher to handle log events based on the log level, pass null to reset to default.
 //    func setLogDispatcher(_ dispatcher: ((CioLogLevel, String) -> Void)?)
+
     /// Sets the logger's verbosity level to control which messages are logged.
     /// Levels range from `.debug` (most verbose) to `.error` (least verbose).
+    /// This method is equivalent to setting the logLevel property directly and retained
+    /// for situations where the reference is immutable.
     /// - Parameter level: The `CioLogLevel` for logging output verbosity.
     func setLogLevel(_ level: CioLogLevel)
 
@@ -109,45 +115,3 @@ public extension CioLogLevel {
         }
     }
 }
-
-// log messages to console.
-// sourcery: InjectRegisterShared = "Logger"
-// sourcery: InjectSingleton
-public class LoggerImpl: Logger {
-
-    public var outputter: LogOutputter
-    public var logLevel: CioLogLevel = .error
-
-    init(outputter: LogOutputter = SystemLogOutputter()) {
-        self.outputter = outputter
-    }
-
-    public func setLogLevel(_ level: CioLogLevel) {
-        logLevel = level
-    }
-    
-    public func log(_ level: CioLogLevel, _ message: @autoclosure () -> String, _ tag: String?, context: (label: String, content: CustomStringConvertible)?) {
-        guard logLevel.shouldLog(level) else {
-            return
-        }
-        
-        let formattedMessage = formatMessage(tag: tag, message: message(), context: context)
-        outputter.output(level: level, formattedMessage)
-    }
-    
-    private func formatMessage(tag: String? = nil, message: String, context: (label: String, content: CustomStringConvertible)?) -> String {
-
-        var components: [String] = []
-        
-        if let tag {
-            components.append("[\(tag)]")
-        }
-        components.append(message)
-        if let context = context {
-            components.append("\(context.label): \(context.content)")
-        }
-        let formatted = components.joined(separator: " ")
-        return formatted
-    }
-}
-
