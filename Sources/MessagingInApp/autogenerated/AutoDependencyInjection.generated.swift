@@ -79,6 +79,9 @@ extension DIGraphShared {
         _ = queueManager
         countDependenciesResolved += 1
 
+        _ = sseConnectionManager
+        countDependenciesResolved += 1
+
         return countDependenciesResolved
     }
 
@@ -138,7 +141,7 @@ extension DIGraphShared {
     }
 
     private func _get_gistProvider() -> GistProvider {
-        Gist(logger: logger, gistDelegate: gistDelegate, inAppMessageManager: inAppMessageManager, queueManager: queueManager, threadUtil: threadUtil)
+        Gist(logger: logger, gistDelegate: gistDelegate, inAppMessageManager: inAppMessageManager, queueManager: queueManager, threadUtil: threadUtil, sseConnectionManager: sseConnectionManager)
     }
 
     // GistDelegate (singleton)
@@ -231,6 +234,30 @@ extension DIGraphShared {
 
     private func _get_queueManager() -> QueueManager {
         QueueManager(keyValueStore: sharedKeyValueStorage, gistQueueNetwork: gistQueueNetwork, inAppMessageManager: inAppMessageManager, anonymousMessageManager: anonymousMessageManager, logger: logger)
+    }
+
+    // SseConnectionManager (singleton)
+    var sseConnectionManager: SseConnectionManager {
+        getOverriddenInstance() ??
+            sharedSseConnectionManager
+    }
+
+    var sharedSseConnectionManager: SseConnectionManager {
+        // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
+        // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
+        DispatchQueue(label: "DIGraphShared_SseConnectionManager_singleton_access").sync {
+            if let overridenDep: SseConnectionManager = getOverriddenInstance() {
+                return overridenDep
+            }
+            let existingSingletonInstance = self.singletons[String(describing: SseConnectionManager.self)] as? SseConnectionManager
+            let instance = existingSingletonInstance ?? _get_sseConnectionManager()
+            self.singletons[String(describing: SseConnectionManager.self)] = instance
+            return instance
+        }
+    }
+
+    private func _get_sseConnectionManager() -> SseConnectionManager {
+        SseConnectionManager(logger: logger, inAppMessageManager: inAppMessageManager)
     }
 }
 
