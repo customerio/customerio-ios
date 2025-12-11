@@ -5,9 +5,8 @@ import SharedTests
 import XCTest
 
 class DictionarySanitizerTests: UnitTest {
-    private var loggerMock = LoggerMock()
 
-    func test_sanitizedForJSON_givenDictionaryWithNaN_expectNaNValuesRemoved() {
+    func testSanitizeDictionaryRemoveDoubleNaN() {
         // Given
         let dictionary: [String: Any] = [
             "validKey": "validValue",
@@ -16,7 +15,10 @@ class DictionarySanitizerTests: UnitTest {
         ]
 
         // When
-        let sanitized = dictionary.sanitizedForJSON(logger: loggerMock)
+        let outputter = AccumulatorLogOutputter()
+        let logger = StandardLogger(outputter: outputter)
+        logger.logLevel = .debug
+        let sanitized = dictionary.sanitizedForJSON(logger: logger)
 
         // Then
         XCTAssertEqual(sanitized.count, 2)
@@ -25,11 +27,11 @@ class DictionarySanitizerTests: UnitTest {
         XCTAssertNil(sanitized["nanKey"])
 
         // Verify logging
-        XCTAssertEqual(loggerMock.errorCallsCount, 1)
-        XCTAssertEqual(loggerMock.errorReceivedArguments?.message, "Removed unsupported numeric value")
+        XCTAssertEqual(outputter.errorMessages.count, 1)
+        XCTAssertEqual(outputter.firstErrorMessage, "Removed unsupported numeric value")
     }
 
-    func test_sanitizedForJSON_givenDictionaryWithInfinity_expectInfinityValuesRemoved() {
+    func testSanitizeDictionaryRemoveBothDoubleInfinity() {
         // Given
         let dictionary: [String: Any] = [
             "validKey": "validValue",
@@ -39,7 +41,10 @@ class DictionarySanitizerTests: UnitTest {
         ]
 
         // When
-        let sanitized = dictionary.sanitizedForJSON(logger: loggerMock)
+        let outputter = AccumulatorLogOutputter()
+        let logger = StandardLogger(outputter: outputter)
+        logger.logLevel = .debug
+        let sanitized = dictionary.sanitizedForJSON(logger: logger)
 
         // Then
         XCTAssertEqual(sanitized.count, 2)
@@ -49,11 +54,12 @@ class DictionarySanitizerTests: UnitTest {
         XCTAssertNil(sanitized["negativeInfinityKey"])
 
         // Verify logging
-        XCTAssertEqual(loggerMock.errorCallsCount, 2)
-        XCTAssertEqual(loggerMock.errorReceivedArguments?.message, "Removed unsupported numeric value")
+        XCTAssertEqual(outputter.errorMessages.count, 2)
+        XCTAssertEqual(outputter.errorMessages[0], "Removed unsupported numeric value")
+        XCTAssertEqual(outputter.errorMessages[1], "Removed unsupported numeric value")
     }
 
-    func test_sanitizedForJSON_givenDictionaryWithNestedDictionary_expectNestedNaNAndInfinityValuesRemoved() {
+    func testSanitizeDictionaryRemoveNestedDoubleInfinityAndNaN() {
         // Given
         let dictionary: [String: Any] = [
             "validKey": "validValue",
@@ -66,7 +72,10 @@ class DictionarySanitizerTests: UnitTest {
         ]
 
         // When
-        let sanitized = dictionary.sanitizedForJSON(logger: loggerMock)
+        let outputter = AccumulatorLogOutputter()
+        let logger = StandardLogger(outputter: outputter)
+        logger.logLevel = .debug
+        let sanitized = dictionary.sanitizedForJSON(logger: logger)
 
         // Then
         XCTAssertEqual(sanitized.count, 3)
@@ -83,11 +92,11 @@ class DictionarySanitizerTests: UnitTest {
         }
 
         // Verify logging
-        XCTAssertGreaterThanOrEqual(loggerMock.errorCallsCount, 2)
-        XCTAssertEqual(loggerMock.errorReceivedArguments?.message, "Removed unsupported numeric value")
+        XCTAssertGreaterThanOrEqual(outputter.errorMessages.count, 2)
+        XCTAssertEqual(outputter.firstErrorMessage, "Removed unsupported numeric value")
     }
 
-    func test_sanitizedForJSON_givenDictionaryWithArray_expectArrayItemsWithNaNAndInfinityRemoved() {
+    func testSanitizeDictionaryRemoveDoubleUnsupportedFromArrayInDictionary() {
         // Given
         let dictionary: [String: Any] = [
             "validKey": "validValue",
@@ -96,7 +105,10 @@ class DictionarySanitizerTests: UnitTest {
         ]
 
         // When
-        let sanitized = dictionary.sanitizedForJSON(logger: loggerMock)
+        let outputter = AccumulatorLogOutputter()
+        let logger = StandardLogger(outputter: outputter)
+        logger.logLevel = .debug
+        let sanitized = dictionary.sanitizedForJSON(logger: logger)
 
         // Then
         XCTAssertEqual(sanitized.count, 3)
@@ -113,24 +125,35 @@ class DictionarySanitizerTests: UnitTest {
         }
 
         // Verify logging
-        XCTAssertGreaterThanOrEqual(loggerMock.errorCallsCount, 2)
-        XCTAssertEqual(loggerMock.errorReceivedArguments?.message, "Removed unsupported numeric value")
+        XCTAssertGreaterThanOrEqual(outputter.errorMessages.count, 2)
+        XCTAssertEqual(outputter.firstErrorMessage, "Removed unsupported numeric value")
     }
 
-    func test_sanitizedForJSON_givenDictionaryWithNestedArrayContainingDictionaries_expectInvalidValuesRemoved() {
+    func testSanitizeDictionaryRemoveUnsupportedDoublesFromDictionariesInArrayInDictionary() {
         // Given
         let dictionary: [String: Any] = [
             "validKey": "validValue",
             "arrayOfDicts": [
-                ["key1": "value1", "key2": Double.nan],
-                ["key3": Double.infinity, "key4": 42],
-                ["key5": "value5"]
+                [
+                    "key1": "value1",
+                    "key2": Double.nan
+                ],
+                [
+                    "key3": Double.infinity,
+                    "key4": 42
+                ],
+                [
+                    "key5": "value5"
+                ]
             ],
             "anotherValidKey": 42
         ]
 
         // When
-        let sanitized = dictionary.sanitizedForJSON(logger: loggerMock)
+        let outputter = AccumulatorLogOutputter()
+        let logger = StandardLogger(outputter: outputter)
+        logger.logLevel = .debug
+        let sanitized = dictionary.sanitizedForJSON(logger: logger)
 
         // Then
         XCTAssertEqual(sanitized.count, 3)
@@ -167,7 +190,7 @@ class DictionarySanitizerTests: UnitTest {
         }
     }
 
-    func test_sanitizedForJSON_givenDictionaryWithFloatNaNAndInfinity_expectInvalidValuesRemoved() {
+    func testSanitizeDictionaryRemoveFloatUnsupported() {
         // Given
         let dictionary: [String: Any] = [
             "validKey": "validValue",
@@ -178,7 +201,10 @@ class DictionarySanitizerTests: UnitTest {
         ]
 
         // When
-        let sanitized = dictionary.sanitizedForJSON(logger: loggerMock)
+        let outputter = AccumulatorLogOutputter()
+        let logger = StandardLogger(outputter: outputter)
+        logger.logLevel = .debug
+        let sanitized = dictionary.sanitizedForJSON(logger: logger)
 
         // Then
         XCTAssertEqual(sanitized.count, 2)
@@ -189,11 +215,11 @@ class DictionarySanitizerTests: UnitTest {
         XCTAssertNil(sanitized["negativeInfinityKey"])
 
         // Verify logging
-        XCTAssertEqual(loggerMock.errorCallsCount, 3)
-        XCTAssertEqual(loggerMock.errorReceivedArguments?.message, "Removed unsupported numeric value")
+        XCTAssertEqual(outputter.errorMessages.count, 3)
+        XCTAssertEqual(outputter.firstErrorMessage, "Removed unsupported numeric value")
     }
 
-    func test_sanitizedForJSON_givenEmptyNestedStructures_expectEmptyStructuresRemoved() {
+    func testSanitizeDictionaryLeavesEmptyDictionay() {
         // Given
         let dictionary: [String: Any] = [
             "validKey": "validValue",
@@ -203,7 +229,10 @@ class DictionarySanitizerTests: UnitTest {
         ]
 
         // When
-        let sanitized = dictionary.sanitizedForJSON(logger: loggerMock)
+        let outputter = AccumulatorLogOutputter()
+        let logger = StandardLogger(outputter: outputter)
+        logger.logLevel = .debug
+        let sanitized = dictionary.sanitizedForJSON(logger: logger)
 
         // Then
         XCTAssertEqual(sanitized.count, 2)
@@ -213,11 +242,11 @@ class DictionarySanitizerTests: UnitTest {
         XCTAssertNil(sanitized["arrayWithEmptyDict"])
 
         // Verify logging
-        XCTAssertGreaterThanOrEqual(loggerMock.errorCallsCount, 1)
-        XCTAssertEqual(loggerMock.errorReceivedArguments?.message, "Removed unsupported numeric value")
+        XCTAssertGreaterThanOrEqual(outputter.errorMessages.count, 1)
+        XCTAssertEqual(outputter.firstErrorMessage, "Removed unsupported numeric value")
     }
 
-    func test_sanitizedForJSON_givenValidDictionary_expectNoChanges() {
+    func testSanitizeDictionaryPreserveMixedValues() {
         // Given
         let dictionary: [String: Any] = [
             "stringKey": "stringValue",
@@ -229,7 +258,10 @@ class DictionarySanitizerTests: UnitTest {
         ]
 
         // When
-        let sanitized = dictionary.sanitizedForJSON(logger: loggerMock)
+        let outputter = AccumulatorLogOutputter()
+        let logger = StandardLogger(outputter: outputter)
+        logger.logLevel = .debug
+        let sanitized = dictionary.sanitizedForJSON(logger: logger)
 
         // Then
         XCTAssertEqual(sanitized.count, dictionary.count)
@@ -251,7 +283,7 @@ class DictionarySanitizerTests: UnitTest {
         }
     }
 
-    func test_sanitizedForJSON_givenIntegerValues_expectIntegersRemainIntegers() {
+    func testSanitizeDictionaryPreserveIntegers() {
         // Given
         let dictionary: [String: Any] = [
             "intValue": 1,
@@ -261,7 +293,10 @@ class DictionarySanitizerTests: UnitTest {
         ]
 
         // When
-        let sanitized = dictionary.sanitizedForJSON(logger: loggerMock)
+        let outputter = AccumulatorLogOutputter()
+        let logger = StandardLogger(outputter: outputter)
+        logger.logLevel = .debug
+        let sanitized = dictionary.sanitizedForJSON(logger: logger)
 
         // Then
         XCTAssertEqual(sanitized.count, dictionary.count)
@@ -282,7 +317,7 @@ class DictionarySanitizerTests: UnitTest {
         XCTAssertEqual(sanitized["largeIntValue"] as? Int, 9999999)
     }
 
-    func test_sanitizedForJSON_givenNestedIntegerValues_expectIntegersRemainIntegers() {
+    func testSanitizeDictionaryPreserveNestedIntegers() {
         // Given
         let dictionary: [String: Any] = [
             "topLevelInt": 100,
@@ -294,7 +329,10 @@ class DictionarySanitizerTests: UnitTest {
         ]
 
         // When
-        let sanitized = dictionary.sanitizedForJSON(logger: loggerMock)
+        let outputter = AccumulatorLogOutputter()
+        let logger = StandardLogger(outputter: outputter)
+        logger.logLevel = .debug
+        let sanitized = dictionary.sanitizedForJSON(logger: logger)
 
         // Then
         XCTAssertEqual(sanitized.count, dictionary.count)
@@ -329,7 +367,7 @@ class DictionarySanitizerTests: UnitTest {
         }
     }
 
-    func test_sanitizedForJSON_givenDictionaryWithBooleans_expectBooleansPreserved() {
+    func testSanitizeDictionaryPreserveBooleans() {
         // Given
         let dictionary: [String: Any] = [
             "trueValue": true,
@@ -342,7 +380,10 @@ class DictionarySanitizerTests: UnitTest {
         ]
 
         // When
-        let sanitized = dictionary.sanitizedForJSON(logger: loggerMock)
+        let outputter = AccumulatorLogOutputter()
+        let logger = StandardLogger(outputter: outputter)
+        logger.logLevel = .debug
+        let sanitized = dictionary.sanitizedForJSON(logger: logger)
 
         // Then
         XCTAssertEqual(sanitized.count, dictionary.count)

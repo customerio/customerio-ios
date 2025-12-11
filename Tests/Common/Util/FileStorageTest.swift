@@ -37,7 +37,8 @@ class FileStorageTest: UnitTest {
 
         siteId = String.random()
 
-        fileStorage = FileManagerFileStorage(logger: LoggerMock())
+        let logger = StandardLogger(outputter: AccumulatorLogOutputter())        
+        fileStorage = FileManagerFileStorage(logger: logger)
     }
 
     func test_get_givenNotSave_expectNil() {
