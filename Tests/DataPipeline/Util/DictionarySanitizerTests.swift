@@ -16,8 +16,7 @@ class DictionarySanitizerTests: UnitTest {
 
         // When
         let outputter = AccumulatorLogOutputter()
-        let logger = StandardLogger(outputter: outputter)
-        logger.logLevel = .debug
+        let logger = StandardLogger(logLevel: .debug, outputter: outputter)
         let sanitized = dictionary.sanitizedForJSON(logger: logger)
 
         // Then
@@ -42,8 +41,7 @@ class DictionarySanitizerTests: UnitTest {
 
         // When
         let outputter = AccumulatorLogOutputter()
-        let logger = StandardLogger(outputter: outputter)
-        logger.logLevel = .debug
+        let logger = StandardLogger(logLevel: .debug, outputter: outputter)
         let sanitized = dictionary.sanitizedForJSON(logger: logger)
 
         // Then
@@ -73,8 +71,7 @@ class DictionarySanitizerTests: UnitTest {
 
         // When
         let outputter = AccumulatorLogOutputter()
-        let logger = StandardLogger(outputter: outputter)
-        logger.logLevel = .debug
+        let logger = StandardLogger(logLevel: .debug, outputter: outputter)
         let sanitized = dictionary.sanitizedForJSON(logger: logger)
 
         // Then
@@ -106,8 +103,7 @@ class DictionarySanitizerTests: UnitTest {
 
         // When
         let outputter = AccumulatorLogOutputter()
-        let logger = StandardLogger(outputter: outputter)
-        logger.logLevel = .debug
+        let logger = StandardLogger(logLevel: .debug, outputter: outputter)
         let sanitized = dictionary.sanitizedForJSON(logger: logger)
 
         // Then
@@ -151,8 +147,7 @@ class DictionarySanitizerTests: UnitTest {
 
         // When
         let outputter = AccumulatorLogOutputter()
-        let logger = StandardLogger(outputter: outputter)
-        logger.logLevel = .debug
+        let logger = StandardLogger(logLevel: .debug, outputter: outputter)
         let sanitized = dictionary.sanitizedForJSON(logger: logger)
 
         // Then
@@ -202,8 +197,7 @@ class DictionarySanitizerTests: UnitTest {
 
         // When
         let outputter = AccumulatorLogOutputter()
-        let logger = StandardLogger(outputter: outputter)
-        logger.logLevel = .debug
+        let logger = StandardLogger(logLevel: .debug, outputter: outputter)
         let sanitized = dictionary.sanitizedForJSON(logger: logger)
 
         // Then
@@ -230,8 +224,7 @@ class DictionarySanitizerTests: UnitTest {
 
         // When
         let outputter = AccumulatorLogOutputter()
-        let logger = StandardLogger(outputter: outputter)
-        logger.logLevel = .debug
+        let logger = StandardLogger(logLevel: .debug, outputter: outputter)
         let sanitized = dictionary.sanitizedForJSON(logger: logger)
 
         // Then
@@ -259,8 +252,7 @@ class DictionarySanitizerTests: UnitTest {
 
         // When
         let outputter = AccumulatorLogOutputter()
-        let logger = StandardLogger(outputter: outputter)
-        logger.logLevel = .debug
+        let logger = StandardLogger(logLevel: .debug, outputter: outputter)
         let sanitized = dictionary.sanitizedForJSON(logger: logger)
 
         // Then
@@ -294,8 +286,7 @@ class DictionarySanitizerTests: UnitTest {
 
         // When
         let outputter = AccumulatorLogOutputter()
-        let logger = StandardLogger(outputter: outputter)
-        logger.logLevel = .debug
+        let logger = StandardLogger(logLevel: .debug, outputter: outputter)
         let sanitized = dictionary.sanitizedForJSON(logger: logger)
 
         // Then
@@ -330,8 +321,7 @@ class DictionarySanitizerTests: UnitTest {
 
         // When
         let outputter = AccumulatorLogOutputter()
-        let logger = StandardLogger(outputter: outputter)
-        logger.logLevel = .debug
+        let logger = StandardLogger(logLevel: .debug, outputter: outputter)
         let sanitized = dictionary.sanitizedForJSON(logger: logger)
 
         // Then
@@ -381,8 +371,7 @@ class DictionarySanitizerTests: UnitTest {
 
         // When
         let outputter = AccumulatorLogOutputter()
-        let logger = StandardLogger(outputter: outputter)
-        logger.logLevel = .debug
+        let logger = StandardLogger(logLevel: .debug, outputter: outputter)
         let sanitized = dictionary.sanitizedForJSON(logger: logger)
 
         // Then

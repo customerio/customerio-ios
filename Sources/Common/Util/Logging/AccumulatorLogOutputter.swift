@@ -8,6 +8,9 @@
 import Dispatch
 
 public class AccumulatorLogOutputter: LogOutputter {
+    
+    public init() { }
+    
     private var _messages: [(CioLogLevel, String)] = []
     
     public var messages: [(CioLogLevel, String)] {

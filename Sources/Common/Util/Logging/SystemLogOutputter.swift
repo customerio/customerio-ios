@@ -12,18 +12,27 @@ import os.log
 
 public struct SystemLogOutputter: LogOutputter {
     // allows filtering in Console mac app
-    public let logSubsystem = "io.customer.sdk"
-    public let logCategory = "CIO"
+    public static let defaultSubsystem = "io.customer.sdk"
+    public static let defaultCategory = "CIO"
 
+    public let subsystem: String
+    public let category: String
+    
+    
+    public init(subsystem: String = Self.defaultSubsystem, category: String = Self.defaultCategory) {
+        self.subsystem = subsystem
+        self.category = category
+    }
+    
     public func output(level: CioLogLevel, _ message: String) {
 #if canImport(os)
         // Unified logging for Swift. https://www.avanderlee.com/workflow/oslog-unified-logging/
         // This means we can view logs in xcode console + Console app.
         if #available(iOS 14, *) {
-            let logger = os.Logger(subsystem: logSubsystem, category: logCategory)
+            let logger = os.Logger(subsystem: subsystem, category: category)
             logger.log(level: level.osLogLevel, "\(message, privacy: .public)")
         } else {
-            let logger = OSLog(subsystem: logSubsystem, category: logCategory)
+            let logger = OSLog(subsystem: subsystem, category: category)
             os_log("%{public}@", log: logger, type: level.osLogLevel, message)
         }
 #else

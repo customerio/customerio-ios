@@ -10,7 +10,8 @@ public class StandardLogger: Logger {
     public var outputter: LogOutputter
     public var logLevel: CioLogLevel = .error
 
-    init(outputter: LogOutputter = SystemLogOutputter()) {
+    public init(logLevel: CioLogLevel = .error, outputter: LogOutputter = SystemLogOutputter()) {
+        self.logLevel = logLevel
         self.outputter = outputter
     }
 

@@ -472,11 +472,7 @@ extension DIGraphShared {
     // SdkCommonLogger
     public var sdkCommonLogger: SdkCommonLogger {
         getOverriddenInstance() ??
-            newSdkCommonLogger
-    }
-
-    private var newSdkCommonLogger: SdkCommonLogger {
-        SdkCommonLoggerImpl(logger: logger)
+        logger
     }
 
     // DateUtil

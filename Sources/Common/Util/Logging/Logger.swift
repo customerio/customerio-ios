@@ -46,22 +46,22 @@ public extension Logger {
     
     /// the noisey log level. Feel free to spam this log level with any
     /// information about the SDK that would be useful for debugging the SDK.
-    func debug(_ message: String, _ tag: String? = nil, context: (label: String, content: CustomStringConvertible)? = nil) {
-        log(.debug, message, tag, context: context)
+    func debug(_ message: @autoclosure () -> String, _ tag: String? = nil, context: (label: String, content: CustomStringConvertible)? = nil) {
+        log(.debug, message(), tag, context: context)
     }
     
     /// Not noisy log messages. Good for general information such as
     /// when the background queue begins and ends running but use `debug`
     /// for the status of each background queue task running.
-    func info(_ message: String, _ tag: String? = nil, context: (label: String, content: CustomStringConvertible)? = nil) {
-        log(.info, message, tag, context: context)
+    func info(_ message: @autoclosure () -> String, _ tag: String? = nil, context: (label: String, content: CustomStringConvertible)? = nil) {
+        log(.info, message(), tag, context: context)
     }
 
     /// the SDK is in an unstable state that you want to notify
     /// the customer or our development team about.
-    func error(_ message: String, _ tag: String? = nil, _ throwable: Error? = nil) {
+    func error(_ message: @autoclosure () -> String, _ tag: String? = nil, _ throwable: Error? = nil) {
         let context = throwable.map { (label: "Error", content: $0.localizedDescription) }
-        log(.error, message, tag, context: context)
+        log(.error, message(), tag, context: context)
     }
 }
 

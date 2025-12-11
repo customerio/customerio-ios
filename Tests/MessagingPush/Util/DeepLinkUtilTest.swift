@@ -8,12 +8,15 @@ class DeepLinkUtilTest: UnitTest {
     private var deepLinkUtil: DeepLinkUtilImpl!
 
     private let uiKitMock = UIKitWrapperMock()
-    private let loggerMock = SdkCommonLoggerMock()
+    private var outputter = AccumulatorLogOutputter()
 
     override func setUp() {
         super.setUp()
+        
+        let logger = StandardLogger(logLevel: .debug, outputter: outputter)
+        
 
-        deepLinkUtil = DeepLinkUtilImpl(logger: loggerMock, uiKitWrapper: uiKitMock)
+        deepLinkUtil = DeepLinkUtilImpl(logger: logger, uiKitWrapper: uiKitMock)
     }
 
     // MARK: handleDeepLink
@@ -28,15 +31,20 @@ class DeepLinkUtilTest: UnitTest {
     }
 
     func test_handleDeepLink_givenHostAppDoesNotHandleLink_expectLogDeepLinkHandledExternally() {
+        outputter.clear()
         let url = URL(string: "https://customer.io")!
         uiKitMock.continueNSUserActivityReturnValue = false
 
         deepLinkUtil.handleDeepLink(url)
 
-        XCTAssertEqual(loggerMock.logHandlingNotificationDeepLinkCallsCount, 1)
-        XCTAssertEqual(loggerMock.logHandlingNotificationDeepLinkReceivedArguments, url)
+        XCTAssertEqual(outputter.debugMessages.count, 2)
+        XCTAssertEqual(outputter.firstDebugMessage, "[\(Tags.Push)] Handling push notification deep link with url: \(url)")
+        XCTAssertEqual(outputter.debugMessages[1], "[\(Tags.Push)] Deep link handled by system")
 
-        XCTAssertEqual(loggerMock.logDeepLinkHandledExternallyCallsCount, 1)
+//        XCTAssertEqual(loggerMock.logHandlingNotificationDeepLinkCallsCount, 1)
+//        XCTAssertEqual(loggerMock.logHandlingNotificationDeepLinkReceivedArguments, url)
+//
+//        XCTAssertEqual(loggerMock.logDeepLinkHandledExternallyCallsCount, 1)
     }
 
     func test_handleDeepLink_givenHostAppHandlesLink_expectDoNotOpenLinkSystemCall() {
@@ -49,15 +57,20 @@ class DeepLinkUtilTest: UnitTest {
     }
 
     func test_handleDeepLink_givenHostAppHandlesLink_expectLogHandledByHostApp() {
+        outputter.clear()
         let url = URL(string: "https://customer.io")!
         uiKitMock.continueNSUserActivityReturnValue = true
 
         deepLinkUtil.handleDeepLink(url)
 
-        XCTAssertEqual(loggerMock.logHandlingNotificationDeepLinkCallsCount, 1)
-        XCTAssertEqual(loggerMock.logHandlingNotificationDeepLinkReceivedArguments, url)
+        XCTAssertEqual(outputter.debugMessages.count, 2)
+        XCTAssertEqual(outputter.firstDebugMessage, "[\(Tags.Push)] Handling push notification deep link with url: \(url)")
+        XCTAssertEqual(outputter.debugMessages[1], "[\(Tags.Push)] Deep link handled by internal host app navigation")
 
-        XCTAssertEqual(loggerMock.logDeepLinkHandledByHostAppCallsCount, 1)
+//        XCTAssertEqual(loggerMock.logHandlingNotificationDeepLinkCallsCount, 1)
+//        XCTAssertEqual(loggerMock.logHandlingNotificationDeepLinkReceivedArguments, url)
+//
+//        XCTAssertEqual(loggerMock.logDeepLinkHandledByHostAppCallsCount, 1)
     }
 
     func testHandleDeepLink_whenDLCallbackIsRegistered_expectDLCallbackToBeCalled() async {
@@ -84,6 +97,7 @@ class DeepLinkUtilTest: UnitTest {
             callbackExpectation.fulfill()
             return true
         }
+        outputter.clear()
         deepLinkUtil.setDeepLinkCallback(deepLinkCallback)
 
         // Execution
@@ -91,9 +105,13 @@ class DeepLinkUtilTest: UnitTest {
 
         // Verification
         await fulfillment(of: [callbackExpectation], timeout: 1.0)
-        XCTAssertEqual(loggerMock.logHandlingNotificationDeepLinkCallsCount, 1)
-        XCTAssertEqual(loggerMock.logHandlingNotificationDeepLinkReceivedArguments, url)
+        XCTAssertEqual(outputter.debugMessages.count, 2)
+        XCTAssertEqual(outputter.firstDebugMessage, "[\(Tags.Push)] Handling push notification deep link with url: \(url)")
+        XCTAssertEqual(outputter.debugMessages[1], "[\(Tags.Push)] Deep link handled by host app callback implementation")
 
-        XCTAssertEqual(loggerMock.logDeepLinkHandledByCallbackCallsCount, 1)
+//        XCTAssertEqual(loggerMock.logHandlingNotificationDeepLinkCallsCount, 1)
+//        XCTAssertEqual(loggerMock.logHandlingNotificationDeepLinkReceivedArguments, url)
+//
+//        XCTAssertEqual(loggerMock.logDeepLinkHandledByCallbackCallsCount, 1)
     }
 }

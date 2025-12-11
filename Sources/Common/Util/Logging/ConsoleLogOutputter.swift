@@ -6,6 +6,9 @@
 //
 
 public struct ConsoleLogOutputter: LogOutputter {
+    
+    public init() { }
+    
     public func output(level: CioLogLevel, _ message: String) {
         Swift.print("[\(level)] \(message)")
     }
