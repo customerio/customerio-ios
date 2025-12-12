@@ -19,17 +19,25 @@ class SseConnectionStateTest: XCTestCase {
         XCTAssertEqual(state.description, "connected")
     }
 
+    func test_disconnecting_description() {
+        let state = SseConnectionState.disconnecting
+        XCTAssertEqual(state.description, "disconnecting")
+    }
+
     // MARK: - Equatable
 
     func test_equatable_sameStates_expectEqual() {
         XCTAssertEqual(SseConnectionState.disconnected, SseConnectionState.disconnected)
         XCTAssertEqual(SseConnectionState.connecting, SseConnectionState.connecting)
         XCTAssertEqual(SseConnectionState.connected, SseConnectionState.connected)
+        XCTAssertEqual(SseConnectionState.disconnecting, SseConnectionState.disconnecting)
     }
 
     func test_equatable_differentStates_expectNotEqual() {
         XCTAssertNotEqual(SseConnectionState.disconnected, SseConnectionState.connecting)
         XCTAssertNotEqual(SseConnectionState.connecting, SseConnectionState.connected)
         XCTAssertNotEqual(SseConnectionState.connected, SseConnectionState.disconnected)
+        XCTAssertNotEqual(SseConnectionState.disconnecting, SseConnectionState.connected)
+        XCTAssertNotEqual(SseConnectionState.disconnecting, SseConnectionState.disconnected)
     }
 }
