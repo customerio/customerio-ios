@@ -82,6 +82,9 @@ extension DIGraphShared {
         _ = sseConnectionManager
         countDependenciesResolved += 1
 
+        _ = sseService
+        countDependenciesResolved += 1
+
         return countDependenciesResolved
     }
 
@@ -257,7 +260,31 @@ extension DIGraphShared {
     }
 
     private func _get_sseConnectionManager() -> SseConnectionManager {
-        SseConnectionManager(logger: logger, inAppMessageManager: inAppMessageManager)
+        SseConnectionManager(logger: logger, inAppMessageManager: inAppMessageManager, sseService: sseService)
+    }
+
+    // SseService (singleton)
+    var sseService: SseService {
+        getOverriddenInstance() ??
+            sharedSseService
+    }
+
+    var sharedSseService: SseService {
+        // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
+        // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
+        DispatchQueue(label: "DIGraphShared_SseService_singleton_access").sync {
+            if let overridenDep: SseService = getOverriddenInstance() {
+                return overridenDep
+            }
+            let existingSingletonInstance = self.singletons[String(describing: SseService.self)] as? SseService
+            let instance = existingSingletonInstance ?? _get_sseService()
+            self.singletons[String(describing: SseService.self)] = instance
+            return instance
+        }
+    }
+
+    private func _get_sseService() -> SseService {
+        SseService(logger: logger)
     }
 }
 
