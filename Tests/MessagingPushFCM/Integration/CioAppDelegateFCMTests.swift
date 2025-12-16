@@ -18,8 +18,6 @@ class CioAppDelegateFCMTests: XCTestCase {
     var mockFirebaseServiceDelegate: MockFirebaseServiceDelegate!
     var outputter: AccumulatorLogDestination!
     
-    var logger: Logger!
-
     // Mock config for testing
     func createMockConfig(autoFetchDeviceToken: Bool = true, autoTrackPushEvents: Bool = true) -> MessagingPushConfigOptions {
         MessagingPushConfigOptions(
@@ -71,7 +69,6 @@ class CioAppDelegateFCMTests: XCTestCase {
         mockNotificationCenterDelegate = nil
         mockFirebaseService = nil
         mockFirebaseServiceDelegate = nil
-        logger = nil
         outputter = nil
         appDelegateFCM = nil
 
@@ -112,7 +109,7 @@ class CioAppDelegateFCMTests: XCTestCase {
             userNotificationCenter: { self.mockNotificationCenter },
             appDelegate: mockAppDelegate,
             config: { self.createMockConfig(autoFetchDeviceToken: false) },
-            logger: logger
+            logger: StandardLogger(destination: NullLogDestination())
         )
         mockFirebaseService.delegate = nil
 
