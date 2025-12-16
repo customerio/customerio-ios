@@ -4,7 +4,7 @@ import os.log
 #endif
 
 /// Protocol to be implemented by custom loggers, if needed. In most cases, `StandardLogger` can accomplish most
-/// logging goals with the correct `LogOutputter` used.
+/// logging goals with the correct `LogDestination` used.
 public protocol Logger {
     /// Represents the current log level of the logger. The log level
     /// controls the verbosity of the logs that are output. Only messages
@@ -69,7 +69,7 @@ public extension Logger {
 /// error - only log when there is an error in the SDK (default)
 /// info - basic SDK informion. Somewhat noisy. Recommended to start debugging SDK.
 /// debug - most noisy. See all of the logs made from the SDK.
-public enum CioLogLevel: String, CaseIterable {
+public enum CioLogLevel: String, CaseIterable, Sendable {
     case none
     case error
     case info

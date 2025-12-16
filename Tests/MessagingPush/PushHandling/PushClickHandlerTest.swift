@@ -10,11 +10,11 @@ class PushClickHandlerTest: IntegrationTest {
 
     private let deepLinkUtilMock = DeepLinkUtilMock()
     private let messagingPushMock = MessagingPushInstanceMock()
-    private let outputter = AccumulatorLogOutputter()
+    private let outputter = AccumulatorLogDestination()
 
     override func setUp() {
         super.setUp()
-        let logger = StandardLogger(logLevel: .debug, outputter: outputter)
+        let logger = StandardLogger(logLevel: .debug, destination: outputter)
         pushClickHandler = PushClickHandlerImpl(deepLinkUtil: deepLinkUtilMock, messagingPush: messagingPushMock, pushLogger: PushNotificationLoggerMock(), commonLogger: logger)
     }
 

@@ -3,12 +3,12 @@
 import XCTest
 
 class CustomerIOTests: IntegrationTest {
-    private let outputter = AccumulatorLogOutputter()
+    private let outputter = AccumulatorLogDestination()
 
     override open func setUpDependencies() {
         super.setUpDependencies()
 
-        let logger = StandardLogger(logLevel: .debug, outputter: outputter)
+        let logger = StandardLogger(logLevel: .debug, destination: outputter)
         diGraphShared.override(value: logger, forType: SdkCommonLogger.self)
         DataPipeline.resetTestEnvironment()
     }
@@ -27,12 +27,16 @@ class CustomerIOTests: IntegrationTest {
             .build()
         CustomerIO.initialize(withConfig: config)
 
-        let allMessages = outputter.messages
+        let allMessages = outputter.allMessages
         let message1Index = allMessages.firstIndex {
-            (CioLogLevel.debug, "[\(Tags.Init)] Creating new instance of CustomerIO SDK version: \(SdkVersion.version)...") == $0
+            $0.level == .debug &&
+            $0.content == "Creating new instance of CustomerIO SDK version: \(SdkVersion.version)..." &&
+            $0.tag == Tags.Init
         } ?? -1
         let message2Index = allMessages.firstIndex {
-            (CioLogLevel.info, "[\(Tags.Init)] CustomerIO SDK is initialized and ready to use") == $0
+            $0.level == .info &&
+            $0.content == "CustomerIO SDK is initialized and ready to use" &&
+            $0.tag == Tags.Init
         } ?? -1
         XCTAssert(message1Index >= 0) // SDK Init message must be found
         XCTAssert(message1Index < message2Index) // SDK init complete message must be found and be after init arrives
@@ -50,12 +54,16 @@ class CustomerIOTests: IntegrationTest {
         CustomerIO.initialize(withConfig: config)
 
         let moduleName = "DataPipeline"
-        let allMessages = outputter.messages
+        let allMessages = outputter.allMessages
         let message1Index = allMessages.firstIndex {
-            (CioLogLevel.debug, "[\(Tags.Init)] Initializing SDK module \(moduleName)...") == $0
+            $0.level == .debug &&
+            $0.content == "Initializing SDK module \(moduleName)..." &&
+            $0.tag == Tags.Init
         } ?? -1
         let message2Index = allMessages.firstIndex {
-            (CioLogLevel.info, "[\(Tags.Init)] CustomerIO \(moduleName) module is initialized and ready to use") == $0
+            $0.level == .info &&
+            $0.content == "CustomerIO \(moduleName) module is initialized and ready to use" &&
+            $0.tag == Tags.Init
         } ?? -1
         XCTAssert(message1Index >= 0) // Module Init message must be found
         XCTAssert(message1Index < message2Index) // Module init complete message must be found and be after init arrives

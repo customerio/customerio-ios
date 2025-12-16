@@ -5,13 +5,13 @@ import XCTest
 
 class LoggerTest: UnitTest {
     private var logger: Logger!
-    private var outputter: AccumulatorLogOutputter!
+    private var outputter: AccumulatorLogDestination!
 
     override func setUp() {
         super.setUp()
 
-        outputter = AccumulatorLogOutputter()
-        logger = StandardLogger(outputter: outputter)
+        outputter = AccumulatorLogDestination()
+        logger = StandardLogger(destination: outputter)
     }
 
     func testLogLevelNoneWithoutTags() {
@@ -47,14 +47,14 @@ class LoggerTest: UnitTest {
         logger.error(errorMessage)
 
         XCTAssertTrue(outputter.hasMessages)
-        XCTAssertEqual(outputter.messages.count, 1)
+        XCTAssertEqual(outputter.allMessages.count, 1)
         XCTAssertEqual(outputter.debugMessages.count, 0)
         XCTAssertEqual(outputter.infoMessages.count, 0)
         XCTAssertEqual(outputter.errorMessages.count, 1)
 
-        let first = outputter.messages.first
-        XCTAssertEqual(first?.0, .error)
-        XCTAssertEqual(first?.1, errorMessage)
+        let first = outputter.allMessages.first
+        XCTAssertEqual(first?.level, .error)
+        XCTAssertEqual(first?.content, errorMessage)
     }
 
     func testLogLevelErrorWithTags() {
@@ -66,14 +66,15 @@ class LoggerTest: UnitTest {
         logger.error("Test error message", "ErrorTag")
 
         XCTAssertTrue(outputter.hasMessages)
-        XCTAssertEqual(outputter.messages.count, 1)
+        XCTAssertEqual(outputter.allMessages.count, 1)
         XCTAssertEqual(outputter.debugMessages.count, 0)
         XCTAssertEqual(outputter.infoMessages.count, 0)
         XCTAssertEqual(outputter.errorMessages.count, 1)
 
-        let first = outputter.messages.first
-        XCTAssertEqual(first?.0, .error)
-        XCTAssertEqual(first?.1, "[ErrorTag] Test error message")
+        let first = outputter.allMessages.first
+        XCTAssertEqual(first?.level, .error)
+        XCTAssertEqual(first?.content, "Test error message")
+        XCTAssertEqual(first?.tag, "ErrorTag")
     }
 
     func testLogLevelErrorWithTagsAndError() {
@@ -92,14 +93,15 @@ class LoggerTest: UnitTest {
 
         
         XCTAssertTrue(outputter.hasMessages)
-        XCTAssertEqual(outputter.messages.count, 1)
+        XCTAssertEqual(outputter.allMessages.count, 1)
         XCTAssertEqual(outputter.debugMessages.count, 0)
         XCTAssertEqual(outputter.infoMessages.count, 0)
         XCTAssertEqual(outputter.errorMessages.count, 1)
 
-        let first = outputter.messages.first
-        XCTAssertEqual(first?.0, .error)
-        XCTAssertEqual(first?.1, "[ErrorTag] Test error message Error: Localized error")
+        let first = outputter.allMessages.first
+        XCTAssertEqual(first?.level, .error)
+        XCTAssertEqual(first?.content, "Test error message Error: Localized error")
+        XCTAssertEqual(first?.tag, "ErrorTag")
     }
 
     func testLogLevelInfoWithoutTags() {
@@ -114,18 +116,18 @@ class LoggerTest: UnitTest {
 
         
         XCTAssertTrue(outputter.hasMessages)
-        XCTAssertEqual(outputter.messages.count, 2)
+        XCTAssertEqual(outputter.allMessages.count, 2)
         XCTAssertEqual(outputter.debugMessages.count, 0)
         XCTAssertEqual(outputter.infoMessages.count, 1)
         XCTAssertEqual(outputter.errorMessages.count, 1)
 
-        let first = outputter.messages[0]
-        XCTAssertEqual(first.0, .info)
-        XCTAssertEqual(first.1, infoMessage)
+        let first = outputter.allMessages[0]
+        XCTAssertEqual(first.level, .info)
+        XCTAssertEqual(first.content, infoMessage)
 
-        let second = outputter.messages[1]
-        XCTAssertEqual(second.0, .error)
-        XCTAssertEqual(second.1, errorMessage)
+        let second = outputter.allMessages[1]
+        XCTAssertEqual(second.level, .error)
+        XCTAssertEqual(second.content, errorMessage)
     }
 
     func testLogLevelInfoWithTags() {
@@ -137,18 +139,20 @@ class LoggerTest: UnitTest {
         logger.error("Test error message", "ErrorTag")
         
         XCTAssertTrue(outputter.hasMessages)
-        XCTAssertEqual(outputter.messages.count, 2)
+        XCTAssertEqual(outputter.allMessages.count, 2)
         XCTAssertEqual(outputter.debugMessages.count, 0)
         XCTAssertEqual(outputter.infoMessages.count, 1)
         XCTAssertEqual(outputter.errorMessages.count, 1)
 
-        let first = outputter.messages[0]
-        XCTAssertEqual(first.0, .info)
-        XCTAssertEqual(first.1, "[InfoTag] Test info message")
+        let first = outputter.allMessages[0]
+        XCTAssertEqual(first.level, .info)
+        XCTAssertEqual(first.content, "Test info message")
+        XCTAssertEqual(first.tag, "InfoTag")
 
-        let second = outputter.messages[1]
-        XCTAssertEqual(second.0, .error)
-        XCTAssertEqual(second.1, "[ErrorTag] Test error message")
+        let second = outputter.allMessages[1]
+        XCTAssertEqual(second.level, .error)
+        XCTAssertEqual(second.content, "Test error message")
+        XCTAssertEqual(second.tag, "ErrorTag")
     }
 
     func testLogLevelDebugWithoutTags() {
@@ -165,84 +169,57 @@ class LoggerTest: UnitTest {
 
         
         XCTAssertTrue(outputter.hasMessages)
-        XCTAssertEqual(outputter.messages.count, 3)
+        XCTAssertEqual(outputter.allMessages.count, 3)
         XCTAssertEqual(outputter.debugMessages.count, 1)
         XCTAssertEqual(outputter.infoMessages.count, 1)
         XCTAssertEqual(outputter.errorMessages.count, 1)
 
-        let first = outputter.messages[0]
-        XCTAssertEqual(first.0, .debug)
-        XCTAssertEqual(first.1, debugMessage)
-        XCTAssertEqual(outputter.firstDebugMessage, debugMessage)
+        let first = outputter.allMessages[0]
+        XCTAssertEqual(first.level, .debug)
+        XCTAssertEqual(first.content, debugMessage)
+        XCTAssertEqual(outputter.firstDebugMessage?.content, debugMessage)
 
-        let second = outputter.messages[1]
-        XCTAssertEqual(second.0, .info)
-        XCTAssertEqual(second.1, infoMessage)
-        XCTAssertEqual(outputter.firstInfoMessage, infoMessage)
+        let second = outputter.allMessages[1]
+        XCTAssertEqual(second.level, .info)
+        XCTAssertEqual(second.content, infoMessage)
+        XCTAssertEqual(outputter.firstInfoMessage?.content, infoMessage)
 
-        let third = outputter.messages[2]
-        XCTAssertEqual(third.0, .error)
-        XCTAssertEqual(third.1, errorMessage)
-        XCTAssertEqual(outputter.firstErrorMessage, errorMessage)
+        let third = outputter.allMessages[2]
+        XCTAssertEqual(third.level, .error)
+        XCTAssertEqual(third.content, errorMessage)
+        XCTAssertEqual(outputter.firstErrorMessage?.content, errorMessage)
     }
 
     func testLogLevelDebugWithTags() {
         logger.logLevel = .debug
 
-        logger.debug("Test debug message", "DebugTag")
-        logger.info("Test info message", "InfoTag")
-        logger.error("Test error message", "ErrorTag")
+        let debugMessage = "Test debug message"
+        logger.debug(debugMessage, "DebugTag")
+        let infoMessage = "Test info message"
+        logger.info(infoMessage, "InfoTag")
+        let errorMessage = "Test error message"
+        logger.error(errorMessage, "ErrorTag")
 
         
         XCTAssertTrue(outputter.hasMessages)
-        XCTAssertEqual(outputter.messages.count, 3)
+        XCTAssertEqual(outputter.allMessages.count, 3)
         XCTAssertEqual(outputter.debugMessages.count, 1)
         XCTAssertEqual(outputter.infoMessages.count, 1)
         XCTAssertEqual(outputter.errorMessages.count, 1)
 
-        let first = outputter.messages[0]
-        let debugMessage = "[DebugTag] Test debug message"
-        XCTAssertEqual(first.0, .debug)
-        XCTAssertEqual(first.1, debugMessage)
-        XCTAssertEqual(outputter.firstDebugMessage, debugMessage)
+        let first = outputter.allMessages[0]
+        XCTAssertEqual(first.level, .debug)
+        XCTAssertEqual(first.content, debugMessage)
+        XCTAssertEqual(outputter.firstDebugMessage?.content, debugMessage)
 
-        let second = outputter.messages[1]
-        let infoMessage = "[InfoTag] Test info message"
-        XCTAssertEqual(second.0, .info)
-        XCTAssertEqual(second.1, infoMessage)
-        XCTAssertEqual(outputter.firstInfoMessage, infoMessage)
+        let second = outputter.allMessages[1]
+        XCTAssertEqual(second.level, .info)
+        XCTAssertEqual(second.content, infoMessage)
+        XCTAssertEqual(outputter.firstInfoMessage?.content, infoMessage)
 
-        let third = outputter.messages[2]
-        let errorMessage = "[ErrorTag] Test error message"
-        XCTAssertEqual(third.0, .error)
-        XCTAssertEqual(third.1, errorMessage)
-        XCTAssertEqual(outputter.firstErrorMessage, errorMessage)
+        let third = outputter.allMessages[2]
+        XCTAssertEqual(third.level, .error)
+        XCTAssertEqual(third.content, errorMessage)
+        XCTAssertEqual(outputter.firstErrorMessage?.content, errorMessage)
     }
 }
-
-//class DispatcherMock {
-//    struct Invocation {
-//        let level: CioLogLevel
-//        let message: String
-//    }
-//
-//    private(set) var invocations: [Invocation] = []
-//
-//    var closure: (CioLogLevel, String) -> Void {
-//        { [weak self] level, message in
-//            self?.invocations.append(Invocation(level: level, message: message))
-//        }
-//    }
-//
-//    func invocations(for level: CioLogLevel) -> [Invocation] {
-//        invocations.filter { $0.level == level }
-//    }
-//
-//    func inovcationsCount() -> Int {
-//        invocations.count
-//    }
-//
-//    func hasInvocations() -> Bool {
-//        !invocations.isEmpty
-//    }
-//}

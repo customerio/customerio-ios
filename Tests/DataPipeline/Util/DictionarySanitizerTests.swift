@@ -15,8 +15,8 @@ class DictionarySanitizerTests: UnitTest {
         ]
 
         // When
-        let outputter = AccumulatorLogOutputter()
-        let logger = StandardLogger(logLevel: .debug, outputter: outputter)
+        let outputter = AccumulatorLogDestination()
+        let logger = StandardLogger(logLevel: .debug, destination: outputter)
         let sanitized = dictionary.sanitizedForJSON(logger: logger)
 
         // Then
@@ -27,7 +27,7 @@ class DictionarySanitizerTests: UnitTest {
 
         // Verify logging
         XCTAssertEqual(outputter.errorMessages.count, 1)
-        XCTAssertEqual(outputter.firstErrorMessage, "Removed unsupported numeric value")
+        XCTAssertEqual(outputter.firstErrorMessage?.content, "Removed unsupported numeric value")
     }
 
     func testSanitizeDictionaryRemoveBothDoubleInfinity() {
@@ -40,8 +40,8 @@ class DictionarySanitizerTests: UnitTest {
         ]
 
         // When
-        let outputter = AccumulatorLogOutputter()
-        let logger = StandardLogger(logLevel: .debug, outputter: outputter)
+        let outputter = AccumulatorLogDestination()
+        let logger = StandardLogger(logLevel: .debug, destination: outputter)
         let sanitized = dictionary.sanitizedForJSON(logger: logger)
 
         // Then
@@ -53,8 +53,8 @@ class DictionarySanitizerTests: UnitTest {
 
         // Verify logging
         XCTAssertEqual(outputter.errorMessages.count, 2)
-        XCTAssertEqual(outputter.errorMessages[0], "Removed unsupported numeric value")
-        XCTAssertEqual(outputter.errorMessages[1], "Removed unsupported numeric value")
+        XCTAssertEqual(outputter.errorMessages[0].content, "Removed unsupported numeric value")
+        XCTAssertEqual(outputter.errorMessages[1].content, "Removed unsupported numeric value")
     }
 
     func testSanitizeDictionaryRemoveNestedDoubleInfinityAndNaN() {
@@ -70,8 +70,8 @@ class DictionarySanitizerTests: UnitTest {
         ]
 
         // When
-        let outputter = AccumulatorLogOutputter()
-        let logger = StandardLogger(logLevel: .debug, outputter: outputter)
+        let outputter = AccumulatorLogDestination()
+        let logger = StandardLogger(logLevel: .debug, destination: outputter)
         let sanitized = dictionary.sanitizedForJSON(logger: logger)
 
         // Then
@@ -90,7 +90,7 @@ class DictionarySanitizerTests: UnitTest {
 
         // Verify logging
         XCTAssertGreaterThanOrEqual(outputter.errorMessages.count, 2)
-        XCTAssertEqual(outputter.firstErrorMessage, "Removed unsupported numeric value")
+        XCTAssertEqual(outputter.firstErrorMessage?.content, "Removed unsupported numeric value")
     }
 
     func testSanitizeDictionaryRemoveDoubleUnsupportedFromArrayInDictionary() {
@@ -102,8 +102,8 @@ class DictionarySanitizerTests: UnitTest {
         ]
 
         // When
-        let outputter = AccumulatorLogOutputter()
-        let logger = StandardLogger(logLevel: .debug, outputter: outputter)
+        let outputter = AccumulatorLogDestination()
+        let logger = StandardLogger(logLevel: .debug, destination: outputter)
         let sanitized = dictionary.sanitizedForJSON(logger: logger)
 
         // Then
@@ -122,7 +122,7 @@ class DictionarySanitizerTests: UnitTest {
 
         // Verify logging
         XCTAssertGreaterThanOrEqual(outputter.errorMessages.count, 2)
-        XCTAssertEqual(outputter.firstErrorMessage, "Removed unsupported numeric value")
+        XCTAssertEqual(outputter.firstErrorMessage?.content, "Removed unsupported numeric value")
     }
 
     func testSanitizeDictionaryRemoveUnsupportedDoublesFromDictionariesInArrayInDictionary() {
@@ -146,8 +146,8 @@ class DictionarySanitizerTests: UnitTest {
         ]
 
         // When
-        let outputter = AccumulatorLogOutputter()
-        let logger = StandardLogger(logLevel: .debug, outputter: outputter)
+        let outputter = AccumulatorLogDestination()
+        let logger = StandardLogger(logLevel: .debug, destination: outputter)
         let sanitized = dictionary.sanitizedForJSON(logger: logger)
 
         // Then
@@ -196,8 +196,8 @@ class DictionarySanitizerTests: UnitTest {
         ]
 
         // When
-        let outputter = AccumulatorLogOutputter()
-        let logger = StandardLogger(logLevel: .debug, outputter: outputter)
+        let outputter = AccumulatorLogDestination()
+        let logger = StandardLogger(logLevel: .debug, destination: outputter)
         let sanitized = dictionary.sanitizedForJSON(logger: logger)
 
         // Then
@@ -210,7 +210,7 @@ class DictionarySanitizerTests: UnitTest {
 
         // Verify logging
         XCTAssertEqual(outputter.errorMessages.count, 3)
-        XCTAssertEqual(outputter.firstErrorMessage, "Removed unsupported numeric value")
+        XCTAssertEqual(outputter.firstErrorMessage?.content, "Removed unsupported numeric value")
     }
 
     func testSanitizeDictionaryLeavesEmptyDictionay() {
@@ -223,8 +223,8 @@ class DictionarySanitizerTests: UnitTest {
         ]
 
         // When
-        let outputter = AccumulatorLogOutputter()
-        let logger = StandardLogger(logLevel: .debug, outputter: outputter)
+        let outputter = AccumulatorLogDestination()
+        let logger = StandardLogger(logLevel: .debug, destination: outputter)
         let sanitized = dictionary.sanitizedForJSON(logger: logger)
 
         // Then
@@ -236,7 +236,7 @@ class DictionarySanitizerTests: UnitTest {
 
         // Verify logging
         XCTAssertGreaterThanOrEqual(outputter.errorMessages.count, 1)
-        XCTAssertEqual(outputter.firstErrorMessage, "Removed unsupported numeric value")
+        XCTAssertEqual(outputter.firstErrorMessage?.content, "Removed unsupported numeric value")
     }
 
     func testSanitizeDictionaryPreserveMixedValues() {
@@ -251,8 +251,8 @@ class DictionarySanitizerTests: UnitTest {
         ]
 
         // When
-        let outputter = AccumulatorLogOutputter()
-        let logger = StandardLogger(logLevel: .debug, outputter: outputter)
+        let outputter = AccumulatorLogDestination()
+        let logger = StandardLogger(logLevel: .debug, destination: outputter)
         let sanitized = dictionary.sanitizedForJSON(logger: logger)
 
         // Then
@@ -285,8 +285,8 @@ class DictionarySanitizerTests: UnitTest {
         ]
 
         // When
-        let outputter = AccumulatorLogOutputter()
-        let logger = StandardLogger(logLevel: .debug, outputter: outputter)
+        let outputter = AccumulatorLogDestination()
+        let logger = StandardLogger(logLevel: .debug, destination: outputter)
         let sanitized = dictionary.sanitizedForJSON(logger: logger)
 
         // Then
@@ -320,8 +320,8 @@ class DictionarySanitizerTests: UnitTest {
         ]
 
         // When
-        let outputter = AccumulatorLogOutputter()
-        let logger = StandardLogger(logLevel: .debug, outputter: outputter)
+        let outputter = AccumulatorLogDestination()
+        let logger = StandardLogger(logLevel: .debug, destination: outputter)
         let sanitized = dictionary.sanitizedForJSON(logger: logger)
 
         // Then
@@ -370,8 +370,8 @@ class DictionarySanitizerTests: UnitTest {
         ]
 
         // When
-        let outputter = AccumulatorLogOutputter()
-        let logger = StandardLogger(logLevel: .debug, outputter: outputter)
+        let outputter = AccumulatorLogDestination()
+        let logger = StandardLogger(logLevel: .debug, destination: outputter)
         let sanitized = dictionary.sanitizedForJSON(logger: logger)
 
         // Then

@@ -6,121 +6,112 @@ import XCTest
 class SdkCommonLoggerTest: UnitTest {
 
     func testCommonLoggerInitMessageAppears() {
-        let outputter = AccumulatorLogOutputter()
-        let logger = StandardLogger(logLevel: .debug, outputter: outputter)
+        let outputter = AccumulatorLogDestination()
+        let logger = StandardLogger(logLevel: .debug, destination: outputter)
         let version = SdkVersion.version
 
         logger.coreSdkInitStart()
 
         XCTAssertEqual(outputter.debugMessages.count, 1)
-        XCTAssertEqual(
-            outputter.firstDebugMessage,
-            "[\(Tags.Init)] Creating new instance of CustomerIO SDK version: \(version)..."
-        )
+        let firstMessage = outputter.firstDebugMessage!
+        XCTAssertEqual(firstMessage.tag, Tags.Init)
+        XCTAssertEqual(firstMessage.content, "Creating new instance of CustomerIO SDK version: \(version)...")
     }
 
     func testCommonLoggerInitCompleteMessageAppears() {
-        let outputter = AccumulatorLogOutputter()
-        let logger = StandardLogger(logLevel: .debug, outputter: outputter)
+        let outputter = AccumulatorLogDestination()
+        let logger = StandardLogger(logLevel: .debug, destination: outputter)
 
         logger.coreSdkInitSuccess()
 
         XCTAssertEqual(outputter.infoMessages.count, 1)
-        XCTAssertEqual(
-            outputter.firstInfoMessage,
-            "[\(Tags.Init)] CustomerIO SDK is initialized and ready to use"
-        )
+        let firstMessage = outputter.firstInfoMessage!
+        XCTAssertEqual(firstMessage.tag, Tags.Init)
+        XCTAssertEqual(firstMessage.content, "CustomerIO SDK is initialized and ready to use")
     }
 
     func testCommonLoggerModuleInitMessageAppears() {
-        let outputter = AccumulatorLogOutputter()
-        let logger = StandardLogger(logLevel: .debug, outputter: outputter)
+        let outputter = AccumulatorLogDestination()
+        let logger = StandardLogger(logLevel: .debug, destination: outputter)
 
         logger.moduleInitStart("MyModule")
 
         XCTAssertEqual(outputter.debugMessages.count, 1)
-        XCTAssertEqual(
-            outputter.firstDebugMessage,
-            "[\(Tags.Init)] Initializing SDK module MyModule..."
-        )
+        let firstMessage = outputter.firstDebugMessage!
+        XCTAssertEqual(firstMessage.tag, Tags.Init)
+        XCTAssertEqual(firstMessage.content, "Initializing SDK module MyModule...")
     }
 
     func testCommonLoggerModuleInitCompleteMessageAppears() {
-        let outputter = AccumulatorLogOutputter()
-        let logger = StandardLogger(logLevel: .debug, outputter: outputter)
+        let outputter = AccumulatorLogDestination()
+        let logger = StandardLogger(logLevel: .debug, destination: outputter)
 
         logger.moduleInitSuccess("PushModule")
 
         XCTAssertEqual(outputter.infoMessages.count, 1)
-        XCTAssertEqual(
-            outputter.firstInfoMessage,
-            "[\(Tags.Init)] CustomerIO PushModule module is initialized and ready to use"
-        )
+        let firstMessage = outputter.firstInfoMessage!
+        XCTAssertEqual(firstMessage.tag, Tags.Init)
+        XCTAssertEqual(firstMessage.content, "CustomerIO PushModule module is initialized and ready to use")
     }
 
     func testCommonLoggerDeepLinkMessageAppears() {
-        let outputter = AccumulatorLogOutputter()
-        let logger = StandardLogger(logLevel: .debug, outputter: outputter)
+        let outputter = AccumulatorLogDestination()
+        let logger = StandardLogger(logLevel: .debug, destination: outputter)
         let url = URL(string: "https://example.com/deeplink")!
 
         logger.logHandlingNotificationDeepLink(url: url)
 
         XCTAssertEqual(outputter.debugMessages.count, 1)
-        XCTAssertEqual(
-            outputter.firstDebugMessage,
-            "[\(Tags.Push)] Handling push notification deep link with url: \(url)"
-        )
+        let firstMessage = outputter.firstDebugMessage!
+        XCTAssertEqual(firstMessage.tag, Tags.Push)
+        XCTAssertEqual(firstMessage.content, "Handling push notification deep link with url: \(url)")
     }
 
     func testCommonLoggerDeepLinkHandledByCallbackMessageAppears() {
-        let outputter = AccumulatorLogOutputter()
-        let logger = StandardLogger(logLevel: .debug, outputter: outputter)
+        let outputter = AccumulatorLogDestination()
+        let logger = StandardLogger(logLevel: .debug, destination: outputter)
 
         logger.logDeepLinkHandledByCallback()
 
         XCTAssertEqual(outputter.debugMessages.count, 1)
-        XCTAssertEqual(
-            outputter.firstDebugMessage,
-            "[\(Tags.Push)] Deep link handled by host app callback implementation"
-        )
+        let firstMessage = outputter.firstDebugMessage!
+        XCTAssertEqual(firstMessage.tag, Tags.Push)
+        XCTAssertEqual(firstMessage.content, "Deep link handled by host app callback implementation")
     }
 
     func testCommonLoggerDeepLinkHandledByHostMessageAppears() {
-        let outputter = AccumulatorLogOutputter()
-        let logger = StandardLogger(logLevel: .debug, outputter: outputter)
+        let outputter = AccumulatorLogDestination()
+        let logger = StandardLogger(logLevel: .debug, destination: outputter)
 
         logger.logDeepLinkHandledByHostApp()
 
         XCTAssertEqual(outputter.debugMessages.count, 1)
-        XCTAssertEqual(
-            outputter.firstDebugMessage,
-            "[\(Tags.Push)] Deep link handled by internal host app navigation"
-        )
+        let firstMessage = outputter.firstDebugMessage!
+        XCTAssertEqual(firstMessage.tag, Tags.Push)
+        XCTAssertEqual(firstMessage.content, "Deep link handled by internal host app navigation")
     }
 
     func testCommonLoggerDeepLinkHandledExternallyMessageAppears() {
-        let outputter = AccumulatorLogOutputter()
-        let logger = StandardLogger(logLevel: .debug, outputter: outputter)
+        let outputter = AccumulatorLogDestination()
+        let logger = StandardLogger(logLevel: .debug, destination: outputter)
 
         logger.logDeepLinkHandledExternally()
 
         XCTAssertEqual(outputter.debugMessages.count, 1)
-        XCTAssertEqual(
-            outputter.firstDebugMessage,
-            "[\(Tags.Push)] Deep link handled by system"
-        )
+        let firstMessage = outputter.firstDebugMessage!
+        XCTAssertEqual(firstMessage.tag, Tags.Push)
+        XCTAssertEqual(firstMessage.content, "Deep link handled by system")
     }
 
     func testCommonLoggerDeepLinkNotHandledMessageAppears() {
-        let outputter = AccumulatorLogOutputter()
-        let logger = StandardLogger(logLevel: .debug, outputter: outputter)
+        let outputter = AccumulatorLogDestination()
+        let logger = StandardLogger(logLevel: .debug, destination: outputter)
 
         logger.logDeepLinkWasNotHandled()
 
         XCTAssertEqual(outputter.debugMessages.count, 1)
-        XCTAssertEqual(
-            outputter.firstDebugMessage,
-            "[\(Tags.Push)] Deep link was not handled"
-        )
+        let firstMessage = outputter.firstDebugMessage!
+        XCTAssertEqual(firstMessage.tag, Tags.Push)
+        XCTAssertEqual(firstMessage.content, "Deep link was not handled")
     }
 }

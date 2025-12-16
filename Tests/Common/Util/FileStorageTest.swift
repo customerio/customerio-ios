@@ -37,7 +37,7 @@ class FileStorageTest: UnitTest {
 
         siteId = String.random()
 
-        let logger = StandardLogger(outputter: AccumulatorLogOutputter())        
+        let logger = StandardLogger(destination: AccumulatorLogDestination())        
         fileStorage = FileManagerFileStorage(logger: logger)
     }
 

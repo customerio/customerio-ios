@@ -7,12 +7,12 @@
 
 public class StandardLogger: Logger {
 
-    public var outputter: LogOutputter
+    public var destination: LogDestination
     public var logLevel: CioLogLevel = .error
 
-    public init(logLevel: CioLogLevel = .error, outputter: LogOutputter = SystemLogOutputter()) {
+    public init(logLevel: CioLogLevel = .error, destination: LogDestination = ConsoleLogDestination()) {
         self.logLevel = logLevel
-        self.outputter = outputter
+        self.destination = destination
     }
 
     public func setLogLevel(_ level: CioLogLevel) {
@@ -24,17 +24,16 @@ public class StandardLogger: Logger {
             return
         }
         
-        let formattedMessage = formatMessage(tag: tag, message: message(), context: context)
-        outputter.output(level: level, formattedMessage)
+        let formatted = format(message: message(), context: context)
+        let logMessage = LogMessage(level: level, content: formatted, tag: tag)
+        
+        destination.output(message: logMessage)
     }
     
-    private func formatMessage(tag: String? = nil, message: String, context: (label: String, content: CustomStringConvertible)?) -> String {
+    private func format(message: String, context: (label: String, content: CustomStringConvertible)?) -> String {
 
         var components: [String] = []
         
-        if let tag {
-            components.append("[\(tag)]")
-        }
         components.append(message)
         if let context = context {
             components.append("\(context.label): \(context.content)")

@@ -16,7 +16,7 @@ class CioAppDelegateFCMTests: XCTestCase {
     var mockNotificationCenterDelegate: MockNotificationCenterDelegate!
     var mockFirebaseService: MockFirebaseService!
     var mockFirebaseServiceDelegate: MockFirebaseServiceDelegate!
-    var outputter: AccumulatorLogOutputter!
+    var outputter: AccumulatorLogDestination!
     
     var logger: Logger!
 
@@ -49,9 +49,8 @@ class CioAppDelegateFCMTests: XCTestCase {
         mockFirebaseServiceDelegate = MockFirebaseServiceDelegate()
         mockFirebaseService.delegate = mockFirebaseServiceDelegate
 
-        outputter = AccumulatorLogOutputter()
-        logger = StandardLogger(outputter: outputter)
-        logger.logLevel = .debug
+        outputter = AccumulatorLogDestination()
+        let logger = StandardLogger(logLevel: .debug, destination: outputter)
 
         // Set up the FirebaseService on MessagingPushFCM.shared
         MessagingPushFCM.shared.firebaseService = mockFirebaseService
@@ -95,7 +94,7 @@ class CioAppDelegateFCMTests: XCTestCase {
         XCTAssertTrue(mockAppDelegate.didFinishLaunchingCalled)
         // -- `registerForRemoteNotifications` is called
         XCTAssertTrue(outputter.debugMessages.contains {
-            $0.contains("CIO: Registering for remote notifications")
+            $0.content.contains("CIO: Registering for remote notifications")
         })
     }
 

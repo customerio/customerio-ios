@@ -8,12 +8,12 @@ class DeepLinkUtilTest: UnitTest {
     private var deepLinkUtil: DeepLinkUtilImpl!
 
     private let uiKitMock = UIKitWrapperMock()
-    private var outputter = AccumulatorLogOutputter()
+    private var outputter = AccumulatorLogDestination()
 
     override func setUp() {
         super.setUp()
         
-        let logger = StandardLogger(logLevel: .debug, outputter: outputter)
+        let logger = StandardLogger(logLevel: .debug, destination: outputter)
         
 
         deepLinkUtil = DeepLinkUtilImpl(logger: logger, uiKitWrapper: uiKitMock)
@@ -38,8 +38,14 @@ class DeepLinkUtilTest: UnitTest {
         deepLinkUtil.handleDeepLink(url)
 
         XCTAssertEqual(outputter.debugMessages.count, 2)
-        XCTAssertEqual(outputter.firstDebugMessage, "[\(Tags.Push)] Handling push notification deep link with url: \(url)")
-        XCTAssertEqual(outputter.debugMessages[1], "[\(Tags.Push)] Deep link handled by system")
+        
+        let firstMessage = outputter.debugMessages[0]
+        XCTAssertEqual(firstMessage.content, "Handling push notification deep link with url: \(url)")
+        XCTAssertEqual(firstMessage.tag, Tags.Push)
+
+        let secondMessage = outputter.debugMessages[1]
+        XCTAssertEqual(secondMessage.content, "Deep link handled by system")
+        XCTAssertEqual(secondMessage.tag, Tags.Push)
 
 //        XCTAssertEqual(loggerMock.logHandlingNotificationDeepLinkCallsCount, 1)
 //        XCTAssertEqual(loggerMock.logHandlingNotificationDeepLinkReceivedArguments, url)
@@ -64,8 +70,14 @@ class DeepLinkUtilTest: UnitTest {
         deepLinkUtil.handleDeepLink(url)
 
         XCTAssertEqual(outputter.debugMessages.count, 2)
-        XCTAssertEqual(outputter.firstDebugMessage, "[\(Tags.Push)] Handling push notification deep link with url: \(url)")
-        XCTAssertEqual(outputter.debugMessages[1], "[\(Tags.Push)] Deep link handled by internal host app navigation")
+
+        let firstMessage = outputter.debugMessages[0]
+        XCTAssertEqual(firstMessage.content, "Handling push notification deep link with url: \(url)")
+        XCTAssertEqual(firstMessage.tag, Tags.Push)
+
+        let secondMessage = outputter.debugMessages[1]
+        XCTAssertEqual(secondMessage.content, "Deep link handled by internal host app navigation")
+        XCTAssertEqual(secondMessage.tag, Tags.Push)
 
 //        XCTAssertEqual(loggerMock.logHandlingNotificationDeepLinkCallsCount, 1)
 //        XCTAssertEqual(loggerMock.logHandlingNotificationDeepLinkReceivedArguments, url)
@@ -106,8 +118,14 @@ class DeepLinkUtilTest: UnitTest {
         // Verification
         await fulfillment(of: [callbackExpectation], timeout: 1.0)
         XCTAssertEqual(outputter.debugMessages.count, 2)
-        XCTAssertEqual(outputter.firstDebugMessage, "[\(Tags.Push)] Handling push notification deep link with url: \(url)")
-        XCTAssertEqual(outputter.debugMessages[1], "[\(Tags.Push)] Deep link handled by host app callback implementation")
+
+        let firstMessage = outputter.debugMessages[0]
+        XCTAssertEqual(firstMessage.content, "Handling push notification deep link with url: \(url)")
+        XCTAssertEqual(firstMessage.tag, Tags.Push)
+
+        let secondMessage = outputter.debugMessages[1]
+        XCTAssertEqual(secondMessage.content, "Deep link handled by host app callback implementation")
+        XCTAssertEqual(secondMessage.tag, Tags.Push)
 
 //        XCTAssertEqual(loggerMock.logHandlingNotificationDeepLinkCallsCount, 1)
 //        XCTAssertEqual(loggerMock.logHandlingNotificationDeepLinkReceivedArguments, url)

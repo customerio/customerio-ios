@@ -14,7 +14,7 @@ class CioAppDelegateAPNTests: XCTestCase {
     var mockAppDelegate: MockAppDelegate!
     var mockNotificationCenter: UserNotificationCenterIntegrationMock!
     var mockNotificationCenterDelegate: MockNotificationCenterDelegate!
-    var outputter: AccumulatorLogOutputter!
+    var outputter: AccumulatorLogDestination!
 
     func createMockConfig(autoFetchDeviceToken: Bool = true, autoTrackPushEvents: Bool = true) -> MessagingPushConfigOptions {
         MessagingPushConfigOptions(
@@ -36,13 +36,12 @@ class CioAppDelegateAPNTests: XCTestCase {
         mockAppDelegate = MockAppDelegate()
         mockNotificationCenter = UserNotificationCenterIntegrationMock()
         mockNotificationCenterDelegate = MockNotificationCenterDelegate()
-        outputter = AccumulatorLogOutputter()
+        outputter = AccumulatorLogDestination()
         
         // Configure mock notification center with a delegate
         mockNotificationCenter.delegate = mockNotificationCenterDelegate
 
-        let logger = StandardLogger(outputter: outputter)
-        logger.logLevel = .debug
+        let logger = StandardLogger(logLevel: .debug, destination: outputter)
         
         // Create CioAppDelegate with mocks
         appDelegateAPN = CioAppDelegate(
@@ -100,7 +99,7 @@ class CioAppDelegateAPNTests: XCTestCase {
         let debugMessages = outputter.debugMessages
         XCTAssertTrue(debugMessages.count == 1)
         XCTAssertTrue(debugMessages.contains {
-            $0.contains("CIO: Registering for remote notifications")
+            $0.content.contains("CIO: Registering for remote notifications")
         })
         XCTAssertTrue(mockNotificationCenter.delegate === appDelegateAPN)
     }

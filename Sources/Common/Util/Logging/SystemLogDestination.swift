@@ -1,5 +1,5 @@
 //
-//  SystemLogOutputter.swift
+//  SystemLogDestination.swift
 //  Customer.io
 //
 //  Created by Holly Schilling on 12/10/25.
@@ -10,7 +10,7 @@ import Foundation
 import os.log
 #endif
 
-public struct SystemLogOutputter: LogOutputter {
+public struct SystemLogDestination: LogDestination {
     // allows filtering in Console mac app
     public static let defaultSubsystem = "io.customer.sdk"
     public static let defaultCategory = "CIO"
@@ -24,16 +24,16 @@ public struct SystemLogOutputter: LogOutputter {
         self.category = category
     }
     
-    public func output(level: CioLogLevel, _ message: String) {
+    public func output(message: LogMessage) {
 #if canImport(os)
         // Unified logging for Swift. https://www.avanderlee.com/workflow/oslog-unified-logging/
         // This means we can view logs in xcode console + Console app.
         if #available(iOS 14, *) {
             let logger = os.Logger(subsystem: subsystem, category: category)
-            logger.log(level: level.osLogLevel, "\(message, privacy: .public)")
+            logger.log(level: message.level.osLogLevel, "\(message.content, privacy: .public)")
         } else {
             let logger = OSLog(subsystem: subsystem, category: category)
-            os_log("%{public}@", log: logger, type: level.osLogLevel, message)
+            os_log("%{public}@", log: logger, type: message.level.osLogLevel, message.content)
         }
 #else
         // At this time, Linux cannot use `os.log` or `OSLog`. Instead, use: https://github.com/apple/swift-log/
