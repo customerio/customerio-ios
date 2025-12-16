@@ -75,7 +75,7 @@ class AsyncOperation: Operation, @unchecked Sendable {
     
     override func cancel() {
         self.activeTask?.cancel()
-        self.cancel()
+        super.cancel()
     }
     
     func finish() {
