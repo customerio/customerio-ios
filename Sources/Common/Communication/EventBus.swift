@@ -1,5 +1,10 @@
 import Foundation
 
+/// A tokent that maintains a registration by its retention. When this token is deallocated,
+/// the registration that generated it will be removed.
+public protocol RegistrationToken: AnyObject, Sendable { }
+
+
 /// Defines the contract for an event bus system.
 ///
 /// This protocol outlines the core functionalities of an event bus, including posting events,
