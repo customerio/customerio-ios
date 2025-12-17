@@ -118,6 +118,86 @@ class ServerEventTest: XCTestCase {
         XCTAssertNil(event.messages)
     }
 
+    // MARK: - Heartbeat Interval Parsing
+
+    // Default timeout used when parsing fails (matches HeartbeatTimer.defaultHeartbeatTimeoutSeconds)
+    private let defaultHeartbeatTimeout: TimeInterval = 30
+
+    func test_parseHeartbeatInterval_givenValidHeartbeatData_expectIntervalParsed() {
+        let event = ServerEvent(id: nil, type: "heartbeat", data: "{\"heartbeat\": 30}")
+        XCTAssertEqual(event.heartbeatIntervalSeconds, 30)
+    }
+
+    func test_parseHeartbeatInterval_givenDoubleValue_expectIntervalParsed() {
+        let event = ServerEvent(id: nil, type: "heartbeat", data: "{\"heartbeat\": 45.5}")
+        XCTAssertEqual(event.heartbeatIntervalSeconds, 45.5)
+    }
+
+    // MARK: - Heartbeat Parsing - Returns Default for Invalid Data
+
+    func test_parseHeartbeatInterval_givenEmptyData_expectDefault() {
+        let event = ServerEvent(id: nil, type: "heartbeat", data: "")
+        XCTAssertEqual(event.heartbeatIntervalSeconds, defaultHeartbeatTimeout)
+    }
+
+    func test_parseHeartbeatInterval_givenWhitespaceData_expectDefault() {
+        let event = ServerEvent(id: nil, type: "heartbeat", data: "   ")
+        XCTAssertEqual(event.heartbeatIntervalSeconds, defaultHeartbeatTimeout)
+    }
+
+    func test_parseHeartbeatInterval_givenEmptyJsonObject_expectDefault() {
+        let event = ServerEvent(id: nil, type: "heartbeat", data: "{}")
+        XCTAssertEqual(event.heartbeatIntervalSeconds, defaultHeartbeatTimeout)
+    }
+
+    func test_parseHeartbeatInterval_givenMissingHeartbeatKey_expectDefault() {
+        let event = ServerEvent(id: nil, type: "heartbeat", data: "{\"interval\": 30}")
+        XCTAssertEqual(event.heartbeatIntervalSeconds, defaultHeartbeatTimeout)
+    }
+
+    func test_parseHeartbeatInterval_givenInvalidJson_expectDefault() {
+        let event = ServerEvent(id: nil, type: "heartbeat", data: "not json")
+        XCTAssertEqual(event.heartbeatIntervalSeconds, defaultHeartbeatTimeout)
+    }
+
+    func test_parseHeartbeatInterval_givenMalformedJson_expectDefault() {
+        let event = ServerEvent(id: nil, type: "heartbeat", data: "{invalid}")
+        XCTAssertEqual(event.heartbeatIntervalSeconds, defaultHeartbeatTimeout)
+    }
+
+    func test_parseHeartbeatInterval_givenStringValue_expectDefault() {
+        let event = ServerEvent(id: nil, type: "heartbeat", data: "{\"heartbeat\": \"30\"}")
+        XCTAssertEqual(event.heartbeatIntervalSeconds, defaultHeartbeatTimeout)
+    }
+
+    func test_parseHeartbeatInterval_givenNullValue_expectDefault() {
+        let event = ServerEvent(id: nil, type: "heartbeat", data: "{\"heartbeat\": null}")
+        XCTAssertEqual(event.heartbeatIntervalSeconds, defaultHeartbeatTimeout)
+    }
+
+    func test_parseHeartbeatInterval_givenNegativeValue_expectDefault() {
+        let event = ServerEvent(id: nil, type: "heartbeat", data: "{\"heartbeat\": -10}")
+        XCTAssertEqual(event.heartbeatIntervalSeconds, defaultHeartbeatTimeout)
+    }
+
+    func test_parseHeartbeatInterval_givenZeroValue_expectDefault() {
+        let event = ServerEvent(id: nil, type: "heartbeat", data: "{\"heartbeat\": 0}")
+        XCTAssertEqual(event.heartbeatIntervalSeconds, defaultHeartbeatTimeout)
+    }
+
+    // MARK: - Heartbeat Parsing - Returns Nil for Non-Heartbeat Types
+
+    func test_parseHeartbeatInterval_givenNonHeartbeatType_expectNil() {
+        // Even with valid heartbeat JSON, non-heartbeat event types should not parse
+        let event = ServerEvent(id: nil, type: "connected", data: "{\"heartbeat\": 30}")
+        XCTAssertNil(event.heartbeatIntervalSeconds)
+    }
+
+    func test_parseHeartbeatInterval_givenMessagesType_expectNil() {
+        let event = ServerEvent(id: nil, type: "messages", data: "{\"heartbeat\": 30}")
+        XCTAssertNil(event.heartbeatIntervalSeconds)
+    }
+
     func test_parseMessages_givenUnknownType_expectNilMessages() {
         let jsonData = """
         [{"queueId": "q1", "priority": 1, "messageId": "m1"}]
