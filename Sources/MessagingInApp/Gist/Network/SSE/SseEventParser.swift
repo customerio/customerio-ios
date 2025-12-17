@@ -55,6 +55,12 @@ struct ServerEvent: Equatable {
     /// Parsed messages (only populated for message events)
     let messages: [Message]?
 
+    /// Parsed heartbeat interval in seconds.
+    /// Corresponds to Android's `parseHeartbeatTimeout` function.
+    /// - For heartbeat events: Always contains a valid value (parsed or default 30s)
+    /// - For non-heartbeat events: nil
+    let heartbeatIntervalSeconds: TimeInterval?
+
     /// Raw event type string (preserved for logging unknown types)
     let rawEventType: String?
 
@@ -66,6 +72,7 @@ struct ServerEvent: Equatable {
         self.eventType = EventType(rawValue: type ?? "")
         self.data = data
         self.messages = Self.parseMessages(eventType: eventType, data: data)
+        self.heartbeatIntervalSeconds = Self.parseHeartbeatInterval(eventType: eventType, data: data)
     }
 
     /// Parses message data from SSE event into Message objects (same as polling does)
@@ -95,6 +102,56 @@ struct ServerEvent: Equatable {
             return messages.isEmpty ? nil : messages
         } catch {
             return nil
+        }
+    }
+
+    /// Parses heartbeat interval from heartbeat event data.
+    /// Corresponds to Android's `parseHeartbeatTimeout` function.
+    ///
+    /// Expected format: `{"heartbeat": 30}` where 30 is the interval in seconds.
+    ///
+    /// - Parameters:
+    ///   - eventType: The event type (only parses for heartbeat events)
+    ///   - data: JSON data from heartbeat event
+    /// - Returns: For heartbeat events: parsed interval or default (30s) if parsing fails/invalid.
+    ///            For non-heartbeat events: nil
+    private static func parseHeartbeatInterval(eventType: EventType, data: String) -> TimeInterval? {
+        // Only parse for heartbeat events
+        guard eventType == .heartbeat else { return nil }
+
+        let defaultTimeout = HeartbeatTimer.defaultHeartbeatTimeoutSeconds
+
+        // Empty data means use default
+        guard !data.isEmpty, !data.trimmingCharacters(in: .whitespaces).isEmpty else {
+            return defaultTimeout
+        }
+
+        // Convert to UTF8 data
+        guard let jsonData = data.data(using: .utf8) else {
+            return defaultTimeout
+        }
+
+        do {
+            // Parse JSON - expect object with "heartbeat" key
+            let jsonObject = try JSONSerialization.jsonObject(with: jsonData, options: .allowFragments)
+
+            guard let dictionary = jsonObject as? [String: Any],
+                  let heartbeatValue = dictionary["heartbeat"]
+            else {
+                return defaultTimeout
+            }
+
+            // Handle both Int and Double values, validating for positive values
+            // Non-positive values would cause immediate timer expiration, so use default
+            if let intValue = heartbeatValue as? Int, intValue > 0 {
+                return TimeInterval(intValue)
+            } else if let doubleValue = heartbeatValue as? Double, doubleValue > 0 {
+                return doubleValue
+            }
+
+            return defaultTimeout
+        } catch {
+            return defaultTimeout
         }
     }
 }
