@@ -45,9 +45,9 @@ import Foundation
 actor SseConnectionManager {
     private let logger: Logger
     private let inAppMessageManager: InAppMessageManager
-    private let sseService: SseService
-    private let retryHelper: SseRetryHelper
-    private let heartbeatTimer: HeartbeatTimer
+    private let sseService: SseServiceProtocol
+    private let retryHelper: SseRetryHelperProtocol
+    private let heartbeatTimer: HeartbeatTimerProtocol
 
     /// The current connection generation. Incremented each time a new connection starts.
     /// Used to prevent stale operations from affecting new connections.
@@ -60,15 +60,15 @@ actor SseConnectionManager {
     init(
         logger: Logger,
         inAppMessageManager: InAppMessageManager,
-        sseService: SseService
+        sseService: SseServiceProtocol,
+        retryHelper: SseRetryHelperProtocol,
+        heartbeatTimer: HeartbeatTimerProtocol
     ) {
         self.logger = logger
         self.inAppMessageManager = inAppMessageManager
         self.sseService = sseService
-
-        // Initialize helpers
-        self.retryHelper = SseRetryHelper(logger: logger)
-        self.heartbeatTimer = HeartbeatTimer(logger: logger)
+        self.retryHelper = retryHelper
+        self.heartbeatTimer = heartbeatTimer
 
         logger.logWithModuleTag("SseConnectionManager initialized", level: .debug)
     }
