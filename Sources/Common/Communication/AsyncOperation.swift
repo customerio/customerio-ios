@@ -13,13 +13,9 @@ extension OperationQueue {
     }
 }
 
-class AsyncOperation: Operation, @unchecked Sendable {
+public final class AsyncOperation: Operation, @unchecked Sendable {
     
-    // This is not the OperationQueue!
-    // This is the queue we use to read and write the operation state  in a safe thread way
-    private let queue = DispatchQueue(label: "async_operation_private_queue", attributes: .concurrent)
-    
-    private var activeTask: Task<Void, Never>?
+    private let activeTask: Synchronized<Task<Void, Never>?> = .init(initial: nil)
     
     public private(set) var asyncBlock: () async -> Void
     
@@ -29,34 +25,34 @@ class AsyncOperation: Operation, @unchecked Sendable {
     
     // Only required when you want to manually start an operation
     // Ignored when an operation is added to a queue.
-    override var isAsynchronous: Bool { return true }
+    public override var isAsynchronous: Bool { return true }
     
     // State is accessed and modified in a thread safe and KVO   compliant way.
-    private var _isExecuting: Bool = false
-    override private(set) var isExecuting: Bool {
+    private let _isExecuting: Synchronized<Bool> = .init(initial: false)
+    public override private(set) var isExecuting: Bool {
         get {
-            return queue.sync { () -> Bool in return _isExecuting }
+            _isExecuting.value
         }
         set {
             willChangeValue(forKey: "isExecuting")
-            queue.sync(flags: [.barrier]) { _isExecuting = newValue }
+            _isExecuting.value = newValue
             didChangeValue(forKey: "isExecuting")
         }
     }
     
-    private var _isFinished: Bool = false
-    override private(set) var isFinished: Bool {
+    private let _isFinished: Synchronized<Bool> = .init(initial: false)
+    public private(set) override var isFinished: Bool {
         get {
-            return queue.sync { () -> Bool in return _isFinished }
+            _isFinished.value
         }
         set {
             willChangeValue(forKey: "isFinished")
-            queue.sync(flags: [.barrier]) { _isFinished = newValue }
+            _isFinished.value = newValue
             didChangeValue(forKey: "isFinished")
         }
     }
     
-    override func start() {
+    public override func start() {
         guard !isCancelled else {
             finish()
             return
@@ -66,15 +62,18 @@ class AsyncOperation: Operation, @unchecked Sendable {
         main()
     }
     
-    override func main() {
-        activeTask = Task {
+    public override func main() {
+        activeTask.value = Task {
             await asyncBlock()
             finish()
         }
     }
     
-    override func cancel() {
-        self.activeTask?.cancel()
+    public override func cancel() {
+        activeTask.mutating { value in
+            value?.cancel()
+            value = nil
+        }
         super.cancel()
     }
     

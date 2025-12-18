@@ -5,18 +5,27 @@
 //  Created by Holly Schilling on 12/10/25.
 //
 
-public class StandardLogger: Logger {
+public final class StandardLogger: Logger {
 
-    public var destination: LogDestination
-    public var logLevel: CioLogLevel = .error
+    public let destination: LogDestination
+
+    private let _logLevel: Synchronized<CioLogLevel>
+    public var logLevel: CioLogLevel {
+        get {
+            _logLevel.value
+        }
+        set {
+            _logLevel.value = newValue
+        }
+    }
 
     public init(logLevel: CioLogLevel = .error, destination: LogDestination = ConsoleLogDestination()) {
-        self.logLevel = logLevel
+        _logLevel = Synchronized(initial: logLevel)
         self.destination = destination
     }
 
     public func setLogLevel(_ level: CioLogLevel) {
-        logLevel = level
+        _logLevel.value = level
     }
     
     public func log(_ level: CioLogLevel, _ message: @autoclosure () -> String, _ tag: String?, context: (label: String, content: CustomStringConvertible)?) {

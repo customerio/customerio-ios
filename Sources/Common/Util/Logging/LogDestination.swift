@@ -28,6 +28,6 @@ public struct LogMessage: Sendable {
 /// `NullLogDestination` can be used. Other possible implementations could include things
 /// like writing logs in SQLite or sending them over a network to a remote endpoint. 
 ///
-public protocol LogDestination {
+public protocol LogDestination: Sendable {
     func output(message: LogMessage)
 }

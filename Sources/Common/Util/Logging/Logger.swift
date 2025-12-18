@@ -5,7 +5,7 @@ import os.log
 
 /// Protocol to be implemented by custom loggers, if needed. In most cases, `StandardLogger` can accomplish most
 /// logging goals with the correct `LogDestination` used.
-public protocol Logger {
+public protocol Logger: Sendable {
     /// Represents the current log level of the logger. The log level
     /// controls the verbosity of the logs that are output. Only messages
     /// at this level or higher will be logged. While this can be set at any

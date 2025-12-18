@@ -7,28 +7,37 @@
 
 import Foundation
 
-public final class CommonEventBus: @unchecked Sendable, Autoresolvable {
+/// Protocol to classify system messages.
+public protocol EventBusSystemMessage: Sendable { }
+
+/// Extension to add conformance of to `EventBusSystemMessage` to
+/// `EventDeliverySystem` for filtering/processing purposes.
+extension EventDeliverySummary: EventBusSystemMessage { }
+
+public final class CommonEventBus: Sendable, Autoresolvable {
     
-    private final class EventBusRegistrationToken: RegistrationToken, @unchecked Sendable {
+    private final class EventBusRegistrationToken: RegistrationToken, Sendable {
         
-        private weak var eventBus: CommonEventBus?
-        public private(set) var identifier: UUID
+        public let identifier: UUID
+        private let cleanup: @Sendable () -> Void
         
         init(eventBus: CommonEventBus, identifier: UUID = UUID()) {
-            self.eventBus = eventBus
             self.identifier = identifier
+            cleanup = { [weak eventBus] in
+                guard let eventBus else {
+                    return
+                }
+                eventBus.removeRegistration(for: identifier)
+            }
         }
         
         deinit {
-            guard let eventBus else {
-                return
-            }
-            eventBus.removeRegistration(for: identifier)
+            cleanup()
         }
     }
     
     private class NotifyOperation: Operation, @unchecked Sendable {
-        var wasHandled: Bool? = nil
+        let wasHandled: Synchronized<Bool?> = .init(initial: nil)
         
         let event: any Sendable
         let listener: (any Sendable) -> Bool
@@ -37,14 +46,18 @@ public final class CommonEventBus: @unchecked Sendable, Autoresolvable {
             self.listener = listener
         }
         override func main() {
-            wasHandled = listener(event)
+            wasHandled.value = listener(event)
         }
     }
     
-    private let syncQueue = DispatchQueue(label: "io.customer.sdk.CommonEventBus.syncQueue", attributes: .concurrent)
+    public struct ObserverAddedMessage: EventBusSystemMessage {
+        public var handledType: Any.Type
+        public var listener: @Sendable (Any) -> Bool
+    }
+    
     private let notifiyQueue = OperationQueue()
     
-    private var observers: [UUID: (Any) -> Bool] = [:]
+    private let observers: Synchronized<[UUID: (Any) -> Bool]> = Synchronized(initial: [:])
     
     private let logger: Logger
     
@@ -56,26 +69,33 @@ public final class CommonEventBus: @unchecked Sendable, Autoresolvable {
         logger = try resolver.resolve()
     }
     
-    public func registerObserver<EventType: Sendable>(listener: @escaping (EventType) -> Void) -> RegistrationToken {
+    public func registerObserver<EventType: Sendable>(listener: @Sendable @escaping (EventType) -> Void) -> RegistrationToken {
         let token = EventBusRegistrationToken(eventBus: self)
-        syncQueue.sync(flags: .barrier) {
-            self.observers[token.identifier] = { untypedEvent in
-                guard let event = untypedEvent as? EventType else {
-                    return false
-                }
-                listener(event)
-                return true
+        let wrappedListener: @Sendable (Any) -> Bool = { untypedEvent in
+            guard let event = untypedEvent as? EventType else {
+                return false
             }
-            self.logger.debug("Registration complete for events of type \(String(describing: EventType.self)) and assigned identifier \(token.identifier.uuidString).")
-            
+            listener(event)
+            return true
         }
+        observers.mutating {
+            $0[token.identifier] = wrappedListener
+        }
+        logger.debug("Registration complete for events of type \(String(describing: EventType.self)) and assigned identifier \(token.identifier.uuidString).")
+        observers[token.identifier] = wrappedListener
+        logger.debug("Registration complete for events of type \(String(describing: EventType.self)) and assigned identifier \(token.identifier.uuidString).")
+
+        post(ObserverAddedMessage(
+            handledType: EventType.self,
+            listener: wrappedListener
+        ))
         return token
     }
     
     private func removeRegistration(for identifier: UUID) {
         // This happens ASYNC to not risk stalling the thread due to a deinit
-        syncQueue.async(flags: .barrier) {
-            self.observers.removeValue(forKey: identifier)
+        observers.mutatingAsync { value in
+            value.removeValue(forKey: identifier)
             self.logger.debug("Registration removed for identifier \(identifier).")
         }
     }
@@ -85,26 +105,24 @@ public final class CommonEventBus: @unchecked Sendable, Autoresolvable {
         let arrivalTime = Date()
         self.logger.debug("Beginning post for event of type \(eventTypeName)")
         // Fetch the observers synchronously now in case they change before enqueuing the callbacks
-        let observers = syncQueue.sync {
-            self.observers.values
-        }
-        guard !observers.isEmpty else {
+        let snapshot = observers.value.values
+        guard !snapshot.isEmpty else {
             self.logger.debug("No observers are registered for any events, so aborting delivery.")
             return
             
         }
         // Notifications delivery queuing happens in the background
         Task {
-            let ops = observers.map { NotifyOperation(event: event, listener: $0) }
+            let ops = snapshot.map { NotifyOperation(event: event, listener: $0) }
             
             // Don't post delivery summaries for delivery summaries
-            if !(event is EventDeliverySummary) {
+            if !(event is EventBusSystemMessage) {
                 let sendSummaryOperation = BlockOperation { [weak self] in
                     guard let self else { return }
                     self.logger.debug("Preparing delivery summary for delivery of event of type \(eventTypeName)")
                     let completionTime = Date()
                     let handledCount = ops.count { op in
-                        op.wasHandled ?? false
+                        op.wasHandled.value ?? false
                     }
                     let summary = EventDeliverySummary(
                         sourceEvent: event,
@@ -124,7 +142,7 @@ public final class CommonEventBus: @unchecked Sendable, Autoresolvable {
             ops.forEach {
                 self.notifiyQueue.addOperation($0)
             }
-            self.logger.debug("Completed queuing post for event of type \(eventTypeName) to \(observers.count) potential listeners.")
+            self.logger.debug("Completed queuing post for event of type \(eventTypeName) to \(snapshot.count) potential listeners.")
         }
     }
     
@@ -134,18 +152,16 @@ public final class CommonEventBus: @unchecked Sendable, Autoresolvable {
         self.logger.debug("Beginning postAndWait for event of type \(eventTypeName)")
         
         // Fetch the observers synchronously now in case they change before enqueuing the callbacks
-        let observers = syncQueue.sync {
-            self.observers.values
-        }
+        let snapshot = observers.value.values
         
         return await withCheckedContinuation { continuation in
             var handledEvents: Int = 0
-            for observer in observers {
+            for observer in snapshot {
                 handledEvents += observer(event) ? 1 : 0
             }
             let summary = EventDeliverySummary(
                 sourceEvent: event,
-                registeredObservers: observers.count,
+                registeredObservers: snapshot.count,
                 handlingObservers: handledEvents,
                 arrivalTime: arrivalTime,
                 completionTime: Date()

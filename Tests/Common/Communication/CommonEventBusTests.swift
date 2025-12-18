@@ -6,7 +6,9 @@
 //
 
 import Testing
+import Dispatch
 @testable import CioInternalCommon
+
 
 struct CommonEventBusTests {
 
@@ -16,14 +18,12 @@ struct CommonEventBusTests {
         let eventBus = CommonEventBus(logger: logger)
         var token: RegistrationToken? = nil
         
-        await confirmation("Simple Event Delivered") { done in
+        await withCheckedContinuation { continuation in
             token = eventBus.registerObserver { (msg: String) in
                 #expect(msg == "String Event")
-                done()
+                continuation.resume()
             }
             eventBus.post("String Event")
-            // Must sleep to ensure delivery happens before this closure ends
-            try? await Task.sleep(nanoseconds: 100_000)
         }
         if token == nil {
             Issue.record("Token was released early")
@@ -57,21 +57,23 @@ struct CommonEventBusTests {
         let logger = StandardLogger(logLevel: .debug)
         let eventBus = CommonEventBus(logger: logger)
         var token: RegistrationToken? = nil
-        
-        await confirmation("Delivery Summary Received") { done in
+        let deliveryCount = Synchronized(initial: 0)
+
+        await withCheckedContinuation { continuation in
             token = eventBus.registerObserver { (summary: EventDeliverySummary) in
                 #expect(summary.sourceEvent as? String == "String Event")
                 #expect(summary.registeredObservers == 2)
                 #expect(summary.handlingObservers == 1)
-                done()
+                continuation.resume()
             }
             let stringEventToken = eventBus.registerObserver { (msg: String) in
                 #expect(msg == "String Event")
+                deliveryCount += 1
             }
             eventBus.post("String Event")
-            // Must sleep to ensure delivery happens before this closure ends
-            try? await Task.sleep(nanoseconds: 100_000)
         }
+
+        #expect(deliveryCount.value == 1)
         if token == nil {
             Issue.record("Token was released early")
         }
@@ -82,14 +84,16 @@ struct CommonEventBusTests {
         let logger = StandardLogger(logLevel: .debug)
         let eventBus = CommonEventBus(logger: logger)
         var token: RegistrationToken? = nil
-        var deliveryCount = 0
+        let deliveryCount = Synchronized(initial: 0)
 
         token = eventBus.registerObserver { (msg: String) in
-            if deliveryCount == 0 {
-                #expect(msg == "String Event")
-                deliveryCount += 1
-            } else {
-                Issue.record("Received additional delivery")
+            deliveryCount.mutating { value in
+                if value == 0 {
+                    #expect(msg == "String Event")
+                    value += 1
+                } else {
+                    Issue.record("Received additional delivery")
+                }
             }
         }
         eventBus.post("String Event")
@@ -97,7 +101,7 @@ struct CommonEventBusTests {
         // Must sleep to ensure delivery happens before next steps
         try? await Task.sleep(nanoseconds: 100_000)
         
-        #expect(deliveryCount == 1)
+        #expect(deliveryCount.value == 1)
         token = nil
 
         // Must sleep to ensure observer removed
@@ -108,7 +112,7 @@ struct CommonEventBusTests {
         // Must sleep to ensure delivery happens before next steps
         try? await Task.sleep(nanoseconds: 100_000)
 
-        #expect(deliveryCount == 1)
+        #expect(deliveryCount.value == 1)
 
         if token != nil {
             Issue.record("Token not released")
