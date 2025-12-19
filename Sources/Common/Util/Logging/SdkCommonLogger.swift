@@ -2,8 +2,8 @@ import Foundation
 
 public typealias SdkCommonLogger = Logger
 public enum Tags {
-    static let Init = "Init"
-    static let Push = "Push"
+    public static let Init = "Init"
+    public static let Push = "Push"
 }
 
 extension SdkCommonLogger {

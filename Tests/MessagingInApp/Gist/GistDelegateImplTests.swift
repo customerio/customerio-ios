@@ -5,7 +5,6 @@ import XCTest
 
 class GistDelegateImplTests: UnitTest {
     var gistDelegate: GistDelegateImpl!
-    var mockLogger: LoggerMock!
     var mockEventBusHandler: EventBusHandlerMock!
     var mockEventListener: InAppEventListenerMock!
     var mockThreadUtil: ThreadUtilStub!
@@ -13,7 +12,6 @@ class GistDelegateImplTests: UnitTest {
     override func setUp() {
         super.setUp()
 
-        mockLogger = LoggerMock()
         mockEventBusHandler = EventBusHandlerMock()
         mockEventListener = InAppEventListenerMock()
         mockThreadUtil = ThreadUtilStub()
@@ -22,7 +20,7 @@ class GistDelegateImplTests: UnitTest {
         let originalThreadUtil = diGraphShared.threadUtil
         diGraphShared.override(value: mockThreadUtil, forType: ThreadUtil.self)
 
-        gistDelegate = GistDelegateImpl(logger: mockLogger, eventBusHandler: mockEventBusHandler)
+        gistDelegate = GistDelegateImpl(logger: StandardLogger(logLevel: .none), eventBusHandler: mockEventBusHandler)
         gistDelegate.setEventListener(mockEventListener)
 
         // Reset the original ThreadUtil after creating the gistDelegate
@@ -30,7 +28,6 @@ class GistDelegateImplTests: UnitTest {
     }
 
     override func tearDown() {
-        mockLogger = nil
         mockEventBusHandler = nil
         mockEventListener = nil
         mockThreadUtil = nil

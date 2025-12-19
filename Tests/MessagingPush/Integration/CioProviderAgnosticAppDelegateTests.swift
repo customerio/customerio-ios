@@ -11,7 +11,7 @@ class CioProviderAgnosticAppDelegateTests: XCTestCase {
     var mockAppDelegate: MockAppDelegate!
     var mockNotificationCenter: UserNotificationCenterIntegrationMock!
     var mockNotificationCenterDelegate: MockNotificationCenterDelegate!
-    var mockLogger: LoggerMock!
+    let outputter = AccumulatorLogDestination()
     var appDelegate: CioProviderAgnosticAppDelegate!
 
     func createMockConfig(
@@ -38,7 +38,6 @@ class CioProviderAgnosticAppDelegateTests: XCTestCase {
         mockAppDelegate = MockAppDelegate()
         mockNotificationCenter = UserNotificationCenterIntegrationMock()
         mockNotificationCenterDelegate = MockNotificationCenterDelegate()
-        mockLogger = LoggerMock()
 
         // Configure mock notification center with a delegate
         mockNotificationCenter.delegate = mockNotificationCenterDelegate
@@ -49,7 +48,7 @@ class CioProviderAgnosticAppDelegateTests: XCTestCase {
             userNotificationCenter: { self.mockNotificationCenter },
             appDelegate: mockAppDelegate,
             config: { self.createMockConfig() },
-            logger: mockLogger
+            logger: StandardLogger(logLevel: .debug, destination: outputter)
         )
     }
 
@@ -58,7 +57,6 @@ class CioProviderAgnosticAppDelegateTests: XCTestCase {
         mockAppDelegate = nil
         mockNotificationCenter = nil
         mockNotificationCenterDelegate = nil
-        mockLogger = nil
         appDelegate = nil
 
         UNUserNotificationCenter.unswizzleNotificationCenter()
@@ -78,20 +76,20 @@ class CioProviderAgnosticAppDelegateTests: XCTestCase {
         XCTAssertTrue(MessagingPush.appDelegateIntegratedExplicitly)
         XCTAssertTrue(result)
         XCTAssertTrue(mockAppDelegate.didFinishLaunchingCalled)
-        XCTAssertTrue(mockLogger.debugCallsCount == 1)
-        XCTAssertTrue(mockLogger.debugReceivedInvocations.contains {
-            $0.message.contains("CIO: Registering for remote notifications")
-        })
+        XCTAssertEqual(outputter.debugMessages.count, 1)
+        let firstMessage = outputter.firstDebugMessage!
+        XCTAssertTrue(firstMessage.content.contains("CIO: Registering for remote notifications"))
         XCTAssertTrue(mockNotificationCenter.delegate === appDelegate)
     }
 
     func testDidFinishLaunchingWithOptions_whenValidConfigIsUsed_thenTokenIsNotRequested() {
+        outputter.clear()
         appDelegate = CioProviderAgnosticAppDelegate(
             messagingPush: mockMessagingPush,
             userNotificationCenter: { self.mockNotificationCenter },
             appDelegate: mockAppDelegate,
             config: { self.createMockConfig(autoFetchDeviceToken: false) },
-            logger: mockLogger
+            logger: StandardLogger(logLevel: .debug, destination: outputter)
         )
 
         // Call the method
@@ -100,19 +98,20 @@ class CioProviderAgnosticAppDelegateTests: XCTestCase {
         // Verify behavior
         XCTAssertTrue(result)
         XCTAssertTrue(mockAppDelegate.didFinishLaunchingCalled)
-        XCTAssertFalse(mockLogger.debugReceivedInvocations.contains {
-            $0.message.contains("CIO: Registering for remote notifications")
+        XCTAssertFalse(outputter.debugMessages.contains { msg in
+            msg.content.contains("CIO: Registering for remote notifications")
         })
         XCTAssertTrue(mockNotificationCenter.delegate === appDelegate)
     }
 
     func testDidFinishLaunchingWithOptions_whenAutoTrackPushEventsIsDisabled_thenDelegateIsNotSet() {
+        outputter.clear()
         appDelegate = CioProviderAgnosticAppDelegate(
             messagingPush: mockMessagingPush,
             userNotificationCenter: { self.mockNotificationCenter },
             appDelegate: mockAppDelegate,
             config: { self.createMockConfig(autoTrackPushEvents: false) },
-            logger: mockLogger
+            logger: StandardLogger(logLevel: .debug, destination: outputter)
         )
 
         // This should not cause a conflict now since shouldIntegrateWithNotificationCenter is false
@@ -121,8 +120,8 @@ class CioProviderAgnosticAppDelegateTests: XCTestCase {
         // Verify behavior
         XCTAssertTrue(result)
         XCTAssertTrue(mockAppDelegate.didFinishLaunchingCalled)
-        XCTAssertTrue(mockLogger.debugReceivedInvocations.contains {
-            $0.message.contains("CIO: Registering for remote notifications")
+        XCTAssertTrue(outputter.debugMessages.contains { msg in
+            msg.content.contains("CIO: Registering for remote notifications")
         })
         // Delegate should not be set on notification center
         XCTAssertNotEqual(mockNotificationCenter.delegate as? CioProviderAgnosticAppDelegate, appDelegate)
@@ -220,7 +219,7 @@ class CioProviderAgnosticAppDelegateTests: XCTestCase {
             userNotificationCenter: { self.mockNotificationCenter },
             appDelegate: mockAppDelegate,
             config: { self.createMockConfig(showPushAppInForeground: false) },
-            logger: mockLogger
+            logger: StandardLogger(logLevel: .debug, destination: outputter)
         )
 
         // Make sure the delegate doesn't respond to willPresent method
@@ -259,7 +258,7 @@ class CioProviderAgnosticAppDelegateTests: XCTestCase {
             userNotificationCenter: { self.mockNotificationCenter },
             appDelegate: mockAppDelegate,
             config: { self.createMockConfig(autoTrackPushEvents: false) },
-            logger: mockLogger
+            logger: StandardLogger(logLevel: .debug, destination: outputter)
         )
         var completionHandlerCalled = false
         let completionHandler = {

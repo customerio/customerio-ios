@@ -1,6 +1,6 @@
 import CioInternalCommon
 
-protocol DataPipelinesLogger: AutoMockable {
+protocol DataPipelinesLogger: Sendable, AutoMockable {
     func logStoringDevicePushToken(token: String, userId: String?)
     func logStoringBlankPushToken()
     func logRegisteringPushToken(token: String, userId: String?)
@@ -11,8 +11,7 @@ protocol DataPipelinesLogger: AutoMockable {
 }
 
 // sourcery: InjectRegisterShared = "DataPipelinesLogger"
-class DataPipelinesLoggerImpl: DataPipelinesLogger {
-    private static let PUSH_TAG = "Push"
+struct DataPipelinesLoggerImpl: DataPipelinesLogger {
 
     private let logger: Logger
 
@@ -21,30 +20,30 @@ class DataPipelinesLoggerImpl: DataPipelinesLogger {
     }
 
     public func logStoringDevicePushToken(token: String, userId: String?) {
-        logger.debug("Storing device token: \(token) for user profile: \(userId ?? "nil")", Self.PUSH_TAG)
+        logger.debug("Storing device token: \(token) for user profile: \(userId ?? "nil")", Tags.Push)
     }
 
     public func logStoringBlankPushToken() {
-        logger.debug("Attempting to register blank token, ignoring request", Self.PUSH_TAG)
+        logger.debug("Attempting to register blank token, ignoring request", Tags.Push)
     }
 
     public func logRegisteringPushToken(token: String, userId: String?) {
-        logger.debug("Registering device token: \(token) for user profile: \(userId ?? "nil")", Self.PUSH_TAG)
+        logger.debug("Registering device token: \(token) for user profile: \(userId ?? "nil")", Tags.Push)
     }
 
     public func logPushTokenRefreshed() {
-        logger.debug("Token refreshed, deleting old token to avoid registering same device multiple times", Self.PUSH_TAG)
+        logger.debug("Token refreshed, deleting old token to avoid registering same device multiple times", Tags.Push)
     }
 
     public func automaticTokenRegistrationForNewProfile(token: String, userId: String) {
-        logger.debug("Automatically registering device token: \(token) to newly identified profile: \(userId)", Self.PUSH_TAG)
+        logger.debug("Automatically registering device token: \(token) to newly identified profile: \(userId)", Tags.Push)
     }
 
     public func logDeletingTokenDueToNewProfileIdentification() {
-        logger.debug("Deleting device token before identifying new profile", Self.PUSH_TAG)
+        logger.debug("Deleting device token before identifying new profile", Tags.Push)
     }
 
     public func logTrackingDevicesAttributesWithoutValidToken() {
-        logger.debug("No device token found. ignoring request to track device attributes", Self.PUSH_TAG)
+        logger.debug("No device token found. ignoring request to track device attributes", Tags.Push)
     }
 }
