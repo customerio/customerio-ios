@@ -22,7 +22,7 @@ class DataPipelinesLoggerTests: UnitTest {
         logger.logStoringDevicePushToken(token: token, userId: userId)
 
         XCTAssertEqual(outputter.debugMessages.count, 1)
-        let first = outputter.debugMessages.first!
+        let first = outputter.firstDebugMessage!
         XCTAssertEqual(first.tag, Tags.Push)
         XCTAssertEqual(
             first.content,
@@ -36,7 +36,7 @@ class DataPipelinesLoggerTests: UnitTest {
         logger.logStoringBlankPushToken()
 
         XCTAssertEqual(outputter.debugMessages.count, 1)
-        let first = outputter.debugMessages.first!
+        let first = outputter.firstDebugMessage!
         XCTAssertEqual(first.tag, Tags.Push)
         XCTAssertEqual(
             first.content,
@@ -52,7 +52,7 @@ class DataPipelinesLoggerTests: UnitTest {
         logger.logRegisteringPushToken(token: token, userId: userId)
 
         XCTAssertEqual(outputter.debugMessages.count, 1)
-        let first = outputter.debugMessages.first!
+        let first = outputter.firstDebugMessage!
         XCTAssertEqual(first.tag, Tags.Push)
         XCTAssertEqual(
             first.content,
@@ -66,7 +66,7 @@ class DataPipelinesLoggerTests: UnitTest {
         logger.logPushTokenRefreshed()
 
         XCTAssertEqual(outputter.debugMessages.count, 1)
-        let first = outputter.debugMessages.first!
+        let first = outputter.firstDebugMessage!
         XCTAssertEqual(first.tag, Tags.Push)
         XCTAssertEqual(
             first.content,
@@ -80,7 +80,7 @@ class DataPipelinesLoggerTests: UnitTest {
         logger.automaticTokenRegistrationForNewProfile(token: "token", userId: "userId")
 
         XCTAssertEqual(outputter.debugMessages.count, 1)
-        let first = outputter.debugMessages.first!
+        let first = outputter.firstDebugMessage!
         XCTAssertEqual(first.tag, Tags.Push)
         XCTAssertEqual(
             first.content,
@@ -94,7 +94,7 @@ class DataPipelinesLoggerTests: UnitTest {
         logger.logDeletingTokenDueToNewProfileIdentification()
 
         XCTAssertEqual(outputter.debugMessages.count, 1)
-        let first = outputter.debugMessages.first!
+        let first = outputter.firstDebugMessage!
         XCTAssertEqual(first.tag, Tags.Push)
         XCTAssertEqual(
             first.content,
@@ -108,7 +108,7 @@ class DataPipelinesLoggerTests: UnitTest {
         logger.logTrackingDevicesAttributesWithoutValidToken()
 
         XCTAssertEqual(outputter.debugMessages.count, 1)
-        let first = outputter.debugMessages.first!
+        let first = outputter.firstDebugMessage!
         XCTAssertEqual(first.tag, Tags.Push)
         XCTAssertEqual(
             first.content,

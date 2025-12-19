@@ -5,13 +5,14 @@ import SharedTests
 import XCTest
 
 class PushNotificationLoggerTests: UnitTest {
-    private let loggerMock = LoggerMock()
+    
+    let outputter = AccumulatorLogDestination()
     var logger: PushNotificationLogger!
 
     override func setUp() {
         super.setUp()
 
-        logger = PushNotificationLoggerImpl(logger: loggerMock)
+        logger = PushNotificationLoggerImpl(logger: StandardLogger(logLevel: .debug, destination: outputter))
     }
 
     func test_logReceivedPushMessage_logsExpectedMessage() {
@@ -19,20 +20,23 @@ class PushNotificationLoggerTests: UnitTest {
 
         logger.logReceivedPushMessage(notification: notification)
 
-        XCTAssertEqual(loggerMock.debugReceivedInvocations.count, 1)
-        XCTAssertEqual(loggerMock.debugReceivedInvocations.first?.tag, "Push")
+        XCTAssertEqual(outputter.debugMessages.count, 1)
+        let first = outputter.firstDebugMessage!
+        XCTAssertEqual(first.tag, Tags.Push)
         XCTAssertEqual(
-            loggerMock.debugReceivedInvocations.first?.message, "Received notification for message: \(notification)"
+            first.content,
+            "Received notification for message: \(notification)"
         )
     }
 
     func test_logReceivedCioPushMessage_logsExpectedMessage() {
         logger.logReceivedCioPushMessage()
 
-        XCTAssertEqual(loggerMock.debugReceivedInvocations.count, 1)
-        XCTAssertEqual(loggerMock.debugReceivedInvocations.first?.tag, "Push")
+        XCTAssertEqual(outputter.debugMessages.count, 1)
+        let first = outputter.firstDebugMessage!
+        XCTAssertEqual(first.tag, Tags.Push)
         XCTAssertEqual(
-            loggerMock.debugReceivedInvocations.first?.message,
+            first.content,
             "Received CIO push message"
         )
     }
@@ -40,10 +44,11 @@ class PushNotificationLoggerTests: UnitTest {
     func test_logReceivedNonCioPushMessage_logsExpectedMessage() {
         logger.logReceivedNonCioPushMessage()
 
-        XCTAssertEqual(loggerMock.debugReceivedInvocations.count, 1)
-        XCTAssertEqual(loggerMock.debugReceivedInvocations.first?.tag, "Push")
+        XCTAssertEqual(outputter.debugMessages.count, 1)
+        let first = outputter.firstDebugMessage!
+        XCTAssertEqual(first.tag, Tags.Push)
         XCTAssertEqual(
-            loggerMock.debugReceivedInvocations.first?.message,
+            first.content,
             "Received non CIO push message, ignoring message"
         )
     }
@@ -51,10 +56,11 @@ class PushNotificationLoggerTests: UnitTest {
     func test_logReceivedPushMessageWithEmptyDeliveryId_logsExpectedMessage() {
         logger.logReceivedPushMessageWithEmptyDeliveryId()
 
-        XCTAssertEqual(loggerMock.debugReceivedInvocations.count, 1)
-        XCTAssertEqual(loggerMock.debugReceivedInvocations.first?.tag, "Push")
+        XCTAssertEqual(outputter.debugMessages.count, 1)
+        let first = outputter.firstDebugMessage!
+        XCTAssertEqual(first.tag, Tags.Push)
         XCTAssertEqual(
-            loggerMock.debugReceivedInvocations.first?.message,
+            first.content,
             "Received message with empty deliveryId"
         )
     }
@@ -64,10 +70,11 @@ class PushNotificationLoggerTests: UnitTest {
 
         logger.logTrackingPushMessageDelivered(deliveryId: deliveryId)
 
-        XCTAssertEqual(loggerMock.debugReceivedInvocations.count, 1)
-        XCTAssertEqual(loggerMock.debugReceivedInvocations.first?.tag, "Push")
+        XCTAssertEqual(outputter.debugMessages.count, 1)
+        let first = outputter.firstDebugMessage!
+        XCTAssertEqual(first.tag, Tags.Push)
         XCTAssertEqual(
-            loggerMock.debugReceivedInvocations.first?.message,
+            first.content,
             "Tracking push message delivered with deliveryId: \(deliveryId)"
         )
     }
@@ -75,10 +82,11 @@ class PushNotificationLoggerTests: UnitTest {
     func test_logPushMetricsAutoTrackingDisabled_logsExpectedMessage() {
         logger.logPushMetricsAutoTrackingDisabled()
 
-        XCTAssertEqual(loggerMock.debugReceivedInvocations.count, 1)
-        XCTAssertEqual(loggerMock.debugReceivedInvocations.first?.tag, "Push")
+        XCTAssertEqual(outputter.debugMessages.count, 1)
+        let first = outputter.firstDebugMessage!
+        XCTAssertEqual(first.tag, Tags.Push)
         XCTAssertEqual(
-            loggerMock.debugReceivedInvocations.first?.message,
+            first.content,
             "Received message but auto tracking is disabled"
         )
     }
@@ -89,10 +97,11 @@ class PushNotificationLoggerTests: UnitTest {
 
         logger.logPushMetricTracked(deliveryId: deliveryId, event: event)
 
-        XCTAssertEqual(loggerMock.debugReceivedInvocations.count, 1)
-        XCTAssertEqual(loggerMock.debugReceivedInvocations.first?.tag, "Push")
+        XCTAssertEqual(outputter.debugMessages.count, 1)
+        let first = outputter.firstDebugMessage!
+        XCTAssertEqual(first.tag, Tags.Push)
         XCTAssertEqual(
-            loggerMock.debugReceivedInvocations.first?.message,
+            first.content,
             "Successfully tracked push metric '\(event)' for deliveryId: \(deliveryId)"
         )
     }
@@ -104,15 +113,12 @@ class PushNotificationLoggerTests: UnitTest {
 
         logger.logPushMetricTrackingFailed(deliveryId: deliveryId, event: event, error: error)
 
-        XCTAssertEqual(loggerMock.errorReceivedInvocations.count, 1)
-        XCTAssertEqual(loggerMock.errorReceivedInvocations.first?.tag, "Push")
+        XCTAssertEqual(outputter.errorMessages.count, 1)
+        let first = outputter.firstErrorMessage!
+        XCTAssertEqual(first.tag, Tags.Push)
         XCTAssertEqual(
-            loggerMock.errorReceivedInvocations.first?.message,
-            "Failed to track push metric '\(event)' for deliveryId: \(deliveryId)"
-        )
-        XCTAssertEqual(
-            loggerMock.errorReceivedInvocations.first?.throwable as? String,
-            error.localizedDescription
+            first.content,
+            "Failed to track push metric '\(event)' for deliveryId: \(deliveryId) Error: \(error.localizedDescription)"
         )
     }
 
@@ -121,10 +127,11 @@ class PushNotificationLoggerTests: UnitTest {
 
         logger.logClickedPushMessage(notification: notification)
 
-        XCTAssertEqual(loggerMock.debugReceivedInvocations.count, 1)
-        XCTAssertEqual(loggerMock.debugReceivedInvocations.first?.tag, "Push")
+        XCTAssertEqual(outputter.debugMessages.count, 1)
+        let first = outputter.firstDebugMessage!
+        XCTAssertEqual(first.tag, Tags.Push)
         XCTAssertEqual(
-            loggerMock.debugReceivedInvocations.first?.message,
+            first.content,
             "Clicked notification for message: \(notification)"
         )
     }
@@ -132,10 +139,11 @@ class PushNotificationLoggerTests: UnitTest {
     func test_logClickedCioPushMessage_logsExpectedMessage() {
         logger.logClickedCioPushMessage()
 
-        XCTAssertEqual(loggerMock.debugReceivedInvocations.count, 1)
-        XCTAssertEqual(loggerMock.debugReceivedInvocations.first?.tag, "Push")
+        XCTAssertEqual(outputter.debugMessages.count, 1)
+        let first = outputter.firstDebugMessage!
+        XCTAssertEqual(first.tag, Tags.Push)
         XCTAssertEqual(
-            loggerMock.debugReceivedInvocations.first?.message,
+            first.content,
             "Clicked CIO push message"
         )
     }
@@ -143,10 +151,11 @@ class PushNotificationLoggerTests: UnitTest {
     func test_logClickedNonCioPushMessage_logsExpectedMessage() {
         logger.logClickedNonCioPushMessage()
 
-        XCTAssertEqual(loggerMock.debugReceivedInvocations.count, 1)
-        XCTAssertEqual(loggerMock.debugReceivedInvocations.first?.tag, "Push")
+        XCTAssertEqual(outputter.debugMessages.count, 1)
+        let first = outputter.firstDebugMessage!
+        XCTAssertEqual(first.tag, Tags.Push)
         XCTAssertEqual(
-            loggerMock.debugReceivedInvocations.first?.message,
+            first.content,
             "Clicked non CIO push message, ignoring message"
         )
     }
@@ -154,10 +163,11 @@ class PushNotificationLoggerTests: UnitTest {
     func test_logClickedPushMessageWithEmptyDeliveryId_logsExpectedMessage() {
         logger.logClickedPushMessageWithEmptyDeliveryId()
 
-        XCTAssertEqual(loggerMock.debugReceivedInvocations.count, 1)
-        XCTAssertEqual(loggerMock.debugReceivedInvocations.first?.tag, "Push")
+        XCTAssertEqual(outputter.debugMessages.count, 1)
+        let first = outputter.firstDebugMessage!
+        XCTAssertEqual(first.tag, Tags.Push)
         XCTAssertEqual(
-            loggerMock.debugReceivedInvocations.first?.message,
+            first.content,
             "Clicked message with empty deliveryId"
         )
     }
@@ -167,10 +177,11 @@ class PushNotificationLoggerTests: UnitTest {
 
         logger.logTrackingPushMessageOpened(deliveryId: deliveryId)
 
-        XCTAssertEqual(loggerMock.debugReceivedInvocations.count, 1)
-        XCTAssertEqual(loggerMock.debugReceivedInvocations.first?.tag, "Push")
+        XCTAssertEqual(outputter.debugMessages.count, 1)
+        let first = outputter.firstDebugMessage!
+        XCTAssertEqual(first.tag, Tags.Push)
         XCTAssertEqual(
-            loggerMock.debugReceivedInvocations.first?.message,
+            first.content,
             "Tracking push message opened with deliveryId: \(deliveryId)"
         )
     }

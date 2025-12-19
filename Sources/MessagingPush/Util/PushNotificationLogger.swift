@@ -21,8 +21,7 @@ protocol PushNotificationLogger: AutoMockable {
 }
 
 // sourcery: InjectRegisterShared = "PushNotificationLogger"
-class PushNotificationLoggerImpl: PushNotificationLogger {
-    private static let PUSH_TAG = "Push"
+struct PushNotificationLoggerImpl: Sendable, PushNotificationLogger {
 
     private let logger: Logger
 
@@ -33,56 +32,56 @@ class PushNotificationLoggerImpl: PushNotificationLogger {
     // MARK: Delivery handling
 
     public func logReceivedPushMessage(notification: PushNotification) {
-        logger.debug("Received notification for message: \(notification)", Self.PUSH_TAG)
+        logger.debug("Received notification for message: \(notification)", Tags.Push)
     }
 
     public func logReceivedCioPushMessage() {
-        logger.debug("Received CIO push message", Self.PUSH_TAG)
+        logger.debug("Received CIO push message", Tags.Push)
     }
 
     public func logReceivedNonCioPushMessage() {
-        logger.debug("Received non CIO push message, ignoring message", Self.PUSH_TAG)
+        logger.debug("Received non CIO push message, ignoring message", Tags.Push)
     }
 
     public func logReceivedPushMessageWithEmptyDeliveryId() {
-        logger.debug("Received message with empty deliveryId", Self.PUSH_TAG)
+        logger.debug("Received message with empty deliveryId", Tags.Push)
     }
 
     public func logTrackingPushMessageDelivered(deliveryId: String) {
-        logger.debug("Tracking push message delivered with deliveryId: \(deliveryId)", Self.PUSH_TAG)
+        logger.debug("Tracking push message delivered with deliveryId: \(deliveryId)", Tags.Push)
     }
 
     public func logPushMetricsAutoTrackingDisabled() {
-        logger.debug("Received message but auto tracking is disabled", Self.PUSH_TAG)
+        logger.debug("Received message but auto tracking is disabled", Tags.Push)
     }
 
     public func logPushMetricTracked(deliveryId: String, event: String) {
-        logger.debug("Successfully tracked push metric '\(event)' for deliveryId: \(deliveryId)", Self.PUSH_TAG)
+        logger.debug("Successfully tracked push metric '\(event)' for deliveryId: \(deliveryId)", Tags.Push)
     }
 
     public func logPushMetricTrackingFailed(deliveryId: String, event: String, error: Error) {
-        logger.error("Failed to track push metric '\(event)' for deliveryId: \(deliveryId)", Self.PUSH_TAG, error)
+        logger.error("Failed to track push metric '\(event)' for deliveryId: \(deliveryId)", Tags.Push, error)
     }
 
     // MARK: Click handling
 
     public func logClickedPushMessage(notification: PushNotification) {
-        logger.debug("Clicked notification for message: \(notification)", Self.PUSH_TAG)
+        logger.debug("Clicked notification for message: \(notification)", Tags.Push)
     }
 
     public func logClickedCioPushMessage() {
-        logger.debug("Clicked CIO push message", Self.PUSH_TAG)
+        logger.debug("Clicked CIO push message", Tags.Push)
     }
 
     public func logClickedNonCioPushMessage() {
-        logger.debug("Clicked non CIO push message, ignoring message", Self.PUSH_TAG)
+        logger.debug("Clicked non CIO push message, ignoring message", Tags.Push)
     }
 
     public func logClickedPushMessageWithEmptyDeliveryId() {
-        logger.debug("Clicked message with empty deliveryId", Self.PUSH_TAG)
+        logger.debug("Clicked message with empty deliveryId", Tags.Push)
     }
 
     public func logTrackingPushMessageOpened(deliveryId: String) {
-        logger.debug("Tracking push message opened with deliveryId: \(deliveryId)", Self.PUSH_TAG)
+        logger.debug("Tracking push message opened with deliveryId: \(deliveryId)", Tags.Push)
     }
 }
