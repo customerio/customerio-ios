@@ -3,7 +3,7 @@ import CioInternalCommon
 import UserNotifications
 #endif
 
-protocol PushNotificationLogger: AutoMockable {
+protocol PushNotificationLogger: Sendable, AutoMockable {
     func logReceivedPushMessage(notification: PushNotification)
     func logReceivedCioPushMessage()
     func logReceivedNonCioPushMessage()
