@@ -35,20 +35,32 @@ struct CommonEventBusTests {
         let logger = StandardLogger(logLevel: .debug)
         let eventBus = CommonEventBus(logger: logger)
         
-        await confirmation("Simple Event Delivered", expectedCount: 2) { done in
-            let first = eventBus.registerObserver { (msg: String) in
-                #expect(msg == "String Event")
-                done()
-            }
+        let eventString = "String Event"
+        
+        let firstCallCount = Synchronized(initial: 0)
+        let secondCallCount = Synchronized(initial: 0)
+        
+        let first = eventBus.registerObserver { (msg: String) in
+            #expect(msg == eventString)
+            firstCallCount += 1
+        }
 
-            let second = eventBus.registerObserver { (msg: String) in
-                #expect(msg == "String Event")
-                done()
-            }
+        let second = eventBus.registerObserver { (msg: String) in
+            #expect(msg == eventString)
+            secondCallCount += 1
+        }
 
-            eventBus.post("String Event")
-            // Must sleep to ensure delivery happens before this closure ends
-            try? await Task.sleep(nanoseconds: 100_000)
+        var summaryToken: RegistrationToken? = nil
+        await withCheckedContinuation { continuation in
+            summaryToken = eventBus.registerObserver { (summary: EventDeliverySummary) in
+                #expect(summary.handlingObservers == 2)
+                #expect(summary.registeredObservers == 3)
+                #expect(summary.sourceEvent as? String == eventString)
+                
+                continuation.resume()
+            }
+            
+            eventBus.post(eventString)
         }
     }
 
@@ -87,37 +99,26 @@ struct CommonEventBusTests {
         let deliveryCount = Synchronized(initial: 0)
 
         token = eventBus.registerObserver { (msg: String) in
-            deliveryCount.mutating { value in
-                if value == 0 {
-                    #expect(msg == "String Event")
-                    value += 1
-                } else {
-                    Issue.record("Received additional delivery")
-                }
-            }
-        }
-        eventBus.post("String Event")
+            #expect(msg == "String Event")
 
-        // Must sleep to ensure delivery happens before next steps
-        try? await Task.sleep(nanoseconds: 100_000)
-        
+            deliveryCount += 1
+        }
+        let firstSummary = await eventBus.postAndWait("String Event")
+        #expect(firstSummary.handlingObservers == 1)
+        #expect(firstSummary.sourceEvent as? String == "String Event")
         #expect(deliveryCount.value == 1)
+        
         token = nil
 
-        // Must sleep to ensure observer removed
-        try? await Task.sleep(nanoseconds: 1_000)
 
-        eventBus.post("String Event")
-
-        // Must sleep to ensure delivery happens before next steps
-        try? await Task.sleep(nanoseconds: 100_000)
-
+        let secondSummary = await eventBus.postAndWait("String Event")
+        #expect(secondSummary.handlingObservers == 0)
+        #expect(secondSummary.sourceEvent as? String == "String Event")
         #expect(deliveryCount.value == 1)
 
         if token != nil {
             Issue.record("Token not released")
         }
-
     }
 
     
