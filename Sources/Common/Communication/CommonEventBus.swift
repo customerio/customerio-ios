@@ -46,7 +46,7 @@ public final class CommonEventBus: Sendable, Autoresolvable {
             self.listener = listener
         }
         override func main() {
-            wasHandled.value = listener(event)
+            wasHandled.wrappedValue = listener(event)
         }
     }
     
@@ -105,7 +105,7 @@ public final class CommonEventBus: Sendable, Autoresolvable {
         let arrivalTime = Date()
         self.logger.debug("Beginning post for event of type \(eventTypeName)")
         // Fetch the observers synchronously now in case they change before enqueuing the callbacks
-        let snapshot = observers.value.values
+        let snapshot = observers.wrappedValue.values
         guard !snapshot.isEmpty else {
             self.logger.debug("No observers are registered for any events, so aborting delivery.")
             return
@@ -122,7 +122,7 @@ public final class CommonEventBus: Sendable, Autoresolvable {
                     self.logger.debug("Preparing delivery summary for delivery of event of type \(eventTypeName)")
                     let completionTime = Date()
                     let handledCount = ops.count { op in
-                        op.wasHandled.value ?? false
+                        op.wasHandled.wrappedValue ?? false
                     }
                     let summary = EventDeliverySummary(
                         sourceEvent: event,
@@ -152,7 +152,7 @@ public final class CommonEventBus: Sendable, Autoresolvable {
         self.logger.debug("Beginning postAndWait for event of type \(eventTypeName)")
         
         // Fetch the observers synchronously now in case they change before enqueuing the callbacks
-        let snapshot = observers.value.values
+        let snapshot = observers.wrappedValue.values
         
         return await withCheckedContinuation { continuation in
             var handledEvents: Int = 0

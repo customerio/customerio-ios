@@ -85,7 +85,7 @@ struct CommonEventBusTests {
             eventBus.post("String Event")
         }
 
-        #expect(deliveryCount.value == 1)
+        #expect(deliveryCount.wrappedValue == 1)
         if token == nil {
             Issue.record("Token was released early")
         }
@@ -106,7 +106,7 @@ struct CommonEventBusTests {
         let firstSummary = await eventBus.postAndWait("String Event")
         #expect(firstSummary.handlingObservers == 1)
         #expect(firstSummary.sourceEvent as? String == "String Event")
-        #expect(deliveryCount.value == 1)
+        #expect(deliveryCount.wrappedValue == 1)
         
         token = nil
 
@@ -114,7 +114,7 @@ struct CommonEventBusTests {
         let secondSummary = await eventBus.postAndWait("String Event")
         #expect(secondSummary.handlingObservers == 0)
         #expect(secondSummary.sourceEvent as? String == "String Event")
-        #expect(deliveryCount.value == 1)
+        #expect(deliveryCount.wrappedValue == 1)
 
         if token != nil {
             Issue.record("Token not released")

@@ -31,11 +31,11 @@ public final class AsyncOperation: Operation, @unchecked Sendable {
     private let _isExecuting: Synchronized<Bool> = .init(initial: false)
     public override private(set) var isExecuting: Bool {
         get {
-            _isExecuting.value
+            _isExecuting.wrappedValue
         }
         set {
             willChangeValue(forKey: "isExecuting")
-            _isExecuting.value = newValue
+            _isExecuting.wrappedValue = newValue
             didChangeValue(forKey: "isExecuting")
         }
     }
@@ -43,11 +43,11 @@ public final class AsyncOperation: Operation, @unchecked Sendable {
     private let _isFinished: Synchronized<Bool> = .init(initial: false)
     public private(set) override var isFinished: Bool {
         get {
-            _isFinished.value
+            _isFinished.wrappedValue
         }
         set {
             willChangeValue(forKey: "isFinished")
-            _isFinished.value = newValue
+            _isFinished.wrappedValue = newValue
             didChangeValue(forKey: "isFinished")
         }
     }
@@ -63,7 +63,7 @@ public final class AsyncOperation: Operation, @unchecked Sendable {
     }
     
     public override func main() {
-        activeTask.value = Task {
+        activeTask.wrappedValue = Task {
             await asyncBlock()
             finish()
         }

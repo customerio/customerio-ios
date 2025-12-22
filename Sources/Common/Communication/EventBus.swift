@@ -58,7 +58,7 @@ class EventBusObserversHolder {
     }
     
     func hasObservers(for eventKey: String) -> Bool {
-        return _observers.value[eventKey, default: []].isEmpty == false
+        return _observers.wrappedValue[eventKey, default: []].isEmpty == false
     }
 
     func removeReservers(for eventKey: String) {

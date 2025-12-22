@@ -12,26 +12,26 @@ import Dispatch
 public final class Synchronized<T>: @unchecked Sendable {
     
     public let syncQueue = DispatchQueue(label: "Synchronized \(String(describing: T.self))", attributes: .concurrent)
-    private var _value: T
-    public var value: T {
+    private var _wrappedValue: T
+    public var wrappedValue: T {
         get {
-            return syncQueue.sync { _value }
+            return syncQueue.sync { _wrappedValue }
         }
         set {
             syncQueue.sync(flags: .barrier) {
-                _value = newValue
+                _wrappedValue = newValue
             }
         }
     }
     
     public init(initial: T) {
-        _value = initial
+        _wrappedValue = initial
     }
     
     /// Modify the value held in a thread-safe manor.
     public func mutating(_ body: (inout T) throws -> Void) rethrows {
         try syncQueue.sync(flags: .barrier) {
-            try body(&_value)
+            try body(&_wrappedValue)
         }
     }
     
@@ -39,7 +39,7 @@ public final class Synchronized<T>: @unchecked Sendable {
     /// when the mutation will be performed, only that it will be done safely.
     public func mutatingAsync(_ body: @Sendable @escaping (inout T) -> Void) {
         syncQueue.async(flags: .barrier) {
-            body(&self._value)
+            body(&self._wrappedValue)
         }
     }
     
@@ -49,7 +49,7 @@ public final class Synchronized<T>: @unchecked Sendable {
     ///  - body: The code to modify the value. The return value is passed through and returned to the caller, leaving the original value unchanged.
     public func using<Result>(_ body: (T) throws -> Result) rethrows -> Result {
         return try syncQueue.sync {
-            try body(_value)
+            try body(_wrappedValue)
         }
     }
     
@@ -59,7 +59,7 @@ public final class Synchronized<T>: @unchecked Sendable {
     ///  - body: The code to modify the value. The return value is passed through and returned to the caller, leaving the original value unchanged.
     public func usingAsync(_ body: @Sendable @escaping(T) -> Void) {
         syncQueue.async {
-            body(self._value)
+            body(self._wrappedValue)
         }
     }
 }
@@ -100,7 +100,7 @@ extension Synchronized where T: AdditiveArithmetic {
     }
     
     public static prefix func + (input: Synchronized<T>) -> Synchronized<T> {
-        return Synchronized(initial: input.value)
+        return Synchronized(initial: input.wrappedValue)
     }
     
     public static func + (lhs: Synchronized<T>, rhs: Synchronized<T>) -> Synchronized<T> {
