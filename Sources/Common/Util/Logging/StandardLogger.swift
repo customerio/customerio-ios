@@ -5,17 +5,17 @@
 //  Created by Holly Schilling on 12/10/25.
 //
 
-public final class StandardLogger: Logger {
+public final class StandardLogger: Sendable, Logger {
 
     public let destination: LogDestination
 
     private let _logLevel: Synchronized<CioLogLevel>
     public var logLevel: CioLogLevel {
         get {
-            _logLevel.value
+            _logLevel.wrappedValue
         }
         set {
-            _logLevel.value = newValue
+            _logLevel.wrappedValue = newValue
         }
     }
 
@@ -25,7 +25,7 @@ public final class StandardLogger: Logger {
     }
 
     public func setLogLevel(_ level: CioLogLevel) {
-        _logLevel.value = level
+        _logLevel.wrappedValue = level
     }
     
     public func log(_ level: CioLogLevel, _ message: @autoclosure () -> String, _ tag: String?, context: (label: String, content: CustomStringConvertible)?) {
