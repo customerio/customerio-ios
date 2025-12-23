@@ -11,7 +11,7 @@ import Dispatch
 /// A wrapper for primitive types to make them thread safe and able to conform to `Sendable`.
 public final class Synchronized<T>: @unchecked Sendable {
     
-    public let syncQueue = DispatchQueue(label: "Synchronized \(String(describing: T.self))", attributes: .concurrent)
+    public let syncQueue: DispatchQueue
     private var _wrappedValue: T
     public var wrappedValue: T {
         get {
@@ -24,8 +24,12 @@ public final class Synchronized<T>: @unchecked Sendable {
         }
     }
     
-    public init(initial: T) {
+    public init(initial: T, allowConcurrentReads: Bool = true) {
         _wrappedValue = initial
+        syncQueue = DispatchQueue(
+            label: "Synchronized \(String(describing: T.self))",
+            attributes: (allowConcurrentReads ? .concurrent : [])
+        )
     }
     
     /// Modify the wrapped value in a thread-safe manor.
