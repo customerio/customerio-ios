@@ -58,7 +58,7 @@ class DataPipelineImplementation: DataPipelineInstance {
         analytics.add(plugin: contextPlugin)
 
         // plugin to publish data pipeline events
-        analytics.add(plugin: DataPipelinePublishedEvents(diGraph: diGraph))
+        analytics.add(plugin: DataPipelinePublishedEvents(eventBusHandler: diGraph.eventBusHandler))
 
         // Add plugin to filter events based on SDK configuration
         analytics.add(plugin: ScreenFilterPlugin(screenViewUse: moduleConfig.screenViewUse))

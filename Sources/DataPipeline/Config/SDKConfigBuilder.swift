@@ -45,6 +45,14 @@ public class SDKConfigBuilder {
     private var migrationSiteId: String?
     private var screenViewUse: ScreenView = .all
     private var deepLinkCallback: DeepLinkCallback?
+    
+    private var dependencyBuilder: DependencyContainer.Builder = {
+        DependencyContainer.Builder()
+            .register(LogDestination.self) { _ in
+                return ConsoleLogDestination()
+            }
+            .register(Logger.self) { _ in StandardLogger.init() }
+    }()
 
     /// Initializes new `SDKConfigBuilder` with required configuration options.
     /// - Parameters:
@@ -163,6 +171,12 @@ public class SDKConfigBuilder {
         deepLinkCallback = callback
         return self
     }
+    
+    func overrideDependencies(using buider: (DependencyContainer.Builder) -> DependencyContainer.Builder) -> SDKConfigBuilder {
+        dependencyBuilder = buider(dependencyBuilder)
+        return self
+    }
+
 
     @available(iOSApplicationExtension, unavailable)
     public func build() -> SDKConfigBuilderResult {
@@ -206,7 +220,8 @@ public class SDKConfigBuilder {
         return SDKConfigBuilderResultImpl(
             sdkConfig: sdkConfig,
             dataPipelineConfig: dataPipelineConfig,
-            deepLinkCallback: deepLinkCallback
+            deepLinkCallback: deepLinkCallback,
+            dependencyContainer: dependencyBuilder.build()
         )
     }
 
@@ -214,6 +229,7 @@ public class SDKConfigBuilder {
         public let sdkConfig: SdkConfig
         public let dataPipelineConfig: DataPipelineConfigOptions
         public let deepLinkCallback: DeepLinkCallback?
+        public let dependencyContainer: DependencyContainer
     }
 }
 
@@ -223,4 +239,5 @@ public protocol SDKConfigBuilderResult {
     var sdkConfig: SdkConfig { get }
     var dataPipelineConfig: DataPipelineConfigOptions { get }
     var deepLinkCallback: DeepLinkCallback? { get }
+    var dependencyContainer: DependencyContainer { get }
 }
