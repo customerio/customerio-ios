@@ -26,7 +26,10 @@ public final class Synchronized<T>: @unchecked Sendable {
     }
     
     /// Modify the wrapped value in a thread-safe manor.
-    public func mutating(_ body: (inout T) throws -> Void) rethrows {
+    /// - Parameters:
+    /// - body: The critical section of code that may modify the wrapped value.
+    /// - Returns: The value returned from the inner function.
+    public func mutating<Result>(_ body: (inout T) throws -> Result) rethrows -> Result {
         try syncQueue.sync(flags: .barrier) {
             try body(&_wrappedValue)
         }
@@ -43,13 +46,13 @@ public final class Synchronized<T>: @unchecked Sendable {
 
     /// Modify the wrapped value in a thread-safe manor without blocking the current thread but
     /// asynchronously waiting for it to finish. The body will be executed atomically before the call returns.
-    public func mutatingAsync(_ body: @Sendable @escaping (inout T) throws -> Void) async throws {
+    public func mutatingAsync<Result>(_ body: @Sendable @escaping (inout T) throws -> Result) async throws -> Result {
         try await withCheckedThrowingContinuation { continuation in
             syncQueue.async(flags: .barrier) {
                 do {
-                    try body(&self._wrappedValue)
+                    let result = try body(&self._wrappedValue)
                     Task.detached {
-                        continuation.resume()
+                        continuation.resume(returning: result)
                     }
                 }
                 catch {

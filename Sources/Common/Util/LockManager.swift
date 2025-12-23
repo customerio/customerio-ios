@@ -31,6 +31,4 @@ public class LockManager {
 
 public enum LockReference: String {
     case queueStorage
-    case pushHistory
-    case autoTrackScreenViewStore
 }
