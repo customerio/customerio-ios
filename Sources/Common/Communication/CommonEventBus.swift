@@ -94,7 +94,7 @@ public final class CommonEventBus: Sendable, Autoresolvable {
     
     private func removeRegistration(for identifier: UUID) {
         // This happens ASYNC to not risk stalling the thread due to a deinit
-        observers.mutatingAsync { value in
+        observers.mutatingDetatched { value in
             value.removeValue(forKey: identifier)
             self.logger.debug("Registration removed for identifier \(identifier).")
         }

@@ -28,40 +28,83 @@ public final class Synchronized<T>: @unchecked Sendable {
         _wrappedValue = initial
     }
     
-    /// Modify the value held in a thread-safe manor.
+    /// Modify the wrapped value in a thread-safe manor.
     public func mutating(_ body: (inout T) throws -> Void) rethrows {
         try syncQueue.sync(flags: .barrier) {
             try body(&_wrappedValue)
         }
     }
     
-    /// Asynchronously modify the value held in a thread-safe manor. No guarantees are made about
-    /// when the mutation will be performed, only that it will be done safely.
-    public func mutatingAsync(_ body: @Sendable @escaping (inout T) -> Void) {
+    /// Modify the wrapped value in a thread-safe manor without blocking the current thread or
+    /// waiting for it to finish. No guarantees are made about when the body will be executed,
+    /// only that the body will be executed atomically.
+    public func mutatingDetatched(_ body: @Sendable @escaping (inout T) -> Void) {
         syncQueue.async(flags: .barrier) {
             body(&self._wrappedValue)
         }
     }
+
+    /// Modify the wrapped value in a thread-safe manor without blocking the current thread but
+    /// asynchronously waiting for it to finish. The body will be executed atomically before the call returns.
+    public func mutatingAsync(_ body: @Sendable @escaping (inout T) throws -> Void) async throws {
+        try await withCheckedThrowingContinuation { continuation in
+            syncQueue.async(flags: .barrier) {
+                do {
+                    try body(&self._wrappedValue)
+                    Task.detached {
+                        continuation.resume()
+                    }
+                }
+                catch {
+                    Task.detached {
+                        continuation.resume(throwing: error)
+                    }
+                }
+            }
+        }
+    }
+
     
-    
-    /// Access the value held in a thread-safe manor.
+    /// Access the wrapped value in a thread-safe manor.
     /// - Parameters:
-    ///  - body: The code to modify the value. The return value is passed through and returned to the caller, leaving the original value unchanged.
+    ///  - body: The code to access the wrapped value. The return value is passed through and returned to the caller, leaving the original value unchanged.
     public func using<Result>(_ body: (T) throws -> Result) rethrows -> Result {
         return try syncQueue.sync {
             try body(_wrappedValue)
         }
     }
     
-    /// Access the value held in a thread-safe manor. No guarantees are made about when the code will
-    /// be performed, only that it will be done safely.
+    /// Access the wrapped value in a thread-safe manor without blocking the current thread or
+    /// waiting for it to finish. No guarantees are made about when the body will be executed,
+    /// only that the body will be executed atomically.
     /// - Parameters:
-    ///  - body: The code to modify the value. The return value is passed through and returned to the caller, leaving the original value unchanged.
-    public func usingAsync(_ body: @Sendable @escaping(T) -> Void) {
+    ///  - body: The code to access the wrapped value.
+    public func usingDetatched(_ body: @Sendable @escaping(T) -> Void) {
         syncQueue.async {
             body(self._wrappedValue)
         }
     }
+    
+    /// Access the wrapped value in a thread-safe manor without blocking the current thread but
+    /// asynchronously waiting for it to finish. The body will be executed atomically before the call returns.
+    public func usingAsync<Result>(_ body: @Sendable @escaping (T) throws -> Result) async throws -> Result {
+        return try await withCheckedThrowingContinuation { continuation in
+            syncQueue.async {
+                do {
+                    let result = try body(self._wrappedValue)
+                    Task.detached {
+                        continuation.resume(returning: result)
+                    }
+                }
+                catch {
+                    Task.detached {
+                        continuation.resume(throwing: error)
+                    }
+                }
+            }
+        }
+    }
+
 }
 
 extension Synchronized: Equatable where T: Equatable {
@@ -100,29 +143,37 @@ extension Synchronized where T: AdditiveArithmetic {
     }
     
     public static prefix func + (input: Synchronized<T>) -> Synchronized<T> {
-        return Synchronized(initial: input.wrappedValue)
+        return input
     }
     
-    public static func + (lhs: Synchronized<T>, rhs: Synchronized<T>) -> Synchronized<T> {
-        return Synchronized(
-            initial: lhs.using { lhsValue in
-                rhs.using { rhsValue in
-                    lhsValue + rhsValue
-                }
+    public static func + (lhs: Synchronized<T>, rhs: Synchronized<T>) -> T {
+        return lhs.using { lhsValue in
+            rhs.using { rhsValue in
+                lhsValue + rhsValue
             }
-        )
+        }
     }
-    
-    public static func - (lhs: Synchronized<T>, rhs: Synchronized<T>) -> Synchronized<T> {
-        return Synchronized(
-            initial: lhs.using { lhsValue in
-                rhs.using { rhsValue in
-                    lhsValue - rhsValue
-                }
+
+    public static func + (lhs: Synchronized<T>, rhs: T) -> T {
+        return lhs.using { lhsValue in
+            lhsValue + rhs
+        }
+    }
+
+    public static func - (lhs: Synchronized<T>, rhs: Synchronized<T>) -> T {
+        return lhs.using { lhsValue in
+            rhs.using { rhsValue in
+                lhsValue - rhsValue
             }
-        )
+        }
     }
     
+    public static func - (lhs: Synchronized<T>, rhs: T) -> T {
+        return lhs.using { lhsValue in
+            lhsValue - rhs
+        }
+    }
+
     public static func += (lhs: Synchronized<T>, rhs: Synchronized<T>) {
         lhs.mutating { lhsValue in
             rhs.using { rhsValue in
@@ -198,6 +249,10 @@ extension Synchronized where T: Collection {
                 value[key]
             }
         }
+    }
+    
+    public var count: Int {
+        using { value  in value.count }
     }
 }
 

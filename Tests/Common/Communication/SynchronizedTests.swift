@@ -6,6 +6,9 @@
 //
 
 import Testing
+import Foundation
+
+@testable
 import CioInternalCommon
 
 
@@ -63,6 +66,24 @@ struct SynchronizedTests {
         }
         #expect(sync.wrappedValue == 31415)
         #expect(fetched == 31416)
+    }
+    
+    @Test
+    func testBreakingThreadSafety() throws {
+        let sync = Synchronized(initial: 0)
+        
+        let operationQueue = OperationQueue()
+        operationQueue.isSuspended = true
+        
+        for _ in 0..<1_000_000 {
+            operationQueue.addOperation {
+                sync += 1
+            }
+        }
+        operationQueue.isSuspended = false
+        operationQueue.waitUntilAllOperationsAreFinished()
+        
+        #expect(sync.wrappedValue == 1_000_000)
     }
     
 //MARK: - Integer Operation Extensions
