@@ -5,7 +5,7 @@
 //  Created by Holly Schilling on 12/8/25.
 //
 
-public actor DependencyContainer {
+public final class DependencyContainer: Sendable {
     
     public enum ResolutionError: Error {
         case notFound
@@ -16,11 +16,13 @@ public actor DependencyContainer {
     private class SimpleResolver: Resolver {
         
         public let container: DependencyContainer
+        private let factories: [ObjectIdentifier: (SimpleResolver) throws -> Any]
         public private(set) var isExpired: Bool = false
         
         
-        init(container: DependencyContainer) {
+        init(container: DependencyContainer, factories: [ObjectIdentifier: (SimpleResolver) throws -> Any]) {
             self.container = container
+            self.factories = factories
         }
         
         public func resolve<T>() throws -> T {
@@ -29,7 +31,7 @@ public actor DependencyContainer {
             }
             
             let id = ObjectIdentifier(T.self)
-            if let factory = container.factories[id] {
+            if let factory = factories[id] {
                 let untyped = try factory(self)
                 guard let result = untyped as? T else {
                     throw ResolutionError.typeMismatch(expected: T.self, actual: type(of: untyped))
@@ -59,6 +61,8 @@ public actor DependencyContainer {
     public struct Builder {
         private var factories: [ObjectIdentifier: (Resolver) throws -> Any] = [:]
 
+        public init() { }
+        
         public func register<T>(_ type: T.Type = T.self, factory: @escaping (Resolver) throws -> T) -> Self {
             var result = self
             let id = ObjectIdentifier(type)
@@ -67,7 +71,7 @@ public actor DependencyContainer {
             return result
         }
         
-        public func register<T>(_ type: T.Type = T.self, singleton: T) -> Self {
+        public func register<T>(as type: T.Type = T.self, singleton: T) -> Self {
             var result = self
             let id = ObjectIdentifier(T.self)
             result.factories[id] = { _ in singleton }
@@ -75,7 +79,7 @@ public actor DependencyContainer {
             return result
         }
         
-        public func registerLazySingleton<T>(_ type: T.Type = T.self, factory: @escaping (Resolver) throws -> T) -> Self {
+        public func registerLazySingleton<T>(as type: T.Type = T.self, factory: @escaping (Resolver) throws -> T) -> Self {
             var result = self
             let id = ObjectIdentifier(T.self)
             
@@ -91,43 +95,40 @@ public actor DependencyContainer {
             
             return result
         }
-        
-        func build() -> DependencyContainer {
+                
+        public func build() -> DependencyContainer {
             DependencyContainer(factories: factories)
         }
 
     }
     
-    private nonisolated(unsafe) var factories: [ObjectIdentifier: (Resolver) throws -> Any] = [:]
+    private let factories: Synchronized<[ObjectIdentifier: (Resolver) throws -> Any]>
     
     private init(factories: [ObjectIdentifier: (Resolver) throws -> Any]) {
-        self.factories = factories
-    }
-    
-    public func resolve<T>() async throws -> T {
+        // Since our closures for lazy methods aren't sendable and concurrent reentry safe,
+        // we disable concurrent reads.
+        self.factories = Synchronized(initial: factories, allowConcurrentReads: false)
         
-        let resolver = SimpleResolver(container: self)
-        let result: T = try resolver.resolve()
-        resolver.expire()
-        return result
     }
-    
-    public func register<T>(_ type: T.Type = T.self, factory: @escaping (Resolver) throws -> T) async {
+        
+    public func register<T>(_ type: T.Type = T.self, factory: @escaping (Resolver) throws -> T) {
+
         let id = ObjectIdentifier(type)
-        self.factories[id] = factory
+        factories[id] = factory
     }
     
-    public func register<T>(_ type: T.Type = T.self, singleton: T) async {
-        let id = ObjectIdentifier(T.self)
-        self.factories[id] = { _ in singleton }
+    public func register<T>(_ type: T.Type = T.self, constructor: @escaping () -> T) {
+        register { _ in constructor() }
+    }
+    
+    public func register<T>(_ type: T.Type = T.self, singleton: @autoclosure @escaping () -> T) async {
+        register { _ in singleton() }
     }
     
     public func registerLazySingleton<T>(_ type: T.Type = T.self, factory: @escaping (Resolver) throws -> T) async {
-        let id = ObjectIdentifier(T.self)
         
         var instance: T? = nil
-        
-        self.factories[id] = { resolver in
+        register { resolver in
             if let instance = instance {
                 return instance
             }
@@ -136,18 +137,40 @@ public actor DependencyContainer {
         }
     }
     
-    public func construct<T>(factory: (Resolver) throws -> T) rethrows -> T {
-        let resolver = SimpleResolver(container: self)
-        let result = try factory(resolver)
-        resolver.expire()
-        return result
+    public func construct<T>(_ body: (Resolver) throws -> T) rethrows -> T {
+        return try factories.using { factories in
+            let resolver = SimpleResolver(container: self, factories: factories)
+            let result = try body(resolver)
+            resolver.expire()
+            return result
+        }
     }
     
-    public func resolve<T>(_ type: T.Type = T.self) throws -> T {
-        let resolver = SimpleResolver(container: self)
-        let result: T = try resolver.resolve()
-        resolver.expire()
-        return result
+    public func constructAsync<T>(_ body: @escaping (Resolver) throws -> T) async throws -> T {
+        return try await factories.usingAsync { factories in
+            let resolver = SimpleResolver(container: self, factories: factories)
+            let result = try body(resolver)
+            resolver.expire()
+            return result
+        }
     }
     
+    public func resolve<T>() throws -> T {
+        return try factories.using { factories in
+            let resolver = SimpleResolver(container: self, factories: factories)
+            let result: T = try resolver.resolve()
+            resolver.expire()
+            return result
+        }
+    }
+
+    public func resolveAsync<T>() async throws -> T {
+        return try await factories.usingAsync { factories in
+            let resolver = SimpleResolver(container: self, factories: factories)
+            let result: T = try resolver.resolve()
+            resolver.expire()
+            return result
+        }
+    }
+
 }

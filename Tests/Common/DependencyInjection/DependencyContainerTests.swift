@@ -1,5 +1,5 @@
 //
-//  DependencyInjectionTests.swift
+//  DependencyContainerTests.swift
 //  Customer.io
 //
 //  Created by Holly Schilling on 12/9/25.
@@ -9,7 +9,7 @@ import Testing
 
 @testable import CioInternalCommon
 
-struct DependencyInjectionTests {
+struct DependencyContainerTests {
     
     @Test
     func testSimpleBuilder() async throws {
@@ -19,10 +19,10 @@ struct DependencyInjectionTests {
             .register { _ in 42 }
             .build()
         
-        let string: String = try await container.resolve()
+        let string: String = try container.resolve()
         #expect(string == "TestString")
         
-        let int: Int = try await container.resolve()
+        let int: Int = try container.resolve()
         #expect(int == 42)
     }
     
@@ -38,7 +38,7 @@ struct DependencyInjectionTests {
             }
             .build()
         #expect(!constructorRun)
-        let string: String = try await container.resolve()
+        let string: String = try container.resolve()
         #expect(string == "LazyString")
         #expect(constructorRun)
     }
@@ -53,10 +53,10 @@ struct DependencyInjectionTests {
         
         await container.register(singleton: "UpdatedString")
         
-        let string: String = try await container.resolve()
+        let string: String = try container.resolve()
         #expect(string == "UpdatedString")
         
-        let int: Int = try await container.resolve()
+        let int: Int = try container.resolve()
         #expect(int == 42)
     }
     
@@ -70,8 +70,8 @@ struct DependencyInjectionTests {
         
         let container: DependencyContainer = DependencyContainer.Builder().build()
         
-        _ = try await container.resolve(MyDefaultInitializable.self)
-        _ = try await container.resolve(MyAutoResolvable.self)
+        let _: MyDefaultInitializable = try container.resolve()
+        let _: MyAutoResolvable = try container.resolve()
     }
 
     
@@ -92,7 +92,7 @@ struct DependencyInjectionTests {
             .register(singleton: "TestString")
             .build()
         
-        _ = try await container.resolve(MyAutoResolvable.self)
+        let _: MyAutoResolvable = try container.resolve()
     }
     
     @Test
@@ -103,7 +103,7 @@ struct DependencyInjectionTests {
         let container: DependencyContainer = DependencyContainer.Builder().build()
         
         do {
-            _ = try await container.resolve(NonExistant.self)
+            let _: NonExistant = try container.resolve()
             Issue.record("Expected an error to be thrown")
         }
         catch { }
@@ -122,16 +122,16 @@ struct DependencyInjectionTests {
         let container: DependencyContainer = DependencyContainer.Builder().build()
         
         #expect(InitCounter.initCount == 0)
-        let instance1: InitCounter = try await container.resolve()
+        let instance1: InitCounter = try container.resolve()
         #expect(InitCounter.initCount == 1)
-        let _: InitCounter = try await container.resolve()
+        let _: InitCounter = try container.resolve()
         #expect(InitCounter.initCount == 2)
         
         await container.register(singleton: instance1)
         
-        let _: InitCounter = try await container.resolve()
+        let _: InitCounter = try container.resolve()
         #expect(InitCounter.initCount == 2)
-        let _: InitCounter = try await container.resolve()
+        let _: InitCounter = try container.resolve()
         #expect(InitCounter.initCount == 2)
     }
     
@@ -153,7 +153,7 @@ struct DependencyInjectionTests {
             .build()
 
         #expect(MyAutoResolvable.savedResolver == nil)
-        _ = try await container.resolve(MyAutoResolvable.self)
+        let _: MyAutoResolvable = try container.resolve()
         #expect(MyAutoResolvable.savedResolver != nil)
 
         do {
