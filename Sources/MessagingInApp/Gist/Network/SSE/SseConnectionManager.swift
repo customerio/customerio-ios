@@ -2,7 +2,16 @@
 import CioInternalCommon
 import Foundation
 
-// sourcery: InjectRegisterShared = "SseConnectionManager"
+/// Protocol for SSE connection management, enabling testability.
+protocol SseConnectionManagerProtocol: AutoMockable {
+    /// Starts an SSE connection to the queue consumer API.
+    func startConnection() async
+
+    /// Stops the current SSE connection.
+    func stopConnection() async
+}
+
+// sourcery: InjectRegisterShared = "SseConnectionManagerProtocol"
 // sourcery: InjectSingleton
 /// Manages SSE (Server-Sent Events) connections for real-time in-app message delivery.
 /// Handles connection lifecycle, event parsing, and automatic retry behavior on connection failures.
@@ -42,7 +51,7 @@ import Foundation
 /// - Started: In `setupSuccessfulConnection()` when connection is confirmed (ConnectionOpenEvent/CONNECTED event)
 /// - Reset: In `handleConnectionFailure()`, `cleanupForReconnect()`, `handleCompleteFailure()`, and `ConnectionClosedEvent` handler
 /// - Purpose: Monitors server heartbeats and triggers timeout if no heartbeat received within the timeout period
-actor SseConnectionManager {
+actor SseConnectionManager: SseConnectionManagerProtocol {
     private let logger: Logger
     private let inAppMessageManager: InAppMessageManager
     private let sseService: SseServiceProtocol

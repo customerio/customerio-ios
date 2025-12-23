@@ -25,10 +25,9 @@ class Gist: GistProvider {
     private let inAppMessageManager: InAppMessageManager
     private let queueManager: QueueManager
     private let threadUtil: ThreadUtil
-    private let sseConnectionManager: SseConnectionManager
+    private let sseLifecycleManager: SseLifecycleManager
 
     private var inAppMessageStoreSubscriber: InAppMessageStoreSubscriber?
-    private var sseFlagSubscriber: InAppMessageStoreSubscriber?
     private var queueTimer: Timer?
 
     init(
@@ -37,16 +36,21 @@ class Gist: GistProvider {
         inAppMessageManager: InAppMessageManager,
         queueManager: QueueManager,
         threadUtil: ThreadUtil,
-        sseConnectionManager: SseConnectionManager
+        sseLifecycleManager: SseLifecycleManager
     ) {
         self.logger = logger
         self.gistDelegate = gistDelegate
         self.inAppMessageManager = inAppMessageManager
         self.queueManager = queueManager
         self.threadUtil = threadUtil
-        self.sseConnectionManager = sseConnectionManager
+        self.sseLifecycleManager = sseLifecycleManager
 
         subscribeToInAppMessageState()
+
+        // Start the SSE lifecycle manager to observe app foreground/background events
+        Task {
+            await sseLifecycleManager.start()
+        }
     }
 
     deinit {
@@ -56,11 +60,6 @@ class Gist: GistProvider {
             inAppMessageManager.unsubscribe(subscriber: subscriber)
         }
         inAppMessageStoreSubscriber = nil
-
-        if let subscriber = sseFlagSubscriber {
-            inAppMessageManager.unsubscribe(subscriber: subscriber)
-        }
-        sseFlagSubscriber = nil
 
         invalidateTimer()
     }
@@ -73,18 +72,6 @@ class Gist: GistProvider {
             }
             // Subscribe to changes in `pollInterval` property of `InAppMessageState`
             inAppMessageManager.subscribe(keyPath: \.pollInterval, subscriber: subscriber)
-            return subscriber
-        }()
-
-        // Subscribe to SSE flag changes
-        sseFlagSubscriber = {
-            let subscriber = InAppMessageStoreSubscriber { [weak self] state in
-                guard let self else { return }
-                self.handleSseFlagChange(state: state)
-            }
-            // Subscribe to changes in `useSse` property of `InAppMessageState`
-            inAppMessageManager.subscribe(keyPath: \.useSse, subscriber: subscriber)
-            logger.logWithModuleTag("Subscribed to SSE flag changes", level: .debug)
             return subscriber
         }()
     }
@@ -102,34 +89,6 @@ class Gist: GistProvider {
         inAppMessageManager.dispatch(action: .resetState)
         queueManager.clearCachedUserQueue()
         invalidateTimer()
-
-        // Stop SSE connection on reset
-        Task {
-            await sseConnectionManager.stopConnection()
-        }
-    }
-
-    // MARK: SSE Connection Management
-
-    private func handleSseFlagChange(state: InAppMessageState) {
-        logger.logWithModuleTag("SSE flag state: \(state.useSse)", level: .info)
-
-        if state.useSse {
-            // SSE enabled: stop polling and start SSE connection
-            logger.logWithModuleTag("SSE enabled, stopping polling and starting SSE connection", level: .info)
-            invalidateTimer()
-            Task {
-                await sseConnectionManager.startConnection()
-            }
-        } else {
-            // SSE disabled: stop SSE connection and resume polling
-            logger.logWithModuleTag("SSE disabled, stopping SSE connection and resuming polling", level: .info)
-            Task {
-                await sseConnectionManager.stopConnection()
-            }
-            // Resume polling with current interval
-            setupPollingAndFetch(skipMessageFetch: false, pollingInterval: state.pollInterval)
-        }
     }
 
     func setEventListener(_ eventListener: InAppEventListener?) {
@@ -227,6 +186,12 @@ class Gist: GistProvider {
         logger.logWithModuleTag("Checking Gist queue service", level: .info)
         inAppMessageManager.fetchState { [weak self] state in
             guard let self else { return }
+
+            // Skip polling if SSE is enabled - messages are delivered via SSE instead
+            guard !state.useSse else {
+                logger.logWithModuleTag("SSE enabled, skipping polling fetch", level: .debug)
+                return
+            }
 
             fetchUserQueue(state: state)
         }
