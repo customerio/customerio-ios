@@ -2,27 +2,24 @@ import CioInternalCommon
 import Foundation
 import LDSwiftEventSource
 
-/// Parameters required to establish an SSE connection.
-/// Matches Android's connectSse() parameters with additional header info.
-struct SseConnectionParams {
-    let sseApiUrl: String
-    let sessionId: String
-    let userToken: String // Base64 encoded user identifier
-    let siteId: String
-    let dataCenter: String
-    let isAnonymous: Bool
-}
-
 // sourcery: InjectRegisterShared = "SseService"
 // sourcery: InjectSingleton
-/// SSE service layer that wraps LDSwiftEventSource library and provides AsyncStream interface
+/// SSE service layer that wraps LDSwiftEventSource library and provides AsyncStream interface.
+///
 /// Responsibilities:
 /// - Build SSE URLs from connection parameters
 /// - Wrap library callbacks as AsyncStream
+/// - Track connection generations to prevent stale disconnects
 /// - Provide clean async/await interface to SseConnectionManager
+///
+/// Uses a connection generation ID to ensure `disconnect()` only affects the specific
+/// connection it was meant for, preventing race conditions where a new connection
+/// could be killed by cleanup from an old `stopConnection()` call.
 actor SseService {
     private let logger: Logger
     private var eventSource: LDSwiftEventSource.EventSource?
+    /// The connection ID passed from the manager. Used to ensure disconnect() only affects the intended connection.
+    private var activeConnectionId: UInt64 = 0
 
     init(logger: Logger) {
         self.logger = logger
@@ -31,23 +28,43 @@ actor SseService {
 
     // MARK: - Public API
 
-    /// Starts SSE connection using validated connection parameters.
-    /// Returns AsyncStream of events for the caller to iterate over.
-    /// - Parameter params: Pre-validated connection parameters from SseConnectionManager
+    /// Starts SSE connection using the provided state and connection ID.
+    /// The connection ID is provided by the manager to ensure both layers share the same identifier.
+    /// - Parameters:
+    ///   - state: The current InAppMessageState containing user and environment info
+    ///   - connectionId: The connection ID from the manager, used to coordinate disconnect operations
     /// - Returns: AsyncStream of SSE events
-    /// - Note: Caller (SseConnectionManager) validates and builds params before calling this method
-    func connect(params: SseConnectionParams) -> AsyncStream<SseEvent> {
-        logger.logWithModuleTag("SseService: Initiating connection", level: .info)
+    func connect(state: InAppMessageState, connectionId: UInt64) -> AsyncStream<SseEvent> {
+        // Store the connection ID from the manager - this ensures both layers share the same ID
+        activeConnectionId = connectionId
 
-        // Build SSE URL from params
-        guard let url = buildSseUrl(params: params) else {
-            logger.logWithModuleTag("SseService: Failed to build connection URL", level: .error)
-            // Emit connectionFailed event so manager can reset state properly
-            return AsyncStream { continuation in
-                let error = SseError(message: "Failed to build SSE connection URL")
+        logger.logWithModuleTag("SseService: Initiating connection (connectionId \(connectionId))", level: .info)
+
+        // Validate user identification
+        let identifier = state.userId ?? state.anonymousId
+        guard let identifier = identifier, !identifier.isEmpty else {
+            logger.logWithModuleTag("SseService: Cannot connect without user identifier", level: .error)
+            logger.logWithModuleTag("SseService: userId=\(state.userId ?? "nil"), anonymousId=\(state.anonymousId ?? "nil")", level: .debug)
+            // Emit configuration error so manager can handle appropriately
+            let stream = AsyncStream<SseEvent> { continuation in
+                let error = SseError.configurationError(message: "Cannot connect without user identifier")
+                logger.logWithModuleTag("SseService: Emitting configuration error - not retryable", level: .error)
                 continuation.yield(.connectionFailed(error))
                 continuation.finish()
             }
+            return stream
+        }
+
+        // Build SSE URL
+        guard let url = buildSseUrl(state: state, identifier: identifier) else {
+            logger.logWithModuleTag("SseService: Failed to build connection URL", level: .error)
+            let stream = AsyncStream<SseEvent> { continuation in
+                let error = SseError.configurationError(message: "Failed to build SSE connection URL")
+                logger.logWithModuleTag("SseService: Emitting configuration error - not retryable", level: .error)
+                continuation.yield(.connectionFailed(error))
+                continuation.finish()
+            }
+            return stream
         }
 
         logger.logWithModuleTag("SseService: Connecting to \(url.absoluteString)", level: .info)
@@ -60,13 +77,30 @@ actor SseService {
         let handler = StreamEventHandler(continuation: continuation, logger: logger)
 
         // Configure EventSource
-        let headers = buildHeaders(params: params)
+        let headers = buildHeaders(state: state)
         var config = LDSwiftEventSource.EventSource.Config(handler: handler, url: url)
         config.headers = headers
         config.idleTimeout = 300.0 // 5 minutes read timeout
 
-        // Disable automatic retry - we'll handle reconnection logic ourselves
-        config.connectionErrorHandler = { _ in .shutdown }
+        // Handle connection errors - emit to our stream before shutting down
+        // This is called INSTEAD of onError for connection-level failures
+        config.connectionErrorHandler = { [logger] error in
+            logger.logWithModuleTag("SseService: ✗ Connection error: \(error.localizedDescription)", level: .error)
+
+            // Extract HTTP response code if available (LDSwiftEventSource provides UnsuccessfulResponseError for HTTP errors)
+            let responseCode = (error as? UnsuccessfulResponseError)?.responseCode
+            if let code = responseCode {
+                logger.logWithModuleTag("SseService: HTTP response code: \(code)", level: .debug)
+            }
+
+            // Classify and emit error to stream
+            let sseError = classifySseError(error, responseCode: responseCode)
+            logger.logWithModuleTag("SseService: Classified as \(sseError.errorType), shouldRetry: \(sseError.shouldRetry)", level: .info)
+            continuation.yield(.connectionFailed(sseError))
+
+            // Shutdown - we'll handle retry logic ourselves
+            return .shutdown
+        }
 
         // Create EventSource and store reference synchronously (no race condition)
         let newEventSource = LDSwiftEventSource.EventSource(config: config)
@@ -84,9 +118,19 @@ actor SseService {
         return stream
     }
 
-    /// Stops the SSE connection
-    func disconnect() {
-        logger.logWithModuleTag("SseService: Disconnecting", level: .info)
+    /// Stops the SSE connection only if the connection ID matches.
+    ///
+    /// This prevents race conditions where `stopConnection()` cleanup could kill
+    /// a newer connection that started while the old stop was awaiting.
+    ///
+    /// - Parameter connectionId: The connection ID to disconnect
+    func disconnect(connectionId: UInt64) {
+        guard activeConnectionId == connectionId else {
+            logger.logWithModuleTag("SseService: Skipping disconnect - connectionId mismatch (requested \(connectionId) vs current \(activeConnectionId))", level: .debug)
+            return
+        }
+
+        logger.logWithModuleTag("SseService: Disconnecting (connectionId \(connectionId))", level: .info)
 
         eventSource?.stop()
         eventSource = nil
@@ -96,35 +140,40 @@ actor SseService {
 
     // MARK: - Private Helpers
 
-    private func buildSseUrl(params: SseConnectionParams) -> URL? {
-        guard var components = URLComponents(string: params.sseApiUrl) else {
-            logger.logWithModuleTag("SseService: Invalid SSE URL: \(params.sseApiUrl)", level: .error)
+    private func buildSseUrl(state: InAppMessageState, identifier: String) -> URL? {
+        // SSE API URL includes full path (like Android's getSseApiUrl())
+        let sseUrlString = state.environment.networkSettings.sseAPI
+        guard var components = URLComponents(string: sseUrlString) else {
+            logger.logWithModuleTag("SseService: Invalid SSE URL: \(sseUrlString)", level: .error)
             return nil
         }
 
         // Add query parameters (matching Android's createSseRequest)
+        let userToken = Data(identifier.utf8).base64EncodedString()
+        let sessionId = SessionManager.shared.sessionId
         components.queryItems = [
-            URLQueryItem(name: "sessionId", value: params.sessionId),
-            URLQueryItem(name: "siteId", value: params.siteId),
-            URLQueryItem(name: "userToken", value: params.userToken)
+            URLQueryItem(name: "sessionId", value: sessionId),
+            URLQueryItem(name: "siteId", value: state.siteId),
+            URLQueryItem(name: "userToken", value: userToken)
         ]
 
-        logger.logWithModuleTag("SseService: Built URL with siteId=\(params.siteId), sessionId=\(params.sessionId)", level: .debug)
+        logger.logWithModuleTag("SseService: Built URL with siteId=\(state.siteId), sessionId=\(sessionId), identifier=\(identifier)", level: .debug)
 
         return components.url
     }
 
     /// Builds common headers for SSE connection (matching Android's addCommonHeaders with includeUserToken=false)
     /// SSE uses userToken in URL query parameter, not in header
-    private func buildHeaders(params: SseConnectionParams) -> [String: String] {
+    private func buildHeaders(state: InAppMessageState) -> [String: String] {
         let sdkClient = DIGraphShared.shared.sdkClient
+        let isAnonymous = state.userId == nil
 
         return [
-            HTTPHeader.siteId.rawValue: params.siteId,
-            HTTPHeader.cioDataCenter.rawValue: params.dataCenter,
+            HTTPHeader.siteId.rawValue: state.siteId,
+            HTTPHeader.cioDataCenter.rawValue: state.dataCenter,
             HTTPHeader.cioClientPlatform.rawValue: sdkClient.source.lowercased() + "-apple",
             HTTPHeader.cioClientVersion.rawValue: sdkClient.sdkVersion,
-            HTTPHeader.userAnonymous.rawValue: String(params.isAnonymous)
+            HTTPHeader.userAnonymous.rawValue: String(isAnonymous)
             // Note: userToken is NOT included in headers for SSE - it's in the URL query params
         ]
     }
@@ -176,7 +225,21 @@ private final class StreamEventHandler: EventHandler {
     func onError(error: Error) {
         logger.logWithModuleTag("SseService: ✗ Error: \(error.localizedDescription)", level: .error)
 
-        let sseError = SseError(message: error.localizedDescription, underlyingError: error)
+        // Classify error for retry logic (matches Android's classifySseError)
+        // Extract HTTP response code if available
+        var responseCode: Int?
+
+        // Check for UnsuccessfulResponseError (HTTP error responses from LDSwiftEventSource)
+        if let unsuccessfulResponse = error as? UnsuccessfulResponseError {
+            responseCode = unsuccessfulResponse.responseCode
+            logger.logWithModuleTag("SseService: HTTP response code: \(responseCode!)", level: .debug)
+        } else if let urlError = error as? URLError {
+            // URLError for network-level issues (no HTTP status code available)
+            logger.logWithModuleTag("SseService: URLError code: \(urlError.code.rawValue) (\(urlError.code))", level: .debug)
+        }
+
+        let sseError = classifySseError(error, responseCode: responseCode)
+        logger.logWithModuleTag("SseService: Classified as \(sseError.errorType), shouldRetry: \(sseError.shouldRetry)", level: .info)
         continuation.yield(.connectionFailed(sseError))
         continuation.finish()
     }

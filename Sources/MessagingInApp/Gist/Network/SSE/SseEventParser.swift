@@ -158,18 +158,138 @@ struct ServerEvent: Equatable {
 
 // MARK: - SSE Error
 
-/// Represents errors that occur during SSE connection or communication.
-/// Corresponds to Android's `SseError`.
-struct SseError: Equatable, Error {
-    let message: String
-    let underlyingError: Error?
+/// Represents different types of SSE errors with their classification for retry logic.
+/// Corresponds to Android's `SseError` sealed class.
+enum SseError: Equatable, Error {
+    /// Network-level error (connection failed, no internet, etc.) - retryable
+    case networkError(message: String, underlyingError: Error?)
 
-    init(message: String, underlyingError: Error? = nil) {
-        self.message = message
-        self.underlyingError = underlyingError
+    /// Heartbeat timeout - connection appears stale - retryable
+    case timeoutError
+
+    /// Server returned an error response
+    /// - Parameters:
+    ///   - message: Error description
+    ///   - responseCode: HTTP status code (if available)
+    ///   - shouldRetry: Whether this error should trigger retry logic
+    case serverError(message: String, responseCode: Int?, shouldRetry: Bool)
+
+    /// Unknown/unexpected error - retryable by default
+    case unknownError(message: String, underlyingError: Error?)
+
+    /// Configuration error (e.g., missing user token) - not retryable
+    case configurationError(message: String)
+
+    /// Whether this error should trigger retry logic
+    /// Corresponds to Android's `shouldRetry` property
+    var shouldRetry: Bool {
+        switch self {
+        case .networkError:
+            return true
+        case .timeoutError:
+            return true
+        case .serverError(_, _, let shouldRetry):
+            return shouldRetry
+        case .unknownError:
+            return true
+        case .configurationError:
+            return false
+        }
+    }
+
+    /// Human-readable error message for logging
+    var message: String {
+        switch self {
+        case .networkError(let message, _):
+            return "Network error: \(message)"
+        case .timeoutError:
+            return "Connection timeout"
+        case .serverError(let message, let code, _):
+            if let code = code {
+                return "Server error (HTTP \(code)): \(message)"
+            }
+            return "Server error: \(message)"
+        case .unknownError(let message, _):
+            return "Unknown error: \(message)"
+        case .configurationError(let message):
+            return "Configuration error: \(message)"
+        }
+    }
+
+    /// Error type name for logging (matches Android error class names)
+    var errorType: String {
+        switch self {
+        case .networkError:
+            return "NetworkError"
+        case .timeoutError:
+            return "TimeoutError"
+        case .serverError(_, let code, _):
+            if let code = code {
+                return "ServerError(\(code))"
+            }
+            return "ServerError"
+        case .unknownError:
+            return "UnknownError"
+        case .configurationError:
+            return "ConfigurationError"
+        }
     }
 
     static func == (lhs: SseError, rhs: SseError) -> Bool {
-        lhs.message == rhs.message
+        switch (lhs, rhs) {
+        case (.networkError(let lhsMsg, _), .networkError(let rhsMsg, _)):
+            return lhsMsg == rhsMsg
+        case (.timeoutError, .timeoutError):
+            return true
+        case (.serverError(let lhsMsg, let lhsCode, let lhsRetry), .serverError(let rhsMsg, let rhsCode, let rhsRetry)):
+            return lhsMsg == rhsMsg && lhsCode == rhsCode && lhsRetry == rhsRetry
+        case (.unknownError(let lhsMsg, _), .unknownError(let rhsMsg, _)):
+            return lhsMsg == rhsMsg
+        case (.configurationError(let lhsMsg), .configurationError(let rhsMsg)):
+            return lhsMsg == rhsMsg
+        default:
+            return false
+        }
     }
+}
+
+// MARK: - Error Classification
+
+/// Classifies errors into SSE error types for appropriate retry handling.
+/// Corresponds to Android's `classifySseError` function.
+func classifySseError(_ error: Error, responseCode: Int? = nil) -> SseError {
+    // Check for URL errors (network issues)
+    if let urlError = error as? URLError {
+        switch urlError.code {
+        case .notConnectedToInternet,
+             .networkConnectionLost,
+             .cannotFindHost,
+             .cannotConnectToHost,
+             .dnsLookupFailed:
+            return .networkError(message: urlError.localizedDescription, underlyingError: urlError)
+        case .timedOut:
+            return .timeoutError
+        default:
+            return .networkError(message: urlError.localizedDescription, underlyingError: urlError)
+        }
+    }
+
+    // Check for HTTP response codes
+    if let code = responseCode {
+        let shouldRetry: Bool
+        switch code {
+        case 408, 429: // Request Timeout, Too Many Requests
+            shouldRetry = true
+        case 500 ... 599: // Server errors
+            shouldRetry = true
+        case 400 ... 499: // Client errors (except 408, 429)
+            shouldRetry = false
+        default:
+            shouldRetry = true
+        }
+        return .serverError(message: error.localizedDescription, responseCode: code, shouldRetry: shouldRetry)
+    }
+
+    // Default to unknown error (retryable)
+    return .unknownError(message: error.localizedDescription, underlyingError: error)
 }
