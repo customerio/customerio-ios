@@ -70,6 +70,9 @@ extension DIGraphShared {
         _ = gistQueueNetwork
         countDependenciesResolved += 1
 
+        _ = heartbeatTimerProtocol
+        countDependenciesResolved += 1
+
         _ = inAppMessageManager
         countDependenciesResolved += 1
 
@@ -79,10 +82,16 @@ extension DIGraphShared {
         _ = queueManager
         countDependenciesResolved += 1
 
+        _ = sleeper
+        countDependenciesResolved += 1
+
         _ = sseConnectionManager
         countDependenciesResolved += 1
 
-        _ = sseService
+        _ = sseRetryHelperProtocol
+        countDependenciesResolved += 1
+
+        _ = sseServiceProtocol
         countDependenciesResolved += 1
 
         return countDependenciesResolved
@@ -181,6 +190,16 @@ extension DIGraphShared {
         GistQueueNetworkImpl()
     }
 
+    // HeartbeatTimerProtocol
+    var heartbeatTimerProtocol: HeartbeatTimerProtocol {
+        getOverriddenInstance() ??
+            newHeartbeatTimerProtocol
+    }
+
+    private var newHeartbeatTimerProtocol: HeartbeatTimerProtocol {
+        HeartbeatTimer(logger: logger)
+    }
+
     // InAppMessageManager (singleton)
     var inAppMessageManager: InAppMessageManager {
         getOverriddenInstance() ??
@@ -239,6 +258,16 @@ extension DIGraphShared {
         QueueManager(keyValueStore: sharedKeyValueStorage, gistQueueNetwork: gistQueueNetwork, inAppMessageManager: inAppMessageManager, anonymousMessageManager: anonymousMessageManager, logger: logger)
     }
 
+    // Sleeper
+    var sleeper: Sleeper {
+        getOverriddenInstance() ??
+            newSleeper
+    }
+
+    private var newSleeper: Sleeper {
+        RealSleeper()
+    }
+
     // SseConnectionManager (singleton)
     var sseConnectionManager: SseConnectionManager {
         getOverriddenInstance() ??
@@ -260,30 +289,40 @@ extension DIGraphShared {
     }
 
     private func _get_sseConnectionManager() -> SseConnectionManager {
-        SseConnectionManager(logger: logger, inAppMessageManager: inAppMessageManager, sseService: sseService)
+        SseConnectionManager(logger: logger, inAppMessageManager: inAppMessageManager, sseService: sseServiceProtocol, retryHelper: sseRetryHelperProtocol, heartbeatTimer: heartbeatTimerProtocol)
     }
 
-    // SseService (singleton)
-    var sseService: SseService {
+    // SseRetryHelperProtocol
+    var sseRetryHelperProtocol: SseRetryHelperProtocol {
         getOverriddenInstance() ??
-            sharedSseService
+            newSseRetryHelperProtocol
     }
 
-    var sharedSseService: SseService {
+    private var newSseRetryHelperProtocol: SseRetryHelperProtocol {
+        SseRetryHelper(logger: logger, sleeper: sleeper)
+    }
+
+    // SseServiceProtocol (singleton)
+    var sseServiceProtocol: SseServiceProtocol {
+        getOverriddenInstance() ??
+            sharedSseServiceProtocol
+    }
+
+    var sharedSseServiceProtocol: SseServiceProtocol {
         // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
         // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
-        DispatchQueue(label: "DIGraphShared_SseService_singleton_access").sync {
-            if let overridenDep: SseService = getOverriddenInstance() {
+        DispatchQueue(label: "DIGraphShared_SseServiceProtocol_singleton_access").sync {
+            if let overridenDep: SseServiceProtocol = getOverriddenInstance() {
                 return overridenDep
             }
-            let existingSingletonInstance = self.singletons[String(describing: SseService.self)] as? SseService
-            let instance = existingSingletonInstance ?? _get_sseService()
-            self.singletons[String(describing: SseService.self)] = instance
+            let existingSingletonInstance = self.singletons[String(describing: SseServiceProtocol.self)] as? SseServiceProtocol
+            let instance = existingSingletonInstance ?? _get_sseServiceProtocol()
+            self.singletons[String(describing: SseServiceProtocol.self)] = instance
             return instance
         }
     }
 
-    private func _get_sseService() -> SseService {
+    private func _get_sseServiceProtocol() -> SseServiceProtocol {
         SseService(logger: logger)
     }
 }

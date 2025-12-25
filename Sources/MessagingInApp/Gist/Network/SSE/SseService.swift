@@ -2,7 +2,7 @@ import CioInternalCommon
 import Foundation
 import LDSwiftEventSource
 
-// sourcery: InjectRegisterShared = "SseService"
+// sourcery: InjectRegisterShared = "SseServiceProtocol"
 // sourcery: InjectSingleton
 /// SSE service layer that wraps LDSwiftEventSource library and provides AsyncStream interface.
 ///
@@ -15,7 +15,7 @@ import LDSwiftEventSource
 /// Uses a connection generation ID to ensure `disconnect()` only affects the specific
 /// connection it was meant for, preventing race conditions where a new connection
 /// could be killed by cleanup from an old `stopConnection()` call.
-actor SseService {
+actor SseService: SseServiceProtocol {
     private let logger: Logger
     private var eventSource: LDSwiftEventSource.EventSource?
     /// The connection ID passed from the manager. Used to ensure disconnect() only affects the intended connection.
