@@ -85,6 +85,9 @@ extension DIGraphShared {
         _ = queueManager
         countDependenciesResolved += 1
 
+        _ = applicationStateProvider
+        countDependenciesResolved += 1
+
         _ = sleeper
         countDependenciesResolved += 1
 
@@ -146,7 +149,7 @@ extension DIGraphShared {
     }
 
     private func _get_sseLifecycleManager() -> SseLifecycleManager {
-        CioSseLifecycleManager(logger: logger, inAppMessageManager: inAppMessageManager, sseConnectionManager: sseConnectionManagerProtocol)
+        CioSseLifecycleManager(logger: logger, inAppMessageManager: inAppMessageManager, sseConnectionManager: sseConnectionManagerProtocol, applicationStateProvider: applicationStateProvider)
     }
 
     // EngineWebProvider
@@ -283,6 +286,16 @@ extension DIGraphShared {
 
     private func _get_queueManager() -> QueueManager {
         QueueManager(keyValueStore: sharedKeyValueStorage, gistQueueNetwork: gistQueueNetwork, inAppMessageManager: inAppMessageManager, anonymousMessageManager: anonymousMessageManager, logger: logger)
+    }
+
+    // ApplicationStateProvider
+    var applicationStateProvider: ApplicationStateProvider {
+        getOverriddenInstance() ??
+            newApplicationStateProvider
+    }
+
+    private var newApplicationStateProvider: ApplicationStateProvider {
+        RealApplicationStateProvider()
     }
 
     // Sleeper

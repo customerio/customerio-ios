@@ -21,6 +21,7 @@ actor CioSseLifecycleManager: SseLifecycleManager {
     private let logger: Logger
     private let inAppMessageManager: InAppMessageManager
     private let sseConnectionManager: SseConnectionManagerProtocol
+    private let applicationStateProvider: ApplicationStateProvider
 
     private var notificationObservers: [NSObjectProtocol] = []
     private var sseFlagSubscriber: InAppMessageStoreSubscriber?
@@ -30,20 +31,33 @@ actor CioSseLifecycleManager: SseLifecycleManager {
     init(
         logger: Logger,
         inAppMessageManager: InAppMessageManager,
-        sseConnectionManager: SseConnectionManagerProtocol
+        sseConnectionManager: SseConnectionManagerProtocol,
+        applicationStateProvider: ApplicationStateProvider
     ) {
         self.logger = logger
         self.inAppMessageManager = inAppMessageManager
         self.sseConnectionManager = sseConnectionManager
+        self.applicationStateProvider = applicationStateProvider
     }
 
     /// Sets up the lifecycle manager. Must be called after initialization.
     /// This is separate from init because actors cannot call async methods in init.
+    ///
+    /// The order of operations is important to avoid race conditions:
+    /// 1. Register notification observers first to catch any state transitions
+    /// 2. Subscribe to SSE flag changes
+    /// 3. Check initial state last - any transitions during setup will be caught by observers
     func start() async {
         logger.logWithModuleTag("SseLifecycleManager: Starting lifecycle manager", level: .debug)
-        await setupInitialState()
+
+        // Register observers FIRST to ensure no state transitions are missed
         await setupNotificationObservers()
         subscribeToSseFlagChanges()
+
+        // Check initial state LAST - if app went to background during setup,
+        // we'll either see it here or have already received the notification
+        await setupInitialState()
+
         logger.logWithModuleTag("SseLifecycleManager: Lifecycle manager started successfully", level: .info)
     }
 
@@ -61,9 +75,9 @@ actor CioSseLifecycleManager: SseLifecycleManager {
     // MARK: - Setup
 
     private func setupInitialState() async {
-        // Get current app state on main thread
+        // Get current app state using injected provider for testability
         let isForeground = await MainActor.run {
-            UIApplication.shared.applicationState != .background
+            applicationStateProvider.applicationState != .background
         }
 
         isForegrounded = isForeground

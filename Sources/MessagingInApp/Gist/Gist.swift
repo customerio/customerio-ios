@@ -28,6 +28,7 @@ class Gist: GistProvider {
     private let sseLifecycleManager: SseLifecycleManager
 
     private var inAppMessageStoreSubscriber: InAppMessageStoreSubscriber?
+    private var sseFlagSubscriber: InAppMessageStoreSubscriber?
     private var queueTimer: Timer?
 
     init(
@@ -61,6 +62,11 @@ class Gist: GistProvider {
         }
         inAppMessageStoreSubscriber = nil
 
+        if let subscriber = sseFlagSubscriber {
+            inAppMessageManager.unsubscribe(subscriber: subscriber)
+        }
+        sseFlagSubscriber = nil
+
         invalidateTimer()
     }
 
@@ -72,6 +78,22 @@ class Gist: GistProvider {
             }
             // Subscribe to changes in `pollInterval` property of `InAppMessageState`
             inAppMessageManager.subscribe(keyPath: \.pollInterval, subscriber: subscriber)
+            return subscriber
+        }()
+
+        // Subscribe to SSE flag changes to trigger immediate fetch when SSE is disabled
+        sseFlagSubscriber = {
+            let subscriber = InAppMessageStoreSubscriber { [weak self] state in
+                guard let self else { return }
+
+                // When SSE is disabled, trigger an immediate fetch so users don't have to wait
+                // for the next polling timer tick (which could be up to 600 seconds)
+                if !state.useSse {
+                    logger.logWithModuleTag("SSE disabled - triggering immediate message fetch", level: .info)
+                    setupPollingAndFetch(skipMessageFetch: false, pollingInterval: state.pollInterval)
+                }
+            }
+            inAppMessageManager.subscribe(keyPath: \.useSse, subscriber: subscriber)
             return subscriber
         }()
     }

@@ -1,6 +1,7 @@
 @testable import CioInternalCommon
 @testable import CioMessagingInApp
 import SharedTests
+import UIKit
 import XCTest
 
 /// Tests for `CioSseLifecycleManager` actor.
@@ -8,6 +9,7 @@ class SseLifecycleManagerTest: XCTestCase {
     private var loggerMock: LoggerMock!
     private var inAppMessageManagerMock: InAppMessageManagerMock!
     private var sseConnectionManagerMock: SseConnectionManagerProtocolMock!
+    private var applicationStateProviderMock: ApplicationStateProviderMock!
 
     private var sut: CioSseLifecycleManager!
 
@@ -16,6 +18,10 @@ class SseLifecycleManagerTest: XCTestCase {
         loggerMock = LoggerMock()
         inAppMessageManagerMock = InAppMessageManagerMock()
         sseConnectionManagerMock = SseConnectionManagerProtocolMock()
+        applicationStateProviderMock = ApplicationStateProviderMock()
+
+        // Default to foreground state for most tests (explicit control)
+        applicationStateProviderMock.underlyingApplicationState = .active
 
         // Setup default return value for subscribe
         inAppMessageManagerMock.subscribeReturnValue = Task {}
@@ -32,7 +38,8 @@ class SseLifecycleManagerTest: XCTestCase {
         CioSseLifecycleManager(
             logger: loggerMock,
             inAppMessageManager: inAppMessageManagerMock,
-            sseConnectionManager: sseConnectionManagerMock
+            sseConnectionManager: sseConnectionManagerMock,
+            applicationStateProvider: applicationStateProviderMock
         )
     }
 
@@ -62,7 +69,8 @@ class SseLifecycleManagerTest: XCTestCase {
     // MARK: - Initial State Tests (App Foreground at Startup)
 
     func test_start_givenAppInForegroundAndSseEnabled_expectConnectionStarted() async {
-        // Setup: SSE enabled and app in foreground (default state on test device)
+        // Setup: SSE enabled and app explicitly set to foreground
+        applicationStateProviderMock.underlyingApplicationState = .active
         setupDefaultState(useSse: true)
         sut = createLifecycleManager()
 
@@ -78,7 +86,8 @@ class SseLifecycleManagerTest: XCTestCase {
     }
 
     func test_start_givenAppInForegroundAndSseDisabled_expectNoConnection() async {
-        // Setup: SSE disabled
+        // Setup: SSE disabled, app in foreground
+        applicationStateProviderMock.underlyingApplicationState = .active
         setupDefaultState(useSse: false)
         sut = createLifecycleManager()
 
@@ -90,6 +99,57 @@ class SseLifecycleManagerTest: XCTestCase {
 
         // Assert: Connection should NOT be started
         XCTAssertFalse(sseConnectionManagerMock.startConnectionCalled)
+    }
+
+    // MARK: - Initial State Tests (App Background at Startup)
+
+    func test_start_givenAppInBackgroundAndSseEnabled_expectNoConnection() async {
+        // Setup: SSE enabled but app is in background (e.g., background fetch, push extension)
+        applicationStateProviderMock.underlyingApplicationState = .background
+        setupDefaultState(useSse: true)
+        sut = createLifecycleManager()
+
+        // Action
+        await sut.start()
+
+        // Allow time for async operations
+        try? await Task.sleep(nanoseconds: 100000000) // 0.1 seconds
+
+        // Assert: Connection should NOT be started when app is backgrounded
+        XCTAssertFalse(sseConnectionManagerMock.startConnectionCalled)
+    }
+
+    func test_start_givenAppInBackgroundAndSseDisabled_expectNoConnection() async {
+        // Setup: SSE disabled and app in background
+        applicationStateProviderMock.underlyingApplicationState = .background
+        setupDefaultState(useSse: false)
+        sut = createLifecycleManager()
+
+        // Action
+        await sut.start()
+
+        // Allow time for async operations
+        try? await Task.sleep(nanoseconds: 100000000) // 0.1 seconds
+
+        // Assert: Connection should NOT be started
+        XCTAssertFalse(sseConnectionManagerMock.startConnectionCalled)
+    }
+
+    func test_start_givenAppInInactiveStateAndSseEnabled_expectConnectionStarted() async {
+        // Setup: SSE enabled and app is inactive (transitioning, but not background)
+        // Inactive is treated as foreground since it's not .background
+        applicationStateProviderMock.underlyingApplicationState = .inactive
+        setupDefaultState(useSse: true)
+        sut = createLifecycleManager()
+
+        // Action
+        await sut.start()
+
+        // Allow time for async operations
+        try? await Task.sleep(nanoseconds: 100000000) // 0.1 seconds
+
+        // Assert: Connection should be started (inactive is not background)
+        XCTAssertTrue(sseConnectionManagerMock.startConnectionCalled)
     }
 
     // MARK: - Foreground Transition Tests
