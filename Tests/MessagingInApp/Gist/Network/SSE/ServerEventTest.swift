@@ -285,30 +285,35 @@ class ServerEventTest: XCTestCase {
     }
 
     func test_sseEvent_connectionFailed_equatable() {
-        let error1 = SseError(message: "error")
-        let error2 = SseError(message: "error")
+        let error1 = SseError.networkError(message: "error", underlyingError: nil)
+        let error2 = SseError.networkError(message: "error", underlyingError: nil)
         XCTAssertEqual(SseEvent.connectionFailed(error1), SseEvent.connectionFailed(error2))
     }
 
     // MARK: - SseError
 
     func test_sseError_givenSameMessage_expectEqual() {
-        let error1 = SseError(message: "Connection failed")
-        let error2 = SseError(message: "Connection failed")
+        let error1 = SseError.networkError(message: "Connection failed", underlyingError: nil)
+        let error2 = SseError.networkError(message: "Connection failed", underlyingError: nil)
         XCTAssertEqual(error1, error2)
     }
 
     func test_sseError_givenDifferentMessage_expectNotEqual() {
-        let error1 = SseError(message: "Error 1")
-        let error2 = SseError(message: "Error 2")
+        let error1 = SseError.networkError(message: "Error 1", underlyingError: nil)
+        let error2 = SseError.networkError(message: "Error 2", underlyingError: nil)
         XCTAssertNotEqual(error1, error2)
     }
 
     func test_sseError_givenUnderlyingError_expectMessagePreserved() {
         let underlyingError = NSError(domain: "test", code: 123)
-        let sseError = SseError(message: "Wrapper error", underlyingError: underlyingError)
+        let sseError = SseError.unknownError(message: "Wrapper error", underlyingError: underlyingError)
 
-        XCTAssertEqual(sseError.message, "Wrapper error")
-        XCTAssertNotNil(sseError.underlyingError)
+        XCTAssertTrue(sseError.message.contains("Wrapper error"))
+        // Verify underlyingError is captured in the enum case
+        if case .unknownError(_, let error) = sseError {
+            XCTAssertNotNil(error)
+        } else {
+            XCTFail("Expected unknownError case")
+        }
     }
 }

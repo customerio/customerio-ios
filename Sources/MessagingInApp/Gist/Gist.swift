@@ -119,7 +119,7 @@ class Gist: GistProvider {
             logger.logWithModuleTag("SSE enabled, stopping polling and starting SSE connection", level: .info)
             invalidateTimer()
             Task {
-                await sseConnectionManager.startConnection(state: state)
+                await sseConnectionManager.startConnection()
             }
         } else {
             // SSE disabled: stop SSE connection and resume polling
