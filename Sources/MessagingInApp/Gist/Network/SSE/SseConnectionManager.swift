@@ -269,10 +269,29 @@ actor SseConnectionManager {
 
         logger.logWithModuleTag("SSE Manager: Connection closed", level: .info)
 
+        // Check if this is an unexpected close (still in connected/connecting state)
+        // vs a close following an error (already in disconnected state from handleConnectionFailed)
+        // vs an intentional stop (in disconnecting state from stopConnection)
+        //
+        // On iOS, URLSession reports server-initiated closes as didCompleteWithError(error: nil),
+        // which triggers onClosed() without going through the error handler. This differs from
+        // Android/OkHttp where such closes throw StreamClosedByServerException and go through
+        // the error path. We need to treat unexpected closes as retriable errors to match
+        // Android's behavior.
+        let wasUnexpectedClose = connectionState == .connecting || connectionState == .connected
+
         // Reset heartbeat timer when connection closes
         await heartbeatTimer.reset(generation: generation)
 
         updateConnectionState(.disconnected)
+
+        // If connection closed unexpectedly (not following an error or intentional stop),
+        // treat it as a retriable network error
+        if wasUnexpectedClose {
+            logger.logWithModuleTag("SSE Manager: ⚠️ Unexpected connection close - treating as retriable error", level: .info)
+            let error = SseError.networkError(message: "Connection closed unexpectedly", underlyingError: nil)
+            await retryHelper.scheduleRetry(error: error, generation: generation)
+        }
     }
 
     private func handleConnectionFailed(_ error: SseError, generation: UInt64) async {
@@ -467,6 +486,13 @@ actor SseConnectionManager {
         updateConnectionState(.disconnected)
         await heartbeatTimer.reset(generation: generation)
         await retryHelper.resetRetryState(generation: generation)
+
+        // Re-check generation after await points before taking global action
+        // (a new connection may have started during the cleanup awaits)
+        guard generation == activeConnectionGeneration else {
+            logger.logWithModuleTag("SSE Manager: New connection started during cleanup, skipping SSE disable", level: .debug)
+            return
+        }
 
         // Fallback to polling by disabling SSE
         inAppMessageManager.dispatch(action: .setSseEnabled(enabled: false))

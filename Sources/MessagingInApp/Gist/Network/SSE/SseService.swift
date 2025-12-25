@@ -87,8 +87,14 @@ actor SseService {
         config.connectionErrorHandler = { [logger] error in
             logger.logWithModuleTag("SseService: ✗ Connection error: \(error.localizedDescription)", level: .error)
 
+            // Extract HTTP response code if available (LDSwiftEventSource provides UnsuccessfulResponseError for HTTP errors)
+            let responseCode = (error as? UnsuccessfulResponseError)?.responseCode
+            if let code = responseCode {
+                logger.logWithModuleTag("SseService: HTTP response code: \(code)", level: .debug)
+            }
+
             // Classify and emit error to stream
-            let sseError = classifySseError(error, responseCode: nil)
+            let sseError = classifySseError(error, responseCode: responseCode)
             logger.logWithModuleTag("SseService: Classified as \(sseError.errorType), shouldRetry: \(sseError.shouldRetry)", level: .info)
             continuation.yield(.connectionFailed(sseError))
 
@@ -220,12 +226,15 @@ private final class StreamEventHandler: EventHandler {
         logger.logWithModuleTag("SseService: ✗ Error: \(error.localizedDescription)", level: .error)
 
         // Classify error for retry logic (matches Android's classifySseError)
-        // Check for HTTP response code in the error if available
+        // Extract HTTP response code if available
         var responseCode: Int?
-        if let urlError = error as? URLError {
-            // URLError doesn't directly contain HTTP status codes
-            // Status codes come from HTTPURLResponse which we don't have access to here
-            responseCode = nil
+
+        // Check for UnsuccessfulResponseError (HTTP error responses from LDSwiftEventSource)
+        if let unsuccessfulResponse = error as? UnsuccessfulResponseError {
+            responseCode = unsuccessfulResponse.responseCode
+            logger.logWithModuleTag("SseService: HTTP response code: \(responseCode!)", level: .debug)
+        } else if let urlError = error as? URLError {
+            // URLError for network-level issues (no HTTP status code available)
             logger.logWithModuleTag("SseService: URLError code: \(urlError.code.rawValue) (\(urlError.code))", level: .debug)
         }
 
