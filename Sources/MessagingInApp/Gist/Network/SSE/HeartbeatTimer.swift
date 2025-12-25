@@ -1,6 +1,7 @@
 import CioInternalCommon
 import Foundation
 
+// sourcery: InjectRegisterShared = "HeartbeatTimerProtocol"
 /// Heartbeat timer that monitors server heartbeats and emits timeout events
 /// when the server stops sending heartbeats within the expected timeframe.
 ///
@@ -8,7 +9,7 @@ import Foundation
 /// the correct connection, preventing stale timeouts from triggering on new connections.
 ///
 /// Corresponds to Android's `HeartbeatTimer` class.
-actor HeartbeatTimer {
+actor HeartbeatTimer: HeartbeatTimerProtocol {
     /// Default heartbeat timeout in seconds (matches Android's DEFAULT_HEARTBEAT_TIMEOUT_MS / 1000)
     static let defaultHeartbeatTimeoutSeconds: TimeInterval = 30
 

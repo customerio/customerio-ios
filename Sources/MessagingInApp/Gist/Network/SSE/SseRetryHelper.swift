@@ -1,6 +1,7 @@
 import CioInternalCommon
 import Foundation
 
+// sourcery: InjectRegisterShared = "SseRetryHelperProtocol"
 /// Manages retry logic for SSE connections.
 ///
 /// This actor handles retry decision-making separately from the main connection manager.
@@ -11,7 +12,7 @@ import Foundation
 /// connection, preventing stale retries from triggering on new connections.
 ///
 /// Corresponds to Android's `SseRetryHelper` class.
-actor SseRetryHelper {
+actor SseRetryHelper: SseRetryHelperProtocol {
     /// Maximum number of retry attempts before falling back to polling
     static let maxRetryCount = 3
 
@@ -19,6 +20,7 @@ actor SseRetryHelper {
     static let retryDelaySeconds: TimeInterval = 5.0
 
     private let logger: Logger
+    private let sleeper: Sleeper
     private var retryCount = 0
     private var retryTask: Task<Void, Never>?
     private var activeGeneration: UInt64 = 0
@@ -27,8 +29,9 @@ actor SseRetryHelper {
     private let continuation: AsyncStream<(RetryDecision, UInt64)>.Continuation
     let retryDecisionStream: AsyncStream<(RetryDecision, UInt64)>
 
-    init(logger: Logger) {
+    init(logger: Logger, sleeper: Sleeper = RealSleeper()) {
         self.logger = logger
+        self.sleeper = sleeper
 
         // Create the stream using the backport which guarantees synchronous continuation capture
         // Stream emits tuples of (decision, generation) so manager can verify
@@ -112,13 +115,15 @@ actor SseRetryHelper {
         // Cancel any existing retry task
         retryTask?.cancel()
 
+        // Capture sleeper reference for the task
+        let sleeper = self.sleeper
+
         retryTask = Task { [weak self, currentAttempt, generation] in
             do {
                 await self?.logger.logWithModuleTag("[SseRetryHelper] ⏳ Waiting \(Self.retryDelaySeconds)s before retry attempt \(currentAttempt)/\(Self.maxRetryCount)...", level: .info)
 
-                // Convert seconds to nanoseconds for Task.sleep
-                let nanoseconds = UInt64(Self.retryDelaySeconds * 1000000000)
-                try await Task.sleep(nanoseconds: nanoseconds)
+                // Use injected sleeper for delay (enables fast tests)
+                try await sleeper.sleep(seconds: Self.retryDelaySeconds)
 
                 // Check if task was cancelled during sleep
                 guard !Task.isCancelled else {
