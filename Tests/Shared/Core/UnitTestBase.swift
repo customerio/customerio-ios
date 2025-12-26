@@ -24,7 +24,6 @@ open class UnitTestBase<Component>: XCTestCase {
     public var sdkConfig: SdkConfig!
 
     public var jsonAdapter: JsonAdapter { JsonAdapter(log: log) }
-    public var lockManager: LockManager { LockManager() }
     public var dateUtilStub: DateUtilStub!
     public var threadUtilStub: ThreadUtilStub!
 

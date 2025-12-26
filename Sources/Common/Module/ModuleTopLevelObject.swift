@@ -11,7 +11,7 @@ open class ModuleTopLevelObject<ImplementationClass> {
     /*
      It's preferred to get a lock from lockmanager. Because subclasses will be a singleton, we can create a lock instance that will be shared in all calls to this class.
      */
-    private let lock = Lock.unsafeInit()
+    private let lock = NSRecursiveLock()
     public var hasBeenInitialized: Bool {
         _implementation != nil
     }
