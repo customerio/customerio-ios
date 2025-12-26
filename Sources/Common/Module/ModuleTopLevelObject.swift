@@ -8,9 +8,6 @@ import Foundation
 // There isn't a constructor populated via dependency injection. It's at the top node
 // of dependencies.
 open class ModuleTopLevelObject<ImplementationClass> {
-    /*
-     It's preferred to get a lock from lockmanager. Because subclasses will be a singleton, we can create a lock instance that will be shared in all calls to this class.
-     */
     private let lock = NSRecursiveLock()
     public var hasBeenInitialized: Bool {
         _implementation != nil
