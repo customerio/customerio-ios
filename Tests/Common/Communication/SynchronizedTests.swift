@@ -24,20 +24,6 @@ struct SynchronizedTests {
     }
 
     @Test
-    func testModifyingValueWithMutating() throws {
-        let initial = 31415
-        let sync = Synchronized(initial: initial)
-
-        #expect(sync.wrappedValue == initial)
-
-        sync.mutating { value in
-            value = 271828
-        }
-
-        #expect(sync.wrappedValue == 271828)
-    }
-
-    @Test
     func testAccessingValueFromUsing() throws {
         let initial = 31415
         let sync = Synchronized(initial: initial)
@@ -60,6 +46,129 @@ struct SynchronizedTests {
     }
 
     @Test
+    func testAccessingValueFromUsingAsync() async throws {
+        let initial = 31415
+        let sync = Synchronized(initial: initial)
+
+        let fetched: Int = await sync.usingAsync {
+            $0 + 1
+        }
+        #expect(sync.wrappedValue == 31415)
+        #expect(fetched == 31416)
+    }
+
+    @Test
+    func testAccessingValueFromUsingAsyncThrowing() async throws {
+        let initial = 31415
+        let sync = Synchronized(initial: initial)
+
+        let fakeThrows: @Sendable (Int) throws -> Int = { value in
+            #expect(value == 31415)
+            return value + 1
+        }
+
+        let fetched: Int = try await sync.usingAsync(fakeThrows)
+
+        await #expect(throws: NSError.self) {
+            try await sync.usingAsync { _ in
+                throw NSError(domain: "", code: 0, userInfo: nil)
+            }
+        }
+
+        #expect(sync.wrappedValue == 31415)
+        #expect(fetched == 31416)
+    }
+
+    @Test
+    func testAccessingValueFromUsingDetached() throws {
+        let initial = 31415
+        let sync = Synchronized(initial: initial)
+
+        let called = Synchronized(initial: false)
+
+        sync.usingDetached { value in
+            #expect(value == initial)
+            called.toggle()
+        }
+        // By performing a barrier operation we ensure that previous blocks have been performed
+        sync.mutating {
+            $0 += 1
+        }
+        #expect(called == true)
+        #expect(sync.wrappedValue == 31416)
+    }
+
+    @Test
+    func testModifyingValueWithMutating() throws {
+        let initial = 31415
+        let sync = Synchronized(initial: initial)
+
+        #expect(sync.wrappedValue == initial)
+
+        sync.mutating { value in
+            value = 271828
+        }
+
+        #expect(sync.wrappedValue == 271828)
+    }
+
+    @Test
+    func testModifyingValueWithMutatingAsync() async throws {
+        let initial = 31415
+        let sync = Synchronized(initial: initial)
+
+        let fetched = await sync.mutatingAsync { value in
+            #expect(value == initial)
+            value += 1
+            return value + 2
+        }
+        #expect(sync.wrappedValue == 31416)
+        #expect(fetched == 31418)
+    }
+
+    @Test
+    func testModifyingValueWithMutatingAsyncThrowing() async throws {
+        let initial = 31415
+        let sync = Synchronized(initial: initial)
+
+        let fakeThrows: @Sendable (inout Int) throws -> Int = { value in
+            #expect(value == initial)
+            value += 1
+            return value + 2
+        }
+
+        let fetched = try await sync.mutatingAsync(fakeThrows)
+
+        await #expect(throws: NSError.self) {
+            try await sync.mutatingAsync { _ in
+                throw NSError(domain: "", code: 0, userInfo: nil)
+            }
+        }
+
+        #expect(sync.wrappedValue == 31416)
+        #expect(fetched == 31418)
+    }
+
+    @Test
+    func testModifyingValueWithMutatingDetached() throws {
+        let initial = 31415
+        let sync = Synchronized(initial: initial)
+
+        let called = Synchronized(initial: false)
+
+        sync.mutatingDetatched { value in
+            #expect(value == initial)
+            value += 1
+            called.toggle()
+        }
+        // By performing a barrier operation we ensure that previous blocks have been performed
+        sync.mutating { $0 += 2 }
+
+        #expect(called == true)
+        #expect(sync.wrappedValue == 31418)
+    }
+
+    @Test
     func testBreakingThreadSafety() throws {
         let sync = Synchronized(initial: 0)
 
@@ -75,6 +184,83 @@ struct SynchronizedTests {
         operationQueue.waitUntilAllOperationsAreFinished()
 
         #expect(sync.wrappedValue == 1000000)
+    }
+
+    // MARK: - Equatable Operation Extensions
+
+    @Test
+    func testEquals() throws {
+        let sync1 = Synchronized(initial: 1)
+        let sync2 = Synchronized(initial: 2)
+
+        let match = (sync1 == sync2)
+        let noMatch = (sync1 != sync2)
+
+        #expect(match == false)
+        #expect(noMatch == true)
+        #expect(sync1 == 1)
+        #expect(sync1 != 2)
+    }
+
+    // MARK: - Comparable Operation Extensions
+
+    @Test
+    func testComparisons() throws {
+        let base = Synchronized(initial: 1)
+        let greater = Synchronized(initial: 2)
+        let equal = Synchronized(initial: 1)
+        let less = Synchronized(initial: 0)
+
+        #expect((base < greater) == true)
+        #expect((base < less) == false)
+        #expect((base < equal) == false)
+
+        #expect((base <= greater) == true)
+        #expect((base <= less) == false)
+        #expect((base <= equal) == true)
+
+        #expect((base > greater) == false)
+        #expect((base > less) == true)
+        #expect((base > equal) == false)
+
+        #expect((base >= greater) == false)
+        #expect((base >= less) == true)
+        #expect((base >= equal) == true)
+    }
+
+    @Test
+    func testComparisonsWithBase() throws {
+        let base = Synchronized(initial: 1)
+        let greater = 2
+        let equal = 1
+        let less = 0
+
+        #expect((base < greater) == true)
+        #expect((base < less) == false)
+        #expect((base < equal) == false)
+
+        #expect((base <= greater) == true)
+        #expect((base <= less) == false)
+        #expect((base <= equal) == true)
+
+        #expect((base > greater) == false)
+        #expect((base > less) == true)
+        #expect((base > equal) == false)
+
+        #expect((base >= greater) == false)
+        #expect((base >= less) == true)
+        #expect((base >= equal) == true)
+    }
+
+    // MARK: - Boolean Operation Extensions
+
+    @Test
+    func testBooleanToggle() throws {
+        let sync = Synchronized(initial: true)
+        sync.toggle()
+        #expect(sync.wrappedValue == false)
+        sync.toggle()
+        #expect(sync.wrappedValue == true)
     }
 
     // MARK: - Integer Operation Extensions
@@ -211,7 +397,7 @@ struct SynchronizedTests {
     // MARK: - Collection Operations
 
     @Test
-    func testCollectionSubscriptGet() {
+    func testMutableCollectionSubscriptGet() {
         let initial: [Int] = [1, 2, 3]
         let sync = Synchronized(initial: initial)
 
@@ -253,6 +439,22 @@ struct SynchronizedTests {
     }
 
     @Test
+    func testRangeReplaceableCollectionAppendElementWithOperator() {
+        let initial: [Int] = [1, 2, 3]
+        let sync = Synchronized(initial: initial)
+
+        #expect(sync.count == 3)
+
+        sync += 4
+
+        #expect(sync.count == 4)
+        #expect(sync[0] == 1)
+        #expect(sync[1] == 2)
+        #expect(sync[2] == 3)
+        #expect(sync[3] == 4)
+    }
+
+    @Test
     func testRangeReplaceableCollectionAppendSequence() {
         let initial: [Int] = [1, 2, 3]
         let sync = Synchronized(initial: initial)
@@ -260,6 +462,24 @@ struct SynchronizedTests {
         #expect(sync.count == 3)
 
         sync.append(contentsOf: [4, 5, 6])
+
+        #expect(sync.count == 6)
+        #expect(sync[0] == 1)
+        #expect(sync[1] == 2)
+        #expect(sync[2] == 3)
+        #expect(sync[3] == 4)
+        #expect(sync[4] == 5)
+        #expect(sync[5] == 6)
+    }
+
+    @Test
+    func testRangeReplaceableCollectionAppendSequenceWithOperator() {
+        let initial: [Int] = [1, 2, 3]
+        let sync = Synchronized(initial: initial)
+
+        #expect(sync.count == 3)
+
+        sync += [4, 5, 6]
 
         #expect(sync.count == 6)
         #expect(sync[0] == 1)

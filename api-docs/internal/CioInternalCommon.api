@@ -478,9 +478,11 @@ public final class CioInternalCommon.Synchronized {
 	public fun func mutating<Result>(_ body: (inout T) throws -> Result) rethrows -> Result;
 	public fun func mutatingDetatched(_ body: @Sendable @escaping (inout T) -> Unit);
 	public fun func mutatingAsync<Result>(_ body: @Sendable @escaping (inout T) throws -> Result) async throws -> Result;
+	public fun func mutatingAsync<Result>(_ body: @Sendable @escaping (inout T) -> Result) async -> Result;
 	public fun func using<Result>(_ body: (T) throws -> Result) rethrows -> Result;
-	public fun func usingDetatched(_ body: @Sendable @escaping (T) -> Unit);
+	public fun func usingDetached(_ body: @Sendable @escaping (T) -> Unit);
 	public fun func usingAsync<Result>(_ body: @Sendable @escaping (T) throws -> Result) async throws -> Result;
+	public fun func usingAsync<Result>(_ body: @Sendable @escaping (T) -> Result) async -> Result;
 }
 public interface CioInternalCommon.SystemLogger {
 	public fun func log(_ message: String, _ level: CioLogLevel);

@@ -62,6 +62,19 @@ public final class Synchronized<T>: @unchecked Sendable {
         }
     }
 
+    /// Modify the wrapped value in a thread-safe manor without blocking the current thread but
+    /// asynchronously waiting for it to finish. The body will be executed atomically before the call returns.
+    public func mutatingAsync<Result>(_ body: @Sendable @escaping (inout T) -> Result) async -> Result {
+        await withCheckedContinuation { continuation in
+            syncQueue.async(flags: .barrier) {
+                let result = body(&self._wrappedValue)
+                Task.detached {
+                    continuation.resume(returning: result)
+                }
+            }
+        }
+    }
+
     /// Access the wrapped value in a thread-safe manor.
     /// - Parameters:
     ///  - body: The code to access the wrapped value. The return value is passed through and returned to the caller, leaving the original value unchanged.
@@ -76,7 +89,7 @@ public final class Synchronized<T>: @unchecked Sendable {
     /// only that the body will be executed atomically.
     /// - Parameters:
     ///  - body: The code to access the wrapped value.
-    public func usingDetatched(_ body: @Sendable @escaping (T) -> Void) {
+    public func usingDetached(_ body: @Sendable @escaping (T) -> Void) {
         syncQueue.async {
             body(self._wrappedValue)
         }
@@ -100,6 +113,27 @@ public final class Synchronized<T>: @unchecked Sendable {
             }
         }
     }
+
+    /// Modify the wrapped value in a thread-safe manor without blocking the current thread but
+    /// asynchronously waiting for it to finish. The body will be executed atomically before the call returns.
+    public func usingAsync<Result>(_ body: @Sendable @escaping (T) -> Result) async -> Result {
+        await withCheckedContinuation { continuation in
+            syncQueue.async(flags: .barrier) {
+                let result = body(self._wrappedValue)
+                Task.detached {
+                    continuation.resume(returning: result)
+                }
+            }
+        }
+    }
+}
+
+public extension Synchronized where T == Bool {
+    func toggle() {
+        mutating { value in
+            value.toggle()
+        }
+    }
 }
 
 extension Synchronized: Equatable where T: Equatable {
@@ -108,6 +142,18 @@ extension Synchronized: Equatable where T: Equatable {
             rhs.using { rhsValue in
                 lhsValue == rhsValue
             }
+        }
+    }
+
+    public static func == (lhs: Synchronized<T>, rhs: T) -> Bool {
+        lhs.using { lhsValue in
+            lhsValue == rhs
+        }
+    }
+
+    public static func != (lhs: Synchronized<T>, rhs: T) -> Bool {
+        lhs.using { lhsValue in
+            lhsValue != rhs
         }
     }
 }
@@ -122,6 +168,32 @@ extension Synchronized: Comparable where T: Comparable {
     }
 }
 
+public extension Synchronized where T: Comparable {
+    static func < (lhs: Synchronized<T>, rhs: T) -> Bool {
+        lhs.using { lhsValue in
+            lhsValue < rhs
+        }
+    }
+
+    static func <= (lhs: Synchronized<T>, rhs: T) -> Bool {
+        lhs.using { lhsValue in
+            lhsValue <= rhs
+        }
+    }
+
+    static func > (lhs: Synchronized<T>, rhs: T) -> Bool {
+        lhs.using { lhsValue in
+            lhsValue > rhs
+        }
+    }
+
+    static func >= (lhs: Synchronized<T>, rhs: T) -> Bool {
+        lhs.using { lhsValue in
+            lhsValue >= rhs
+        }
+    }
+}
+
 extension Synchronized: Hashable where T: Hashable {
     public func hash(into hasher: inout Hasher) {
         using { value in
@@ -131,14 +203,6 @@ extension Synchronized: Hashable where T: Hashable {
 }
 
 public extension Synchronized where T: AdditiveArithmetic {
-    static var zero: Synchronized<T> {
-        Synchronized(initial: .zero)
-    }
-
-    static prefix func + (input: Synchronized<T>) -> Synchronized<T> {
-        input
-    }
-
     static func + (lhs: Synchronized<T>, rhs: Synchronized<T>) -> T {
         lhs.using { lhsValue in
             rhs.using { rhsValue in
@@ -234,12 +298,6 @@ extension Synchronized: DictionaryProtocol where T: DictionaryProtocol {
 }
 
 public extension Synchronized where T: Collection {
-    subscript(key: T.Index) -> T.Element {
-        using { value in
-            value[key]
-        }
-    }
-
     var count: Int {
         using { value in value.count }
     }
@@ -265,11 +323,11 @@ public extension Synchronized where T: MutableCollection {
 }
 
 public extension Synchronized where T: RangeReplaceableCollection {
-    static func += <S>(lhs: inout Synchronized<T>, rhs: S) where S: Sequence, T.Element == S.Element {
+    static func += <S>(lhs: Synchronized<T>, rhs: S) where S: Sequence, T.Element == S.Element {
         lhs.append(contentsOf: rhs)
     }
 
-    static func += (lhs: inout Synchronized<T>, rhs: T.Element) {
+    static func += (lhs: Synchronized<T>, rhs: T.Element) {
         lhs.append(rhs)
     }
 
