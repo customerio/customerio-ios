@@ -243,7 +243,7 @@ public extension Synchronized where T: Collection {
     var count: Int {
         using { value in value.count }
     }
-    
+
     var isEmpty: Bool {
         using { value in value.isEmpty }
     }
