@@ -41,7 +41,7 @@ class EventBusObserversHolder {
     let notificationCenter: NotificationCenter = .default
 
     private let _observers: Synchronized<[String: [NSObjectProtocol]]> = .init(initial: [:])
-    
+
     func storeObserver(_ observer: NSObjectProtocol, for eventKey: String) {
         let eventKey = String(describing: eventKey)
         _observers.mutating { value in
@@ -51,9 +51,9 @@ class EventBusObserversHolder {
             value[eventKey]!.append(observer)
         }
     }
-    
+
     func hasObservers(for eventKey: String) -> Bool {
-        return _observers.wrappedValue[eventKey, default: []].isEmpty == false
+        _observers.wrappedValue[eventKey, default: []].isEmpty == false
     }
 
     func removeReservers(for eventKey: String) {
@@ -62,7 +62,7 @@ class EventBusObserversHolder {
             value[eventKey] = nil
         }
     }
-    
+
     /// Removes all observers from the EventBus.
     ///
     /// This function is used for cleanup or resetting the event handling system.

@@ -1,33 +1,31 @@
-import Testing
 import Foundation
+import Testing
 
 @testable
 import CioInternalCommon
 
-
 struct SynchronizedTests {
-    
     @Test
     func testValueAccess() async throws {
         let initial = 31415
         let sync = Synchronized(initial: initial)
-        
+
         #expect(sync.wrappedValue == initial)
     }
-    
+
     @Test
     func testModifyingValue() async throws {
-        let initial: Int = 31415
+        let initial = 31415
         let sync = Synchronized(initial: initial)
-        
+
         sync.wrappedValue = 271828
-        
+
         #expect(sync.wrappedValue == 271828)
     }
-    
+
     @Test
     func testModifyingValueWithMutating() throws {
-        let initial: Int = 31415
+        let initial = 31415
         let sync = Synchronized(initial: initial)
 
         #expect(sync.wrappedValue == initial)
@@ -35,194 +33,194 @@ struct SynchronizedTests {
         sync.mutating { value in
             value = 271828
         }
-        
+
         #expect(sync.wrappedValue == 271828)
     }
-    
+
     @Test
     func testAccessingValueFromUsing() throws {
-        let initial: Int = 31415
+        let initial = 31415
         let sync = Synchronized(initial: initial)
-        
+
         let fetched: Int = sync.using { $0 }
-        
+
         #expect(fetched == initial)
     }
-    
+
     @Test
     func testModifyingValueFromUsing() throws {
-        let initial: Int = 31415
+        let initial = 31415
         let sync = Synchronized(initial: initial)
-        
+
         let fetched: Int = sync.using {
             $0 + 1
         }
         #expect(sync.wrappedValue == 31415)
         #expect(fetched == 31416)
     }
-    
+
     @Test
     func testBreakingThreadSafety() throws {
         let sync = Synchronized(initial: 0)
-        
+
         let operationQueue = OperationQueue()
         operationQueue.isSuspended = true
-        
-        for _ in 0..<1_000_000 {
+
+        for _ in 0 ..< 1000000 {
             operationQueue.addOperation {
                 sync += 1
             }
         }
         operationQueue.isSuspended = false
         operationQueue.waitUntilAllOperationsAreFinished()
-        
-        #expect(sync.wrappedValue == 1_000_000)
+
+        #expect(sync.wrappedValue == 1000000)
     }
-    
-//MARK: - Integer Operation Extensions
-    
+
+    // MARK: - Integer Operation Extensions
+
     @Test
     func testPlusEqualsInteger() throws {
-        let initial: Int = 31415
+        let initial = 31415
         let sync = Synchronized(initial: initial)
-        
+
         sync += 1
         #expect(sync.wrappedValue == 31416)
     }
-    
+
     @Test
     func testMinusEqualsInteger() throws {
-        let initial: Int = 31415
+        let initial = 31415
         let sync = Synchronized(initial: initial)
-        
+
         sync -= 1
         #expect(sync.wrappedValue == 31414)
     }
-    
+
     @Test
     func testPlusEqualsSynchronizedInteger() throws {
-        let initial1: Int = 31415
-        let initial2: Int = 27182
+        let initial1 = 31415
+        let initial2 = 27182
         let sync1 = Synchronized(initial: initial1)
         let sync2 = Synchronized(initial: initial2)
-        
+
         sync1 += sync2
         #expect(sync1.wrappedValue == 58597)
     }
-    
+
     @Test
     func testMinusEqualsSynchronizedInteger() throws {
-        let initial1: Int = 31415
-        let initial2: Int = 27182
-        
+        let initial1 = 31415
+        let initial2 = 27182
+
         let sync1 = Synchronized(initial: initial1)
         let sync2 = Synchronized(initial: initial2)
-        
+
         sync1 -= sync2
         #expect(sync1.wrappedValue == 4233)
     }
-    
+
     @Test
     func testPlusInteger() throws {
-        let initial: Int = 31415
+        let initial = 31415
         let sync = Synchronized(initial: initial)
-        
+
         let result: Int = sync + 1
         #expect(sync.wrappedValue == initial)
         #expect(result == 31416)
     }
-    
+
     @Test
     func testMinusInteger() throws {
-        let initial: Int = 31415
+        let initial = 31415
         let sync = Synchronized(initial: initial)
-        
+
         let result: Int = sync - 1
         #expect(sync.wrappedValue == initial)
         #expect(result == 31414)
     }
-    
+
     @Test
     func testPlusSynchronizedInteger() throws {
-        let initial1: Int = 31415
-        let initial2: Int = 27182
+        let initial1 = 31415
+        let initial2 = 27182
         let sync1 = Synchronized(initial: initial1)
         let sync2 = Synchronized(initial: initial2)
-        
+
         let result: Int = sync1 + sync2
         #expect(sync1.wrappedValue == initial1)
         #expect(sync2.wrappedValue == initial2)
         #expect(result == 58597)
     }
-    
+
     @Test
     func testMinusSynchronizedInteger() throws {
-        let initial1: Int = 31415
-        let initial2: Int = 27182
+        let initial1 = 31415
+        let initial2 = 27182
         let sync1 = Synchronized(initial: initial1)
         let sync2 = Synchronized(initial: initial2)
-        
+
         let result: Int = sync1 - sync2
         #expect(sync1.wrappedValue == initial1)
         #expect(sync2.wrappedValue == initial2)
         #expect(result == 4233)
     }
-    
-//MARK: - Dictionary Operations
-    
+
+    // MARK: - Dictionary Operations
+
     @Test
     func testDictionarySubscriptGet() {
         let initial = [
             "foo": 1,
-            "bar": 2,
+            "bar": 2
         ]
         let sync = Synchronized(initial: initial)
-        
+
         #expect(sync["foo"] == 1)
         #expect(sync["bar"] == 2)
     }
-    
+
     @Test
     func testDictionarySubscriptSet() {
         let initial = [
             "foo": 1,
-            "bar": 2,
+            "bar": 2
         ]
         let sync = Synchronized(initial: initial)
-        
+
         sync["foo"] = 3
-        
+
         #expect(sync["foo"] == 3)
         #expect(sync["bar"] == 2)
     }
-    
+
     @Test
     func testDictionaryRemoveValue() {
         let initial = [
             "foo": 1,
-            "bar": 2,
+            "bar": 2
         ]
         let sync = Synchronized(initial: initial)
-        
+
         sync.removeValue(forKey: "foo")
-        
+
         #expect(sync["foo"] == nil)
         #expect(sync["bar"] == 2)
     }
 
-//MARK: - Collection Operations
-    
+    // MARK: - Collection Operations
+
     @Test
     func testCollectionSubscriptGet() {
         let initial: [Int] = [1, 2, 3]
         let sync = Synchronized(initial: initial)
-        
+
         #expect(sync.count == 3)
         #expect(sync[0] == 1)
         #expect(sync[1] == 2)
         #expect(sync[2] == 3)
     }
-    
+
     @Test
     func testMutableCollectionSubscriptSet() {
         let initial: [Int] = [1, 2, 3]
@@ -237,7 +235,7 @@ struct SynchronizedTests {
         #expect(sync[1] == 42)
         #expect(sync[2] == 3)
     }
-    
+
     @Test
     func testRangeReplaceableCollectionAppendElement() {
         let initial: [Int] = [1, 2, 3]
@@ -315,7 +313,6 @@ struct SynchronizedTests {
 
         sync.removeAll()
 
-        #expect(sync.count == 0)
+        #expect(sync.isEmpty)
     }
-
 }

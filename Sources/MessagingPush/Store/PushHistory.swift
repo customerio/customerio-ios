@@ -33,14 +33,12 @@ enum PushHistoryEvent {
 // sourcery: InjectRegisterShared = "PushHistory"
 // sourcery: InjectSingleton
 class PushHistoryImpl: PushHistory {
-
     private let history: Synchronized<[PushHistoryEvent: Set<Push>]> = .init(initial: [:])
 
-    init() { }
+    init() {}
 
     func hasHandledPush(pushEvent: PushHistoryEvent, pushId: String, pushDeliveryDate: Date) -> Bool {
-
-        return history.mutating { history in
+        history.mutating { history in
             var eventsHistory = history[pushEvent, default: Set()]
 
             let push = Push(pushId: pushId, pushDeliveryDate: pushDeliveryDate)
@@ -50,7 +48,7 @@ class PushHistoryImpl: PushHistory {
                 eventsHistory.insert(push)
                 history[pushEvent] = eventsHistory
             }
-            
+
             return hasHandledAlready
         }
     }

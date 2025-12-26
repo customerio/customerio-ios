@@ -248,13 +248,12 @@ protocol AutoTrackingScreenViewStore {
 // sourcery: InjectRegisterShared = "AutoTrackingScreenViewStore"
 // sourcery: InjectSingleton
 class InMemoryAutoTrackingScreenViewStore: AutoTrackingScreenViewStore {
-
     private let lastScreenTracked: Synchronized<String?> = .init(initial: nil)
 
-    init() { }
+    init() {}
 
     func isScreenLastScreenTracked(screenName: String) -> Bool {
-        return lastScreenTracked.mutating { value in
+        lastScreenTracked.mutating { value in
             let isLastScreenTracked = value == screenName
             value = screenName
             return isLastScreenTracked
