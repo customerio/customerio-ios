@@ -10,6 +10,16 @@ public final class CioInternalCommon.AnyEncodable {
 	public fun init(_ encodable: Encodable);
 	public fun func encode(to encoder: Encoder) throws;
 }
+public final class CioInternalCommon.AsyncOperation {
+	public var asyncBlock: () async -> ();
+	public var isAsynchronous: Boolean;
+	public var isExecuting: Boolean;
+	public var isFinished: Boolean;
+	public fun init(asyncBlock: @escaping () async -> Unit);
+	public fun override func start();
+	public fun override func main();
+	public fun override func cancel();
+}
 public final class CioInternalCommon.Atomic {
 	public var wrappedValue: DataType;
 	public fun init(wrappedValue: DataType);
@@ -179,6 +189,10 @@ public interface CioInternalCommon.DeviceInfo {
 	public var deviceLocale: String;
 	public fun func isPushSubscribed(completion: @escaping (Boolean) -> Unit);
 }
+public interface CioInternalCommon.DictionaryProtocol {
+	public fun subscript(key: Key) -> Value?;
+	public fun mutating func removeValue(forKey key: Key) -> Value?;
+}
 public interface CioInternalCommon.DoNotTrackScreenViewEvent {
 }
 public enum CioInternalCommon.DownloadFileType {
@@ -296,16 +310,6 @@ public final class CioInternalCommon.JsonAdapter {
 ) -> String?;
 }
 public enum CioInternalCommon.KeyValueStorageKey {
-}
-public final class CioInternalCommon.Lock {
-	public fun func unsafeInit() -> Lock;
-	public fun func lock();
-	public fun func unlock();
-}
-public final class CioInternalCommon.LockManager {
-	public fun func getLock(id: LockReference) -> Lock;
-}
-public enum CioInternalCommon.LockReference {
 }
 public interface CioInternalCommon.Logger {
 	public var logLevel: CioLogLevel;
@@ -466,6 +470,17 @@ public interface CioInternalCommon.SharedKeyValueStorage {
 public final class CioInternalCommon.StringAnyEncodable {
 	public fun init(logger: Logger, _ data: List<String: Any>);
 	public fun func encode(to encoder: Encoder) throws;
+}
+public final class CioInternalCommon.Synchronized {
+	public final val syncQueue: DispatchQueue;
+	public var wrappedValue: T;
+	public fun init(initial: T, allowConcurrentReads: Boolean = true);
+	public fun func mutating<Result>(_ body: (inout T) throws -> Result) rethrows -> Result;
+	public fun func mutatingDetatched(_ body: @Sendable @escaping (inout T) -> Unit);
+	public fun func mutatingAsync<Result>(_ body: @Sendable @escaping (inout T) throws -> Result) async throws -> Result;
+	public fun func using<Result>(_ body: (T) throws -> Result) rethrows -> Result;
+	public fun func usingDetatched(_ body: @Sendable @escaping (T) -> Unit);
+	public fun func usingAsync<Result>(_ body: @Sendable @escaping (T) throws -> Result) async throws -> Result;
 }
 public interface CioInternalCommon.SystemLogger {
 	public fun func log(_ message: String, _ level: CioLogLevel);
