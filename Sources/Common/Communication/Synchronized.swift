@@ -118,7 +118,7 @@ public final class Synchronized<T>: @unchecked Sendable {
     /// asynchronously waiting for it to finish. The body will be executed atomically before the call returns.
     public func usingAsync<Result>(_ body: @Sendable @escaping (T) -> Result) async -> Result {
         await withCheckedContinuation { continuation in
-            syncQueue.async(flags: .barrier) {
+            syncQueue.async {
                 let result = body(self._wrappedValue)
                 Task.detached {
                     continuation.resume(returning: result)
