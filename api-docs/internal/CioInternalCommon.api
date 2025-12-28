@@ -374,14 +374,20 @@ public interface CioInternalCommon.QueueStorage {
 	public fun func delete(storageId: String, siteId: String) -> Boolean;
 }
 public final class CioInternalCommon.QueueTask {
-	public final val storageId: String;
-	public final val type: String;
-	public final val data: Data;
-	public final val runResults: QueueTaskRunResults;
+	public var storageId: String;
+	public var type: String;
+	public var data: Data;
+	public var runResults: QueueTaskRunResults;
 }
 public final class CioInternalCommon.QueueTaskMetadata {
+	public var taskPersistedId: String;
+	public var taskType: String;
+	public var groupStart: String?;
+	public var groupMember: List<String>?;
+	public var createdAt: Date;
 }
 public final class CioInternalCommon.QueueTaskRunResults {
+	public var totalRuns: Int;
 }
 public enum CioInternalCommon.QueueTaskType {
 }
