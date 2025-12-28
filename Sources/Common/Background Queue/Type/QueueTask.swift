@@ -38,15 +38,15 @@ import Foundation
  headers: nil, body: taskData.attributesJsonString?.data)
  ```
  */
-public struct QueueTask: Codable, AutoLenses, Equatable {
+public struct QueueTask: Codable, Equatable {
     /// ID used to store the task in persistant storage
-    public let storageId: String
+    public var storageId: String
     /// the type of task. used when running tasks
-    public let type: String
+    public var type: String
     /// data required to run the task
-    public let data: Data
+    public var data: Data
     /// the current run results of the task. keeping track of the history of the task
-    public let runResults: QueueTaskRunResults
+    public var runResults: QueueTaskRunResults
 
     enum CodingKeys: String, CodingKey {
         case storageId = "storage_id"
