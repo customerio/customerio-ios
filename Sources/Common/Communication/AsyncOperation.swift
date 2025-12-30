@@ -7,8 +7,9 @@ extension OperationQueue {
 }
 
 public final class AsyncOperation: Operation, @unchecked Sendable {
+
     private let syncQueue = DispatchQueue(label: "io.Customer.sdk.AsyncBlockOperation.syncQueue")
-    private var activeTask: Task<Void, Never>?
+    private var activeTask: Task<Void, Never>? = nil
 
     public private(set) var asyncBlock: () async -> Void
 
@@ -63,7 +64,8 @@ public final class AsyncOperation: Operation, @unchecked Sendable {
             finish()
         }
     }
-
+    
+    
     override public func main() {
         syncQueue.sync {
             mainInternal()
