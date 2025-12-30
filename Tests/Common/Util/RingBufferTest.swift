@@ -37,7 +37,7 @@ struct RingBufferTest {
         #expect(ringBuffer.dequeue() == 3, "Dequeued element should be 3")
         #expect(ringBuffer.dequeue() == nil, "Buffer should be empty")
     }
-    
+
     @Test
     func test_appendArraySmallerThanEnd() throws {
         var ringBuffer = RingBuffer<String>(capacity: 6)
@@ -61,8 +61,8 @@ struct RingBufferTest {
         #expect(ringBuffer.dequeue() == "c")
         #expect(ringBuffer.dequeue() == "d")
         #expect(ringBuffer.dequeue() == "e")
-        
-        #expect(ringBuffer.count == 0)
+
+        #expect(ringBuffer.isEmpty)
         #expect(ringBuffer.headIndex == 5)
         #expect(ringBuffer.tailIndex == 5)
     }
@@ -90,7 +90,7 @@ struct RingBufferTest {
         #expect(ringBuffer.dequeue() == "c")
         #expect(ringBuffer.dequeue() == "d")
         #expect(ringBuffer.dequeue() == "e")
-        #expect(ringBuffer.count == 0)
+        #expect(ringBuffer.isEmpty)
         #expect(ringBuffer.headIndex == 0)
         #expect(ringBuffer.tailIndex == 0)
     }
@@ -118,7 +118,7 @@ struct RingBufferTest {
         #expect(ringBuffer.dequeue() == "c")
         #expect(ringBuffer.dequeue() == "d")
         #expect(ringBuffer.dequeue() == "e")
-        #expect(ringBuffer.count == 0)
+        #expect(ringBuffer.isEmpty)
         #expect(ringBuffer.headIndex == 1)
         #expect(ringBuffer.tailIndex == 1)
     }
@@ -146,7 +146,7 @@ struct RingBufferTest {
         #expect(ringBuffer.dequeue() == "c")
         #expect(ringBuffer.dequeue() == "d")
         #expect(ringBuffer.dequeue() == "e")
-        #expect(ringBuffer.count == 0)
+        #expect(ringBuffer.isEmpty)
         #expect(ringBuffer.headIndex == 2)
         #expect(ringBuffer.tailIndex == 2)
     }
@@ -174,7 +174,7 @@ struct RingBufferTest {
         #expect(ringBuffer.dequeue() == "f")
         #expect(ringBuffer.dequeue() == "g")
         #expect(ringBuffer.dequeue() == "h")
-        #expect(ringBuffer.count == 0)
+        #expect(ringBuffer.isEmpty)
         #expect(ringBuffer.headIndex == 3)
         #expect(ringBuffer.tailIndex == 3)
     }
@@ -202,12 +202,11 @@ struct RingBufferTest {
         #expect(ringBuffer.dequeue() == "i")
         #expect(ringBuffer.dequeue() == "j")
         #expect(ringBuffer.dequeue() == "k")
-        #expect(ringBuffer.count == 0)
+        #expect(ringBuffer.isEmpty)
         #expect(ringBuffer.headIndex == 3)
         #expect(ringBuffer.tailIndex == 3)
     }
 
-    
     @Test
     func test_EmptyAndFullStates_ShouldBeCorrect() throws {
         var ringBuffer = RingBuffer<Int>(capacity: 2)

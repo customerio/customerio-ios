@@ -3,7 +3,6 @@ import Foundation
 /// A ring buffer (or circular buffer) is a fixed-size, array-based data structure
 /// that is efficient for FIFO (First-In-First-Out) operations.
 struct RingBuffer<Element> {
-    
     /// The internal storage for the buffer. Once created, the storage size should never expand.
     private var array: [Element?]
 
@@ -12,18 +11,18 @@ struct RingBuffer<Element> {
 
     /// The index where the first value will be read from
     private(set) var headIndex: Int = 0
-    
+
     /// The index where appended values will be written to
     private(set) var tailIndex: Int = 0
 
-
     /// The number of element stored in the RingBuffer. This will always be less than or equal to capacity
     private(set) var count = 0
-    
+
     /// Flag to indicate if the buffer is full.
     var isFull: Bool {
         count == capacity
     }
+
     /// Checks if the buffer is empty.
     var isEmpty: Bool {
         count == 0
@@ -64,20 +63,18 @@ struct RingBuffer<Element> {
     /// Adds a sequence of elements to the buffer.
     /// - Parameter collection: A collection of items to insert, generally an Array or ArraySlice.
     mutating func enqueue<C>(contentsOf collection: C) where C: Collection, C.Element == Element {
-        
-        guard collection.count > 0 else { return }
-        
+        guard !collection.isEmpty else { return }
+
         // We can never insert more than our capacity, so just trim it to begin
         let trimmedInsert = collection.suffix(capacity)
-        
-    
+
         // In the worst case, we need to do two replace operations: Tail..<Capacity and 0..<Tail.
         // In some cases, the first part is enough. When it isn't, recursion prevents code duplication.
         let firstPart = trimmedInsert.prefix(capacity - tailIndex)
         let secondPart = trimmedInsert.dropFirst(capacity - tailIndex)
 
         // This may clobber the position of head. We correct for that below
-        array.replaceSubrange(tailIndex..<(tailIndex + firstPart.count), with: Array(firstPart))
+        array.replaceSubrange(tailIndex ..< (tailIndex + firstPart.count), with: Array(firstPart))
         tailIndex = (tailIndex + firstPart.count) % capacity
         count += firstPart.count
 
@@ -87,9 +84,9 @@ struct RingBuffer<Element> {
             headIndex = (headIndex + count) % capacity
             count = capacity
         }
-        
+
         // Use recursion for the second half
-        if secondPart.count > 0 {
+        if !secondPart.isEmpty {
             enqueue(contentsOf: secondPart)
         }
     }
@@ -101,9 +98,9 @@ struct RingBuffer<Element> {
         if isEmpty {
             return []
         } else if tailIndex > headIndex {
-            return Array(array[headIndex..<tailIndex].compactMap(\.self))
+            return Array(array[headIndex ..< tailIndex].compactMap(\.self))
         } else {
-            return Array(array[headIndex..<capacity].compactMap(\.self) + array[0..<tailIndex].compactMap(\.self))
+            return Array(array[headIndex ..< capacity].compactMap(\.self) + array[0 ..< tailIndex].compactMap(\.self))
         }
     }
 }

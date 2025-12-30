@@ -11,7 +11,6 @@ protocol QueueInventoryMemoryStore {
 // sourcery: InjectSingleton
 // sourcery: InjectRegisterShared = "QueueInventoryMemoryStore"
 class QueueInventoryMemoryStoreImpl: QueueInventoryMemoryStore {
-    
     private let _inventory = Synchronized<[QueueTaskMetadata]?>(initial: nil)
     var inventory: [QueueTaskMetadata]? {
         get { _inventory.wrappedValue }
