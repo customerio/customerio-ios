@@ -3,7 +3,7 @@ import Testing
 
 @testable
 import CioInternalCommon
-
+    
 struct SynchronizedTests {
     @Test
     func testValueAccess() async throws {
@@ -45,39 +45,39 @@ struct SynchronizedTests {
         #expect(fetched == 31416)
     }
 
-//    @Test
-//    func testAccessingValueFromUsingAsync() async throws {
-//        let initial = 31415
-//        let sync = Synchronized(initial: initial)
-//
-//        let fetched: Int = await sync.usingAsync {
-//            $0 + 1
-//        }
-//        #expect(sync.wrappedValue == 31415)
-//        #expect(fetched == 31416)
-//    }
-//
-//    @Test
-//    func testAccessingValueFromUsingAsyncThrowing() async throws {
-//        let initial = 31415
-//        let sync = Synchronized(initial: initial)
-//
-//        let fakeThrows: @Sendable (Int) throws -> Int = { value in
-//            #expect(value == 31415)
-//            return value + 1
-//        }
-//
-//        let fetched: Int = try await sync.usingAsync(fakeThrows)
-//
-//        await #expect(throws: NSError.self) {
-//            try await sync.usingAsync { _ in
-//                throw NSError(domain: "", code: 0, userInfo: nil)
-//            }
-//        }
-//
-//        #expect(sync.wrappedValue == 31415)
-//        #expect(fetched == 31416)
-//    }
+    @Test
+    func testAccessingValueFromUsingAsync() async throws {
+        let initial = 31415
+        let sync = Synchronized(initial: initial)
+
+        let fetched: Int = await sync.usingAsync {
+            $0 + 1
+        }
+        #expect(sync.wrappedValue == 31415)
+        #expect(fetched == 31416)
+    }
+
+    @Test
+    func testAccessingValueFromUsingAsyncThrowing() async throws {
+        let initial = 31415
+        let sync = Synchronized(initial: initial)
+
+        let fakeThrows: @Sendable (Int) throws -> Int = { value in
+            #expect(value == 31415)
+            return value + 1
+        }
+
+        let fetched: Int = try await sync.usingAsync(fakeThrows)
+
+        await #expect(throws: NSError.self) {
+            try await sync.usingAsync { _ in
+                throw NSError(domain: "", code: 0, userInfo: nil)
+            }
+        }
+
+        #expect(sync.wrappedValue == 31415)
+        #expect(fetched == 31416)
+    }
 
 //    @Test
 //    func testAccessingValueFromUsingDetached() throws {
@@ -95,7 +95,7 @@ struct SynchronizedTests {
 //            $0 += 1
 //        }
 //        #expect(called == true)
-//        #expect(sync.wrappedValue == 31416)
+//        #expect(sync == 31416)
 //    }
 
     @Test
@@ -112,42 +112,42 @@ struct SynchronizedTests {
         #expect(sync.wrappedValue == 271828)
     }
 
-//    @Test
-//    func testModifyingValueWithMutatingAsync() async throws {
-//        let initial = 31415
-//        let sync = Synchronized(initial: initial)
-//
-//        let fetched = await sync.mutatingAsync { value in
-//            #expect(value == initial)
-//            value += 1
-//            return value + 2
-//        }
-//        #expect(sync.wrappedValue == 31416)
-//        #expect(fetched == 31418)
-//    }
-//
-//    @Test
-//    func testModifyingValueWithMutatingAsyncThrowing() async throws {
-//        let initial = 31415
-//        let sync = Synchronized(initial: initial)
-//
-//        let fakeThrows: @Sendable (inout Int) throws -> Int = { value in
-//            #expect(value == initial)
-//            value += 1
-//            return value + 2
-//        }
-//
-//        let fetched = try await sync.mutatingAsync(fakeThrows)
-//
-//        await #expect(throws: NSError.self) {
-//            try await sync.mutatingAsync { _ in
-//                throw NSError(domain: "", code: 0, userInfo: nil)
-//            }
-//        }
-//
-//        #expect(sync.wrappedValue == 31416)
-//        #expect(fetched == 31418)
-//    }
+    @Test
+    func testModifyingValueWithMutatingAsync() async throws {
+        let initial = 31415
+        let sync = Synchronized(initial: initial)
+
+        let fetched = await sync.mutatingAsync { value in
+            #expect(value == initial)
+            value += 1
+            return value + 2
+        }
+        #expect(sync.wrappedValue == 31416)
+        #expect(fetched == 31418)
+    }
+
+    @Test
+    func testModifyingValueWithMutatingAsyncThrowing() async throws {
+        let initial = 31415
+        let sync = Synchronized(initial: initial)
+
+        let fakeThrows: @Sendable (inout Int) throws -> Int = { value in
+            #expect(value == initial)
+            value += 1
+            return value + 2
+        }
+
+        let fetched = try await sync.mutatingAsync(fakeThrows)
+
+        await #expect(throws: NSError.self) {
+            try await sync.mutatingAsync { _ in
+                throw NSError(domain: "", code: 0, userInfo: nil)
+            }
+        }
+
+        #expect(sync.wrappedValue == 31416)
+        #expect(fetched == 31418)
+    }
 
 //    @Test
 //    func testModifyingValueWithMutatingDetached() throws {
@@ -229,7 +229,7 @@ struct SynchronizedTests {
 //    }
 
     @Test
-    func testComparisonsWithBase() throws {
+    func testComparisonsWithBaseType() throws {
         let base = Synchronized(initial: 1)
         let greater = 2
         let equal = 1
@@ -326,18 +326,18 @@ struct SynchronizedTests {
         #expect(result == 31414)
     }
 
-//    @Test
-//    func testPlusSynchronizedInteger() throws {
-//        let initial1 = 31415
-//        let initial2 = 27182
-//        let sync1 = Synchronized(initial: initial1)
-//        let sync2 = Synchronized(initial: initial2)
-//
-//        let result: Int = sync1 + sync2
-//        #expect(sync1.wrappedValue == initial1)
-//        #expect(sync2.wrappedValue == initial2)
-//        #expect(result == 58597)
-//    }
+    @Test
+    func testPlusSynchronizedInteger() throws {
+        let initial1 = 31415
+        let initial2 = 27182
+        let sync1 = Synchronized(initial: initial1)
+        let sync2 = Synchronized(initial: initial2)
+
+        let result: Int = sync1 + sync2
+        #expect(sync1.wrappedValue == initial1)
+        #expect(sync2.wrappedValue == initial2)
+        #expect(result == 58597)
+    }
 //
 //    @Test
 //    func testMinusSynchronizedInteger() throws {

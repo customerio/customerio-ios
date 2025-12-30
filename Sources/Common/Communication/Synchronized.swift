@@ -49,13 +49,9 @@ public final class Synchronized<T>: @unchecked Sendable {
         try await withCheckedThrowingContinuation { continuation in
             syncQueue.async(flags: .barrier) {
                 do {
-                    let result = try body(&self._wrappedValue)
-                    Task.detached {
-                        continuation.resume(returning: result)
-                    }
-                } catch {
-                    Task.detached {
-                        continuation.resume(throwing: error)
+                    let result = Swift.Result(catching: { try body(&self._wrappedValue) })
+                    Task {
+                        continuation.resume(with: result)
                     }
                 }
             }
@@ -68,7 +64,7 @@ public final class Synchronized<T>: @unchecked Sendable {
         await withCheckedContinuation { continuation in
             syncQueue.async(flags: .barrier) {
                 let result = body(&self._wrappedValue)
-                Task.detached {
+                Task {
                     continuation.resume(returning: result)
                 }
             }
@@ -100,15 +96,9 @@ public final class Synchronized<T>: @unchecked Sendable {
     public func usingAsync<Result>(_ body: @Sendable @escaping (T) throws -> Result) async throws -> Result {
         try await withCheckedThrowingContinuation { continuation in
             syncQueue.async {
-                do {
-                    let result = try body(self._wrappedValue)
-                    Task.detached {
-                        continuation.resume(returning: result)
-                    }
-                } catch {
-                    Task.detached {
-                        continuation.resume(throwing: error)
-                    }
+                let result = Swift.Result(catching: { try body(self._wrappedValue) })
+                Task {
+                    continuation.resume(with: result)
                 }
             }
         }
@@ -120,7 +110,7 @@ public final class Synchronized<T>: @unchecked Sendable {
         await withCheckedContinuation { continuation in
             syncQueue.async {
                 let result = body(self._wrappedValue)
-                Task.detached {
+                Task {
                     continuation.resume(returning: result)
                 }
             }
@@ -138,7 +128,9 @@ public extension Synchronized where T == Bool {
 
 extension Synchronized: Equatable where T: Equatable {
     public static func == (lhs: Synchronized<T>, rhs: Synchronized<T>) -> Bool {
-        lhs.using { lhsValue in
+        guard lhs !== rhs else { return true }
+        
+        return lhs.using { lhsValue in
             rhs.using { rhsValue in
                 lhsValue == rhsValue
             }
@@ -159,8 +151,11 @@ extension Synchronized: Equatable where T: Equatable {
 }
 
 extension Synchronized: Comparable where T: Comparable {
+
     public static func < (lhs: Synchronized<T>, rhs: Synchronized<T>) -> Bool {
-        lhs.using { lhsValue in
+        guard lhs !== rhs else { return false }
+
+        return lhs.using { lhsValue in
             rhs.using { rhsValue in
                 lhsValue < rhsValue
             }
@@ -204,7 +199,13 @@ extension Synchronized: Hashable where T: Hashable {
 
 public extension Synchronized where T: AdditiveArithmetic {
     static func + (lhs: Synchronized<T>, rhs: Synchronized<T>) -> T {
-        lhs.using { lhsValue in
+        guard lhs !== rhs else {
+            return lhs.using { value in
+                value + value
+            }
+        }
+
+        return lhs.using { lhsValue in
             rhs.using { rhsValue in
                 lhsValue + rhsValue
             }
@@ -218,7 +219,9 @@ public extension Synchronized where T: AdditiveArithmetic {
     }
 
     static func - (lhs: Synchronized<T>, rhs: Synchronized<T>) -> T {
-        lhs.using { lhsValue in
+        guard lhs !== rhs else { return .zero }
+        
+        return lhs.using { lhsValue in
             rhs.using { rhsValue in
                 lhsValue - rhsValue
             }
@@ -232,6 +235,12 @@ public extension Synchronized where T: AdditiveArithmetic {
     }
 
     static func += (lhs: Synchronized<T>, rhs: Synchronized<T>) {
+        guard lhs !== rhs else {
+            lhs.mutating { value in
+                value += value
+            }
+            return
+        }
         lhs.mutating { lhsValue in
             rhs.using { rhsValue in
                 lhsValue += rhsValue
@@ -246,6 +255,11 @@ public extension Synchronized where T: AdditiveArithmetic {
     }
 
     static func -= (lhs: Synchronized<T>, rhs: Synchronized<T>) {
+        guard lhs !== rhs else {
+            lhs.wrappedValue = .zero
+            return
+        }
+        
         lhs.mutating { lhsValue in
             rhs.using { rhsValue in
                 lhsValue -= rhsValue
