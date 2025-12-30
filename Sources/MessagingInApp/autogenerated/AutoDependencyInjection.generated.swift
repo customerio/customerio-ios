@@ -58,6 +58,9 @@ extension DIGraphShared {
         _ = anonymousMessageManager
         countDependenciesResolved += 1
 
+        _ = sseLifecycleManager
+        countDependenciesResolved += 1
+
         _ = engineWebProvider
         countDependenciesResolved += 1
 
@@ -82,10 +85,13 @@ extension DIGraphShared {
         _ = queueManager
         countDependenciesResolved += 1
 
+        _ = applicationStateProvider
+        countDependenciesResolved += 1
+
         _ = sleeper
         countDependenciesResolved += 1
 
-        _ = sseConnectionManager
+        _ = sseConnectionManagerProtocol
         countDependenciesResolved += 1
 
         _ = sseRetryHelperProtocol
@@ -122,6 +128,30 @@ extension DIGraphShared {
         AnonymousMessageManagerImpl(keyValueStorage: sharedKeyValueStorage, dateUtil: dateUtil, logger: logger)
     }
 
+    // SseLifecycleManager (singleton)
+    var sseLifecycleManager: SseLifecycleManager {
+        getOverriddenInstance() ??
+            sharedSseLifecycleManager
+    }
+
+    var sharedSseLifecycleManager: SseLifecycleManager {
+        // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
+        // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
+        DispatchQueue(label: "DIGraphShared_SseLifecycleManager_singleton_access").sync {
+            if let overridenDep: SseLifecycleManager = getOverriddenInstance() {
+                return overridenDep
+            }
+            let existingSingletonInstance = self.singletons[String(describing: SseLifecycleManager.self)] as? SseLifecycleManager
+            let instance = existingSingletonInstance ?? _get_sseLifecycleManager()
+            self.singletons[String(describing: SseLifecycleManager.self)] = instance
+            return instance
+        }
+    }
+
+    private func _get_sseLifecycleManager() -> SseLifecycleManager {
+        CioSseLifecycleManager(logger: logger, inAppMessageManager: inAppMessageManager, sseConnectionManager: sseConnectionManagerProtocol, applicationStateProvider: applicationStateProvider)
+    }
+
     // EngineWebProvider
     var engineWebProvider: EngineWebProvider {
         getOverriddenInstance() ??
@@ -153,7 +183,7 @@ extension DIGraphShared {
     }
 
     private func _get_gistProvider() -> GistProvider {
-        Gist(logger: logger, gistDelegate: gistDelegate, inAppMessageManager: inAppMessageManager, queueManager: queueManager, threadUtil: threadUtil, sseConnectionManager: sseConnectionManager)
+        Gist(logger: logger, gistDelegate: gistDelegate, inAppMessageManager: inAppMessageManager, queueManager: queueManager, threadUtil: threadUtil, sseLifecycleManager: sseLifecycleManager)
     }
 
     // GistDelegate (singleton)
@@ -258,6 +288,16 @@ extension DIGraphShared {
         QueueManager(keyValueStore: sharedKeyValueStorage, gistQueueNetwork: gistQueueNetwork, inAppMessageManager: inAppMessageManager, anonymousMessageManager: anonymousMessageManager, logger: logger)
     }
 
+    // ApplicationStateProvider
+    var applicationStateProvider: ApplicationStateProvider {
+        getOverriddenInstance() ??
+            newApplicationStateProvider
+    }
+
+    private var newApplicationStateProvider: ApplicationStateProvider {
+        RealApplicationStateProvider()
+    }
+
     // Sleeper
     var sleeper: Sleeper {
         getOverriddenInstance() ??
@@ -268,27 +308,27 @@ extension DIGraphShared {
         RealSleeper()
     }
 
-    // SseConnectionManager (singleton)
-    var sseConnectionManager: SseConnectionManager {
+    // SseConnectionManagerProtocol (singleton)
+    var sseConnectionManagerProtocol: SseConnectionManagerProtocol {
         getOverriddenInstance() ??
-            sharedSseConnectionManager
+            sharedSseConnectionManagerProtocol
     }
 
-    var sharedSseConnectionManager: SseConnectionManager {
+    var sharedSseConnectionManagerProtocol: SseConnectionManagerProtocol {
         // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
         // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
-        DispatchQueue(label: "DIGraphShared_SseConnectionManager_singleton_access").sync {
-            if let overridenDep: SseConnectionManager = getOverriddenInstance() {
+        DispatchQueue(label: "DIGraphShared_SseConnectionManagerProtocol_singleton_access").sync {
+            if let overridenDep: SseConnectionManagerProtocol = getOverriddenInstance() {
                 return overridenDep
             }
-            let existingSingletonInstance = self.singletons[String(describing: SseConnectionManager.self)] as? SseConnectionManager
-            let instance = existingSingletonInstance ?? _get_sseConnectionManager()
-            self.singletons[String(describing: SseConnectionManager.self)] = instance
+            let existingSingletonInstance = self.singletons[String(describing: SseConnectionManagerProtocol.self)] as? SseConnectionManagerProtocol
+            let instance = existingSingletonInstance ?? _get_sseConnectionManagerProtocol()
+            self.singletons[String(describing: SseConnectionManagerProtocol.self)] = instance
             return instance
         }
     }
 
-    private func _get_sseConnectionManager() -> SseConnectionManager {
+    private func _get_sseConnectionManagerProtocol() -> SseConnectionManagerProtocol {
         SseConnectionManager(logger: logger, inAppMessageManager: inAppMessageManager, sseService: sseServiceProtocol, retryHelper: sseRetryHelperProtocol, heartbeatTimer: heartbeatTimerProtocol)
     }
 

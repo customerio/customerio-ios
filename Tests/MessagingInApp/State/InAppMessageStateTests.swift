@@ -51,7 +51,7 @@ class InAppMessageStateTests: IntegrationTest {
             inAppMessageManager: inAppMessageManager,
             queueManager: queueManager,
             threadUtil: diGraphShared.threadUtil,
-            sseConnectionManager: diGraphShared.sseConnectionManager
+            sseLifecycleManager: diGraphShared.sseLifecycleManager
         )
     }
 
