@@ -103,7 +103,6 @@
 		46D5D99329E459D800EAF40B /* APN UIKitTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "APN UIKitTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 		46D5D99D29E459D800EAF40B /* APN UIKitUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "APN UIKitUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 		669B9F6E2D8B2D430087CC20 /* AutoDependencyInjection.generated.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutoDependencyInjection.generated.swift; sourceTree = "<group>"; };
-		669B9F6F2D8B2D430087CC20 /* AutoLenses.generated.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutoLenses.generated.swift; sourceTree = "<group>"; };
 		669B9F702D8B2D430087CC20 /* AutoMockable.generated.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutoMockable.generated.swift; sourceTree = "<group>"; };
 		669B9F712D8B2D430087CC20 /* DIDependencies.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DIDependencies.swift; sourceTree = "<group>"; };
 		669B9F732D8B2D430087CC20 /* Settings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Settings.swift; sourceTree = "<group>"; };
@@ -230,7 +229,6 @@
 			isa = PBXGroup;
 			children = (
 				669B9F6E2D8B2D430087CC20 /* AutoDependencyInjection.generated.swift */,
-				669B9F6F2D8B2D430087CC20 /* AutoLenses.generated.swift */,
 				669B9F702D8B2D430087CC20 /* AutoMockable.generated.swift */,
 				669B9F712D8B2D430087CC20 /* DIDependencies.swift */,
 			);
