@@ -7,7 +7,9 @@ extension OperationQueue {
 }
 
 public final class AsyncOperation: Operation, @unchecked Sendable {
-    private let activeTask: Synchronized<Task<Void, Never>?> = .init(initial: nil)
+
+    private let syncQueue = DispatchQueue(label: "io.Customer.sdk.AsyncBlockOperation.syncQueue")
+    private var activeTask: Task<Void, Never>? = nil
 
     public private(set) var asyncBlock: () async -> Void
 
@@ -45,31 +47,40 @@ public final class AsyncOperation: Operation, @unchecked Sendable {
     }
 
     override public func start() {
-        guard !isCancelled else {
-            finish()
-            return
+        syncQueue.sync {
+            guard !isCancelled else {
+                finish()
+                return
+            }
+            isFinished = false
+            isExecuting = true
+            mainInternal()
         }
-        isFinished = false
-        isExecuting = true
-        main()
     }
 
-    override public func main() {
-        activeTask.wrappedValue = Task {
+    private func mainInternal() {
+        activeTask = Task {
             await asyncBlock()
             finish()
         }
     }
-
-    override public func cancel() {
-        activeTask.mutating { value in
-            value?.cancel()
-            value = nil
+    
+    
+    override public func main() {
+        syncQueue.sync {
+            mainInternal()
         }
-        super.cancel()
     }
 
-    func finish() {
+    override public func cancel() {
+        syncQueue.sync {
+            activeTask?.cancel()
+            activeTask = nil
+            super.cancel()
+        }
+    }
+
+    private func finish() {
         isExecuting = false
         isFinished = true
     }
