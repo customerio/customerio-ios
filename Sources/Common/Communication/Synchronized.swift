@@ -34,15 +34,6 @@ public final class Synchronized<T>: @unchecked Sendable {
         }
     }
 
-    /// Modify the wrapped value in a thread-safe manor without blocking the current thread or
-    /// waiting for it to finish. No guarantees are made about when the body will be executed,
-    /// only that the body will be executed atomically.
-    public func mutatingDetatched(_ body: @Sendable @escaping (inout T) -> Void) {
-        syncQueue.async(flags: .barrier) {
-            body(&self._wrappedValue)
-        }
-    }
-
     /// Modify the wrapped value in a thread-safe manor without blocking the current thread but
     /// asynchronously waiting for it to finish. The body will be executed atomically before the call returns.
     public func mutatingAsync<Result>(_ body: @Sendable @escaping (inout T) throws -> Result) async throws -> Result {
@@ -77,17 +68,6 @@ public final class Synchronized<T>: @unchecked Sendable {
     public func using<Result>(_ body: (T) throws -> Result) rethrows -> Result {
         try syncQueue.sync {
             try body(_wrappedValue)
-        }
-    }
-
-    /// Access the wrapped value in a thread-safe manor without blocking the current thread or
-    /// waiting for it to finish. No guarantees are made about when the body will be executed,
-    /// only that the body will be executed atomically.
-    /// - Parameters:
-    ///  - body: The code to access the wrapped value.
-    public func usingDetached(_ body: @Sendable @escaping (T) -> Void) {
-        syncQueue.async {
-            body(self._wrappedValue)
         }
     }
 
