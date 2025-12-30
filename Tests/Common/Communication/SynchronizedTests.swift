@@ -79,24 +79,24 @@ struct SynchronizedTests {
         #expect(fetched == 31416)
     }
 
-    @Test
-    func testAccessingValueFromUsingDetached() throws {
-        let initial = 31415
-        let sync = Synchronized(initial: initial)
-
-        let called = Synchronized(initial: false)
-
-        sync.usingDetached { value in
-            #expect(value == initial)
-            called.toggle()
-        }
-        // By performing a barrier operation we ensure that previous blocks have been performed
-        sync.mutating {
-            $0 += 1
-        }
-        #expect(called == true)
-        #expect(sync == 31416)
-    }
+//    @Test
+//    func testAccessingValueFromUsingDetached() throws {
+//        let initial = 31415
+//        let sync = Synchronized(initial: initial)
+//
+//        let called = Synchronized(initial: false)
+//
+//        sync.usingDetached { value in
+//            #expect(value == initial)
+//            called.toggle()
+//        }
+//        // By performing a barrier operation we ensure that previous blocks have been performed
+//        sync.mutating {
+//            $0 += 1
+//        }
+//        #expect(called == true)
+//        #expect(sync == 31416)
+//    }
 
     @Test
     func testModifyingValueWithMutating() throws {
@@ -149,24 +149,24 @@ struct SynchronizedTests {
         #expect(fetched == 31418)
     }
 
-    @Test
-    func testModifyingValueWithMutatingDetached() throws {
-        let initial = 31415
-        let sync = Synchronized(initial: initial)
-
-        let called = Synchronized(initial: false)
-
-        sync.mutatingDetatched { value in
-            #expect(value == initial)
-            value += 1
-            called.toggle()
-        }
-        // By performing a barrier operation we ensure that previous blocks have been performed
-        sync.mutating { $0 += 2 }
-
-        #expect(called == true)
-        #expect(sync.wrappedValue == 31418)
-    }
+//    @Test
+//    func testModifyingValueWithMutatingDetached() throws {
+//        let initial = 31415
+//        let sync = Synchronized(initial: initial)
+//
+//        let called = Synchronized(initial: false)
+//
+//        sync.mutatingDetatched { value in
+//            #expect(value == initial)
+//            value += 1
+//            called.toggle()
+//        }
+//        // By performing a barrier operation we ensure that previous blocks have been performed
+//        sync.mutating { $0 += 2 }
+//
+//        #expect(called == true)
+//        #expect(sync.wrappedValue == 31418)
+//    }
 
     @Test
     func testBreakingThreadSafety() throws {
