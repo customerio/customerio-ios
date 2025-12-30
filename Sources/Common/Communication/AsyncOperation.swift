@@ -7,7 +7,7 @@ extension OperationQueue {
 }
 
 public final class AsyncOperation: Operation, @unchecked Sendable {
-    private let syncQueue = DispatchQueue(label: "io.Customer.sdk.AsyncBlockOperation.syncQueue")
+    private let lock = NSRecursiveLock()
     private var activeTask: Task<Void, Never>?
 
     public private(set) var asyncBlock: () async -> Void
@@ -46,36 +46,34 @@ public final class AsyncOperation: Operation, @unchecked Sendable {
     }
 
     override public func start() {
-        syncQueue.sync {
-            guard !isCancelled else {
-                finish()
-                return
-            }
-            isFinished = false
-            isExecuting = true
-            mainInternal()
+        lock.lock()
+        defer { lock.unlock() }
+
+        guard !isCancelled else {
+            finish()
+            return
         }
+        isFinished = false
+        isExecuting = true
+        main()
     }
 
-    private func mainInternal() {
+    override public func main() {
+        lock.lock()
+        defer { lock.unlock() }
+
         activeTask = Task {
             await asyncBlock()
             finish()
         }
     }
 
-    override public func main() {
-        syncQueue.sync {
-            mainInternal()
-        }
-    }
-
     override public func cancel() {
-        syncQueue.sync {
-            activeTask?.cancel()
-            activeTask = nil
-            super.cancel()
-        }
+        lock.lock()
+        defer { lock.unlock() }
+        activeTask?.cancel()
+        activeTask = nil
+        super.cancel()
     }
 
     private func finish() {
