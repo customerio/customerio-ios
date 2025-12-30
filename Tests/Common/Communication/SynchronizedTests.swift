@@ -3,7 +3,7 @@ import Testing
 
 @testable
 import CioInternalCommon
-    
+
 struct SynchronizedTests {
     @Test
     func testValueAccess() async throws {
@@ -79,24 +79,24 @@ struct SynchronizedTests {
         #expect(fetched == 31416)
     }
 
-//    @Test
-//    func testAccessingValueFromUsingDetached() throws {
-//        let initial = 31415
-//        let sync = Synchronized(initial: initial)
-//
-//        let called = Synchronized(initial: false)
-//
-//        sync.usingDetached { value in
-//            #expect(value == initial)
-//            called.toggle()
-//        }
-//        // By performing a barrier operation we ensure that previous blocks have been performed
-//        sync.mutating {
-//            $0 += 1
-//        }
-//        #expect(called == true)
-//        #expect(sync == 31416)
-//    }
+    @Test
+    func testAccessingValueFromUsingDetached() throws {
+        let initial = 31415
+        let sync = Synchronized(initial: initial)
+
+        let called = Synchronized(initial: false)
+
+        sync.usingDetached { value in
+            #expect(value == initial)
+            called.toggle()
+        }
+        // By performing a barrier operation we ensure that previous blocks have been performed
+        sync.mutating {
+            $0 += 1
+        }
+        #expect(called == true)
+        #expect(sync == 31416)
+    }
 
     @Test
     func testModifyingValueWithMutating() throws {
@@ -149,24 +149,24 @@ struct SynchronizedTests {
         #expect(fetched == 31418)
     }
 
-//    @Test
-//    func testModifyingValueWithMutatingDetached() throws {
-//        let initial = 31415
-//        let sync = Synchronized(initial: initial)
-//
-//        let called = Synchronized(initial: false)
-//
-//        sync.mutatingDetatched { value in
-//            #expect(value == initial)
-//            value += 1
-//            called.toggle()
-//        }
-//        // By performing a barrier operation we ensure that previous blocks have been performed
-//        sync.mutating { $0 += 2 }
-//
-//        #expect(called == true)
-//        #expect(sync.wrappedValue == 31418)
-//    }
+    @Test
+    func testModifyingValueWithMutatingDetached() throws {
+        let initial = 31415
+        let sync = Synchronized(initial: initial)
+
+        let called = Synchronized(initial: false)
+
+        sync.mutatingDetatched { value in
+            #expect(value == initial)
+            value += 1
+            called.toggle()
+        }
+        // By performing a barrier operation we ensure that previous blocks have been performed
+        sync.mutating { $0 += 2 }
+
+        #expect(called == true)
+        #expect(sync.wrappedValue == 31418)
+    }
 
     @Test
     func testBreakingThreadSafety() throws {
@@ -188,45 +188,45 @@ struct SynchronizedTests {
 
     // MARK: - Equatable Operation Extensions
 
-//    @Test
-//    func testEquals() throws {
-//        let sync1 = Synchronized(initial: 1)
-//        let sync2 = Synchronized(initial: 2)
-//
-//        let match = (sync1 == sync2)
-//        let noMatch = (sync1 != sync2)
-//
-//        #expect(match == false)
-//        #expect(noMatch == true)
-//        #expect(sync1 == 1)
-//        #expect(sync1 != 2)
-//    }
+    @Test
+    func testEquals() throws {
+        let sync1 = Synchronized(initial: 1)
+        let sync2 = Synchronized(initial: 2)
+
+        let match = (sync1 == sync2)
+        let noMatch = (sync1 != sync2)
+
+        #expect(match == false)
+        #expect(noMatch == true)
+        #expect(sync1 == 1)
+        #expect(sync1 != 2)
+    }
 
     // MARK: - Comparable Operation Extensions
 
-//    @Test
-//    func testComparisons() throws {
-//        let base = Synchronized(initial: 1)
-//        let greater = Synchronized(initial: 2)
-//        let equal = Synchronized(initial: 1)
-//        let less = Synchronized(initial: 0)
-//
-//        #expect((base < greater) == true)
-//        #expect((base < less) == false)
-//        #expect((base < equal) == false)
-//
-//        #expect((base <= greater) == true)
-//        #expect((base <= less) == false)
-//        #expect((base <= equal) == true)
-//
-//        #expect((base > greater) == false)
-//        #expect((base > less) == true)
-//        #expect((base > equal) == false)
-//
-//        #expect((base >= greater) == false)
-//        #expect((base >= less) == true)
-//        #expect((base >= equal) == true)
-//    }
+    @Test
+    func testComparisons() throws {
+        let base = Synchronized(initial: 1)
+        let greater = Synchronized(initial: 2)
+        let equal = Synchronized(initial: 1)
+        let less = Synchronized(initial: 0)
+
+        #expect((base < greater) == true)
+        #expect((base < less) == false)
+        #expect((base < equal) == false)
+
+        #expect((base <= greater) == true)
+        #expect((base <= less) == false)
+        #expect((base <= equal) == true)
+
+        #expect((base > greater) == false)
+        #expect((base > less) == true)
+        #expect((base > equal) == false)
+
+        #expect((base >= greater) == false)
+        #expect((base >= less) == true)
+        #expect((base >= equal) == true)
+    }
 
     @Test
     func testComparisonsWithBaseType() throws {
@@ -283,28 +283,28 @@ struct SynchronizedTests {
         #expect(sync.wrappedValue == 31414)
     }
 
-//    @Test
-//    func testPlusEqualsSynchronizedInteger() throws {
-//        let initial1 = 31415
-//        let initial2 = 27182
-//        let sync1 = Synchronized(initial: initial1)
-//        let sync2 = Synchronized(initial: initial2)
-//
-//        sync1 += sync2
-//        #expect(sync1.wrappedValue == 58597)
-//    }
-//
-//    @Test
-//    func testMinusEqualsSynchronizedInteger() throws {
-//        let initial1 = 31415
-//        let initial2 = 27182
-//
-//        let sync1 = Synchronized(initial: initial1)
-//        let sync2 = Synchronized(initial: initial2)
-//
-//        sync1 -= sync2
-//        #expect(sync1.wrappedValue == 4233)
-//    }
+    @Test
+    func testPlusEqualsSynchronizedInteger() throws {
+        let initial1 = 31415
+        let initial2 = 27182
+        let sync1 = Synchronized(initial: initial1)
+        let sync2 = Synchronized(initial: initial2)
+
+        sync1 += sync2
+        #expect(sync1.wrappedValue == 58597)
+    }
+
+    @Test
+    func testMinusEqualsSynchronizedInteger() throws {
+        let initial1 = 31415
+        let initial2 = 27182
+
+        let sync1 = Synchronized(initial: initial1)
+        let sync2 = Synchronized(initial: initial2)
+
+        sync1 -= sync2
+        #expect(sync1.wrappedValue == 4233)
+    }
 
     @Test
     func testPlusInteger() throws {
@@ -338,19 +338,19 @@ struct SynchronizedTests {
         #expect(sync2.wrappedValue == initial2)
         #expect(result == 58597)
     }
-//
-//    @Test
-//    func testMinusSynchronizedInteger() throws {
-//        let initial1 = 31415
-//        let initial2 = 27182
-//        let sync1 = Synchronized(initial: initial1)
-//        let sync2 = Synchronized(initial: initial2)
-//
-//        let result: Int = sync1 - sync2
-//        #expect(sync1.wrappedValue == initial1)
-//        #expect(sync2.wrappedValue == initial2)
-//        #expect(result == 4233)
-//    }
+
+    @Test
+    func testMinusSynchronizedInteger() throws {
+        let initial1 = 31415
+        let initial2 = 27182
+        let sync1 = Synchronized(initial: initial1)
+        let sync2 = Synchronized(initial: initial2)
+
+        let result: Int = sync1 - sync2
+        #expect(sync1.wrappedValue == initial1)
+        #expect(sync2.wrappedValue == initial2)
+        #expect(result == 4233)
+    }
 
     // MARK: - Dictionary Operations
 

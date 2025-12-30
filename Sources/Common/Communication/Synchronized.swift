@@ -129,7 +129,7 @@ public extension Synchronized where T == Bool {
 extension Synchronized: Equatable where T: Equatable {
     public static func == (lhs: Synchronized<T>, rhs: Synchronized<T>) -> Bool {
         guard lhs !== rhs else { return true }
-        
+
         return lhs.using { lhsValue in
             rhs.using { rhsValue in
                 lhsValue == rhsValue
@@ -151,7 +151,6 @@ extension Synchronized: Equatable where T: Equatable {
 }
 
 extension Synchronized: Comparable where T: Comparable {
-
     public static func < (lhs: Synchronized<T>, rhs: Synchronized<T>) -> Bool {
         guard lhs !== rhs else { return false }
 
@@ -220,7 +219,7 @@ public extension Synchronized where T: AdditiveArithmetic {
 
     static func - (lhs: Synchronized<T>, rhs: Synchronized<T>) -> T {
         guard lhs !== rhs else { return .zero }
-        
+
         return lhs.using { lhsValue in
             rhs.using { rhsValue in
                 lhsValue - rhsValue
@@ -259,7 +258,7 @@ public extension Synchronized where T: AdditiveArithmetic {
             lhs.wrappedValue = .zero
             return
         }
-        
+
         lhs.mutating { lhsValue in
             rhs.using { rhsValue in
                 lhsValue -= rhsValue
