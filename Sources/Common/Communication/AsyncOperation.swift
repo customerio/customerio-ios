@@ -9,7 +9,7 @@ extension OperationQueue {
 public final class AsyncOperation: Operation, @unchecked Sendable {
     private let activeTask: Synchronized<Task<Void, Never>?> = .init(initial: nil)
 
-    public private(set) var asyncBlock: () async -> Void
+    public let asyncBlock: () async -> Void
 
     public init(asyncBlock: @escaping () async -> Void) {
         self.asyncBlock = asyncBlock
@@ -55,7 +55,8 @@ public final class AsyncOperation: Operation, @unchecked Sendable {
     }
 
     override public func main() {
-        activeTask.wrappedValue = Task {
+        activeTask.wrappedValue = Task { [weak self] in
+            guard let self, !isCancelled else { return }
             await asyncBlock()
             finish()
         }
