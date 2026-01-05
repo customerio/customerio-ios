@@ -7,11 +7,19 @@ import UIKit
 /// This class encapsulates all logic for starting/stopping SSE connections based on:
 /// - App foreground/background state
 /// - SSE enabled flag from server
+/// - User identification state (userId is set)
+///
+/// SSE requires ALL three conditions to be met:
+/// 1. App is foregrounded
+/// 2. SSE flag is enabled (from X-CIO-Use-SSE header)
+/// 3. User is identified (userId is set, not anonymous)
+///
+/// Otherwise, the SDK falls back to polling.
 ///
 /// Corresponds to Android's `SseLifecycleManager` class.
 protocol SseLifecycleManager: AutoMockable {
     /// Starts the lifecycle manager. Must be called after initialization.
-    /// Sets up notification observers and subscribes to SSE flag changes.
+    /// Sets up notification observers and subscribes to SSE flag and userId changes.
     func start() async
 }
 
@@ -25,6 +33,7 @@ actor CioSseLifecycleManager: SseLifecycleManager {
 
     private var notificationObservers: [NSObjectProtocol] = []
     private var sseFlagSubscriber: InAppMessageStoreSubscriber?
+    private var userIdSubscriber: InAppMessageStoreSubscriber?
 
     private var isForegrounded: Bool = false
 
@@ -53,6 +62,7 @@ actor CioSseLifecycleManager: SseLifecycleManager {
         // Register observers FIRST to ensure no state transitions are missed
         await setupNotificationObservers()
         subscribeToSseFlagChanges()
+        subscribeToUserIdChanges()
 
         // Check initial state LAST - if app went to background during setup,
         // we'll either see it here or have already received the notification
@@ -81,22 +91,42 @@ actor CioSseLifecycleManager: SseLifecycleManager {
         }
 
         isForegrounded = isForeground
-        logger.logWithModuleTag("SseLifecycleManager: Initial state - isForegrounded: \(isForeground)", level: .debug)
+
+        // Get current state for logging and initial SSE state check
+        let state = await inAppMessageManager.state
+
+        logger.logWithModuleTag(
+            "SseLifecycleManager: Initial state - isForegrounded: \(isForeground), sseEnabled: \(state.useSse), isUserIdentified: \(state.isUserIdentified), userId: \(state.userId ?? "nil")",
+            level: .info
+        )
 
         // If already foregrounded at init time, check if we should start SSE
         if isForeground {
-            await startSseIfEnabled()
+            logger.logWithModuleTag("SseLifecycleManager: App already foregrounded at init - checking SSE eligibility", level: .debug)
+            await startSseIfEligible(state: state)
+        } else {
+            logger.logWithModuleTag("SseLifecycleManager: App backgrounded at init - SSE will start when foregrounded", level: .debug)
         }
     }
 
-    /// Starts SSE connection if SSE is enabled. Used for initial setup.
-    private func startSseIfEnabled() async {
-        let state = await inAppMessageManager.state
-        if state.useSse {
-            logger.logWithModuleTag("SseLifecycleManager: SSE enabled at startup - starting connection", level: .info)
+    // MARK: - SSE Eligibility
+
+    /// Starts SSE connection if all eligibility conditions are met.
+    /// Uses the provided state to check: sseEnabled && isUserIdentified
+    private func startSseIfEligible(state: InAppMessageState) async {
+        logger.logWithModuleTag(
+            "SseLifecycleManager: Checking SSE eligibility - sseEnabled: \(state.useSse), isUserIdentified: \(state.isUserIdentified)",
+            level: .debug
+        )
+
+        if state.shouldUseSse {
+            logger.logWithModuleTag("SseLifecycleManager: All conditions met - starting SSE connection", level: .info)
             await sseConnectionManager.startConnection()
         } else {
-            logger.logWithModuleTag("SseLifecycleManager: SSE disabled at startup - no action needed", level: .debug)
+            logger.logWithModuleTag(
+                "SseLifecycleManager: SSE conditions not met (sseEnabled: \(state.useSse), isUserIdentified: \(state.isUserIdentified)) - using polling",
+                level: .debug
+            )
         }
     }
 
@@ -137,12 +167,27 @@ actor CioSseLifecycleManager: SseLifecycleManager {
             let subscriber = InAppMessageStoreSubscriber { [weak self] state in
                 guard let self else { return }
                 Task {
-                    await self.handleSseFlagChange(sseEnabled: state.useSse)
+                    await self.handleSseFlagChange(state: state)
                 }
             }
             // Subscribe to changes in `useSse` property of `InAppMessageState`
             inAppMessageManager.subscribe(keyPath: \.useSse, subscriber: subscriber)
             logger.logWithModuleTag("SseLifecycleManager: Subscribed to SSE flag changes", level: .debug)
+            return subscriber
+        }()
+    }
+
+    private func subscribeToUserIdChanges() {
+        userIdSubscriber = {
+            let subscriber = InAppMessageStoreSubscriber { [weak self] state in
+                guard let self else { return }
+                Task {
+                    await self.handleUserIdChange(state: state)
+                }
+            }
+            // Subscribe to changes in `userId` property of `InAppMessageState`
+            inAppMessageManager.subscribe(keyPath: \.userId, subscriber: subscriber)
+            logger.logWithModuleTag("SseLifecycleManager: Subscribed to userId changes", level: .debug)
             return subscriber
         }()
     }
@@ -158,13 +203,16 @@ actor CioSseLifecycleManager: SseLifecycleManager {
 
         isForegrounded = true
 
+        // Get current state (like Android's getCurrentState())
         let state = await inAppMessageManager.state
-        if state.useSse {
-            logger.logWithModuleTag("SseLifecycleManager: App foregrounded, SSE enabled - starting connection", level: .info)
-            await sseConnectionManager.startConnection()
-        } else {
-            logger.logWithModuleTag("SseLifecycleManager: App foregrounded, SSE disabled - no action needed", level: .debug)
-        }
+
+        logger.logWithModuleTag(
+            "SseLifecycleManager: App foregrounded - checking SSE eligibility (sseEnabled: \(state.useSse), isUserIdentified: \(state.isUserIdentified))",
+            level: .info
+        )
+
+        // Check all 3 conditions: foregrounded + SSE enabled + user identified
+        await startSseIfEligible(state: state)
     }
 
     private func handleBackgrounded() async {
@@ -176,30 +224,78 @@ actor CioSseLifecycleManager: SseLifecycleManager {
 
         isForegrounded = false
 
-        let state = await inAppMessageManager.state
-        if state.useSse {
-            logger.logWithModuleTag("SseLifecycleManager: App backgrounded, SSE enabled - stopping connection", level: .info)
-            await sseConnectionManager.stopConnection()
-        } else {
-            logger.logWithModuleTag("SseLifecycleManager: App backgrounded, SSE disabled - no action needed", level: .debug)
-        }
+        // Always stop SSE connection when app backgrounds (matching Android behavior)
+        // stopConnection() is idempotent, safe to call even if not connected
+        logger.logWithModuleTag("SseLifecycleManager: App backgrounded - stopping SSE connection", level: .info)
+        await sseConnectionManager.stopConnection()
     }
 
-    private func handleSseFlagChange(sseEnabled: Bool) async {
-        logger.logWithModuleTag("SseLifecycleManager: SSE flag changed to \(sseEnabled)", level: .info)
+    private func handleSseFlagChange(state _: InAppMessageState) async {
+        // Always fetch latest state to handle out-of-order Task execution
+        // This prevents race conditions when state changes rapidly (e.g., SSE enabled → disabled)
+        let state = await inAppMessageManager.state
+
+        logger.logWithModuleTag(
+            "SseLifecycleManager: SSE flag changed to \(state.useSse) (isUserIdentified: \(state.isUserIdentified), isForegrounded: \(isForegrounded))",
+            level: .info
+        )
 
         // Only act on flag changes if app is foregrounded
         guard isForegrounded else {
-            logger.logWithModuleTag("SseLifecycleManager: App backgrounded, deferring SSE action until foreground", level: .debug)
+            logger.logWithModuleTag(
+                "SseLifecycleManager: App backgrounded - deferring SSE action until foreground",
+                level: .debug
+            )
             return
         }
 
-        if sseEnabled {
-            logger.logWithModuleTag("SseLifecycleManager: SSE enabled while foregrounded - starting connection", level: .info)
+        // Check if SSE should be used (matching Android's state.shouldUseSse check)
+        if state.shouldUseSse {
+            logger.logWithModuleTag("SseLifecycleManager: SSE enabled + user identified - starting SSE connection", level: .info)
             await sseConnectionManager.startConnection()
-        } else {
-            logger.logWithModuleTag("SseLifecycleManager: SSE disabled while foregrounded - stopping connection", level: .info)
+        } else if state.useSse, !state.isUserIdentified {
+            // SSE enabled but user is anonymous - don't start SSE
+            logger.logWithModuleTag("SseLifecycleManager: SSE enabled but user anonymous - SSE will not be used, polling continues", level: .info)
+        } else if !state.useSse {
+            // SSE disabled → Stop SSE connection (idempotent, safe to call even if not connected)
+            logger.logWithModuleTag("SseLifecycleManager: SSE disabled - stopping SSE connection, falling back to polling", level: .info)
             await sseConnectionManager.stopConnection()
+        }
+    }
+
+    private func handleUserIdChange(state _: InAppMessageState) async {
+        // Always fetch latest state to handle out-of-order Task execution
+        // This prevents race conditions when userId changes rapidly (e.g., login → logout)
+        let state = await inAppMessageManager.state
+
+        logger.logWithModuleTag(
+            "SseLifecycleManager: User identification changed to \(state.isUserIdentified) (sseEnabled: \(state.useSse), isForegrounded: \(isForegrounded))",
+            level: .info
+        )
+
+        // Only act on identification changes if app is foregrounded
+        guard isForegrounded else {
+            logger.logWithModuleTag(
+                "SseLifecycleManager: App backgrounded - deferring user identification action until foreground",
+                level: .debug
+            )
+            return
+        }
+
+        // Check if SSE should be used (matching Android's state.shouldUseSse check)
+        if state.shouldUseSse {
+            // User became identified and SSE is enabled - start SSE connection
+            logger.logWithModuleTag("SseLifecycleManager: User identified + SSE enabled - starting SSE connection", level: .info)
+            await sseConnectionManager.startConnection()
+        } else if !state.isUserIdentified, state.useSse {
+            // User became anonymous and SSE flag is enabled - stop SSE, fall back to polling
+            logger.logWithModuleTag("SseLifecycleManager: User became anonymous - stopping SSE, falling back to polling", level: .info)
+            await sseConnectionManager.stopConnection()
+        } else {
+            logger.logWithModuleTag(
+                "SseLifecycleManager: No SSE action needed (shouldUseSse: \(state.shouldUseSse), sseEnabled: \(state.useSse), isUserIdentified: \(state.isUserIdentified))",
+                level: .debug
+            )
         }
     }
 }

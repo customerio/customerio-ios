@@ -107,6 +107,22 @@ struct InAppMessageState: Equatable, CustomStringConvertible {
         )
         """
     }
+
+    // MARK: - SSE Eligibility
+
+    /// Returns true if user is identified (has a non-empty userId).
+    /// Anonymous users (only anonymousId) are not eligible for SSE.
+    var isUserIdentified: Bool {
+        guard let userId = userId else { return false }
+        return !userId.isEmpty
+    }
+
+    /// Returns true if SSE should be used for real-time message delivery.
+    /// SSE requires both: SSE flag enabled AND user is identified.
+    /// Anonymous users always use polling even if SSE flag is enabled.
+    var shouldUseSse: Bool {
+        useSse && isUserIdentified
+    }
 }
 
 extension InAppMessageState {
