@@ -118,7 +118,7 @@ private func logMessageView(logger: Logger, logManager: LogManager, state: InApp
 }
 
 func messageMetricsMiddleware(logger: Logger, logManager: LogManager, anonymousMessageManager: AnonymousMessageManager) -> InAppMessageMiddleware {
-    middleware { _, getState, next, action in
+    middleware { dispatch, getState, next, action in
         let state = getState()
         switch action {
         case .displayMessage(let message):
@@ -150,6 +150,21 @@ func messageMetricsMiddleware(logger: Logger, logManager: LogManager, anonymousM
             } else {
                 logger.logWithModuleTag("Message dismissed, not logging view for message: \(message.describeForLogs), shouldLog: \(shouldLog), viaCloseAction: \(viaCloseAction)", level: .debug)
             }
+
+            // Process the DismissMessage action first so the reducer can update shownMessageQueueIds
+            // This ensures the dismissed message is properly marked as shown before processing the queue
+            next(action)
+
+            // After the dismissal is processed, dispatch ProcessMessageQueue to show the next message
+            // This matches Android's behavior in gistLoggingMessageMiddleware where it dispatches
+            // ProcessMessageQueue(store.state.messagesInQueue) after DismissMessage when SSE is enabled.
+            // The dismissed message will be filtered out by messageQueueProcessorMiddleware
+            // since its queueId is now in shownMessageQueueIds
+            if state.shouldUseSse {
+                logger.logWithModuleTag("SSE enabled - Processing message queue after dismissal to show next message", level: .debug)
+                dispatch(.processMessageQueue(messages: Array(state.messagesInQueue)))
+            }
+            return
 
         default:
             break
