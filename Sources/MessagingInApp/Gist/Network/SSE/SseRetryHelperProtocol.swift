@@ -5,9 +5,11 @@ import Foundation
 /// Abstracts retry logic so `SseConnectionManager` can be tested
 /// with controlled retry behavior.
 protocol SseRetryHelperProtocol: AutoMockable {
-    /// Stream of retry decisions emitted by the helper.
-    /// Emits tuples of (decision, generation) so the manager can verify the generation is still active.
-    var retryDecisionStream: AsyncStream<(RetryDecision, UInt64)> { get }
+    /// Creates a new retry decision stream for this connection cycle.
+    /// Any previous stream is finished (causes its iterator to exit cleanly).
+    /// Call this at the start of each connection cycle to get a fresh stream.
+    /// - Returns: A new AsyncStream that will emit retry decisions
+    func createNewRetryStream() async -> AsyncStream<(RetryDecision, UInt64)>
 
     /// Sets the active connection generation.
     /// Called when a new connection starts to reset retry state for the new generation.

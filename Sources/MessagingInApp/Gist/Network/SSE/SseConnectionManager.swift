@@ -136,8 +136,8 @@ actor SseConnectionManager: SseConnectionManagerProtocol {
         // Set the active generation in retry helper
         await retryHelper.setActiveGeneration(generation)
 
-        // Ensure retry decision collector is running
-        subscribeToRetryDecisions()
+        // Ensure retry decision collector is running with fresh stream
+        await subscribeToRetryDecisions()
 
         // Start the connection
         var newTask: Task<Void, Never>?
@@ -372,7 +372,7 @@ actor SseConnectionManager: SseConnectionManagerProtocol {
         let heartbeatInterval = event.heartbeatIntervalSeconds ?? HeartbeatTimer.defaultHeartbeatTimeoutSeconds
         let timeoutWithBuffer = heartbeatInterval + HeartbeatTimer.heartbeatBufferSeconds
 
-        logger.logWithModuleTag("SSE Manager: ♥ Heartbeat received (interval: \(heartbeatInterval)s, timeout: \(timeoutWithBuffer)s)", level: .debug)
+        logger.logWithModuleTag("SSE Manager: Heartbeat received (interval: \(heartbeatInterval)s, timeout: \(timeoutWithBuffer)s)", level: .debug)
 
         // Restart heartbeat timer with the parsed interval + buffer
         await heartbeatTimer.startTimer(timeoutSeconds: timeoutWithBuffer, generation: generation)
@@ -411,18 +411,17 @@ actor SseConnectionManager: SseConnectionManagerProtocol {
 
     // MARK: - Retry Logic
 
-    /// Sets up subscription to retry decisions from SseRetryHelper
-    private func subscribeToRetryDecisions() {
-        // Only subscribe once
-        guard retryTask == nil else {
-            logger.logWithModuleTag("SSE Manager: Retry subscription already active", level: .debug)
-            return
-        }
+    /// Sets up subscription to retry decisions from SseRetryHelper.
+    /// Creates a fresh stream for each connection cycle to avoid AsyncStream exhaustion issues.
+    private func subscribeToRetryDecisions() async {
+        // Cancel existing retry task - it will exit when old stream is finished
+        retryTask?.cancel()
+        retryTask = nil
 
         logger.logWithModuleTag("SSE Manager: Setting up retry decision subscription", level: .debug)
 
-        // Capture the stream reference before creating the task
-        let stream = retryHelper.retryDecisionStream
+        // Get FRESH stream - this also finishes any old stream, causing old iterators to exit
+        let stream = await retryHelper.createNewRetryStream()
 
         retryTask = Task { [weak self] in
             guard let self = self else { return }

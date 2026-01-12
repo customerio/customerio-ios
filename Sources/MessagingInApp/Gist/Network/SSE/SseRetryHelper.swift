@@ -25,21 +25,28 @@ actor SseRetryHelper: SseRetryHelperProtocol {
     private var retryTask: Task<Void, Never>?
     private var activeGeneration: UInt64 = 0
 
-    // AsyncStream for emitting retry decisions
-    private let continuation: AsyncStream<(RetryDecision, UInt64)>.Continuation
-    let retryDecisionStream: AsyncStream<(RetryDecision, UInt64)>
+    // AsyncStream continuation for emitting retry decisions
+    // Optional because stream is created fresh for each connection cycle
+    private var continuation: AsyncStream<(RetryDecision, UInt64)>.Continuation?
 
     init(logger: Logger, sleeper: Sleeper = RealSleeper()) {
         self.logger = logger
         self.sleeper = sleeper
+        logger.logWithModuleTag("[SseRetryHelper] Initialized", level: .debug)
+    }
 
-        // Create the stream using the backport which guarantees synchronous continuation capture
-        // Stream emits tuples of (decision, generation) so manager can verify
-        let (stream, continuation) = AsyncStreamBackport.makeStream(of: (RetryDecision, UInt64).self)
-        self.retryDecisionStream = stream
-        self.continuation = continuation
+    /// Creates a new retry decision stream for this connection cycle.
+    /// Any previous stream is finished (causes its iterator to exit cleanly).
+    /// - Returns: A new AsyncStream that will emit retry decisions
+    func createNewRetryStream() async -> AsyncStream<(RetryDecision, UInt64)> {
+        // Finish old stream to clean up any lingering iterators
+        continuation?.finish()
 
-        logger.logWithModuleTag("[SseRetryHelper] Initialized with continuation", level: .debug)
+        let (stream, cont) = AsyncStreamBackport.makeStream(of: (RetryDecision, UInt64).self)
+        continuation = cont
+
+        logger.logWithModuleTag("[SseRetryHelper] Created new retry stream", level: .debug)
+        return stream
     }
 
     /// Sets the active connection generation.
@@ -152,6 +159,10 @@ actor SseRetryHelper: SseRetryHelperProtocol {
     }
 
     private func emitRetryDecision(_ decision: RetryDecision, generation: UInt64) {
+        guard let continuation = continuation else {
+            logger.logWithModuleTag("[SseRetryHelper] Warning: No active stream to emit decision", level: .error)
+            return
+        }
         logger.logWithModuleTag("[SseRetryHelper] Emitting decision: \(decision) (generation \(generation))", level: .debug)
         continuation.yield((decision, generation))
     }

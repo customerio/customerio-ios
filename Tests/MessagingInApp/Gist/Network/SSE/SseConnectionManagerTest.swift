@@ -31,7 +31,7 @@ class SseConnectionManagerTest: XCTestCase {
 
         // Setup empty retry decision stream
         let (stream, _) = AsyncStreamBackport.makeStream(of: (RetryDecision, UInt64).self)
-        retryHelperMock.underlyingRetryDecisionStream = stream
+        retryHelperMock.createNewRetryStreamReturnValue = stream
 
         sut = SseConnectionManager(
             logger: loggerMock,
@@ -308,7 +308,7 @@ class SseConnectionManagerTest: XCTestCase {
     func test_retryDecision_givenMaxRetriesReached_expectFallbackToPolling() async {
         // Setup: Create a stream we can emit retry decisions on
         let (retryStream, retryContinuation) = AsyncStreamBackport.makeStream(of: (RetryDecision, UInt64).self)
-        retryHelperMock.underlyingRetryDecisionStream = retryStream
+        retryHelperMock.createNewRetryStreamReturnValue = retryStream
 
         let (sseStream, sseContinuation) = AsyncStreamBackport.makeStream(of: SseEvent.self)
         sseServiceMock.connectReturnValue = sseStream
@@ -351,7 +351,7 @@ class SseConnectionManagerTest: XCTestCase {
     func test_retryDecision_givenRetryNotPossible_expectFallbackToPolling() async {
         // Setup
         let (retryStream, retryContinuation) = AsyncStreamBackport.makeStream(of: (RetryDecision, UInt64).self)
-        retryHelperMock.underlyingRetryDecisionStream = retryStream
+        retryHelperMock.createNewRetryStreamReturnValue = retryStream
 
         let (sseStream, sseContinuation) = AsyncStreamBackport.makeStream(of: SseEvent.self)
         sseServiceMock.connectReturnValue = sseStream
