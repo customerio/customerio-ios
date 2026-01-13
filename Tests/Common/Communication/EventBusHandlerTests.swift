@@ -24,8 +24,6 @@ class EventBusHandlerTest: UnitTest {
     }
 
     func test_initialization_givenEventBusHandler_expectEventsLoadedFromStorage() async throws {
-        _ = initializeEventBusHandler()
-
         // Expectation to wait for loadEvents to complete
         let loadEventsExpectation = XCTestExpectation(description: "Waiting for loadEvents to complete")
 
@@ -34,6 +32,9 @@ class EventBusHandlerTest: UnitTest {
             loadEventsExpectation.fulfill()
             return [] // Return an empty array or mock data as needed
         }
+
+        // Reference must be held to prevent deinit from canceling task
+        let instance = initializeEventBusHandler()
 
         // Wait for the loadEvents operation to complete
         await fulfillment(of: [loadEventsExpectation], timeout: 5.0)

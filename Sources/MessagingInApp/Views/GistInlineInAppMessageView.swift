@@ -35,7 +35,7 @@ class GistInlineMessageUIView: UIView {
     }
 
     var inAppMessageView: GistView? {
-        subviews.map { $0 as? GistView }.mapNonNil().first
+        subviews.compactMap { $0 as? GistView }.first
     }
 
     // Can set in the constructor or can set later (like if you use Storyboards)

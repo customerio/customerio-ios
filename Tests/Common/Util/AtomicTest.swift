@@ -1,30 +1,69 @@
 @testable import CioInternalCommon
+
+import Dispatch
 import Foundation
-import SharedTests
-import XCTest
+import Testing
 
-class AtomicTest: UnitTest {
-    @Atomic private var atomic: String!
-
-    func test_givenCallSetWithNewValue_expectGetCallReceivesNewValue() {
-        let expect = "new value"
-
-        atomic = expect
-
-        let actual = atomic
-
-        XCTAssertEqual(expect, actual)
+struct AtomicTest {
+    struct AtomicTestStruct {
+        @Atomic var value: String?
+        init() {}
     }
 
-    func test_givenSetAndGetDifferentThreads_expectGetNewlySetValue() {
-        let expect = "new value"
+    class AtomicTestObject {
+        @Atomic var value: String?
+        init() {}
+    }
+
+    @Test
+    func testSetValueIsAlsoFetchedOnStruct() {
+        var atomic = AtomicTestStruct()
+
+        let initial = "new value"
+        atomic.value = initial
+        let fetched = atomic.value
+
+        #expect(initial == fetched)
+    }
+
+    @Test
+    func testSetValueIsAlsoFetchedOnObject() {
+        let atomic = AtomicTestObject()
+
+        let initial = "new value"
+        atomic.value = initial
+        let fetched = atomic.value
+
+        #expect(initial == fetched)
+    }
+
+    @Test
+    func testSetValueFromBackgroundOnStruct() {
+        var atomic = AtomicTestStruct()
+
+        let initial = "new value"
 
         DispatchQueue.global(qos: .background).sync {
-            atomic = expect
+            atomic.value = initial
         }
 
-        let actual = atomic
+        let fetched = atomic.value
 
-        XCTAssertEqual(expect, actual)
+        #expect(initial == fetched)
+    }
+
+    @Test
+    func testSetValueFromBackgroundOnObject() {
+        let atomic = AtomicTestObject()
+
+        let initial = "new value"
+
+        DispatchQueue.global(qos: .background).sync {
+            atomic.value = initial
+        }
+
+        let fetched = atomic.value
+
+        #expect(initial == fetched)
     }
 }

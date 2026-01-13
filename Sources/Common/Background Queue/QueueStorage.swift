@@ -37,12 +37,11 @@ public class FileManagerQueueStorage: QueueStorage {
     let dateUtil: DateUtil
     private var inventoryStore: QueueInventoryMemoryStore
 
-    let lock: Lock
+    let lock = NSRecursiveLock()
 
     init(
         fileStorage: FileStorage,
         jsonAdapter: JsonAdapter,
-        lockManager: LockManager,
         logger: Logger,
         dateUtil: DateUtil,
         inventoryStore: QueueInventoryMemoryStore
@@ -51,7 +50,6 @@ public class FileManagerQueueStorage: QueueStorage {
         self.jsonAdapter = jsonAdapter
         self.logger = logger
         self.dateUtil = dateUtil
-        self.lock = lockManager.getLock(id: .queueStorage)
         self.inventoryStore = inventoryStore
     }
 

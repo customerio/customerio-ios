@@ -13,7 +13,7 @@ class CioSimpleTimer: SimpleTimer {
     // Because timer operations are asynchronous (DispatchQueue.main.async), this property
     // synchronously keeps track of the status of the timer operations (schedule, cancel)
     @Atomic private var timerAlreadyScheduled = false
-    private let lock = Lock.unsafeInit() // each SimpleTimer instance should have it's own Lock.
+    private let lock = NSRecursiveLock()
     private var timer: Timer?
     private let logger: Logger
     private let instanceIdentifier = String.random

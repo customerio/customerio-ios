@@ -172,7 +172,7 @@ extension DIGraphShared {
     }
 
     private func _get_pushHistory() -> PushHistory {
-        PushHistoryImpl(lockManager: lockManager)
+        PushHistoryImpl()
     }
 
     // PushNotificationLogger

@@ -18,6 +18,6 @@ extension InlineMessageViewProtocol {
 extension InlineMessageViewProtocol where Self: UIView {
     /// The underlying Gist inline message view that renders the actual content.
     var inAppMessageView: GistInlineMessageUIView? {
-        subviews.map { $0 as? GistInlineMessageUIView }.mapNonNil().first
+        subviews.compactMap { $0 as? GistInlineMessageUIView }.first
     }
 }

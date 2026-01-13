@@ -10,7 +10,7 @@ class PushHistoryTest: IntegrationTest {
     override func setUp() {
         super.setUp()
 
-        pushHistory = PushHistoryImpl(lockManager: lockManager)
+        pushHistory = PushHistoryImpl()
     }
 
     // MARK: hasHandledPush

@@ -104,9 +104,6 @@ extension DIGraphShared {
         _ = jsonAdapter
         countDependenciesResolved += 1
 
-        _ = lockManager
-        countDependenciesResolved += 1
-
         _ = logger
         countDependenciesResolved += 1
 
@@ -384,7 +381,7 @@ extension DIGraphShared {
     }
 
     private var newQueueStorage: QueueStorage {
-        FileManagerQueueStorage(fileStorage: fileStorage, jsonAdapter: jsonAdapter, lockManager: lockManager, logger: logger, dateUtil: dateUtil, inventoryStore: queueInventoryMemoryStore)
+        FileManagerQueueStorage(fileStorage: fileStorage, jsonAdapter: jsonAdapter, logger: logger, dateUtil: dateUtil, inventoryStore: queueInventoryMemoryStore)
     }
 
     // JsonAdapter
@@ -395,30 +392,6 @@ extension DIGraphShared {
 
     private var newJsonAdapter: JsonAdapter {
         JsonAdapter(log: logger)
-    }
-
-    // LockManager (singleton)
-    public var lockManager: LockManager {
-        getOverriddenInstance() ??
-            sharedLockManager
-    }
-
-    public var sharedLockManager: LockManager {
-        // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
-        // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
-        DispatchQueue(label: "DIGraphShared_LockManager_singleton_access").sync {
-            if let overridenDep: LockManager = getOverriddenInstance() {
-                return overridenDep
-            }
-            let existingSingletonInstance = self.singletons[String(describing: LockManager.self)] as? LockManager
-            let instance = existingSingletonInstance ?? _get_lockManager()
-            self.singletons[String(describing: LockManager.self)] = instance
-            return instance
-        }
-    }
-
-    private func _get_lockManager() -> LockManager {
-        LockManager()
     }
 
     // Logger (singleton)

@@ -81,13 +81,13 @@ public struct UNNotificationWrapper: PushNotification {
             }
         }
         set {
-            notificationCenterAttachments = newValue.map { pushAttachment in
+            notificationCenterAttachments = newValue.compactMap { pushAttachment in
                 try? UNNotificationAttachment(
                     identifier: pushAttachment.identifier,
                     url: pushAttachment.localFileUrl,
                     options: nil
                 )
-            }.mapNonNil()
+            }
         }
     }
 

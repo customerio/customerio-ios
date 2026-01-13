@@ -70,7 +70,7 @@ jobs:
 
   # 3) Generate SDK size reports or other tasks
   generate-sdk-size-reports:
-    runs-on: macos-14
+    runs-on: macos-15
     permissions:
       pull-requests: write
     steps:

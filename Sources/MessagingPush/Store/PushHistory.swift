@@ -33,32 +33,24 @@ enum PushHistoryEvent {
 // sourcery: InjectRegisterShared = "PushHistory"
 // sourcery: InjectSingleton
 class PushHistoryImpl: PushHistory {
-    private let lock: Lock
+    private let history: Synchronized<[PushHistoryEvent: Set<Push>]> = .init(initial: [:])
 
-    @Atomic private var history: [PushHistoryEvent: Set<Push>] = [:]
-
-    init(lockManager: LockManager) {
-        self.lock = lockManager.getLock(id: .pushHistory)
-    }
+    init() {}
 
     func hasHandledPush(pushEvent: PushHistoryEvent, pushId: String, pushDeliveryDate: Date) -> Bool {
-        lock.lock()
-        defer { lock.unlock() }
+        history.mutating { history in
+            var eventsHistory = history[pushEvent, default: Set()]
 
-        var eventsHistory = history[pushEvent] ?? Set<Push>()
+            let push = Push(pushId: pushId, pushDeliveryDate: pushDeliveryDate)
+            let hasHandledAlready = eventsHistory.contains(push)
 
-        let push = Push(pushId: pushId, pushDeliveryDate: pushDeliveryDate)
-        let hasHandledAlready = eventsHistory.contains(push)
+            if !hasHandledAlready {
+                eventsHistory.insert(push)
+                history[pushEvent] = eventsHistory
+            }
 
-        if hasHandledAlready {
-            return true // push has already been handled. exit early
+            return hasHandledAlready
         }
-
-        eventsHistory.insert(push)
-
-        history[pushEvent] = eventsHistory
-
-        return false // push has not yet been handled.
     }
 
     // In order to uniquely identify a push notification from another, the identifier is not enough. For local notifications especially,
