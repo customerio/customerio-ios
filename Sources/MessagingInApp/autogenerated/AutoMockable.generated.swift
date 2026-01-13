@@ -1615,45 +1615,10 @@ class SseRetryHelperProtocolMock: SseRetryHelperProtocol, Mock {
         Mocks.shared.add(mock: self)
     }
 
-    /**
-     When setter of the property called, the value given to setter is set here.
-     When the getter of the property called, the value set here will be returned. Your chance to mock the property.
-     */
-    var underlyingRetryDecisionStream: AsyncStream<(RetryDecision, UInt64)>!
-    /// `true` if the getter or setter of property is called at least once.
-    var retryDecisionStreamCalled: Bool {
-        retryDecisionStreamGetCalled || retryDecisionStreamSetCalled
-    }
-
-    /// `true` if the getter called on the property at least once.
-    var retryDecisionStreamGetCalled: Bool {
-        retryDecisionStreamGetCallsCount > 0
-    }
-
-    var retryDecisionStreamGetCallsCount = 0
-    /// `true` if the setter called on the property at least once.
-    var retryDecisionStreamSetCalled: Bool {
-        retryDecisionStreamSetCallsCount > 0
-    }
-
-    var retryDecisionStreamSetCallsCount = 0
-    /// The mocked property with a getter and setter.
-    var retryDecisionStream: AsyncStream<(RetryDecision, UInt64)> {
-        get {
-            mockCalled = true
-            retryDecisionStreamGetCallsCount += 1
-            return underlyingRetryDecisionStream
-        }
-        set(value) {
-            mockCalled = true
-            retryDecisionStreamSetCallsCount += 1
-            underlyingRetryDecisionStream = value
-        }
-    }
-
     public func resetMock() {
-        retryDecisionStreamGetCallsCount = 0
-        retryDecisionStreamSetCallsCount = 0
+        createNewRetryStreamCallsCount = 0
+
+        mockCalled = false // do last as resetting properties above can make this true
         setActiveGenerationCallsCount = 0
         setActiveGenerationReceivedArguments = nil
         setActiveGenerationReceivedInvocations = []
@@ -1669,6 +1634,31 @@ class SseRetryHelperProtocolMock: SseRetryHelperProtocol, Mock {
         resetRetryStateReceivedInvocations = []
 
         mockCalled = false // do last as resetting properties above can make this true
+    }
+
+    // MARK: - createNewRetryStream
+
+    /// Number of times the function was called.
+    @Atomic private(set) var createNewRetryStreamCallsCount = 0
+    /// `true` if the function was ever called.
+    var createNewRetryStreamCalled: Bool {
+        createNewRetryStreamCallsCount > 0
+    }
+
+    /// Value to return from the mocked function.
+    var createNewRetryStreamReturnValue: AsyncStream<(RetryDecision, UInt64)>!
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     The closure has first priority to return a value for the mocked function. If the closure returns `nil`,
+     then the mock will attempt to return the value for `createNewRetryStreamReturnValue`
+     */
+    var createNewRetryStreamClosure: (() -> AsyncStream<(RetryDecision, UInt64)>)?
+
+    /// Mocked function for `createNewRetryStream()`. Your opportunity to return a mocked value and check result of mock in test code.
+    func createNewRetryStream() -> AsyncStream<(RetryDecision, UInt64)> {
+        mockCalled = true
+        createNewRetryStreamCallsCount += 1
+        return createNewRetryStreamClosure.map { $0() } ?? createNewRetryStreamReturnValue
     }
 
     // MARK: - setActiveGeneration

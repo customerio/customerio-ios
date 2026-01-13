@@ -38,7 +38,7 @@ class SseRetryHelperTest: XCTestCase {
 
     func test_scheduleRetry_givenRetryableError_firstAttempt_expectImmediateRetry() async {
         let helper = SseRetryHelper(logger: loggerMock, sleeper: instantSleeper)
-        let stream = await helper.retryDecisionStream
+        let stream = await helper.createNewRetryStream()
         var iterator = stream.makeAsyncIterator()
 
         // Set active generation before scheduling retry
@@ -61,7 +61,7 @@ class SseRetryHelperTest: XCTestCase {
 
     func test_scheduleRetry_givenRetryableError_secondAttempt_expectDelayedRetry() async throws {
         let helper = SseRetryHelper(logger: loggerMock, sleeper: instantSleeper)
-        let stream = await helper.retryDecisionStream
+        let stream = await helper.createNewRetryStream()
         var iterator = stream.makeAsyncIterator()
 
         // Set active generation before scheduling retry
@@ -92,7 +92,7 @@ class SseRetryHelperTest: XCTestCase {
 
     func test_scheduleRetry_givenMaxRetriesExceeded_expectMaxRetriesReachedDecision() async {
         let helper = SseRetryHelper(logger: loggerMock, sleeper: instantSleeper)
-        let stream = await helper.retryDecisionStream
+        let stream = await helper.createNewRetryStream()
         var iterator = stream.makeAsyncIterator()
 
         // Set active generation before scheduling retry
@@ -127,7 +127,7 @@ class SseRetryHelperTest: XCTestCase {
 
     func test_scheduleRetry_givenNonRetryableError_expectRetryNotPossible() async {
         let helper = SseRetryHelper(logger: loggerMock, sleeper: instantSleeper)
-        let stream = await helper.retryDecisionStream
+        let stream = await helper.createNewRetryStream()
         var iterator = stream.makeAsyncIterator()
 
         // Set active generation before scheduling retry
@@ -146,7 +146,7 @@ class SseRetryHelperTest: XCTestCase {
 
     func test_scheduleRetry_givenServerErrorNotRetryable_expectRetryNotPossible() async {
         let helper = SseRetryHelper(logger: loggerMock, sleeper: instantSleeper)
-        let stream = await helper.retryDecisionStream
+        let stream = await helper.createNewRetryStream()
         var iterator = stream.makeAsyncIterator()
 
         // Set active generation before scheduling retry
@@ -167,7 +167,7 @@ class SseRetryHelperTest: XCTestCase {
 
     func test_resetRetryState_givenRetriesInProgress_expectCountReset() async {
         let helper = SseRetryHelper(logger: loggerMock, sleeper: instantSleeper)
-        let stream = await helper.retryDecisionStream
+        let stream = await helper.createNewRetryStream()
         var iterator = stream.makeAsyncIterator()
 
         // Set active generation before scheduling retry
@@ -199,7 +199,7 @@ class SseRetryHelperTest: XCTestCase {
 
     func test_scheduleRetry_givenTimeoutError_expectRetryable() async {
         let helper = SseRetryHelper(logger: loggerMock, sleeper: instantSleeper)
-        let stream = await helper.retryDecisionStream
+        let stream = await helper.createNewRetryStream()
         var iterator = stream.makeAsyncIterator()
 
         // Set active generation before scheduling retry
@@ -217,7 +217,7 @@ class SseRetryHelperTest: XCTestCase {
 
     func test_scheduleRetry_givenStaleGeneration_expectIgnored() async {
         let helper = SseRetryHelper(logger: loggerMock, sleeper: instantSleeper)
-        let stream = await helper.retryDecisionStream
+        let stream = await helper.createNewRetryStream()
         var iterator = stream.makeAsyncIterator()
 
         // Set active generation to 2
@@ -241,7 +241,7 @@ class SseRetryHelperTest: XCTestCase {
 
     func test_resetRetryState_givenStaleGeneration_expectIgnored() async {
         let helper = SseRetryHelper(logger: loggerMock, sleeper: instantSleeper)
-        let stream = await helper.retryDecisionStream
+        let stream = await helper.createNewRetryStream()
         var iterator = stream.makeAsyncIterator()
 
         // Set active generation
