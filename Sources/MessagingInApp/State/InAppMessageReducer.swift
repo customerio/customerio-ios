@@ -32,6 +32,9 @@ private func reducer(action: InAppMessageAction, state: InAppMessageState) -> In
     case .setPollingInterval(let interval):
         return state.copy(pollInterval: interval)
 
+    case .setSseEnabled(let enabled):
+        return state.copy(useSse: enabled)
+
     case .setUserIdentifier(let user):
         return state.copy(userId: user)
 

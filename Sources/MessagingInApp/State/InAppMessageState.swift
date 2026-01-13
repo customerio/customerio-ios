@@ -12,6 +12,7 @@ struct InAppMessageState: Equatable, CustomStringConvertible {
     let userId: String?
     let anonymousId: String?
     let currentRoute: String?
+    let useSse: Bool
     let modalMessageState: ModalMessageState
     let embeddedMessagesState: EmbeddedMessagesState
     let messagesInQueue: Set<Message>
@@ -25,6 +26,7 @@ struct InAppMessageState: Equatable, CustomStringConvertible {
         userId: String? = nil,
         anonymousId: String? = nil,
         currentRoute: String? = nil,
+        useSse: Bool = false,
         modalMessageState: ModalMessageState = .initial,
         embeddedMessagesState: EmbeddedMessagesState = EmbeddedMessagesState(),
         messagesInQueue: Set<Message> = [],
@@ -37,6 +39,7 @@ struct InAppMessageState: Equatable, CustomStringConvertible {
         self.userId = userId
         self.anonymousId = anonymousId
         self.currentRoute = currentRoute
+        self.useSse = useSse
         self.modalMessageState = modalMessageState
         self.embeddedMessagesState = embeddedMessagesState
         self.messagesInQueue = messagesInQueue
@@ -50,6 +53,7 @@ struct InAppMessageState: Equatable, CustomStringConvertible {
         userId: String? = nil,
         anonymousId: String? = nil,
         currentRoute: String? = nil,
+        useSse: Bool? = nil,
         modalMessageState: ModalMessageState? = nil,
         embeddedMessagesState: EmbeddedMessagesState? = nil,
         messagesInQueue: Set<Message>? = nil,
@@ -63,6 +67,7 @@ struct InAppMessageState: Equatable, CustomStringConvertible {
             userId: userId ?? self.userId,
             anonymousId: anonymousId ?? self.anonymousId,
             currentRoute: currentRoute ?? self.currentRoute,
+            useSse: useSse ?? self.useSse,
             modalMessageState: modalMessageState ?? self.modalMessageState,
             embeddedMessagesState: embeddedMessagesState ?? self.embeddedMessagesState,
             messagesInQueue: messagesInQueue ?? self.messagesInQueue,
@@ -78,6 +83,7 @@ struct InAppMessageState: Equatable, CustomStringConvertible {
             lhs.userId == rhs.userId &&
             lhs.anonymousId == rhs.anonymousId &&
             lhs.currentRoute == rhs.currentRoute &&
+            lhs.useSse == rhs.useSse &&
             lhs.modalMessageState == rhs.modalMessageState &&
             lhs.messagesInQueue == rhs.messagesInQueue &&
             lhs.shownMessageQueueIds == rhs.shownMessageQueueIds
@@ -93,12 +99,29 @@ struct InAppMessageState: Equatable, CustomStringConvertible {
             userId: \(String(describing: userId)),
             anonymousId: \(String(describing: anonymousId)),
             currentRoute: \(String(describing: currentRoute)),
+            useSse: \(String(describing: useSse)),
             modalMessageState: \(modalMessageState),
             embeddedMessagesState: \(embeddedMessagesState),
             messagesInQueue: \(messagesInQueue.map(\.describeForLogs)),
             shownMessageQueueIds: \(shownMessageQueueIds)
         )
         """
+    }
+
+    // MARK: - SSE Eligibility
+
+    /// Returns true if user is identified (has a non-empty userId).
+    /// Anonymous users (only anonymousId) are not eligible for SSE.
+    var isUserIdentified: Bool {
+        guard let userId = userId else { return false }
+        return !userId.isEmpty
+    }
+
+    /// Returns true if SSE should be used for real-time message delivery.
+    /// SSE requires both: SSE flag enabled AND user is identified.
+    /// Anonymous users always use polling even if SSE flag is enabled.
+    var shouldUseSse: Bool {
+        useSse && isUserIdentified
     }
 }
 
@@ -124,6 +147,7 @@ extension InAppMessageState {
         putIfDifferent(\.userId, as: "userId")
         putIfDifferent(\.anonymousId, as: "anonymousId")
         putIfDifferent(\.currentRoute, as: "currentRoute")
+        putIfDifferent(\.useSse, as: "useSse")
         putIfDifferent(\.modalMessageState, as: "currentMessageState")
         putIfDifferent(\.embeddedMessagesState, as: "embeddedMessagesState")
         putIfDifferent(\.messagesInQueue, as: "messagesInQueue")

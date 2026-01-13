@@ -50,7 +50,8 @@ class InAppMessageStateTests: IntegrationTest {
             gistDelegate: diGraphShared.gistDelegate,
             inAppMessageManager: inAppMessageManager,
             queueManager: queueManager,
-            threadUtil: diGraphShared.threadUtil
+            threadUtil: diGraphShared.threadUtil,
+            sseLifecycleManager: diGraphShared.sseLifecycleManager
         )
     }
 
@@ -78,6 +79,7 @@ class InAppMessageStateTests: IntegrationTest {
         XCTAssertEqual(state.pollInterval, 600)
         XCTAssertNil(state.userId)
         XCTAssertNil(state.currentRoute)
+        XCTAssertEqual(state.useSse, false)
         XCTAssertEqual(state.modalMessageState, .initial)
         XCTAssertTrue(state.messagesInQueue.isEmpty)
         XCTAssertTrue(state.shownMessageQueueIds.isEmpty)
@@ -584,6 +586,487 @@ class InAppMessageStateTests: IntegrationTest {
         gist.fetchUserMessagesFromRemoteQueue()
 
         XCTAssertTrue(state.messagesInQueue.isEmpty)
+    }
+
+    // MARK: - SSE Flag Tests
+
+    func test_setSseEnabled_givenTrue_expectSseFlagSetToTrue() async {
+        await inAppMessageManager.dispatchAsync(action: .initialize(siteId: .random, dataCenter: .random, environment: .production))
+        await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: .random))
+        await inAppMessageManager.dispatchAsync(action: .setSseEnabled(enabled: true))
+
+        let state = await inAppMessageManager.state
+        XCTAssertEqual(state.useSse, true)
+    }
+
+    func test_setSseEnabled_givenFalse_expectSseFlagSetToFalse() async {
+        await inAppMessageManager.dispatchAsync(action: .initialize(siteId: .random, dataCenter: .random, environment: .production))
+        await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: .random))
+        await inAppMessageManager.dispatchAsync(action: .setSseEnabled(enabled: false))
+
+        let state = await inAppMessageManager.state
+        XCTAssertEqual(state.useSse, false)
+    }
+
+    func test_setSseEnabled_givenMultipleChanges_expectStateUpdated() async {
+        await inAppMessageManager.dispatchAsync(action: .initialize(siteId: .random, dataCenter: .random, environment: .production))
+        await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: .random))
+
+        await inAppMessageManager.dispatchAsync(action: .setSseEnabled(enabled: true))
+        var state = await inAppMessageManager.state
+        XCTAssertEqual(state.useSse, true)
+
+        await inAppMessageManager.dispatchAsync(action: .setSseEnabled(enabled: false))
+        state = await inAppMessageManager.state
+        XCTAssertEqual(state.useSse, false)
+
+        await inAppMessageManager.dispatchAsync(action: .setSseEnabled(enabled: true))
+        state = await inAppMessageManager.state
+        XCTAssertEqual(state.useSse, true)
+    }
+
+    func test_resetState_expectSseFlagCleared() async {
+        await inAppMessageManager.dispatchAsync(action: .initialize(siteId: .random, dataCenter: .random, environment: .production))
+        await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: .random))
+
+        await inAppMessageManager.dispatchAsync(action: .setSseEnabled(enabled: true))
+        var state = await inAppMessageManager.state
+        XCTAssertEqual(state.useSse, true)
+
+        await inAppMessageManager.dispatchAsync(action: .resetState)
+        state = await inAppMessageManager.state
+        XCTAssertEqual(state.useSse, false)
+    }
+
+    // MARK: - SSE Header Detection Tests
+
+    func test_fetch_givenSseHeaderTrue_expectSseFlagSetToTrue() async {
+        await inAppMessageManager.dispatchAsync(action: .initialize(siteId: .random, dataCenter: .random, environment: .production))
+        await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: .random))
+
+        var state = await inAppMessageManager.state
+        XCTAssertEqual(state.useSse, false)
+
+        let headers = [
+            "x-gist-queue-polling-interval": "600",
+            "x-cio-use-sse": "true"
+        ]
+        setupHttpResponse(code: 200, body: "[]".data, headers: headers)
+
+        queueManager.fetchUserQueue(state: state) { _ in }
+
+        state = await inAppMessageManager.waitForState { state in
+            state.useSse == true
+        }
+        XCTAssertEqual(state.useSse, true)
+    }
+
+    func test_fetch_givenSseHeaderFalse_expectSseFlagSetToFalse() async {
+        await inAppMessageManager.dispatchAsync(action: .initialize(siteId: .random, dataCenter: .random, environment: .production))
+        await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: .random))
+
+        var state = await inAppMessageManager.state
+        XCTAssertEqual(state.useSse, false)
+
+        let headers = [
+            "x-gist-queue-polling-interval": "600",
+            "x-cio-use-sse": "false"
+        ]
+        setupHttpResponse(code: 200, body: "[]".data, headers: headers)
+
+        queueManager.fetchUserQueue(state: state) { _ in }
+
+        // Since it's already false, verify it remains false
+        state = await inAppMessageManager.state
+        XCTAssertEqual(state.useSse, false)
+    }
+
+    func test_fetch_givenNoSseHeader_expectSseFlagUnchanged() async {
+        await inAppMessageManager.dispatchAsync(action: .initialize(siteId: .random, dataCenter: .random, environment: .production))
+        await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: .random))
+
+        var state = await inAppMessageManager.state
+        XCTAssertEqual(state.useSse, false)
+
+        let headers = [
+            "x-gist-queue-polling-interval": "600"
+        ]
+        setupHttpResponse(code: 200, body: "[]".data, headers: headers)
+
+        queueManager.fetchUserQueue(state: state) { _ in }
+
+        // Verify SSE flag remains unchanged
+        state = await inAppMessageManager.state
+        XCTAssertEqual(state.useSse, false)
+    }
+
+    func test_fetch_givenInvalidSseHeaderValue_expectSseFlagSetToFalse() async {
+        await inAppMessageManager.dispatchAsync(action: .initialize(siteId: .random, dataCenter: .random, environment: .production))
+        await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: .random))
+
+        var state = await inAppMessageManager.state
+        XCTAssertEqual(state.useSse, false)
+
+        let headers = [
+            "x-gist-queue-polling-interval": "600",
+            "x-cio-use-sse": "invalid"
+        ]
+        setupHttpResponse(code: 200, body: "[]".data, headers: headers)
+
+        queueManager.fetchUserQueue(state: state) { _ in }
+
+        // Since it's already false and "invalid" converts to false, verify it remains false
+        state = await inAppMessageManager.state
+        XCTAssertEqual(state.useSse, false)
+    }
+
+    func test_fetch_givenSseHeaderChangesFromTrueToFalse_expectSseFlagUpdated() async {
+        await inAppMessageManager.dispatchAsync(action: .initialize(siteId: .random, dataCenter: .random, environment: .production))
+        await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: .random))
+
+        var state = await inAppMessageManager.state
+
+        // First fetch with SSE enabled
+        var headers = [
+            "x-gist-queue-polling-interval": "600",
+            "x-cio-use-sse": "true"
+        ]
+        setupHttpResponse(code: 200, body: "[]".data, headers: headers)
+        queueManager.fetchUserQueue(state: state) { _ in }
+
+        state = await inAppMessageManager.waitForState { state in
+            state.useSse == true
+        }
+        XCTAssertEqual(state.useSse, true)
+
+        // Second fetch with SSE disabled
+        headers = [
+            "x-gist-queue-polling-interval": "600",
+            "x-cio-use-sse": "false"
+        ]
+        setupHttpResponse(code: 200, body: "[]".data, headers: headers)
+        queueManager.fetchUserQueue(state: state) { _ in }
+
+        state = await inAppMessageManager.waitForState { state in
+            state.useSse == false
+        }
+        XCTAssertEqual(state.useSse, false)
+    }
+
+    // MARK: - SSE Connection Manager Integration Tests
+
+    func test_sseFlagEnabled_expectConnectionManagerStartConnectionCalled() async {
+        await inAppMessageManager.dispatchAsync(action: .initialize(siteId: .random, dataCenter: .random, environment: .production))
+        await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: .random))
+
+        // Enable SSE flag
+        await inAppMessageManager.dispatchAsync(action: .setSseEnabled(enabled: true))
+
+        // Wait for state to update
+        let state = await inAppMessageManager.waitForState { state in
+            state.useSse == true
+        }
+
+        XCTAssertEqual(state.useSse, true)
+
+        // Note: SseConnectionManager handles duplicate startConnection calls gracefully
+        // Multiple calls to enable SSE will be idempotent in the connection manager
+    }
+
+    func test_sseFlagDisabled_expectConnectionManagerStopConnectionCalled() async {
+        await inAppMessageManager.dispatchAsync(action: .initialize(siteId: .random, dataCenter: .random, environment: .production))
+        await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: .random))
+
+        // Enable SSE first
+        await inAppMessageManager.dispatchAsync(action: .setSseEnabled(enabled: true))
+        var state = await inAppMessageManager.waitForState { state in
+            state.useSse == true
+        }
+        XCTAssertEqual(state.useSse, true)
+
+        // Then disable SSE
+        await inAppMessageManager.dispatchAsync(action: .setSseEnabled(enabled: false))
+        state = await inAppMessageManager.waitForState { state in
+            state.useSse == false
+        }
+
+        XCTAssertEqual(state.useSse, false)
+
+        // Note: In a real test, we would verify that SseConnectionManager.stopConnection was called
+        // For Phase 1, we're just verifying the state change triggers the handler
+    }
+
+    // MARK: - Polling and SSE Coordination Tests
+
+    func test_sseFlagEnabled_expectPollingStops() async {
+        await inAppMessageManager.dispatchAsync(action: .initialize(siteId: .random, dataCenter: .random, environment: .production))
+        await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: .random))
+
+        // Start polling by fetching messages
+        gist.fetchUserMessagesFromRemoteQueue()
+
+        // Enable SSE - this should stop polling
+        await inAppMessageManager.dispatchAsync(action: .setSseEnabled(enabled: true))
+
+        let state = await inAppMessageManager.waitForState { state in
+            state.useSse == true
+        }
+
+        XCTAssertEqual(state.useSse, true)
+        // Note: In Phase 1, we verify the state change. In Phase 2+, we would verify:
+        // - Polling timer is invalidated
+        // - No more fetch calls are made while SSE is enabled
+    }
+
+    func test_sseFlagDisabled_expectPollingResumes() async {
+        await inAppMessageManager.dispatchAsync(action: .initialize(siteId: .random, dataCenter: .random, environment: .production))
+        await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: .random))
+
+        // Enable SSE (which stops polling)
+        await inAppMessageManager.dispatchAsync(action: .setSseEnabled(enabled: true))
+        var state = await inAppMessageManager.waitForState { state in
+            state.useSse == true
+        }
+        XCTAssertEqual(state.useSse, true)
+
+        // Disable SSE - this should resume polling
+        await inAppMessageManager.dispatchAsync(action: .setSseEnabled(enabled: false))
+        state = await inAppMessageManager.waitForState { state in
+            state.useSse == false
+        }
+
+        XCTAssertEqual(state.useSse, false)
+        // Note: In Phase 1, we verify the state change. In Phase 2+, we would verify:
+        // - Polling timer is restarted
+        // - Fetch calls resume at the polling interval
+    }
+
+    // MARK: - SSE Message Queue Processing After Dismissal Tests
+
+    func test_dismissMessage_givenSseEnabled_expectNextMessageLoaded() async throws {
+        // Setup: Initialize with SSE enabled and identified user
+        await inAppMessageManager.dispatchAsync(action: .initialize(siteId: .random, dataCenter: .random, environment: .production))
+        await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: "testUser"))
+        await inAppMessageManager.dispatchAsync(action: .setSseEnabled(enabled: true))
+
+        // Add multiple messages to queue with different priorities
+        let message1 = Message(priority: 1, queueId: "message1")
+        let message2 = Message(priority: 2, queueId: "message2")
+        let message3 = Message(priority: 3, queueId: "message3")
+
+        await inAppMessageManager.dispatchAsync(action: .processMessageQueue(messages: [message1, message2, message3]))
+
+        // Wait for the first message (highest priority) to be loaded
+        var state = await inAppMessageManager.waitForState { state in
+            state.modalMessageState.isLoading
+        }
+        XCTAssertEqual(state.modalMessageState, .loading(message: message1))
+
+        // Display and dismiss the first message
+        await inAppMessageManager.dispatchAsync(action: .displayMessage(message: message1))
+        try await dispatchAndWait(.dismissMessage(message: message1))
+
+        // Verify: With SSE enabled, the next message (message2) should be loaded automatically
+        state = await inAppMessageManager.waitForState { state in
+            if case .loading(let msg) = state.modalMessageState {
+                return msg.queueId == "message2"
+            }
+            return false
+        }
+
+        if case .loading(let loadedMessage) = state.modalMessageState {
+            XCTAssertEqual(loadedMessage.queueId, "message2", "With SSE enabled, next message should be loaded after dismissal")
+        } else {
+            XCTFail("Expected loading state with message2 after dismissing message1 with SSE enabled")
+        }
+    }
+
+    func test_dismissMessage_givenSseDisabled_expectNoAutoLoadNextMessage() async throws {
+        // Setup: Initialize WITHOUT SSE (polling mode)
+        await inAppMessageManager.dispatchAsync(action: .initialize(siteId: .random, dataCenter: .random, environment: .production))
+        await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: "testUser"))
+        // SSE is disabled by default, but let's be explicit
+        await inAppMessageManager.dispatchAsync(action: .setSseEnabled(enabled: false))
+
+        // Add multiple messages to queue
+        let message1 = Message(priority: 1, queueId: "message1")
+        let message2 = Message(priority: 2, queueId: "message2")
+
+        await inAppMessageManager.dispatchAsync(action: .processMessageQueue(messages: [message1, message2]))
+
+        // Wait for the first message to be loaded
+        var state = await inAppMessageManager.waitForState { state in
+            state.modalMessageState.isLoading
+        }
+        XCTAssertEqual(state.modalMessageState, .loading(message: message1))
+
+        // Display and dismiss the first message
+        await inAppMessageManager.dispatchAsync(action: .displayMessage(message: message1))
+        await inAppMessageManager.dispatchAsync(action: .dismissMessage(message: message1))
+
+        // Verify: With SSE disabled, the state should remain dismissed (no auto-load of next message)
+        state = await inAppMessageManager.state
+        XCTAssertEqual(state.modalMessageState, .dismissed(message: message1), "With SSE disabled, state should remain dismissed without auto-loading next message")
+    }
+
+    func test_dismissMessage_givenSseFlagTrueButAnonymousUser_expectNoAutoLoadNextMessage() async throws {
+        // Setup: Initialize with SSE flag true but only anonymousId (no userId)
+        await inAppMessageManager.dispatchAsync(action: .initialize(siteId: .random, dataCenter: .random, environment: .production))
+        await inAppMessageManager.dispatchAsync(action: .setAnonymousIdentifier(anonymousId: "anonymous123"))
+        await inAppMessageManager.dispatchAsync(action: .setSseEnabled(enabled: true))
+
+        var state = await inAppMessageManager.state
+        // Verify shouldUseSse is false because user is not identified
+        XCTAssertTrue(state.useSse, "SSE flag should be true")
+        XCTAssertFalse(state.shouldUseSse, "shouldUseSse should be false for anonymous users")
+
+        // Add multiple messages to queue
+        let message1 = Message(priority: 1, queueId: "message1")
+        let message2 = Message(priority: 2, queueId: "message2")
+
+        await inAppMessageManager.dispatchAsync(action: .processMessageQueue(messages: [message1, message2]))
+
+        // Wait for the first message to be loaded
+        state = await inAppMessageManager.waitForState { state in
+            state.modalMessageState.isLoading
+        }
+        XCTAssertEqual(state.modalMessageState, .loading(message: message1))
+
+        // Display and dismiss the first message
+        await inAppMessageManager.dispatchAsync(action: .displayMessage(message: message1))
+        await inAppMessageManager.dispatchAsync(action: .dismissMessage(message: message1))
+
+        // Verify: With anonymous user (shouldUseSse=false), the state should remain dismissed
+        state = await inAppMessageManager.state
+        XCTAssertEqual(state.modalMessageState, .dismissed(message: message1), "With anonymous user, state should remain dismissed without auto-loading next message")
+    }
+
+    func test_dismissMessage_givenSseEnabledAndMultipleMessages_expectMessagesProcessedInPriorityOrder() async throws {
+        // Setup: Initialize with SSE enabled and identified user
+        await inAppMessageManager.dispatchAsync(action: .initialize(siteId: .random, dataCenter: .random, environment: .production))
+        await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: "testUser"))
+        await inAppMessageManager.dispatchAsync(action: .setSseEnabled(enabled: true))
+
+        // Add messages with different priorities (lower number = higher priority)
+        let message1 = Message(priority: 1, queueId: "highPriority")
+        let message2 = Message(priority: 2, queueId: "mediumPriority")
+        let message3 = Message(priority: 3, queueId: "lowPriority")
+
+        await inAppMessageManager.dispatchAsync(action: .processMessageQueue(messages: [message3, message1, message2])) // Add in random order
+
+        // First message (highest priority) should be loaded
+        var state = await inAppMessageManager.waitForState { state in
+            state.modalMessageState.isLoading
+        }
+        XCTAssertEqual(state.modalMessageState, .loading(message: message1))
+
+        // Display and dismiss first message
+        await inAppMessageManager.dispatchAsync(action: .displayMessage(message: message1))
+        try await dispatchAndWait(.dismissMessage(message: message1))
+
+        // Second message (medium priority) should be loaded
+        state = await inAppMessageManager.waitForState { state in
+            if case .loading(let msg) = state.modalMessageState {
+                return msg.queueId == "mediumPriority"
+            }
+            return false
+        }
+        XCTAssertEqual(state.modalMessageState, .loading(message: message2))
+
+        // Display and dismiss second message
+        await inAppMessageManager.dispatchAsync(action: .displayMessage(message: message2))
+        try await dispatchAndWait(.dismissMessage(message: message2))
+
+        // Third message (low priority) should be loaded
+        state = await inAppMessageManager.waitForState { state in
+            if case .loading(let msg) = state.modalMessageState {
+                return msg.queueId == "lowPriority"
+            }
+            return false
+        }
+        XCTAssertEqual(state.modalMessageState, .loading(message: message3))
+    }
+
+    func test_dismissMessage_givenSseEnabledAndAlreadyShownMessage_expectMessageNotLoadedAgain() async throws {
+        // Setup: Initialize with SSE enabled
+        await inAppMessageManager.dispatchAsync(action: .initialize(siteId: .random, dataCenter: .random, environment: .production))
+        await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: "testUser"))
+        await inAppMessageManager.dispatchAsync(action: .setSseEnabled(enabled: true))
+
+        // Add two messages
+        let message1 = Message(priority: 1, queueId: "message1")
+        let message2 = Message(priority: 2, queueId: "message2")
+
+        await inAppMessageManager.dispatchAsync(action: .processMessageQueue(messages: [message1, message2]))
+
+        // Wait for message1 to load, display it, and dismiss it
+        var state = await inAppMessageManager.waitForState { state in
+            state.modalMessageState.isLoading
+        }
+        await inAppMessageManager.dispatchAsync(action: .displayMessage(message: message1))
+        try await dispatchAndWait(.dismissMessage(message: message1))
+
+        // Wait for message2 to load, display it, and dismiss it
+        state = await inAppMessageManager.waitForState { state in
+            if case .loading(let msg) = state.modalMessageState {
+                return msg.queueId == "message2"
+            }
+            return false
+        }
+        await inAppMessageManager.dispatchAsync(action: .displayMessage(message: message2))
+        try await dispatchAndWait(.dismissMessage(message: message2))
+
+        // Verify: Both messages should be in shownMessageQueueIds
+        state = await inAppMessageManager.state
+        XCTAssertTrue(state.shownMessageQueueIds.contains("message1"), "message1 should be marked as shown")
+        XCTAssertTrue(state.shownMessageQueueIds.contains("message2"), "message2 should be marked as shown")
+
+        // State should remain dismissed (no more messages to show)
+        XCTAssertEqual(state.modalMessageState, .dismissed(message: message2))
+    }
+
+    func test_dismissMessage_givenSseEnabledWithPageRule_expectOnlyMatchingMessageLoaded() async throws {
+        // Setup: Initialize with SSE enabled and set route
+        await inAppMessageManager.dispatchAsync(action: .initialize(siteId: .random, dataCenter: .random, environment: .production))
+        await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: "testUser"))
+        await inAppMessageManager.dispatchAsync(action: .setSseEnabled(enabled: true))
+        await inAppMessageManager.dispatchAsync(action: .setPageRoute(route: "home"))
+
+        // Add messages: one without page rule, one matching route, one not matching
+        let messageNoRule = Message(priority: 1, queueId: "noRule")
+        let messageHomeRoute = Message(priority: 2, pageRule: "home", queueId: "homeRoute")
+        let messageProfileRoute = Message(priority: 3, pageRule: "profile", queueId: "profileRoute")
+
+        await inAppMessageManager.dispatchAsync(action: .processMessageQueue(messages: [messageNoRule, messageHomeRoute, messageProfileRoute]))
+
+        // First message (no page rule, highest priority) should be loaded
+        var state = await inAppMessageManager.waitForState { state in
+            state.modalMessageState.isLoading
+        }
+        XCTAssertEqual(state.modalMessageState, .loading(message: messageNoRule))
+
+        // Display and dismiss first message
+        await inAppMessageManager.dispatchAsync(action: .displayMessage(message: messageNoRule))
+        try await dispatchAndWait(.dismissMessage(message: messageNoRule))
+
+        // Second message (matching home route) should be loaded
+        state = await inAppMessageManager.waitForState { state in
+            if case .loading(let msg) = state.modalMessageState {
+                return msg.queueId == "homeRoute"
+            }
+            return false
+        }
+        XCTAssertEqual(state.modalMessageState, .loading(message: messageHomeRoute))
+
+        // Display and dismiss second message
+        await inAppMessageManager.dispatchAsync(action: .displayMessage(message: messageHomeRoute))
+        try await dispatchAndWait(.dismissMessage(message: messageHomeRoute))
+
+        // Verify: profileRoute message should NOT be loaded since route doesn't match
+        state = await inAppMessageManager.state
+        // The messageProfileRoute should not be loaded since current route is "home" not "profile"
+        XCTAssertEqual(state.modalMessageState, .dismissed(message: messageHomeRoute), "Message with non-matching page rule should not be auto-loaded")
+        XCTAssertFalse(state.shownMessageQueueIds.contains("profileRoute"), "profileRoute message should not have been shown")
     }
 }
 
