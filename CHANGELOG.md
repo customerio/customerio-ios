@@ -1,3 +1,9 @@
+## [4.1.0](https://github.com/customerio/customerio-ios/compare/4.0.0...4.1.0) (2026-01-13)
+
+### Features
+
+* In-App SSE ([#975](https://github.com/customerio/customerio-ios/issues/975)) ([c8345c5](https://github.com/customerio/customerio-ios/commit/c8345c526d3bdb83dd77428a7d433191b01c4aba))
+
 ## [4.0.0](https://github.com/customerio/customerio-ios/compare/3.14.0...4.0.0) (2025-10-16)
 
 ### ⚠ BREAKING CHANGES
