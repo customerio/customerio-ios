@@ -5,7 +5,7 @@ scheme("Customer.io-Package")
 # -destination for xcodebuild
 # chosen to be a simulator that *all* xcode versions include. Help: https://github.com/actions/virtual-environments/blob/main/images/macos/macos-11-Readme.md#installed-simulators
 devices([
-  "iPhone 8"
+  "iPhone 16"
 ])
 
 output_types("html,junit")
