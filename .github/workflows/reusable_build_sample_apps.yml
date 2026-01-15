@@ -42,7 +42,7 @@ on:
 
 jobs:
   build_sample_apps:
-    runs-on: macos-14
+    runs-on: macos-15
     name: Building iOS sample apps
     strategy:
       fail-fast: false
