@@ -32,6 +32,10 @@ class Gist: GistProvider {
     private var userIdSubscriber: InAppMessageStoreSubscriber?
     private var queueTimer: Timer?
 
+    // Lifecycle observers for pausing/resuming polling timer
+    private var foregroundObserver: NSObjectProtocol?
+    private var backgroundObserver: NSObjectProtocol?
+
     init(
         logger: Logger,
         gistDelegate: GistDelegate,
@@ -48,6 +52,7 @@ class Gist: GistProvider {
         self.sseLifecycleManager = sseLifecycleManager
 
         subscribeToInAppMessageState()
+        setupLifecycleObservers()
 
         // Start the SSE lifecycle manager to observe app foreground/background events
         Task {
@@ -70,6 +75,14 @@ class Gist: GistProvider {
         pollIntervalSubscriber = nil
         sseEnabledSubscriber = nil
         userIdSubscriber = nil
+
+        // Remove lifecycle observers
+        if let observer = foregroundObserver {
+            NotificationCenter.default.removeObserver(observer)
+        }
+        if let observer = backgroundObserver {
+            NotificationCenter.default.removeObserver(observer)
+        }
 
         invalidateTimer()
     }
@@ -111,56 +124,8 @@ class Gist: GistProvider {
         }()
     }
 
-    /// Handles SSE flag changes for polling control.
-    /// When SSE becomes active (enabled + identified user), stop polling.
-    /// When SSE becomes disabled, start polling.
-    private func handleSseEnabledChange(state: InAppMessageState) {
-        logger.logWithModuleTag(
-            "Gist: SSE flag changed - sseEnabled: \(state.useSse), isUserIdentified: \(state.isUserIdentified), shouldUseSse: \(state.shouldUseSse)",
-            level: .info
-        )
-
-        if state.shouldUseSse {
-            // SSE is now active - stop polling
-            logger.logWithModuleTag("Gist: SSE enabled for identified user - stopping polling timer", level: .info)
-            invalidateTimer()
-        } else if !state.useSse {
-            // SSE disabled - start polling
-            logger.logWithModuleTag("Gist: SSE disabled - starting polling with interval: \(state.pollInterval)s", level: .info)
-            setupPollingAndFetch(skipMessageFetch: false, pollingInterval: state.pollInterval)
-        } else {
-            // SSE enabled but user is anonymous - polling continues
-            logger.logWithModuleTag("Gist: SSE enabled but user anonymous - polling continues", level: .debug)
-        }
-    }
-
-    /// Handles user identification changes for polling control.
-    /// When user becomes identified and SSE is enabled, stop polling (SSE will take over).
-    /// When user becomes anonymous but SSE flag is still enabled, start polling.
-    private func handleUserIdentificationChange(state: InAppMessageState) {
-        logger.logWithModuleTag(
-            "Gist: User identification changed - isUserIdentified: \(state.isUserIdentified), sseEnabled: \(state.useSse), shouldUseSse: \(state.shouldUseSse)",
-            level: .info
-        )
-
-        if state.shouldUseSse {
-            // User became identified and SSE is enabled - stop polling (SSE will take over)
-            logger.logWithModuleTag("Gist: User identified with SSE enabled - stopping polling (SSE will handle messages)", level: .info)
-            invalidateTimer()
-        } else if !state.isUserIdentified, state.useSse {
-            // User became anonymous but SSE flag is still enabled - start polling
-            // (SSE won't be used for anonymous users)
-            logger.logWithModuleTag("Gist: User became anonymous with SSE enabled - starting polling (SSE not used for anonymous users)", level: .info)
-            setupPollingAndFetch(skipMessageFetch: false, pollingInterval: state.pollInterval)
-        } else {
-            logger.logWithModuleTag("Gist: No polling action needed for user identification change", level: .debug)
-        }
-    }
-
-    private func invalidateTimer() {
+    fileprivate func invalidateTimer() {
         // Timer must be scheduled or modified on main.
-        let timerWasActive = queueTimer != nil
-        logger.logWithModuleTag("Gist: Invalidating polling timer (wasActive: \(timerWasActive))", level: .debug)
         threadUtil.runMain {
             self.queueTimer?.invalidate()
             self.queueTimer = nil
@@ -256,15 +221,9 @@ class Gist: GistProvider {
     }
 
     /// Fetches the user messages from the remote service and dispatches actions to the `InAppMessageManager`.
-    /// The method must be marked with `@objc` and public to be used as a selector in the `Timer` scheduled.
-    /// Also, the method must be called on main thread since it checks the application state.
+    /// The method must be marked with `@objc` to be used as a selector in the `Timer` scheduled.
     @objc
     func fetchUserMessages() {
-        guard UIApplication.shared.applicationState != .background else {
-            logger.logWithModuleTag("Gist: Application in background, skipping queue check", level: .debug)
-            return
-        }
-
         inAppMessageManager.fetchState { [weak self] state in
             guard let self else { return }
 
@@ -313,6 +272,64 @@ class Gist: GistProvider {
                     inAppMessageManager.dispatch(action: .clearMessageQueue)
                 }
             }
+        }
+    }
+}
+
+// MARK: - App Lifecycle & SSE State Handling
+
+private extension Gist {
+    func setupLifecycleObservers() {
+        foregroundObserver = NotificationCenter.default.addObserver(
+            forName: UIApplication.willEnterForegroundNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.handleForegrounded()
+        }
+
+        backgroundObserver = NotificationCenter.default.addObserver(
+            forName: UIApplication.didEnterBackgroundNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.handleBackgrounded()
+        }
+    }
+
+    private func handleForegrounded() {
+        logger.logWithModuleTag("Gist: App foregrounded - resuming polling timer", level: .info)
+
+        inAppMessageManager.fetchState { [weak self] state in
+            guard let self, !state.shouldUseSse else { return }
+            setupPollingAndFetch(skipMessageFetch: false, pollingInterval: state.pollInterval)
+        }
+    }
+
+    private func handleBackgrounded() {
+        logger.logWithModuleTag("Gist: App backgrounded - pausing polling timer", level: .info)
+        invalidateTimer()
+    }
+
+    /// Handles SSE flag changes for polling control.
+    func handleSseEnabledChange(state: InAppMessageState) {
+        if state.shouldUseSse {
+            logger.logWithModuleTag("Gist: SSE enabled for identified user - stopping polling timer", level: .info)
+            invalidateTimer()
+        } else if !state.useSse {
+            logger.logWithModuleTag("Gist: SSE disabled - starting polling with interval: \(state.pollInterval)s", level: .info)
+            setupPollingAndFetch(skipMessageFetch: false, pollingInterval: state.pollInterval)
+        }
+    }
+
+    /// Handles user identification changes for polling control.
+    func handleUserIdentificationChange(state: InAppMessageState) {
+        if state.shouldUseSse {
+            logger.logWithModuleTag("Gist: User identified with SSE enabled - stopping polling (SSE will handle messages)", level: .info)
+            invalidateTimer()
+        } else if !state.isUserIdentified, state.useSse {
+            logger.logWithModuleTag("Gist: User became anonymous with SSE enabled - starting polling", level: .info)
+            setupPollingAndFetch(skipMessageFetch: false, pollingInterval: state.pollInterval)
         }
     }
 }
