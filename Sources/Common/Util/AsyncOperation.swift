@@ -1,14 +1,14 @@
 import Foundation
 
-extension OperationQueue {
-    public func addAsyncOperation(asyncBlock: @escaping () async -> Void) {
+public extension OperationQueue {
+    func addAsyncOperation(asyncBlock: @escaping () async -> Void) {
         addOperation(AsyncOperation(asyncBlock: asyncBlock))
     }
 }
 
 public final class AsyncOperation: Operation, @unchecked Sendable {
     private let lock = NSRecursiveLock()
-    private var activeTask: Task<Void, Never>? = nil
+    private var activeTask: Task<Void, Never>?
 
     public let asyncBlock: () async -> Void
 
