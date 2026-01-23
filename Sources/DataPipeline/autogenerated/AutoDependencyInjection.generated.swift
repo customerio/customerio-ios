@@ -98,7 +98,7 @@ extension DIGraphShared {
     }
 
     private func _get_autoTrackingScreenViewStore() -> AutoTrackingScreenViewStore {
-        InMemoryAutoTrackingScreenViewStore(lockManager: lockManager)
+        InMemoryAutoTrackingScreenViewStore()
     }
 
     // DeviceAttributesProvider
