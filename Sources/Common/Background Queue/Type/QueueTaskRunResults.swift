@@ -1,6 +1,6 @@
 import Foundation
 
-public struct QueueTaskRunResults: Codable, AutoLenses, Equatable {
+public struct QueueTaskRunResults: Codable, Equatable {
     let totalRuns: Int
 
     enum CodingKeys: String, CodingKey {
