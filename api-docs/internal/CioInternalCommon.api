@@ -383,6 +383,7 @@ public final class CioInternalCommon.QueueTaskMetadata {
 	public var createdAt: Date;
 }
 public final class CioInternalCommon.QueueTaskRunResults {
+	public var totalRuns: Int;
 }
 public enum CioInternalCommon.QueueTaskType {
 }
