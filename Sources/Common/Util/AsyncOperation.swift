@@ -66,7 +66,10 @@ public final class AsyncOperation: Operation, @unchecked Sendable {
     override public func main() {
         lock.withLock {
             activeTask = Task { [weak self] in
-                guard let self, !isCancelled else { return }
+                guard let self, !isCancelled else {
+                    self?.finish()
+                    return
+                }
                 await asyncBlock()
                 finish()
             }
@@ -84,5 +87,8 @@ public final class AsyncOperation: Operation, @unchecked Sendable {
     func finish() {
         isExecuting = false
         isFinished = true
+        lock.withLock {
+            activeTask = nil
+        }
     }
 }
