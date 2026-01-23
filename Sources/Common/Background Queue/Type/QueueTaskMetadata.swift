@@ -3,17 +3,17 @@ import Foundation
 /// Pointer to full queue task in persistent storage.
 /// This data structure is meant to be as small as possible with the
 /// ability to hold all queue task metadata in memory at runtime.
-public struct QueueTaskMetadata: Codable, Equatable, Hashable, AutoLenses {
-    let taskPersistedId: String
-    let taskType: String
+public struct QueueTaskMetadata: Codable, Equatable, Hashable {
+    public var taskPersistedId: String
+    public var taskType: String
     /// The start of a new group of tasks.
     /// Tasks can be the start of of 0 or 1 groups
-    let groupStart: String?
+    public var groupStart: String?
     /// Groups that this task belongs to.
     /// Tasks can belong to 0+ groups
-    let groupMember: [String]?
+    public var groupMember: [String]?
     /// Populated when the task is added to the queue.
-    let createdAt: Date
+    public var createdAt: Date
 
     enum CodingKeys: String, CodingKey {
         case taskPersistedId = "task_persisted_id"
