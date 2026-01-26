@@ -1,5 +1,8 @@
 import CioInternalCommon
 import Foundation
+#if canImport(UserNotifications)
+import UserNotifications
+#endif
 
 class MessagingPushImplementation: MessagingPushInstance {
     let moduleConfig: MessagingPushConfigOptions
@@ -7,6 +10,11 @@ class MessagingPushImplementation: MessagingPushInstance {
     let pushLogger: PushNotificationLogger
     let jsonAdapter: JsonAdapter
     let eventBusHandler: EventBusHandler
+
+    #if canImport(UserNotifications)
+    // Store current coordinator for timeout handling in NSE context
+    var currentCoordinator: NSEOperationCoordinator?
+    #endif
 
     init(diGraph: DIGraphShared, moduleConfig: MessagingPushConfigOptions) {
         self.moduleConfig = moduleConfig
