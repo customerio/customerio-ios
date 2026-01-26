@@ -82,6 +82,8 @@ public final class AsyncOperation: Operation, @unchecked Sendable {
             activeTask = nil
         }
         super.cancel()
+        isExecuting = false
+        isFinished = true
     }
 
     func finish() {
