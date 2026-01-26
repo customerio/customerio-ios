@@ -27,7 +27,7 @@ class EventBusHandlerTest: UnitTest {
         // Expectation to wait for loadEvents to complete
         let loadEventsExpectation = XCTestExpectation(description: "Waiting for loadEvents to complete")
         loadEventsExpectation.expectedFulfillmentCount = EventTypesRegistry.allEventTypes().count
-        
+
         // Mock action to fulfill the expectation
         mockEventStorage.loadEventsClosure = { _ in
             loadEventsExpectation.fulfill()
