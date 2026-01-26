@@ -1,3 +1,9 @@
+## [4.1.1](https://github.com/customerio/customerio-ios/compare/4.1.0...4.1.1) (2026-01-26)
+
+### Bug Fixes
+
+* Fixed intermittent test failure and crashing of the EventBusHandler ([#982](https://github.com/customerio/customerio-ios/issues/982)) ([d045741](https://github.com/customerio/customerio-ios/commit/d0457411479ab93b1618bb183ac19e4d6a17602e))
+
 ## [4.1.0](https://github.com/customerio/customerio-ios/compare/4.0.0...4.1.0) (2026-01-13)
 
 ### Features
