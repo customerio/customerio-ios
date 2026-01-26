@@ -22,7 +22,7 @@ public class CioEventBusHandler: EventBusHandler {
     let eventStorage: EventStorage
     let logger: Logger
 
-    @Atomic private var taskBag: TaskBag = []
+    private var operationQueue: OperationQueue = .init()
 
     /// Initializes the EventBusHandler with dependencies for event bus and storage.
     /// - Parameters:
@@ -40,11 +40,14 @@ public class CioEventBusHandler: EventBusHandler {
         self.eventCache = eventCache
         self.eventStorage = eventStorage
         self.logger = logger
-        taskBag += Task { await loadEventsFromStorage() }
+        operationQueue.addAsyncOperation { [weak self] in
+            guard let self else { return }
+            await loadEventsFromStorage()
+        }
     }
 
     deinit {
-        taskBag.cancelAll()
+        operationQueue.cancelAllOperations()
     }
 
     /// Loads events from persistent storage into in-memory storage for quick access and event replay.
@@ -75,16 +78,20 @@ public class CioEventBusHandler: EventBusHandler {
             }
         }
 
-        taskBag += Task {
-            await eventBus.addObserver(eventType.key, action: adaptedAction)
-            await replayEvents(forType: eventType, action: adaptedAction)
+        operationQueue.addAsyncOperation { [weak self] in
+            guard let self else { return }
+            await self.eventBus.addObserver(eventType.key, action: adaptedAction)
+            await self.replayEvents(forType: eventType, action: adaptedAction)
         }
     }
 
     /// Removes an observer for a specific event type.
     /// - Parameter eventType: The event type for which to remove the observer.
     public func removeObserver<E: EventRepresentable>(for eventType: E.Type) {
-        taskBag += Task { await eventBus.removeObserver(for: E.key) }
+        operationQueue.addAsyncOperation { [weak self] in
+            guard let self else { return }
+            await eventBus.removeObserver(for: E.key)
+        }
     }
 
     /// Replays events of a specific type to any new observers, ensuring they receive past events.
@@ -107,7 +114,8 @@ public class CioEventBusHandler: EventBusHandler {
     /// Posts an event to the EventBus and stores it if there are no observers.
     /// - Parameter event: The event to post.
     public func postEvent<E: EventRepresentable>(_ event: E) {
-        taskBag += Task {
+        operationQueue.addAsyncOperation { [weak self] in
+            guard let self else { return }
             await postEventAndWait(event)
         }
     }

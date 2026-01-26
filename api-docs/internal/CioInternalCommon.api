@@ -10,6 +10,16 @@ public final class CioInternalCommon.AnyEncodable {
 	public fun init(_ encodable: Encodable);
 	public fun func encode(to encoder: Encoder) throws;
 }
+public final class CioInternalCommon.AsyncOperation {
+	public final val asyncBlock: () async -> ();
+	public var isAsynchronous: Boolean;
+	public var isExecuting: Boolean;
+	public var isFinished: Boolean;
+	public fun init(asyncBlock: @escaping () async -> Unit);
+	public fun override func start();
+	public fun override func main();
+	public fun override func cancel();
+}
 public final class CioInternalCommon.Atomic {
 	public var wrappedValue: DataType;
 	public fun init(wrappedValue: DataType);
