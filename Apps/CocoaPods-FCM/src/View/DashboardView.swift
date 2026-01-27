@@ -27,6 +27,31 @@ struct DashboardView: View {
 
     @EnvironmentObject var userManager: UserManager
 
+    func requestSettings() {
+        Task {
+            let settings = await UNUserNotificationCenter.current().notificationSettings()
+            switch settings.authorizationStatus {
+            case .authorized:
+                blockingAlert = BlockingAlert(alertMessage: "Push permission already granted", callToActionButton: nil)
+            case .denied:
+                blockingAlert = BlockingAlert(
+                    alertMessage: "Push permission denied. You will need to go into the Settings app to change the push permission for this app.",
+                    callToActionButton: (actionText: "Go to Settings", actionCallback: {
+                        UIApplication.shared.open(URL(string: UIApplication.openSettingsURLString)!)
+                    })
+                )
+            case .notDetermined:
+                let granted = try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound])
+                if granted ?? false {
+                    DispatchQueue.main.async {
+                        UIApplication.shared.registerForRemoteNotifications()
+                    }
+                }
+            default: break
+            }
+        }
+    }
+    
     var body: some View {
         ZStack {
             VStack {
@@ -102,28 +127,7 @@ struct DashboardView: View {
                         }
 
                     ColorButton("Show Push Prompt") {
-                        UNUserNotificationCenter.current().getNotificationSettings { settings in
-                            switch settings.authorizationStatus {
-                            case .authorized:
-                                blockingAlert = BlockingAlert(alertMessage: "Push permission already granted", callToActionButton: nil)
-                            case .denied:
-                                blockingAlert = BlockingAlert(
-                                    alertMessage: "Push permission denied. You will need to go into the Settings app to change the push permission for this app.",
-                                    callToActionButton: (actionText: "Go to Settings", actionCallback: {
-                                        UIApplication.shared.open(URL(string: UIApplication.openSettingsURLString)!)
-                                    })
-                                )
-                            case .notDetermined:
-                                UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { granted, _ in
-                                    if granted {
-                                        DispatchQueue.main.async {
-                                            UIApplication.shared.registerForRemoteNotifications()
-                                        }
-                                    }
-                                }
-                            default: break
-                            }
-                        }
+                        requestSettings()
                     }.setAppiumId("Show Push Prompt Button")
                     ColorButton("Logout") {
                         CustomerIO.shared.clearIdentify()
