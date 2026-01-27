@@ -27,7 +27,6 @@
 		F7382938291D5C27008ED8CB /* Rich Push Notification Service Extension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = F7382931291D5C27008ED8CB /* Rich Push Notification Service Extension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		F759C74B2A3CB8A9000DD9E8 /* CustomAttributeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F759C74A2A3CB8A9000DD9E8 /* CustomAttributeView.swift */; };
 		F759C74D2A3CB9D3000DD9E8 /* LabeledTextField.swift in Sources */ = {isa = PBXBuildFile; fileRef = F759C74C2A3CB9D3000DD9E8 /* LabeledTextField.swift */; };
-		F76F5D8829F2E3A7004DF836 /* BindingExtensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = F76F5D8729F2E3A7004DF836 /* BindingExtensions.swift */; };
 		F7714AAB2A5C8C1F00C5C952 /* Toast.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7714AAA2A5C8C1F00C5C952 /* Toast.swift */; };
 		F7714AAD2A5C8F6400C5C952 /* SwiftUITimer.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7714AAC2A5C8F6400C5C952 /* SwiftUITimer.swift */; };
 		F78793A6291D5D7B00115DB8 /* CioMessagingPushFCM.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F78793A5291D5D7B00115DB8 /* CioMessagingPushFCM.framework */; };
@@ -98,7 +97,6 @@
 		F73C4DD82A0D1ECB00787061 /* test-cocoapods-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "test-cocoapods-Info.plist"; sourceTree = "<group>"; };
 		F759C74A2A3CB8A9000DD9E8 /* CustomAttributeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomAttributeView.swift; sourceTree = "<group>"; };
 		F759C74C2A3CB9D3000DD9E8 /* LabeledTextField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LabeledTextField.swift; sourceTree = "<group>"; };
-		F76F5D8729F2E3A7004DF836 /* BindingExtensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BindingExtensions.swift; sourceTree = "<group>"; };
 		F7714AAA2A5C8C1F00C5C952 /* Toast.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Toast.swift; sourceTree = "<group>"; };
 		F7714AAC2A5C8F6400C5C952 /* SwiftUITimer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwiftUITimer.swift; sourceTree = "<group>"; };
 		F78793A5291D5D7B00115DB8 /* CioMessagingPushFCM.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = CioMessagingPushFCM.framework; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -205,7 +203,6 @@
 			children = (
 				F7029EC229F2B12900411BCC /* ViewExtensions.swift */,
 				F7029EC729F2B64100411BCC /* StringExtensions.swift */,
-				F76F5D8729F2E3A7004DF836 /* BindingExtensions.swift */,
 				F78E3D762A05588E00641391 /* ColorExtensions.swift */,
 				F70F4CDE2A3CA57500037B91 /* DateExtensions.swift */,
 			);
@@ -441,9 +438,13 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-test cocoapods/Pods-test cocoapods-frameworks-${CONFIGURATION}-input-files.xcfilelist",
 			);
+			inputPaths = (
+			);
 			name = "[CP] Embed Pods Frameworks";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-test cocoapods/Pods-test cocoapods-frameworks-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -463,7 +464,6 @@
 				F70F4CDF2A3CA57500037B91 /* DateExtensions.swift in Sources */,
 				F78E3D772A05588E00641391 /* ColorExtensions.swift in Sources */,
 				F70F4CDD2A3B91DA00037B91 /* Appium.swift in Sources */,
-				F76F5D8829F2E3A7004DF836 /* BindingExtensions.swift in Sources */,
 				F7029EC629F2B3B100411BCC /* EnvironmentUtil.swift in Sources */,
 				F7F4B9BF2A0AACC300557900 /* BuildEnvironment.swift in Sources */,
 				F7714AAD2A5C8F6400C5C952 /* SwiftUITimer.swift in Sources */,
@@ -652,7 +652,7 @@
 				SUPPORTS_MACCATALYST = NO;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_VERSION = 5.0;
+				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Debug;
@@ -691,7 +691,7 @@
 				SUPPORTS_MACCATALYST = NO;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_VERSION = 5.0;
+				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Release;

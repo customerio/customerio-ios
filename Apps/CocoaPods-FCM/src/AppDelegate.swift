@@ -120,28 +120,28 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 // }
 
 extension AppDelegate: InAppEventListener {
-    func messageShown(message: InAppMessage) {
+    nonisolated func messageShown(message: InAppMessage) {
         CustomerIO.shared.track(
             name: "inapp shown",
             properties: ["delivery-id": message.deliveryId ?? "(none)", "message-id": message.messageId]
         )
     }
 
-    func messageDismissed(message: InAppMessage) {
+    nonisolated func messageDismissed(message: InAppMessage) {
         CustomerIO.shared.track(
             name: "inapp dismissed",
             properties: ["delivery-id": message.deliveryId ?? "(none)", "message-id": message.messageId]
         )
     }
 
-    func errorWithMessage(message: InAppMessage) {
+    nonisolated func errorWithMessage(message: InAppMessage) {
         CustomerIO.shared.track(
             name: "inapp error",
             properties: ["delivery-id": message.deliveryId ?? "(none)", "message-id": message.messageId]
         )
     }
 
-    func messageActionTaken(message: InAppMessage, actionValue: String, actionName: String) {
+    nonisolated func messageActionTaken(message: InAppMessage, actionValue: String, actionName: String) {
         CustomerIO.shared.track(name: "inapp action", properties: [
             "delivery-id": message.deliveryId ?? "(none)",
             "message-id": message.messageId,

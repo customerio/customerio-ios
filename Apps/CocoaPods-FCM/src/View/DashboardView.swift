@@ -10,7 +10,8 @@ struct DashboardView: View {
         case settings
     }
 
-    struct BlockingAlert {
+    struct BlockingAlert: Identifiable {
+        var id: String { alertMessage }
         let alertMessage: String
         let callToActionButton: (actionText: String, actionCallback: () -> Void)? // optional button to add to Alert
     }
@@ -136,10 +137,10 @@ struct DashboardView: View {
             .padding()
         }
         // Can only use 1 alert() in a View so we combine the different types of Alerts into 1 function.
-        .alert(isPresented: .notNil(blockingAlert)) {
+        .alert(item: $blockingAlert) { alert in
             if let alertCallToAction = blockingAlert!.callToActionButton {
                 return Alert(
-                    title: Text(blockingAlert!.alertMessage),
+                    title: Text(alert.alertMessage),
                     primaryButton: .default(Text(alertCallToAction.actionText)) {
                         blockingAlert = nil
                         alertCallToAction.actionCallback()
