@@ -1,10 +1,27 @@
 import Foundation
 
-public class DIGraphShared {
-    public static let shared: DIGraphShared = .init()
+public final class DIGraphShared: Sendable {
+    private final class Locked<Value>: @unchecked Sendable {
+        private var value: Value
+        private let lock = NSLock()
+        
+        init(_ value: Value) {
+            self.value = value
+        }
+        
+        func withLock<Result>(_ body: (inout Value) -> Result) -> Result {
+            lock.lock()
+            defer { lock.unlock() }
+            return body(&value)
+        }
+    }
+    
+    
+    private static let _shared: Locked<DIGraphShared> = .init(.init())
+    public static var shared: DIGraphShared { _shared.withLock { $0} }
 
-    public var overrides: [String: Any] = [:]
-    public var singletons: [String: Any] = [:]
+    private let overrides: Locked<[String: Any]> = .init([:])
+    private let singletons: Locked<[String: Any]> = .init([:])
 
     /**
      Designed to be used only in test classes to override dependencies.
@@ -15,7 +32,9 @@ public class DIGraphShared {
      ```
      */
     public func override<T: Any>(value: T, forType type: T.Type) {
-        overrides[String(describing: type)] = value
+        overrides.withLock {
+            $0[String(describing: type)] = value
+        }
     }
 
     // Retrieves an overridden instance of a specified type from the `overrides` dictionary.
@@ -23,24 +42,14 @@ public class DIGraphShared {
     public func getOverriddenInstance<T: Any>() -> T? {
         // Get the type name as the key for the dictionary.
         let typeName = String(describing: T.self)
-
-        guard overrides[typeName] != nil else {
-            return nil // no override set. Quit early.
-        }
-
-        // Get and cast the overridden instance from the dictionary.
-        guard let overriddenInstance = overrides[typeName] as? T else {
-            fatalError("Failed to cast overridden instance to type '\(typeName)'.")
-        }
-
-        return overriddenInstance
+        return overrides.withLock { $0[typeName] } as? T
     }
 
     /**
      Reset graph. Meant to be used in `tearDown()` of tests.
      */
     public func reset() {
-        overrides = [:]
-        singletons = [:]
+        overrides.withLock { $0 = [:] }
+        singletons.withLock { $0 = [:] }
     }
 }

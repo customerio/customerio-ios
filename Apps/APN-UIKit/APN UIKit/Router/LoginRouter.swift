@@ -1,6 +1,7 @@
 import Foundation
 import UIKit
 
+@MainActor
 protocol LoginRouting {
     func routeToDashboard()
     func routeToSettings(_ withInfo: [String: String]?)
