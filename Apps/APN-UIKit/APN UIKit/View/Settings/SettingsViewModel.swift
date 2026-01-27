@@ -1,4 +1,3 @@
-
 @MainActor
 class SettingsViewModel {
     var settings: Settings!

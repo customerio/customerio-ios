@@ -51,7 +51,7 @@ struct DashboardView: View {
             }
         }
     }
-    
+
     var body: some View {
         ZStack {
             VStack {

@@ -4,21 +4,20 @@ public final class DIGraphShared: Sendable {
     private final class Locked<Value>: @unchecked Sendable {
         private var value: Value
         private let lock = NSLock()
-        
+
         init(_ value: Value) {
             self.value = value
         }
-        
+
         func withLock<Result>(_ body: (inout Value) -> Result) -> Result {
             lock.lock()
             defer { lock.unlock() }
             return body(&value)
         }
     }
-    
-    
+
     private static let _shared: Locked<DIGraphShared> = .init(.init())
-    public static var shared: DIGraphShared { _shared.withLock { $0} }
+    public static var shared: DIGraphShared { _shared.withLock { $0 } }
 
     private let overrides: Locked<[String: Any]> = .init([:])
     private let singletons: Locked<[String: Any]> = .init([:])
