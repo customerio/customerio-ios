@@ -302,8 +302,6 @@
 				F7382937291D5C27008ED8CB /* PBXTargetDependency */,
 			);
 			name = "test cocoapods";
-			packageProductDependencies = (
-			);
 			productName = "test cocoapods";
 			productReference = F73134602919570600CD43D9 /* test cocoapods.app */;
 			productType = "com.apple.product-type.application";
@@ -353,8 +351,6 @@
 				Base,
 			);
 			mainGroup = F73134572919570600CD43D9;
-			packageReferences = (
-			);
 			productRefGroup = F73134612919570600CD43D9 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -438,13 +434,9 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-test cocoapods/Pods-test cocoapods-frameworks-${CONFIGURATION}-input-files.xcfilelist",
 			);
-			inputPaths = (
-			);
 			name = "[CP] Embed Pods Frameworks";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-test cocoapods/Pods-test cocoapods-frameworks-${CONFIGURATION}-output-files.xcfilelist",
-			);
-			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -652,6 +644,7 @@
 				SUPPORTS_MACCATALYST = NO;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_STRICT_MEMORY_SAFETY = YES;
 				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = 1;
 			};
@@ -691,6 +684,7 @@
 				SUPPORTS_MACCATALYST = NO;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_STRICT_MEMORY_SAFETY = YES;
 				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = 1;
 			};
