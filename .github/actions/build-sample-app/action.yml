@@ -69,8 +69,8 @@ runs:
   steps:
     - uses: customerio/mobile-ci-tools/github-actions/ios/setup-ios/v1@MacOS-15
       with:
-        xcode-version: '26.2'
-        iOS-sdk-version: '26.2'
+        xcode-version: '26.1'
+        iOS-sdk-version: '26.1'
     - name: Install CLI tools used in CI script 
       shell: bash
       run: |
