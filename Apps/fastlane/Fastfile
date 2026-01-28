@@ -80,7 +80,7 @@ platform :ios do
       xcodebuild_formatter: "xcbeautify",
       build_path: "build", # Save derived data to Apps/X/build folder. CI will parse this folder later for tracking SDK size. 
       cloned_source_packages_path: "spm_packages", # Save SPM dependencies to Apps/X/spm_packages folder. We can cache this folder to speed up builds on CI. 
-      xcargs: "DEBUG_INFORMATION_FORMAT=dwarf-with-dsym OTHER_SWIFT_FLAGS='$(inherited) -Xfrontend -gdwarf-4'" # Use DWARF 4 format for compatibility with bloaty
+      xcargs: "DEBUG_INFORMATION_FORMAT=dwarf4 OTHER_SWIFT_FLAGS='$(inherited) -Xfrontend'" # Use DWARF 4 format for compatibility with bloaty
     )
 
     are_environment_variables_set_for_build_uploading = !ENV["FIREBASE_APP_DISTRIBUTION_SERVICE_ACCOUNT_CREDS_B64"].empty?
