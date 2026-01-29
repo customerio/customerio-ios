@@ -10,6 +10,6 @@ public extension Array {
     }
 
     func mapNonNil<T>() -> [T] where Element == T? {
-        filter { $0 != nil }.map { $0! }
+        compactMap { $0 }
     }
 }

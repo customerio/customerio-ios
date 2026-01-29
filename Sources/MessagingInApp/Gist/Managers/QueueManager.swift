@@ -125,7 +125,7 @@ class QueueManager {
                 with: responseBody,
                 options: .allowFragments
             ) as? [[String: Any?]] {
-            return userQueueResponse.map { UserQueueResponse(dictionary: $0) }.mapNonNil()
+            return userQueueResponse.compactMap { UserQueueResponse(dictionary: $0) }
         }
 
         return []
