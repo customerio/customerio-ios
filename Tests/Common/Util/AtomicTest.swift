@@ -1,30 +1,44 @@
-@testable import CioInternalCommon
 import Foundation
-import SharedTests
-import XCTest
+import Testing
 
-class AtomicTest: UnitTest {
-    @Atomic private var atomic: String!
+@testable
+import CioInternalCommon
 
-    func test_givenCallSetWithNewValue_expectGetCallReceivesNewValue() {
-        let expect = "new value"
 
-        atomic = expect
-
-        let actual = atomic
-
-        XCTAssertEqual(expect, actual)
+struct AtomicTest {
+    
+    class TestObject {
+        @Atomic
+        var text: String
+        init(text: String = "") {
+            self.text = text
+        }
     }
 
-    func test_givenSetAndGetDifferentThreads_expectGetNewlySetValue() {
+    @Test
+    func test_givenCallSetWithNewValue_expectGetCallReceivesNewValue() throws {
         let expect = "new value"
 
+        let testObject = TestObject()
+        testObject.text = expect
+        
+        let actual = testObject.text
+
+        #expect(expect == actual)
+    }
+
+    @Test
+    func test_givenSetAndGetDifferentThreads_expectGetNewlySetValue() throws {
+        let expect = "new value"
+
+        let testObject = TestObject()
+
         DispatchQueue.global(qos: .background).sync {
-            atomic = expect
+            testObject.text = expect
         }
 
-        let actual = atomic
+        let actual = testObject.text
 
-        XCTAssertEqual(expect, actual)
+        #expect(expect == actual)
     }
 }
