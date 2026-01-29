@@ -44,9 +44,16 @@ runs:
       xcodebuild -downloadPlatform iOS 
     shell: bash
 
-  - name: Install bloaty, in case it is not already 
+  - name: Install bloaty from source with DWARF 5 support
     shell: bash
-    run: brew install bloaty || true # If it's already installed, this will fail without error    
+    run: |
+      # Check if bloaty is already installed and up to date
+      if command -v bloaty &> /dev/null; then
+        echo "bloaty is already installed"
+      else
+        # Install bloaty from HEAD to get latest DWARF 5 support
+        brew install --HEAD bloaty
+      fi    
 
   - name: Make a build of the sample app to generate report for 
     uses: ./.github/actions/build-sample-app
