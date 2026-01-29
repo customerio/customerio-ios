@@ -3,7 +3,6 @@ import Testing
 
 @testable import CioInternalCommon
 
-
 struct ArrayExtensionTest {
     // MARK: removeFirstOrNil
 
