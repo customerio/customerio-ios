@@ -43,9 +43,9 @@ class EventBusObserversHolder {
     /// Dictionary holding arrays of observer tokens for each event type.
     /// The keys are event types (as String), and the values are arrays of NotificationCenter tokens.
     private var observers: [String: [NSObjectProtocol]] = [:]
-    
+
     private let lock = NSRecursiveLock()
-    
+
     func addObserver(for eventType: String, observer: NSObjectProtocol) {
         lock.withLock {
             var list = observers[eventType, default: []]
@@ -53,20 +53,20 @@ class EventBusObserversHolder {
             observers[eventType] = list
         }
     }
-    
+
     func hasObservers(for eventType: String) -> Bool {
         lock.withLock {
             !(observers[eventType]?.isEmpty ?? true)
         }
     }
-    
+
     func removeAllObservers(for eventType: String) {
         lock.withLock {
             observers[eventType]?.forEach(notificationCenter.removeObserver)
             observers[eventType] = nil
         }
     }
-    
+
     /// Removes all observers from the EventBus.
     ///
     /// This function is used for cleanup or resetting the event handling system.
