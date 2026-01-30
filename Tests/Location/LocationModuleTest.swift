@@ -1,12 +1,11 @@
 @testable import CioLocation
-import Testing
+import XCTest
 
-/// Placeholder test struct for Location module.
+/// Placeholder test class for Location module.
 /// Add tests here as the module is implemented.
-struct LocationModuleTest {
-    @Test
-    func placeholder() {
+class LocationModuleTest: XCTestCase {
+    func test_placeholder() {
         // Empty test to allow CI to run test target
-        #expect(true)
+        XCTAssertTrue(true)
     }
 }

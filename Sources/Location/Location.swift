@@ -1,7 +1,7 @@
 import Foundation
 
-/// Class managing the Location module singleton.
-public final class Location: Sendable {
+/// Internal class managing the Location module singleton.
+public class Location: LocationInstance {
     /// Shared instance of the Location module.
     public static let shared = Location()
 
@@ -13,7 +13,7 @@ public final class Location: Sendable {
     ///
     /// - Parameter config: Configuration options for the Location module.
     @discardableResult
-    public func initialize(withConfig config: LocationConfigOptions) -> Location {
+    public func initialize(withConfig config: LocationConfigOptions) -> LocationInstance {
         // Implementation will be added in future milestones
         self
     }
