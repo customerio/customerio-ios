@@ -42,16 +42,41 @@ class EventBusObserversHolder {
 
     /// Dictionary holding arrays of observer tokens for each event type.
     /// The keys are event types (as String), and the values are arrays of NotificationCenter tokens.
-    var observers: [String: [NSObjectProtocol]] = [:]
+    private var observers: [String: [NSObjectProtocol]] = [:]
+
+    private let lock = NSRecursiveLock()
+
+    func addObserver(for eventType: String, observer: NSObjectProtocol) {
+        lock.withLock {
+            var list = observers[eventType, default: []]
+            list.append(observer)
+            observers[eventType] = list
+        }
+    }
+
+    func hasObservers(for eventType: String) -> Bool {
+        lock.withLock {
+            !(observers[eventType]?.isEmpty ?? true)
+        }
+    }
+
+    func removeAllObservers(for eventType: String) {
+        lock.withLock {
+            observers[eventType]?.forEach(notificationCenter.removeObserver)
+            observers[eventType] = nil
+        }
+    }
 
     /// Removes all observers from the EventBus.
     ///
     /// This function is used for cleanup or resetting the event handling system.
     func removeAllObservers() {
-        observers.forEach { _, observerList in
-            observerList.forEach(notificationCenter.removeObserver)
+        lock.withLock {
+            observers.forEach { _, observerList in
+                observerList.forEach(notificationCenter.removeObserver)
+            }
+            observers = [:]
         }
-        observers.removeAll()
     }
 
     /// Deinitializer for EventBusObserversHolder.
@@ -85,7 +110,7 @@ actor SharedEventBus: EventBus {
     @discardableResult
     func post(_ event: AnyEventRepresentable) -> Bool {
         let key = event.key
-        if let observerList = holder.observers[key], !observerList.isEmpty {
+        if holder.hasObservers(for: key) {
             holder.notificationCenter.post(name: NSNotification.Name(key), object: event)
             return true
         }
@@ -103,23 +128,13 @@ actor SharedEventBus: EventBus {
                 action(event)
             }
         }
-        // Store the observer reference for later management.
-        if holder.observers[eventType] != nil {
-            holder.observers[eventType]?.append(observer)
-        } else {
-            holder.observers[eventType] = [observer]
-        }
+        holder.addObserver(for: eventType, observer: observer)
     }
 
     /// Removes all observers for a specific event type.
     ///
     /// - Parameter eventType: The event type for which to remove all observers.
     func removeObserver(for eventType: String) {
-        if let observerList = holder.observers[eventType] {
-            for observer in observerList {
-                holder.notificationCenter.removeObserver(observer)
-            }
-            holder.observers[eventType] = nil
-        }
+        holder.removeAllObservers(for: eventType)
     }
 }
