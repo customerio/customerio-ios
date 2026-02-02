@@ -203,6 +203,13 @@ class Gist: GistProvider {
 
         // Timer must be scheduled on the main thread
         threadUtil.runMain {
+            // Prevent starting timer if app is in background (race condition protection)
+            // This can happen if handleForegrounded's async callback completes after handleBackgrounded ran
+            guard UIApplication.shared.applicationState != .background else {
+                self.logger.logWithModuleTag("Gist: App is in background, skipping polling timer setup", level: .debug)
+                return
+            }
+
             self.queueTimer = Timer.scheduledTimer(
                 timeInterval: pollingInterval,
                 target: self,
