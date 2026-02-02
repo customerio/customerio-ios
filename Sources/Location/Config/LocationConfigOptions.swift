@@ -1,4 +1,4 @@
 import Foundation
 
 /// Defines configuration options for the Customer.io Location module.
-public struct LocationConfigOptions {}
+public struct LocationConfigOptions: Sendable {}
