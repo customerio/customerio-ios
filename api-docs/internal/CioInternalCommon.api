@@ -399,7 +399,8 @@ public final class CioInternalCommon.ResetEvent {
 	public final val storageId: String;
 	public final val params: List<String : String>;
 	public final val timestamp: Date;
-	public fun init(storageId: String = UUID().uuidString, timestamp: Date = Date(), params: List<String: String> = List<:>);
+	public final val newAnonymousId: String?;
+	public fun init(storageId: String = UUID().uuidString, newAnonymousId: String? = nil, timestamp: Date = Date(), params: List<String: String> = List<:>);
 }
 public interface CioInternalCommon.SandboxedSiteIdKeyValueStorage {
 	public fun func string(_ key: KeyValueStorageKey, siteId: String) -> String?;
