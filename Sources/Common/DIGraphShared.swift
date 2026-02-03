@@ -38,7 +38,7 @@ public final class DIGraphShared: @unchecked Sendable {
     /// - type: The type of the singleton instance to retrieve or create.
     /// - factory: A closure that creates a new instance of type T if one does not already exist.
     public func getSingletonOrCreate<T>(of type: T.Type = T.self, with factory: () -> T) -> T {
-        let typeName = String(describing: T.self)
+        let typeName = String(describing: type)
         return lock.withLock {
             let existingInstance = singletons[typeName] as? T
             if let instance = existingInstance {
