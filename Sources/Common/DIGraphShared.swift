@@ -3,7 +3,7 @@ import Foundation
 public final class DIGraphShared: @unchecked Sendable {
     public static let shared: DIGraphShared = .init()
 
-    let lock = NSRecursiveLock()
+    private let lock = NSRecursiveLock()
     private var singletons: [String: Any] = [:]
     private var overrides: [String: Any] = [:]
 
