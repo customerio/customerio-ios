@@ -1,35 +1,29 @@
 import CioInternalCommon // do not use `@testable` so we can test functions are made public and not `internal`.
 import Foundation
-import SharedTests
-import XCTest
+import Testing
 
-/**
- Contains an example of every public facing SDK function call. This file helps
- us prevent introducing breaking changes to the SDK by accident. If a public function
- of the SDK is modified, this test class will not successfully compile. By not compiling,
- that is a reminder to either fix the compilation and introduce the breaking change or
- fix the mistake and not introduce the breaking change in the code base.
- */
-class CommonAPITest: UnitTest {
-    // Test that public functions are accessible by mocked instances
-    let mock = CustomerIOInstanceMock()
-    let dictionaryData: [String: Any] = ["foo": true, "bar": ""]
+/// Contains an example of every public facing SDK function call. This file helps
+/// us prevent introducing breaking changes to the SDK by accident. If a public function
+/// of the SDK is modified, this test will not successfully compile. By not compiling,
+/// that is a reminder to either fix the compilation and introduce the breaking change or
+/// fix the mistake and not introduce the breaking change in the code base.
+struct CommonAPITest {
     struct CodableExample: Codable {
         let foo: String
     }
 
-    let codedData = CodableExample(foo: "")
-
-    func test_allPublicStaticPropertiesAvailable() throws {
-        try skipRunningTest()
-
+    @Test(.disabled("API compilation test - disabled by default"))
+    func allPublicStaticPropertiesAvailable() {
         _ = CustomerIO.version
     }
 
     // This function checks that public functions exist for the SDK and they are callable.
     // Maybe we forgot to add a function? Maybe we forgot to make a function `public`?
-    func test_allPublicTrackingFunctions() throws {
-        try skipRunningTest()
+    @Test(.disabled("API compilation test - disabled by default"))
+    func allPublicTrackingFunctions() {
+        let mock = CustomerIOInstanceMock()
+        let dictionaryData: [String: Any] = ["foo": true, "bar": ""]
+        let codedData = CodableExample(foo: "")
 
         // Reference some objects that should be public in the Tracking module
         let _: Region = .EU
@@ -72,7 +66,8 @@ class CommonAPITest: UnitTest {
     }
 
     // This function checks that SdkConfig is accessible and can be created using the factory.
-    func test_createSdkConfig() {
+    @Test(.disabled("API compilation test - disabled by default"))
+    func createSdkConfig() {
         // Outside of the Common module, we should be able to create a `SdkConfig` using the factory.
         _ = SdkConfig.Factory.create(logLevel: .debug)
         // Factory method should allow nil values for `SdkConfig` to enable fallback to defaults.
