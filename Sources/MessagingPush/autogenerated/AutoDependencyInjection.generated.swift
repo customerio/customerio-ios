@@ -133,16 +133,8 @@ extension DIGraphShared {
 
     @available(iOSApplicationExtension, unavailable)
     var sharedPushEventHandlerProxy: PushEventHandlerProxy {
-        // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
-        // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
-        DispatchQueue(label: "DIGraphShared_PushEventHandlerProxy_singleton_access").sync {
-            if let overridenDep: PushEventHandlerProxy = getOverriddenInstance() {
-                return overridenDep
-            }
-            let existingSingletonInstance = self.singletons[String(describing: PushEventHandlerProxy.self)] as? PushEventHandlerProxy
-            let instance = existingSingletonInstance ?? _get_pushEventHandlerProxy()
-            self.singletons[String(describing: PushEventHandlerProxy.self)] = instance
-            return instance
+        getSingletonOrCreate {
+            _get_pushEventHandlerProxy()
         }
     }
 
@@ -158,16 +150,8 @@ extension DIGraphShared {
     }
 
     var sharedPushHistory: PushHistory {
-        // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
-        // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
-        DispatchQueue(label: "DIGraphShared_PushHistory_singleton_access").sync {
-            if let overridenDep: PushHistory = getOverriddenInstance() {
-                return overridenDep
-            }
-            let existingSingletonInstance = self.singletons[String(describing: PushHistory.self)] as? PushHistory
-            let instance = existingSingletonInstance ?? _get_pushHistory()
-            self.singletons[String(describing: PushHistory.self)] = instance
-            return instance
+        getSingletonOrCreate {
+            _get_pushHistory()
         }
     }
 
@@ -224,16 +208,8 @@ extension DIGraphShared {
 
     @available(iOSApplicationExtension, unavailable)
     var sharedUserNotificationsFrameworkAdapter: UserNotificationsFrameworkAdapter {
-        // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
-        // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
-        DispatchQueue(label: "DIGraphShared_UserNotificationsFrameworkAdapter_singleton_access").sync {
-            if let overridenDep: UserNotificationsFrameworkAdapter = getOverriddenInstance() {
-                return overridenDep
-            }
-            let existingSingletonInstance = self.singletons[String(describing: UserNotificationsFrameworkAdapter.self)] as? UserNotificationsFrameworkAdapter
-            let instance = existingSingletonInstance ?? _get_userNotificationsFrameworkAdapter()
-            self.singletons[String(describing: UserNotificationsFrameworkAdapter.self)] = instance
-            return instance
+        getSingletonOrCreate {
+            _get_userNotificationsFrameworkAdapter()
         }
     }
 

@@ -94,16 +94,8 @@ extension DIGraphShared {
     {% call overrideGetterProperty class dep false true %}
     {% call addPropertyWrappers dep %}
     {{ dep.accessLevel }} var shared{{ class }}: {{ class }} {
-        // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
-        // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
-        return DispatchQueue(label: "DIGraphShared_{{class}}_singleton_access").sync {
-            if let overridenDep: {{ class }} = getOverriddenInstance() {
-                return overridenDep
-            }
-            let existingSingletonInstance = self.singletons[String(describing: {{ class }}.self)] as? {{ class }}
-            let instance = existingSingletonInstance ?? _get_{{ class|lowerFirstLetter }}()
-            self.singletons[String(describing: {{ class }}.self)] = instance
-            return instance
+        return getSingletonOrCreate() {
+            _get_{{ class|lowerFirstLetter }}()
         }
     }
     {% call addPropertyWrappers dep %}

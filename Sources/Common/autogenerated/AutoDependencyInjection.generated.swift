@@ -161,16 +161,8 @@ extension DIGraphShared {
     }
 
     public var sharedEventBusHandler: EventBusHandler {
-        // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
-        // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
-        DispatchQueue(label: "DIGraphShared_EventBusHandler_singleton_access").sync {
-            if let overridenDep: EventBusHandler = getOverriddenInstance() {
-                return overridenDep
-            }
-            let existingSingletonInstance = self.singletons[String(describing: EventBusHandler.self)] as? EventBusHandler
-            let instance = existingSingletonInstance ?? _get_eventBusHandler()
-            self.singletons[String(describing: EventBusHandler.self)] = instance
-            return instance
+        getSingletonOrCreate {
+            _get_eventBusHandler()
         }
     }
 
@@ -225,16 +217,8 @@ extension DIGraphShared {
     }
 
     var sharedSingleScheduleTimer: SingleScheduleTimer {
-        // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
-        // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
-        DispatchQueue(label: "DIGraphShared_SingleScheduleTimer_singleton_access").sync {
-            if let overridenDep: SingleScheduleTimer = getOverriddenInstance() {
-                return overridenDep
-            }
-            let existingSingletonInstance = self.singletons[String(describing: SingleScheduleTimer.self)] as? SingleScheduleTimer
-            let instance = existingSingletonInstance ?? _get_singleScheduleTimer()
-            self.singletons[String(describing: SingleScheduleTimer.self)] = instance
-            return instance
+        getSingletonOrCreate {
+            _get_singleScheduleTimer()
         }
     }
 
@@ -267,16 +251,8 @@ extension DIGraphShared {
 
     @available(iOSApplicationExtension, unavailable)
     public var sharedDeepLinkUtil: DeepLinkUtil {
-        // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
-        // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
-        DispatchQueue(label: "DIGraphShared_DeepLinkUtil_singleton_access").sync {
-            if let overridenDep: DeepLinkUtil = getOverriddenInstance() {
-                return overridenDep
-            }
-            let existingSingletonInstance = self.singletons[String(describing: DeepLinkUtil.self)] as? DeepLinkUtil
-            let instance = existingSingletonInstance ?? _get_deepLinkUtil()
-            self.singletons[String(describing: DeepLinkUtil.self)] = instance
-            return instance
+        getSingletonOrCreate {
+            _get_deepLinkUtil()
         }
     }
 
@@ -302,16 +278,8 @@ extension DIGraphShared {
     }
 
     var sharedEventBusObserversHolder: EventBusObserversHolder {
-        // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
-        // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
-        DispatchQueue(label: "DIGraphShared_EventBusObserversHolder_singleton_access").sync {
-            if let overridenDep: EventBusObserversHolder = getOverriddenInstance() {
-                return overridenDep
-            }
-            let existingSingletonInstance = self.singletons[String(describing: EventBusObserversHolder.self)] as? EventBusObserversHolder
-            let instance = existingSingletonInstance ?? _get_eventBusObserversHolder()
-            self.singletons[String(describing: EventBusObserversHolder.self)] = instance
-            return instance
+        getSingletonOrCreate {
+            _get_eventBusObserversHolder()
         }
     }
 
@@ -326,16 +294,8 @@ extension DIGraphShared {
     }
 
     var sharedEventCache: EventCache {
-        // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
-        // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
-        DispatchQueue(label: "DIGraphShared_EventCache_singleton_access").sync {
-            if let overridenDep: EventCache = getOverriddenInstance() {
-                return overridenDep
-            }
-            let existingSingletonInstance = self.singletons[String(describing: EventCache.self)] as? EventCache
-            let instance = existingSingletonInstance ?? _get_eventCache()
-            self.singletons[String(describing: EventCache.self)] = instance
-            return instance
+        getSingletonOrCreate {
+            _get_eventCache()
         }
     }
 
@@ -350,16 +310,8 @@ extension DIGraphShared {
     }
 
     var sharedEventStorage: EventStorage {
-        // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
-        // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
-        DispatchQueue(label: "DIGraphShared_EventStorage_singleton_access").sync {
-            if let overridenDep: EventStorage = getOverriddenInstance() {
-                return overridenDep
-            }
-            let existingSingletonInstance = self.singletons[String(describing: EventStorage.self)] as? EventStorage
-            let instance = existingSingletonInstance ?? _get_eventStorage()
-            self.singletons[String(describing: EventStorage.self)] = instance
-            return instance
+        getSingletonOrCreate {
+            _get_eventStorage()
         }
     }
 
@@ -404,16 +356,8 @@ extension DIGraphShared {
     }
 
     public var sharedLockManager: LockManager {
-        // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
-        // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
-        DispatchQueue(label: "DIGraphShared_LockManager_singleton_access").sync {
-            if let overridenDep: LockManager = getOverriddenInstance() {
-                return overridenDep
-            }
-            let existingSingletonInstance = self.singletons[String(describing: LockManager.self)] as? LockManager
-            let instance = existingSingletonInstance ?? _get_lockManager()
-            self.singletons[String(describing: LockManager.self)] = instance
-            return instance
+        getSingletonOrCreate {
+            _get_lockManager()
         }
     }
 
@@ -428,16 +372,8 @@ extension DIGraphShared {
     }
 
     public var sharedLogger: Logger {
-        // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
-        // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
-        DispatchQueue(label: "DIGraphShared_Logger_singleton_access").sync {
-            if let overridenDep: Logger = getOverriddenInstance() {
-                return overridenDep
-            }
-            let existingSingletonInstance = self.singletons[String(describing: Logger.self)] as? Logger
-            let instance = existingSingletonInstance ?? _get_logger()
-            self.singletons[String(describing: Logger.self)] = instance
-            return instance
+        getSingletonOrCreate {
+            _get_logger()
         }
     }
 
@@ -452,16 +388,8 @@ extension DIGraphShared {
     }
 
     var sharedQueueInventoryMemoryStore: QueueInventoryMemoryStore {
-        // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
-        // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
-        DispatchQueue(label: "DIGraphShared_QueueInventoryMemoryStore_singleton_access").sync {
-            if let overridenDep: QueueInventoryMemoryStore = getOverriddenInstance() {
-                return overridenDep
-            }
-            let existingSingletonInstance = self.singletons[String(describing: QueueInventoryMemoryStore.self)] as? QueueInventoryMemoryStore
-            let instance = existingSingletonInstance ?? _get_queueInventoryMemoryStore()
-            self.singletons[String(describing: QueueInventoryMemoryStore.self)] = instance
-            return instance
+        getSingletonOrCreate {
+            _get_queueInventoryMemoryStore()
         }
     }
 
@@ -496,16 +424,8 @@ extension DIGraphShared {
     }
 
     var sharedEventBus: EventBus {
-        // Use a DispatchQueue to make singleton thread safe. You must create unique dispatchqueues instead of using 1 shared one or you will get a crash when trying
-        // to call DispatchQueue.sync{} while already inside another DispatchQueue.sync{} call.
-        DispatchQueue(label: "DIGraphShared_EventBus_singleton_access").sync {
-            if let overridenDep: EventBus = getOverriddenInstance() {
-                return overridenDep
-            }
-            let existingSingletonInstance = self.singletons[String(describing: EventBus.self)] as? EventBus
-            let instance = existingSingletonInstance ?? _get_eventBus()
-            self.singletons[String(describing: EventBus.self)] = instance
-            return instance
+        getSingletonOrCreate {
+            _get_eventBus()
         }
     }
 
