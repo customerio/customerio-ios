@@ -341,7 +341,7 @@ public interface CioInternalCommon.Mock {
 	public fun func resetMock();
 }
 public final class CioInternalCommon.Mocks {
-	public var shared: Mocks;
+	public final val shared: Mocks;
 	public fun func add(mock: Mock);
 	public fun func resetAll();
 }
