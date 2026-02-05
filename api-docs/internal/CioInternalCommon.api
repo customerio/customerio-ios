@@ -138,14 +138,9 @@ public final class CioInternalCommon.CustomerIOSdkClient {
 }
 public final class CioInternalCommon.DIGraphShared {
 	public final val shared: DIGraphShared;
-	public final val singletons: Map<String, Any>;
-	public var overrides: Map<String, Any>;
-}
-public interface CioInternalCommon.DIManager {
-	public var overrides: Map<String, Any>;
-	public final val singletons: Map<String, Any>;
-	public fun func override<T: Any>(value: T, forType type: T.Type);
+	public fun func override<T>(value: T, forType type: T.Type);
 	public fun func getOverriddenInstance<T: Any>() -> T?;
+	public fun func getSingletonOrCreate<T>(of type: T.Type = T.self, with factory: () -> T) -> T;
 	public fun func reset();
 }
 public enum CioInternalCommon.DateFormat {
@@ -346,7 +341,7 @@ public interface CioInternalCommon.Mock {
 	public fun func resetMock();
 }
 public final class CioInternalCommon.Mocks {
-	public var shared: Mocks;
+	public final val shared: Mocks;
 	public fun func add(mock: Mock);
 	public fun func resetAll();
 }
