@@ -107,13 +107,9 @@ extension DIGraphShared {
     // AnonymousMessageManager (singleton)
     var anonymousMessageManager: AnonymousMessageManager {
         getOverriddenInstance() ??
-            sharedAnonymousMessageManager
-    }
-
-    var sharedAnonymousMessageManager: AnonymousMessageManager {
-        getSingletonOrCreate {
-            _get_anonymousMessageManager()
-        }
+            getSingletonOrCreate {
+                _get_anonymousMessageManager()
+            }
     }
 
     private func _get_anonymousMessageManager() -> AnonymousMessageManager {
@@ -123,13 +119,9 @@ extension DIGraphShared {
     // SseLifecycleManager (singleton)
     var sseLifecycleManager: SseLifecycleManager {
         getOverriddenInstance() ??
-            sharedSseLifecycleManager
-    }
-
-    var sharedSseLifecycleManager: SseLifecycleManager {
-        getSingletonOrCreate {
-            _get_sseLifecycleManager()
-        }
+            getSingletonOrCreate {
+                _get_sseLifecycleManager()
+            }
     }
 
     private func _get_sseLifecycleManager() -> SseLifecycleManager {
@@ -149,13 +141,9 @@ extension DIGraphShared {
     // GistProvider (singleton)
     var gistProvider: GistProvider {
         getOverriddenInstance() ??
-            sharedGistProvider
-    }
-
-    var sharedGistProvider: GistProvider {
-        getSingletonOrCreate {
-            _get_gistProvider()
-        }
+            getSingletonOrCreate {
+                _get_gistProvider()
+            }
     }
 
     private func _get_gistProvider() -> GistProvider {
@@ -165,13 +153,9 @@ extension DIGraphShared {
     // GistDelegate (singleton)
     var gistDelegate: GistDelegate {
         getOverriddenInstance() ??
-            sharedGistDelegate
-    }
-
-    var sharedGistDelegate: GistDelegate {
-        getSingletonOrCreate {
-            _get_gistDelegate()
-        }
+            getSingletonOrCreate {
+                _get_gistDelegate()
+            }
     }
 
     private func _get_gistDelegate() -> GistDelegate {
@@ -201,13 +185,9 @@ extension DIGraphShared {
     // InAppMessageManager (singleton)
     var inAppMessageManager: InAppMessageManager {
         getOverriddenInstance() ??
-            sharedInAppMessageManager
-    }
-
-    var sharedInAppMessageManager: InAppMessageManager {
-        getSingletonOrCreate {
-            _get_inAppMessageManager()
-        }
+            getSingletonOrCreate {
+                _get_inAppMessageManager()
+            }
     }
 
     private func _get_inAppMessageManager() -> InAppMessageManager {
@@ -227,13 +207,9 @@ extension DIGraphShared {
     // QueueManager (singleton)
     var queueManager: QueueManager {
         getOverriddenInstance() ??
-            sharedQueueManager
-    }
-
-    var sharedQueueManager: QueueManager {
-        getSingletonOrCreate {
-            _get_queueManager()
-        }
+            getSingletonOrCreate {
+                _get_queueManager()
+            }
     }
 
     private func _get_queueManager() -> QueueManager {
@@ -263,13 +239,9 @@ extension DIGraphShared {
     // SseConnectionManagerProtocol (singleton)
     var sseConnectionManagerProtocol: SseConnectionManagerProtocol {
         getOverriddenInstance() ??
-            sharedSseConnectionManagerProtocol
-    }
-
-    var sharedSseConnectionManagerProtocol: SseConnectionManagerProtocol {
-        getSingletonOrCreate {
-            _get_sseConnectionManagerProtocol()
-        }
+            getSingletonOrCreate {
+                _get_sseConnectionManagerProtocol()
+            }
     }
 
     private func _get_sseConnectionManagerProtocol() -> SseConnectionManagerProtocol {
@@ -289,13 +261,9 @@ extension DIGraphShared {
     // SseServiceProtocol (singleton)
     var sseServiceProtocol: SseServiceProtocol {
         getOverriddenInstance() ??
-            sharedSseServiceProtocol
-    }
-
-    var sharedSseServiceProtocol: SseServiceProtocol {
-        getSingletonOrCreate {
-            _get_sseServiceProtocol()
-        }
+            getSingletonOrCreate {
+                _get_sseServiceProtocol()
+            }
     }
 
     private func _get_sseServiceProtocol() -> SseServiceProtocol {

@@ -157,13 +157,9 @@ extension DIGraphShared {
     // EventBusHandler (singleton)
     public var eventBusHandler: EventBusHandler {
         getOverriddenInstance() ??
-            sharedEventBusHandler
-    }
-
-    public var sharedEventBusHandler: EventBusHandler {
-        getSingletonOrCreate {
-            _get_eventBusHandler()
-        }
+            getSingletonOrCreate {
+                _get_eventBusHandler()
+            }
     }
 
     private func _get_eventBusHandler() -> EventBusHandler {
@@ -213,13 +209,9 @@ extension DIGraphShared {
     // SingleScheduleTimer (singleton)
     var singleScheduleTimer: SingleScheduleTimer {
         getOverriddenInstance() ??
-            sharedSingleScheduleTimer
-    }
-
-    var sharedSingleScheduleTimer: SingleScheduleTimer {
-        getSingletonOrCreate {
-            _get_singleScheduleTimer()
-        }
+            getSingletonOrCreate {
+                _get_singleScheduleTimer()
+            }
     }
 
     private func _get_singleScheduleTimer() -> SingleScheduleTimer {
@@ -246,14 +238,9 @@ extension DIGraphShared {
     @available(iOSApplicationExtension, unavailable)
     public var deepLinkUtil: DeepLinkUtil {
         getOverriddenInstance() ??
-            sharedDeepLinkUtil
-    }
-
-    @available(iOSApplicationExtension, unavailable)
-    public var sharedDeepLinkUtil: DeepLinkUtil {
-        getSingletonOrCreate {
-            _get_deepLinkUtil()
-        }
+            getSingletonOrCreate {
+                _get_deepLinkUtil()
+            }
     }
 
     @available(iOSApplicationExtension, unavailable)
@@ -274,13 +261,9 @@ extension DIGraphShared {
     // EventBusObserversHolder (singleton)
     var eventBusObserversHolder: EventBusObserversHolder {
         getOverriddenInstance() ??
-            sharedEventBusObserversHolder
-    }
-
-    var sharedEventBusObserversHolder: EventBusObserversHolder {
-        getSingletonOrCreate {
-            _get_eventBusObserversHolder()
-        }
+            getSingletonOrCreate {
+                _get_eventBusObserversHolder()
+            }
     }
 
     private func _get_eventBusObserversHolder() -> EventBusObserversHolder {
@@ -290,13 +273,9 @@ extension DIGraphShared {
     // EventCache (singleton)
     var eventCache: EventCache {
         getOverriddenInstance() ??
-            sharedEventCache
-    }
-
-    var sharedEventCache: EventCache {
-        getSingletonOrCreate {
-            _get_eventCache()
-        }
+            getSingletonOrCreate {
+                _get_eventCache()
+            }
     }
 
     private func _get_eventCache() -> EventCache {
@@ -306,13 +285,9 @@ extension DIGraphShared {
     // EventStorage (singleton)
     var eventStorage: EventStorage {
         getOverriddenInstance() ??
-            sharedEventStorage
-    }
-
-    var sharedEventStorage: EventStorage {
-        getSingletonOrCreate {
-            _get_eventStorage()
-        }
+            getSingletonOrCreate {
+                _get_eventStorage()
+            }
     }
 
     private func _get_eventStorage() -> EventStorage {
@@ -352,13 +327,9 @@ extension DIGraphShared {
     // LockManager (singleton)
     public var lockManager: LockManager {
         getOverriddenInstance() ??
-            sharedLockManager
-    }
-
-    public var sharedLockManager: LockManager {
-        getSingletonOrCreate {
-            _get_lockManager()
-        }
+            getSingletonOrCreate {
+                _get_lockManager()
+            }
     }
 
     private func _get_lockManager() -> LockManager {
@@ -368,13 +339,9 @@ extension DIGraphShared {
     // Logger (singleton)
     public var logger: Logger {
         getOverriddenInstance() ??
-            sharedLogger
-    }
-
-    public var sharedLogger: Logger {
-        getSingletonOrCreate {
-            _get_logger()
-        }
+            getSingletonOrCreate {
+                _get_logger()
+            }
     }
 
     private func _get_logger() -> Logger {
@@ -384,13 +351,9 @@ extension DIGraphShared {
     // QueueInventoryMemoryStore (singleton)
     var queueInventoryMemoryStore: QueueInventoryMemoryStore {
         getOverriddenInstance() ??
-            sharedQueueInventoryMemoryStore
-    }
-
-    var sharedQueueInventoryMemoryStore: QueueInventoryMemoryStore {
-        getSingletonOrCreate {
-            _get_queueInventoryMemoryStore()
-        }
+            getSingletonOrCreate {
+                _get_queueInventoryMemoryStore()
+            }
     }
 
     private func _get_queueInventoryMemoryStore() -> QueueInventoryMemoryStore {
@@ -420,13 +383,9 @@ extension DIGraphShared {
     // EventBus (singleton)
     var eventBus: EventBus {
         getOverriddenInstance() ??
-            sharedEventBus
-    }
-
-    var sharedEventBus: EventBus {
-        getSingletonOrCreate {
-            _get_eventBus()
-        }
+            getSingletonOrCreate {
+                _get_eventBus()
+            }
     }
 
     private func _get_eventBus() -> EventBus {

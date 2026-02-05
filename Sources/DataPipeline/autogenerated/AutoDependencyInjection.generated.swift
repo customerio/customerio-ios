@@ -80,13 +80,9 @@ extension DIGraphShared {
     // AutoTrackingScreenViewStore (singleton)
     var autoTrackingScreenViewStore: AutoTrackingScreenViewStore {
         getOverriddenInstance() ??
-            sharedAutoTrackingScreenViewStore
-    }
-
-    var sharedAutoTrackingScreenViewStore: AutoTrackingScreenViewStore {
-        getSingletonOrCreate {
-            _get_autoTrackingScreenViewStore()
-        }
+            getSingletonOrCreate {
+                _get_autoTrackingScreenViewStore()
+            }
     }
 
     private func _get_autoTrackingScreenViewStore() -> AutoTrackingScreenViewStore {

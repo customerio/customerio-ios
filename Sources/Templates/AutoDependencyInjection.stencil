@@ -59,7 +59,9 @@ DIGraphShared.shared.reset()
         {% if isCustom %}
             self.custom{{ class }}
         {% elif isSingleton %}
-            self.shared{{ class }}
+            getSingletonOrCreate() {
+                _get_{{ class|lowerFirstLetter }}()
+            }
         {% else %}
             self.new{{ class }}
         {% endif %}
@@ -92,12 +94,6 @@ extension DIGraphShared {
     {% elif dep|annotated:"InjectSingleton" %}
     // {{ class }} (singleton)
     {% call overrideGetterProperty class dep false true %}
-    {% call addPropertyWrappers dep %}
-    {{ dep.accessLevel }} var shared{{ class }}: {{ class }} {
-        return getSingletonOrCreate() {
-            _get_{{ class|lowerFirstLetter }}()
-        }
-    }
     {% call addPropertyWrappers dep %}
     private func _get_{{ class|lowerFirstLetter }}() -> {{ class }} {
         return {{ dep.name }}({% for initializer in dep.initializers %}{% if not initializer.isConvenienceInitializer %}{% for param in initializer.parameters %}{{ param.name }}: self.{{ param.typeName|lowerFirstLetter }}{% if not forloop.last%}, {% endif %}{% endfor %}{% endif %}{% endfor %})

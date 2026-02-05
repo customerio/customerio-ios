@@ -128,14 +128,9 @@ extension DIGraphShared {
     @available(iOSApplicationExtension, unavailable)
     var pushEventHandlerProxy: PushEventHandlerProxy {
         getOverriddenInstance() ??
-            sharedPushEventHandlerProxy
-    }
-
-    @available(iOSApplicationExtension, unavailable)
-    var sharedPushEventHandlerProxy: PushEventHandlerProxy {
-        getSingletonOrCreate {
-            _get_pushEventHandlerProxy()
-        }
+            getSingletonOrCreate {
+                _get_pushEventHandlerProxy()
+            }
     }
 
     @available(iOSApplicationExtension, unavailable)
@@ -146,13 +141,9 @@ extension DIGraphShared {
     // PushHistory (singleton)
     var pushHistory: PushHistory {
         getOverriddenInstance() ??
-            sharedPushHistory
-    }
-
-    var sharedPushHistory: PushHistory {
-        getSingletonOrCreate {
-            _get_pushHistory()
-        }
+            getSingletonOrCreate {
+                _get_pushHistory()
+            }
     }
 
     private func _get_pushHistory() -> PushHistory {
@@ -203,14 +194,9 @@ extension DIGraphShared {
     @available(iOSApplicationExtension, unavailable)
     var userNotificationsFrameworkAdapter: UserNotificationsFrameworkAdapter {
         getOverriddenInstance() ??
-            sharedUserNotificationsFrameworkAdapter
-    }
-
-    @available(iOSApplicationExtension, unavailable)
-    var sharedUserNotificationsFrameworkAdapter: UserNotificationsFrameworkAdapter {
-        getSingletonOrCreate {
-            _get_userNotificationsFrameworkAdapter()
-        }
+            getSingletonOrCreate {
+                _get_userNotificationsFrameworkAdapter()
+            }
     }
 
     @available(iOSApplicationExtension, unavailable)
