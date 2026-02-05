@@ -1,3 +1,9 @@
+## [4.1.2](https://github.com/customerio/customerio-ios/compare/4.1.1...4.1.2) (2026-02-05)
+
+### Bug Fixes
+
+* Crash in swizzled didRegisterForRemoteNotificationsWithDeviceToken for FCM ([#990](https://github.com/customerio/customerio-ios/issues/990)) ([13d4d43](https://github.com/customerio/customerio-ios/commit/13d4d43f725b1052c449c41bcc1f96fb5b0d935b))
+
 ## [4.1.1](https://github.com/customerio/customerio-ios/compare/4.1.0...4.1.1) (2026-01-26)
 
 ### Bug Fixes
