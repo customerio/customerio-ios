@@ -34,7 +34,8 @@ extension MessagingPushFCM {
     // Fetch the FCM token using the Firebase delegate method when the APN token is set.
     @objc
     func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
-        guard let firebaseService = firebaseMessaging() else {
+        // Use Self.shared because after swizzling, `self` is the AppDelegate, not MessagingPushFCM
+        guard let firebaseService = Self.shared.firebaseMessaging() else {
             DIGraphShared.shared.logger.error("CIO: firebaseService is nil. Make sure to initialize the MessagingPushFCM SDK before use.")
             return
         }
