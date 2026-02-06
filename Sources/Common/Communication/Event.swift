@@ -131,9 +131,13 @@ public struct ResetEvent: EventRepresentable {
     public let storageId: String
     public let params: [String: String]
     public let timestamp: Date
+    /// The new anonymous ID generated after reset, allowing modules to continue
+    /// operating with the anonymous user identity.
+    public let newAnonymousId: String?
 
-    public init(storageId: String = UUID().uuidString, timestamp: Date = Date(), params: [String: String] = [:]) {
+    public init(storageId: String = UUID().uuidString, newAnonymousId: String? = nil, timestamp: Date = Date(), params: [String: String] = [:]) {
         self.storageId = storageId
+        self.newAnonymousId = newAnonymousId
         self.timestamp = timestamp
         self.params = params
     }
