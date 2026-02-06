@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!--
+	Docs for this section: https://developer.apple.com/documentation/bundleresources/privacy_manifest_files/describing_data_use_in_privacy_manifests
+	This section is describing what information our SDK collects about the app user.
+	
+	NOTE: This module is under development. Data collection declarations will be added
+	when location tracking functionality is implemented.
+	
+	The SDK does NOT request location permissions - host apps are responsible for:
+	- Adding NSLocationWhenInUseUsageDescription to their Info.plist
+	- Requesting permissions from users at appropriate times
+	-->
+	<key>NSPrivacyCollectedDataTypes</key>
+	<array>
+	</array>
+
+	<!--
+	Docs: https://developer.apple.com/documentation/bundleresources/privacy_manifest_files/describing_use_of_required_reason_api
+	Documents if our SDK uses certain system calls and why.
+	-->
+	<key>NSPrivacyAccessedAPITypes</key>
+	<array>
+	</array>
+	
+	<key>NSPrivacyTracking</key>
+	<false/>
+</dict>
+</plist>
