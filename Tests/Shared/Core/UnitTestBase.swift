@@ -25,12 +25,12 @@ open class UnitTestBase<Component>: XCTestCase {
     public var globalDataStore: GlobalDataStore { diGraphShared.globalDataStore }
 
     public let testSiteId = "testing"
-    public var sdkConfig: SdkConfig!
+    public var sdkConfig: SdkConfig?
 
-    public var jsonAdapter: JsonAdapter { JsonAdapter(log: log) }
-    public var lockManager: LockManager { LockManager() }
-    public var dateUtilStub: DateUtilStub!
-    public var threadUtilStub: ThreadUtilStub!
+    public lazy var jsonAdapter: JsonAdapter = .init(log: log)
+    public lazy var lockManager: LockManager = .init()
+    public let dateUtilStub: DateUtilStub = .init()
+    public let threadUtilStub: ThreadUtilStub = .init()
 
     override open func setUp() {
         setUp(sdkConfig: nil)
@@ -75,12 +75,13 @@ open class UnitTestBase<Component>: XCTestCase {
      @param modifySdkConfig Closure allowing customization of the SDK/Module configuration before the SDK/Module instance is initialized.
      */
     open func setUp(enableLogs: Bool = false, sdkConfig: SdkConfig? = nil) {
-        self.sdkConfig = sdkConfig ?? SdkConfig.Factory.create(logLevel: enableLogs ? .debug : nil)
+        let sdkConfig = sdkConfig ?? SdkConfig.Factory.create(logLevel: enableLogs ? .debug : nil)
+        self.sdkConfig = sdkConfig
 
         // setup and override dependencies before creating SDK instance, as Shared graph may be initialized and used immediately
         setUpDependencies()
         // set log level after setting up dependencies
-        log.setLogLevel(self.sdkConfig.logLevel)
+        log.setLogLevel(sdkConfig.logLevel)
         // setup SDK instance and set necessary components for testing
         initializeSDKComponents()
 
@@ -88,9 +89,6 @@ open class UnitTestBase<Component>: XCTestCase {
     }
 
     open func setUpDependencies() {
-        dateUtilStub = DateUtilStub()
-        threadUtilStub = ThreadUtilStub()
-
         // make default behavior of tests to run async code in synchronous way to make tests more predictable.
         diGraphShared.override(value: threadUtilStub, forType: ThreadUtil.self)
     }
@@ -142,13 +140,17 @@ open class UnitTestBase<Component>: XCTestCase {
             // device.
             // if files do not get deleted between tests, we could have false positive tests.
             // swiftlint:disable:next force_try
-            let pathUrl = try! fileManager.url(for: path, in: .userDomainMask, appropriateFor: nil, create: false)
+            guard let pathUrl = try? fileManager.url(for: path, in: .userDomainMask, appropriateFor: nil, create: false) else {
+                return
+            }
             // swiftlint:disable:next force_try
-            let fileURLs = try! fileManager.contentsOfDirectory(
+            guard let fileURLs = try? fileManager.contentsOfDirectory(
                 at: pathUrl,
                 includingPropertiesForKeys: nil,
                 options: .skipsHiddenFiles
-            )
+            ) else {
+                return
+            }
             for fileURL in fileURLs {
                 try? fileManager.removeItem(at: fileURL)
             }
