@@ -40,7 +40,6 @@ public enum EventTypesRegistry {
     /// Returns an array of all event types available in the system.
     /// This is used to manage and interact with different types of events.
     static func allEventTypes() -> [any EventRepresentable.Type] {
-        // Add all your event types here
         [
             ProfileIdentifiedEvent.self,
             AnonymousProfileIdentifiedEvent.self,
@@ -50,33 +49,16 @@ public enum EventTypesRegistry {
             TrackInAppMetricEvent.self,
             RegisterDeviceTokenEvent.self,
             DeleteDeviceTokenEvent.self,
-            NewSubscriptionEvent.self
+            NewSubscriptionEvent.self,
+            TrackLocationEvent.self
         ]
     }
 
     static func getEventType(for key: String) throws -> (any EventRepresentable.Type) {
-        switch key {
-        case ProfileIdentifiedEvent.key:
-            return ProfileIdentifiedEvent.self
-        case AnonymousProfileIdentifiedEvent.key:
-            return AnonymousProfileIdentifiedEvent.self
-        case ScreenViewedEvent.key:
-            return ScreenViewedEvent.self
-        case ResetEvent.key:
-            return ResetEvent.self
-        case TrackMetricEvent.key:
-            return TrackMetricEvent.self
-        case TrackInAppMetricEvent.key:
-            return TrackInAppMetricEvent.self
-        case RegisterDeviceTokenEvent.key:
-            return RegisterDeviceTokenEvent.self
-        case DeleteDeviceTokenEvent.key:
-            return DeleteDeviceTokenEvent.self
-        case NewSubscriptionEvent.key:
-            return NewSubscriptionEvent.self
-        default:
+        guard let eventType = allEventTypes().first(where: { $0.key == key }) else {
             throw EventBusError.invalidEventType
         }
+        return eventType
     }
 }
 
