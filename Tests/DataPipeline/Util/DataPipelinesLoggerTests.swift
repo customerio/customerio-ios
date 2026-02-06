@@ -1,8 +1,9 @@
-@testable import CioDataPipelines
-@testable import CioInternalCommon
 import Foundation
 import SharedTests
 import XCTest
+
+@testable import CioDataPipelines
+@testable import CioInternalCommon
 
 class DataPipelinesLoggerTests: UnitTest {
     private let loggerMock = LoggerMock()
@@ -10,6 +11,8 @@ class DataPipelinesLoggerTests: UnitTest {
 
     override func setUp() {
         super.setUp()
+
+        mockCollection.add(mock: loggerMock)
 
         logger = DataPipelinesLoggerImpl(logger: loggerMock)
     }

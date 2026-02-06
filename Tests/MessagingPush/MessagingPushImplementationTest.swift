@@ -15,6 +15,8 @@ class MessagingPushImplementationTest: UnitTest {
         pushLoggerMock = PushNotificationLoggerMock()
         richPushDeliveryTrackerMock = RichPushDeliveryTrackerMock()
 
+        mockCollection.add(mocks: [pushLoggerMock, richPushDeliveryTrackerMock])
+
         diGraphShared.override(value: pushLoggerMock, forType: PushNotificationLogger.self)
         diGraphShared.override(value: richPushDeliveryTrackerMock, forType: RichPushDeliveryTracker.self)
 

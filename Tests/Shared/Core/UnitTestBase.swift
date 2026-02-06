@@ -2,6 +2,9 @@
 import Foundation
 import XCTest
 
+// Static lock to synchronize file deletion across all test instances running in parallel
+let fileSystemLock = NSLock()
+
 /// Serves as the base class for all tests within the SDK, offering common setup, teardown, and
 /// utility methods shared across test cases. This class simplifies the initialization of the SDK/modules,
 /// mock objects, test data, and other shared resources, ensuring a consistent testing environment and
@@ -17,16 +20,17 @@ open class UnitTestBase<Component>: XCTestCase {
     // Using the .shared instance of the DIGraph to ensure that all tests share the same instance and data.
     // Overriding it will work the same way as overriding the shared instance of the SDK.
     public let diGraphShared: DIGraphShared = .shared
+    public let mockCollection: MockCollection = .init()
     public var log: Logger { diGraphShared.logger }
     public var globalDataStore: GlobalDataStore { diGraphShared.globalDataStore }
 
     public let testSiteId = "testing"
-    public var sdkConfig: SdkConfig!
+    public var sdkConfig: SdkConfig?
 
-    public var jsonAdapter: JsonAdapter { JsonAdapter(log: log) }
-    public var lockManager: LockManager { LockManager() }
-    public var dateUtilStub: DateUtilStub!
-    public var threadUtilStub: ThreadUtilStub!
+    public lazy var jsonAdapter: JsonAdapter = .init(log: log)
+    public lazy var lockManager: LockManager = .init()
+    public let dateUtilStub: DateUtilStub = .init()
+    public let threadUtilStub: ThreadUtilStub = .init()
 
     override open func setUp() {
         setUp(sdkConfig: nil)
@@ -71,12 +75,13 @@ open class UnitTestBase<Component>: XCTestCase {
      @param modifySdkConfig Closure allowing customization of the SDK/Module configuration before the SDK/Module instance is initialized.
      */
     open func setUp(enableLogs: Bool = false, sdkConfig: SdkConfig? = nil) {
-        self.sdkConfig = sdkConfig ?? SdkConfig.Factory.create(logLevel: enableLogs ? .debug : nil)
+        let sdkConfig = sdkConfig ?? SdkConfig.Factory.create(logLevel: enableLogs ? .debug : nil)
+        self.sdkConfig = sdkConfig
 
         // setup and override dependencies before creating SDK instance, as Shared graph may be initialized and used immediately
         setUpDependencies()
         // set log level after setting up dependencies
-        log.setLogLevel(self.sdkConfig.logLevel)
+        log.setLogLevel(sdkConfig.logLevel)
         // setup SDK instance and set necessary components for testing
         initializeSDKComponents()
 
@@ -84,9 +89,6 @@ open class UnitTestBase<Component>: XCTestCase {
     }
 
     open func setUpDependencies() {
-        dateUtilStub = DateUtilStub()
-        threadUtilStub = ThreadUtilStub()
-
         // make default behavior of tests to run async code in synchronous way to make tests more predictable.
         diGraphShared.override(value: threadUtilStub, forType: ThreadUtil.self)
     }
@@ -108,7 +110,7 @@ open class UnitTestBase<Component>: XCTestCase {
         // Delete all persistent data to ensure a clean state for each test when called during teardown.
         deleteAllPersistentData()
         // Reset mocks at the very end to prevent `EXC_BAD_ACCESS` errors by avoiding access to deallocated objects.
-        Mocks.shared.resetAll()
+        mockCollection.resetAll()
 
         // reset DI graphs to their initial state.
         diGraphShared.reset()
@@ -126,20 +128,25 @@ open class UnitTestBase<Component>: XCTestCase {
     }
 
     private func deleteAllFiles() {
+        // Use static lock to prevent race conditions when multiple test instances
+        // try to delete files concurrently
+        fileSystemLock.lock()
+        defer { fileSystemLock.unlock() }
+
         let fileManager = FileManager.default
 
         let deleteFromSearchPath: (FileManager.SearchPathDirectory) -> Void = { path in
-            // OK to use try! here as we want tests to crash if for some reason we are not able to delete files from the
-            // device.
-            // if files do not get deleted between tests, we could have false positive tests.
-            // swiftlint:disable:next force_try
-            let pathUrl = try! fileManager.url(for: path, in: .userDomainMask, appropriateFor: nil, create: false)
-            // swiftlint:disable:next force_try
-            let fileURLs = try! fileManager.contentsOfDirectory(
+            // Since cleanup is being done in parallel, these deletions may fail, so we have to allow them to fail.
+            guard let pathUrl = try? fileManager.url(for: path, in: .userDomainMask, appropriateFor: nil, create: false) else {
+                return
+            }
+            guard let fileURLs = try? fileManager.contentsOfDirectory(
                 at: pathUrl,
                 includingPropertiesForKeys: nil,
                 options: .skipsHiddenFiles
-            )
+            ) else {
+                return
+            }
             for fileURL in fileURLs {
                 try? fileManager.removeItem(at: fileURL)
             }

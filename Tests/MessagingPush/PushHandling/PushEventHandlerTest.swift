@@ -1,7 +1,8 @@
-@testable import CioMessagingPush
 import Foundation
 import SharedTests
 import XCTest
+
+@testable import CioMessagingPush
 
 class PushEventHandlerTest: UnitTest {
     private var pushEventHandler: PushEventHandler!
@@ -14,6 +15,8 @@ class PushEventHandlerTest: UnitTest {
 
     override func setUp() {
         super.setUp()
+
+        mockCollection.add(mock: pushClickHandler)
 
         pushEventHandler = IOSPushEventListener(
             jsonAdapter: diGraphShared.jsonAdapter,
@@ -44,6 +47,8 @@ class PushEventHandlerTest: UnitTest {
         let givenPush = PushNotificationStub.getPushNotSentFromCIO()
 
         // Send the CIO SDK push event handler an event. If an infinite loop occurs, this test will timeout or crash.
-        pushEventHandler.onPushAction(PushNotificationActionStub(push: givenPush, didClickOnPush: true)) {}
+        pushEventHandler.onPushAction(
+            PushNotificationActionStub(push: givenPush, didClickOnPush: true)
+        ) {}
     }
 }

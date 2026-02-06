@@ -1,46 +1,40 @@
-@testable import CioInternalCommon
 import Foundation
-import SharedTests
-import XCTest
+import Testing
+
+@testable import CioInternalCommon
 
 /// Tests using the `CustomerIOInstanceMock` to assert that the mock works as expected
 /// for customers and to give examples to them to use.
 ///
 /// Note: In the future we may want to move this code into the Remote Habits app instead.
-class CustomerIOMockTest: UnitTest {
-    private var cioMock = CustomerIOInstanceMock()
-    private var repository: ExampleRepository!
+struct CustomerIOMockTest {
+    @Test
+    func identify_requestBody_exampleTestCheckingArguments() async {
+        let cioMock = CustomerIOInstanceMock()
+        let repository = ExampleRepository(cio: cioMock)
 
-    override func setUp() {
-        super.setUp()
-
-        repository = ExampleRepository(cio: cioMock)
-    }
-
-    func test_identify_requestBody_exampleTestCheckingArguments() {
         let givenEmail = "example@customer.io"
         let givenFirstName = "Dana"
         let givenBody = ExampleIdentifyRequestBody(firstName: givenFirstName)
 
-        // Call your code under test
-        let expect = expectation(description: "Expect login to complete")
-        repository.loginUser(email: givenEmail, password: "password", firstName: givenFirstName) { _ in
-            expect.fulfill()
+        // Call your code under test and wait for completion using confirmation
+        await confirmation("Expect login to complete") { confirm in
+            repository.loginUser(email: givenEmail, password: "password", firstName: givenFirstName) { _ in
+                confirm()
+            }
         }
 
-        // wait for your function under test to complete
-        waitForExpectations(0.3)
-
         // You can now check the Customer.io mock to see if it behaved as you wished.
-        XCTAssertTrue(cioMock.identifyCalled)
+        #expect(cioMock.identifyCalled)
 
         // You can receive the generic `body` that was sent to the Customer.io `identify()` call.
         // Because of Swift generics, you must get the `.value` and cast it:
-        let actualBody: ExampleIdentifyRequestBody? = cioMock.identifyEncodableReceivedArguments?.traits
-            .value as? ExampleIdentifyRequestBody
+        let actualBody: ExampleIdentifyRequestBody? =
+            cioMock.identifyEncodableReceivedArguments?.traits
+                .value as? ExampleIdentifyRequestBody
         // Now, you can run checks against the `body` that was actually passed to `identify()`.
-        XCTAssertNotNil(actualBody)
-        XCTAssertEqual(actualBody?.firstName, givenBody.firstName)
+        #expect(actualBody != nil)
+        #expect(actualBody?.firstName == givenBody.firstName)
     }
 }
 

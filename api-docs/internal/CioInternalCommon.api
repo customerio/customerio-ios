@@ -340,9 +340,10 @@ public final class CioInternalCommon.MetricRequest {
 public interface CioInternalCommon.Mock {
 	public fun func resetMock();
 }
-public final class CioInternalCommon.Mocks {
-	public final val shared: Mocks;
+public final class CioInternalCommon.MockCollection {
+	public fun init();
 	public fun func add(mock: Mock);
+	public fun func add(mocks: List<Mock>);
 	public fun func resetAll();
 }
 public final class CioInternalCommon.NewSubscriptionEvent {

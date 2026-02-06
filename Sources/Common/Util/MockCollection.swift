@@ -6,17 +6,20 @@ import Foundation
 // This class is only used for tests but must exist in `Common` module because mock classes are generated in the source
 // code
 // directory and not the test code directory of the project.
-public final class Mocks: @unchecked Sendable {
-    public static let shared: Mocks = .init()
-
+public final class MockCollection: @unchecked Sendable {
     private let lock = NSRecursiveLock()
     private var mocks: [Mock] = []
-    private init() {}
+    public init() {}
 
-    // This gets called automatically by the automatically generated mock classes code.
     public func add(mock: Mock) {
         lock.withLock {
             mocks.append(mock)
+        }
+    }
+
+    public func add(mocks: [Mock]) {
+        lock.withLock {
+            self.mocks.append(contentsOf: mocks)
         }
     }
 

@@ -1,8 +1,9 @@
-@testable import CioInternalCommon
-@testable import CioMessagingPush
 import Foundation
 import SharedTests
 import XCTest
+
+@testable import CioInternalCommon
+@testable import CioMessagingPush
 
 class PushNotificationLoggerTests: UnitTest {
     private let loggerMock = LoggerMock()
@@ -10,6 +11,8 @@ class PushNotificationLoggerTests: UnitTest {
 
     override func setUp() {
         super.setUp()
+
+        mockCollection.add(mock: loggerMock)
 
         logger = PushNotificationLoggerImpl(logger: loggerMock)
     }
@@ -22,7 +25,8 @@ class PushNotificationLoggerTests: UnitTest {
         XCTAssertEqual(loggerMock.debugReceivedInvocations.count, 1)
         XCTAssertEqual(loggerMock.debugReceivedInvocations.first?.tag, "Push")
         XCTAssertEqual(
-            loggerMock.debugReceivedInvocations.first?.message, "Received notification for message: \(notification)"
+            loggerMock.debugReceivedInvocations.first?.message,
+            "Received notification for message: \(notification)"
         )
     }
 
@@ -100,7 +104,9 @@ class PushNotificationLoggerTests: UnitTest {
     func test_logPushMetricTrackingFailed_logsExpectedMessage() {
         let deliveryId = "abc123"
         let event = "delivered"
-        let error = NSError(domain: "TestError", code: 123, userInfo: [NSLocalizedDescriptionKey: "Test error"])
+        let error = NSError(
+            domain: "TestError", code: 123, userInfo: [NSLocalizedDescriptionKey: "Test error"]
+        )
 
         logger.logPushMetricTrackingFailed(deliveryId: deliveryId, event: event, error: error)
 

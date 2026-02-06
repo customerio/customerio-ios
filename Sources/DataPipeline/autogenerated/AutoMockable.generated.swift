@@ -91,9 +91,7 @@ class DataPipelinesLoggerMock: DataPipelinesLogger, Mock {
     /// If *any* interactions done on mock. `true` if any method or property getter/setter called.
     var mockCalled: Bool = false //
 
-    init() {
-        Mocks.shared.add(mock: self)
-    }
+    init() {}
 
     public func resetMock() {
         logStoringDevicePushTokenCallsCount = 0
@@ -302,9 +300,7 @@ class DeviceAttributesProviderMock: DeviceAttributesProvider, Mock {
     /// If *any* interactions done on mock. `true` if any method or property getter/setter called.
     var mockCalled: Bool = false //
 
-    init() {
-        Mocks.shared.add(mock: self)
-    }
+    init() {}
 
     public func resetMock() {
         getDefaultDeviceAttributesCallsCount = 0
