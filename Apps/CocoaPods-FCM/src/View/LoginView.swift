@@ -49,10 +49,11 @@ struct LoginView: View {
                 Spacer() // Spacers is how you push views to top or bottom of screen.
                 EnvironmentText()
             }
-        }.alert(isPresented: .notNil(errorMessage)) {
+        }
+        .alert(item: $errorMessage) { msg in
             Alert(
                 title: Text("Error"),
-                message: Text(errorMessage!),
+                message: Text(msg),
                 dismissButton: .default(Text("OK")) {
                     errorMessage = nil
                 }
