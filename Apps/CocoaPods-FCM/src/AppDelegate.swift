@@ -1,6 +1,7 @@
 import CioDataPipelines
 import CioFirebaseWrapper
 import CioInternalCommon
+import CioLocation
 import CioMessagingInApp
 import CioMessagingPush
 import CioMessagingPushFCM
@@ -64,6 +65,9 @@ class AppDelegate: NSObject, UIApplicationDelegate {
                 .showPushAppInForeground(true)
                 .build()
         )
+
+        // Initialize Location module
+        CustomerIO.location().initialize(withConfig: LocationConfigBuilder().build())
 
         /*
          Next line of code is used for testing how Firebase behaves when another object is set as the delegate for `UNUserNotificationCenter`.

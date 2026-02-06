@@ -1,5 +1,6 @@
 import CioDataPipelines
 import CioInternalCommon
+import CioLocation
 import CioMessagingInApp
 import CioMessagingPush
 import CioMessagingPushAPN
@@ -73,6 +74,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
                 region: settings.inApp.region.toCIORegion()
             ).build())
             .setEventListener(self)
+
+        // Initialize Location module
+        CustomerIO.location().initialize(withConfig: LocationConfigBuilder().build())
     }
 
     // Handle Universal Link deep link from the Customer.io SDK. This function will get called if a push notification
