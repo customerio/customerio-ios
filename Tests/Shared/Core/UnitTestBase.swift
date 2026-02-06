@@ -136,14 +136,10 @@ open class UnitTestBase<Component>: XCTestCase {
         let fileManager = FileManager.default
 
         let deleteFromSearchPath: (FileManager.SearchPathDirectory) -> Void = { path in
-            // OK to use try! here as we want tests to crash if for some reason we are not able to delete files from the
-            // device.
-            // if files do not get deleted between tests, we could have false positive tests.
-            // swiftlint:disable:next force_try
+            // Since cleanup is being done in parallel, these deletions may fail, so we have to allow them to fail.
             guard let pathUrl = try? fileManager.url(for: path, in: .userDomainMask, appropriateFor: nil, create: false) else {
                 return
             }
-            // swiftlint:disable:next force_try
             guard let fileURLs = try? fileManager.contentsOfDirectory(
                 at: pathUrl,
                 includingPropertiesForKeys: nil,
