@@ -50,7 +50,8 @@ public enum EventTypesRegistry {
             TrackInAppMetricEvent.self,
             RegisterDeviceTokenEvent.self,
             DeleteDeviceTokenEvent.self,
-            NewSubscriptionEvent.self
+            NewSubscriptionEvent.self,
+            TrackLocationEvent.self
         ]
     }
 
