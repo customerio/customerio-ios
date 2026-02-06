@@ -11,7 +11,6 @@ public final class MockCollection: @unchecked Sendable {
     private var mocks: [Mock] = []
     public init() {}
 
-    // This gets called automatically by the automatically generated mock classes code.
     public func add(mock: Mock) {
         lock.withLock {
             mocks.append(mock)
