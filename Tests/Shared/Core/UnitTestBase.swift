@@ -2,6 +2,9 @@
 import Foundation
 import XCTest
 
+// Static lock to synchronize file deletion across all test instances running in parallel
+let fileSystemLock = NSLock()
+
 /// Serves as the base class for all tests within the SDK, offering common setup, teardown, and
 /// utility methods shared across test cases. This class simplifies the initialization of the SDK/modules,
 /// mock objects, test data, and other shared resources, ensuring a consistent testing environment and
@@ -127,6 +130,11 @@ open class UnitTestBase<Component>: XCTestCase {
     }
 
     private func deleteAllFiles() {
+        // Use static lock to prevent race conditions when multiple test instances
+        // try to delete files concurrently
+        fileSystemLock.lock()
+        defer { fileSystemLock.unlock() }
+
         let fileManager = FileManager.default
 
         let deleteFromSearchPath: (FileManager.SearchPathDirectory) -> Void = { path in

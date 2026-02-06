@@ -20,8 +20,8 @@ struct CustomerIOMockTest {
         // Call your code under test and wait for completion using confirmation
         await confirmation("Expect login to complete") { confirm in
             repository.loginUser(email: givenEmail, password: "password", firstName: givenFirstName) { _ in
-                    confirm()
-                }
+                confirm()
+            }
         }
 
         // You can now check the Customer.io mock to see if it behaved as you wished.
