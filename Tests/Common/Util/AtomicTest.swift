@@ -4,9 +4,7 @@ import Testing
 @testable
 import CioInternalCommon
 
-
 struct AtomicTest {
-    
     class TestObject {
         @Atomic
         var text: String
@@ -21,7 +19,7 @@ struct AtomicTest {
 
         let testObject = TestObject()
         testObject.text = expect
-        
+
         let actual = testObject.text
 
         #expect(expect == actual)

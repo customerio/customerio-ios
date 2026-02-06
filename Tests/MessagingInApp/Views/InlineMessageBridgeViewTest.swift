@@ -1,22 +1,25 @@
-@testable import CioInternalCommon
-@testable import CioMessagingInApp
 import SharedTests
 import UIKit
 import XCTest
+
+@testable import CioInternalCommon
+@testable import CioMessagingInApp
 
 class InlineMessageBridgeViewTest: UnitTest {
     private var bridgeView: InlineMessageBridgeView!
     private var mockDelegate: InlineMessageBridgeViewDelegateMock!
     private var parentView: UIView!
+    private let eventBusHandlerMock = EventBusHandlerMock()
 
     override func setUp() {
         super.setUp()
 
-        diGraphShared.override(value: EventBusHandlerMock(), forType: EventBusHandler.self)
+        diGraphShared.override(value: eventBusHandlerMock, forType: EventBusHandler.self)
 
         bridgeView = InlineMessageBridgeView()
         mockDelegate = InlineMessageBridgeViewDelegateMock()
         parentView = UIView()
+        mockCollection.add(mocks: [eventBusHandlerMock, mockDelegate])
     }
 
     override func tearDown() {

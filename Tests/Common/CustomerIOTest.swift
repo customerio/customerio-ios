@@ -1,7 +1,8 @@
-@testable import CioInternalCommon
 import Foundation
 import SharedTests
 import XCTest
+
+@testable import CioInternalCommon
 
 class CustomerIOTest: UnitTest {
     private let implmentationMock = CustomerIOInstanceMock()
@@ -11,6 +12,9 @@ class CustomerIOTest: UnitTest {
 
     override func setUpDependencies() {
         super.setUpDependencies()
+
+        mockCollection.add(mocks: [implmentationMock, globalDataStoreMock])
+
         diGraphShared.override(value: globalDataStoreMock, forType: GlobalDataStore.self)
     }
 

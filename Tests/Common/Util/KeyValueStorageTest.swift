@@ -1,7 +1,8 @@
-@testable import CioInternalCommon
 import Foundation
 import SharedTests
 import XCTest
+
+@testable import CioInternalCommon
 
 class KeyValueStorageTests: UnitTest {
     let defaultKey = KeyValueStorageKey.identifiedProfileId
@@ -11,11 +12,20 @@ class KeyValueStorageTests: UnitTest {
         DIGraphShared.shared.sharedKeyValueStorage
     }
 
+    override func setUp() {
+        super.setUp()
+
+        mockCollection.add(mock: deviceMetricsGrabberMock)
+    }
+
     // MARK: getFileName
 
     func test_getFileName_expectGetFileName() {
-        DIGraphShared.shared.override(value: deviceMetricsGrabberMock, forType: DeviceMetricsGrabber.self)
-        let store: UserDefaultsSharedKeyValueStorage? = DIGraphShared.shared.sharedKeyValueStorage as? UserDefaultsSharedKeyValueStorage
+        DIGraphShared.shared.override(
+            value: deviceMetricsGrabberMock, forType: DeviceMetricsGrabber.self
+        )
+        let store: UserDefaultsSharedKeyValueStorage? =
+            DIGraphShared.shared.sharedKeyValueStorage as? UserDefaultsSharedKeyValueStorage
 
         XCTAssertNotNil(store)
 

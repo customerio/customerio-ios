@@ -22,6 +22,8 @@ class HttpClientTest: UnitTest {
     ) {
         super.setUp(enableLogs: enableLogs, modifyModuleConfig: modifyModuleConfig)
 
+        mockCollection.add(mocks: [requestRunnerMock, globalDataStoreMock, timerMock])
+
         client = RichPushHttpClient(
             jsonAdapter: jsonAdapter,
             httpRequestRunner: requestRunnerMock,

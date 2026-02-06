@@ -13,6 +13,8 @@ class DeviceAttributesProviderTest: UnitTest {
     override func setUpDependencies() {
         super.setUpDependencies()
 
+        mockCollection.add(mocks: [deviceInfoMock, sdkClientMock])
+
         diGraphShared.override(value: provider, forType: DeviceAttributesProvider.self)
         diGraphShared.override(value: deviceInfoMock, forType: DeviceInfo.self)
         diGraphShared.override(value: sdkClientMock, forType: SdkClient.self)

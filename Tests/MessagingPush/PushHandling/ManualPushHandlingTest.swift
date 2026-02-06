@@ -17,6 +17,8 @@ class ManualPushHandlingIntegrationTests: IntegrationTest {
             config.autoTrackPushEvents(false) // we are testing manual push tracking. Disable automatic push tracking feature.
         }
 
+        mockCollection.add(mock: pushClickHandler)
+
         DIGraphShared.shared.override(value: pushClickHandler, forType: PushClickHandler.self)
     }
 

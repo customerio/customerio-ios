@@ -1,7 +1,8 @@
-@testable import CioInternalCommon
-@testable import CioMessagingInApp
 import SharedTests
 import XCTest
+
+@testable import CioInternalCommon
+@testable import CioMessagingInApp
 
 class GistViewLifecycleDelegateTests: UnitTest {
     class MockGistViewLifecycleDelegate: GistViewLifecycleDelegate {
@@ -27,6 +28,8 @@ class GistViewLifecycleDelegateTests: UnitTest {
         mockEngineView = UIView()
         mockGistProvider = GistProviderMock()
 
+        mockCollection.add(mock: mockGistProvider)
+
         originalGistProvider = diGraphShared.gistProvider
         diGraphShared.override(value: mockGistProvider, forType: GistProvider.self)
 
@@ -49,9 +52,18 @@ class GistViewLifecycleDelegateTests: UnitTest {
     func testLifecycleDelegateCalledWhenRemovingFromSuperview() {
         gistView.removeFromSuperview()
 
-        XCTAssertTrue(mockLifecycleDelegate.removeFromSuperviewCalled, "Lifecycle delegate should be notified when removeFromSuperview is called")
-        XCTAssertTrue(mockLifecycleDelegate.lastGistView === gistView, "The correct GistView should be passed to the delegate")
-        XCTAssertFalse(mockGistProvider.dismissMessageCalled, "GistView should not directly call dismissMessage after our refactoring")
+        XCTAssertTrue(
+            mockLifecycleDelegate.removeFromSuperviewCalled,
+            "Lifecycle delegate should be notified when removeFromSuperview is called"
+        )
+        XCTAssertTrue(
+            mockLifecycleDelegate.lastGistView === gistView,
+            "The correct GistView should be passed to the delegate"
+        )
+        XCTAssertFalse(
+            mockGistProvider.dismissMessageCalled,
+            "GistView should not directly call dismissMessage after our refactoring"
+        )
     }
 
     func testInlineMessageManagerImplementation() {
@@ -74,7 +86,9 @@ class GistViewLifecycleDelegateTests: UnitTest {
     func testModalMessageManagerImplementation() {
         // Modal messages don't have an elementId
         let message = Message(messageId: "test-modal-message")
-        XCTAssertFalse(message.isEmbedded, "Message should be identified as modal (not embedded/inline)")
+        XCTAssertFalse(
+            message.isEmbedded, "Message should be identified as modal (not embedded/inline)"
+        )
 
         let state = InAppMessageState()
         let modalManager = ModalMessageManager(state: state, message: message)

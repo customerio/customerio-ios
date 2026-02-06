@@ -1,12 +1,15 @@
+import XCTest
+
 @testable import CioDataPipelines
 @testable import CioInternalCommon
-import XCTest
 
 class CustomerIOTests: IntegrationTest {
     private let mockLogger = SdkCommonLoggerMock()
 
     override open func setUpDependencies() {
         super.setUpDependencies()
+
+        mockCollection.add(mock: mockLogger)
 
         diGraphShared.override(value: mockLogger, forType: SdkCommonLogger.self)
         DataPipeline.resetTestEnvironment()

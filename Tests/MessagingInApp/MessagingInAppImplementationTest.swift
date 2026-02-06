@@ -21,6 +21,8 @@ class MessagingInAppImplementationTest: IntegrationTest {
     override func setUpDependencies() {
         super.setUpDependencies()
 
+        mockCollection.add(mocks: [gistProviderMock, eventListenerMock, inAppMessageManagerMock])
+
         diGraphShared.override(value: gistProviderMock, forType: GistProvider.self)
         diGraphShared.override(value: inAppMessageManagerMock, forType: InAppMessageManager.self)
     }

@@ -1,7 +1,8 @@
-@testable import CioInternalCommon
 import Foundation
 import SharedTests
 import XCTest
+
+@testable import CioInternalCommon
 
 class UserAgentUtilTest: UnitTest {
     private let deviceInfoMock = DeviceInfoMock()
@@ -13,6 +14,8 @@ class UserAgentUtilTest: UnitTest {
 
     override func setUpDependencies() {
         super.setUpDependencies()
+
+        mockCollection.add(mocks: [deviceInfoMock, sdkClientMock])
 
         diGraphShared.override(value: deviceInfoMock, forType: DeviceInfo.self)
         diGraphShared.override(value: sdkClientMock, forType: SdkClient.self)
@@ -32,7 +35,8 @@ class UserAgentUtilTest: UnitTest {
     }
 
     func test_getUserAgent_givenDeviceInfoAvailable_expectLongUserAgent() {
-        let expected = "Customer.io iOS Client/1.0.1 (iPhone12; iOS 14.1) io.customer.superawesomestore/3.4.5"
+        let expected =
+            "Customer.io iOS Client/1.0.1 (iPhone12; iOS 14.1) io.customer.superawesomestore/3.4.5"
         deviceInfoMock.underlyingDeviceModel = "iPhone12"
         deviceInfoMock.underlyingOsVersion = "14.1"
         deviceInfoMock.underlyingOsName = "iOS"
@@ -48,7 +52,8 @@ class UserAgentUtilTest: UnitTest {
     }
 
     func test_getUserAgent_givenDeviceInfoAvailable_expectLongVisonOsUserAgent() {
-        let expected = "Customer.io visionOS Client/3.0.1 (Apple Vision Pro; visionOS 1.1) io.customer.visionos-sample-app.VisionOS/1.0"
+        let expected =
+            "Customer.io visionOS Client/3.0.1 (Apple Vision Pro; visionOS 1.1) io.customer.visionos-sample-app.VisionOS/1.0"
         deviceInfoMock.underlyingDeviceModel = "Apple Vision Pro"
         deviceInfoMock.underlyingOsVersion = "1.1"
         deviceInfoMock.underlyingOsName = "visionOS"
@@ -64,7 +69,8 @@ class UserAgentUtilTest: UnitTest {
     }
 
     func test_getUserAgent_givenDeviceInfoAvailable_expectLongReactNativeUserAgent() {
-        let expected = "Customer.io React Native Client/1.0.1 (iPhone12; iOS 14.1) io.customer.superawesomestore/3.4.5"
+        let expected =
+            "Customer.io React Native Client/1.0.1 (iPhone12; iOS 14.1) io.customer.superawesomestore/3.4.5"
         deviceInfoMock.underlyingDeviceModel = "iPhone12"
         deviceInfoMock.underlyingOsVersion = "14.1"
         deviceInfoMock.underlyingOsName = "iOS"
@@ -80,7 +86,8 @@ class UserAgentUtilTest: UnitTest {
     }
 
     func test_getUserAgent_givenDeviceInfoAvailable_expectLongNSEUserAgent() {
-        let expected = "Customer.io NSE Client/\(SdkVersion.version) (iPhone14; iOS 15.3) io.customer.nse/2.0.3"
+        let expected =
+            "Customer.io NSE Client/\(SdkVersion.version) (iPhone14; iOS 15.3) io.customer.nse/2.0.3"
         deviceInfoMock.underlyingDeviceModel = "iPhone14"
         deviceInfoMock.underlyingOsVersion = "15.3"
         deviceInfoMock.underlyingOsName = "iOS"
