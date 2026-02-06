@@ -55,28 +55,10 @@ public enum EventTypesRegistry {
     }
 
     static func getEventType(for key: String) throws -> (any EventRepresentable.Type) {
-        switch key {
-        case ProfileIdentifiedEvent.key:
-            return ProfileIdentifiedEvent.self
-        case AnonymousProfileIdentifiedEvent.key:
-            return AnonymousProfileIdentifiedEvent.self
-        case ScreenViewedEvent.key:
-            return ScreenViewedEvent.self
-        case ResetEvent.key:
-            return ResetEvent.self
-        case TrackMetricEvent.key:
-            return TrackMetricEvent.self
-        case TrackInAppMetricEvent.key:
-            return TrackInAppMetricEvent.self
-        case RegisterDeviceTokenEvent.key:
-            return RegisterDeviceTokenEvent.self
-        case DeleteDeviceTokenEvent.key:
-            return DeleteDeviceTokenEvent.self
-        case NewSubscriptionEvent.key:
-            return NewSubscriptionEvent.self
-        default:
+        guard let eventType = allEventTypes().first(where: { $0.key == key }) else {
             throw EventBusError.invalidEventType
         }
+        return eventType
     }
 }
 
