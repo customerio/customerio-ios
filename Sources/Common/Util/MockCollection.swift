@@ -7,8 +7,6 @@ import Foundation
 // code
 // directory and not the test code directory of the project.
 public final class MockCollection: @unchecked Sendable {
-//    public static let shared: Mocks = .init()
-
     private let lock = NSRecursiveLock()
     private var mocks: [Mock] = []
     public init() {}
