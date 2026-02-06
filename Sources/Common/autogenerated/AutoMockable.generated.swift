@@ -90,9 +90,7 @@ public class CustomerIOInstanceMock: CustomerIOInstance, Mock {
     /// If *any* interactions done on mock. `true` if any method or property getter/setter called.
     public var mockCalled: Bool = false //
 
-    public init() {
-        Mocks.shared.add(mock: self)
-    }
+    public init() {}
 
     /**
      When setter of the property called, the value given to setter is set here.
@@ -571,9 +569,7 @@ public class DeepLinkUtilMock: DeepLinkUtil, Mock {
     /// If *any* interactions done on mock. `true` if any method or property getter/setter called.
     public var mockCalled: Bool = false //
 
-    public init() {
-        Mocks.shared.add(mock: self)
-    }
+    public init() {}
 
     public func resetMock() {
         setDeepLinkCallbackCallsCount = 0
@@ -655,9 +651,7 @@ public class DeviceInfoMock: DeviceInfo, Mock {
     /// If *any* interactions done on mock. `true` if any method or property getter/setter called.
     public var mockCalled: Bool = false //
 
-    public init() {
-        Mocks.shared.add(mock: self)
-    }
+    public init() {}
 
     /**
      When setter of the property called, the value given to setter is set here.
@@ -1013,9 +1007,7 @@ class DeviceMetricsGrabberMock: DeviceMetricsGrabber, Mock {
     /// If *any* interactions done on mock. `true` if any method or property getter/setter called.
     var mockCalled: Bool = false //
 
-    init() {
-        Mocks.shared.add(mock: self)
-    }
+    init() {}
 
     /**
      When setter of the property called, the value given to setter is set here.
@@ -1071,9 +1063,7 @@ public class EventBusMock: EventBus, Mock {
     /// If *any* interactions done on mock. `true` if any method or property getter/setter called.
     public var mockCalled: Bool = false //
 
-    public init() {
-        Mocks.shared.add(mock: self)
-    }
+    public init() {}
 
     public func resetMock() {
         postCallsCount = 0
@@ -1191,9 +1181,7 @@ public class EventCacheMock: EventCache, Mock {
     /// If *any* interactions done on mock. `true` if any method or property getter/setter called.
     public var mockCalled: Bool = false //
 
-    public init() {
-        Mocks.shared.add(mock: self)
-    }
+    public init() {}
 
     public func resetMock() {
         addEventCallsCount = 0
@@ -1342,9 +1330,7 @@ public class EventStorageMock: EventStorage, Mock {
     /// If *any* interactions done on mock. `true` if any method or property getter/setter called.
     public var mockCalled: Bool = false //
 
-    public init() {
-        Mocks.shared.add(mock: self)
-    }
+    public init() {}
 
     public func resetMock() {
         storeCallsCount = 0
@@ -1533,9 +1519,7 @@ public class FileStorageMock: FileStorage, Mock {
     /// If *any* interactions done on mock. `true` if any method or property getter/setter called.
     public var mockCalled: Bool = false //
 
-    public init() {
-        Mocks.shared.add(mock: self)
-    }
+    public init() {}
 
     public func resetMock() {
         saveCallsCount = 0
@@ -1660,9 +1644,7 @@ public class GlobalDataStoreMock: GlobalDataStore, Mock {
     /// If *any* interactions done on mock. `true` if any method or property getter/setter called.
     public var mockCalled: Bool = false //
 
-    public init() {
-        Mocks.shared.add(mock: self)
-    }
+    public init() {}
 
     /**
      When setter of the property called, the value given to setter is set here.
@@ -1742,9 +1724,7 @@ public class HttpClientMock: HttpClient, Mock {
     /// If *any* interactions done on mock. `true` if any method or property getter/setter called.
     public var mockCalled: Bool = false //
 
-    public init() {
-        Mocks.shared.add(mock: self)
-    }
+    public init() {}
 
     public func resetMock() {
         requestCallsCount = 0
@@ -1857,9 +1837,7 @@ public class HttpRequestRunnerMock: HttpRequestRunner, Mock {
     /// If *any* interactions done on mock. `true` if any method or property getter/setter called.
     public var mockCalled: Bool = false //
 
-    public init() {
-        Mocks.shared.add(mock: self)
-    }
+    public init() {}
 
     public func resetMock() {
         requestCallsCount = 0
@@ -1940,9 +1918,7 @@ public class LoggerMock: Logger, Mock {
     /// If *any* interactions done on mock. `true` if any method or property getter/setter called.
     public var mockCalled: Bool = false //
 
-    public init() {
-        Mocks.shared.add(mock: self)
-    }
+    public init() {}
 
     /**
      When setter of the property called, the value given to setter is set here.
@@ -2157,9 +2133,7 @@ public class ProfileStoreMock: ProfileStore, Mock {
     /// If *any* interactions done on mock. `true` if any method or property getter/setter called.
     public var mockCalled: Bool = false //
 
-    public init() {
-        Mocks.shared.add(mock: self)
-    }
+    public init() {}
 
     public func resetMock() {
         getProfileIdCallsCount = 0
@@ -2244,9 +2218,7 @@ public class QueueMock: Queue, Mock {
     /// If *any* interactions done on mock. `true` if any method or property getter/setter called.
     public var mockCalled: Bool = false //
 
-    public init() {
-        Mocks.shared.add(mock: self)
-    }
+    public init() {}
 
     public func resetMock() {
         getAllStoredTasksCallsCount = 0
@@ -2367,9 +2339,7 @@ public class QueueStorageMock: QueueStorage, Mock {
     /// If *any* interactions done on mock. `true` if any method or property getter/setter called.
     public var mockCalled: Bool = false //
 
-    public init() {
-        Mocks.shared.add(mock: self)
-    }
+    public init() {}
 
     public func resetMock() {
         getInventoryCallsCount = 0
@@ -2494,9 +2464,7 @@ public class SdkClientMock: SdkClient, Mock {
     /// If *any* interactions done on mock. `true` if any method or property getter/setter called.
     public var mockCalled: Bool = false //
 
-    public init() {
-        Mocks.shared.add(mock: self)
-    }
+    public init() {}
 
     /**
      When setter of the property called, the value given to setter is set here.
@@ -2589,9 +2557,7 @@ public class SdkCommonLoggerMock: SdkCommonLogger, Mock {
     /// If *any* interactions done on mock. `true` if any method or property getter/setter called.
     public var mockCalled: Bool = false //
 
-    public init() {
-        Mocks.shared.add(mock: self)
-    }
+    public init() {}
 
     public func resetMock() {
         coreSdkInitStartCallsCount = 0
@@ -2848,9 +2814,7 @@ class SimpleTimerMock: SimpleTimer, Mock {
     /// If *any* interactions done on mock. `true` if any method or property getter/setter called.
     var mockCalled: Bool = false //
 
-    init() {
-        Mocks.shared.add(mock: self)
-    }
+    init() {}
 
     public func resetMock() {
         scheduleAndCancelPreviousCallsCount = 0
@@ -2959,9 +2923,7 @@ class SingleScheduleTimerMock: SingleScheduleTimer, Mock {
     /// If *any* interactions done on mock. `true` if any method or property getter/setter called.
     var mockCalled: Bool = false //
 
-    init() {
-        Mocks.shared.add(mock: self)
-    }
+    init() {}
 
     public func resetMock() {
         scheduleIfNotAlreadyCallsCount = 0
@@ -3038,9 +3000,7 @@ public class SystemLoggerMock: SystemLogger, Mock {
     /// If *any* interactions done on mock. `true` if any method or property getter/setter called.
     public var mockCalled: Bool = false //
 
-    public init() {
-        Mocks.shared.add(mock: self)
-    }
+    public init() {}
 
     public func resetMock() {
         logCallsCount = 0
@@ -3090,9 +3050,7 @@ public class UIKitWrapperMock: UIKitWrapper, Mock {
     /// If *any* interactions done on mock. `true` if any method or property getter/setter called.
     public var mockCalled: Bool = false //
 
-    public init() {
-        Mocks.shared.add(mock: self)
-    }
+    public init() {}
 
     public func resetMock() {
         openCallsCount = 0
@@ -3177,9 +3135,7 @@ public class UserAgentUtilMock: UserAgentUtil, Mock {
     /// If *any* interactions done on mock. `true` if any method or property getter/setter called.
     public var mockCalled: Bool = false //
 
-    public init() {
-        Mocks.shared.add(mock: self)
-    }
+    public init() {}
 
     public func resetMock() {
         getUserAgentHeaderValueCallsCount = 0

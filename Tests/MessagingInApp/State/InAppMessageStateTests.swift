@@ -24,6 +24,8 @@ class InAppMessageStateTests: IntegrationTest {
         engineWebMock.underlyingView = UIView()
         MessagingInApp.shared.setEventListener(globalEventListener)
 
+        mockCollection.add(mocks: [engineWebMock, globalEventListener])
+
         diGraphShared.override(value: CioThreadUtil(), forType: ThreadUtil.self)
         diGraphShared.override(value: engineWebProvider, forType: EngineWebProvider.self)
 

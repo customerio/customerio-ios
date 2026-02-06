@@ -1,7 +1,8 @@
-@testable import CioInternalCommon
 import Foundation
 import SharedTests
 import XCTest
+
+@testable import CioInternalCommon
 
 class LoggerTest: UnitTest {
     private var logger: Logger!
@@ -9,6 +10,8 @@ class LoggerTest: UnitTest {
 
     override func setUp() {
         super.setUp()
+
+        mockCollection.add(mock: systemLoggerMock)
 
         logger = LoggerImpl(logger: systemLoggerMock)
     }
@@ -61,7 +64,9 @@ class LoggerTest: UnitTest {
 
         XCTAssertEqual(systemLoggerMock.logCallsCount, 1)
         XCTAssertEqual(systemLoggerMock.logReceivedInvocations.first?.level, .error)
-        XCTAssertEqual(systemLoggerMock.logReceivedInvocations.first?.message, "[MyTag] Test error message")
+        XCTAssertEqual(
+            systemLoggerMock.logReceivedInvocations.first?.message, "[MyTag] Test error message"
+        )
     }
 
     func test_allWithTagAndError_givenErrorLogLevel_expectOnlyErrorLog() {
@@ -78,7 +83,10 @@ class LoggerTest: UnitTest {
 
         XCTAssertEqual(systemLoggerMock.logCallsCount, 1)
         XCTAssertEqual(systemLoggerMock.logReceivedInvocations.first?.level, .error)
-        XCTAssertEqual(systemLoggerMock.logReceivedInvocations.first?.message, "[MyTag] Test error message Error: Localized error")
+        XCTAssertEqual(
+            systemLoggerMock.logReceivedInvocations.first?.message,
+            "[MyTag] Test error message Error: Localized error"
+        )
     }
 
     func test_allWithDispatcher_givenErrorLogLevel_expectOnlyErrorLog() {
@@ -125,10 +133,14 @@ class LoggerTest: UnitTest {
         XCTAssertEqual(systemLoggerMock.logCallsCount, 2)
 
         XCTAssertEqual(systemLoggerMock.logReceivedInvocations[0].level, .info)
-        XCTAssertEqual(systemLoggerMock.logReceivedInvocations[0].message, "[Tag] Test info message")
+        XCTAssertEqual(
+            systemLoggerMock.logReceivedInvocations[0].message, "[Tag] Test info message"
+        )
 
         XCTAssertEqual(systemLoggerMock.logReceivedInvocations[1].level, .error)
-        XCTAssertEqual(systemLoggerMock.logReceivedInvocations[1].message, "[MyTag] Test error message")
+        XCTAssertEqual(
+            systemLoggerMock.logReceivedInvocations[1].message, "[MyTag] Test error message"
+        )
     }
 
     func test_allWithDispatcher_givenInfoLogLevel_expectOnlyErrorLog() {
@@ -185,13 +197,19 @@ class LoggerTest: UnitTest {
         XCTAssertEqual(systemLoggerMock.logCallsCount, 3)
 
         XCTAssertEqual(systemLoggerMock.logReceivedInvocations[0].level, .debug)
-        XCTAssertEqual(systemLoggerMock.logReceivedInvocations[0].message, "[SomeTag] Test debug message")
+        XCTAssertEqual(
+            systemLoggerMock.logReceivedInvocations[0].message, "[SomeTag] Test debug message"
+        )
 
         XCTAssertEqual(systemLoggerMock.logReceivedInvocations[1].level, .info)
-        XCTAssertEqual(systemLoggerMock.logReceivedInvocations[1].message, "[Tag] Test info message")
+        XCTAssertEqual(
+            systemLoggerMock.logReceivedInvocations[1].message, "[Tag] Test info message"
+        )
 
         XCTAssertEqual(systemLoggerMock.logReceivedInvocations[2].level, .error)
-        XCTAssertEqual(systemLoggerMock.logReceivedInvocations[2].message, "[MyTag] Test error message")
+        XCTAssertEqual(
+            systemLoggerMock.logReceivedInvocations[2].message, "[MyTag] Test error message"
+        )
     }
 
     func test_allWithDispatcher_givenDebugLogLevel_expectOnlyErrorLog() {

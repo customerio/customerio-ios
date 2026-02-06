@@ -13,6 +13,8 @@ class DeepLinkUtilTest: UnitTest {
     override func setUp() {
         super.setUp()
 
+        mockCollection.add(mocks: [uiKitMock, loggerMock])
+
         deepLinkUtil = DeepLinkUtilImpl(logger: loggerMock, uiKitWrapper: uiKitMock)
     }
 

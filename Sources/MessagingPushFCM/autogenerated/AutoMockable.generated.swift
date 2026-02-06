@@ -92,9 +92,7 @@ public class MessagingPushFCMInstanceMock: MessagingPushFCMInstance, Mock {
     /// If *any* interactions done on mock. `true` if any method or property getter/setter called.
     public var mockCalled: Bool = false //
 
-    public init() {
-        Mocks.shared.add(mock: self)
-    }
+    public init() {}
 
     public func resetMock() {
         registerDeviceTokenCallsCount = 0

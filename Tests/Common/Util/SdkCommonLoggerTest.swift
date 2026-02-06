@@ -1,7 +1,8 @@
-@testable import CioInternalCommon
 import Foundation
 import SharedTests
 import XCTest
+
+@testable import CioInternalCommon
 
 class SdkCommonLoggerTest: UnitTest {
     private let loggerMock = LoggerMock()
@@ -9,6 +10,8 @@ class SdkCommonLoggerTest: UnitTest {
 
     override func setUp() {
         super.setUp()
+
+        mockCollection.add(mock: loggerMock)
 
         logger = SdkCommonLoggerImpl(logger: loggerMock)
     }

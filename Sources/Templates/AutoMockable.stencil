@@ -255,7 +255,6 @@ class ExampleTest: XCTestCase {
     {{ type.accessLevel }} var mockCalled: Bool = false // 
 
     {{ type.accessLevel }} init() {
-        {{ argument.moduleName }}Mocks.shared.add(mock: self)
     }
 
 {% for variable in type.allVariables|!definedInExtension %}

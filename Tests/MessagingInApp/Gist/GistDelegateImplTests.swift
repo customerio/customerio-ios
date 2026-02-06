@@ -18,6 +18,8 @@ class GistDelegateImplTests: UnitTest {
         mockEventListener = InAppEventListenerMock()
         mockThreadUtil = ThreadUtilStub()
 
+        mockCollection.add(mocks: [mockLogger, mockEventBusHandler, mockEventListener])
+
         // Override the ThreadUtil in the DIGraphShared
         let originalThreadUtil = diGraphShared.threadUtil
         diGraphShared.override(value: mockThreadUtil, forType: ThreadUtil.self)

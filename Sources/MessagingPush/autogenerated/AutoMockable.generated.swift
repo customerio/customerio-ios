@@ -92,9 +92,7 @@ class AutomaticPushClickHandlingMock: AutomaticPushClickHandling, Mock {
     /// If *any* interactions done on mock. `true` if any method or property getter/setter called.
     var mockCalled: Bool = false //
 
-    init() {
-        Mocks.shared.add(mock: self)
-    }
+    init() {}
 
     public func resetMock() {
         startCallsCount = 0
@@ -135,9 +133,7 @@ public class MessagingPushInstanceMock: MessagingPushInstance, Mock {
     /// If *any* interactions done on mock. `true` if any method or property getter/setter called.
     public var mockCalled: Bool = false //
 
-    public init() {
-        Mocks.shared.add(mock: self)
-    }
+    public init() {}
 
     public func resetMock() {
         registerDeviceTokenCallsCount = 0
@@ -312,9 +308,7 @@ class PushClickHandlerMock: PushClickHandler, Mock {
     /// If *any* interactions done on mock. `true` if any method or property getter/setter called.
     var mockCalled: Bool = false //
 
-    init() {
-        Mocks.shared.add(mock: self)
-    }
+    init() {}
 
     public func resetMock() {
         cleanupAfterPushInteractedWithCallsCount = 0
@@ -427,9 +421,7 @@ class PushEventHandlerMock: PushEventHandler, Mock {
     /// If *any* interactions done on mock. `true` if any method or property getter/setter called.
     var mockCalled: Bool = false //
 
-    init() {
-        Mocks.shared.add(mock: self)
-    }
+    init() {}
 
     /**
      When setter of the property called, the value given to setter is set here.
@@ -549,9 +541,7 @@ class PushEventHandlerProxyMock: PushEventHandlerProxy, Mock {
     /// If *any* interactions done on mock. `true` if any method or property getter/setter called.
     var mockCalled: Bool = false //
 
-    init() {
-        Mocks.shared.add(mock: self)
-    }
+    init() {}
 
     public func resetMock() {
         addPushEventHandlerCallsCount = 0
@@ -664,9 +654,7 @@ class PushHistoryMock: PushHistory, Mock {
     /// If *any* interactions done on mock. `true` if any method or property getter/setter called.
     var mockCalled: Bool = false //
 
-    init() {
-        Mocks.shared.add(mock: self)
-    }
+    init() {}
 
     public func resetMock() {
         hasHandledPushCallsCount = 0
@@ -719,9 +707,7 @@ class PushNotificationLoggerMock: PushNotificationLogger, Mock {
     /// If *any* interactions done on mock. `true` if any method or property getter/setter called.
     var mockCalled: Bool = false //
 
-    init() {
-        Mocks.shared.add(mock: self)
-    }
+    init() {}
 
     public func resetMock() {
         logReceivedPushMessageCallsCount = 0
@@ -1098,9 +1084,7 @@ class RichPushDeliveryTrackerMock: RichPushDeliveryTracker, Mock {
     /// If *any* interactions done on mock. `true` if any method or property getter/setter called.
     var mockCalled: Bool = false //
 
-    init() {
-        Mocks.shared.add(mock: self)
-    }
+    init() {}
 
     public func resetMock() {
         trackMetricCallsCount = 0
@@ -1149,9 +1133,7 @@ class UserNotificationCenterMock: UserNotificationCenter, Mock {
     /// If *any* interactions done on mock. `true` if any method or property getter/setter called.
     var mockCalled: Bool = false //
 
-    init() {
-        Mocks.shared.add(mock: self)
-    }
+    init() {}
 
     /**
      When setter of the property called, the value given to setter is set here.
@@ -1207,9 +1189,7 @@ public class UserNotificationCenterIntegrationMock: UserNotificationCenterIntegr
     /// If *any* interactions done on mock. `true` if any method or property getter/setter called.
     public var mockCalled: Bool = false //
 
-    public init() {
-        Mocks.shared.add(mock: self)
-    }
+    public init() {}
 
     /**
      When setter of the property called, the value given to setter is set here.

@@ -17,6 +17,8 @@ class AutomaticPushClickedIntegrationTest: IntegrationTest {
     override func setUp() {
         super.setUp()
 
+        mockCollection.add(mock: pushClickHandler)
+
         pushEventHandler = IOSPushEventListener(
             jsonAdapter: diGraphShared.jsonAdapter,
             pushEventHandlerProxy: pushEventHandlerProxy,
