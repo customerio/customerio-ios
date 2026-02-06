@@ -18,6 +18,8 @@ class DataPipelineCompatibilityTests: IntegrationTest {
     override func setUpDependencies() {
         super.setUpDependencies()
 
+        mockCollection.add(mocks: [eventBusHandlerMock, globalDataStoreMock])
+
         diGraphShared.override(value: eventBusHandlerMock, forType: EventBusHandler.self)
         diGraphShared.override(value: globalDataStoreMock, forType: GlobalDataStore.self)
     }

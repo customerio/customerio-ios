@@ -13,6 +13,12 @@ class AutomaticPushDeliveredAppInForegrondTest: IntegrationTest {
         DIGraphShared.shared.pushEventHandlerProxy
     }
 
+    override func setUp() {
+        super.setUp()
+
+        mockCollection.add(mock: pushClickHandler)
+    }
+
     // MARK: SDK configuration behavior
 
     func test_givenCioPushDelivered_givenSdkConfigDisplayPush_expectPushDisplayed() {

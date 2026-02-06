@@ -17,6 +17,7 @@ open class UnitTestBase<Component>: XCTestCase {
     // Using the .shared instance of the DIGraph to ensure that all tests share the same instance and data.
     // Overriding it will work the same way as overriding the shared instance of the SDK.
     public let diGraphShared: DIGraphShared = .shared
+    public let mockCollection: MockCollection = .init()
     public var log: Logger { diGraphShared.logger }
     public var globalDataStore: GlobalDataStore { diGraphShared.globalDataStore }
 
@@ -108,7 +109,7 @@ open class UnitTestBase<Component>: XCTestCase {
         // Delete all persistent data to ensure a clean state for each test when called during teardown.
         deleteAllPersistentData()
         // Reset mocks at the very end to prevent `EXC_BAD_ACCESS` errors by avoiding access to deallocated objects.
-        Mocks.shared.resetAll()
+        mockCollection.resetAll()
 
         // reset DI graphs to their initial state.
         diGraphShared.reset()

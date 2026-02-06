@@ -1,7 +1,8 @@
-@testable import CioInternalCommon
 import Foundation
 import SharedTests
 import XCTest
+
+@testable import CioInternalCommon
 
 class SdkClientTest: UnitTest {
     private let deviceInfoMock = DeviceInfoMock()
@@ -13,6 +14,8 @@ class SdkClientTest: UnitTest {
 
     override func setUpDependencies() {
         super.setUpDependencies()
+
+        mockCollection.add(mock: deviceInfoMock)
 
         diGraphShared.override(value: deviceInfoMock, forType: DeviceInfo.self)
     }

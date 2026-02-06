@@ -18,6 +18,8 @@ open class DataPipelineInteractionTests: IntegrationTest {
     override open func setUpDependencies() {
         super.setUpDependencies()
 
+        mockCollection.add(mocks: [deviceAttributesMock, eventBusHandlerMock, globalDataStoreMock, dataPipelinesLoggerMock])
+
         diGraphShared.override(value: deviceAttributesMock, forType: DeviceAttributesProvider.self)
         diGraphShared.override(value: eventBusHandlerMock, forType: EventBusHandler.self)
         diGraphShared.override(value: globalDataStoreMock, forType: GlobalDataStore.self)

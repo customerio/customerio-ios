@@ -1,11 +1,18 @@
-@testable import CioDataPipelines
-@testable import CioInternalCommon
 import Foundation
 import SharedTests
 import XCTest
 
+@testable import CioDataPipelines
+@testable import CioInternalCommon
+
 class DictionarySanitizerTests: UnitTest {
     private var loggerMock = LoggerMock()
+
+    override func setUp() {
+        super.setUp()
+
+        mockCollection.add(mock: loggerMock)
+    }
 
     func test_sanitizedForJSON_givenDictionaryWithNaN_expectNaNValuesRemoved() {
         // Given
@@ -26,7 +33,9 @@ class DictionarySanitizerTests: UnitTest {
 
         // Verify logging
         XCTAssertEqual(loggerMock.errorCallsCount, 1)
-        XCTAssertEqual(loggerMock.errorReceivedArguments?.message, "Removed unsupported numeric value")
+        XCTAssertEqual(
+            loggerMock.errorReceivedArguments?.message, "Removed unsupported numeric value"
+        )
     }
 
     func test_sanitizedForJSON_givenDictionaryWithInfinity_expectInfinityValuesRemoved() {
@@ -50,10 +59,13 @@ class DictionarySanitizerTests: UnitTest {
 
         // Verify logging
         XCTAssertEqual(loggerMock.errorCallsCount, 2)
-        XCTAssertEqual(loggerMock.errorReceivedArguments?.message, "Removed unsupported numeric value")
+        XCTAssertEqual(
+            loggerMock.errorReceivedArguments?.message, "Removed unsupported numeric value"
+        )
     }
 
-    func test_sanitizedForJSON_givenDictionaryWithNestedDictionary_expectNestedNaNAndInfinityValuesRemoved() {
+    func
+        test_sanitizedForJSON_givenDictionaryWithNestedDictionary_expectNestedNaNAndInfinityValuesRemoved() {
         // Given
         let dictionary: [String: Any] = [
             "validKey": "validValue",
@@ -84,7 +96,9 @@ class DictionarySanitizerTests: UnitTest {
 
         // Verify logging
         XCTAssertGreaterThanOrEqual(loggerMock.errorCallsCount, 2)
-        XCTAssertEqual(loggerMock.errorReceivedArguments?.message, "Removed unsupported numeric value")
+        XCTAssertEqual(
+            loggerMock.errorReceivedArguments?.message, "Removed unsupported numeric value"
+        )
     }
 
     func test_sanitizedForJSON_givenDictionaryWithArray_expectArrayItemsWithNaNAndInfinityRemoved() {
@@ -114,10 +128,13 @@ class DictionarySanitizerTests: UnitTest {
 
         // Verify logging
         XCTAssertGreaterThanOrEqual(loggerMock.errorCallsCount, 2)
-        XCTAssertEqual(loggerMock.errorReceivedArguments?.message, "Removed unsupported numeric value")
+        XCTAssertEqual(
+            loggerMock.errorReceivedArguments?.message, "Removed unsupported numeric value"
+        )
     }
 
-    func test_sanitizedForJSON_givenDictionaryWithNestedArrayContainingDictionaries_expectInvalidValuesRemoved() {
+    func
+        test_sanitizedForJSON_givenDictionaryWithNestedArrayContainingDictionaries_expectInvalidValuesRemoved() {
         // Given
         let dictionary: [String: Any] = [
             "validKey": "validValue",
@@ -190,7 +207,9 @@ class DictionarySanitizerTests: UnitTest {
 
         // Verify logging
         XCTAssertEqual(loggerMock.errorCallsCount, 3)
-        XCTAssertEqual(loggerMock.errorReceivedArguments?.message, "Removed unsupported numeric value")
+        XCTAssertEqual(
+            loggerMock.errorReceivedArguments?.message, "Removed unsupported numeric value"
+        )
     }
 
     func test_sanitizedForJSON_givenEmptyNestedStructures_expectEmptyStructuresRemoved() {
@@ -214,7 +233,9 @@ class DictionarySanitizerTests: UnitTest {
 
         // Verify logging
         XCTAssertGreaterThanOrEqual(loggerMock.errorCallsCount, 1)
-        XCTAssertEqual(loggerMock.errorReceivedArguments?.message, "Removed unsupported numeric value")
+        XCTAssertEqual(
+            loggerMock.errorReceivedArguments?.message, "Removed unsupported numeric value"
+        )
     }
 
     func test_sanitizedForJSON_givenValidDictionary_expectNoChanges() {
@@ -300,16 +321,25 @@ class DictionarySanitizerTests: UnitTest {
         XCTAssertEqual(sanitized.count, dictionary.count)
 
         // Verify top-level integer
-        XCTAssertTrue(sanitized["topLevelInt"] is Int, "Top-level integer should remain an Int type")
+        XCTAssertTrue(
+            sanitized["topLevelInt"] is Int, "Top-level integer should remain an Int type"
+        )
         XCTAssertEqual(sanitized["topLevelInt"] as? Int, 100)
 
         // Verify nested dictionary integers
         if let nestedDict = sanitized["nestedDict"] as? [String: Any] {
-            XCTAssertTrue(nestedDict["nestedInt"] is Int, "Nested integer should remain an Int type")
-            XCTAssertFalse(nestedDict["nestedInt"] is Double, "Nested integer should not be converted to Double")
+            XCTAssertTrue(
+                nestedDict["nestedInt"] is Int, "Nested integer should remain an Int type"
+            )
+            XCTAssertFalse(
+                nestedDict["nestedInt"] is Double,
+                "Nested integer should not be converted to Double"
+            )
             XCTAssertEqual(nestedDict["nestedInt"] as? Int, 1)
 
-            XCTAssertTrue(nestedDict["anotherNestedInt"] is Int, "Nested integer should remain an Int type")
+            XCTAssertTrue(
+                nestedDict["anotherNestedInt"] is Int, "Nested integer should remain an Int type"
+            )
             XCTAssertEqual(nestedDict["anotherNestedInt"] as? Int, 42)
         } else {
             XCTFail("Expected nestedDict to be a dictionary")
@@ -320,8 +350,13 @@ class DictionarySanitizerTests: UnitTest {
             XCTAssertEqual(nestedArray.count, 5)
 
             for (index, value) in nestedArray.enumerated() {
-                XCTAssertTrue(value is Int, "Array integer at index \(index) should remain an Int type")
-                XCTAssertFalse(value is Double, "Array integer at index \(index) should not be converted to Double")
+                XCTAssertTrue(
+                    value is Int, "Array integer at index \(index) should remain an Int type"
+                )
+                XCTAssertFalse(
+                    value is Double,
+                    "Array integer at index \(index) should not be converted to Double"
+                )
                 XCTAssertEqual(value as? Int, index + 1)
             }
         } else {
@@ -359,7 +394,9 @@ class DictionarySanitizerTests: UnitTest {
             XCTAssertTrue(nestedDict["nestedTrue"] is Bool, "Nested true should remain a Bool type")
             XCTAssertEqual(nestedDict["nestedTrue"] as? Bool, true)
 
-            XCTAssertTrue(nestedDict["nestedFalse"] is Bool, "Nested false should remain a Bool type")
+            XCTAssertTrue(
+                nestedDict["nestedFalse"] is Bool, "Nested false should remain a Bool type"
+            )
             XCTAssertEqual(nestedDict["nestedFalse"] as? Bool, false)
         } else {
             XCTFail("Expected nestedDict to be a dictionary")

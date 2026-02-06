@@ -16,6 +16,8 @@ class DataPipelineMigrationAssistantTests: UnitTest {
     override func setUpDependencies() {
         super.setUpDependencies()
 
+        mockCollection.add(mocks: [profileStoreMock, backgroundQueueMock, migrationHandler])
+
         diGraphShared.override(value: profileStoreMock, forType: ProfileStore.self)
         diGraphShared.override(value: dateUtilStub, forType: DateUtil.self)
         diGraphShared.override(value: backgroundQueueMock, forType: Queue.self)

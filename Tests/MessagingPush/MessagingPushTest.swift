@@ -1,8 +1,9 @@
-@testable import CioInternalCommon
-@testable import CioMessagingPush
 import Foundation
 import SharedTests
 import XCTest
+
+@testable import CioInternalCommon
+@testable import CioMessagingPush
 
 class MessagingPushTest: IntegrationTest {
     override func initializeSDKComponents() -> MessagingPushInstance? {
@@ -15,7 +16,11 @@ class MessagingPushTest: IntegrationTest {
     override func setUp() {
         super.setUp()
 
-        DIGraphShared.shared.override(value: automaticPushClickHandlingMock, forType: AutomaticPushClickHandling.self)
+        mockCollection.add(mock: automaticPushClickHandlingMock)
+
+        DIGraphShared.shared.override(
+            value: automaticPushClickHandlingMock, forType: AutomaticPushClickHandling.self
+        )
     }
 
     // MARK: initialize

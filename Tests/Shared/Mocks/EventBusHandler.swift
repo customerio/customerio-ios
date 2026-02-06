@@ -5,9 +5,7 @@ import CioInternalCommon
 public class EventBusHandlerMock: EventBusHandler, Mock {
     public var mockCalled: Bool = false
 
-    public init() {
-        Mocks.shared.add(mock: self)
-    }
+    public init() {}
 
     public func resetMock() {
         mockCalled = false
