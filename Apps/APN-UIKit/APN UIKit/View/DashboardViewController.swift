@@ -182,4 +182,8 @@ class DashboardViewController: BaseViewController {
         let request = UNNotificationRequest(identifier: "local-push-not-from-cio", content: content, trigger: nil)
         UNUserNotificationCenter.current().add(request, withCompletionHandler: nil)
     }
+
+    @IBAction func openLocationTest(_ sender: UIButton) {
+        dashboardRouter?.routeToLocationTest()
+    }
 }
