@@ -30,6 +30,9 @@ class DataPipelinePublishedEvents: EventPlugin {
     }
 
     func reset() {
-        eventBusHandler.postEvent(ResetEvent())
+        // Pass the new anonymous ID with the reset event so in-app messaging
+        // can continue fetching messages for the anonymous user after reset.
+        let newAnonymousId = analytics?.anonymousId
+        eventBusHandler.postEvent(ResetEvent(newAnonymousId: newAnonymousId))
     }
 }
