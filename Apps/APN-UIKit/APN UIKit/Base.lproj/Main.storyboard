@@ -1297,7 +1297,6 @@ Your inbox is empty</string>
                             <constraint firstItem="Xhk-9E-Zqf" firstAttribute="leading" secondItem="EC2-vs-ePr" secondAttribute="leading" id="G4J-W3-fvA"/>
                             <constraint firstItem="EC2-vs-ePr" firstAttribute="trailing" secondItem="Xhk-9E-Zqf" secondAttribute="trailing" id="R3g-rW-TTS"/>
                             <constraint firstItem="Xhk-9E-Zqf" firstAttribute="top" secondItem="EC2-vs-ePr" secondAttribute="top" id="WKK-1l-mRm"/>
-                            <constraint firstItem="Xhk-9E-Zqf" firstAttribute="top" secondItem="EC2-vs-ePr" secondAttribute="top" id="jDB-sh-EL6"/>
                             <constraint firstItem="Xhk-9E-Zqf" firstAttribute="bottom" secondItem="EC2-vs-ePr" secondAttribute="bottom" id="nmA-iJ-OLo"/>
                             <constraint firstItem="Yv5-3d-Hfg" firstAttribute="trailing" secondItem="EC2-vs-ePr" secondAttribute="trailing" id="qLQ-Xr-yxU"/>
                             <constraint firstItem="Xhk-9E-Zqf" firstAttribute="top" secondItem="Yv5-3d-Hfg" secondAttribute="top" id="zuR-dA-AZH"/>
