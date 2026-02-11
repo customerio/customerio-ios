@@ -9,7 +9,6 @@ class InboxViewController: BaseViewController, UITableViewDelegate, UITableViewD
     @IBOutlet var tableView: UITableView!
     @IBOutlet var emptyStateView: UIView!
     @IBOutlet var emptyStateLabel: UILabel!
-    @IBOutlet var statusLabel: UILabel!
 
     private var messages: [InboxMessage] = []
     private let inbox = MessagingInApp.shared.inbox
@@ -40,15 +39,12 @@ class InboxViewController: BaseViewController, UITableViewDelegate, UITableViewD
         tableView.separatorStyle = .none
         tableView.backgroundColor = .systemBackground
 
-        // Hide status label and remove its space
-        statusLabel.isHidden = true
-        // Adjust additional safe area to compensate for hidden status label
-        // Status label: 8pt top + 20pt height + 16pt bottom = 44pt total
-        additionalSafeAreaInsets = UIEdgeInsets(top: -44, left: 0, bottom: 0, right: 0)
-
         // Add pull-to-refresh
         refreshControl.addTarget(self, action: #selector(handleRefresh), for: .valueChanged)
         tableView.refreshControl = refreshControl
+
+        // Allow touches to pass through empty state view to tableView for pull-to-refresh
+        emptyStateView.isUserInteractionEnabled = false
 
         updateEmptyState()
     }
@@ -67,18 +63,13 @@ class InboxViewController: BaseViewController, UITableViewDelegate, UITableViewD
 
     private func updateEmptyState() {
         let isEmpty = messages.isEmpty
+        emptyStateView.isHidden = !isEmpty
 
         if isEmpty {
             emptyStateLabel.text = "No messages\n\nYour inbox is empty"
             emptyStateLabel.textAlignment = .center
             emptyStateLabel.textColor = .gray
             emptyStateLabel.numberOfLines = 0
-            // Show empty state as background view to keep pull-to-refresh functional
-            tableView.backgroundView = emptyStateView
-            emptyStateView.isHidden = false
-        } else {
-            tableView.backgroundView = nil
-            emptyStateView.isHidden = true
         }
     }
 

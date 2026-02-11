@@ -1256,7 +1256,7 @@
             </objects>
             <point key="canvasLocation" x="3438" y="669"/>
         </scene>
-        <!--Inbox-->
+        <!--Inbox Messages-->
         <scene sceneID="PTW-Qb-UlS">
             <objects>
                 <viewController storyboardIdentifier="InboxViewController" id="EOd-HF-WSb" customClass="InboxViewController" customModule="APN_UIKit" customModuleProvider="target" sceneMemberID="viewController">
@@ -1265,14 +1265,14 @@
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <subviews>
                             <tableView clipsSubviews="YES" contentMode="scaleToFill" alwaysBounceVertical="YES" dataMode="prototypes" style="plain" separatorStyle="default" rowHeight="-1" estimatedRowHeight="-1" sectionHeaderHeight="-1" estimatedSectionHeaderHeight="-1" sectionFooterHeight="-1" estimatedSectionFooterHeight="-1" translatesAutoresizingMaskIntoConstraints="NO" id="Xhk-9E-Zqf">
-                                <rect key="frame" x="0.0" y="132" width="414" height="696"/>
+                                <rect key="frame" x="0.0" y="88" width="414" height="740"/>
                                 <color key="backgroundColor" systemColor="systemBackgroundColor"/>
                             </tableView>
                             <view contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="Yv5-3d-Hfg" userLabel="Empty State View">
-                                <rect key="frame" x="0.0" y="132" width="414" height="696"/>
+                                <rect key="frame" x="0.0" y="88" width="414" height="740"/>
                                 <subviews>
                                     <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" textAlignment="center" lineBreakMode="tailTruncation" numberOfLines="0" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="Gkt-eW-7Qd">
-                                        <rect key="frame" x="20" y="312.33333333333331" width="374" height="71.666666666666686"/>
+                                        <rect key="frame" x="20" y="334.33333333333331" width="374" height="71.666666666666686"/>
                                         <string key="text">No messages
 
 Your inbox is empty</string>
@@ -1288,52 +1288,37 @@ Your inbox is empty</string>
                                     <constraint firstItem="Gkt-eW-7Qd" firstAttribute="centerY" secondItem="Yv5-3d-Hfg" secondAttribute="centerY" id="jHr-hY-gWu"/>
                                 </constraints>
                             </view>
-                            <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Status label" textAlignment="center" lineBreakMode="tailTruncation" numberOfLines="0" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="PkM-zV-Lpb">
-                                <rect key="frame" x="20" y="96" width="374" height="20"/>
-                                <constraints>
-                                    <constraint firstAttribute="height" constant="20" id="KDC-7g-dqH"/>
-                                </constraints>
-                                <fontDescription key="fontDescription" type="system" pointSize="12"/>
-                                <color key="textColor" systemColor="systemBlueColor"/>
-                                <nil key="highlightedColor"/>
-                            </label>
                         </subviews>
                         <viewLayoutGuide key="safeArea" id="EC2-vs-ePr"/>
                         <color key="backgroundColor" systemColor="systemBackgroundColor"/>
                         <constraints>
                             <constraint firstItem="Yv5-3d-Hfg" firstAttribute="leading" secondItem="EC2-vs-ePr" secondAttribute="leading" id="2hU-yh-u3Z"/>
-                            <constraint firstItem="Xhk-9E-Zqf" firstAttribute="top" secondItem="PkM-zV-Lpb" secondAttribute="bottom" constant="16" id="5Yh-3N-Chf"/>
                             <constraint firstItem="Yv5-3d-Hfg" firstAttribute="bottom" secondItem="EC2-vs-ePr" secondAttribute="bottom" id="CBI-NB-Y4e"/>
                             <constraint firstItem="Xhk-9E-Zqf" firstAttribute="leading" secondItem="EC2-vs-ePr" secondAttribute="leading" id="G4J-W3-fvA"/>
-                            <constraint firstItem="Yv5-3d-Hfg" firstAttribute="top" secondItem="PkM-zV-Lpb" secondAttribute="bottom" constant="16" id="I09-qg-nHb"/>
-                            <constraint firstItem="EC2-vs-ePr" firstAttribute="trailing" secondItem="PkM-zV-Lpb" secondAttribute="trailing" constant="20" id="Ju0-OP-a42"/>
                             <constraint firstItem="EC2-vs-ePr" firstAttribute="trailing" secondItem="Xhk-9E-Zqf" secondAttribute="trailing" id="R3g-rW-TTS"/>
-                            <constraint firstItem="PkM-zV-Lpb" firstAttribute="top" secondItem="EC2-vs-ePr" secondAttribute="top" constant="8" id="bMb-Yz-NwU"/>
-                            <constraint firstItem="PkM-zV-Lpb" firstAttribute="leading" secondItem="EC2-vs-ePr" secondAttribute="leading" constant="20" id="ecW-dU-jWo"/>
+                            <constraint firstItem="Xhk-9E-Zqf" firstAttribute="top" secondItem="EC2-vs-ePr" secondAttribute="top" id="WKK-1l-mRm"/>
+                            <constraint firstItem="Xhk-9E-Zqf" firstAttribute="top" secondItem="EC2-vs-ePr" secondAttribute="top" id="jDB-sh-EL6"/>
                             <constraint firstItem="Xhk-9E-Zqf" firstAttribute="bottom" secondItem="EC2-vs-ePr" secondAttribute="bottom" id="nmA-iJ-OLo"/>
                             <constraint firstItem="Yv5-3d-Hfg" firstAttribute="trailing" secondItem="EC2-vs-ePr" secondAttribute="trailing" id="qLQ-Xr-yxU"/>
+                            <constraint firstItem="Xhk-9E-Zqf" firstAttribute="top" secondItem="Yv5-3d-Hfg" secondAttribute="top" id="zuR-dA-AZH"/>
                         </constraints>
                     </view>
                     <navigationItem key="navigationItem" title="Inbox Messages" id="7hH-Tj-UEk"/>
                     <connections>
                         <outlet property="emptyStateLabel" destination="Gkt-eW-7Qd" id="fmZ-BC-rUx"/>
                         <outlet property="emptyStateView" destination="Yv5-3d-Hfg" id="4Nu-Yy-Gae"/>
-                        <outlet property="statusLabel" destination="PkM-zV-Lpb" id="8Cr-ND-kCz"/>
                         <outlet property="tableView" destination="Xhk-9E-Zqf" id="J2V-cL-2Zv"/>
                     </connections>
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="Kt6-xE-YXS" userLabel="First Responder" customClass="UIResponder" sceneMemberID="firstResponder"/>
             </objects>
-            <point key="canvasLocation" x="6404" y="3"/>
+            <point key="canvasLocation" x="6402.898550724638" y="2.6785714285714284"/>
         </scene>
     </scenes>
     <resources>
         <image name="settings" width="512" height="512"/>
         <systemColor name="systemBackgroundColor">
             <color white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
-        </systemColor>
-        <systemColor name="systemBlueColor">
-            <color red="0.0" green="0.47843137250000001" blue="1" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
         </systemColor>
         <systemColor name="systemGrayColor">
             <color red="0.5568627451" green="0.5568627451" blue="0.57647058819999997" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
