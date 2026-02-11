@@ -31,7 +31,13 @@ extension Date {
 
     public static func fromIso8601WithMilliseconds(_ string: String) -> Date? {
         let formatter = ISO8601DateFormatter()
+        // Try with fractional seconds first
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let date = formatter.date(from: string) {
+            return date
+        }
+        // Fall back to without fractional seconds for dates like "2026-02-09T12:26:42Z"
+        formatter.formatOptions = [.withInternetDateTime]
         return formatter.date(from: string)
     }
 

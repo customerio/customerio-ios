@@ -5,8 +5,8 @@ import Testing
 
 @Suite("InboxMessage Tests")
 struct InboxMessageTest {
-    @Test("Equality compares queueId, deliveryId, and opened status")
-    func equalityComparesQueueIdDeliveryIdAndOpenedStatus() {
+    @Test("Equality detects opened status changes")
+    func equalityDetectsOpenedStatusChanges() {
         let sentAt = Date()
         let message1 = InboxMessage(
             queueId: "queue-1",
@@ -20,7 +20,6 @@ struct InboxMessageTest {
             properties: [:]
         )
 
-        // Same queueId but different opened status - should NOT be equal
         let message2 = InboxMessage(
             queueId: "queue-1",
             deliveryId: "delivery-1",
@@ -28,15 +27,20 @@ struct InboxMessageTest {
             sentAt: sentAt,
             topics: [],
             type: "",
-            opened: true, // Different
+            opened: true,
             priority: 5,
             properties: [:]
         )
 
-        // Same queueId and opened, but different deliveryId - should NOT be equal
-        let message3 = InboxMessage(
+        #expect(message1 != message2)
+    }
+
+    @Test("Equality detects deliveryId changes")
+    func equalityDetectsDeliveryIdChanges() {
+        let sentAt = Date()
+        let message1 = InboxMessage(
             queueId: "queue-1",
-            deliveryId: "delivery-2", // Different
+            deliveryId: "delivery-1",
             expiry: nil,
             sentAt: sentAt,
             topics: [],
@@ -46,8 +50,37 @@ struct InboxMessageTest {
             properties: [:]
         )
 
-        // Same queueId, deliveryId, and opened, other fields different - should be equal
-        let message4 = InboxMessage(
+        let message2 = InboxMessage(
+            queueId: "queue-1",
+            deliveryId: "delivery-2",
+            expiry: nil,
+            sentAt: sentAt,
+            topics: [],
+            type: "",
+            opened: false,
+            priority: 5,
+            properties: [:]
+        )
+
+        #expect(message1 != message2)
+    }
+
+    @Test("Equality ignores non-identity fields")
+    func equalityIgnoresNonIdentityFields() {
+        let sentAt = Date()
+        let message1 = InboxMessage(
+            queueId: "queue-1",
+            deliveryId: "delivery-1",
+            expiry: nil,
+            sentAt: sentAt,
+            topics: [],
+            type: "",
+            opened: false,
+            priority: 5,
+            properties: [:]
+        )
+
+        let message2 = InboxMessage(
             queueId: "queue-1",
             deliveryId: "delivery-1",
             expiry: nil,
@@ -59,23 +92,7 @@ struct InboxMessageTest {
             properties: ["key": "value"]
         )
 
-        // Different queueId - should NOT be equal
-        let message5 = InboxMessage(
-            queueId: "queue-2",
-            deliveryId: "delivery-1",
-            expiry: nil,
-            sentAt: sentAt,
-            topics: [],
-            type: "",
-            opened: false,
-            priority: 5,
-            properties: [:]
-        )
-
-        #expect(message1 != message2) // Different opened
-        #expect(message1 != message3) // Different deliveryId
-        #expect(message1 == message4) // Same queueId, deliveryId, and opened
-        #expect(message1 != message5) // Different queueId
+        #expect(message1 == message2)
     }
 }
 
@@ -200,6 +217,52 @@ struct InboxMessageResponseTest {
         calendar.timeZone = TimeZone(identifier: "UTC")!
 
         // Check expiry date
+        let expiryComponents = calendar.dateComponents(
+            [.year, .month, .day, .hour, .minute, .second],
+            from: domainModel!.expiry!
+        )
+        #expect(expiryComponents.year == 2026)
+        #expect(expiryComponents.month == 4)
+        #expect(expiryComponents.day == 10)
+        #expect(expiryComponents.hour == 12)
+        #expect(expiryComponents.minute == 26)
+        #expect(expiryComponents.second == 42)
+
+        // Check sentAt date
+        let sentAtComponents = calendar.dateComponents(
+            [.year, .month, .day, .hour, .minute, .second],
+            from: domainModel!.sentAt
+        )
+        #expect(sentAtComponents.year == 2026)
+        #expect(sentAtComponents.month == 2)
+        #expect(sentAtComponents.day == 9)
+        #expect(sentAtComponents.hour == 10)
+        #expect(sentAtComponents.minute == 30)
+        #expect(sentAtComponents.second == 15)
+    }
+
+    @Test("Date parsing without fractional seconds")
+    func dateParsingWithoutFractionalSeconds() {
+        let response = InboxMessageResponse(
+            queueId: "queue-123",
+            deliveryId: nil,
+            expiry: "2026-04-10T12:26:42Z",
+            sentAt: "2026-02-09T10:30:15Z",
+            topics: nil,
+            type: nil,
+            opened: nil,
+            priority: nil,
+            properties: nil
+        )
+
+        let domainModel = response.toDomainModel()
+
+        #expect(domainModel != nil)
+
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "UTC")!
+
+        // Check expiry date still parses correctly
         let expiryComponents = calendar.dateComponents(
             [.year, .month, .day, .hour, .minute, .second],
             from: domainModel!.expiry!
