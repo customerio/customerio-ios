@@ -1145,8 +1145,55 @@ class InAppMessageStateTests: IntegrationTest {
         await inAppMessageManager.dispatchAsync(action: .processInboxMessages(messages: [message1, message2]))
 
         let state = await inAppMessageManager.state
-        // Due to Set deduplication by queueId only, only 1 message should be stored
+        // Set deduplicates by equality (queueId + deliveryId + opened)
+        // message1 and message2 have different deliveryId, so both stored
+        XCTAssertEqual(state.inboxMessages.count, 2)
+    }
+
+    func test_inboxMessages_whenMessagePropertyChanges_expectStateChangeDetected() async {
+        // Set user ID first to bypass auth middleware
+        await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: "test-user"))
+
+        let sentAt = Date()
+        let message1 = InboxMessage(
+            queueId: "queue-1",
+            deliveryId: "delivery-1",
+            expiry: nil,
+            sentAt: sentAt,
+            topics: [],
+            type: "",
+            opened: false,
+            priority: 5,
+            properties: [:]
+        )
+
+        await inAppMessageManager.dispatchAsync(action: .processInboxMessages(messages: [message1]))
+
+        var state = await inAppMessageManager.state
         XCTAssertEqual(state.inboxMessages.count, 1)
+        let storedMessage = state.inboxMessages.first!
+        XCTAssertEqual(storedMessage.opened, false)
+
+        // Update the message with same queueId but different opened status
+        let message2 = InboxMessage(
+            queueId: "queue-1",
+            deliveryId: "delivery-1",
+            expiry: nil,
+            sentAt: sentAt,
+            topics: [],
+            type: "",
+            opened: true, // Changed from false to true
+            priority: 5,
+            properties: [:]
+        )
+
+        await inAppMessageManager.dispatchAsync(action: .processInboxMessages(messages: [message2]))
+
+        // State should be different because opened status changed
+        state = await inAppMessageManager.state
+        XCTAssertEqual(state.inboxMessages.count, 1)
+        let updatedMessage = state.inboxMessages.first!
+        XCTAssertEqual(updatedMessage.opened, true)
     }
 }
 

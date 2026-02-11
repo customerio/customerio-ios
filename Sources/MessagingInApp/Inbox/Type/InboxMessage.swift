@@ -57,15 +57,18 @@ public struct InboxMessage: Hashable, Equatable, CustomStringConvertible {
     // MARK: - Hashable
 
     public func hash(into hasher: inout Hasher) {
-        // Hash by queueId only for Set deduplication
         hasher.combine(queueId)
+        hasher.combine(deliveryId)
+        hasher.combine(opened)
     }
 
     // MARK: - Equatable
 
     public static func == (lhs: InboxMessage, rhs: InboxMessage) -> Bool {
-        // Compare by queueId only for Set deduplication
-        lhs.queueId == rhs.queueId
+        // Compare queueId, deliveryId, and opened to enable state change detection
+        lhs.queueId == rhs.queueId &&
+            lhs.deliveryId == rhs.deliveryId &&
+            lhs.opened == rhs.opened
     }
 
     // MARK: - CustomStringConvertible

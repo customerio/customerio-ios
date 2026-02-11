@@ -5,21 +5,77 @@ import Testing
 
 @Suite("InboxMessage Tests")
 struct InboxMessageTest {
-    @Test("Hashable uses queueId for deduplication")
-    func hashableUsesQueueIdForDeduplication() {
+    @Test("Equality compares queueId, deliveryId, and opened status")
+    func equalityComparesQueueIdDeliveryIdAndOpenedStatus() {
         let sentAt = Date()
-        // message1 and message2 have same queueId - should be dedup'd
-        let message1 = InboxMessage(queueId: "queue-1", deliveryId: "delivery-1", expiry: nil, sentAt: sentAt, topics: [], type: "", opened: false, priority: 5, properties: [:])
-        let message2 = InboxMessage(queueId: "queue-1", deliveryId: "delivery-2", expiry: nil, sentAt: sentAt, topics: [], type: "", opened: false, priority: 5, properties: [:])
-        let message3 = InboxMessage(queueId: "queue-2", deliveryId: "delivery-1", expiry: nil, sentAt: sentAt, topics: [], type: "", opened: false, priority: 5, properties: [:])
+        let message1 = InboxMessage(
+            queueId: "queue-1",
+            deliveryId: "delivery-1",
+            expiry: nil,
+            sentAt: sentAt,
+            topics: [],
+            type: "",
+            opened: false,
+            priority: 5,
+            properties: [:]
+        )
 
-        var set = Set<InboxMessage>()
-        set.insert(message1)
-        set.insert(message2)
-        set.insert(message3)
+        // Same queueId but different opened status - should NOT be equal
+        let message2 = InboxMessage(
+            queueId: "queue-1",
+            deliveryId: "delivery-1",
+            expiry: nil,
+            sentAt: sentAt,
+            topics: [],
+            type: "",
+            opened: true, // Different
+            priority: 5,
+            properties: [:]
+        )
 
-        // message1 and message2 have same queueId (same hash), so only 2 unique messages in Set
-        #expect(set.count == 2)
+        // Same queueId and opened, but different deliveryId - should NOT be equal
+        let message3 = InboxMessage(
+            queueId: "queue-1",
+            deliveryId: "delivery-2", // Different
+            expiry: nil,
+            sentAt: sentAt,
+            topics: [],
+            type: "",
+            opened: false,
+            priority: 5,
+            properties: [:]
+        )
+
+        // Same queueId, deliveryId, and opened, other fields different - should be equal
+        let message4 = InboxMessage(
+            queueId: "queue-1",
+            deliveryId: "delivery-1",
+            expiry: nil,
+            sentAt: sentAt,
+            topics: ["different"],
+            type: "different",
+            opened: false,
+            priority: 10,
+            properties: ["key": "value"]
+        )
+
+        // Different queueId - should NOT be equal
+        let message5 = InboxMessage(
+            queueId: "queue-2",
+            deliveryId: "delivery-1",
+            expiry: nil,
+            sentAt: sentAt,
+            topics: [],
+            type: "",
+            opened: false,
+            priority: 5,
+            properties: [:]
+        )
+
+        #expect(message1 != message2) // Different opened
+        #expect(message1 != message3) // Different deliveryId
+        #expect(message1 == message4) // Same queueId, deliveryId, and opened
+        #expect(message1 != message5) // Different queueId
     }
 }
 
