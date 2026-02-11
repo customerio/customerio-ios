@@ -14,6 +14,7 @@ class DashboardViewController: BaseViewController {
     @IBOutlet var sendProfileAttributesButton: ThemeButton!
     @IBOutlet var customEventButton: ThemeButton!
     @IBOutlet var randomEventButton: ThemeButton!
+    @IBOutlet var inboxButton: ThemeButton!
     @IBOutlet var versionsLabel: UILabel!
     @IBOutlet var settings: UIImageView!
     var dashboardRouter: DashboardRouting?
@@ -102,6 +103,7 @@ class DashboardViewController: BaseViewController {
         setAppiumAccessibilityIdTo(sendDeviceAttributesButton, value: "Device Attribute Button")
         setAppiumAccessibilityIdTo(sendProfileAttributesButton, value: "Profile Attribute Button")
         setAppiumAccessibilityIdTo(showPushPromptButton, value: "Show Push Prompt Button")
+        setAppiumAccessibilityIdTo(inboxButton, value: "View Inbox Button")
         setAppiumAccessibilityIdTo(logoutButton, value: "Log Out Button")
     }
 
@@ -172,6 +174,10 @@ class DashboardViewController: BaseViewController {
                 }
             }
         }
+    }
+
+    @IBAction func openInbox(_ sender: UIButton) {
+        dashboardRouter?.routeToInbox()
     }
 
     @IBAction func send3rdPartyPush(_ sender: UIButton) {
