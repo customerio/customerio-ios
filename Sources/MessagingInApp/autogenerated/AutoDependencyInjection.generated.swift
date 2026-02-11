@@ -82,6 +82,9 @@ extension DIGraphShared {
         _ = logManager
         countDependenciesResolved += 1
 
+        _ = messageInbox
+        countDependenciesResolved += 1
+
         _ = queueManager
         countDependenciesResolved += 1
 
@@ -202,6 +205,18 @@ extension DIGraphShared {
 
     private var newLogManager: LogManager {
         LogManager(gistQueueNetwork: gistQueueNetwork)
+    }
+
+    // MessageInbox (singleton)
+    var messageInbox: MessageInbox {
+        getOverriddenInstance() ??
+            getSingletonOrCreate {
+                _get_messageInbox()
+            }
+    }
+
+    private func _get_messageInbox() -> MessageInbox {
+        MessageInbox(logger: logger, inAppMessageManager: inAppMessageManager)
     }
 
     // QueueManager (singleton)

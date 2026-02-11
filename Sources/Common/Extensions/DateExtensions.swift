@@ -29,6 +29,12 @@ extension Date {
         return formatter.string(from: self)
     }
 
+    public static func fromIso8601WithMilliseconds(_ string: String) -> Date? {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter.date(from: string)
+    }
+
     func add(_ value: Double, _ unit: Calendar.Component) -> Date {
         add(Int(value), unit)
     }

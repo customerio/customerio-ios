@@ -1070,6 +1070,84 @@ class InAppMessageStateTests: IntegrationTest {
         XCTAssertEqual(state.modalMessageState, .dismissed(message: messageHomeRoute), "Message with non-matching page rule should not be auto-loaded")
         XCTAssertFalse(state.shownMessageQueueIds.contains("profileRoute"), "profileRoute message should not have been shown")
     }
+
+    // MARK: - Inbox Messages State Tests
+
+    func test_inboxMessages_initialState_expectEmptyInboxMessages() async {
+        let state = await inAppMessageManager.state
+        XCTAssertTrue(state.inboxMessages.isEmpty)
+    }
+
+    func test_inboxMessages_processInboxMessages_expectStateUpdated() async {
+        // Set user ID first to bypass auth middleware
+        await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: "test-user"))
+
+        let message1 = InboxMessage(
+            queueId: "queue-1",
+            deliveryId: "delivery-1",
+            expiry: nil,
+            sentAt: Date(),
+            topics: [],
+            type: "",
+            opened: false,
+            priority: 5,
+            properties: [:]
+        )
+        let message2 = InboxMessage(
+            queueId: "queue-2",
+            deliveryId: "delivery-2",
+            expiry: nil,
+            sentAt: Date(),
+            topics: [],
+            type: "",
+            opened: false,
+            priority: 5,
+            properties: [:]
+        )
+
+        await inAppMessageManager.dispatchAsync(action: .processInboxMessages(messages: [message1, message2]))
+
+        let state = await inAppMessageManager.state
+        XCTAssertEqual(state.inboxMessages.count, 2)
+        XCTAssertTrue(state.inboxMessages.contains(message1))
+        XCTAssertTrue(state.inboxMessages.contains(message2))
+    }
+
+    func test_inboxMessages_processInboxMessages_whenCalledTwice_expectReplacedNotAppended() async {
+        // Set user ID first to bypass auth middleware
+        await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: "test-user"))
+
+        let message1 = InboxMessage(queueId: "queue-1", deliveryId: "delivery-1", expiry: nil, sentAt: Date(), topics: [], type: "", opened: false, priority: 5, properties: [:])
+        let message2 = InboxMessage(queueId: "queue-2", deliveryId: "delivery-2", expiry: nil, sentAt: Date(), topics: [], type: "", opened: false, priority: 5, properties: [:])
+        let message3 = InboxMessage(queueId: "queue-3", deliveryId: "delivery-3", expiry: nil, sentAt: Date(), topics: [], type: "", opened: false, priority: 5, properties: [:])
+
+        await inAppMessageManager.dispatchAsync(action: .processInboxMessages(messages: [message1, message2]))
+
+        var state = await inAppMessageManager.state
+        XCTAssertEqual(state.inboxMessages.count, 2)
+
+        // Dispatch again with different messages
+        await inAppMessageManager.dispatchAsync(action: .processInboxMessages(messages: [message3]))
+
+        state = await inAppMessageManager.state
+        XCTAssertEqual(state.inboxMessages.count, 1)
+        XCTAssertTrue(state.inboxMessages.contains(message3))
+        XCTAssertFalse(state.inboxMessages.contains(message1))
+    }
+
+    func test_inboxMessages_processInboxMessages_expectSetDeduplication() async {
+        // Set user ID first to bypass auth middleware
+        await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: "test-user"))
+
+        let message1 = InboxMessage(queueId: "queue-1", deliveryId: "delivery-1", expiry: nil, sentAt: Date(), topics: [], type: "", opened: false, priority: 5, properties: [:])
+        let message2 = InboxMessage(queueId: "queue-1", deliveryId: "delivery-2", expiry: nil, sentAt: Date(), topics: [], type: "", opened: false, priority: 5, properties: [:])
+
+        await inAppMessageManager.dispatchAsync(action: .processInboxMessages(messages: [message1, message2]))
+
+        let state = await inAppMessageManager.state
+        // Due to Set deduplication by queueId only, only 1 message should be stored
+        XCTAssertEqual(state.inboxMessages.count, 1)
+    }
 }
 
 extension InAppMessageManager {

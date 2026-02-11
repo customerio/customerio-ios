@@ -247,6 +247,18 @@ func messageQueueProcessorMiddleware(logger: Logger) -> InAppMessageMiddleware {
     }
 }
 
+func inboxMessageMiddleware(logger: Logger) -> InAppMessageMiddleware {
+    middleware { _, _, next, action in
+        // For now, just pass through the action
+        // Future PRs will add implement API calls and change listeners
+        if case .processInboxMessages(let messages) = action {
+            logger.logWithModuleTag("Processing \(messages.count) inbox messages", level: .debug)
+        }
+
+        return next(action)
+    }
+}
+
 func messageEventCallbacksMiddleware(delegate: GistDelegate) -> InAppMessageMiddleware {
     middleware { _, _, next, action in
         // Forward message events to delegate when message is displayed, dismissed or embedded,

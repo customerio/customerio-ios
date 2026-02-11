@@ -10,6 +10,7 @@ enum InAppMessageAction: Equatable {
     case setAnonymousIdentifier(anonymousId: String)
     case setPageRoute(route: String)
     case processMessageQueue(messages: [Message])
+    case processInboxMessages(messages: [InboxMessage])
     case clearMessageQueue
     case loadMessage(message: Message)
     case embedMessages(messages: [Message])
@@ -48,6 +49,9 @@ enum InAppMessageAction: Equatable {
             return lhsRoute == rhsRoute
 
         case (.processMessageQueue(let lhsMessages), .processMessageQueue(let rhsMessages)):
+            return lhsMessages == rhsMessages
+
+        case (.processInboxMessages(let lhsMessages), .processInboxMessages(let rhsMessages)):
             return lhsMessages == rhsMessages
 
         case (.clearMessageQueue, .clearMessageQueue):
