@@ -99,10 +99,10 @@ struct SettingsView: View {
                 // Therefore, this is how we can perform manual screen view tracking.
                 CustomerIO.shared.screen(title: "Settings")
             }
-            .alert(isPresented: .notNil(alertMessage)) {
+            .alert(item: $alertMessage) { msg in
                 Alert(
                     title: Text("Error"),
-                    message: Text(alertMessage!),
+                    message: Text(msg),
                     dismissButton: .default(Text("OK")) {
                         alertMessage = nil
                     }

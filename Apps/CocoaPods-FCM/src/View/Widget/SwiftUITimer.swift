@@ -6,12 +6,14 @@ import Foundation
 // without having to manage the Timer instance in the struct.
 class SwiftUITimer {
     private var timer: Timer?
-    private var callback: (() -> Void)?
+    private var callback: (@MainActor () -> Void)?
 
-    func start(interval: TimeInterval, callback: @escaping () -> Void) {
+    func start(interval: TimeInterval, callback: @MainActor @escaping () -> Void) {
         self.callback = callback
         timer = Timer.scheduledTimer(withTimeInterval: interval, repeats: false) { _ in
-            callback()
+            Task { @MainActor in
+                callback()
+            }
         }
     }
 
