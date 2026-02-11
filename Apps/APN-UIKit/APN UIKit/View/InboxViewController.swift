@@ -1,7 +1,7 @@
 import CioMessagingInApp
 import UIKit
 
-class InboxViewController: BaseViewController, UITableViewDelegate, UITableViewDataSource {
+class InboxViewController: BaseViewController, UITableViewDelegate, UITableViewDataSource, InboxMessageChangeListener {
     static func newInstance() -> InboxViewController {
         UIStoryboard.getViewController(identifier: "InboxViewController")
     }
@@ -23,7 +23,12 @@ class InboxViewController: BaseViewController, UITableViewDelegate, UITableViewD
     override func viewDidLoad() {
         super.viewDidLoad()
         setupUI()
-        fetchMessages()
+        // Observer will provide initial messages when registered
+        setupObserver()
+    }
+
+    deinit {
+        inbox.removeChangeListener(self)
     }
 
     private func setupUI() {
@@ -48,42 +53,46 @@ class InboxViewController: BaseViewController, UITableViewDelegate, UITableViewD
         updateEmptyState()
     }
 
+    private func setupObserver() {
+        // addChangeListener will immediately call onMessagesChanged with current state
+        inbox.addChangeListener(self)
+    }
+
     @objc private func handleRefresh() {
         Task { @MainActor in
-            let fetchedMessages = await inbox.getMessages()
-            messages = fetchedMessages
-            tableView.reloadData()
-            updateEmptyState()
+            await fetchMessages()
             refreshControl.endRefreshing()
         }
     }
 
     private func updateEmptyState() {
         let isEmpty = messages.isEmpty
-        emptyStateView.isHidden = !isEmpty
-        tableView.isHidden = isEmpty
 
         if isEmpty {
             emptyStateLabel.text = "No messages\n\nYour inbox is empty"
             emptyStateLabel.textAlignment = .center
             emptyStateLabel.textColor = .gray
             emptyStateLabel.numberOfLines = 0
+            // Show empty state as background view to keep pull-to-refresh functional
+            tableView.backgroundView = emptyStateView
+            emptyStateView.isHidden = false
+        } else {
+            tableView.backgroundView = nil
+            emptyStateView.isHidden = true
         }
     }
 
-    private func fetchMessages() {
-        Task { @MainActor in
-            let fetchedMessages = await inbox.getMessages()
-            messages = fetchedMessages
-            tableView.reloadData()
-            updateEmptyState()
-        }
+    private func fetchMessages() async {
+        let fetchedMessages = await inbox.getMessages()
+        messages = fetchedMessages
+        tableView.reloadData()
+        updateEmptyState()
     }
 
     // MARK: - UITableViewDataSource
 
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return messages.count
+        messages.count
     }
 
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
@@ -94,93 +103,29 @@ class InboxViewController: BaseViewController, UITableViewDelegate, UITableViewD
         }()
 
         let message = messages[indexPath.row]
+        configureCell(cell, with: message, at: indexPath)
+        return cell
+    }
 
+    private func configureCell(_ cell: UITableViewCell, with message: InboxMessage, at indexPath: IndexPath) {
         // Clear previous subviews
         cell.contentView.subviews.forEach { $0.removeFromSuperview() }
 
         // Create custom layout similar to Android with elevation
-        let containerView = UIView()
-        containerView.translatesAutoresizingMaskIntoConstraints = false
-        // Unread messages have gray background, read messages have white background
-        // Uses secondarySystemBackground for dark mode compatibility
-        if message.opened {
-            containerView.backgroundColor = .systemBackground // White in light, dark gray in dark mode
-        } else {
-            containerView.backgroundColor = .secondarySystemBackground // Light gray in light, darker gray in dark mode
-        }
-        containerView.layer.cornerRadius = 8
-
-        // Add elevation (shadow) like Android Material cards
-        containerView.layer.shadowColor = UIColor.black.cgColor
-        containerView.layer.shadowOffset = CGSize(width: 0, height: 2)
-        containerView.layer.shadowOpacity = 0.1
-        containerView.layer.shadowRadius = 4
-        containerView.layer.masksToBounds = false
-
+        let containerView = createContainerView(for: message)
         cell.contentView.addSubview(containerView)
         cell.backgroundColor = .clear
 
-        // Queue ID label
-        let queueIdLabel = UILabel()
-        queueIdLabel.translatesAutoresizingMaskIntoConstraints = false
-        queueIdLabel.text = message.queueId
-        queueIdLabel.font = .systemFont(ofSize: 14, weight: .medium)
-        queueIdLabel.numberOfLines = 1
+        // Create labels
+        let queueIdLabel = createQueueIdLabel(for: message)
+        let dateLabel = createDateLabel(for: message)
+        let propertiesLabel = createPropertiesLabel(for: message)
+        let buttonsStack = createActionButtonsStack(for: message, at: indexPath)
+
         containerView.addSubview(queueIdLabel)
-
-        // Date label
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "MMM dd, yyyy h:mm a"
-        let dateLabel = UILabel()
-        dateLabel.translatesAutoresizingMaskIntoConstraints = false
-        dateLabel.text = dateFormatter.string(from: message.sentAt)
-        dateLabel.font = .systemFont(ofSize: 12)
-        dateLabel.textColor = .secondaryLabel
         containerView.addSubview(dateLabel)
-
-        // Properties preview (like Android shows JSON)
-        let propertiesLabel = UILabel()
-        propertiesLabel.translatesAutoresizingMaskIntoConstraints = false
-        propertiesLabel.text = message.properties.isEmpty ? "No properties" : "\(message.properties)"
-        propertiesLabel.font = .systemFont(ofSize: 12)
-        propertiesLabel.textColor = .secondaryLabel
-        propertiesLabel.numberOfLines = 2
         containerView.addSubview(propertiesLabel)
-
-        // Action buttons container
-        let buttonsStack = UIStackView()
-        buttonsStack.translatesAutoresizingMaskIntoConstraints = false
-        buttonsStack.axis = .horizontal
-        buttonsStack.spacing = 8
-        buttonsStack.distribution = .fillEqually
         containerView.addSubview(buttonsStack)
-
-        // Track Click button
-        let trackButton = createActionButton(
-            imageName: "inbox-track",
-            tintColor: .systemGray,
-            tag: indexPath.row * 3 + 0
-        )
-        trackButton.addTarget(self, action: #selector(trackClickTapped(_:)), for: .touchUpInside)
-        buttonsStack.addArrangedSubview(trackButton)
-
-        // Mark Read/Unread button - Shows opposite state (if opened, show "mark as unread" icon)
-        let readButton = createActionButton(
-            imageName: message.opened ? "inbox-unread" : "inbox-read",
-            tintColor: .systemGray,
-            tag: indexPath.row * 3 + 1
-        )
-        readButton.addTarget(self, action: #selector(toggleReadTapped(_:)), for: .touchUpInside)
-        buttonsStack.addArrangedSubview(readButton)
-
-        // Delete button - Red to indicate destructive action
-        let deleteButton = createActionButton(
-            imageName: "inbox-delete",
-            tintColor: .systemRed,
-            tag: indexPath.row * 3 + 2
-        )
-        deleteButton.addTarget(self, action: #selector(deleteTapped(_:)), for: .touchUpInside)
-        buttonsStack.addArrangedSubview(deleteButton)
 
         // Layout constraints
         NSLayoutConstraint.activate([
@@ -206,8 +151,90 @@ class InboxViewController: BaseViewController, UITableViewDelegate, UITableViewD
             buttonsStack.bottomAnchor.constraint(equalTo: containerView.bottomAnchor, constant: -12),
             buttonsStack.widthAnchor.constraint(equalToConstant: 120)
         ])
+    }
 
-        return cell
+    private func createContainerView(for message: InboxMessage) -> UIView {
+        let containerView = UIView()
+        containerView.translatesAutoresizingMaskIntoConstraints = false
+        // Unread messages have gray background, read messages have white background
+        containerView.backgroundColor = message.opened ? .systemBackground : .secondarySystemBackground
+        containerView.layer.cornerRadius = 8
+
+        // Add elevation (shadow) like Android Material cards
+        containerView.layer.shadowColor = UIColor.black.cgColor
+        containerView.layer.shadowOffset = CGSize(width: 0, height: 2)
+        containerView.layer.shadowOpacity = 0.1
+        containerView.layer.shadowRadius = 4
+        containerView.layer.masksToBounds = false
+
+        return containerView
+    }
+
+    private func createQueueIdLabel(for message: InboxMessage) -> UILabel {
+        let label = UILabel()
+        label.translatesAutoresizingMaskIntoConstraints = false
+        label.text = message.queueId
+        label.font = .systemFont(ofSize: 14, weight: .medium)
+        label.numberOfLines = 1
+        return label
+    }
+
+    private func createDateLabel(for message: InboxMessage) -> UILabel {
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "MMM dd, yyyy h:mm a"
+        let label = UILabel()
+        label.translatesAutoresizingMaskIntoConstraints = false
+        label.text = dateFormatter.string(from: message.sentAt)
+        label.font = .systemFont(ofSize: 12)
+        label.textColor = .secondaryLabel
+        return label
+    }
+
+    private func createPropertiesLabel(for message: InboxMessage) -> UILabel {
+        let label = UILabel()
+        label.translatesAutoresizingMaskIntoConstraints = false
+        label.text = message.properties.isEmpty ? "No properties" : "\(message.properties)"
+        label.font = .systemFont(ofSize: 12)
+        label.textColor = .secondaryLabel
+        label.numberOfLines = 2
+        return label
+    }
+
+    private func createActionButtonsStack(for message: InboxMessage, at indexPath: IndexPath) -> UIStackView {
+        let buttonsStack = UIStackView()
+        buttonsStack.translatesAutoresizingMaskIntoConstraints = false
+        buttonsStack.axis = .horizontal
+        buttonsStack.spacing = 8
+        buttonsStack.distribution = .fillEqually
+
+        // Mark Read/Unread button
+        let readButton = createActionButton(
+            imageName: message.opened ? "inbox-unread" : "inbox-read",
+            tintColor: .darkGray,
+            tag: indexPath.row * 3 + 0
+        )
+        readButton.addTarget(self, action: #selector(toggleReadTapped(_:)), for: .touchUpInside)
+        buttonsStack.addArrangedSubview(readButton)
+
+        // Track Click button
+        let trackButton = createActionButton(
+            imageName: "inbox-track",
+            tintColor: .darkGray,
+            tag: indexPath.row * 3 + 1
+        )
+        trackButton.addTarget(self, action: #selector(trackClickTapped(_:)), for: .touchUpInside)
+        buttonsStack.addArrangedSubview(trackButton)
+
+        // Delete button
+        let deleteButton = createActionButton(
+            imageName: "inbox-delete",
+            tintColor: .systemRed,
+            tag: indexPath.row * 3 + 2
+        )
+        deleteButton.addTarget(self, action: #selector(deleteTapped(_:)), for: .touchUpInside)
+        buttonsStack.addArrangedSubview(deleteButton)
+
+        return buttonsStack
     }
 
     private func createActionButton(imageName: String, tintColor: UIColor, tag: Int) -> UIButton {
@@ -218,14 +245,38 @@ class InboxViewController: BaseViewController, UITableViewDelegate, UITableViewD
         return button
     }
 
-    @objc private func trackClickTapped(_ sender: UIButton) {
+    // MARK: - UITableViewDelegate
+
+    func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
+        UITableView.automaticDimension
+    }
+
+    func tableView(_ tableView: UITableView, estimatedHeightForRowAt indexPath: IndexPath) -> CGFloat {
+        120
+    }
+
+    // MARK: - InboxMessageChangeListener
+
+    func onMessagesChanged(messages: [InboxMessage]) {
+        Task { @MainActor in
+            self.messages = messages
+            tableView.reloadData()
+            updateEmptyState()
+        }
+    }
+}
+
+// MARK: - Action Handlers
+
+private extension InboxViewController {
+    @objc func trackClickTapped(_ sender: UIButton) {
         let index = sender.tag / 3
         guard index < messages.count else { return }
         let message = messages[index]
         showTrackClickDialog(for: message)
     }
 
-    private func showTrackClickDialog(for message: InboxMessage) {
+    func showTrackClickDialog(for message: InboxMessage) {
         let alert = UIAlertController(
             title: "Track Message Click",
             message: "Enter action name to track (optional)",
@@ -252,7 +303,7 @@ class InboxViewController: BaseViewController, UITableViewDelegate, UITableViewD
         present(alert, animated: true)
     }
 
-    @objc private func toggleReadTapped(_ sender: UIButton) {
+    @objc func toggleReadTapped(_ sender: UIButton) {
         let index = sender.tag / 3
         guard index < messages.count else { return }
         let message = messages[index]
@@ -269,14 +320,14 @@ class InboxViewController: BaseViewController, UITableViewDelegate, UITableViewD
         tableView.reloadRows(at: [IndexPath(row: index, section: 0)], with: .none)
     }
 
-    @objc private func deleteTapped(_ sender: UIButton) {
+    @objc func deleteTapped(_ sender: UIButton) {
         let index = sender.tag / 3
         guard index < messages.count else { return }
         let message = messages[index]
         showDeleteConfirmationDialog(for: message)
     }
 
-    private func showDeleteConfirmationDialog(for message: InboxMessage) {
+    func showDeleteConfirmationDialog(for message: InboxMessage) {
         let alert = UIAlertController(
             title: "Delete Message",
             message: "Are you sure you want to delete this message?",
@@ -294,15 +345,5 @@ class InboxViewController: BaseViewController, UITableViewDelegate, UITableViewD
         alert.addAction(cancelAction)
 
         present(alert, animated: true)
-    }
-
-    // MARK: - UITableViewDelegate
-
-    func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
-        return UITableView.automaticDimension
-    }
-
-    func tableView(_ tableView: UITableView, estimatedHeightForRowAt indexPath: IndexPath) -> CGFloat {
-        return 120
     }
 }
