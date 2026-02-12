@@ -87,7 +87,7 @@ class QueueManager {
     /// - Filters out server-provided anonymous messages from the queue
     /// - Retrieves eligible anonymous messages from local storage
     /// - Combines regular messages with eligible anonymous messages
-    private func processAnonymousMessages(_ userQueue: [UserQueueResponse]?) -> [Message]? {
+    private func processAnonymousMessages(_ userQueue: [InAppMessageResponse]?) -> [Message]? {
         guard let userQueue = userQueue else {
             return nil
         }
@@ -119,16 +119,30 @@ class QueueManager {
         return combinedMessages
     }
 
-    private func parseResponseBody(_ responseBody: Data) throws -> [UserQueueResponse] {
-        if let userQueueResponse =
-            try JSONSerialization.jsonObject(
-                with: responseBody,
-                options: .allowFragments
-            ) as? [[String: Any?]] {
-            return userQueueResponse.compactMap { UserQueueResponse(dictionary: $0) }
+    private func parseResponseBody(_ responseBody: Data) throws -> [InAppMessageResponse] {
+        guard let responseObject = try JSONSerialization.jsonObject(
+            with: responseBody,
+            options: .allowFragments
+        ) as? [String: Any?],
+            let queueResponse = QueueMessagesResponse(dictionary: responseObject)
+        else {
+            logger.logWithModuleTag("Failed to parse queue response", level: .error)
+            return []
         }
 
-        return []
+        let inboxMessages = queueResponse.inboxMessages
+        let inAppMessages = queueResponse.inAppMessages
+        logger.logWithModuleTag("Found \(inAppMessages.count) in-app messages, \(inboxMessages.count) inbox messages", level: .debug)
+
+        // Process inbox messages if any are present
+        if !inboxMessages.isEmpty {
+            let inboxMessagesMapped = inboxMessages.compactMap { $0.toDomainModel() }
+            // Dispatch action to update inbox messages in state
+            inAppMessageManager.dispatch(action: .processInboxMessages(messages: inboxMessagesMapped))
+        }
+
+        // Return in-app messages for existing flow
+        return inAppMessages
     }
 
     private func updatePollingInterval(headers: [AnyHashable: Any]) {

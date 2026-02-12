@@ -94,10 +94,10 @@ struct ServerEvent: Equatable {
 
             guard let messageArray = jsonObject as? [[String: Any?]] else { return nil }
 
-            // Convert dictionaries to UserQueueResponse, then to Message
+            // Convert dictionaries to InAppMessageResponse, then to Message
             // compactMap ensures invalid items are skipped without failing the whole batch
-            let userQueueResponses = messageArray.compactMap { UserQueueResponse(dictionary: $0) }
-            let messages = userQueueResponses.map { $0.toMessage() }
+            let inAppMessageResponses = messageArray.compactMap { InAppMessageResponse(dictionary: $0) }
+            let messages = inAppMessageResponses.map { $0.toMessage() }
 
             return messages.isEmpty ? nil : messages
         } catch {
