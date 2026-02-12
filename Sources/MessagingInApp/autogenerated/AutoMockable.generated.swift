@@ -1355,6 +1355,8 @@ public class MessageInboxInstanceMock: MessageInboxInstance, Mock {
 
     public func resetMock() {
         getMessagesCallsCount = 0
+        getMessagesReceivedArguments = nil
+        getMessagesReceivedInvocations = []
 
         mockCalled = false // do last as resetting properties above can make this true
         addChangeListenerCallsCount = 0
@@ -1398,6 +1400,10 @@ public class MessageInboxInstanceMock: MessageInboxInstance, Mock {
         getMessagesCallsCount > 0
     }
 
+    /// The arguments from the *last* time the function was called.
+    @Atomic public private(set) var getMessagesReceivedArguments: String??
+    /// Arguments from *all* of the times that the function was called.
+    @Atomic public private(set) var getMessagesReceivedInvocations: [String?] = []
     /// Value to return from the mocked function.
     public var getMessagesReturnValue: [InboxMessage]!
     /**
@@ -1405,13 +1411,15 @@ public class MessageInboxInstanceMock: MessageInboxInstance, Mock {
      The closure has first priority to return a value for the mocked function. If the closure returns `nil`,
      then the mock will attempt to return the value for `getMessagesReturnValue`
      */
-    public var getMessagesClosure: (() -> [InboxMessage])?
+    public var getMessagesClosure: ((String?) -> [InboxMessage])?
 
-    /// Mocked function for `getMessages()`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func getMessages() -> [InboxMessage] {
+    /// Mocked function for `getMessages(topic: String?)`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func getMessages(topic: String?) -> [InboxMessage] {
         mockCalled = true
         getMessagesCallsCount += 1
-        return getMessagesClosure.map { $0() } ?? getMessagesReturnValue
+        getMessagesReceivedArguments = topic
+        getMessagesReceivedInvocations.append(topic)
+        return getMessagesClosure.map { $0(topic) } ?? getMessagesReturnValue
     }
 
     // MARK: - addChangeListener

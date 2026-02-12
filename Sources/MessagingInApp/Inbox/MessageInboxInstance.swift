@@ -8,8 +8,9 @@ import Foundation
 public protocol MessageInboxInstance: AutoMockable {
     /// Retrieves the current list of inbox messages.
     ///
-    /// - Returns: List of inbox messages for the current user
-    func getMessages() async -> [InboxMessage]
+    /// - Parameter topic: Optional topic filter. If provided, only messages with this topic in their topics list are returned. If nil, all messages are returned.
+    /// - Returns: List of inbox messages for the current user, sorted by sentAt (newest first)
+    func getMessages(topic: String?) async -> [InboxMessage]
 
     /// Registers a listener for inbox changes.
     ///

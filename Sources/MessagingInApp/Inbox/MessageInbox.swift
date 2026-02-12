@@ -16,9 +16,29 @@ class MessageInbox: MessageInboxInstance {
 
     // MARK: - MessageInboxInstance
 
-    func getMessages() async -> [InboxMessage] {
-        logger.logWithModuleTag("getMessages() called - returning empty array (not yet implemented)", level: .debug)
-        return []
+    func getMessages(topic: String? = nil) async -> [InboxMessage] {
+        let state = await inAppMessageManager.state
+        let messages = Array(state.inboxMessages)
+        return filterMessagesByTopic(messages: messages, topic: topic)
+    }
+
+    /// Filters messages by topic if specified and sorts by sentAt (newest first).
+    /// Topic matching is case-insensitive.
+    ///
+    /// - Parameters:
+    ///   - messages: The messages to filter
+    ///   - topic: The topic filter, or nil to return all messages
+    /// - Returns: Filtered and sorted list of messages
+    private func filterMessagesByTopic(messages: [InboxMessage], topic: String?) -> [InboxMessage] {
+        let filteredMessages: [InboxMessage]
+        if let topic = topic {
+            filteredMessages = messages.filter { message in
+                message.topics.contains { $0.compare(topic, options: .caseInsensitive) == .orderedSame }
+            }
+        } else {
+            filteredMessages = messages
+        }
+        return filteredMessages.sorted { $0.sentAt > $1.sentAt }
     }
 
     func addChangeListener(_ listener: InboxMessageChangeListener) {
