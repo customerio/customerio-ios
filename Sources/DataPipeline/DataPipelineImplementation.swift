@@ -98,14 +98,13 @@ class DataPipelineImplementation: DataPipelineInstance {
 
     private func trackLocation(_ event: TrackLocationEvent) {
         let location = event.location
-        logger.debug("Tracking location: lat=\(location.latitude), lon=\(location.longitude)")
 
         let properties: [String: Any] = [
             "lat": location.latitude,
             "lng": location.longitude
         ]
 
-        analytics.track(name: "Location Updated", properties: properties)
+        analytics.track(name: "Location Update", properties: properties)
     }
 
     var siteId: String?

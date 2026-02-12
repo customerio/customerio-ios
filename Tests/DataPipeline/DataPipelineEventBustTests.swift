@@ -91,7 +91,7 @@ class DataPipelineEventBustTests: IntegrationTest {
         }
 
         XCTAssertEqual(trackEvent.type, "track")
-        XCTAssertEqual(trackEvent.event, "Location Updated")
+        XCTAssertEqual(trackEvent.event, "Location Update")
 
         let properties = trackEvent.properties?.dictionaryValue
         XCTAssertEqual(properties?["lat"] as? Double, givenLatitude)
