@@ -74,7 +74,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             .setEventListener(self)
 
         // Initialize Location module
-        CustomerIO.location().initialize(withConfig: LocationConfigBuilder().build())
+        CustomerIO.initializeLocation(withConfig: LocationConfig(enableLocationTracking: true))
     }
 
     // Handle Universal Link deep link from the Customer.io SDK. This function will get called if a push notification
