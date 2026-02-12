@@ -6,9 +6,8 @@ import XCTest
 
 class SDKConfigBuilderTest: UnitTest {
     func test_initializeAndDoNotModify_expectDefaultValues() {
-        let result = SDKConfigBuilder(cdpApiKey: .random).build()
-        let sdkConfig = result.sdkConfig
-        let dataPipelineConfig = result.dataPipelineConfig
+        let sdkConfig = SDKConfigBuilder(cdpApiKey: .random).build()
+        let dataPipelineConfig = sdkConfig.createDataPipelineConfigOptions()
 
         XCTAssertEqual(sdkConfig.logLevel, .error)
 
@@ -43,7 +42,7 @@ class SDKConfigBuilderTest: UnitTest {
             return true
         }
 
-        let result = SDKConfigBuilder(cdpApiKey: givenCdpApiKey)
+        let sdkConfig = SDKConfigBuilder(cdpApiKey: givenCdpApiKey)
             .logLevel(givenLogLevel)
             // Region should be ignored because we are setting the API host and CDN host directly.
             .region(.US)
@@ -60,10 +59,9 @@ class SDKConfigBuilderTest: UnitTest {
             .deepLinkCallback(deepLinkCallback)
             .build()
 
-        let sdkConfig = result.sdkConfig
         XCTAssertEqual(sdkConfig.logLevel, givenLogLevel)
 
-        let dataPipelineConfig = result.dataPipelineConfig
+        let dataPipelineConfig = sdkConfig.createDataPipelineConfigOptions()
         XCTAssertEqual(dataPipelineConfig.cdpApiKey, givenCdpApiKey)
         XCTAssertEqual(dataPipelineConfig.apiHost, givenApiHost)
         XCTAssertEqual(dataPipelineConfig.cdnHost, givenCdnHost)
@@ -76,7 +74,7 @@ class SDKConfigBuilderTest: UnitTest {
         XCTAssertEqual(dataPipelineConfig.migrationSiteId, givenSiteId)
         XCTAssertEqual(dataPipelineConfig.autoConfiguredPlugins.count, 0)
 
-        let deepLinkCallbackResult = result.deepLinkCallback
+        let deepLinkCallbackResult = sdkConfig.deepLinkCallback
         _ = deepLinkCallbackResult?(URL(string: "https://example.com")!)
         XCTAssertTrue(deepLinkCallbackCalled)
     }
@@ -85,18 +83,18 @@ class SDKConfigBuilderTest: UnitTest {
         let result = SDKConfigBuilder(cdpApiKey: .random)
             .region(.US)
             .build()
-
-        XCTAssertEqual(result.dataPipelineConfig.apiHost, "cdp.customer.io/v1")
-        XCTAssertEqual(result.dataPipelineConfig.cdnHost, "cdp.customer.io/v1")
+        let dataPipelineConfig = result.createDataPipelineConfigOptions()
+        XCTAssertEqual(dataPipelineConfig.apiHost, "cdp.customer.io/v1")
+        XCTAssertEqual(dataPipelineConfig.cdnHost, "cdp.customer.io/v1")
     }
 
     func test_givenRegionEU_expectRegionDefaults() {
         let result = SDKConfigBuilder(cdpApiKey: .random)
             .region(.EU)
             .build()
-
-        XCTAssertEqual(result.dataPipelineConfig.apiHost, "cdp-eu.customer.io/v1")
-        XCTAssertEqual(result.dataPipelineConfig.cdnHost, "cdp-eu.customer.io/v1")
+        let dataPipelineConfig = result.createDataPipelineConfigOptions()
+        XCTAssertEqual(dataPipelineConfig.apiHost, "cdp-eu.customer.io/v1")
+        XCTAssertEqual(dataPipelineConfig.cdnHost, "cdp-eu.customer.io/v1")
     }
 
     func test_givenApiHostModified_expectIgnoreRegionDefaultsForApiHost() {
@@ -106,9 +104,9 @@ class SDKConfigBuilderTest: UnitTest {
             .region(.US)
             .apiHost(givenApiHost)
             .build()
-
-        XCTAssertEqual(result.dataPipelineConfig.apiHost, givenApiHost)
-        XCTAssertEqual(result.dataPipelineConfig.cdnHost, "cdp.customer.io/v1")
+        let dataPipelineConfig = result.createDataPipelineConfigOptions()
+        XCTAssertEqual(dataPipelineConfig.apiHost, givenApiHost)
+        XCTAssertEqual(dataPipelineConfig.cdnHost, "cdp.customer.io/v1")
     }
 
     func test_givenCdnHostModified_expectIgnoreRegionDefaultsForCdnHost() {
@@ -118,9 +116,9 @@ class SDKConfigBuilderTest: UnitTest {
             .region(.US)
             .cdnHost(givenCdnHost)
             .build()
-
-        XCTAssertEqual(result.dataPipelineConfig.apiHost, "cdp.customer.io/v1")
-        XCTAssertEqual(result.dataPipelineConfig.cdnHost, givenCdnHost)
+        let dataPipelineConfig = result.createDataPipelineConfigOptions()
+        XCTAssertEqual(dataPipelineConfig.apiHost, "cdp.customer.io/v1")
+        XCTAssertEqual(dataPipelineConfig.cdnHost, givenCdnHost)
     }
 
     func test_autoScreenTrackingEnabled_expectScreenPluginAttachedWithGivenHandlers() {
@@ -136,15 +134,16 @@ class SDKConfigBuilderTest: UnitTest {
             return true
         }
 
-        let result = SDKConfigBuilder(cdpApiKey: .random)
+        let sdkConfig = SDKConfigBuilder(cdpApiKey: .random)
             .autoTrackUIKitScreenViews(
                 enabled: true,
                 autoScreenViewBody: givenAutoScreenViewBody,
                 filterAutoScreenViewEvents: givenFilterAutoScreenViewEvents
             )
             .build()
-
-        let autoConfiguredPlugins = result.dataPipelineConfig.autoConfiguredPlugins
+        let dataPipelineConfig = sdkConfig.createDataPipelineConfigOptions()
+        
+        let autoConfiguredPlugins = dataPipelineConfig.autoConfiguredPlugins
         let configuredPlugin = autoConfiguredPlugins.first
         // track screen to verify handlers are attached to the plugin.
         (configuredPlugin as? AutoTrackingScreenViews)?.performScreenTracking(onViewController: UIAlertController())
@@ -156,11 +155,12 @@ class SDKConfigBuilderTest: UnitTest {
     }
 
     func test_debugLogsEnabled_expectLoggerPluginAttached() {
-        let result = SDKConfigBuilder(cdpApiKey: .random)
+        let sdkConfig = SDKConfigBuilder(cdpApiKey: .random)
             .logLevel(.debug)
             .build()
+        let dataPipelineConfig = sdkConfig.createDataPipelineConfigOptions()
 
-        let autoConfiguredPlugins = result.dataPipelineConfig.autoConfiguredPlugins
+        let autoConfiguredPlugins = dataPipelineConfig.autoConfiguredPlugins
         let configuredPlugin = autoConfiguredPlugins.first
 
         XCTAssertEqual(autoConfiguredPlugins.count, 1)

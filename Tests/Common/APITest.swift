@@ -64,16 +64,4 @@ struct CommonAPITest {
         mock.setDeviceAttributes(dictionaryData)
         mock.deviceAttributes = dictionaryData
     }
-
-    // This function checks that SdkConfig is accessible and can be created using the factory.
-    @Test(.disabled("API compilation test - disabled by default"))
-    func createSdkConfig() {
-        // Outside of the Common module, we should be able to create a `SdkConfig` using the factory.
-        _ = SdkConfig.Factory.create(logLevel: .debug)
-        // Factory method should allow nil values for `SdkConfig` to enable fallback to defaults.
-        _ = SdkConfig.Factory.create(logLevel: nil)
-        // Wrapper SDKs should be able to create a `SdkConfig` from a dictionary.
-        let configOptions: [String: Any] = [:]
-        _ = SdkConfig.Factory.create(from: configOptions)
-    }
 }

@@ -1,5 +1,11 @@
 import Foundation
 
+public protocol CIOModule {
+    init(digraph: DIGraphShared) throws
+    func configure(with: SdkConfig, root: CustomerIO) async throws
+}
+
+
 public protocol CustomerIOInstance: AutoMockable {
     // MARK: - Profile
 
@@ -190,6 +196,22 @@ public class CustomerIO: CustomerIOInstance {
     private var diGraph: DIGraphShared {
         DIGraphShared.shared
     }
+    
+    private var modules: [ObjectIdentifier: CIOModule] = [:]
+    @_spi(Module)
+    public func findModule<M: CIOModule>(_ moduleType: M.Type = M.self) -> M? {
+        let identifier = ObjectIdentifier(moduleType)
+        // These two guards can be combined later, but are separated for debugging
+        guard let module = modules[identifier] else {
+            // No module found
+            return nil
+        }
+        guard let typedModule = module as? M else {
+            // Module is wrong type
+            return nil
+        }
+        return typedModule
+    }
 
     /**
      Singleton shared instance of `CustomerIO`. Convenient way to use the SDK.
@@ -232,6 +254,22 @@ public class CustomerIO: CustomerIOInstance {
         let globalDataStore = diGraph.globalDataStore
         if let token = globalDataStore.pushDeviceToken {
             registerDeviceToken(token)
+        }
+    }
+    
+    @_spi(Internal)
+    public func createModules(config: SdkConfig) async {
+        let log = diGraph.logger
+        let moduleTypes: [CIOModule.Type] = config.moduleTypes
+        for moduleType in moduleTypes {
+            let identifier = ObjectIdentifier(moduleType)
+            do {
+                let module: CIOModule = try moduleType.init(digraph: diGraph)
+                try await module.configure(with: config, root: self)
+                modules[identifier] = module
+            } catch {
+                log.error("Failed to initialize module of type \(moduleType): \(error)")
+            }
         }
     }
 

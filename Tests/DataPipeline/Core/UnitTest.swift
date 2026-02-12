@@ -36,10 +36,10 @@ open class UnitTest: SharedTests.UnitTestBase<CustomerIO> {
         sdkConfigBuilder.autoAddCustomerIODestination(false)
         modifySdkConfig?(sdkConfigBuilder)
 
-        let result = sdkConfigBuilder.build()
-        dataPipelineConfigOptions = result.dataPipelineConfig
+        let sdkConfig = sdkConfigBuilder.build()
+        dataPipelineConfigOptions = sdkConfig.createDataPipelineConfigOptions()
 
-        super.setUp(sdkConfig: result.sdkConfig)
+        super.setUp(sdkConfig: sdkConfig)
     }
 
     override open func setUpDependencies() {
