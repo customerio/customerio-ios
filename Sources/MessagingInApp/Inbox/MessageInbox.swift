@@ -16,7 +16,7 @@ class MessageInbox: MessageInboxInstance {
 
     // MARK: - MessageInboxInstance
 
-    func getMessages(topic: String? = nil) async -> [InboxMessage] {
+    func getMessages(topic: String?) async -> [InboxMessage] {
         let state = await inAppMessageManager.state
         let messages = Array(state.inboxMessages)
         return filterMessagesByTopic(messages: messages, topic: topic)

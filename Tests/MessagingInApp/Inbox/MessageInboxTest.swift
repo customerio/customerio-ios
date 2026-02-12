@@ -66,7 +66,7 @@ class MessageInboxTest: UnitTest {
         let stateWithMessages = InAppMessageState().copy(inboxMessages: Set([olderMessage, newerMessage]))
         inAppMessageManagerMock.underlyingState = stateWithMessages
 
-        let messages = await messageInbox.getMessages(topic: nil)
+        let messages = await messageInbox.getMessages()
 
         XCTAssertEqual(messages.count, 2)
         XCTAssertEqual(messages[0].queueId, "queue-2") // Newer date

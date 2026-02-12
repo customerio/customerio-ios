@@ -50,3 +50,14 @@ public protocol MessageInboxInstance: AutoMockable {
     ///   - actionName: Optional name of the action clicked (e.g., "view_details", "dismiss")
     func trackMessageClicked(message: InboxMessage, actionName: String?)
 }
+
+// MARK: - Protocol Extension for Default Parameters
+
+public extension MessageInboxInstance {
+    /// Retrieves all inbox messages without topic filter.
+    ///
+    /// - Returns: List of all inbox messages for the current user, sorted by sentAt (newest first)
+    func getMessages() async -> [InboxMessage] {
+        await getMessages(topic: nil)
+    }
+}
