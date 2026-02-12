@@ -1,6 +1,8 @@
+import CioInternalCommon
 import CioDataPipelines
 import CioMessagingInApp
 import CioMessagingPushAPN
+import CioLocation
 import UIKit
 
 @main
@@ -41,6 +43,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             .trackApplicationLifecycleEvents(settings.dataPipelines.trackApplicationLifecycleEvents)
             .screenViewUse(screenView: settings.dataPipelines.screenViewUse.toCIOScreenViewUse())
             .logLevel(settings.dataPipelines.logLevel.toCIOLogLevel())
+            .setLocationTrackingMode(.automatic)
             .migrationSiteId(settings.dataPipelines.siteId)
 
         if settings.dataPipelines.autoTrackUIKitScreenViews {
@@ -56,6 +59,13 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             config.flushAt(1)
         }
         CustomerIO.initialize(withConfig: config.build())
+        Task {
+            // Since module config is async, we do this async
+            let locationService = CustomerIO.shared.location
+            let isSet = locationService != nil // Always true
+            print("Location service is \(isSet ? "enabled" : "disabled").")
+            
+        }
 
         // Initialize messaging features after initializing Customer.io SDK
         MessagingPushAPN.initialize(

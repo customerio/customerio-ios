@@ -11,6 +11,6 @@ extension SDKConfigBuilder {
     
     public func setLocationTrackingMode(_ mode: TrackingMode) -> Self {
         self.enrollModule(LocationService.self)
-        self.setExtensionValue(mode, forKey: LocationConfigExtensionKey.trackingMode.rawValue)
+        return self.setExtensionValue(mode, forKey: LocationConfigExtensionKey.trackingMode.rawValue)
     }
 }

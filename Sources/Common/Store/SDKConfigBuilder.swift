@@ -42,7 +42,7 @@ public class SDKConfigBuilder {
     private var enrolledModules: [ObjectIdentifier: CIOModule.Type] = [:]
     
     @_spi(Module)
-    public func setExtensionValue<T>(_ value: T, forKey key: String) -> SDKConfigBuilder {
+    public func setExtensionValue<T>(_ value: T, forKey key: String) -> Self {
         extensionValues[key] = value
         return self
     }

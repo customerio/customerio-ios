@@ -22,7 +22,8 @@ let package = Package(
                 // List the modules from the Customer.io iOS SDK that you actually use
                 .product(name: "DataPipelines", package: "customerio-ios"),
                 .product(name: "MessagingPushAPN", package: "customerio-ios"),
-                .product(name: "MessagingInApp", package: "customerio-ios")
+                .product(name: "MessagingInApp", package: "customerio-ios"),
+                .product(name: "CioLocation", package: "customerio-ios")
             ],
             path: "Source"
         )
