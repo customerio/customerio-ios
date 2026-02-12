@@ -25,13 +25,12 @@ struct QueueMessagesResponseTest {
 
         let response = QueueMessagesResponse(dictionary: dictionary)
 
-        #expect(response != nil)
-        #expect(response?.inAppMessages.count == 2)
-        #expect(response?.inAppMessages[0].queueId == "in-app-1")
-        #expect(response?.inAppMessages[0].priority == 5)
-        #expect(response?.inAppMessages[0].messageId == "msg-1")
-        #expect(response?.inAppMessages[1].queueId == "in-app-2")
-        #expect(response?.inAppMessages[1].priority == 3)
+        #expect(response.inAppMessages.count == 2)
+        #expect(response.inAppMessages[0].queueId == "in-app-1")
+        #expect(response.inAppMessages[0].priority == 5)
+        #expect(response.inAppMessages[0].messageId == "msg-1")
+        #expect(response.inAppMessages[1].queueId == "in-app-2")
+        #expect(response.inAppMessages[1].priority == 3)
     }
 
     @Test("Parses inboxMessages array")
@@ -63,13 +62,12 @@ struct QueueMessagesResponseTest {
 
         let response = QueueMessagesResponse(dictionary: dictionary)
 
-        #expect(response != nil)
-        #expect(response?.inboxMessages.count == 2)
-        #expect(response?.inboxMessages[0].queueId == "inbox-1")
-        #expect(response?.inboxMessages[0].deliveryId == "delivery-1")
-        #expect(response?.inboxMessages[0].opened == false)
-        #expect(response?.inboxMessages[1].queueId == "inbox-2")
-        #expect(response?.inboxMessages[1].opened == true)
+        #expect(response.inboxMessages.count == 2)
+        #expect(response.inboxMessages[0].queueId == "inbox-1")
+        #expect(response.inboxMessages[0].deliveryId == "delivery-1")
+        #expect(response.inboxMessages[0].opened == false)
+        #expect(response.inboxMessages[1].queueId == "inbox-2")
+        #expect(response.inboxMessages[1].opened == true)
     }
 
     @Test("Handles empty and missing arrays with empty defaults")
@@ -80,16 +78,14 @@ struct QueueMessagesResponseTest {
             "inboxMessages": []
         ]
         let response1 = QueueMessagesResponse(dictionary: emptyArrays)
-        #expect(response1 != nil)
-        #expect(response1?.inAppMessages.isEmpty == true)
-        #expect(response1?.inboxMessages.isEmpty == true)
+        #expect(response1.inAppMessages.isEmpty == true)
+        #expect(response1.inboxMessages.isEmpty == true)
 
         // Test with missing arrays
         let missingArrays: [String: Any?] = [:]
         let response2 = QueueMessagesResponse(dictionary: missingArrays)
-        #expect(response2 != nil)
-        #expect(response2?.inAppMessages.isEmpty == true)
-        #expect(response2?.inboxMessages.isEmpty == true)
+        #expect(response2.inAppMessages.isEmpty == true)
+        #expect(response2.inboxMessages.isEmpty == true)
     }
 
     @Test("Filters out invalid inAppMessages")
@@ -116,9 +112,8 @@ struct QueueMessagesResponseTest {
 
         let response = QueueMessagesResponse(dictionary: dictionary)
 
-        #expect(response != nil)
-        #expect(response?.inAppMessages.count == 2)
-        #expect(response?.inAppMessages[0].queueId == "valid-1")
-        #expect(response?.inAppMessages[1].queueId == "valid-2")
+        #expect(response.inAppMessages.count == 2)
+        #expect(response.inAppMessages[0].queueId == "valid-1")
+        #expect(response.inAppMessages[1].queueId == "valid-2")
     }
 }
