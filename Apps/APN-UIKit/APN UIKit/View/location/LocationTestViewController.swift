@@ -44,15 +44,15 @@ class LocationTestViewController: BaseViewController {
         super.viewDidLoad()
         setupUI()
         setupLocationManager()
+        // Start with empty manual entry fields once when the screen loads
+        latitudeTextField?.text = ""
+        longitudeTextField?.text = ""
     }
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         navigationController?.isNavigationBarHidden = false
         CustomerIO.shared.screen(title: "Location Test")
-        // Start with empty manual entry fields so they are not pre-populated from a previous device fetch
-        latitudeTextField?.text = ""
-        longitudeTextField?.text = ""
         addKeyboardObservers()
     }
 

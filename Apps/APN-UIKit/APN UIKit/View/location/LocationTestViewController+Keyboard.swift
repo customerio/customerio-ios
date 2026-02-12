@@ -32,9 +32,7 @@ extension LocationTestViewController {
         }
         let keyboardHeight = keyboardFrame.height
         scrollView.contentInset.bottom = keyboardHeight
-        if #available(iOS 11.1, *) {
-            scrollView.verticalScrollIndicatorInsets.bottom = keyboardHeight
-        }
+        scrollView.verticalScrollIndicatorInsets.bottom = keyboardHeight
 
         UIView.animate(withDuration: duration) { [weak self] in
             self?.view.layoutIfNeeded()
@@ -54,9 +52,7 @@ extension LocationTestViewController {
             return
         }
         scrollView.contentInset.bottom = 0
-        if #available(iOS 11.1, *) {
-            scrollView.verticalScrollIndicatorInsets.bottom = 0
-        }
+        scrollView.verticalScrollIndicatorInsets.bottom = 0
         UIView.animate(withDuration: duration) { [weak self] in
             self?.view.layoutIfNeeded()
         }
