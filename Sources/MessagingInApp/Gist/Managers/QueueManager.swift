@@ -123,7 +123,7 @@ class QueueManager {
         guard let responseObject = try JSONSerialization.jsonObject(
             with: responseBody,
             options: .allowFragments
-        ) as? [String: Any?] else {
+        ) as? [String: Any] else {
             logger.logWithModuleTag("Failed to parse queue response, not a JSON object", level: .error)
             return []
         }

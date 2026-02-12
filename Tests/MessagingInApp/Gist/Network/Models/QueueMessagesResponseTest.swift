@@ -6,7 +6,7 @@ import Testing
 struct QueueMessagesResponseTest {
     @Test("Parses inAppMessages array")
     func parsesInAppMessagesArray() {
-        let dictionary: [String: Any?] = [
+        let dictionary: [String: Any] = [
             "inAppMessages": [
                 [
                     "queueId": "in-app-1",
@@ -35,7 +35,7 @@ struct QueueMessagesResponseTest {
 
     @Test("Parses inboxMessages array")
     func parsesInboxMessagesArray() {
-        let dictionary: [String: Any?] = [
+        let dictionary: [String: Any] = [
             "inboxMessages": [
                 [
                     "queueId": "inbox-1",
@@ -73,7 +73,7 @@ struct QueueMessagesResponseTest {
     @Test("Handles empty and missing arrays with empty defaults")
     func handlesEmptyAndMissingArraysWithEmptyDefaults() {
         // Test with empty arrays
-        let emptyArrays: [String: Any?] = [
+        let emptyArrays: [String: Any] = [
             "inAppMessages": [],
             "inboxMessages": []
         ]
@@ -82,7 +82,7 @@ struct QueueMessagesResponseTest {
         #expect(response1.inboxMessages.isEmpty == true)
 
         // Test with missing arrays
-        let missingArrays: [String: Any?] = [:]
+        let missingArrays: [String: Any] = [:]
         let response2 = QueueMessagesResponse(dictionary: missingArrays)
         #expect(response2.inAppMessages.isEmpty == true)
         #expect(response2.inboxMessages.isEmpty == true)
@@ -90,7 +90,7 @@ struct QueueMessagesResponseTest {
 
     @Test("Filters out invalid inAppMessages")
     func filtersOutInvalidInAppMessages() {
-        let dictionary: [String: Any?] = [
+        let dictionary: [String: Any] = [
             "inAppMessages": [
                 [
                     "queueId": "valid-1",
@@ -115,5 +115,49 @@ struct QueueMessagesResponseTest {
         #expect(response.inAppMessages.count == 2)
         #expect(response.inAppMessages[0].queueId == "valid-1")
         #expect(response.inAppMessages[1].queueId == "valid-2")
+    }
+
+    @Test("Handles null values in optional fields")
+    func handlesNullValuesInOptionalFields() {
+        let dictionary: [String: Any] = [
+            "inAppMessages": [
+                [
+                    "queueId": "msg-1",
+                    "priority": 1,
+                    "messageId": "m1",
+                    "properties": nil
+                ]
+            ],
+            "inboxMessages": [
+                [
+                    "queueId": "inbox-1",
+                    "deliveryId": nil,
+                    "expiry": nil,
+                    "sentAt": nil,
+                    "topics": nil,
+                    "type": nil,
+                    "opened": nil,
+                    "priority": nil,
+                    "properties": nil
+                ]
+            ]
+        ]
+
+        let response = QueueMessagesResponse(dictionary: dictionary)
+
+        #expect(response.inAppMessages.count == 1)
+        #expect(response.inAppMessages[0].properties == nil)
+
+        #expect(response.inboxMessages.count == 1)
+        let inboxMessage = response.inboxMessages[0].toDomainModel()
+
+        #expect(inboxMessage.queueId == "inbox-1")
+        #expect(inboxMessage.deliveryId == nil)
+        #expect(inboxMessage.expiry == nil)
+        #expect(inboxMessage.topics.isEmpty == true)
+        #expect(inboxMessage.type == "")
+        #expect(inboxMessage.opened == false)
+        #expect(inboxMessage.priority == nil)
+        #expect(inboxMessage.properties.isEmpty == true)
     }
 }

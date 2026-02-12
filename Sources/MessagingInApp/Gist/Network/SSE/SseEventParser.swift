@@ -92,7 +92,7 @@ struct ServerEvent: Equatable {
             // Parse JSON - expect array of dictionaries (same format as polling API)
             let jsonObject = try JSONSerialization.jsonObject(with: jsonData, options: .allowFragments)
 
-            guard let messageArray = jsonObject as? [[String: Any?]] else { return nil }
+            guard let messageArray = jsonObject as? [[String: Any]] else { return nil }
 
             // Convert dictionaries to InAppMessageResponse, then to Message
             // compactMap ensures invalid items are skipped without failing the whole batch

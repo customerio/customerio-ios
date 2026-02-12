@@ -100,7 +100,7 @@ struct InboxMessageTest {
 struct InboxMessageResponseTest {
     @Test("Failable init returns nil when queueId is missing")
     func failableInitReturnsNilWhenQueueIdMissing() {
-        let dictionary: [String: Any?] = [
+        let dictionary: [String: Any] = [
             "deliveryId": "delivery-456",
             "sentAt": "2026-02-09T12:26:42.513994Z"
         ]

@@ -16,7 +16,7 @@ struct InAppMessageResponse {
         self.properties = properties
     }
 
-    init?(dictionary: [String: Any?]) {
+    init?(dictionary: [String: Any]) {
         guard let queueId = dictionary["queueId"] as? String,
               let priority = dictionary["priority"] as? Int,
               let messageId = dictionary["messageId"] as? String
