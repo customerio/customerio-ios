@@ -98,6 +98,18 @@ struct InboxMessageTest {
 
 @Suite("InboxMessageResponse Tests")
 struct InboxMessageResponseTest {
+    @Test("Failable init returns nil when queueId is missing")
+    func failableInitReturnsNilWhenQueueIdMissing() {
+        let dictionary: [String: Any?] = [
+            "deliveryId": "delivery-456",
+            "sentAt": "2026-02-09T12:26:42.513994Z"
+        ]
+
+        let response = InboxMessageResponse(dictionary: dictionary)
+
+        #expect(response == nil)
+    }
+
     @Test("toDomainModel maps all fields correctly")
     func toDomainModelMapsAllFieldsCorrectly() {
         let response = InboxMessageResponse(
@@ -114,33 +126,15 @@ struct InboxMessageResponseTest {
 
         let domainModel = response.toDomainModel()
 
-        #expect(domainModel != nil)
-        #expect(domainModel?.queueId == "queue-123")
-        #expect(domainModel?.deliveryId == "delivery-456")
-        #expect(domainModel?.expiry != nil)
-        #expect(domainModel?.sentAt != nil)
-        #expect(domainModel?.topics == ["promo"])
-        #expect(domainModel?.type == "in-app")
-        #expect(domainModel?.opened == true)
-        #expect(domainModel?.priority == 5)
-        #expect(domainModel?.properties["key"] as? String == "value")
-    }
-
-    @Test("toDomainModel returns nil when queueId is missing")
-    func toDomainModelReturnsNilWhenQueueIdMissing() {
-        let response = InboxMessageResponse(
-            queueId: nil,
-            deliveryId: "delivery-456",
-            expiry: nil,
-            sentAt: "2026-02-09T12:26:42.513994Z",
-            topics: nil,
-            type: nil,
-            opened: nil,
-            priority: nil,
-            properties: nil
-        )
-
-        #expect(response.toDomainModel() == nil)
+        #expect(domainModel.queueId == "queue-123")
+        #expect(domainModel.deliveryId == "delivery-456")
+        #expect(domainModel.expiry != nil)
+        #expect(domainModel.sentAt != Date())
+        #expect(domainModel.topics == ["promo"])
+        #expect(domainModel.type == "in-app")
+        #expect(domainModel.opened == true)
+        #expect(domainModel.priority == 5)
+        #expect(domainModel.properties["key"] as? String == "value")
     }
 
     @Test("toDomainModel succeeds when deliveryId is missing")
@@ -159,9 +153,8 @@ struct InboxMessageResponseTest {
 
         let domainModel = response.toDomainModel()
 
-        #expect(domainModel != nil)
-        #expect(domainModel?.deliveryId == nil)
-        #expect(domainModel?.expiry == nil)
+        #expect(domainModel.deliveryId == nil)
+        #expect(domainModel.expiry == nil)
     }
 
     @Test("toDomainModel uses default values when optional fields are nil")
@@ -180,17 +173,16 @@ struct InboxMessageResponseTest {
 
         let domainModel = response.toDomainModel()
 
-        #expect(domainModel != nil)
-        #expect(domainModel?.topics == [])
-        #expect(domainModel?.type == "")
-        #expect(domainModel?.opened == false)
-        #expect(domainModel?.priority == nil)
-        #expect(domainModel?.properties.isEmpty == true)
-        #expect(domainModel?.expiry == nil)
+        #expect(domainModel.topics == [])
+        #expect(domainModel.type == "")
+        #expect(domainModel.opened == false)
+        #expect(domainModel.priority == nil)
+        #expect(domainModel.properties.isEmpty == true)
+        #expect(domainModel.expiry == nil)
 
         // sentAt should default to current time (within 1 second)
         let now = Date()
-        let timeDiff = abs((domainModel?.sentAt.timeIntervalSince1970 ?? 0) - now.timeIntervalSince1970)
+        let timeDiff = abs(domainModel.sentAt.timeIntervalSince1970 - now.timeIntervalSince1970)
         #expect(timeDiff < 1.0)
     }
 
@@ -210,8 +202,6 @@ struct InboxMessageResponseTest {
 
         let domainModel = response.toDomainModel()
 
-        #expect(domainModel != nil)
-
         // Verify dates are parsed correctly
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(identifier: "UTC")!
@@ -219,7 +209,7 @@ struct InboxMessageResponseTest {
         // Check expiry date
         let expiryComponents = calendar.dateComponents(
             [.year, .month, .day, .hour, .minute, .second],
-            from: domainModel!.expiry!
+            from: domainModel.expiry!
         )
         #expect(expiryComponents.year == 2026)
         #expect(expiryComponents.month == 4)
@@ -231,7 +221,7 @@ struct InboxMessageResponseTest {
         // Check sentAt date
         let sentAtComponents = calendar.dateComponents(
             [.year, .month, .day, .hour, .minute, .second],
-            from: domainModel!.sentAt
+            from: domainModel.sentAt
         )
         #expect(sentAtComponents.year == 2026)
         #expect(sentAtComponents.month == 2)
@@ -257,15 +247,13 @@ struct InboxMessageResponseTest {
 
         let domainModel = response.toDomainModel()
 
-        #expect(domainModel != nil)
-
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(identifier: "UTC")!
 
         // Check expiry date still parses correctly
         let expiryComponents = calendar.dateComponents(
             [.year, .month, .day, .hour, .minute, .second],
-            from: domainModel!.expiry!
+            from: domainModel.expiry!
         )
         #expect(expiryComponents.year == 2026)
         #expect(expiryComponents.month == 4)
@@ -277,7 +265,7 @@ struct InboxMessageResponseTest {
         // Check sentAt date
         let sentAtComponents = calendar.dateComponents(
             [.year, .month, .day, .hour, .minute, .second],
-            from: domainModel!.sentAt
+            from: domainModel.sentAt
         )
         #expect(sentAtComponents.year == 2026)
         #expect(sentAtComponents.month == 2)

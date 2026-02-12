@@ -4,7 +4,7 @@ import Foundation
 ///
 /// This model handles optional fields from the API and maps to the domain model with defensive defaults.
 struct InboxMessageResponse {
-    let queueId: String?
+    let queueId: String
     let deliveryId: String?
     let expiry: String? // ISO 8601 date string
     let sentAt: String? // ISO 8601 date string
@@ -15,7 +15,7 @@ struct InboxMessageResponse {
     let properties: [String: Any]?
 
     init(
-        queueId: String?,
+        queueId: String,
         deliveryId: String?,
         expiry: String?,
         sentAt: String?,
@@ -37,26 +37,26 @@ struct InboxMessageResponse {
     }
 
     init?(dictionary: [String: Any?]) {
-        self.queueId = dictionary["queueId"] as? String
-        self.deliveryId = dictionary["deliveryId"] as? String
-        self.expiry = dictionary["expiry"] as? String
-        self.sentAt = dictionary["sentAt"] as? String
-        self.topics = dictionary["topics"] as? [String]
-        self.type = dictionary["type"] as? String
-        self.opened = dictionary["opened"] as? Bool
-        self.priority = dictionary["priority"] as? Int
-        self.properties = dictionary["properties"] as? [String: Any]
+        guard let queueId = dictionary["queueId"] as? String else {
+            return nil
+        }
+        self.init(
+            queueId: queueId,
+            deliveryId: dictionary["deliveryId"] as? String,
+            expiry: dictionary["expiry"] as? String,
+            sentAt: dictionary["sentAt"] as? String,
+            topics: dictionary["topics"] as? [String],
+            type: dictionary["type"] as? String,
+            opened: dictionary["opened"] as? Bool,
+            priority: dictionary["priority"] as? Int,
+            properties: dictionary["properties"] as? [String: Any]
+        )
     }
 
     /// Converts the API response to a domain model with defensive defaults.
     ///
-    /// - Returns: InboxMessage if required fields are present, nil otherwise
-    func toDomainModel() -> InboxMessage? {
-        // queueId is required
-        guard let queueId = queueId else {
-            return nil
-        }
-
+    /// - Returns: InboxMessage with defensive defaults for optional fields
+    func toDomainModel() -> InboxMessage {
         // Parse ISO 8601 dates using shared extension
         let expiryDate: Date? = expiry.flatMap { Date.fromIso8601WithMilliseconds($0) }
         let sentAtDate: Date = sentAt.flatMap { Date.fromIso8601WithMilliseconds($0) } ?? Date()
