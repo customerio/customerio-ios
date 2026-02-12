@@ -56,7 +56,7 @@
                                         </connections>
                                     </button>
                                     <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="iXp-Fu-ehx">
-                                        <rect key="frame" x="20" y="240.00000000000003" width="344" height="34.333333333333343"/>
+                                        <rect key="frame" x="20" y="240.00000000000003" width="344" height="38.333333333333343"/>
                                         <color key="tintColor" red="0.44313725490196076" green="0.19215686274509802" blue="1" alpha="1" colorSpace="custom" customColorSpace="displayP3"/>
                                         <state key="normal" title="Button"/>
                                         <buttonConfiguration key="configuration" style="plain" title="Generate Random Login"/>
@@ -209,16 +209,16 @@
                                 <rect key="frame" x="16" y="167.33333333333331" width="382" height="625.33333333333348"/>
                                 <subviews>
                                     <stackView opaque="NO" contentMode="scaleToFill" axis="vertical" distribution="fillEqually" spacing="16" translatesAutoresizingMaskIntoConstraints="NO" id="AIH-WX-Xne">
-                                        <rect key="frame" x="0.0" y="0.0" width="382" height="487.33333333333331"/>
+                                        <rect key="frame" x="0.0" y="0.0" width="382" height="581.66666666666663"/>
                                         <subviews>
                                             <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="What would you like to test?" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="rdb-Gz-vLC">
-                                                <rect key="frame" x="0.0" y="0.0" width="382" height="34.333333333333336"/>
+                                                <rect key="frame" x="0.0" y="0.0" width="382" height="38.333333333333336"/>
                                                 <fontDescription key="fontDescription" name="Avenir-Heavy" family="Avenir" pointSize="20"/>
                                                 <color key="textColor" red="0.24313725489999999" green="0.24313725489999999" blue="0.24313725489999999" alpha="1" colorSpace="custom" customColorSpace="displayP3"/>
                                                 <nil key="highlightedColor"/>
                                             </label>
                                             <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="yOE-0O-ICW" customClass="ThemeButton" customModule="APN_UIKit" customModuleProvider="target">
-                                                <rect key="frame" x="0.0" y="50.333333333333314" width="382" height="34.333333333333343"/>
+                                                <rect key="frame" x="0.0" y="54.333333333333314" width="382" height="38.333333333333343"/>
                                                 <color key="backgroundColor" red="0.23529411764705882" green="0.2627450980392157" blue="0.49019607843137253" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
                                                 <color key="tintColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
                                                 <state key="normal" title="Button"/>
@@ -228,7 +228,7 @@
                                                 </connections>
                                             </button>
                                             <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="rAK-3p-434" customClass="ThemeButton" customModule="APN_UIKit" customModuleProvider="target">
-                                                <rect key="frame" x="0.0" y="100.66666666666666" width="382" height="34.333333333333343"/>
+                                                <rect key="frame" x="0.0" y="108.66666666666666" width="382" height="38.333333333333343"/>
                                                 <color key="backgroundColor" red="0.23529411759999999" green="0.26274509800000001" blue="0.49019607840000001" alpha="1" colorSpace="custom" customColorSpace="displayP3"/>
                                                 <color key="tintColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
                                                 <state key="normal" title="Button"/>
@@ -238,7 +238,7 @@
                                                 </connections>
                                             </button>
                                             <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="nOP-Lf-TEx" customClass="ThemeButton" customModule="APN_UIKit" customModuleProvider="target">
-                                                <rect key="frame" x="0.0" y="150.99999999999997" width="382" height="34.333333333333343"/>
+                                                <rect key="frame" x="0.0" y="162.99999999999997" width="382" height="38.333333333333343"/>
                                                 <color key="backgroundColor" red="0.23529411759999999" green="0.26274509800000001" blue="0.49019607840000001" alpha="1" colorSpace="custom" customColorSpace="displayP3"/>
                                                 <color key="tintColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
                                                 <state key="normal" title="Button"/>
@@ -248,7 +248,7 @@
                                                 </connections>
                                             </button>
                                             <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="5Np-Wp-Fd7" customClass="ThemeButton" customModule="APN_UIKit" customModuleProvider="target">
-                                                <rect key="frame" x="0.0" y="201.33333333333334" width="382" height="34.333333333333343"/>
+                                                <rect key="frame" x="0.0" y="217.33333333333334" width="382" height="38.333333333333343"/>
                                                 <color key="backgroundColor" red="0.23529411759999999" green="0.26274509800000001" blue="0.49019607840000001" alpha="1" colorSpace="custom" customColorSpace="displayP3"/>
                                                 <color key="tintColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
                                                 <state key="normal" title="Button"/>
@@ -258,7 +258,7 @@
                                                 </connections>
                                             </button>
                                             <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="XDM-Yu-1Sg" customClass="ThemeButton" customModule="APN_UIKit" customModuleProvider="target">
-                                                <rect key="frame" x="0.0" y="251.66666666666666" width="382" height="34.333333333333343"/>
+                                                <rect key="frame" x="0.0" y="271.66666666666663" width="382" height="38.333333333333314"/>
                                                 <color key="backgroundColor" red="0.23529411759999999" green="0.26274509800000001" blue="0.49019607840000001" alpha="1" colorSpace="custom" customColorSpace="displayP3"/>
                                                 <color key="tintColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
                                                 <state key="normal" title="Button"/>
@@ -268,7 +268,7 @@
                                                 </connections>
                                             </button>
                                             <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="QCc-aF-w6r" userLabel="Send local push" customClass="ThemeButton" customModule="APN_UIKit" customModuleProvider="target">
-                                                <rect key="frame" x="0.0" y="302" width="382" height="34.333333333333314"/>
+                                                <rect key="frame" x="0.0" y="326" width="382" height="38.333333333333314"/>
                                                 <color key="backgroundColor" red="0.23529411759999999" green="0.26274509800000001" blue="0.49019607840000001" alpha="1" colorSpace="custom" customColorSpace="displayP3"/>
                                                 <color key="tintColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
                                                 <state key="normal" title="Button"/>
@@ -278,7 +278,7 @@
                                                 </connections>
                                             </button>
                                             <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="Lb4-oP-0VA" userLabel="Inline examples (UiKit)" customClass="ThemeButton" customModule="APN_UIKit" customModuleProvider="target">
-                                                <rect key="frame" x="0.0" y="352.33333333333326" width="382" height="34.333333333333314"/>
+                                                <rect key="frame" x="0.0" y="380.33333333333326" width="382" height="38.333333333333314"/>
                                                 <color key="backgroundColor" red="0.2352941036" green="0.26274511220000002" blue="0.49019610879999997" alpha="1" colorSpace="custom" customColorSpace="displayP3"/>
                                                 <color key="tintColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
                                                 <state key="normal" title="Button"/>
@@ -288,7 +288,7 @@
                                                 </connections>
                                             </button>
                                             <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="xg6-ZV-bDY" customClass="ThemeButton" customModule="APN_UIKit" customModuleProvider="target">
-                                                <rect key="frame" x="0.0" y="402.66666666666663" width="382" height="34.333333333333314"/>
+                                                <rect key="frame" x="0.0" y="434.66666666666663" width="382" height="38.333333333333314"/>
                                                 <color key="backgroundColor" red="0.23529411759999999" green="0.26274509800000001" blue="0.49019607840000001" alpha="1" colorSpace="custom" customColorSpace="displayP3"/>
                                                 <color key="tintColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
                                                 <state key="normal" title="Button"/>
@@ -297,8 +297,18 @@
                                                     <action selector="openInlineUikitExamples:" destination="0ax-47-4zI" eventType="touchUpInside" id="BOs-sF-hvl"/>
                                                 </connections>
                                             </button>
+                                            <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="xTi-Sa-CVq" customClass="ThemeButton" customModule="APN_UIKit" customModuleProvider="target">
+                                                <rect key="frame" x="0.0" y="489" width="382" height="38.333333333333371"/>
+                                                <color key="backgroundColor" red="0.23529411759999999" green="0.26274509800000001" blue="0.49019607840000001" alpha="1" colorSpace="custom" customColorSpace="displayP3"/>
+                                                <color key="tintColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
+                                                <state key="normal" title="Button"/>
+                                                <buttonConfiguration key="configuration" style="plain" title="Location Test"/>
+                                                <connections>
+                                                    <action selector="openLocationTest:" destination="0ax-47-4zI" eventType="touchUpInside" id="Hor-0U-Kbs"/>
+                                                </connections>
+                                            </button>
                                             <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="gSy-pH-Zuu" customClass="ThemeButton" customModule="APN_UIKit" customModuleProvider="target">
-                                                <rect key="frame" x="0.0" y="453" width="382" height="34.333333333333314"/>
+                                                <rect key="frame" x="0.0" y="543.33333333333326" width="382" height="38.333333333333371"/>
                                                 <color key="backgroundColor" red="0.23529411759999999" green="0.26274509800000001" blue="0.49019607840000001" alpha="1" colorSpace="custom" customColorSpace="displayP3"/>
                                                 <color key="tintColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
                                                 <state key="normal" title="Button"/>
@@ -602,10 +612,10 @@
                                 <rect key="frame" x="0.0" y="142" width="414" height="754"/>
                                 <subviews>
                                     <view contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="ohO-aG-PRY">
-                                        <rect key="frame" x="0.0" y="0.0" width="414" height="1178.3333333333333"/>
+                                        <rect key="frame" x="0.0" y="0.0" width="414" height="1266.3333333333333"/>
                                         <subviews>
                                             <stackView opaque="NO" contentMode="scaleToFill" axis="vertical" translatesAutoresizingMaskIntoConstraints="NO" id="oLg-Ow-Mda" userLabel="Stack View 1">
-                                                <rect key="frame" x="20" y="20" width="374" height="588.66666666666663"/>
+                                                <rect key="frame" x="20" y="20" width="374" height="636.66666666666663"/>
                                                 <subviews>
                                                     <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="CioDataPipelines" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" minimumScaleFactor="0.5" translatesAutoresizingMaskIntoConstraints="NO" id="OO5-Pd-W3d">
                                                         <rect key="frame" x="0.0" y="0.0" width="374" height="24.666666666666668"/>
@@ -652,25 +662,25 @@
                                                         </subviews>
                                                     </stackView>
                                                     <stackView opaque="NO" contentMode="scaleToFill" axis="vertical" distribution="fillEqually" spacing="8" translatesAutoresizingMaskIntoConstraints="NO" id="8N2-ZQ-F9M">
-                                                        <rect key="frame" x="0.0" y="128.66666666666669" width="374" height="76.666666666666686"/>
+                                                        <rect key="frame" x="0.0" y="128.66666666666669" width="374" height="84.666666666666686"/>
                                                         <subviews>
                                                             <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="region" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="yw7-j8-WrG">
-                                                                <rect key="frame" x="0.0" y="0.0" width="374" height="34.333333333333336"/>
+                                                                <rect key="frame" x="0.0" y="0.0" width="374" height="38.333333333333336"/>
                                                                 <fontDescription key="fontDescription" type="system" pointSize="15"/>
                                                                 <color key="textColor" red="0.24313725489999999" green="0.24313725489999999" blue="0.24313725489999999" alpha="1" colorSpace="custom" customColorSpace="displayP3"/>
                                                                 <nil key="highlightedColor"/>
                                                             </label>
                                                             <stackView opaque="NO" contentMode="scaleToFill" spacing="10" translatesAutoresizingMaskIntoConstraints="NO" id="OeP-jL-Kkb">
-                                                                <rect key="frame" x="0.0" y="42.333333333333314" width="374" height="34.333333333333343"/>
+                                                                <rect key="frame" x="0.0" y="46.333333333333314" width="374" height="38.333333333333343"/>
                                                                 <subviews>
                                                                     <button opaque="NO" contentMode="scaleToFill" selected="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="STV-Qs-tNT" customClass="ThemeSelectedButton" customModule="APN_UIKit" customModuleProvider="target">
-                                                                        <rect key="frame" x="0.0" y="0.0" width="182" height="34.333333333333336"/>
+                                                                        <rect key="frame" x="0.0" y="0.0" width="182" height="38.333333333333336"/>
                                                                         <inset key="imageEdgeInsets" minX="0.0" minY="0.0" maxX="2.2250738585072014e-308" maxY="0.0"/>
                                                                         <state key="normal" title="Region.US"/>
                                                                         <buttonConfiguration key="configuration" style="plain" title="Region.US"/>
                                                                     </button>
                                                                     <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="I6N-kC-fxD" customClass="ThemeSelectedButton" customModule="APN_UIKit" customModuleProvider="target">
-                                                                        <rect key="frame" x="192" y="0.0" width="182" height="34.333333333333336"/>
+                                                                        <rect key="frame" x="192" y="0.0" width="182" height="38.333333333333336"/>
                                                                         <state key="normal" title="Button"/>
                                                                         <buttonConfiguration key="configuration" style="plain" title="Region.EU"/>
                                                                     </button>
@@ -679,24 +689,24 @@
                                                         </subviews>
                                                     </stackView>
                                                     <stackView opaque="NO" contentMode="scaleToFill" axis="vertical" distribution="fillEqually" spacing="8" translatesAutoresizingMaskIntoConstraints="NO" id="fzr-ip-CoS">
-                                                        <rect key="frame" x="0.0" y="205.33333333333331" width="374" height="76.666666666666686"/>
+                                                        <rect key="frame" x="0.0" y="213.33333333333331" width="374" height="84.666666666666686"/>
                                                         <subviews>
                                                             <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="autoTrackDeviceAttributes" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="tnO-kE-TML">
-                                                                <rect key="frame" x="0.0" y="0.0" width="374" height="34.333333333333336"/>
+                                                                <rect key="frame" x="0.0" y="0.0" width="374" height="38.333333333333336"/>
                                                                 <fontDescription key="fontDescription" type="system" pointSize="15"/>
                                                                 <color key="textColor" red="0.24313725489999999" green="0.24313725489999999" blue="0.24313725489999999" alpha="1" colorSpace="custom" customColorSpace="displayP3"/>
                                                                 <nil key="highlightedColor"/>
                                                             </label>
                                                             <stackView opaque="NO" contentMode="scaleToFill" spacing="10" translatesAutoresizingMaskIntoConstraints="NO" id="Jfd-cz-hKG">
-                                                                <rect key="frame" x="0.0" y="42.333333333333371" width="374" height="34.333333333333343"/>
+                                                                <rect key="frame" x="0.0" y="46.333333333333371" width="374" height="38.333333333333343"/>
                                                                 <subviews>
                                                                     <button opaque="NO" contentMode="scaleToFill" selected="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="P97-kq-7cX" customClass="ThemeSelectedButton" customModule="APN_UIKit" customModuleProvider="target">
-                                                                        <rect key="frame" x="0.0" y="0.0" width="182" height="34.333333333333336"/>
+                                                                        <rect key="frame" x="0.0" y="0.0" width="182" height="38.333333333333336"/>
                                                                         <state key="normal" title="Button"/>
                                                                         <buttonConfiguration key="configuration" style="plain" title="true"/>
                                                                     </button>
                                                                     <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="R4h-km-Qs3" customClass="ThemeSelectedButton" customModule="APN_UIKit" customModuleProvider="target">
-                                                                        <rect key="frame" x="192" y="0.0" width="182" height="34.333333333333336"/>
+                                                                        <rect key="frame" x="192" y="0.0" width="182" height="38.333333333333336"/>
                                                                         <state key="normal" title="Button"/>
                                                                         <buttonConfiguration key="configuration" style="plain" title="false"/>
                                                                     </button>
@@ -705,24 +715,24 @@
                                                         </subviews>
                                                     </stackView>
                                                     <stackView opaque="NO" contentMode="scaleToFill" axis="vertical" distribution="fillEqually" spacing="8" translatesAutoresizingMaskIntoConstraints="NO" id="XPn-LN-yrj">
-                                                        <rect key="frame" x="0.0" y="282" width="374" height="76.666666666666686"/>
+                                                        <rect key="frame" x="0.0" y="298" width="374" height="84.666666666666686"/>
                                                         <subviews>
                                                             <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="autoTrackUIKitScreenViews" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="QkK-BF-jJl">
-                                                                <rect key="frame" x="0.0" y="0.0" width="374" height="34.333333333333336"/>
+                                                                <rect key="frame" x="0.0" y="0.0" width="374" height="38.333333333333336"/>
                                                                 <fontDescription key="fontDescription" type="system" pointSize="15"/>
                                                                 <color key="textColor" red="0.24313725489999999" green="0.24313725489999999" blue="0.24313725489999999" alpha="1" colorSpace="custom" customColorSpace="displayP3"/>
                                                                 <nil key="highlightedColor"/>
                                                             </label>
                                                             <stackView opaque="NO" contentMode="scaleToFill" spacing="10" translatesAutoresizingMaskIntoConstraints="NO" id="8jZ-vo-Wmg">
-                                                                <rect key="frame" x="0.0" y="42.333333333333314" width="374" height="34.333333333333343"/>
+                                                                <rect key="frame" x="0.0" y="46.333333333333314" width="374" height="38.333333333333343"/>
                                                                 <subviews>
                                                                     <button opaque="NO" contentMode="scaleToFill" selected="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="AUV-YO-Mnx" customClass="ThemeSelectedButton" customModule="APN_UIKit" customModuleProvider="target">
-                                                                        <rect key="frame" x="0.0" y="0.0" width="182" height="34.333333333333336"/>
+                                                                        <rect key="frame" x="0.0" y="0.0" width="182" height="38.333333333333336"/>
                                                                         <state key="normal" title="Button"/>
                                                                         <buttonConfiguration key="configuration" style="plain" title="true"/>
                                                                     </button>
                                                                     <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="Kr0-Hg-a6e" customClass="ThemeSelectedButton" customModule="APN_UIKit" customModuleProvider="target">
-                                                                        <rect key="frame" x="192" y="0.0" width="182" height="34.333333333333336"/>
+                                                                        <rect key="frame" x="192" y="0.0" width="182" height="38.333333333333336"/>
                                                                         <state key="normal" title="Button"/>
                                                                         <buttonConfiguration key="configuration" style="plain" title="false"/>
                                                                     </button>
@@ -731,24 +741,24 @@
                                                         </subviews>
                                                     </stackView>
                                                     <stackView opaque="NO" contentMode="scaleToFill" axis="vertical" distribution="fillEqually" spacing="8" translatesAutoresizingMaskIntoConstraints="NO" id="mWe-HW-ZDc">
-                                                        <rect key="frame" x="0.0" y="358.66666666666663" width="374" height="76.666666666666686"/>
+                                                        <rect key="frame" x="0.0" y="382.66666666666663" width="374" height="84.666666666666686"/>
                                                         <subviews>
                                                             <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="trackApplicationLifecycleEvents" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="0N9-h8-irs">
-                                                                <rect key="frame" x="0.0" y="0.0" width="374" height="34.333333333333336"/>
+                                                                <rect key="frame" x="0.0" y="0.0" width="374" height="38.333333333333336"/>
                                                                 <fontDescription key="fontDescription" type="system" pointSize="15"/>
                                                                 <color key="textColor" red="0.24313725489999999" green="0.24313725489999999" blue="0.24313725489999999" alpha="1" colorSpace="custom" customColorSpace="displayP3"/>
                                                                 <nil key="highlightedColor"/>
                                                             </label>
                                                             <stackView opaque="NO" contentMode="scaleToFill" spacing="10" translatesAutoresizingMaskIntoConstraints="NO" id="xrD-tg-gFi">
-                                                                <rect key="frame" x="0.0" y="42.333333333333371" width="374" height="34.333333333333343"/>
+                                                                <rect key="frame" x="0.0" y="46.333333333333371" width="374" height="38.333333333333343"/>
                                                                 <subviews>
                                                                     <button opaque="NO" contentMode="scaleToFill" selected="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="KZO-iY-aAO" customClass="ThemeSelectedButton" customModule="APN_UIKit" customModuleProvider="target">
-                                                                        <rect key="frame" x="0.0" y="0.0" width="182" height="34.333333333333336"/>
+                                                                        <rect key="frame" x="0.0" y="0.0" width="182" height="38.333333333333336"/>
                                                                         <state key="normal" title="Button"/>
                                                                         <buttonConfiguration key="configuration" style="plain" title="true"/>
                                                                     </button>
                                                                     <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="hce-lw-uaE" customClass="ThemeSelectedButton" customModule="APN_UIKit" customModuleProvider="target">
-                                                                        <rect key="frame" x="192" y="0.0" width="182" height="34.333333333333336"/>
+                                                                        <rect key="frame" x="192" y="0.0" width="182" height="38.333333333333336"/>
                                                                         <state key="normal" title="Button"/>
                                                                         <buttonConfiguration key="configuration" style="plain" title="false"/>
                                                                     </button>
@@ -757,24 +767,24 @@
                                                         </subviews>
                                                     </stackView>
                                                     <stackView opaque="NO" contentMode="scaleToFill" axis="vertical" distribution="fillEqually" spacing="8" translatesAutoresizingMaskIntoConstraints="NO" id="F0w-T9-8sb">
-                                                        <rect key="frame" x="0.0" y="435.33333333333337" width="374" height="76.666666666666629"/>
+                                                        <rect key="frame" x="0.0" y="467.33333333333337" width="374" height="84.666666666666629"/>
                                                         <subviews>
                                                             <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="screenViewUse" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="Uo7-6L-pzi">
-                                                                <rect key="frame" x="0.0" y="0.0" width="374" height="34.333333333333336"/>
+                                                                <rect key="frame" x="0.0" y="0.0" width="374" height="38.333333333333336"/>
                                                                 <fontDescription key="fontDescription" type="system" pointSize="15"/>
                                                                 <color key="textColor" red="0.24313725489999999" green="0.24313725489999999" blue="0.24313725489999999" alpha="1" colorSpace="custom" customColorSpace="displayP3"/>
                                                                 <nil key="highlightedColor"/>
                                                             </label>
                                                             <stackView opaque="NO" contentMode="scaleToFill" spacing="10" translatesAutoresizingMaskIntoConstraints="NO" id="kik-gK-QzS">
-                                                                <rect key="frame" x="0.0" y="42.333333333333258" width="374" height="34.333333333333343"/>
+                                                                <rect key="frame" x="0.0" y="46.333333333333258" width="374" height="38.333333333333343"/>
                                                                 <subviews>
                                                                     <button opaque="NO" contentMode="scaleToFill" selected="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="poz-pg-0GG" customClass="ThemeSelectedButton" customModule="APN_UIKit" customModuleProvider="target">
-                                                                        <rect key="frame" x="0.0" y="0.0" width="182" height="34.333333333333336"/>
+                                                                        <rect key="frame" x="0.0" y="0.0" width="182" height="38.333333333333336"/>
                                                                         <state key="normal" title="Button"/>
                                                                         <buttonConfiguration key="configuration" style="plain" title=".all"/>
                                                                     </button>
                                                                     <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="KNI-sA-zNj" customClass="ThemeSelectedButton" customModule="APN_UIKit" customModuleProvider="target">
-                                                                        <rect key="frame" x="192" y="0.0" width="182" height="34.333333333333336"/>
+                                                                        <rect key="frame" x="192" y="0.0" width="182" height="38.333333333333336"/>
                                                                         <state key="normal" title="Button"/>
                                                                         <buttonConfiguration key="configuration" style="plain" title=".inApp"/>
                                                                     </button>
@@ -783,29 +793,29 @@
                                                         </subviews>
                                                     </stackView>
                                                     <stackView opaque="NO" contentMode="scaleToFill" axis="vertical" distribution="fillEqually" spacing="8" translatesAutoresizingMaskIntoConstraints="NO" id="SEw-sS-cZW">
-                                                        <rect key="frame" x="0.0" y="512" width="374" height="76.666666666666629"/>
+                                                        <rect key="frame" x="0.0" y="552" width="374" height="84.666666666666629"/>
                                                         <subviews>
                                                             <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="logLevel" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="NGk-xq-zmU">
-                                                                <rect key="frame" x="0.0" y="0.0" width="374" height="34.333333333333336"/>
+                                                                <rect key="frame" x="0.0" y="0.0" width="374" height="38.333333333333336"/>
                                                                 <fontDescription key="fontDescription" type="system" pointSize="15"/>
                                                                 <color key="textColor" red="0.24313725489999999" green="0.24313725489999999" blue="0.24313725489999999" alpha="1" colorSpace="custom" customColorSpace="displayP3"/>
                                                                 <nil key="highlightedColor"/>
                                                             </label>
                                                             <stackView opaque="NO" contentMode="scaleToFill" spacing="10" translatesAutoresizingMaskIntoConstraints="NO" id="7Ay-Zr-A52">
-                                                                <rect key="frame" x="0.0" y="42.333333333333371" width="374" height="34.333333333333343"/>
+                                                                <rect key="frame" x="0.0" y="46.333333333333371" width="374" height="38.333333333333343"/>
                                                                 <subviews>
                                                                     <button opaque="NO" contentMode="scaleToFill" selected="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="y2r-TD-cne" customClass="ThemeSelectedButton" customModule="APN_UIKit" customModuleProvider="target">
-                                                                        <rect key="frame" x="0.0" y="0.0" width="118" height="34.333333333333336"/>
+                                                                        <rect key="frame" x="0.0" y="0.0" width="118" height="38.333333333333336"/>
                                                                         <state key="normal" title="Button"/>
                                                                         <buttonConfiguration key="configuration" style="plain" title="error"/>
                                                                     </button>
                                                                     <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="XMM-be-LB7" customClass="ThemeSelectedButton" customModule="APN_UIKit" customModuleProvider="target">
-                                                                        <rect key="frame" x="128" y="0.0" width="118" height="34.333333333333336"/>
+                                                                        <rect key="frame" x="128" y="0.0" width="118" height="38.333333333333336"/>
                                                                         <state key="normal" title="Button"/>
                                                                         <buttonConfiguration key="configuration" style="plain" title="info"/>
                                                                     </button>
                                                                     <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="KqK-4q-mL1" customClass="ThemeSelectedButton" customModule="APN_UIKit" customModuleProvider="target">
-                                                                        <rect key="frame" x="256" y="0.0" width="118" height="34.333333333333336"/>
+                                                                        <rect key="frame" x="256" y="0.0" width="118" height="38.333333333333336"/>
                                                                         <state key="normal" title="Button"/>
                                                                         <buttonConfiguration key="configuration" style="plain" title="debug"/>
                                                                     </button>
@@ -816,7 +826,7 @@
                                                 </subviews>
                                             </stackView>
                                             <stackView opaque="NO" contentMode="scaleToFill" axis="vertical" translatesAutoresizingMaskIntoConstraints="NO" id="XQO-yY-ubv" userLabel="Stack View 2">
-                                                <rect key="frame" x="20" y="616.66666666666663" width="374" height="254.66666666666663"/>
+                                                <rect key="frame" x="20" y="664.66666666666663" width="374" height="278.66666666666663"/>
                                                 <subviews>
                                                     <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="CioMessagingPushAPN" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" minimumScaleFactor="0.5" translatesAutoresizingMaskIntoConstraints="NO" id="1Oh-sg-cT9">
                                                         <rect key="frame" x="0.0" y="0.0" width="374" height="24.666666666666668"/>
@@ -825,24 +835,24 @@
                                                         <nil key="highlightedColor"/>
                                                     </label>
                                                     <stackView opaque="NO" contentMode="scaleToFill" axis="vertical" distribution="fillEqually" spacing="8" translatesAutoresizingMaskIntoConstraints="NO" id="PPD-o1-3xc">
-                                                        <rect key="frame" x="0.0" y="24.666666666666742" width="374" height="76.666666666666671"/>
+                                                        <rect key="frame" x="0.0" y="24.66666666666675" width="374" height="84.666666666666686"/>
                                                         <subviews>
                                                             <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="autoFetchDeviceToken" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="VSw-YA-vNM">
-                                                                <rect key="frame" x="0.0" y="0.0" width="374" height="34.333333333333336"/>
+                                                                <rect key="frame" x="0.0" y="0.0" width="374" height="38.333333333333336"/>
                                                                 <fontDescription key="fontDescription" type="system" pointSize="15"/>
                                                                 <color key="textColor" red="0.24313725489999999" green="0.24313725489999999" blue="0.24313725489999999" alpha="1" colorSpace="custom" customColorSpace="displayP3"/>
                                                                 <nil key="highlightedColor"/>
                                                             </label>
                                                             <stackView opaque="NO" contentMode="scaleToFill" spacing="10" translatesAutoresizingMaskIntoConstraints="NO" id="JdN-Qu-QGS">
-                                                                <rect key="frame" x="0.0" y="42.333333333333258" width="374" height="34.333333333333343"/>
+                                                                <rect key="frame" x="0.0" y="46.333333333333258" width="374" height="38.333333333333343"/>
                                                                 <subviews>
                                                                     <button opaque="NO" contentMode="scaleToFill" selected="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="LS2-fh-Vrg" customClass="ThemeSelectedButton" customModule="APN_UIKit" customModuleProvider="target">
-                                                                        <rect key="frame" x="0.0" y="0.0" width="182" height="34.333333333333336"/>
+                                                                        <rect key="frame" x="0.0" y="0.0" width="182" height="38.333333333333336"/>
                                                                         <state key="normal" title="Button"/>
                                                                         <buttonConfiguration key="configuration" style="plain" title="true"/>
                                                                     </button>
                                                                     <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="aWE-Yf-s4X" customClass="ThemeSelectedButton" customModule="APN_UIKit" customModuleProvider="target">
-                                                                        <rect key="frame" x="192" y="0.0" width="182" height="34.333333333333336"/>
+                                                                        <rect key="frame" x="192" y="0.0" width="182" height="38.333333333333336"/>
                                                                         <state key="normal" title="Button"/>
                                                                         <buttonConfiguration key="configuration" style="plain" title="false"/>
                                                                     </button>
@@ -851,24 +861,24 @@
                                                         </subviews>
                                                     </stackView>
                                                     <stackView opaque="NO" contentMode="scaleToFill" axis="vertical" distribution="fillEqually" spacing="8" translatesAutoresizingMaskIntoConstraints="NO" id="caM-Gc-FuZ">
-                                                        <rect key="frame" x="0.0" y="101.33333333333337" width="374" height="76.666666666666686"/>
+                                                        <rect key="frame" x="0.0" y="109.33333333333337" width="374" height="84.666666666666686"/>
                                                         <subviews>
                                                             <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="autoTrackPushEvents" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="Cjk-3g-HE1">
-                                                                <rect key="frame" x="0.0" y="0.0" width="374" height="34.333333333333336"/>
+                                                                <rect key="frame" x="0.0" y="0.0" width="374" height="38.333333333333336"/>
                                                                 <fontDescription key="fontDescription" type="system" pointSize="15"/>
                                                                 <color key="textColor" red="0.24313725489999999" green="0.24313725489999999" blue="0.24313725489999999" alpha="1" colorSpace="custom" customColorSpace="displayP3"/>
                                                                 <nil key="highlightedColor"/>
                                                             </label>
                                                             <stackView opaque="NO" contentMode="scaleToFill" spacing="10" translatesAutoresizingMaskIntoConstraints="NO" id="4L9-zd-Hyk">
-                                                                <rect key="frame" x="0.0" y="42.333333333333371" width="374" height="34.333333333333343"/>
+                                                                <rect key="frame" x="0.0" y="46.333333333333371" width="374" height="38.333333333333343"/>
                                                                 <subviews>
                                                                     <button opaque="NO" contentMode="scaleToFill" selected="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="j8f-DQ-zob" customClass="ThemeSelectedButton" customModule="APN_UIKit" customModuleProvider="target">
-                                                                        <rect key="frame" x="0.0" y="0.0" width="182" height="34.333333333333336"/>
+                                                                        <rect key="frame" x="0.0" y="0.0" width="182" height="38.333333333333336"/>
                                                                         <state key="normal" title="Button"/>
                                                                         <buttonConfiguration key="configuration" style="plain" title="true"/>
                                                                     </button>
                                                                     <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="4rn-rI-9A3" customClass="ThemeSelectedButton" customModule="APN_UIKit" customModuleProvider="target">
-                                                                        <rect key="frame" x="192" y="0.0" width="182" height="34.333333333333336"/>
+                                                                        <rect key="frame" x="192" y="0.0" width="182" height="38.333333333333336"/>
                                                                         <state key="normal" title="Button"/>
                                                                         <buttonConfiguration key="configuration" style="plain" title="false"/>
                                                                     </button>
@@ -877,24 +887,24 @@
                                                         </subviews>
                                                     </stackView>
                                                     <stackView opaque="NO" contentMode="scaleToFill" axis="vertical" distribution="fillEqually" spacing="8" translatesAutoresizingMaskIntoConstraints="NO" id="h1h-9T-bT1">
-                                                        <rect key="frame" x="0.0" y="178" width="374" height="76.666666666666686"/>
+                                                        <rect key="frame" x="0.0" y="194" width="374" height="84.666666666666686"/>
                                                         <subviews>
                                                             <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="showPushAppInForeground" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="dEc-xG-8VJ">
-                                                                <rect key="frame" x="0.0" y="0.0" width="374" height="34.333333333333336"/>
+                                                                <rect key="frame" x="0.0" y="0.0" width="374" height="38.333333333333336"/>
                                                                 <fontDescription key="fontDescription" type="system" pointSize="15"/>
                                                                 <color key="textColor" red="0.24313725489999999" green="0.24313725489999999" blue="0.24313725489999999" alpha="1" colorSpace="custom" customColorSpace="displayP3"/>
                                                                 <nil key="highlightedColor"/>
                                                             </label>
                                                             <stackView opaque="NO" contentMode="scaleToFill" spacing="10" translatesAutoresizingMaskIntoConstraints="NO" id="p8x-qN-oBt">
-                                                                <rect key="frame" x="0.0" y="42.333333333333371" width="374" height="34.333333333333343"/>
+                                                                <rect key="frame" x="0.0" y="46.333333333333371" width="374" height="38.333333333333343"/>
                                                                 <subviews>
                                                                     <button opaque="NO" contentMode="scaleToFill" selected="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="VPt-vy-qBG" customClass="ThemeSelectedButton" customModule="APN_UIKit" customModuleProvider="target">
-                                                                        <rect key="frame" x="0.0" y="0.0" width="182" height="34.333333333333336"/>
+                                                                        <rect key="frame" x="0.0" y="0.0" width="182" height="38.333333333333336"/>
                                                                         <state key="normal" title="Button"/>
                                                                         <buttonConfiguration key="configuration" style="plain" title="true"/>
                                                                     </button>
                                                                     <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="9xp-jF-SLg" customClass="ThemeSelectedButton" customModule="APN_UIKit" customModuleProvider="target">
-                                                                        <rect key="frame" x="192" y="0.0" width="182" height="34.333333333333336"/>
+                                                                        <rect key="frame" x="192" y="0.0" width="182" height="38.333333333333336"/>
                                                                         <state key="normal" title="Button"/>
                                                                         <buttonConfiguration key="configuration" style="plain" title="false"/>
                                                                     </button>
@@ -905,7 +915,7 @@
                                                 </subviews>
                                             </stackView>
                                             <stackView opaque="NO" contentMode="scaleToFill" axis="vertical" translatesAutoresizingMaskIntoConstraints="NO" id="dkp-JU-ItE" userLabel="Stack View 3">
-                                                <rect key="frame" x="20" y="879.33333333333337" width="374" height="153.33333333333337"/>
+                                                <rect key="frame" x="20" y="951.33333333333337" width="374" height="161.33333333333337"/>
                                                 <subviews>
                                                     <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="CioMessagingInApp" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" minimumScaleFactor="0.5" translatesAutoresizingMaskIntoConstraints="NO" id="h3A-Hw-MvL">
                                                         <rect key="frame" x="0.0" y="0.0" width="374" height="24.666666666666668"/>
@@ -914,7 +924,7 @@
                                                         <nil key="highlightedColor"/>
                                                     </label>
                                                     <stackView opaque="NO" contentMode="scaleToFill" axis="vertical" translatesAutoresizingMaskIntoConstraints="NO" id="s6Y-0Z-XBi">
-                                                        <rect key="frame" x="0.0" y="24.666666666666629" width="374" height="52"/>
+                                                        <rect key="frame" x="0.0" y="24.666666666666742" width="374" height="52"/>
                                                         <subviews>
                                                             <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="siteId" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="ee0-du-R54">
                                                                 <rect key="frame" x="0.0" y="0.0" width="374" height="18"/>
@@ -933,24 +943,24 @@
                                                         </subviews>
                                                     </stackView>
                                                     <stackView opaque="NO" contentMode="scaleToFill" axis="vertical" distribution="fillEqually" spacing="8" translatesAutoresizingMaskIntoConstraints="NO" id="OnM-41-CWw">
-                                                        <rect key="frame" x="0.0" y="76.666666666666629" width="374" height="76.666666666666686"/>
+                                                        <rect key="frame" x="0.0" y="76.666666666666742" width="374" height="84.666666666666686"/>
                                                         <subviews>
                                                             <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="region" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="amo-2c-zny">
-                                                                <rect key="frame" x="0.0" y="0.0" width="374" height="34.333333333333336"/>
+                                                                <rect key="frame" x="0.0" y="0.0" width="374" height="38.333333333333336"/>
                                                                 <fontDescription key="fontDescription" type="system" pointSize="15"/>
                                                                 <color key="textColor" red="0.24313725489999999" green="0.24313725489999999" blue="0.24313725489999999" alpha="1" colorSpace="custom" customColorSpace="displayP3"/>
                                                                 <nil key="highlightedColor"/>
                                                             </label>
                                                             <stackView opaque="NO" contentMode="scaleToFill" spacing="10" translatesAutoresizingMaskIntoConstraints="NO" id="yEN-od-I3T">
-                                                                <rect key="frame" x="0.0" y="42.333333333333258" width="374" height="34.333333333333343"/>
+                                                                <rect key="frame" x="0.0" y="46.333333333333258" width="374" height="38.333333333333343"/>
                                                                 <subviews>
                                                                     <button opaque="NO" contentMode="scaleToFill" selected="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="Rfp-c5-NMF" customClass="ThemeSelectedButton" customModule="APN_UIKit" customModuleProvider="target">
-                                                                        <rect key="frame" x="0.0" y="0.0" width="182" height="34.333333333333336"/>
+                                                                        <rect key="frame" x="0.0" y="0.0" width="182" height="38.333333333333336"/>
                                                                         <state key="normal" title="Button"/>
                                                                         <buttonConfiguration key="configuration" style="plain" title="Region.US"/>
                                                                     </button>
                                                                     <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="Km8-gA-jBp" customClass="ThemeSelectedButton" customModule="APN_UIKit" customModuleProvider="target">
-                                                                        <rect key="frame" x="192" y="0.0" width="182" height="34.333333333333336"/>
+                                                                        <rect key="frame" x="192" y="0.0" width="182" height="38.333333333333336"/>
                                                                         <state key="normal" title="Button"/>
                                                                         <buttonConfiguration key="configuration" style="plain" title="Region.EU"/>
                                                                     </button>
@@ -961,10 +971,10 @@
                                                 </subviews>
                                             </stackView>
                                             <stackView opaque="NO" contentMode="scaleToFill" axis="vertical" spacing="10" translatesAutoresizingMaskIntoConstraints="NO" id="nfI-ZX-6Zx" userLabel="Stack View 4">
-                                                <rect key="frame" x="20" y="1052.6666666666667" width="374" height="105.66666666666674"/>
+                                                <rect key="frame" x="20" y="1132.6666666666667" width="374" height="113.66666666666674"/>
                                                 <subviews>
                                                     <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="DuB-VC-sfM" customClass="ThemeButton" customModule="APN_UIKit" customModuleProvider="target">
-                                                        <rect key="frame" x="0.0" y="0.0" width="374" height="34.333333333333336"/>
+                                                        <rect key="frame" x="0.0" y="0.0" width="374" height="38.333333333333336"/>
                                                         <color key="backgroundColor" red="0.23529411759999999" green="0.26274509800000001" blue="0.49019607840000001" alpha="1" colorSpace="custom" customColorSpace="displayP3"/>
                                                         <color key="tintColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
                                                         <state key="normal" title="Button"/>
@@ -974,7 +984,7 @@
                                                         </connections>
                                                     </button>
                                                     <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="cBa-8d-akP" customClass="ThemeButton" customModule="APN_UIKit" customModuleProvider="target">
-                                                        <rect key="frame" x="0.0" y="44.333333333333258" width="374" height="34.333333333333343"/>
+                                                        <rect key="frame" x="0.0" y="48.333333333333258" width="374" height="38.333333333333343"/>
                                                         <color key="backgroundColor" red="0.23529411759999999" green="0.26274509800000001" blue="0.49019607840000001" alpha="1" colorSpace="custom" customColorSpace="displayP3"/>
                                                         <color key="tintColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
                                                         <state key="normal" title="Button"/>
@@ -984,7 +994,7 @@
                                                         </connections>
                                                     </button>
                                                     <stackView opaque="NO" contentMode="scaleToFill" spacing="4" translatesAutoresizingMaskIntoConstraints="NO" id="sWT-2a-LNE">
-                                                        <rect key="frame" x="0.0" y="88.666666666666515" width="374" height="17"/>
+                                                        <rect key="frame" x="0.0" y="96.666666666666515" width="374" height="17"/>
                                                         <subviews>
                                                             <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="750" verticalHuggingPriority="251" horizontalCompressionResistancePriority="250" verticalCompressionResistancePriority="751" text="Page rule name: " textAlignment="right" lineBreakMode="tailTruncation" numberOfLines="0" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="tvZ-RQ-N8f">
                                                                 <rect key="frame" x="0.0" y="0.0" width="185" height="17"/>
@@ -1080,6 +1090,21 @@
             </objects>
             <point key="canvasLocation" x="3439" y="3"/>
         </scene>
+        <!--Location Test View Controller-->
+        <scene sceneID="1DY-vv-Pya">
+            <objects>
+                <viewController storyboardIdentifier="LocationTestViewController" id="4NO-Up-P5Y" customClass="LocationTestViewController" customModule="APN_UIKit" customModuleProvider="target" sceneMemberID="viewController">
+                    <view key="view" contentMode="scaleToFill" id="gvS-vb-1yb">
+                        <rect key="frame" x="0.0" y="0.0" width="414" height="896"/>
+                        <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                        <viewLayoutGuide key="safeArea" id="6Rq-ld-deA"/>
+                        <color key="backgroundColor" systemColor="systemBackgroundColor"/>
+                    </view>
+                </viewController>
+                <placeholder placeholderIdentifier="IBFirstResponder" id="JED-nt-Plq" userLabel="First Responder" customClass="UIResponder" sceneMemberID="firstResponder"/>
+            </objects>
+            <point key="canvasLocation" x="2635" y="696"/>
+        </scene>
         <!--Internal Settings View Controller-->
         <scene sceneID="FBG-C8-RU5">
             <objects>
@@ -1112,7 +1137,7 @@
                                                 </subviews>
                                             </stackView>
                                             <stackView opaque="NO" contentMode="scaleToFill" axis="vertical" translatesAutoresizingMaskIntoConstraints="NO" id="9YH-dE-Afh">
-                                                <rect key="frame" x="20" y="46" width="330.66666666666669" height="184"/>
+                                                <rect key="frame" x="20" y="45.999999999999986" width="330.66666666666669" height="188.66666666666663"/>
                                                 <subviews>
                                                     <stackView opaque="NO" contentMode="scaleToFill" axis="vertical" translatesAutoresizingMaskIntoConstraints="NO" id="d7O-qa-KFz">
                                                         <rect key="frame" x="0.0" y="0.0" width="330.66666666666669" height="52"/>
@@ -1153,24 +1178,24 @@
                                                         </subviews>
                                                     </stackView>
                                                     <stackView opaque="NO" contentMode="scaleToFill" axis="vertical" distribution="fillEqually" spacing="8" translatesAutoresizingMaskIntoConstraints="NO" id="veG-4W-qCb">
-                                                        <rect key="frame" x="0.0" y="104" width="330.66666666666669" height="80"/>
+                                                        <rect key="frame" x="0.0" y="104" width="330.66666666666669" height="84.666666666666686"/>
                                                         <subviews>
                                                             <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Test mode(Sends events immediately without queuing)" textAlignment="natural" lineBreakMode="tailTruncation" numberOfLines="0" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="BgW-BE-ASc">
-                                                                <rect key="frame" x="0.0" y="0.0" width="330.66666666666669" height="36"/>
+                                                                <rect key="frame" x="0.0" y="0.0" width="330.66666666666669" height="38.333333333333336"/>
                                                                 <fontDescription key="fontDescription" type="system" pointSize="15"/>
                                                                 <color key="textColor" red="0.24313725489999999" green="0.24313725489999999" blue="0.24313725489999999" alpha="1" colorSpace="custom" customColorSpace="displayP3"/>
                                                                 <nil key="highlightedColor"/>
                                                             </label>
                                                             <stackView opaque="NO" contentMode="scaleToFill" spacing="10" translatesAutoresizingMaskIntoConstraints="NO" id="RZI-or-hg0">
-                                                                <rect key="frame" x="0.0" y="44" width="330.66666666666669" height="36"/>
+                                                                <rect key="frame" x="0.0" y="46.333333333333314" width="330.66666666666669" height="38.333333333333343"/>
                                                                 <subviews>
                                                                     <button opaque="NO" contentMode="scaleToFill" selected="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="Pv7-v8-b89" customClass="ThemeSelectedButton" customModule="APN_UIKit" customModuleProvider="target">
-                                                                        <rect key="frame" x="0.0" y="0.0" width="160.33333333333334" height="36"/>
+                                                                        <rect key="frame" x="0.0" y="0.0" width="160.33333333333334" height="38.333333333333336"/>
                                                                         <state key="normal" title="Button"/>
                                                                         <buttonConfiguration key="configuration" style="plain" title="Yes"/>
                                                                     </button>
                                                                     <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="RO8-sc-9Io" customClass="ThemeSelectedButton" customModule="APN_UIKit" customModuleProvider="target">
-                                                                        <rect key="frame" x="170.33333333333331" y="0.0" width="160.33333333333331" height="36"/>
+                                                                        <rect key="frame" x="170.33333333333331" y="0.0" width="160.33333333333331" height="38.333333333333336"/>
                                                                         <state key="normal" title="Button"/>
                                                                         <buttonConfiguration key="configuration" style="plain" title="No"/>
                                                                     </button>
