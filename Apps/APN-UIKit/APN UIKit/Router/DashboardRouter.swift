@@ -9,6 +9,7 @@ protocol DashboardRouting {
     func routeToInlineSwiftUiExamplesScreen()
     func routeToInlineUikitExamplesScreen()
     func routeToInbox()
+    func routeToLocationTest()
 }
 
 class DashboardRouter: DashboardRouting {
@@ -47,6 +48,11 @@ class DashboardRouter: DashboardRouting {
 
     func routeToInbox() {
         let viewController = InboxViewController.newInstance()
+        dashboardViewController?.navigationController?.pushViewController(viewController, animated: true)
+    }
+
+    func routeToLocationTest() {
+        let viewController = LocationTestViewController.newInstance()
         dashboardViewController?.navigationController?.pushViewController(viewController, animated: true)
     }
 }
