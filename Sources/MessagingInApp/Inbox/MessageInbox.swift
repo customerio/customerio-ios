@@ -1,7 +1,7 @@
 import CioInternalCommon
 import Foundation
 
-// sourcery: InjectRegisterShared = "MessageInbox"
+// sourcery: InjectRegisterShared = "MessageInboxInstance"
 // sourcery: InjectSingleton
 class MessageInbox: MessageInboxInstance {
     private let logger: Logger

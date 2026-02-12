@@ -18,7 +18,7 @@ class MessagingInAppImplementation: MessagingInAppInstance {
         self.gist = diGraph.gistProvider
         self.threadUtil = diGraph.threadUtil
         self.eventBusHandler = diGraph.eventBusHandler
-        self.messageInbox = diGraph.messageInbox
+        self.messageInbox = diGraph.messageInboxInstance
 
         subscribeToInAppMessageState()
     }
