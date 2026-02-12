@@ -76,9 +76,10 @@ public struct InboxMessage: Hashable, Equatable, CustomStringConvertible {
     public var description: String {
         let deliveryIdStr = deliveryId.map { "'\($0)'" } ?? "nil"
         let expiryStr = expiry.map { "\($0)" } ?? "nil"
+        let priorityStr = priority.map { "\($0)" } ?? "nil"
         return """
         InboxMessage(queueId: '\(queueId)', deliveryId: \(deliveryIdStr), expiry: \(expiryStr), \
-        sentAt: \(sentAt), topics: \(topics), type: '\(type)', opened: \(opened), priority: \(priority), \
+        sentAt: \(sentAt), topics: \(topics), type: '\(type)', opened: \(opened), priority: \(priorityStr), \
         properties: \(properties))
         """
     }
