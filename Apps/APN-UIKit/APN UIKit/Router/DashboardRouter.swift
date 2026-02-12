@@ -7,6 +7,7 @@ protocol DashboardRouting {
     func routeToSettings(_ withInfo: [String: String]?)
     func routeToInlineSwiftUiExamplesScreen()
     func routeToInlineUikitExamplesScreen()
+    func routeToLocationTest()
 }
 
 class DashboardRouter: DashboardRouting {
@@ -40,6 +41,11 @@ class DashboardRouter: DashboardRouting {
 
     func routeToInlineUikitExamplesScreen() {
         let viewController = InlineInAppMessageUikitViewController.newInstance()
+        dashboardViewController?.navigationController?.pushViewController(viewController, animated: true)
+    }
+
+    func routeToLocationTest() {
+        let viewController = LocationTestViewController.newInstance()
         dashboardViewController?.navigationController?.pushViewController(viewController, animated: true)
     }
 }

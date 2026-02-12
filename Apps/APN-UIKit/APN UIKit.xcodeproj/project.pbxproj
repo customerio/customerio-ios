@@ -57,6 +57,13 @@
 		669B9FDC2D8B2D4D0087CC20 /* APN_UIKitUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 669B9FD92D8B2D4D0087CC20 /* APN_UIKitUITests.swift */; };
 		669B9FDD2D8B2D4D0087CC20 /* APN_UIKitUITestsLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 669B9FDA2D8B2D4D0087CC20 /* APN_UIKitUITestsLaunchTests.swift */; };
 		669B9FE12D8B2D500087CC20 /* NotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 669B9FDF2D8B2D500087CC20 /* NotificationService.swift */; };
+		684275242F3349A7006A4EF0 /* LocationTestViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 684275232F3349A7006A4EF0 /* LocationTestViewController.swift */; };
+		684275272F3349A7006A4EF0 /* LocationTestViewController+BuildingUI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 684275262F3349A7006A4EF0 /* LocationTestViewController+BuildingUI.swift */; };
+		684275292F3349A7006A4EF0 /* LocationTestViewController+Location.swift in Sources */ = {isa = PBXBuildFile; fileRef = 684275282F3349A7006A4EF0 /* LocationTestViewController+Location.swift */; };
+		6842752B2F3349A7006A4EF0 /* LocationTestViewController+Actions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6842752A2F3349A7006A4EF0 /* LocationTestViewController+Actions.swift */; };
+		6842752D2F3349A7006A4EF0 /* LocationTestViewController+Keyboard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6842752C2F3349A7006A4EF0 /* LocationTestViewController+Keyboard.swift */; };
+		6842752F2F3349A7006A4EF0 /* LocationTestViewController+CLLocationManagerDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6842752E2F3349A7006A4EF0 /* LocationTestViewController+CLLocationManagerDelegate.swift */; };
+		684275312F3349A7006A4EF0 /* LocationTestViewController+UITextFieldDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 684275302F3349A7006A4EF0 /* LocationTestViewController+UITextFieldDelegate.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -151,6 +158,13 @@
 		669B9FDA2D8B2D4D0087CC20 /* APN_UIKitUITestsLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APN_UIKitUITestsLaunchTests.swift; sourceTree = "<group>"; };
 		669B9FDE2D8B2D500087CC20 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		669B9FDF2D8B2D500087CC20 /* NotificationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationService.swift; sourceTree = "<group>"; };
+		684275232F3349A7006A4EF0 /* LocationTestViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationTestViewController.swift; sourceTree = "<group>"; };
+		684275262F3349A7006A4EF0 /* LocationTestViewController+BuildingUI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "LocationTestViewController+BuildingUI.swift"; sourceTree = "<group>"; };
+		684275282F3349A7006A4EF0 /* LocationTestViewController+Location.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "LocationTestViewController+Location.swift"; sourceTree = "<group>"; };
+		6842752A2F3349A7006A4EF0 /* LocationTestViewController+Actions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "LocationTestViewController+Actions.swift"; sourceTree = "<group>"; };
+		6842752C2F3349A7006A4EF0 /* LocationTestViewController+Keyboard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "LocationTestViewController+Keyboard.swift"; sourceTree = "<group>"; };
+		6842752E2F3349A7006A4EF0 /* LocationTestViewController+CLLocationManagerDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "LocationTestViewController+CLLocationManagerDelegate.swift"; sourceTree = "<group>"; };
+		684275302F3349A7006A4EF0 /* LocationTestViewController+UITextFieldDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "LocationTestViewController+UITextFieldDelegate.swift"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -324,9 +338,24 @@
 			path = Settings;
 			sourceTree = "<group>";
 		};
+		684275252F3349A7006A4EF0 /* location */ = {
+			isa = PBXGroup;
+			children = (
+				684275232F3349A7006A4EF0 /* LocationTestViewController.swift */,
+				684275262F3349A7006A4EF0 /* LocationTestViewController+BuildingUI.swift */,
+				684275282F3349A7006A4EF0 /* LocationTestViewController+Location.swift */,
+				6842752A2F3349A7006A4EF0 /* LocationTestViewController+Actions.swift */,
+				6842752C2F3349A7006A4EF0 /* LocationTestViewController+Keyboard.swift */,
+				6842752E2F3349A7006A4EF0 /* LocationTestViewController+CLLocationManagerDelegate.swift */,
+				684275302F3349A7006A4EF0 /* LocationTestViewController+UITextFieldDelegate.swift */,
+			);
+			path = location;
+			sourceTree = "<group>";
+		};
 		669B9F9B2D8B2D430087CC20 /* View */ = {
 			isa = PBXGroup;
 			children = (
+				684275252F3349A7006A4EF0 /* location */,
 				669B9F862D8B2D430087CC20 /* Customisation */,
 				669B9F8E2D8B2D430087CC20 /* Extension */,
 				669B9F912D8B2D430087CC20 /* Inline */,
@@ -593,6 +622,13 @@
 				669B9FBE2D8B2D430087CC20 /* StoryboardExtension.swift in Sources */,
 				669B9FBF2D8B2D430087CC20 /* StringExtension.swift in Sources */,
 				669B9FC02D8B2D430087CC20 /* TextFieldExtension.swift in Sources */,
+				684275242F3349A7006A4EF0 /* LocationTestViewController.swift in Sources */,
+				684275272F3349A7006A4EF0 /* LocationTestViewController+BuildingUI.swift in Sources */,
+				684275292F3349A7006A4EF0 /* LocationTestViewController+Location.swift in Sources */,
+				6842752B2F3349A7006A4EF0 /* LocationTestViewController+Actions.swift in Sources */,
+				6842752D2F3349A7006A4EF0 /* LocationTestViewController+Keyboard.swift in Sources */,
+				6842752F2F3349A7006A4EF0 /* LocationTestViewController+CLLocationManagerDelegate.swift in Sources */,
+				684275312F3349A7006A4EF0 /* LocationTestViewController+UITextFieldDelegate.swift in Sources */,
 				669B9FC12D8B2D430087CC20 /* ViewControllerExtension.swift in Sources */,
 				669B9FC22D8B2D430087CC20 /* InlineInAppMessageSwiftUiViewController.swift in Sources */,
 				669B9FC32D8B2D430087CC20 /* InlineInAppMessageView.swift in Sources */,
@@ -914,13 +950,16 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "io.customer.ios-sample.apn-spm.APN-UIKitTests";
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -932,13 +971,16 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "io.customer.ios-sample.apn-spm.APN-UIKitTests";
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
