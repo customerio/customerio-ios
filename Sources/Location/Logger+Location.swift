@@ -27,6 +27,20 @@ extension Logger {
         )
     }
 
+    func trackingDisabledIgnoringRequestLocationUpdateOnce() {
+        debug(
+            "Location tracking is disabled, ignoring requestLocationUpdateOnce call",
+            locationTag
+        )
+    }
+
+    func locationPermissionNotGrantedIgnoringRequest() {
+        debug(
+            "Location permission not granted, ignoring location request",
+            locationTag
+        )
+    }
+
     func invalidCoordinates() {
         error(
             "Invalid location coordinates provided to setLastKnownLocation",
@@ -39,6 +53,21 @@ extension Logger {
         debug(
             "Tracking location: lat=\(latitude), lon=\(longitude)",
             locationTag
+        )
+    }
+
+    func locationRequestCancelled() {
+        debug(
+            "Location request was cancelled; not posting update",
+            locationTag
+        )
+    }
+
+    func locationRequestFailed(_ err: Error) {
+        error(
+            "Location request failed",
+            locationTag,
+            err
         )
     }
 }
