@@ -90,6 +90,21 @@ class DataPipelineImplementation: DataPipelineInstance {
         eventBusHandler.addObserver(RegisterDeviceTokenEvent.self) { event in
             self.registerDeviceToken(event.token)
         }
+
+        eventBusHandler.addObserver(TrackLocationEvent.self) { event in
+            self.trackLocation(event)
+        }
+    }
+
+    private func trackLocation(_ event: TrackLocationEvent) {
+        let location = event.location
+
+        let properties: [String: Any] = [
+            "lat": location.latitude,
+            "lng": location.longitude
+        ]
+
+        analytics.track(name: "Location Update", properties: properties)
     }
 
     var siteId: String?

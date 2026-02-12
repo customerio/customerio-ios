@@ -76,4 +76,25 @@ class DataPipelineEventBustTests: IntegrationTest {
         XCTAssertEqual(trackEvent.event, "Device Created or Updated")
         XCTAssertEqual(trackEvent.deviceToken, givenToken)
     }
+
+    func testSubscribeToJourneyEvents_DataPipelineHandlesTrackLocationEvent() async {
+        let givenLatitude = 37.7749
+        let givenLongitude = -122.4194
+        let givenLocationData = LocationData(latitude: givenLatitude, longitude: givenLongitude)
+        let givenLocationEvent = TrackLocationEvent(location: givenLocationData)
+
+        await eventBusHandler.postEventAndWait(givenLocationEvent)
+
+        guard let trackEvent = outputReader.lastEvent as? TrackEvent else {
+            XCTFail("recorded event is not an instance of TrackEvent")
+            return
+        }
+
+        XCTAssertEqual(trackEvent.type, "track")
+        XCTAssertEqual(trackEvent.event, "Location Update")
+
+        let properties = trackEvent.properties?.dictionaryValue
+        XCTAssertEqual(properties?["lat"] as? Double, givenLatitude)
+        XCTAssertEqual(properties?["lng"] as? Double, givenLongitude)
+    }
 }

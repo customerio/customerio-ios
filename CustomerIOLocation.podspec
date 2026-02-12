@@ -3,7 +3,7 @@
 
 Pod::Spec.new do |spec|
   spec.name         = "CustomerIOLocation"
-  spec.version      = "4.1.1" # Don't modify this line - it's automatically updated
+  spec.version      = "4.1.2" # Don't modify this line - it's automatically updated
   spec.summary      = "Official Customer.io SDK for iOS - Location Module."
   spec.homepage     = "https://github.com/customerio/customerio-ios"
   spec.documentation_url = 'https://customer.io/docs/sdk/ios/'

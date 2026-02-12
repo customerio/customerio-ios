@@ -302,6 +302,11 @@ public final class CioInternalCommon.JsonAdapter {
 }
 public enum CioInternalCommon.KeyValueStorageKey {
 }
+public final class CioInternalCommon.LocationData {
+	public final val latitude: Double;
+	public final val longitude: Double;
+	public fun init(latitude: Double, longitude: Double);
+}
 public final class CioInternalCommon.Lock {
 	public fun func unsafeInit() -> Lock;
 	public fun func lock();
@@ -511,6 +516,18 @@ public final class CioInternalCommon.TrackInAppMetricEvent {
 	public final val event: String;
 	public final val timestamp: Date;
 	public fun init(storageId: String = UUID().uuidString, deliveryID: String, event: String, timestamp: Date = Date(), params: List<String: String> = List<:>);
+}
+public final class CioInternalCommon.TrackLocationEvent {
+	public final val storageId: String;
+	public final val params: List<String : String>;
+	public final val timestamp: Date;
+	public final val location: LocationData;
+	public fun init(
+    storageId: String = UUID().uuidString,
+    location: LocationData,
+    timestamp: Date = Date(),
+    params: List<String: String> = List<:>
+);
 }
 public final class CioInternalCommon.TrackMetricEvent {
 	public final val storageId: String;
