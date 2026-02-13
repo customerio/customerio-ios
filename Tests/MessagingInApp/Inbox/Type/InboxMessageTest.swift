@@ -103,7 +103,7 @@ struct InboxMessageTest {
 struct InboxMessageResponseTest {
     @Test("Failable init returns nil when queueId is missing")
     func failableInitReturnsNilWhenQueueIdMissing() {
-        let dictionary: [String: Any?] = [
+        let dictionary: [String: Any] = [
             "deliveryId": "delivery-456",
             "sentAt": "2026-02-09T12:26:42.513994Z"
         ]
@@ -115,7 +115,7 @@ struct InboxMessageResponseTest {
 
     @Test("toDomainModel maps all fields correctly")
     func toDomainModelMapsAllFieldsCorrectly() {
-        let dictionary: [String: Any?] = [
+        let dictionary: [String: Any] = [
             "queueId": "queue-123",
             "deliveryId": "delivery-456",
             "expiry": "2026-04-10T12:26:42.51399Z",
@@ -143,16 +143,9 @@ struct InboxMessageResponseTest {
 
     @Test("toDomainModel succeeds when deliveryId is missing")
     func toDomainModelSucceedsWhenDeliveryIdMissing() {
-        let dictionary: [String: Any?] = [
+        let dictionary: [String: Any] = [
             "queueId": "queue-123",
-            "deliveryId": nil,
-            "expiry": nil,
-            "sentAt": "2026-02-09T12:26:42.513994Z",
-            "topics": nil,
-            "type": nil,
-            "opened": nil,
-            "priority": nil,
-            "properties": nil
+            "sentAt": "2026-02-09T12:26:42.513994Z"
         ]
 
         let response = InboxMessageResponse(dictionary: dictionary)!
@@ -164,7 +157,7 @@ struct InboxMessageResponseTest {
 
     @Test("Failable init returns nil when sentAt is missing")
     func failableInitReturnsNilWhenSentAtMissing() {
-        let dictionary: [String: Any?] = [
+        let dictionary: [String: Any] = [
             "queueId": "queue-123",
             "deliveryId": "delivery-456"
         ]
@@ -176,7 +169,7 @@ struct InboxMessageResponseTest {
 
     @Test("Failable init returns nil when sentAt is invalid")
     func failableInitReturnsNilWhenSentAtInvalid() {
-        let dictionary: [String: Any?] = [
+        let dictionary: [String: Any] = [
             "queueId": "queue-123",
             "sentAt": "invalid-date"
         ]
@@ -188,16 +181,10 @@ struct InboxMessageResponseTest {
 
     @Test("toDomainModel uses default values when optional fields are nil")
     func toDomainModelUsesDefaultValuesWhenOptionalFieldsNil() {
-        let dictionary: [String: Any?] = [
+        let dictionary: [String: Any] = [
             "queueId": "queue-123",
             "deliveryId": "delivery-456",
-            "expiry": nil,
-            "sentAt": "2026-02-09T12:26:42.513994Z",
-            "topics": nil,
-            "type": nil,
-            "opened": nil,
-            "priority": nil,
-            "properties": nil
+            "sentAt": "2026-02-09T12:26:42.513994Z"
         ]
 
         let response = InboxMessageResponse(dictionary: dictionary)!
@@ -213,16 +200,10 @@ struct InboxMessageResponseTest {
 
     @Test("Date parsing with ISO 8601 milliseconds format")
     func dateParsingWithISO8601MillisecondsFormat() {
-        let dictionary: [String: Any?] = [
+        let dictionary: [String: Any] = [
             "queueId": "queue-123",
-            "deliveryId": nil,
             "expiry": "2026-04-10T12:26:42.513Z",
-            "sentAt": "2026-02-09T10:30:15.123Z",
-            "topics": nil,
-            "type": nil,
-            "opened": nil,
-            "priority": nil,
-            "properties": nil
+            "sentAt": "2026-02-09T10:30:15.123Z"
         ]
 
         let response = InboxMessageResponse(dictionary: dictionary)!
@@ -259,16 +240,10 @@ struct InboxMessageResponseTest {
 
     @Test("Date parsing without fractional seconds")
     func dateParsingWithoutFractionalSeconds() {
-        let dictionary: [String: Any?] = [
+        let dictionary: [String: Any] = [
             "queueId": "queue-123",
-            "deliveryId": nil,
             "expiry": "2026-04-10T12:26:42Z",
-            "sentAt": "2026-02-09T10:30:15Z",
-            "topics": nil,
-            "type": nil,
-            "opened": nil,
-            "priority": nil,
-            "properties": nil
+            "sentAt": "2026-02-09T10:30:15Z"
         ]
 
         let response = InboxMessageResponse(dictionary: dictionary)!

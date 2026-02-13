@@ -127,9 +127,9 @@ class ServerEventTest: XCTestCase {
     // MARK: - Inbox Message Parsing - Valid Cases
 
     func test_parseInboxMessages_givenValidJsonArray_expectInboxMessages() {
-        // InboxMessageResponse requires: queueId (String)
+        // InboxMessageResponse requires: queueId (String), sentAt (String)
         let jsonData = """
-        [{"queueId": "inbox-1", "deliveryId": "d1", "sentAt": "2026-02-11T12:00:00Z"}, {"queueId": "inbox-2"}]
+        [{"queueId": "inbox-1", "deliveryId": "d1", "sentAt": "2026-02-11T12:00:00Z"}, {"queueId": "inbox-2", "sentAt": "2026-02-11T13:00:00Z"}]
         """
         let event = ServerEvent(id: nil, type: "inbox_messages", data: jsonData)
 
@@ -140,7 +140,7 @@ class ServerEventTest: XCTestCase {
 
     func test_parseInboxMessages_givenSingleMessage_expectOneInboxMessage() {
         let jsonData = """
-        [{"queueId": "inbox-1"}]
+        [{"queueId": "inbox-1", "sentAt": "2026-02-11T12:00:00Z"}]
         """
         let event = ServerEvent(id: nil, type: "inbox_messages", data: jsonData)
 
@@ -170,7 +170,7 @@ class ServerEventTest: XCTestCase {
     func test_parseInboxMessages_givenMessagesType_expectNilInboxMessages() {
         // Even with valid inbox message JSON, non-inbox_messages event types should not parse inbox messages
         let jsonData = """
-        [{"queueId": "inbox-1"}]
+        [{"queueId": "inbox-1", "sentAt": "2026-02-11T12:00:00Z"}]
         """
         let event = ServerEvent(id: nil, type: "messages", data: jsonData)
 
@@ -180,7 +180,7 @@ class ServerEventTest: XCTestCase {
 
     func test_parseInboxMessages_givenConnectedType_expectNilInboxMessages() {
         let jsonData = """
-        [{"queueId": "inbox-1"}]
+        [{"queueId": "inbox-1", "sentAt": "2026-02-11T12:00:00Z"}]
         """
         let event = ServerEvent(id: nil, type: "connected", data: jsonData)
 

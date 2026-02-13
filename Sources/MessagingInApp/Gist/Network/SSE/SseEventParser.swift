@@ -88,7 +88,7 @@ struct ServerEvent: Equatable {
         eventType: EventType,
         expectedType: EventType,
         data: String,
-        parser: ([String: Any?]) -> Response?,
+        parser: ([String: Any]) -> Response?,
         mapper: (Response) -> Domain
     ) -> [Domain]? {
         // Only parse for the expected event type
@@ -106,12 +106,12 @@ struct ServerEvent: Equatable {
 
             guard let messageArray = jsonObject as? [[String: Any]] else { return nil }
 
-            // Convert dictionaries to InAppMessageResponse, then to Message
+            // Convert dictionaries using provided parser and mapper
             // compactMap ensures invalid items are skipped without failing the whole batch
-            let inAppMessageResponses = messageArray.compactMap { InAppMessageResponse(dictionary: $0) }
-            let messages = inAppMessageResponses.map { $0.toMessage() }
+            let responses = messageArray.compactMap { parser($0) }
+            let messages = responses.map { mapper($0) }
 
-            return result.isEmpty ? nil : result
+            return messages.isEmpty ? nil : messages
         } catch {
             return nil
         }

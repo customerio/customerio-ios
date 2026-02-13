@@ -36,7 +36,7 @@ struct InboxMessageResponse {
         self.properties = properties
     }
 
-    init?(dictionary: [String: Any?]) {
+    init?(dictionary: [String: Any]) {
         guard let queueId = dictionary["queueId"] as? String,
               let sentAtString = dictionary["sentAt"] as? String,
               let sentAtDate = Date.fromIso8601WithMilliseconds(sentAtString)
