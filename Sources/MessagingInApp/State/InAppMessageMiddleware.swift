@@ -247,6 +247,30 @@ func messageQueueProcessorMiddleware(logger: Logger) -> InAppMessageMiddleware {
     }
 }
 
+func inboxMessageMiddleware(logger: Logger) -> InAppMessageMiddleware {
+    middleware { _, _, next, action in
+        // Deduplicate and sort messages before processing
+        if case .processInboxMessages(let messages) = action {
+            if messages.isEmpty {
+                return next(action)
+            }
+
+            // Deduplicate by queueId - keep first occurrence of each unique queueId
+            let uniqueMessages = messages.reduce(into: [InboxMessage]()) { result, message in
+                if !result.contains(where: { $0.queueId == message.queueId }) {
+                    result.append(message)
+                }
+            }
+
+            // Sort by sentAt in descending order (latest first)
+            let sortedMessages = uniqueMessages.sorted { $0.sentAt > $1.sentAt }
+            return next(.processInboxMessages(messages: sortedMessages))
+        }
+
+        return next(action)
+    }
+}
+
 func messageEventCallbacksMiddleware(delegate: GistDelegate) -> InAppMessageMiddleware {
     middleware { _, _, next, action in
         // Forward message events to delegate when message is displayed, dismissed or embedded,

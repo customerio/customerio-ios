@@ -73,6 +73,34 @@ public final class CioMessagingInApp.InAppMessage {
 	public final val deliveryId: String?;
 	public final val elementId: String?;
 }
+public final class CioMessagingInApp.InboxMessage {
+	public final val queueId: String;
+	public final val deliveryId: String?;
+	public final val expiry: Date?;
+	public final val sentAt: Date;
+	public final val topics: List<String>;
+	public final val type: String;
+	public final val opened: Boolean;
+	public final val priority: Int?;
+	public final val properties: Map<String, Any>;
+	public var description: String;
+	public fun init(
+    queueId: String,
+    deliveryId: String?,
+    expiry: Date?,
+    sentAt: Date,
+    topics: List<String>,
+    type: String,
+    opened: Boolean,
+    priority: Int?,
+    properties: List<String: Any>
+);
+	public fun func hash(into hasher: inout Hasher);
+	public fun func == (lhs: InboxMessage, rhs: InboxMessage) -> Boolean;
+}
+public interface CioMessagingInApp.InboxMessageChangeListener {
+	public fun func onMessagesChanged(messages: List<InboxMessage>);
+}
 public final class CioMessagingInApp.InlineMessage {
 	public var body: some View;
 	public fun init(elementId: String, onActionClick: ((InAppMessage, String, String) -> Unit)? = nil);
@@ -122,10 +150,20 @@ public final class CioMessagingInApp.Message {
     properties: List<String: Any>?
 );
 }
+public interface CioMessagingInApp.MessageInboxInstance {
+	public fun func getMessages(topic: String?) async -> List<InboxMessage>;
+	public fun func addChangeListener(_ listener: InboxMessageChangeListener);
+	public fun func removeChangeListener(_ listener: InboxMessageChangeListener);
+	public fun func markMessageOpened(message: InboxMessage);
+	public fun func markMessageUnopened(message: InboxMessage);
+	public fun func markMessageDeleted(message: InboxMessage);
+	public fun func trackMessageClicked(message: InboxMessage, actionName: String?);
+}
 public enum CioMessagingInApp.MessagePosition {
 }
 public final class CioMessagingInApp.MessagingInApp {
 	public var shared: MessagingInApp;
+	public var inbox: any MessageInboxInstance;
 	public fun func initialize(withConfig config: MessagingInAppConfigOptions) -> MessagingInAppInstance;
 	public fun func setEventListener(_ eventListener: InAppEventListener?);
 	public fun func dismissMessage();
@@ -141,6 +179,7 @@ public final class CioMessagingInApp.MessagingInAppConfigOptions {
 	public final val region: Region;
 }
 public interface CioMessagingInApp.MessagingInAppInstance {
+	public var inbox: any MessageInboxInstance;
 	public fun func setEventListener(_ eventListener: InAppEventListener?);
 	public fun func dismissMessage();
 }

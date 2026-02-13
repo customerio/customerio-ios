@@ -47,6 +47,9 @@ private func reducer(action: InAppMessageAction, state: InAppMessageState) -> In
     case .processMessageQueue(let messages):
         return state.copy(messagesInQueue: Set(messages))
 
+    case .processInboxMessages(let messages):
+        return state.copy(inboxMessages: Set(messages))
+
     case .embedMessages(let messages):
         var newEmbeddedMessages = state.embeddedMessagesState
         for message in messages {

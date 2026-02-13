@@ -68,6 +68,7 @@ class InAppMessageStoreManager: InAppMessageManager {
                 modalMessageDisplayStateMiddleware(logger: logger, threadUtil: threadUtil),
                 messageMetricsMiddleware(logger: logger, logManager: logManager, anonymousMessageManager: anonymousMessageManager),
                 messageQueueProcessorMiddleware(logger: logger),
+                inboxMessageMiddleware(logger: logger),
                 messageEventCallbacksMiddleware(delegate: gistDelegate),
                 errorReportingMiddleware(logger: logger)
             ]
