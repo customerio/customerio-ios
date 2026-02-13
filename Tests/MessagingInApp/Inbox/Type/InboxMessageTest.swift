@@ -157,13 +157,37 @@ struct InboxMessageResponseTest {
         #expect(domainModel.expiry == nil)
     }
 
+    @Test("Failable init returns nil when sentAt is missing")
+    func failableInitReturnsNilWhenSentAtMissing() {
+        let dictionary: [String: Any?] = [
+            "queueId": "queue-123",
+            "deliveryId": "delivery-456"
+        ]
+
+        let response = InboxMessageResponse(dictionary: dictionary)
+
+        #expect(response == nil)
+    }
+
+    @Test("Failable init returns nil when sentAt is invalid")
+    func failableInitReturnsNilWhenSentAtInvalid() {
+        let dictionary: [String: Any?] = [
+            "queueId": "queue-123",
+            "sentAt": "invalid-date"
+        ]
+
+        let response = InboxMessageResponse(dictionary: dictionary)
+
+        #expect(response == nil)
+    }
+
     @Test("toDomainModel uses default values when optional fields are nil")
     func toDomainModelUsesDefaultValuesWhenOptionalFieldsNil() {
         let response = InboxMessageResponse(
             queueId: "queue-123",
             deliveryId: "delivery-456",
             expiry: nil,
-            sentAt: nil,
+            sentAt: "2026-02-09T12:26:42.513994Z",
             topics: nil,
             type: nil,
             opened: nil,
@@ -179,11 +203,6 @@ struct InboxMessageResponseTest {
         #expect(domainModel.priority == nil)
         #expect(domainModel.properties.isEmpty == true)
         #expect(domainModel.expiry == nil)
-
-        // sentAt should default to current time (within 1 second)
-        let now = Date()
-        let timeDiff = abs(domainModel.sentAt.timeIntervalSince1970 - now.timeIntervalSince1970)
-        #expect(timeDiff < 1.0)
     }
 
     @Test("Date parsing with ISO 8601 milliseconds format")

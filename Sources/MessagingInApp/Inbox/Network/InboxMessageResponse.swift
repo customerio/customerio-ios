@@ -37,14 +37,17 @@ struct InboxMessageResponse {
     }
 
     init?(dictionary: [String: Any?]) {
-        guard let queueId = dictionary["queueId"] as? String else {
+        guard let queueId = dictionary["queueId"] as? String,
+              let sentAt = dictionary["sentAt"] as? String,
+              Date.fromIso8601WithMilliseconds(sentAt) != nil
+        else {
             return nil
         }
         self.init(
             queueId: queueId,
             deliveryId: dictionary["deliveryId"] as? String,
             expiry: dictionary["expiry"] as? String,
-            sentAt: dictionary["sentAt"] as? String,
+            sentAt: sentAt,
             topics: dictionary["topics"] as? [String],
             type: dictionary["type"] as? String,
             opened: dictionary["opened"] as? Bool,
@@ -59,7 +62,9 @@ struct InboxMessageResponse {
     func toDomainModel() -> InboxMessage {
         // Parse ISO 8601 dates using shared extension
         let expiryDate: Date? = expiry.flatMap { Date.fromIso8601WithMilliseconds($0) }
-        let sentAtDate: Date = sentAt.flatMap { Date.fromIso8601WithMilliseconds($0) } ?? Date()
+
+        // sentAt is guaranteed to be valid (validated in init)
+        let sentAtDate = sentAt.flatMap { Date.fromIso8601WithMilliseconds($0) }!
 
         return InboxMessage(
             queueId: queueId,
