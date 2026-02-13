@@ -400,6 +400,8 @@ actor SseConnectionManager: SseConnectionManagerProtocol {
 
         guard let inboxMessages = event.inboxMessages, !inboxMessages.isEmpty else {
             logger.logWithModuleTag("SSE Manager: No inbox messages in event or failed to parse", level: .debug)
+            // Dispatch empty array to clear inbox state (server sent "[]" or failed to parse)
+            inAppMessageManager.dispatch(action: .processInboxMessages(messages: []))
             return
         }
 
