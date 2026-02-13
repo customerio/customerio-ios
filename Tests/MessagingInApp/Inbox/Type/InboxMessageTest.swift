@@ -5,8 +5,8 @@ import Testing
 
 @Suite("InboxMessage Tests")
 struct InboxMessageTest {
-    @Test("Equality detects opened status changes")
-    func equalityDetectsOpenedStatusChanges() {
+    @Test("Equality based on queueId only")
+    func equalityBasedOnQueueIdOnly() {
         let sentAt = Date()
         let message1 = InboxMessage(
             queueId: "queue-1",
@@ -22,77 +22,80 @@ struct InboxMessageTest {
 
         let message2 = InboxMessage(
             queueId: "queue-1",
-            deliveryId: "delivery-1",
+            deliveryId: "delivery-2", // Different
             expiry: nil,
             sentAt: sentAt,
-            topics: [],
-            type: "",
-            opened: true,
-            priority: 5,
-            properties: [:]
+            topics: ["different"], // Different
+            type: "different", // Different
+            opened: true, // Different
+            priority: 10, // Different
+            properties: ["key": "value"] // Different
         )
 
-        #expect(message1 != message2)
-    }
-
-    @Test("Equality detects deliveryId changes")
-    func equalityDetectsDeliveryIdChanges() {
-        let sentAt = Date()
-        let message1 = InboxMessage(
-            queueId: "queue-1",
-            deliveryId: "delivery-1",
-            expiry: nil,
-            sentAt: sentAt,
-            topics: [],
-            type: "",
-            opened: false,
-            priority: 5,
-            properties: [:]
-        )
-
-        let message2 = InboxMessage(
-            queueId: "queue-1",
-            deliveryId: "delivery-2",
-            expiry: nil,
-            sentAt: sentAt,
-            topics: [],
-            type: "",
-            opened: false,
-            priority: 5,
-            properties: [:]
-        )
-
-        #expect(message1 != message2)
-    }
-
-    @Test("Equality ignores non-identity fields")
-    func equalityIgnoresNonIdentityFields() {
-        let sentAt = Date()
-        let message1 = InboxMessage(
-            queueId: "queue-1",
-            deliveryId: "delivery-1",
-            expiry: nil,
-            sentAt: sentAt,
-            topics: [],
-            type: "",
-            opened: false,
-            priority: 5,
-            properties: [:]
-        )
-
-        let message2 = InboxMessage(
-            queueId: "queue-1",
-            deliveryId: "delivery-1",
-            expiry: nil,
-            sentAt: sentAt,
-            topics: ["different"],
-            type: "different",
-            opened: false,
-            priority: 10,
-            properties: ["key": "value"]
-        )
-
+        // Equal because queueId is the same
         #expect(message1 == message2)
+    }
+
+    @Test("Equality detects queueId changes")
+    func equalityDetectsQueueIdChanges() {
+        let sentAt = Date()
+        let message1 = InboxMessage(
+            queueId: "queue-1",
+            deliveryId: "delivery-1",
+            expiry: nil,
+            sentAt: sentAt,
+            topics: [],
+            type: "",
+            opened: false,
+            priority: 5,
+            properties: [:]
+        )
+
+        let message2 = InboxMessage(
+            queueId: "queue-2", // Different queueId
+            deliveryId: "delivery-1",
+            expiry: nil,
+            sentAt: sentAt,
+            topics: [],
+            type: "",
+            opened: false,
+            priority: 5,
+            properties: [:]
+        )
+
+        #expect(message1 != message2)
+    }
+
+    @Test("Hash is consistent with equality")
+    func hashIsConsistentWithEquality() {
+        let sentAt = Date()
+        let message1 = InboxMessage(
+            queueId: "queue-1",
+            deliveryId: "delivery-1",
+            expiry: nil,
+            sentAt: sentAt,
+            topics: [],
+            type: "",
+            opened: false,
+            priority: 5,
+            properties: [:]
+        )
+
+        let message2 = InboxMessage(
+            queueId: "queue-1",
+            deliveryId: "delivery-2", // Different deliveryId
+            expiry: nil,
+            sentAt: sentAt,
+            topics: ["different"], // Different topics
+            type: "different", // Different type
+            opened: true, // Different opened
+            priority: 10, // Different priority
+            properties: ["key": "value"] // Different properties
+        )
+
+        // Equal messages must have equal hashes (Hashable contract)
+        #expect(message1 == message2)
+        #expect(message1.hashValue == message2.hashValue)
     }
 }
 
@@ -100,7 +103,7 @@ struct InboxMessageTest {
 struct InboxMessageResponseTest {
     @Test("Failable init returns nil when queueId is missing")
     func failableInitReturnsNilWhenQueueIdMissing() {
-        let dictionary: [String: Any] = [
+        let dictionary: [String: Any?] = [
             "deliveryId": "delivery-456",
             "sentAt": "2026-02-09T12:26:42.513994Z"
         ]
@@ -112,18 +115,19 @@ struct InboxMessageResponseTest {
 
     @Test("toDomainModel maps all fields correctly")
     func toDomainModelMapsAllFieldsCorrectly() {
-        let response = InboxMessageResponse(
-            queueId: "queue-123",
-            deliveryId: "delivery-456",
-            expiry: "2026-04-10T12:26:42.51399Z",
-            sentAt: "2026-02-09T12:26:42.513994Z",
-            topics: ["promo"],
-            type: "in-app",
-            opened: true,
-            priority: 5,
-            properties: ["key": "value"]
-        )
+        let dictionary: [String: Any?] = [
+            "queueId": "queue-123",
+            "deliveryId": "delivery-456",
+            "expiry": "2026-04-10T12:26:42.51399Z",
+            "sentAt": "2026-02-09T12:26:42.513994Z",
+            "topics": ["promo"],
+            "type": "in-app",
+            "opened": true,
+            "priority": 5,
+            "properties": ["key": "value"]
+        ]
 
+        let response = InboxMessageResponse(dictionary: dictionary)!
         let domainModel = response.toDomainModel()
 
         #expect(domainModel.queueId == "queue-123")
@@ -139,38 +143,64 @@ struct InboxMessageResponseTest {
 
     @Test("toDomainModel succeeds when deliveryId is missing")
     func toDomainModelSucceedsWhenDeliveryIdMissing() {
-        let response = InboxMessageResponse(
-            queueId: "queue-123",
-            deliveryId: nil,
-            expiry: nil,
-            sentAt: "2026-02-09T12:26:42.513994Z",
-            topics: nil,
-            type: nil,
-            opened: nil,
-            priority: nil,
-            properties: nil
-        )
+        let dictionary: [String: Any?] = [
+            "queueId": "queue-123",
+            "deliveryId": nil,
+            "expiry": nil,
+            "sentAt": "2026-02-09T12:26:42.513994Z",
+            "topics": nil,
+            "type": nil,
+            "opened": nil,
+            "priority": nil,
+            "properties": nil
+        ]
 
+        let response = InboxMessageResponse(dictionary: dictionary)!
         let domainModel = response.toDomainModel()
 
         #expect(domainModel.deliveryId == nil)
         #expect(domainModel.expiry == nil)
     }
 
+    @Test("Failable init returns nil when sentAt is missing")
+    func failableInitReturnsNilWhenSentAtMissing() {
+        let dictionary: [String: Any?] = [
+            "queueId": "queue-123",
+            "deliveryId": "delivery-456"
+        ]
+
+        let response = InboxMessageResponse(dictionary: dictionary)
+
+        #expect(response == nil)
+    }
+
+    @Test("Failable init returns nil when sentAt is invalid")
+    func failableInitReturnsNilWhenSentAtInvalid() {
+        let dictionary: [String: Any?] = [
+            "queueId": "queue-123",
+            "sentAt": "invalid-date"
+        ]
+
+        let response = InboxMessageResponse(dictionary: dictionary)
+
+        #expect(response == nil)
+    }
+
     @Test("toDomainModel uses default values when optional fields are nil")
     func toDomainModelUsesDefaultValuesWhenOptionalFieldsNil() {
-        let response = InboxMessageResponse(
-            queueId: "queue-123",
-            deliveryId: "delivery-456",
-            expiry: nil,
-            sentAt: nil,
-            topics: nil,
-            type: nil,
-            opened: nil,
-            priority: nil,
-            properties: nil
-        )
+        let dictionary: [String: Any?] = [
+            "queueId": "queue-123",
+            "deliveryId": "delivery-456",
+            "expiry": nil,
+            "sentAt": "2026-02-09T12:26:42.513994Z",
+            "topics": nil,
+            "type": nil,
+            "opened": nil,
+            "priority": nil,
+            "properties": nil
+        ]
 
+        let response = InboxMessageResponse(dictionary: dictionary)!
         let domainModel = response.toDomainModel()
 
         #expect(domainModel.topics == [])
@@ -179,27 +209,23 @@ struct InboxMessageResponseTest {
         #expect(domainModel.priority == nil)
         #expect(domainModel.properties.isEmpty == true)
         #expect(domainModel.expiry == nil)
-
-        // sentAt should default to current time (within 1 second)
-        let now = Date()
-        let timeDiff = abs(domainModel.sentAt.timeIntervalSince1970 - now.timeIntervalSince1970)
-        #expect(timeDiff < 1.0)
     }
 
     @Test("Date parsing with ISO 8601 milliseconds format")
     func dateParsingWithISO8601MillisecondsFormat() {
-        let response = InboxMessageResponse(
-            queueId: "queue-123",
-            deliveryId: nil,
-            expiry: "2026-04-10T12:26:42.513Z",
-            sentAt: "2026-02-09T10:30:15.123Z",
-            topics: nil,
-            type: nil,
-            opened: nil,
-            priority: nil,
-            properties: nil
-        )
+        let dictionary: [String: Any?] = [
+            "queueId": "queue-123",
+            "deliveryId": nil,
+            "expiry": "2026-04-10T12:26:42.513Z",
+            "sentAt": "2026-02-09T10:30:15.123Z",
+            "topics": nil,
+            "type": nil,
+            "opened": nil,
+            "priority": nil,
+            "properties": nil
+        ]
 
+        let response = InboxMessageResponse(dictionary: dictionary)!
         let domainModel = response.toDomainModel()
 
         // Verify dates are parsed correctly
@@ -233,18 +259,19 @@ struct InboxMessageResponseTest {
 
     @Test("Date parsing without fractional seconds")
     func dateParsingWithoutFractionalSeconds() {
-        let response = InboxMessageResponse(
-            queueId: "queue-123",
-            deliveryId: nil,
-            expiry: "2026-04-10T12:26:42Z",
-            sentAt: "2026-02-09T10:30:15Z",
-            topics: nil,
-            type: nil,
-            opened: nil,
-            priority: nil,
-            properties: nil
-        )
+        let dictionary: [String: Any?] = [
+            "queueId": "queue-123",
+            "deliveryId": nil,
+            "expiry": "2026-04-10T12:26:42Z",
+            "sentAt": "2026-02-09T10:30:15Z",
+            "topics": nil,
+            "type": nil,
+            "opened": nil,
+            "priority": nil,
+            "properties": nil
+        ]
 
+        let response = InboxMessageResponse(dictionary: dictionary)!
         let domainModel = response.toDomainModel()
 
         var calendar = Calendar(identifier: .gregorian)

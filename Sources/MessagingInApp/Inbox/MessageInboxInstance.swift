@@ -5,7 +5,7 @@ import Foundation
 ///
 /// Inbox messages are persistent messages that users can view, mark as read/unread, and delete.
 /// Messages are automatically fetched and kept in sync for identified users.
-public protocol MessageInboxInstance: AutoMockable {
+public protocol MessageInboxInstance {
     /// Retrieves the current list of inbox messages.
     ///
     /// - Parameter topic: Optional topic filter. If provided, only messages with this topic in their topics list are returned. If nil, all messages are returned.
