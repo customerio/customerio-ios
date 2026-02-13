@@ -43,6 +43,7 @@
 		669B9FC82D8B2D430087CC20 /* DashboardViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 669B9F972D8B2D430087CC20 /* DashboardViewController.swift */; };
 		669B9FC92D8B2D430087CC20 /* DeepLinkViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 669B9F982D8B2D430087CC20 /* DeepLinkViewController.swift */; };
 		669B9FCA2D8B2D430087CC20 /* InlineInAppMessageUikitViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 669B9F992D8B2D430087CC20 /* InlineInAppMessageUikitViewController.swift */; };
+		30DB021B873DE5D52C01151C /* InboxViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6271087BB2D1D2EED90C6A75 /* InboxViewController.swift */; };
 		669B9FCB2D8B2D430087CC20 /* LoginViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 669B9F9A2D8B2D430087CC20 /* LoginViewController.swift */; };
 		669B9FCC2D8B2D430087CC20 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 669B9F9D2D8B2D430087CC20 /* AppDelegate.swift */; };
 		669B9FCD2D8B2D430087CC20 /* BuildEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 669B9F9F2D8B2D430087CC20 /* BuildEnvironment.swift */; };
@@ -135,6 +136,7 @@
 		669B9F972D8B2D430087CC20 /* DashboardViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardViewController.swift; sourceTree = "<group>"; };
 		669B9F982D8B2D430087CC20 /* DeepLinkViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeepLinkViewController.swift; sourceTree = "<group>"; };
 		669B9F992D8B2D430087CC20 /* InlineInAppMessageUikitViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InlineInAppMessageUikitViewController.swift; sourceTree = "<group>"; };
+		6271087BB2D1D2EED90C6A75 /* InboxViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InboxViewController.swift; sourceTree = "<group>"; };
 		669B9F9A2D8B2D430087CC20 /* LoginViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginViewController.swift; sourceTree = "<group>"; };
 		669B9F9C2D8B2D430087CC20 /* APN UIKit.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "APN UIKit.entitlements"; sourceTree = "<group>"; };
 		669B9F9D2D8B2D430087CC20 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
@@ -335,6 +337,7 @@
 				669B9F972D8B2D430087CC20 /* DashboardViewController.swift */,
 				669B9F982D8B2D430087CC20 /* DeepLinkViewController.swift */,
 				669B9F992D8B2D430087CC20 /* InlineInAppMessageUikitViewController.swift */,
+				6271087BB2D1D2EED90C6A75 /* InboxViewController.swift */,
 				669B9F9A2D8B2D430087CC20 /* LoginViewController.swift */,
 			);
 			path = View;
@@ -603,6 +606,7 @@
 				669B9FC82D8B2D430087CC20 /* DashboardViewController.swift in Sources */,
 				669B9FC92D8B2D430087CC20 /* DeepLinkViewController.swift in Sources */,
 				669B9FCA2D8B2D430087CC20 /* InlineInAppMessageUikitViewController.swift in Sources */,
+				30DB021B873DE5D52C01151C /* InboxViewController.swift in Sources */,
 				669B9FCB2D8B2D430087CC20 /* LoginViewController.swift in Sources */,
 				669B9FCC2D8B2D430087CC20 /* AppDelegate.swift in Sources */,
 				669B9FCD2D8B2D430087CC20 /* BuildEnvironment.swift in Sources */,
