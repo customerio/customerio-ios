@@ -124,21 +124,13 @@ struct QueueMessagesResponseTest {
                 [
                     "queueId": "msg-1",
                     "priority": 1,
-                    "messageId": "m1",
-                    "properties": nil
+                    "messageId": "m1"
                 ]
             ],
             "inboxMessages": [
                 [
                     "queueId": "inbox-1",
-                    "deliveryId": nil,
-                    "expiry": nil,
-                    "sentAt": "2026-02-09T12:26:42.513994Z", // sentAt is required
-                    "topics": nil,
-                    "type": nil,
-                    "opened": nil,
-                    "priority": nil,
-                    "properties": nil
+                    "sentAt": "2026-02-09T12:26:42.513994Z" // sentAt is required
                 ]
             ]
         ]

@@ -19,6 +19,11 @@ class ServerEventTest: XCTestCase {
         XCTAssertEqual(eventType, .messages)
     }
 
+    func test_eventType_givenInboxMessages_expectInboxMessages() {
+        let eventType = ServerEvent.EventType(rawValue: "inbox_messages")
+        XCTAssertEqual(eventType, .inboxMessages)
+    }
+
     func test_eventType_givenTtlExceeded_expectTtlExceeded() {
         let eventType = ServerEvent.EventType(rawValue: "ttl_exceeded")
         XCTAssertEqual(eventType, .ttlExceeded)
@@ -47,6 +52,7 @@ class ServerEventTest: XCTestCase {
         XCTAssertEqual(event.eventType, .connected)
         XCTAssertEqual(event.rawEventType, "connected")
         XCTAssertNil(event.messages)
+        XCTAssertNil(event.inboxMessages)
     }
 
     func test_serverEvent_givenNilType_expectMessagesEventType() {
@@ -116,6 +122,69 @@ class ServerEventTest: XCTestCase {
     func test_parseMessages_givenHeartbeatType_expectNilMessages() {
         let event = ServerEvent(id: nil, type: "heartbeat", data: "{}")
         XCTAssertNil(event.messages)
+    }
+
+    // MARK: - Inbox Message Parsing - Valid Cases
+
+    func test_parseInboxMessages_givenValidJsonArray_expectInboxMessages() {
+        // InboxMessageResponse requires: queueId (String), sentAt (String)
+        let jsonData = """
+        [{"queueId": "inbox-1", "deliveryId": "d1", "sentAt": "2026-02-11T12:00:00Z"}, {"queueId": "inbox-2", "sentAt": "2026-02-11T13:00:00Z"}]
+        """
+        let event = ServerEvent(id: nil, type: "inbox_messages", data: jsonData)
+
+        XCTAssertNotNil(event.inboxMessages)
+        XCTAssertEqual(event.inboxMessages?.count, 2)
+        XCTAssertNil(event.messages) // Should not parse in-app messages for inbox_messages event
+    }
+
+    func test_parseInboxMessages_givenSingleMessage_expectOneInboxMessage() {
+        let jsonData = """
+        [{"queueId": "inbox-1", "sentAt": "2026-02-11T12:00:00Z"}]
+        """
+        let event = ServerEvent(id: nil, type: "inbox_messages", data: jsonData)
+
+        XCTAssertNotNil(event.inboxMessages)
+        XCTAssertEqual(event.inboxMessages?.count, 1)
+    }
+
+    // MARK: - Inbox Message Parsing - Empty/Nil Cases
+
+    func test_parseInboxMessages_givenEmptyArray_expectNil() {
+        let event = ServerEvent(id: nil, type: "inbox_messages", data: "[]")
+        XCTAssertNil(event.inboxMessages)
+    }
+
+    func test_parseInboxMessages_givenEmptyString_expectNil() {
+        let event = ServerEvent(id: nil, type: "inbox_messages", data: "")
+        XCTAssertNil(event.inboxMessages)
+    }
+
+    func test_parseInboxMessages_givenWhitespaceOnly_expectNil() {
+        let event = ServerEvent(id: nil, type: "inbox_messages", data: "   ")
+        XCTAssertNil(event.inboxMessages)
+    }
+
+    // MARK: - Inbox Message Parsing - Non-Inbox Event Types
+
+    func test_parseInboxMessages_givenMessagesType_expectNilInboxMessages() {
+        // Even with valid inbox message JSON, non-inbox_messages event types should not parse inbox messages
+        let jsonData = """
+        [{"queueId": "inbox-1", "sentAt": "2026-02-11T12:00:00Z"}]
+        """
+        let event = ServerEvent(id: nil, type: "messages", data: jsonData)
+
+        // Should not parse inbox messages for non-inbox_messages event types
+        XCTAssertNil(event.inboxMessages)
+    }
+
+    func test_parseInboxMessages_givenConnectedType_expectNilInboxMessages() {
+        let jsonData = """
+        [{"queueId": "inbox-1", "sentAt": "2026-02-11T12:00:00Z"}]
+        """
+        let event = ServerEvent(id: nil, type: "connected", data: jsonData)
+
+        XCTAssertNil(event.inboxMessages)
     }
 
     // MARK: - Heartbeat Interval Parsing
