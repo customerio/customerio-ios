@@ -32,8 +32,13 @@ private class InboxMessageCell: UITableViewCell {
     private func setupViews() {
         selectionStyle = .none
         backgroundColor = .clear
+        setupContainerView()
+        setupLabels()
+        setupButtons()
+        setupConstraints()
+    }
 
-        // Container view
+    private func setupContainerView() {
         containerView.translatesAutoresizingMaskIntoConstraints = false
         containerView.layer.cornerRadius = 8
         containerView.layer.shadowColor = UIColor.black.cgColor
@@ -42,27 +47,27 @@ private class InboxMessageCell: UITableViewCell {
         containerView.layer.shadowRadius = 4
         containerView.layer.masksToBounds = false
         contentView.addSubview(containerView)
+    }
 
-        // Queue ID label
+    private func setupLabels() {
         queueIdLabel.translatesAutoresizingMaskIntoConstraints = false
         queueIdLabel.font = .systemFont(ofSize: 14, weight: .medium)
         queueIdLabel.numberOfLines = 1
         containerView.addSubview(queueIdLabel)
 
-        // Date label
         dateLabel.translatesAutoresizingMaskIntoConstraints = false
         dateLabel.font = .systemFont(ofSize: 12)
         dateLabel.textColor = .secondaryLabel
         containerView.addSubview(dateLabel)
 
-        // Properties label
         propertiesLabel.translatesAutoresizingMaskIntoConstraints = false
         propertiesLabel.font = .systemFont(ofSize: 12)
         propertiesLabel.textColor = .secondaryLabel
         propertiesLabel.numberOfLines = 2
         containerView.addSubview(propertiesLabel)
+    }
 
-        // Buttons stack
+    private func setupButtons() {
         buttonsStack.translatesAutoresizingMaskIntoConstraints = false
         buttonsStack.axis = .horizontal
         buttonsStack.spacing = 8
@@ -77,8 +82,9 @@ private class InboxMessageCell: UITableViewCell {
         buttonsStack.addArrangedSubview(trackButton)
         buttonsStack.addArrangedSubview(deleteButton)
         containerView.addSubview(buttonsStack)
+    }
 
-        // Layout constraints
+    private func setupConstraints() {
         NSLayoutConstraint.activate([
             containerView.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 8),
             containerView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 12),
