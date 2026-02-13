@@ -1,6 +1,9 @@
 import Foundation
 
-struct UserQueueResponse {
+/// Internal model representing the API response for in-app messages.
+///
+/// This model handles required fields from the API and maps to the domain model (Message).
+struct InAppMessageResponse {
     let queueId: String
     let priority: Int
     let messageId: String
@@ -13,7 +16,7 @@ struct UserQueueResponse {
         self.properties = properties
     }
 
-    init?(dictionary: [String: Any?]) {
+    init?(dictionary: [String: Any]) {
         guard let queueId = dictionary["queueId"] as? String,
               let priority = dictionary["priority"] as? Int,
               let messageId = dictionary["messageId"] as? String

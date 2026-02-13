@@ -63,7 +63,7 @@ class ServerEventTest: XCTestCase {
     // MARK: - Message Parsing - Valid Cases
 
     func test_parseMessages_givenValidJsonArray_expectMessages() {
-        // UserQueueResponse requires: queueId (String), priority (Int), messageId (String)
+        // InAppMessageResponse requires: queueId (String), priority (Int), messageId (String)
         let jsonData = """
         [{"queueId": "q1", "priority": 1, "messageId": "m1"}, {"queueId": "q2", "priority": 2, "messageId": "m2"}]
         """
