@@ -7,7 +7,7 @@ struct InboxMessageResponse {
     let queueId: String
     let deliveryId: String?
     let expiry: String? // ISO 8601 date string
-    let sentAt: String? // ISO 8601 date string
+    let sentAt: Date // Parsed date
     let topics: [String]?
     let type: String?
     let opened: Bool?
@@ -18,7 +18,7 @@ struct InboxMessageResponse {
         queueId: String,
         deliveryId: String?,
         expiry: String?,
-        sentAt: String?,
+        sentAt: Date,
         topics: [String]?,
         type: String?,
         opened: Bool?,
@@ -38,8 +38,8 @@ struct InboxMessageResponse {
 
     init?(dictionary: [String: Any?]) {
         guard let queueId = dictionary["queueId"] as? String,
-              let sentAt = dictionary["sentAt"] as? String,
-              Date.fromIso8601WithMilliseconds(sentAt) != nil
+              let sentAtString = dictionary["sentAt"] as? String,
+              let sentAtDate = Date.fromIso8601WithMilliseconds(sentAtString)
         else {
             return nil
         }
@@ -47,7 +47,7 @@ struct InboxMessageResponse {
             queueId: queueId,
             deliveryId: dictionary["deliveryId"] as? String,
             expiry: dictionary["expiry"] as? String,
-            sentAt: sentAt,
+            sentAt: sentAtDate,
             topics: dictionary["topics"] as? [String],
             type: dictionary["type"] as? String,
             opened: dictionary["opened"] as? Bool,
@@ -63,14 +63,11 @@ struct InboxMessageResponse {
         // Parse ISO 8601 dates using shared extension
         let expiryDate: Date? = expiry.flatMap { Date.fromIso8601WithMilliseconds($0) }
 
-        // sentAt is guaranteed to be valid (validated in init)
-        let sentAtDate = sentAt.flatMap { Date.fromIso8601WithMilliseconds($0) }!
-
         return InboxMessage(
             queueId: queueId,
             deliveryId: deliveryId,
             expiry: expiryDate,
-            sentAt: sentAtDate,
+            sentAt: sentAt,
             topics: topics ?? [],
             type: type ?? "",
             opened: opened ?? false,
