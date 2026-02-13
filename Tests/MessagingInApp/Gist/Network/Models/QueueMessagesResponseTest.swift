@@ -133,7 +133,7 @@ struct QueueMessagesResponseTest {
                     "queueId": "inbox-1",
                     "deliveryId": nil,
                     "expiry": nil,
-                    "sentAt": nil,
+                    "sentAt": "2026-02-09T12:26:42.513994Z", // sentAt is required
                     "topics": nil,
                     "type": nil,
                     "opened": nil,
