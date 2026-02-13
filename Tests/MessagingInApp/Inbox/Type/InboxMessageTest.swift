@@ -66,8 +66,8 @@ struct InboxMessageTest {
         #expect(message1 != message2)
     }
 
-    @Test("Hash includes queueId deliveryId and opened")
-    func hashIncludesQueueIdDeliveryIdAndOpened() {
+    @Test("Hash is consistent with equality")
+    func hashIsConsistentWithEquality() {
         let sentAt = Date()
         let message1 = InboxMessage(
             queueId: "queue-1",
@@ -83,18 +83,19 @@ struct InboxMessageTest {
 
         let message2 = InboxMessage(
             queueId: "queue-1",
-            deliveryId: "delivery-1",
+            deliveryId: "delivery-2", // Different deliveryId
             expiry: nil,
             sentAt: sentAt,
-            topics: [],
-            type: "",
+            topics: ["different"], // Different topics
+            type: "different", // Different type
             opened: true, // Different opened
-            priority: 5,
-            properties: [:]
+            priority: 10, // Different priority
+            properties: ["key": "value"] // Different properties
         )
 
-        // Different hash because opened differs
-        #expect(message1.hashValue != message2.hashValue)
+        // Equal messages must have equal hashes (Hashable contract)
+        #expect(message1 == message2)
+        #expect(message1.hashValue == message2.hashValue)
     }
 }
 

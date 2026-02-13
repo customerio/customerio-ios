@@ -58,8 +58,6 @@ public struct InboxMessage: Hashable, Equatable, CustomStringConvertible {
 
     public func hash(into hasher: inout Hasher) {
         hasher.combine(queueId)
-        hasher.combine(deliveryId)
-        hasher.combine(opened)
     }
 
     // MARK: - Equatable
