@@ -249,10 +249,22 @@ func messageQueueProcessorMiddleware(logger: Logger) -> InAppMessageMiddleware {
 
 func inboxMessageMiddleware(logger: Logger) -> InAppMessageMiddleware {
     middleware { _, _, next, action in
-        // For now, just pass through the action
-        // Future PRs will add implement API calls and change listeners
+        // Deduplicate and sort messages before processing
         if case .processInboxMessages(let messages) = action {
-            logger.logWithModuleTag("Processing \(messages.count) inbox messages", level: .debug)
+            if messages.isEmpty {
+                return next(action)
+            }
+
+            // Deduplicate by queueId - keep first occurrence of each unique queueId
+            let uniqueMessages = messages.reduce(into: [InboxMessage]()) { result, message in
+                if !result.contains(where: { $0.queueId == message.queueId }) {
+                    result.append(message)
+                }
+            }
+
+            // Sort by sentAt in descending order (latest first)
+            let sortedMessages = uniqueMessages.sorted { $0.sentAt > $1.sentAt }
+            return next(.processInboxMessages(messages: sortedMessages))
         }
 
         return next(action)
