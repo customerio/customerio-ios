@@ -73,10 +73,7 @@ public class MessagingInApp: ModuleTopLevelObject<MessagingInAppInstance>, Messa
     ///
     /// - Important: You must call `MessagingInApp.initialize(withConfig:)` before accessing this property.
     public var inbox: MessageInboxInstance {
-        guard let implementation = implementation else {
-            fatalError("MessagingInApp module must be initialized before accessing inbox. Call MessagingInApp.initialize(withConfig:) first.")
-        }
-        return implementation.inbox
+        implementation?.inbox ?? NoOpMessageInbox()
     }
 
     public func setEventListener(_ eventListener: InAppEventListener?) {

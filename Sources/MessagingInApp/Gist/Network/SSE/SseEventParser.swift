@@ -106,10 +106,10 @@ struct ServerEvent: Equatable {
 
             guard let messageArray = jsonObject as? [[String: Any]] else { return nil }
 
-            // Convert dictionaries to response models, then to domain models
+            // Convert dictionaries to InAppMessageResponse, then to Message
             // compactMap ensures invalid items are skipped without failing the whole batch
-            let responses = messageArray.compactMap(parser)
-            let result = responses.map(mapper)
+            let inAppMessageResponses = messageArray.compactMap { InAppMessageResponse(dictionary: $0) }
+            let messages = inAppMessageResponses.map { $0.toMessage() }
 
             return result.isEmpty ? nil : result
         } catch {

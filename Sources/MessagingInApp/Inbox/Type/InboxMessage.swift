@@ -58,17 +58,13 @@ public struct InboxMessage: Hashable, Equatable, CustomStringConvertible {
 
     public func hash(into hasher: inout Hasher) {
         hasher.combine(queueId)
-        hasher.combine(deliveryId)
-        hasher.combine(opened)
     }
 
     // MARK: - Equatable
 
+    /// Equality based on queueId as the unique identifier.
     public static func == (lhs: InboxMessage, rhs: InboxMessage) -> Bool {
-        // Compare queueId, deliveryId, and opened to enable state change detection
-        lhs.queueId == rhs.queueId &&
-            lhs.deliveryId == rhs.deliveryId &&
-            lhs.opened == rhs.opened
+        lhs.queueId == rhs.queueId
     }
 
     // MARK: - CustomStringConvertible

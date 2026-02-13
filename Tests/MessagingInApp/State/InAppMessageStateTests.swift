@@ -1145,9 +1145,10 @@ class InAppMessageStateTests: IntegrationTest {
         await inAppMessageManager.dispatchAsync(action: .processInboxMessages(messages: [message1, message2]))
 
         let state = await inAppMessageManager.state
-        // Set deduplicates by equality (queueId + deliveryId + opened)
-        // message1 and message2 have different deliveryId, so both stored
-        XCTAssertEqual(state.inboxMessages.count, 2)
+        // Middleware deduplicates by queueId - keeps first occurrence
+        // message1 and message2 have same queueId, so only first is kept
+        XCTAssertEqual(state.inboxMessages.count, 1)
+        XCTAssertTrue(state.inboxMessages.contains(message1))
     }
 
     func test_inboxMessages_whenMessagePropertyChanges_expectStateChangeDetected() async {
