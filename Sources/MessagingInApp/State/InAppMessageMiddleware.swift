@@ -258,40 +258,59 @@ private func deduplicateAndSortInboxMessages(_ messages: [InboxMessage]) -> [Inb
     return uniqueMessages.sorted { $0.sentAt > $1.sentAt }
 }
 
+// swiftlint:disable function_parameter_count
+private func handleUpdateOpened(
+    message: InboxMessage,
+    opened: Bool,
+    state: InAppMessageState,
+    logger: Logger,
+    logManager: LogManager,
+    eventBusHandler: EventBusHandler
+) {
+    // Only proceed if state is actually changing
+    guard message.opened != opened else {
+        logger.logWithModuleTag("Skipping inbox message update for \(message.describeForLogs) - already in desired state (opened=\(opened))", level: .debug)
+        return
+    }
+
+    // Call API to update opened status on server
+    logManager.updateInboxMessageOpened(state: state, queueId: message.queueId, opened: opened) { response in
+        if case .failure(let error) = response {
+            logger.logWithModuleTag("Failed to update inbox message \(message.describeForLogs) opened status: \(error)", level: .error)
+        }
+    }
+
+    // Track metric when transitioning from unopened to opened
+    if opened {
+        logger.logWithModuleTag("Inbox message opened: \(message.describeForLogs)", level: .debug)
+        if let deliveryId = message.deliveryId {
+            eventBusHandler.postEvent(TrackInAppMetricEvent(deliveryID: deliveryId, event: InAppMetric.opened.rawValue))
+        }
+    }
+}
+
+// swiftlint:enable function_parameter_count
+
+private func handleDeleteMessage(message: InboxMessage, state: InAppMessageState, logger: Logger, logManager: LogManager) {
+    logger.logWithModuleTag("Deleting inbox message: \(message.describeForLogs)", level: .debug)
+    logManager.markInboxMessageDeleted(state: state, queueId: message.queueId) { response in
+        if case .failure(let error) = response {
+            logger.logWithModuleTag("Failed to delete inbox message \(message.describeForLogs): \(error)", level: .error)
+        }
+    }
+}
+
+private func handleTrackClicked(message: InboxMessage, actionName: String?, logger: Logger, eventBusHandler: EventBusHandler) {
+    logger.logWithModuleTag("Inbox message clicked: \(message.describeForLogs)", level: .debug)
+    if let deliveryId = message.deliveryId {
+        let params = actionName.map { ["actionName": $0] } ?? [:]
+        eventBusHandler.postEvent(TrackInAppMetricEvent(deliveryID: deliveryId, event: InAppMetric.clicked.rawValue, params: params))
+    }
+}
+
 func inboxMessageMiddleware(logger: Logger, logManager: LogManager, eventBusHandler: EventBusHandler) -> InAppMessageMiddleware {
     middleware { _, getState, next, action in
         let state = getState()
-
-        func handleUpdateOpened(currentMessage: InboxMessage, opened: Bool) {
-            // Only proceed if state is actually changing
-            guard currentMessage.opened != opened else {
-                logger.logWithModuleTag("Skipping inbox message update for \(currentMessage.describeForLogs) - already in desired state (opened=\(opened))", level: .debug)
-                return
-            }
-
-            // Call API to update opened status on server using current message from state
-            logManager.updateInboxMessageOpened(state: state, queueId: currentMessage.queueId, opened: opened) { response in
-                if case .failure(let error) = response {
-                    logger.logWithModuleTag("Failed to update inbox message \(currentMessage.describeForLogs) opened status: \(error)", level: .error)
-                }
-            }
-
-            // Track metric when transitioning from unopened to opened
-            if opened {
-                logger.logWithModuleTag("Inbox message opened: \(currentMessage.describeForLogs)", level: .debug)
-                if let deliveryId = currentMessage.deliveryId {
-                    eventBusHandler.postEvent(TrackInAppMetricEvent(deliveryID: deliveryId, event: InAppMetric.opened.rawValue))
-                }
-            }
-        }
-        func handleDeleteMessage(currentMessage: InboxMessage) {
-            logger.logWithModuleTag("Deleting inbox message: \(currentMessage.describeForLogs)", level: .debug)
-            logManager.markInboxMessageDeleted(state: state, queueId: currentMessage.queueId) { response in
-                if case .failure(let error) = response {
-                    logger.logWithModuleTag("Failed to delete inbox message \(currentMessage.describeForLogs): \(error)", level: .error)
-                }
-            }
-        }
 
         if case .processInboxMessages(let messages) = action {
             guard !messages.isEmpty else { return next(action) }
@@ -307,9 +326,18 @@ func inboxMessageMiddleware(logger: Logger, logManager: LogManager, eventBusHand
             if let currentMessage = currentMessage {
                 switch inboxAction {
                 case .updateOpened(_, let opened):
-                    handleUpdateOpened(currentMessage: currentMessage, opened: opened)
+                    handleUpdateOpened(
+                        message: currentMessage,
+                        opened: opened,
+                        state: state,
+                        logger: logger,
+                        logManager: logManager,
+                        eventBusHandler: eventBusHandler
+                    )
                 case .deleteMessage:
-                    handleDeleteMessage(currentMessage: currentMessage)
+                    handleDeleteMessage(message: currentMessage, state: state, logger: logger, logManager: logManager)
+                case .trackClicked(_, let actionName):
+                    handleTrackClicked(message: currentMessage, actionName: actionName, logger: logger, eventBusHandler: eventBusHandler)
                 }
             } else {
                 logger.logWithModuleTag("Skipping inbox action for \(inboxAction.message.describeForLogs) - message not found in state", level: .debug)

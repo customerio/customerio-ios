@@ -60,4 +60,12 @@ public extension MessageInboxInstance {
     func getMessages() async -> [InboxMessage] {
         await getMessages(topic: nil)
     }
+
+    /// Tracks a click event for an inbox message without an action name.
+    /// Sends metric event to data pipelines to track message interaction.
+    ///
+    /// - Parameter message: The inbox message that was clicked
+    func trackMessageClicked(message: InboxMessage) {
+        trackMessageClicked(message: message, actionName: nil)
+    }
 }

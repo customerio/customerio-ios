@@ -33,6 +33,7 @@ enum InAppMessageAction: Equatable {
     enum InboxAction: Equatable {
         case updateOpened(message: InboxMessage, opened: Bool)
         case deleteMessage(message: InboxMessage)
+        case trackClicked(message: InboxMessage, actionName: String?)
 
         /// The message associated with this inbox action
         var message: InboxMessage {
@@ -40,6 +41,8 @@ enum InAppMessageAction: Equatable {
             case .updateOpened(let message, _):
                 return message
             case .deleteMessage(let message):
+                return message
+            case .trackClicked(let message, _):
                 return message
             }
         }

@@ -1544,6 +1544,97 @@ class InAppMessageStateTests: IntegrationTest {
         // Verify message2 is deleted
         XCTAssertFalse(state.inboxMessages.contains { $0.queueId == "queue-2" })
     }
+
+    // MARK: - InboxAction.trackClicked tests
+
+    func test_inboxAction_trackClicked_withActionName_expectNoStateChange() async {
+        // Set user ID first to bypass auth middleware
+        await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: "test-user"))
+
+        let message = InboxMessage(
+            queueId: "queue-1",
+            deliveryId: "delivery-1",
+            expiry: nil,
+            sentAt: Date(),
+            topics: [],
+            type: "",
+            opened: false,
+            priority: nil,
+            properties: [:]
+        )
+
+        // Add message to state
+        await inAppMessageManager.dispatchAsync(action: .processInboxMessages(messages: [message]))
+
+        var state = await inAppMessageManager.state
+        let initialState = state
+
+        // Track clicked
+        await inAppMessageManager.dispatchAsync(action: .inboxAction(action: .trackClicked(message: message, actionName: "view_details")))
+
+        state = await inAppMessageManager.state
+        // State should remain unchanged
+        XCTAssertEqual(state.inboxMessages.count, initialState.inboxMessages.count)
+        XCTAssertEqual(state.inboxMessages, initialState.inboxMessages)
+    }
+
+    func test_inboxAction_trackClicked_withoutActionName_expectNoStateChange() async {
+        // Set user ID first to bypass auth middleware
+        await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: "test-user"))
+
+        let message = InboxMessage(
+            queueId: "queue-1",
+            deliveryId: "delivery-1",
+            expiry: nil,
+            sentAt: Date(),
+            topics: [],
+            type: "",
+            opened: false,
+            priority: nil,
+            properties: [:]
+        )
+
+        // Add message to state
+        await inAppMessageManager.dispatchAsync(action: .processInboxMessages(messages: [message]))
+
+        var state = await inAppMessageManager.state
+        let initialState = state
+
+        // Track clicked without actionName
+        await inAppMessageManager.dispatchAsync(action: .inboxAction(action: .trackClicked(message: message, actionName: nil)))
+
+        state = await inAppMessageManager.state
+        // State should remain unchanged
+        XCTAssertEqual(state.inboxMessages.count, initialState.inboxMessages.count)
+        XCTAssertEqual(state.inboxMessages, initialState.inboxMessages)
+    }
+
+    func test_inboxAction_trackClicked_whenMessageNotInState_expectNoChange() async {
+        // Set user ID first to bypass auth middleware
+        await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: "test-user"))
+
+        let nonExistentMessage = InboxMessage(
+            queueId: "queue-999",
+            deliveryId: "delivery-999",
+            expiry: nil,
+            sentAt: Date(),
+            topics: [],
+            type: "",
+            opened: false,
+            priority: nil,
+            properties: [:]
+        )
+
+        let state = await inAppMessageManager.state
+        XCTAssertTrue(state.inboxMessages.isEmpty)
+
+        // Try to track click for non-existent message
+        await inAppMessageManager.dispatchAsync(action: .inboxAction(action: .trackClicked(message: nonExistentMessage, actionName: "test")))
+
+        // State should remain empty
+        let finalState = await inAppMessageManager.state
+        XCTAssertTrue(finalState.inboxMessages.isEmpty)
+    }
 }
 
 extension InAppMessageManager {

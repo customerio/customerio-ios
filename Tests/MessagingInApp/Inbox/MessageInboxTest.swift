@@ -280,4 +280,103 @@ class MessageInboxTest: UnitTest {
         XCTAssertEqual(receivedMessage.queueId, message.queueId)
         XCTAssertEqual(receivedMessage.deliveryId, message.deliveryId)
     }
+
+    // MARK: - trackMessageClicked tests
+
+    func test_trackMessageClicked_withActionName_expectDispatchesTrackClickedAction() {
+        // Setup mock to return empty task
+        inAppMessageManagerMock.dispatchReturnValue = Task {}
+
+        let message = InboxMessage(
+            queueId: "queue-1",
+            deliveryId: "delivery-1",
+            expiry: nil,
+            sentAt: Date(),
+            topics: [],
+            type: "",
+            opened: false,
+            priority: nil,
+            properties: [:]
+        )
+
+        messageInbox.trackMessageClicked(message: message, actionName: "view_details")
+
+        XCTAssertEqual(inAppMessageManagerMock.dispatchCallsCount, 1)
+        guard case .inboxAction(let inboxAction) = inAppMessageManagerMock.dispatchReceivedArguments?.action else {
+            XCTFail("Expected inboxAction, got different action")
+            return
+        }
+        guard case .trackClicked(let receivedMessage, let actionName) = inboxAction else {
+            XCTFail("Expected trackClicked action")
+            return
+        }
+        XCTAssertEqual(receivedMessage.queueId, message.queueId)
+        XCTAssertEqual(receivedMessage.deliveryId, message.deliveryId)
+        XCTAssertEqual(actionName, "view_details")
+    }
+
+    func test_trackMessageClicked_withoutActionName_expectDispatchesTrackClickedAction() {
+        // Setup mock to return empty task
+        inAppMessageManagerMock.dispatchReturnValue = Task {}
+
+        let message = InboxMessage(
+            queueId: "queue-1",
+            deliveryId: "delivery-1",
+            expiry: nil,
+            sentAt: Date(),
+            topics: [],
+            type: "",
+            opened: false,
+            priority: nil,
+            properties: [:]
+        )
+
+        messageInbox.trackMessageClicked(message: message, actionName: nil)
+
+        XCTAssertEqual(inAppMessageManagerMock.dispatchCallsCount, 1)
+        guard case .inboxAction(let inboxAction) = inAppMessageManagerMock.dispatchReceivedArguments?.action else {
+            XCTFail("Expected inboxAction, got different action")
+            return
+        }
+        guard case .trackClicked(let receivedMessage, let actionName) = inboxAction else {
+            XCTFail("Expected trackClicked action")
+            return
+        }
+        XCTAssertEqual(receivedMessage.queueId, message.queueId)
+        XCTAssertEqual(receivedMessage.deliveryId, message.deliveryId)
+        XCTAssertNil(actionName)
+    }
+
+    func test_trackMessageClicked_withDefaultParameter_expectDispatchesTrackClickedAction() {
+        // Setup mock to return empty task
+        inAppMessageManagerMock.dispatchReturnValue = Task {}
+
+        let message = InboxMessage(
+            queueId: "queue-1",
+            deliveryId: "delivery-1",
+            expiry: nil,
+            sentAt: Date(),
+            topics: [],
+            type: "",
+            opened: false,
+            priority: nil,
+            properties: [:]
+        )
+
+        // Call without actionName parameter (using default)
+        messageInbox.trackMessageClicked(message: message)
+
+        XCTAssertEqual(inAppMessageManagerMock.dispatchCallsCount, 1)
+        guard case .inboxAction(let inboxAction) = inAppMessageManagerMock.dispatchReceivedArguments?.action else {
+            XCTFail("Expected inboxAction, got different action")
+            return
+        }
+        guard case .trackClicked(let receivedMessage, let actionName) = inboxAction else {
+            XCTFail("Expected trackClicked action")
+            return
+        }
+        XCTAssertEqual(receivedMessage.queueId, message.queueId)
+        XCTAssertEqual(receivedMessage.deliveryId, message.deliveryId)
+        XCTAssertNil(actionName)
+    }
 }

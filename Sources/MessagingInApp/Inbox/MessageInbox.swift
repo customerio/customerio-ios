@@ -62,7 +62,6 @@ class MessageInbox: MessageInboxInstance {
     }
 
     func trackMessageClicked(message: InboxMessage, actionName: String?) {
-        let actionInfo = actionName.map { "actionName: \($0)" } ?? "no actionName"
-        logger.logWithModuleTag("trackMessageClicked(message: \(message.describeForLogs), \(actionInfo)) called (not yet implemented)", level: .debug)
+        inAppMessageManager.dispatch(action: .inboxAction(action: .trackClicked(message: message, actionName: actionName)))
     }
 }
