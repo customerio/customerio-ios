@@ -50,11 +50,11 @@ class MessageInbox: MessageInboxInstance {
     }
 
     func markMessageOpened(message: InboxMessage) {
-        logger.logWithModuleTag("markMessageOpened(message: \(message.describeForLogs)) called (not yet implemented)", level: .debug)
+        inAppMessageManager.dispatch(action: .inboxAction(action: .updateOpened(message: message, opened: true)))
     }
 
     func markMessageUnopened(message: InboxMessage) {
-        logger.logWithModuleTag("markMessageUnopened(message: \(message.describeForLogs)) called (not yet implemented)", level: .debug)
+        inAppMessageManager.dispatch(action: .inboxAction(action: .updateOpened(message: message, opened: false)))
     }
 
     func markMessageDeleted(message: InboxMessage) {

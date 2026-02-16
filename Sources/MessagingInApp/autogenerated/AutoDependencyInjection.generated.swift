@@ -194,7 +194,7 @@ extension DIGraphShared {
     }
 
     private func _get_inAppMessageManager() -> InAppMessageManager {
-        InAppMessageStoreManager(logger: logger, threadUtil: threadUtil, logManager: logManager, gistDelegate: gistDelegate, anonymousMessageManager: anonymousMessageManager)
+        InAppMessageStoreManager(logger: logger, threadUtil: threadUtil, logManager: logManager, gistDelegate: gistDelegate, anonymousMessageManager: anonymousMessageManager, eventBusHandler: eventBusHandler)
     }
 
     // LogManager

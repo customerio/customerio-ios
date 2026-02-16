@@ -34,7 +34,8 @@ class InAppMessageStateTests: IntegrationTest {
             threadUtil: diGraphShared.threadUtil,
             logManager: diGraphShared.logManager,
             gistDelegate: diGraphShared.gistDelegate,
-            anonymousMessageManager: diGraphShared.anonymousMessageManager
+            anonymousMessageManager: diGraphShared.anonymousMessageManager,
+            eventBusHandler: diGraphShared.eventBusHandler
         )
 
         diGraphShared.override(value: inAppMessageManager, forType: InAppMessageManager.self)
@@ -1195,6 +1196,218 @@ class InAppMessageStateTests: IntegrationTest {
         XCTAssertEqual(state.inboxMessages.count, 1)
         let updatedMessage = state.inboxMessages.first!
         XCTAssertEqual(updatedMessage.opened, true)
+    }
+
+    // MARK: - Inbox Action: Update Opened Tests
+
+    func test_inboxAction_updateOpened_expectStateUpdated() async {
+        // Set user ID first to bypass auth middleware
+        await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: "test-user"))
+
+        let message = InboxMessage(
+            queueId: "queue-1",
+            deliveryId: "delivery-1",
+            expiry: nil,
+            sentAt: Date(),
+            topics: [],
+            type: "",
+            opened: false,
+            priority: nil,
+            properties: [:]
+        )
+
+        // Add message to state
+        await inAppMessageManager.dispatchAsync(action: .processInboxMessages(messages: [message]))
+
+        var state = await inAppMessageManager.state
+        XCTAssertEqual(state.inboxMessages.count, 1)
+        XCTAssertEqual(state.inboxMessages.first?.opened, false)
+
+        // Mark as opened
+        await inAppMessageManager.dispatchAsync(action: .inboxAction(action: .updateOpened(message: message, opened: true)))
+
+        state = await inAppMessageManager.state
+        XCTAssertEqual(state.inboxMessages.count, 1)
+        XCTAssertEqual(state.inboxMessages.first?.opened, true)
+    }
+
+    func test_inboxAction_updateOpened_expectMessageIdentityPreserved() async {
+        // Set user ID first to bypass auth middleware
+        await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: "test-user"))
+
+        let message = InboxMessage(
+            queueId: "queue-1",
+            deliveryId: "delivery-1",
+            expiry: Date(timeIntervalSince1970: 5000),
+            sentAt: Date(timeIntervalSince1970: 1000),
+            topics: ["promo", "sales"],
+            type: "email",
+            opened: false,
+            priority: 10,
+            properties: ["custom": "value"]
+        )
+
+        // Add message to state
+        await inAppMessageManager.dispatchAsync(action: .processInboxMessages(messages: [message]))
+
+        // Mark as opened
+        await inAppMessageManager.dispatchAsync(action: .inboxAction(action: .updateOpened(message: message, opened: true)))
+
+        let state = await inAppMessageManager.state
+        let updatedMessage = state.inboxMessages.first!
+
+        // Verify only opened changed, all other fields preserved
+        XCTAssertEqual(updatedMessage.queueId, message.queueId)
+        XCTAssertEqual(updatedMessage.deliveryId, message.deliveryId)
+        XCTAssertEqual(updatedMessage.expiry, message.expiry)
+        XCTAssertEqual(updatedMessage.sentAt, message.sentAt)
+        XCTAssertEqual(updatedMessage.topics, message.topics)
+        XCTAssertEqual(updatedMessage.type, message.type)
+        XCTAssertEqual(updatedMessage.priority, message.priority)
+        XCTAssertTrue(updatedMessage.opened) // Only this changed
+    }
+
+    func test_inboxAction_updateOpened_whenMessageNotInState_expectNoChange() async {
+        // Set user ID first to bypass auth middleware
+        await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: "test-user"))
+
+        let existingMessage = InboxMessage(
+            queueId: "queue-1",
+            deliveryId: "delivery-1",
+            expiry: nil,
+            sentAt: Date(),
+            topics: [],
+            type: "",
+            opened: false,
+            priority: nil,
+            properties: [:]
+        )
+
+        let nonExistentMessage = InboxMessage(
+            queueId: "queue-999",
+            deliveryId: "delivery-999",
+            expiry: nil,
+            sentAt: Date(),
+            topics: [],
+            type: "",
+            opened: false,
+            priority: nil,
+            properties: [:]
+        )
+
+        // Add only existingMessage to state
+        await inAppMessageManager.dispatchAsync(action: .processInboxMessages(messages: [existingMessage]))
+
+        var state = await inAppMessageManager.state
+        XCTAssertEqual(state.inboxMessages.count, 1)
+
+        // Try to update a message that doesn't exist in state
+        await inAppMessageManager.dispatchAsync(action: .inboxAction(action: .updateOpened(message: nonExistentMessage, opened: true)))
+
+        state = await inAppMessageManager.state
+        // State should remain unchanged
+        XCTAssertEqual(state.inboxMessages.count, 1)
+        XCTAssertEqual(state.inboxMessages.first?.queueId, "queue-1")
+        XCTAssertEqual(state.inboxMessages.first?.opened, false)
+    }
+
+    func test_inboxAction_updateOpened_toggleOpenedMultipleTimes_expectCorrectState() async {
+        // Set user ID first to bypass auth middleware
+        await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: "test-user"))
+
+        let message = InboxMessage(
+            queueId: "queue-1",
+            deliveryId: "delivery-1",
+            expiry: nil,
+            sentAt: Date(),
+            topics: [],
+            type: "",
+            opened: false,
+            priority: nil,
+            properties: [:]
+        )
+
+        // Add message to state
+        await inAppMessageManager.dispatchAsync(action: .processInboxMessages(messages: [message]))
+
+        var state = await inAppMessageManager.state
+        XCTAssertEqual(state.inboxMessages.first?.opened, false)
+
+        // Mark as opened
+        await inAppMessageManager.dispatchAsync(action: .inboxAction(action: .updateOpened(message: message, opened: true)))
+        state = await inAppMessageManager.state
+        XCTAssertEqual(state.inboxMessages.first?.opened, true)
+
+        // Mark as unopened
+        await inAppMessageManager.dispatchAsync(action: .inboxAction(action: .updateOpened(message: message, opened: false)))
+        state = await inAppMessageManager.state
+        XCTAssertEqual(state.inboxMessages.first?.opened, false)
+
+        // Mark as opened again
+        await inAppMessageManager.dispatchAsync(action: .inboxAction(action: .updateOpened(message: message, opened: true)))
+        state = await inAppMessageManager.state
+        XCTAssertEqual(state.inboxMessages.first?.opened, true)
+    }
+
+    func test_inboxAction_updateOpened_multipleMessages_expectOnlyTargetUpdated() async {
+        // Set user ID first to bypass auth middleware
+        await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: "test-user"))
+
+        let message1 = InboxMessage(
+            queueId: "queue-1",
+            deliveryId: "delivery-1",
+            expiry: nil,
+            sentAt: Date(timeIntervalSince1970: 1000),
+            topics: [],
+            type: "",
+            opened: false,
+            priority: nil,
+            properties: [:]
+        )
+
+        let message2 = InboxMessage(
+            queueId: "queue-2",
+            deliveryId: "delivery-2",
+            expiry: nil,
+            sentAt: Date(timeIntervalSince1970: 2000),
+            topics: [],
+            type: "",
+            opened: false,
+            priority: nil,
+            properties: [:]
+        )
+
+        let message3 = InboxMessage(
+            queueId: "queue-3",
+            deliveryId: "delivery-3",
+            expiry: nil,
+            sentAt: Date(timeIntervalSince1970: 3000),
+            topics: [],
+            type: "",
+            opened: false,
+            priority: nil,
+            properties: [:]
+        )
+
+        // Add all messages to state
+        await inAppMessageManager.dispatchAsync(action: .processInboxMessages(messages: [message1, message2, message3]))
+
+        var state = await inAppMessageManager.state
+        XCTAssertEqual(state.inboxMessages.count, 3)
+
+        // Mark only message2 as opened
+        await inAppMessageManager.dispatchAsync(action: .inboxAction(action: .updateOpened(message: message2, opened: true)))
+
+        state = await inAppMessageManager.state
+        XCTAssertEqual(state.inboxMessages.count, 3)
+
+        let messages = state.inboxMessages.sorted { $0.queueId < $1.queueId }
+        XCTAssertEqual(messages[0].queueId, "queue-1")
+        XCTAssertFalse(messages[0].opened) // Unchanged
+        XCTAssertEqual(messages[1].queueId, "queue-2")
+        XCTAssertTrue(messages[1].opened) // Updated
+        XCTAssertEqual(messages[2].queueId, "queue-3")
+        XCTAssertFalse(messages[2].opened) // Unchanged
     }
 }
 

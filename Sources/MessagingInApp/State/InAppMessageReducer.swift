@@ -121,6 +121,19 @@ private func reducer(action: InAppMessageAction, state: InAppMessageState) -> In
             return state.copy(modalMessageState: .dismissed(message: message))
         }
 
+    case .inboxAction(let inboxAction):
+        switch inboxAction {
+        case .updateOpened(let message, let opened):
+            // Update opened status for the matching message
+            let updatedMessages = state.inboxMessages.map { inboxMessage in
+                if inboxMessage.queueId == message.queueId {
+                    return inboxMessage.copy(opened: opened)
+                }
+                return inboxMessage
+            }
+            return state.copy(inboxMessages: Set(updatedMessages))
+        }
+
     case .reportError:
         return state
 

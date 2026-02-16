@@ -179,4 +179,72 @@ class MessageInboxTest: UnitTest {
 
         XCTAssertTrue(messages.isEmpty)
     }
+
+    // MARK: - markMessageOpened tests
+
+    func test_markMessageOpened_expectDispatchesUpdateOpenedAction() {
+        // Setup mock to return empty task
+        inAppMessageManagerMock.dispatchReturnValue = Task {}
+
+        let message = InboxMessage(
+            queueId: "queue-1",
+            deliveryId: "delivery-1",
+            expiry: nil,
+            sentAt: Date(),
+            topics: [],
+            type: "",
+            opened: false,
+            priority: nil,
+            properties: [:]
+        )
+
+        messageInbox.markMessageOpened(message: message)
+
+        XCTAssertEqual(inAppMessageManagerMock.dispatchCallsCount, 1)
+        guard case .inboxAction(let inboxAction) = inAppMessageManagerMock.dispatchReceivedArguments?.action else {
+            XCTFail("Expected inboxAction, got different action")
+            return
+        }
+        guard case .updateOpened(let receivedMessage, let opened) = inboxAction else {
+            XCTFail("Expected updateOpened action")
+            return
+        }
+        XCTAssertEqual(receivedMessage.queueId, message.queueId)
+        XCTAssertEqual(receivedMessage.deliveryId, message.deliveryId)
+        XCTAssertTrue(opened)
+    }
+
+    // MARK: - markMessageUnopened tests
+
+    func test_markMessageUnopened_expectDispatchesUpdateOpenedAction() {
+        // Setup mock to return empty task
+        inAppMessageManagerMock.dispatchReturnValue = Task {}
+
+        let message = InboxMessage(
+            queueId: "queue-1",
+            deliveryId: "delivery-1",
+            expiry: nil,
+            sentAt: Date(),
+            topics: [],
+            type: "",
+            opened: true,
+            priority: nil,
+            properties: [:]
+        )
+
+        messageInbox.markMessageUnopened(message: message)
+
+        XCTAssertEqual(inAppMessageManagerMock.dispatchCallsCount, 1)
+        guard case .inboxAction(let inboxAction) = inAppMessageManagerMock.dispatchReceivedArguments?.action else {
+            XCTFail("Expected inboxAction, got different action")
+            return
+        }
+        guard case .updateOpened(let receivedMessage, let opened) = inboxAction else {
+            XCTFail("Expected updateOpened action")
+            return
+        }
+        XCTAssertEqual(receivedMessage.queueId, message.queueId)
+        XCTAssertEqual(receivedMessage.deliveryId, message.deliveryId)
+        XCTAssertFalse(opened)
+    }
 }

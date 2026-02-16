@@ -54,6 +54,32 @@ public struct InboxMessage: Hashable, Equatable, CustomStringConvertible {
         self.properties = properties
     }
 
+    /// Creates a copy of the message with optional field overrides.
+    /// Note: Cannot explicitly set optional fields to nil due to Swift limitation.
+    func copy(
+        queueId: String? = nil,
+        deliveryId: String?? = nil,
+        expiry: Date?? = nil,
+        sentAt: Date? = nil,
+        topics: [String]? = nil,
+        type: String? = nil,
+        opened: Bool? = nil,
+        priority: Int?? = nil,
+        properties: [String: Any]? = nil
+    ) -> InboxMessage {
+        InboxMessage(
+            queueId: queueId ?? self.queueId,
+            deliveryId: deliveryId ?? self.deliveryId,
+            expiry: expiry ?? self.expiry,
+            sentAt: sentAt ?? self.sentAt,
+            topics: topics ?? self.topics,
+            type: type ?? self.type,
+            opened: opened ?? self.opened,
+            priority: priority ?? self.priority,
+            properties: properties ?? self.properties
+        )
+    }
+
     // MARK: - Hashable
 
     public func hash(into hasher: inout Hasher) {
