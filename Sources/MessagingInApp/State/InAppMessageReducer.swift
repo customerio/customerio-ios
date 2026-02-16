@@ -139,6 +139,10 @@ private func reducer(action: InAppMessageAction, state: InAppMessageState) -> In
                 inboxMessage.queueId != message.queueId
             }
             return state.copy(inboxMessages: Set(updatedMessages))
+
+        case .trackClicked:
+            // No state update needed for tracking clicks
+            return state
         }
 
     case .reportError:
