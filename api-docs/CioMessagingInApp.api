@@ -152,7 +152,7 @@ public final class CioMessagingInApp.Message {
 }
 public interface CioMessagingInApp.MessageInboxInstance {
 	public fun func getMessages(topic: String?) async -> List<InboxMessage>;
-	public fun func addChangeListener(_ listener: InboxMessageChangeListener);
+	public fun func addChangeListener(_ listener: InboxMessageChangeListener, topic: String?);
 	public fun func removeChangeListener(_ listener: InboxMessageChangeListener);
 	public fun func markMessageOpened(message: InboxMessage);
 	public fun func markMessageUnopened(message: InboxMessage);

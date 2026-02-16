@@ -48,7 +48,8 @@ private func reducer(action: InAppMessageAction, state: InAppMessageState) -> In
         return state.copy(messagesInQueue: Set(messages))
 
     case .processInboxMessages(let messages):
-        return state.copy(inboxMessages: Set(messages))
+        // Already deduplicated/sorted by middleware
+        return state.copy(inboxMessages: messages)
 
     case .embedMessages(let messages):
         var newEmbeddedMessages = state.embeddedMessagesState
@@ -131,14 +132,14 @@ private func reducer(action: InAppMessageAction, state: InAppMessageState) -> In
                 }
                 return inboxMessage
             }
-            return state.copy(inboxMessages: Set(updatedMessages))
+            return state.copy(inboxMessages: updatedMessages)
 
         case .deleteMessage(let message):
             // Remove deleted message from state
             let updatedMessages = state.inboxMessages.filter { inboxMessage in
                 inboxMessage.queueId != message.queueId
             }
-            return state.copy(inboxMessages: Set(updatedMessages))
+            return state.copy(inboxMessages: updatedMessages)
 
         case .trackClicked:
             // No state update needed for tracking clicks

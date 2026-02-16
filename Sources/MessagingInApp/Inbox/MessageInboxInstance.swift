@@ -15,11 +15,22 @@ public protocol MessageInboxInstance {
     /// Registers a listener for inbox changes.
     ///
     /// The listener is immediately notified with current state, then receives all future updates.
+    /// Callbacks are executed on the main thread.
     ///
-    /// - Parameter listener: The listener to receive inbox updates
-    func addChangeListener(_ listener: InboxMessageChangeListener)
+    /// **Important:** Must be called from the main thread. Call `removeChangeListener(_:)` when done
+    /// (typically in `viewDidDisappear` or `deinit`) to stop receiving updates and avoid unnecessary work.
+    ///
+    /// - Parameters:
+    ///   - listener: The listener to receive inbox updates
+    ///   - topic: Optional topic filter. If provided, only messages with this topic are sent to the listener.
+    ///            If nil, all messages are sent. Topic matching is case-insensitive.
+    @MainActor
+    func addChangeListener(_ listener: InboxMessageChangeListener, topic: String?)
 
     /// Unregisters a listener for inbox changes.
+    ///
+    /// Removes all registrations of the listener, regardless of topic filters.
+    /// Can be called from any thread, including from `deinit`.
     ///
     /// - Parameter listener: The listener to remove
     func removeChangeListener(_ listener: InboxMessageChangeListener)
@@ -59,6 +70,20 @@ public extension MessageInboxInstance {
     /// - Returns: List of all inbox messages for the current user, sorted by sentAt (newest first)
     func getMessages() async -> [InboxMessage] {
         await getMessages(topic: nil)
+    }
+
+    /// Registers a listener for all inbox changes without topic filter.
+    ///
+    /// The listener is immediately notified with current state, then receives all future updates.
+    /// Callbacks are executed on the main thread.
+    ///
+    /// **Important:** Must be called from the main thread. Call `removeChangeListener(_:)` when done
+    /// (typically in `viewDidDisappear` or `deinit`) to stop receiving updates and avoid unnecessary work.
+    ///
+    /// - Parameter listener: The listener to receive inbox updates
+    @MainActor
+    func addChangeListener(_ listener: InboxMessageChangeListener) {
+        addChangeListener(listener, topic: nil)
     }
 
     /// Tracks a click event for an inbox message without an action name.

@@ -16,7 +16,7 @@ struct InAppMessageState: Equatable, CustomStringConvertible {
     let modalMessageState: ModalMessageState
     let embeddedMessagesState: EmbeddedMessagesState
     let messagesInQueue: Set<Message>
-    let inboxMessages: Set<InboxMessage>
+    let inboxMessages: [InboxMessage] // Array allows all-properties equality to work
     let shownMessageQueueIds: Set<String>
 
     init(
@@ -31,7 +31,7 @@ struct InAppMessageState: Equatable, CustomStringConvertible {
         modalMessageState: ModalMessageState = .initial,
         embeddedMessagesState: EmbeddedMessagesState = EmbeddedMessagesState(),
         messagesInQueue: Set<Message> = [],
-        inboxMessages: Set<InboxMessage> = [],
+        inboxMessages: [InboxMessage] = [],
         shownMessageQueueIds: Set<String> = []
     ) {
         self.siteId = siteId
@@ -60,7 +60,7 @@ struct InAppMessageState: Equatable, CustomStringConvertible {
         modalMessageState: ModalMessageState? = nil,
         embeddedMessagesState: EmbeddedMessagesState? = nil,
         messagesInQueue: Set<Message>? = nil,
-        inboxMessages: Set<InboxMessage>? = nil,
+        inboxMessages: [InboxMessage]? = nil,
         shownMessageQueueIds: Set<String>? = nil
     ) -> InAppMessageState {
         InAppMessageState(
@@ -158,7 +158,7 @@ extension InAppMessageState {
         putIfDifferent(\.modalMessageState, as: "currentMessageState")
         putIfDifferent(\.embeddedMessagesState, as: "embeddedMessagesState")
         putIfDifferent(\.messagesInQueue, as: "messagesInQueue")
-        putIfDifferent(\.inboxMessages, as: "inboxMessages")
+        putIfDifferent(\.inboxMessages, as: "inboxMessages") // Array equality compares all properties
         putIfDifferent(\.shownMessageQueueIds, as: "shownMessageQueueIds")
 
         return diffs

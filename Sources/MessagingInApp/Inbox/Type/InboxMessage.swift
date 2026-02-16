@@ -4,7 +4,9 @@ import Foundation
 ///
 /// Inbox messages are persistent messages that can be displayed in a message center or inbox UI.
 /// They support read/unread states, expiration, and custom properties.
-public struct InboxMessage: Hashable, Equatable, CustomStringConvertible {
+///
+/// Conforms to `@unchecked Sendable` as it's an immutable struct with values safely copied across concurrency boundaries.
+public struct InboxMessage: Equatable, CustomStringConvertible, @unchecked Sendable {
     /// Internal queue identifier (for SDK use)
     public let queueId: String
 
@@ -80,17 +82,20 @@ public struct InboxMessage: Hashable, Equatable, CustomStringConvertible {
         )
     }
 
-    // MARK: - Hashable
-
-    public func hash(into hasher: inout Hasher) {
-        hasher.combine(queueId)
-    }
-
     // MARK: - Equatable
 
-    /// Equality based on queueId as the unique identifier.
+    /// Equality compares all properties (queueId, opened, priority, etc.).
+    /// Used for Array comparison to detect when any message property changes.
     public static func == (lhs: InboxMessage, rhs: InboxMessage) -> Bool {
-        lhs.queueId == rhs.queueId
+        lhs.queueId == rhs.queueId &&
+            lhs.deliveryId == rhs.deliveryId &&
+            lhs.expiry == rhs.expiry &&
+            lhs.sentAt == rhs.sentAt &&
+            lhs.topics == rhs.topics &&
+            lhs.type == rhs.type &&
+            lhs.opened == rhs.opened &&
+            lhs.priority == rhs.priority &&
+            lhs.properties.count == rhs.properties.count // Compare count only since [String: Any] isn't Equatable
     }
 
     // MARK: - CustomStringConvertible

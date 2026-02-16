@@ -15,7 +15,8 @@ class NoOpMessageInbox: MessageInboxInstance {
         []
     }
 
-    func addChangeListener(_ listener: InboxMessageChangeListener) {
+    @MainActor
+    func addChangeListener(_ listener: InboxMessageChangeListener, topic: String?) {
         // No-op
     }
 
