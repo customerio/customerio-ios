@@ -32,11 +32,14 @@ enum InAppMessageAction: Equatable {
     /// It only contains actions that are related to inbox messages.
     enum InboxAction: Equatable {
         case updateOpened(message: InboxMessage, opened: Bool)
+        case deleteMessage(message: InboxMessage)
 
         /// The message associated with this inbox action
         var message: InboxMessage {
             switch self {
             case .updateOpened(let message, _):
+                return message
+            case .deleteMessage(let message):
                 return message
             }
         }

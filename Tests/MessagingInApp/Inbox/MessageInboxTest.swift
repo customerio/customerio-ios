@@ -247,4 +247,37 @@ class MessageInboxTest: UnitTest {
         XCTAssertEqual(receivedMessage.deliveryId, message.deliveryId)
         XCTAssertFalse(opened)
     }
+
+    // MARK: - markMessageDeleted tests
+
+    func test_markMessageDeleted_expectDispatchesDeleteMessageAction() {
+        // Setup mock to return empty task
+        inAppMessageManagerMock.dispatchReturnValue = Task {}
+
+        let message = InboxMessage(
+            queueId: "queue-1",
+            deliveryId: "delivery-1",
+            expiry: nil,
+            sentAt: Date(),
+            topics: [],
+            type: "",
+            opened: false,
+            priority: nil,
+            properties: [:]
+        )
+
+        messageInbox.markMessageDeleted(message: message)
+
+        XCTAssertEqual(inAppMessageManagerMock.dispatchCallsCount, 1)
+        guard case .inboxAction(let inboxAction) = inAppMessageManagerMock.dispatchReceivedArguments?.action else {
+            XCTFail("Expected inboxAction, got different action")
+            return
+        }
+        guard case .deleteMessage(let receivedMessage) = inboxAction else {
+            XCTFail("Expected deleteMessage action")
+            return
+        }
+        XCTAssertEqual(receivedMessage.queueId, message.queueId)
+        XCTAssertEqual(receivedMessage.deliveryId, message.deliveryId)
+    }
 }

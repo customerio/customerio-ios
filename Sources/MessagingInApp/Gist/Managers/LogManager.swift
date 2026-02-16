@@ -73,4 +73,27 @@ class LogManager {
             completionHandler(.failure(error))
         }
     }
+
+    func markInboxMessageDeleted(state: InAppMessageState, queueId: String, completionHandler: @escaping (Result<Void, Error>) -> Void) {
+        do {
+            try gistQueueNetwork.request(
+                state: state,
+                request: LogEndpoint.logUserMessageView(queueId: queueId),
+                completionHandler: { response in
+                    switch response {
+                    case .success(let (_, response)):
+                        if response.statusCode == 200 {
+                            completionHandler(.success(()))
+                        } else {
+                            completionHandler(.failure(GistNetworkError.requestFailed))
+                        }
+                    case .failure(let error):
+                        completionHandler(.failure(error))
+                    }
+                }
+            )
+        } catch {
+            completionHandler(.failure(error))
+        }
+    }
 }

@@ -1409,6 +1409,141 @@ class InAppMessageStateTests: IntegrationTest {
         XCTAssertEqual(messages[2].queueId, "queue-3")
         XCTAssertFalse(messages[2].opened) // Unchanged
     }
+
+    // MARK: - InboxAction.deleteMessage tests
+
+    func test_inboxAction_deleteMessage_expectMessageRemovedFromState() async {
+        // Set user ID first to bypass auth middleware
+        await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: "test-user"))
+
+        let message = InboxMessage(
+            queueId: "queue-1",
+            deliveryId: "delivery-1",
+            expiry: nil,
+            sentAt: Date(),
+            topics: [],
+            type: "",
+            opened: false,
+            priority: nil,
+            properties: [:]
+        )
+
+        // Add message to state
+        await inAppMessageManager.dispatchAsync(action: .processInboxMessages(messages: [message]))
+
+        var state = await inAppMessageManager.state
+        XCTAssertEqual(state.inboxMessages.count, 1)
+        XCTAssertTrue(state.inboxMessages.contains { $0.queueId == "queue-1" })
+
+        // Delete the message
+        await inAppMessageManager.dispatchAsync(action: .inboxAction(action: .deleteMessage(message: message)))
+
+        state = await inAppMessageManager.state
+        XCTAssertEqual(state.inboxMessages.count, 0)
+        XCTAssertFalse(state.inboxMessages.contains { $0.queueId == "queue-1" })
+    }
+
+    func test_inboxAction_deleteMessage_whenMessageNotInState_expectNoChange() async {
+        // Set user ID first to bypass auth middleware
+        await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: "test-user"))
+
+        let existingMessage = InboxMessage(
+            queueId: "queue-1",
+            deliveryId: "delivery-1",
+            expiry: nil,
+            sentAt: Date(),
+            topics: [],
+            type: "",
+            opened: false,
+            priority: nil,
+            properties: [:]
+        )
+
+        let nonExistentMessage = InboxMessage(
+            queueId: "queue-999",
+            deliveryId: "delivery-999",
+            expiry: nil,
+            sentAt: Date(),
+            topics: [],
+            type: "",
+            opened: false,
+            priority: nil,
+            properties: [:]
+        )
+
+        // Add only existingMessage to state
+        await inAppMessageManager.dispatchAsync(action: .processInboxMessages(messages: [existingMessage]))
+
+        var state = await inAppMessageManager.state
+        XCTAssertEqual(state.inboxMessages.count, 1)
+
+        // Try to delete non-existent message
+        await inAppMessageManager.dispatchAsync(action: .inboxAction(action: .deleteMessage(message: nonExistentMessage)))
+
+        state = await inAppMessageManager.state
+        XCTAssertEqual(state.inboxMessages.count, 1)
+        XCTAssertTrue(state.inboxMessages.contains { $0.queueId == "queue-1" })
+    }
+
+    func test_inboxAction_deleteMessage_multipleMessages_expectOnlyTargetDeleted() async {
+        // Set user ID first to bypass auth middleware
+        await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: "test-user"))
+
+        let message1 = InboxMessage(
+            queueId: "queue-1",
+            deliveryId: "delivery-1",
+            expiry: nil,
+            sentAt: Date(timeIntervalSince1970: 1000),
+            topics: [],
+            type: "",
+            opened: false,
+            priority: nil,
+            properties: [:]
+        )
+
+        let message2 = InboxMessage(
+            queueId: "queue-2",
+            deliveryId: "delivery-2",
+            expiry: nil,
+            sentAt: Date(timeIntervalSince1970: 2000),
+            topics: [],
+            type: "",
+            opened: true,
+            priority: nil,
+            properties: [:]
+        )
+
+        let message3 = InboxMessage(
+            queueId: "queue-3",
+            deliveryId: "delivery-3",
+            expiry: nil,
+            sentAt: Date(timeIntervalSince1970: 3000),
+            topics: [],
+            type: "",
+            opened: false,
+            priority: nil,
+            properties: [:]
+        )
+
+        // Add all messages to state
+        await inAppMessageManager.dispatchAsync(action: .processInboxMessages(messages: [message1, message2, message3]))
+
+        var state = await inAppMessageManager.state
+        XCTAssertEqual(state.inboxMessages.count, 3)
+
+        // Delete only message2
+        await inAppMessageManager.dispatchAsync(action: .inboxAction(action: .deleteMessage(message: message2)))
+
+        state = await inAppMessageManager.state
+        XCTAssertEqual(state.inboxMessages.count, 2)
+
+        let messages = state.inboxMessages.sorted { $0.queueId < $1.queueId }
+        XCTAssertEqual(messages[0].queueId, "queue-1")
+        XCTAssertEqual(messages[1].queueId, "queue-3")
+
+        // Verify message2 is deleted
+        XCTAssertFalse(state.inboxMessages.contains { $0.queueId == "queue-2" })
+    }
 }
 
 extension InAppMessageManager {
