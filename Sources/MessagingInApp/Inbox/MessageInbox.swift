@@ -58,7 +58,7 @@ class MessageInbox: MessageInboxInstance {
     }
 
     func markMessageDeleted(message: InboxMessage) {
-        logger.logWithModuleTag("markMessageDeleted(message: \(message.describeForLogs)) called (not yet implemented)", level: .debug)
+        inAppMessageManager.dispatch(action: .inboxAction(action: .deleteMessage(message: message)))
     }
 
     func trackMessageClicked(message: InboxMessage, actionName: String?) {

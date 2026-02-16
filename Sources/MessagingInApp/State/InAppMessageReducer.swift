@@ -132,6 +132,13 @@ private func reducer(action: InAppMessageAction, state: InAppMessageState) -> In
                 return inboxMessage
             }
             return state.copy(inboxMessages: Set(updatedMessages))
+
+        case .deleteMessage(let message):
+            // Remove deleted message from state
+            let updatedMessages = state.inboxMessages.filter { inboxMessage in
+                inboxMessage.queueId != message.queueId
+            }
+            return state.copy(inboxMessages: Set(updatedMessages))
         }
 
     case .reportError:
