@@ -13,7 +13,7 @@ import Foundation
 /// ```swift
 /// CustomerIO.initializeLocation(withConfig: LocationConfig(enableLocationTracking: true))
 /// CustomerIO.location.setLastKnownLocation(clLocation)
-/// CustomerIO.location.requestLocationUpdateOnce()
+/// CustomerIO.location.requestLocationUpdate()
 /// ```
 public protocol LocationServices: AnyObject {
     /// Sets the last known location from the host app's existing location system.
@@ -36,14 +36,13 @@ public protocol LocationServices: AnyObject {
 
     /// Starts a single location update and sends the result to Customer.io (subject to config and permissions).
     /// Work runs in a background task. No-ops if location tracking is disabled or permission not granted.
-    /// Only one request at a time; further calls are ignored while a request is already in progress.
     ///
     /// The SDK does not request location permission. The host app must prompt for authorization
     /// (e.g. via `CLLocationManager.requestWhenInUseAuthorization()`) and only call this when permission is granted.
-    func requestLocationUpdateOnce()
+    func requestLocationUpdate()
 
-    /// Cancels any in-flight location request. No-op if nothing in progress. Call from an async context (e.g. `await location.stopLocationUpdates()`).
-    func stopLocationUpdates() async
+    /// Cancels any in-flight location request. No-op if nothing in progress.
+    func stopLocationUpdates()
 }
 
 // MARK: - UninitializedLocationServices
@@ -59,11 +58,11 @@ final class UninitializedLocationServices: LocationServices {
         logger.moduleNotInitialized()
     }
 
-    func requestLocationUpdateOnce() {
+    func requestLocationUpdate() {
         logger.moduleNotInitialized()
     }
 
-    func stopLocationUpdates() async {
+    func stopLocationUpdates() {
         logger.moduleNotInitialized()
     }
 }
@@ -90,11 +89,15 @@ actor LocationServicesImplementation: LocationServices {
         Task { await self.setLastKnownLocationImpl(location) }
     }
 
-    nonisolated func requestLocationUpdateOnce() {
+    nonisolated func requestLocationUpdate() {
         Task { await self.startRequestIfNeeded() }
     }
 
-    func stopLocationUpdates() async {
+    nonisolated func stopLocationUpdates() {
+        Task { await self.stopLocationUpdatesImpl() }
+    }
+
+    private func stopLocationUpdatesImpl() async {
         if let task = currentTask {
             currentTask = nil
             task.cancel()
@@ -146,7 +149,7 @@ actor LocationServicesImplementation: LocationServices {
 
     private func runLocationRequest() async {
         guard config.enableLocationTracking else {
-            logger.trackingDisabledIgnoringRequestLocationUpdateOnce()
+            logger.trackingDisabledIgnoringRequestLocationUpdate()
             return
         }
         if let result = await locationProvider.requestLocationOnce() {

@@ -24,10 +24,15 @@ class LocationTestViewController: BaseViewController {
     var longitudeTextField: ThemeTextField!
     var setManualLocationButton: ThemeButton!
     var useCurrentLocationButton: ThemeButton!
+    var requestSdkLocationOnceButton: ThemeButton!
+    var stopLocationUpdatesButton: ThemeButton!
 
     /// Tracks if we're in the "user tapped Use Current Location and we're waiting for permission" flow.
     /// Used to avoid auto-starting a location fetch when the screen opens and auth is already granted.
     var userRequestedCurrentLocation = false
+
+    /// Tracks if we're in the "user tapped Request location once (SDK) and we're waiting for permission" flow.
+    var userRequestedSdkLocationUpdate = false
 
     let presetLocations: [PresetLocation] = [
         PresetLocation(name: "New York", latitude: 40.7128, longitude: -74.0060),
@@ -67,27 +72,38 @@ class LocationTestViewController: BaseViewController {
         title = "Location Test"
         view.backgroundColor = .white
 
-        scrollView = UIScrollView()
-        scrollView.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(scrollView)
+        let (scroll, contentView) = setupScrollViewAndContent()
+        scrollView = scroll
+
+        let stackView = setupStackView(in: contentView)
+        addOptionSections(to: stackView)
+    }
+
+    private func setupScrollViewAndContent() -> (UIScrollView, UIView) {
+        let scroll = UIScrollView()
+        scroll.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(scroll)
 
         let contentView = UIView()
         contentView.translatesAutoresizingMaskIntoConstraints = false
-        scrollView.addSubview(contentView)
+        scroll.addSubview(contentView)
 
         NSLayoutConstraint.activate([
-            scrollView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
-            scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            scrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            scroll.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
+            scroll.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            scroll.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            scroll.bottomAnchor.constraint(equalTo: view.bottomAnchor),
 
-            contentView.topAnchor.constraint(equalTo: scrollView.topAnchor),
-            contentView.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor),
-            contentView.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor),
-            contentView.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor),
-            contentView.widthAnchor.constraint(equalTo: scrollView.widthAnchor)
+            contentView.topAnchor.constraint(equalTo: scroll.topAnchor),
+            contentView.leadingAnchor.constraint(equalTo: scroll.leadingAnchor),
+            contentView.trailingAnchor.constraint(equalTo: scroll.trailingAnchor),
+            contentView.bottomAnchor.constraint(equalTo: scroll.bottomAnchor),
+            contentView.widthAnchor.constraint(equalTo: scroll.widthAnchor)
         ])
+        return (scroll, contentView)
+    }
 
+    private func setupStackView(in contentView: UIView) -> UIStackView {
         let stackView = UIStackView()
         stackView.axis = .vertical
         stackView.spacing = 16
@@ -100,35 +116,36 @@ class LocationTestViewController: BaseViewController {
             stackView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -20),
             stackView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -20)
         ])
+        return stackView
+    }
 
-        // Option 1: Quick Presets
+    private func addOptionSections(to stackView: UIStackView) {
         stackView.addArrangedSubview(createOptionSection(
             title: "OPTION 1: QUICK PRESETS",
             description: "Tap a city to set its coordinates",
             content: createPresetsGrid()
         ))
-
-        // OR separator
         stackView.addArrangedSubview(createOrSeparator())
 
-        // Option 2: Device Location
         stackView.addArrangedSubview(createOptionSection(
-            title: "OPTION 2: DEVICE LOCATION",
-            description: "Fetches coordinates from device (GPS, Wi‑Fi, or cell). Label shows source when known (e.g. Simulated).",
+            title: "OPTION 2: SDK LOCATION",
+            description: "Ask for permission if needed, then SDK fetches location once. Use \"Stop updates\" to cancel.",
+            content: createSdkLocationButtons()
+        ))
+        stackView.addArrangedSubview(createOrSeparator())
+
+        stackView.addArrangedSubview(createOptionSection(
+            title: "OPTION 3: MANUALLY SET FROM DEVICE",
+            description: "Fetches coordinates from device (GPS, Wi‑Fi, or cell) and sends them to the SDK via setLastKnownLocation. Label shows source when known (e.g. Simulated).",
             content: createDeviceLocationButton()
         ))
-
-        // OR separator
         stackView.addArrangedSubview(createOrSeparator())
 
-        // Option 3: Manual Entry
         stackView.addArrangedSubview(createOptionSection(
-            title: "OPTION 3: MANUAL ENTRY",
+            title: "OPTION 4: MANUAL ENTRY",
             description: "Enter custom coordinates",
             content: createManualEntrySection()
         ))
-
-        // Status section
         stackView.addArrangedSubview(createStatusSection())
     }
 }

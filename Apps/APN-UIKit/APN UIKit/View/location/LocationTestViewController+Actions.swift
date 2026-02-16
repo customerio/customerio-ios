@@ -15,6 +15,14 @@ extension LocationTestViewController {
         requestCurrentLocation()
     }
 
+    @objc func requestSdkLocationOnceTapped() {
+        requestSdkLocationUpdateOnce()
+    }
+
+    @objc func stopLocationUpdatesTapped() {
+        stopSdkLocationUpdates()
+    }
+
     @objc func setManualLocationTapped() {
         setManualLocation()
     }
