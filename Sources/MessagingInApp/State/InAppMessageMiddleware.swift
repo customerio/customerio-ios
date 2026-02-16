@@ -247,24 +247,67 @@ func messageQueueProcessorMiddleware(logger: Logger) -> InAppMessageMiddleware {
     }
 }
 
-func inboxMessageMiddleware(logger: Logger) -> InAppMessageMiddleware {
-    middleware { _, _, next, action in
+private func deduplicateAndSortInboxMessages(_ messages: [InboxMessage]) -> [InboxMessage] {
+    // Deduplicate by queueId - keep first occurrence of each unique queueId
+    let uniqueMessages = messages.reduce(into: [InboxMessage]()) { result, message in
+        if !result.contains(where: { $0.queueId == message.queueId }) {
+            result.append(message)
+        }
+    }
+    // Sort by sentAt in descending order (latest first)
+    return uniqueMessages.sorted { $0.sentAt > $1.sentAt }
+}
+
+func inboxMessageMiddleware(logger: Logger, logManager: LogManager, eventBusHandler: EventBusHandler) -> InAppMessageMiddleware {
+    middleware { _, getState, next, action in
+        let state = getState()
+
         // Deduplicate and sort messages before processing
         if case .processInboxMessages(let messages) = action {
-            if messages.isEmpty {
+            guard !messages.isEmpty else {
                 return next(action)
             }
+            let sortedMessages = deduplicateAndSortInboxMessages(messages)
+            return next(.processInboxMessages(messages: sortedMessages))
+        }
 
-            // Deduplicate by queueId - keep first occurrence of each unique queueId
-            let uniqueMessages = messages.reduce(into: [InboxMessage]()) { result, message in
-                if !result.contains(where: { $0.queueId == message.queueId }) {
-                    result.append(message)
+        // Handle inbox actions
+        if case .inboxAction(let inboxAction) = action {
+            // Find current message in state (shared for all inbox actions)
+            let currentMessage = state.inboxMessages.first { $0.queueId == inboxAction.message.queueId }
+
+            // Only proceed if message exists in state
+            if let currentMessage = currentMessage {
+                // Handle all inbox related actions
+                switch inboxAction {
+                case .updateOpened(_, let opened):
+                    // Only proceed if state is actually changing
+                    guard currentMessage.opened != opened else {
+                        logger.logWithModuleTag("Skipping inbox message update for \(currentMessage.describeForLogs) - already in desired state (opened=\(opened))", level: .debug)
+                        return next(action)
+                    }
+
+                    // Call API to update opened status on server using current message from state
+                    logManager.updateInboxMessageOpened(state: state, queueId: currentMessage.queueId, opened: opened) { response in
+                        if case .failure(let error) = response {
+                            logger.logWithModuleTag("Failed to update inbox message \(currentMessage.describeForLogs) opened status: \(error)", level: .error)
+                        }
+                    }
+
+                    // Track metric when transitioning from unopened to opened
+                    if opened {
+                        logger.logWithModuleTag("Inbox message opened: \(currentMessage.describeForLogs)", level: .debug)
+                        if let deliveryId = currentMessage.deliveryId {
+                            eventBusHandler.postEvent(TrackInAppMetricEvent(deliveryID: deliveryId, event: InAppMetric.opened.rawValue))
+                        }
+                    }
                 }
+            } else {
+                logger.logWithModuleTag("Skipping inbox action for \(inboxAction.message.describeForLogs) - message not found in state", level: .debug)
             }
 
-            // Sort by sentAt in descending order (latest first)
-            let sortedMessages = uniqueMessages.sorted { $0.sentAt > $1.sentAt }
-            return next(.processInboxMessages(messages: sortedMessages))
+            // Always pass action to reducer to update local state
+            return next(action)
         }
 
         return next(action)

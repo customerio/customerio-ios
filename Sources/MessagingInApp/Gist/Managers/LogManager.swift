@@ -50,4 +50,27 @@ class LogManager {
             completionHandler(.failure(error))
         }
     }
+
+    func updateInboxMessageOpened(state: InAppMessageState, queueId: String, opened: Bool, completionHandler: @escaping (Result<Void, Error>) -> Void) {
+        do {
+            try gistQueueNetwork.request(
+                state: state,
+                request: LogEndpoint.updateInboxMessageOpened(queueId: queueId, opened: opened),
+                completionHandler: { response in
+                    switch response {
+                    case .success(let (_, response)):
+                        if response.statusCode == 200 {
+                            completionHandler(.success(()))
+                        } else {
+                            completionHandler(.failure(GistNetworkError.requestFailed))
+                        }
+                    case .failure(let error):
+                        completionHandler(.failure(error))
+                    }
+                }
+            )
+        } catch {
+            completionHandler(.failure(error))
+        }
+    }
 }
