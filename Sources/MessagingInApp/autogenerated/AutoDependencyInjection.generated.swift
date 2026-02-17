@@ -79,6 +79,9 @@ extension DIGraphShared {
         _ = inAppMessageManager
         countDependenciesResolved += 1
 
+        _ = inboxMessageCacheManager
+        countDependenciesResolved += 1
+
         _ = logManager
         countDependenciesResolved += 1
 
@@ -197,6 +200,18 @@ extension DIGraphShared {
         InAppMessageStoreManager(logger: logger, threadUtil: threadUtil, logManager: logManager, gistDelegate: gistDelegate, anonymousMessageManager: anonymousMessageManager, eventBusHandler: eventBusHandler)
     }
 
+    // InboxMessageCacheManager (singleton)
+    var inboxMessageCacheManager: InboxMessageCacheManager {
+        getOverriddenInstance() ??
+            getSingletonOrCreate {
+                _get_inboxMessageCacheManager()
+            }
+    }
+
+    private func _get_inboxMessageCacheManager() -> InboxMessageCacheManager {
+        InboxMessageCacheManager(keyValueStore: sharedKeyValueStorage, logger: logger)
+    }
+
     // LogManager
     var logManager: LogManager {
         getOverriddenInstance() ??
@@ -204,7 +219,7 @@ extension DIGraphShared {
     }
 
     private var newLogManager: LogManager {
-        LogManager(gistQueueNetwork: gistQueueNetwork)
+        LogManager(gistQueueNetwork: gistQueueNetwork, inboxMessageCache: inboxMessageCacheManager)
     }
 
     // MessageInboxInstance (singleton)
@@ -228,7 +243,7 @@ extension DIGraphShared {
     }
 
     private func _get_queueManager() -> QueueManager {
-        QueueManager(keyValueStore: sharedKeyValueStorage, gistQueueNetwork: gistQueueNetwork, inAppMessageManager: inAppMessageManager, anonymousMessageManager: anonymousMessageManager, logger: logger)
+        QueueManager(keyValueStore: sharedKeyValueStorage, gistQueueNetwork: gistQueueNetwork, inAppMessageManager: inAppMessageManager, anonymousMessageManager: anonymousMessageManager, inboxMessageCache: inboxMessageCacheManager, logger: logger)
     }
 
     // ApplicationStateProvider

@@ -4,9 +4,11 @@ import Foundation
 // sourcery: InjectRegisterShared = "LogManager"
 class LogManager {
     let gistQueueNetwork: GistQueueNetwork
+    let inboxMessageCache: InboxMessageCacheManager
 
-    init(gistQueueNetwork: GistQueueNetwork) {
+    init(gistQueueNetwork: GistQueueNetwork, inboxMessageCache: InboxMessageCacheManager) {
         self.gistQueueNetwork = DIGraphShared.shared.gistQueueNetwork
+        self.inboxMessageCache = inboxMessageCache
     }
 
     func logView(state: InAppMessageState, message: Message, completionHandler: @escaping (Result<Void, Error>) -> Void) {
@@ -53,6 +55,9 @@ class LogManager {
 
     func updateInboxMessageOpened(state: InAppMessageState, queueId: String, opened: Bool, completionHandler: @escaping (Result<Void, Error>) -> Void) {
         do {
+            // Save opened status locally for cached responses
+            inboxMessageCache.saveOpenedStatus(queueId: queueId, opened: opened)
+
             try gistQueueNetwork.request(
                 state: state,
                 request: LogEndpoint.updateInboxMessageOpened(queueId: queueId, opened: opened),
@@ -76,6 +81,9 @@ class LogManager {
 
     func markInboxMessageDeleted(state: InAppMessageState, queueId: String, completionHandler: @escaping (Result<Void, Error>) -> Void) {
         do {
+            // Clear any cached opened status for deleted message
+            inboxMessageCache.clearOpenedStatus(queueId: queueId)
+
             try gistQueueNetwork.request(
                 state: state,
                 request: LogEndpoint.logUserMessageView(queueId: queueId),
