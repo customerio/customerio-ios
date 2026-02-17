@@ -95,7 +95,6 @@ public final class CioMessagingInApp.InboxMessage {
     priority: Int?,
     properties: List<String: Any>
 );
-	public fun func hash(into hasher: inout Hasher);
 	public fun func == (lhs: InboxMessage, rhs: InboxMessage) -> Boolean;
 }
 public interface CioMessagingInApp.InboxMessageChangeListener {
