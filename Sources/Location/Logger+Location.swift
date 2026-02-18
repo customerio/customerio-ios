@@ -27,9 +27,9 @@ extension Logger {
         )
     }
 
-    func trackingDisabledIgnoringRequestLocationUpdateOnce() {
+    func trackingDisabledIgnoringRequestLocationUpdate() {
         debug(
-            "Location tracking is disabled, ignoring requestLocationUpdateOnce call",
+            "Location tracking is disabled, ignoring requestLocationUpdate call",
             locationTag
         )
     }

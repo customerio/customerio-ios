@@ -12,7 +12,7 @@ This module is being developed as part of the Customer.io iOS SDK to provide loc
 
 - [x] Milestone 0: Module structure and configuration
 - [ ] Milestone 1: Manual location API (`setLastKnownLocation`)
-- [ ] Milestone 2: SDK-managed location (`requestLocationUpdateOnce`, `requestLocationUpdates`)
+- [ ] Milestone 2: SDK-managed location (`requestLocationUpdate`, `requestLocationUpdates`)
 - [ ] Milestone 3: Location filtering and backend protection
 - [ ] Milestone 4: Debugging and diagnostics
 - [ ] Milestone 6: Publishing

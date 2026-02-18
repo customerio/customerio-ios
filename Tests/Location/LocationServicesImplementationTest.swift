@@ -21,7 +21,7 @@ struct LocationServicesImplementationTests {
         )
     }
 
-    /// Yields so the fire-and-forget task from requestLocationUpdateOnce() can run (no sleep).
+    /// Yields so the fire-and-forget task from requestLocationUpdate() can run (no sleep).
     private func yieldForLocationTask() async {
         for _ in 0 ..< 40 {
             await Task.yield()
@@ -124,10 +124,10 @@ struct LocationServicesImplementationTests {
         }
     }
 
-    // MARK: - requestLocationUpdateOnce / stopLocationUpdates (use mock provider only)
+    // MARK: - requestLocationUpdate / stopLocationUpdates (use mock provider only)
 
     @Test
-    func requestLocationUpdateOnce_givenAuthorizedAndSuccess_expectEventPosted() async {
+    func requestLocationUpdate_givenAuthorizedAndSuccess_expectEventPosted() async {
         let mockProvider = MockLocationProvider()
         await mockProvider.setResult(.success(LocationSnapshot(
             latitude: 37.7749,
@@ -144,7 +144,7 @@ struct LocationServicesImplementationTests {
             locationProvider: mockProvider
         )
 
-        service.requestLocationUpdateOnce()
+        service.requestLocationUpdate()
         await yieldForLocationTask()
 
         #expect(eventBusHandlerMock.postEventCallsCount == 1)
@@ -155,7 +155,7 @@ struct LocationServicesImplementationTests {
     }
 
     @Test
-    func requestLocationUpdateOnce_givenTrackingDisabled_expectNoEvent() async {
+    func requestLocationUpdate_givenTrackingDisabled_expectNoEvent() async {
         let mockProvider = MockLocationProvider()
         let eventBusHandlerMock = EventBusHandlerMock()
         let service = makeImplementation(
@@ -165,7 +165,7 @@ struct LocationServicesImplementationTests {
             locationProvider: mockProvider
         )
 
-        service.requestLocationUpdateOnce()
+        service.requestLocationUpdate()
         await yieldForLocationTask()
 
         #expect(eventBusHandlerMock.postEventCallsCount == 0)
@@ -186,9 +186,10 @@ struct LocationServicesImplementationTests {
             locationProvider: mockProvider
         )
 
-        service.requestLocationUpdateOnce()
+        service.requestLocationUpdate()
         await yieldForLocationTask()
-        await service.stopLocationUpdates()
+        service.stopLocationUpdates()
+        await yieldForLocationTask()
 
         let cancelCount = await mockProvider.cancelCallCount
         #expect(cancelCount >= 1)
