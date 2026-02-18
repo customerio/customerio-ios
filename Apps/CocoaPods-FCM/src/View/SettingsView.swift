@@ -1,9 +1,9 @@
-import CioInternalCommon
 import CioDataPipelines
+import CioInternalCommon
+import Combine
 import SampleAppsCommon
 import SwiftUI
 import UIKit
-import Combine
 
 struct SettingsView: View {
     var siteId: String?

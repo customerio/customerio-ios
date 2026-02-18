@@ -1,5 +1,5 @@
-import CioInternalCommon
 import CioDataPipelines
+import CioInternalCommon
 import SwiftUI
 
 struct CustomAttributeView: View {
