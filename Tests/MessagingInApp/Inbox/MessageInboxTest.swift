@@ -186,8 +186,11 @@ class MessageInboxTest: UnitTest {
     // MARK: - markMessageOpened tests
 
     func test_markMessageOpened_expectDispatchesUpdateOpenedAction() async {
-        // Setup mock to return empty task
-        inAppMessageManagerMock.dispatchReturnValue = Task {}
+        let dispatched = expectation(description: "dispatch called")
+        inAppMessageManagerMock.dispatchClosure = { _, _ in
+            dispatched.fulfill()
+            return Task {}
+        }
 
         let message = InboxMessage(
             queueId: "queue-1",
@@ -203,8 +206,7 @@ class MessageInboxTest: UnitTest {
 
         messageInbox.markMessageOpened(message: message)
 
-        // Wait for MainActor Task to complete
-        try? await Task.sleep(nanoseconds: 50_000_000)
+        await fulfillment(of: [dispatched], timeout: 1.0)
 
         XCTAssertEqual(inAppMessageManagerMock.dispatchCallsCount, 1)
         guard case .inboxAction(let inboxAction) = inAppMessageManagerMock.dispatchReceivedArguments?.action else {
@@ -223,8 +225,11 @@ class MessageInboxTest: UnitTest {
     // MARK: - markMessageUnopened tests
 
     func test_markMessageUnopened_expectDispatchesUpdateOpenedAction() async {
-        // Setup mock to return empty task
-        inAppMessageManagerMock.dispatchReturnValue = Task {}
+        let dispatched = expectation(description: "dispatch called")
+        inAppMessageManagerMock.dispatchClosure = { _, _ in
+            dispatched.fulfill()
+            return Task {}
+        }
 
         let message = InboxMessage(
             queueId: "queue-1",
@@ -240,8 +245,7 @@ class MessageInboxTest: UnitTest {
 
         messageInbox.markMessageUnopened(message: message)
 
-        // Wait for MainActor Task to complete
-        try? await Task.sleep(nanoseconds: 50_000_000)
+        await fulfillment(of: [dispatched], timeout: 1.0)
 
         XCTAssertEqual(inAppMessageManagerMock.dispatchCallsCount, 1)
         guard case .inboxAction(let inboxAction) = inAppMessageManagerMock.dispatchReceivedArguments?.action else {
@@ -260,8 +264,11 @@ class MessageInboxTest: UnitTest {
     // MARK: - markMessageDeleted tests
 
     func test_markMessageDeleted_expectDispatchesDeleteMessageAction() async {
-        // Setup mock to return empty task
-        inAppMessageManagerMock.dispatchReturnValue = Task {}
+        let dispatched = expectation(description: "dispatch called")
+        inAppMessageManagerMock.dispatchClosure = { _, _ in
+            dispatched.fulfill()
+            return Task {}
+        }
 
         let message = InboxMessage(
             queueId: "queue-1",
@@ -277,8 +284,7 @@ class MessageInboxTest: UnitTest {
 
         messageInbox.markMessageDeleted(message: message)
 
-        // Wait for MainActor Task to complete
-        try? await Task.sleep(nanoseconds: 50_000_000)
+        await fulfillment(of: [dispatched], timeout: 1.0)
 
         XCTAssertEqual(inAppMessageManagerMock.dispatchCallsCount, 1)
         guard case .inboxAction(let inboxAction) = inAppMessageManagerMock.dispatchReceivedArguments?.action else {
@@ -296,8 +302,11 @@ class MessageInboxTest: UnitTest {
     // MARK: - trackMessageClicked tests
 
     func test_trackMessageClicked_withActionName_expectDispatchesTrackClickedAction() async {
-        // Setup mock to return empty task
-        inAppMessageManagerMock.dispatchReturnValue = Task {}
+        let dispatched = expectation(description: "dispatch called")
+        inAppMessageManagerMock.dispatchClosure = { _, _ in
+            dispatched.fulfill()
+            return Task {}
+        }
 
         let message = InboxMessage(
             queueId: "queue-1",
@@ -313,8 +322,7 @@ class MessageInboxTest: UnitTest {
 
         messageInbox.trackMessageClicked(message: message, actionName: "view_details")
 
-        // Wait for MainActor Task to complete
-        try? await Task.sleep(nanoseconds: 50_000_000)
+        await fulfillment(of: [dispatched], timeout: 1.0)
 
         XCTAssertEqual(inAppMessageManagerMock.dispatchCallsCount, 1)
         guard case .inboxAction(let inboxAction) = inAppMessageManagerMock.dispatchReceivedArguments?.action else {
@@ -331,8 +339,11 @@ class MessageInboxTest: UnitTest {
     }
 
     func test_trackMessageClicked_withoutActionName_expectDispatchesTrackClickedAction() async {
-        // Setup mock to return empty task
-        inAppMessageManagerMock.dispatchReturnValue = Task {}
+        let dispatched = expectation(description: "dispatch called")
+        inAppMessageManagerMock.dispatchClosure = { _, _ in
+            dispatched.fulfill()
+            return Task {}
+        }
 
         let message = InboxMessage(
             queueId: "queue-1",
@@ -348,8 +359,7 @@ class MessageInboxTest: UnitTest {
 
         messageInbox.trackMessageClicked(message: message, actionName: nil)
 
-        // Wait for MainActor Task to complete
-        try? await Task.sleep(nanoseconds: 50_000_000)
+        await fulfillment(of: [dispatched], timeout: 1.0)
 
         XCTAssertEqual(inAppMessageManagerMock.dispatchCallsCount, 1)
         guard case .inboxAction(let inboxAction) = inAppMessageManagerMock.dispatchReceivedArguments?.action else {
