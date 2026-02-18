@@ -77,4 +77,18 @@ extension Logger {
             locationTag
         )
     }
+
+    func locationSyncFiltered() {
+        debug(
+            "Location sync skipped: 24h or 1 km guardrail not met",
+            locationTag
+        )
+    }
+
+    func locationCacheCleared() {
+        debug(
+            "Location cache cleared (logout/reset)",
+            locationTag
+        )
+    }
 }

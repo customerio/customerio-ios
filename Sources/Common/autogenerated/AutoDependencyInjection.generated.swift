@@ -101,6 +101,9 @@ extension DIGraphShared {
         _ = queueStorage
         countDependenciesResolved += 1
 
+        _ = identificationStateHolder
+        countDependenciesResolved += 1
+
         _ = jsonAdapter
         countDependenciesResolved += 1
 
@@ -312,6 +315,18 @@ extension DIGraphShared {
 
     private var newQueueStorage: QueueStorage {
         FileManagerQueueStorage(fileStorage: fileStorage, jsonAdapter: jsonAdapter, lockManager: lockManager, logger: logger, dateUtil: dateUtil, inventoryStore: queueInventoryMemoryStore)
+    }
+
+    // IdentificationStateHolder (singleton)
+    public var identificationStateHolder: IdentificationStateHolder {
+        getOverriddenInstance() ??
+            getSingletonOrCreate {
+                _get_identificationStateHolder()
+            }
+    }
+
+    private func _get_identificationStateHolder() -> IdentificationStateHolder {
+        IdentificationStateHolder(eventBusHandler: eventBusHandler)
     }
 
     // JsonAdapter

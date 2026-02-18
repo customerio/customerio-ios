@@ -33,13 +33,34 @@ public extension CustomerIO {
             DIGraphShared.shared.logger.reconfigurationNotSupported()
             return
         }
-        let locationProvider = CoreLocationProvider(logger: DIGraphShared.shared.logger)
+        let di = DIGraphShared.shared
+        let storage = LastLocationStorageImpl(storage: di.sharedKeyValueStorage)
+        let filter = LocationFilter(storage: storage, dateUtil: di.dateUtil)
+        let coordinator = LocationSyncCoordinator(
+            storage: storage,
+            filter: filter,
+            eventBusHandler: di.eventBusHandler,
+            identificationState: di.identificationStateHolder,
+            dateUtil: di.dateUtil,
+            logger: di.logger
+        )
+        registerLocationEventSubscriptions(coordinator: coordinator, eventBusHandler: di.eventBusHandler)
+        let locationProvider = CoreLocationProvider(logger: di.logger)
         locationServices = LocationServicesImplementation(
             config: config,
-            logger: DIGraphShared.shared.logger,
-            eventBusHandler: DIGraphShared.shared.eventBusHandler,
-            locationProvider: locationProvider
+            logger: di.logger,
+            locationProvider: locationProvider,
+            locationSyncCoordinator: coordinator
         )
+    }
+
+    private static func registerLocationEventSubscriptions(coordinator: LocationSyncCoordinator, eventBusHandler: EventBusHandler) {
+        eventBusHandler.addObserver(ProfileIdentifiedEvent.self) { _ in
+            Task { await coordinator.syncCachedLocationIfNeeded() }
+        }
+        eventBusHandler.addObserver(ResetEvent.self) { _ in
+            Task { await coordinator.clearCache() }
+        }
     }
 
     /// Access the Location module. Use after calling `CustomerIO.initializeLocation(withConfig:)`.

@@ -13,6 +13,8 @@ class DataPipelinePublishedEvents: EventPlugin {
 
     public required init(diGraph: DIGraphShared) {
         self.eventBusHandler = diGraph.eventBusHandler
+        // Ensure IdentificationStateHolder is created and subscribed before postProfileAlreadyIdentified() runs.
+        _ = diGraph.identificationStateHolder
     }
 
     func identify(event: IdentifyEvent) -> IdentifyEvent? {
