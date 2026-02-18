@@ -8,6 +8,7 @@ class QueueManager {
     private let gistQueueNetwork: GistQueueNetwork
     private let inAppMessageManager: InAppMessageManager
     private let anonymousMessageManager: AnonymousMessageManager
+    private let inboxMessageCache: InboxMessageCacheManager
     private let logger: Logger
 
     private var cachedFetchUserQueueResponse: Data? {
@@ -24,17 +25,20 @@ class QueueManager {
         gistQueueNetwork: GistQueueNetwork,
         inAppMessageManager: InAppMessageManager,
         anonymousMessageManager: AnonymousMessageManager,
+        inboxMessageCache: InboxMessageCacheManager,
         logger: Logger
     ) {
         self.keyValueStore = keyValueStore
         self.gistQueueNetwork = gistQueueNetwork
         self.inAppMessageManager = inAppMessageManager
         self.anonymousMessageManager = anonymousMessageManager
+        self.inboxMessageCache = inboxMessageCache
         self.logger = logger
     }
 
     func clearCachedUserQueue() {
         cachedFetchUserQueueResponse = nil
+        inboxMessageCache.clearAll()
     }
 
     func fetchUserQueue(state: InAppMessageState, completionHandler: @escaping (Result<[Message]?, Error>) -> Void) {
@@ -52,7 +56,7 @@ class QueueManager {
                         }
 
                         do {
-                            let userQueue = try self.parseResponseBody(lastCachedResponse)
+                            let userQueue = try self.parseResponseBody(lastCachedResponse, fromCache: true)
                             let processedQueue = self.processAnonymousMessages(userQueue)
 
                             completionHandler(.success(processedQueue))
@@ -61,7 +65,12 @@ class QueueManager {
                         }
                     default:
                         do {
-                            let userQueue = try self.parseResponseBody(data)
+                            let userQueue = try self.parseResponseBody(data, fromCache: false)
+
+                            // Clear cache only on successful 200 response after successful parsing
+                            if response.statusCode == 200 {
+                                self.inboxMessageCache.clearAll()
+                            }
 
                             self.cachedFetchUserQueueResponse = data
                             let processedQueue = self.processAnonymousMessages(userQueue)
@@ -119,7 +128,7 @@ class QueueManager {
         return combinedMessages
     }
 
-    private func parseResponseBody(_ responseBody: Data) throws -> [InAppMessageResponse] {
+    private func parseResponseBody(_ responseBody: Data, fromCache: Bool) throws -> [InAppMessageResponse] {
         guard let responseObject = try JSONSerialization.jsonObject(
             with: responseBody,
             options: .allowFragments
@@ -133,8 +142,23 @@ class QueueManager {
         let inAppMessages = queueResponse.inAppMessages
         logger.logWithModuleTag("Found \(inAppMessages.count) in-app messages, \(inboxMessages.count) inbox messages", level: .debug)
 
+        // For cached responses (304), apply locally cached opened status to preserve user's changes.
+        // For fresh responses (200), use server's data as source of truth.
+        let inboxMessagesMapped: [InboxMessage]
+        if fromCache {
+            // 304: Apply cached opened status if available
+            inboxMessagesMapped = inboxMessages.map { item -> InboxMessage in
+                let message = item.toDomainModel()
+                if let cachedOpened = inboxMessageCache.getOpenedStatus(queueId: message.queueId) {
+                    return message.copy(opened: cachedOpened)
+                }
+                return message
+            }
+        } else {
+            // Fresh response: Use server data
+            inboxMessagesMapped = inboxMessages.map { $0.toDomainModel() }
+        }
         // Dispatch inbox messages to update state
-        let inboxMessagesMapped = inboxMessages.compactMap { $0.toDomainModel() }
         inAppMessageManager.dispatch(action: .processInboxMessages(messages: inboxMessagesMapped))
 
         // Return in-app messages for existing flow

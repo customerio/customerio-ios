@@ -45,6 +45,7 @@ class InAppMessageStateTests: IntegrationTest {
             gistQueueNetwork: gistQueueNetworkMock,
             inAppMessageManager: inAppMessageManager,
             anonymousMessageManager: diGraphShared.anonymousMessageManager,
+            inboxMessageCache: diGraphShared.inboxMessageCacheManager,
             logger: diGraphShared.logger
         )
 

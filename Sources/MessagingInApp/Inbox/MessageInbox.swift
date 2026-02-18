@@ -53,18 +53,20 @@ class MessageInbox: MessageInboxInstance {
 
     @MainActor
     func addChangeListener(_ listener: InboxMessageChangeListener, topic: String?) {
+        // Add listener to array immediately to prevent remove-before-add race condition
         let registration = ListenerRegistration(listener: listener, topic: topic)
         listeners.append(registration)
 
-        // Notify listener immediately with current state
-        // Capture listener weakly to avoid retaining it if it's removed before callback completes
-        Task { [weak listener] in
-            guard let listener = listener else { return }
+        // Fetch current state and notify asynchronously
+        Task { @MainActor [weak self, weak listener] in
+            guard let self = self, let listener = listener else { return }
 
             let state = await inAppMessageManager.state
             let messages = Array(state.inboxMessages)
-            let filteredMessages = filterMessagesByTopic(messages: messages, topic: topic)
-            notifyListener(listener, messages: filteredMessages)
+            let filteredMessages = self.filterMessagesByTopic(messages: messages, topic: topic)
+
+            // Notify with the current state
+            self.notifyListener(listener, messages: filteredMessages)
         }
     }
 
