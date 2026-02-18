@@ -25,18 +25,4 @@ extension MessagingPush: MessagingPushFCMInstance {
     ) {
         MessagingPushFCM.shared.application(application, didFailToRegisterForRemoteNotificationsWithError: error)
     }
-
-    #if canImport(UserNotifications)
-    @discardableResult
-    public func didReceive(
-        _ request: UNNotificationRequest,
-        withContentHandler contentHandler: @escaping (UNNotificationContent) -> Void
-    ) -> Bool {
-        MessagingPushFCM.shared.didReceive(request, withContentHandler: contentHandler)
-    }
-
-    public func serviceExtensionTimeWillExpire() {
-        MessagingPushFCM.shared.serviceExtensionTimeWillExpire()
-    }
-    #endif
 }
