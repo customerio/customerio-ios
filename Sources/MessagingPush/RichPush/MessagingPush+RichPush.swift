@@ -60,20 +60,36 @@ extension MessagingPushImplementation {
         if moduleConfig.autoTrackPushEvents {
             pushLogger.logTrackingPushMessageDelivered(deliveryId: pushCioDeliveryInfo.id)
 
-            trackMetricFromNSE(deliveryID: pushCioDeliveryInfo.id, event: .delivered, deviceToken: pushCioDeliveryInfo.token)
+            // Access richPushDeliveryTracker from DIGraphShared.shared directly as it is only required for NSE.
+            // Keeping it as class property results in initialization of UserAgentUtil before SDK client is overridden by wrapper SDKs.
+            // In future, we can improve how we access SdkClient so that we don't need to worry about initialization order.
+            let coordinator = NSEOperationCoordinator(
+                push: push,
+                contentHandler: contentHandler,
+                richPushHandler: RichPushRequestHandler.shared,
+                pushDeliveryTracker: DIGraphShared.shared.richPushDeliveryTracker,
+                logger: logger
+            )
+
+            // Store coordinator reference for timeout handling
+            currentCoordinator = coordinator
+
+            // Start coordinated operations
+            coordinator.start()
         } else {
             pushLogger.logPushMetricsAutoTrackingDisabled()
-        }
 
-        RichPushRequestHandler.shared.startRequest(
-            push: push
-        ) { composedRichPush in
-            self.logger.debug("rich push was composed \(composedRichPush).")
+            // No metrics tracking, just handle rich push processing
+            RichPushRequestHandler.shared.startRequest(
+                push: push
+            ) { composedRichPush in
+                self.logger.debug("rich push was composed \(composedRichPush).")
 
-            // This conditional will only work in production and not in automated tests. But this file cannot be in automated tests so this conditional is OK for now.
-            if let composedRichPush = composedRichPush as? UNNotificationWrapper {
-                self.logger.info("Customer.io push processing is done!")
-                contentHandler(composedRichPush.notificationContent)
+                // This conditional will only work in production and not in automated tests. But this file cannot be in automated tests so this conditional is OK for now.
+                if let composedRichPush = composedRichPush as? UNNotificationWrapper {
+                    self.logger.info("Customer.io push processing is done!")
+                    contentHandler(composedRichPush.notificationContent)
+                }
             }
         }
 
@@ -87,7 +103,14 @@ extension MessagingPushImplementation {
     func serviceExtensionTimeWillExpire() {
         logger.info("notification service time will expire. Stopping all notification requests early.")
 
-        RichPushRequestHandler.shared.stopAll()
+        // Let coordinator handle timeout gracefully if available
+        if let coordinator = currentCoordinator {
+            coordinator.handleTimeWillExpire()
+            currentCoordinator = nil
+        } else {
+            // Fallback to original behavior if no coordinator
+            RichPushRequestHandler.shared.stopAll()
+        }
     }
     #endif
 }
