@@ -51,6 +51,11 @@ inputs:
     type: string
     required: false
     default: ''
+  xcode-version:
+    description: 'Xcode version to use for the build (e.g. "26.2"). When set, the build uses this version so size diffs compare the same toolchain. Omit to use the setup-ios action default.'
+    type: string
+    required: false
+    default: ''
   SLACK_WEBHOOK_URL:
     description: "Slack Webhook URL for sample app notifications"
     required: false
@@ -69,7 +74,7 @@ runs:
   steps:
     - uses: customerio/mobile-ci-tools/github-actions/ios/setup-ios/v1@MacOS-15+iOS-26
       with:
-        xcode-version: '26.2'
+        xcode-version: ${{ inputs.xcode-version }}
 
     - name: Install CLI tools used in CI script 
       shell: bash

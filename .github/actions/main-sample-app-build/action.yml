@@ -12,6 +12,11 @@ inputs:
     description: 'Maps to the secret, GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64. Used for code signing. See the Fastlane config files to learn more.'
     type: string
     required: true
+  xcode-version:
+    description: 'Xcode version used for the main build (e.g. "26.2"). When set, the main build and cache key use this version so size diffs compare the same toolchain.'
+    type: string
+    required: false
+    default: ''
 
 outputs:
   apn-app-xcarchive-path:
@@ -30,7 +35,11 @@ runs:
       run: |
         echo "APN_SAMPLE_APP_BUILD_PATH=Apps/APN-UIKit/build" >> $GITHUB_ENV
         echo "BUILD_FILE_NAME=MainBranchApp.xcarchive" >> $GITHUB_ENV
-        echo "CACHE_KEY_BASE=APN-UIKit-build-main-" >> $GITHUB_ENV
+        if [ -n "${{ inputs.xcode-version }}" ]; then
+          echo "CACHE_KEY_BASE=APN-UIKit-build-main-${{ inputs.xcode-version }}-" >> $GITHUB_ENV
+        else
+          echo "CACHE_KEY_BASE=APN-UIKit-build-main-" >> $GITHUB_ENV
+        fi
 
     - name: Download latest main sample app build to compare against 
       id: restore-build
@@ -49,11 +58,20 @@ runs:
           ${{ env.CACHE_KEY_BASE }}
     
     # If the cache is found, we set the cache-hit status to true.
-    # This is useful for future steps to know if the cache was found or not.
+    # actions/cache sets cache-hit only for an exact key match; we use restore-keys
+    # so cache-hit is always false. We treat a restore-key hit as a hit by checking
+    # whether the restored path exists. In save mode, restore is skipped so we set
+    # BUILD_CACHE_HIT=true to avoid running checkout/build steps.
     - name: Set cache-hit and should-save-build values
       shell: bash
       run: |
-        build_cache_hit="${{ steps.restore-build.outputs.cache-hit || 'false' }}"
+        if [ -n "${{ inputs.set-latest-main-build }}" ]; then
+          build_cache_hit="true"
+        elif [ -d "${{ env.APN_SAMPLE_APP_BUILD_PATH }}/${{ env.BUILD_FILE_NAME }}" ]; then
+          build_cache_hit="true"
+        else
+          build_cache_hit="false"
+        fi
         echo "BUILD_CACHE_HIT=$build_cache_hit" >> $GITHUB_ENV
         echo "Cache Hit Value: $build_cache_hit"
 
@@ -81,6 +99,7 @@ runs:
         customerio-workspace-cdp-api-key: "12345"
         customerio-workspace-name: "Dummy Workspace"
         GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64: ${{ inputs.GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64 }}
+        xcode-version: ${{ inputs.xcode-version }}
 
     # It's easiest if the latest main build always has the same name that easily identifies it. 
     # Therefore, we take the input build and copy it to have the name that we expect to upload.
