@@ -73,6 +73,26 @@ extension LocationTestViewController {
         return button
     }
 
+    func createSdkLocationButtons() -> UIView {
+        let stackView = UIStackView()
+        stackView.axis = .vertical
+        stackView.spacing = 12
+
+        requestSdkLocationOnceButton = ThemeButton()
+        requestSdkLocationOnceButton.setTitle("Request location once (SDK)", for: .normal)
+        requestSdkLocationOnceButton.heightAnchor.constraint(equalToConstant: 50).isActive = true
+        requestSdkLocationOnceButton.addTarget(self, action: #selector(requestSdkLocationOnceTapped), for: .touchUpInside)
+        stackView.addArrangedSubview(requestSdkLocationOnceButton)
+
+        stopLocationUpdatesButton = ThemeButton()
+        stopLocationUpdatesButton.setTitle("Stop location updates", for: .normal)
+        stopLocationUpdatesButton.heightAnchor.constraint(equalToConstant: 50).isActive = true
+        stopLocationUpdatesButton.addTarget(self, action: #selector(stopLocationUpdatesTapped), for: .touchUpInside)
+        stackView.addArrangedSubview(stopLocationUpdatesButton)
+
+        return stackView
+    }
+
     func createDeviceLocationButton() -> UIView {
         useCurrentLocationButton = ThemeButton()
         useCurrentLocationButton.setTitle("📍  Use Current Location", for: .normal)
