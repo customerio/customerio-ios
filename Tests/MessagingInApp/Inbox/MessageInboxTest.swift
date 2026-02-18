@@ -594,7 +594,9 @@ class MessageInboxTest: UnitTest {
         XCTAssertGreaterThan(initialCallbackCount, 0, "Should have received initial callback")
 
         // Remove listener
-        messageInbox.removeChangeListener(listener)
+        await MainActor.run {
+            messageInbox.removeChangeListener(listener)
+        }
 
         // Wait to ensure no more callbacks
         try? await Task.sleep(nanoseconds: 100000000) // 100ms
@@ -646,7 +648,9 @@ class MessageInboxTest: UnitTest {
         await fulfillment(of: [expectation1, expectation2], timeout: 1.0)
 
         // Remove only listener1
-        messageInbox.removeChangeListener(listener1)
+        await MainActor.run {
+            messageInbox.removeChangeListener(listener1)
+        }
 
         // Wait to ensure listener1 doesn't receive more callbacks
         try? await Task.sleep(nanoseconds: 100000000) // 100ms
@@ -656,21 +660,28 @@ class MessageInboxTest: UnitTest {
         XCTAssertEqual(listener2CallCount, 1, "Listener 2 should still be active")
     }
 
-    func test_removeChangeListener_canBeCalledFromAnyThread_expectNoError() async {
+    func test_removeChangeListener_onMainActor_expectImmediateRemoval() async {
         inAppMessageManagerMock.underlyingState = InAppMessageState()
 
-        let listener = await MainActor.run {
+        var callbackCount = 0
+
+        await MainActor.run {
             let listener = TestInboxMessageChangeListener()
             messageInbox.addChangeListener(listener)
-            return listener
+
+            // Remove listener synchronously on MainActor
+            messageInbox.removeChangeListener(listener)
+
+            // Verify listener was removed immediately — no stale callbacks
+            listener.onMessagesChangedClosure = { _ in
+                callbackCount += 1
+            }
         }
 
-        // Call removeChangeListener from background thread
-        await Task.detached {
-            self.messageInbox.removeChangeListener(listener)
-        }.value
+        // Wait to confirm no callbacks are received after removal
+        try? await Task.sleep(nanoseconds: 100000000) // 100ms
 
-        // No assertion needed - test passes if no crash occurs
+        XCTAssertEqual(callbackCount, 0, "Listener should not receive callbacks after synchronous removal")
     }
 
     func test_removeChangeListener_removesAllRegistrationsOfListener_expectNoCallbacks() async {
@@ -712,7 +723,9 @@ class MessageInboxTest: UnitTest {
         let initialCallbackCount = callbackCount
 
         // Remove listener (should remove all registrations)
-        messageInbox.removeChangeListener(listener)
+        await MainActor.run {
+            messageInbox.removeChangeListener(listener)
+        }
 
         // Wait to ensure no more callbacks
         try? await Task.sleep(nanoseconds: 100000000) // 100ms

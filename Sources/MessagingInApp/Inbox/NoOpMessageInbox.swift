@@ -3,7 +3,7 @@ import Foundation
 
 /// No-op implementation of MessageInboxInstance used when the MessagingInApp module is not initialized.
 /// All methods are no-ops that safely do nothing, allowing graceful degradation.
-class NoOpMessageInbox: MessageInboxInstance {
+final class NoOpMessageInbox: MessageInboxInstance, @unchecked Sendable {
     private let logger: Logger
 
     init() {
@@ -20,6 +20,7 @@ class NoOpMessageInbox: MessageInboxInstance {
         // No-op
     }
 
+    @MainActor
     func removeChangeListener(_ listener: InboxMessageChangeListener) {
         // No-op
     }

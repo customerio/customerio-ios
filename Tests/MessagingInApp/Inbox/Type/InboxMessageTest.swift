@@ -97,6 +97,37 @@ struct InboxMessageTest {
         #expect(message1 != message2)
     }
 
+    @Test("Equality detects property value changes with same count")
+    func equalityDetectsPropertyValueChangesWithSameCount() {
+        let sentAt = Date()
+        let message1 = InboxMessage(
+            queueId: "queue-1",
+            deliveryId: "delivery-1",
+            expiry: nil,
+            sentAt: sentAt,
+            topics: [],
+            type: "",
+            opened: false,
+            priority: 5,
+            properties: ["key": "value1"]
+        )
+
+        let message2 = InboxMessage(
+            queueId: "queue-1",
+            deliveryId: "delivery-1",
+            expiry: nil,
+            sentAt: sentAt,
+            topics: [],
+            type: "",
+            opened: false,
+            priority: 5,
+            properties: ["key": "value2"]
+        )
+
+        // Not equal because property values differ (even though count is the same)
+        #expect(message1 != message2)
+    }
+
     @Test("Equality detects property changes")
     func equalityDetectsPropertyChanges() {
         let sentAt = Date()

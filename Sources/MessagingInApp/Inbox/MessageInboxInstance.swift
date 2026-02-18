@@ -1,11 +1,10 @@
-import CioInternalCommon
 import Foundation
 
 /// Manages inbox messages for the current user.
 ///
 /// Inbox messages are persistent messages that users can view, mark as read/unread, and delete.
 /// Messages are automatically fetched and kept in sync for identified users.
-public protocol MessageInboxInstance {
+public protocol MessageInboxInstance: Sendable {
     /// Retrieves the current list of inbox messages.
     ///
     /// - Parameter topic: Optional topic filter. If provided, only messages with this topic in their topics list are returned. If nil, all messages are returned.
@@ -30,9 +29,10 @@ public protocol MessageInboxInstance {
     /// Unregisters a listener for inbox changes.
     ///
     /// Removes all registrations of the listener, regardless of topic filters.
-    /// Can be called from any thread, including from `deinit`.
+    /// Must be called from the main thread (e.g., in `viewDidDisappear`).
     ///
     /// - Parameter listener: The listener to remove
+    @MainActor
     func removeChangeListener(_ listener: InboxMessageChangeListener)
 
     /// Marks an inbox message as opened/read.

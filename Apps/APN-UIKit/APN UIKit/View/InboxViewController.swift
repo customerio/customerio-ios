@@ -173,11 +173,15 @@ class InboxViewController: BaseViewController, UITableViewDelegate, UITableViewD
     override func viewDidLoad() {
         super.viewDidLoad()
         setupUI()
-        // Observer will provide initial messages when registered
-        setupObserver()
     }
 
-    deinit {
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        inbox.addChangeListener(self)
+    }
+
+    override func viewDidDisappear(_ animated: Bool) {
+        super.viewDidDisappear(animated)
         inbox.removeChangeListener(self)
     }
 
@@ -199,11 +203,6 @@ class InboxViewController: BaseViewController, UITableViewDelegate, UITableViewD
         emptyStateView.isUserInteractionEnabled = false
 
         updateEmptyState()
-    }
-
-    private func setupObserver() {
-        // addChangeListener will immediately call onMessagesChanged with current state
-        inbox.addChangeListener(self)
     }
 
     @objc private func handleRefresh() {

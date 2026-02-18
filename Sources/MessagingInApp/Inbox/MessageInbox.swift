@@ -3,7 +3,8 @@ import Foundation
 
 // sourcery: InjectRegisterShared = "MessageInboxInstance"
 // sourcery: InjectSingleton
-class MessageInbox: MessageInboxInstance {
+@MainActor
+final class MessageInbox: MessageInboxInstance {
     private let logger: Logger
     private let inAppMessageManager: InAppMessageManager
 
@@ -27,12 +28,14 @@ class MessageInbox: MessageInboxInstance {
         }
     }
 
-    init(logger: Logger, inAppMessageManager: InAppMessageManager) {
+    nonisolated init(logger: Logger, inAppMessageManager: InAppMessageManager) {
         self.logger = logger
         self.inAppMessageManager = inAppMessageManager
 
-        // Subscribe to inbox messages state changes
-        subscribeToInboxMessages()
+        // Subscribe to inbox messages state changes on MainActor
+        Task { @MainActor [weak self] in
+            self?.subscribeToInboxMessages()
+        }
     }
 
     deinit {
@@ -48,7 +51,6 @@ class MessageInbox: MessageInboxInstance {
         return filterMessagesByTopic(messages: messages, topic: topic)
     }
 
-    @MainActor
     func addChangeListener(_ listener: InboxMessageChangeListener, topic: String?) {
         let registration = ListenerRegistration(listener: listener, topic: topic)
         listeners.append(registration)
@@ -66,35 +68,43 @@ class MessageInbox: MessageInboxInstance {
     }
 
     func removeChangeListener(_ listener: InboxMessageChangeListener) {
-        // Clean up array on MainActor
-        // nonisolated allows calling from deinit
-        // Capture listenerId, not listener, to avoid retaining deallocating object
         let listenerId = ObjectIdentifier(listener)
-        Task { @MainActor in
-            listeners.removeAll { registration in
-                guard let listener = registration.listener else { return true }
-                return ObjectIdentifier(listener) == listenerId
-            }
+        listeners.removeAll { registration in
+            guard let existing = registration.listener else { return true }
+            return ObjectIdentifier(existing) == listenerId
         }
     }
 
-    func markMessageOpened(message: InboxMessage) {
-        inAppMessageManager.dispatch(action: .inboxAction(action: .updateOpened(message: message, opened: true)))
+    nonisolated func markMessageOpened(message: InboxMessage) {
+        Task { @MainActor [weak self] in
+            self?.dispatchInboxAction(.updateOpened(message: message, opened: true))
+        }
     }
 
-    func markMessageUnopened(message: InboxMessage) {
-        inAppMessageManager.dispatch(action: .inboxAction(action: .updateOpened(message: message, opened: false)))
+    nonisolated func markMessageUnopened(message: InboxMessage) {
+        Task { @MainActor [weak self] in
+            self?.dispatchInboxAction(.updateOpened(message: message, opened: false))
+        }
     }
 
-    func markMessageDeleted(message: InboxMessage) {
-        inAppMessageManager.dispatch(action: .inboxAction(action: .deleteMessage(message: message)))
+    nonisolated func markMessageDeleted(message: InboxMessage) {
+        Task { @MainActor [weak self] in
+            self?.dispatchInboxAction(.deleteMessage(message: message))
+        }
     }
 
-    func trackMessageClicked(message: InboxMessage, actionName: String?) {
-        inAppMessageManager.dispatch(action: .inboxAction(action: .trackClicked(message: message, actionName: actionName)))
+    nonisolated func trackMessageClicked(message: InboxMessage, actionName: String?) {
+        Task { @MainActor [weak self] in
+            self?.dispatchInboxAction(.trackClicked(message: message, actionName: actionName))
+        }
     }
 
     // MARK: - Private Helper Methods
+
+    /// Dispatches an inbox action to the message manager.
+    private func dispatchInboxAction(_ action: InAppMessageAction.InboxAction) {
+        inAppMessageManager.dispatch(action: .inboxAction(action: action))
+    }
 
     /// Filters messages by topic (case-insensitive) if specified, otherwise returns all messages.
     /// Always sorts results by sentAt newest first.
@@ -133,7 +143,6 @@ class MessageInbox: MessageInboxInstance {
     }
 
     /// Notify all registered listeners with filtered messages
-    @MainActor
     private func notifyAllListeners(messages: [InboxMessage]) {
         // Clean up nil listeners and get valid registrations only
         listeners.removeAll { !$0.isValid }
@@ -152,7 +161,6 @@ class MessageInbox: MessageInboxInstance {
     }
 
     /// Notify a single listener on main thread
-    @MainActor
     private func notifyListener(_ listener: InboxMessageChangeListener, messages: [InboxMessage]) {
         listener.onMessagesChanged(messages: messages)
     }

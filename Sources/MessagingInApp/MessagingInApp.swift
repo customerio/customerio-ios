@@ -69,11 +69,13 @@ public class MessagingInApp: ModuleTopLevelObject<MessagingInAppInstance>, Messa
         return shared
     }
 
+    private let noOpInbox = NoOpMessageInbox()
+
     /// Access to the message inbox functionality.
     ///
     /// - Important: You must call `MessagingInApp.initialize(withConfig:)` before accessing this property.
     public var inbox: MessageInboxInstance {
-        implementation?.inbox ?? NoOpMessageInbox()
+        implementation?.inbox ?? noOpInbox
     }
 
     public func setEventListener(_ eventListener: InAppEventListener?) {
