@@ -65,6 +65,10 @@ class QueueManager {
                         }
                     default:
                         do {
+                            // Clear cache only on successful 200 response
+                            if response.statusCode == 200 {
+                                self.inboxMessageCache.clearAll()
+                            }
                             let userQueue = try self.parseResponseBody(data, fromCache: false)
 
                             self.cachedFetchUserQueueResponse = data
@@ -138,7 +142,7 @@ class QueueManager {
         logger.logWithModuleTag("Found \(inAppMessages.count) in-app messages, \(inboxMessages.count) inbox messages", level: .debug)
 
         // For cached responses (304), apply locally cached opened status to preserve user's changes.
-        // For fresh responses (200), clear all cached status and use server's data as source of truth.
+        // For fresh responses (200), use server's data as source of truth.
         let inboxMessagesMapped: [InboxMessage]
         if fromCache {
             // 304: Apply cached opened status if available
@@ -150,8 +154,7 @@ class QueueManager {
                 return message
             }
         } else {
-            // Fresh response: Clear all cached data, use server data
-            inboxMessageCache.clearAll()
+            // Fresh response: Use server data
             inboxMessagesMapped = inboxMessages.map { $0.toDomainModel() }
         }
         // Dispatch inbox messages to update state
