@@ -1,9 +1,8 @@
+@testable import CioInternalCommon
+@testable import CioMessagingInApp
 import Foundation
 import SharedTests
 import XCTest
-
-@testable import CioInternalCommon
-@testable import CioMessagingInApp
 
 class MessagingInAppTest: UnitTest {
     private let implementationMock = MessagingInAppInstanceMock()
@@ -61,6 +60,7 @@ class MessagingInAppTest: UnitTest {
 
     func test_inbox_givenModuleNotInitialized_expectNoOpInbox() async {
         // Simple test listener
+        @MainActor
         class TestListener: InboxMessageChangeListener {
             func onMessagesChanged(messages: [InboxMessage]) {}
         }
@@ -73,9 +73,11 @@ class MessagingInAppTest: UnitTest {
         XCTAssertTrue(messages.isEmpty)
 
         // These should all safely do nothing without crashing
-        let listener = TestListener()
-        inbox.addChangeListener(listener)
-        inbox.removeChangeListener(listener)
+        await MainActor.run {
+            let listener = TestListener()
+            inbox.addChangeListener(listener)
+            inbox.removeChangeListener(listener)
+        }
 
         let testMessage = InboxMessage(
             queueId: "test",

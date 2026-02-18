@@ -5,8 +5,8 @@ import Testing
 
 @Suite("InboxMessage Tests")
 struct InboxMessageTest {
-    @Test("Equality based on queueId only")
-    func equalityBasedOnQueueIdOnly() {
+    @Test("Equality compares all properties")
+    func equalityComparesAllProperties() {
         let sentAt = Date()
         let message1 = InboxMessage(
             queueId: "queue-1",
@@ -32,7 +32,38 @@ struct InboxMessageTest {
             properties: ["key": "value"] // Different
         )
 
-        // Equal because queueId is the same
+        // Not equal because properties differ (all-properties equality)
+        #expect(message1 != message2)
+    }
+
+    @Test("Equality when all properties match")
+    func equalityWhenAllPropertiesMatch() {
+        let sentAt = Date()
+        let message1 = InboxMessage(
+            queueId: "queue-1",
+            deliveryId: "delivery-1",
+            expiry: nil,
+            sentAt: sentAt,
+            topics: ["promo"],
+            type: "in-app",
+            opened: true,
+            priority: 5,
+            properties: ["key": "value"]
+        )
+
+        let message2 = InboxMessage(
+            queueId: "queue-1",
+            deliveryId: "delivery-1",
+            expiry: nil,
+            sentAt: sentAt,
+            topics: ["promo"],
+            type: "in-app",
+            opened: true,
+            priority: 5,
+            properties: ["key": "value"]
+        )
+
+        // Equal because all properties match
         #expect(message1 == message2)
     }
 
@@ -66,8 +97,8 @@ struct InboxMessageTest {
         #expect(message1 != message2)
     }
 
-    @Test("Hash is consistent with equality")
-    func hashIsConsistentWithEquality() {
+    @Test("Equality detects property changes")
+    func equalityDetectsPropertyChanges() {
         let sentAt = Date()
         let message1 = InboxMessage(
             queueId: "queue-1",
@@ -83,19 +114,49 @@ struct InboxMessageTest {
 
         let message2 = InboxMessage(
             queueId: "queue-1",
-            deliveryId: "delivery-2", // Different deliveryId
+            deliveryId: "delivery-1",
             expiry: nil,
             sentAt: sentAt,
-            topics: ["different"], // Different topics
-            type: "different", // Different type
-            opened: true, // Different opened
-            priority: 10, // Different priority
-            properties: ["key": "value"] // Different properties
+            topics: [],
+            type: "",
+            opened: true, // Only opened changed
+            priority: 5,
+            properties: [:]
         )
 
-        // Equal messages must have equal hashes (Hashable contract)
-        #expect(message1 == message2)
-        #expect(message1.hashValue == message2.hashValue)
+        // Not equal because opened property differs
+        #expect(message1 != message2)
+    }
+
+    @Test("Equality compares properties dictionary content, not just count")
+    func equalityComparesPropertiesDictionaryContent() {
+        let sentAt = Date()
+        let message1 = InboxMessage(
+            queueId: "queue-1",
+            deliveryId: "delivery-1",
+            expiry: nil,
+            sentAt: sentAt,
+            topics: [],
+            type: "",
+            opened: false,
+            priority: 5,
+            properties: ["theme": "dark"] // Same count, different content
+        )
+
+        let message2 = InboxMessage(
+            queueId: "queue-1",
+            deliveryId: "delivery-1",
+            expiry: nil,
+            sentAt: sentAt,
+            topics: [],
+            type: "",
+            opened: false,
+            priority: 5,
+            properties: ["color": "blue"] // Same count, different content
+        )
+
+        // Not equal because properties have different keys/values (not just different count)
+        #expect(message1 != message2)
     }
 }
 
