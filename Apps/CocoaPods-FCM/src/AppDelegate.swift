@@ -1,6 +1,8 @@
+import CioInternalCommon
 import CioDataPipelines
 import CioFirebaseWrapper
 import CioMessagingInApp
+import CioMessagingPush
 import CioMessagingPushFCM
 import FirebaseCore
 import Foundation
@@ -27,7 +29,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 
         // Configure and initialize the Customer.io SDK
         let config = SDKConfigBuilder(cdpApiKey: cdpApiKey)
-            .region(.US)
+            .region(Region.US)
             .migrationSiteId(siteId)
             .flushAt(appSetSettings?.flushAt ?? 10)
             .flushInterval(Double(appSetSettings?.flushInterval ?? 30))

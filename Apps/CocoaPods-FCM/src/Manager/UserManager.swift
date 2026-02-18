@@ -1,6 +1,7 @@
 import Foundation
 import SampleAppsCommon
 import SwiftUI
+import Combine
 
 class UserManager: ObservableObject {
     private let keyValueStore = KeyValueStore()
