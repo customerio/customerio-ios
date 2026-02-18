@@ -65,11 +65,12 @@ class QueueManager {
                         }
                     default:
                         do {
-                            // Clear cache only on successful 200 response
+                            let userQueue = try self.parseResponseBody(data, fromCache: false)
+
+                            // Clear cache only on successful 200 response after successful parsing
                             if response.statusCode == 200 {
                                 self.inboxMessageCache.clearAll()
                             }
-                            let userQueue = try self.parseResponseBody(data, fromCache: false)
 
                             self.cachedFetchUserQueueResponse = data
                             let processedQueue = self.processAnonymousMessages(userQueue)
