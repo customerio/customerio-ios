@@ -8,6 +8,7 @@ class MessageInbox: MessageInboxInstance {
     private let inAppMessageManager: InAppMessageManager
 
     /// Storage for listener registrations
+    @MainActor
     private var listeners: [ListenerRegistration] = []
 
     /// Subscriber for inbox messages state changes (kept alive to receive callbacks)
@@ -32,7 +33,9 @@ class MessageInbox: MessageInboxInstance {
         self.inAppMessageManager = inAppMessageManager
 
         // Subscribe to inbox messages state changes
-        subscribeToInboxMessages()
+        Task { @MainActor in
+            subscribeToInboxMessages()
+        }
     }
 
     deinit {
@@ -55,7 +58,7 @@ class MessageInbox: MessageInboxInstance {
 
         // Notify listener immediately with current state
         // Capture listener weakly to avoid retaining it if it's removed before callback completes
-        Task { @MainActor [weak listener] in
+        Task { [weak listener] in
             guard let listener = listener else { return }
 
             let state = await inAppMessageManager.state
@@ -111,6 +114,7 @@ class MessageInbox: MessageInboxInstance {
     }
 
     /// Subscribe to inbox messages state changes
+    @MainActor
     private func subscribeToInboxMessages() {
         let subscriber = InAppMessageStoreSubscriber { [weak self] state in
             guard let self = self else { return }
@@ -138,15 +142,10 @@ class MessageInbox: MessageInboxInstance {
         // Clean up nil listeners and get valid registrations only
         listeners.removeAll { !$0.isValid }
 
-        // Prepare notifications and notify each listener
-        let notificationsToSend: [(InboxMessageChangeListener, [InboxMessage])] = listeners.compactMap { registration in
-            guard let listener = registration.listener else { return nil }
+        // Notify each listener with filtered messages
+        for registration in listeners {
+            guard let listener = registration.listener else { continue }
             let filteredMessages = filterMessagesByTopic(messages: messages, topic: registration.topic)
-            return (listener, filteredMessages)
-        }
-
-        // Notify all listeners (already on main thread)
-        for (listener, filteredMessages) in notificationsToSend {
             notifyListener(listener, messages: filteredMessages)
         }
     }

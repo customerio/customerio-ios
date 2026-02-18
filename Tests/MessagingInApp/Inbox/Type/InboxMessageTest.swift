@@ -127,6 +127,37 @@ struct InboxMessageTest {
         // Not equal because opened property differs
         #expect(message1 != message2)
     }
+
+    @Test("Equality compares properties dictionary content, not just count")
+    func equalityComparesPropertiesDictionaryContent() {
+        let sentAt = Date()
+        let message1 = InboxMessage(
+            queueId: "queue-1",
+            deliveryId: "delivery-1",
+            expiry: nil,
+            sentAt: sentAt,
+            topics: [],
+            type: "",
+            opened: false,
+            priority: 5,
+            properties: ["theme": "dark"] // Same count, different content
+        )
+
+        let message2 = InboxMessage(
+            queueId: "queue-1",
+            deliveryId: "delivery-1",
+            expiry: nil,
+            sentAt: sentAt,
+            topics: [],
+            type: "",
+            opened: false,
+            priority: 5,
+            properties: ["color": "blue"] // Same count, different content
+        )
+
+        // Not equal because properties have different keys/values (not just different count)
+        #expect(message1 != message2)
+    }
 }
 
 @Suite("InboxMessageResponse Tests")
