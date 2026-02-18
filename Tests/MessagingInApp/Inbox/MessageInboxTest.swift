@@ -185,7 +185,7 @@ class MessageInboxTest: UnitTest {
 
     // MARK: - markMessageOpened tests
 
-    func test_markMessageOpened_expectDispatchesUpdateOpenedAction() {
+    func test_markMessageOpened_expectDispatchesUpdateOpenedAction() async {
         // Setup mock to return empty task
         inAppMessageManagerMock.dispatchReturnValue = Task {}
 
@@ -203,6 +203,9 @@ class MessageInboxTest: UnitTest {
 
         messageInbox.markMessageOpened(message: message)
 
+        // Wait for MainActor Task to complete
+        try? await Task.sleep(nanoseconds: 50_000_000)
+
         XCTAssertEqual(inAppMessageManagerMock.dispatchCallsCount, 1)
         guard case .inboxAction(let inboxAction) = inAppMessageManagerMock.dispatchReceivedArguments?.action else {
             XCTFail("Expected inboxAction, got different action")
@@ -219,7 +222,7 @@ class MessageInboxTest: UnitTest {
 
     // MARK: - markMessageUnopened tests
 
-    func test_markMessageUnopened_expectDispatchesUpdateOpenedAction() {
+    func test_markMessageUnopened_expectDispatchesUpdateOpenedAction() async {
         // Setup mock to return empty task
         inAppMessageManagerMock.dispatchReturnValue = Task {}
 
@@ -237,6 +240,9 @@ class MessageInboxTest: UnitTest {
 
         messageInbox.markMessageUnopened(message: message)
 
+        // Wait for MainActor Task to complete
+        try? await Task.sleep(nanoseconds: 50_000_000)
+
         XCTAssertEqual(inAppMessageManagerMock.dispatchCallsCount, 1)
         guard case .inboxAction(let inboxAction) = inAppMessageManagerMock.dispatchReceivedArguments?.action else {
             XCTFail("Expected inboxAction, got different action")
@@ -253,7 +259,7 @@ class MessageInboxTest: UnitTest {
 
     // MARK: - markMessageDeleted tests
 
-    func test_markMessageDeleted_expectDispatchesDeleteMessageAction() {
+    func test_markMessageDeleted_expectDispatchesDeleteMessageAction() async {
         // Setup mock to return empty task
         inAppMessageManagerMock.dispatchReturnValue = Task {}
 
@@ -271,6 +277,9 @@ class MessageInboxTest: UnitTest {
 
         messageInbox.markMessageDeleted(message: message)
 
+        // Wait for MainActor Task to complete
+        try? await Task.sleep(nanoseconds: 50_000_000)
+
         XCTAssertEqual(inAppMessageManagerMock.dispatchCallsCount, 1)
         guard case .inboxAction(let inboxAction) = inAppMessageManagerMock.dispatchReceivedArguments?.action else {
             XCTFail("Expected inboxAction, got different action")
@@ -286,7 +295,7 @@ class MessageInboxTest: UnitTest {
 
     // MARK: - trackMessageClicked tests
 
-    func test_trackMessageClicked_withActionName_expectDispatchesTrackClickedAction() {
+    func test_trackMessageClicked_withActionName_expectDispatchesTrackClickedAction() async {
         // Setup mock to return empty task
         inAppMessageManagerMock.dispatchReturnValue = Task {}
 
@@ -304,6 +313,9 @@ class MessageInboxTest: UnitTest {
 
         messageInbox.trackMessageClicked(message: message, actionName: "view_details")
 
+        // Wait for MainActor Task to complete
+        try? await Task.sleep(nanoseconds: 50_000_000)
+
         XCTAssertEqual(inAppMessageManagerMock.dispatchCallsCount, 1)
         guard case .inboxAction(let inboxAction) = inAppMessageManagerMock.dispatchReceivedArguments?.action else {
             XCTFail("Expected inboxAction, got different action")
@@ -318,7 +330,7 @@ class MessageInboxTest: UnitTest {
         XCTAssertEqual(actionName, "view_details")
     }
 
-    func test_trackMessageClicked_withoutActionName_expectDispatchesTrackClickedAction() {
+    func test_trackMessageClicked_withoutActionName_expectDispatchesTrackClickedAction() async {
         // Setup mock to return empty task
         inAppMessageManagerMock.dispatchReturnValue = Task {}
 
@@ -335,6 +347,9 @@ class MessageInboxTest: UnitTest {
         )
 
         messageInbox.trackMessageClicked(message: message, actionName: nil)
+
+        // Wait for MainActor Task to complete
+        try? await Task.sleep(nanoseconds: 50_000_000)
 
         XCTAssertEqual(inAppMessageManagerMock.dispatchCallsCount, 1)
         guard case .inboxAction(let inboxAction) = inAppMessageManagerMock.dispatchReceivedArguments?.action else {
