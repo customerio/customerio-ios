@@ -72,17 +72,22 @@ final class UninitializedLocationServices: LocationServices {
 actor LocationServicesImplementation: LocationServices {
     private let config: LocationConfig
     private let logger: Logger
-    private let eventBusHandler: EventBusHandler
     private let locationProvider: any LocationProviding
+    private let locationSyncCoordinator: LocationSyncCoordinator
     private var currentTask: Task<Void, Never>?
 
-    /// Use this initializer in tests to inject a location provider (e.g. mock).
+    /// Use this initializer in tests to inject a location provider and coordinator (e.g. mocks).
     /// Production code creates the implementation via CustomerIO.initializeLocation(withConfig:), which creates the provider on the main thread and injects it.
-    init(config: LocationConfig, logger: Logger, eventBusHandler: EventBusHandler, locationProvider: any LocationProviding) {
+    init(
+        config: LocationConfig,
+        logger: Logger,
+        locationProvider: any LocationProviding,
+        locationSyncCoordinator: LocationSyncCoordinator
+    ) {
         self.config = config
         self.logger = logger
-        self.eventBusHandler = eventBusHandler
         self.locationProvider = locationProvider
+        self.locationSyncCoordinator = locationSyncCoordinator
     }
 
     nonisolated func setLastKnownLocation(_ location: CLLocation) {
@@ -127,8 +132,7 @@ actor LocationServicesImplementation: LocationServices {
             longitude: location.coordinate.longitude
         )
 
-        let event = TrackLocationEvent(location: locationData)
-        eventBusHandler.postEvent(event)
+        await locationSyncCoordinator.processLocationUpdate(locationData)
     }
 
     private func startRequestIfNeeded() async {
@@ -155,7 +159,7 @@ actor LocationServicesImplementation: LocationServices {
         if let result = await locationProvider.requestLocationOnce() {
             switch result {
             case .success(let snapshot):
-                postLocation(snapshot)
+                await postLocation(snapshot)
             case .failure(.cancelled):
                 logger.locationRequestCancelled()
             case .failure(let error):
@@ -164,9 +168,9 @@ actor LocationServicesImplementation: LocationServices {
         }
     }
 
-    private func postLocation(_ snapshot: LocationSnapshot) {
+    private func postLocation(_ snapshot: LocationSnapshot) async {
         logger.trackingLocation(latitude: snapshot.latitude, longitude: snapshot.longitude)
         let locationData = LocationData(latitude: snapshot.latitude, longitude: snapshot.longitude)
-        eventBusHandler.postEvent(TrackLocationEvent(location: locationData))
+        await locationSyncCoordinator.processLocationUpdate(locationData)
     }
 }
