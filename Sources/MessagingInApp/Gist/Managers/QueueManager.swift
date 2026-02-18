@@ -138,20 +138,21 @@ class QueueManager {
         logger.logWithModuleTag("Found \(inAppMessages.count) in-app messages, \(inboxMessages.count) inbox messages", level: .debug)
 
         // For cached responses (304), apply locally cached opened status to preserve user's changes.
-        // For fresh responses (200), clear cached status and use server's data.
-        let inboxMessagesMapped = inboxMessages.map { item -> InboxMessage in
-            let message = item.toDomainModel()
-
-            if fromCache {
-                // 304: Apply cached opened status if available
+        // For fresh responses (200), clear all cached status and use server's data as source of truth.
+        let inboxMessagesMapped: [InboxMessage]
+        if fromCache {
+            // 304: Apply cached opened status if available
+            inboxMessagesMapped = inboxMessages.map { item -> InboxMessage in
+                let message = item.toDomainModel()
                 if let cachedOpened = inboxMessageCache.getOpenedStatus(queueId: message.queueId) {
                     return message.copy(opened: cachedOpened)
                 }
-            } else {
-                // Fresh response: Clear cached status, use server data
-                inboxMessageCache.clearOpenedStatus(queueId: message.queueId)
+                return message
             }
-            return message
+        } else {
+            // Fresh response: Clear all cached data, use server data
+            inboxMessageCache.clearAll()
+            inboxMessagesMapped = inboxMessages.map { $0.toDomainModel() }
         }
         // Dispatch inbox messages to update state
         inAppMessageManager.dispatch(action: .processInboxMessages(messages: inboxMessagesMapped))
