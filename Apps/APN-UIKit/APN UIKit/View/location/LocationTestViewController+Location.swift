@@ -71,6 +71,37 @@ extension LocationTestViewController {
         useCurrentLocationButton.alpha = 1.0
     }
 
+    /// Asks for location permission if needed, then asks the SDK to request a single location update.
+    func requestSdkLocationUpdateOnce() {
+        let status: CLAuthorizationStatus
+        if #available(iOS 14.0, *) {
+            status = locationManager.authorizationStatus
+        } else {
+            status = CLLocationManager.authorizationStatus()
+        }
+
+        switch status {
+        case .notDetermined:
+            userRequestedSdkLocationUpdate = true
+            locationManager.requestWhenInUseAuthorization()
+        case .authorizedWhenInUse, .authorizedAlways:
+            lastSetLocationLabel.text = "Requesting location once (SDK)..."
+            CustomerIO.location.requestLocationUpdate()
+            showToast(withMessage: "SDK requested location update")
+        case .denied, .restricted:
+            showLocationPermissionAlert()
+        @unknown default:
+            showToast(withMessage: "Unknown location permission status")
+        }
+    }
+
+    /// Asks the SDK to stop any in-flight location updates.
+    func stopSdkLocationUpdates() {
+        CustomerIO.location.stopLocationUpdates()
+        lastSetLocationLabel.text = "Location updates stopped"
+        showToast(withMessage: "Stopped location updates")
+    }
+
     func showLocationPermissionAlert() {
         let alert = UIAlertController(
             title: "Location Permission Required",
