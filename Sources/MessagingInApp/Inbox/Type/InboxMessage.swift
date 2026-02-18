@@ -95,7 +95,7 @@ public struct InboxMessage: Equatable, CustomStringConvertible, @unchecked Senda
             lhs.type == rhs.type &&
             lhs.opened == rhs.opened &&
             lhs.priority == rhs.priority &&
-            lhs.properties.count == rhs.properties.count // Compare count only since [String: Any] isn't Equatable
+            NSDictionary(dictionary: lhs.properties).isEqual(to: rhs.properties)
     }
 
     // MARK: - CustomStringConvertible
