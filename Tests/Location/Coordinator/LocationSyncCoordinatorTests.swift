@@ -11,7 +11,7 @@ struct LocationSyncCoordinatorTests {
         storage: LastLocationStorageImpl? = nil,
         dateUtil: DateUtilStub? = nil
     ) -> (LocationSyncCoordinator, LastLocationStorageImpl) {
-        let store = storage ?? LastLocationStorageImpl(storage: InMemorySharedKeyValueStorage())
+        let store = storage ?? LastLocationStorageImpl(stateStore: InMemoryLastLocationStateStore())
         let util = dateUtil ?? DateUtilStub()
         let filter = LocationFilter(storage: store, dateUtil: util)
         let coordinator = LocationSyncCoordinator(
@@ -47,7 +47,7 @@ struct LocationSyncCoordinatorTests {
     @Test
     func processLocationUpdate_whenFilterDenies_doesNotPostEvent() async {
         let eventBusHandlerMock = EventBusHandlerMock()
-        let storage = LastLocationStorageImpl(storage: InMemorySharedKeyValueStorage())
+        let storage = LastLocationStorageImpl(stateStore: InMemoryLastLocationStateStore())
         let dateUtil = DateUtilStub()
         let now = Date()
         dateUtil.givenNow = now
@@ -100,7 +100,7 @@ struct LocationSyncCoordinatorTests {
     @Test
     func syncCachedLocationIfNeeded_whenFilterDenies_doesNotPostEventNorRecordLastSync() async {
         let eventBusHandlerMock = EventBusHandlerMock()
-        let storage = LastLocationStorageImpl(storage: InMemorySharedKeyValueStorage())
+        let storage = LastLocationStorageImpl(stateStore: InMemoryLastLocationStateStore())
         let dateUtil = DateUtilStub()
         let now = Date()
         dateUtil.givenNow = now
