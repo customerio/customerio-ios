@@ -12,7 +12,8 @@ extension DataPipelineImplementation {
         var identifyEvent = IdentifyEvent(userId: identifier, traits: nil)
         identifyEvent.timestamp = timestamp
         if let traits = body {
-            let jsonTraits = try? JSON(traits)
+            let filtered = attributesByRemovingReservedLocationKeys(traits)
+            let jsonTraits = try? JSON(filtered)
             identifyEvent.traits = jsonTraits
         }
         analytics.process(event: identifyEvent)
@@ -29,10 +30,14 @@ extension DataPipelineImplementation {
     }
 
     func processEventFromBGQ(identifier: String, name: String, timestamp: String?, properties: [String: Any]) {
+        guard name != DataPipelineReservedNames.reservedLocationTrackEventName else {
+            return
+        }
+        let filtered = attributesByRemovingReservedLocationKeys(properties)
         var trackEvent = TrackEvent(event: name, properties: nil)
         trackEvent.userId = identifier
         trackEvent.timestamp = timestamp
-        if let jsonProperties = try? JSON(properties) {
+        if let jsonProperties = try? JSON(filtered) {
             trackEvent.properties = jsonProperties
         }
         analytics.process(event: trackEvent)

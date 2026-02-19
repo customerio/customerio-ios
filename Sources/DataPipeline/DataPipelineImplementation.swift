@@ -97,17 +97,10 @@ class DataPipelineImplementation: DataPipelineInstance {
     }
 
     private func trackLocation(_ event: TrackLocationEvent) {
-        guard let userId = analytics.userId, !userId.isEmpty else {
-            return
-        }
+        guard let userId = analytics.userId, !userId.isEmpty else { return }
         let location = event.location
-
-        let properties: [String: Any] = [
-            "lat": location.latitude,
-            "lng": location.longitude
-        ]
-
-        analytics.track(name: "Location Update", properties: properties)
+        let properties: [String: Any] = ["lat": location.latitude, "lng": location.longitude]
+        analytics.track(name: DataPipelineReservedNames.reservedLocationTrackEventName, properties: properties)
         eventBusHandler.postEvent(LocationTrackedEvent(location: location, timestamp: dateUtil.now))
     }
 
@@ -124,10 +117,12 @@ class DataPipelineImplementation: DataPipelineInstance {
     }
 
     /// Associate a user with their unique ID and record traits about them.
-    /// - Parameters:
-    ///   - traits: A dictionary of traits you know about the user. Things like: email, name, plan, etc.
     func identify(traits: Codable) {
-        analytics.identify(traits: traits)
+        if let filtered = codableToDictRemovingReservedLocationKeys(traits), let jsonTraits = try? JSON(filtered) {
+            analytics.identify(traits: jsonTraits)
+        } else {
+            analytics.identify(traits: traits)
+        }
     }
 
     var registeredDeviceToken: String? {
@@ -140,11 +135,28 @@ class DataPipelineImplementation: DataPipelineInstance {
     }
 
     func track(name: String, properties: [String: Any]?) {
-        analytics.track(name: name, properties: properties)
+        let (shouldSend, filtered) = filterTrackParameters(name: name, properties: properties)
+        guard shouldSend else {
+            logger.debug("Ignoring track call for reserved event \"\(DataPipelineReservedNames.reservedLocationTrackEventName)\". Use CustomerIO.location to update location.")
+            return
+        }
+        analytics.track(name: name, properties: filtered)
     }
 
     func track<RequestBody: Codable>(name: String, properties: RequestBody?) {
-        analytics.track(name: name, properties: properties)
+        guard !isReservedTrackEventName(name) else {
+            logger.debug("Ignoring track call for reserved event \"\(DataPipelineReservedNames.reservedLocationTrackEventName)\". Use CustomerIO.location to update location.")
+            return
+        }
+        if let properties = properties {
+            if let filtered = codableToDictRemovingReservedLocationKeys(properties) {
+                analytics.track(name: name, properties: filtered)
+            } else {
+                analytics.track(name: name, properties: properties)
+            }
+        } else {
+            analytics.track(name: name, properties: nil)
+        }
     }
 
     func screen(title: String, properties: [String: Any]?) {
@@ -162,16 +174,17 @@ class DataPipelineImplementation: DataPipelineInstance {
     }
 
     func setProfileAttributes(_ attributes: [String: Any]) {
+        let filtered = attributesByRemovingReservedLocationKeys(attributes)
         let userId = registeredUserId
         guard let userId = userId else {
-            if let jsonTraits = try? JSON(attributes) {
+            if let jsonTraits = try? JSON(filtered) {
                 analytics.identify(traits: jsonTraits)
             } else {
                 logger.error("Failed to convert attributes to JSON format for identify call")
             }
             return
         }
-        commonIdentifyProfile(userId: userId, attributesDict: attributes)
+        commonIdentifyProfile(userId: userId, attributesDict: filtered)
     }
 
     func commonIdentifyProfile(userId: String, attributesDict: [String: Any]? = nil, attributesCodable: Codable? = nil) {
@@ -179,26 +192,26 @@ class DataPipelineImplementation: DataPipelineInstance {
             logger.error("profile cannot be identified: Identifier is empty. Please retry with a valid, non-empty identifier.")
             return
         }
-
         let currentlyIdentifiedProfile = registeredUserId
         let isChangingIdentifiedProfile = currentlyIdentifiedProfile != nil && currentlyIdentifiedProfile != userId
         let isFirstTimeIdentifying = currentlyIdentifiedProfile == nil
-
         if isChangingIdentifiedProfile, let _ = registeredDeviceToken {
             dataPipelinesLogger.logDeletingTokenDueToNewProfileIdentification()
             deleteDeviceToken()
         }
-
         if let attributes = attributesCodable {
-            analytics.identify(userId: userId, traits: attributes)
+            if let filtered = codableToDictRemovingReservedLocationKeys(attributes), let jsonTraits = try? JSON(filtered) {
+                analytics.identify(userId: userId, traits: jsonTraits)
+            } else {
+                analytics.identify(userId: userId, traits: attributes)
+            }
         } else {
-            analytics.identify(userId: userId, traits: attributesDict)
+            let filtered = attributesDict.map { attributesByRemovingReservedLocationKeys($0) }
+            analytics.identify(userId: userId, traits: filtered)
         }
-
         if isFirstTimeIdentifying || isChangingIdentifiedProfile {
             if let existingDeviceToken = registeredDeviceToken {
                 dataPipelinesLogger.automaticTokenRegistrationForNewProfile(token: existingDeviceToken, userId: userId)
-                // register device to newly identified profile
                 addDeviceAttributes(token: existingDeviceToken)
             }
         }
