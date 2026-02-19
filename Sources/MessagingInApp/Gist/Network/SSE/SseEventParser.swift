@@ -135,7 +135,7 @@ struct ServerEvent: Equatable {
             expectedType: .inboxMessages,
             data: data,
             parser: { InboxMessageResponse(dictionary: $0) },
-            mapper: { $0.toDomainModel() }
+            mapper: { InboxMessageFactory.fromResponse($0) }
         )
     }
 

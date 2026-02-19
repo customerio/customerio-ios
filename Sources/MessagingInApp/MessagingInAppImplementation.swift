@@ -9,7 +9,7 @@ class MessagingInAppImplementation: MessagingInAppInstance {
     private let gist: GistProvider
     private let threadUtil: ThreadUtil
     private let eventBusHandler: EventBusHandler
-    private let messageInbox: MessageInboxInstance
+    private let notificationInbox: NotificationInbox
 
     init(diGraph: DIGraphShared, moduleConfig: MessagingInAppConfigOptions) {
         self.moduleConfig = moduleConfig
@@ -18,7 +18,7 @@ class MessagingInAppImplementation: MessagingInAppInstance {
         self.gist = diGraph.gistProvider
         self.threadUtil = diGraph.threadUtil
         self.eventBusHandler = diGraph.eventBusHandler
-        self.messageInbox = diGraph.messageInboxInstance
+        self.notificationInbox = diGraph.notificationInbox
 
         subscribeToInAppMessageState()
     }
@@ -59,8 +59,8 @@ class MessagingInAppImplementation: MessagingInAppInstance {
         }
     }
 
-    var inbox: MessageInboxInstance {
-        messageInbox
+    var inbox: NotificationInbox {
+        notificationInbox
     }
 
     func setEventListener(_ eventListener: InAppEventListener?) {

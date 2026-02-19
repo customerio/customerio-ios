@@ -3,7 +3,7 @@ import Foundation
 
 public protocol MessagingInAppInstance: AutoMockable {
     /// Access to the message inbox functionality.
-    var inbox: MessageInboxInstance { get }
+    var inbox: NotificationInbox { get }
 
     // sourcery:Name=setEventListener
     func setEventListener(_ eventListener: InAppEventListener?)
@@ -72,8 +72,8 @@ public class MessagingInApp: ModuleTopLevelObject<MessagingInAppInstance>, Messa
     /// Access to the message inbox functionality.
     ///
     /// - Important: You must call `MessagingInApp.initialize(withConfig:)` before accessing this property.
-    public var inbox: MessageInboxInstance {
-        implementation?.inbox ?? NoOpMessageInbox()
+    public var inbox: NotificationInbox {
+        implementation?.inbox ?? NoOpNotificationInbox()
     }
 
     public func setEventListener(_ eventListener: InAppEventListener?) {

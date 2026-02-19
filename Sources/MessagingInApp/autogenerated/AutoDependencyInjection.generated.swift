@@ -61,6 +61,9 @@ extension DIGraphShared {
         _ = sseLifecycleManager
         countDependenciesResolved += 1
 
+        _ = notificationInbox
+        countDependenciesResolved += 1
+
         _ = engineWebProvider
         countDependenciesResolved += 1
 
@@ -83,9 +86,6 @@ extension DIGraphShared {
         countDependenciesResolved += 1
 
         _ = logManager
-        countDependenciesResolved += 1
-
-        _ = messageInboxInstance
         countDependenciesResolved += 1
 
         _ = queueManager
@@ -132,6 +132,18 @@ extension DIGraphShared {
 
     private func _get_sseLifecycleManager() -> SseLifecycleManager {
         CioSseLifecycleManager(logger: logger, inAppMessageManager: inAppMessageManager, sseConnectionManager: sseConnectionManagerProtocol, applicationStateProvider: applicationStateProvider)
+    }
+
+    // NotificationInbox (singleton)
+    var notificationInbox: NotificationInbox {
+        getOverriddenInstance() ??
+            getSingletonOrCreate {
+                _get_notificationInbox()
+            }
+    }
+
+    private func _get_notificationInbox() -> NotificationInbox {
+        DefaultNotificationInbox(logger: logger, inAppMessageManager: inAppMessageManager)
     }
 
     // EngineWebProvider
@@ -220,18 +232,6 @@ extension DIGraphShared {
 
     private var newLogManager: LogManager {
         LogManager(gistQueueNetwork: gistQueueNetwork, inboxMessageCache: inboxMessageCacheManager)
-    }
-
-    // MessageInboxInstance (singleton)
-    var messageInboxInstance: MessageInboxInstance {
-        getOverriddenInstance() ??
-            getSingletonOrCreate {
-                _get_messageInboxInstance()
-            }
-    }
-
-    private func _get_messageInboxInstance() -> MessageInboxInstance {
-        MessageInbox(logger: logger, inAppMessageManager: inAppMessageManager)
     }
 
     // QueueManager (singleton)

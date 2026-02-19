@@ -5,7 +5,7 @@ import Foundation
 ///
 /// Inbox messages are persistent messages that users can view, mark as read/unread, and delete.
 /// Messages are automatically fetched and kept in sync for identified users.
-public protocol MessageInboxInstance {
+public protocol NotificationInbox {
     /// Retrieves the current list of inbox messages.
     ///
     /// - Parameter topic: Optional topic filter. If provided, only messages with this topic in their topics list are returned. If nil, all messages are returned.
@@ -25,15 +25,18 @@ public protocol MessageInboxInstance {
     ///   - topic: Optional topic filter. If provided, only messages with this topic are sent to the listener.
     ///            If nil, all messages are sent. Topic matching is case-insensitive.
     @MainActor
-    func addChangeListener(_ listener: InboxMessageChangeListener, topic: String?)
+    func addChangeListener(_ listener: NotificationInboxChangeListener, topic: String?)
 
     /// Unregisters a listener for inbox changes.
     ///
     /// Removes all registrations of the listener, regardless of topic filters.
     /// Can be called from any thread, including from `deinit`.
     ///
+    /// **Note:** Removal is scheduled asynchronously on the main thread and may not complete immediately.
+    /// The listener may still receive callbacks until removal completes if the listener object remains alive.
+    ///
     /// - Parameter listener: The listener to remove
-    func removeChangeListener(_ listener: InboxMessageChangeListener)
+    func removeChangeListener(_ listener: NotificationInboxChangeListener)
 
     /// Marks an inbox message as opened/read.
     /// Updates local state immediately and syncs with the server.
@@ -64,7 +67,7 @@ public protocol MessageInboxInstance {
 
 // MARK: - Protocol Extension for Default Parameters
 
-public extension MessageInboxInstance {
+public extension NotificationInbox {
     /// Retrieves all inbox messages without topic filter.
     ///
     /// - Returns: List of all inbox messages for the current user, sorted by sentAt (newest first)
@@ -82,7 +85,7 @@ public extension MessageInboxInstance {
     ///
     /// - Parameter listener: The listener to receive inbox updates
     @MainActor
-    func addChangeListener(_ listener: InboxMessageChangeListener) {
+    func addChangeListener(_ listener: NotificationInboxChangeListener) {
         addChangeListener(listener, topic: nil)
     }
 

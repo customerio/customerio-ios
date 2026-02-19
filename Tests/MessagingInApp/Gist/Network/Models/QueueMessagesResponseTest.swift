@@ -141,7 +141,7 @@ struct QueueMessagesResponseTest {
         #expect(response.inAppMessages[0].properties == nil)
 
         #expect(response.inboxMessages.count == 1)
-        let inboxMessage = response.inboxMessages[0].toDomainModel()
+        let inboxMessage = InboxMessageFactory.fromResponse(response.inboxMessages[0])
 
         #expect(inboxMessage.queueId == "inbox-1")
         #expect(inboxMessage.deliveryId == nil)

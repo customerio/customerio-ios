@@ -1,9 +1,9 @@
 import CioInternalCommon
 import Foundation
 
-/// No-op implementation of MessageInboxInstance used when the MessagingInApp module is not initialized.
+/// No-op implementation of NotificationInbox used when the MessagingInApp module is not initialized.
 /// All methods are no-ops that safely do nothing, allowing graceful degradation.
-class NoOpMessageInbox: MessageInboxInstance {
+class NoOpNotificationInbox: NotificationInbox {
     private let logger: Logger
 
     init() {
@@ -16,11 +16,11 @@ class NoOpMessageInbox: MessageInboxInstance {
     }
 
     @MainActor
-    func addChangeListener(_ listener: InboxMessageChangeListener, topic: String?) {
+    func addChangeListener(_ listener: NotificationInboxChangeListener, topic: String?) {
         // No-op
     }
 
-    func removeChangeListener(_ listener: InboxMessageChangeListener) {
+    func removeChangeListener(_ listener: NotificationInboxChangeListener) {
         // No-op
     }
 

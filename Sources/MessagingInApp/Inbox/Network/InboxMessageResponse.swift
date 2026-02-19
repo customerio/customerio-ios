@@ -55,24 +55,4 @@ struct InboxMessageResponse {
             properties: dictionary["properties"] as? [String: Any]
         )
     }
-
-    /// Converts the API response to a domain model with defensive defaults.
-    ///
-    /// - Returns: InboxMessage with defensive defaults for optional fields
-    func toDomainModel() -> InboxMessage {
-        // Parse ISO 8601 dates using shared extension
-        let expiryDate: Date? = expiry.flatMap { Date.fromIso8601WithMilliseconds($0) }
-
-        return InboxMessage(
-            queueId: queueId,
-            deliveryId: deliveryId,
-            expiry: expiryDate,
-            sentAt: sentAt,
-            topics: topics ?? [],
-            type: type ?? "",
-            opened: opened ?? false,
-            priority: priority,
-            properties: properties ?? [:]
-        )
-    }
 }

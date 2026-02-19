@@ -2,8 +2,8 @@
 @testable import CioMessagingInApp
 import XCTest
 
-class MessageInboxTest: UnitTest {
-    private var messageInbox: MessageInbox!
+class NotificationInboxTest: UnitTest {
+    private var notificationInbox: DefaultNotificationInbox!
     private var inAppMessageManagerMock: InAppMessageManagerMock!
 
     override func setUp() {
@@ -15,14 +15,14 @@ class MessageInboxTest: UnitTest {
         // Configure mock to return empty task for subscribe
         inAppMessageManagerMock.subscribeReturnValue = Task {}
 
-        messageInbox = MessageInbox(
+        notificationInbox = DefaultNotificationInbox(
             logger: diGraphShared.logger,
             inAppMessageManager: inAppMessageManagerMock
         )
     }
 
     override func tearDown() {
-        messageInbox = nil
+        notificationInbox = nil
         inAppMessageManagerMock = nil
         super.tearDown()
     }
@@ -69,7 +69,7 @@ class MessageInboxTest: UnitTest {
         let stateWithMessages = InAppMessageState().copy(inboxMessages: [olderMessage, newerMessage])
         inAppMessageManagerMock.underlyingState = stateWithMessages
 
-        let messages = await messageInbox.getMessages()
+        let messages = await notificationInbox.getMessages()
 
         XCTAssertEqual(messages.count, 2)
         XCTAssertEqual(messages[0].queueId, "queue-2") // Newer date
@@ -118,7 +118,7 @@ class MessageInboxTest: UnitTest {
         let stateWithMessages = InAppMessageState().copy(inboxMessages: [oldPromoMessage, updateMessage, newPromoMessage])
         inAppMessageManagerMock.underlyingState = stateWithMessages
 
-        let messages = await messageInbox.getMessages(topic: "promo")
+        let messages = await notificationInbox.getMessages(topic: "promo")
 
         // Verify filtering: only promo messages returned
         XCTAssertEqual(messages.count, 2)
@@ -149,15 +149,15 @@ class MessageInboxTest: UnitTest {
         inAppMessageManagerMock.underlyingState = stateWithMessages
 
         // Test lowercase
-        let messagesLower = await messageInbox.getMessages(topic: "promo")
+        let messagesLower = await notificationInbox.getMessages(topic: "promo")
         XCTAssertEqual(messagesLower.count, 1)
 
         // Test uppercase
-        let messagesUpper = await messageInbox.getMessages(topic: "SALE")
+        let messagesUpper = await notificationInbox.getMessages(topic: "SALE")
         XCTAssertEqual(messagesUpper.count, 1)
 
         // Test mixed case
-        let messagesMixed = await messageInbox.getMessages(topic: "SaLe")
+        let messagesMixed = await notificationInbox.getMessages(topic: "SaLe")
         XCTAssertEqual(messagesMixed.count, 1)
     }
 
@@ -178,7 +178,7 @@ class MessageInboxTest: UnitTest {
         let stateWithMessages = InAppMessageState().copy(inboxMessages: [message])
         inAppMessageManagerMock.underlyingState = stateWithMessages
 
-        let messages = await messageInbox.getMessages(topic: "nonexistent")
+        let messages = await notificationInbox.getMessages(topic: "nonexistent")
 
         XCTAssertTrue(messages.isEmpty)
     }
@@ -201,7 +201,7 @@ class MessageInboxTest: UnitTest {
             properties: [:]
         )
 
-        messageInbox.markMessageOpened(message: message)
+        notificationInbox.markMessageOpened(message: message)
 
         XCTAssertEqual(inAppMessageManagerMock.dispatchCallsCount, 1)
         guard case .inboxAction(let inboxAction) = inAppMessageManagerMock.dispatchReceivedArguments?.action else {
@@ -235,7 +235,7 @@ class MessageInboxTest: UnitTest {
             properties: [:]
         )
 
-        messageInbox.markMessageUnopened(message: message)
+        notificationInbox.markMessageUnopened(message: message)
 
         XCTAssertEqual(inAppMessageManagerMock.dispatchCallsCount, 1)
         guard case .inboxAction(let inboxAction) = inAppMessageManagerMock.dispatchReceivedArguments?.action else {
@@ -269,7 +269,7 @@ class MessageInboxTest: UnitTest {
             properties: [:]
         )
 
-        messageInbox.markMessageDeleted(message: message)
+        notificationInbox.markMessageDeleted(message: message)
 
         XCTAssertEqual(inAppMessageManagerMock.dispatchCallsCount, 1)
         guard case .inboxAction(let inboxAction) = inAppMessageManagerMock.dispatchReceivedArguments?.action else {
@@ -302,7 +302,7 @@ class MessageInboxTest: UnitTest {
             properties: [:]
         )
 
-        messageInbox.trackMessageClicked(message: message, actionName: "view_details")
+        notificationInbox.trackMessageClicked(message: message, actionName: "view_details")
 
         XCTAssertEqual(inAppMessageManagerMock.dispatchCallsCount, 1)
         guard case .inboxAction(let inboxAction) = inAppMessageManagerMock.dispatchReceivedArguments?.action else {
@@ -334,7 +334,7 @@ class MessageInboxTest: UnitTest {
             properties: [:]
         )
 
-        messageInbox.trackMessageClicked(message: message, actionName: nil)
+        notificationInbox.trackMessageClicked(message: message, actionName: nil)
 
         XCTAssertEqual(inAppMessageManagerMock.dispatchCallsCount, 1)
         guard case .inboxAction(let inboxAction) = inAppMessageManagerMock.dispatchReceivedArguments?.action else {
@@ -371,13 +371,13 @@ class MessageInboxTest: UnitTest {
         inAppMessageManagerMock.underlyingState = stateWithMessages
 
         let listener = await MainActor.run {
-            let listener = TestInboxMessageChangeListener()
+            let listener = TestNotificationInboxChangeListener()
             listener.onMessagesChangedClosure = { messages in
                 XCTAssertEqual(messages.count, 1)
                 XCTAssertEqual(messages[0].queueId, "queue-1")
                 expectation.fulfill()
             }
-            messageInbox.addChangeListener(listener)
+            notificationInbox.addChangeListener(listener)
             return listener
         }
 
@@ -417,14 +417,14 @@ class MessageInboxTest: UnitTest {
         inAppMessageManagerMock.underlyingState = stateWithMessages
 
         let listener = await MainActor.run {
-            let listener = TestInboxMessageChangeListener()
+            let listener = TestNotificationInboxChangeListener()
             listener.onMessagesChangedClosure = { messages in
                 XCTAssertEqual(messages.count, 1)
                 XCTAssertEqual(messages[0].queueId, "queue-1")
                 XCTAssertEqual(messages[0].topics, ["promo"])
                 expectation.fulfill()
             }
-            messageInbox.addChangeListener(listener, topic: "promo")
+            notificationInbox.addChangeListener(listener, topic: "promo")
             return listener
         }
 
@@ -440,12 +440,12 @@ class MessageInboxTest: UnitTest {
         inAppMessageManagerMock.underlyingState = InAppMessageState()
 
         let listener = await MainActor.run {
-            let listener = TestInboxMessageChangeListener()
+            let listener = TestNotificationInboxChangeListener()
             listener.onMessagesChangedClosure = { messages in
                 XCTAssertTrue(messages.isEmpty)
                 expectation.fulfill()
             }
-            messageInbox.addChangeListener(listener)
+            notificationInbox.addChangeListener(listener)
             return listener
         }
 
@@ -475,8 +475,8 @@ class MessageInboxTest: UnitTest {
         inAppMessageManagerMock.underlyingState = stateWithMessages
 
         let (listener1, listener2) = await MainActor.run {
-            let listener1 = TestInboxMessageChangeListener()
-            let listener2 = TestInboxMessageChangeListener()
+            let listener1 = TestNotificationInboxChangeListener()
+            let listener2 = TestNotificationInboxChangeListener()
 
             listener1.onMessagesChangedClosure = { messages in
                 XCTAssertEqual(messages.count, 1)
@@ -488,8 +488,8 @@ class MessageInboxTest: UnitTest {
                 expectation2.fulfill()
             }
 
-            messageInbox.addChangeListener(listener1)
-            messageInbox.addChangeListener(listener2)
+            notificationInbox.addChangeListener(listener1)
+            notificationInbox.addChangeListener(listener2)
 
             return (listener1, listener2)
         }
@@ -531,8 +531,8 @@ class MessageInboxTest: UnitTest {
         inAppMessageManagerMock.underlyingState = stateWithMessages
 
         let (listener1, listener2) = await MainActor.run {
-            let listener1 = TestInboxMessageChangeListener()
-            let listener2 = TestInboxMessageChangeListener()
+            let listener1 = TestNotificationInboxChangeListener()
+            let listener2 = TestNotificationInboxChangeListener()
 
             listener1.onMessagesChangedClosure = { messages in
                 XCTAssertEqual(messages.count, 1)
@@ -546,8 +546,8 @@ class MessageInboxTest: UnitTest {
                 expectation2.fulfill()
             }
 
-            messageInbox.addChangeListener(listener1, topic: "promo")
-            messageInbox.addChangeListener(listener2, topic: "updates")
+            notificationInbox.addChangeListener(listener1, topic: "promo")
+            notificationInbox.addChangeListener(listener2, topic: "updates")
 
             return (listener1, listener2)
         }
@@ -579,11 +579,11 @@ class MessageInboxTest: UnitTest {
         inAppMessageManagerMock.underlyingState = stateWithMessages
 
         let listener = await MainActor.run {
-            let listener = TestInboxMessageChangeListener()
+            let listener = TestNotificationInboxChangeListener()
             listener.onMessagesChangedClosure = { _ in
                 callbackCount += 1
             }
-            messageInbox.addChangeListener(listener)
+            notificationInbox.addChangeListener(listener)
             return listener
         }
 
@@ -594,7 +594,7 @@ class MessageInboxTest: UnitTest {
         XCTAssertGreaterThan(initialCallbackCount, 0, "Should have received initial callback")
 
         // Remove listener
-        messageInbox.removeChangeListener(listener)
+        notificationInbox.removeChangeListener(listener)
 
         // Wait to ensure no more callbacks
         try? await Task.sleep(nanoseconds: 100000000) // 100ms
@@ -624,8 +624,8 @@ class MessageInboxTest: UnitTest {
         inAppMessageManagerMock.underlyingState = stateWithMessages
 
         let (listener1, listener2) = await MainActor.run {
-            let listener1 = TestInboxMessageChangeListener()
-            let listener2 = TestInboxMessageChangeListener()
+            let listener1 = TestNotificationInboxChangeListener()
+            let listener2 = TestNotificationInboxChangeListener()
 
             listener1.onMessagesChangedClosure = { _ in
                 listener1CallCount += 1
@@ -637,8 +637,8 @@ class MessageInboxTest: UnitTest {
                 expectation2.fulfill()
             }
 
-            messageInbox.addChangeListener(listener1)
-            messageInbox.addChangeListener(listener2)
+            notificationInbox.addChangeListener(listener1)
+            notificationInbox.addChangeListener(listener2)
 
             return (listener1, listener2)
         }
@@ -646,7 +646,7 @@ class MessageInboxTest: UnitTest {
         await fulfillment(of: [expectation1, expectation2], timeout: 1.0)
 
         // Remove only listener1
-        messageInbox.removeChangeListener(listener1)
+        notificationInbox.removeChangeListener(listener1)
 
         // Wait to ensure listener1 doesn't receive more callbacks
         try? await Task.sleep(nanoseconds: 100000000) // 100ms
@@ -660,14 +660,14 @@ class MessageInboxTest: UnitTest {
         inAppMessageManagerMock.underlyingState = InAppMessageState()
 
         let listener = await MainActor.run {
-            let listener = TestInboxMessageChangeListener()
-            messageInbox.addChangeListener(listener)
+            let listener = TestNotificationInboxChangeListener()
+            notificationInbox.addChangeListener(listener)
             return listener
         }
 
         // Call removeChangeListener from background thread
         await Task.detached {
-            self.messageInbox.removeChangeListener(listener)
+            self.notificationInbox.removeChangeListener(listener)
         }.value
 
         // No assertion needed - test passes if no crash occurs
@@ -692,14 +692,14 @@ class MessageInboxTest: UnitTest {
         inAppMessageManagerMock.underlyingState = stateWithMessages
 
         let listener = await MainActor.run {
-            let listener = TestInboxMessageChangeListener()
+            let listener = TestNotificationInboxChangeListener()
             listener.onMessagesChangedClosure = { _ in
                 callbackCount += 1
             }
 
             // Register same listener with different topics
-            messageInbox.addChangeListener(listener, topic: "promo")
-            messageInbox.addChangeListener(listener, topic: nil)
+            notificationInbox.addChangeListener(listener, topic: "promo")
+            notificationInbox.addChangeListener(listener, topic: nil)
 
             return listener
         }
@@ -712,7 +712,7 @@ class MessageInboxTest: UnitTest {
         let initialCallbackCount = callbackCount
 
         // Remove listener (should remove all registrations)
-        messageInbox.removeChangeListener(listener)
+        notificationInbox.removeChangeListener(listener)
 
         // Wait to ensure no more callbacks
         try? await Task.sleep(nanoseconds: 100000000) // 100ms
@@ -736,7 +736,7 @@ class MessageInboxTest: UnitTest {
         )
 
         let listener = await MainActor.run {
-            let listener = TestInboxMessageChangeListener()
+            let listener = TestNotificationInboxChangeListener()
             listener.onMessagesChangedClosure = { messages in
                 callbackCount += 1
                 receivedMessageCounts.append(messages.count)
@@ -746,7 +746,7 @@ class MessageInboxTest: UnitTest {
                     updateExpectation.fulfill()
                 }
             }
-            messageInbox.addChangeListener(listener)
+            notificationInbox.addChangeListener(listener)
             return listener
         }
 
@@ -792,7 +792,7 @@ class MessageInboxTest: UnitTest {
 // MARK: - Test Helper Classes
 
 @MainActor
-private class TestInboxMessageChangeListener: InboxMessageChangeListener {
+private class TestNotificationInboxChangeListener: NotificationInboxChangeListener {
     var onMessagesChangedClosure: (([InboxMessage]) -> Void)?
 
     func onMessagesChanged(messages: [InboxMessage]) {
