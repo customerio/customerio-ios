@@ -1,0 +1,69 @@
+name: Install Bloaty from source
+description: Clone and build Bloaty from google/bloaty at a pinned commit. Used for SDK size reports; main-branch Bloaty supports newer DWARF formats (e.g. DWARF 5) required after macOS/Xcode upgrades. Caches only the built binary for fast restores.
+
+inputs:
+  bloaty-commit:
+    description: 'Git commit SHA to build (google/bloaty). Pinned so builds are reproducible.'
+    required: false
+    default: '073e01d04fc06d64eeb5cdb9adeae035a34e4b13'
+
+outputs:
+  bloaty-path:
+    description: 'Directory containing the bloaty binary. Add to PATH or invoke as $bloaty-path/bloaty.'
+    value: ${{ steps.set-bloaty-path.outputs.bloaty-path }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Assert macOS runner
+      shell: bash
+      run: test $RUNNER_OS = 'macOS'
+
+    - name: Install Ninja
+      shell: bash
+      run: brew install ninja
+
+    - name: Restore Bloaty binary from cache
+      id: restore-bloaty-cache
+      uses: actions/cache/restore@v4
+      with:
+        path: ${{ runner.temp }}/bloaty-bin
+        key: bloaty-${{ runner.os }}-${{ inputs.bloaty-commit }}
+
+    - name: Clone Bloaty at pinned commit
+      if: steps.restore-bloaty-cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        git clone --depth 1 https://github.com/google/bloaty.git "$RUNNER_TEMP/bloaty-src"
+        git -C "$RUNNER_TEMP/bloaty-src" fetch --depth 1 origin ${{ inputs.bloaty-commit }}
+        git -C "$RUNNER_TEMP/bloaty-src" checkout ${{ inputs.bloaty-commit }}
+
+    - name: Init submodules and build Bloaty
+      if: steps.restore-bloaty-cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        cd "$RUNNER_TEMP/bloaty-src"
+        git submodule update --init --recursive
+        cmake -B build -G Ninja -S . -D CMAKE_BUILD_TYPE=Release
+        cmake --build build
+
+    - name: Copy Bloaty binary into cache directory
+      if: steps.restore-bloaty-cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        mkdir -p "$RUNNER_TEMP/bloaty-bin"
+        cp "$RUNNER_TEMP/bloaty-src/build/bloaty" "$RUNNER_TEMP/bloaty-bin/bloaty"
+        chmod +x "$RUNNER_TEMP/bloaty-bin/bloaty"
+
+    - name: Save Bloaty binary to cache
+      if: steps.restore-bloaty-cache.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v4
+      with:
+        path: ${{ runner.temp }}/bloaty-bin
+        key: bloaty-${{ runner.os }}-${{ inputs.bloaty-commit }}
+
+    - name: Set bloaty-path output
+      id: set-bloaty-path
+      shell: bash
+      run: |
+        echo "bloaty-path=$RUNNER_TEMP/bloaty-bin" >> "$GITHUB_OUTPUT"
