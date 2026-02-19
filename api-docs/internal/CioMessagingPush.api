@@ -10,6 +10,11 @@ public final class CioMessagingPush.MessagingPush {
     event: Metric,
     deviceToken: String
 );
+	public fun func didReceive(
+    _ request: UNNotificationRequest,
+    withContentHandler contentHandler: @escaping (UNNotificationContent) -> Unit
+) -> Boolean;
+	public fun func serviceExtensionTimeWillExpire();
 }
 public final class CioMessagingPush.MessagingPushConfigBuilder {
 	public fun init();

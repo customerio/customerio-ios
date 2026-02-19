@@ -1,6 +1,7 @@
 import Foundation
 import UIKit
 
+@MainActor
 protocol SettingsRouting {
     func routeToMainSettings(siteIdOverride: String?, cdpApiKeyOverride: String?)
     func routeToInternalSettings()

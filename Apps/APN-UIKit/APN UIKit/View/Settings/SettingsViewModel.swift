@@ -1,3 +1,4 @@
+@MainActor
 class SettingsViewModel {
     var settings: Settings!
     private let storage = DIGraphShared.shared.storage

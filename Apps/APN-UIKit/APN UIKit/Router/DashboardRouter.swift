@@ -1,6 +1,7 @@
 import Foundation
 import UIKit
 
+@MainActor
 protocol DashboardRouting {
     func routeToLogin()
     func routeToCustomDataScreen(forSource source: CustomDataSource)
