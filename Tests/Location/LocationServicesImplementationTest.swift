@@ -7,7 +7,7 @@ import Testing
 @Suite("Location")
 struct LocationServicesImplementationTests {
     private func makeCoordinator(eventBusHandler: EventBusHandlerMock) -> LocationSyncCoordinator {
-        let storage = LastLocationStorageImpl(storage: InMemorySharedKeyValueStorage())
+        let storage = LastLocationStorageImpl(stateStore: InMemoryLastLocationStateStore())
         let dateUtil = DateUtilStub()
         let filter = LocationFilter(storage: storage, dateUtil: dateUtil)
         return LocationSyncCoordinator(

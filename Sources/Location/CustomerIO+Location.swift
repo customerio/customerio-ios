@@ -34,7 +34,8 @@ public extension CustomerIO {
             return
         }
         let di = DIGraphShared.shared
-        let storage = LastLocationStorageImpl(storage: di.sharedKeyValueStorage)
+        let stateStore = KeychainLastLocationStateStore()
+        let storage = LastLocationStorageImpl(stateStore: stateStore)
         let filter = LocationFilter(storage: storage, dateUtil: di.dateUtil)
         let coordinator = LocationSyncCoordinator(
             storage: storage,
