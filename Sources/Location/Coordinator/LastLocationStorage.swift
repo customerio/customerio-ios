@@ -12,47 +12,34 @@ protocol LastLocationStorage: AnyObject {
 }
 
 final class LastLocationStorageImpl: LastLocationStorage {
-    private let storage: SharedKeyValueStorage
+    private let stateStore: LastLocationStateStore
 
-    init(storage: SharedKeyValueStorage) {
-        self.storage = storage
+    init(stateStore: LastLocationStateStore) {
+        self.stateStore = stateStore
     }
 
     func getCachedLocation() -> LocationData? {
-        guard let lat = storage.double(.locationCachedLatitude),
-              let lng = storage.double(.locationCachedLongitude)
-        else {
-            return nil
-        }
-        return LocationData(latitude: lat, longitude: lng)
+        stateStore.load()?.cachedLocation
     }
 
     func setCachedLocation(_ location: LocationData) {
-        storage.setDouble(location.latitude, forKey: .locationCachedLatitude)
-        storage.setDouble(location.longitude, forKey: .locationCachedLongitude)
+        var state = stateStore.load() ?? LastLocationState()
+        state.cachedLocation = location
+        stateStore.save(state)
     }
 
     func getLastSynced() -> (location: LocationData, timestamp: Date)? {
-        guard let lat = storage.double(.locationLastSyncedLatitude),
-              let lng = storage.double(.locationLastSyncedLongitude),
-              let timestamp = storage.date(.locationLastSyncedTimestamp)
-        else {
-            return nil
-        }
-        return (LocationData(latitude: lat, longitude: lng), timestamp)
+        guard let record = stateStore.load()?.lastSynced else { return nil }
+        return (record.location, record.timestamp)
     }
 
     func recordLastSync(location: LocationData, timestamp: Date) {
-        storage.setDouble(location.latitude, forKey: .locationLastSyncedLatitude)
-        storage.setDouble(location.longitude, forKey: .locationLastSyncedLongitude)
-        storage.setDate(timestamp, forKey: .locationLastSyncedTimestamp)
+        var state = stateStore.load() ?? LastLocationState()
+        state.lastSynced = LastSyncedRecord(location: location, timestamp: timestamp)
+        stateStore.save(state)
     }
 
     func clearCache() {
-        storage.setDouble(nil, forKey: .locationCachedLatitude)
-        storage.setDouble(nil, forKey: .locationCachedLongitude)
-        storage.setDouble(nil, forKey: .locationLastSyncedLatitude)
-        storage.setDouble(nil, forKey: .locationLastSyncedLongitude)
-        storage.setDate(nil, forKey: .locationLastSyncedTimestamp)
+        stateStore.save(LastLocationState())
     }
 }

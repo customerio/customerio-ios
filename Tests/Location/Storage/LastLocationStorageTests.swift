@@ -7,7 +7,7 @@ import Testing
 @Suite("Location")
 struct LastLocationStorageTests {
     private func makeStorage() -> LastLocationStorageImpl {
-        LastLocationStorageImpl(storage: InMemorySharedKeyValueStorage())
+        LastLocationStorageImpl(stateStore: InMemoryLastLocationStateStore())
     }
 
     @Test
