@@ -96,21 +96,33 @@ public class UserDefaultsSharedKeyValueStorage: SharedKeyValueStorage {
     }
 
     public func integer(_ key: KeyValueStorageKey) -> Int? {
-        let value = userDefaults?.integer(forKey: key.rawValue)
-        return value == 0 ? nil : value
+        guard let number = userDefaults?.object(forKey: key.rawValue) as? NSNumber else {
+            return nil
+        }
+        return number.intValue
     }
 
     public func setInt(_ value: Int?, forKey key: KeyValueStorageKey) {
-        userDefaults?.set(value, forKey: key.rawValue)
+        if let value = value {
+            userDefaults?.set(value, forKey: key.rawValue)
+        } else {
+            userDefaults?.removeObject(forKey: key.rawValue)
+        }
     }
 
     public func double(_ key: KeyValueStorageKey) -> Double? {
-        let value = userDefaults?.double(forKey: key.rawValue)
-        return value == 0 ? nil : value
+        guard let number = userDefaults?.object(forKey: key.rawValue) as? NSNumber else {
+            return nil
+        }
+        return number.doubleValue
     }
 
     public func setDouble(_ value: Double?, forKey key: KeyValueStorageKey) {
-        userDefaults?.set(value, forKey: key.rawValue)
+        if let value = value {
+            userDefaults?.set(value, forKey: key.rawValue)
+        } else {
+            userDefaults?.removeObject(forKey: key.rawValue)
+        }
     }
 
     public func string(_ key: KeyValueStorageKey) -> String? {
@@ -122,15 +134,18 @@ public class UserDefaultsSharedKeyValueStorage: SharedKeyValueStorage {
     }
 
     public func date(_ key: KeyValueStorageKey) -> Date? {
-        guard let millis = userDefaults?.double(forKey: key.rawValue), millis > 0 else {
+        guard let number = userDefaults?.object(forKey: key.rawValue) as? NSNumber else {
             return nil
         }
-
-        return Date(timeIntervalSince1970: millis)
+        return Date(timeIntervalSince1970: number.doubleValue)
     }
 
     public func setDate(_ value: Date?, forKey key: KeyValueStorageKey) {
-        userDefaults?.set(value?.timeIntervalSince1970, forKey: key.rawValue)
+        if let value = value {
+            userDefaults?.set(value.timeIntervalSince1970, forKey: key.rawValue)
+        } else {
+            userDefaults?.removeObject(forKey: key.rawValue)
+        }
     }
 
     public func data(_ key: KeyValueStorageKey) -> Data? {

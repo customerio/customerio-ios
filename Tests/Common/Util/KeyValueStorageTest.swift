@@ -54,6 +54,25 @@ class KeyValueStorageTests: UnitTest {
         XCTAssertEqual(actual, expected)
     }
 
+    /// Stored 0.0 must be returned as 0, not nil (absent and zero must be distinguishable).
+    func test_double_givenSetZero_expectGetZero() {
+        store.setDouble(0, forKey: defaultKey)
+
+        let actual = store.double(defaultKey)
+
+        XCTAssertEqual(actual, 0)
+    }
+
+    /// After setting nil, key must be absent so read returns nil.
+    func test_double_givenSetNil_expectNilWhenRead() {
+        store.setDouble(123, forKey: defaultKey)
+        store.setDouble(nil, forKey: defaultKey)
+
+        let actual = store.double(defaultKey)
+
+        XCTAssertNil(actual)
+    }
+
     // MARK: integer
 
     func test_integer_givenNotSet_expectNil() {
@@ -73,6 +92,25 @@ class KeyValueStorageTests: UnitTest {
         XCTAssertEqual(actual, expected)
     }
 
+    /// Stored 0 must be returned as 0, not nil (absent and zero must be distinguishable).
+    func test_integer_givenSetZero_expectGetZero() {
+        store.setInt(0, forKey: defaultKey)
+
+        let actual = store.integer(defaultKey)
+
+        XCTAssertEqual(actual, 0)
+    }
+
+    /// After setting nil, key must be absent so read returns nil.
+    func test_integer_givenSetNil_expectNilWhenRead() {
+        store.setInt(42, forKey: defaultKey)
+        store.setInt(nil, forKey: defaultKey)
+
+        let actual = store.integer(defaultKey)
+
+        XCTAssertNil(actual)
+    }
+
     // MARK: date
 
     func test_date_givenNotSet_expectNil() {
@@ -90,6 +128,27 @@ class KeyValueStorageTests: UnitTest {
         let actual = store.date(defaultKey)
 
         XCTAssertEqual(actual?.timeIntervalSince1970, expected.timeIntervalSince1970)
+    }
+
+    /// Stored epoch (timeIntervalSince1970: 0) must be returned as that date, not nil.
+    func test_date_givenSetEpoch_expectGetEpoch() {
+        let given = Date(timeIntervalSince1970: 0)
+
+        store.setDate(given, forKey: defaultKey)
+
+        let actual = store.date(defaultKey)
+
+        XCTAssertEqual(actual?.timeIntervalSince1970, 0)
+    }
+
+    /// After setting nil, key must be absent so read returns nil.
+    func test_date_givenSetNil_expectNilWhenRead() {
+        store.setDate(Date(), forKey: defaultKey)
+        store.setDate(nil, forKey: defaultKey)
+
+        let actual = store.date(defaultKey)
+
+        XCTAssertNil(actual)
     }
 
     // MARK: string
