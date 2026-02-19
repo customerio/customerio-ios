@@ -9,3 +9,7 @@ extension String {
         String((0 ..< length).map { _ in alphaNumericCharacters.randomElement()! })
     }
 }
+
+extension String: @retroactive Identifiable {
+    public var id: String { self }
+}

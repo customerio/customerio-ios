@@ -1,4 +1,5 @@
 import CioDataPipelines
+import CioInternalCommon
 import SwiftUI
 import UserNotifications
 
@@ -10,7 +11,8 @@ struct DashboardView: View {
         case settings
     }
 
-    struct BlockingAlert {
+    struct BlockingAlert: Identifiable {
+        var id: String { alertMessage }
         let alertMessage: String
         let callToActionButton: (actionText: String, actionCallback: () -> Void)? // optional button to add to Alert
     }
@@ -25,6 +27,31 @@ struct DashboardView: View {
     @State private var blockingAlert: BlockingAlert?
 
     @EnvironmentObject var userManager: UserManager
+
+    func requestSettings() {
+        Task {
+            let settings = await UNUserNotificationCenter.current().notificationSettings()
+            switch settings.authorizationStatus {
+            case .authorized:
+                blockingAlert = BlockingAlert(alertMessage: "Push permission already granted", callToActionButton: nil)
+            case .denied:
+                blockingAlert = BlockingAlert(
+                    alertMessage: "Push permission denied. You will need to go into the Settings app to change the push permission for this app.",
+                    callToActionButton: (actionText: "Go to Settings", actionCallback: {
+                        UIApplication.shared.open(URL(string: UIApplication.openSettingsURLString)!)
+                    })
+                )
+            case .notDetermined:
+                let granted = try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound])
+                if granted ?? false {
+                    DispatchQueue.main.async {
+                        UIApplication.shared.registerForRemoteNotifications()
+                    }
+                }
+            default: break
+            }
+        }
+    }
 
     var body: some View {
         ZStack {
@@ -101,28 +128,7 @@ struct DashboardView: View {
                         }
 
                     ColorButton("Show Push Prompt") {
-                        UNUserNotificationCenter.current().getNotificationSettings { settings in
-                            switch settings.authorizationStatus {
-                            case .authorized:
-                                blockingAlert = BlockingAlert(alertMessage: "Push permission already granted", callToActionButton: nil)
-                            case .denied:
-                                blockingAlert = BlockingAlert(
-                                    alertMessage: "Push permission denied. You will need to go into the Settings app to change the push permission for this app.",
-                                    callToActionButton: (actionText: "Go to Settings", actionCallback: {
-                                        UIApplication.shared.open(URL(string: UIApplication.openSettingsURLString)!)
-                                    })
-                                )
-                            case .notDetermined:
-                                UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { granted, _ in
-                                    if granted {
-                                        DispatchQueue.main.async {
-                                            UIApplication.shared.registerForRemoteNotifications()
-                                        }
-                                    }
-                                }
-                            default: break
-                            }
-                        }
+                        requestSettings()
                     }.setAppiumId("Show Push Prompt Button")
                     ColorButton("Logout") {
                         CustomerIO.shared.clearIdentify()
@@ -136,10 +142,10 @@ struct DashboardView: View {
             .padding()
         }
         // Can only use 1 alert() in a View so we combine the different types of Alerts into 1 function.
-        .alert(isPresented: .notNil(blockingAlert)) {
+        .alert(item: $blockingAlert) { alert in
             if let alertCallToAction = blockingAlert!.callToActionButton {
                 return Alert(
-                    title: Text(blockingAlert!.alertMessage),
+                    title: Text(alert.alertMessage),
                     primaryButton: .default(Text(alertCallToAction.actionText)) {
                         blockingAlert = nil
                         alertCallToAction.actionCallback()

@@ -1,5 +1,7 @@
 import CioDataPipelines
+import CioInternalCommon
 import CioMessagingInApp
+import CioMessagingPush
 import CioMessagingPushAPN
 import UIKit
 
@@ -131,7 +133,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 // Registering event listeners is requiredf
 extension AppDelegate: InAppEventListener {
     // Message is sent and shown to the user
-    func messageShown(message: InAppMessage) {
+    nonisolated func messageShown(message: InAppMessage) {
         CustomerIO.shared.track(
             name: "inapp shown",
             properties: ["delivery-id": message.deliveryId ?? "(none)", "message-id": message.messageId]
@@ -139,7 +141,7 @@ extension AppDelegate: InAppEventListener {
     }
 
     // User taps X (close) button and in-app message is dismissed
-    func messageDismissed(message: InAppMessage) {
+    nonisolated func messageDismissed(message: InAppMessage) {
         CustomerIO.shared.track(
             name: "inapp dismissed",
             properties: ["delivery-id": message.deliveryId ?? "(none)", "message-id": message.messageId]
@@ -147,7 +149,7 @@ extension AppDelegate: InAppEventListener {
     }
 
     // In-app message produces an error - preventing message from appearing to the user
-    func errorWithMessage(message: InAppMessage) {
+    nonisolated func errorWithMessage(message: InAppMessage) {
         CustomerIO.shared.track(
             name: "inapp error",
             properties: ["delivery-id": message.deliveryId ?? "(none)", "message-id": message.messageId]
@@ -155,7 +157,7 @@ extension AppDelegate: InAppEventListener {
     }
 
     // User perform an action on in-app message
-    func messageActionTaken(message: InAppMessage, actionValue: String, actionName: String) {
+    nonisolated func messageActionTaken(message: InAppMessage, actionValue: String, actionName: String) {
         if actionName == "remove" || actionName == "test" {
             MessagingInApp.shared.dismissMessage()
         }
