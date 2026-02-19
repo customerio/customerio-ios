@@ -1,9 +1,9 @@
 import CioInternalCommon
 import Foundation
 
-// sourcery: InjectRegisterShared = "MessageInboxInstance"
+// sourcery: InjectRegisterShared = "NotificationInbox"
 // sourcery: InjectSingleton
-class MessageInbox: MessageInboxInstance {
+class DefaultNotificationInbox: NotificationInbox {
     private let logger: Logger
     private let inAppMessageManager: InAppMessageManager
 
@@ -19,7 +19,7 @@ class MessageInbox: MessageInboxInstance {
 
     /// Registration wrapper for listener + topic filter
     private struct ListenerRegistration {
-        weak var listener: InboxMessageChangeListener?
+        weak var listener: NotificationInboxChangeListener?
         let topic: String?
 
         /// Remove registrations with nil listeners
@@ -43,7 +43,7 @@ class MessageInbox: MessageInboxInstance {
         storeSubscriber = nil
     }
 
-    // MARK: - MessageInboxInstance
+    // MARK: - NotificationInbox
 
     func getMessages(topic: String?) async -> [InboxMessage] {
         let state = await inAppMessageManager.state
@@ -52,7 +52,7 @@ class MessageInbox: MessageInboxInstance {
     }
 
     @MainActor
-    func addChangeListener(_ listener: InboxMessageChangeListener, topic: String?) {
+    func addChangeListener(_ listener: NotificationInboxChangeListener, topic: String?) {
         // Add listener to array immediately to prevent remove-before-add race condition
         let registration = ListenerRegistration(listener: listener, topic: topic)
         listeners.append(registration)
@@ -70,7 +70,7 @@ class MessageInbox: MessageInboxInstance {
         }
     }
 
-    func removeChangeListener(_ listener: InboxMessageChangeListener) {
+    func removeChangeListener(_ listener: NotificationInboxChangeListener) {
         // Clean up array on MainActor
         // nonisolated allows calling from deinit
         // Capture listenerId, not listener, to avoid retaining deallocating object
@@ -154,7 +154,7 @@ class MessageInbox: MessageInboxInstance {
 
     /// Notify a single listener on main thread
     @MainActor
-    private func notifyListener(_ listener: InboxMessageChangeListener, messages: [InboxMessage]) {
+    private func notifyListener(_ listener: NotificationInboxChangeListener, messages: [InboxMessage]) {
         listener.onMessagesChanged(messages: messages)
     }
 }

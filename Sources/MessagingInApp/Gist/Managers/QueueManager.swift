@@ -148,7 +148,7 @@ class QueueManager {
         if fromCache {
             // 304: Apply cached opened status if available
             inboxMessagesMapped = inboxMessages.map { item -> InboxMessage in
-                let message = item.toDomainModel()
+                let message = InboxMessageFactory.fromResponse(item)
                 if let cachedOpened = inboxMessageCache.getOpenedStatus(queueId: message.queueId) {
                     return message.copy(opened: cachedOpened)
                 }
@@ -156,7 +156,7 @@ class QueueManager {
             }
         } else {
             // Fresh response: Use server data
-            inboxMessagesMapped = inboxMessages.map { $0.toDomainModel() }
+            inboxMessagesMapped = inboxMessages.map { InboxMessageFactory.fromResponse($0) }
         }
         // Dispatch inbox messages to update state
         inAppMessageManager.dispatch(action: .processInboxMessages(messages: inboxMessagesMapped))

@@ -174,8 +174,8 @@ struct InboxMessageResponseTest {
         #expect(response == nil)
     }
 
-    @Test("toDomainModel maps all fields correctly")
-    func toDomainModelMapsAllFieldsCorrectly() {
+    @Test("fromResponse maps all fields correctly")
+    func fromResponseMapsAllFieldsCorrectly() {
         let dictionary: [String: Any] = [
             "queueId": "queue-123",
             "deliveryId": "delivery-456",
@@ -189,7 +189,7 @@ struct InboxMessageResponseTest {
         ]
 
         let response = InboxMessageResponse(dictionary: dictionary)!
-        let domainModel = response.toDomainModel()
+        let domainModel = InboxMessageFactory.fromResponse(response)
 
         #expect(domainModel.queueId == "queue-123")
         #expect(domainModel.deliveryId == "delivery-456")
@@ -202,15 +202,15 @@ struct InboxMessageResponseTest {
         #expect(domainModel.properties["key"] as? String == "value")
     }
 
-    @Test("toDomainModel succeeds when deliveryId is missing")
-    func toDomainModelSucceedsWhenDeliveryIdMissing() {
+    @Test("fromResponse succeeds when deliveryId is missing")
+    func fromResponseSucceedsWhenDeliveryIdMissing() {
         let dictionary: [String: Any] = [
             "queueId": "queue-123",
             "sentAt": "2026-02-09T12:26:42.513994Z"
         ]
 
         let response = InboxMessageResponse(dictionary: dictionary)!
-        let domainModel = response.toDomainModel()
+        let domainModel = InboxMessageFactory.fromResponse(response)
 
         #expect(domainModel.deliveryId == nil)
         #expect(domainModel.expiry == nil)
@@ -240,8 +240,8 @@ struct InboxMessageResponseTest {
         #expect(response == nil)
     }
 
-    @Test("toDomainModel uses default values when optional fields are nil")
-    func toDomainModelUsesDefaultValuesWhenOptionalFieldsNil() {
+    @Test("fromResponse uses default values when optional fields are nil")
+    func fromResponseUsesDefaultValuesWhenOptionalFieldsNil() {
         let dictionary: [String: Any] = [
             "queueId": "queue-123",
             "deliveryId": "delivery-456",
@@ -249,7 +249,7 @@ struct InboxMessageResponseTest {
         ]
 
         let response = InboxMessageResponse(dictionary: dictionary)!
-        let domainModel = response.toDomainModel()
+        let domainModel = InboxMessageFactory.fromResponse(response)
 
         #expect(domainModel.topics == [])
         #expect(domainModel.type == "")
@@ -268,7 +268,7 @@ struct InboxMessageResponseTest {
         ]
 
         let response = InboxMessageResponse(dictionary: dictionary)!
-        let domainModel = response.toDomainModel()
+        let domainModel = InboxMessageFactory.fromResponse(response)
 
         // Verify dates are parsed correctly
         var calendar = Calendar(identifier: .gregorian)
@@ -308,7 +308,7 @@ struct InboxMessageResponseTest {
         ]
 
         let response = InboxMessageResponse(dictionary: dictionary)!
-        let domainModel = response.toDomainModel()
+        let domainModel = InboxMessageFactory.fromResponse(response)
 
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(identifier: "UTC")!

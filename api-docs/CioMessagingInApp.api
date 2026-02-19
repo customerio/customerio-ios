@@ -97,8 +97,8 @@ public final class CioMessagingInApp.InboxMessage {
 );
 	public fun func == (lhs: InboxMessage, rhs: InboxMessage) -> Boolean;
 }
-public interface CioMessagingInApp.InboxMessageChangeListener {
-	public fun func onMessagesChanged(messages: List<InboxMessage>);
+public enum CioMessagingInApp.InboxMessageFactory {
+	public fun func fromDictionary(_ dictionary: List<String: Any>) -> InboxMessage?;
 }
 public final class CioMessagingInApp.InlineMessage {
 	public var body: some View;
@@ -149,20 +149,11 @@ public final class CioMessagingInApp.Message {
     properties: List<String: Any>?
 );
 }
-public interface CioMessagingInApp.MessageInboxInstance {
-	public fun func getMessages(topic: String?) async -> List<InboxMessage>;
-	public fun func addChangeListener(_ listener: InboxMessageChangeListener, topic: String?);
-	public fun func removeChangeListener(_ listener: InboxMessageChangeListener);
-	public fun func markMessageOpened(message: InboxMessage);
-	public fun func markMessageUnopened(message: InboxMessage);
-	public fun func markMessageDeleted(message: InboxMessage);
-	public fun func trackMessageClicked(message: InboxMessage, actionName: String?);
-}
 public enum CioMessagingInApp.MessagePosition {
 }
 public final class CioMessagingInApp.MessagingInApp {
 	public var shared: MessagingInApp;
-	public var inbox: any MessageInboxInstance;
+	public var inbox: any NotificationInbox;
 	public fun func initialize(withConfig config: MessagingInAppConfigOptions) -> MessagingInAppInstance;
 	public fun func setEventListener(_ eventListener: InAppEventListener?);
 	public fun func dismissMessage();
@@ -178,7 +169,7 @@ public final class CioMessagingInApp.MessagingInAppConfigOptions {
 	public final val region: Region;
 }
 public interface CioMessagingInApp.MessagingInAppInstance {
-	public var inbox: any MessageInboxInstance;
+	public var inbox: any NotificationInbox;
 	public fun func setEventListener(_ eventListener: InAppEventListener?);
 	public fun func dismissMessage();
 }
@@ -186,6 +177,18 @@ public final class CioMessagingInApp.ModalMessageManager {
 	public fun deinit;
 	public fun func subscribeToInAppMessageState();
 	public fun func showMessage();
+}
+public interface CioMessagingInApp.NotificationInbox {
+	public fun func getMessages(topic: String?) async -> List<InboxMessage>;
+	public fun func addChangeListener(_ listener: NotificationInboxChangeListener, topic: String?);
+	public fun func removeChangeListener(_ listener: NotificationInboxChangeListener);
+	public fun func markMessageOpened(message: InboxMessage);
+	public fun func markMessageUnopened(message: InboxMessage);
+	public fun func markMessageDeleted(message: InboxMessage);
+	public fun func trackMessageClicked(message: InboxMessage, actionName: String?);
+}
+public interface CioMessagingInApp.NotificationInboxChangeListener {
+	public fun func onMessagesChanged(messages: List<InboxMessage>);
 }
 public interface CioMessagingInApp.StoreSubscriber {
 	public fun func newState(state: StoreSubscriberStateType);

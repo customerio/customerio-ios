@@ -61,7 +61,7 @@ class MessagingInAppTest: UnitTest {
     func test_inbox_givenModuleNotInitialized_expectNoOpInbox() async {
         // Simple test listener
         @MainActor
-        class TestListener: InboxMessageChangeListener {
+        class TestListener: NotificationInboxChangeListener {
             func onMessagesChanged(messages: [InboxMessage]) {}
         }
 

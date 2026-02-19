@@ -145,7 +145,7 @@ private class InboxMessageCell: UITableViewCell {
 
 // MARK: - InboxViewController
 
-class InboxViewController: BaseViewController, UITableViewDelegate, UITableViewDataSource, InboxMessageChangeListener {
+class InboxViewController: BaseViewController, UITableViewDelegate, UITableViewDataSource, NotificationInboxChangeListener {
     static func newInstance() -> InboxViewController {
         UIStoryboard.getViewController(identifier: "InboxViewController")
     }
@@ -275,14 +275,12 @@ class InboxViewController: BaseViewController, UITableViewDelegate, UITableViewD
         120
     }
 
-    // MARK: - InboxMessageChangeListener
+    // MARK: - NotificationInboxChangeListener
 
     func onMessagesChanged(messages: [InboxMessage]) {
-        Task { @MainActor in
-            self.messages = messages
-            tableView.reloadData()
-            updateEmptyState()
-        }
+        self.messages = messages
+        tableView.reloadData()
+        updateEmptyState()
     }
 }
 

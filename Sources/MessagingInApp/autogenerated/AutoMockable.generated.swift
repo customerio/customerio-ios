@@ -1357,7 +1357,7 @@ public class MessagingInAppInstanceMock: MessagingInAppInstance, Mock {
      When setter of the property called, the value given to setter is set here.
      When the getter of the property called, the value set here will be returned. Your chance to mock the property.
      */
-    public var underlyingInbox: MessageInboxInstance!
+    public var underlyingInbox: NotificationInbox!
     /// `true` if the getter or setter of property is called at least once.
     public var inboxCalled: Bool {
         inboxGetCalled || inboxSetCalled
@@ -1376,7 +1376,7 @@ public class MessagingInAppInstanceMock: MessagingInAppInstance, Mock {
 
     public var inboxSetCallsCount = 0
     /// The mocked property with a getter and setter.
-    public var inbox: MessageInboxInstance {
+    public var inbox: NotificationInbox {
         get {
             mockCalled = true
             inboxGetCallsCount += 1
