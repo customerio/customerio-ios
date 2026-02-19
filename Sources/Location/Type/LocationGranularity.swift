@@ -1,7 +1,7 @@
 import Foundation
 
 /// Semantic accuracy for location requests. Mapped internally to system accuracy settings.
-public enum LocationGranularity: Equatable, Sendable {
+enum LocationGranularity: Equatable, Sendable {
     /// Reduced precision (e.g. city or timezone level). Never escalated to full accuracy.
     case coarseCityOrTimezone
 }

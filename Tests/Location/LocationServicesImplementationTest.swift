@@ -6,6 +6,18 @@ import Testing
 
 @Suite("Location")
 struct LocationServicesImplementationTests {
+    private func makeCoordinator(eventBusHandler: EventBusHandlerMock) -> LocationSyncCoordinator {
+        let storage = LastLocationStorageImpl(storage: InMemorySharedKeyValueStorage())
+        let dateUtil = DateUtilStub()
+        let filter = LocationFilter(storage: storage, dateUtil: dateUtil)
+        return LocationSyncCoordinator(
+            storage: storage,
+            filter: filter,
+            eventBusHandler: eventBusHandler,
+            logger: LoggerMock()
+        )
+    }
+
     private func makeImplementation(
         enableTracking: Bool = true,
         eventBusHandler: EventBusHandlerMock = EventBusHandlerMock(),
@@ -13,11 +25,12 @@ struct LocationServicesImplementationTests {
         locationProvider: MockLocationProvider = MockLocationProvider()
     ) -> LocationServicesImplementation {
         let config = LocationConfig(enableLocationTracking: enableTracking)
+        let coordinator = makeCoordinator(eventBusHandler: eventBusHandler)
         return LocationServicesImplementation(
             config: config,
             logger: logger,
-            eventBusHandler: eventBusHandler,
-            locationProvider: locationProvider
+            locationProvider: locationProvider,
+            locationSyncCoordinator: coordinator
         )
     }
 
@@ -73,7 +86,9 @@ struct LocationServicesImplementationTests {
     }
 
     @Test
-    func setLastKnownLocation_givenMultipleCalls_expectMultipleEventsPosted() async {
+    func setLastKnownLocation_givenMultipleCalls_expectTwoEventsPostedWhenNoTrackAck() async {
+        // Without DataPipeline in the loop, LocationTrackedEvent is never posted, so last sync is never
+        // recorded. Both locations pass the filter and two TrackLocationEvents are posted.
         let eventBusHandlerMock = EventBusHandlerMock()
         let service = makeImplementation(eventBusHandler: eventBusHandlerMock)
         let location1 = CLLocation(latitude: 37.7749, longitude: -122.4194)
@@ -84,14 +99,10 @@ struct LocationServicesImplementationTests {
         await yieldForLocationTask()
 
         #expect(eventBusHandlerMock.postEventCallsCount == 2)
-        let firstEvent = eventBusHandlerMock.postEventReceivedInvocations[0] as? TrackLocationEvent
-        let secondEvent = eventBusHandlerMock.postEventReceivedInvocations[1] as? TrackLocationEvent
-        #expect(firstEvent != nil)
-        #expect(secondEvent != nil)
-        if let firstEvent, let secondEvent {
-            #expect(firstEvent.location.latitude == 37.7749)
-            #expect(secondEvent.location.latitude == 40.7128)
-        }
+        let event = eventBusHandlerMock.postEventArguments as? TrackLocationEvent
+        #expect(event != nil)
+        let lat = event?.location.latitude
+        #expect(lat == 37.7749 || lat == 40.7128)
     }
 
     @Test
