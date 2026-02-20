@@ -1,3 +1,9 @@
+## [4.2.0](https://github.com/customerio/customerio-ios/compare/4.1.2...4.2.0) (2026-02-20)
+
+### Features
+
+* support for notification inbox ([#1011](https://github.com/customerio/customerio-ios/issues/1011)) ([d84c8b6](https://github.com/customerio/customerio-ios/commit/d84c8b65569bd7598882c21c6890b4dd9d68ac68))
+
 ## [4.1.2](https://github.com/customerio/customerio-ios/compare/4.1.1...4.1.2) (2026-02-05)
 
 ### Bug Fixes
