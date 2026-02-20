@@ -24,6 +24,13 @@ class NoOpNotificationInbox: NotificationInbox {
         // No-op
     }
 
+    func messages(topic: String?) -> AsyncStream<[InboxMessage]> {
+        // Return empty stream that never emits
+        AsyncStream { continuation in
+            continuation.finish()
+        }
+    }
+
     func markMessageOpened(message: InboxMessage) {
         // No-op
     }

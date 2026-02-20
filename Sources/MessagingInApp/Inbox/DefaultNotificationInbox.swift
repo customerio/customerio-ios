@@ -3,7 +3,8 @@ import Foundation
 
 // sourcery: InjectRegisterShared = "NotificationInbox"
 // sourcery: InjectSingleton
-class DefaultNotificationInbox: NotificationInbox {
+// Thread safety: @MainActor isolation on mutable state. @unchecked Sendable for manual synchronization.
+class DefaultNotificationInbox: NotificationInbox, @unchecked Sendable {
     private let logger: Logger
     private let inAppMessageManager: InAppMessageManager
 
@@ -79,6 +80,48 @@ class DefaultNotificationInbox: NotificationInbox {
             listeners.removeAll { registration in
                 guard let listener = registration.listener else { return true }
                 return ObjectIdentifier(listener) == listenerId
+            }
+        }
+    }
+
+    func messages(topic: String?) -> AsyncStream<[InboxMessage]> {
+        AsyncStream { continuation in
+            // Yield current state immediately before setting up subscription
+            Task { [weak self] in
+                guard let self = self else {
+                    continuation.finish()
+                    return
+                }
+
+                let state = await inAppMessageManager.state
+                let messages = Array(state.inboxMessages)
+                let filteredMessages = self.filterMessagesByTopic(messages: messages, topic: topic)
+                continuation.yield(filteredMessages)
+
+                // Create subscriber for ongoing updates (store holds weak reference, must keep strong ref)
+                let subscriber = InAppMessageStoreSubscriber { [weak self] state in
+                    guard let self = self else {
+                        continuation.finish()
+                        return
+                    }
+
+                    let messages = Array(state.inboxMessages)
+                    let filteredMessages = self.filterMessagesByTopic(messages: messages, topic: topic)
+                    continuation.yield(filteredMessages)
+                }
+
+                // Subscribe to inbox messages changes
+                let subscriptionTask = inAppMessageManager.subscribe(
+                    keyPath: \.inboxMessages,
+                    subscriber: subscriber
+                )
+
+                // Clean up on termination; capture subscriber to keep it alive
+                continuation.onTermination = { @Sendable [subscriber] _ in
+                    withExtendedLifetime(subscriber) {
+                        subscriptionTask.cancel()
+                    }
+                }
             }
         }
     }

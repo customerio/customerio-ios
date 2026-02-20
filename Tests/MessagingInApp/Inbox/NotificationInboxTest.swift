@@ -768,6 +768,130 @@ class NotificationInboxTest: UnitTest {
         _ = listener
     }
 
+    // MARK: - messages Tests
+
+    func test_messages_expectInitialValueEmitted() async {
+        // Given: inbox with messages
+        let message1 = createTestMessage(queueId: "msg1")
+        let message2 = createTestMessage(queueId: "msg2")
+        let stateWithMessages = InAppMessageState().copy(inboxMessages: [message1, message2])
+        inAppMessageManagerMock.underlyingState = stateWithMessages
+
+        // When: subscribing to stream
+        var receivedMessages: [[InboxMessage]] = []
+        let task = Task {
+            for await messages in notificationInbox.messages() {
+                receivedMessages.append(messages)
+                if receivedMessages.count >= 1 {
+                    break
+                }
+            }
+        }
+
+        // Wait for initial emission
+        try? await Task.sleep(nanoseconds: 50000000) // 50ms
+
+        // Then: should receive initial messages immediately
+        XCTAssertEqual(receivedMessages.count, 1)
+        XCTAssertEqual(receivedMessages[0].count, 2)
+
+        task.cancel()
+    }
+
+    func test_messages_withTopic_expectFilteredInitialValue() async {
+        // Given: messages with different topics
+        let message1 = createTestMessage(queueId: "msg1", topics: ["promo"])
+        let message2 = createTestMessage(queueId: "msg2", topics: ["update"])
+        let stateWithMessages = InAppMessageState().copy(inboxMessages: [message1, message2])
+        inAppMessageManagerMock.underlyingState = stateWithMessages
+
+        // When: subscribing to stream with topic filter
+        var receivedMessages: [[InboxMessage]] = []
+        let task = Task {
+            for await messages in notificationInbox.messages(topic: "promo") {
+                receivedMessages.append(messages)
+                if receivedMessages.count >= 1 {
+                    break
+                }
+            }
+        }
+
+        try? await Task.sleep(nanoseconds: 50000000)
+
+        // Then: should receive only filtered messages
+        XCTAssertEqual(receivedMessages.count, 1)
+        XCTAssertEqual(receivedMessages[0].count, 1)
+        XCTAssertEqual(receivedMessages[0][0].queueId, "msg1")
+
+        task.cancel()
+    }
+
+    func test_messages_expectOngoingUpdates() async {
+        // Given: initial empty state
+        let emptyState = InAppMessageState().copy(inboxMessages: [])
+        inAppMessageManagerMock.underlyingState = emptyState
+
+        var receivedMessages: [[InboxMessage]] = []
+        let expectation = expectation(description: "Receive multiple updates")
+        expectation.expectedFulfillmentCount = 2
+
+        // When: subscribing to stream
+        let task = Task {
+            for await messages in notificationInbox.messages() {
+                receivedMessages.append(messages)
+                expectation.fulfill()
+                if receivedMessages.count >= 2 {
+                    break
+                }
+            }
+        }
+
+        // Wait for initial emission
+        try? await Task.sleep(nanoseconds: 50000000)
+
+        // Then: add message and verify stream emits update
+        let message = createTestMessage(queueId: "msg1")
+        let stateWithMessage = InAppMessageState().copy(inboxMessages: [message])
+        inAppMessageManagerMock.subscribeReceivedArguments?.subscriber.newState(state: stateWithMessage)
+
+        await fulfillment(of: [expectation], timeout: 1.0)
+
+        XCTAssertEqual(receivedMessages.count, 2)
+        XCTAssertEqual(receivedMessages[0].count, 0) // Initial empty
+        XCTAssertEqual(receivedMessages[1].count, 1) // After update
+
+        task.cancel()
+    }
+
+    func test_messages_expectCancellationStopsUpdates() async {
+        // Given: stream subscription
+        let initialState = InAppMessageState().copy(inboxMessages: [])
+        inAppMessageManagerMock.underlyingState = initialState
+
+        var receivedCount = 0
+        let task = Task {
+            for await _ in notificationInbox.messages() {
+                receivedCount += 1
+            }
+        }
+
+        try? await Task.sleep(nanoseconds: 50000000)
+
+        // When: canceling the task
+        task.cancel()
+        try? await Task.sleep(nanoseconds: 50000000)
+
+        let countAfterCancel = receivedCount
+
+        // Then: no more updates after cancellation
+        let message = createTestMessage(queueId: "msg1")
+        let stateWithMessage = InAppMessageState().copy(inboxMessages: [message])
+        inAppMessageManagerMock.subscribeReceivedArguments?.subscriber.newState(state: stateWithMessage)
+        try? await Task.sleep(nanoseconds: 50000000)
+
+        XCTAssertEqual(receivedCount, countAfterCancel)
+    }
+
     // MARK: - Helper Methods
 
     private func createTestMessage(

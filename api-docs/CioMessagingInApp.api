@@ -186,6 +186,7 @@ public interface CioMessagingInApp.NotificationInbox {
 	public fun func markMessageUnopened(message: InboxMessage);
 	public fun func markMessageDeleted(message: InboxMessage);
 	public fun func trackMessageClicked(message: InboxMessage, actionName: String?);
+	public fun func messages(topic: String?) -> AsyncStream<List<InboxMessage>>;
 }
 public interface CioMessagingInApp.NotificationInboxChangeListener {
 	public fun func onMessagesChanged(messages: List<InboxMessage>);

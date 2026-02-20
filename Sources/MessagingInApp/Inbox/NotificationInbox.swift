@@ -5,7 +5,7 @@ import Foundation
 ///
 /// Inbox messages are persistent messages that users can view, mark as read/unread, and delete.
 /// Messages are automatically fetched and kept in sync for identified users.
-public protocol NotificationInbox {
+public protocol NotificationInbox: Sendable {
     /// Retrieves the current list of inbox messages.
     ///
     /// - Parameter topic: Optional topic filter. If provided, only messages with this topic in their topics list are returned. If nil, all messages are returned.
@@ -63,6 +63,19 @@ public protocol NotificationInbox {
     ///   - message: The inbox message that was clicked
     ///   - actionName: Optional name of the action clicked (e.g., "view_details", "dismiss")
     func trackMessageClicked(message: InboxMessage, actionName: String?)
+
+    /// Modern Swift Concurrency API for observing inbox changes.
+    ///
+    /// Returns an async stream that emits inbox messages whenever they change.
+    /// Preferred over `addChangeListener` for new code as it eliminates listener lifecycle management.
+    ///
+    /// The stream automatically starts when iterated and cleans up when the iteration ends or task is cancelled.
+    /// Messages are filtered by topic if specified and sorted by sentAt (newest first).
+    ///
+    /// - Parameter topic: Optional topic filter. If provided, only messages with this topic are emitted.
+    ///                    If nil, all messages are emitted. Topic matching is case-insensitive.
+    /// - Returns: AsyncStream of inbox messages that emits current state immediately, then on each change
+    func messages(topic: String?) -> AsyncStream<[InboxMessage]>
 }
 
 // MARK: - Protocol Extension for Default Parameters
@@ -95,5 +108,14 @@ public extension NotificationInbox {
     /// - Parameter message: The inbox message that was clicked
     func trackMessageClicked(message: InboxMessage) {
         trackMessageClicked(message: message, actionName: nil)
+    }
+
+    /// Observes all inbox changes without topic filter.
+    ///
+    /// Returns an async stream that emits all inbox messages whenever they change.
+    ///
+    /// - Returns: AsyncStream of all inbox messages, sorted by sentAt (newest first)
+    func messages() -> AsyncStream<[InboxMessage]> {
+        messages(topic: nil)
     }
 }

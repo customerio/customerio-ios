@@ -225,6 +225,7 @@ class InboxViewController: BaseViewController, UITableViewDelegate, UITableViewD
         }
     }
 
+    @MainActor
     private func fetchMessages() async {
         let fetchedMessages = await inbox.getMessages()
         messages = fetchedMessages
