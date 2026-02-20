@@ -61,6 +61,9 @@ extension DIGraphShared {
         _ = sseLifecycleManager
         countDependenciesResolved += 1
 
+        _ = notificationInbox
+        countDependenciesResolved += 1
+
         _ = engineWebProvider
         countDependenciesResolved += 1
 
@@ -77,6 +80,9 @@ extension DIGraphShared {
         countDependenciesResolved += 1
 
         _ = inAppMessageManager
+        countDependenciesResolved += 1
+
+        _ = inboxMessageCacheManager
         countDependenciesResolved += 1
 
         _ = logManager
@@ -126,6 +132,18 @@ extension DIGraphShared {
 
     private func _get_sseLifecycleManager() -> SseLifecycleManager {
         CioSseLifecycleManager(logger: logger, inAppMessageManager: inAppMessageManager, sseConnectionManager: sseConnectionManagerProtocol, applicationStateProvider: applicationStateProvider)
+    }
+
+    // NotificationInbox (singleton)
+    var notificationInbox: NotificationInbox {
+        getOverriddenInstance() ??
+            getSingletonOrCreate {
+                _get_notificationInbox()
+            }
+    }
+
+    private func _get_notificationInbox() -> NotificationInbox {
+        DefaultNotificationInbox(logger: logger, inAppMessageManager: inAppMessageManager)
     }
 
     // EngineWebProvider
@@ -191,7 +209,19 @@ extension DIGraphShared {
     }
 
     private func _get_inAppMessageManager() -> InAppMessageManager {
-        InAppMessageStoreManager(logger: logger, threadUtil: threadUtil, logManager: logManager, gistDelegate: gistDelegate, anonymousMessageManager: anonymousMessageManager)
+        InAppMessageStoreManager(logger: logger, threadUtil: threadUtil, logManager: logManager, gistDelegate: gistDelegate, anonymousMessageManager: anonymousMessageManager, eventBusHandler: eventBusHandler)
+    }
+
+    // InboxMessageCacheManager (singleton)
+    var inboxMessageCacheManager: InboxMessageCacheManager {
+        getOverriddenInstance() ??
+            getSingletonOrCreate {
+                _get_inboxMessageCacheManager()
+            }
+    }
+
+    private func _get_inboxMessageCacheManager() -> InboxMessageCacheManager {
+        InboxMessageCacheManager(keyValueStore: sharedKeyValueStorage, logger: logger)
     }
 
     // LogManager
@@ -201,7 +231,7 @@ extension DIGraphShared {
     }
 
     private var newLogManager: LogManager {
-        LogManager(gistQueueNetwork: gistQueueNetwork)
+        LogManager(gistQueueNetwork: gistQueueNetwork, inboxMessageCache: inboxMessageCacheManager)
     }
 
     // QueueManager (singleton)
@@ -213,7 +243,7 @@ extension DIGraphShared {
     }
 
     private func _get_queueManager() -> QueueManager {
-        QueueManager(keyValueStore: sharedKeyValueStorage, gistQueueNetwork: gistQueueNetwork, inAppMessageManager: inAppMessageManager, anonymousMessageManager: anonymousMessageManager, logger: logger)
+        QueueManager(keyValueStore: sharedKeyValueStorage, gistQueueNetwork: gistQueueNetwork, inAppMessageManager: inAppMessageManager, anonymousMessageManager: anonymousMessageManager, inboxMessageCache: inboxMessageCacheManager, logger: logger)
     }
 
     // ApplicationStateProvider

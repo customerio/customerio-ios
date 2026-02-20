@@ -7,4 +7,5 @@ protocol GistNetworkRequest {
 enum RequestParameters {
     case body(_: Encodable)
     case id(_: String)
+    case idWithBody(id: String, body: Encodable)
 }

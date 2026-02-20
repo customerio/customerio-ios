@@ -47,6 +47,10 @@ private func reducer(action: InAppMessageAction, state: InAppMessageState) -> In
     case .processMessageQueue(let messages):
         return state.copy(messagesInQueue: Set(messages))
 
+    case .processInboxMessages(let messages):
+        // Already deduplicated/sorted by middleware
+        return state.copy(inboxMessages: messages)
+
     case .embedMessages(let messages):
         var newEmbeddedMessages = state.embeddedMessagesState
         for message in messages {
@@ -116,6 +120,30 @@ private func reducer(action: InAppMessageAction, state: InAppMessageState) -> In
             return state
         case .messageLoadingFailed(let message):
             return state.copy(modalMessageState: .dismissed(message: message))
+        }
+
+    case .inboxAction(let inboxAction):
+        switch inboxAction {
+        case .updateOpened(let message, let opened):
+            // Update opened status for the matching message
+            let updatedMessages = state.inboxMessages.map { inboxMessage in
+                if inboxMessage.queueId == message.queueId {
+                    return inboxMessage.copy(opened: opened)
+                }
+                return inboxMessage
+            }
+            return state.copy(inboxMessages: updatedMessages)
+
+        case .deleteMessage(let message):
+            // Remove deleted message from state
+            let updatedMessages = state.inboxMessages.filter { inboxMessage in
+                inboxMessage.queueId != message.queueId
+            }
+            return state.copy(inboxMessages: updatedMessages)
+
+        case .trackClicked:
+            // No state update needed for tracking clicks
+            return state
         }
 
     case .reportError:

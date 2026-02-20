@@ -32,6 +32,7 @@ struct ServerEvent: Equatable {
         case connected
         case heartbeat
         case messages
+        case inboxMessages = "inbox_messages"
         case ttlExceeded = "ttl_exceeded"
         case unknown
 
@@ -42,6 +43,7 @@ struct ServerEvent: Equatable {
             case "connected": self = .connected
             case "heartbeat": self = .heartbeat
             case "messages", "": self = .messages // Empty/nil defaults to messages per SSE spec
+            case "inbox_messages": self = .inboxMessages
             case "ttl_exceeded": self = .ttlExceeded
             default: self = .unknown
             }
@@ -52,8 +54,11 @@ struct ServerEvent: Equatable {
     let data: String
     let id: String? // Event ID for Last-Event-ID tracking
 
-    /// Parsed messages (only populated for message events)
+    /// Parsed in-app messages (only populated for message events)
     let messages: [Message]?
+
+    /// Parsed inbox messages (only populated for inbox_messages events)
+    let inboxMessages: [InboxMessage]?
 
     /// Parsed heartbeat interval in seconds.
     /// Corresponds to Android's `parseHeartbeatTimeout` function.
@@ -72,15 +77,22 @@ struct ServerEvent: Equatable {
         self.eventType = EventType(rawValue: type ?? "")
         self.data = data
         self.messages = Self.parseMessages(eventType: eventType, data: data)
+        self.inboxMessages = Self.parseInboxMessages(eventType: eventType, data: data)
         self.heartbeatIntervalSeconds = Self.parseHeartbeatInterval(eventType: eventType, data: data)
     }
 
-    /// Parses message data from SSE event into Message objects (same as polling does)
+    /// Generic helper to parse message arrays from SSE event data
     /// This method is resilient - it returns nil for any parsing failure without throwing
     /// Note: No logging here since this is called from background thread; caller handles logging
-    private static func parseMessages(eventType: EventType, data: String) -> [Message]? {
-        // Only parse messages for message events
-        guard eventType == .messages else { return nil }
+    private static func parseMessageArray<Response, Domain>(
+        eventType: EventType,
+        expectedType: EventType,
+        data: String,
+        parser: ([String: Any]) -> Response?,
+        mapper: (Response) -> Domain
+    ) -> [Domain]? {
+        // Only parse for the expected event type
+        guard eventType == expectedType else { return nil }
 
         // Empty data is valid (no messages)
         guard !data.isEmpty else { return nil }
@@ -92,17 +104,39 @@ struct ServerEvent: Equatable {
             // Parse JSON - expect array of dictionaries (same format as polling API)
             let jsonObject = try JSONSerialization.jsonObject(with: jsonData, options: .allowFragments)
 
-            guard let messageArray = jsonObject as? [[String: Any?]] else { return nil }
+            guard let messageArray = jsonObject as? [[String: Any]] else { return nil }
 
-            // Convert dictionaries to UserQueueResponse, then to Message
+            // Convert dictionaries using provided parser and mapper
             // compactMap ensures invalid items are skipped without failing the whole batch
-            let userQueueResponses = messageArray.compactMap { UserQueueResponse(dictionary: $0) }
-            let messages = userQueueResponses.map { $0.toMessage() }
+            let responses = messageArray.compactMap { parser($0) }
+            let messages = responses.map { mapper($0) }
 
             return messages.isEmpty ? nil : messages
         } catch {
             return nil
         }
+    }
+
+    /// Parses in-app messages from "messages" event
+    private static func parseMessages(eventType: EventType, data: String) -> [Message]? {
+        parseMessageArray(
+            eventType: eventType,
+            expectedType: .messages,
+            data: data,
+            parser: { InAppMessageResponse(dictionary: $0) },
+            mapper: { $0.toMessage() }
+        )
+    }
+
+    /// Parses inbox messages from "inbox_messages" event
+    private static func parseInboxMessages(eventType: EventType, data: String) -> [InboxMessage]? {
+        parseMessageArray(
+            eventType: eventType,
+            expectedType: .inboxMessages,
+            data: data,
+            parser: { InboxMessageResponse(dictionary: $0) },
+            mapper: { InboxMessageFactory.fromResponse($0) }
+        )
     }
 
     /// Parses heartbeat interval from heartbeat event data.

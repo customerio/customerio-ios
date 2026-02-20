@@ -10,4 +10,5 @@ public enum KeyValueStorageKey: String {
     case broadcastMessages = "broadcast_messages"
     case broadcastMessagesExpiry = "broadcast_messages_expiry"
     case broadcastMessagesTracking = "broadcast_messages_tracking"
+    case inboxMessagesOpenedStatus = "inbox_messages_opened_status"
 }

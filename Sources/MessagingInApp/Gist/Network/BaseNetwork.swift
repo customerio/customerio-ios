@@ -31,6 +31,12 @@ enum BaseNetwork {
                 .appendingPathComponent(request.path)
                 .appendingPathComponent(id).absoluteString
             )
+        case .idWithBody(let id, let body):
+            components = URLComponents(string: baseURL
+                .appendingPathComponent(request.path)
+                .appendingPathComponent(id).absoluteString
+            )
+            urlRequest.httpBody = try JSONSerialization.data(withJSONObject: body.asDictionary(), options: [])
 
         case .none:
             break

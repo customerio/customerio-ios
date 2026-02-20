@@ -3,6 +3,7 @@ import Foundation
 enum LogEndpoint: GistNetworkRequest {
     case logUserMessageView(queueId: String)
     case logMessageView(messageId: String)
+    case updateInboxMessageOpened(queueId: String, opened: Bool)
 
     var method: HTTPMethod {
         switch self {
@@ -10,6 +11,8 @@ enum LogEndpoint: GistNetworkRequest {
             return .post
         case .logMessageView:
             return .post
+        case .updateInboxMessageOpened:
+            return .patch
         }
     }
 
@@ -19,6 +22,8 @@ enum LogEndpoint: GistNetworkRequest {
             return .id(queueId)
         case .logMessageView(let messageId):
             return .id(messageId)
+        case .updateInboxMessageOpened(let queueId, let opened):
+            return .idWithBody(id: queueId, body: ["opened": opened])
         }
     }
 
@@ -28,6 +33,8 @@ enum LogEndpoint: GistNetworkRequest {
             return "/api/v1/logs/queue"
         case .logMessageView:
             return "/api/v1/logs/message"
+        case .updateInboxMessageOpened:
+            return "/api/v1/messages"
         }
     }
 }

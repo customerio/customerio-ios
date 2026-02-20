@@ -347,6 +347,9 @@ actor SseConnectionManager: SseConnectionManagerProtocol {
         case .messages:
             handleMessagesEvent(event)
 
+        case .inboxMessages:
+            handleInboxMessagesEvent(event)
+
         case .ttlExceeded:
             logger.logWithModuleTag("SSE Manager: TTL exceeded - reconnecting", level: .info)
             await cleanupForReconnect(generation: generation)
@@ -386,10 +389,24 @@ actor SseConnectionManager: SseConnectionManagerProtocol {
             return
         }
 
-        logger.logWithModuleTag("SSE Manager: ✓ Received \(messages.count) message(s) from SSE", level: .info)
+        logger.logWithModuleTag("SSE Manager: ✓ Received \(messages.count) in-app message(s) from SSE", level: .info)
 
         // Dispatch to message queue processor (same as polling does)
         inAppMessageManager.dispatch(action: .processMessageQueue(messages: messages))
+    }
+
+    private func handleInboxMessagesEvent(_ event: ServerEvent) {
+        logger.logWithModuleTag("SSE Manager: Inbox messages event received", level: .info)
+
+        guard let inboxMessages = event.inboxMessages else {
+            logger.logWithModuleTag("SSE Manager: No inbox messages in event or failed to parse", level: .debug)
+            return
+        }
+
+        logger.logWithModuleTag("SSE Manager: ✓ Received \(inboxMessages.count) inbox message(s) from SSE", level: .info)
+
+        // Dispatch to inbox message processor (same as polling does)
+        inAppMessageManager.dispatch(action: .processInboxMessages(messages: inboxMessages))
     }
 
     // MARK: - Heartbeat Timeout Handler

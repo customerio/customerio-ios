@@ -10,6 +10,7 @@ enum InAppMessageAction: Equatable {
     case setAnonymousIdentifier(anonymousId: String)
     case setPageRoute(route: String)
     case processMessageQueue(messages: [Message])
+    case processInboxMessages(messages: [InboxMessage])
     case clearMessageQueue
     case loadMessage(message: Message)
     case embedMessages(messages: [Message])
@@ -17,6 +18,7 @@ enum InAppMessageAction: Equatable {
     case dismissMessage(message: Message, shouldLog: Bool = true, viaCloseAction: Bool = true)
     case reportError(message: String)
     case engineAction(action: EngineAction)
+    case inboxAction(action: InboxAction)
     case resetState
 
     /// Represents an action that can be dispatched to InAppMessage store.
@@ -24,6 +26,26 @@ enum InAppMessageAction: Equatable {
     enum EngineAction: Equatable {
         case tap(message: Message, route: String, name: String, action: String)
         case messageLoadingFailed(message: Message)
+    }
+
+    /// Represents an action that can be dispatched to InAppMessage store.
+    /// It only contains actions that are related to inbox messages.
+    enum InboxAction: Equatable {
+        case updateOpened(message: InboxMessage, opened: Bool)
+        case deleteMessage(message: InboxMessage)
+        case trackClicked(message: InboxMessage, actionName: String?)
+
+        /// The message associated with this inbox action
+        var message: InboxMessage {
+            switch self {
+            case .updateOpened(let message, _):
+                return message
+            case .deleteMessage(let message):
+                return message
+            case .trackClicked(let message, _):
+                return message
+            }
+        }
     }
 
     // swiftlint:disable cyclomatic_complexity
@@ -50,6 +72,9 @@ enum InAppMessageAction: Equatable {
         case (.processMessageQueue(let lhsMessages), .processMessageQueue(let rhsMessages)):
             return lhsMessages == rhsMessages
 
+        case (.processInboxMessages(let lhsMessages), .processInboxMessages(let rhsMessages)):
+            return lhsMessages == rhsMessages
+
         case (.clearMessageQueue, .clearMessageQueue):
             return true
 
@@ -69,6 +94,9 @@ enum InAppMessageAction: Equatable {
             return lhsMessage == rhsMessage
 
         case (.engineAction(let lhsAction), .engineAction(let rhsAction)):
+            return lhsAction == rhsAction
+
+        case (.inboxAction(let lhsAction), .inboxAction(let rhsAction)):
             return lhsAction == rhsAction
 
         case (.resetState, .resetState):

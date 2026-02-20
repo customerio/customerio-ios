@@ -1,9 +1,8 @@
+@testable import CioInternalCommon
+@testable import CioMessagingInApp
 import Foundation
 import SharedTests
 import XCTest
-
-@testable import CioInternalCommon
-@testable import CioMessagingInApp
 
 class MessagingInAppTest: UnitTest {
     private let implementationMock = MessagingInAppInstanceMock()
@@ -57,6 +56,47 @@ class MessagingInAppTest: UnitTest {
         MessagingInApp.shared.setEventListener(givenListener)
 
         assertModuleInitialized(isInitialized: false, givenEventListener: nil)
+    }
+
+    func test_inbox_givenModuleNotInitialized_expectNoOpInbox() async {
+        // Simple test listener
+        @MainActor
+        class TestListener: NotificationInboxChangeListener {
+            func onMessagesChanged(messages: [InboxMessage]) {}
+        }
+
+        // When module is not initialized, inbox should return a no-op implementation
+        let inbox = MessagingInApp.shared.inbox
+
+        // Should not crash and return empty results
+        let messages = await inbox.getMessages()
+        XCTAssertTrue(messages.isEmpty)
+
+        // These should all safely do nothing without crashing
+        await MainActor.run {
+            let listener = TestListener()
+            inbox.addChangeListener(listener)
+            inbox.removeChangeListener(listener)
+        }
+
+        let testMessage = InboxMessage(
+            queueId: "test",
+            deliveryId: nil,
+            expiry: nil,
+            sentAt: Date(),
+            topics: [],
+            type: "",
+            opened: false,
+            priority: nil,
+            properties: [:]
+        )
+        inbox.markMessageOpened(message: testMessage)
+        inbox.markMessageUnopened(message: testMessage)
+        inbox.markMessageDeleted(message: testMessage)
+        inbox.trackMessageClicked(message: testMessage, actionName: nil)
+
+        // Verify module is still not initialized
+        XCTAssertNil(MessagingInApp.shared.implementation)
     }
 }
 

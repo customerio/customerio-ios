@@ -1353,7 +1353,45 @@ public class MessagingInAppInstanceMock: MessagingInAppInstance, Mock {
 
     public init() {}
 
+    /**
+     When setter of the property called, the value given to setter is set here.
+     When the getter of the property called, the value set here will be returned. Your chance to mock the property.
+     */
+    public var underlyingInbox: NotificationInbox!
+    /// `true` if the getter or setter of property is called at least once.
+    public var inboxCalled: Bool {
+        inboxGetCalled || inboxSetCalled
+    }
+
+    /// `true` if the getter called on the property at least once.
+    public var inboxGetCalled: Bool {
+        inboxGetCallsCount > 0
+    }
+
+    public var inboxGetCallsCount = 0
+    /// `true` if the setter called on the property at least once.
+    public var inboxSetCalled: Bool {
+        inboxSetCallsCount > 0
+    }
+
+    public var inboxSetCallsCount = 0
+    /// The mocked property with a getter and setter.
+    public var inbox: NotificationInbox {
+        get {
+            mockCalled = true
+            inboxGetCallsCount += 1
+            return underlyingInbox
+        }
+        set(value) {
+            mockCalled = true
+            inboxSetCallsCount += 1
+            underlyingInbox = value
+        }
+    }
+
     public func resetMock() {
+        inboxGetCallsCount = 0
+        inboxSetCallsCount = 0
         setEventListenerCallsCount = 0
         setEventListenerReceivedArguments = nil
         setEventListenerReceivedInvocations = []

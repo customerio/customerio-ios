@@ -16,6 +16,7 @@ struct InAppMessageState: Equatable, CustomStringConvertible {
     let modalMessageState: ModalMessageState
     let embeddedMessagesState: EmbeddedMessagesState
     let messagesInQueue: Set<Message>
+    let inboxMessages: [InboxMessage] // Array allows all-properties equality to work
     let shownMessageQueueIds: Set<String>
 
     init(
@@ -30,6 +31,7 @@ struct InAppMessageState: Equatable, CustomStringConvertible {
         modalMessageState: ModalMessageState = .initial,
         embeddedMessagesState: EmbeddedMessagesState = EmbeddedMessagesState(),
         messagesInQueue: Set<Message> = [],
+        inboxMessages: [InboxMessage] = [],
         shownMessageQueueIds: Set<String> = []
     ) {
         self.siteId = siteId
@@ -43,6 +45,7 @@ struct InAppMessageState: Equatable, CustomStringConvertible {
         self.modalMessageState = modalMessageState
         self.embeddedMessagesState = embeddedMessagesState
         self.messagesInQueue = messagesInQueue
+        self.inboxMessages = inboxMessages
         self.shownMessageQueueIds = shownMessageQueueIds
     }
 
@@ -57,6 +60,7 @@ struct InAppMessageState: Equatable, CustomStringConvertible {
         modalMessageState: ModalMessageState? = nil,
         embeddedMessagesState: EmbeddedMessagesState? = nil,
         messagesInQueue: Set<Message>? = nil,
+        inboxMessages: [InboxMessage]? = nil,
         shownMessageQueueIds: Set<String>? = nil
     ) -> InAppMessageState {
         InAppMessageState(
@@ -71,6 +75,7 @@ struct InAppMessageState: Equatable, CustomStringConvertible {
             modalMessageState: modalMessageState ?? self.modalMessageState,
             embeddedMessagesState: embeddedMessagesState ?? self.embeddedMessagesState,
             messagesInQueue: messagesInQueue ?? self.messagesInQueue,
+            inboxMessages: inboxMessages ?? self.inboxMessages,
             shownMessageQueueIds: shownMessageQueueIds ?? self.shownMessageQueueIds
         )
     }
@@ -86,6 +91,7 @@ struct InAppMessageState: Equatable, CustomStringConvertible {
             lhs.useSse == rhs.useSse &&
             lhs.modalMessageState == rhs.modalMessageState &&
             lhs.messagesInQueue == rhs.messagesInQueue &&
+            lhs.inboxMessages == rhs.inboxMessages &&
             lhs.shownMessageQueueIds == rhs.shownMessageQueueIds
     }
 
@@ -103,6 +109,7 @@ struct InAppMessageState: Equatable, CustomStringConvertible {
             modalMessageState: \(modalMessageState),
             embeddedMessagesState: \(embeddedMessagesState),
             messagesInQueue: \(messagesInQueue.map(\.describeForLogs)),
+            inboxMessages: \(inboxMessages.map(\.describeForLogs)),
             shownMessageQueueIds: \(shownMessageQueueIds)
         )
         """
@@ -151,6 +158,7 @@ extension InAppMessageState {
         putIfDifferent(\.modalMessageState, as: "currentMessageState")
         putIfDifferent(\.embeddedMessagesState, as: "embeddedMessagesState")
         putIfDifferent(\.messagesInQueue, as: "messagesInQueue")
+        putIfDifferent(\.inboxMessages, as: "inboxMessages") // Array equality compares all properties
         putIfDifferent(\.shownMessageQueueIds, as: "shownMessageQueueIds")
 
         return diffs

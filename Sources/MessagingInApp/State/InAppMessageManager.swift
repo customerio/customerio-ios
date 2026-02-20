@@ -54,7 +54,7 @@ class InAppMessageStoreManager: InAppMessageManager {
         get async { await store.state }
     }
 
-    init(logger: Logger, threadUtil: ThreadUtil, logManager: LogManager, gistDelegate: GistDelegate, anonymousMessageManager: AnonymousMessageManager) {
+    init(logger: Logger, threadUtil: ThreadUtil, logManager: LogManager, gistDelegate: GistDelegate, anonymousMessageManager: AnonymousMessageManager, eventBusHandler: EventBusHandler) {
         self.logger = logger
         self.store = InAppMessageStore(
             reducer: inAppMessageReducer(logger: logger),
@@ -68,6 +68,7 @@ class InAppMessageStoreManager: InAppMessageManager {
                 modalMessageDisplayStateMiddleware(logger: logger, threadUtil: threadUtil),
                 messageMetricsMiddleware(logger: logger, logManager: logManager, anonymousMessageManager: anonymousMessageManager),
                 messageQueueProcessorMiddleware(logger: logger),
+                inboxMessageMiddleware(logger: logger, logManager: logManager, eventBusHandler: eventBusHandler),
                 messageEventCallbacksMiddleware(delegate: gistDelegate),
                 errorReportingMiddleware(logger: logger)
             ]
