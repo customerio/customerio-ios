@@ -1,6 +1,3 @@
-# NOTE: This module is in development and not yet published to CocoaPods trunk.
-# It will be published when the Location module is ready for customers.
-
 Pod::Spec.new do |spec|
   spec.name         = "CustomerIOLocation"
   spec.version      = "4.1.2" # Don't modify this line - it's automatically updated

@@ -221,6 +221,8 @@ jobs:
         run: ./scripts/push-cocoapod.sh CustomerIOMessagingPushFCM.podspec
       - name: Push CustomerIOMessagingInApp
         run: ./scripts/push-cocoapod.sh CustomerIOMessagingInApp.podspec
+      - name: Push CustomerIOLocation
+        run: ./scripts/push-cocoapod.sh CustomerIOLocation.podspec
       - name: Push CustomerIO
         run: ./scripts/push-cocoapod.sh CustomerIO.podspec
 
