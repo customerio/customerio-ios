@@ -6,12 +6,14 @@ import Foundation
 
 /// Protocol for the Location module's public API.
 ///
-/// Use `CustomerIO.location` after calling `CustomerIO.initializeLocation(withConfig:)`
-/// to get the instance.
+/// Use `CustomerIO.location` after registering the module via `SDKConfigBuilder.addModule(LocationModule(config: ...))` and calling `CustomerIO.initialize(withConfig:)`.
 ///
 /// **Example:**
 /// ```swift
-/// CustomerIO.initializeLocation(withConfig: LocationConfig(enableLocationTracking: true))
+/// let config = SDKConfigBuilder(cdpApiKey: "your_key")
+///     .addModule(LocationModule(config: LocationConfig(enableLocationTracking: true)))
+///     .build()
+/// CustomerIO.initialize(withConfig: config)
 /// CustomerIO.location.setLastKnownLocation(clLocation)
 /// CustomerIO.location.requestLocationUpdate()
 /// ```
@@ -77,7 +79,7 @@ actor LocationServicesImplementation: LocationServices {
     private var currentTask: Task<Void, Never>?
 
     /// Use this initializer in tests to inject a location provider and coordinator (e.g. mocks).
-    /// Production code creates the implementation via CustomerIO.initializeLocation(withConfig:), which creates the provider on the main thread and injects it.
+    /// Production code creates the implementation via LocationModule.initialize() (invoked during CustomerIO.initialize(withConfig:)), which creates the provider on the main thread and injects it.
     init(
         config: LocationConfig,
         logger: Logger,

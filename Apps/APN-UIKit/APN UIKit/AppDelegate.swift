@@ -56,6 +56,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         if settings.internalSettings.testMode {
             config.flushAt(1)
         }
+        config.addModule(LocationModule(config: LocationConfig(enableLocationTracking: true)))
         CustomerIO.initialize(withConfig: config.build())
 
         // Initialize messaging features after initializing Customer.io SDK
@@ -72,9 +73,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
                 region: settings.inApp.region.toCIORegion()
             ).build())
             .setEventListener(self)
-
-        // Initialize Location module
-        CustomerIO.initializeLocation(withConfig: LocationConfig(enableLocationTracking: true))
     }
 
     // Handle Universal Link deep link from the Customer.io SDK. This function will get called if a push notification

@@ -32,6 +32,13 @@ public extension CustomerIO {
             let migrationAssistant = DataPipelineMigrationAssistant(handler: implementation)
             migrationAssistant.performMigration(siteId: siteId)
         }
+
+        // Initialize optional modules (e.g. Location) added via addModule(_:).
+        for module in config.modules {
+            commonLogger.moduleInitStart(module.moduleName)
+            module.initialize()
+            commonLogger.moduleInitSuccess(module.moduleName)
+        }
     }
 
     /**

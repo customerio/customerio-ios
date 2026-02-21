@@ -50,6 +50,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         if let cdnHost = appSetSettings?.cdnHost, !cdnHost.isEmpty {
             config.cdnHost(cdnHost)
         }
+        config.addModule(LocationModule(config: LocationConfig(enableLocationTracking: true)))
         CustomerIO.initialize(withConfig: config.build())
 
         // Initialize messaging features after initializing Customer.io SDK
@@ -63,9 +64,6 @@ class AppDelegate: NSObject, UIApplicationDelegate {
                 .showPushAppInForeground(true)
                 .build()
         )
-
-        // Initialize Location module
-        CustomerIO.initializeLocation(withConfig: LocationConfig(enableLocationTracking: true))
 
         /*
          Next line of code is used for testing how Firebase behaves when another object is set as the delegate for `UNUserNotificationCenter`.

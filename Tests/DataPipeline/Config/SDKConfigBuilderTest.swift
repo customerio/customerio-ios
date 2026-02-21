@@ -167,4 +167,74 @@ class SDKConfigBuilderTest: UnitTest {
         XCTAssertNotNil(configuredPlugin)
         XCTAssertTrue(configuredPlugin is ConsoleLogger)
     }
+
+    func test_addModule_expectModulesInResultInOrder() {
+        let module1 = TestCustomerIOModule(name: "ModuleA")
+        let module2 = TestCustomerIOModule(name: "ModuleB")
+
+        let result = SDKConfigBuilder(cdpApiKey: .random)
+            .addModule(module1)
+            .addModule(module2)
+            .build()
+
+        XCTAssertEqual(result.modules.count, 2)
+        XCTAssertEqual(result.modules[0].moduleName, "ModuleA")
+        XCTAssertEqual(result.modules[1].moduleName, "ModuleB")
+    }
+
+    func test_buildWithoutAddModule_expectEmptyModules() {
+        let result = SDKConfigBuilder(cdpApiKey: .random).build()
+        XCTAssertTrue(result.modules.isEmpty)
+    }
+
+    func test_addModule_concurrentAddThenBuild_expectAllModulesPresent() {
+        let moduleCount = 50
+        let modules = (0 ..< moduleCount).map { TestCustomerIOModule(name: "Module\($0)") }
+        let builder = SDKConfigBuilder(cdpApiKey: .random)
+
+        DispatchQueue.concurrentPerform(iterations: moduleCount) { index in
+            _ = builder.addModule(modules[index])
+        }
+
+        let result = builder.build()
+        XCTAssertEqual(result.modules.count, moduleCount)
+        let names = Set(result.modules.map(\.moduleName))
+        for i in 0 ..< moduleCount {
+            XCTAssertTrue(names.contains("Module\(i)"), "Missing Module\(i)")
+        }
+    }
+
+    func test_SDKConfigBuilderResult_defaultModules_expectEmptyWhenNotImplemented() {
+        let built = SDKConfigBuilder(cdpApiKey: .random).build()
+        let customResult = TestConfigResultNoModules(
+            sdkConfig: built.sdkConfig,
+            dataPipelineConfig: built.dataPipelineConfig,
+            deepLinkCallback: built.deepLinkCallback
+        )
+        XCTAssertTrue(customResult.modules.isEmpty, "Conformer that does not implement modules should get default empty array")
+    }
+}
+
+// MARK: - Test double for SDKConfigBuilderResult without modules implementation
+
+private struct TestConfigResultNoModules: SDKConfigBuilderResult {
+    let sdkConfig: SdkConfig
+    let dataPipelineConfig: DataPipelineConfigOptions
+    let deepLinkCallback: DeepLinkCallback?
+    // modules not implemented – protocol extension provides default []
+}
+
+// MARK: - Test double for CustomerIOModule
+
+private final class TestCustomerIOModule: CustomerIOModule {
+    let moduleName: String
+    private(set) var initializeCallCount = 0
+
+    init(name: String) {
+        self.moduleName = name
+    }
+
+    func initialize() {
+        initializeCallCount += 1
+    }
 }
