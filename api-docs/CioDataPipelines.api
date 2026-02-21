@@ -69,10 +69,12 @@ public final class CioDataPipelines.SDKConfigBuilder {
 	public fun func migrationSiteId(_ siteId: String) -> SDKConfigBuilder;
 	public fun func screenViewUse(screenView: ScreenView) -> SDKConfigBuilder;
 	public fun func deepLinkCallback(_ callback: @escaping DeepLinkCallback) -> SDKConfigBuilder;
+	public fun func addModule(_ module: CustomerIOModule) -> SDKConfigBuilder;
 	public fun func build() -> SDKConfigBuilderResult;
 }
 public interface CioDataPipelines.SDKConfigBuilderResult {
 	public var sdkConfig: SdkConfig;
 	public var dataPipelineConfig: DataPipelineConfigOptions;
 	public var deepLinkCallback: ((URL) -> Boolean)?;
+	public var modules: List<any CustomerIOModule>;
 }

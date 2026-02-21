@@ -2,6 +2,11 @@ public final class CioLocation.LocationConfig {
 	public final val enableLocationTracking: Boolean;
 	public fun init(enableLocationTracking: Boolean);
 }
+public final class CioLocation.LocationModule {
+	public final val moduleName: String;
+	public fun init(config: LocationConfig);
+	public fun func initialize();
+}
 public interface CioLocation.LocationServices {
 	public fun func setLastKnownLocation(_ location: CLLocation);
 	public fun func requestLocationUpdate();

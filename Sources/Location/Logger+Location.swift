@@ -6,7 +6,7 @@ private let locationTag = "Location"
 extension Logger {
     func moduleNotInitialized() {
         error(
-            "Location module is not initialized. Call CustomerIO.initializeLocation(withConfig:) first.",
+            "Location module is not initialized. Add LocationModule via SDKConfigBuilder.addModule(LocationModule(config: ...)) before CustomerIO.initialize(withConfig:).",
             locationTag,
             nil
         )

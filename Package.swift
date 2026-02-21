@@ -137,7 +137,7 @@ let package = Package(
                     .process("Resources/PrivacyInfo.xcprivacy"),
                 ]),
         .testTarget(name: "LocationTests",
-                    dependencies: ["CioLocation", "SharedTests"],
+                    dependencies: ["CioLocation", "CioInternalCommon", "SharedTests"],
                     path: "Tests/Location"),
     ]
 )
