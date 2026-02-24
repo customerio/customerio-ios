@@ -14,4 +14,8 @@ final class InMemoryLastLocationStateStore: LastLocationStateStore {
     func save(_ state: LastLocationState) {
         self.state = state
     }
+
+    func clear() {
+        state = nil
+    }
 }

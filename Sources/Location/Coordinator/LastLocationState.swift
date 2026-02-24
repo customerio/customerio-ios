@@ -13,8 +13,9 @@ struct LastSyncedRecord: Codable, Equatable {
     let timestamp: Date
 }
 
-/// Loads and saves the last-location state (e.g. from Keychain).
+/// Loads, saves, and clears the last-location state (e.g. from file with Data Protection).
 protocol LastLocationStateStore: AnyObject {
     func load() -> LastLocationState?
     func save(_ state: LastLocationState)
+    func clear()
 }

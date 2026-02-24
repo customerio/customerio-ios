@@ -11,7 +11,9 @@ protocol LastLocationStorage: AnyObject {
     func clearCache()
 }
 
+/// Serializes all access to the state store so that load→modify→save is atomic and concurrent callers cannot overwrite each other's updates.
 final class LastLocationStorageImpl: LastLocationStorage {
+    private let lock = NSLock()
     private let stateStore: LastLocationStateStore
 
     init(stateStore: LastLocationStateStore) {
@@ -19,27 +21,37 @@ final class LastLocationStorageImpl: LastLocationStorage {
     }
 
     func getCachedLocation() -> LocationData? {
-        stateStore.load()?.cachedLocation
+        lock.lock()
+        defer { lock.unlock() }
+        return stateStore.load()?.cachedLocation
     }
 
     func setCachedLocation(_ location: LocationData) {
+        lock.lock()
+        defer { lock.unlock() }
         var state = stateStore.load() ?? LastLocationState()
         state.cachedLocation = location
         stateStore.save(state)
     }
 
     func getLastSynced() -> (location: LocationData, timestamp: Date)? {
+        lock.lock()
+        defer { lock.unlock() }
         guard let record = stateStore.load()?.lastSynced else { return nil }
         return (record.location, record.timestamp)
     }
 
     func recordLastSync(location: LocationData, timestamp: Date) {
+        lock.lock()
+        defer { lock.unlock() }
         var state = stateStore.load() ?? LastLocationState()
         state.lastSynced = LastSyncedRecord(location: location, timestamp: timestamp)
         stateStore.save(state)
     }
 
     func clearCache() {
-        stateStore.save(LastLocationState())
+        lock.lock()
+        defer { lock.unlock() }
+        stateStore.clear()
     }
 }
