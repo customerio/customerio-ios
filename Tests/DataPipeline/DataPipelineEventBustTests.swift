@@ -78,6 +78,9 @@ class DataPipelineEventBustTests: IntegrationTest {
     }
 
     func testSubscribeToJourneyEvents_DataPipelineHandlesTrackLocationEvent() async {
+        // DataPipeline only tracks location when user is identified.
+        customerIO.identify(userId: String.random)
+
         let givenLatitude = 37.7749
         let givenLongitude = -122.4194
         let givenLocationData = LocationData(latitude: givenLatitude, longitude: givenLongitude)

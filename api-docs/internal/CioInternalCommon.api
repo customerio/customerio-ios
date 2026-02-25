@@ -307,6 +307,18 @@ public final class CioInternalCommon.LocationData {
 	public final val longitude: Double;
 	public fun init(latitude: Double, longitude: Double);
 }
+public final class CioInternalCommon.LocationTrackedEvent {
+	public final val storageId: String;
+	public final val params: List<String : String>;
+	public final val location: LocationData;
+	public final val timestamp: Date;
+	public fun init(
+    storageId: String = UUID().uuidString,
+    location: LocationData,
+    timestamp: Date,
+    params: List<String: String> = List<:>
+);
+}
 public final class CioInternalCommon.Lock {
 	public fun func unsafeInit() -> Lock;
 	public fun func lock();

@@ -36,3 +36,24 @@ public struct TrackLocationEvent: EventRepresentable {
         self.params = params
     }
 }
+
+/// Event posted by DataPipeline when a location update was actually tracked (user identified).
+/// Carries the location that was tracked so the Location module can record it correctly (cache may have changed since the event was posted).
+public struct LocationTrackedEvent: EventRepresentable {
+    public let storageId: String
+    public let params: [String: String]
+    public let location: LocationData
+    public let timestamp: Date
+
+    public init(
+        storageId: String = UUID().uuidString,
+        location: LocationData,
+        timestamp: Date,
+        params: [String: String] = [:]
+    ) {
+        self.storageId = storageId
+        self.location = location
+        self.timestamp = timestamp
+        self.params = params
+    }
+}
