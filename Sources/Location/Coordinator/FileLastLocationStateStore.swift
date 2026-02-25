@@ -4,6 +4,8 @@ import Foundation
 /// Persists `LastLocationState` in a file with iOS Data Protection (encrypted at rest).
 /// Data is cleared when the app is uninstalled. No Keychain or iCloud sync.
 ///
+/// The state directory and file are excluded from backups (`URLResourceValues.isExcludedFromBackup`), so location data is not included in unencrypted or cross-device backups.
+///
 /// Uses `completeUntilFirstUserAuthentication` so the cache can be read when the app is in the background (e.g. after the user has unlocked the device once this boot).
 ///
 /// ## Error scenarios
@@ -22,6 +24,7 @@ import Foundation
 /// - **No Application Support URL**: `stateFileURL()` returns `nil` → save is skipped.
 /// - **Directory creation fails** (e.g. disk full, permission): Directory may be missing → subsequent write can fail; error swallowed.
 /// - **Write or setAttributes fails** (e.g. disk full, permission, volume read‑only): Error caught and ignored; previous file content (if any) is unchanged.
+/// - **Setting isExcludedFromBackup on directory or file fails**: Error caught and ignored; directory or file may be included in backups.
 ///
 /// **clear():**
 /// - **File does not exist**: No-op; returns without error.
@@ -79,22 +82,30 @@ final class FileLastLocationStateStore: LastLocationStateStore {
             return
         }
         let directory = url.deletingLastPathComponent()
-        if !fileManager.fileExists(atPath: directory.path) {
-            try? fileManager.createDirectory(
-                at: directory,
-                withIntermediateDirectories: true,
-                attributes: [.protectionKey: Self.protection]
-            )
-        }
+        try? fileManager.createDirectory(
+            at: directory,
+            withIntermediateDirectories: true,
+            attributes: [.protectionKey: Self.protection]
+        )
+        setExcludedFromBackup(on: directory)
         do {
             try data.write(to: url, options: .atomic)
             try fileManager.setAttributes(
                 [.protectionKey: Self.protection],
                 ofItemAtPath: url.path
             )
+            setExcludedFromBackup(on: url)
         } catch {
             // Avoid exposing file system errors to callers; persistence is best-effort.
         }
+    }
+
+    /// Marks the given URL as excluded from user backups so sensitive data is not included in iCloud/iTunes backups.
+    private func setExcludedFromBackup(on url: URL) {
+        var url = url // make mutable copy
+        var values = URLResourceValues()
+        values.isExcludedFromBackup = true
+        try? url.setResourceValues(values)
     }
 
     private func stateFileURL() -> URL? {
