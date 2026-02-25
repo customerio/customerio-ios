@@ -97,6 +97,9 @@ class DataPipelineImplementation: DataPipelineInstance {
     }
 
     private func trackLocation(_ event: TrackLocationEvent) {
+        guard let userId = analytics.userId, !userId.isEmpty else {
+            return
+        }
         let location = event.location
 
         let properties: [String: Any] = [
@@ -105,6 +108,7 @@ class DataPipelineImplementation: DataPipelineInstance {
         ]
 
         analytics.track(name: "Location Update", properties: properties)
+        eventBusHandler.postEvent(LocationTrackedEvent(location: location, timestamp: dateUtil.now))
     }
 
     var siteId: String?

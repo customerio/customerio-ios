@@ -11,4 +11,10 @@ public enum KeyValueStorageKey: String {
     case broadcastMessagesExpiry = "broadcast_messages_expiry"
     case broadcastMessagesTracking = "broadcast_messages_tracking"
     case inboxMessagesOpenedStatus = "inbox_messages_opened_status"
+    // Location guardrails: cached location and last synced (for 24h + 1 km filter)
+    case locationCachedLatitude
+    case locationCachedLongitude
+    case locationLastSyncedLatitude
+    case locationLastSyncedLongitude
+    case locationLastSyncedTimestamp
 }
