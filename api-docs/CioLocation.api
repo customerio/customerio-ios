@@ -1,0 +1,9 @@
+public final class CioLocation.LocationConfig {
+	public final val enableLocationTracking: Boolean;
+	public fun init(enableLocationTracking: Boolean);
+}
+public interface CioLocation.LocationServices {
+	public fun func setLastKnownLocation(_ location: CLLocation);
+	public fun func requestLocationUpdate();
+	public fun func stopLocationUpdates();
+}
