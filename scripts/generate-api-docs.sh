@@ -22,9 +22,10 @@ FORMATTER_SCRIPT="./scripts/format-api-docs.rb"
 # Public modules (always available)
 declare -a PUBLIC_MODULES=(
     "DataPipelines:CioDataPipelines"
-    "MessagingPushAPN:CioMessagingPushAPN" 
+    "MessagingPushAPN:CioMessagingPushAPN"
     "MessagingPushFCM:CioMessagingPushFCM"
     "MessagingInApp:CioMessagingInApp"
+    "Location:CioLocation"
 )
 
 # Internal modules (only available when CI environment variable is set)
