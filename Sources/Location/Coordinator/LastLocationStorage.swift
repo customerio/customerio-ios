@@ -11,48 +11,47 @@ protocol LastLocationStorage: AnyObject {
     func clearCache()
 }
 
+/// Serializes all access to the state store so that load→modify→save is atomic and concurrent callers cannot overwrite each other's updates.
 final class LastLocationStorageImpl: LastLocationStorage {
-    private let storage: SharedKeyValueStorage
+    private let lock = NSLock()
+    private let stateStore: LastLocationStateStore
 
-    init(storage: SharedKeyValueStorage) {
-        self.storage = storage
+    init(stateStore: LastLocationStateStore) {
+        self.stateStore = stateStore
     }
 
     func getCachedLocation() -> LocationData? {
-        guard let lat = storage.double(.locationCachedLatitude),
-              let lng = storage.double(.locationCachedLongitude)
-        else {
-            return nil
-        }
-        return LocationData(latitude: lat, longitude: lng)
+        lock.lock()
+        defer { lock.unlock() }
+        return stateStore.load()?.cachedLocation
     }
 
     func setCachedLocation(_ location: LocationData) {
-        storage.setDouble(location.latitude, forKey: .locationCachedLatitude)
-        storage.setDouble(location.longitude, forKey: .locationCachedLongitude)
+        lock.lock()
+        defer { lock.unlock() }
+        var state = stateStore.load() ?? LastLocationState()
+        state.cachedLocation = location
+        stateStore.save(state)
     }
 
     func getLastSynced() -> (location: LocationData, timestamp: Date)? {
-        guard let lat = storage.double(.locationLastSyncedLatitude),
-              let lng = storage.double(.locationLastSyncedLongitude),
-              let timestamp = storage.date(.locationLastSyncedTimestamp)
-        else {
-            return nil
-        }
-        return (LocationData(latitude: lat, longitude: lng), timestamp)
+        lock.lock()
+        defer { lock.unlock() }
+        guard let record = stateStore.load()?.lastSynced else { return nil }
+        return (record.location, record.timestamp)
     }
 
     func recordLastSync(location: LocationData, timestamp: Date) {
-        storage.setDouble(location.latitude, forKey: .locationLastSyncedLatitude)
-        storage.setDouble(location.longitude, forKey: .locationLastSyncedLongitude)
-        storage.setDate(timestamp, forKey: .locationLastSyncedTimestamp)
+        lock.lock()
+        defer { lock.unlock() }
+        var state = stateStore.load() ?? LastLocationState()
+        state.lastSynced = LastSyncedRecord(location: location, timestamp: timestamp)
+        stateStore.save(state)
     }
 
     func clearCache() {
-        storage.setDouble(nil, forKey: .locationCachedLatitude)
-        storage.setDouble(nil, forKey: .locationCachedLongitude)
-        storage.setDouble(nil, forKey: .locationLastSyncedLatitude)
-        storage.setDouble(nil, forKey: .locationLastSyncedLongitude)
-        storage.setDate(nil, forKey: .locationLastSyncedTimestamp)
+        lock.lock()
+        defer { lock.unlock() }
+        stateStore.clear()
     }
 }
