@@ -12,7 +12,7 @@ struct LocationFilterTests {
 
     @Test
     func shouldSyncToServer_whenNoLastSynced_returnsTrue() {
-        let storage = LastLocationStorageImpl(storage: InMemorySharedKeyValueStorage())
+        let storage = LastLocationStorageImpl(stateStore: InMemoryLastLocationStateStore())
         let dateUtil = DateUtilStub()
         let filter = makeFilter(storage: storage, dateUtil: dateUtil)
         let newLocation = LocationData(latitude: 37.7749, longitude: -122.4194)
@@ -21,7 +21,7 @@ struct LocationFilterTests {
 
     @Test
     func shouldSyncToServer_whenLastSyncedLessThan24hAgo_returnsFalse() {
-        let storage = LastLocationStorageImpl(storage: InMemorySharedKeyValueStorage())
+        let storage = LastLocationStorageImpl(stateStore: InMemoryLastLocationStateStore())
         let dateUtil = DateUtilStub()
         let now = Date()
         dateUtil.givenNow = now
@@ -35,7 +35,7 @@ struct LocationFilterTests {
 
     @Test
     func shouldSyncToServer_whenLastSyncedLessThan1kmAway_returnsFalse() {
-        let storage = LastLocationStorageImpl(storage: InMemorySharedKeyValueStorage())
+        let storage = LastLocationStorageImpl(stateStore: InMemoryLastLocationStateStore())
         let dateUtil = DateUtilStub()
         let now = Date()
         dateUtil.givenNow = now.addingTimeInterval(25 * 3600) // 25 hours later
@@ -50,7 +50,7 @@ struct LocationFilterTests {
 
     @Test
     func shouldSyncToServer_whenLastSyncedAtLeast24hAgoAndAtLeast1kmAway_returnsTrue() {
-        let storage = LastLocationStorageImpl(storage: InMemorySharedKeyValueStorage())
+        let storage = LastLocationStorageImpl(stateStore: InMemoryLastLocationStateStore())
         let dateUtil = DateUtilStub()
         let past = Date()
         dateUtil.givenNow = past.addingTimeInterval(25 * 3600) // 25 hours later
