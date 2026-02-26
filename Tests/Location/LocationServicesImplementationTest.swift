@@ -6,26 +6,27 @@ import Testing
 
 @Suite("Location")
 struct LocationServicesImplementationTests {
-    private func makeCoordinator(eventBusHandler: EventBusHandlerMock) -> LocationSyncCoordinator {
+    private func makeCoordinator(dataPipeline: DataPipelineTrackingMock? = DataPipelineTrackingMock()) -> LocationSyncCoordinator {
         let storage = LastLocationStorageImpl(stateStore: InMemoryLastLocationStateStore())
         let dateUtil = DateUtilStub()
         let filter = LocationFilter(storage: storage, dateUtil: dateUtil)
         return LocationSyncCoordinator(
             storage: storage,
             filter: filter,
-            eventBusHandler: eventBusHandler,
+            dataPipeline: dataPipeline,
+            dateUtil: dateUtil,
             logger: LoggerMock()
         )
     }
 
     private func makeImplementation(
         enableTracking: Bool = true,
-        eventBusHandler: EventBusHandlerMock = EventBusHandlerMock(),
+        dataPipeline: DataPipelineTrackingMock? = DataPipelineTrackingMock(),
         logger: LoggerMock = LoggerMock(),
         locationProvider: MockLocationProvider = MockLocationProvider()
     ) -> LocationServicesImplementation {
         let config = LocationConfig(enableLocationTracking: enableTracking)
-        let coordinator = makeCoordinator(eventBusHandler: eventBusHandler)
+        let coordinator = makeCoordinator(dataPipeline: dataPipeline)
         return LocationServicesImplementation(
             config: config,
             logger: logger,
@@ -42,33 +43,33 @@ struct LocationServicesImplementationTests {
     }
 
     @Test
-    func setLastKnownLocation_givenTrackingDisabled_expectNoEventPosted() async {
-        let eventBusHandlerMock = EventBusHandlerMock()
-        let service = makeImplementation(enableTracking: false, eventBusHandler: eventBusHandlerMock)
+    func setLastKnownLocation_givenTrackingDisabled_expectNoTrackCalled() async {
+        let pipelineMock = DataPipelineTrackingMock()
+        let service = makeImplementation(enableTracking: false, dataPipeline: pipelineMock)
         let validLocation = CLLocation(latitude: 37.7749, longitude: -122.4194)
 
         service.setLastKnownLocation(validLocation)
         await yieldForLocationTask()
 
-        #expect(eventBusHandlerMock.postEventCallsCount == 0)
+        #expect(pipelineMock.trackCallsCount == 0)
     }
 
     @Test
-    func setLastKnownLocation_givenInvalidCoordinates_expectNoEventPosted() async {
-        let eventBusHandlerMock = EventBusHandlerMock()
-        let service = makeImplementation(eventBusHandler: eventBusHandlerMock)
+    func setLastKnownLocation_givenInvalidCoordinates_expectNoTrackCalled() async {
+        let pipelineMock = DataPipelineTrackingMock()
+        let service = makeImplementation(dataPipeline: pipelineMock)
         let invalidLocation = CLLocation(latitude: 91.0, longitude: 181.0)
 
         service.setLastKnownLocation(invalidLocation)
         await yieldForLocationTask()
 
-        #expect(eventBusHandlerMock.postEventCallsCount == 0)
+        #expect(pipelineMock.trackCallsCount == 0)
     }
 
     @Test
-    func setLastKnownLocation_givenValidLocation_expectEventPostedWithCorrectData() async {
-        let eventBusHandlerMock = EventBusHandlerMock()
-        let service = makeImplementation(eventBusHandler: eventBusHandlerMock)
+    func setLastKnownLocation_givenValidLocation_expectTrackCalledWithCorrectData() async {
+        let pipelineMock = DataPipelineTrackingMock()
+        let service = makeImplementation(dataPipeline: pipelineMock)
         let expectedLatitude = 37.7749
         let expectedLongitude = -122.4194
         let validLocation = CLLocation(latitude: expectedLatitude, longitude: expectedLongitude)
@@ -76,21 +77,18 @@ struct LocationServicesImplementationTests {
         service.setLastKnownLocation(validLocation)
         await yieldForLocationTask()
 
-        #expect(eventBusHandlerMock.postEventCallsCount == 1)
-        let event = eventBusHandlerMock.postEventArguments as? TrackLocationEvent
-        #expect(event != nil)
-        if let event {
-            #expect(event.location.latitude == expectedLatitude)
-            #expect(event.location.longitude == expectedLongitude)
-        }
+        #expect(pipelineMock.trackCallsCount == 1)
+        #expect(pipelineMock.trackInvocations.first?.name == "Location Update")
+        #expect(pipelineMock.trackInvocations.first?.properties["lat"] as? Double == expectedLatitude)
+        #expect(pipelineMock.trackInvocations.first?.properties["lng"] as? Double == expectedLongitude)
     }
 
     @Test
-    func setLastKnownLocation_givenMultipleCalls_expectTwoEventsPostedWhenNoTrackAck() async {
-        // Without DataPipeline in the loop, LocationTrackedEvent is never posted, so last sync is never
-        // recorded. Both locations pass the filter and two TrackLocationEvents are posted.
-        let eventBusHandlerMock = EventBusHandlerMock()
-        let service = makeImplementation(eventBusHandler: eventBusHandlerMock)
+    func setLastKnownLocation_givenMultipleCalls_expectOnlyFirstTrackedDueToFilter() async {
+        // Coordinator records last sync synchronously after each track. Second location is within 24h of first,
+        // so the 24h + 1 km filter correctly allows only the first and denies the second.
+        let pipelineMock = DataPipelineTrackingMock()
+        let service = makeImplementation(dataPipeline: pipelineMock)
         let location1 = CLLocation(latitude: 37.7749, longitude: -122.4194)
         let location2 = CLLocation(latitude: 40.7128, longitude: -74.0060)
 
@@ -98,47 +96,41 @@ struct LocationServicesImplementationTests {
         service.setLastKnownLocation(location2)
         await yieldForLocationTask()
 
-        #expect(eventBusHandlerMock.postEventCallsCount == 2)
-        let event = eventBusHandlerMock.postEventArguments as? TrackLocationEvent
-        #expect(event != nil)
-        let lat = event?.location.latitude
-        #expect(lat == 37.7749 || lat == 40.7128)
+        #expect(pipelineMock.trackCallsCount == 1)
+        #expect(pipelineMock.trackInvocations.first?.properties["lat"] as? Double == 37.7749)
+        #expect(pipelineMock.trackInvocations.first?.properties["lng"] as? Double == -122.4194)
     }
 
     @Test
-    func setLastKnownLocation_givenZeroCoordinates_expectEventPosted() async {
-        let eventBusHandlerMock = EventBusHandlerMock()
-        let service = makeImplementation(eventBusHandler: eventBusHandlerMock)
+    func setLastKnownLocation_givenZeroCoordinates_expectTrackCalled() async {
+        let pipelineMock = DataPipelineTrackingMock()
+        let service = makeImplementation(dataPipeline: pipelineMock)
         let zeroLocation = CLLocation(latitude: 0.0, longitude: 0.0)
 
         service.setLastKnownLocation(zeroLocation)
         await yieldForLocationTask()
 
-        #expect(eventBusHandlerMock.postEventCallsCount == 1)
+        #expect(pipelineMock.trackCallsCount == 1)
     }
 
     @Test
-    func setLastKnownLocation_givenNegativeCoordinates_expectEventPosted() async {
-        let eventBusHandlerMock = EventBusHandlerMock()
-        let service = makeImplementation(eventBusHandler: eventBusHandlerMock)
+    func setLastKnownLocation_givenNegativeCoordinates_expectTrackCalled() async {
+        let pipelineMock = DataPipelineTrackingMock()
+        let service = makeImplementation(dataPipeline: pipelineMock)
         let negativeLocation = CLLocation(latitude: -33.8688, longitude: 151.2093)
 
         service.setLastKnownLocation(negativeLocation)
         await yieldForLocationTask()
 
-        #expect(eventBusHandlerMock.postEventCallsCount == 1)
-        let event = eventBusHandlerMock.postEventArguments as? TrackLocationEvent
-        #expect(event != nil)
-        if let event {
-            #expect(event.location.latitude == -33.8688)
-            #expect(event.location.longitude == 151.2093)
-        }
+        #expect(pipelineMock.trackCallsCount == 1)
+        #expect(pipelineMock.trackInvocations.first?.properties["lat"] as? Double == -33.8688)
+        #expect(pipelineMock.trackInvocations.first?.properties["lng"] as? Double == 151.2093)
     }
 
     // MARK: - requestLocationUpdate / stopLocationUpdates (use mock provider only)
 
     @Test
-    func requestLocationUpdate_givenAuthorizedAndSuccess_expectEventPosted() async {
+    func requestLocationUpdate_givenAuthorizedAndSuccess_expectTrackCalled() async {
         let mockProvider = MockLocationProvider()
         await mockProvider.setResult(.success(LocationSnapshot(
             latitude: 37.7749,
@@ -147,10 +139,10 @@ struct LocationServicesImplementationTests {
             horizontalAccuracy: 100,
             altitude: nil
         )))
-        let eventBusHandlerMock = EventBusHandlerMock()
+        let pipelineMock = DataPipelineTrackingMock()
         let service = makeImplementation(
             enableTracking: true,
-            eventBusHandler: eventBusHandlerMock,
+            dataPipeline: pipelineMock,
             logger: LoggerMock(),
             locationProvider: mockProvider
         )
@@ -158,20 +150,18 @@ struct LocationServicesImplementationTests {
         service.requestLocationUpdate()
         await yieldForLocationTask()
 
-        #expect(eventBusHandlerMock.postEventCallsCount == 1)
-        let event = eventBusHandlerMock.postEventArguments as? TrackLocationEvent
-        #expect(event != nil)
-        #expect(event?.location.latitude == 37.7749)
-        #expect(event?.location.longitude == -122.4194)
+        #expect(pipelineMock.trackCallsCount == 1)
+        #expect(pipelineMock.trackInvocations.first?.properties["lat"] as? Double == 37.7749)
+        #expect(pipelineMock.trackInvocations.first?.properties["lng"] as? Double == -122.4194)
     }
 
     @Test
-    func requestLocationUpdate_givenTrackingDisabled_expectNoEvent() async {
+    func requestLocationUpdate_givenTrackingDisabled_expectNoTrack() async {
         let mockProvider = MockLocationProvider()
-        let eventBusHandlerMock = EventBusHandlerMock()
+        let pipelineMock = DataPipelineTrackingMock()
         let service = makeImplementation(
             enableTracking: false,
-            eventBusHandler: eventBusHandlerMock,
+            dataPipeline: pipelineMock,
             logger: LoggerMock(),
             locationProvider: mockProvider
         )
@@ -179,7 +169,7 @@ struct LocationServicesImplementationTests {
         service.requestLocationUpdate()
         await yieldForLocationTask()
 
-        #expect(eventBusHandlerMock.postEventCallsCount == 0)
+        #expect(pipelineMock.trackCallsCount == 0)
         let requestCount = await mockProvider.requestLocationCallCount
         #expect(requestCount == 0)
     }
@@ -192,7 +182,7 @@ struct LocationServicesImplementationTests {
         )))
         let service = makeImplementation(
             enableTracking: true,
-            eventBusHandler: EventBusHandlerMock(),
+            dataPipeline: DataPipelineTrackingMock(),
             logger: LoggerMock(),
             locationProvider: mockProvider
         )

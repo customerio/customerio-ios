@@ -77,16 +77,19 @@ class DataPipelineEventBustTests: IntegrationTest {
         XCTAssertEqual(trackEvent.deviceToken, givenToken)
     }
 
-    func testSubscribeToJourneyEvents_DataPipelineHandlesTrackLocationEvent() async {
-        // DataPipeline only tracks location when user is identified.
+    func testGetOptionalDataPipelineTracking_returnsImplementationAndTrackSendsToAnalytics() async {
+        // DataPipeline registers as DataPipelineTracking on init; Location (and others) resolve via getOptional.
+        let pipeline = diGraphShared.getOptional(DataPipelineTracking.self)
+        XCTAssertNotNil(pipeline, "DataPipelineTracking should be registered after DataPipeline init")
+
         customerIO.identify(userId: String.random)
 
         let givenLatitude = 37.7749
         let givenLongitude = -122.4194
-        let givenLocationData = LocationData(latitude: givenLatitude, longitude: givenLongitude)
-        let givenLocationEvent = TrackLocationEvent(location: givenLocationData)
-
-        await eventBusHandler.postEventAndWait(givenLocationEvent)
+        pipeline?.track(
+            name: "Location Update",
+            properties: ["lat": givenLatitude, "lng": givenLongitude]
+        )
 
         guard let trackEvent = outputReader.lastEvent as? TrackEvent else {
             XCTFail("recorded event is not an instance of TrackEvent")

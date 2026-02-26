@@ -1,7 +1,7 @@
 import CioAnalytics
 import CioInternalCommon
 
-class DataPipelineImplementation: DataPipelineInstance {
+class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking {
     private let moduleConfig: DataPipelineConfigOptions
     private let logger: Logger
     private let dataPipelinesLogger: DataPipelinesLogger
@@ -57,11 +57,17 @@ class DataPipelineImplementation: DataPipelineInstance {
         // plugin to update context properties for each request
         analytics.add(plugin: contextPlugin)
 
+        // enrichment plugin: adds provider attributes (e.g. location) to identify context
+        analytics.add(plugin: ProfileEnrichmentPlugin(registry: diGraph.profileEnrichmentRegistry, logger: logger))
+
         // plugin to publish data pipeline events
         analytics.add(plugin: DataPipelinePublishedEvents(diGraph: diGraph))
 
         // Add plugin to filter events based on SDK configuration
         analytics.add(plugin: ScreenFilterPlugin(screenViewUse: moduleConfig.screenViewUse))
+
+        // Register as DataPipelineTracking so modules (e.g. Location) can send track events via getOptional
+        diGraph.register(self, forType: DataPipelineTracking.self)
 
         // subscribe to journey events emmitted from push/in-app module to send them via datapipelines
         subscribeToJourneyEvents()
@@ -90,25 +96,6 @@ class DataPipelineImplementation: DataPipelineInstance {
         eventBusHandler.addObserver(RegisterDeviceTokenEvent.self) { event in
             self.registerDeviceToken(event.token)
         }
-
-        eventBusHandler.addObserver(TrackLocationEvent.self) { event in
-            self.trackLocation(event)
-        }
-    }
-
-    private func trackLocation(_ event: TrackLocationEvent) {
-        guard let userId = analytics.userId, !userId.isEmpty else {
-            return
-        }
-        let location = event.location
-
-        let properties: [String: Any] = [
-            "lat": location.latitude,
-            "lng": location.longitude
-        ]
-
-        analytics.track(name: "Location Update", properties: properties)
-        eventBusHandler.postEvent(LocationTrackedEvent(location: location, timestamp: dateUtil.now))
     }
 
     var siteId: String?
@@ -323,5 +310,17 @@ extension DataPipelineImplementation {
     /// returns user id for currently identifier profile
     var registeredUserId: String? {
         analytics.userId
+    }
+}
+
+// MARK: - DataPipelineTracking
+
+extension DataPipelineImplementation {
+    var userId: String? {
+        analytics.userId
+    }
+
+    func track(name: String, properties: [String: Any]) {
+        analytics.track(name: name, properties: properties)
     }
 }

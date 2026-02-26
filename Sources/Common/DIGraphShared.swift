@@ -32,6 +32,27 @@ public final class DIGraphShared: @unchecked Sendable {
         }
     }
 
+    /// Returns a previously registered instance for the given type, or nil if none was registered.
+    /// Use this for optional dependencies (e.g. modules that register themselves when initialized).
+    /// Overrides (test mocks) take precedence over registered instances.
+    public func getOptional<T: Any>(_ type: T.Type = T.self) -> T? {
+        lock.withLock {
+            let typeName = String(describing: type)
+            if let overridden = overrides[typeName] as? T {
+                return overridden
+            }
+            return singletons[typeName] as? T
+        }
+    }
+
+    /// Registers an instance for the given type. Later resolution via `getOptional(_:)` will return this instance.
+    /// Used when a module provides an implementation at initialization (e.g. DataPipelines registering as DataPipelineTracking).
+    public func register<T: Any>(_ value: T, forType type: T.Type) {
+        lock.withLock {
+            singletons[String(describing: type)] = value
+        }
+    }
+
     /// Gets a singleton instance of the specified type T. If that instance doesn't exist,
     /// it is created using the provided factory closure, stored, and then returned.
     /// Parameters:

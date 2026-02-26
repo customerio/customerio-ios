@@ -7,7 +7,7 @@ import Testing
 @Suite("Location")
 struct LocationSyncCoordinatorTests {
     private func makeCoordinator(
-        eventBusHandler: EventBusHandlerMock = EventBusHandlerMock(),
+        dataPipeline: DataPipelineTrackingMock? = DataPipelineTrackingMock(),
         storage: LastLocationStorageImpl? = nil,
         dateUtil: DateUtilStub? = nil
     ) -> (LocationSyncCoordinator, LastLocationStorageImpl) {
@@ -17,7 +17,8 @@ struct LocationSyncCoordinatorTests {
         let coordinator = LocationSyncCoordinator(
             storage: store,
             filter: filter,
-            eventBusHandler: eventBusHandler,
+            dataPipeline: dataPipeline,
+            dateUtil: util,
             logger: LoggerMock()
         )
         return (coordinator, store)
@@ -34,19 +35,22 @@ struct LocationSyncCoordinatorTests {
     }
 
     @Test
-    func processLocationUpdate_whenFilterAllows_postsEvent() async {
-        let eventBusHandlerMock = EventBusHandlerMock()
-        let (coordinator, _) = makeCoordinator(eventBusHandler: eventBusHandlerMock)
+    func processLocationUpdate_whenFilterAllowsAndPipelinePresent_callsTrack() async {
+        let pipelineMock = DataPipelineTrackingMock()
+        let (coordinator, storage) = makeCoordinator(dataPipeline: pipelineMock)
         await coordinator.processLocationUpdate(LocationData(latitude: 37.7749, longitude: -122.4194))
-        #expect(eventBusHandlerMock.postEventCallsCount == 1)
-        let event = eventBusHandlerMock.postEventArguments as? TrackLocationEvent
-        #expect(event?.location.latitude == 37.7749)
-        #expect(event?.location.longitude == -122.4194)
+        #expect(pipelineMock.trackCallsCount == 1)
+        #expect(pipelineMock.trackInvocations.first?.name == "Location Update")
+        #expect(pipelineMock.trackInvocations.first?.properties["lat"] as? Double == 37.7749)
+        #expect(pipelineMock.trackInvocations.first?.properties["lng"] as? Double == -122.4194)
+        let lastSynced = storage.getLastSynced()
+        #expect(lastSynced?.location.latitude == 37.7749)
+        #expect(lastSynced?.location.longitude == -122.4194)
     }
 
     @Test
-    func processLocationUpdate_whenFilterDenies_doesNotPostEvent() async {
-        let eventBusHandlerMock = EventBusHandlerMock()
+    func processLocationUpdate_whenFilterDenies_doesNotCallTrack() async {
+        let pipelineMock = DataPipelineTrackingMock()
         let storage = LastLocationStorageImpl(stateStore: InMemoryLastLocationStateStore())
         let dateUtil = DateUtilStub()
         let now = Date()
@@ -55,51 +59,38 @@ struct LocationSyncCoordinatorTests {
         storage.setCachedLocation(oldLocation)
         storage.recordLastSync(location: oldLocation, timestamp: now.addingTimeInterval(-3600)) // 1 hour ago
         let (coordinator, _) = makeCoordinator(
-            eventBusHandler: eventBusHandlerMock,
+            dataPipeline: pipelineMock,
             storage: storage,
             dateUtil: dateUtil
         )
         await coordinator.processLocationUpdate(LocationData(latitude: 37.0001, longitude: -122.0001))
-        #expect(eventBusHandlerMock.postEventCallsCount == 0)
+        #expect(pipelineMock.trackCallsCount == 0)
     }
 
     @Test
-    func syncCachedLocationIfNeeded_whenHasCachedAndFilterAllows_postsEvent() async {
-        let eventBusHandlerMock = EventBusHandlerMock()
-        let (coordinator, storage) = makeCoordinator(eventBusHandler: eventBusHandlerMock)
+    func syncCachedLocationIfNeeded_whenHasCachedAndFilterAllows_callsTrack() async {
+        let pipelineMock = DataPipelineTrackingMock()
+        let (coordinator, storage) = makeCoordinator(dataPipeline: pipelineMock)
         storage.setCachedLocation(LocationData(latitude: 40.7128, longitude: -74.0060))
         await coordinator.syncCachedLocationIfNeeded()
-        #expect(eventBusHandlerMock.postEventCallsCount == 1)
-        let event = eventBusHandlerMock.postEventArguments as? TrackLocationEvent
-        #expect(event?.location.latitude == 40.7128)
-        #expect(event?.location.longitude == -74.0060)
-        // Last sync is recorded only when DataPipeline posts LocationTrackedEvent (after actual track).
-    }
-
-    @Test
-    func recordLastSyncWhenTracked_recordsLocationAndTimestampInStorage() async {
-        let (coordinator, storage) = makeCoordinator()
-        let givenLocation = LocationData(latitude: 37.7749, longitude: -122.4194)
-        let givenTimestamp = Date()
-        await coordinator.recordLastSyncWhenTracked(location: givenLocation, timestamp: givenTimestamp)
+        #expect(pipelineMock.trackCallsCount == 1)
+        #expect(pipelineMock.trackInvocations.first?.properties["lat"] as? Double == 40.7128)
+        #expect(pipelineMock.trackInvocations.first?.properties["lng"] as? Double == -74.0060)
         let lastSynced = storage.getLastSynced()
-        #expect(lastSynced != nil)
-        #expect(lastSynced?.location.latitude == givenLocation.latitude)
-        #expect(lastSynced?.location.longitude == givenLocation.longitude)
-        #expect(lastSynced?.timestamp == givenTimestamp)
+        #expect(lastSynced?.location.latitude == 40.7128)
     }
 
     @Test
-    func syncCachedLocationIfNeeded_whenNoCachedLocation_doesNotPostEvent() async {
-        let eventBusHandlerMock = EventBusHandlerMock()
-        let (coordinator, _) = makeCoordinator(eventBusHandler: eventBusHandlerMock)
+    func syncCachedLocationIfNeeded_whenNoCachedLocation_doesNotCallTrack() async {
+        let pipelineMock = DataPipelineTrackingMock()
+        let (coordinator, _) = makeCoordinator(dataPipeline: pipelineMock)
         await coordinator.syncCachedLocationIfNeeded()
-        #expect(eventBusHandlerMock.postEventCallsCount == 0)
+        #expect(pipelineMock.trackCallsCount == 0)
     }
 
     @Test
-    func syncCachedLocationIfNeeded_whenFilterDenies_doesNotPostEventNorRecordLastSync() async {
-        let eventBusHandlerMock = EventBusHandlerMock()
+    func syncCachedLocationIfNeeded_whenFilterDenies_doesNotCallTrackNorRecordLastSync() async {
+        let pipelineMock = DataPipelineTrackingMock()
         let storage = LastLocationStorageImpl(stateStore: InMemoryLastLocationStateStore())
         let dateUtil = DateUtilStub()
         let now = Date()
@@ -108,15 +99,32 @@ struct LocationSyncCoordinatorTests {
         storage.setCachedLocation(cachedLocation)
         storage.recordLastSync(location: cachedLocation, timestamp: now.addingTimeInterval(-3600)) // 1 hour ago, same location → filter denies
         let (coordinator, _) = makeCoordinator(
-            eventBusHandler: eventBusHandlerMock,
+            dataPipeline: pipelineMock,
             storage: storage,
             dateUtil: dateUtil
         )
         await coordinator.syncCachedLocationIfNeeded()
-        #expect(eventBusHandlerMock.postEventCallsCount == 0)
+        #expect(pipelineMock.trackCallsCount == 0)
         let lastSynced = storage.getLastSynced()
         #expect(lastSynced != nil)
         #expect(lastSynced?.timestamp == now.addingTimeInterval(-3600)) // unchanged
+    }
+
+    @Test
+    func processLocationUpdate_whenPipelineNil_doesNotCallTrack() async {
+        let (coordinator, storage) = makeCoordinator(dataPipeline: nil)
+        await coordinator.processLocationUpdate(LocationData(latitude: 37.7749, longitude: -122.4194))
+        #expect(storage.getCachedLocation() != nil)
+        #expect(storage.getLastSynced() == nil) // no pipeline → no track → no recordLastSync
+    }
+
+    @Test
+    func processLocationUpdate_whenPipelineHasNoUserId_doesNotCallTrack() async {
+        let pipelineMock = DataPipelineTrackingMock(userId: nil)
+        let (coordinator, storage) = makeCoordinator(dataPipeline: pipelineMock)
+        await coordinator.processLocationUpdate(LocationData(latitude: 37.7749, longitude: -122.4194))
+        #expect(pipelineMock.trackCallsCount == 0)
+        #expect(storage.getLastSynced() == nil)
     }
 
     @Test

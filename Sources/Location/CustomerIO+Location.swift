@@ -37,12 +37,16 @@ public extension CustomerIO {
         let stateStore = FileLastLocationStateStore()
         let storage = LastLocationStorageImpl(stateStore: stateStore)
         let filter = LocationFilter(storage: storage, dateUtil: di.dateUtil)
+        let dataPipeline = di.getOptional(DataPipelineTracking.self)
         let coordinator = LocationSyncCoordinator(
             storage: storage,
             filter: filter,
-            eventBusHandler: di.eventBusHandler,
+            dataPipeline: dataPipeline,
+            dateUtil: di.dateUtil,
             logger: di.logger
         )
+        let locationEnrichmentProvider = LocationProfileEnrichmentProvider(storage: storage)
+        di.profileEnrichmentRegistry.register(locationEnrichmentProvider)
         registerLocationEventSubscriptions(coordinator: coordinator, eventBusHandler: di.eventBusHandler)
         let locationProvider = CoreLocationProvider(logger: di.logger)
         locationServices = LocationServicesImplementation(
@@ -59,9 +63,6 @@ public extension CustomerIO {
         }
         eventBusHandler.addObserver(ResetEvent.self) { _ in
             Task { await coordinator.clearCache() }
-        }
-        eventBusHandler.addObserver(LocationTrackedEvent.self) { event in
-            Task { await coordinator.recordLastSyncWhenTracked(location: event.location, timestamp: event.timestamp) }
         }
     }
 
