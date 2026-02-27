@@ -91,7 +91,7 @@ let package = Package(
                     .process("Resources/PrivacyInfo.xcprivacy"),
                 ]),
         .testTarget(name: "DataPipelineTests",
-                    dependencies: ["CioDataPipelines", "SharedTests"],
+                    dependencies: ["CioDataPipelines", "CioInternalCommon", "SharedTests"],
                     path: "Tests/DataPipeline"),
 
         // APN

@@ -80,6 +80,28 @@ class CDPInteractionDefaultConfigTests: DataPipelineInteractionTests {
         XCTAssertMatches(identifyEvent.traits?.dictionaryValue, givenBody, withTypeMap: givenBodyTypeMap)
     }
 
+    func test_identify_whenProfileEnrichmentProviderRegistered_addsProviderAttributesToContext() {
+        let enrichmentProvider = StubEnrichmentProviderDataPipeline(attributes: [
+            "location_latitude": 37.7749,
+            "location_longitude": -122.4194
+        ])
+        diGraphShared.profileEnrichmentRegistry.register(enrichmentProvider)
+
+        let givenIdentifier = String.random
+        let givenBody: [String: Any] = ["first_name": "Dana"]
+        customerIO.identify(userId: givenIdentifier, traits: givenBody)
+
+        XCTAssertEqual(outputReader.identifyEvents.count, 1)
+        guard let identifyEvent = outputReader.identifyEvents.last else {
+            XCTFail("identify event must not be nil")
+            return
+        }
+        XCTAssertEqual(identifyEvent.traits?.dictionaryValue?["first_name"] as? String, "Dana")
+        let context = identifyEvent.context?.dictionaryValue
+        XCTAssertEqual(context?["location_latitude"] as? Double, 37.7749)
+        XCTAssertEqual(context?["location_longitude"] as? Double, -122.4194)
+    }
+
     // MARK: device token
 
     func test_identify_givenProfileChanged_expectDeleteDeviceTokenForOldProfile() {
@@ -673,5 +695,18 @@ class CDPInteractionCustomConfigTests: DataPipelineInteractionTests {
 extension DataPipelineInteractionTests {
     func mockDeviceAttributes(defaultAttributes: [String: Any] = [:]) {
         deviceAttributesMock.getDefaultDeviceAttributesClosure = { $0(defaultAttributes) }
+    }
+}
+
+/// Stub profile enrichment provider for DataPipeline identify enrichment tests.
+private final class StubEnrichmentProviderDataPipeline: ProfileEnrichmentProvider {
+    private let attributes: [String: Any]?
+
+    init(attributes: [String: Any]?) {
+        self.attributes = attributes
+    }
+
+    func getProfileEnrichmentAttributes() -> [String: Any]? {
+        attributes
     }
 }

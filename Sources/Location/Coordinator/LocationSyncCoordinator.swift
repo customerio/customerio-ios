@@ -1,26 +1,29 @@
 import CioInternalCommon
 import Foundation
 
-/// Owns "should we sync?" and "sync to pipeline" logic for location. Caches every location; posts TrackLocationEvent when the 24h + 1 km filter allows. Identification is enforced by DataPipeline before tracking.
+/// Owns "should we sync?" and "sync to pipeline" logic for location. Caches every location; sends track via optional DataPipelineTracking when the 24h + 1 km filter allows and user is identified.
 actor LocationSyncCoordinator {
     private let storage: LastLocationStorage
     private let filter: LocationFilter
-    private let eventBusHandler: EventBusHandler
+    private let dataPipeline: DataPipelineTracking?
+    private let dateUtil: DateUtil
     private let logger: Logger
 
     init(
         storage: LastLocationStorage,
         filter: LocationFilter,
-        eventBusHandler: EventBusHandler,
+        dataPipeline: DataPipelineTracking?,
+        dateUtil: DateUtil,
         logger: Logger
     ) {
         self.storage = storage
         self.filter = filter
-        self.eventBusHandler = eventBusHandler
+        self.dataPipeline = dataPipeline
+        self.dateUtil = dateUtil
         self.logger = logger
     }
 
-    /// Called for every new location (from setLastKnownLocation or requestLocationUpdate). Always updates cache; posts TrackLocationEvent when filter allows. Last sync is recorded only when DataPipeline actually tracks (LocationTrackedEvent).
+    /// Called for every new location (from setLastKnownLocation or requestLocationUpdate). Always updates cache; sends track via pipeline when filter allows and user is identified.
     func processLocationUpdate(_ location: LocationData) {
         storage.setCachedLocation(location)
 
@@ -29,10 +32,10 @@ actor LocationSyncCoordinator {
             return
         }
 
-        postTrackLocationEvent(location)
+        trySendLocationTrack(location)
     }
 
-    /// Called when ProfileIdentifiedEvent is received. Syncs cached location if present and the 24h + 1 km filter allows. Last sync is recorded only when DataPipeline actually tracks (LocationTrackedEvent).
+    /// Called when ProfileIdentifiedEvent is received. Syncs cached location if present and the 24h + 1 km filter allows.
     func syncCachedLocationIfNeeded() {
         guard let cached = storage.getCachedLocation() else {
             return
@@ -41,21 +44,24 @@ actor LocationSyncCoordinator {
             logger.locationSyncFiltered()
             return
         }
-        postTrackLocationEvent(cached)
+        trySendLocationTrack(cached)
     }
 
-    /// Called when LocationTrackedEvent is received. Records the actual tracked location and timestamp so filter uses the correct reference (cache may have changed since the event was posted).
-    func recordLastSyncWhenTracked(location: LocationData, timestamp: Date) {
-        storage.recordLastSync(location: location, timestamp: timestamp)
-    }
-
-    /// Called when ResetEvent is received. Clears cached location and last synced state.
+    /// Clears cached location and last synced state. Location cache is cleared synchronously via LocationProfileEnrichmentProvider.resetContext() on analytics reset; this method remains for tests and symmetry.
     func clearCache() {
         storage.clearCache()
         logger.locationCacheCleared()
     }
 
-    private func postTrackLocationEvent(_ location: LocationData) {
-        eventBusHandler.postEvent(TrackLocationEvent(location: location))
+    private func trySendLocationTrack(_ location: LocationData) {
+        guard let pipeline = dataPipeline else { return }
+        guard pipeline.isUserIdentified else { return }
+
+        let properties: [String: Any] = [
+            "latitude": location.latitude,
+            "longitude": location.longitude
+        ]
+        pipeline.track(name: "Location Update", properties: properties)
+        storage.recordLastSync(location: location, timestamp: dateUtil.now)
     }
 }

@@ -140,8 +140,14 @@ public final class CioInternalCommon.DIGraphShared {
 	public final val shared: DIGraphShared;
 	public fun func override<T>(value: T, forType type: T.Type);
 	public fun func getOverriddenInstance<T: Any>() -> T?;
+	public fun func getOptional<T: Any>(_ type: T.Type = T.self) -> T?;
+	public fun func register<T: Any>(_ value: T, forType type: T.Type);
 	public fun func getSingletonOrCreate<T>(of type: T.Type = T.self, with factory: () -> T) -> T;
 	public fun func reset();
+}
+public interface CioInternalCommon.DataPipelineTracking {
+	public var isUserIdentified: Boolean;
+	public fun func track(name: String, properties: List<String: Any>);
 }
 public enum CioInternalCommon.DateFormat {
 }
@@ -368,6 +374,19 @@ public final class CioInternalCommon.NewSubscriptionEvent {
 	public final val params: List<String : String>;
 	public final val subscribedEventType: String;
 	public final val timestamp: Date;
+}
+public interface CioInternalCommon.ProfileEnrichmentProvider {
+	public fun func getProfileEnrichmentAttributes() -> List<String: Any>?;
+	public fun func resetContext();
+}
+public interface CioInternalCommon.ProfileEnrichmentRegistry {
+	public fun func register(_ provider: ProfileEnrichmentProvider);
+	public fun func getAll() -> List<ProfileEnrichmentProvider>;
+}
+public final class CioInternalCommon.ProfileEnrichmentRegistryImpl {
+	public fun init();
+	public fun func register(_ provider: ProfileEnrichmentProvider);
+	public fun func getAll() -> List<ProfileEnrichmentProvider>;
 }
 public final class CioInternalCommon.ProfileIdentifiedEvent {
 	public final val storageId: String;
