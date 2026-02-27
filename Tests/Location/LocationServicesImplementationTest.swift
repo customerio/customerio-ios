@@ -79,8 +79,8 @@ struct LocationServicesImplementationTests {
 
         #expect(pipelineMock.trackCallsCount == 1)
         #expect(pipelineMock.trackInvocations.first?.name == "Location Update")
-        #expect(pipelineMock.trackInvocations.first?.properties["lat"] as? Double == expectedLatitude)
-        #expect(pipelineMock.trackInvocations.first?.properties["lng"] as? Double == expectedLongitude)
+        #expect(pipelineMock.trackInvocations.first?.properties["latitude"] as? Double == expectedLatitude)
+        #expect(pipelineMock.trackInvocations.first?.properties["longitude"] as? Double == expectedLongitude)
     }
 
     @Test
@@ -97,8 +97,8 @@ struct LocationServicesImplementationTests {
         await yieldForLocationTask()
 
         #expect(pipelineMock.trackCallsCount == 1)
-        #expect(pipelineMock.trackInvocations.first?.properties["lat"] as? Double == 37.7749)
-        #expect(pipelineMock.trackInvocations.first?.properties["lng"] as? Double == -122.4194)
+        #expect(pipelineMock.trackInvocations.first?.properties["latitude"] as? Double == 37.7749)
+        #expect(pipelineMock.trackInvocations.first?.properties["longitude"] as? Double == -122.4194)
     }
 
     @Test
@@ -123,8 +123,8 @@ struct LocationServicesImplementationTests {
         await yieldForLocationTask()
 
         #expect(pipelineMock.trackCallsCount == 1)
-        #expect(pipelineMock.trackInvocations.first?.properties["lat"] as? Double == -33.8688)
-        #expect(pipelineMock.trackInvocations.first?.properties["lng"] as? Double == 151.2093)
+        #expect(pipelineMock.trackInvocations.first?.properties["latitude"] as? Double == -33.8688)
+        #expect(pipelineMock.trackInvocations.first?.properties["longitude"] as? Double == 151.2093)
     }
 
     // MARK: - requestLocationUpdate / stopLocationUpdates (use mock provider only)
@@ -151,8 +151,8 @@ struct LocationServicesImplementationTests {
         await yieldForLocationTask()
 
         #expect(pipelineMock.trackCallsCount == 1)
-        #expect(pipelineMock.trackInvocations.first?.properties["lat"] as? Double == 37.7749)
-        #expect(pipelineMock.trackInvocations.first?.properties["lng"] as? Double == -122.4194)
+        #expect(pipelineMock.trackInvocations.first?.properties["latitude"] as? Double == 37.7749)
+        #expect(pipelineMock.trackInvocations.first?.properties["longitude"] as? Double == -122.4194)
     }
 
     @Test

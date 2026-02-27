@@ -47,7 +47,7 @@ actor LocationSyncCoordinator {
         trySendLocationTrack(cached)
     }
 
-    /// Called when ResetEvent is received. Clears cached location and last synced state.
+    /// Clears cached location and last synced state. Location cache is cleared synchronously via LocationProfileEnrichmentProvider.resetContext() on analytics reset; this method remains for tests and symmetry.
     func clearCache() {
         storage.clearCache()
         logger.locationCacheCleared()
@@ -55,11 +55,11 @@ actor LocationSyncCoordinator {
 
     private func trySendLocationTrack(_ location: LocationData) {
         guard let pipeline = dataPipeline else { return }
-        guard let userId = pipeline.userId, !userId.isEmpty else { return }
+        guard pipeline.isUserIdentified else { return }
 
         let properties: [String: Any] = [
-            "lat": location.latitude,
-            "lng": location.longitude
+            "latitude": location.latitude,
+            "longitude": location.longitude
         ]
         pipeline.track(name: "Location Update", properties: properties)
         storage.recordLastSync(location: location, timestamp: dateUtil.now)

@@ -9,8 +9,8 @@ import Foundation
 ///
 /// Internal SDK contract — not intended for use by host app developers.
 public protocol DataPipelineTracking: AnyObject {
-    /// Current identified user id, or nil if anonymous / not identified.
-    var userId: String? { get }
+    /// True when a user is currently identified (non-anonymous); false when anonymous or after clearIdentify.
+    var isUserIdentified: Bool { get }
 
     /// Sends a track event with the given name and properties.
     func track(name: String, properties: [String: Any])

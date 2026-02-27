@@ -61,9 +61,6 @@ public extension CustomerIO {
         eventBusHandler.addObserver(ProfileIdentifiedEvent.self) { _ in
             Task { await coordinator.syncCachedLocationIfNeeded() }
         }
-        eventBusHandler.addObserver(ResetEvent.self) { _ in
-            Task { await coordinator.clearCache() }
-        }
     }
 
     /// Access the Location module. Use after calling `CustomerIO.initializeLocation(withConfig:)`.

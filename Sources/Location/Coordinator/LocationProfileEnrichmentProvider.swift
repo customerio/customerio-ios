@@ -19,4 +19,8 @@ final class LocationProfileEnrichmentProvider: ProfileEnrichmentProvider {
             "location_longitude": location.longitude
         ]
     }
+
+    func resetContext() {
+        storage.clearCache()
+    }
 }

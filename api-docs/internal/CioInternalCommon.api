@@ -146,7 +146,7 @@ public final class CioInternalCommon.DIGraphShared {
 	public fun func reset();
 }
 public interface CioInternalCommon.DataPipelineTracking {
-	public var userId: String?;
+	public var isUserIdentified: Boolean;
 	public fun func track(name: String, properties: List<String: Any>);
 }
 public enum CioInternalCommon.DateFormat {
@@ -377,6 +377,7 @@ public final class CioInternalCommon.NewSubscriptionEvent {
 }
 public interface CioInternalCommon.ProfileEnrichmentProvider {
 	public fun func getProfileEnrichmentAttributes() -> List<String: Any>?;
+	public fun func resetContext();
 }
 public interface CioInternalCommon.ProfileEnrichmentRegistry {
 	public fun func register(_ provider: ProfileEnrichmentProvider);

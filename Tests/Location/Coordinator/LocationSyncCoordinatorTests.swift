@@ -41,8 +41,8 @@ struct LocationSyncCoordinatorTests {
         await coordinator.processLocationUpdate(LocationData(latitude: 37.7749, longitude: -122.4194))
         #expect(pipelineMock.trackCallsCount == 1)
         #expect(pipelineMock.trackInvocations.first?.name == "Location Update")
-        #expect(pipelineMock.trackInvocations.first?.properties["lat"] as? Double == 37.7749)
-        #expect(pipelineMock.trackInvocations.first?.properties["lng"] as? Double == -122.4194)
+        #expect(pipelineMock.trackInvocations.first?.properties["latitude"] as? Double == 37.7749)
+        #expect(pipelineMock.trackInvocations.first?.properties["longitude"] as? Double == -122.4194)
         let lastSynced = storage.getLastSynced()
         #expect(lastSynced?.location.latitude == 37.7749)
         #expect(lastSynced?.location.longitude == -122.4194)
@@ -74,8 +74,8 @@ struct LocationSyncCoordinatorTests {
         storage.setCachedLocation(LocationData(latitude: 40.7128, longitude: -74.0060))
         await coordinator.syncCachedLocationIfNeeded()
         #expect(pipelineMock.trackCallsCount == 1)
-        #expect(pipelineMock.trackInvocations.first?.properties["lat"] as? Double == 40.7128)
-        #expect(pipelineMock.trackInvocations.first?.properties["lng"] as? Double == -74.0060)
+        #expect(pipelineMock.trackInvocations.first?.properties["latitude"] as? Double == 40.7128)
+        #expect(pipelineMock.trackInvocations.first?.properties["longitude"] as? Double == -74.0060)
         let lastSynced = storage.getLastSynced()
         #expect(lastSynced?.location.latitude == 40.7128)
     }
@@ -119,8 +119,8 @@ struct LocationSyncCoordinatorTests {
     }
 
     @Test
-    func processLocationUpdate_whenPipelineHasNoUserId_doesNotCallTrack() async {
-        let pipelineMock = DataPipelineTrackingMock(userId: nil)
+    func processLocationUpdate_whenUserNotIdentified_doesNotCallTrack() async {
+        let pipelineMock = DataPipelineTrackingMock(isUserIdentified: false)
         let (coordinator, storage) = makeCoordinator(dataPipeline: pipelineMock)
         await coordinator.processLocationUpdate(LocationData(latitude: 37.7749, longitude: -122.4194))
         #expect(pipelineMock.trackCallsCount == 0)

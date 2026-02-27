@@ -88,7 +88,7 @@ class DataPipelineEventBustTests: IntegrationTest {
         let givenLongitude = -122.4194
         pipeline?.track(
             name: "Location Update",
-            properties: ["lat": givenLatitude, "lng": givenLongitude]
+            properties: ["latitude": givenLatitude, "longitude": givenLongitude]
         )
 
         guard let trackEvent = outputReader.lastEvent as? TrackEvent else {
@@ -100,7 +100,7 @@ class DataPipelineEventBustTests: IntegrationTest {
         XCTAssertEqual(trackEvent.event, "Location Update")
 
         let properties = trackEvent.properties?.dictionaryValue
-        XCTAssertEqual(properties?["lat"] as? Double, givenLatitude)
-        XCTAssertEqual(properties?["lng"] as? Double, givenLongitude)
+        XCTAssertEqual(properties?["latitude"] as? Double, givenLatitude)
+        XCTAssertEqual(properties?["longitude"] as? Double, givenLongitude)
     }
 }

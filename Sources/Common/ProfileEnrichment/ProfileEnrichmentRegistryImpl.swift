@@ -13,7 +13,9 @@ public final class ProfileEnrichmentRegistryImpl: ProfileEnrichmentRegistry {
     public func register(_ provider: ProfileEnrichmentProvider) {
         lock.lock()
         defer { lock.unlock() }
-        providers.append(provider)
+        if !providers.contains(where: { $0 === provider }) {
+            providers.append(provider)
+        }
     }
 
     public func getAll() -> [ProfileEnrichmentProvider] {

@@ -57,8 +57,8 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking {
         // plugin to update context properties for each request
         analytics.add(plugin: contextPlugin)
 
-        // enrichment plugin: adds provider attributes (e.g. location) to identify context
-        analytics.add(plugin: ProfileEnrichmentPlugin(registry: diGraph.profileEnrichmentRegistry, logger: logger))
+        // plugin that adds provider attributes (e.g. location) to identify context
+        analytics.add(plugin: IdentifyContextPlugin(registry: diGraph.profileEnrichmentRegistry, logger: logger))
 
         // plugin to publish data pipeline events
         analytics.add(plugin: DataPipelinePublishedEvents(diGraph: diGraph))
@@ -316,8 +316,9 @@ extension DataPipelineImplementation {
 // MARK: - DataPipelineTracking
 
 extension DataPipelineImplementation {
-    var userId: String? {
-        analytics.userId
+    var isUserIdentified: Bool {
+        guard let userId = analytics.userId, !userId.isEmpty else { return false }
+        return true
     }
 
     func track(name: String, properties: [String: Any]) {
