@@ -95,13 +95,6 @@ extension LocationTestViewController {
         }
     }
 
-    /// Asks the SDK to stop any in-flight location updates.
-    func stopSdkLocationUpdates() {
-        CustomerIO.location.stopLocationUpdates()
-        lastSetLocationLabel.text = "Location updates stopped"
-        showToast(withMessage: "Stopped location updates")
-    }
-
     func showLocationPermissionAlert() {
         let alert = UIAlertController(
             title: "Location Permission Required",

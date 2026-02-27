@@ -1,6 +1,7 @@
 import CioInternalCommon
 import CoreLocation
 import Foundation
+import UIKit
 
 /// Extension to access the Location module through CustomerIO.
 public extension CustomerIO {
@@ -12,9 +13,11 @@ public extension CustomerIO {
     /// In debug builds, calling from a background thread triggers an assertion failure.
     /// In release, calling from a background thread logs an error and schedules initialization on main (no crash).
     ///
+    /// Use `LocationConfig(mode:)` with `.off`, `.manual`, or `.onAppStart`. With `.onAppStart`, the SDK requests location once per app launch when the app becomes active (when permission is granted). The SDK stops any in-flight location request automatically when the app enters background.
+    ///
     /// **Example:**
     /// ```swift
-    /// CustomerIO.initializeLocation(withConfig: LocationConfig(enableLocationTracking: true))
+    /// CustomerIO.initializeLocation(withConfig: LocationConfig(mode: .onAppStart))
     /// ```
     static func initializeLocation(withConfig config: LocationConfig) {
         assert(Thread.isMainThread, "CustomerIO.initializeLocation(withConfig:) must be called on the main thread.")
@@ -45,16 +48,20 @@ public extension CustomerIO {
             dateUtil: di.dateUtil,
             logger: di.logger
         )
-        let locationEnrichmentProvider = LocationProfileEnrichmentProvider(storage: storage)
+        let locationEnrichmentProvider = LocationProfileEnrichmentProvider(storage: storage, config: config)
         di.profileEnrichmentRegistry.register(locationEnrichmentProvider)
         registerLocationEventSubscriptions(coordinator: coordinator, eventBusHandler: di.eventBusHandler)
         let locationProvider = CoreLocationProvider(logger: di.logger)
-        locationServices = LocationServicesImplementation(
+        let implementation = LocationServicesImplementation(
             config: config,
             logger: di.logger,
             locationProvider: locationProvider,
-            locationSyncCoordinator: coordinator
+            locationSyncCoordinator: coordinator,
+            lifecycleNotifying: RealAppLifecycleNotifying(),
+            applicationStateProvider: RealApplicationStateProvider()
         )
+        locationServices = implementation
+        Task { await implementation.setUpLifecycleObserver() }
     }
 
     private static func registerLocationEventSubscriptions(coordinator: LocationSyncCoordinator, eventBusHandler: EventBusHandler) {

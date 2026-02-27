@@ -11,7 +11,7 @@ import Foundation
 ///
 /// **Example:**
 /// ```swift
-/// CustomerIO.initializeLocation(withConfig: LocationConfig(enableLocationTracking: true))
+/// CustomerIO.initializeLocation(withConfig: LocationConfig(mode: .onAppStart))
 /// CustomerIO.location.setLastKnownLocation(clLocation)
 /// CustomerIO.location.requestLocationUpdate()
 /// ```
@@ -40,9 +40,6 @@ public protocol LocationServices: AnyObject {
     /// The SDK does not request location permission. The host app must prompt for authorization
     /// (e.g. via `CLLocationManager.requestWhenInUseAuthorization()`) and only call this when permission is granted.
     func requestLocationUpdate()
-
-    /// Cancels any in-flight location request. No-op if nothing in progress.
-    func stopLocationUpdates()
 }
 
 // MARK: - UninitializedLocationServices
@@ -61,10 +58,6 @@ final class UninitializedLocationServices: LocationServices {
     func requestLocationUpdate() {
         logger.moduleNotInitialized()
     }
-
-    func stopLocationUpdates() {
-        logger.moduleNotInitialized()
-    }
 }
 
 // MARK: - LocationServicesImplementation (internal, real implementation)
@@ -74,20 +67,49 @@ actor LocationServicesImplementation: LocationServices {
     private let logger: Logger
     private let locationProvider: any LocationProviding
     private let locationSyncCoordinator: LocationSyncCoordinator
+    private let lifecycleNotifying: AppLifecycleNotifying
+    private let applicationStateProvider: ApplicationStateProvider
     private var currentTask: Task<Void, Never>?
+    /// Owned by this implementation; calls requestLocationUpdate/stopLocationUpdates when lifecycle events fire. Set in setUpLifecycleObserver() (after init so we can capture self).
+    private var locationLifecycleObserver: LocationLifecycleObserver?
 
     /// Use this initializer in tests to inject a location provider and coordinator (e.g. mocks).
-    /// Production code creates the implementation via CustomerIO.initializeLocation(withConfig:), which creates the provider on the main thread and injects it.
+    /// Production code creates the implementation via CustomerIO.initializeLocation(withConfig:), which runs on the main thread and injects the app state provider.
+    /// Pass a no-op (e.g. NoOpAppLifecycleNotifying) in tests when lifecycle behavior is not under test.
+    /// ApplicationStateProvider is injected into the lifecycle observer so it can trigger immediately when the app is already active (avoids missing the first didBecomeActive).
     init(
         config: LocationConfig,
         logger: Logger,
         locationProvider: any LocationProviding,
-        locationSyncCoordinator: LocationSyncCoordinator
+        locationSyncCoordinator: LocationSyncCoordinator,
+        lifecycleNotifying: AppLifecycleNotifying,
+        applicationStateProvider: ApplicationStateProvider
     ) {
         self.config = config
         self.logger = logger
         self.locationProvider = locationProvider
         self.locationSyncCoordinator = locationSyncCoordinator
+        self.lifecycleNotifying = lifecycleNotifying
+        self.applicationStateProvider = applicationStateProvider
+        self.locationLifecycleObserver = nil
+    }
+
+    /// Creates and stores the lifecycle observer. Call after init so closures can capture self directly.
+    /// Reads app state on the main thread so UIApplication.shared.applicationState is safe, then passes initialAlreadyActive to the observer.
+    func setUpLifecycleObserver() async {
+        let initialAlreadyActive = await MainActor.run { applicationStateProvider.applicationState == .active }
+        let observer = LocationLifecycleObserver(
+            mode: config.mode,
+            onBecomeActive: { [weak self] in
+                self?.requestLocationUpdate()
+            },
+            onBackground: { [weak self] in
+                self?.stopLocationUpdates()
+            },
+            lifecycleNotifying: lifecycleNotifying,
+            initialAlreadyActive: initialAlreadyActive
+        )
+        locationLifecycleObserver = observer
     }
 
     nonisolated func setLastKnownLocation(_ location: CLLocation) {
@@ -98,6 +120,7 @@ actor LocationServicesImplementation: LocationServices {
         Task { await self.startRequestIfNeeded() }
     }
 
+    /// Cancels any in-flight location request. No-op if nothing in progress. Called automatically when the app enters background; not exposed on the public LocationServices protocol.
     nonisolated func stopLocationUpdates() {
         Task { await self.stopLocationUpdatesImpl() }
     }
@@ -112,7 +135,7 @@ actor LocationServicesImplementation: LocationServices {
     }
 
     private func setLastKnownLocationImpl(_ location: CLLocation) async {
-        guard config.enableLocationTracking else {
+        guard config.mode != .off else {
             logger.trackingDisabledIgnoringSetLastKnownLocation()
             return
         }
@@ -152,7 +175,7 @@ actor LocationServicesImplementation: LocationServices {
     }
 
     private func runLocationRequest() async {
-        guard config.enableLocationTracking else {
+        guard config.mode != .off else {
             logger.trackingDisabledIgnoringRequestLocationUpdate()
             return
         }

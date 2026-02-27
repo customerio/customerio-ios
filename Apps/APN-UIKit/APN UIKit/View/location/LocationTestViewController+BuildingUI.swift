@@ -84,12 +84,6 @@ extension LocationTestViewController {
         requestSdkLocationOnceButton.addTarget(self, action: #selector(requestSdkLocationOnceTapped), for: .touchUpInside)
         stackView.addArrangedSubview(requestSdkLocationOnceButton)
 
-        stopLocationUpdatesButton = ThemeButton()
-        stopLocationUpdatesButton.setTitle("Stop location updates", for: .normal)
-        stopLocationUpdatesButton.heightAnchor.constraint(equalToConstant: 50).isActive = true
-        stopLocationUpdatesButton.addTarget(self, action: #selector(stopLocationUpdatesTapped), for: .touchUpInside)
-        stackView.addArrangedSubview(stopLocationUpdatesButton)
-
         return stackView
     }
 
