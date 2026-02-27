@@ -110,6 +110,9 @@ extension DIGraphShared {
         _ = logger
         countDependenciesResolved += 1
 
+        _ = profileEnrichmentRegistry
+        countDependenciesResolved += 1
+
         _ = queueInventoryMemoryStore
         countDependenciesResolved += 1
 
@@ -346,6 +349,18 @@ extension DIGraphShared {
 
     private func _get_logger() -> Logger {
         LoggerImpl(logger: systemLogger)
+    }
+
+    // ProfileEnrichmentRegistry (singleton)
+    public var profileEnrichmentRegistry: ProfileEnrichmentRegistry {
+        getOverriddenInstance() ??
+            getSingletonOrCreate {
+                _get_profileEnrichmentRegistry()
+            }
+    }
+
+    private func _get_profileEnrichmentRegistry() -> ProfileEnrichmentRegistry {
+        ProfileEnrichmentRegistryImpl()
     }
 
     // QueueInventoryMemoryStore (singleton)
