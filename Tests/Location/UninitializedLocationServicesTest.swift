@@ -17,7 +17,7 @@ struct UninitializedLocationServicesTests {
         #expect(loggerMock.errorCallsCount == 1)
         #expect(
             loggerMock.errorReceivedInvocations.first?.message
-                == "Location module is not initialized. Call CustomerIO.initializeLocation(withConfig:) first."
+                == "Location module is not initialized. Add LocationModule via SDKConfigBuilder.addModule(LocationModule(config: ...)) before CustomerIO.initialize(withConfig:)."
         )
     }
 }

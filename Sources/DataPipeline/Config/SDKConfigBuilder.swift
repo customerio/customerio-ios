@@ -46,6 +46,9 @@ public class SDKConfigBuilder {
     private var screenViewUse: ScreenView = .all
     private var deepLinkCallback: DeepLinkCallback?
 
+    // Optional modules (e.g. Location) to initialize with the SDK.
+    private var modules: [CustomerIOModule] = []
+
     /// Initializes new `SDKConfigBuilder` with required configuration options.
     /// - Parameters:
     ///   - cdpApiKey: Customer.io Data Pipeline API Key
@@ -164,6 +167,14 @@ public class SDKConfigBuilder {
         return self
     }
 
+    /// Adds an optional Customer.io module to be initialized with the SDK (e.g. Location via `LocationModule(config:)`).
+    /// Call before `build()`.
+    @discardableResult
+    public func addModule(_ module: CustomerIOModule) -> SDKConfigBuilder {
+        modules.append(module)
+        return self
+    }
+
     @available(iOSApplicationExtension, unavailable)
     public func build() -> SDKConfigBuilderResult {
         // create `SdkConfig` from given configurations
@@ -206,7 +217,8 @@ public class SDKConfigBuilder {
         return SDKConfigBuilderResultImpl(
             sdkConfig: sdkConfig,
             dataPipelineConfig: dataPipelineConfig,
-            deepLinkCallback: deepLinkCallback
+            deepLinkCallback: deepLinkCallback,
+            modules: modules
         )
     }
 
@@ -214,13 +226,28 @@ public class SDKConfigBuilder {
         public let sdkConfig: SdkConfig
         public let dataPipelineConfig: DataPipelineConfigOptions
         public let deepLinkCallback: DeepLinkCallback?
+        public let modules: [CustomerIOModule]
+
+        public init(
+            sdkConfig: SdkConfig,
+            dataPipelineConfig: DataPipelineConfigOptions,
+            deepLinkCallback: DeepLinkCallback?,
+            modules: [CustomerIOModule] = []
+        ) {
+            self.sdkConfig = sdkConfig
+            self.dataPipelineConfig = dataPipelineConfig
+            self.deepLinkCallback = deepLinkCallback
+            self.modules = modules
+        }
     }
 }
 
 /// Tuple type for the result of the `SDKConfigBuilder`'s `build` method.
-/// Contains both `SdkConfig` and `DataPipelineConfigOptions` instances.
+/// Contains `SdkConfig`, `DataPipelineConfigOptions`, optional modules, and optional deepLinkCallback.
 public protocol SDKConfigBuilderResult {
     var sdkConfig: SdkConfig { get }
     var dataPipelineConfig: DataPipelineConfigOptions { get }
     var deepLinkCallback: DeepLinkCallback? { get }
+    /// Optional modules (e.g. Location) added via `addModule(_:)`. Empty if none were added.
+    var modules: [CustomerIOModule] { get }
 }
