@@ -4,7 +4,7 @@ import Foundation
 /// Removes all observers in deinit when the instance is deallocated.
 /// Held by LocationServicesImplementation (singleton), so the "has triggered this launch" state is per process.
 ///
-/// For `.onAppStart`: if `initialAlreadyActive` is true, triggers once immediately; otherwise registers for didBecomeActive. Background observer is always registered.
+/// When mode is `.off`, no observers are registered. For `.onAppStart`: if `initialAlreadyActive` is true, triggers once immediately; otherwise registers for didBecomeActive. Background observer is registered for `.manual` and `.onAppStart` only.
 final class LocationLifecycleObserver {
     private var hasTriggeredOnAppStartThisLaunch = false
 
@@ -14,7 +14,7 @@ final class LocationLifecycleObserver {
     private let lifecycleNotifying: AppLifecycleNotifying
     private var observerTokens: [AppLifecycleObserverToken] = []
 
-    /// - Parameter initialAlreadyActive: When true and mode is `.onAppStart`, triggers once immediately (caller should pass the result of reading app state on the main thread). Otherwise the observer registers for didBecomeActive.
+    /// - Parameter initialAlreadyActive: When true and mode is `.onAppStart`, triggers once immediately (caller should pass the result of reading app state on the main thread). Otherwise the observer registers for didBecomeActive. When mode is `.off`, no observers are registered.
     init(
         mode: LocationTrackingMode,
         onBecomeActive: @escaping () -> Void,
@@ -27,7 +27,9 @@ final class LocationLifecycleObserver {
         self.onBackground = onBackground
         self.lifecycleNotifying = lifecycleNotifying
 
-        // Background: always register so we can stop location updates when app enters background.
+        guard mode != .off else { return }
+
+        // Background: register so we can stop location updates when app enters background.
         let backgroundToken = lifecycleNotifying.addDidEnterBackgroundObserver { [weak self] in
             guard let self else { return }
             self.onBackground()
