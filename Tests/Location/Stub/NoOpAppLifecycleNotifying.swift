@@ -11,8 +11,8 @@ final class NoOpAppLifecycleNotifying: AppLifecycleNotifying {
     func addDidEnterBackgroundObserver(using block: @escaping () -> Void) -> AppLifecycleObserverToken {
         NoOpToken()
     }
-
-    func removeObserver(_ token: AppLifecycleObserverToken) {}
 }
 
-private final class NoOpToken: AppLifecycleObserverToken {}
+private final class NoOpToken: AppLifecycleObserverToken {
+    func remove() {}
+}

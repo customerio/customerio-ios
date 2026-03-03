@@ -14,23 +14,28 @@ final class StubAppLifecycleNotifying: AppLifecycleNotifying {
     private var nextId = 0
 
     func addDidBecomeActiveObserver(using block: @escaping () -> Void) -> AppLifecycleObserverToken {
-        let token = StubToken(id: nextId)
+        let id = nextId
         nextId += 1
+        let token = StubToken(id: id) { [weak self] in
+            self?.removeRegistration(byId: id)
+        }
         becomeActiveRegistrations.append(Registration(token: token, block: block))
         return token
     }
 
     func addDidEnterBackgroundObserver(using block: @escaping () -> Void) -> AppLifecycleObserverToken {
-        let token = StubToken(id: nextId)
+        let id = nextId
         nextId += 1
+        let token = StubToken(id: id) { [weak self] in
+            self?.removeRegistration(byId: id)
+        }
         enterBackgroundRegistrations.append(Registration(token: token, block: block))
         return token
     }
 
-    func removeObserver(_ token: AppLifecycleObserverToken) {
-        guard let stubToken = token as? StubToken else { return }
-        becomeActiveRegistrations.removeAll { $0.token.id == stubToken.id }
-        enterBackgroundRegistrations.removeAll { $0.token.id == stubToken.id }
+    private func removeRegistration(byId id: Int) {
+        becomeActiveRegistrations.removeAll { $0.token.id == id }
+        enterBackgroundRegistrations.removeAll { $0.token.id == id }
     }
 
     /// Invokes all registered didBecomeActive blocks synchronously.
@@ -50,5 +55,15 @@ final class StubAppLifecycleNotifying: AppLifecycleNotifying {
 
 private final class StubToken: AppLifecycleObserverToken {
     let id: Int
-    init(id: Int) { self.id = id }
+    private var onRemove: (() -> Void)?
+
+    init(id: Int, onRemove: @escaping () -> Void) {
+        self.id = id
+        self.onRemove = onRemove
+    }
+
+    func remove() {
+        onRemove?()
+        onRemove = nil
+    }
 }

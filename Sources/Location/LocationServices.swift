@@ -94,14 +94,12 @@ actor LocationServicesImplementation: LocationServices {
         self.locationLifecycleObserver = nil
     }
 
-    /// Creates and stores the lifecycle observer when mode is not `.off`. Call after init so closures can capture self directly.
-    /// Reads app state on the main thread so UIApplication.shared.applicationState is safe, then passes initialAlreadyActive to the observer.
+    /// Creates and stores the lifecycle observer when mode is not `.off`. The observer registers for didBecomeActive first, then checks app state (register first, then check state) so the cold-start notification is not missed.
     func setUpLifecycleObserver() async {
         guard config.mode != .off else {
             locationLifecycleObserver = nil
             return
         }
-        let initialAlreadyActive = await MainActor.run { applicationStateProvider.applicationState == .active }
         let observer = LocationLifecycleObserver(
             mode: config.mode,
             onBecomeActive: { [weak self] in
@@ -110,10 +108,10 @@ actor LocationServicesImplementation: LocationServices {
             onBackground: { [weak self] in
                 self?.stopLocationUpdates()
             },
-            lifecycleNotifying: lifecycleNotifying,
-            initialAlreadyActive: initialAlreadyActive
+            lifecycleNotifying: lifecycleNotifying
         )
         locationLifecycleObserver = observer
+        await observer.triggerIfAlreadyActive(applicationStateProvider: applicationStateProvider)
     }
 
     nonisolated func setLastKnownLocation(_ location: CLLocation) {

@@ -3,6 +3,7 @@ import UIKit
 
 /// Production implementation that registers for app lifecycle notifications via NotificationCenter.
 /// Observers are invoked on the main queue.
+/// Uses `RegistrationToken` so that when the token is released, the observer is automatically removed.
 final class RealAppLifecycleNotifying: AppLifecycleNotifying {
     private let notificationCenter: NotificationCenter
 
@@ -11,41 +12,24 @@ final class RealAppLifecycleNotifying: AppLifecycleNotifying {
     }
 
     func addDidBecomeActiveObserver(using block: @escaping () -> Void) -> AppLifecycleObserverToken {
-        let token = notificationCenter.addObserver(
+        let observer = notificationCenter.addObserver(
             forName: UIApplication.didBecomeActiveNotification,
             object: nil,
             queue: .main
         ) { _ in block() }
-        return Token(notificationCenter: notificationCenter, observer: token)
+        return RegistrationToken(identifier: UUID(), action: { [notificationCenter] in
+            notificationCenter.removeObserver(observer)
+        })
     }
 
     func addDidEnterBackgroundObserver(using block: @escaping () -> Void) -> AppLifecycleObserverToken {
-        let token = notificationCenter.addObserver(
+        let observer = notificationCenter.addObserver(
             forName: UIApplication.didEnterBackgroundNotification,
             object: nil,
             queue: .main
         ) { _ in block() }
-        return Token(notificationCenter: notificationCenter, observer: token)
-    }
-
-    func removeObserver(_ token: AppLifecycleObserverToken) {
-        guard let token = token as? Token else { return }
-        token.remove()
-    }
-}
-
-// MARK: - Token
-
-private final class Token: AppLifecycleObserverToken {
-    private let notificationCenter: NotificationCenter
-    private let observer: NSObjectProtocol
-
-    init(notificationCenter: NotificationCenter, observer: NSObjectProtocol) {
-        self.notificationCenter = notificationCenter
-        self.observer = observer
-    }
-
-    func remove() {
-        notificationCenter.removeObserver(observer)
+        return RegistrationToken(identifier: UUID(), action: { [notificationCenter] in
+            notificationCenter.removeObserver(observer)
+        })
     }
 }

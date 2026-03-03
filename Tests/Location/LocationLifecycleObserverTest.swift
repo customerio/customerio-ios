@@ -12,8 +12,7 @@ struct LocationLifecycleObserverTests {
             mode: .onAppStart,
             onBecomeActive: { becomeActiveCount += 1 },
             onBackground: {},
-            lifecycleNotifying: stubLifecycle,
-            initialAlreadyActive: false
+            lifecycleNotifying: stubLifecycle
         )
         stubLifecycle.simulateDidBecomeActive()
 
@@ -28,8 +27,7 @@ struct LocationLifecycleObserverTests {
             mode: .onAppStart,
             onBecomeActive: { becomeActiveCount += 1 },
             onBackground: {},
-            lifecycleNotifying: stubLifecycle,
-            initialAlreadyActive: false
+            lifecycleNotifying: stubLifecycle
         )
         _ = observer
         stubLifecycle.simulateDidBecomeActive()
@@ -70,17 +68,18 @@ struct LocationLifecycleObserverTests {
     }
 
     @Test
-    func onAppStart_givenInitialAlreadyActive_expectOnBecomeActiveCalledImmediatelyAndNotAgainOnSimulate() {
+    func onAppStart_givenInitialAlreadyActive_expectOnBecomeActiveCalledImmediatelyAndNotAgainOnSimulate() async {
         var becomeActiveCount = 0
         let stubLifecycle = StubAppLifecycleNotifying()
+        let stubState = StubApplicationStateProvider()
+        stubState.setApplicationState(.active)
         let observer = LocationLifecycleObserver(
             mode: .onAppStart,
             onBecomeActive: { becomeActiveCount += 1 },
             onBackground: {},
-            lifecycleNotifying: stubLifecycle,
-            initialAlreadyActive: true
+            lifecycleNotifying: stubLifecycle
         )
-        _ = observer
+        await observer.triggerIfAlreadyActive(applicationStateProvider: stubState)
         #expect(becomeActiveCount == 1)
         stubLifecycle.simulateDidBecomeActive()
         #expect(becomeActiveCount == 1)
