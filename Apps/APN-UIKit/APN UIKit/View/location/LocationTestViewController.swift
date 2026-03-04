@@ -25,7 +25,6 @@ class LocationTestViewController: BaseViewController {
     var setManualLocationButton: ThemeButton!
     var useCurrentLocationButton: ThemeButton!
     var requestSdkLocationOnceButton: ThemeButton!
-    var stopLocationUpdatesButton: ThemeButton!
 
     /// Tracks if we're in the "user tapped Use Current Location and we're waiting for permission" flow.
     /// Used to avoid auto-starting a location fetch when the screen opens and auth is already granted.
@@ -129,7 +128,7 @@ class LocationTestViewController: BaseViewController {
 
         stackView.addArrangedSubview(createOptionSection(
             title: "OPTION 2: SDK LOCATION",
-            description: "Ask for permission if needed, then SDK fetches location once. Use \"Stop updates\" to cancel.",
+            description: "Ask for permission if needed, then SDK fetches location once. The SDK stops any in-flight request when the app goes to background.",
             content: createSdkLocationButtons()
         ))
         stackView.addArrangedSubview(createOrSeparator())

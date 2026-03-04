@@ -65,7 +65,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         )
 
         // Initialize Location module
-        CustomerIO.initializeLocation(withConfig: LocationConfig(enableLocationTracking: true))
+        CustomerIO.initializeLocation(withConfig: LocationConfig(mode: .onAppStart))
 
         /*
          Next line of code is used for testing how Firebase behaves when another object is set as the delegate for `UNUserNotificationCenter`.

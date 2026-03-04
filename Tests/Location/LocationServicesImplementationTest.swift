@@ -20,18 +20,22 @@ struct LocationServicesImplementationTests {
     }
 
     private func makeImplementation(
-        enableTracking: Bool = true,
+        mode: LocationTrackingMode = .manual,
         dataPipeline: DataPipelineTrackingMock? = DataPipelineTrackingMock(),
         logger: LoggerMock = LoggerMock(),
-        locationProvider: MockLocationProvider = MockLocationProvider()
+        locationProvider: MockLocationProvider = MockLocationProvider(),
+        lifecycleNotifying: AppLifecycleNotifying = NoOpAppLifecycleNotifying(),
+        applicationStateProvider: ApplicationStateProvider = StubApplicationStateProvider()
     ) -> LocationServicesImplementation {
-        let config = LocationConfig(enableLocationTracking: enableTracking)
+        let config = LocationConfig(mode: mode)
         let coordinator = makeCoordinator(dataPipeline: dataPipeline)
         return LocationServicesImplementation(
             config: config,
             logger: logger,
             locationProvider: locationProvider,
-            locationSyncCoordinator: coordinator
+            locationSyncCoordinator: coordinator,
+            lifecycleNotifying: lifecycleNotifying,
+            applicationStateProvider: applicationStateProvider
         )
     }
 
@@ -45,7 +49,7 @@ struct LocationServicesImplementationTests {
     @Test
     func setLastKnownLocation_givenTrackingDisabled_expectNoTrackCalled() async {
         let pipelineMock = DataPipelineTrackingMock()
-        let service = makeImplementation(enableTracking: false, dataPipeline: pipelineMock)
+        let service = makeImplementation(mode: .off, dataPipeline: pipelineMock)
         let validLocation = CLLocation(latitude: 37.7749, longitude: -122.4194)
 
         service.setLastKnownLocation(validLocation)
@@ -141,7 +145,7 @@ struct LocationServicesImplementationTests {
         )))
         let pipelineMock = DataPipelineTrackingMock()
         let service = makeImplementation(
-            enableTracking: true,
+            mode: .manual,
             dataPipeline: pipelineMock,
             logger: LoggerMock(),
             locationProvider: mockProvider
@@ -160,7 +164,7 @@ struct LocationServicesImplementationTests {
         let mockProvider = MockLocationProvider()
         let pipelineMock = DataPipelineTrackingMock()
         let service = makeImplementation(
-            enableTracking: false,
+            mode: .off,
             dataPipeline: pipelineMock,
             logger: LoggerMock(),
             locationProvider: mockProvider
@@ -181,7 +185,7 @@ struct LocationServicesImplementationTests {
             latitude: 0, longitude: 0, timestamp: Date(), horizontalAccuracy: 0, altitude: nil
         )))
         let service = makeImplementation(
-            enableTracking: true,
+            mode: .manual,
             dataPipeline: DataPipelineTrackingMock(),
             logger: LoggerMock(),
             locationProvider: mockProvider
@@ -194,5 +198,67 @@ struct LocationServicesImplementationTests {
 
         let cancelCount = await mockProvider.cancelCallCount
         #expect(cancelCount >= 1)
+    }
+
+    // MARK: - Lifecycle observer integration (setUpLifecycleObserver + StubAppLifecycleNotifying)
+
+    @Test
+    func setUpLifecycleObserver_givenOnAppStartAndStub_whenSimulateDidBecomeActive_expectRequestLocationUpdateTriggered() async {
+        let stub = StubAppLifecycleNotifying()
+        let mockProvider = MockLocationProvider()
+        await mockProvider.setResult(.success(LocationSnapshot(
+            latitude: 0, longitude: 0, timestamp: Date(), horizontalAccuracy: 0, altitude: nil
+        )))
+        let service = makeImplementation(
+            mode: .onAppStart,
+            locationProvider: mockProvider,
+            lifecycleNotifying: stub
+        )
+        await service.setUpLifecycleObserver()
+
+        stub.simulateDidBecomeActive()
+        await yieldForLocationTask()
+
+        let requestCount = await mockProvider.requestLocationCallCount
+        #expect(requestCount >= 1)
+    }
+
+    @Test
+    func setUpLifecycleObserver_givenStub_whenSimulateDidEnterBackground_expectStopLocationUpdatesTriggered() async {
+        let stub = StubAppLifecycleNotifying()
+        let mockProvider = MockLocationProvider()
+        let service = makeImplementation(
+            locationProvider: mockProvider,
+            lifecycleNotifying: stub
+        )
+        await service.setUpLifecycleObserver()
+
+        stub.simulateDidEnterBackground()
+        await yieldForLocationTask()
+
+        let cancelCount = await mockProvider.cancelCallCount
+        #expect(cancelCount >= 1)
+    }
+
+    @Test
+    func setUpLifecycleObserver_givenOnAppStartAndStateProviderSaysActive_expectRequestLocationUpdateTriggeredImmediately() async {
+        let stubLifecycle = StubAppLifecycleNotifying()
+        let stubState = StubApplicationStateProvider()
+        stubState.setApplicationState(.active)
+        let mockProvider = MockLocationProvider()
+        await mockProvider.setResult(.success(LocationSnapshot(
+            latitude: 0, longitude: 0, timestamp: Date(), horizontalAccuracy: 0, altitude: nil
+        )))
+        let service = makeImplementation(
+            mode: .onAppStart,
+            locationProvider: mockProvider,
+            lifecycleNotifying: stubLifecycle,
+            applicationStateProvider: stubState
+        )
+        await service.setUpLifecycleObserver()
+        await yieldForLocationTask()
+
+        let requestCount = await mockProvider.requestLocationCallCount
+        #expect(requestCount >= 1)
     }
 }
