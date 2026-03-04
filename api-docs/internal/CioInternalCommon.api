@@ -131,6 +131,12 @@ public interface CioInternalCommon.CustomerIOInstance {
 );
 	public fun func trackMetric(deliveryID: String, event: Metric, deviceToken: String);
 }
+public interface CioInternalCommon.CustomerIOModule {
+	public var moduleName: String;
+	public fun func initialize();
+}
+public interface CioInternalCommon.CustomerIOModuleConfig {
+}
 public final class CioInternalCommon.CustomerIOSdkClient {
 	public final val source: String;
 	public final val sdkVersion: String;

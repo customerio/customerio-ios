@@ -167,4 +167,57 @@ class SDKConfigBuilderTest: UnitTest {
         XCTAssertNotNil(configuredPlugin)
         XCTAssertTrue(configuredPlugin is ConsoleLogger)
     }
+
+    func test_addModule_expectModulesInResultInOrder() {
+        let module1 = TestCustomerIOModule(name: "ModuleA")
+        let module2 = TestCustomerIOModule(name: "ModuleB")
+
+        let result = SDKConfigBuilder(cdpApiKey: .random)
+            .addModule(module1)
+            .addModule(module2)
+            .build()
+
+        XCTAssertEqual(result.modules.count, 2)
+        XCTAssertEqual(result.modules[0].moduleName, "ModuleA")
+        XCTAssertEqual(result.modules[1].moduleName, "ModuleB")
+    }
+
+    func test_buildWithoutAddModule_expectEmptyModules() {
+        let result = SDKConfigBuilder(cdpApiKey: .random).build()
+        XCTAssertTrue(result.modules.isEmpty)
+    }
+
+    func test_SDKConfigBuilderResult_customConformer_expectModulesReturned() {
+        let built = SDKConfigBuilder(cdpApiKey: .random).build()
+        let customResult = TestConfigResultNoModules(
+            sdkConfig: built.sdkConfig,
+            dataPipelineConfig: built.dataPipelineConfig,
+            deepLinkCallback: built.deepLinkCallback
+        )
+        XCTAssertTrue(customResult.modules.isEmpty)
+    }
+}
+
+// MARK: - Test double for SDKConfigBuilderResult
+
+private struct TestConfigResultNoModules: SDKConfigBuilderResult {
+    let sdkConfig: SdkConfig
+    let dataPipelineConfig: DataPipelineConfigOptions
+    let deepLinkCallback: DeepLinkCallback?
+    let modules: [CustomerIOModule] = []
+}
+
+// MARK: - Test double for CustomerIOModule
+
+private final class TestCustomerIOModule: CustomerIOModule {
+    let moduleName: String
+    private(set) var initializeCallCount = 0
+
+    init(name: String) {
+        self.moduleName = name
+    }
+
+    func initialize() {
+        initializeCallCount += 1
+    }
 }
