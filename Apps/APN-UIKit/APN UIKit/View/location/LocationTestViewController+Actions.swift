@@ -19,10 +19,6 @@ extension LocationTestViewController {
         requestSdkLocationUpdateOnce()
     }
 
-    @objc func stopLocationUpdatesTapped() {
-        stopSdkLocationUpdates()
-    }
-
     @objc func setManualLocationTapped() {
         setManualLocation()
     }

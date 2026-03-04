@@ -5,14 +5,20 @@ import Testing
 @Suite("Location")
 struct LocationConfigTests {
     @Test
-    func init_givenTrackingEnabled_expectTrackingEnabled() {
-        let config = LocationConfig(enableLocationTracking: true)
-        #expect(config.enableLocationTracking == true)
+    func init_givenOff_expectModeOff() {
+        let config = LocationConfig(mode: .off)
+        #expect(config.mode == .off)
     }
 
     @Test
-    func init_givenTrackingDisabled_expectTrackingDisabled() {
-        let config = LocationConfig(enableLocationTracking: false)
-        #expect(config.enableLocationTracking == false)
+    func init_givenManual_expectModeManual() {
+        let config = LocationConfig(mode: .manual)
+        #expect(config.mode == .manual)
+    }
+
+    @Test
+    func init_givenOnAppStart_expectModeOnAppStart() {
+        let config = LocationConfig(mode: .onAppStart)
+        #expect(config.mode == .onAppStart)
     }
 }
