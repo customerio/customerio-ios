@@ -5,7 +5,7 @@ import UIKit
 
 // MARK: - CLLocationManagerDelegate
 
-extension LocationTestViewController: CLLocationManagerDelegate {
+extension LocationTestViewController: @MainActor CLLocationManagerDelegate {
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         stopFetchingLocation()
 
