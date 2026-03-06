@@ -5,7 +5,8 @@ import Foundation
 /// Encodes the 24h + 1 km guardrail: sync to server only if at least 24 hours since last sync and at least 1 km from last synced location.
 /// Reads last-synced state and current time from its dependencies.
 final class LocationFilter {
-    private static let minimumInterval: TimeInterval = 24 * 60 * 60 // 24 hours
+    // TODO: revert to 24h for production. 5 mins for testing.
+    private static let minimumInterval: TimeInterval = 5 * 60 // 5 minutes (testing); production: 24 * 60 * 60
     private static let minimumDistanceMeters: CLLocationDistance = 1000 // 1 km
 
     private let storage: LastLocationStorage
