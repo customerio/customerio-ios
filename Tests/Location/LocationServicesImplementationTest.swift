@@ -82,7 +82,7 @@ struct LocationServicesImplementationTests {
         await yieldForLocationTask()
 
         #expect(pipelineMock.trackCallsCount == 1)
-        #expect(pipelineMock.trackInvocations.first?.name == "Location Update")
+        #expect(pipelineMock.trackInvocations.first?.name == "CIO Location Update")
         #expect(pipelineMock.trackInvocations.first?.properties["latitude"] as? Double == expectedLatitude)
         #expect(pipelineMock.trackInvocations.first?.properties["longitude"] as? Double == expectedLongitude)
     }

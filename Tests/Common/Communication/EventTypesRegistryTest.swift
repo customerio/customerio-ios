@@ -59,18 +59,6 @@ class EventTypesRegistryTest: UnitTest {
         XCTAssertTrue(result == NewSubscriptionEvent.self)
     }
 
-    func test_getEventType_givenTrackLocationEventKey_expectReturnsCorrectType() throws {
-        let result = try EventTypesRegistry.getEventType(for: TrackLocationEvent.key)
-
-        XCTAssertTrue(result == TrackLocationEvent.self)
-    }
-
-    func test_getEventType_givenLocationTrackedEventKey_expectReturnsCorrectType() throws {
-        let result = try EventTypesRegistry.getEventType(for: LocationTrackedEvent.key)
-
-        XCTAssertTrue(result == LocationTrackedEvent.self)
-    }
-
     func test_getEventType_givenInvalidKey_expectThrowsError() {
         XCTAssertThrowsError(try EventTypesRegistry.getEventType(for: "InvalidEventKey")) { error in
             XCTAssertEqual(error as? EventBusError, EventBusError.invalidEventType)
@@ -98,7 +86,5 @@ class EventTypesRegistryTest: UnitTest {
         XCTAssertTrue(allTypes.contains { $0 == RegisterDeviceTokenEvent.self })
         XCTAssertTrue(allTypes.contains { $0 == DeleteDeviceTokenEvent.self })
         XCTAssertTrue(allTypes.contains { $0 == NewSubscriptionEvent.self })
-        XCTAssertTrue(allTypes.contains { $0 == TrackLocationEvent.self })
-        XCTAssertTrue(allTypes.contains { $0 == LocationTrackedEvent.self })
     }
 }
