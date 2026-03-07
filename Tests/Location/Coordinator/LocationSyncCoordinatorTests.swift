@@ -40,7 +40,7 @@ struct LocationSyncCoordinatorTests {
         let (coordinator, storage) = makeCoordinator(dataPipeline: pipelineMock)
         await coordinator.processLocationUpdate(LocationData(latitude: 37.7749, longitude: -122.4194))
         #expect(pipelineMock.trackCallsCount == 1)
-        #expect(pipelineMock.trackInvocations.first?.name == "Location Update")
+        #expect(pipelineMock.trackInvocations.first?.name == "CIO Location Update")
         #expect(pipelineMock.trackInvocations.first?.properties["latitude"] as? Double == 37.7749)
         #expect(pipelineMock.trackInvocations.first?.properties["longitude"] as? Double == -122.4194)
         let lastSynced = storage.getLastSynced()

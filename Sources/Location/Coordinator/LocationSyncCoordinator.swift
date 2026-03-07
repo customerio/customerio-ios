@@ -61,7 +61,7 @@ actor LocationSyncCoordinator {
             "latitude": location.latitude,
             "longitude": location.longitude
         ]
-        pipeline.track(name: "Location Update", properties: properties)
+        pipeline.track(name: "CIO Location Update", properties: properties)
         storage.recordLastSync(location: location, timestamp: dateUtil.now)
     }
 }
