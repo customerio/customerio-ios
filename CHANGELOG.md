@@ -1,3 +1,9 @@
+## [4.3.0](https://github.com/customerio/customerio-ios/compare/4.2.0...4.3.0) (2026-03-09)
+
+### Features
+
+* Location enrichment ([#1019](https://github.com/customerio/customerio-ios/issues/1019)) ([6f0549d](https://github.com/customerio/customerio-ios/commit/6f0549d7b8db95c6452b5f510322aa990c5fec8d))
+
 ## [4.2.0](https://github.com/customerio/customerio-ios/compare/4.1.2...4.2.0) (2026-02-20)
 
 ### Features
