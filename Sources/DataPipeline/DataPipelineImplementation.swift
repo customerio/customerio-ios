@@ -1,7 +1,7 @@
 import CioAnalytics
 import CioInternalCommon
 
-class DataPipelineImplementation: DataPipelineInstance {
+class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking {
     private let moduleConfig: DataPipelineConfigOptions
     private let logger: Logger
     private let dataPipelinesLogger: DataPipelinesLogger
@@ -57,11 +57,17 @@ class DataPipelineImplementation: DataPipelineInstance {
         // plugin to update context properties for each request
         analytics.add(plugin: contextPlugin)
 
+        // plugin that adds provider attributes (e.g. location) to identify context
+        analytics.add(plugin: IdentifyContextPlugin(registry: diGraph.profileEnrichmentRegistry, logger: logger))
+
         // plugin to publish data pipeline events
         analytics.add(plugin: DataPipelinePublishedEvents(diGraph: diGraph))
 
         // Add plugin to filter events based on SDK configuration
         analytics.add(plugin: ScreenFilterPlugin(screenViewUse: moduleConfig.screenViewUse))
+
+        // Register as DataPipelineTracking so modules (e.g. Location) can send track events via getOptional
+        diGraph.register(self, forType: DataPipelineTracking.self)
 
         // subscribe to journey events emmitted from push/in-app module to send them via datapipelines
         subscribeToJourneyEvents()
@@ -304,5 +310,18 @@ extension DataPipelineImplementation {
     /// returns user id for currently identifier profile
     var registeredUserId: String? {
         analytics.userId
+    }
+}
+
+// MARK: - DataPipelineTracking
+
+extension DataPipelineImplementation {
+    var isUserIdentified: Bool {
+        guard let userId = analytics.userId, !userId.isEmpty else { return false }
+        return true
+    }
+
+    func track(name: String, properties: [String: Any]) {
+        analytics.track(name: name, properties: properties)
     }
 }

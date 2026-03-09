@@ -56,7 +56,8 @@ def get_all_cio_pods(is_app_extension, push_service)
   # All of these pods are App Extension compatible. We can install them all in an App Extension or a host app. 
   pods_for_all_targets = [
     'CustomerIOCommon',
-    'CustomerIODataPipelines',    
+    'CustomerIODataPipelines',
+    'CustomerIOLocation',
     'CustomerIOMessagingPush'
   ]
 

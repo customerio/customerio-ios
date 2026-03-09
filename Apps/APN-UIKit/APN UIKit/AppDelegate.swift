@@ -1,5 +1,6 @@
 import CioDataPipelines
 import CioInternalCommon
+import CioLocation
 import CioMessagingInApp
 import CioMessagingPush
 import CioMessagingPushAPN
@@ -57,6 +58,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         if settings.internalSettings.testMode {
             config.flushAt(1)
         }
+        config.addModule(LocationModule(config: LocationConfig(mode: .onAppStart)))
         CustomerIO.initialize(withConfig: config.build())
 
         // Initialize messaging features after initializing Customer.io SDK
