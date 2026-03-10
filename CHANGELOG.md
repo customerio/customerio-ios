@@ -1,3 +1,9 @@
+## [4.3.1](https://github.com/customerio/customerio-ios/compare/4.3.0...4.3.1) (2026-03-10)
+
+### Bug Fixes
+
+* Do not log errors when removing files that doesn't exist ([#1022](https://github.com/customerio/customerio-ios/issues/1022)) ([f67eab4](https://github.com/customerio/customerio-ios/commit/f67eab450553950011f8f71f2814f4296db46170))
+
 ## [4.3.0](https://github.com/customerio/customerio-ios/compare/4.2.0...4.3.0) (2026-03-09)
 
 ### Features

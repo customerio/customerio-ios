@@ -20,7 +20,7 @@
    1.1%  12.1Ki   1.1%  12.1Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/MessagingPush/Type/PushNotification.swift
    1.1%  12.1Ki   1.1%  12.1Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/MessagingInApp/Gist/Network/SSE/SseService.swift
    1.1%  11.9Ki   1.1%  11.9Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/MessagingInApp/State/InAppMessageState.swift
-   1.0%  11.6Ki   1.0%  11.6Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/Common/Communication/EventStorage.swift
+   1.0%  11.7Ki   1.0%  11.7Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/Common/Communication/EventStorage.swift
    0.9%  10.7Ki   0.9%  10.7Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/DataPipeline/DataPipelineImplementation.swift
    0.9%  10.6Ki   0.9%  10.6Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/Common/Service/Request/TrackDeliveryEventRequestBody.swift
    0.9%  10.3Ki   0.9%  10.3Ki    /Users/runner/work/customerio-ios/customerio-ios/Sources/MessagingPush/PushHandling/PushEventHandlerProxy.swift
