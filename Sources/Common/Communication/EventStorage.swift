@@ -119,9 +119,10 @@ actor EventStorageManager: EventStorage {
         return events.sorted(by: { $0.timestamp < $1.timestamp })
     }
 
-    // Removes a specific event file
+    // Removes a specific event file (no-op if file does not exist, e.g. already removed by another observer's replay).
     func remove(ofType eventType: String, withStorageId storageId: String) {
         let eventFileURL = baseDirectory.appendingPathComponent(eventType).appendingPathComponent("\(storageId).json")
+        guard fileManager.fileExists(atPath: eventFileURL.path) else { return }
         do {
             try fileManager.removeItem(at: eventFileURL)
         } catch {
