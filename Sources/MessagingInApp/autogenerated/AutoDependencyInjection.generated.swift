@@ -2,110 +2,108 @@
 // DO NOT EDIT
 // swiftlint:disable all
 
-import Foundation
 import CioInternalCommon
+import Foundation
 import UIKit
 
 /**
-######################################################
-Documentation
-######################################################
+ ######################################################
+ Documentation
+ ######################################################
 
-This automatically generated file you are viewing is a dependency injection graph for your app's source code.
-You may be wondering a couple of questions.
+ This automatically generated file you are viewing is a dependency injection graph for your app's source code.
+ You may be wondering a couple of questions.
 
-1. How did this file get generated? Answer --> https://github.com/levibostian/Sourcery-DI#how
-2. Why use this dependency injection graph instead of X other solution/tool? Answer --> https://github.com/levibostian/Sourcery-DI#why-use-this-project
-3. How do I add dependencies to this graph file? Follow one of the instructions below:
-* Add a non singleton class: https://github.com/levibostian/Sourcery-DI#add-a-non-singleton-class
-* Add a generic class: https://github.com/levibostian/Sourcery-DI#add-a-generic-class
-* Add a singleton class: https://github.com/levibostian/Sourcery-DI#add-a-singleton-class
-* Add a class from a 3rd party library/SDK: https://github.com/levibostian/Sourcery-DI#add-a-class-from-a-3rd-party
-* Add a `typealias` https://github.com/levibostian/Sourcery-DI#add-a-typealias
+ 1. How did this file get generated? Answer --> https://github.com/levibostian/Sourcery-DI#how
+ 2. Why use this dependency injection graph instead of X other solution/tool? Answer --> https://github.com/levibostian/Sourcery-DI#why-use-this-project
+ 3. How do I add dependencies to this graph file? Follow one of the instructions below:
+ * Add a non singleton class: https://github.com/levibostian/Sourcery-DI#add-a-non-singleton-class
+ * Add a generic class: https://github.com/levibostian/Sourcery-DI#add-a-generic-class
+ * Add a singleton class: https://github.com/levibostian/Sourcery-DI#add-a-singleton-class
+ * Add a class from a 3rd party library/SDK: https://github.com/levibostian/Sourcery-DI#add-a-class-from-a-3rd-party
+ * Add a `typealias` https://github.com/levibostian/Sourcery-DI#add-a-typealias
 
-4. How do I get dependencies from the graph in my code?
-```
-// If you have a class like this:
-class OffRoadWheels {}
+ 4. How do I get dependencies from the graph in my code?
+ ```
+ // If you have a class like this:
+ class OffRoadWheels {}
 
-class ViewController: UIViewController {
-    // Call the property getter to get your dependency from the graph:
-    let wheels = DIGraphShared.shared.offRoadWheels
-    // note the name of the property is name of the class with the first letter lowercase.
-}
-```
+ class ViewController: UIViewController {
+     // Call the property getter to get your dependency from the graph:
+     let wheels = DIGraphShared.shared.offRoadWheels
+     // note the name of the property is name of the class with the first letter lowercase.
+ }
+ ```
 
-5. How do I use this graph in my test suite?
-```
-let mockOffRoadWheels = // make a mock of OffRoadWheels class
-DIGraphShared.shared.override(mockOffRoadWheels, OffRoadWheels.self)
-```
+ 5. How do I use this graph in my test suite?
+ ```
+ let mockOffRoadWheels = // make a mock of OffRoadWheels class
+ DIGraphShared.shared.override(mockOffRoadWheels, OffRoadWheels.self)
+ ```
 
-Then, when your test function finishes, reset the graph:
-```
-DIGraphShared.shared.reset()
-```
+ Then, when your test function finishes, reset the graph:
+ ```
+ DIGraphShared.shared.reset()
+ ```
 
-*/
-
-
+ */
 
 extension DIGraphShared {
     // call in automated test suite to confirm that all dependnecies able to resolve and not cause runtime exceptions.
     // internal scope so each module can provide their own version of the function with the same name.
     @available(iOSApplicationExtension, unavailable) // some properties could be unavailable to app extensions so this function must also.
-    internal func testDependenciesAbleToResolve() -> Int {
+    func testDependenciesAbleToResolve() -> Int {
         var countDependenciesResolved = 0
 
-        _ = self.anonymousMessageManager
+        _ = anonymousMessageManager
         countDependenciesResolved += 1
 
-        _ = self.sseLifecycleManager
+        _ = sseLifecycleManager
         countDependenciesResolved += 1
 
-        _ = self.notificationInbox
+        _ = notificationInbox
         countDependenciesResolved += 1
 
-        _ = self.engineWebProvider
+        _ = engineWebProvider
         countDependenciesResolved += 1
 
-        _ = self.gistProvider
+        _ = gistProvider
         countDependenciesResolved += 1
 
-        _ = self.gistDelegate
+        _ = gistDelegate
         countDependenciesResolved += 1
 
-        _ = self.gistQueueNetwork
+        _ = gistQueueNetwork
         countDependenciesResolved += 1
 
-        _ = self.heartbeatTimerProtocol
+        _ = heartbeatTimerProtocol
         countDependenciesResolved += 1
 
-        _ = self.inAppMessageManager
+        _ = inAppMessageManager
         countDependenciesResolved += 1
 
-        _ = self.inboxMessageCacheManager
+        _ = inboxMessageCacheManager
         countDependenciesResolved += 1
 
-        _ = self.logManager
+        _ = logManager
         countDependenciesResolved += 1
 
-        _ = self.queueManager
+        _ = queueManager
         countDependenciesResolved += 1
 
-        _ = self.applicationStateProvider
+        _ = applicationStateProvider
         countDependenciesResolved += 1
 
-        _ = self.sleeper
+        _ = sleeper
         countDependenciesResolved += 1
 
-        _ = self.sseConnectionManagerProtocol
+        _ = sseConnectionManagerProtocol
         countDependenciesResolved += 1
 
-        _ = self.sseRetryHelperProtocol
+        _ = sseRetryHelperProtocol
         countDependenciesResolved += 1
 
-        _ = self.sseServiceProtocol
+        _ = sseServiceProtocol
         countDependenciesResolved += 1
 
         return countDependenciesResolved
@@ -113,160 +111,193 @@ extension DIGraphShared {
 
     // Handle classes annotated with InjectRegisterShared
     // AnonymousMessageManager (singleton)
-    internal var anonymousMessageManager: AnonymousMessageManager {
-        return getOverriddenInstance() ??
-            getSingletonOrCreate() {
+    var anonymousMessageManager: AnonymousMessageManager {
+        getOverriddenInstance() ??
+            getSingletonOrCreate {
                 _get_anonymousMessageManager()
             }
     }
+
     private func _get_anonymousMessageManager() -> AnonymousMessageManager {
-        return AnonymousMessageManagerImpl(keyValueStorage: self.sharedKeyValueStorage, dateUtil: self.dateUtil, logger: self.logger)
+        AnonymousMessageManagerImpl(keyValueStorage: sharedKeyValueStorage, dateUtil: dateUtil, logger: logger)
     }
+
     // SseLifecycleManager (singleton)
-    internal var sseLifecycleManager: SseLifecycleManager {
-        return getOverriddenInstance() ??
-            getSingletonOrCreate() {
+    var sseLifecycleManager: SseLifecycleManager {
+        getOverriddenInstance() ??
+            getSingletonOrCreate {
                 _get_sseLifecycleManager()
             }
     }
+
     private func _get_sseLifecycleManager() -> SseLifecycleManager {
-        return CioSseLifecycleManager(logger: self.logger, inAppMessageManager: self.inAppMessageManager, sseConnectionManager: self.sseConnectionManagerProtocol, applicationStateProvider: self.applicationStateProvider)
+        CioSseLifecycleManager(logger: logger, inAppMessageManager: inAppMessageManager, sseConnectionManager: sseConnectionManagerProtocol, applicationStateProvider: applicationStateProvider)
     }
+
     // NotificationInbox (singleton)
-    internal var notificationInbox: NotificationInbox {
-        return getOverriddenInstance() ??
-            getSingletonOrCreate() {
+    var notificationInbox: NotificationInbox {
+        getOverriddenInstance() ??
+            getSingletonOrCreate {
                 _get_notificationInbox()
             }
     }
+
     private func _get_notificationInbox() -> NotificationInbox {
-        return DefaultNotificationInbox(logger: self.logger, inAppMessageManager: self.inAppMessageManager)
+        DefaultNotificationInbox(logger: logger, inAppMessageManager: inAppMessageManager)
     }
+
     // EngineWebProvider
-    internal var engineWebProvider: EngineWebProvider {
-        return getOverriddenInstance() ??
-            self.newEngineWebProvider
+    var engineWebProvider: EngineWebProvider {
+        getOverriddenInstance() ??
+            newEngineWebProvider
     }
+
     private var newEngineWebProvider: EngineWebProvider {
-        return EngineWebProviderImpl()
+        EngineWebProviderImpl()
     }
+
     // GistProvider (singleton)
-    internal var gistProvider: GistProvider {
-        return getOverriddenInstance() ??
-            getSingletonOrCreate() {
+    var gistProvider: GistProvider {
+        getOverriddenInstance() ??
+            getSingletonOrCreate {
                 _get_gistProvider()
             }
     }
+
     private func _get_gistProvider() -> GistProvider {
-        return Gist(logger: self.logger, gistDelegate: self.gistDelegate, inAppMessageManager: self.inAppMessageManager, queueManager: self.queueManager, threadUtil: self.threadUtil, sseLifecycleManager: self.sseLifecycleManager)
+        Gist(logger: logger, gistDelegate: gistDelegate, inAppMessageManager: inAppMessageManager, queueManager: queueManager, threadUtil: threadUtil, sseLifecycleManager: sseLifecycleManager)
     }
+
     // GistDelegate (singleton)
-    internal var gistDelegate: GistDelegate {
-        return getOverriddenInstance() ??
-            getSingletonOrCreate() {
+    var gistDelegate: GistDelegate {
+        getOverriddenInstance() ??
+            getSingletonOrCreate {
                 _get_gistDelegate()
             }
     }
+
     private func _get_gistDelegate() -> GistDelegate {
-        return GistDelegateImpl(logger: self.logger, eventBusHandler: self.eventBusHandler)
+        GistDelegateImpl(logger: logger, eventBusHandler: eventBusHandler)
     }
+
     // GistQueueNetwork
-    internal var gistQueueNetwork: GistQueueNetwork {
-        return getOverriddenInstance() ??
-            self.newGistQueueNetwork
+    var gistQueueNetwork: GistQueueNetwork {
+        getOverriddenInstance() ??
+            newGistQueueNetwork
     }
+
     private var newGistQueueNetwork: GistQueueNetwork {
-        return GistQueueNetworkImpl()
+        GistQueueNetworkImpl()
     }
+
     // HeartbeatTimerProtocol
-    internal var heartbeatTimerProtocol: HeartbeatTimerProtocol {
-        return getOverriddenInstance() ??
-            self.newHeartbeatTimerProtocol
+    var heartbeatTimerProtocol: HeartbeatTimerProtocol {
+        getOverriddenInstance() ??
+            newHeartbeatTimerProtocol
     }
+
     private var newHeartbeatTimerProtocol: HeartbeatTimerProtocol {
-        return HeartbeatTimer(logger: self.logger)
+        HeartbeatTimer(logger: logger)
     }
+
     // InAppMessageManager (singleton)
-    internal var inAppMessageManager: InAppMessageManager {
-        return getOverriddenInstance() ??
-            getSingletonOrCreate() {
+    var inAppMessageManager: InAppMessageManager {
+        getOverriddenInstance() ??
+            getSingletonOrCreate {
                 _get_inAppMessageManager()
             }
     }
+
     private func _get_inAppMessageManager() -> InAppMessageManager {
-        return InAppMessageStoreManager(logger: self.logger, threadUtil: self.threadUtil, logManager: self.logManager, gistDelegate: self.gistDelegate, anonymousMessageManager: self.anonymousMessageManager, eventBusHandler: self.eventBusHandler)
+        InAppMessageStoreManager(logger: logger, threadUtil: threadUtil, logManager: logManager, gistDelegate: gistDelegate, anonymousMessageManager: anonymousMessageManager, eventBusHandler: eventBusHandler)
     }
+
     // InboxMessageCacheManager (singleton)
-    internal var inboxMessageCacheManager: InboxMessageCacheManager {
-        return getOverriddenInstance() ??
-            getSingletonOrCreate() {
+    var inboxMessageCacheManager: InboxMessageCacheManager {
+        getOverriddenInstance() ??
+            getSingletonOrCreate {
                 _get_inboxMessageCacheManager()
             }
     }
+
     private func _get_inboxMessageCacheManager() -> InboxMessageCacheManager {
-        return InboxMessageCacheManager(keyValueStore: self.sharedKeyValueStorage, logger: self.logger)
+        InboxMessageCacheManager(keyValueStore: sharedKeyValueStorage, logger: logger)
     }
+
     // LogManager
-    internal var logManager: LogManager {
-        return getOverriddenInstance() ??
-            self.newLogManager
+    var logManager: LogManager {
+        getOverriddenInstance() ??
+            newLogManager
     }
+
     private var newLogManager: LogManager {
-        return LogManager(gistQueueNetwork: self.gistQueueNetwork, inboxMessageCache: self.inboxMessageCacheManager)
+        LogManager(gistQueueNetwork: gistQueueNetwork, inboxMessageCache: inboxMessageCacheManager)
     }
+
     // QueueManager (singleton)
-    internal var queueManager: QueueManager {
-        return getOverriddenInstance() ??
-            getSingletonOrCreate() {
+    var queueManager: QueueManager {
+        getOverriddenInstance() ??
+            getSingletonOrCreate {
                 _get_queueManager()
             }
     }
+
     private func _get_queueManager() -> QueueManager {
-        return QueueManager(keyValueStore: self.sharedKeyValueStorage, gistQueueNetwork: self.gistQueueNetwork, inAppMessageManager: self.inAppMessageManager, anonymousMessageManager: self.anonymousMessageManager, inboxMessageCache: self.inboxMessageCacheManager, logger: self.logger)
+        QueueManager(keyValueStore: sharedKeyValueStorage, gistQueueNetwork: gistQueueNetwork, inAppMessageManager: inAppMessageManager, anonymousMessageManager: anonymousMessageManager, inboxMessageCache: inboxMessageCacheManager, logger: logger)
     }
+
     // ApplicationStateProvider
-    internal var applicationStateProvider: ApplicationStateProvider {
-        return getOverriddenInstance() ??
-            self.newApplicationStateProvider
+    var applicationStateProvider: ApplicationStateProvider {
+        getOverriddenInstance() ??
+            newApplicationStateProvider
     }
+
     private var newApplicationStateProvider: ApplicationStateProvider {
-        return RealApplicationStateProvider()
+        RealApplicationStateProvider()
     }
+
     // Sleeper
-    internal var sleeper: Sleeper {
-        return getOverriddenInstance() ??
-            self.newSleeper
+    var sleeper: Sleeper {
+        getOverriddenInstance() ??
+            newSleeper
     }
+
     private var newSleeper: Sleeper {
-        return RealSleeper()
+        RealSleeper()
     }
+
     // SseConnectionManagerProtocol (singleton)
-    internal var sseConnectionManagerProtocol: SseConnectionManagerProtocol {
-        return getOverriddenInstance() ??
-            getSingletonOrCreate() {
+    var sseConnectionManagerProtocol: SseConnectionManagerProtocol {
+        getOverriddenInstance() ??
+            getSingletonOrCreate {
                 _get_sseConnectionManagerProtocol()
             }
     }
+
     private func _get_sseConnectionManagerProtocol() -> SseConnectionManagerProtocol {
-        return SseConnectionManager(logger: self.logger, inAppMessageManager: self.inAppMessageManager, sseService: self.sseServiceProtocol, retryHelper: self.sseRetryHelperProtocol, heartbeatTimer: self.heartbeatTimerProtocol)
+        SseConnectionManager(logger: logger, inAppMessageManager: inAppMessageManager, sseService: sseServiceProtocol, retryHelper: sseRetryHelperProtocol, heartbeatTimer: heartbeatTimerProtocol)
     }
+
     // SseRetryHelperProtocol
-    internal var sseRetryHelperProtocol: SseRetryHelperProtocol {
-        return getOverriddenInstance() ??
-            self.newSseRetryHelperProtocol
+    var sseRetryHelperProtocol: SseRetryHelperProtocol {
+        getOverriddenInstance() ??
+            newSseRetryHelperProtocol
     }
+
     private var newSseRetryHelperProtocol: SseRetryHelperProtocol {
-        return SseRetryHelper(logger: self.logger, sleeper: self.sleeper)
+        SseRetryHelper(logger: logger, sleeper: sleeper)
     }
+
     // SseServiceProtocol (singleton)
-    internal var sseServiceProtocol: SseServiceProtocol {
-        return getOverriddenInstance() ??
-            getSingletonOrCreate() {
+    var sseServiceProtocol: SseServiceProtocol {
+        getOverriddenInstance() ??
+            getSingletonOrCreate {
                 _get_sseServiceProtocol()
             }
     }
+
     private func _get_sseServiceProtocol() -> SseServiceProtocol {
-        return SseService(logger: self.logger)
+        SseService(logger: logger)
     }
 }
 
