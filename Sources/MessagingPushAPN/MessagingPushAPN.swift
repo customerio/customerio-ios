@@ -1,6 +1,9 @@
 import CioInternalCommon
 @_spi(Internal) import CioMessagingPush
 import Foundation
+#if canImport(UIKit)
+import UIKit
+#endif
 #if canImport(UserNotifications)
 import UserNotifications
 #endif
@@ -10,18 +13,6 @@ import UserNotifications
 // 2. Customers do not need to `import CioMessaginPush`. Only 1 import: `CioMessaginPushAPN`.
 public protocol MessagingPushAPNInstance: AutoMockable {
     func registerDeviceToken(apnDeviceToken: Data)
-
-    // sourcery:Name=didRegisterForRemoteNotifications
-    func application(
-        _ application: Any,
-        didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data
-    )
-
-    // sourcery:Name=didFailToRegisterForRemoteNotifications
-    func application(
-        _ application: Any,
-        didFailToRegisterForRemoteNotificationsWithError error: Error
-    )
 
     func deleteDeviceToken()
 
@@ -48,7 +39,7 @@ public protocol MessagingPushAPNInstance: AutoMockable {
 }
 
 public class MessagingPushAPN: MessagingPushAPNInstance {
-    static let shared = MessagingPushAPN()
+    public static let shared = MessagingPushAPN()
 
     var messagingPush: MessagingPushInstance {
         MessagingPush.shared
@@ -57,14 +48,6 @@ public class MessagingPushAPN: MessagingPushAPNInstance {
     public func registerDeviceToken(apnDeviceToken: Data) {
         let deviceToken = String(apnDeviceToken: apnDeviceToken)
         messagingPush.registerDeviceToken(deviceToken)
-    }
-
-    public func application(_ application: Any, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
-        registerDeviceToken(apnDeviceToken: deviceToken)
-    }
-
-    public func application(_ application: Any, didFailToRegisterForRemoteNotificationsWithError error: Error) {
-        messagingPush.deleteDeviceToken()
     }
 
     public func deleteDeviceToken() {
@@ -88,8 +71,8 @@ public class MessagingPushAPN: MessagingPushAPNInstance {
         let implementation = MessagingPush.initialize(withConfig: config)
 
         let pushConfigOptions = MessagingPush.moduleConfig
-        if pushConfigOptions.autoFetchDeviceToken, !MessagingPush.appDelegateIntegratedExplicitly {
-            shared.setupAutoFetchDeviceToken()
+        if pushConfigOptions.autoFetchDeviceToken {
+            UIApplication.shared.registerForRemoteNotifications()
         }
 
         return implementation

@@ -41,18 +41,6 @@ class MessagingPushAPNAPITest: UnitTest {
         MessagingPush.shared.registerDeviceToken(apnDeviceToken: Data())
         mock.registerDeviceToken(apnDeviceToken: Data())
 
-        MessagingPush.shared.application("", didRegisterForRemoteNotificationsWithDeviceToken: Data())
-        mock.application("", didRegisterForRemoteNotificationsWithDeviceToken: Data())
-
-        MessagingPush.shared.application(
-            "",
-            didFailToRegisterForRemoteNotificationsWithError: GenericError.registrationFailed
-        )
-        mock.application(
-            "",
-            didFailToRegisterForRemoteNotificationsWithError: GenericError.registrationFailed
-        )
-
         MessagingPush.shared.deleteDeviceToken()
         mock.deleteDeviceToken()
 

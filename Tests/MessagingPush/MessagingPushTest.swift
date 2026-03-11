@@ -11,33 +11,33 @@ class MessagingPushTest: IntegrationTest {
         nil
     }
 
-    private let automaticPushClickHandlingMock = AutomaticPushClickHandlingMock()
+    private let pushNotificationCenterRegistrarMock = PushNotificationCenterRegistrarMock()
 
     override func setUp() {
         super.setUp()
 
-        mockCollection.add(mock: automaticPushClickHandlingMock)
+        mockCollection.add(mock: pushNotificationCenterRegistrarMock)
 
         DIGraphShared.shared.override(
-            value: automaticPushClickHandlingMock, forType: AutomaticPushClickHandling.self
+            value: pushNotificationCenterRegistrarMock, forType: PushNotificationCenterRegistrar.self
         )
     }
 
     // MARK: initialize
 
-    func test_initialize_givenDefaultModuleConfigOptions_expectStartAutoPushClickHandling() {
+    func test_initialize_givenDefaultModuleConfigOptions_expectActivatePushNotificationCenterRegistrar() {
         MessagingPush.initialize()
 
-        XCTAssertEqual(automaticPushClickHandlingMock.startCallsCount, 1)
+        XCTAssertEqual(pushNotificationCenterRegistrarMock.activateCallsCount, 1)
     }
 
-    func test_initialize_givenCustomerDisabledAutoPushClickHandling_expectDoNotEnableFeature() {
+    func test_initialize_givenCustomerDisabledAutoTrackPushEvents_expectDoNotActivateRegistrar() {
         MessagingPush.initialize(
             withConfig: MessagingPushConfigBuilder()
                 .autoTrackPushEvents(false)
                 .build()
         )
 
-        XCTAssertFalse(automaticPushClickHandlingMock.startCalled)
+        XCTAssertFalse(pushNotificationCenterRegistrarMock.activateCalled)
     }
 }

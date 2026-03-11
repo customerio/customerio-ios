@@ -84,8 +84,6 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         return true
     }
 
-    // IMPORTANT: If FCM is used with enabled swizzling (default state) it will not call this method in SwiftUI based apps.
-    //            Use `deepLinkCallback` on SDKConfigBuilder, as that works in all scenarios.
     func application(_ application: UIApplication, continue userActivity: NSUserActivity, restorationHandler: @escaping ([any UIUserActivityRestoring]?) -> Void) -> Bool {
         guard let universalLinkUrl = userActivity.webpageURL else {
             return false
@@ -108,7 +106,6 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 //    // Function called when a push notification is clicked or swiped away.
 //    func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
 //        // Track custom event with Customer.io.
-//        // NOT required for basic PN tap tracking - that is done automatically with `CioAppDelegateWrapper`.
 //        CustomerIO.shared.track(
 //            name: "custom push-clicked event",
 //            properties: ["push": response.notification.request.content.userInfo]

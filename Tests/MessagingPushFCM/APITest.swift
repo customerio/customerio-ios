@@ -42,18 +42,6 @@ class MessagingPushFCMAPITest: UnitTest {
         MessagingPush.shared.registerDeviceToken(fcmToken: "")
         mock.registerDeviceToken(fcmToken: "")
 
-        MessagingPush.shared.messaging("", didReceiveRegistrationToken: "token")
-        mock.messaging("", didReceiveRegistrationToken: "token")
-
-        MessagingPush.shared.messaging("", didReceiveRegistrationToken: nil)
-        mock.messaging("", didReceiveRegistrationToken: nil)
-
-        MessagingPush.shared.application(
-            "",
-            didFailToRegisterForRemoteNotificationsWithError: GenericError.registrationFailed
-        )
-        mock.application("", didFailToRegisterForRemoteNotificationsWithError: GenericError.registrationFailed)
-
         MessagingPush.shared.deleteDeviceToken()
         mock.deleteDeviceToken()
 

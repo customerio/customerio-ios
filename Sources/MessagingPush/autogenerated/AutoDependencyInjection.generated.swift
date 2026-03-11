@@ -2,206 +2,176 @@
 // DO NOT EDIT
 // swiftlint:disable all
 
-import CioInternalCommon
 import Foundation
+import CioInternalCommon
 
 /**
- ######################################################
- Documentation
- ######################################################
+######################################################
+Documentation
+######################################################
 
- This automatically generated file you are viewing is a dependency injection graph for your app's source code.
- You may be wondering a couple of questions.
+This automatically generated file you are viewing is a dependency injection graph for your app's source code.
+You may be wondering a couple of questions.
 
- 1. How did this file get generated? Answer --> https://github.com/levibostian/Sourcery-DI#how
- 2. Why use this dependency injection graph instead of X other solution/tool? Answer --> https://github.com/levibostian/Sourcery-DI#why-use-this-project
- 3. How do I add dependencies to this graph file? Follow one of the instructions below:
- * Add a non singleton class: https://github.com/levibostian/Sourcery-DI#add-a-non-singleton-class
- * Add a generic class: https://github.com/levibostian/Sourcery-DI#add-a-generic-class
- * Add a singleton class: https://github.com/levibostian/Sourcery-DI#add-a-singleton-class
- * Add a class from a 3rd party library/SDK: https://github.com/levibostian/Sourcery-DI#add-a-class-from-a-3rd-party
- * Add a `typealias` https://github.com/levibostian/Sourcery-DI#add-a-typealias
+1. How did this file get generated? Answer --> https://github.com/levibostian/Sourcery-DI#how
+2. Why use this dependency injection graph instead of X other solution/tool? Answer --> https://github.com/levibostian/Sourcery-DI#why-use-this-project
+3. How do I add dependencies to this graph file? Follow one of the instructions below:
+* Add a non singleton class: https://github.com/levibostian/Sourcery-DI#add-a-non-singleton-class
+* Add a generic class: https://github.com/levibostian/Sourcery-DI#add-a-generic-class
+* Add a singleton class: https://github.com/levibostian/Sourcery-DI#add-a-singleton-class
+* Add a class from a 3rd party library/SDK: https://github.com/levibostian/Sourcery-DI#add-a-class-from-a-3rd-party
+* Add a `typealias` https://github.com/levibostian/Sourcery-DI#add-a-typealias
 
- 4. How do I get dependencies from the graph in my code?
- ```
- // If you have a class like this:
- class OffRoadWheels {}
+4. How do I get dependencies from the graph in my code?
+```
+// If you have a class like this:
+class OffRoadWheels {}
 
- class ViewController: UIViewController {
-     // Call the property getter to get your dependency from the graph:
-     let wheels = DIGraphShared.shared.offRoadWheels
-     // note the name of the property is name of the class with the first letter lowercase.
- }
- ```
+class ViewController: UIViewController {
+    // Call the property getter to get your dependency from the graph:
+    let wheels = DIGraphShared.shared.offRoadWheels
+    // note the name of the property is name of the class with the first letter lowercase.
+}
+```
 
- 5. How do I use this graph in my test suite?
- ```
- let mockOffRoadWheels = // make a mock of OffRoadWheels class
- DIGraphShared.shared.override(mockOffRoadWheels, OffRoadWheels.self)
- ```
+5. How do I use this graph in my test suite?
+```
+let mockOffRoadWheels = // make a mock of OffRoadWheels class
+DIGraphShared.shared.override(mockOffRoadWheels, OffRoadWheels.self)
+```
 
- Then, when your test function finishes, reset the graph:
- ```
- DIGraphShared.shared.reset()
- ```
+Then, when your test function finishes, reset the graph:
+```
+DIGraphShared.shared.reset()
+```
 
- */
+*/
+
+
 
 extension DIGraphShared {
     // call in automated test suite to confirm that all dependnecies able to resolve and not cause runtime exceptions.
     // internal scope so each module can provide their own version of the function with the same name.
     @available(iOSApplicationExtension, unavailable) // some properties could be unavailable to app extensions so this function must also.
-    func testDependenciesAbleToResolve() -> Int {
+    internal func testDependenciesAbleToResolve() -> Int {
         var countDependenciesResolved = 0
 
-        _ = automaticPushClickHandling
+        _ = self.pushEventHandler
         countDependenciesResolved += 1
 
-        _ = pushEventHandler
+        _ = self.pushClickHandler
         countDependenciesResolved += 1
 
-        _ = pushClickHandler
+        _ = self.pushEventHandlerProxy
         countDependenciesResolved += 1
 
-        _ = pushEventHandlerProxy
+        _ = self.pushHistory
         countDependenciesResolved += 1
 
-        _ = pushHistory
+        _ = self.pushNotificationCenterRegistrar
         countDependenciesResolved += 1
 
-        _ = pushNotificationLogger
+        _ = self.pushNotificationLogger
         countDependenciesResolved += 1
 
-        _ = richPushDeliveryTracker
+        _ = self.richPushDeliveryTracker
         countDependenciesResolved += 1
 
-        _ = httpClient
+        _ = self.httpClient
         countDependenciesResolved += 1
 
-        _ = userNotificationCenter
-        countDependenciesResolved += 1
-
-        _ = userNotificationsFrameworkAdapter
+        _ = self.userNotificationCenter
         countDependenciesResolved += 1
 
         return countDependenciesResolved
     }
 
     // Handle classes annotated with InjectRegisterShared
-    // AutomaticPushClickHandling
-    @available(iOSApplicationExtension, unavailable)
-    var automaticPushClickHandling: AutomaticPushClickHandling {
-        getOverriddenInstance() ??
-            newAutomaticPushClickHandling
-    }
-
-    @available(iOSApplicationExtension, unavailable)
-    private var newAutomaticPushClickHandling: AutomaticPushClickHandling {
-        AutomaticPushClickHandlingImpl(notificationCenterAdapter: userNotificationsFrameworkAdapter, logger: logger)
-    }
-
     // PushEventHandler
     @available(iOSApplicationExtension, unavailable)
-    var pushEventHandler: PushEventHandler {
-        getOverriddenInstance() ??
-            newPushEventHandler
+    internal var pushEventHandler: PushEventHandler {
+        return getOverriddenInstance() ??
+            self.newPushEventHandler
     }
-
     @available(iOSApplicationExtension, unavailable)
     private var newPushEventHandler: PushEventHandler {
-        IOSPushEventListener(jsonAdapter: jsonAdapter, pushEventHandlerProxy: pushEventHandlerProxy, moduleConfig: messagingPushConfigOptions, pushClickHandler: pushClickHandler, pushHistory: pushHistory, logger: logger, pushLogger: pushNotificationLogger)
+        return IOSPushEventListener(jsonAdapter: self.jsonAdapter, pushEventHandlerProxy: self.pushEventHandlerProxy, moduleConfig: self.messagingPushConfigOptions, pushClickHandler: self.pushClickHandler, pushHistory: self.pushHistory, logger: self.logger, pushLogger: self.pushNotificationLogger)
     }
-
     // PushClickHandler
     @available(iOSApplicationExtension, unavailable)
-    var pushClickHandler: PushClickHandler {
-        getOverriddenInstance() ??
-            newPushClickHandler
+    internal var pushClickHandler: PushClickHandler {
+        return getOverriddenInstance() ??
+            self.newPushClickHandler
     }
-
     @available(iOSApplicationExtension, unavailable)
     private var newPushClickHandler: PushClickHandler {
-        PushClickHandlerImpl(deepLinkUtil: deepLinkUtil, messagingPush: messagingPushInstance, pushLogger: pushNotificationLogger, commonLogger: sdkCommonLogger)
+        return PushClickHandlerImpl(deepLinkUtil: self.deepLinkUtil, messagingPush: self.messagingPushInstance, pushLogger: self.pushNotificationLogger, commonLogger: self.sdkCommonLogger)
     }
-
     // PushEventHandlerProxy (singleton)
     @available(iOSApplicationExtension, unavailable)
-    var pushEventHandlerProxy: PushEventHandlerProxy {
-        getOverriddenInstance() ??
-            getSingletonOrCreate {
+    internal var pushEventHandlerProxy: PushEventHandlerProxy {
+        return getOverriddenInstance() ??
+            getSingletonOrCreate() {
                 _get_pushEventHandlerProxy()
             }
     }
-
     @available(iOSApplicationExtension, unavailable)
     private func _get_pushEventHandlerProxy() -> PushEventHandlerProxy {
-        PushEventHandlerProxyImpl(logger: logger)
+        return PushEventHandlerProxyImpl(logger: self.logger)
     }
-
     // PushHistory (singleton)
-    var pushHistory: PushHistory {
-        getOverriddenInstance() ??
-            getSingletonOrCreate {
+    internal var pushHistory: PushHistory {
+        return getOverriddenInstance() ??
+            getSingletonOrCreate() {
                 _get_pushHistory()
             }
     }
-
     private func _get_pushHistory() -> PushHistory {
-        PushHistoryImpl(lockManager: lockManager)
+        return PushHistoryImpl(lockManager: self.lockManager)
     }
-
-    // PushNotificationLogger
-    var pushNotificationLogger: PushNotificationLogger {
-        getOverriddenInstance() ??
-            newPushNotificationLogger
-    }
-
-    private var newPushNotificationLogger: PushNotificationLogger {
-        PushNotificationLoggerImpl(logger: logger)
-    }
-
-    // RichPushDeliveryTracker
-    var richPushDeliveryTracker: RichPushDeliveryTracker {
-        getOverriddenInstance() ??
-            newRichPushDeliveryTracker
-    }
-
-    private var newRichPushDeliveryTracker: RichPushDeliveryTracker {
-        RichPushDeliveryTrackerImpl(httpClient: httpClient, logger: logger)
-    }
-
-    // HttpClient
-    public var httpClient: HttpClient {
-        getOverriddenInstance() ??
-            newHttpClient
-    }
-
-    private var newHttpClient: HttpClient {
-        RichPushHttpClient(jsonAdapter: jsonAdapter, httpRequestRunner: httpRequestRunner, logger: logger, userAgentUtil: userAgentUtil)
-    }
-
-    // UserNotificationCenter
-    var userNotificationCenter: UserNotificationCenter {
-        getOverriddenInstance() ??
-            newUserNotificationCenter
-    }
-
-    private var newUserNotificationCenter: UserNotificationCenter {
-        UserNotificationCenterImpl()
-    }
-
-    // UserNotificationsFrameworkAdapter (singleton)
+    // PushNotificationCenterRegistrar (singleton)
     @available(iOSApplicationExtension, unavailable)
-    var userNotificationsFrameworkAdapter: UserNotificationsFrameworkAdapter {
-        getOverriddenInstance() ??
-            getSingletonOrCreate {
-                _get_userNotificationsFrameworkAdapter()
+    internal var pushNotificationCenterRegistrar: PushNotificationCenterRegistrar {
+        return getOverriddenInstance() ??
+            getSingletonOrCreate() {
+                _get_pushNotificationCenterRegistrar()
             }
     }
-
     @available(iOSApplicationExtension, unavailable)
-    private func _get_userNotificationsFrameworkAdapter() -> UserNotificationsFrameworkAdapter {
-        UserNotificationsFrameworkAdapterImpl(pushEventHandler: pushEventHandler, userNotificationCenter: userNotificationCenter, notificationCenterDelegateProxy: pushEventHandlerProxy)
+    private func _get_pushNotificationCenterRegistrar() -> PushNotificationCenterRegistrar {
+        return PushNotificationCenterRegistrarImpl(pushEventHandler: self.pushEventHandler, pushEventHandlerProxy: self.pushEventHandlerProxy, userNotificationCenter: self.userNotificationCenter)
+    }
+    // PushNotificationLogger
+    internal var pushNotificationLogger: PushNotificationLogger {
+        return getOverriddenInstance() ??
+            self.newPushNotificationLogger
+    }
+    private var newPushNotificationLogger: PushNotificationLogger {
+        return PushNotificationLoggerImpl(logger: self.logger)
+    }
+    // RichPushDeliveryTracker
+    internal var richPushDeliveryTracker: RichPushDeliveryTracker {
+        return getOverriddenInstance() ??
+            self.newRichPushDeliveryTracker
+    }
+    private var newRichPushDeliveryTracker: RichPushDeliveryTracker {
+        return RichPushDeliveryTrackerImpl(httpClient: self.httpClient, logger: self.logger)
+    }
+    // HttpClient
+    public var httpClient: HttpClient {
+        return getOverriddenInstance() ??
+            self.newHttpClient
+    }
+    private var newHttpClient: HttpClient {
+        return RichPushHttpClient(jsonAdapter: self.jsonAdapter, httpRequestRunner: self.httpRequestRunner, logger: self.logger, userAgentUtil: self.userAgentUtil)
+    }
+    // UserNotificationCenter
+    internal var userNotificationCenter: UserNotificationCenter {
+        return getOverriddenInstance() ??
+            self.newUserNotificationCenter
+    }
+    private var newUserNotificationCenter: UserNotificationCenter {
+        return UserNotificationCenterImpl()
     }
 }
 

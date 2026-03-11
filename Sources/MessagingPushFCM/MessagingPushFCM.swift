@@ -11,18 +11,6 @@ import UserNotifications
 public protocol MessagingPushFCMInstance: AutoMockable {
     func registerDeviceToken(fcmToken: String?)
 
-    // sourcery:Name=didReceiveRegistrationToken
-    func messaging(
-        _ messaging: Any,
-        didReceiveRegistrationToken fcmToken: String?
-    )
-
-    // sourcery:Name=didFailToRegisterForRemoteNotifications
-    func application(
-        _ application: Any,
-        didFailToRegisterForRemoteNotificationsWithError error: Error
-    )
-
     func deleteDeviceToken()
 
     func trackMetric(
@@ -46,13 +34,14 @@ public protocol MessagingPushFCMInstance: AutoMockable {
 }
 
 public class MessagingPushFCM: MessagingPushFCMInstance {
-    static let shared = MessagingPushFCM()
+    public static let shared = MessagingPushFCM()
 
     var messagingPush: MessagingPushInstance {
         MessagingPush.shared
     }
 
     var firebaseService: FirebaseService?
+    private var wrappedFirebaseDelegate: FirebaseServiceDelegate?
 
     func firebaseMessaging() -> FirebaseService? {
         firebaseService
@@ -63,17 +52,6 @@ public class MessagingPushFCM: MessagingPushFCMInstance {
             return
         }
         messagingPush.registerDeviceToken(deviceToken)
-    }
-
-    public func messaging(_ messaging: Any, didReceiveRegistrationToken fcmToken: String?) {
-        guard let deviceToken = fcmToken else {
-            return
-        }
-        registerDeviceToken(fcmToken: deviceToken)
-    }
-
-    public func application(_ application: Any, didFailToRegisterForRemoteNotificationsWithError error: Error) {
-        messagingPush.deleteDeviceToken()
     }
 
     public func deleteDeviceToken() {
@@ -101,8 +79,13 @@ public class MessagingPushFCM: MessagingPushFCMInstance {
         shared.firebaseService = firebaseService
 
         let pushConfigOptions = MessagingPush.moduleConfig
-        if pushConfigOptions.autoFetchDeviceToken, !MessagingPush.appDelegateIntegratedExplicitly {
-            shared.setupAutoFetchDeviceToken()
+        if pushConfigOptions.autoFetchDeviceToken {
+            if var service = shared.firebaseMessaging() {
+                shared.wrappedFirebaseDelegate = service.delegate
+                service.delegate = shared
+            } else {
+                DIGraphShared.shared.logger.error("CIO: firebaseService is nil. Make sure to initialize the MessagingPushFCM SDK before use.")
+            }
         }
 
         return implementation
@@ -160,4 +143,16 @@ public class MessagingPushFCM: MessagingPushFCMInstance {
         MessagingPush.shared.userNotificationCenter(center, didReceive: response, withCompletionHandler: completionHandler)
     }
     #endif
+}
+
+// MARK: - FirebaseServiceDelegate
+
+extension MessagingPushFCM: FirebaseServiceDelegate {
+    /// Called by Firebase when a new FCM registration token is available.
+    public func didReceiveRegistrationToken(_ token: String?) {
+        if let wrappedFirebaseDelegate {
+            wrappedFirebaseDelegate.didReceiveRegistrationToken(token)
+        }
+        registerDeviceToken(fcmToken: token)
+    }
 }

@@ -11,18 +11,4 @@ extension MessagingPush: MessagingPushFCMInstance {
     public func registerDeviceToken(fcmToken: String?) {
         MessagingPushFCM.shared.registerDeviceToken(fcmToken: fcmToken)
     }
-
-    public func messaging(
-        _ messaging: Any,
-        didReceiveRegistrationToken fcmToken: String?
-    ) {
-        MessagingPushFCM.shared.messaging(messaging, didReceiveRegistrationToken: fcmToken)
-    }
-
-    public func application(
-        _ application: Any,
-        didFailToRegisterForRemoteNotificationsWithError error: Error
-    ) {
-        MessagingPushFCM.shared.application(application, didFailToRegisterForRemoteNotificationsWithError: error)
-    }
 }

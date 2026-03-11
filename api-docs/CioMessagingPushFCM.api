@@ -7,9 +7,8 @@ public interface CioMessagingPushFCM.FirebaseServiceDelegate {
 	public fun func didReceiveRegistrationToken(_ token: String?);
 }
 public final class CioMessagingPushFCM.MessagingPushFCM {
+	public final val shared: MessagingPushFCM;
 	public fun func registerDeviceToken(fcmToken: String?);
-	public fun func messaging(_ messaging: Any, didReceiveRegistrationToken fcmToken: String?);
-	public fun func application(_ application: Any, didFailToRegisterForRemoteNotificationsWithError error: Error);
 	public fun func deleteDeviceToken();
 	public fun func trackMetric(deliveryID: String, event: Metric, deviceToken: String);
 	public fun func internalSetup(
@@ -33,14 +32,6 @@ public final class CioMessagingPushFCM.MessagingPushFCM {
 }
 public interface CioMessagingPushFCM.MessagingPushFCMInstance {
 	public fun func registerDeviceToken(fcmToken: String?);
-	public fun func messaging(
-    _ messaging: Any,
-    didReceiveRegistrationToken fcmToken: String?
-);
-	public fun func application(
-    _ application: Any,
-    didFailToRegisterForRemoteNotificationsWithError error: Error
-);
 	public fun func deleteDeviceToken();
 	public fun func trackMetric(
     deliveryID: String,
