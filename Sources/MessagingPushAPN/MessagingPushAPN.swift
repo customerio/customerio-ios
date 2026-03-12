@@ -1,11 +1,12 @@
 import CioInternalCommon
 @_spi(Internal) import CioMessagingPush
 import Foundation
+
 #if canImport(UIKit)
-import UIKit
+    import UIKit
 #endif
 #if canImport(UserNotifications)
-import UserNotifications
+    import UserNotifications
 #endif
 
 // Some functions are copied from MessagingPush because
@@ -23,18 +24,18 @@ public protocol MessagingPushAPNInstance: AutoMockable {
     )
 
     #if canImport(UserNotifications)
-    // Used for rich push
-    @discardableResult
-    // sourcery:Name=didReceiveNotificationRequest
-    // sourcery:IfCanImport=UserNotifications
-    func didReceive(
-        _ request: UNNotificationRequest,
-        withContentHandler contentHandler: @escaping (UNNotificationContent) -> Void
-    ) -> Bool
+        // Used for rich push
+        @discardableResult
+        // sourcery:Name=didReceiveNotificationRequest
+        // sourcery:IfCanImport=UserNotifications
+        func didReceive(
+            _ request: UNNotificationRequest,
+            withContentHandler contentHandler: @escaping (UNNotificationContent) -> Void
+        ) -> Bool
 
-    // Used for rich push
-    // sourcery:IfCanImport=UserNotifications
-    func serviceExtensionTimeWillExpire()
+        // Used for rich push
+        // sourcery:IfCanImport=UserNotifications
+        func serviceExtensionTimeWillExpire()
     #endif
 }
 
@@ -84,50 +85,53 @@ public class MessagingPushAPN: MessagingPushAPNInstance {
     @available(iOSApplicationExtension, introduced: 13.0)
     @available(visionOSApplicationExtension, introduced: 1.0)
     @discardableResult
-    public static func initializeForExtension(withConfig config: MessagingPushConfigOptions) -> MessagingPushInstance {
+    public static func initializeForExtension(withConfig config: MessagingPushConfigOptions)
+        -> MessagingPushInstance
+    {
         let implementation = MessagingPush.initializeForExtension(withConfig: config)
         return implementation
     }
 
     #if canImport(UserNotifications)
-    /**
-     - returns:
-     Bool indicating if this push notification is one handled by Customer.io SDK or not.
-     If function returns `false`, `contentHandler` will *not* be called by the SDK.
-     */
-    @discardableResult
-    public func didReceive(
-        _ request: UNNotificationRequest,
-        withContentHandler contentHandler: @escaping (UNNotificationContent) -> Void
-    ) -> Bool {
-        messagingPush.didReceive(request, withContentHandler: contentHandler)
-    }
+        /**
+         - returns:
+         Bool indicating if this push notification is one handled by Customer.io SDK or not.
+         If function returns `false`, `contentHandler` will *not* be called by the SDK.
+         */
+        @discardableResult
+        public func didReceive(
+            _ request: UNNotificationRequest,
+            withContentHandler contentHandler: @escaping (UNNotificationContent) -> Void
+        ) -> Bool {
+            messagingPush.didReceive(request, withContentHandler: contentHandler)
+        }
 
-    /**
-     iOS OS telling the notification service to hurry up and stop modifying the push notifications.
-     Stop all network requests and modifying and show the push for what it looks like now.
-     */
-    public func serviceExtensionTimeWillExpire() {
-        messagingPush.serviceExtensionTimeWillExpire()
-    }
+        /**
+         iOS OS telling the notification service to hurry up and stop modifying the push notifications.
+         Stop all network requests and modifying and show the push for what it looks like now.
+         */
+        public func serviceExtensionTimeWillExpire() {
+            messagingPush.serviceExtensionTimeWillExpire()
+        }
 
-    @available(iOSApplicationExtension, unavailable)
-    public func userNotificationCenter(
-        _ center: UNUserNotificationCenter,
-        didReceive response: UNNotificationResponse
-    ) -> CustomerIOParsedPushPayload? {
-        // Use concrete MessagingPush instance since method was removed from protocol
-        MessagingPush.shared.userNotificationCenter(center, didReceive: response)
-    }
+        @available(iOSApplicationExtension, unavailable)
+        public func userNotificationCenter(
+            _ center: UNUserNotificationCenter,
+            didReceive response: UNNotificationResponse
+        ) -> CustomerIOParsedPushPayload? {
+            // Use concrete MessagingPush instance since method was removed from protocol
+            MessagingPush.shared.userNotificationCenter(center, didReceive: response)
+        }
 
-    @available(iOSApplicationExtension, unavailable)
-    public func userNotificationCenter(
-        _ center: UNUserNotificationCenter,
-        didReceive response: UNNotificationResponse,
-        withCompletionHandler completionHandler: @escaping () -> Void
-    ) -> Bool {
-        // Use concrete MessagingPush instance since method was removed from protocol
-        MessagingPush.shared.userNotificationCenter(center, didReceive: response, withCompletionHandler: completionHandler)
-    }
+        @available(iOSApplicationExtension, unavailable)
+        public func userNotificationCenter(
+            _ center: UNUserNotificationCenter,
+            didReceive response: UNNotificationResponse,
+            withCompletionHandler completionHandler: @escaping () -> Void
+        ) -> Bool {
+            // Use concrete MessagingPush instance since method was removed from protocol
+            MessagingPush.shared.userNotificationCenter(
+                center, didReceive: response, withCompletionHandler: completionHandler)
+        }
     #endif
 }

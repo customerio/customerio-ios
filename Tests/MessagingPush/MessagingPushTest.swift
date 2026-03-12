@@ -19,13 +19,16 @@ class MessagingPushTest: IntegrationTest {
         mockCollection.add(mock: pushNotificationCenterRegistrarMock)
 
         DIGraphShared.shared.override(
-            value: pushNotificationCenterRegistrarMock, forType: PushNotificationCenterRegistrar.self
+            value: pushNotificationCenterRegistrarMock,
+            forType: PushNotificationCenterRegistrar.self
         )
     }
 
     // MARK: initialize
 
-    func test_initialize_givenDefaultModuleConfigOptions_expectActivatePushNotificationCenterRegistrar() {
+    func
+        test_initialize_givenDefaultModuleConfigOptions_expectActivatePushNotificationCenterRegistrar()
+    {
         MessagingPush.initialize()
 
         XCTAssertEqual(pushNotificationCenterRegistrarMock.activateCallsCount, 1)

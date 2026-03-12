@@ -1,9 +1,10 @@
-@testable import CioInternalCommon
-@testable import CioMessagingPush
 import Foundation
 import SharedTests
 import UserNotifications
 import XCTest
+
+@testable import CioInternalCommon
+@testable import CioMessagingPush
 
 class PushNotificationCenterRegistrarTests: UnitTest {
     private var registrar: PushNotificationCenterRegistrarImpl!
@@ -60,8 +61,8 @@ class PushNotificationCenterRegistrarTests: UnitTest {
         }
 
         registrar.userNotificationCenter(
-            UNUserNotificationCenter.current(),
-            willPresent: UNNotification.mockNotification(),
+            UNUserNotificationCenter.mockCenter(),
+            willPresent: UNNotification.testInstance,
             withCompletionHandler: { _ in }
         )
 
@@ -75,8 +76,8 @@ class PushNotificationCenterRegistrarTests: UnitTest {
         var receivedOptions: UNNotificationPresentationOptions?
 
         registrar.userNotificationCenter(
-            UNUserNotificationCenter.current(),
-            willPresent: UNNotification.mockNotification(),
+            UNUserNotificationCenter.mockCenter(),
+            willPresent: UNNotification.testInstance,
             withCompletionHandler: { options in receivedOptions = options }
         )
 
@@ -91,8 +92,8 @@ class PushNotificationCenterRegistrarTests: UnitTest {
         var receivedOptions: UNNotificationPresentationOptions?
 
         registrar.userNotificationCenter(
-            UNUserNotificationCenter.current(),
-            willPresent: UNNotification.mockNotification(),
+            UNUserNotificationCenter.mockCenter(),
+            willPresent: UNNotification.testInstance,
             withCompletionHandler: { options in receivedOptions = options }
         )
 
@@ -109,7 +110,7 @@ class PushNotificationCenterRegistrarTests: UnitTest {
         }
 
         registrar.userNotificationCenter(
-            UNUserNotificationCenter.current(),
+            UNUserNotificationCenter.mockCenter(),
             didReceive: UNNotificationResponse.mockResponse(),
             withCompletionHandler: {}
         )
@@ -120,20 +121,16 @@ class PushNotificationCenterRegistrarTests: UnitTest {
 
 // MARK: - Test helpers
 
-private extension UNNotification {
-    /// Creates a minimal UNNotification for testing purposes.
-    static func mockNotification() -> UNNotification {
-        let content = UNMutableNotificationContent()
-        let request = UNNotificationRequest(identifier: "test", content: content, trigger: nil)
-        return unsafeBitCast(
-            NSObject(),
-            to: UNNotification.self
-        )
+extension UNNotificationResponse {
+    fileprivate static func mockResponse() -> UNNotificationResponse {
+        unsafeBitCast(NSObject(), to: UNNotificationResponse.self)
     }
 }
 
-private extension UNNotificationResponse {
-    static func mockResponse() -> UNNotificationResponse {
-        unsafeBitCast(NSObject(), to: UNNotificationResponse.self)
+extension UNUserNotificationCenter {
+    /// Creates a UNUserNotificationCenter instance without calling `.current()`,
+    /// which crashes in unit tests due to missing bundle context.
+    fileprivate static func mockCenter() -> UNUserNotificationCenter {
+        unsafeBitCast(NSObject(), to: UNUserNotificationCenter.self)
     }
 }

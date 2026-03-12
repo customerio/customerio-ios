@@ -19,7 +19,9 @@ protocol PushNotificationCenterRegistrar {
 @available(iOSApplicationExtension, unavailable)
 // sourcery: InjectRegisterShared = "PushNotificationCenterRegistrar"
 // sourcery: InjectSingleton
-class PushNotificationCenterRegistrarImpl: NSObject, UNUserNotificationCenterDelegate, PushNotificationCenterRegistrar {
+class PushNotificationCenterRegistrarImpl: NSObject, UNUserNotificationCenterDelegate,
+    PushNotificationCenterRegistrar
+{
     private let pushEventHandler: PushEventHandler
     private let pushEventHandlerProxy: PushEventHandlerProxy
     private var userNotificationCenter: UserNotificationCenter
@@ -48,9 +50,12 @@ class PushNotificationCenterRegistrarImpl: NSObject, UNUserNotificationCenterDel
     func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         willPresent notification: UNNotification,
-        withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
+        withCompletionHandler completionHandler:
+            @escaping (UNNotificationPresentationOptions) -> Void
     ) {
-        pushEventHandler.shouldDisplayPushAppInForeground(UNNotificationWrapper(notification: notification)) { shouldShowPush in
+        pushEventHandler.shouldDisplayPushAppInForeground(
+            UNNotificationWrapper(notification: notification)
+        ) { shouldShowPush in
             if shouldShowPush {
                 if #available(iOS 14.0, *) {
                     completionHandler([.list, .banner, .badge, .sound])
@@ -68,6 +73,7 @@ class PushNotificationCenterRegistrarImpl: NSObject, UNUserNotificationCenterDel
         didReceive response: UNNotificationResponse,
         withCompletionHandler completionHandler: @escaping () -> Void
     ) {
-        pushEventHandler.onPushAction(UNNotificationResponseWrapper(response: response), completionHandler: completionHandler)
+        pushEventHandler.onPushAction(
+            UNNotificationResponseWrapper(response: response), completionHandler: completionHandler)
     }
 }

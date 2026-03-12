@@ -15,9 +15,12 @@ class AppDelegate: NSObject, UIApplicationDelegate {
      Next line of code is used for testing how Firebase behaves when another object is set as the delegate for `UNUserNotificationCenter`.
      This is not necessary for the Customer.io SDK to work.
      */
-//    let anotherPushEventHandler = AnotherPushEventHandler()
+    //    let anotherPushEventHandler = AnotherPushEventHandler()
 
-    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
+    func application(
+        _ application: UIApplication,
+        didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
+    ) -> Bool {
         // Follow setup guide for setting up FCM push: https://firebase.google.com/docs/cloud-messaging/ios/client
         // The FCM SDK provides a device token to the app that you then send to the Customer.io SDK.
 
@@ -38,9 +41,12 @@ class AppDelegate: NSObject, UIApplicationDelegate {
             .deepLinkCallback { (url: URL) in
                 // You can call any method to process this furhter,
                 // or redirect it to `application(_:continue:restorationHandler:)` for consistency, if you use deep-linking in Firebase
-                let openLinkInHostAppActivity = NSUserActivity(activityType: NSUserActivityTypeBrowsingWeb)
+                let openLinkInHostAppActivity = NSUserActivity(
+                    activityType: NSUserActivityTypeBrowsingWeb)
                 openLinkInHostAppActivity.webpageURL = url
-                return self.application(UIApplication.shared, continue: openLinkInHostAppActivity, restorationHandler: { _ in })
+                return self.application(
+                    UIApplication.shared, continue: openLinkInHostAppActivity,
+                    restorationHandler: { _ in })
             }
         let logLevel = appSetSettings?.debugSdkMode
         if logLevel == nil || logLevel == true {
@@ -57,7 +63,9 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 
         // Initialize messaging features after initializing Customer.io SDK
         MessagingInApp
-            .initialize(withConfig: MessagingInAppConfigBuilder(siteId: siteId, region: .US).build())
+            .initialize(
+                withConfig: MessagingInAppConfigBuilder(siteId: siteId, region: .US).build()
+            )
             .setEventListener(self)
         MessagingPushFCM.initialize(
             withConfig: MessagingPushConfigBuilder()
@@ -71,7 +79,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
          Next line of code is used for testing how Firebase behaves when another object is set as the delegate for `UNUserNotificationCenter`.
          This is not necessary for the Customer.io SDK to work.
          */
-//        UNUserNotificationCenter.current().delegate = anotherPushEventHandler
+        //        UNUserNotificationCenter.current().delegate = anotherPushEventHandler
 
         /*
          Registers the `AppDelegate` class to handle when a push notification gets clicked.
@@ -79,12 +87,15 @@ class AppDelegate: NSObject, UIApplicationDelegate {
          Push notifications sent by Customer.io will be handled by the Customer.io SDK automatically, unless you disabled that feature.
          Therefore, this line of code is not required if you only want to handle push notifications sent by Customer.io.
          */
-//        UNUserNotificationCenter.current().delegate = self
+        //        UNUserNotificationCenter.current().delegate = self
 
         return true
     }
 
-    func application(_ application: UIApplication, continue userActivity: NSUserActivity, restorationHandler: @escaping ([any UIUserActivityRestoring]?) -> Void) -> Bool {
+    func application(
+        _ application: UIApplication, continue userActivity: NSUserActivity,
+        restorationHandler: @escaping ([any UIUserActivityRestoring]?) -> Void
+    ) -> Bool {
         guard let universalLinkUrl = userActivity.webpageURL else {
             return false
         }
@@ -124,30 +135,40 @@ extension AppDelegate: InAppEventListener {
     nonisolated func messageShown(message: InAppMessage) {
         CustomerIO.shared.track(
             name: "inapp shown",
-            properties: ["delivery-id": message.deliveryId ?? "(none)", "message-id": message.messageId]
+            properties: [
+                "delivery-id": message.deliveryId ?? "(none)", "message-id": message.messageId,
+            ]
         )
     }
 
     nonisolated func messageDismissed(message: InAppMessage) {
         CustomerIO.shared.track(
             name: "inapp dismissed",
-            properties: ["delivery-id": message.deliveryId ?? "(none)", "message-id": message.messageId]
+            properties: [
+                "delivery-id": message.deliveryId ?? "(none)", "message-id": message.messageId,
+            ]
         )
     }
 
     nonisolated func errorWithMessage(message: InAppMessage) {
         CustomerIO.shared.track(
             name: "inapp error",
-            properties: ["delivery-id": message.deliveryId ?? "(none)", "message-id": message.messageId]
+            properties: [
+                "delivery-id": message.deliveryId ?? "(none)", "message-id": message.messageId,
+            ]
         )
     }
 
-    nonisolated func messageActionTaken(message: InAppMessage, actionValue: String, actionName: String) {
-        CustomerIO.shared.track(name: "inapp action", properties: [
-            "delivery-id": message.deliveryId ?? "(none)",
-            "message-id": message.messageId,
-            "action-value": actionValue,
-            "action-name": actionName
-        ])
+    nonisolated func messageActionTaken(
+        message: InAppMessage, actionValue: String, actionName: String
+    ) {
+        CustomerIO.shared.track(
+            name: "inapp action",
+            properties: [
+                "delivery-id": message.deliveryId ?? "(none)",
+                "message-id": message.messageId,
+                "action-value": actionValue,
+                "action-name": actionName,
+            ])
     }
 }
