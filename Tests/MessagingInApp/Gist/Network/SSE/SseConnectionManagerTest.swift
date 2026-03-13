@@ -251,24 +251,28 @@ class SseConnectionManagerTest: XCTestCase {
     }
 
     func test_serverEvent_givenHeartbeatEvent_expectHeartbeatTimerRestarted() async {
-        // Setup
-        let (stream, continuation) = AsyncStreamBackport.makeStream(of: SseEvent.self)
+        // Setup: resume when startTimer is called the second time
+        let (stream, streamContinuation) = AsyncStreamBackport.makeStream(of: SseEvent.self)
         sseServiceMock.connectReturnValue = stream
+
+        let secondStartTimerReceived = Task {
+            await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
+                heartbeatTimerMock.startTimerClosure = { [weak heartbeatTimerMock] _, _ in
+                    guard let mock = heartbeatTimerMock, mock.startTimerCallsCount == 2 else { return }
+                    cont.resume()
+                }
+            }
+        }
 
         // Action
         await sut.startConnection()
+        streamContinuation.yield(.connectionOpen)
+        streamContinuation.yield(.serverEvent(ServerEvent(id: nil, type: "heartbeat", data: "{\"heartbeat\": 30}")))
+        streamContinuation.finish()
 
-        // First establish connection
-        continuation.yield(.connectionOpen)
-        try? await Task.sleep(nanoseconds: 50000000) // 0.05 seconds
+        await secondStartTimerReceived.value
 
-        // Then receive heartbeat
-        let heartbeatEvent = ServerEvent(id: nil, type: "heartbeat", data: "{\"heartbeat\": 30}")
-        continuation.yield(.serverEvent(heartbeatEvent))
-        try? await Task.sleep(nanoseconds: 100000000) // 0.1 seconds
-        continuation.finish()
-
-        // Assert: Timer should be started multiple times (once for connection, once for heartbeat)
+        // Assert: Timer started for connection open and again for heartbeat
         XCTAssertGreaterThanOrEqual(heartbeatTimerMock.startTimerCallsCount, 2)
     }
 
