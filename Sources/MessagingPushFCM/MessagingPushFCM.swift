@@ -1,8 +1,9 @@
 import CioInternalCommon
 @_spi(Internal) import CioMessagingPush
 import Foundation
+
 #if canImport(UserNotifications)
-import UserNotifications
+    import UserNotifications
 #endif
 
 // Some functions are copied from MessagingPush because
@@ -10,18 +11,6 @@ import UserNotifications
 // 2. Customers do not need to `import CioMessaginPush`. Only 1 import: `CioMessaginPushFCM`.
 public protocol MessagingPushFCMInstance: AutoMockable {
     func registerDeviceToken(fcmToken: String?)
-
-    // sourcery:Name=didReceiveRegistrationToken
-    func messaging(
-        _ messaging: Any,
-        didReceiveRegistrationToken fcmToken: String?
-    )
-
-    // sourcery:Name=didFailToRegisterForRemoteNotifications
-    func application(
-        _ application: Any,
-        didFailToRegisterForRemoteNotificationsWithError error: Error
-    )
 
     func deleteDeviceToken()
 
@@ -32,27 +21,28 @@ public protocol MessagingPushFCMInstance: AutoMockable {
     )
 
     #if canImport(UserNotifications)
-    @discardableResult
-    // sourcery:Name=didReceiveNotificationRequest
-    // sourcery:IfCanImport=UserNotifications
-    func didReceive(
-        _ request: UNNotificationRequest,
-        withContentHandler contentHandler: @escaping (UNNotificationContent) -> Void
-    ) -> Bool
+        @discardableResult
+        // sourcery:Name=didReceiveNotificationRequest
+        // sourcery:IfCanImport=UserNotifications
+        func didReceive(
+            _ request: UNNotificationRequest,
+            withContentHandler contentHandler: @escaping (UNNotificationContent) -> Void
+        ) -> Bool
 
-    // sourcery:IfCanImport=UserNotifications
-    func serviceExtensionTimeWillExpire()
+        // sourcery:IfCanImport=UserNotifications
+        func serviceExtensionTimeWillExpire()
     #endif
 }
 
 public class MessagingPushFCM: MessagingPushFCMInstance {
-    static let shared = MessagingPushFCM()
+    public static let shared = MessagingPushFCM()
 
     var messagingPush: MessagingPushInstance {
         MessagingPush.shared
     }
 
     var firebaseService: FirebaseService?
+    private var wrappedFirebaseDelegate: FirebaseServiceDelegate?
 
     func firebaseMessaging() -> FirebaseService? {
         firebaseService
@@ -63,17 +53,6 @@ public class MessagingPushFCM: MessagingPushFCMInstance {
             return
         }
         messagingPush.registerDeviceToken(deviceToken)
-    }
-
-    public func messaging(_ messaging: Any, didReceiveRegistrationToken fcmToken: String?) {
-        guard let deviceToken = fcmToken else {
-            return
-        }
-        registerDeviceToken(fcmToken: deviceToken)
-    }
-
-    public func application(_ application: Any, didFailToRegisterForRemoteNotificationsWithError error: Error) {
-        messagingPush.deleteDeviceToken()
     }
 
     public func deleteDeviceToken() {
@@ -101,8 +80,15 @@ public class MessagingPushFCM: MessagingPushFCMInstance {
         shared.firebaseService = firebaseService
 
         let pushConfigOptions = MessagingPush.moduleConfig
-        if pushConfigOptions.autoFetchDeviceToken, !MessagingPush.appDelegateIntegratedExplicitly {
-            shared.setupAutoFetchDeviceToken()
+        if pushConfigOptions.autoFetchDeviceToken {
+            if var service = shared.firebaseMessaging() {
+                shared.wrappedFirebaseDelegate = service.delegate
+                service.delegate = shared
+            } else {
+                DIGraphShared.shared.logger.error(
+                    "CIO: firebaseService is nil. Make sure to initialize the MessagingPushFCM SDK before use."
+                )
+            }
         }
 
         return implementation
@@ -114,50 +100,65 @@ public class MessagingPushFCM: MessagingPushFCMInstance {
     @available(iOSApplicationExtension, introduced: 13.0)
     @available(visionOSApplicationExtension, introduced: 1.0)
     @discardableResult
-    public static func initializeForExtension(withConfig config: MessagingPushConfigOptions) -> MessagingPushInstance {
+    public static func initializeForExtension(withConfig config: MessagingPushConfigOptions)
+        -> MessagingPushInstance
+    {
         let implementation = MessagingPush.initializeForExtension(withConfig: config)
         return implementation
     }
 
     #if canImport(UserNotifications)
-    /**
-     - returns:
-     Bool indicating if this push notification is one handled by Customer.io SDK or not.
-     If function returns `false`, `contentHandler` will *not* be called by the SDK.
-     */
-    @discardableResult
-    public func didReceive(
-        _ request: UNNotificationRequest,
-        withContentHandler contentHandler: @escaping (UNNotificationContent) -> Void
-    ) -> Bool {
-        messagingPush.didReceive(request, withContentHandler: contentHandler)
-    }
+        /**
+         - returns:
+         Bool indicating if this push notification is one handled by Customer.io SDK or not.
+         If function returns `false`, `contentHandler` will *not* be called by the SDK.
+         */
+        @discardableResult
+        public func didReceive(
+            _ request: UNNotificationRequest,
+            withContentHandler contentHandler: @escaping (UNNotificationContent) -> Void
+        ) -> Bool {
+            messagingPush.didReceive(request, withContentHandler: contentHandler)
+        }
 
-    /**
-     iOS OS telling the notification service to hurry up and stop modifying the push notifications.
-     Stop all network requests and modifying and show the push for what it looks like now.
-     */
-    public func serviceExtensionTimeWillExpire() {
-        messagingPush.serviceExtensionTimeWillExpire()
-    }
+        /**
+         iOS OS telling the notification service to hurry up and stop modifying the push notifications.
+         Stop all network requests and modifying and show the push for what it looks like now.
+         */
+        public func serviceExtensionTimeWillExpire() {
+            messagingPush.serviceExtensionTimeWillExpire()
+        }
 
-    @available(iOSApplicationExtension, unavailable)
-    public func userNotificationCenter(
-        _ center: UNUserNotificationCenter,
-        didReceive response: UNNotificationResponse
-    ) -> CustomerIOParsedPushPayload? {
-        // Use concrete MessagingPush instance since method was removed from protocol
-        MessagingPush.shared.userNotificationCenter(center, didReceive: response)
-    }
+        @available(iOSApplicationExtension, unavailable)
+        public func userNotificationCenter(
+            _ center: UNUserNotificationCenter,
+            didReceive response: UNNotificationResponse
+        ) -> CustomerIOParsedPushPayload? {
+            // Use concrete MessagingPush instance since method was removed from protocol
+            MessagingPush.shared.userNotificationCenter(center, didReceive: response)
+        }
 
-    @available(iOSApplicationExtension, unavailable)
-    public func userNotificationCenter(
-        _ center: UNUserNotificationCenter,
-        didReceive response: UNNotificationResponse,
-        withCompletionHandler completionHandler: @escaping () -> Void
-    ) -> Bool {
-        // Use concrete MessagingPush instance since method was removed from protocol
-        MessagingPush.shared.userNotificationCenter(center, didReceive: response, withCompletionHandler: completionHandler)
-    }
+        @available(iOSApplicationExtension, unavailable)
+        public func userNotificationCenter(
+            _ center: UNUserNotificationCenter,
+            didReceive response: UNNotificationResponse,
+            withCompletionHandler completionHandler: @escaping () -> Void
+        ) -> Bool {
+            // Use concrete MessagingPush instance since method was removed from protocol
+            MessagingPush.shared.userNotificationCenter(
+                center, didReceive: response, withCompletionHandler: completionHandler)
+        }
     #endif
+}
+
+// MARK: - FirebaseServiceDelegate
+
+extension MessagingPushFCM: FirebaseServiceDelegate {
+    /// Called by Firebase when a new FCM registration token is available.
+    public func didReceiveRegistrationToken(_ token: String?) {
+        if let wrappedFirebaseDelegate {
+            wrappedFirebaseDelegate.didReceiveRegistrationToken(token)
+        }
+        registerDeviceToken(fcmToken: token)
+    }
 }

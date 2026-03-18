@@ -107,3 +107,4 @@ fastlane/test_output
 
 iOSInjectionProject/
 Env.swift
+.vscode/settings.json

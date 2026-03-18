@@ -7,8 +7,6 @@ import CioMessagingPushAPN
 import UIKit
 
 @main
-class AppDelegateWithCioIntegration: CioAppDelegateWrapper<AppDelegate> {}
-
 class AppDelegate: UIResponder, UIApplicationDelegate {
     var storage = DIGraphShared.shared.storage
     var deepLinkHandler = DIGraphShared.shared.deepLinksHandlerUtil
@@ -26,6 +24,16 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 //        UNUserNotificationCenter.current().delegate = self
 
         return true
+    }
+
+    // Forward the APN device token to Customer.io SDK.
+    // Required: iOS delivers tokens only via UIApplicationDelegate — there is no SwiftUI or async API alternative.
+    func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
+        MessagingPushAPN.shared.registerDeviceToken(apnDeviceToken: deviceToken)
+    }
+
+    func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {
+        MessagingPushAPN.shared.deleteDeviceToken()
     }
 
     func initializeCioAndInAppListeners() {
@@ -116,7 +124,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 //    // Function called when a push notification is clicked or swiped away.
 //    func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
 //        // Track custom event with Customer.io.
-//        // NOT required for basic PN tap tracking - that is done automatically with `CioAppDelegateWrapper`.
 //        CustomerIO.shared.track(
 //            name: "custom push-clicked event",
 //            properties: ["push": response.notification.request.content.userInfo]

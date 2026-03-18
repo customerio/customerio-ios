@@ -1,18 +1,16 @@
 import CioInternalCommon
 import Foundation
+
 #if canImport(UserNotifications)
-import UserNotifications
+    import UserNotifications
 #endif
 
-/**
- Swift code goes into this module that are common to *all* of the Messaging Push modules (APN, FCM, etc).
- So, performing an HTTP request to the API with a device token goes here.
- */
+/// Swift code goes into this module that are common to *all* of the Messaging Push modules (APN, FCM, etc).
+/// So, performing an HTTP request to the API with a device token goes here.
 public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, MessagingPushInstance {
-    @_spi(Internal) public static var appDelegateIntegratedExplicitly: Bool = false
-
     @Atomic public private(set) static var shared = MessagingPush()
-    @Atomic public private(set) static var moduleConfig: MessagingPushConfigOptions = MessagingPushConfigBuilder().build()
+    @Atomic public private(set) static var moduleConfig: MessagingPushConfigOptions =
+        MessagingPushConfigBuilder().build()
 
     private static let moduleName = "MessagingPush"
 
@@ -25,29 +23,36 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
     }
 
     #if DEBUG
-    // Methods to set up the test environment.
-    // In unit tests, any implementation of the interface works, while integration tests use the actual implementation.
+        // Methods to set up the test environment.
+        // In unit tests, any implementation of the interface works, while integration tests use the actual implementation.
 
-    @discardableResult
-    static func setUpSharedInstanceForUnitTest(implementation: MessagingPushInstance, diGraphShared: DIGraphShared, config: MessagingPushConfigOptions) -> MessagingPushInstance {
-        // initialize static properties before implementation creation, as they may be directly used by other classes
-        moduleConfig = config
-        shared.globalDataStore = diGraphShared.globalDataStore
-        shared._implementation = implementation
-        return implementation
-    }
+        @discardableResult
+        static func setUpSharedInstanceForUnitTest(
+            implementation: MessagingPushInstance, diGraphShared: DIGraphShared,
+            config: MessagingPushConfigOptions
+        ) -> MessagingPushInstance {
+            // initialize static properties before implementation creation, as they may be directly used by other classes
+            moduleConfig = config
+            shared.globalDataStore = diGraphShared.globalDataStore
+            shared._implementation = implementation
+            return implementation
+        }
 
-    @discardableResult
-    static func setUpSharedInstanceForIntegrationTest(diGraphShared: DIGraphShared, config: MessagingPushConfigOptions) -> MessagingPushInstance {
-        moduleConfig = config
-        let implementation = MessagingPushImplementation(diGraph: diGraphShared, moduleConfig: config)
-        return setUpSharedInstanceForUnitTest(implementation: implementation, diGraphShared: diGraphShared, config: config)
-    }
+        @discardableResult
+        static func setUpSharedInstanceForIntegrationTest(
+            diGraphShared: DIGraphShared, config: MessagingPushConfigOptions
+        ) -> MessagingPushInstance {
+            moduleConfig = config
+            let implementation = MessagingPushImplementation(
+                diGraph: diGraphShared, moduleConfig: config)
+            return setUpSharedInstanceForUnitTest(
+                implementation: implementation, diGraphShared: diGraphShared, config: config)
+        }
 
-    static func resetTestEnvironment() {
-        moduleConfig = MessagingPushConfigBuilder().build()
-        shared = MessagingPush()
-    }
+        static func resetTestEnvironment() {
+            moduleConfig = MessagingPushConfigBuilder().build()
+            shared = MessagingPush()
+        }
     #endif
 
     /**
@@ -56,14 +61,16 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
      */
     @discardableResult
     @available(iOSApplicationExtension, unavailable)
-    public static func initialize(withConfig config: MessagingPushConfigOptions = MessagingPushConfigBuilder().build()) -> MessagingPushInstance {
+    public static func initialize(
+        withConfig config: MessagingPushConfigOptions = MessagingPushConfigBuilder().build()
+    ) -> MessagingPushInstance {
         shared.initializeModuleIfNotAlready {
             // set moduleConfig before creating implementation instance as dependencies inside instance may directly use moduleConfig from MessagingPush.
             Self.moduleConfig = config
             // Some part of the initialize is specific only to non-NSE targets.
             // Put those parts in this non-NSE initialize method.
-            if config.autoTrackPushEvents, !Self.appDelegateIntegratedExplicitly {
-                DIGraphShared.shared.automaticPushClickHandling.start()
+            if config.autoTrackPushEvents {
+                DIGraphShared.shared.pushNotificationCenterRegistrar.activate()
             }
 
             return shared.getImplementation(config: config)
@@ -78,7 +85,9 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
     @available(iOSApplicationExtension, introduced: 13.0)
     @available(visionOSApplicationExtension, introduced: 1.0)
     @discardableResult
-    public static func initializeForExtension(withConfig config: MessagingPushConfigOptions) -> MessagingPushInstance {
+    public static func initializeForExtension(withConfig config: MessagingPushConfigOptions)
+        -> MessagingPushInstance
+    {
         shared.initializeModuleIfNotAlready {
             // set moduleConfig before creating implementation instance as dependencies inside instance may directly use moduleConfig from MessagingPush.
             Self.moduleConfig = config
@@ -134,37 +143,37 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
     }
 
     #if canImport(UserNotifications)
-    /**
-     - returns:
-     Bool indicating if this push notification is one handled by Customer.io SDK or not.
-     If function returns `false`, `contentHandler` will *not* be called by the SDK.
-     */
-    @discardableResult
-    public func didReceive(
-        _ request: UNNotificationRequest,
-        withContentHandler contentHandler: @escaping (UNNotificationContent) -> Void
-    ) -> Bool {
-        guard let implementation = implementation else {
-            contentHandler(request.content)
-            return false
+        /**
+         - returns:
+         Bool indicating if this push notification is one handled by Customer.io SDK or not.
+         If function returns `false`, `contentHandler` will *not* be called by the SDK.
+         */
+        @discardableResult
+        public func didReceive(
+            _ request: UNNotificationRequest,
+            withContentHandler contentHandler: @escaping (UNNotificationContent) -> Void
+        ) -> Bool {
+            guard let implementation = implementation else {
+                contentHandler(request.content)
+                return false
+            }
+
+            return implementation.didReceive(request, withContentHandler: contentHandler)
         }
 
-        return implementation.didReceive(request, withContentHandler: contentHandler)
-    }
-
-    /**
-     iOS telling the notification service to hurry up and stop modifying the push notifications.
-     Stop all network requests and modifying and show the push for what it looks like now.
-     */
-    public func serviceExtensionTimeWillExpire() {
-        implementation?.serviceExtensionTimeWillExpire()
-    }
+        /**
+         iOS telling the notification service to hurry up and stop modifying the push notifications.
+         Stop all network requests and modifying and show the push for what it looks like now.
+         */
+        public func serviceExtensionTimeWillExpire() {
+            implementation?.serviceExtensionTimeWillExpire()
+        }
     #endif
 }
 
 // Convenient way for other modules to access instance as well as being able to mock instance in tests.
-public extension DIGraphShared {
-    var messagingPushInstance: MessagingPushInstance {
+extension DIGraphShared {
+    public var messagingPushInstance: MessagingPushInstance {
         if let override: MessagingPushInstance = getOverriddenInstance() {
             return override
         }

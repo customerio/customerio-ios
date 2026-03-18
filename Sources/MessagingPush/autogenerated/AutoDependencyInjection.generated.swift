@@ -54,9 +54,6 @@ extension DIGraphShared {
     func testDependenciesAbleToResolve() -> Int {
         var countDependenciesResolved = 0
 
-        _ = automaticPushClickHandling
-        countDependenciesResolved += 1
-
         _ = pushEventHandler
         countDependenciesResolved += 1
 
@@ -67,6 +64,9 @@ extension DIGraphShared {
         countDependenciesResolved += 1
 
         _ = pushHistory
+        countDependenciesResolved += 1
+
+        _ = pushNotificationCenterRegistrar
         countDependenciesResolved += 1
 
         _ = pushNotificationLogger
@@ -81,25 +81,10 @@ extension DIGraphShared {
         _ = userNotificationCenter
         countDependenciesResolved += 1
 
-        _ = userNotificationsFrameworkAdapter
-        countDependenciesResolved += 1
-
         return countDependenciesResolved
     }
 
     // Handle classes annotated with InjectRegisterShared
-    // AutomaticPushClickHandling
-    @available(iOSApplicationExtension, unavailable)
-    var automaticPushClickHandling: AutomaticPushClickHandling {
-        getOverriddenInstance() ??
-            newAutomaticPushClickHandling
-    }
-
-    @available(iOSApplicationExtension, unavailable)
-    private var newAutomaticPushClickHandling: AutomaticPushClickHandling {
-        AutomaticPushClickHandlingImpl(notificationCenterAdapter: userNotificationsFrameworkAdapter, logger: logger)
-    }
-
     // PushEventHandler
     @available(iOSApplicationExtension, unavailable)
     var pushEventHandler: PushEventHandler {
@@ -150,6 +135,20 @@ extension DIGraphShared {
         PushHistoryImpl(lockManager: lockManager)
     }
 
+    // PushNotificationCenterRegistrar (singleton)
+    @available(iOSApplicationExtension, unavailable)
+    var pushNotificationCenterRegistrar: PushNotificationCenterRegistrar {
+        getOverriddenInstance() ??
+            getSingletonOrCreate {
+                _get_pushNotificationCenterRegistrar()
+            }
+    }
+
+    @available(iOSApplicationExtension, unavailable)
+    private func _get_pushNotificationCenterRegistrar() -> PushNotificationCenterRegistrar {
+        PushNotificationCenterRegistrarImpl(pushEventHandler: pushEventHandler, pushEventHandlerProxy: pushEventHandlerProxy, userNotificationCenter: userNotificationCenter)
+    }
+
     // PushNotificationLogger
     var pushNotificationLogger: PushNotificationLogger {
         getOverriddenInstance() ??
@@ -188,20 +187,6 @@ extension DIGraphShared {
 
     private var newUserNotificationCenter: UserNotificationCenter {
         UserNotificationCenterImpl()
-    }
-
-    // UserNotificationsFrameworkAdapter (singleton)
-    @available(iOSApplicationExtension, unavailable)
-    var userNotificationsFrameworkAdapter: UserNotificationsFrameworkAdapter {
-        getOverriddenInstance() ??
-            getSingletonOrCreate {
-                _get_userNotificationsFrameworkAdapter()
-            }
-    }
-
-    @available(iOSApplicationExtension, unavailable)
-    private func _get_userNotificationsFrameworkAdapter() -> UserNotificationsFrameworkAdapter {
-        UserNotificationsFrameworkAdapterImpl(pushEventHandler: pushEventHandler, userNotificationCenter: userNotificationCenter, notificationCenterDelegateProxy: pushEventHandlerProxy)
     }
 }
 

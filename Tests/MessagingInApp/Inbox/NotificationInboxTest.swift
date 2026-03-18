@@ -1,6 +1,7 @@
+import XCTest
+
 @testable import CioInternalCommon
 @testable import CioMessagingInApp
-import XCTest
 
 class NotificationInboxTest: UnitTest {
     private var notificationInbox: DefaultNotificationInbox!
@@ -66,14 +67,16 @@ class NotificationInboxTest: UnitTest {
             properties: [:]
         )
 
-        let stateWithMessages = InAppMessageState().copy(inboxMessages: [olderMessage, newerMessage])
+        let stateWithMessages = InAppMessageState().copy(inboxMessages: [
+            olderMessage, newerMessage,
+        ])
         inAppMessageManagerMock.underlyingState = stateWithMessages
 
         let messages = await notificationInbox.getMessages()
 
         XCTAssertEqual(messages.count, 2)
-        XCTAssertEqual(messages[0].queueId, "queue-2") // Newer date
-        XCTAssertEqual(messages[1].queueId, "queue-1") // Older date
+        XCTAssertEqual(messages[0].queueId, "queue-2")  // Newer date
+        XCTAssertEqual(messages[1].queueId, "queue-1")  // Older date
     }
 
     func test_getMessages_whenTopicProvided_expectFilteredAndSortedByNewestFirst() async {
@@ -115,7 +118,9 @@ class NotificationInboxTest: UnitTest {
             properties: [:]
         )
 
-        let stateWithMessages = InAppMessageState().copy(inboxMessages: [oldPromoMessage, updateMessage, newPromoMessage])
+        let stateWithMessages = InAppMessageState().copy(inboxMessages: [
+            oldPromoMessage, updateMessage, newPromoMessage,
+        ])
         inAppMessageManagerMock.underlyingState = stateWithMessages
 
         let messages = await notificationInbox.getMessages(topic: "promo")
@@ -127,8 +132,8 @@ class NotificationInboxTest: UnitTest {
         XCTAssertTrue(queueIds.contains("queue-3"))
 
         // Verify sorting: newest first
-        XCTAssertEqual(messages[0].deliveryId, "msg3") // middleDate
-        XCTAssertEqual(messages[1].deliveryId, "msg1") // olderDate
+        XCTAssertEqual(messages[0].deliveryId, "msg3")  // middleDate
+        XCTAssertEqual(messages[1].deliveryId, "msg1")  // olderDate
     }
 
     func test_getMessages_whenTopicMatchingIsCaseInsensitive_expectCorrectFiltering() async {
@@ -204,7 +209,10 @@ class NotificationInboxTest: UnitTest {
         notificationInbox.markMessageOpened(message: message)
 
         XCTAssertEqual(inAppMessageManagerMock.dispatchCallsCount, 1)
-        guard case .inboxAction(let inboxAction) = inAppMessageManagerMock.dispatchReceivedArguments?.action else {
+        guard
+            case .inboxAction(let inboxAction) = inAppMessageManagerMock.dispatchReceivedArguments?
+                .action
+        else {
             XCTFail("Expected inboxAction, got different action")
             return
         }
@@ -238,7 +246,10 @@ class NotificationInboxTest: UnitTest {
         notificationInbox.markMessageUnopened(message: message)
 
         XCTAssertEqual(inAppMessageManagerMock.dispatchCallsCount, 1)
-        guard case .inboxAction(let inboxAction) = inAppMessageManagerMock.dispatchReceivedArguments?.action else {
+        guard
+            case .inboxAction(let inboxAction) = inAppMessageManagerMock.dispatchReceivedArguments?
+                .action
+        else {
             XCTFail("Expected inboxAction, got different action")
             return
         }
@@ -272,7 +283,10 @@ class NotificationInboxTest: UnitTest {
         notificationInbox.markMessageDeleted(message: message)
 
         XCTAssertEqual(inAppMessageManagerMock.dispatchCallsCount, 1)
-        guard case .inboxAction(let inboxAction) = inAppMessageManagerMock.dispatchReceivedArguments?.action else {
+        guard
+            case .inboxAction(let inboxAction) = inAppMessageManagerMock.dispatchReceivedArguments?
+                .action
+        else {
             XCTFail("Expected inboxAction, got different action")
             return
         }
@@ -305,7 +319,10 @@ class NotificationInboxTest: UnitTest {
         notificationInbox.trackMessageClicked(message: message, actionName: "view_details")
 
         XCTAssertEqual(inAppMessageManagerMock.dispatchCallsCount, 1)
-        guard case .inboxAction(let inboxAction) = inAppMessageManagerMock.dispatchReceivedArguments?.action else {
+        guard
+            case .inboxAction(let inboxAction) = inAppMessageManagerMock.dispatchReceivedArguments?
+                .action
+        else {
             XCTFail("Expected inboxAction, got different action")
             return
         }
@@ -337,7 +354,10 @@ class NotificationInboxTest: UnitTest {
         notificationInbox.trackMessageClicked(message: message, actionName: nil)
 
         XCTAssertEqual(inAppMessageManagerMock.dispatchCallsCount, 1)
-        guard case .inboxAction(let inboxAction) = inAppMessageManagerMock.dispatchReceivedArguments?.action else {
+        guard
+            case .inboxAction(let inboxAction) = inAppMessageManagerMock.dispatchReceivedArguments?
+                .action
+        else {
             XCTFail("Expected inboxAction, got different action")
             return
         }
@@ -413,7 +433,9 @@ class NotificationInboxTest: UnitTest {
             properties: [:]
         )
 
-        let stateWithMessages = InAppMessageState().copy(inboxMessages: [promoMessage, updateMessage])
+        let stateWithMessages = InAppMessageState().copy(inboxMessages: [
+            promoMessage, updateMessage,
+        ])
         inAppMessageManagerMock.underlyingState = stateWithMessages
 
         let listener = await MainActor.run {
@@ -500,7 +522,8 @@ class NotificationInboxTest: UnitTest {
         _ = (listener1, listener2)
     }
 
-    func test_addChangeListener_multipleListenersWithDifferentTopics_expectCorrectFiltering() async {
+    func test_addChangeListener_multipleListenersWithDifferentTopics_expectCorrectFiltering() async
+    {
         let expectation1 = expectation(description: "Promo listener receives promo messages")
         let expectation2 = expectation(description: "Updates listener receives update messages")
 
@@ -527,7 +550,9 @@ class NotificationInboxTest: UnitTest {
             properties: [:]
         )
 
-        let stateWithMessages = InAppMessageState().copy(inboxMessages: [promoMessage, updateMessage])
+        let stateWithMessages = InAppMessageState().copy(inboxMessages: [
+            promoMessage, updateMessage,
+        ])
         inAppMessageManagerMock.underlyingState = stateWithMessages
 
         let (listener1, listener2) = await MainActor.run {
@@ -588,7 +613,7 @@ class NotificationInboxTest: UnitTest {
         }
 
         // Wait for initial callback
-        try? await Task.sleep(nanoseconds: 100000000) // 100ms
+        try? await Task.sleep(nanoseconds: 100_000_000)  // 100ms
 
         let initialCallbackCount = callbackCount
         XCTAssertGreaterThan(initialCallbackCount, 0, "Should have received initial callback")
@@ -597,9 +622,10 @@ class NotificationInboxTest: UnitTest {
         notificationInbox.removeChangeListener(listener)
 
         // Wait to ensure no more callbacks
-        try? await Task.sleep(nanoseconds: 100000000) // 100ms
+        try? await Task.sleep(nanoseconds: 100_000_000)  // 100ms
 
-        XCTAssertEqual(callbackCount, initialCallbackCount, "Should not receive more callbacks after removal")
+        XCTAssertEqual(
+            callbackCount, initialCallbackCount, "Should not receive more callbacks after removal")
     }
 
     func test_removeChangeListener_withMultipleListeners_expectOnlyTargetListenerRemoved() async {
@@ -649,7 +675,7 @@ class NotificationInboxTest: UnitTest {
         notificationInbox.removeChangeListener(listener1)
 
         // Wait to ensure listener1 doesn't receive more callbacks
-        try? await Task.sleep(nanoseconds: 100000000) // 100ms
+        try? await Task.sleep(nanoseconds: 100_000_000)  // 100ms
 
         // Both should have been called once (initial callback)
         XCTAssertEqual(listener1CallCount, 1, "Listener 1 should only receive initial callback")
@@ -705,7 +731,7 @@ class NotificationInboxTest: UnitTest {
         }
 
         // Wait for initial callbacks
-        try? await Task.sleep(nanoseconds: 100000000) // 100ms
+        try? await Task.sleep(nanoseconds: 100_000_000)  // 100ms
 
         XCTAssertGreaterThan(callbackCount, 0, "Should have received initial callbacks")
 
@@ -715,9 +741,10 @@ class NotificationInboxTest: UnitTest {
         notificationInbox.removeChangeListener(listener)
 
         // Wait to ensure no more callbacks
-        try? await Task.sleep(nanoseconds: 100000000) // 100ms
+        try? await Task.sleep(nanoseconds: 100_000_000)  // 100ms
 
-        XCTAssertEqual(callbackCount, initialCallbackCount, "Should not receive more callbacks after removal")
+        XCTAssertEqual(
+            callbackCount, initialCallbackCount, "Should not receive more callbacks after removal")
     }
 
     func test_addChangeListener_receivesOngoingCallbacksWhenStateChanges() async {
@@ -757,12 +784,14 @@ class NotificationInboxTest: UnitTest {
 
         // Simulate state change: Delete a message
         let stateWithOneMessage = InAppMessageState().copy(inboxMessages: [message1])
-        inAppMessageManagerMock.subscribeReceivedArguments?.subscriber.newState(state: stateWithOneMessage)
+        inAppMessageManagerMock.subscribeReceivedArguments?.subscriber.newState(
+            state: stateWithOneMessage)
 
         // Wait for update callback
         await fulfillment(of: [updateExpectation], timeout: 1.0)
         XCTAssertEqual(callbackCount, 2, "Should receive update callback")
-        XCTAssertEqual(receivedMessageCounts[1], 1, "Update callback should have 1 message after delete")
+        XCTAssertEqual(
+            receivedMessageCounts[1], 1, "Update callback should have 1 message after delete")
 
         // Keep listener alive
         _ = listener
@@ -789,7 +818,7 @@ class NotificationInboxTest: UnitTest {
         }
 
         // Wait for initial emission
-        try? await Task.sleep(nanoseconds: 50000000) // 50ms
+        try? await Task.sleep(nanoseconds: 50_000_000)  // 50ms
 
         // Then: should receive initial messages immediately
         XCTAssertEqual(receivedMessages.count, 1)
@@ -816,7 +845,7 @@ class NotificationInboxTest: UnitTest {
             }
         }
 
-        try? await Task.sleep(nanoseconds: 50000000)
+        try? await Task.sleep(nanoseconds: 50_000_000)
 
         // Then: should receive only filtered messages
         XCTAssertEqual(receivedMessages.count, 1)
@@ -847,18 +876,19 @@ class NotificationInboxTest: UnitTest {
         }
 
         // Wait for initial emission
-        try? await Task.sleep(nanoseconds: 50000000)
+        try? await Task.sleep(nanoseconds: 50_000_000)
 
         // Then: add message and verify stream emits update
         let message = createTestMessage(queueId: "msg1")
         let stateWithMessage = InAppMessageState().copy(inboxMessages: [message])
-        inAppMessageManagerMock.subscribeReceivedArguments?.subscriber.newState(state: stateWithMessage)
+        inAppMessageManagerMock.subscribeReceivedArguments?.subscriber.newState(
+            state: stateWithMessage)
 
         await fulfillment(of: [expectation], timeout: 1.0)
 
         XCTAssertEqual(receivedMessages.count, 2)
-        XCTAssertEqual(receivedMessages[0].count, 0) // Initial empty
-        XCTAssertEqual(receivedMessages[1].count, 1) // After update
+        XCTAssertEqual(receivedMessages[0].count, 0)  // Initial empty
+        XCTAssertEqual(receivedMessages[1].count, 1)  // After update
 
         task.cancel()
     }
@@ -875,19 +905,20 @@ class NotificationInboxTest: UnitTest {
             }
         }
 
-        try? await Task.sleep(nanoseconds: 50000000)
+        try? await Task.sleep(nanoseconds: 50_000_000)
 
         // When: canceling the task
         task.cancel()
-        try? await Task.sleep(nanoseconds: 50000000)
+        try? await Task.sleep(nanoseconds: 50_000_000)
 
         let countAfterCancel = receivedCount
 
         // Then: no more updates after cancellation
         let message = createTestMessage(queueId: "msg1")
         let stateWithMessage = InAppMessageState().copy(inboxMessages: [message])
-        inAppMessageManagerMock.subscribeReceivedArguments?.subscriber.newState(state: stateWithMessage)
-        try? await Task.sleep(nanoseconds: 50000000)
+        inAppMessageManagerMock.subscribeReceivedArguments?.subscriber.newState(
+            state: stateWithMessage)
+        try? await Task.sleep(nanoseconds: 50_000_000)
 
         XCTAssertEqual(receivedCount, countAfterCancel)
     }

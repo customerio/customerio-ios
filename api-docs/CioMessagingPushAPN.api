@@ -1,7 +1,6 @@
 public final class CioMessagingPushAPN.MessagingPushAPN {
+	public final val shared: MessagingPushAPN;
 	public fun func registerDeviceToken(apnDeviceToken: Data);
-	public fun func application(_ application: Any, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data);
-	public fun func application(_ application: Any, didFailToRegisterForRemoteNotificationsWithError error: Error);
 	public fun func deleteDeviceToken();
 	public fun func trackMetric(deliveryID: String, event: Metric, deviceToken: String);
 	public fun func initialize(
@@ -24,14 +23,6 @@ public final class CioMessagingPushAPN.MessagingPushAPN {
 }
 public interface CioMessagingPushAPN.MessagingPushAPNInstance {
 	public fun func registerDeviceToken(apnDeviceToken: Data);
-	public fun func application(
-    _ application: Any,
-    didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data
-);
-	public fun func application(
-    _ application: Any,
-    didFailToRegisterForRemoteNotificationsWithError error: Error
-);
 	public fun func deleteDeviceToken();
 	public fun func trackMetric(
     deliveryID: String,
