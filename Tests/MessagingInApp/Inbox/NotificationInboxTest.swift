@@ -750,7 +750,7 @@ class NotificationInboxTest: UnitTest {
             return listener
         }
 
-        // Wait for initial callback
+        // Wait for initial callback to ensure subscription is set up
         await fulfillment(of: [initialExpectation], timeout: 1.0)
         XCTAssertEqual(callbackCount, 1, "Should receive initial callback")
         XCTAssertEqual(receivedMessageCounts[0], 2, "Initial callback should have 2 messages")
@@ -832,29 +832,40 @@ class NotificationInboxTest: UnitTest {
         inAppMessageManagerMock.underlyingState = emptyState
 
         var receivedMessages: [[InboxMessage]] = []
-        let expectation = expectation(description: "Receive multiple updates")
-        expectation.expectedFulfillmentCount = 2
+        let initialExpectation = expectation(description: "Receive initial state")
+        let updateExpectation = expectation(description: "Receive state update")
 
         // When: subscribing to stream
         let task = Task {
             for await messages in notificationInbox.messages() {
                 receivedMessages.append(messages)
-                expectation.fulfill()
-                if receivedMessages.count >= 2 {
+                if receivedMessages.count == 1 {
+                    initialExpectation.fulfill()
+                } else if receivedMessages.count == 2 {
+                    updateExpectation.fulfill()
                     break
                 }
             }
         }
 
-        // Wait for initial emission
-        try? await Task.sleep(nanoseconds: 50000000)
+        // Wait for initial emission to ensure stream has started
+        await fulfillment(of: [initialExpectation], timeout: 1.0)
 
-        // Then: add message and verify stream emits update
+        // Wait for subscription to be fully initialized
+        // The messages() implementation yields initial state before calling subscribe(),
+        // and the subscription itself has async initialization that completes after subscribe() is called.
+        // We need this delay to ensure the subscriber is ready to receive state changes.
+        try? await Task.sleep(nanoseconds: 100000000) // 100ms
+
+        // Then: trigger state change on all subscribers
         let message = createTestMessage(queueId: "msg1")
         let stateWithMessage = InAppMessageState().copy(inboxMessages: [message])
-        inAppMessageManagerMock.subscribeReceivedArguments?.subscriber.newState(state: stateWithMessage)
+        for invocation in inAppMessageManagerMock.subscribeReceivedInvocations {
+            invocation.subscriber.newState(state: stateWithMessage)
+        }
 
-        await fulfillment(of: [expectation], timeout: 1.0)
+        // Wait for update emission
+        await fulfillment(of: [updateExpectation], timeout: 1.0)
 
         XCTAssertEqual(receivedMessages.count, 2)
         XCTAssertEqual(receivedMessages[0].count, 0) // Initial empty
