@@ -3,6 +3,7 @@
 // swiftlint:disable all
 
 import CioInternalCommon
+import CoreLocation
 import Foundation
 
 /**

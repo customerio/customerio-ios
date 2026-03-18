@@ -37,13 +37,30 @@ final class LocationModuleState {
         di.profileEnrichmentRegistry.register(locationEnrichmentProvider)
         registerEventSubscriptions(coordinator: coordinator, eventBusHandler: di.eventBusHandler)
         let locationProvider = CoreLocationProvider(logger: di.logger)
+
+        // Set up geofencing components (resolve circular dependency between manager and services)
+        let preferenceStore = FileGeofencePreferenceStore()
+        let geofenceManager = GeofenceManager(logger: di.logger)
+        let geofenceServices = GeofenceServicesImpl(
+            config: config,
+            logger: di.logger,
+            preferenceStore: preferenceStore,
+            geofenceManager: geofenceManager,
+            dataPipeline: dataPipeline
+        )
+        // Set the event handler now that both objects exist
+        Task {
+            await geofenceManager.setEventHandler(geofenceServices)
+        }
+
         let implementation = LocationServicesImplementation(
             config: config,
             logger: di.logger,
             locationProvider: locationProvider,
             locationSyncCoordinator: coordinator,
             lifecycleNotifying: RealAppLifecycleNotifying(),
-            applicationStateProvider: RealApplicationStateProvider()
+            applicationStateProvider: RealApplicationStateProvider(),
+            geofenceServices: geofenceServices
         )
         services = implementation
         Task { await implementation.setUpLifecycleObserver() }

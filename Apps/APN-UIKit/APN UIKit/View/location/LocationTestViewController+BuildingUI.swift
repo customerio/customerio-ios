@@ -148,6 +148,36 @@ extension LocationTestViewController {
         textField.inputAccessoryView = toolbar
     }
 
+    func createGeofencingSection() -> UIView {
+        let stackView = UIStackView()
+        stackView.axis = .vertical
+        stackView.spacing = 12
+
+        // Active geofence count label
+        activeGeofenceCountLabel = UILabel()
+        activeGeofenceCountLabel.text = "Active geofences: 0"
+        activeGeofenceCountLabel.font = .systemFont(ofSize: 14)
+        activeGeofenceCountLabel.textColor = .darkGray
+        activeGeofenceCountLabel.textAlignment = .center
+        stackView.addArrangedSubview(activeGeofenceCountLabel)
+
+        // Add sample geofences button
+        addSampleGeofencesButton = ThemeButton()
+        addSampleGeofencesButton.setTitle("Add Sample Geofences", for: .normal)
+        addSampleGeofencesButton.heightAnchor.constraint(equalToConstant: 50).isActive = true
+        addSampleGeofencesButton.addTarget(self, action: #selector(addSampleGeofencesTapped), for: .touchUpInside)
+        stackView.addArrangedSubview(addSampleGeofencesButton)
+
+        // Remove all geofences button
+        removeAllGeofencesButton = ThemeButton()
+        removeAllGeofencesButton.setTitle("Remove All Geofences", for: .normal)
+        removeAllGeofencesButton.heightAnchor.constraint(equalToConstant: 50).isActive = true
+        removeAllGeofencesButton.addTarget(self, action: #selector(removeAllGeofencesTapped), for: .touchUpInside)
+        stackView.addArrangedSubview(removeAllGeofencesButton)
+
+        return stackView
+    }
+
     func createOrSeparator() -> UIView {
         let container = UIView()
         container.heightAnchor.constraint(equalToConstant: 30).isActive = true

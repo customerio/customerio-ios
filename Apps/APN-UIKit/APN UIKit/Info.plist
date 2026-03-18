@@ -41,8 +41,11 @@
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>remote-notification</string>
+		<string>location</string>
 	</array>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>This app uses your location to test the Customer.io Location module.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>This app uses your location in the background to test geofencing features of the Customer.io Location module.</string>
 </dict>
 </plist>

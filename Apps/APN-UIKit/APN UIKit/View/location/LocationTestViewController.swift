@@ -8,6 +8,7 @@ struct PresetLocation {
     let name: String
     let latitude: Double
     let longitude: Double
+    let type: String?
 }
 
 /// View controller for testing the Location module with preset, device, or manual location options.
@@ -27,6 +28,11 @@ class LocationTestViewController: BaseViewController {
     var useCurrentLocationButton: ThemeButton!
     var requestSdkLocationOnceButton: ThemeButton!
 
+    // Geofencing UI elements
+    var activeGeofenceCountLabel: UILabel!
+    var addSampleGeofencesButton: ThemeButton!
+    var removeAllGeofencesButton: ThemeButton!
+
     /// Tracks if we're in the "user tapped Use Current Location and we're waiting for permission" flow.
     /// Used to avoid auto-starting a location fetch when the screen opens and auth is already granted.
     var userRequestedCurrentLocation = false
@@ -35,12 +41,12 @@ class LocationTestViewController: BaseViewController {
     var userRequestedSdkLocationUpdate = false
 
     let presetLocations: [PresetLocation] = [
-        PresetLocation(name: "New York", latitude: 40.7128, longitude: -74.0060),
-        PresetLocation(name: "London", latitude: 51.5074, longitude: -0.1278),
-        PresetLocation(name: "Tokyo", latitude: 35.6762, longitude: 139.6503),
-        PresetLocation(name: "Sydney", latitude: -33.8688, longitude: 151.2093),
-        PresetLocation(name: "São Paulo", latitude: -23.5505, longitude: -46.6333),
-        PresetLocation(name: "0, 0", latitude: 0.0, longitude: 0.0)
+        PresetLocation(name: "New York", latitude: 40.7128, longitude: -74.0060, type: nil),
+        PresetLocation(name: "London", latitude: 51.5074, longitude: -0.1278, type: nil),
+        PresetLocation(name: "Tokyo", latitude: 35.6762, longitude: 139.6503, type: nil),
+        PresetLocation(name: "Sydney", latitude: -33.8688, longitude: 151.2093, type: nil),
+        PresetLocation(name: "São Paulo", latitude: -23.5505, longitude: -46.6333, type: nil),
+        PresetLocation(name: "0, 0", latitude: 0.0, longitude: 0.0, type: nil)
     ]
 
     // MARK: - Lifecycle
@@ -145,6 +151,13 @@ class LocationTestViewController: BaseViewController {
             title: "OPTION 4: MANUAL ENTRY",
             description: "Enter custom coordinates",
             content: createManualEntrySection()
+        ))
+        stackView.addArrangedSubview(createOrSeparator())
+
+        stackView.addArrangedSubview(createOptionSection(
+            title: "GEOFENCING",
+            description: "Add geofences to track when users enter, exit, or dwell in regions. iOS supports up to 20 geofences. Events are sent only when a user is identified.",
+            content: createGeofencingSection()
         ))
         stackView.addArrangedSubview(createStatusSection())
     }

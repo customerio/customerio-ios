@@ -18,6 +18,12 @@ import Foundation
 /// CustomerIO.location.requestLocationUpdate()
 /// ```
 public protocol LocationServices: AnyObject {
+    /// Access to geofencing services for monitoring geographic regions.
+    ///
+    /// Use this property to add, remove, and query geofences. Geofencing is available
+    /// only when location tracking is enabled.
+    var geofenceServices: GeofenceServices { get }
+
     /// Sets the last known location from the host app's existing location system.
     ///
     /// Use this method when your app already has a location system and you want to
@@ -48,9 +54,15 @@ public protocol LocationServices: AnyObject {
 
 final class UninitializedLocationServices: LocationServices {
     private let logger: Logger
+    private let _geofenceServices: GeofenceServices
+
+    var geofenceServices: GeofenceServices {
+        _geofenceServices
+    }
 
     init(logger: Logger) {
         self.logger = logger
+        self._geofenceServices = UninitializedGeofenceServices(logger: logger)
     }
 
     func setLastKnownLocation(_ location: CLLocation) {
@@ -71,9 +83,14 @@ actor LocationServicesImplementation: LocationServices {
     private let locationSyncCoordinator: LocationSyncCoordinator
     private let lifecycleNotifying: AppLifecycleNotifying
     private let applicationStateProvider: ApplicationStateProvider
+    private let _geofenceServices: GeofenceServicesImpl
     private var currentTask: Task<Void, Never>?
     /// Owned by this implementation; calls requestLocationUpdate/stopLocationUpdates when lifecycle events fire. Set in setUpLifecycleObserver() (after init so we can capture self).
     private var locationLifecycleObserver: LocationLifecycleObserver?
+
+    nonisolated var geofenceServices: GeofenceServices {
+        _geofenceServices
+    }
 
     /// Use this initializer in tests to inject a location provider and coordinator (e.g. mocks).
     /// Production code creates the implementation via LocationModule.initialize() (invoked during CustomerIO.initialize(withConfig:)), which creates the provider on the main thread and injects it.
@@ -85,7 +102,8 @@ actor LocationServicesImplementation: LocationServices {
         locationProvider: any LocationProviding,
         locationSyncCoordinator: LocationSyncCoordinator,
         lifecycleNotifying: AppLifecycleNotifying,
-        applicationStateProvider: ApplicationStateProvider
+        applicationStateProvider: ApplicationStateProvider,
+        geofenceServices: GeofenceServicesImpl
     ) {
         self.config = config
         self.logger = logger
@@ -93,6 +111,7 @@ actor LocationServicesImplementation: LocationServices {
         self.locationSyncCoordinator = locationSyncCoordinator
         self.lifecycleNotifying = lifecycleNotifying
         self.applicationStateProvider = applicationStateProvider
+        self._geofenceServices = geofenceServices
         self.locationLifecycleObserver = nil
     }
 
@@ -114,6 +133,9 @@ actor LocationServicesImplementation: LocationServices {
         )
         locationLifecycleObserver = observer
         await observer.triggerIfAlreadyActive(applicationStateProvider: applicationStateProvider)
+
+        // Restore geofences from storage
+        await _geofenceServices.restoreFromStorage()
     }
 
     nonisolated func setLastKnownLocation(_ location: CLLocation) {

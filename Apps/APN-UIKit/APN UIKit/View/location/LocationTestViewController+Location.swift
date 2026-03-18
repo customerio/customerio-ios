@@ -20,6 +20,11 @@ extension LocationTestViewController {
         lastSetLocationLabel.text = "Last set: \(latitude), \(longitude)\(sourceText)"
 
         showToast(withMessage: "Location set successfully\(sourceText)")
+
+        // Add a quick test geofence when using preset locations
+        if let name = sourceName {
+            addQuickTestGeofence(latitude: latitude, longitude: longitude, name: name)
+        }
     }
 
     func setManualLocation() {

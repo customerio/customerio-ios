@@ -38,4 +38,12 @@ extension LocationTestViewController {
     @objc func doneButtonTapped() {
         view.endEditing(true)
     }
+
+    @objc func addSampleGeofencesTapped() {
+        addSampleGeofences()
+    }
+
+    @objc func removeAllGeofencesTapped() {
+        removeAllGeofences()
+    }
 }
