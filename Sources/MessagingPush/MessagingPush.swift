@@ -172,3 +172,31 @@ public extension DIGraphShared {
         return MessagingPush.shared
     }
 }
+
+#if canImport(UserNotifications)
+extension DIGraphShared {
+    /// Production: new `RichPushHttpClient` per notification (isolated cancel). Tests: use DI overrides when set.
+    func makeNSEScopedHttpClientAndDeliveryTracker() -> (HttpClient, RichPushDeliveryTracker) {
+        let nseHttpClient: HttpClient
+        if let overridden: HttpClient = getOverriddenInstance() {
+            nseHttpClient = overridden
+        } else {
+            nseHttpClient = RichPushHttpClient(
+                jsonAdapter: jsonAdapter,
+                httpRequestRunner: httpRequestRunner,
+                logger: logger,
+                userAgentUtil: userAgentUtil
+            )
+        }
+
+        let deliveryTracker: RichPushDeliveryTracker
+        if let overridden: RichPushDeliveryTracker = getOverriddenInstance() {
+            deliveryTracker = overridden
+        } else {
+            deliveryTracker = RichPushDeliveryTrackerImpl(httpClient: nseHttpClient, logger: logger)
+        }
+
+        return (nseHttpClient, deliveryTracker)
+    }
+}
+#endif

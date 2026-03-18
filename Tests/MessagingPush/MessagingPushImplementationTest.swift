@@ -2,11 +2,13 @@
 @testable import CioMessagingPush
 import Foundation
 import SharedTests
+import UserNotifications
 import XCTest
 
 class MessagingPushImplementationTest: UnitTest {
     private var pushLoggerMock: PushNotificationLoggerMock!
     private var richPushDeliveryTrackerMock: RichPushDeliveryTrackerMock!
+    private var httpClientMock: HttpClientMock!
     private var implementation: MessagingPushImplementation!
 
     override func setUp() {
@@ -14,11 +16,13 @@ class MessagingPushImplementationTest: UnitTest {
 
         pushLoggerMock = PushNotificationLoggerMock()
         richPushDeliveryTrackerMock = RichPushDeliveryTrackerMock()
+        httpClientMock = HttpClientMock()
 
-        mockCollection.add(mocks: [pushLoggerMock, richPushDeliveryTrackerMock])
+        mockCollection.add(mocks: [pushLoggerMock, richPushDeliveryTrackerMock, httpClientMock])
 
         diGraphShared.override(value: pushLoggerMock, forType: PushNotificationLogger.self)
         diGraphShared.override(value: richPushDeliveryTrackerMock, forType: RichPushDeliveryTracker.self)
+        diGraphShared.override(value: httpClientMock, forType: HttpClient.self)
 
         implementation = MessagingPushImplementation(
             diGraph: diGraphShared,
@@ -26,54 +30,101 @@ class MessagingPushImplementationTest: UnitTest {
         )
     }
 
-    // MARK: trackMetricFromNSE
+    // MARK: - NSE didReceive / coordinator
 
-    func test_trackMetricFromNSE_givenSuccess_expectLogSuccessMessage() {
-        let deliveryId = "test-delivery-id"
-        let event = Metric.delivered
-        let deviceToken = "test-device-token"
+    func test_didReceive_whenNonCIOPush_returnsFalse() {
+        let request = makeNonCIORequest()
 
+        let result = implementation.didReceive(request, withContentHandler: { _ in })
+
+        XCTAssertFalse(result)
+    }
+
+    func test_didReceive_whenCIOPush_returnsTrue() {
         richPushDeliveryTrackerMock.trackMetricClosure = { _, _, _, _, completion in
             completion(.success(()))
         }
+        let request = makeCIORequest()
 
-        implementation.trackMetricFromNSE(deliveryID: deliveryId, event: event, deviceToken: deviceToken)
+        let result = implementation.didReceive(request, withContentHandler: { _ in })
 
-        XCTAssertEqual(richPushDeliveryTrackerMock.trackMetricCallsCount, 1)
-        XCTAssertEqual(richPushDeliveryTrackerMock.trackMetricReceivedInvocations.first?.token, deviceToken)
-        XCTAssertEqual(richPushDeliveryTrackerMock.trackMetricReceivedInvocations.first?.event, event)
-        XCTAssertEqual(richPushDeliveryTrackerMock.trackMetricReceivedInvocations.first?.deliveryId, deliveryId)
-        XCTAssertNil(richPushDeliveryTrackerMock.trackMetricReceivedInvocations.first?.timestamp)
-
-        XCTAssertEqual(pushLoggerMock.logPushMetricTrackedCallsCount, 1)
-        XCTAssertEqual(pushLoggerMock.logPushMetricTrackedReceivedInvocations.first?.deliveryId, deliveryId)
-        XCTAssertEqual(pushLoggerMock.logPushMetricTrackedReceivedInvocations.first?.event, event.rawValue)
-
-        XCTAssertEqual(pushLoggerMock.logPushMetricTrackingFailedCallsCount, 0)
+        XCTAssertTrue(result)
     }
 
-    func test_trackMetricFromNSE_givenFailure_expectLogErrorMessage() {
-        let deliveryId = "test-delivery-id"
-        let event = Metric.delivered
-        let deviceToken = "test-device-token"
-        let testError = HttpRequestError.noRequestMade(nil)
-
+    func test_didReceive_whenCIOPush_expectCoordinatorHandleRunsAndContentHandlerCalled() {
+        let contentHandlerCalled = expectation(description: "contentHandler called")
         richPushDeliveryTrackerMock.trackMetricClosure = { _, _, _, _, completion in
-            completion(.failure(testError))
+            completion(.success(()))
+        }
+        let request = makeCIORequest(title: "CIO Title")
+
+        _ = implementation.didReceive(request) { content in
+            XCTAssertEqual(content.title, "CIO Title")
+            contentHandlerCalled.fulfill()
         }
 
-        implementation.trackMetricFromNSE(deliveryID: deliveryId, event: event, deviceToken: deviceToken)
+        wait(for: [contentHandlerCalled], timeout: 1.0)
+    }
 
-        XCTAssertEqual(richPushDeliveryTrackerMock.trackMetricCallsCount, 1)
-        XCTAssertEqual(richPushDeliveryTrackerMock.trackMetricReceivedInvocations.first?.token, deviceToken)
-        XCTAssertEqual(richPushDeliveryTrackerMock.trackMetricReceivedInvocations.first?.event, event)
-        XCTAssertEqual(richPushDeliveryTrackerMock.trackMetricReceivedInvocations.first?.deliveryId, deliveryId)
-        XCTAssertNil(richPushDeliveryTrackerMock.trackMetricReceivedInvocations.first?.timestamp)
+    func test_didReceive_whenCalledTwiceBeforeCompletion_expectBothStartDeliveryTracking() {
+        // Never complete delivery so each coordinator stays in flight; both should still invoke delivery tracking.
+        let bothDeliveryMetricsStarted = expectation(description: "trackMetric invoked for both notifications")
+        bothDeliveryMetricsStarted.expectedFulfillmentCount = 2
+        richPushDeliveryTrackerMock.trackMetricClosure = { _, _, _, _, _ in
+            bothDeliveryMetricsStarted.fulfill()
+        }
+        let request1 = makeCIORequest(deliveryID: "d1")
+        let request2 = makeCIORequest(deliveryID: "d2")
 
-        XCTAssertEqual(pushLoggerMock.logPushMetricTrackingFailedCallsCount, 1)
-        XCTAssertEqual(pushLoggerMock.logPushMetricTrackingFailedReceivedInvocations.first?.deliveryId, deliveryId)
-        XCTAssertEqual(pushLoggerMock.logPushMetricTrackingFailedReceivedInvocations.first?.event, event.rawValue)
+        _ = implementation.didReceive(request1, withContentHandler: { _ in })
+        _ = implementation.didReceive(request2, withContentHandler: { _ in })
 
-        XCTAssertEqual(pushLoggerMock.logPushMetricTrackedCallsCount, 0)
+        wait(for: [bothDeliveryMetricsStarted], timeout: 1.0)
+        XCTAssertEqual(richPushDeliveryTrackerMock.trackMetricCallsCount, 2)
+    }
+
+    func test_serviceExtensionTimeWillExpire_whenCoordinatorInFlight_expectContentHandlerCalled() {
+        let contentDelivered = expectation(description: "contentHandler after expire")
+        // `didReceive` returns before the `Task` runs `handle`. Expire only after delivery work has
+        // started so coordinator state (contentHandler) exists; otherwise `cancel()` is a no-op.
+        let coordinatorHandlingStarted = expectation(description: "handle started delivery metric")
+        richPushDeliveryTrackerMock.trackMetricClosure = { _, _, _, _, _ in
+            coordinatorHandlingStarted.fulfill()
+            // Intentionally never invoke completion — delivery stays in flight until cancel().
+        }
+        let request = makeCIORequest()
+        _ = implementation.didReceive(request, withContentHandler: { _ in
+            contentDelivered.fulfill()
+        })
+
+        wait(for: [coordinatorHandlingStarted], timeout: 1.0)
+        implementation.serviceExtensionTimeWillExpire()
+
+        wait(for: [contentDelivered], timeout: 1.0)
+    }
+
+    // MARK: - Helpers
+
+    private func makeCIORequest(
+        title: String = "Original",
+        deliveryID: String = "id",
+        deviceToken: String = "token"
+    ) -> UNNotificationRequest {
+        let content = UNMutableNotificationContent()
+        content.title = title
+        content.body = "Body"
+        content.userInfo = [
+            "CIO-Delivery-ID": deliveryID,
+            "CIO-Delivery-Token": deviceToken
+        ]
+        return UNNotificationRequest(identifier: "id", content: content, trigger: nil)
+    }
+
+    private func makeNonCIORequest() -> UNNotificationRequest {
+        let content = UNMutableNotificationContent()
+        content.title = "Other"
+        content.body = "Other body"
+        content.userInfo = [:]
+        return UNNotificationRequest(identifier: "id", content: content, trigger: nil)
     }
 }
