@@ -14,6 +14,7 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking {
     private let deviceInfo: DeviceInfo
     private let contextPlugin: Context
     private let profileStore: ProfileStore
+    private let pendingPushDeliveryStore: PendingPushDeliveryStore
 
     init(diGraph: DIGraphShared, moduleConfig: DataPipelineConfigOptions) {
         self.moduleConfig = moduleConfig
@@ -27,6 +28,7 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking {
         self.dateUtil = diGraph.dateUtil
         self.deviceInfo = diGraph.deviceInfo
         self.profileStore = diGraph.profileStore
+        self.pendingPushDeliveryStore = diGraph.pendingPushDeliveryStore
 
         self.contextPlugin = Context(diGraph: diGraph)
 
@@ -72,6 +74,49 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking {
         // subscribe to journey events emmitted from push/in-app module to send them via datapipelines
         subscribeToJourneyEvents()
         postProfileAlreadyIdentified()
+        scheduleFlushPendingPushDeliveryMetricsFromAppGroup()
+    }
+
+    /// Loads pending metrics off the main thread (SDK init is usually on main), enqueues “Report Delivery Event” for each, then `remove(id:)` for each flushed row.
+    /// If App Groups are missing or the store cannot read the file, `loadAll()` returns empty and this exits quietly; it does not block initialization.
+    private func scheduleFlushPendingPushDeliveryMetricsFromAppGroup() {
+        Task.detached(priority: .utility) { [weak self] in
+            self?.flushPendingPushDeliveryMetricsFromAppGroup()
+        }
+    }
+
+    /// Performs load, track, and per-id `remove` on the caller’s thread — intended for a background executor only.
+    private func flushPendingPushDeliveryMetricsFromAppGroup() {
+        let pending = pendingPushDeliveryStore.loadAll()
+        guard !pending.isEmpty else {
+            logger.debug("Pending push delivery store: nothing to flush on Data Pipeline startup")
+            return
+        }
+
+        logger.debug("Pending push delivery store: flushing \(pending.count) metric(s) on Data Pipeline startup")
+        for metric in pending {
+            trackPushMetricFlushedFromAppGroup(metric)
+            if !pendingPushDeliveryStore.remove(id: metric.id) {
+                logger.error(
+                    "Pending push delivery store: failed to remove flushed metric id=\(metric.id) deliveryId=\(metric.deliveryId) (row may re-send on next launch)"
+                )
+            }
+        }
+        logger.debug("Pending push delivery store: finished flush attempt for \(pending.count) metric(s) on Data Pipeline startup")
+    }
+
+    /// Enqueues “Report Delivery Event” with the **persisted** delivery time. Uses the same `TrackEvent` path as
+    /// ``processMetricsFromBGQ`` so Segment receives `timestamp` (unlike ``trackPushMetric`` / `analytics.track`, which uses “now”).
+    private func trackPushMetricFlushedFromAppGroup(_ metric: PendingPushDeliveryMetric) {
+        logger.info("push metric \(metric.event.rawValue)")
+        logger.debug("delivery id \(metric.deliveryId) device token \(metric.deviceToken)")
+        processMetricsFromBGQ(
+            token: metric.deviceToken,
+            event: metric.event.rawValue,
+            deliveryId: metric.deliveryId,
+            timestamp: metric.timestamp.string(format: .iso8601WithMilliseconds),
+            metaData: [:]
+        )
     }
 
     private func postProfileAlreadyIdentified() {
