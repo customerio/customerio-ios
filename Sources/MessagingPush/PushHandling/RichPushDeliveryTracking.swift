@@ -41,23 +41,24 @@ final class RichPushNSEDeliveryTracking: RichPushDeliveryTracking {
             return
         }
 
-        pushLogger.logTrackingPushMessageDelivered(deliveryId: info.id)
+        let deliveryId = info.id
+        pushLogger.logTrackingPushMessageDelivered(deliveryId: deliveryId)
         tracker.trackMetric(
             token: info.token,
             event: .delivered,
-            deliveryId: info.id,
+            deliveryId: deliveryId,
             timestamp: nil
-        ) { result in
+        ) { [weak self] result in
             switch result {
             case .success:
-                self.pushLogger.logPushMetricTracked(
-                    deliveryId: info.id,
+                self?.pushLogger.logPushMetricTracked(
+                    deliveryId: deliveryId,
                     event: Metric.delivered.rawValue
                 )
                 completion(.success(()))
             case .failure(let error):
-                self.pushLogger.logPushMetricTrackingFailed(
-                    deliveryId: info.id,
+                self?.pushLogger.logPushMetricTrackingFailed(
+                    deliveryId: deliveryId,
                     event: Metric.delivered.rawValue,
                     error: error
                 )

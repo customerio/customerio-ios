@@ -187,8 +187,9 @@ final class NSEPushCoordinator: @unchecked Sendable {
         await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
             deliveryContinuationBox.install(continuation)
 
-            deliveryTracker.trackMetric(request: request, event: .delivered) { _ in
-                _ = self.deliveryContinuationBox.resumeIfNeeded()
+            let continuationBox = deliveryContinuationBox
+            deliveryTracker.trackMetric(request: request, event: .delivered) { [continuationBox] _ in
+                _ = continuationBox.resumeIfNeeded()
             }
         }
     }

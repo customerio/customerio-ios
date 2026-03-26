@@ -55,6 +55,8 @@ class MessagingPushImplementation: MessagingPushInstance {
 
         pushLogger.logReceivedCioPushMessage()
 
+        let autoTrackDelivery = moduleConfig.autoTrackPushEvents
+
         // Build a dedicated HttpClient + tracker + rich-push handler per notification so `cancel()` / `stopAll()`
         // only affect this coordinator (not concurrent NSE work). Resolve DI here so wrapper SDKs can override first.
         let (nseHttpClient, deliveryTracker) = DIGraphShared.shared.makeNSEScopedHttpClientAndDeliveryTracker()
@@ -73,7 +75,7 @@ class MessagingPushImplementation: MessagingPushInstance {
             await coordinator.handle(
                 request: request,
                 withContentHandler: contentHandler,
-                autoTrackDelivery: self?.moduleConfig.autoTrackPushEvents ?? false
+                autoTrackDelivery: autoTrackDelivery
             )
             self?.removeNSECoordinator(coordinator)
         }
