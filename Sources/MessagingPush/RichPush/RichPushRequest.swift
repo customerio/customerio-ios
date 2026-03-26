@@ -9,7 +9,7 @@ class RichPushRequest {
     private let imageURL: URL
     private let httpClient: HttpClient
 
-    /// `cancel()` runs on the coordinator path; `completeOnce()` runs on URLSession’s callback queue — synchronize to avoid double `completionHandler`.
+    /// Serializes `push` mutation (download callback) vs snapshot for delivery (`cancel` / expiry) so both threads cannot touch `push` concurrently.
     private let completionLock = NSLock()
     private var isCompleted = false
 
@@ -28,30 +28,29 @@ class RichPushRequest {
     func start() {
         httpClient.downloadFile(url: imageURL, fileType: .richPushImage) { [weak self] localFilePath in
             guard let self = self else { return }
-
-            if let localFilePath = localFilePath {
-                self.push.cioRichPushImageFile = localFilePath
-            }
-
-            self.completeOnce()
+            self.completeDeliveringPush(applyDownloadedImage: localFilePath)
         }
     }
 
     /// Call when the request must be aborted (e.g. NSE expiry). Completes with current push state.
     /// Does not call `httpClient.cancel` — the NSE coordinator cancels the shared `HttpClient` once for the whole notification.
     func cancel() {
-        completeOnce()
+        completeDeliveringPush(applyDownloadedImage: nil)
     }
 
-    /// Delivers `completionHandler` at most once (coordinator expiry vs download completion). Invokes handler outside the lock.
-    private func completeOnce() {
+    /// Delivers `completionHandler` at most once. Image apply (if any), `isCompleted`, and `push` snapshot happen under one lock; handler runs outside the lock.
+    private func completeDeliveringPush(applyDownloadedImage: URL?) {
+        let pushToDeliver: PushNotification
         completionLock.lock()
         guard !isCompleted else {
             completionLock.unlock()
             return
         }
+        if let path = applyDownloadedImage {
+            push.cioRichPushImageFile = path
+        }
         isCompleted = true
-        let pushToDeliver = push
+        pushToDeliver = push
         completionLock.unlock()
         completionHandler(pushToDeliver)
     }

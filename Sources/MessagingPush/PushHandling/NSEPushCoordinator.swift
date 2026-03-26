@@ -6,85 +6,20 @@ import UserNotifications
 
 #if canImport(UserNotifications)
 
-// MARK: - Delivery continuation (resume from metric callback or NSE cancel)
-
-private enum NSEDeliveryContinuationState: Sendable {
-    case idle
-    case waiting
-    case resumed
-    case cancelled
-}
-
-/// Bridges callback-based delivery tracking into async/await and allows `cancel()` to resume early.
-private final class DeliveryContinuationBox: @unchecked Sendable {
-    private let lock = NSLock()
-    private var state: NSEDeliveryContinuationState = .idle
-    private var continuation: CheckedContinuation<Void, Never>?
-
-    func install(_ continuation: CheckedContinuation<Void, Never>) {
-        lock.lock()
-        defer { lock.unlock() }
-
-        switch state {
-        case .idle:
-            self.continuation = continuation
-            state = .waiting
-
-        case .cancelled, .resumed:
-            continuation.resume()
-
-        case .waiting:
-            assertionFailure("DeliveryContinuationBox.install called while already waiting")
-            continuation.resume()
-        }
-    }
-
-    @discardableResult
-    func resumeIfNeeded(markCancelled: Bool = false) -> Bool {
-        lock.lock()
-        defer { lock.unlock() }
-
-        switch state {
-        case .waiting:
-            let continuation = self.continuation
-            self.continuation = nil
-            state = markCancelled ? .cancelled : .resumed
-            continuation?.resume()
-            return true
-
-        case .idle:
-            state = markCancelled ? .cancelled : .resumed
-            return false
-
-        case .resumed, .cancelled:
-            return false
-        }
-    }
-}
-
 /// Coordinates delivery metric and rich push in parallel for the Notification Service Extension.
+/// For production NSE flow, call `prepareNotification(request:withContentHandler:)` synchronously before
+/// `Task { await handle(...) }` so `serviceExtensionTimeWillExpire` can `cancel()` even if `handle` has not started yet.
 /// Call `handle(request:withContentHandler:autoTrackDelivery:)` once per notification; call `cancel()` on expiry.
 final class NSEPushCoordinator: @unchecked Sendable {
     private static let logTag = "Push"
-
-    private struct State {
-        var originalContent: UNNotificationContent?
-        var composedRichContent: UNNotificationContent?
-        var contentHandler: ((UNNotificationContent) -> Void)?
-        var didFinish = false
-        var trackedDeliveryId: String?
-        var trackedRequestIdentifier: String?
-    }
 
     private let deliveryTracker: RichPushDeliveryTracking
     private let richPushHandler: RichPushRequestHandling
     private let httpClient: HttpClient
     private let logger: Logger
     private let pushLogger: PushNotificationLogger
-    private let deliveryContinuationBox = DeliveryContinuationBox()
-
-    private let lock = NSLock()
-    private var state = State()
+    private let notificationState: NSEPushCoordinatorState
+    private let deliveryContinuationBox = NSEDeliveryContinuationBox()
 
     init(
         deliveryTracker: RichPushDeliveryTracking,
@@ -98,6 +33,26 @@ final class NSEPushCoordinator: @unchecked Sendable {
         self.logger = logger
         self.richPushHandler = richPushHandler
         self.httpClient = httpClient
+        self.notificationState = NSEPushCoordinatorState(logger: logger)
+    }
+
+    /// Stores `contentHandler` and tracking ids **before** `handle` runs (e.g. synchronously in `didReceive`) so `cancel()` can deliver if expiry fires while `handle` is still queued.
+    /// Returns `false` when the request has no CIO delivery fields (caller should treat as non-CIO).
+    func prepareNotification(
+        request: UNNotificationRequest,
+        withContentHandler contentHandler: @escaping (UNNotificationContent) -> Void
+    ) -> Bool {
+        let push = UNNotificationWrapper(notificationRequest: request)
+        guard let info = push.cioDelivery else {
+            return false
+        }
+        notificationState.setInitialStateForNotification(
+            originalContent: request.content,
+            contentHandler: contentHandler,
+            deliveryId: info.id,
+            requestIdentifier: request.identifier
+        )
+        return true
     }
 
     /// Owns the NSE flow for one notification request: optional delivered metric, rich push, parallel run, then `contentHandler` once.
@@ -116,12 +71,14 @@ final class NSEPushCoordinator: @unchecked Sendable {
             return
         }
 
-        setInitialStateForNotification(
-            originalContent: request.content,
+        guard prepareHandleStateIfNeeded(
+            request: request,
             contentHandler: contentHandler,
             deliveryId: info.id,
             requestIdentifier: request.identifier
-        )
+        ) else {
+            return
+        }
 
         if !autoTrackDelivery {
             pushLogger.logPushMetricsAutoTrackingDisabled()
@@ -132,39 +89,79 @@ final class NSEPushCoordinator: @unchecked Sendable {
             Self.logTag
         )
 
-        let finalContent: UNNotificationContent
+        let finalContent = await loadFinalContent(
+            request: request,
+            deliveryId: info.id,
+            requestIdentifier: request.identifier,
+            autoTrackDelivery: autoTrackDelivery
+        )
+        notificationState.finishIfNeeded(with: finalContent)
+    }
+
+    /// Returns `false` when `cancel()` already completed delivery or the coordinator is in a terminal state.
+    private func prepareHandleStateIfNeeded(
+        request: UNNotificationRequest,
+        contentHandler: @escaping (UNNotificationContent) -> Void,
+        deliveryId: String,
+        requestIdentifier: String
+    ) -> Bool {
+        if notificationState.notificationAlreadyFinished() {
+            return false
+        }
+
+        if notificationState.notificationStateNeedsInitialSetup() {
+            notificationState.setInitialStateForNotification(
+                originalContent: request.content,
+                contentHandler: contentHandler,
+                deliveryId: deliveryId,
+                requestIdentifier: requestIdentifier
+            )
+        }
+
+        if notificationState.notificationAlreadyFinished() {
+            return false
+        }
+
+        return true
+    }
+
+    private func loadFinalContent(
+        request: UNNotificationRequest,
+        deliveryId: String,
+        requestIdentifier: String,
+        autoTrackDelivery: Bool
+    ) async -> UNNotificationContent {
         if autoTrackDelivery {
             async let deliveryTask: Void = trackDeliveredMetric(request: request)
             async let richPushTask: UNNotificationContent = processRichPush(request: request)
             let rich = await richPushTask
-            storeComposedRichContent(rich)
+            notificationState.storeComposedRichContent(rich)
             logger.debug(
-                "NSE coordinator: rich push step finished (deliveryId: \(info.id), request: \(request.identifier))",
+                "NSE coordinator: rich push step finished (deliveryId: \(deliveryId), request: \(requestIdentifier))",
                 Self.logTag
             )
             await deliveryTask
             logger.debug(
-                "NSE coordinator: delivery metric step finished (deliveryId: \(info.id), request: \(request.identifier))",
+                "NSE coordinator: delivery metric step finished (deliveryId: \(deliveryId), request: \(requestIdentifier))",
                 Self.logTag
             )
-            finalContent = rich
-        } else {
-            finalContent = await processRichPush(request: request)
-            storeComposedRichContent(finalContent)
-            logger.debug(
-                "NSE coordinator: rich push step finished (deliveryId: \(info.id), request: \(request.identifier))",
-                Self.logTag
-            )
+            return rich
         }
 
-        finishIfNeeded(with: finalContent)
+        let content = await processRichPush(request: request)
+        notificationState.storeComposedRichContent(content)
+        logger.debug(
+            "NSE coordinator: rich push step finished (deliveryId: \(deliveryId), request: \(requestIdentifier))",
+            Self.logTag
+        )
+        return content
     }
 
     /// Called from `serviceExtensionTimeWillExpire()`: stop work, unblock delivery wait, deliver best-effort content once.
     func cancel() {
-        guard let contentToDeliver = takeCancellationDeliveryOrNil() else {
-            // No in-flight notification state yet, already finished, or duplicate cancel — do not stop work or
-            // invalidate the HTTP client (still needed if `handle` has not run).
+        guard let contentToDeliver = notificationState.takeCancellationDeliveryOrNil() else {
+            // Not prepared yet, already finished, or duplicate cancel — do not stop work or invalidate the HTTP
+            // client when `handle` has not acquired resources (production should call `prepareNotification` first).
             return
         }
 
@@ -215,113 +212,6 @@ final class NSEPushCoordinator: @unchecked Sendable {
                 continuation.resume(returning: content)
             }
         }
-    }
-
-    // MARK: - State
-
-    /// Synchronous: Swift 6 disallows `NSLock` in `async` functions; keep all locking here or in other non-async methods.
-    private func setInitialStateForNotification(
-        originalContent: UNNotificationContent,
-        contentHandler: @escaping (UNNotificationContent) -> Void,
-        deliveryId: String,
-        requestIdentifier: String
-    ) {
-        lock.lock()
-        defer { lock.unlock() }
-        state.originalContent = originalContent
-        state.contentHandler = contentHandler
-        state.trackedDeliveryId = deliveryId
-        state.trackedRequestIdentifier = requestIdentifier
-    }
-
-    private func storeComposedRichContent(_ content: UNNotificationContent) {
-        lock.lock()
-        defer { lock.unlock() }
-        state.composedRichContent = content
-    }
-
-    private func finishIfNeeded(with finalContent: UNNotificationContent) {
-        let handler: ((UNNotificationContent) -> Void)?
-
-        lock.lock()
-        if state.didFinish {
-            handler = nil
-        } else {
-            state.didFinish = true
-            handler = state.contentHandler
-            state.contentHandler = nil
-        }
-        lock.unlock()
-
-        guard let handler else {
-            logger.debug(
-                "NSE coordinator: skipping contentHandler — already completed (e.g. cancel) (deliveryId: \(trackedIds().deliveryId))",
-                Self.logTag
-            )
-            return
-        }
-
-        logger.debug(
-            "NSE coordinator: invoking contentHandler — normal completion (deliveryId: \(trackedIds().deliveryId))",
-            Self.logTag
-        )
-        handler(finalContent)
-    }
-
-    private struct CancellationDelivery {
-        let content: UNNotificationContent
-        let handler: (UNNotificationContent) -> Void
-        let deliveryId: String
-        let requestId: String
-        let hasComposed: Bool
-    }
-
-    private func takeCancellationDeliveryOrNil() -> CancellationDelivery? {
-        lock.lock()
-        defer { lock.unlock() }
-
-        guard !state.didFinish else {
-            return nil
-        }
-
-        guard let handler = state.contentHandler else {
-            logger.debug(
-                "NSE coordinator: cancel — ignored; handle has not stored notification state yet",
-                Self.logTag
-            )
-            return nil
-        }
-
-        let content = state.composedRichContent ?? state.originalContent
-        guard let content else {
-            logger.error(
-                "NSE coordinator: cancel — missing original/composed content; cannot deliver (deliveryId: \(state.trackedDeliveryId ?? "unknown"))",
-                Self.logTag,
-                nil
-            )
-            return nil
-        }
-
-        state.didFinish = true
-        state.contentHandler = nil
-
-        let deliveryId = state.trackedDeliveryId ?? "unknown"
-        let requestId = state.trackedRequestIdentifier ?? "unknown"
-        let hasComposed = state.composedRichContent != nil
-
-        return CancellationDelivery(
-            content: content,
-            handler: handler,
-            deliveryId: deliveryId,
-            requestId: requestId,
-            hasComposed: hasComposed
-        )
-    }
-
-    private func trackedIds() -> (deliveryId: String, requestId: String) {
-        lock.lock()
-        defer { lock.unlock() }
-        return (state.trackedDeliveryId ?? "unknown", state.trackedRequestIdentifier ?? "unknown")
     }
 }
 

@@ -71,6 +71,7 @@ class MessagingPushImplementation: MessagingPushInstance {
             httpClient: nseHttpClient
         )
         addNSECoordinator(coordinator)
+        coordinator.prepareNotification(request: request, withContentHandler: contentHandler)
         Task { [weak self] in
             await coordinator.handle(
                 request: request,

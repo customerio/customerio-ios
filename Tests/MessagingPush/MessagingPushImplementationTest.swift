@@ -85,19 +85,14 @@ class MessagingPushImplementationTest: UnitTest {
 
     func test_serviceExtensionTimeWillExpire_whenCoordinatorInFlight_expectContentHandlerCalled() {
         let contentDelivered = expectation(description: "contentHandler after expire")
-        // `didReceive` returns before the `Task` runs `handle`. Expire only after delivery work has
-        // started so coordinator state (contentHandler) exists; otherwise `cancel()` is a no-op.
-        let coordinatorHandlingStarted = expectation(description: "handle started delivery metric")
-        richPushDeliveryTrackerMock.trackMetricClosure = { _, _, _, _, _ in
-            coordinatorHandlingStarted.fulfill()
-            // Intentionally never invoke completion — delivery stays in flight until cancel().
-        }
+        // Never complete delivery metric — work stays in flight until `cancel()`.
+        richPushDeliveryTrackerMock.trackMetricClosure = { _, _, _, _, _ in }
         let request = makeCIORequest()
         _ = implementation.didReceive(request, withContentHandler: { _ in
             contentDelivered.fulfill()
         })
 
-        wait(for: [coordinatorHandlingStarted], timeout: 1.0)
+        // `prepareNotification` runs synchronously in `didReceive`, so expiry can run before `handle` starts.
         implementation.serviceExtensionTimeWillExpire()
 
         wait(for: [contentDelivered], timeout: 1.0)
