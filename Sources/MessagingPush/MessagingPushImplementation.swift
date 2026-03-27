@@ -5,11 +5,14 @@ import UserNotifications
 #endif
 
 class MessagingPushImplementation: MessagingPushInstance {
-    let moduleConfig: MessagingPushConfigOptions
-    let logger: Logger
     let pushLogger: PushNotificationLogger
-    let jsonAdapter: JsonAdapter
-    let eventBusHandler: EventBusHandler
+    private let moduleConfig: MessagingPushConfigOptions
+    private let logger: Logger
+    private let jsonAdapter: JsonAdapter
+    private let eventBusHandler: EventBusHandler
+
+    private let nseCoordinatorsLock = NSLock()
+    private var activeNSECoordinators: [NSEPushCoordinator] = []
 
     init(diGraph: DIGraphShared, moduleConfig: MessagingPushConfigOptions) {
         self.moduleConfig = moduleConfig
@@ -31,24 +34,6 @@ class MessagingPushImplementation: MessagingPushInstance {
         eventBusHandler.postEvent(TrackMetricEvent(deliveryID: deliveryID, event: event.rawValue, deviceToken: deviceToken))
     }
 
-    func trackMetricFromNSE(
-        deliveryID: String,
-        event: Metric,
-        deviceToken: String
-    ) {
-        // Access richPushDeliveryTracker from DIGraphShared.shared directly as it is only required for NSE.
-        // Keeping it as class property results in initialization of UserAgentUtil before SDK client is overridden by wrapper SDKs.
-        // In future, we can improve how we access SdkClient so that we don't need to worry about initialization order.
-        DIGraphShared.shared.richPushDeliveryTracker.trackMetric(token: deviceToken, event: event, deliveryId: deliveryID, timestamp: nil) { result in
-            switch result {
-            case .success:
-                self.pushLogger.logPushMetricTracked(deliveryId: deliveryID, event: event.rawValue)
-            case .failure(let error):
-                self.pushLogger.logPushMetricTrackingFailed(deliveryId: deliveryID, event: event.rawValue, error: error)
-            }
-        }
-    }
-
     #if canImport(UserNotifications)
     /**
      - returns:
@@ -63,44 +48,71 @@ class MessagingPushImplementation: MessagingPushInstance {
         let push = UNNotificationWrapper(notificationRequest: request)
         pushLogger.logReceivedPushMessage(notification: push)
 
-        guard let pushCioDeliveryInfo = push.cioDelivery else {
+        guard push.cioDelivery != nil else {
             pushLogger.logReceivedNonCioPushMessage()
             return false
         }
 
         pushLogger.logReceivedCioPushMessage()
 
-        if moduleConfig.autoTrackPushEvents {
-            pushLogger.logTrackingPushMessageDelivered(deliveryId: pushCioDeliveryInfo.id)
+        let autoTrackDelivery = moduleConfig.autoTrackPushEvents
 
-            trackMetricFromNSE(deliveryID: pushCioDeliveryInfo.id, event: .delivered, deviceToken: pushCioDeliveryInfo.token)
-        } else {
-            pushLogger.logPushMetricsAutoTrackingDisabled()
+        // Build a dedicated HttpClient + tracker + rich-push handler per notification so `cancel()` / `stopAll()`
+        // only affect this coordinator (not concurrent NSE work). Resolve DI here so wrapper SDKs can override first.
+        let (nseHttpClient, deliveryTracker) = DIGraphShared.shared.makeNSEScopedHttpClientAndDeliveryTracker()
+        let coordinator = NSEPushCoordinator(
+            deliveryTracker: RichPushNSEDeliveryTracking(
+                tracker: deliveryTracker,
+                pushLogger: pushLogger
+            ),
+            pushLogger: pushLogger,
+            logger: logger,
+            richPushHandler: NSEPushRichPushRequestHandler(httpClient: nseHttpClient),
+            httpClient: nseHttpClient
+        )
+        addNSECoordinator(coordinator)
+        coordinator.prepareNotification(request: request, withContentHandler: contentHandler)
+        Task { [weak self] in
+            await coordinator.handle(
+                request: request,
+                withContentHandler: contentHandler,
+                autoTrackDelivery: autoTrackDelivery
+            )
+            self?.removeNSECoordinator(coordinator)
         }
-
-        RichPushRequestHandler.shared.startRequest(
-            push: push
-        ) { composedRichPush in
-            self.logger.debug("rich push was composed \(composedRichPush).")
-
-            // This conditional will only work in production and not in automated tests. But this file cannot be in automated tests so this conditional is OK for now.
-            if let composedRichPush = composedRichPush as? UNNotificationWrapper {
-                self.logger.info("Customer.io push processing is done!")
-                contentHandler(composedRichPush.notificationContent)
-            }
-        }
-
         return true
     }
 
     /**
      iOS telling the notification service to hurry up and stop modifying the push notifications.
-     Stop all network requests and modifying and show the push for what it looks like now.
      */
     func serviceExtensionTimeWillExpire() {
         logger.info("notification service time will expire. Stopping all notification requests early.")
+        let coordinators = takeAllNSECoordinatorsForExpiry()
+        for coordinator in coordinators {
+            coordinator.cancel()
+        }
+    }
 
-        RichPushRequestHandler.shared.stopAll()
+    private func addNSECoordinator(_ coordinator: NSEPushCoordinator) {
+        nseCoordinatorsLock.lock()
+        defer { nseCoordinatorsLock.unlock() }
+        activeNSECoordinators.append(coordinator)
+    }
+
+    private func removeNSECoordinator(_ coordinator: NSEPushCoordinator) {
+        nseCoordinatorsLock.lock()
+        defer { nseCoordinatorsLock.unlock() }
+        activeNSECoordinators.removeAll { ObjectIdentifier($0) == ObjectIdentifier(coordinator) }
+    }
+
+    /// Clears the list before `cancel()` so completed tasks do not call `removeNSECoordinator` for already-cancelled coordinators.
+    private func takeAllNSECoordinatorsForExpiry() -> [NSEPushCoordinator] {
+        nseCoordinatorsLock.lock()
+        defer { nseCoordinatorsLock.unlock() }
+        let copy = activeNSECoordinators
+        activeNSECoordinators.removeAll()
+        return copy
     }
     #endif
 }
