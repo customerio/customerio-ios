@@ -68,11 +68,14 @@ class MessagingPushImplementation: MessagingPushInstance {
             pushLogger: pushLogger,
             logger: logger,
             richPushHandler: NSEPushRichPushRequestHandler(httpClient: nseHttpClient),
-            httpClient: nseHttpClient
+            httpClient: nseHttpClient,
+            pendingPushDeliveryStore: DIGraphShared.shared.pendingPushDeliveryStore
         )
         addNSECoordinator(coordinator)
         coordinator.prepareNotification(request: request, withContentHandler: contentHandler)
-        Task { [weak self] in
+        // Detached so concurrent `didReceive` calls are not serialized on the caller's executor (e.g. MainActor in XCTest),
+        // which would otherwise prevent a second notification from starting delivery tracking while the first waits on HTTP.
+        Task.detached(priority: .userInitiated) { [weak self] in
             await coordinator.handle(
                 request: request,
                 withContentHandler: contentHandler,

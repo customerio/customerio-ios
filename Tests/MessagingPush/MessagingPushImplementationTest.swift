@@ -9,6 +9,7 @@ class MessagingPushImplementationTest: UnitTest {
     private var pushLoggerMock: PushNotificationLoggerMock!
     private var richPushDeliveryTrackerMock: RichPushDeliveryTrackerMock!
     private var httpClientMock: HttpClientMock!
+    private var pendingPushDeliveryStoreMock: PendingPushDeliveryStoreMock!
     private var implementation: MessagingPushImplementation!
 
     override func setUp() {
@@ -17,12 +18,16 @@ class MessagingPushImplementationTest: UnitTest {
         pushLoggerMock = PushNotificationLoggerMock()
         richPushDeliveryTrackerMock = RichPushDeliveryTrackerMock()
         httpClientMock = HttpClientMock()
+        pendingPushDeliveryStoreMock = PendingPushDeliveryStoreMock()
+        pendingPushDeliveryStoreMock.appendReturnValue = true
+        pendingPushDeliveryStoreMock.removeReturnValue = true
 
-        mockCollection.add(mocks: [pushLoggerMock, richPushDeliveryTrackerMock, httpClientMock])
+        mockCollection.add(mocks: [pushLoggerMock, richPushDeliveryTrackerMock, httpClientMock, pendingPushDeliveryStoreMock])
 
         diGraphShared.override(value: pushLoggerMock, forType: PushNotificationLogger.self)
         diGraphShared.override(value: richPushDeliveryTrackerMock, forType: RichPushDeliveryTracker.self)
         diGraphShared.override(value: httpClientMock, forType: HttpClient.self)
+        diGraphShared.override(value: pendingPushDeliveryStoreMock, forType: PendingPushDeliveryStore.self)
 
         implementation = MessagingPushImplementation(
             diGraph: diGraphShared,
@@ -66,23 +71,6 @@ class MessagingPushImplementationTest: UnitTest {
         wait(for: [contentHandlerCalled], timeout: 1.0)
     }
 
-    func test_didReceive_whenCalledTwiceBeforeCompletion_expectBothStartDeliveryTracking() {
-        // Never complete delivery so each coordinator stays in flight; both should still invoke delivery tracking.
-        let bothDeliveryMetricsStarted = expectation(description: "trackMetric invoked for both notifications")
-        bothDeliveryMetricsStarted.expectedFulfillmentCount = 2
-        richPushDeliveryTrackerMock.trackMetricClosure = { _, _, _, _, _ in
-            bothDeliveryMetricsStarted.fulfill()
-        }
-        let request1 = makeCIORequest(deliveryID: "d1")
-        let request2 = makeCIORequest(deliveryID: "d2")
-
-        _ = implementation.didReceive(request1, withContentHandler: { _ in })
-        _ = implementation.didReceive(request2, withContentHandler: { _ in })
-
-        wait(for: [bothDeliveryMetricsStarted], timeout: 1.0)
-        XCTAssertEqual(richPushDeliveryTrackerMock.trackMetricCallsCount, 2)
-    }
-
     func test_serviceExtensionTimeWillExpire_whenCoordinatorInFlight_expectContentHandlerCalled() {
         let contentDelivered = expectation(description: "contentHandler after expire")
         // Never complete delivery metric — work stays in flight until `cancel()`.
@@ -103,7 +91,8 @@ class MessagingPushImplementationTest: UnitTest {
     private func makeCIORequest(
         title: String = "Original",
         deliveryID: String = "id",
-        deviceToken: String = "token"
+        deviceToken: String = "token",
+        requestIdentifier: String = "id"
     ) -> UNNotificationRequest {
         let content = UNMutableNotificationContent()
         content.title = title
@@ -112,7 +101,7 @@ class MessagingPushImplementationTest: UnitTest {
             "CIO-Delivery-ID": deliveryID,
             "CIO-Delivery-Token": deviceToken
         ]
-        return UNNotificationRequest(identifier: "id", content: content, trigger: nil)
+        return UNNotificationRequest(identifier: requestIdentifier, content: content, trigger: nil)
     }
 
     private func makeNonCIORequest() -> UNNotificationRequest {

@@ -56,6 +56,9 @@ extension DIGraphShared {
         _ = deviceInfo
         countDependenciesResolved += 1
 
+        _ = pendingPushDeliveryStore
+        countDependenciesResolved += 1
+
         _ = eventBusHandler
         countDependenciesResolved += 1
 
@@ -155,6 +158,18 @@ extension DIGraphShared {
 
     private var newDeviceInfo: DeviceInfo {
         CIODeviceInfo()
+    }
+
+    // PendingPushDeliveryStore (singleton)
+    public var pendingPushDeliveryStore: PendingPushDeliveryStore {
+        getOverriddenInstance() ??
+            getSingletonOrCreate {
+                _get_pendingPushDeliveryStore()
+            }
+    }
+
+    private func _get_pendingPushDeliveryStore() -> PendingPushDeliveryStore {
+        CioAppGroupPendingPushDeliveryStore(deviceMetricsGrabber: deviceMetricsGrabber, logger: logger)
     }
 
     // EventBusHandler (singleton)

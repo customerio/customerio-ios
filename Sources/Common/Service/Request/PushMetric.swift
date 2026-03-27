@@ -1,7 +1,7 @@
 import Foundation
 
 // The types of events for push metrics.
-public enum Metric: String, Codable {
+public enum Metric: String, Codable, Sendable {
     case delivered
     case opened
     case converted

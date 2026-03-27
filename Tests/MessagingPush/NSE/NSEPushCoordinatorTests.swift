@@ -14,6 +14,7 @@ class NSEPushCoordinatorTests: UnitTest {
     private var loggerMock: LoggerMock!
     private var richPushHandlerMock: RichPushRequestHandlingMock!
     private var httpClientMock: HttpClientMock!
+    private var pendingPushDeliveryStoreMock: PendingPushDeliveryStoreMock!
 
     override func setUp() {
         super.setUp()
@@ -24,7 +25,16 @@ class NSEPushCoordinatorTests: UnitTest {
         loggerMock = LoggerMock()
         richPushHandlerMock = RichPushRequestHandlingMock()
         httpClientMock = HttpClientMock()
-        mockCollection.add(mocks: [richPushDeliveryTrackerMock, pushLoggerMock, loggerMock])
+        pendingPushDeliveryStoreMock = PendingPushDeliveryStoreMock()
+        pendingPushDeliveryStoreMock.appendReturnValue = true
+        pendingPushDeliveryStoreMock.removeReturnValue = true
+        pendingPushDeliveryStoreMock.underlyingAppGroupSuiteName = "group.test.app.cio"
+        mockCollection.add(mocks: [
+            richPushDeliveryTrackerMock,
+            pushLoggerMock,
+            pendingPushDeliveryStoreMock,
+            loggerMock
+        ])
     }
 
     /// Production-like adapter so delivery metric success/failure updates `PushNotificationLogger`.
@@ -37,14 +47,16 @@ class NSEPushCoordinatorTests: UnitTest {
         pushLogger: PushNotificationLogger? = nil,
         logger: Logger? = nil,
         richPushHandler: RichPushRequestHandling? = nil,
-        httpClient: HttpClient? = nil
+        httpClient: HttpClient? = nil,
+        pendingPushDeliveryStore: PendingPushDeliveryStore? = nil
     ) -> NSEPushCoordinator {
         NSEPushCoordinator(
             deliveryTracker: deliveryTracker ?? deliveryTrackingMock,
             pushLogger: pushLogger ?? pushLoggerMock,
             logger: logger ?? loggerMock,
             richPushHandler: richPushHandler ?? richPushHandlerMock,
-            httpClient: httpClient ?? httpClientMock
+            httpClient: httpClient ?? httpClientMock,
+            pendingPushDeliveryStore: pendingPushDeliveryStore ?? pendingPushDeliveryStoreMock
         )
     }
 
@@ -98,6 +110,101 @@ class NSEPushCoordinatorTests: UnitTest {
         XCTAssertEqual(contentHandlerInvocations.first?.title, "Other")
         XCTAssertEqual(deliveryTrackingMock.trackMetricCallsCount, 0)
         XCTAssertEqual(richPushHandlerMock.startCallsCount, 0)
+        XCTAssertEqual(pendingPushDeliveryStoreMock.appendCallsCount, 0)
+    }
+
+    // MARK: - Pending delivery storage (app group)
+
+    func test_handle_whenAutoTrackDeliveryFalse_expectNoPendingAppend() async {
+        richPushHandlerMock.startClosure = { _, completion in
+            completion(.success(self.richContent(title: "Original")))
+        }
+
+        let coordinator = makeCoordinator()
+        await coordinator.handle(
+            request: makeCIORequest(),
+            withContentHandler: contentHandlerForTests(),
+            autoTrackDelivery: false
+        )
+
+        XCTAssertEqual(pendingPushDeliveryStoreMock.appendCallsCount, 0)
+        XCTAssertEqual(pendingPushDeliveryStoreMock.removeCallsCount, 0)
+    }
+
+    func test_handle_whenDeliverySucceeds_expectPendingRemovedWithAppendedId() async {
+        var appendedId: UUID?
+        pendingPushDeliveryStoreMock.appendClosure = { metric in
+            appendedId = metric.id
+            return true
+        }
+
+        deliveryTrackingMock.trackMetricClosure = { _, _, completion in
+            completion(.success(()))
+        }
+        richPushHandlerMock.startClosure = { _, completion in
+            completion(.success(self.richContent(title: "Original")))
+        }
+
+        let coordinator = makeCoordinator()
+        await coordinator.handle(
+            request: makeCIORequest(deliveryID: "d-rem", deviceToken: "tok-rem"),
+            withContentHandler: contentHandlerForTests(),
+            autoTrackDelivery: true
+        )
+
+        XCTAssertEqual(pendingPushDeliveryStoreMock.appendCallsCount, 1)
+        XCTAssertEqual(pendingPushDeliveryStoreMock.appendReceivedInvocations.first?.deliveryId, "d-rem")
+        XCTAssertEqual(pendingPushDeliveryStoreMock.appendReceivedInvocations.first?.deviceToken, "tok-rem")
+        XCTAssertEqual(pendingPushDeliveryStoreMock.appendReceivedInvocations.first?.event, .delivered)
+        XCTAssertEqual(pendingPushDeliveryStoreMock.removeCallsCount, 1)
+        XCTAssertEqual(pendingPushDeliveryStoreMock.removeReceivedInvocations.first, appendedId)
+    }
+
+    func test_handle_whenDeliveryFails_expectPendingNotRemoved() async {
+        pendingPushDeliveryStoreMock.appendClosure = { _ in true }
+
+        deliveryTrackingMock.trackMetricClosure = { _, _, completion in
+            completion(.failure(HttpRequestError.noRequestMade(nil)))
+        }
+        richPushHandlerMock.startClosure = { _, completion in
+            completion(.success(self.richContent(title: "Original")))
+        }
+
+        let coordinator = makeCoordinator()
+        await coordinator.handle(
+            request: makeCIORequest(),
+            withContentHandler: contentHandlerForTests(),
+            autoTrackDelivery: true
+        )
+
+        XCTAssertEqual(pendingPushDeliveryStoreMock.appendCallsCount, 1)
+        XCTAssertEqual(pendingPushDeliveryStoreMock.removeCallsCount, 0)
+    }
+
+    func test_handle_whenAppendFails_expectDebugLoggedAndDeliveryStillRuns() async {
+        pendingPushDeliveryStoreMock.appendReturnValue = false
+
+        deliveryTrackingMock.trackMetricClosure = { _, _, completion in
+            completion(.success(()))
+        }
+        richPushHandlerMock.startClosure = { _, completion in
+            completion(.success(self.richContent(title: "Original")))
+        }
+
+        let coordinator = makeCoordinator()
+        await coordinator.handle(
+            request: makeCIORequest(deliveryID: "d-err"),
+            withContentHandler: contentHandlerForTests(),
+            autoTrackDelivery: true
+        )
+
+        let appendFailDebugs = loggerMock.debugReceivedInvocations.filter {
+            $0.message.contains("could not persist pending metric")
+        }
+        XCTAssertEqual(appendFailDebugs.count, 1)
+        XCTAssertTrue(appendFailDebugs.first?.message.contains("d-err") ?? false)
+        XCTAssertEqual(deliveryTrackingMock.trackMetricCallsCount, 1)
+        XCTAssertEqual(pendingPushDeliveryStoreMock.removeCallsCount, 0)
     }
 
     // MARK: - CIO push, parallel run
@@ -145,6 +252,7 @@ class NSEPushCoordinatorTests: UnitTest {
         XCTAssertEqual(contentHandlerInvocations.first?.title, "Rich")
         XCTAssertEqual(deliveryTrackingMock.trackMetricCallsCount, 1)
         XCTAssertEqual(richPushHandlerMock.startCallsCount, 1)
+        XCTAssertEqual(pendingPushDeliveryStoreMock.appendCallsCount, 1)
     }
 
     func test_handle_whenCIOPush_autoTrackDeliveryFalse_expectDeliveryNotRun() async {
@@ -164,6 +272,7 @@ class NSEPushCoordinatorTests: UnitTest {
         XCTAssertEqual(deliveryTrackingMock.trackMetricCallsCount, 0)
         XCTAssertEqual(contentHandlerInvocations.count, 1)
         XCTAssertEqual(contentHandlerInvocations.first?.title, "Original")
+        XCTAssertEqual(pendingPushDeliveryStoreMock.appendCallsCount, 0)
     }
 
     func test_handle_whenRichPushReturnsSamePush_expectContentHandlerWithOriginalContent() async {
@@ -207,6 +316,8 @@ class NSEPushCoordinatorTests: UnitTest {
         XCTAssertEqual(pushLoggerMock.logPushMetricTrackedReceivedInvocations.first?.deliveryId, "del-1")
         XCTAssertEqual(pushLoggerMock.logPushMetricTrackedReceivedInvocations.first?.event, Metric.delivered.rawValue)
         XCTAssertEqual(pushLoggerMock.logPushMetricTrackingFailedCallsCount, 0)
+        XCTAssertEqual(pendingPushDeliveryStoreMock.appendCallsCount, 1)
+        XCTAssertEqual(pendingPushDeliveryStoreMock.removeCallsCount, 1)
     }
 
     func test_handle_whenDeliveryFails_expectLogPushMetricTrackingFailed() async {
@@ -230,6 +341,8 @@ class NSEPushCoordinatorTests: UnitTest {
         XCTAssertEqual(pushLoggerMock.logPushMetricTrackingFailedCallsCount, 1)
         XCTAssertEqual(pushLoggerMock.logPushMetricTrackingFailedReceivedInvocations.first?.deliveryId, "del-1")
         XCTAssertEqual(pushLoggerMock.logPushMetricTrackedCallsCount, 0)
+        XCTAssertEqual(pendingPushDeliveryStoreMock.appendCallsCount, 1)
+        XCTAssertEqual(pendingPushDeliveryStoreMock.removeCallsCount, 0)
     }
 
     // MARK: - Cancel
@@ -261,6 +374,7 @@ class NSEPushCoordinatorTests: UnitTest {
         XCTAssertEqual(richPushHandlerMock.stopAllCallsCount, 1)
         XCTAssertEqual(httpClientMock.cancelCallsCount, 1)
         XCTAssertEqual(httpClientMock.cancelReceivedInvocations.first, false)
+        XCTAssertEqual(pendingPushDeliveryStoreMock.removeCallsCount, 0)
     }
 
     func test_cancel_whenCalledTwice_expectContentHandlerOnlyCalledOnce() async {

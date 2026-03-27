@@ -10,6 +10,7 @@ class RichPushRequest {
     private let httpClient: HttpClient
 
     /// Serializes `push` mutation (download callback) vs snapshot for delivery (`cancel` / expiry) so both threads cannot touch `push` concurrently.
+    /// `cancel()` runs on the coordinator path; completion runs on URLSession’s callback queue — synchronize to avoid double `completionHandler`.
     private let completionLock = NSLock()
     private var isCompleted = false
 
