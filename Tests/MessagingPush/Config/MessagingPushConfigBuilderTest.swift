@@ -14,16 +14,35 @@ class MessagingPushConfigBuilderTest: UnitTest {
         let givenAutoFetchDeviceToken = false
         let givenAutoTrackPushEvents = false
         let givenShowPushAppInForeground = false
+        let givenAppGroupId = "group.com.example.app.custom"
 
         let config = MessagingPushConfigBuilder()
             .autoFetchDeviceToken(givenAutoFetchDeviceToken)
             .autoTrackPushEvents(givenAutoTrackPushEvents)
             .showPushAppInForeground(givenShowPushAppInForeground)
+            .appGroupId(givenAppGroupId)
             .build()
 
         XCTAssertEqual(config.autoFetchDeviceToken, givenAutoFetchDeviceToken)
         XCTAssertEqual(config.autoTrackPushEvents, givenAutoTrackPushEvents)
         XCTAssertEqual(config.showPushAppInForeground, givenShowPushAppInForeground)
+        XCTAssertEqual(config.appGroupId, givenAppGroupId)
+    }
+
+    func test_appGroupId_whenNotSet_expectNil() {
+        let config = MessagingPushConfigBuilder().build()
+
+        XCTAssertNil(config.appGroupId)
+    }
+
+    func test_appGroupId_whenSet_expectValuePreserved() {
+        let givenAppGroupId = "group.com.example.app.cio"
+
+        let config = MessagingPushConfigBuilder()
+            .appGroupId(givenAppGroupId)
+            .build()
+
+        XCTAssertEqual(config.appGroupId, givenAppGroupId)
     }
 
     func test_initializeFromEmptyDictionary_expectDefaultValues() {
@@ -52,6 +71,15 @@ class MessagingPushConfigBuilderTest: UnitTest {
         XCTAssertEqual(config.autoTrackPushEvents, givenAutoTrackPushEvents)
         XCTAssertEqual(config.showPushAppInForeground, givenShowPushAppInForeground)
         XCTAssertEqual(config.region, Region.EU)
+    }
+
+    func test_initializeFromDictionaryWithAppGroupId_expectAppGroupIdSet() {
+        let givenAppGroupId = "group.com.example.app.custom"
+        let givenDict: [String: Any] = ["appGroupId": givenAppGroupId]
+
+        let config = MessagingPushConfigBuilder.build(from: givenDict)
+
+        XCTAssertEqual(config.appGroupId, givenAppGroupId)
     }
 
     func test_initializeFromDictionaryWithIncorrectKeys_expectDefaultValues() {
@@ -87,5 +115,6 @@ extension MessagingPushConfigBuilderTest {
         XCTAssertTrue(config.autoTrackPushEvents, file: file, line: line)
         XCTAssertTrue(config.showPushAppInForeground, file: file, line: line)
         XCTAssertEqual(config.region, Region.US, file: file, line: line)
+        XCTAssertNil(config.appGroupId, file: file, line: line)
     }
 }

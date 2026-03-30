@@ -37,6 +37,7 @@ public class MessagingPushConfigBuilder {
     private var autoFetchDeviceToken: Bool = true
     private var autoTrackPushEvents: Bool = true
     private var showPushAppInForeground: Bool = true
+    private var appGroupId: String?
 
     // Need to be available for NotificationServiceExtension and AppDelegate
     // otherwise, it will throw an error when we add this module in the NotificationServiceExtension target in podfile
@@ -101,6 +102,15 @@ public class MessagingPushConfigBuilder {
         return self
     }
 
+    /// Overrides the App Group identifier used to share push delivery metrics between the host app and Notification Service Extension.
+    /// Use this when your App Group does not follow the default `group.{bundleId}.cio` naming convention.
+    /// When not set, the SDK infers the identifier automatically from the app bundle ID.
+    @discardableResult
+    public func appGroupId(_ value: String) -> MessagingPushConfigBuilder {
+        appGroupId = value
+        return self
+    }
+
     /// Builds and returns `MessagingPushConfigOptions` instance from the configured properties.
     public func build() -> MessagingPushConfigOptions {
         let configOptions = MessagingPushConfigOptions(
@@ -109,7 +119,8 @@ public class MessagingPushConfigBuilder {
             region: region,
             autoFetchDeviceToken: autoFetchDeviceToken,
             autoTrackPushEvents: autoTrackPushEvents,
-            showPushAppInForeground: showPushAppInForeground
+            showPushAppInForeground: showPushAppInForeground,
+            appGroupId: appGroupId
         )
 
         return configOptions
@@ -123,6 +134,7 @@ public extension MessagingPushConfigBuilder {
         case autoFetchDeviceToken
         case autoTrackPushEvents
         case showPushAppInForeground
+        case appGroupId
     }
 
     /// Constructs `MessagingPushConfigOptions` by parsing and applying configurations from provided dictionary.
@@ -141,6 +153,9 @@ public extension MessagingPushConfigBuilder {
         }
         if let showPushAppInForeground = dictionary[Keys.showPushAppInForeground.rawValue] as? Bool {
             builder.showPushAppInForeground(showPushAppInForeground)
+        }
+        if let appGroupId = dictionary[Keys.appGroupId.rawValue] as? String {
+            builder.appGroupId(appGroupId)
         }
 
         return builder.build()

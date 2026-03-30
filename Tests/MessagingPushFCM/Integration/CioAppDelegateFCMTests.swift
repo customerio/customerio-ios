@@ -26,7 +26,8 @@ class CioAppDelegateFCMTests: XCTestCase {
             region: .US,
             autoFetchDeviceToken: autoFetchDeviceToken,
             autoTrackPushEvents: autoTrackPushEvents,
-            showPushAppInForeground: false
+            showPushAppInForeground: false,
+            appGroupId: nil
         )
     }
 
