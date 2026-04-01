@@ -169,16 +169,16 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
     /// the correct app group. Skipped entirely when ``DataPipelineTracking`` is unavailable — metrics
     /// are preserved in the store for a future launch where DataPipeline is present.
     private static func schedulePendingPushDeliveryMetricsFlush() {
-        let store = DIGraphShared.shared.pendingPushDeliveryStore
-        let pipeline = DIGraphShared.shared.getOptional(DataPipelineTracking.self)
-        let logger = DIGraphShared.shared.logger
         Task.detached(priority: .utility) {
+            let store = DIGraphShared.shared.pendingPushDeliveryStore
+            let logger = DIGraphShared.shared.logger
             let pending = store.loadAll()
             guard !pending.isEmpty else {
                 logger.debug("Pending push delivery store: nothing to flush on MessagingPush startup")
                 return
             }
-            guard let pipeline else {
+
+            guard let pipeline = DIGraphShared.shared.getOptional(DataPipelineTracking.self) else {
                 logger.debug("Pending push delivery store: DataPipeline unavailable, skipping flush to preserve \(pending.count) metric(s)")
                 return
             }

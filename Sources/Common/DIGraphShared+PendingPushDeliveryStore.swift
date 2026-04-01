@@ -7,6 +7,13 @@ public extension DIGraphShared {
     /// - MessagingPush calls this again with the push module's configured app group id (or `nil` to infer from the bundle).
     @discardableResult
     func registerPendingPushDeliveryStore(appGroupId: String?) -> PendingPushDeliveryStore {
+        if let existing: PendingPushDeliveryStore = getOptional(PendingPushDeliveryStore.self) {
+            let resolvedSuite = appGroupId ?? AppGroupIdentifier.identifier(forProcessBundleIdentifier: Bundle.main.bundleIdentifier)
+            if existing.appGroupSuiteName == resolvedSuite {
+                return existing
+            }
+        }
+
         let store = CioAppGroupPendingPushDeliveryStore(
             appGroupId: appGroupId,
             processBundleIdentifier: Bundle.main.bundleIdentifier,
