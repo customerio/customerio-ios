@@ -67,6 +67,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
                 .autoFetchDeviceToken(settings.messaging.autoFetchDeviceToken)
                 .autoTrackPushEvents(settings.messaging.autoTrackPushEvents)
                 .showPushAppInForeground(settings.messaging.showPushAppInForeground)
+                .appGroupId("group.io.customer.ios-sample.apn-spm.APN-UIKit.cio")
                 .build()
         )
         MessagingInApp

@@ -43,10 +43,11 @@ public final class CioInternalCommon.CIODeviceInfo {
 	public fun func isPushSubscribed(completion: @escaping (Boolean) -> Unit);
 }
 public final class CioInternalCommon.CioAppGroupPendingPushDeliveryStore {
-	public final val appGroupSuiteName: String;
+	public final val appGroupSuiteName: String?;
 	public fun func append(_ metric: PendingPushDeliveryMetric) -> Boolean;
 	public fun func loadAll() -> List<PendingPushDeliveryMetric>;
 	public fun func remove(id: UUID) -> Boolean;
+	public fun func removeAll(ids: Set<UUID>) -> Boolean;
 }
 public final class CioInternalCommon.CioEventBusHandler {
 	public fun init(
@@ -165,6 +166,7 @@ public final class CioInternalCommon.DIGraphShared {
 public interface CioInternalCommon.DataPipelineTracking {
 	public var isUserIdentified: Boolean;
 	public fun func track(name: String, properties: List<String: Any>);
+	public fun func trackDeliveryEvent(token: String?, event: String, deliveryId: String, timestamp: String);
 }
 public enum CioInternalCommon.DateFormat {
 }
@@ -395,10 +397,11 @@ public final class CioInternalCommon.PendingPushDeliveryMetric {
 );
 }
 public interface CioInternalCommon.PendingPushDeliveryStore {
-	public var appGroupSuiteName: String;
+	public var appGroupSuiteName: String?;
 	public fun func append(_ metric: PendingPushDeliveryMetric) -> Boolean;
 	public fun func loadAll() -> List<PendingPushDeliveryMetric>;
 	public fun func remove(id: UUID) -> Boolean;
+	public fun func removeAll(ids: Set<UUID>) -> Boolean;
 }
 public interface CioInternalCommon.ProfileEnrichmentProvider {
 	public fun func getProfileEnrichmentAttributes() -> List<String: Any>?;

@@ -8,6 +8,7 @@ class NotificationService: UNNotificationServiceExtension {
         MessagingPushAPN.initializeForExtension(
             withConfig: MessagingPushConfigBuilder(cdpApiKey: BuildEnvironment.CustomerIO.cdpApiKey)
                 .logLevel(.debug)
+                .appGroupId("group.io.customer.ios-sample.apn-spm.APN-UIKit.cio")
                 .build()
         )
 

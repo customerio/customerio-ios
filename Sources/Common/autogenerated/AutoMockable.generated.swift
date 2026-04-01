@@ -2139,7 +2139,7 @@ public class PendingPushDeliveryStoreMock: PendingPushDeliveryStore, Mock {
      When setter of the property called, the value given to setter is set here.
      When the getter of the property called, the value set here will be returned. Your chance to mock the property.
      */
-    public var underlyingAppGroupSuiteName: String!
+    public var underlyingAppGroupSuiteName: String? = nil
     /// `true` if the getter or setter of property is called at least once.
     public var appGroupSuiteNameCalled: Bool {
         appGroupSuiteNameGetCalled || appGroupSuiteNameSetCalled
@@ -2158,7 +2158,7 @@ public class PendingPushDeliveryStoreMock: PendingPushDeliveryStore, Mock {
 
     public var appGroupSuiteNameSetCallsCount = 0
     /// The mocked property with a getter and setter.
-    public var appGroupSuiteName: String {
+    public var appGroupSuiteName: String? {
         get {
             mockCalled = true
             appGroupSuiteNameGetCallsCount += 1
@@ -2172,6 +2172,7 @@ public class PendingPushDeliveryStoreMock: PendingPushDeliveryStore, Mock {
     }
 
     public func resetMock() {
+        appGroupSuiteName = nil
         appGroupSuiteNameGetCallsCount = 0
         appGroupSuiteNameSetCallsCount = 0
         appendCallsCount = 0
@@ -2185,6 +2186,11 @@ public class PendingPushDeliveryStoreMock: PendingPushDeliveryStore, Mock {
         removeCallsCount = 0
         removeReceivedArguments = nil
         removeReceivedInvocations = []
+
+        mockCalled = false // do last as resetting properties above can make this true
+        removeAllCallsCount = 0
+        removeAllReceivedArguments = nil
+        removeAllReceivedInvocations = []
 
         mockCalled = false // do last as resetting properties above can make this true
     }
@@ -2274,6 +2280,37 @@ public class PendingPushDeliveryStoreMock: PendingPushDeliveryStore, Mock {
         removeReceivedArguments = id
         removeReceivedInvocations.append(id)
         return removeClosure.map { $0(id) } ?? removeReturnValue
+    }
+
+    // MARK: - removeAll
+
+    /// Number of times the function was called.
+    @Atomic public private(set) var removeAllCallsCount = 0
+    /// `true` if the function was ever called.
+    public var removeAllCalled: Bool {
+        removeAllCallsCount > 0
+    }
+
+    /// The arguments from the *last* time the function was called.
+    @Atomic public private(set) var removeAllReceivedArguments: Set<UUID>?
+    /// Arguments from *all* of the times that the function was called.
+    @Atomic public private(set) var removeAllReceivedInvocations: [Set<UUID>] = []
+    /// Value to return from the mocked function.
+    public var removeAllReturnValue: Bool!
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     The closure has first priority to return a value for the mocked function. If the closure returns `nil`,
+     then the mock will attempt to return the value for `removeAllReturnValue`
+     */
+    public var removeAllClosure: ((Set<UUID>) -> Bool)?
+
+    /// Mocked function for `removeAll(ids: Set<UUID>)`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func removeAll(ids: Set<UUID>) -> Bool {
+        mockCalled = true
+        removeAllCallsCount += 1
+        removeAllReceivedArguments = ids
+        removeAllReceivedInvocations.append(ids)
+        return removeAllClosure.map { $0(ids) } ?? removeAllReturnValue
     }
 }
 

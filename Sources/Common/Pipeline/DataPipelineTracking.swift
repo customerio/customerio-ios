@@ -14,4 +14,8 @@ public protocol DataPipelineTracking: AnyObject {
 
     /// Sends a track event with the given name and properties.
     func track(name: String, properties: [String: Any])
+
+    /// Sends a "Report Delivery Event" using the original delivery timestamp rather than the current time.
+    /// Use this when flushing persisted push delivery metrics that were queued by the Notification Service Extension.
+    func trackDeliveryEvent(token: String?, event: String, deliveryId: String, timestamp: String)
 }

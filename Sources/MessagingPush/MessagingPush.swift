@@ -65,6 +65,8 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
             if config.autoTrackPushEvents, !Self.appDelegateIntegratedExplicitly {
                 DIGraphShared.shared.automaticPushClickHandling.start()
             }
+            DIGraphShared.shared.registerPendingPushDeliveryStore()
+            Self.schedulePendingPushDeliveryMetricsFlush()
 
             return shared.getImplementation(config: config)
         }
@@ -84,6 +86,7 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
             Self.moduleConfig = config
             // set logLevel of shared logger only when module is initialized from NotificationServiceExtension.
             DIGraphShared.shared.logger.setLogLevel(config.logLevel)
+            DIGraphShared.shared.registerPendingPushDeliveryStore()
             return shared.getImplementation(config: config)
         }
 
@@ -160,6 +163,43 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
         implementation?.serviceExtensionTimeWillExpire()
     }
     #endif
+
+    /// Dispatches a background flush of any pending push delivery metrics persisted by the NSE.
+    /// Must be called after ``DIGraphShared/registerPendingPushDeliveryStore()`` so the store reflects
+    /// the correct app group. Skipped entirely when ``DataPipelineTracking`` is unavailable — metrics
+    /// are preserved in the store for a future launch where DataPipeline is present.
+    private static func schedulePendingPushDeliveryMetricsFlush() {
+        Task.detached(priority: .utility) {
+            let store = DIGraphShared.shared.pendingPushDeliveryStore
+            let logger = DIGraphShared.shared.logger
+            let pending = store.loadAll()
+            guard !pending.isEmpty else {
+                logger.debug("Pending push delivery store: nothing to flush on MessagingPush startup")
+                return
+            }
+
+            guard let pipeline = DIGraphShared.shared.getOptional(DataPipelineTracking.self) else {
+                logger.debug("Pending push delivery store: DataPipeline unavailable, skipping flush to preserve \(pending.count) metric(s)")
+                return
+            }
+            logger.debug("Pending push delivery store: flushing \(pending.count) metric(s) on MessagingPush startup")
+            pending.forEach { metric in
+                pipeline.trackDeliveryEvent(
+                    token: metric.deviceToken,
+                    event: metric.event.rawValue,
+                    deliveryId: metric.deliveryId,
+                    timestamp: metric.timestamp.string(format: .iso8601WithMilliseconds)
+                )
+            }
+            let ids = Set(pending.map(\.id))
+            if !store.removeAll(ids: ids) {
+                logger.error(
+                    "Pending push delivery store: failed to remove \(ids.count) flushed metric(s) (rows may re-send on next launch)"
+                )
+            }
+            logger.debug("Pending push delivery store: finished flush attempt for \(pending.count) metric(s) on MessagingPush startup")
+        }
+    }
 }
 
 // Convenient way for other modules to access instance as well as being able to mock instance in tests.
@@ -173,8 +213,13 @@ public extension DIGraphShared {
     }
 }
 
-#if canImport(UserNotifications)
 extension DIGraphShared {
+    /// Re-registers ``PendingPushDeliveryStore`` using the push module config's `appGroupId` so rich push / NSE use the customer-configured app group (or bundle inference when `nil`).
+    func registerPendingPushDeliveryStore() {
+        registerPendingPushDeliveryStore(appGroupId: messagingPushConfigOptions.appGroupId)
+    }
+
+    #if canImport(UserNotifications)
     /// Production: new `RichPushHttpClient` per notification (isolated cancel). Tests: use DI overrides when set.
     func makeNSEScopedHttpClientAndDeliveryTracker() -> (HttpClient, RichPushDeliveryTracker) {
         let nseHttpClient: HttpClient
@@ -198,5 +243,5 @@ extension DIGraphShared {
 
         return (nseHttpClient, deliveryTracker)
     }
+    #endif
 }
-#endif
