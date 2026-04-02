@@ -1,3 +1,9 @@
+## [4.4.0](https://github.com/customerio/customerio-ios/compare/4.3.1...4.4.0) (2026-04-02)
+
+### Features
+
+* Push delivery reslience improvement ([#1030](https://github.com/customerio/customerio-ios/issues/1030)) ([2d6379d](https://github.com/customerio/customerio-ios/commit/2d6379d36e1cddbd7890677934586b27fc787f97))
+
 ## [4.3.1](https://github.com/customerio/customerio-ios/compare/4.3.0...4.3.1) (2026-03-10)
 
 ### Bug Fixes
