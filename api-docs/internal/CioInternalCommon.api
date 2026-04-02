@@ -10,6 +10,11 @@ public final class CioInternalCommon.AnyEncodable {
 	public fun init(_ encodable: Encodable);
 	public fun func encode(to encoder: Encoder) throws;
 }
+public enum CioInternalCommon.AppGroupIdentifier {
+	public final val cioSuffix: String;
+	public fun func identifier(forMainAppBundleId mainAppBundleId: String) -> String;
+	public fun func identifier(forProcessBundleIdentifier bundleIdentifier: String?) -> String?;
+}
 public final class CioInternalCommon.AsyncOperation {
 	public final val asyncBlock: () async -> ();
 	public var isAsynchronous: Boolean;
@@ -36,6 +41,13 @@ public final class CioInternalCommon.CIODeviceInfo {
 	public var customerBundleId: String;
 	public var deviceLocale: String;
 	public fun func isPushSubscribed(completion: @escaping (Boolean) -> Unit);
+}
+public final class CioInternalCommon.CioAppGroupPendingPushDeliveryStore {
+	public final val appGroupSuiteName: String?;
+	public fun func append(_ metric: PendingPushDeliveryMetric) -> Boolean;
+	public fun func loadAll() -> List<PendingPushDeliveryMetric>;
+	public fun func remove(id: UUID) -> Boolean;
+	public fun func removeAll(ids: Set<UUID>) -> Boolean;
 }
 public final class CioInternalCommon.CioEventBusHandler {
 	public fun init(
@@ -154,6 +166,7 @@ public final class CioInternalCommon.DIGraphShared {
 public interface CioInternalCommon.DataPipelineTracking {
 	public var isUserIdentified: Boolean;
 	public fun func track(name: String, properties: List<String: Any>);
+	public fun func trackDeliveryEvent(token: String?, event: String, deliveryId: String, timestamp: String);
 }
 public enum CioInternalCommon.DateFormat {
 }
@@ -368,6 +381,27 @@ public final class CioInternalCommon.NewSubscriptionEvent {
 	public final val params: List<String : String>;
 	public final val subscribedEventType: String;
 	public final val timestamp: Date;
+}
+public final class CioInternalCommon.PendingPushDeliveryMetric {
+	public final val id: UUID;
+	public final val deliveryId: String;
+	public final val deviceToken: String;
+	public final val event: Metric;
+	public final val timestamp: Date;
+	public fun init(
+    id: UUID = UUID(),
+    deliveryId: String,
+    deviceToken: String,
+    event: Metric,
+    timestamp: Date
+);
+}
+public interface CioInternalCommon.PendingPushDeliveryStore {
+	public var appGroupSuiteName: String?;
+	public fun func append(_ metric: PendingPushDeliveryMetric) -> Boolean;
+	public fun func loadAll() -> List<PendingPushDeliveryMetric>;
+	public fun func remove(id: UUID) -> Boolean;
+	public fun func removeAll(ids: Set<UUID>) -> Boolean;
 }
 public interface CioInternalCommon.ProfileEnrichmentProvider {
 	public fun func getProfileEnrichmentAttributes() -> List<String: Any>?;

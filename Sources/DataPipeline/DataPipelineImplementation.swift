@@ -269,6 +269,10 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking {
         addDeviceAttributes(token: deviceToken)
     }
 
+    func trackDeliveryEvent(token: String?, event: String, deliveryId: String, timestamp: String) {
+        processMetricsFromBGQ(token: token, event: event, deliveryId: deliveryId, timestamp: timestamp, metaData: [:])
+    }
+
     func trackMetric(deliveryID: String, event: Metric, deviceToken: String) {
         trackPushMetric(deliveryID: deliveryID, event: event.rawValue, deviceToken: deviceToken)
     }

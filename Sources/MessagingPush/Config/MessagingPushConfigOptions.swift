@@ -10,6 +10,10 @@ public struct MessagingPushConfigOptions {
     public let autoFetchDeviceToken: Bool
     public let autoTrackPushEvents: Bool
     public let showPushAppInForeground: Bool
+    /// Optional App Group identifier for shared push delivery metrics storage between the host app and Notification Service Extension.
+    /// When `nil`, the SDK infers the identifier from the app bundle ID using the format `group.{bundleId}.cio`.
+    /// Set this when your App Group does not follow the default naming convention.
+    public let appGroupId: String?
 }
 
 // Add MessagingPush config options to the DIGraph like we do for SdkConfig.

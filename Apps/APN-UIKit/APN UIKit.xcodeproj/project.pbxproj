@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		30DB021B873DE5D52C01151C /* InboxViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6271087BB2D1D2EED90C6A75 /* InboxViewController.swift */; };
 		30F117082D63531A00DB1E11 /* SampleAppsCommon in Frameworks */ = {isa = PBXBuildFile; productRef = 30F117072D63531A00DB1E11 /* SampleAppsCommon */; };
 		30F1170A2D6356BA00DB1E11 /* SampleAppsCommon in Frameworks */ = {isa = PBXBuildFile; productRef = 30F117092D6356BA00DB1E11 /* SampleAppsCommon */; };
 		4650330629F68FEB001B6552 /* NotificationServiceExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 465032FF29F68FEB001B6552 /* NotificationServiceExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
@@ -43,7 +44,6 @@
 		669B9FC82D8B2D430087CC20 /* DashboardViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 669B9F972D8B2D430087CC20 /* DashboardViewController.swift */; };
 		669B9FC92D8B2D430087CC20 /* DeepLinkViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 669B9F982D8B2D430087CC20 /* DeepLinkViewController.swift */; };
 		669B9FCA2D8B2D430087CC20 /* InlineInAppMessageUikitViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 669B9F992D8B2D430087CC20 /* InlineInAppMessageUikitViewController.swift */; };
-		30DB021B873DE5D52C01151C /* InboxViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6271087BB2D1D2EED90C6A75 /* InboxViewController.swift */; };
 		669B9FCB2D8B2D430087CC20 /* LoginViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 669B9F9A2D8B2D430087CC20 /* LoginViewController.swift */; };
 		669B9FCC2D8B2D430087CC20 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 669B9F9D2D8B2D430087CC20 /* AppDelegate.swift */; };
 		669B9FCD2D8B2D430087CC20 /* BuildEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 669B9F9F2D8B2D430087CC20 /* BuildEnvironment.swift */; };
@@ -110,6 +110,7 @@
 		46D5D97D29E459D600EAF40B /* APN UIKit.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "APN UIKit.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		46D5D99329E459D800EAF40B /* APN UIKitTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "APN UIKitTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 		46D5D99D29E459D800EAF40B /* APN UIKitUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "APN UIKitUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		6271087BB2D1D2EED90C6A75 /* InboxViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InboxViewController.swift; sourceTree = "<group>"; };
 		669B9F6E2D8B2D430087CC20 /* AutoDependencyInjection.generated.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutoDependencyInjection.generated.swift; sourceTree = "<group>"; };
 		669B9F702D8B2D430087CC20 /* AutoMockable.generated.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutoMockable.generated.swift; sourceTree = "<group>"; };
 		669B9F712D8B2D430087CC20 /* DIDependencies.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DIDependencies.swift; sourceTree = "<group>"; };
@@ -143,7 +144,6 @@
 		669B9F972D8B2D430087CC20 /* DashboardViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardViewController.swift; sourceTree = "<group>"; };
 		669B9F982D8B2D430087CC20 /* DeepLinkViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeepLinkViewController.swift; sourceTree = "<group>"; };
 		669B9F992D8B2D430087CC20 /* InlineInAppMessageUikitViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InlineInAppMessageUikitViewController.swift; sourceTree = "<group>"; };
-		6271087BB2D1D2EED90C6A75 /* InboxViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InboxViewController.swift; sourceTree = "<group>"; };
 		669B9F9A2D8B2D430087CC20 /* LoginViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginViewController.swift; sourceTree = "<group>"; };
 		669B9F9C2D8B2D430087CC20 /* APN UIKit.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "APN UIKit.entitlements"; sourceTree = "<group>"; };
 		669B9F9D2D8B2D430087CC20 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
@@ -167,6 +167,7 @@
 		6842752C2F3349A7006A4EF0 /* LocationTestViewController+Keyboard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "LocationTestViewController+Keyboard.swift"; sourceTree = "<group>"; };
 		6842752E2F3349A7006A4EF0 /* LocationTestViewController+CLLocationManagerDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "LocationTestViewController+CLLocationManagerDelegate.swift"; sourceTree = "<group>"; };
 		684275302F3349A7006A4EF0 /* LocationTestViewController+UITextFieldDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "LocationTestViewController+UITextFieldDelegate.swift"; sourceTree = "<group>"; };
+		68829E4A2F7AAFC3008A8D96 /* NotificationServiceExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = NotificationServiceExtension.entitlements; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -340,20 +341,6 @@
 			path = Settings;
 			sourceTree = "<group>";
 		};
-		684275252F3349A7006A4EF0 /* location */ = {
-			isa = PBXGroup;
-			children = (
-				684275232F3349A7006A4EF0 /* LocationTestViewController.swift */,
-				684275262F3349A7006A4EF0 /* LocationTestViewController+BuildingUI.swift */,
-				684275282F3349A7006A4EF0 /* LocationTestViewController+Location.swift */,
-				6842752A2F3349A7006A4EF0 /* LocationTestViewController+Actions.swift */,
-				6842752C2F3349A7006A4EF0 /* LocationTestViewController+Keyboard.swift */,
-				6842752E2F3349A7006A4EF0 /* LocationTestViewController+CLLocationManagerDelegate.swift */,
-				684275302F3349A7006A4EF0 /* LocationTestViewController+UITextFieldDelegate.swift */,
-			);
-			path = location;
-			sourceTree = "<group>";
-		};
 		669B9F9B2D8B2D430087CC20 /* View */ = {
 			isa = PBXGroup;
 			children = (
@@ -416,10 +403,25 @@
 		669B9FE02D8B2D500087CC20 /* NotificationServiceExtension */ = {
 			isa = PBXGroup;
 			children = (
+				68829E4A2F7AAFC3008A8D96 /* NotificationServiceExtension.entitlements */,
 				669B9FDE2D8B2D500087CC20 /* Info.plist */,
 				669B9FDF2D8B2D500087CC20 /* NotificationService.swift */,
 			);
 			path = NotificationServiceExtension;
+			sourceTree = "<group>";
+		};
+		684275252F3349A7006A4EF0 /* location */ = {
+			isa = PBXGroup;
+			children = (
+				684275232F3349A7006A4EF0 /* LocationTestViewController.swift */,
+				684275262F3349A7006A4EF0 /* LocationTestViewController+BuildingUI.swift */,
+				684275282F3349A7006A4EF0 /* LocationTestViewController+Location.swift */,
+				6842752A2F3349A7006A4EF0 /* LocationTestViewController+Actions.swift */,
+				6842752C2F3349A7006A4EF0 /* LocationTestViewController+Keyboard.swift */,
+				6842752E2F3349A7006A4EF0 /* LocationTestViewController+CLLocationManagerDelegate.swift */,
+				684275302F3349A7006A4EF0 /* LocationTestViewController+UITextFieldDelegate.swift */,
+			);
+			path = location;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -711,6 +713,7 @@
 		4650330829F68FEB001B6552 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = NotificationServiceExtension/NotificationServiceExtension.entitlements;
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
 				CODE_SIGN_STYLE = Manual;
 				CURRENT_PROJECT_VERSION = 1;
@@ -741,6 +744,7 @@
 		4650330929F68FEB001B6552 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = NotificationServiceExtension/NotificationServiceExtension.entitlements;
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
 				CODE_SIGN_STYLE = Manual;
 				CURRENT_PROJECT_VERSION = 1;

@@ -25,7 +25,8 @@ class CioProviderAgnosticAppDelegateTests: XCTestCase {
             region: .US,
             autoFetchDeviceToken: autoFetchDeviceToken,
             autoTrackPushEvents: autoTrackPushEvents,
-            showPushAppInForeground: showPushAppInForeground
+            showPushAppInForeground: showPushAppInForeground,
+            appGroupId: nil
         )
     }
 
