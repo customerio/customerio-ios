@@ -1,6 +1,7 @@
 import CioInternalCommon
 import Foundation
 import UIKit
+import WebKit
 
 /*
  Important that automatic screenview events are not tracked when Modal is showing on screen. Automatic screenview events sets the page rule route in the in-app SDK. When the page rule route changes, our SDK performs logic such as dismissing in-app messages.
@@ -14,12 +15,67 @@ class GistModalViewController: UIViewController, GistViewDelegate, DoNotTrackScr
         widthConstraint,
         heightConstraint,
         bottomConstraint: NSLayoutConstraint!
+    private var isKeyboardVisible = false
 
     func setup(position: MessagePosition) {
         gistView.delegate = self
         self.position = position
         view.addSubview(gistView)
         setConstraints()
+        registerKeyboardObservers()
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+    }
+
+    private func registerKeyboardObservers() {
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(keyboardWillShow),
+            name: UIResponder.keyboardWillShowNotification,
+            object: nil
+        )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(keyboardWillHide),
+            name: UIResponder.keyboardWillHideNotification,
+            object: nil
+        )
+    }
+
+    @objc private func keyboardWillShow(_ notification: Notification) {
+        guard let keyboardFrame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect,
+              let duration = notification.userInfo?[UIResponder.keyboardAnimationDurationUserInfoKey] as? TimeInterval,
+              let curveValue = notification.userInfo?[UIResponder.keyboardAnimationCurveUserInfoKey] as? UInt
+        else { return }
+
+        isKeyboardVisible = true
+        let keyboardTop = view.frame.height - keyboardFrame.height
+        let gistViewBottom = gistView.frame.maxY
+
+        setWebViewScrollEnabled(false)
+
+        if gistViewBottom > keyboardTop {
+            let overlap = gistViewBottom - keyboardTop
+            verticalConstraint.constant -= overlap
+            UIView.animate(withDuration: duration, delay: 0, options: UIView.AnimationOptions(rawValue: curveValue << 16), animations: {
+                self.view.layoutIfNeeded()
+            })
+        }
+    }
+
+    @objc private func keyboardWillHide(_ notification: Notification) {
+        guard let duration = notification.userInfo?[UIResponder.keyboardAnimationDurationUserInfoKey] as? TimeInterval,
+              let curveValue = notification.userInfo?[UIResponder.keyboardAnimationCurveUserInfoKey] as? UInt
+        else { return }
+
+        isKeyboardVisible = false
+        verticalConstraint.constant = 0
+        setWebViewScrollEnabled(true)
+        UIView.animate(withDuration: duration, delay: 0, options: UIView.AnimationOptions(rawValue: curveValue << 16), animations: {
+            self.view.layoutIfNeeded()
+        })
     }
 
     func setConstraints() {
@@ -52,6 +108,11 @@ class GistModalViewController: UIViewController, GistViewDelegate, DoNotTrackScr
     }
 
     func sizeChanged(message: Message, width: CGFloat, height: CGFloat) {
+        // When the keyboard is visible, ignore height reductions to prevent
+        // the modal from shrinking and clipping its content.
+        if isKeyboardVisible && height < currentHeight {
+            return
+        }
         currentHeight = height
         updateViewConstraints()
     }
@@ -72,4 +133,9 @@ class GistModalViewController: UIViewController, GistViewDelegate, DoNotTrackScr
     }
 
     func action(message: Message, currentRoute: String, action: String, name: String) {}
+
+    private func setWebViewScrollEnabled(_ enabled: Bool) {
+        guard let webView = gistView.subviews.first(where: { $0 is WKWebView }) as? WKWebView else { return }
+        webView.scrollView.isScrollEnabled = enabled
+    }
 }
