@@ -1584,6 +1584,8 @@ class SseLifecycleManagerMock: SseLifecycleManager, Mock {
 
     public func resetMock() {
         startCallsCount = 0
+        startReceivedArguments = nil
+        startReceivedInvocations = []
 
         mockCalled = false // do last as resetting properties above can make this true
     }
@@ -1597,16 +1599,22 @@ class SseLifecycleManagerMock: SseLifecycleManager, Mock {
         startCallsCount > 0
     }
 
+    /// The arguments from the *last* time the function was called.
+    @Atomic private(set) var startReceivedArguments: ((InAppMessageState) -> Void)?
+    /// Arguments from *all* of the times that the function was called.
+    @Atomic private(set) var startReceivedInvocations: [(InAppMessageState) -> Void] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
-    var startClosure: (() -> Void)?
+    var startClosure: ((@escaping (InAppMessageState) -> Void) -> Void)?
 
-    /// Mocked function for `start()`. Your opportunity to return a mocked value and check result of mock in test code.
-    func start() {
+    /// Mocked function for `start(foregroundFetchHandler: @escaping (InAppMessageState) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
+    func start(foregroundFetchHandler: @escaping (InAppMessageState) -> Void) {
         mockCalled = true
         startCallsCount += 1
-        startClosure?()
+        startReceivedArguments = foregroundFetchHandler
+        startReceivedInvocations.append(foregroundFetchHandler)
+        startClosure?(foregroundFetchHandler)
     }
 }
 

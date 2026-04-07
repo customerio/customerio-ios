@@ -51,7 +51,9 @@ class Gist: GistProvider {
 
         // Start the SSE lifecycle manager to observe app foreground/background events
         Task {
-            await sseLifecycleManager.start()
+            await sseLifecycleManager.start { [weak self] state in
+                self?.fetchUserQueue(state: state)
+            }
         }
     }
 

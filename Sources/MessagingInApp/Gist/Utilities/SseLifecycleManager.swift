@@ -19,8 +19,8 @@ import UIKit
 /// Corresponds to Android's `SseLifecycleManager` class.
 protocol SseLifecycleManager: AutoMockable {
     /// Starts the lifecycle manager. Must be called after initialization.
-    /// Sets up notification observers and subscribes to SSE flag and userId changes.
-    func start() async
+    /// - Parameter foregroundFetchHandler: Called to fetch missed messages when app returns to foreground while SSE is active.
+    func start(foregroundFetchHandler: @escaping (InAppMessageState) -> Void) async
 }
 
 // sourcery: InjectRegisterShared = "SseLifecycleManager"
@@ -36,6 +36,7 @@ actor CioSseLifecycleManager: SseLifecycleManager {
     private var userIdSubscriber: InAppMessageStoreSubscriber?
 
     private var isForegrounded: Bool = false
+    private var foregroundFetchHandler: ((InAppMessageState) -> Void)?
 
     init(
         logger: Logger,
@@ -49,14 +50,8 @@ actor CioSseLifecycleManager: SseLifecycleManager {
         self.applicationStateProvider = applicationStateProvider
     }
 
-    /// Sets up the lifecycle manager. Must be called after initialization.
-    /// This is separate from init because actors cannot call async methods in init.
-    ///
-    /// The order of operations is important to avoid race conditions:
-    /// 1. Register notification observers first to catch any state transitions
-    /// 2. Subscribe to SSE flag changes
-    /// 3. Check initial state last - any transitions during setup will be caught by observers
-    func start() async {
+    func start(foregroundFetchHandler: @escaping (InAppMessageState) -> Void) async {
+        self.foregroundFetchHandler = foregroundFetchHandler
         logger.logWithModuleTag("SseLifecycleManager: Starting lifecycle manager", level: .debug)
 
         // Register observers FIRST to ensure no state transitions are missed
@@ -212,7 +207,17 @@ actor CioSseLifecycleManager: SseLifecycleManager {
         )
 
         // Check all 3 conditions: foregrounded + SSE enabled + user identified
-        await startSseIfEligible(state: state)
+        if state.shouldUseSse {
+            // SSE only delivers new events after reconnecting, so perform a one-time
+            // HTTP fetch to retrieve any messages sent while the app was backgrounded.
+            foregroundFetchHandler?(state)
+            await sseConnectionManager.startConnection()
+        } else {
+            logger.logWithModuleTag(
+                "SseLifecycleManager: SSE not used (sseEnabled: \(state.useSse), isUserIdentified: \(state.isUserIdentified))",
+                level: .debug
+            )
+        }
     }
 
     private func handleBackgrounded() async {
