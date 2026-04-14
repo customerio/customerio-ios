@@ -1,3 +1,9 @@
+## [4.4.1](https://github.com/customerio/customerio-ios/compare/4.4.0...4.4.1) (2026-04-14)
+
+### Bug Fixes
+
+* Fix in-app messages not displaying when app returns from background when SSE enabled ([#1031](https://github.com/customerio/customerio-ios/issues/1031)) ([a7e586f](https://github.com/customerio/customerio-ios/commit/a7e586fca1453a8c0a6b48954c30521a6ee899fd))
+
 ## [4.4.0](https://github.com/customerio/customerio-ios/compare/4.3.1...4.4.0) (2026-04-02)
 
 ### Features
