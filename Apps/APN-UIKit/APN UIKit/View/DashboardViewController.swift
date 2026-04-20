@@ -100,7 +100,7 @@ class DashboardViewController: BaseViewController {
     func addAccessibilityIdentifiersForAppium() {
         setAppiumAccessibilityIdTo(settings, value: "Settings")
         setAppiumAccessibilityIdTo(randomEventButton, value: "Random Event Button")
-        setAppiumAccessibilityIdTo(customEventButton, value: "Custom Event Button")
+        setAppiumAccessibilityIdTo(customEventButton, value: "custom_event_button")
         setAppiumAccessibilityIdTo(sendDeviceAttributesButton, value: "Device Attribute Button")
         setAppiumAccessibilityIdTo(sendProfileAttributesButton, value: "Profile Attribute Button")
         setAppiumAccessibilityIdTo(showPushPromptButton, value: "Show Push Prompt Button")

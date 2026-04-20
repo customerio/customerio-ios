@@ -1,0 +1,104 @@
+appId: io.customer.ios-sample.apn-spm.APN-UIKit
+tags:
+  - smoke
+name: Smoke — login → in-app delivered → custom event (APN-UIKit)
+---
+# --- Test run marker: unique run id + unique email so every run is isolated ---
+- runScript:
+    file: harness/scripts/setup_run.js
+
+- launchApp:
+    clearState: true
+
+# --- Login ---
+- assertVisible:
+    id: "Login Button"
+- tapOn:
+    id: "First Name Input"
+- inputText: "Maestro Tester"
+- hideKeyboard
+- tapOn:
+    id: "Email Input"
+- inputText: ${output.email}
+- hideKeyboard
+- tapOn:
+    id: "Login Button"
+
+# --- Dashboard reached ---
+- assertVisible:
+    id: "Random Event Button"
+- assertVisible:
+    id: "Custom Event Button"
+
+# --- Back-end assertion #1: identify → CDP → services → in-app delivered ---
+# Identifying a new customer in this workspace triggers campaign 55
+# ("New CIO Tester") which dispatches an in_app. We assert the SDK actually
+# received AND sent the in_app (metrics.sent present). The modal's
+# "human_opened" state gets set when the Maestro-driven UI renders it.
+- runScript:
+    file: harness/scripts/assert_message_delivered.js
+    env:
+      MAESTRO_EXT_API_KEY: ${MAESTRO_EXT_API_KEY}
+      RUN_EMAIL: ${output.email}
+      EXPECTED_TYPE: "in_app"
+      MIN_METRIC: "sent"
+      MAX_WAIT_MS: "60000"
+- assertTrue: ${output.assert_ok === "true"}
+
+# --- Visual proof: the welcome in-app modal actually rendered on screen.
+# Not just "backend sent it" — the user sees title + body + Continue button.
+# Target button text first (most reliable native element), then body copy. ---
+- extendedWaitUntil:
+    visible: "Continue"
+    timeout: 20000
+- assertVisible: ".*Thank you for choosing.*"
+- takeScreenshot: artifacts/ios_modal_inapp
+# Dismiss the modal.
+- tapOn: "Continue"
+- assertNotVisible: ".*Thank you for choosing.*"
+
+# --- Back-end assertion #2: a push was queued for this customer ---
+# Same campaign 55 also has a push action. The iOS simulator has no valid
+# APNs token so the backend CAN'T finish delivering — but it DOES draft
+# the push (i.e. set metrics.drafted) attempting to send. That drafted
+# state is what we assert: it proves SDK identify → campaign evaluation →
+# push action dispatch all fired for this run's customer.
+#
+# To prove real push DELIVERY on iOS we'd need a real device or an APNs
+# simctl injection, which is a separate future phase.
+- runScript:
+    file: harness/scripts/assert_message_delivered.js
+    env:
+      MAESTRO_EXT_API_KEY: ${MAESTRO_EXT_API_KEY}
+      RUN_EMAIL: ${output.email}
+      EXPECTED_TYPE: "push"
+      MIN_METRIC: "drafted"
+      MAX_WAIT_MS: "30000"
+- assertTrue: ${output.assert_ok === "true"}
+
+# --- Send a custom event with a run_id property for traceability ---
+- tapOn:
+    id: "Custom Event Button"
+- assertVisible:
+    id: "Event Name Input"
+- tapOn:
+    id: "Event Name Input"
+- inputText: "maestro_test_event"
+- hideKeyboard
+- tapOn:
+    id: "Property Name Input"
+- inputText: "run_id"
+- hideKeyboard
+- tapOn:
+    id: "Property Value Input"
+- inputText: ${output.run_id}
+- hideKeyboard
+- tapOn:
+    id: "Send Event Button"
+
+# Back to dashboard via iOS left-edge swipe.
+- swipe:
+    start: 1%, 50%
+    end: 80%, 50%
+- assertVisible:
+    id: "Custom Event Button"

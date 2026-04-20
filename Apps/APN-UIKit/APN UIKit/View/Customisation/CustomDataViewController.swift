@@ -35,10 +35,10 @@ class CustomDataViewController: BaseViewController {
 
     func addAccessibilityIdentifiersForAppium() {
         if source == .customEvents {
-            setAppiumAccessibilityIdTo(eventNameTextField, value: "Event Name Input")
-            setAppiumAccessibilityIdTo(propertyNameTextField, value: "Property Name Input")
-            setAppiumAccessibilityIdTo(propertyValueTextField, value: "Property Value Input")
-            setAppiumAccessibilityIdTo(sendButton, value: "Send Event Button")
+            setAppiumAccessibilityIdTo(eventNameTextField, value: "event_name_input")
+            setAppiumAccessibilityIdTo(propertyNameTextField, value: "property_name_input")
+            setAppiumAccessibilityIdTo(propertyValueTextField, value: "property_value_input")
+            setAppiumAccessibilityIdTo(sendButton, value: "send_event_button")
         } else {
             setAppiumAccessibilityIdTo(sendButton, value: "Set \(source == .deviceAttributes ? "Device" : "Profile") Attribute Button")
             setAppiumAccessibilityIdTo(propertyNameTextField, value: "Attribute Name Input")

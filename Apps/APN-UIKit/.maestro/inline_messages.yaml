@@ -1,0 +1,80 @@
+appId: io.customer.ios-sample.apn-spm.APN-UIKit
+tags:
+  - inline
+name: Inline in-app — render + position template (APN-UIKit)
+---
+# TEMPLATE flow. Drives to the Inline in-app screen; captures screenshots of
+# every slot so we can visually confirm rendering. Add assertVisible on the
+# body text once the workspace has a seeded campaign with known content.
+#
+# iOS inline slots in this sample (from InlineInAppMessageView.swift):
+#   - sticky-header   (top of screen)
+#   - inline          (middle of scroll content)
+#   - below-fold      (bottom of scroll content)
+
+- runScript:
+    file: harness/scripts/setup_run.js
+
+- launchApp:
+    clearState: true
+
+- assertVisible: { id: "Login Button" }
+- tapOn: { id: "First Name Input" }
+- inputText: "Maestro Inline Tester"
+- hideKeyboard
+- tapOn: { id: "Email Input" }
+- inputText: ${output.email}
+- hideKeyboard
+- tapOn: { id: "Login Button" }
+
+# If welcome in-app pops up, dismiss it.
+- runFlow:
+    when:
+      visible: "Continue"
+    commands:
+      - tapOn: "Continue"
+
+# Fire the trigger event for an inline-targeted campaign.
+- tapOn: { id: "Custom Event Button" }
+- tapOn: { id: "Event Name Input" }
+- inputText: "maestro_show_inline"
+- hideKeyboard
+- tapOn: { id: "Property Name Input" }
+- inputText: "run_id"
+- hideKeyboard
+- tapOn: { id: "Property Value Input" }
+- inputText: ${output.run_id}
+- hideKeyboard
+- tapOn: { id: "Send Event Button" }
+- swipe:
+    start: 1%, 50%
+    end: 80%, 50%
+
+# Scroll dashboard to find Inline Examples and tap
+- scrollUntilVisible:
+    element:
+      text: "Inline Examples (SwiftUI)"
+    direction: DOWN
+- tapOn: "Inline Examples (SwiftUI)"
+
+- takeScreenshot: artifacts/ios_inline_top_of_screen
+- scroll
+- takeScreenshot: artifacts/ios_inline_middle_of_screen
+- scroll
+- takeScreenshot: artifacts/ios_inline_bottom_of_screen
+
+# UNCOMMENT once inline campaign is seeded:
+# - extendedWaitUntil:
+#     visible: ".*MAESTRO_INLINE_OK.*"
+#     timeout: 15000
+# - assertVisible: ".*MAESTRO_INLINE_OK.*"
+
+- runScript:
+    file: harness/scripts/assert_message_delivered.js
+    env:
+      MAESTRO_EXT_API_KEY: ${MAESTRO_EXT_API_KEY}
+      RUN_EMAIL: ${output.email}
+      EXPECTED_TYPE: "in_app"
+      MIN_METRIC: "sent"
+      MAX_WAIT_MS: "30000"
+# - assertTrue: ${output.assert_ok === "true"}
