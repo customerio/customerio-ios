@@ -71,8 +71,8 @@ echo ">> starting simulator screenshot capture loop"
 # poll screenshots at ~5fps instead and assemble them into an mp4 afterward.
 FRAMES_DIR="$OUT_DIR/frames"
 rm -rf "$FRAMES_DIR" && mkdir -p "$FRAMES_DIR"
-chmod +x "$SCRIPT_DIR/scripts/capture_frames.sh"
-"$SCRIPT_DIR/scripts/capture_frames.sh" "$BOOTED" "$FRAMES_DIR" \
+chmod +x "$HARNESS_DIR/scripts/capture_frames.sh"
+"$HARNESS_DIR/scripts/capture_frames.sh" "$BOOTED" "$FRAMES_DIR" \
     >"$OUT_DIR/capture.log" 2>&1 &
 REC_PID=$!
 REC_STARTED_AT_MS=$(python3 -c "import time;print(int(time.time()*1000))")

@@ -1,41 +1,36 @@
 # Maestro E2E — iOS (APN-UIKit)
 
-End-to-end smoke test that drives the `APN-UIKit` sample app through login + a
-custom event, and asserts against the Customer.io Ext API that the backend
-actually received the identify and dispatched the expected in-app + push.
+End-to-end Maestro flows that drive the `APN-UIKit` sample app through
+identify + event tracking and assert against the Customer.io Ext API that
+the backend received the events and dispatched the expected in-app + push.
 
-## Current coverage
-
-Each run generates a fresh email `maestro+ios-<uuid>@cio.test` so runs are
-isolated on the backend.
-
-Steps (all currently passing — 32/32 commands COMPLETED):
-
-1. Launch app, log in with the unique email.
-2. Dashboard appears with action buttons (`Random Event Button`, `Custom Event Button`, `Log Out Button`).
-3. **Back-end assertion #1** — poll Ext API for a delivered `in_app` for this email with `metrics.sent` populated. Proves the full chain SDK identify → CDP → services → campaign fire → in-app dispatched actually happened.
-4. **Back-end assertion #2** — poll for a `push` with `metrics.drafted`. The simulator has no valid APNs token so delivery can't finalize, but `drafted` confirms the backend tried to send — which is the same signal you'd want on a real device that failed to register. (On a real device, this would assert `sent`/`delivered` instead.)
-5. Tap Custom Event, fill in `event=maestro_test_event, run_id=<uuid>`, tap Send Event.
-6. Swipe back to dashboard.
+The main cross-platform flow (Campaign 141) lives in the shared harness at
+[customerio/mobile-e2e](https://github.com/customerio/mobile-e2e). It's
+pulled into `.maestro/harness/` automatically on the first `./run.sh`. This
+directory holds only the platform-specific wrapper: `run.sh`, workspace
+config, and smoke/inline flows that exercise iOS-specific surfaces.
 
 ## Prereqs
 
 1. `maestro` CLI (tested with 2.0.9).
-2. Xcode + an iOS simulator (we used iPhone 17 iOS 26.4).
-3. Ext API bearer token for a test-prod Customer.io workspace.
-4. The sample's `cdpApiKey` in `BuildEnvironment.swift` must map to the **same** workspace the Ext API key queries. In this repo that's `45468ceeed7b7057c583`.
+2. Xcode + a booted iOS Simulator (tested on iPhone 17, iOS 26.4).
+3. `ffmpeg`, Python 3 with Pillow (`pip3 install pillow`).
+4. An Ext API bearer token for the test-prod Customer.io workspace.
+5. `cdpApiKey` and `siteId` set in
+   [`Apps/APN-UIKit/BuildEnvironment.swift`](../BuildEnvironment.swift)
+   matching the workspace the Ext API key queries (currently
+   `cdpApiKey = "45468ceeed7b7057c583"`, `siteId = "38eda114ab3f4593e11f"`).
 
 ## Setup
 
 ```bash
-# 1) Create local env file (gitignored) with your Ext API key:
 cp .maestro/.env.example .maestro/.env
-# then edit .maestro/.env and paste your key
+# paste MAESTRO_EXT_API_KEY into .maestro/.env
 
-# 2) Build + install the sample on a booted simulator:
-#    (first time only; re-run when BuildEnvironment.swift changes)
-cd Apps/APN-UIKit
-xcodebuild -project "APN UIKit.xcodeproj" -scheme "APN UIKit" \
+# Build + install onto the booted simulator (re-run when BuildEnvironment.swift changes):
+xcodebuild \
+  -project "APN UIKit.xcodeproj" \
+  -scheme "APN UIKit" \
   -destination "platform=iOS Simulator,name=iPhone 17" \
   -configuration Debug -derivedDataPath /tmp/apn-uikit-build build
 xcrun simctl install booted "/tmp/apn-uikit-build/Build/Products/Debug-iphonesimulator/APN UIKit.app"
@@ -43,34 +38,66 @@ xcrun simctl install booted "/tmp/apn-uikit-build/Build/Products/Debug-iphonesim
 
 ## Run
 
-From the iOS repo root:
-
 ```bash
-export $(grep -v '^#' Apps/APN-UIKit/.maestro/.env | xargs)
-maestro -p ios --udid <SIM_UDID> test Apps/APN-UIKit/.maestro/smoke_login_event_logout.yaml
+./.maestro/run.sh                             # default: campaign_141 (shared)
+./.maestro/run.sh smoke_login_event_logout.yaml
 ```
 
-Find SIM_UDID via `xcrun simctl list devices booted`.
+`run.sh` auto-detects the booted simulator, clones/pulls the shared harness
+into `.maestro/harness/`, starts the sink + screenshot capture loop, runs
+Maestro, and renders the outputs.
 
-## Files
+Outputs land in `artifacts/<flow>/` (gitignored):
+
+| File | What it is |
+|---|---|
+| `device.mp4` | Simulator recording assembled from 5 fps screenshot poll |
+| `annotated.mp4` | Side-by-side device + live step panel + backend response card |
+| `tickmarks.html` | Per-step pass/fail with Ext API responses inline |
+| `sink.jsonl` | Raw JSON events posted by the flow's assertion scripts |
+| `debug/` | Maestro's native debug output |
+
+## Files here
 
 | File | Purpose |
 |---|---|
-| `config.yaml` | Maestro config (appId, tags) |
-| `smoke_login_event_logout.yaml` | The flow |
-| `scripts/setup_run.js` | Generates `output.run_id` + `output.email` |
-| `scripts/assert_message_delivered.js` | Polls Ext API; matches by (email, type, min_metric) |
-| `.env.example` | Template for local env (committed) |
-| `.env` | Actual key (gitignored) |
+| `run.sh` | Starts sink + simulator capture, runs Maestro, renders HTML + annotated video |
+| `config.yaml` | Maestro workspace config (appId) |
+| `smoke_login_event_logout.yaml` | Optional smoke flow for just the login → event path |
+| `inline_messages.yaml` | Optional inline-rendering validation (needs a seeded campaign) |
+| `.env.example` | Template — copy to `.env` and fill in `MAESTRO_EXT_API_KEY` |
+| `harness/` | Shared scripts + flows auto-cloned from `customerio/mobile-e2e` (gitignored) |
+
+## Selector strategy
+
+The sample exposes the same accessibility ID on every widget the shared
+flow drives, matching the Android java_layout sample — one snake_case
+vocabulary:
+
+| id | widget |
+|---|---|
+| `login_button` | Login button |
+| `first_name_input` | First-name text field |
+| `email_input` | Email text field |
+| `custom_event_button` | Dashboard "Custom Event" |
+| `event_name_input` | Custom-event name field |
+| `property_name_input` | Custom-event property name |
+| `property_value_input` | Custom-event property value |
+| `send_event_button` | Fire-event button |
+
+Set via `setAppiumAccessibilityIdTo(..., value: "login_button")` in the
+view controllers (see `LoginViewController.swift`,
+`DashboardViewController.swift`,
+`View/Customisation/CustomDataViewController.swift`).
 
 ## Known limitations
 
-- **Real APNs delivery** to the simulator isn't wired up yet — we assert `drafted` on push, not `sent`/`delivered`. On a real device, change `MIN_METRIC` on the push assertion to `"sent"` or `"delivered"`.
-- `Log Out Button` exists in code but isn't rendered on the current sample's dashboard storyboard, so the flow doesn't log out at the end.
-- No cleanup of created customers between runs. The workspace is test-prod so this is fine for now.
-
-## Next steps
-
-1. Fix the sample's dashboard so `Log Out Button` is visible → add a logout+re-login assertion.
-2. Wire up `xcrun simctl push` delivery from the flow so we can assert real iOS push arrival.
-3. Extend the helper to assert specific campaign_id so tests are deterministic against a named campaign (instead of "any in_app").
+- Real APNs delivery to the simulator isn't wired up yet, so Campaign 141's
+  push-shade + push-tap assertions fire only when the workspace has a
+  working APNs cert for this bundle id. The shared flow wraps them in
+  `runFlow: when: visible: Maestro Push` so they skip cleanly when push
+  doesn't materialize.
+- `simctl io recordVideo` collides with Maestro's live simulator session,
+  so `run.sh` falls back to a 5 fps `simctl screenshot` poll assembled
+  with `ffmpeg` (see `harness/scripts/capture_frames.sh`).
+- No cleanup of created customers; test-prod workspace is fine for now.

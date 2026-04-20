@@ -18,14 +18,14 @@ name: Inline in-app — render + position template (APN-UIKit)
 - launchApp:
     clearState: true
 
-- assertVisible: { id: "Login Button" }
-- tapOn: { id: "First Name Input" }
+- assertVisible: { id: "login_button" }
+- tapOn: { id: "first_name_input" }
 - inputText: "Maestro Inline Tester"
 - hideKeyboard
-- tapOn: { id: "Email Input" }
+- tapOn: { id: "email_input" }
 - inputText: ${output.email}
 - hideKeyboard
-- tapOn: { id: "Login Button" }
+- tapOn: { id: "login_button" }
 
 # If welcome in-app pops up, dismiss it.
 - runFlow:
@@ -35,17 +35,17 @@ name: Inline in-app — render + position template (APN-UIKit)
       - tapOn: "Continue"
 
 # Fire the trigger event for an inline-targeted campaign.
-- tapOn: { id: "Custom Event Button" }
-- tapOn: { id: "Event Name Input" }
+- tapOn: { id: "custom_event_button" }
+- tapOn: { id: "event_name_input" }
 - inputText: "maestro_show_inline"
 - hideKeyboard
-- tapOn: { id: "Property Name Input" }
+- tapOn: { id: "property_name_input" }
 - inputText: "run_id"
 - hideKeyboard
-- tapOn: { id: "Property Value Input" }
+- tapOn: { id: "property_value_input" }
 - inputText: ${output.run_id}
 - hideKeyboard
-- tapOn: { id: "Send Event Button" }
+- tapOn: { id: "send_event_button" }
 - swipe:
     start: 1%, 50%
     end: 80%, 50%

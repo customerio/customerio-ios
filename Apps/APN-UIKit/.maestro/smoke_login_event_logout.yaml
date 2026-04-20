@@ -3,7 +3,14 @@ tags:
   - smoke
 name: Smoke — login → in-app delivered → custom event (APN-UIKit)
 ---
-# --- Test run marker: unique run id + unique email so every run is isolated ---
+# Smoke-level check of the identify path. Validates that:
+#   1. The sample app can log in with a fresh email.
+#   2. The backend receives the identify and campaign 55 dispatches an
+#      in-app for the new customer.
+#   3. The in-app modal renders on the simulator and can be dismissed.
+# Selectors match the shared snake_case vocabulary used in the sample apps
+# and the shared flow at customerio/mobile-e2e.
+
 - runScript:
     file: harness/scripts/setup_run.js
 
@@ -12,29 +19,22 @@ name: Smoke — login → in-app delivered → custom event (APN-UIKit)
 
 # --- Login ---
 - assertVisible:
-    id: "Login Button"
+    id: "login_button"
 - tapOn:
-    id: "First Name Input"
+    id: "first_name_input"
 - inputText: "Maestro Tester"
 - hideKeyboard
 - tapOn:
-    id: "Email Input"
+    id: "email_input"
 - inputText: ${output.email}
 - hideKeyboard
 - tapOn:
-    id: "Login Button"
+    id: "login_button"
 
-# --- Dashboard reached ---
 - assertVisible:
-    id: "Random Event Button"
-- assertVisible:
-    id: "Custom Event Button"
+    id: "custom_event_button"
 
-# --- Back-end assertion #1: identify → CDP → services → in-app delivered ---
-# Identifying a new customer in this workspace triggers campaign 55
-# ("New CIO Tester") which dispatches an in_app. We assert the SDK actually
-# received AND sent the in_app (metrics.sent present). The modal's
-# "human_opened" state gets set when the Maestro-driven UI renders it.
+# --- Backend assertion #1: identify → campaign 55 → in_app dispatched ---
 - runScript:
     file: harness/scripts/assert_message_delivered.js
     env:
@@ -45,60 +45,33 @@ name: Smoke — login → in-app delivered → custom event (APN-UIKit)
       MAX_WAIT_MS: "60000"
 - assertTrue: ${output.assert_ok === "true"}
 
-# --- Visual proof: the welcome in-app modal actually rendered on screen.
-# Not just "backend sent it" — the user sees title + body + Continue button.
-# Target button text first (most reliable native element), then body copy. ---
+# --- Visual proof: welcome modal rendered + dismissed ---
 - extendedWaitUntil:
     visible: "Continue"
     timeout: 20000
 - assertVisible: ".*Thank you for choosing.*"
 - takeScreenshot: artifacts/ios_modal_inapp
-# Dismiss the modal.
 - tapOn: "Continue"
 - assertNotVisible: ".*Thank you for choosing.*"
 
-# --- Back-end assertion #2: a push was queued for this customer ---
-# Same campaign 55 also has a push action. The iOS simulator has no valid
-# APNs token so the backend CAN'T finish delivering — but it DOES draft
-# the push (i.e. set metrics.drafted) attempting to send. That drafted
-# state is what we assert: it proves SDK identify → campaign evaluation →
-# push action dispatch all fired for this run's customer.
-#
-# To prove real push DELIVERY on iOS we'd need a real device or an APNs
-# simctl injection, which is a separate future phase.
-- runScript:
-    file: harness/scripts/assert_message_delivered.js
-    env:
-      MAESTRO_EXT_API_KEY: ${MAESTRO_EXT_API_KEY}
-      RUN_EMAIL: ${output.email}
-      EXPECTED_TYPE: "push"
-      MIN_METRIC: "drafted"
-      MAX_WAIT_MS: "30000"
-- assertTrue: ${output.assert_ok === "true"}
-
-# --- Send a custom event with a run_id property for traceability ---
+# --- Custom event with run_id for traceability ---
 - tapOn:
-    id: "Custom Event Button"
-- assertVisible:
-    id: "Event Name Input"
+    id: "custom_event_button"
+- extendedWaitUntil:
+    visible:
+      id: "event_name_input"
+    timeout: 10000
 - tapOn:
-    id: "Event Name Input"
+    id: "event_name_input"
 - inputText: "maestro_test_event"
 - hideKeyboard
 - tapOn:
-    id: "Property Name Input"
+    id: "property_name_input"
 - inputText: "run_id"
 - hideKeyboard
 - tapOn:
-    id: "Property Value Input"
+    id: "property_value_input"
 - inputText: ${output.run_id}
 - hideKeyboard
 - tapOn:
-    id: "Send Event Button"
-
-# Back to dashboard via iOS left-edge swipe.
-- swipe:
-    start: 1%, 50%
-    end: 80%, 50%
-- assertVisible:
-    id: "Custom Event Button"
+    id: "send_event_button"
