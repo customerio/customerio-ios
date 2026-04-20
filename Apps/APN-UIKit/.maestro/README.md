@@ -40,8 +40,11 @@ xcrun simctl install booted "/tmp/apn-uikit-build/Build/Products/Debug-iphonesim
 
 ```bash
 ./.maestro/run.sh                             # default: campaign_141 (shared)
-./.maestro/run.sh smoke_login_event_logout.yaml
+./.maestro/run.sh smoke_login_event.yaml      # also shared (in harness)
+./.maestro/run.sh inline_messages.yaml        # also shared (in harness)
 ```
+
+All three flows live in [customerio/mobile-e2e/flows/](https://github.com/customerio/mobile-e2e/tree/main/flows) — the `run.sh` wrapper resolves them from `.maestro/harness/flows/` automatically.
 
 `run.sh` auto-detects the booted simulator, clones/pulls the shared harness
 into `.maestro/harness/`, starts the sink + screenshot capture loop, runs
@@ -62,11 +65,9 @@ Outputs land in `artifacts/<flow>/` (gitignored):
 | File | Purpose |
 |---|---|
 | `run.sh` | Starts sink + simulator capture, runs Maestro, renders HTML + annotated video |
-| `config.yaml` | Maestro workspace config (appId) |
-| `smoke_login_event_logout.yaml` | Optional smoke flow for just the login → event path |
-| `inline_messages.yaml` | Optional inline-rendering validation (needs a seeded campaign) |
 | `.env.example` | Template — copy to `.env` and fill in `MAESTRO_EXT_API_KEY` |
-| `harness/` | Shared scripts + flows auto-cloned from `customerio/mobile-e2e` (gitignored) |
+| `.env` | Your `MAESTRO_EXT_API_KEY` (gitignored) |
+| `harness/` | Shared scripts + flows auto-cloned from [`customerio/mobile-e2e`](https://github.com/customerio/mobile-e2e) (gitignored) |
 
 ## Selector strategy
 
