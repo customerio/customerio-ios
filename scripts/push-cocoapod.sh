@@ -21,16 +21,23 @@ PODSPEC="$1"
 
 if ! [[ -f "$PODSPEC" ]]; then
     echo "File $PODSPEC does not exist. Please check the pod name."
+    exit 1
 fi
 
 echo "Pushing podspec: $PODSPEC."
-echo "Pushing to cocoapods is flaky and there might be errors that happen when pushing to cocoapods that might not mean the deployment failed."
-echo "If you do notice an error message when trying to push a pod,"
-echo "1. Check this github repo https://github.com/search?q=repo%3ACocoaPods%2FSpecs+customerio&type=commits to find the pods that successfully deployed. Dont trust cocoapods.org or the logs from this script if a deployment was successful or not."
-echo "2. Feel free to re-run a GitHub Action if you see errors. This script can be run many times and not cause issues with pods that have already been deployed."
+echo "If a pod version has already been published, it will be treated as success."
+echo "For any other failure, the script will exit with a non-zero code."
 
-# the '|| true' code makes it so the command never fails, even if an error is returned. 
-# CocoaPods deployments are flaky. Because of that, when you deploy to cocoapods it's best that you manually confirm 
-# that the pods all got deployed successfully. If not, just re-run the job on github actions to try pushing the pods again. 
-# If you try to re-run the github action without '|| true', the script would fail early and not allow you to retry pushing all pods. 
-pod trunk push "$PODSPEC" --allow-warnings --synchronous || true 
+OUTPUT=$(pod trunk push "$PODSPEC" --allow-warnings --synchronous 2>&1) || true
+echo "$OUTPUT"
+
+if echo "$OUTPUT" | grep -q "successfully published"; then
+  echo "Pod $PODSPEC published successfully."
+  exit 0
+elif echo "$OUTPUT" | grep -q "Unable to accept duplicate entry for"; then
+  echo "Pod $PODSPEC has already been published. Skipping."
+  exit 0
+else
+  echo "::error::Failed to push $PODSPEC."
+  exit 1
+fi

@@ -207,24 +207,32 @@ jobs:
         run: gem install cocoapods
       - name: '⚠️ Note: Pushing to cocoapods is flaky. If you see some errors in these logs while deploying, re-run this GitHub Action to try deployment again and it might fix the issue.'
         run: echo ''
-      - name: Push CustomerIOCommon
-        run: ./scripts/push-cocoapod.sh CustomerIOCommon.podspec
-      - name: Push CustomerIOTrackingMigration
-        run: ./scripts/push-cocoapod.sh CustomerIOTrackingMigration.podspec
-      - name: Push CustomerIODataPipelines
-        run: ./scripts/push-cocoapod.sh CustomerIODataPipelines.podspec
-      - name: Push CustomerIOMessagingPush
-        run: ./scripts/push-cocoapod.sh CustomerIOMessagingPush.podspec
-      - name: Push CustomerIOMessagingPushAPN
-        run: ./scripts/push-cocoapod.sh CustomerIOMessagingPushAPN.podspec
-      - name: Push CustomerIOMessagingPushFCM
-        run: ./scripts/push-cocoapod.sh CustomerIOMessagingPushFCM.podspec
-      - name: Push CustomerIOMessagingInApp
-        run: ./scripts/push-cocoapod.sh CustomerIOMessagingInApp.podspec
-      - name: Push CustomerIOLocation
-        run: ./scripts/push-cocoapod.sh CustomerIOLocation.podspec
-      - name: Push CustomerIO
-        run: ./scripts/push-cocoapod.sh CustomerIO.podspec
+      - name: Push all podspecs to CocoaPods
+        run: |
+          podspecs=(
+            CustomerIOCommon.podspec
+            CustomerIOTrackingMigration.podspec
+            CustomerIODataPipelines.podspec
+            CustomerIOMessagingPush.podspec
+            CustomerIOMessagingPushAPN.podspec
+            CustomerIOMessagingPushFCM.podspec
+            CustomerIOMessagingInApp.podspec
+            CustomerIOLocation.podspec
+            CustomerIO.podspec
+          )
+
+          failed_pods=()
+          for podspec in "${podspecs[@]}"; do
+            if ! ./scripts/push-cocoapod.sh "$podspec"; then
+              failed_pods+=("$podspec")
+            fi
+          done
+
+          if [[ ${#failed_pods[@]} -gt 0 ]]; then
+            echo "::error::The following pods failed to publish: ${failed_pods[*]}"
+            exit 1
+          fi
+          echo "All pods published successfully."
 
       - name: Notify team of successful deployment
         uses: slackapi/slack-github-action@70cd7be8e40a46e8b0eced40b0de447bdb42f68e # v1.26.0
