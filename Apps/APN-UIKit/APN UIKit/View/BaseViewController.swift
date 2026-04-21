@@ -20,7 +20,10 @@ class BaseViewController: UIViewController {
         return metadata.asSortedKeyValuePairs
     }
 
-    func setAppiumAccessibilityIdTo(_ element: UIView, value: String) {
+    /// Tag a view with an accessibility identifier so E2E runners (Maestro,
+    /// XCUITest, Appium) and screen readers (VoiceOver) can find it by
+    /// stable id. Mirrors the Android `ViewUtils.setAccessibilityId`.
+    func setAccessibilityId(_ element: UIView, to value: String) {
         element.isAccessibilityElement = true
         element.accessibilityIdentifier = value
     }

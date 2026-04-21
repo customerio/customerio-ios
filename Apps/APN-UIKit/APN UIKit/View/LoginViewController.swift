@@ -40,11 +40,11 @@ class LoginViewController: BaseViewController {
     }
 
     func addAccessibilityIdentifiersForAppium() {
-        setAppiumAccessibilityIdTo(settings, value: "Settings")
-        setAppiumAccessibilityIdTo(firstNameTextField, value: "first_name_input")
-        setAppiumAccessibilityIdTo(emailTextField, value: "email_input")
-        setAppiumAccessibilityIdTo(loginButton, value: "login_button")
-        setAppiumAccessibilityIdTo(randomLoginButton, value: "Random Login Button")
+        setAccessibilityId(settings, to: "Settings")
+        setAccessibilityId(firstNameTextField, to: "first_name_input")
+        setAccessibilityId(emailTextField, to: "email_input")
+        setAccessibilityId(loginButton, to: "login_button")
+        setAccessibilityId(randomLoginButton, to: "Random Login Button")
     }
 
     func configureVersionLabel() {

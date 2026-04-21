@@ -86,9 +86,8 @@ vocabulary:
 | `property_value_input` | Custom-event property value |
 | `send_event_button` | Fire-event button |
 
-Set via `setAppiumAccessibilityIdTo(..., value: "login_button")` in the
-view controllers (see `LoginViewController.swift`,
-`DashboardViewController.swift`,
+Set via `setAccessibilityId(..., to: "login_button")` in the view
+controllers (see `LoginViewController.swift`, `DashboardViewController.swift`,
 `View/Customisation/CustomDataViewController.swift`).
 
 ## Known limitations
