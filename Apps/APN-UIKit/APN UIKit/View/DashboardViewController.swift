@@ -98,14 +98,14 @@ class DashboardViewController: BaseViewController {
     }
 
     func addAccessibilityIdentifiersForAppium() {
-        setAppiumAccessibilityIdTo(settings, value: "Settings")
-        setAppiumAccessibilityIdTo(randomEventButton, value: "Random Event Button")
-        setAppiumAccessibilityIdTo(customEventButton, value: "Custom Event Button")
-        setAppiumAccessibilityIdTo(sendDeviceAttributesButton, value: "Device Attribute Button")
-        setAppiumAccessibilityIdTo(sendProfileAttributesButton, value: "Profile Attribute Button")
-        setAppiumAccessibilityIdTo(showPushPromptButton, value: "Show Push Prompt Button")
-        setAppiumAccessibilityIdTo(inboxButton, value: "View Inbox Button")
-        setAppiumAccessibilityIdTo(logoutButton, value: "Log Out Button")
+        setAccessibilityId(settings, to: "Settings")
+        setAccessibilityId(randomEventButton, to: "Random Event Button")
+        setAccessibilityId(customEventButton, to: "custom_event_button")
+        setAccessibilityId(sendDeviceAttributesButton, to: "Device Attribute Button")
+        setAccessibilityId(sendProfileAttributesButton, to: "Profile Attribute Button")
+        setAccessibilityId(showPushPromptButton, to: "Show Push Prompt Button")
+        setAccessibilityId(inboxButton, to: "View Inbox Button")
+        setAccessibilityId(logoutButton, to: "Log Out Button")
     }
 
     func setEmailAndDeviceToken() {

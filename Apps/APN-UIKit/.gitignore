@@ -1,0 +1,4 @@
+# Maestro run outputs (regenerated on every run)
+artifacts/
+.maestro/harness/
+.maestro/.env
