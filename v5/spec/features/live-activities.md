@@ -249,116 +249,223 @@ events arrive.
 
 ## HTTP API
 
-All requests to Live Activity endpoints carry the following headers:
+All SDK surface requests carry:
 
 | Header | Value |
 |---|---|
-| `Authorization` | `Basic <base64("cdpApiKey:")>` — the `cdpApiKey` followed by a colon, Base64-encoded. Same scheme used by all other SDK HTTP requests. |
-| `User-Agent` | The SDK's standard `User-Agent` string (same value sent on all other SDK requests). |
+| `Authorization` | `Basic <base64("cdpApiKey:")>` |
+| `User-Agent` | The SDK's standard `User-Agent` string. |
 
-### PUT `/v1/live_activities/{activityInstanceId}/push_token`
+Retry policy: `5xx` → up to 3 attempts with exponential backoff. `4xx` → no retry.
 
-Register or rotate the APNs push token for a specific Live Activity instance.
-The backend uses this token to deliver content-state push updates to the device.
-`{activityInstanceId}` is the percent-encoded value of `activity.attributes.activityInstanceId`.
+The SDK calls four endpoints as part of normal live activity lifecycle management:
 
-**Request body (iOS):**
+| Endpoint | When called |
+|---|---|
+| `PUT /v1/live_activities/registration/{activityType}` | Push-to-start token received or rotated (iOS); at configure time (Android). |
+| `PUT /v1/live_activities/{activityInstanceId}/push_token` | Activity instance starts; instance token rotates. |
+| `PUT /v1/live_activities/{activityInstanceId}` | Host app updates content state locally. |
+| `DELETE /v1/live_activities/{activityInstanceId}` | Activity ends, is dismissed, or goes stale. |
+
+For full request/response shapes, field definitions, and error behaviour, see
+[`spec/interfaces/live-activity-sdk-api.md`](../interfaces/live-activity-sdk-api.md).
+
+> All endpoint paths are provisional pending backend confirmation. The
+> `liveActivitiesBaseURL` config field allows the SDK to ship before final paths
+> are locked.
+
+---
+
+## System Architecture
+
+Three parties participate in every Live Activity update:
+
+```
+┌──────────────────┐         ┌──────────────────────┐         ┌────────────────┐
+│   Device / SDK   │         │    CIO Backend        │         │  App's backend │
+│                  │         │                       │         │  / campaigns   │
+│  1. Activity     │         │                       │         │                │
+│     starts       │         │                       │         │                │
+│                  │──(PUT)──▶  /live_activities/    │         │                │
+│  2. Token        │         │  {activityInstanceId} │         │                │
+│     registered   │         │  (stores token,       │         │                │
+│                  │         │   profile, type)      │         │                │
+│                  │         │                       │◀──────── │  3. Trigger    │
+│                  │         │  Looks up token for   │  send   │     update via  │
+│                  │         │  this activity        │  order  │     CIO API    │
+│                  │         │                       │         │                │
+│  4. APNs/FCM     │◀────────│  Sends push with      │         │                │
+│     delivers     │  push   │  liveactivity type    │         │                │
+│     update       │         │                       │         │                │
+│                  │         │                       │         │                │
+│  5. Activity     │         │                       │         │                │
+│     ends; SDK    │──(DEL)──▶  /live_activities/    │         │                │
+│     deregisters  │         │  {activityInstanceId} │         │                │
+└──────────────────┘         └──────────────────────┘         └────────────────┘
+```
+
+The SDK's role is steps 2 and 5. Steps 3 and 4 happen entirely in the backend
+and are outside the SDK's scope.
+
+---
+
+## Analytics Events
+
+All analytics events flow through the standard `track` pipeline (batched,
+encrypted queue). Only `properties` are shown below; all events include the
+standard envelope fields (`anonymousId`, `userId`, `timestamp`, `messageId`).
+
+**Live Activity Started** — emitted when the first token from `pushTokenUpdates`
+is received.
+
 ```json
 {
-  "token": "lowercase_hex_token",
-  "activity_type": "io.yourapp.liveactivities.order",
-  "os": "ios",
-  "transport": "apns",
-  "userId": "user-id-or-anonymous-id",
-  "installationId": "stable-install-uuid"
+  "event": "Live Activity Started",
+  "properties": {
+    "activity_id":   "abc123",
+    "activity_type": "io.yourapp.liveactivities.order",
+    "platform":      "ios"
+  }
 }
 ```
 
-**Request body (Android):**
+**Live Activity Ended** — emitted when `activityDidEnd` is called or when the
+activity state stream reaches a terminal state.
+
 ```json
 {
-  "activity_type": "io.yourapp.liveactivities.order",
-  "os": "android",
-  "transport": "fcm",
-  "userId": "user-id-or-anonymous-id",
-  "installationId": "stable-install-uuid"
+  "event": "Live Activity Ended",
+  "properties": {
+    "activity_id":   "abc123",
+    "activity_type": "io.yourapp.liveactivities.order",
+    "reason":        "user_dismissed",
+    "platform":      "ios"
+  }
 }
 ```
 
-`userId` is required — contains the identified user ID, or the anonymous ID if `identify()` has not been called. `installationId` is required. `token` is iOS-only — Android uses the FCM registration token already on file. `os` is `"ios"` or `"android"`. `transport` is `"apns"` or `"fcm"` on iOS (matching the partner's push provider); always `"fcm"` on Android. The transport value signals the delivery mechanism to the server and does not affect the token format.
+`reason` values: `"unknown"`, `"user_dismissed"`, `"expired"`, `"programmatic"`.
 
-> **Server note — FCM transport validation:** When `transport` is `"fcm"`, the server must verify that a valid FCM registration token exists for the device identified by `installationId`. If no FCM token is on file, the server must respond with a 4xx error (exact status code TBD). The SDK will not retry 4xx responses.
+**Live Activity Tapped** — emitted when `activityDidReceiveInteraction` is
+called.
 
-**Retry:** 5xx → up to 3 attempts. 4xx → no retry.
-
-### PUT `/v1/live_activities/{activityInstanceId}`
-
-Report a content state update. `{activityInstanceId}` is the percent-encoded value of
-`activity.attributes.activityInstanceId`.
-
-**Request body:**
 ```json
 {
-  "contentState": { /* encoded ContentState fields */ }
+  "event": "Live Activity Tapped",
+  "properties": {
+    "activity_id":   "abc123",
+    "activity_type": "io.yourapp.liveactivities.order",
+    "platform":      "ios"
+  }
 }
 ```
 
-The raw `ContentState` JSON is wrapped in a `contentState` envelope by the SDK. Note the
-camelCase field name. The user association is established at instance push token registration
-and is not repeated here.
+**Push-to-Start Token Registered** — emitted once per activity type when the
+first push-to-start token is received. Token rotation is silent — no event.
 
-**Retry:** 5xx → up to 3 attempts. 4xx → no retry.
-
-### DELETE `/v1/live_activities/{activityInstanceId}`
-
-Report that an activity ended, was dismissed, or went stale. `{activityInstanceId}` is
-the percent-encoded value of `activity.attributes.activityInstanceId`.
-
-**Request body:**
-```json
-{}
-```
-
-> **Pre-release:** Useful fields to add here should be discussed before shipping. One strong candidate is a `reason` field indicating the terminal state that triggered the request — `"ended"`, `"dismissed"`, or `"stale"` — which could drive downstream analytics or suppression logic on the server.
-
-**Retry:** 5xx → up to 3 attempts.
-
-### PUT `/v1/live_activities/registration/{activityType}`
-
-Register or rotate the push-to-start token for an activity type. `{activityType}` is the
-stable reverse-DNS `identifier` declared in `register(_:identifier:)`.
-
-**Request body (iOS):**
 ```json
 {
-  "token": "lowercase_hex_token",
-  "os": "ios",
-  "transport": "apns",
-  "userId": "user-id-or-anonymous-id",
-  "installationId": "stable-install-uuid"
+  "event": "Live Activity Push-to-Start Token Registered",
+  "properties": {
+    "activity_type": "io.yourapp.liveactivities.order",
+    "platform":      "ios"
+  }
 }
 ```
 
-**Request body (Android):**
+**Live Update Shown** (Android) — emitted when `trackNotification` is called.
+
 ```json
 {
-  "os": "android",
-  "transport": "fcm",
-  "userId": "user-id-or-anonymous-id",
-  "installationId": "stable-install-uuid"
+  "event": "Live Update Shown",
+  "properties": {
+    "notification_id": 1001,
+    "activity_type":   "io.yourapp.liveactivities.order",
+    "platform":        "android"
+  }
 }
 ```
 
-`userId` is required — contains the identified user ID, or the anonymous ID if `identify()` has not been called. `installationId` is required. `token` is iOS-only — Android does not have a separate push-to-start token. `os` is `"ios"` or `"android"`. `transport` is `"apns"` or `"fcm"` on iOS (matching the partner's push provider); always `"fcm"` on Android.
+**Live Update Ended** (Android) — emitted when `notificationEnded` is called.
 
-> **Server note — FCM transport validation:** When `transport` is `"fcm"`, the server must verify that a valid FCM registration token exists for the device identified by `installationId`. If no FCM token is on file, the server must respond with a 4xx error (exact status code TBD). The SDK will not retry 4xx responses.
+```json
+{
+  "event": "Live Update Ended",
+  "properties": {
+    "notification_id": 1001,
+    "activity_type":   "io.yourapp.liveactivities.order",
+    "reason":          "completed",
+    "platform":        "android"
+  }
+}
+```
 
-**Retry:** 5xx → up to 3 attempts.
+**Live Update Interacted** (Android) — emitted when `notificationInteracted`
+is called.
 
-> **Note:** All endpoint paths above are provisional. They will be confirmed or
-> corrected when the backend team publishes the Live Activities API spec. The
-> `liveActivitiesBaseURL` config field exists precisely to allow the SDK to ship
-> before the final paths are locked.
+```json
+{
+  "event": "Live Update Interacted",
+  "properties": {
+    "notification_id": 1001,
+    "activity_type":   "io.yourapp.liveactivities.order",
+    "action_id":       "view_order",
+    "platform":        "android"
+  }
+}
+```
+
+**Live Update Unrecognized Type** (Android) — emitted when the SDK receives an
+FCM message with `cio_live_update: true` and a `cio_activity_type` value not
+present in any registered `LiveUpdateConfig`. Surfaces backend misconfiguration.
+
+```json
+{
+  "event": "Live Update Unrecognized Type",
+  "properties": {
+    "activity_type": "unknown_type",
+    "platform":      "android"
+  }
+}
+```
+
+iOS note: The SDK has no visibility into push-to-start rejections. If
+`attributes-type` in the APNs payload does not match the app's Swift type name,
+the OS silently rejects the push-to-start attempt.
+
+---
+
+## Push Routing and Coexistence with MessagingPush
+
+### Why no filtering is needed
+
+`apns-push-type: liveactivity` is a distinct APNs push type. The OS routes it
+directly to the ActivityKit layer before any app or extension code runs:
+
+- `application(_:didReceiveRemoteNotification:fetchCompletionHandler:)` is **not called**
+- `UNUserNotificationCenter` delegate methods (`willPresent`, `didReceive`) are **not called**
+- The Notification Service Extension is **not invoked**
+
+`MessagingPushModule` installs itself as the `UNUserNotificationCenter` delegate
+and responds to `didReceiveRemoteNotification`. Because neither callback fires
+for `liveactivity` push types, there is no intersection and no routing logic is
+required in either module.
+
+### The alert edge case
+
+If the CIO backend includes an `alert` key in a Live Activity push payload and
+the user taps the resulting banner, the OS delivers the tap through
+`userNotificationCenter(_:didReceive:withCompletionHandler:)` — the same
+delegate method `MessagingPushModule` monitors for standard push clicks.
+
+Live Activity payloads are identifiable by the presence of `aps.event`
+(`"update"`, `"end"`, or `"start"`), which no standard CIO push payload
+contains. `MessagingPushModule`'s push event handler checks for this field and
+exits early before any CIO-specific handling runs.
+
+**Backend guidance:** Including `alert` in Live Activity pushes should be
+avoided unless there is a specific UX reason. Keeping the two payload types
+separate eliminates this edge case entirely.
 
 ---
 

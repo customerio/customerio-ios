@@ -1,7 +1,7 @@
 # Location — Design Specification
 
 **Status:** Implemented (v1)
-**Last updated:** March 17, 2026
+**Last updated:** April 29, 2026
 
 ---
 
@@ -95,8 +95,11 @@ CREATE TABLE IF NOT EXISTS location_state (
 | `last_accuracy` | Decimal string (metres) | On each recorded fix |
 | `last_timestamp` | ISO 8601 string | On each recorded fix |
 | `last_uploaded_at` | ISO 8601 string | When ProfileEnhancing reads and returns non-empty data |
+| `upload_interval_seconds` | Integer string | Written by remote config; overrides the 7-day fallback default |
 
-All keys are cleared on `ResetEvent`.
+All keys except `upload_interval_seconds` are cleared on `ResetEvent`.
+`upload_interval_seconds` is retained across resets — it reflects a workspace
+configuration, not user state.
 
 ---
 
@@ -153,6 +156,30 @@ Every new fix (from any mode) goes through `recordLocation(latitude:longitude:ac
 
 The aggregation engine receives this event and controls how often it is actually
 uploaded to the server. No throttling happens in `LocationCoordinator` itself.
+
+---
+
+## Weekly Fallback Upload
+
+Location-only apps may go weeks without an `identify` call, so coordinates
+would never reach the backend via `ProfileEnhancing` alone.
+
+After every location update is recorded, `LocationCoordinator` checks whether
+the configured upload interval has elapsed since `last_uploaded_at`. If it has
+(default: 7 days), the coordinator synthesises a `track("location_update", …)`
+event with the same lat/lon/accuracy/timestamp payload and enqueues it via the
+root event pipeline.
+
+The synthesised event does **not** bypass the aggregation engine — it flows
+through the full pipeline and may be aggregated, counted, or discarded per the
+active ruleset.
+
+### Remote Interval Override
+
+The upload interval is configurable from the backend. If `location_state`
+contains a value under the key `upload_interval_seconds`, it overrides the
+7-day default. The intended delivery mechanism is `RemoteConfigUpdatedEvent`
+on the internal event bus (not yet implemented in the aggregation engine).
 
 ---
 
