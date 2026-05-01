@@ -431,8 +431,6 @@ Legend: ✅ mostly complete · ⚠️ partial / stub · ❌ none
 | `StorageManager` | struct | ✅ full coverage — all public APIs tested |
 | `HttpRequestRunner` / `HttpClient` | class / protocol | ✅ performRequest success/error, URLSession mock |
 | `MigrationRunner` / `LegacySeeds` | actor / struct | ✅ legacySeeds, markComplete, isComplete |
-| `ApiKeyDatabaseKeyProvider` | struct | ✅ key passthrough, empty key |
-| `KeychainDatabaseKeyProvider` / `KeychainError` | struct / enum | ✅ generation, 64-char hex, idempotency, fresh-instance persistence, API-key isolation, service-name isolation, randomness |
 
 ### `CustomerIO`
 
@@ -454,6 +452,8 @@ Legend: ✅ mostly complete · ⚠️ partial / stub · ❌ none
 | `AggregationEngine` / `AggregationConfig` / `AggregationResult` | actor / struct / enum | ✅ evaluate routing, accumulation (count/stats), server discard, flush scheduling, reset scoping, config refresh, persistence across restart, ruleset update preservation, removed-rule flush |
 | `EventQueue` / `PersistedEvent` | actor / struct | ✅ enqueue/peek/delete roundtrip, count, FIFO order, limit, JSON field preservation |
 | `UploadScheduler` | actor | ✅ flush, uploadIfNeeded, FIFO ordering, 5xx retry + recovery |
+| `ApiKeyDatabaseKeyProvider` | struct | ✅ key passthrough, empty key |
+| `KeychainDatabaseKeyProvider` / `KeychainError` | struct / enum | ✅ generation, 64-char hex, idempotency, fresh-instance persistence, API-key isolation, service-name isolation, randomness |
 | `IdentityStore` | actor | ✅ anonymous ID generation + stability + persistence, profile ID set/reset, seeding guards |
 | `DeviceStore` | actor | ✅ set/clear/overwrite token, loadFromStorage, seeding guards |
 | `CIOBridge` | class | ❌ ObjC bridge |
