@@ -1,7 +1,7 @@
-# CustomerIO_Utilities — Design Specification
+# CustomerIO_Utilities — Feature Specification
 
 **Status:** Implemented
-**Last updated:** March 17, 2026
+**Last updated:** April 29, 2026
 
 ---
 
@@ -15,6 +15,28 @@ Because it sits at the bottom of the dependency graph, `CustomerIO_Utilities`
 must have no knowledge of SDK-level concepts (events, profiles, modules). It
 contains only general-purpose primitives that could plausibly live in any
 Swift project.
+
+---
+
+## What Does Not Live Here
+
+`DatabaseKeyProvider`, `ApiKeyDatabaseKeyProvider`, and `KeychainDatabaseKeyProvider`
+are defined in the `CustomerIO` module (`Sources/CustomerIO/Storage/`), not here.
+Although they are infrastructure, they are part of the public `SdkConfigBuilder`
+API and must be referenceable by app code that imports only `CustomerIO`. Moving
+them here would make them inaccessible to app developers since
+`CustomerIO_Utilities` is not a library product.
+
+---
+
+## Design Constraints
+
+- No SDK-level types may be imported here. `CustomerIO_Utilities` must remain a
+  leaf dependency.
+- All types must be `Sendable` or explicitly `@unchecked Sendable` with
+  documented isolation guarantees.
+- No static state. Every type is instantiated and injected; nothing is accessed
+  via a global or singleton.
 
 ---
 
@@ -46,40 +68,6 @@ during early initialisation). A non-recursive lock would deadlock in those cases
 **Extension files** add conditional conformances and convenience operators for
 common wrapped types: `Arithmetic`, `Bool`, `Comparable`, `Equatable`,
 `Hashable`, `Collections`, `Dictionaries`.
-
----
-
-### `DependencyContainer` / `Resolver`
-
-**Files:** `DI/DependencyContainer.swift`, `DI/Resolver.swift`,
-`DI/Autoresolvable.swift`, `DI/DefaultInitializable.swift`
-
-A lightweight type-safe DI container. Registrations are keyed by
-`ObjectIdentifier(T.self)` — the Swift metatype — so there is no string-based
-lookup and no runtime type mismatches beyond what the `typeMismatch` error case
-already surfaces.
-
-**Registration modes (on `Builder` and on the container directly):**
-
-| Method | Behaviour |
-|---|---|
-| `register(as:factory:)` | Factory invoked on every resolution. |
-| `register(as:singleton:)` | Constant value; same instance every time. |
-| `registerLazySingleton(as:factory:)` | Factory called once on first resolution, cached in a `Synchronized` wrapper thereafter. |
-
-**Auto-resolution:** If a type is not explicitly registered, the resolver tries
-two fallback paths in order:
-1. `Autoresolvable` — type implements `static func create(resolver:) throws`.
-   Modules conform to this via their `init(resolver: borrowing any Resolver)`.
-2. `DefaultInitializable` — type implements `static func create() -> Self` (zero-arg
-   factory). For simple value types with no dependencies.
-
-If both fail, `ResolutionError.notFound` is thrown.
-
-**`Resolver` lifetime:** The `SimpleResolver` created inside `construct` or
-`resolve` is `~Escapable & ~Copyable` — it cannot be stored. This ensures no
-module can hold a reference to the resolver after its initialiser returns,
-preventing stale resolution.
 
 ---
 
@@ -128,11 +116,9 @@ Thread safety is fully delegated to `Database` (a SqlCipherKit `actor`).
 
 The `db: Database` property is `package` access, allowing extension files in
 other targets within this Swift package to add typed query methods without
-making the raw database handle part of the public API. See
-[ARCHITECTURE.md — StorageManager Extension Pattern](ARCHITECTURE.md) for the
-full rationale and extension file inventory.
+making the raw database handle part of the public API.
 
-**Core methods (in this file):**
+**Core methods:**
 
 | Method | Purpose |
 |---|---|
@@ -202,6 +188,23 @@ through this property.
 
 ---
 
+### `CIOKeys`
+
+**Files:** `Keys/CIOKeys.swift` and module-specific extensions
+
+Namespace for all string constants (storage keys, table names, event names,
+payload header names) used across the SDK. Prevents magic strings from being
+scattered as inline literals.
+
+- The root `public enum CIOKeys` lives in `Keys/CIOKeys.swift`.
+- Constants shared between two or more modules are added to extensions in
+  `Keys/` (e.g. `CIOKeys+Storage.swift`).
+- Constants that belong entirely within one module are declared in an `internal`
+  extension in that module's own `Keys/` subdirectory.
+- Constants are organised by **intended use**, not by value.
+
+---
+
 ### `HttpClient` / `HttpRequestRunner`
 
 **Files:** `Networking/HttpClient.swift`, `Networking/HttpRequestRunner.swift`
@@ -217,8 +220,7 @@ It wraps the completion-handler `dataTask(with:)` API in a
 `withCheckedThrowingContinuation` for iOS 13/14 compatibility
 (`URLSession.data(for:)` requires iOS 15+).
 
-Inject a mock `HttpClient` in tests. Register `HttpRequestRunner` via the DI
-container in production (it resolves from `.shared` URLSession by default).
+Inject a mock `HttpClient` in tests. Register `HttpRequestRunner` in production.
 
 ---
 
@@ -266,14 +268,3 @@ target can access it without a cross-module import.
 Thin wrappers over `swift-log`'s `Logger` type and `Date`/`ISO8601DateFormatter`
 respectively. `DateProviding` is a protocol for injecting a fixed date in tests
 (used by `EventEnricher` tests).
-
----
-
-## Design Constraints
-
-- No SDK-level types may be imported here. `CustomerIO_Utilities` must remain a
-  leaf dependency.
-- All types must be `Sendable` or explicitly `@unchecked Sendable` with
-  documented isolation guarantees.
-- No static state. Every type is instantiated and injected; nothing is accessed
-  via a global or singleton.

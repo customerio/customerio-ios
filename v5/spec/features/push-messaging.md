@@ -7,13 +7,77 @@
 The `CustomerIO_MessagingPush` module handles APNs and FCM push notifications
 via the `PushTokenProvider` abstraction. It replaces the former split
 `MessagingPushAPN` / `MessagingPushFCM` targets with a single unified target
-where the token source is selected at configuration time.
+where the token source is selected at configuration time. The split was
+retired because all meaningful push logic (click handling, delivery tracking,
+rich push, deduplication) is shared, and the provider-specific code in each
+path is fewer than ~1 KB of machine code — not worth a separate link-time target.
 
 See also: ADR 006 (no Firebase dependency).
 
 ---
 
+## Reliability Guarantees
+
+The old SDK lost delivery events when the notification service extension was
+killed before a direct HTTP call could complete, and dropped click events that
+arrived before `configure()` had run. The redesign addresses both:
+
+- **No delivery event lost to process termination.** The extension writes
+  delivery records to a shared App Group file rather than making a live HTTP
+  call. The main app drains that file into the main event pipeline on next
+  launch. Because `mutable-content: 1` is always set by the CIO server, the
+  extension fires for every CIO notification and this queue covers all delivery
+  events.
+- **No push click lost to pre-configure timing.** `PushNotificationCenterRegistrar`
+  is activated synchronously — before `application(_:didFinishLaunchingWithOptions:)`
+  returns — via `CIOModule.preActivate(_:)`. It begins buffering any
+  `UNUserNotificationCenter` callbacks immediately, holding their completion
+  handlers uncalled. Once `configure()` completes, the registrar drains the
+  buffer in order. The OS waits for the completion handler, so buffered clicks
+  are never silently dropped.
+- **The OS content handler is always called within the time budget.** SDK
+  tracking and image download work runs on a deadline; notification display is
+  never held hostage to upload success or image availability.
+- **Delivery events are deduplicated by message ID.** If both the extension and
+  the main app observe the same notification, only one event reaches the server.
+- **The extension has no dependency on the full SDK.** `CustomerIO_MessagingPushNSE`
+  links only against Foundation and UserNotifications — no actor, no SqlCipher,
+  no configured key — so it can be included in a notification service extension
+  target without pulling in the entire SDK.
+
+---
+
 ## Configuration
+
+### `PushTokenProvider` protocol
+
+The single extension point for token delivery. Two paths:
+
+```swift
+public protocol PushTokenProvider: Sendable {
+    func tokenFromAPNSData(_ deviceToken: Data) async throws -> String?
+    func observeTokenRefresh(_ handler: @Sendable @escaping (String) -> Void) async
+}
+```
+
+| Provider | `tokenFromAPNSData(_:)` | `observeTokenRefresh(_:)` |
+|---|---|---|
+| `APNPushProvider` (SDK-supplied) | Converts `Data` → lowercase hex string | No-op — token changes arrive via `didRegisterForRemoteNotifications` |
+| App-supplied Firebase wrapper | Forwards `Data` to Firebase; returns FCM token (`nil` if not yet ready) | Calls Firebase's `onTokenRefresh` |
+
+A minimal Firebase wrapper:
+
+```swift
+class MyFirebaseWrapper: PushTokenProvider {
+    func tokenFromAPNSData(_ deviceToken: Data) async throws -> String? {
+        await messaging.setAPNSToken(deviceToken)
+        return await messaging.fcmToken  // nil → will arrive via observeTokenRefresh
+    }
+    func observeTokenRefresh(_ handler: @Sendable @escaping (String) -> Void) async {
+        messaging.onTokenRefresh(handler)
+    }
+}
+```
 
 ### Main app
 
@@ -179,6 +243,38 @@ On every CIO push received in the extension:
    (`_activeTask`) and the delivery upload task (`_deliveryUploadTask`), then calls
    the content handler with the best content assembled so far. The App Group file is
    already written so no delivery data is lost.
+
+### App Group availability detection
+
+On each `configure()`, the push module checks whether a valid shared App Group
+container is accessible at runtime. The result is compared against the last
+stored value in `sdk_meta` (`push_app_group_available`). A device attribute
+update is only uploaded when the value changes or has never been recorded:
+
+| Stored state | Current check | Action |
+|---|---|---|
+| Absent | Any | Store result; upload device attribute |
+| `false` | `true` | Store `true`; upload device attribute |
+| `true` | `false` | Store `false`; upload device attribute; log warning |
+| Matches stored | — | No-op; no event fired |
+
+This means the device attribute fires at most twice across the entire app
+lifecycle: on first SDK run (no stored state), and if App Group availability
+ever changes (e.g. a developer adds or removes the entitlement). Every other
+launch is a two-boolean comparison with no network activity.
+
+If App Group is unavailable, the module logs a warning and the extension falls
+back to the background `URLSession` delivery path.
+
+### Rich push image caching
+
+The extension uses `URLSessionConfiguration.ephemeral` only for the
+authenticated CIO API session (where writing credentials or API responses to
+disk is undesirable). The public CDN session used for image downloads uses a
+standard `URLSession` with a size-bounded `URLCache` backed by the App Group
+container. This cache is accessible from both the extension and the main app,
+so a bulk campaign sending the same image to a device multiple times avoids
+redundant downloads.
 
 ### `CIONotificationServiceExtension.init` parameters
 
