@@ -35,8 +35,9 @@ public enum QuadKey {
             (0.5 - log((1.0 + sinLat) / (1.0 - sinLat)) / (4.0 * .pi)) * size
         )
 
-        let tileX = pixelX / 256
-        let tileY = pixelY / 256
+        let maxTile = (1 << zoom) - 1
+        let tileX = min(pixelX / 256, maxTile)
+        let tileY = min(pixelY / 256, maxTile)
         return encodeTile(tileX: tileX, tileY: tileY, zoom: zoom)
     }
 
