@@ -1,0 +1,56 @@
+#,Area,Given,When,Then,Environment,Setup Tags,Comparative,Tests
+1,Initialization,A valid cdpApiKey,startConfigure is called in AppDelegate,Events can be tracked immediately without await on the calling thread,Demo App,,Yes,
+2,Initialization,track is called before configure completes,Configuration finishes,All pre-configure events are delivered to the backend in order,Integration Testing,,No,preConfigureEvents_deliveredInOrder()
+3,Initialization,More than 100 events are called before configure completes,Configuration finishes,The oldest events (beyond 100) are dropped; the 100 most recent deliver in order,Integration Testing,,No,preConfigureEvents_over100_dropsOldestKeeps100MostRecent()
+4,Initialization,KeychainDatabaseKeyProvider is supplied instead of the default,SDK initializes,The database file uses a per-install random key; rotating the API key does not expose the old database,Integration Testing,Non-default Config,No,returnsTheSameKeyFromFreshProviderInstance(); freshInstallsProduceDifferentKeys(); differentApiKeysProduceDifferentKeys()
+5,Identity,No identify has been called,Any track or screen event is sent,The event payload carries an anonymousId and no profile ID,Demo App,Anonymous,Yes,
+6,Identity,The app is reinstalled,SDK initializes,A new anonymousId is generated; the previous one is not recoverable,Separate,Fresh Install,Yes,
+7,Identity,The app is killed and relaunched without reinstalling,SDK initializes,The same anonymousId is used,Demo App,,Yes,
+8,Identity,"identify(""user-123"") is called",Backend receives the event,"The profile event carries userId: ""user-123"" and the current anonymousId",Demo App,Identified,Yes,
+9,Identity,"identify(""user-123"", traits: [""plan"": .string(""pro"")]) is called",Backend receives the event,The traits are present in the payload,Demo App,Identified,Yes,
+10,Identity,"User A is identified then identify(""user-B"") is called",Backend receives the second call,Subsequent events carry user B's profile ID,Demo App,Identified,Yes,
+11,Identity,A user is identified,"setProfileAttributes([""level"": .int(5)]) is called",The attributes are merged into the profile on the backend,Demo App,Identified,Yes,
+12,Identity,A user is identified,clearIdentify() is called,Subsequent events carry a new anonymousId; the old profile ID is gone,Demo App,Identified,Yes,
+13,Identity,clearIdentify() is called,The queue is inspected,Queued events that have not yet uploaded retain the profile context they were sent with; the queue is not cleared,Integration Testing,Identified,Yes,reset_doesNotClearEventQueue()
+14,Event Tracking,SDK is configured,"track(""button_tapped"") is called","A track event with name ""button_tapped"" appears on the backend",Demo App,,Yes,
+15,Event Tracking,SDK is configured,"track(""purchase"", properties: [""amount"": .float(9.99)]) is called",The event payload includes amount: 9.99,Demo App,,Yes,
+16,Event Tracking,flushAt is set to 20 (default),The 20th event is queued,An upload fires immediately without waiting for the flush timer,Integration Testing,,Yes,uploadIfNeeded_atFlushAtThreshold_callsHttpImmediately()
+17,Event Tracking,The queue has fewer than flushAt events,The first post-flush event arrives,A one-shot timer starts for flushInterval seconds; events upload when it fires,Integration Testing,,Yes,uploadIfNeeded_belowThreshold_timerFiresAfterInterval()
+18,Event Tracking,Events are queued,The app enters the background,Events upload before the process is suspended,Demo App,,Yes,
+19,Event Tracking,Events are queued,flush() is called explicitly,All queued events upload and the queue is empty on return,Demo App,,Yes,
+20,Event Tracking,Events are queued and the app is force-killed,App relaunches,Previously queued events are still present and upload on the next flush,Demo App,,Yes,
+21,Event Tracking,An upload is attempted,The backend returns a 5xx error,The SDK retries with exponential backoff; the events remain in the queue,Integration Testing,Network Error,Yes,flush_5xxResponse_retriesMaxAttemptsThenKeepsEventsInQueue(); flush_5xxThenSuccess_retriesAndDeletesEvents()
+22,Event Tracking,An upload is attempted,The backend returns 200,The uploaded events are deleted from the queue,Integration Testing,,Yes,flush_200Response_removesEventsFromQueue()
+23,Event Tracking,An upload is attempted,The device has no network,The events remain in the queue; no crash or silent data loss,Demo App,Offline,Yes,
+24,Screen Tracking,SDK is configured,"screen(""Home"") is called","A screen event with name ""Home"" appears on the backend",Demo App,,Yes,
+25,Screen Tracking,SDK is configured,"screen(""Checkout"", category: ""Commerce"") is called",The category field is a first-class field in the payload not nested inside properties,Demo App,,Yes,
+26,Screen Tracking,autoTrackScreenViews: true is set in a UIKit app,A UIViewController appears,A screen event fires with the view controller's class name,Demo App,Non-default Config,Yes,
+27,Screen Tracking,autoTrackScreenViews: false (default),A UIViewController appears,No automatic screen event fires,Demo App,,Yes,
+28,Screen Tracking,"cio_trackScreen(""Detail"") modifier is applied to a SwiftUI view",The view appears on screen,"A screen event fires with name ""Detail""",Demo App,,Yes,
+29,Screen Tracking,No CustomerIO instance is injected into the SwiftUI environment,A view with cio_trackScreen appears,The modifier silently no-ops; no crash,Unit Testing,,No,
+30,Device Attributes,SDK is configured,"setDeviceAttributes([""theme"": .string(""dark"")]) is called",The attribute is present in the device record on the backend,Demo App,,Yes,
+31,Device Attributes,Device attributes are set and the app is killed and relaunched,SDK initializes,The attributes are retained and included in the next device update,Demo App,,Yes,
+32,Aggregation,"A count rule is active for ""page_viewed""","10 ""page_viewed"" events are tracked",No individual events reach the backend; one summary event is uploaded on flush,Integration Testing,Aggregation Rules,No,evaluate_countRule_accumulatesAcrossMultipleEvents()
+33,Aggregation,"A stats rule is active for ""purchase"" with property ""amount""",Several purchases are tracked,A single stats summary (min/max/sum/count) is uploaded; no individual purchase events,Integration Testing,Aggregation Rules,No,evaluate_statsRule_accumulatesMinMaxSumCount()
+34,Aggregation,"A discard rule is active for ""debug_event""","track(""debug_event"") is called",No event of any kind reaches the backend,Integration Testing,Aggregation Rules,No,evaluate_serverDeliveredDiscardRule_returnsDiscarded()
+35,Aggregation,A count accumulator has a partial count and the app is force-killed,App relaunches,The partial count is recovered; subsequent events add to it not restart from zero,Integration Testing,Aggregation Rules,No,loadCachedRuleset_restoresPartialAccumulatorState()
+36,Aggregation,"A ruleset is active with rule ID ""r1"" having a partial accumulator","A new ruleset arrives that also contains ""r1""","The accumulator for ""r1"" is preserved; its count is not reset",Integration Testing,Aggregation Rules,No,refreshConfig_preservesAccumulatorForRetainedRuleId()
+37,Aggregation,"A ruleset is active with rule ""r2""","A new ruleset arrives without ""r2""","The accumulator for ""r2"" is flushed before the new ruleset activates",Integration Testing,Aggregation Rules,No,refreshConfig_flushesSynthesizedEventForRemovedRule()
+38,Aggregation,The aggregation config was last fetched within 24 hours,App is foregrounded,No new config fetch is made,Integration Testing,Aggregation Rules,No,refreshConfigIfNeeded_rateLimitedAfterSuccessfulFetch()
+39,Aggregation,The aggregation config was last fetched more than 24 hours ago,App is foregrounded,A new config fetch is attempted,Integration Testing,Aggregation Rules,No,refreshConfigIfNeeded_fetchesAgainAfterRateLimitExpires()
+40,Reset,A user is identified with queued events,reset() is called,Identity is cleared the queue is cleared and all modules receive ResetEvent,Demo App,,Yes,
+41,Reset,reset() is called,The push module receives ResetEvent,The push token is disassociated from the profile,Demo App,,Yes,
+42,Legacy Migration,A device has 4.x SDK data in UserDefaults,5.x SDK initializes for the first time,The previously identified profile ID is migrated to the new identity table,Separate,Legacy Device,No,
+43,Legacy Migration,A device has a 4.x anonymous ID in legacy storage,5.x SDK initializes for the first time,The same anonymous ID is used; no new one is generated,Separate,Legacy Device,No,
+44,Legacy Migration,A device has a 4.x push token in UserDefaults,5.x SDK initializes for the first time,The token is migrated to the device table and re-registered with the backend,Separate,Legacy Device,No,
+45,Legacy Migration,A device has in-flight queued events from 4.x,5.x SDK initializes,Those events are abandoned; only events tracked after initialization are uploaded,Separate,Legacy Device,No,
+46,Legacy Migration,Migration has already run (flag set in sdk_meta),SDK initializes again on a subsequent launch,Migration does not re-run; no duplicate data is written,Integration Testing,Legacy Device,No,markComplete_and_isComplete()
+47,ObjC Bridge,An ObjC or mixed-codebase app,"[bridge trackEvent:@""tapped""] is called",A track event appears on the backend,Separate,ObjC,Yes,
+48,ObjC Bridge,An ObjC app,"[bridge identify:@""user-123""] is called",A profile event appears on the backend,Separate,ObjC,Yes,
+49,ObjC Bridge,An ObjC app,[bridge clearIdentify] is called,Subsequent events carry a new anonymous ID,Separate,ObjC,Yes,
+50,ObjC Bridge,SDK is not yet configured,[bridge isConfigured] is called,Returns NO,Separate,ObjC,Yes,
+51,ObjC Bridge,SDK is configured,[bridge isConfigured] is called,Returns YES,Separate,ObjC,Yes,
+52,Initialization,startConfigure is called with an onCompletion handler,Configuration finishes successfully,The onCompletion handler is called with nil,Demo App,,No,
+53,Identity,setProfileAttributes is called with attribute A then called again with attribute B,Backend receives both calls,Both attributes are present in the profile; the second call does not replace the first,Demo App,Identified,Yes,
+54,Identity,A user is identified,identify() is called with a profile ID,The anonymousId in subsequent events is the same as before identify() was called; it is not rotated,Integration Testing,Identified,Yes,setProfileId_doesNotRotateAnonymousId()
+55,Event Tracking,The queue is empty,flush() is called explicitly,The call completes without error and no upload is attempted,Unit Testing,,No,flush_emptyQueue_doesNotCallHttp()
