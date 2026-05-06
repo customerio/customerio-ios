@@ -1,3 +1,9 @@
+## [4.4.2](https://github.com/customerio/customerio-ios/compare/4.4.1...4.4.2) (2026-05-06)
+
+### Bug Fixes
+
+* Fixed duplicate completion handler call crash ([#1040](https://github.com/customerio/customerio-ios/issues/1040)) ([eddd38c](https://github.com/customerio/customerio-ios/commit/eddd38c932a9b874951fa5d0183b5b3f9959e12a))
+
 ## [4.4.1](https://github.com/customerio/customerio-ios/compare/4.4.0...4.4.1) (2026-04-14)
 
 ### Bug Fixes
