@@ -58,6 +58,10 @@ public class MockNotificationCenterDelegate: NSObject, UNUserNotificationCenterD
         #selector(UNUserNotificationCenterDelegate.userNotificationCenter(_:didReceive:withCompletionHandler:)): true,
         #selector(UNUserNotificationCenterDelegate.userNotificationCenter(_:openSettingsFor:)): true
     ]
+    /// When true, the completion handler is dispatched asynchronously to simulate a bridge (e.g. React Native JS
+    /// bridge) that holds the closure and calls it from a different thread or run-loop turn.
+    public var callWillPresentHandlerAsync: Bool = false
+    public var callDidReceiveHandlerAsync: Bool = false
 
     override public func responds(to aSelector: Selector!) -> Bool {
         if let shouldRespond = respondsToSelectors[aSelector] {
@@ -68,12 +72,20 @@ public class MockNotificationCenterDelegate: NSObject, UNUserNotificationCenterD
 
     public func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
         willPresentNotificationCalled = true
-        completionHandler([])
+        if callWillPresentHandlerAsync {
+            DispatchQueue.main.async { completionHandler([]) }
+        } else {
+            completionHandler([])
+        }
     }
 
     public func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
         didReceiveNotificationResponseCalled = true
-        completionHandler()
+        if callDidReceiveHandlerAsync {
+            DispatchQueue.main.async { completionHandler() }
+        } else {
+            completionHandler()
+        }
     }
 
     public func userNotificationCenter(_ center: UNUserNotificationCenter, openSettingsFor notification: UNNotification?) {
