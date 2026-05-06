@@ -54,9 +54,7 @@ on Swift's type system.
 public final class Synchronized<T>: @unchecked Sendable {
     public var wrappedValue: T { get set }          // lock-protected
     public func mutating<R>(_ body: (inout T) throws -> R) rethrows -> R
-    public func mutatingAsync<R>(_ body: @Sendable (inout T) throws -> sending R) async throws -> R
     public func using<R>(_ body: (T) throws -> R) rethrows -> R
-    public func usingAsync<R>(_ body: @Sendable (T) throws -> sending R) async throws -> R
     public func atomicSetAndFetch(_ newValue: T) -> T
 }
 ```
