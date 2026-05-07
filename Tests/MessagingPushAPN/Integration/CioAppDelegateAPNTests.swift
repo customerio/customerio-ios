@@ -63,6 +63,7 @@ class CioAppDelegateAPNTests: XCTestCase {
         UNUserNotificationCenter.unswizzleNotificationCenter()
 
         MessagingPush.appDelegateIntegratedExplicitly = false
+        MessagingPush.resetNotificationCenterDelegate()
 
         super.tearDown()
     }
@@ -99,7 +100,6 @@ class CioAppDelegateAPNTests: XCTestCase {
         XCTAssertTrue(mockLogger.debugReceivedInvocations.contains {
             $0.message.contains("CIO: Registering for remote notifications")
         })
-        XCTAssertTrue(mockNotificationCenter.delegate === appDelegateAPN)
     }
 
     func testDidFailToRegisterForRemoteNotifications_whenCalled_thenSuperIsCalled() {
@@ -127,8 +127,8 @@ class CioAppDelegateAPNTests: XCTestCase {
             completionHandlerCalled = true
         }
 
-        // Call the method
-        appDelegateAPN.userNotificationCenter(UNUserNotificationCenter.current(), didReceive: UNNotificationResponse.testInstance, withCompletionHandler: completionHandler)
+        // Call through the installed CioNotificationCenterDelegate
+        mockNotificationCenter.delegate?.userNotificationCenter?(UNUserNotificationCenter.current(), didReceive: UNNotificationResponse.testInstance, withCompletionHandler: completionHandler)
 
         // Verify behavior
         XCTAssertTrue(mockNotificationCenterDelegate.didReceiveNotificationResponseCalled)

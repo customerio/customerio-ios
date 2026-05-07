@@ -18,6 +18,10 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
 
     private var globalDataStore: GlobalDataStore
 
+    /// Holds a strong reference to the installed CioNotificationCenterDelegate. UNUserNotificationCenter only holds a weak reference.
+    /// AnyObject avoids a stored-property availability conflict (CioNotificationCenterDelegate is unavailable in app extensions).
+    private var notificationCenterDelegate: AnyObject?
+
     // singleton constructor
     private init() {
         self.globalDataStore = DIGraphShared.shared.globalDataStore
@@ -48,6 +52,11 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
         moduleConfig = MessagingPushConfigBuilder().build()
         shared = MessagingPush()
     }
+
+    @available(iOSApplicationExtension, unavailable)
+    static func resetNotificationCenterDelegate() {
+        shared.notificationCenterDelegate = nil
+    }
     #endif
 
     /**
@@ -62,8 +71,11 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
             Self.moduleConfig = config
             // Some part of the initialize is specific only to non-NSE targets.
             // Put those parts in this non-NSE initialize method.
-            if config.autoTrackPushEvents, !Self.appDelegateIntegratedExplicitly {
-                DIGraphShared.shared.automaticPushClickHandling.start()
+            if config.autoTrackPushEvents {
+                Self.installNotificationCenterDelegate(
+                    wrapping: UNUserNotificationCenter.current().delegate,
+                    centerProvider: { UNUserNotificationCenter.current() }
+                )
             }
             DIGraphShared.shared.registerPendingPushDeliveryStore()
             Self.schedulePendingPushDeliveryMetricsFlush()
@@ -95,6 +107,22 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
 
     private func getImplementation(config: MessagingPushConfigOptions) -> MessagingPushInstance {
         MessagingPushImplementation(diGraph: DIGraphShared.shared, moduleConfig: config)
+    }
+
+    @_spi(Internal)
+    @available(iOSApplicationExtension, unavailable)
+    public static func installNotificationCenterDelegate(
+        wrapping wrappedDelegate: UNUserNotificationCenterDelegate?,
+        centerProvider: UserNotificationCenterInstance
+    ) {
+        let proxy = CioNotificationCenterDelegate(
+            messagingPush: shared,
+            config: { moduleConfig },
+            wrappedDelegate: wrappedDelegate
+        )
+        shared.notificationCenterDelegate = proxy
+        var center = centerProvider()
+        center.delegate = proxy
     }
 
     /**

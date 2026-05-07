@@ -65,25 +65,28 @@ class CioProviderAgnosticAppDelegateTests: XCTestCase {
         UNUserNotificationCenter.unswizzleNotificationCenter()
 
         MessagingPush.appDelegateIntegratedExplicitly = false
+        MessagingPush.resetNotificationCenterDelegate()
 
         super.tearDown()
     }
 
     // MARK: - Tests for application(_:didFinishLaunchingWithOptions:)
 
-    func testDidFinishLaunchingWithOptions_whenValidConfigIsUsed_thenTokenIsRequestedAndDelegateIsSet() {
-        // Call the method
+    func testDidFinishLaunchingWithOptions_whenValidConfigIsUsed_thenAppDelegateIntegratedFlagIsSet() {
         let result = appDelegate.application(UIApplication.shared, didFinishLaunchingWithOptions: nil)
 
-        // Verify behavior
         XCTAssertTrue(MessagingPush.appDelegateIntegratedExplicitly)
         XCTAssertTrue(result)
         XCTAssertTrue(mockAppDelegate.didFinishLaunchingCalled)
+    }
+
+    func testDidFinishLaunchingWithOptions_whenValidConfigIsUsed_thenTokenIsRequested() {
+        _ = appDelegate.application(UIApplication.shared, didFinishLaunchingWithOptions: nil)
+
         XCTAssertTrue(mockLogger.debugCallsCount == 1)
         XCTAssertTrue(mockLogger.debugReceivedInvocations.contains {
             $0.message.contains("CIO: Registering for remote notifications")
         })
-        XCTAssertTrue(mockNotificationCenter.delegate === appDelegate)
     }
 
     func testDidFinishLaunchingWithOptions_whenValidConfigIsUsed_thenTokenIsNotRequested() {
@@ -95,38 +98,13 @@ class CioProviderAgnosticAppDelegateTests: XCTestCase {
             logger: mockLogger
         )
 
-        // Call the method
         let result = appDelegate.application(UIApplication.shared, didFinishLaunchingWithOptions: nil)
 
-        // Verify behavior
         XCTAssertTrue(result)
         XCTAssertTrue(mockAppDelegate.didFinishLaunchingCalled)
         XCTAssertFalse(mockLogger.debugReceivedInvocations.contains {
             $0.message.contains("CIO: Registering for remote notifications")
         })
-        XCTAssertTrue(mockNotificationCenter.delegate === appDelegate)
-    }
-
-    func testDidFinishLaunchingWithOptions_whenAutoTrackPushEventsIsDisabled_thenDelegateIsNotSet() {
-        appDelegate = CioProviderAgnosticAppDelegate(
-            messagingPush: mockMessagingPush,
-            userNotificationCenter: { self.mockNotificationCenter },
-            appDelegate: mockAppDelegate,
-            config: { self.createMockConfig(autoTrackPushEvents: false) },
-            logger: mockLogger
-        )
-
-        // This should not cause a conflict now since shouldIntegrateWithNotificationCenter is false
-        let result = appDelegate.application(UIApplication.shared, didFinishLaunchingWithOptions: nil)
-
-        // Verify behavior
-        XCTAssertTrue(result)
-        XCTAssertTrue(mockAppDelegate.didFinishLaunchingCalled)
-        XCTAssertTrue(mockLogger.debugReceivedInvocations.contains {
-            $0.message.contains("CIO: Registering for remote notifications")
-        })
-        // Delegate should not be set on notification center
-        XCTAssertNotEqual(mockNotificationCenter.delegate as? CioProviderAgnosticAppDelegate, appDelegate)
     }
 
     // MARK: - Tests for remote notification registration
@@ -156,167 +134,6 @@ class CioProviderAgnosticAppDelegateTests: XCTestCase {
         XCTAssertTrue(mockAppDelegate.didFailToRegisterForRemoteNotificationsCalled)
         XCTAssertEqual((mockAppDelegate.errorReceived as NSError?)?.domain, "test")
         XCTAssertTrue(mockMessagingPush.deleteDeviceTokenCalled)
-    }
-
-    // MARK: - Tests for UNUserNotificationCenterDelegate methods
-
-    func testUserNotificationCenterWillPresent_whenCalled_thenWrappedDelegateIsCalled() {
-        // Setup
-        var completionHandlerCalled = false
-        let completionHandler: (UNNotificationPresentationOptions) -> Void = { _ in
-            completionHandlerCalled = true
-        }
-
-        _ = appDelegate.application(UIApplication.shared, didFinishLaunchingWithOptions: nil)
-
-        // Call the method
-        appDelegate.userNotificationCenter(UNUserNotificationCenter.current(), willPresent: UNNotification.testInstance, withCompletionHandler: completionHandler)
-
-        // Verify behavior
-        XCTAssertTrue(mockNotificationCenterDelegate.willPresentNotificationCalled)
-        XCTAssertTrue(completionHandlerCalled)
-    }
-
-    func testUserNotificationCenterWillPresent_whenWrappedDelegateDoesntImplementMethod_thenDefaultHandlingIsUsed() {
-        // Setup
-        var completionHandlerCalled = false
-        var presentationOptions: UNNotificationPresentationOptions?
-        let completionHandler: (UNNotificationPresentationOptions) -> Void = { options in
-            completionHandlerCalled = true
-            presentationOptions = options
-        }
-
-        // Make sure the delegate doesn't respond to willPresent method
-        mockNotificationCenterDelegate.respondsToSelectors = [
-            #selector(UNUserNotificationCenterDelegate.userNotificationCenter(_:willPresent:withCompletionHandler:)): false
-        ]
-
-        _ = appDelegate.application(UIApplication.shared, didFinishLaunchingWithOptions: nil)
-
-        // Call the method
-        appDelegate.userNotificationCenter(UNUserNotificationCenter.current(), willPresent: UNNotification.testInstance, withCompletionHandler: completionHandler)
-
-        // Verify behavior
-        XCTAssertFalse(mockNotificationCenterDelegate.willPresentNotificationCalled)
-        XCTAssertTrue(completionHandlerCalled)
-
-        // Verify default presentation options based on iOS version
-        if #available(iOS 14.0, *) {
-            XCTAssertEqual(presentationOptions, [.list, .banner, .badge, .sound])
-        } else {
-            XCTAssertEqual(presentationOptions, [.alert, .badge, .sound])
-        }
-    }
-
-    func testUserNotificationCenterWillPresent_whenWrappedDelegateCallsCompletionHandlerAsync_thenCompletionHandlerIsCalledExactlyOnce() {
-        // Regression test: previously the SDK called completionHandler a second time with its own default options
-        // when the wrapped delegate deferred the call (e.g. a React Native JS bridge calling back from the JS thread).
-        let expectation = XCTestExpectation(description: "Completion handler called")
-        expectation.assertForOverFulfill = true
-        var callCount = 0
-        let completionHandler: (UNNotificationPresentationOptions) -> Void = { _ in
-            callCount += 1
-            expectation.fulfill()
-        }
-
-        mockNotificationCenterDelegate.callWillPresentHandlerAsync = true
-
-        _ = appDelegate.application(UIApplication.shared, didFinishLaunchingWithOptions: nil)
-        appDelegate.userNotificationCenter(UNUserNotificationCenter.current(), willPresent: UNNotification.testInstance, withCompletionHandler: completionHandler)
-
-        wait(for: [expectation], timeout: 1.0)
-
-        XCTAssertEqual(callCount, 1)
-        XCTAssertTrue(mockNotificationCenterDelegate.willPresentNotificationCalled)
-    }
-
-    func testUserNotificationCenterWillPresent_whenWrappedDelegateDoesntImplementMethodAndShowPushAppInForegroundIsFalse_thenNotificationIsNotShown() {
-        // Setup
-        var presentationOptions: UNNotificationPresentationOptions?
-        let completionHandler: (UNNotificationPresentationOptions) -> Void = { options in
-            presentationOptions = options
-        }
-
-        // Create app delegate with showPushAppInForeground: false
-        appDelegate = CioProviderAgnosticAppDelegate(
-            messagingPush: mockMessagingPush,
-            userNotificationCenter: { self.mockNotificationCenter },
-            appDelegate: mockAppDelegate,
-            config: { self.createMockConfig(showPushAppInForeground: false) },
-            logger: mockLogger
-        )
-
-        // Make sure the delegate doesn't respond to willPresent method
-        mockNotificationCenterDelegate.respondsToSelectors = [
-            #selector(UNUserNotificationCenterDelegate.userNotificationCenter(_:willPresent:withCompletionHandler:)): false
-        ]
-
-        _ = appDelegate.application(UIApplication.shared, didFinishLaunchingWithOptions: nil)
-
-        // Call the method
-        appDelegate.userNotificationCenter(UNUserNotificationCenter.current(), willPresent: UNNotification.testInstance, withCompletionHandler: completionHandler)
-
-        // Verify behavior - should not show notification
-        XCTAssertEqual(presentationOptions, [])
-    }
-
-    func testUserNotificationCenterDidReceive_whenNotificationCenterIntegrationIsEnabled_thenWrappedDelegateAndMessagingPushAreCalled() {
-        var completionHandlerCalled = false
-        let completionHandler = {
-            completionHandlerCalled = true
-        }
-        _ = appDelegate.application(UIApplication.shared, didFinishLaunchingWithOptions: nil)
-
-        // Call the method
-        appDelegate.userNotificationCenter(UNUserNotificationCenter.current(), didReceive: UNNotificationResponse.testInstance, withCompletionHandler: completionHandler)
-
-        // Verify behavior
-        XCTAssertTrue(mockNotificationCenterDelegate.didReceiveNotificationResponseCalled)
-        XCTAssertTrue(completionHandlerCalled)
-    }
-
-    func testUserNotificationCenterDidReceive_whenWrappedDelegateCallsCompletionHandlerAsync_thenCompletionHandlerIsCalledExactlyOnce() {
-        // Regression test: previously the SDK called completionHandler a second time when the wrapped delegate
-        // deferred the call (e.g. a React Native JS bridge calling back from the JS thread).
-        let expectation = XCTestExpectation(description: "Completion handler called")
-        expectation.assertForOverFulfill = true
-        var callCount = 0
-        let completionHandler: () -> Void = {
-            callCount += 1
-            expectation.fulfill()
-        }
-
-        mockNotificationCenterDelegate.callDidReceiveHandlerAsync = true
-
-        _ = appDelegate.application(UIApplication.shared, didFinishLaunchingWithOptions: nil)
-        appDelegate.userNotificationCenter(UNUserNotificationCenter.current(), didReceive: UNNotificationResponse.testInstance, withCompletionHandler: completionHandler)
-
-        wait(for: [expectation], timeout: 1.0)
-
-        XCTAssertEqual(callCount, 1)
-        XCTAssertTrue(mockNotificationCenterDelegate.didReceiveNotificationResponseCalled)
-    }
-
-    func testUserNotificationCenterDidReceive_whenWrappedNotificationCenterDelegateIsNil_thenNotificationCompletionHandlerIsCalled() {
-        // Create custom app delegate
-        appDelegate = CioProviderAgnosticAppDelegate(
-            messagingPush: mockMessagingPush,
-            userNotificationCenter: { self.mockNotificationCenter },
-            appDelegate: mockAppDelegate,
-            config: { self.createMockConfig(autoTrackPushEvents: false) },
-            logger: mockLogger
-        )
-        var completionHandlerCalled = false
-        let completionHandler = {
-            completionHandlerCalled = true
-        }
-        _ = appDelegate.application(UIApplication.shared, didFinishLaunchingWithOptions: nil)
-
-        // Call the method
-        appDelegate.userNotificationCenter(UNUserNotificationCenter.current(), didReceive: UNNotificationResponse.testInstance, withCompletionHandler: completionHandler)
-
-        // Verify behavior
-        XCTAssertTrue(completionHandlerCalled)
     }
 
     // MARK: - Tests for method forwarding
@@ -351,17 +168,6 @@ class CioProviderAgnosticAppDelegateTests: XCTestCase {
     }
 
     // MARK: - Tests for extension methods
-
-    func testUserNotificationCenterOpenSettingsFor_whenCalled_thenWrappedDelegateIsCalled() {
-        // Setup
-        _ = appDelegate.application(UIApplication.shared, didFinishLaunchingWithOptions: nil)
-
-        // Call the method
-        appDelegate.userNotificationCenter(UNUserNotificationCenter.current(), openSettingsFor: UNNotification.testInstance)
-
-        // Verify behavior
-        XCTAssertTrue(mockNotificationCenterDelegate.openSettingsForNotificationCalled)
-    }
 
     func testApplicationContinueUserActivity_whenCalled_thenWrappedDelegateIsCalled() {
         // Setup

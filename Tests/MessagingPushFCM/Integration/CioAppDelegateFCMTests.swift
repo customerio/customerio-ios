@@ -78,6 +78,7 @@ class CioAppDelegateFCMTests: XCTestCase {
         UNUserNotificationCenter.unswizzleNotificationCenter()
 
         MessagingPush.appDelegateIntegratedExplicitly = false
+        MessagingPush.resetNotificationCenterDelegate()
 
         super.tearDown()
     }
@@ -190,8 +191,8 @@ class CioAppDelegateFCMTests: XCTestCase {
             completionHandlerCalled = true
         }
 
-        // Call the method
-        appDelegateFCM.userNotificationCenter(UNUserNotificationCenter.current(), didReceive: UNNotificationResponse.testInstance, withCompletionHandler: completionHandler)
+        // Call through the installed CioNotificationCenterDelegate
+        mockNotificationCenter.delegate?.userNotificationCenter?(UNUserNotificationCenter.current(), didReceive: UNNotificationResponse.testInstance, withCompletionHandler: completionHandler)
 
         // Verify behavior
         XCTAssertTrue(mockNotificationCenterDelegate.didReceiveNotificationResponseCalled)

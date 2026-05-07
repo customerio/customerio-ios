@@ -1,5 +1,7 @@
 import Foundation
 import SharedTests
+import UIKit
+import UserNotifications
 import XCTest
 
 @testable import CioInternalCommon
@@ -11,33 +13,50 @@ class MessagingPushTest: IntegrationTest {
         nil
     }
 
-    private let automaticPushClickHandlingMock = AutomaticPushClickHandlingMock()
-
     override func setUp() {
         super.setUp()
+        UNUserNotificationCenter.swizzleNotificationCenter()
+    }
 
-        mockCollection.add(mock: automaticPushClickHandlingMock)
-
-        DIGraphShared.shared.override(
-            value: automaticPushClickHandlingMock, forType: AutomaticPushClickHandling.self
-        )
+    override func tearDown() {
+        UNUserNotificationCenter.unswizzleNotificationCenter()
+        MessagingPush.resetNotificationCenterDelegate()
+        super.tearDown()
     }
 
     // MARK: initialize
 
-    func test_initialize_givenDefaultModuleConfigOptions_expectStartAutoPushClickHandling() {
+    func test_initialize_whenAutoTrackPushEventsIsTrue_thenNotificationDelegateIsInstalled() {
         MessagingPush.initialize()
 
-        XCTAssertEqual(automaticPushClickHandlingMock.startCallsCount, 1)
+        XCTAssertTrue(UNUserNotificationCenter.current().delegate is CioNotificationCenterDelegate)
     }
 
-    func test_initialize_givenCustomerDisabledAutoPushClickHandling_expectDoNotEnableFeature() {
+    func test_initialize_whenAutoTrackPushEventsIsFalse_thenNotificationDelegateIsNotInstalled() {
         MessagingPush.initialize(
             withConfig: MessagingPushConfigBuilder()
                 .autoTrackPushEvents(false)
                 .build()
         )
 
-        XCTAssertFalse(automaticPushClickHandlingMock.startCalled)
+        XCTAssertFalse(UNUserNotificationCenter.current().delegate is CioNotificationCenterDelegate)
+    }
+
+    func test_initialize_whenAutoTrackPushEventsIsTrue_thenExistingDelegateIsWrapped() {
+        let existingDelegate = MockNotificationCenterDelegate()
+        UNUserNotificationCenter.current().delegate = existingDelegate
+
+        MessagingPush.initialize()
+
+        // The proxy should be installed and the existing delegate captured inside it
+        XCTAssertTrue(UNUserNotificationCenter.current().delegate is CioNotificationCenterDelegate)
+        // Verify the wrapped delegate is called through the proxy
+        var completionHandlerCalled = false
+        UNUserNotificationCenter.current().delegate?.userNotificationCenter?(
+            UNUserNotificationCenter.current(),
+            willPresent: UNNotification.testInstance,
+            withCompletionHandler: { _ in completionHandlerCalled = true }
+        )
+        XCTAssertTrue(existingDelegate.willPresentNotificationCalled)
     }
 }
