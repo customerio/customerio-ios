@@ -94,4 +94,5 @@ class MessagingPushNotificationDelegateTests: XCTestCase {
         XCTAssertTrue(secondDelegate is CioNotificationCenterDelegate)
         XCTAssertFalse(firstDelegate === secondDelegate)
     }
+
 }

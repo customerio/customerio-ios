@@ -111,6 +111,12 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
 
     @_spi(Internal)
     @available(iOSApplicationExtension, unavailable)
+    public var installedNotificationCenterDelegate: CioNotificationCenterDelegate? {
+        notificationCenterDelegate as? CioNotificationCenterDelegate
+    }
+
+    @_spi(Internal)
+    @available(iOSApplicationExtension, unavailable)
     public static func installNotificationCenterDelegate(
         wrapping wrappedDelegate: UNUserNotificationCenterDelegate?,
         centerProvider: UserNotificationCenterInstance

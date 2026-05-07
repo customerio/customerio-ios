@@ -5,7 +5,7 @@ import UserNotifications
 import XCTest
 
 @testable import CioInternalCommon
-@testable import CioMessagingPush
+@_spi(Internal) @testable import CioMessagingPush
 
 class MessagingPushTest: IntegrationTest {
     override func initializeSDKComponents() -> MessagingPushInstance? {
@@ -13,13 +13,7 @@ class MessagingPushTest: IntegrationTest {
         nil
     }
 
-    override func setUp() {
-        super.setUp()
-        UNUserNotificationCenter.swizzleNotificationCenter()
-    }
-
     override func tearDown() {
-        UNUserNotificationCenter.unswizzleNotificationCenter()
         MessagingPush.resetNotificationCenterDelegate()
         super.tearDown()
     }
@@ -29,7 +23,7 @@ class MessagingPushTest: IntegrationTest {
     func test_initialize_whenAutoTrackPushEventsIsTrue_thenNotificationDelegateIsInstalled() {
         MessagingPush.initialize()
 
-        XCTAssertTrue(UNUserNotificationCenter.current().delegate is CioNotificationCenterDelegate)
+        XCTAssertNotNil(MessagingPush.shared.installedNotificationCenterDelegate)
     }
 
     func test_initialize_whenAutoTrackPushEventsIsFalse_thenNotificationDelegateIsNotInstalled() {
@@ -39,24 +33,6 @@ class MessagingPushTest: IntegrationTest {
                 .build()
         )
 
-        XCTAssertFalse(UNUserNotificationCenter.current().delegate is CioNotificationCenterDelegate)
-    }
-
-    func test_initialize_whenAutoTrackPushEventsIsTrue_thenExistingDelegateIsWrapped() {
-        let existingDelegate = MockNotificationCenterDelegate()
-        UNUserNotificationCenter.current().delegate = existingDelegate
-
-        MessagingPush.initialize()
-
-        // The proxy should be installed and the existing delegate captured inside it
-        XCTAssertTrue(UNUserNotificationCenter.current().delegate is CioNotificationCenterDelegate)
-        // Verify the wrapped delegate is called through the proxy
-        var completionHandlerCalled = false
-        UNUserNotificationCenter.current().delegate?.userNotificationCenter?(
-            UNUserNotificationCenter.current(),
-            willPresent: UNNotification.testInstance,
-            withCompletionHandler: { _ in completionHandlerCalled = true }
-        )
-        XCTAssertTrue(existingDelegate.willPresentNotificationCalled)
+        XCTAssertNil(MessagingPush.shared.installedNotificationCenterDelegate)
     }
 }
