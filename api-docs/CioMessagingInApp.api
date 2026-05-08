@@ -84,17 +84,7 @@ public final class CioMessagingInApp.InboxMessage {
 	public final val priority: Int?;
 	public final val properties: Map<String, Any>;
 	public var description: String;
-	public fun init(
-    queueId: String,
-    deliveryId: String?,
-    expiry: Date?,
-    sentAt: Date,
-    topics: List<String>,
-    type: String,
-    opened: Boolean,
-    priority: Int?,
-    properties: List<String: Any>
-);
+	public fun init(queueId: String, deliveryId: String?, expiry: Date?, sentAt: Date, topics: List<String>, type: String, opened: Boolean, priority: Int?, properties: List<String: Any>);
 	public fun func == (lhs: InboxMessage, rhs: InboxMessage) -> Boolean;
 }
 public enum CioMessagingInApp.InboxMessageFactory {
@@ -114,9 +104,7 @@ public final class CioMessagingInApp.InlineMessageBridgeView {
 	public fun func onViewDetached();
 	public fun func onMessageRendered(width: CGFloat, height: CGFloat);
 	public fun func onNoMessageToDisplay();
-	public fun func onInlineButtonAction(
-    message: Message, currentRoute: String, action: String, name: String
-) -> Boolean;
+	public fun func onInlineButtonAction(message: Message, currentRoute: String, action: String, name: String) -> Boolean;
 	public fun func willChangeMessage(newTemplateId: String, onComplete: @escaping () -> Unit);
 }
 public interface CioMessagingInApp.InlineMessageBridgeViewDelegate {
@@ -142,12 +130,7 @@ public interface CioMessagingInApp.InlineMessageUIViewDelegate {
 public final class CioMessagingInApp.Message {
 	public var isEmbedded: Boolean;
 	public var elementId: String?;
-	public fun init(
-    messageId: String,
-    queueId: String? = nil,
-    priority: Int? = nil,
-    properties: List<String: Any>?
-);
+	public fun init(messageId: String, queueId: String? = nil, priority: Int? = nil, properties: List<String: Any>?);
 }
 public enum CioMessagingInApp.MessagePosition {
 }
@@ -197,6 +180,5 @@ public interface CioMessagingInApp.StoreSubscriber {
 public final class CioMessagingInApp.Subscription {
 	public var observer: ((State?, State) -> ())?;
 	public fun init(sink: @escaping (@escaping (State?, State) -> Unit) -> Unit);
-	public fun func skipRepeats(_ isRepeat: @escaping (_ oldState: State, _ newState: State) -> Boolean)
-    -> Subscription<State>;
+	public fun func skipRepeats(_ isRepeat: @escaping (_ oldState: State, _ newState: State) -> Boolean) -> Subscription<State>;
 }
