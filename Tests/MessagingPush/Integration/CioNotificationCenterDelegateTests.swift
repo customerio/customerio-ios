@@ -180,6 +180,26 @@ class CioNotificationCenterDelegateTests: XCTestCase {
         XCTAssertTrue(completionHandlerCalled)
     }
 
+    func testUserNotificationCenterWillPresent_whenWrappedDelegateIsNil_thenDefaultHandlingIsUsed() {
+        let delegate = CioNotificationCenterDelegate(
+            messagingPush: mockMessagingPush,
+            config: { self.createMockConfig(showPushAppInForeground: true) },
+            wrappedDelegate: nil
+        )
+        var presentationOptions: UNNotificationPresentationOptions?
+        delegate.userNotificationCenter(
+            UNUserNotificationCenter.current(),
+            willPresent: UNNotification.testInstance,
+            withCompletionHandler: { options in presentationOptions = options }
+        )
+
+        if #available(iOS 14.0, *) {
+            XCTAssertEqual(presentationOptions, [.list, .banner, .badge, .sound])
+        } else {
+            XCTAssertEqual(presentationOptions, [.alert, .badge, .sound])
+        }
+    }
+
     // MARK: - openSettingsFor
 
     func testUserNotificationCenterOpenSettingsFor_whenCalled_thenWrappedDelegateIsCalled() {

@@ -42,6 +42,28 @@ class MessagingPushTest: IntegrationTest {
         XCTAssertNil(MessagingPush.shared.installedNotificationCenterDelegate)
     }
 
+    /// Verifies that the tracking path inside CioNotificationCenterDelegate — which casts messagingPush
+    /// to the concrete MessagingPush type — does not swallow the completionHandler.
+    /// initialize() is intentionally not called: the nil implementation returns early without
+    /// accessing push properties (which would crash on unsafeBitCast test stubs), so the
+    /// test confirms the cast succeeds and the graceful nil-implementation path still calls completionHandler.
+    func test_didReceive_whenMessagingPushIsConcreteType_thenCompletionHandlerIsCalled() {
+        let delegate = CioNotificationCenterDelegate(
+            messagingPush: MessagingPush.shared,
+            config: { MessagingPush.moduleConfig },
+            wrappedDelegate: nil
+        )
+
+        var completionHandlerCalled = false
+        delegate.userNotificationCenter(
+            UNUserNotificationCenter.current(),
+            didReceive: UNNotificationResponse.testInstance,
+            withCompletionHandler: { completionHandlerCalled = true }
+        )
+
+        XCTAssertTrue(completionHandlerCalled)
+    }
+
     func test_initialize_whenAutoTrackPushEventsIsTrue_thenExistingDelegateIsWrapped() {
         let existingDelegate = MockNotificationCenterDelegate()
         UNUserNotificationCenter.current().delegate = existingDelegate
