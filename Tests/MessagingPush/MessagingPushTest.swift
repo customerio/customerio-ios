@@ -13,7 +13,13 @@ class MessagingPushTest: IntegrationTest {
         nil
     }
 
+    override func setUp() {
+        super.setUp()
+        UNUserNotificationCenter.swizzleNotificationCenter()
+    }
+
     override func tearDown() {
+        UNUserNotificationCenter.unswizzleNotificationCenter()
         MessagingPush.resetNotificationCenterDelegate()
         super.tearDown()
     }
@@ -34,5 +40,20 @@ class MessagingPushTest: IntegrationTest {
         )
 
         XCTAssertNil(MessagingPush.shared.installedNotificationCenterDelegate)
+    }
+
+    func test_initialize_whenAutoTrackPushEventsIsTrue_thenExistingDelegateIsWrapped() {
+        let existingDelegate = MockNotificationCenterDelegate()
+        UNUserNotificationCenter.current().delegate = existingDelegate
+
+        MessagingPush.initialize()
+
+        XCTAssertNotNil(MessagingPush.shared.installedNotificationCenterDelegate)
+        MessagingPush.shared.installedNotificationCenterDelegate?.userNotificationCenter(
+            UNUserNotificationCenter.current(),
+            willPresent: UNNotification.testInstance,
+            withCompletionHandler: { _ in }
+        )
+        XCTAssertTrue(existingDelegate.willPresentNotificationCalled)
     }
 }
