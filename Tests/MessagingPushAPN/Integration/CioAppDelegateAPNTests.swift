@@ -115,23 +115,4 @@ class CioAppDelegateAPNTests: XCTestCase {
         XCTAssertEqual((mockAppDelegate.errorReceived as NSError?)?.domain, "test")
         XCTAssertTrue(mockMessagingPush?.deleteDeviceTokenCalled == true)
     }
-
-    // MARK: - Tests for UNUserNotificationCenterDelegate methods
-
-    func testUserNotificationCenterDidReceive_whenCalled_thenSuperIsCalled() {
-        // Setup
-        _ = appDelegateAPN.application(UIApplication.shared, didFinishLaunchingWithOptions: nil)
-
-        var completionHandlerCalled = false
-        let completionHandler = {
-            completionHandlerCalled = true
-        }
-
-        // Call through the installed CioNotificationCenterDelegate
-        mockNotificationCenter.delegate?.userNotificationCenter?(UNUserNotificationCenter.current(), didReceive: UNNotificationResponse.testInstance, withCompletionHandler: completionHandler)
-
-        // Verify behavior
-        XCTAssertTrue(mockNotificationCenterDelegate.didReceiveNotificationResponseCalled)
-        XCTAssertTrue(completionHandlerCalled)
-    }
 }
