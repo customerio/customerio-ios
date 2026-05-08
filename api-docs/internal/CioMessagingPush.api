@@ -2,7 +2,9 @@ public final class CioMessagingPush.MessagingPush {
 	public var appDelegateIntegratedExplicitly: Boolean;
 	public var shared: MessagingPush;
 	public var moduleConfig: MessagingPushConfigOptions;
-	public fun func initialize(withConfig config: MessagingPushConfigOptions = MessagingPushConfigBuilder().build()) -> MessagingPushInstance;
+	public fun func initialize(
+    withConfig config: MessagingPushConfigOptions = MessagingPushConfigBuilder().build()
+) -> MessagingPushInstance;
 	public fun func registerDeviceToken(_ deviceToken: String);
 	public fun func deleteDeviceToken();
 	public fun func trackMetric(
