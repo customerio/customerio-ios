@@ -42,7 +42,21 @@ jobs:
       new_release_published: ${{ steps.semantic-release.outputs.new_release_published }}
       new_release_version: ${{ steps.semantic-release.outputs.new_release_version }}
     steps:
+      # Mint the App installation token before checkout so we can pass it to actions/checkout.
+      # This is required because actions/checkout persists its token into local git config
+      # (http.https://github.com/.extraheader); whatever token the App-bypass ruleset trusts
+      # must be the one persisted, otherwise semantic-release's `git push` falls back to
+      # github-actions[bot] and is rejected with GH013.
+      - name: Generate App installation token
+        id: generate_token
+        uses: actions/create-github-app-token@1b10c78c7865c340bc4f6099eb2f838309f1e8c3 # v3.1.1
+        with:
+          client-id: ${{ secrets.CIO_APP_CLIENT_ID }}
+          private-key: ${{ secrets.CIO_APP_SECRET }}
+
       - uses: actions/checkout@v4
+        with:
+          token: ${{ steps.generate_token.outputs.token }}
 
       # CLI to replace strings in files. The CLI recommends using `cargo install` which is slow. This Action is fast because it downloads pre-built binaries.
       # If using sd on macos, "brew install" works great. for Linux, this is the recommended way.
@@ -50,7 +64,7 @@ jobs:
         # uses: kenji-miyake/setup-sd@59a1bd7bba077f6c491f04cd9d24b524ea2db4b6 # v1.1.1
         uses: levibostian/setup-sd@cbdeed93d4fe03f9e36b73bb6d9e7c3c4805e1f9 # add-file-extension # Using fork until upstream Action has bug fixed in it.
 
-      # We want to track the SDK binary size for each release. 
+      # We want to track the SDK binary size for each release.
       # The reports is pushed by semantic-release action below by including files listed in the `assets` array in the `.releaserc` file.
       - name: Write SDK size reports to file to include in the release
         run: |
@@ -61,17 +75,9 @@ jobs:
           echo "Verifying the reports got written to the file system. If the files are not empty, they were generated successfully..."
           echo "SDK binary size report:"
           head reports/sdk-binary-size.txt
-    
+
           echo "SDK binary size including dependencies report:"
           head reports/sdk-binary-size-including-dependencies.txt
-          
-          
-      - name: 'Generate token'
-        id: generate_token
-        uses: tibdex/github-app-token@3beb63f4bd073e61482598c45c71c1019b59b73a # v2.1.0
-        with:
-          app_id: ${{ secrets.CIO_APP_ID }}
-          private_key: ${{ secrets.CIO_APP_SECRET }}
     
       # Semantic-release tool is used to:
       # 1. Determine the next semantic version for the software during deployment.
