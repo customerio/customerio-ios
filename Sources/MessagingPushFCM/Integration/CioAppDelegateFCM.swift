@@ -16,7 +16,6 @@ open class CioAppDelegate: CioProviderAgnosticAppDelegate, FirebaseServiceDelega
         DIGraphShared.shared.logger.error("CIO: This no-argument initializer should not to be used. Added since UIKit's AppDelegate initialization process crashes if for no-arg init is missing.")
         self.init(
             messagingPush: MessagingPush.shared,
-            userNotificationCenter: nil,
             appDelegate: nil,
             logger: DIGraphShared.shared.logger
         )
@@ -57,7 +56,6 @@ open class CioAppDelegateWrapper<UserAppDelegate: CioAppDelegateType>: CioAppDel
     public init() {
         super.init(
             messagingPush: MessagingPush.shared,
-            userNotificationCenter: { UNUserNotificationCenter.current() },
             appDelegate: UserAppDelegate(),
             config: { MessagingPush.moduleConfig },
             logger: DIGraphShared.shared.logger

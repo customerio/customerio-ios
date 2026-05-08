@@ -47,7 +47,6 @@ class CioProviderAgnosticAppDelegateTests: XCTestCase {
         // Create AppDelegate with mocks
         appDelegate = CioProviderAgnosticAppDelegate(
             messagingPush: mockMessagingPush,
-            userNotificationCenter: { self.mockNotificationCenter },
             appDelegate: mockAppDelegate,
             config: { self.createMockConfig() },
             logger: mockLogger
@@ -92,7 +91,6 @@ class CioProviderAgnosticAppDelegateTests: XCTestCase {
     func testDidFinishLaunchingWithOptions_whenValidConfigIsUsed_thenTokenIsNotRequested() {
         appDelegate = CioProviderAgnosticAppDelegate(
             messagingPush: mockMessagingPush,
-            userNotificationCenter: { self.mockNotificationCenter },
             appDelegate: mockAppDelegate,
             config: { self.createMockConfig(autoFetchDeviceToken: false) },
             logger: mockLogger

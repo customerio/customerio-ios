@@ -36,14 +36,12 @@ open class CioProviderAgnosticAppDelegate: CioAppDelegateType {
 
     @_spi(Internal) public var config: ConfigInstance?
 
-    private var userNotificationCenter: UserNotificationCenterInstance?
     private let wrappedAppDelegate: UIApplicationDelegate?
 
     override public convenience init() {
         DIGraphShared.shared.logger.error("CIO: This no-argument initializer should not to be used. Added since UIKit's AppDelegate initialization process crashes if for no-arg init is missing.")
         self.init(
             messagingPush: MessagingPush.shared,
-            userNotificationCenter: { UNUserNotificationCenter.current() },
             appDelegate: nil,
             config: nil,
             logger: DIGraphShared.shared.logger
@@ -52,13 +50,11 @@ open class CioProviderAgnosticAppDelegate: CioAppDelegateType {
 
     public init(
         messagingPush: MessagingPushInstance,
-        userNotificationCenter: UserNotificationCenterInstance?,
         appDelegate: CioAppDelegateType? = nil,
         config: ConfigInstance? = nil,
         logger: Logger
     ) {
         self.messagingPush = messagingPush
-        self.userNotificationCenter = userNotificationCenter
         self.logger = logger
         self.config = config
         self.wrappedAppDelegate = appDelegate

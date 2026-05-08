@@ -45,7 +45,6 @@ class CioAppDelegateAPNTests: XCTestCase {
         // Create CioAppDelegate with mocks
         appDelegateAPN = CioAppDelegate(
             messagingPush: mockMessagingPush,
-            userNotificationCenter: { self.mockNotificationCenter },
             appDelegate: mockAppDelegate,
             config: { self.createMockConfig() },
             logger: mockLogger
