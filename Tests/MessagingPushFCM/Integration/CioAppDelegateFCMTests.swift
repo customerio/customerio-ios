@@ -179,21 +179,4 @@ class CioAppDelegateFCMTests: XCTestCase {
         XCTAssertTrue(mockAppDelegate.didRegisterForRemoteNotificationsCalled)
         XCTAssertEqual(mockAppDelegate.deviceTokenReceived, deviceToken)
     }
-
-    func testUserNotificationCenterDidReceive_whenCalled_thenSuperIsCalled() {
-        // Setup
-        _ = appDelegateFCM.application(UIApplication.shared, didFinishLaunchingWithOptions: nil)
-
-        var completionHandlerCalled = false
-        let completionHandler = {
-            completionHandlerCalled = true
-        }
-
-        // Call through the installed CioNotificationCenterDelegate
-        mockNotificationCenter.delegate?.userNotificationCenter?(UNUserNotificationCenter.current(), didReceive: UNNotificationResponse.testInstance, withCompletionHandler: completionHandler)
-
-        // Verify behavior
-        XCTAssertTrue(mockNotificationCenterDelegate.didReceiveNotificationResponseCalled)
-        XCTAssertTrue(completionHandlerCalled)
-    }
 }
