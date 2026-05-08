@@ -4,10 +4,7 @@ public final class CioDataPipelines.AutoTrackingScreenViews {
 	public var diGraph: DIGraphShared;
 	public var filterAutoScreenViewEvents: ((UIViewController) -> Boolean)?;
 	public var autoScreenViewBody: (() -> Map<String, Any>)?;
-	public fun init(
-    filterAutoScreenViewEvents: ((UIViewController) -> Boolean)? = nil,
-    autoScreenViewBody: (() -> List<String: Any>)? = nil
-);
+	public fun init(filterAutoScreenViewEvents: ((UIViewController) -> Boolean)? = nil, autoScreenViewBody: (() -> List<String: Any>)? = nil);
 }
 public final class CioDataPipelines.CustomerIODestination {
 }
@@ -53,11 +50,7 @@ public interface CioDataPipelines.DataPipelineInstance {
 public final class CioDataPipelines.SDKConfigBuilder {
 	public fun init(cdpApiKey: String);
 	public fun func region(_ region: Region) -> SDKConfigBuilder;
-	public fun func autoTrackUIKitScreenViews(
-    enabled: Boolean = true,
-    autoScreenViewBody: (() -> List<String: Any>)? = nil,
-    filterAutoScreenViewEvents: ((UIViewController) -> Boolean)? = nil
-) -> SDKConfigBuilder;
+	public fun func autoTrackUIKitScreenViews(enabled: Boolean = true, autoScreenViewBody: (() -> List<String: Any>)? = nil, filterAutoScreenViewEvents: ((UIViewController) -> Boolean)? = nil) -> SDKConfigBuilder;
 	public fun func logLevel(_ logLevel: CioLogLevel) -> SDKConfigBuilder;
 	public fun func apiHost(_ apiHost: String) -> SDKConfigBuilder;
 	public fun func cdnHost(_ cdnHost: String) -> SDKConfigBuilder;

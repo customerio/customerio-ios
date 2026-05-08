@@ -113,7 +113,14 @@ class SwiftApiFormatter
     
     # Convert Swift syntax to more generic format
     cleaned = convert_swift_types(cleaned)
-    
+
+    # Normalize whitespace: collapse newlines and runs of spaces so output is
+    # stable across Xcode versions (the compiler's AST printer wraps long
+    # signatures differently between releases). The paren passes remove the
+    # spaces that appear immediately after ( and before ) when a multi-line
+    # signature is collapsed — those spaces don't appear in single-line output.
+    cleaned = cleaned.gsub(/\s+/, ' ').gsub(/\( +/, '(').gsub(/ +\)/, ')').strip
+
     "public fun #{cleaned}"
   end
 
