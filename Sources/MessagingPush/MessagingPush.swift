@@ -1,18 +1,18 @@
 import CioInternalCommon
 import Foundation
+
 #if canImport(UserNotifications)
 import UserNotifications
 #endif
 
-/**
- Swift code goes into this module that are common to *all* of the Messaging Push modules (APN, FCM, etc).
- So, performing an HTTP request to the API with a device token goes here.
- */
+/// Swift code goes into this module that are common to *all* of the Messaging Push modules (APN, FCM, etc).
+/// So, performing an HTTP request to the API with a device token goes here.
 public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, MessagingPushInstance {
     @_spi(Internal) public static var appDelegateIntegratedExplicitly: Bool = false
 
     @Atomic public private(set) static var shared = MessagingPush()
-    @Atomic public private(set) static var moduleConfig: MessagingPushConfigOptions = MessagingPushConfigBuilder().build()
+    @Atomic public private(set) static var moduleConfig: MessagingPushConfigOptions =
+        MessagingPushConfigBuilder().build()
 
     private static let moduleName = "MessagingPush"
 
@@ -33,7 +33,10 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
     // In unit tests, any implementation of the interface works, while integration tests use the actual implementation.
 
     @discardableResult
-    static func setUpSharedInstanceForUnitTest(implementation: MessagingPushInstance, diGraphShared: DIGraphShared, config: MessagingPushConfigOptions) -> MessagingPushInstance {
+    static func setUpSharedInstanceForUnitTest(
+        implementation: MessagingPushInstance, diGraphShared: DIGraphShared,
+        config: MessagingPushConfigOptions
+    ) -> MessagingPushInstance {
         // initialize static properties before implementation creation, as they may be directly used by other classes
         moduleConfig = config
         shared.globalDataStore = diGraphShared.globalDataStore
@@ -42,10 +45,16 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
     }
 
     @discardableResult
-    static func setUpSharedInstanceForIntegrationTest(diGraphShared: DIGraphShared, config: MessagingPushConfigOptions) -> MessagingPushInstance {
+    static func setUpSharedInstanceForIntegrationTest(
+        diGraphShared: DIGraphShared, config: MessagingPushConfigOptions
+    ) -> MessagingPushInstance {
         moduleConfig = config
-        let implementation = MessagingPushImplementation(diGraph: diGraphShared, moduleConfig: config)
-        return setUpSharedInstanceForUnitTest(implementation: implementation, diGraphShared: diGraphShared, config: config)
+        let implementation = MessagingPushImplementation(
+            diGraph: diGraphShared, moduleConfig: config
+        )
+        return setUpSharedInstanceForUnitTest(
+            implementation: implementation, diGraphShared: diGraphShared, config: config
+        )
     }
 
     static func resetTestEnvironment() {
@@ -65,7 +74,9 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
      */
     @discardableResult
     @available(iOSApplicationExtension, unavailable)
-    public static func initialize(withConfig config: MessagingPushConfigOptions = MessagingPushConfigBuilder().build()) -> MessagingPushInstance {
+    public static func initialize(
+        withConfig config: MessagingPushConfigOptions = MessagingPushConfigBuilder().build()
+    ) -> MessagingPushInstance {
         shared.initializeModuleIfNotAlready {
             // set moduleConfig before creating implementation instance as dependencies inside instance may directly use moduleConfig from MessagingPush.
             Self.moduleConfig = config
@@ -92,7 +103,8 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
     @available(iOSApplicationExtension, introduced: 13.0)
     @available(visionOSApplicationExtension, introduced: 1.0)
     @discardableResult
-    public static func initializeForExtension(withConfig config: MessagingPushConfigOptions) -> MessagingPushInstance {
+    public static func initializeForExtension(withConfig config: MessagingPushConfigOptions)
+        -> MessagingPushInstance {
         shared.initializeModuleIfNotAlready {
             // set moduleConfig before creating implementation instance as dependencies inside instance may directly use moduleConfig from MessagingPush.
             Self.moduleConfig = config
@@ -109,15 +121,13 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
         MessagingPushImplementation(diGraph: DIGraphShared.shared, moduleConfig: config)
     }
 
-    @_spi(Internal)
     @available(iOSApplicationExtension, unavailable)
-    public var installedNotificationCenterDelegate: CioNotificationCenterDelegate? {
+    var installedNotificationCenterDelegate: CioNotificationCenterDelegate? {
         notificationCenterDelegate as? CioNotificationCenterDelegate
     }
 
-    @_spi(Internal)
     @available(iOSApplicationExtension, unavailable)
-    public static func installNotificationCenterDelegate(
+    static func installNotificationCenterDelegate(
         wrapping wrappedDelegate: UNUserNotificationCenterDelegate?,
         centerProvider: UserNotificationCenterInstance
     ) {
@@ -208,15 +218,20 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
             let logger = DIGraphShared.shared.logger
             let pending = store.loadAll()
             guard !pending.isEmpty else {
-                logger.debug("Pending push delivery store: nothing to flush on MessagingPush startup")
+                logger.debug(
+                    "Pending push delivery store: nothing to flush on MessagingPush startup")
                 return
             }
 
             guard let pipeline = DIGraphShared.shared.getOptional(DataPipelineTracking.self) else {
-                logger.debug("Pending push delivery store: DataPipeline unavailable, skipping flush to preserve \(pending.count) metric(s)")
+                logger.debug(
+                    "Pending push delivery store: DataPipeline unavailable, skipping flush to preserve \(pending.count) metric(s)"
+                )
                 return
             }
-            logger.debug("Pending push delivery store: flushing \(pending.count) metric(s) on MessagingPush startup")
+            logger.debug(
+                "Pending push delivery store: flushing \(pending.count) metric(s) on MessagingPush startup"
+            )
             pending.forEach { metric in
                 pipeline.trackDeliveryEvent(
                     token: metric.deviceToken,
@@ -231,7 +246,9 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
                     "Pending push delivery store: failed to remove \(ids.count) flushed metric(s) (rows may re-send on next launch)"
                 )
             }
-            logger.debug("Pending push delivery store: finished flush attempt for \(pending.count) metric(s) on MessagingPush startup")
+            logger.debug(
+                "Pending push delivery store: finished flush attempt for \(pending.count) metric(s) on MessagingPush startup"
+            )
         }
     }
 }
@@ -272,7 +289,9 @@ extension DIGraphShared {
         if let overridden: RichPushDeliveryTracker = getOverriddenInstance() {
             deliveryTracker = overridden
         } else {
-            deliveryTracker = RichPushDeliveryTrackerImpl(httpClient: nseHttpClient, logger: logger)
+            deliveryTracker = RichPushDeliveryTrackerImpl(
+                httpClient: nseHttpClient, logger: logger
+            )
         }
 
         return (nseHttpClient, deliveryTracker)
