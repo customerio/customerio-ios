@@ -2,16 +2,15 @@
 @testable import CioLocation
 import Foundation
 
-struct MonitoredRegionRecord {
+struct MonitoredRegionRecord: Sendable {
     let identifier: String
     let center: LocationData
     let radius: Double
     let transitionTypes: Set<GeofenceTransition>
 }
 
-final class MockGeofenceRegionMonitor: GeofenceRegionMonitoring {
-    var onTransition: GeofenceTransitionHandler?
-
+actor MockGeofenceRegionMonitor: GeofenceRegionMonitoring {
+    private var onTransition: GeofenceTransitionHandler?
     private(set) var startedRegions: [MonitoredRegionRecord] = []
     private(set) var stoppedIdentifiers: [String] = []
     private(set) var stopAllCallCount = 0
@@ -19,6 +18,10 @@ final class MockGeofenceRegionMonitor: GeofenceRegionMonitoring {
 
     var monitoredRegionIdentifiers: Set<String> {
         activeIdentifiers
+    }
+
+    func setOnTransition(_ handler: GeofenceTransitionHandler?) {
+        onTransition = handler
     }
 
     func startMonitoring(identifier: String, center: LocationData, radius: Double, transitionTypes: Set<GeofenceTransition>) {
