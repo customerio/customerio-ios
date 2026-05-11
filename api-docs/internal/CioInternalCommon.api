@@ -50,12 +50,7 @@ public final class CioInternalCommon.CioAppGroupPendingPushDeliveryStore {
 	public fun func removeAll(ids: Set<UUID>) -> Boolean;
 }
 public final class CioInternalCommon.CioEventBusHandler {
-	public fun init(
-    eventBus: EventBus,
-    eventCache: EventCache,
-    eventStorage: EventStorage,
-    logger: Logger
-);
+	public fun init(eventBus: EventBus, eventCache: EventCache, eventStorage: EventStorage, logger: Logger);
 	public fun deinit;
 	public fun func loadEventsFromStorage() async;
 	public fun func addObserver<E: EventRepresentable>(_ eventType: E.Type, action: @escaping (E) -> Unit);
@@ -117,30 +112,15 @@ public interface CioInternalCommon.CustomerIOInstance {
 	public var registeredDeviceToken: String?;
 	public fun func setProfileAttributes(_ attributes: List<String: Any>);
 	public fun func identify(userId: String, traits: List<String: Any>?);
-	public fun func identify<RequestBody: Codable>(
-    userId: String,
-    // sourcery:Type=AnyEncodable
-    // sourcery:TypeCast="AnyEncodable(traits)"
-    traits: RequestBody?
-);
+	public fun func identify<RequestBody: Codable>(userId: String, // sourcery:Type=AnyEncodable // sourcery:TypeCast="AnyEncodable(traits)" traits: RequestBody?);
 	public fun func clearIdentify();
 	public fun func setDeviceAttributes(_ attributes: List<String: Any>);
 	public fun func registerDeviceToken(_ deviceToken: String);
 	public fun func deleteDeviceToken();
 	public fun func track(name: String, properties: List<String: Any>?);
-	public fun func track<RequestBody: Codable>(
-    name: String,
-    // sourcery:Type=AnyEncodable
-    // sourcery:TypeCast="AnyEncodable(properties)"
-    properties: RequestBody?
-);
+	public fun func track<RequestBody: Codable>(name: String, // sourcery:Type=AnyEncodable // sourcery:TypeCast="AnyEncodable(properties)" properties: RequestBody?);
 	public fun func screen(title: String, properties: List<String: Any>?);
-	public fun func screen<RequestBody: Codable>(
-    title: String,
-    // sourcery:Type=AnyEncodable
-    // sourcery:TypeCast="AnyEncodable(properties)"
-    properties: RequestBody?
-);
+	public fun func screen<RequestBody: Codable>(title: String, // sourcery:Type=AnyEncodable // sourcery:TypeCast="AnyEncodable(properties)" properties: RequestBody?);
 	public fun func trackMetric(deliveryID: String, event: Metric, deviceToken: String);
 }
 public interface CioInternalCommon.CustomerIOModule {
@@ -279,10 +259,7 @@ public interface CioInternalCommon.GlobalDataStore {
 	public fun func deleteAll();
 }
 public interface CioInternalCommon.HttpClient {
-	public fun func request(
-    _ params: HttpRequestParams,
-    onComplete: @escaping (Result<Data, HttpRequestError>) -> Unit
-);
+	public fun func request(_ params: HttpRequestParams, onComplete: @escaping (Result<Data, HttpRequestError>) -> Unit);
 	public fun func downloadFile(url: URL, fileType: DownloadFileType, onComplete: @escaping (URL?) -> Unit);
 	public fun func cancel(finishTasks: Boolean);
 }
@@ -297,11 +274,7 @@ public final class CioInternalCommon.HttpRequestParams {
 	public fun init(method: String, url: URL, headers: HttpHeaders?, body: Data?);
 }
 public interface CioInternalCommon.HttpRequestRunner {
-	public fun func request(
-    params: HttpRequestParams,
-    session: URLSession,
-    onComplete: @escaping (Data?, HTTPURLResponse?, Error?) -> Unit
-);
+	public fun func request(params: HttpRequestParams, session: URLSession, onComplete: @escaping (Data?, HTTPURLResponse?, Error?) -> Unit);
 	public fun func downloadFile(url: URL, fileType: DownloadFileType, session: URLSession, onComplete: @escaping (URL?) -> Unit);
 }
 public final class CioInternalCommon.IdentifyProfileQueueTaskData {
@@ -320,10 +293,7 @@ public final class CioInternalCommon.JsonAdapter {
 	public fun func fromJsonString(_ jsonString: String) -> List<String: Any>?;
 	public fun func fromJson<T: Decodable>(_ json: Data, logErrors: Boolean = true) -> T?;
 	public fun func toJson<T: Encodable>(_ obj: T) -> Data?;
-	public fun func toJsonString<T: Encodable>(
-    _ obj: T,
-    nilIfEmpty: Boolean = true
-) -> String?;
+	public fun func toJsonString<T: Encodable>(_ obj: T, nilIfEmpty: Boolean = true) -> String?;
 }
 public enum CioInternalCommon.KeyValueStorageKey {
 }
@@ -388,13 +358,7 @@ public final class CioInternalCommon.PendingPushDeliveryMetric {
 	public final val deviceToken: String;
 	public final val event: Metric;
 	public final val timestamp: Date;
-	public fun init(
-    id: UUID = UUID(),
-    deliveryId: String,
-    deviceToken: String,
-    event: Metric,
-    timestamp: Date
-);
+	public fun init(id: UUID = UUID(), deliveryId: String, deviceToken: String, event: Metric, timestamp: Date);
 }
 public interface CioInternalCommon.PendingPushDeliveryStore {
 	public var appGroupSuiteName: String?;
@@ -594,17 +558,8 @@ public final class CioInternalCommon.UIKitWrapperImpl {
 	public fun func continueNSUserActivity(webpageURL: URL) -> Boolean;
 }
 public final class CioInternalCommon.UrlRequestHttpRequestRunner {
-	public fun func request(
-    params: HttpRequestParams,
-    session: URLSession,
-    onComplete: @escaping (Data?, HTTPURLResponse?, Error?) -> Unit
-);
-	public fun func downloadFile(
-    url: URL,
-    fileType: DownloadFileType,
-    session: URLSession,
-    onComplete: @escaping (URL?) -> Unit
-);
+	public fun func request(params: HttpRequestParams, session: URLSession, onComplete: @escaping (Data?, HTTPURLResponse?, Error?) -> Unit);
+	public fun func downloadFile(url: URL, fileType: DownloadFileType, session: URLSession, onComplete: @escaping (URL?) -> Unit);
 }
 public interface CioInternalCommon.UserAgentUtil {
 	public fun func getUserAgentHeaderValue() -> String;

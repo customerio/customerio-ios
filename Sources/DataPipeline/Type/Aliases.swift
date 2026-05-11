@@ -1,5 +1,7 @@
 import CioAnalytics
-import CioInternalCommon
+// Re-exported so consumers can retroactively conform `CustomerIO` (declared in CioInternalCommon)
+// without an extra `import CioInternalCommon`. Required by Member Import Visibility (Xcode 16.3+).
+@_exported import CioInternalCommon
 import Foundation
 
 /*

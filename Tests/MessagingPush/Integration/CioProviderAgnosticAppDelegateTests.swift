@@ -208,6 +208,28 @@ class CioProviderAgnosticAppDelegateTests: XCTestCase {
         }
     }
 
+    func testUserNotificationCenterWillPresent_whenWrappedDelegateCallsCompletionHandlerAsync_thenCompletionHandlerIsCalledExactlyOnce() {
+        // Regression test: previously the SDK called completionHandler a second time with its own default options
+        // when the wrapped delegate deferred the call (e.g. a React Native JS bridge calling back from the JS thread).
+        let expectation = XCTestExpectation(description: "Completion handler called")
+        expectation.assertForOverFulfill = true
+        var callCount = 0
+        let completionHandler: (UNNotificationPresentationOptions) -> Void = { _ in
+            callCount += 1
+            expectation.fulfill()
+        }
+
+        mockNotificationCenterDelegate.callWillPresentHandlerAsync = true
+
+        _ = appDelegate.application(UIApplication.shared, didFinishLaunchingWithOptions: nil)
+        appDelegate.userNotificationCenter(UNUserNotificationCenter.current(), willPresent: UNNotification.testInstance, withCompletionHandler: completionHandler)
+
+        wait(for: [expectation], timeout: 1.0)
+
+        XCTAssertEqual(callCount, 1)
+        XCTAssertTrue(mockNotificationCenterDelegate.willPresentNotificationCalled)
+    }
+
     func testUserNotificationCenterWillPresent_whenWrappedDelegateDoesntImplementMethodAndShowPushAppInForegroundIsFalse_thenNotificationIsNotShown() {
         // Setup
         var presentationOptions: UNNotificationPresentationOptions?
@@ -251,6 +273,28 @@ class CioProviderAgnosticAppDelegateTests: XCTestCase {
         // Verify behavior
         XCTAssertTrue(mockNotificationCenterDelegate.didReceiveNotificationResponseCalled)
         XCTAssertTrue(completionHandlerCalled)
+    }
+
+    func testUserNotificationCenterDidReceive_whenWrappedDelegateCallsCompletionHandlerAsync_thenCompletionHandlerIsCalledExactlyOnce() {
+        // Regression test: previously the SDK called completionHandler a second time when the wrapped delegate
+        // deferred the call (e.g. a React Native JS bridge calling back from the JS thread).
+        let expectation = XCTestExpectation(description: "Completion handler called")
+        expectation.assertForOverFulfill = true
+        var callCount = 0
+        let completionHandler: () -> Void = {
+            callCount += 1
+            expectation.fulfill()
+        }
+
+        mockNotificationCenterDelegate.callDidReceiveHandlerAsync = true
+
+        _ = appDelegate.application(UIApplication.shared, didFinishLaunchingWithOptions: nil)
+        appDelegate.userNotificationCenter(UNUserNotificationCenter.current(), didReceive: UNNotificationResponse.testInstance, withCompletionHandler: completionHandler)
+
+        wait(for: [expectation], timeout: 1.0)
+
+        XCTAssertEqual(callCount, 1)
+        XCTAssertTrue(mockNotificationCenterDelegate.didReceiveNotificationResponseCalled)
     }
 
     func testUserNotificationCenterDidReceive_whenWrappedNotificationCenterDelegateIsNil_thenNotificationCompletionHandlerIsCalled() {

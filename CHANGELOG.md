@@ -1,3 +1,15 @@
+## [4.4.3](https://github.com/customerio/customerio-ios/compare/4.4.2...4.4.3) (2026-05-08)
+
+### Bug Fixes
+
+* re-export CioInternalCommon to allow CustomerIO extensions ([#1041](https://github.com/customerio/customerio-ios/issues/1041)) ([937ba8e](https://github.com/customerio/customerio-ios/commit/937ba8ea1c7cae157e9dca41a198c17c07cf7879))
+
+## [4.4.2](https://github.com/customerio/customerio-ios/compare/4.4.1...4.4.2) (2026-05-06)
+
+### Bug Fixes
+
+* Fixed duplicate completion handler call crash ([#1040](https://github.com/customerio/customerio-ios/issues/1040)) ([eddd38c](https://github.com/customerio/customerio-ios/commit/eddd38c932a9b874951fa5d0183b5b3f9959e12a))
+
 ## [4.4.1](https://github.com/customerio/customerio-ios/compare/4.4.0...4.4.1) (2026-04-14)
 
 ### Bug Fixes
