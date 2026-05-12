@@ -117,6 +117,15 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking {
         analytics.identify(traits: traits)
     }
 
+    var installationId: String {
+        if let existing = globalDataStore.installationId {
+            return existing
+        }
+        let newId = UUID().uuidString
+        globalDataStore.installationId = newId
+        return newId
+    }
+
     var registeredDeviceToken: String? {
         globalDataStore.pushDeviceToken
     }

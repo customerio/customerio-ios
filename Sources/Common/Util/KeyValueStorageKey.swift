@@ -5,6 +5,7 @@ import Foundation
  */
 public enum KeyValueStorageKey: String {
     case identifiedProfileId
+    case installationId
     case pushDeviceToken
     case inAppUserQueueFetchCachedResponse
     case broadcastMessages = "broadcast_messages"
