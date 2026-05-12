@@ -9,7 +9,8 @@ struct MonitoredRegionRecord: Sendable {
     let transitionTypes: Set<GeofenceTransition>
 }
 
-actor MockGeofenceRegionMonitor: GeofenceRegionMonitoring {
+@MainActor
+final class MockGeofenceRegionMonitor: GeofenceRegionMonitoring {
     private var onTransition: GeofenceTransitionHandler?
     private(set) var startedRegions: [MonitoredRegionRecord] = []
     private(set) var stoppedIdentifiers: [String] = []
