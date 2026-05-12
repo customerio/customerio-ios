@@ -1,5 +1,6 @@
 import CioAnalytics
 import CioInternalCommon
+import Foundation
 
 class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking {
     private let moduleConfig: DataPipelineConfigOptions
