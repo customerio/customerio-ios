@@ -11,10 +11,11 @@ import Foundation
 /// Tracks which regions this monitor owns so it does not interfere with regions
 /// registered by the host app or other SDKs (CLLocationManager.monitoredRegions is shared app-wide).
 ///
-/// Must be created on the main thread so CLLocationManager and delegate setup run on main.
-/// CLLocationManager method calls are dispatched to the main actor via fire-and-forget
-/// `Task { @MainActor in ... }` so the ownership-set update and OS-call dispatch happen
-/// atomically on the actor executor with no reentrancy point between them.
+/// `init` is `@MainActor` so CLLocationManager creation and delegate wiring run on main
+/// (a CLLocationManager requirement). Subsequent CLLocationManager method calls are
+/// dispatched to the main actor via fire-and-forget `Task { @MainActor in ... }` so the
+/// ownership-set update and OS-call dispatch happen atomically on the actor executor with
+/// no reentrancy point between them.
 actor CoreLocationGeofenceMonitor: NSObject, GeofenceRegionMonitoring, CLLocationManagerDelegate {
     private let manager: CLLocationManager
     private let logger: Logger
@@ -23,6 +24,7 @@ actor CoreLocationGeofenceMonitor: NSObject, GeofenceRegionMonitoring, CLLocatio
     private var hasLoggedPermissionWarning = false
     private var ownedRegionIdentifiers: Set<String> = []
 
+    @MainActor
     init(logger: Logger) {
         let manager = CLLocationManager()
         self.manager = manager
