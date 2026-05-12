@@ -1,5 +1,5 @@
-extension Synchronized where T == Bool {
-    public func toggle() {
+public extension Synchronized where T == Bool {
+    func toggle() {
         mutating { value in
             value.toggle()
         }

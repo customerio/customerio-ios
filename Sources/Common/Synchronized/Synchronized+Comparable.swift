@@ -1,23 +1,23 @@
-extension Synchronized where T: Comparable {
-    public static func < (lhs: Synchronized<T>, rhs: T) -> Bool {
+public extension Synchronized where T: Comparable {
+    static func < (lhs: Synchronized<T>, rhs: T) -> Bool {
         lhs.using { lhsValue in
             lhsValue < rhs
         }
     }
 
-    public static func <= (lhs: Synchronized<T>, rhs: T) -> Bool {
+    static func <= (lhs: Synchronized<T>, rhs: T) -> Bool {
         lhs.using { lhsValue in
             lhsValue <= rhs
         }
     }
 
-    public static func > (lhs: Synchronized<T>, rhs: T) -> Bool {
+    static func > (lhs: Synchronized<T>, rhs: T) -> Bool {
         lhs.using { lhsValue in
             lhsValue > rhs
         }
     }
 
-    public static func >= (lhs: Synchronized<T>, rhs: T) -> Bool {
+    static func >= (lhs: Synchronized<T>, rhs: T) -> Bool {
         lhs.using { lhsValue in
             lhsValue >= rhs
         }

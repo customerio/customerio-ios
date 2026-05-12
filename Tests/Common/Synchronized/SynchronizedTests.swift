@@ -6,7 +6,6 @@ import Testing
 // MARK: - Core read/write
 
 @Suite struct SynchronizedCoreTests {
-
     @Test func wrappedValueGetSet() {
         let box = Synchronized(42)
         #expect(box.wrappedValue == 42)
@@ -58,7 +57,7 @@ import Testing
     @Test func concurrentWritesSafelyAccumulate() async {
         let box = Synchronized(0)
         await withTaskGroup(of: Void.self) { group in
-            for _ in 0..<100 {
+            for _ in 0 ..< 100 {
                 group.addTask {
                     box.mutating { $0 += 1 }
                 }
@@ -71,7 +70,6 @@ import Testing
 // MARK: - Arithmetic
 
 @Suite struct SynchronizedArithmeticTests {
-
     @Test func addRawValue() {
         let a = Synchronized(10)
         #expect(a + 5 == 15)
@@ -98,7 +96,6 @@ import Testing
 // MARK: - Bool
 
 @Suite struct SynchronizedBoolTests {
-
     @Test func toggle() {
         let flag = Synchronized(false)
         flag.toggle()
@@ -111,11 +108,10 @@ import Testing
 // MARK: - Collections
 
 @Suite struct SynchronizedCollectionTests {
-
     @Test func countAndIsEmpty() {
         let list: Synchronized<[Int]> = Synchronized([])
         #expect(list.isEmpty)
-        #expect(list.count == 0)
+        #expect(list.isEmpty)
         list.append(1)
         #expect(!list.isEmpty)
         #expect(list.count == 1)
@@ -189,7 +185,6 @@ import Testing
 // MARK: - Comparable
 
 @Suite struct SynchronizedComparableTests {
-
     @Test func lessThanRaw() {
         let a = Synchronized(1)
         #expect(a < 5)
@@ -218,7 +213,6 @@ import Testing
 // MARK: - Equatable
 
 @Suite struct SynchronizedEquatableTests {
-
     @Test func equalBoxes() {
         let a = Synchronized("foo")
         let b = Synchronized("foo")
@@ -250,11 +244,15 @@ import Testing
         let b = Synchronized(1)
         let group = DispatchGroup()
 
-        for _ in 0..<1_000 {
+        for _ in 0 ..< 1000 {
             group.enter()
-            DispatchQueue.global().async { _ = a == b; group.leave() }
+            DispatchQueue.global().async { _ = a == b
+                group.leave()
+            }
             group.enter()
-            DispatchQueue.global().async { _ = b == a; group.leave() }
+            DispatchQueue.global().async { _ = b == a
+                group.leave()
+            }
         }
 
         #expect(group.wait(timeout: .now() + 30) == .success)
@@ -264,7 +262,6 @@ import Testing
 // MARK: - Hashable
 
 @Suite struct SynchronizedHashableTests {
-
     @Test func usableInSet() {
         let a = Synchronized(1)
         let b = Synchronized(2)
@@ -293,7 +290,6 @@ import Testing
 // MARK: - Dictionaries
 
 @Suite struct SynchronizedDictionaryTests {
-
     @Test func subscriptGetSet() {
         let dict: Synchronized<[String: Int]> = Synchronized([:])
         dict["a"] = 1
