@@ -210,6 +210,11 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking {
         // reset all to default state
         logger.debug("resetting user profile")
         analytics.reset()
+
+        // TODO: pending group design decision — installationId may be device-scoped and should survive clearIdentify.
+        // Remove these two lines if the group decides it should not reset.
+        globalDataStore.installationId = nil
+        contextPlugin.installationId = nil
     }
 
     func deleteDeviceToken() {
