@@ -132,6 +132,42 @@ public class CustomerIOInstanceMock: CustomerIOInstance, Mock {
      When setter of the property called, the value given to setter is set here.
      When the getter of the property called, the value set here will be returned. Your chance to mock the property.
      */
+    public var underlyingInstallationId: String!
+    /// `true` if the getter or setter of property is called at least once.
+    public var installationIdCalled: Bool {
+        installationIdGetCalled || installationIdSetCalled
+    }
+
+    /// `true` if the getter called on the property at least once.
+    public var installationIdGetCalled: Bool {
+        installationIdGetCallsCount > 0
+    }
+
+    public var installationIdGetCallsCount = 0
+    /// `true` if the setter called on the property at least once.
+    public var installationIdSetCalled: Bool {
+        installationIdSetCallsCount > 0
+    }
+
+    public var installationIdSetCallsCount = 0
+    /// The mocked property with a getter and setter.
+    public var installationId: String {
+        get {
+            mockCalled = true
+            installationIdGetCallsCount += 1
+            return underlyingInstallationId
+        }
+        set(value) {
+            mockCalled = true
+            installationIdSetCallsCount += 1
+            underlyingInstallationId = value
+        }
+    }
+
+    /**
+     When setter of the property called, the value given to setter is set here.
+     When the getter of the property called, the value set here will be returned. Your chance to mock the property.
+     */
     public var underlyingDeviceAttributes: [String: Any] = [:]
     /// `true` if the getter or setter of property is called at least once.
     public var deviceAttributesCalled: Bool {
@@ -203,6 +239,8 @@ public class CustomerIOInstanceMock: CustomerIOInstance, Mock {
     public func resetMock() {
         profileAttributesGetCallsCount = 0
         profileAttributesSetCallsCount = 0
+        installationIdGetCallsCount = 0
+        installationIdSetCallsCount = 0
         deviceAttributesGetCallsCount = 0
         deviceAttributesSetCallsCount = 0
         registeredDeviceToken = nil
@@ -1650,6 +1688,42 @@ public class GlobalDataStoreMock: GlobalDataStore, Mock {
      When setter of the property called, the value given to setter is set here.
      When the getter of the property called, the value set here will be returned. Your chance to mock the property.
      */
+    public var underlyingInstallationId: String? = nil
+    /// `true` if the getter or setter of property is called at least once.
+    public var installationIdCalled: Bool {
+        installationIdGetCalled || installationIdSetCalled
+    }
+
+    /// `true` if the getter called on the property at least once.
+    public var installationIdGetCalled: Bool {
+        installationIdGetCallsCount > 0
+    }
+
+    public var installationIdGetCallsCount = 0
+    /// `true` if the setter called on the property at least once.
+    public var installationIdSetCalled: Bool {
+        installationIdSetCallsCount > 0
+    }
+
+    public var installationIdSetCallsCount = 0
+    /// The mocked property with a getter and setter.
+    public var installationId: String? {
+        get {
+            mockCalled = true
+            installationIdGetCallsCount += 1
+            return underlyingInstallationId
+        }
+        set(value) {
+            mockCalled = true
+            installationIdSetCallsCount += 1
+            underlyingInstallationId = value
+        }
+    }
+
+    /**
+     When setter of the property called, the value given to setter is set here.
+     When the getter of the property called, the value set here will be returned. Your chance to mock the property.
+     */
     public var underlyingPushDeviceToken: String? = nil
     /// `true` if the getter or setter of property is called at least once.
     public var pushDeviceTokenCalled: Bool {
@@ -1683,6 +1757,9 @@ public class GlobalDataStoreMock: GlobalDataStore, Mock {
     }
 
     public func resetMock() {
+        installationId = nil
+        installationIdGetCallsCount = 0
+        installationIdSetCallsCount = 0
         pushDeviceToken = nil
         pushDeviceTokenGetCallsCount = 0
         pushDeviceTokenSetCallsCount = 0
