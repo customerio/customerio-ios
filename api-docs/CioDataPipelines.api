@@ -14,6 +14,7 @@ public final class CioDataPipelines.DataPipeline {
 	public var moduleConfig: DataPipelineConfigOptions?;
 	public var profileAttributes: Map<String, Any>;
 	public var deviceAttributes: Map<String, Any>;
+	public var installationId: String;
 	public var registeredDeviceToken: String?;
 	public fun func setUpSharedInstanceForUnitTest(implementation: DataPipelineInstance, config: DataPipelineConfigOptions) -> DataPipelineInstance;
 	public fun func setUpSharedInstanceForIntegrationTest(diGraphShared: DIGraphShared, config: DataPipelineConfigOptions) -> DataPipelineInstance;
