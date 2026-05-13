@@ -25,11 +25,11 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking {
 
         self.eventBusHandler = diGraph.eventBusHandler
         self.globalDataStore = diGraph.globalDataStore
-        if let existing = self.globalDataStore.installationId {
+        if let existing = globalDataStore.installationId {
             self.installationId = existing
         } else {
             let newId = UUID().uuidString
-            self.globalDataStore.installationId = newId
+            globalDataStore.installationId = newId
             self.installationId = newId
         }
         self.deviceAttributesProvider = diGraph.deviceAttributesProvider
@@ -209,7 +209,6 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking {
         // reset all to default state
         logger.debug("resetting user profile")
         analytics.reset()
-
     }
 
     func deleteDeviceToken() {
