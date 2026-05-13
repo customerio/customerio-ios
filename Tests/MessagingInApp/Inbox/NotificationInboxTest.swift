@@ -816,11 +816,19 @@ class NotificationInboxTest: UnitTest {
         var iterator = notificationInbox.messages().makeAsyncIterator()
         let initial = await iterator.next()
 
-        // Then: trigger a state change on the now-live subscriber.
-        XCTAssertEqual(inAppMessageManagerMock.subscribeReceivedInvocations.count, 1)
+        // Then: trigger a state change on every recorded subscriber. The mock can
+        // hold both the `messages()` subscriber and the constructor's
+        // `subscribeToInboxMessages` subscriber (scheduled via
+        // `Task { @MainActor in ... }` at init) — their interleaving is not
+        // deterministic, so we fan the new state out to all of them. The
+        // constructor's subscriber notifies an (empty) listener list and is a
+        // no-op for the AsyncStream; the `messages()` subscriber yields to the
+        // iterator.
         let message = createTestMessage(queueId: "msg1")
         let stateWithMessage = InAppMessageState().copy(inboxMessages: [message])
-        inAppMessageManagerMock.subscribeReceivedInvocations[0].subscriber.newState(state: stateWithMessage)
+        for invocation in inAppMessageManagerMock.subscribeReceivedInvocations {
+            invocation.subscriber.newState(state: stateWithMessage)
+        }
 
         let update = await iterator.next()
 

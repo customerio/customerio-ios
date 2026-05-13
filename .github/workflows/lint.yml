@@ -21,7 +21,6 @@ jobs:
           files=(
             "Tests/MessagingInApp/Inbox/NotificationInboxTest.swift"
             "Tests/MessagingInApp/Gist/Network/GistQueueNetworkTest.swift"
-            "Tests/MessagingPush/PushDeliveryFlushTests.swift"
           )
           fail=0
           for f in "${files[@]}"; do
