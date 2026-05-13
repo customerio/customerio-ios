@@ -32,10 +32,8 @@ extension Synchronized: DictionaryProtocol where T: DictionaryProtocol {
 
     @discardableResult
     public func removeValue(forKey key: Key) -> Value? {
-        var result: Value?
         mutating { value in
-            result = value.removeValue(forKey: key)
+            value.removeValue(forKey: key)
         }
-        return result
     }
 }
