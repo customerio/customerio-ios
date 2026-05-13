@@ -14,6 +14,12 @@ class GistQueueNetworkTest: UnitTest {
 
     // MARK: - User Identifier Validation
 
+    // These success-path tests only verify the synchronous identifier-validation
+    // branch of `request(...)`. The completion handler firing is incidental — the
+    // assertion is "didn't throw." Waiting on a real `URLSession.shared` round-trip
+    // (1s timeout) was the flake source; the network response is not part of the
+    // contract these tests cover.
+
     func test_request_withUserId_expectSuccess() throws {
         let state = InAppMessageState(
             siteId: "test-site",
@@ -23,14 +29,7 @@ class GistQueueNetworkTest: UnitTest {
             anonymousId: nil
         )
 
-        let expectation = expectation(description: "Request completes")
-
-        // Should not throw
-        XCTAssertNoThrow(try network.request(state: state, request: QueueEndpoint.getUserQueue, completionHandler: { _ in
-            expectation.fulfill()
-        }))
-
-        waitForExpectations(timeout: 1.0)
+        XCTAssertNoThrow(try network.request(state: state, request: QueueEndpoint.getUserQueue, completionHandler: { _ in }))
     }
 
     func test_request_withAnonymousId_expectSuccess() throws {
@@ -42,14 +41,7 @@ class GistQueueNetworkTest: UnitTest {
             anonymousId: "anon123"
         )
 
-        let expectation = expectation(description: "Request completes")
-
-        // Should not throw
-        XCTAssertNoThrow(try network.request(state: state, request: QueueEndpoint.getUserQueue, completionHandler: { _ in
-            expectation.fulfill()
-        }))
-
-        waitForExpectations(timeout: 1.0)
+        XCTAssertNoThrow(try network.request(state: state, request: QueueEndpoint.getUserQueue, completionHandler: { _ in }))
     }
 
     func test_request_withBothIdentifiers_expectSuccessWithUserId() throws {
@@ -61,14 +53,7 @@ class GistQueueNetworkTest: UnitTest {
             anonymousId: "anon123"
         )
 
-        let expectation = expectation(description: "Request completes")
-
-        // Should not throw and should prefer userId
-        XCTAssertNoThrow(try network.request(state: state, request: QueueEndpoint.getUserQueue, completionHandler: { _ in
-            expectation.fulfill()
-        }))
-
-        waitForExpectations(timeout: 1.0)
+        XCTAssertNoThrow(try network.request(state: state, request: QueueEndpoint.getUserQueue, completionHandler: { _ in }))
     }
 
     func test_request_withNoIdentifiers_expectThrowsMissingUserIdentifier() {
@@ -134,13 +119,7 @@ class GistQueueNetworkTest: UnitTest {
             anonymousId: "anon123"
         )
 
-        let expectation = expectation(description: "Request completes")
-
         // Should not throw - falls back to anonymousId
-        XCTAssertNoThrow(try network.request(state: state, request: QueueEndpoint.getUserQueue, completionHandler: { _ in
-            expectation.fulfill()
-        }))
-
-        waitForExpectations(timeout: 1.0)
+        XCTAssertNoThrow(try network.request(state: state, request: QueueEndpoint.getUserQueue, completionHandler: { _ in }))
     }
 }

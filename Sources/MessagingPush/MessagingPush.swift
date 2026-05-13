@@ -168,8 +168,11 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
     /// Must be called after ``DIGraphShared/registerPendingPushDeliveryStore()`` so the store reflects
     /// the correct app group. Skipped entirely when ``DataPipelineTracking`` is unavailable — metrics
     /// are preserved in the store for a future launch where DataPipeline is present.
+    ///
+    /// Dispatches via `ThreadUtil` (rather than a detached `Task`) so unit tests can swap in a
+    /// synchronous stub and observe the flush deterministically without timed waits.
     private static func schedulePendingPushDeliveryMetricsFlush() {
-        Task.detached(priority: .utility) {
+        DIGraphShared.shared.threadUtil.runBackground {
             let store = DIGraphShared.shared.pendingPushDeliveryStore
             let logger = DIGraphShared.shared.logger
             let pending = store.loadAll()

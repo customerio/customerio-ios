@@ -46,23 +46,14 @@ final class MessagingPushPendingPushFlushTests: UnitTest {
     }
 
     func test_initialize_flushesPendingMetrics_loadAllThenRemoveAllAfterEnqueue() {
-        let loadExpectation = expectation(description: "pending store loadAll during MessagingPush flush")
-        let removeExpectation = expectation(description: "pending store removeAll(ids:) after flushed metrics")
         let metric = pendingMetric
-        pendingStoreMock.loadAllClosure = {
-            loadExpectation.fulfill()
-            return [metric]
-        }
-        pendingStoreMock.removeAllClosure = { ids in
-            if ids.contains(metric.id) {
-                removeExpectation.fulfill()
-            }
-            return true
-        }
+        pendingStoreMock.loadAllClosure = { [metric] }
+        pendingStoreMock.removeAllReturnValue = true
 
+        // Flush is dispatched via ThreadUtil, which UnitTestBase stubs out to run
+        // synchronously. After initialize() returns the entire flush has executed.
         MessagingPush.initialize(withConfig: messagingPushConfigOptions)
 
-        wait(for: [loadExpectation, removeExpectation], timeout: 2.0)
         XCTAssertEqual(pendingStoreMock.loadAllCallsCount, 1, "startup should read pending list from app group store")
         XCTAssertEqual(pendingStoreMock.removeAllCallsCount, 1, "flushed rows should be batch-removed via removeAll(ids:)")
         XCTAssertEqual(pendingStoreMock.removeAllReceivedArguments, Set([metric.id]))
@@ -73,36 +64,29 @@ final class MessagingPushPendingPushFlushTests: UnitTest {
     }
 
     func test_initialize_whenNoPendingMetrics_expectLoadAllOnlyNoRemoves() {
-        let loadExpectation = expectation(description: "pending store loadAll during MessagingPush flush (empty store)")
-        pendingStoreMock.loadAllClosure = {
-            loadExpectation.fulfill()
-            return []
-        }
+        pendingStoreMock.loadAllClosure = { [] }
 
         MessagingPush.initialize(withConfig: messagingPushConfigOptions)
 
-        wait(for: [loadExpectation], timeout: 2.0)
         XCTAssertEqual(pendingStoreMock.loadAllCallsCount, 1)
         XCTAssertEqual(pendingStoreMock.removeAllCallsCount, 0, "removeAll should not be called when store is empty")
         XCTAssertEqual(pipelineMock.trackDeliveryEventCallsCount, 0, "no metrics should be forwarded when store is empty")
     }
 
     func test_initialize_whenDataPipelineNotInitialized_expectLoadAllButNoTracking() {
-        // Simulate DataPipeline not being initialized — no DataPipelineTracking registered
+        // Simulate DataPipeline not being initialized — no DataPipelineTracking registered.
+        // Reset clears the ThreadUtil override too, so re-install it for sync flush dispatch.
         diGraphShared.reset()
+        diGraphShared.override(value: threadUtilStub, forType: ThreadUtil.self)
         diGraphShared.override(value: pendingStoreMock, forType: PendingPushDeliveryStore.self)
 
-        let loadExpectation = expectation(description: "pending store loadAll called even without DataPipeline")
         let metric = pendingMetric
-        pendingStoreMock.loadAllClosure = {
-            loadExpectation.fulfill()
-            return [metric]
-        }
+        pendingStoreMock.loadAllClosure = { [metric] }
         pendingStoreMock.removeAllReturnValue = true
 
         MessagingPush.initialize(withConfig: messagingPushConfigOptions)
 
-        wait(for: [loadExpectation], timeout: 2.0)
+        XCTAssertEqual(pendingStoreMock.loadAllCallsCount, 1, "startup should still attempt to load pending metrics")
         XCTAssertEqual(pipelineMock.trackDeliveryEventCallsCount, 0, "no events should be tracked when DataPipeline is absent")
         XCTAssertEqual(pendingStoreMock.removeAllCallsCount, 0, "metrics must be preserved in the store when DataPipeline is absent")
     }

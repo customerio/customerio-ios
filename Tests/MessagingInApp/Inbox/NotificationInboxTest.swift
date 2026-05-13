@@ -561,6 +561,7 @@ class NotificationInboxTest: UnitTest {
     // MARK: - removeChangeListener tests
 
     func test_removeChangeListener_expectListenerStopsReceivingUpdates() async {
+        let initialCallback = expectation(description: "Listener receives initial callback")
         var callbackCount = 0
 
         let message = InboxMessage(
@@ -582,22 +583,24 @@ class NotificationInboxTest: UnitTest {
             let listener = TestNotificationInboxChangeListener()
             listener.onMessagesChangedClosure = { _ in
                 callbackCount += 1
+                if callbackCount == 1 { initialCallback.fulfill() }
             }
             notificationInbox.addChangeListener(listener)
             return listener
         }
 
-        // Wait for initial callback
-        try? await Task.sleep(nanoseconds: 100000000) // 100ms
-
+        await fulfillment(of: [initialCallback], timeout: 1.0)
         let initialCallbackCount = callbackCount
-        XCTAssertGreaterThan(initialCallbackCount, 0, "Should have received initial callback")
 
-        // Remove listener
+        // Remove listener, then fence so the @MainActor removal task lands.
         notificationInbox.removeChangeListener(listener)
+        await drainMainActor()
 
-        // Wait to ensure no more callbacks
-        try? await Task.sleep(nanoseconds: 100000000) // 100ms
+        // Push a state change that would have triggered the listener if it were
+        // still registered; drain again and confirm the count did not advance.
+        let stateWithUpdate = InAppMessageState().copy(inboxMessages: [])
+        inAppMessageManagerMock.subscribeReceivedArguments?.subscriber.newState(state: stateWithUpdate)
+        await drainMainActor()
 
         XCTAssertEqual(callbackCount, initialCallbackCount, "Should not receive more callbacks after removal")
     }
@@ -645,11 +648,9 @@ class NotificationInboxTest: UnitTest {
 
         await fulfillment(of: [expectation1, expectation2], timeout: 1.0)
 
-        // Remove only listener1
+        // Remove only listener1; fence so the @MainActor removal task lands.
         notificationInbox.removeChangeListener(listener1)
-
-        // Wait to ensure listener1 doesn't receive more callbacks
-        try? await Task.sleep(nanoseconds: 100000000) // 100ms
+        await drainMainActor()
 
         // Both should have been called once (initial callback)
         XCTAssertEqual(listener1CallCount, 1, "Listener 1 should only receive initial callback")
@@ -674,6 +675,8 @@ class NotificationInboxTest: UnitTest {
     }
 
     func test_removeChangeListener_removesAllRegistrationsOfListener_expectNoCallbacks() async {
+        let bothInitialCallbacks = expectation(description: "Both registrations receive initial callback")
+        bothInitialCallbacks.expectedFulfillmentCount = 2
         var callbackCount = 0
 
         let message = InboxMessage(
@@ -695,6 +698,7 @@ class NotificationInboxTest: UnitTest {
             let listener = TestNotificationInboxChangeListener()
             listener.onMessagesChangedClosure = { _ in
                 callbackCount += 1
+                bothInitialCallbacks.fulfill()
             }
 
             // Register same listener with different topics
@@ -704,18 +708,17 @@ class NotificationInboxTest: UnitTest {
             return listener
         }
 
-        // Wait for initial callbacks
-        try? await Task.sleep(nanoseconds: 100000000) // 100ms
-
-        XCTAssertGreaterThan(callbackCount, 0, "Should have received initial callbacks")
-
+        await fulfillment(of: [bothInitialCallbacks], timeout: 1.0)
         let initialCallbackCount = callbackCount
 
-        // Remove listener (should remove all registrations)
+        // Remove listener (should remove all registrations); fence the @MainActor removal.
         notificationInbox.removeChangeListener(listener)
+        await drainMainActor()
 
-        // Wait to ensure no more callbacks
-        try? await Task.sleep(nanoseconds: 100000000) // 100ms
+        // Push a state change; the unregistered listener must not be notified.
+        let stateWithUpdate = InAppMessageState().copy(inboxMessages: [])
+        inAppMessageManagerMock.subscribeReceivedArguments?.subscriber.newState(state: stateWithUpdate)
+        await drainMainActor()
 
         XCTAssertEqual(callbackCount, initialCallbackCount, "Should not receive more callbacks after removal")
     }
@@ -777,25 +780,13 @@ class NotificationInboxTest: UnitTest {
         let stateWithMessages = InAppMessageState().copy(inboxMessages: [message1, message2])
         inAppMessageManagerMock.underlyingState = stateWithMessages
 
-        // When: subscribing to stream
-        var receivedMessages: [[InboxMessage]] = []
-        let task = Task {
-            for await messages in notificationInbox.messages() {
-                receivedMessages.append(messages)
-                if receivedMessages.count >= 1 {
-                    break
-                }
-            }
-        }
-
-        // Wait for initial emission
-        try? await Task.sleep(nanoseconds: 50000000) // 50ms
+        // When: subscribing to stream and collecting only the first emission.
+        var iterator = notificationInbox.messages().makeAsyncIterator()
+        let received = await iterator.next()
 
         // Then: should receive initial messages immediately
-        XCTAssertEqual(receivedMessages.count, 1)
-        XCTAssertEqual(receivedMessages[0].count, 2)
-
-        task.cancel()
+        XCTAssertNotNil(received)
+        XCTAssertEqual(received?.count, 2)
     }
 
     func test_messages_withTopic_expectFilteredInitialValue() async {
@@ -805,25 +796,13 @@ class NotificationInboxTest: UnitTest {
         let stateWithMessages = InAppMessageState().copy(inboxMessages: [message1, message2])
         inAppMessageManagerMock.underlyingState = stateWithMessages
 
-        // When: subscribing to stream with topic filter
-        var receivedMessages: [[InboxMessage]] = []
-        let task = Task {
-            for await messages in notificationInbox.messages(topic: "promo") {
-                receivedMessages.append(messages)
-                if receivedMessages.count >= 1 {
-                    break
-                }
-            }
-        }
-
-        try? await Task.sleep(nanoseconds: 50000000)
+        // When: subscribing with a topic filter and reading the first emission.
+        var iterator = notificationInbox.messages(topic: "promo").makeAsyncIterator()
+        let received = await iterator.next()
 
         // Then: should receive only filtered messages
-        XCTAssertEqual(receivedMessages.count, 1)
-        XCTAssertEqual(receivedMessages[0].count, 1)
-        XCTAssertEqual(receivedMessages[0][0].queueId, "msg1")
-
-        task.cancel()
+        XCTAssertEqual(received?.count, 1)
+        XCTAssertEqual(received?[0].queueId, "msg1")
     }
 
     func test_messages_expectOngoingUpdates() async {
@@ -831,79 +810,67 @@ class NotificationInboxTest: UnitTest {
         let emptyState = InAppMessageState().copy(inboxMessages: [])
         inAppMessageManagerMock.underlyingState = emptyState
 
-        var receivedMessages: [[InboxMessage]] = []
-        let initialExpectation = expectation(description: "Receive initial state")
-        let updateExpectation = expectation(description: "Receive state update")
+        // When: read the initial emission via a direct iterator. The production
+        // contract is that `messages()` subscribes BEFORE yielding the first
+        // value, so when `next()` returns, the subscription is live.
+        var iterator = notificationInbox.messages().makeAsyncIterator()
+        let initial = await iterator.next()
 
-        // When: subscribing to stream
-        let task = Task {
-            for await messages in notificationInbox.messages() {
-                receivedMessages.append(messages)
-                if receivedMessages.count == 1 {
-                    initialExpectation.fulfill()
-                } else if receivedMessages.count == 2 {
-                    updateExpectation.fulfill()
-                    break
-                }
-            }
-        }
-
-        // Wait for initial emission to ensure stream has started
-        await fulfillment(of: [initialExpectation], timeout: 1.0)
-
-        // Wait for subscription to be fully initialized
-        // The messages() implementation yields initial state before calling subscribe(),
-        // and the subscription itself has async initialization that completes after subscribe() is called.
-        // We need this delay to ensure the subscriber is ready to receive state changes.
-        try? await Task.sleep(nanoseconds: 100000000) // 100ms
-
-        // Then: trigger state change on all subscribers
+        // Then: trigger a state change on the now-live subscriber.
+        XCTAssertEqual(inAppMessageManagerMock.subscribeReceivedInvocations.count, 1)
         let message = createTestMessage(queueId: "msg1")
         let stateWithMessage = InAppMessageState().copy(inboxMessages: [message])
-        for invocation in inAppMessageManagerMock.subscribeReceivedInvocations {
-            invocation.subscriber.newState(state: stateWithMessage)
-        }
+        inAppMessageManagerMock.subscribeReceivedInvocations[0].subscriber.newState(state: stateWithMessage)
 
-        // Wait for update emission
-        await fulfillment(of: [updateExpectation], timeout: 1.0)
+        let update = await iterator.next()
 
-        XCTAssertEqual(receivedMessages.count, 2)
-        XCTAssertEqual(receivedMessages[0].count, 0) // Initial empty
-        XCTAssertEqual(receivedMessages[1].count, 1) // After update
-
-        task.cancel()
+        XCTAssertEqual(initial?.count, 0) // Initial empty
+        XCTAssertEqual(update?.count, 1) // After update
+        XCTAssertEqual(update?[0].queueId, "msg1")
     }
 
     func test_messages_expectCancellationStopsUpdates() async {
-        // Given: stream subscription
+        // Given: an in-flight stream subscription
         let initialState = InAppMessageState().copy(inboxMessages: [])
         inAppMessageManagerMock.underlyingState = initialState
 
+        let initialReceived = expectation(description: "Initial value received")
         var receivedCount = 0
         let task = Task {
             for await _ in notificationInbox.messages() {
                 receivedCount += 1
+                if receivedCount == 1 { initialReceived.fulfill() }
             }
         }
 
-        try? await Task.sleep(nanoseconds: 50000000)
+        await fulfillment(of: [initialReceived], timeout: 1.0)
 
-        // When: canceling the task
+        // When: cancel and await termination of the for-await loop.
         task.cancel()
-        try? await Task.sleep(nanoseconds: 50000000)
-
+        await task.value
         let countAfterCancel = receivedCount
 
-        // Then: no more updates after cancellation
+        // Then: a subsequent state change must not deliver another value.
         let message = createTestMessage(queueId: "msg1")
         let stateWithMessage = InAppMessageState().copy(inboxMessages: [message])
         inAppMessageManagerMock.subscribeReceivedArguments?.subscriber.newState(state: stateWithMessage)
-        try? await Task.sleep(nanoseconds: 50000000)
+        await drainMainActor()
 
         XCTAssertEqual(receivedCount, countAfterCancel)
     }
 
     // MARK: - Helper Methods
+
+    /// Fence that returns after all currently-enqueued `@MainActor` work has run.
+    /// Replaces fixed-time sleeps when a test needs to observe side-effects of
+    /// `Task { @MainActor in ... }` dispatches in the SUT. Two hops cover the
+    /// nested-Task pattern used by the inbox (subscriber callback → main-actor
+    /// task → listener notify task).
+    private func drainMainActor() async {
+        for _ in 0 ..< 3 {
+            await Task { @MainActor in }.value
+        }
+    }
 
     private func createTestMessage(
         queueId: String,
