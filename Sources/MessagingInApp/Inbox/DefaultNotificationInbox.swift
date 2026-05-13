@@ -86,11 +86,17 @@ class DefaultNotificationInbox: NotificationInbox, @unchecked Sendable {
 
     func messages(topic: String?) -> AsyncStream<[InboxMessage]> {
         AsyncStream { continuation in
+            // Yield current state immediately before setting up subscription
             Task { [weak self] in
                 guard let self = self else {
                     continuation.finish()
                     return
                 }
+
+                let state = await inAppMessageManager.state
+                let messages = Array(state.inboxMessages)
+                let filteredMessages = self.filterMessagesByTopic(messages: messages, topic: topic)
+                continuation.yield(filteredMessages)
 
                 // Create subscriber for ongoing updates (store holds weak reference, must keep strong ref)
                 let subscriber = InAppMessageStoreSubscriber { [weak self] state in
@@ -104,24 +110,18 @@ class DefaultNotificationInbox: NotificationInbox, @unchecked Sendable {
                     continuation.yield(filteredMessages)
                 }
 
-                // Subscribe BEFORE the initial yield so that consumers who
-                // synchronize on the first element can rely on the subscription
-                // being live for all subsequent state updates.
+                // Subscribe to inbox messages changes
                 let subscriptionTask = inAppMessageManager.subscribe(
                     keyPath: \.inboxMessages,
                     subscriber: subscriber
                 )
 
+                // Clean up on termination; capture subscriber to keep it alive
                 continuation.onTermination = { @Sendable [subscriber] _ in
                     withExtendedLifetime(subscriber) {
                         subscriptionTask.cancel()
                     }
                 }
-
-                let state = await inAppMessageManager.state
-                let messages = Array(state.inboxMessages)
-                let filteredMessages = self.filterMessagesByTopic(messages: messages, topic: topic)
-                continuation.yield(filteredMessages)
             }
         }
     }

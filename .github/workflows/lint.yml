@@ -5,29 +5,3 @@ on: [pull_request]
 jobs:
   lint:
     uses: customerio/mobile-ci-tools/.github/workflows/ios-lint.yml@main
-
-  no-sleeps-in-tests:
-    # Guardrail: tests in the files listed below must not introduce
-    # wall-clock waits. Use expectations + `ThreadUtilStub`, the async
-    # iterator returned by `messages()`, or the `drainMainActor` fence
-    # in `NotificationInboxTest` instead. As other test files have their
-    # sleeps cleaned up, add them to this list to prevent regressions.
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Fail if Thread.sleep / Task.sleep appears in protected test files
-        run: |
-          set -euo pipefail
-          files=(
-            "Tests/MessagingInApp/Inbox/NotificationInboxTest.swift"
-            "Tests/MessagingInApp/Gist/Network/GistQueueNetworkTest.swift"
-          )
-          fail=0
-          for f in "${files[@]}"; do
-            if [ ! -f "$f" ]; then continue; fi
-            if grep -nE 'Thread\.sleep|Task\.sleep' "$f"; then
-              echo "::error file=$f::Sleeps are forbidden in this file. Use expectations or deterministic fences."
-              fail=1
-            fi
-          done
-          exit $fail

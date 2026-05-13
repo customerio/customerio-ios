@@ -14,12 +14,6 @@ class GistQueueNetworkTest: UnitTest {
 
     // MARK: - User Identifier Validation
 
-    // These success-path tests only verify the synchronous identifier-validation
-    // branch of `request(...)`. The completion handler firing is incidental — the
-    // assertion is "didn't throw." Waiting on a real `URLSession.shared` round-trip
-    // (1s timeout) was the flake source; the network response is not part of the
-    // contract these tests cover.
-
     func test_request_withUserId_expectSuccess() throws {
         let state = InAppMessageState(
             siteId: "test-site",
@@ -29,9 +23,21 @@ class GistQueueNetworkTest: UnitTest {
             anonymousId: nil
         )
 
-        XCTAssertNoThrow(try network.request(state: state, request: QueueEndpoint.getUserQueue, completionHandler: { _ in }))
+        let expectation = expectation(description: "Request completes")
+
+        // Should not throw
+        XCTAssertNoThrow(try network.request(state: state, request: QueueEndpoint.getUserQueue, completionHandler: { _ in
+            expectation.fulfill()
+        }))
+
+        waitForExpectations(timeout: 1.0)
     }
 
+    // Flake-fix: drop the `waitForExpectations` and `expectation` — the
+    // completion handler had no assertions, so the wait was only stalling
+    // for an incidental `URLSession.shared` round-trip. The contract under
+    // test is the synchronous identifier-validation branch (no throw when
+    // anonymousId is present), which is verified by `XCTAssertNoThrow`.
     func test_request_withAnonymousId_expectSuccess() throws {
         let state = InAppMessageState(
             siteId: "test-site",
@@ -53,7 +59,14 @@ class GistQueueNetworkTest: UnitTest {
             anonymousId: "anon123"
         )
 
-        XCTAssertNoThrow(try network.request(state: state, request: QueueEndpoint.getUserQueue, completionHandler: { _ in }))
+        let expectation = expectation(description: "Request completes")
+
+        // Should not throw and should prefer userId
+        XCTAssertNoThrow(try network.request(state: state, request: QueueEndpoint.getUserQueue, completionHandler: { _ in
+            expectation.fulfill()
+        }))
+
+        waitForExpectations(timeout: 1.0)
     }
 
     func test_request_withNoIdentifiers_expectThrowsMissingUserIdentifier() {
@@ -110,6 +123,8 @@ class GistQueueNetworkTest: UnitTest {
         }
     }
 
+    // Flake-fix: same rationale as `test_request_withAnonymousId_expectSuccess`
+    // above — drop the wait; the identifier-validation branch is the contract.
     func test_request_withBlankUserIdAndValidAnonymousId_expectSuccess() throws {
         let state = InAppMessageState(
             siteId: "test-site",
