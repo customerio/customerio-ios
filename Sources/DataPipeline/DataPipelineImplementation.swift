@@ -10,6 +10,7 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking {
     let eventBusHandler: EventBusHandler
 
     private var globalDataStore: GlobalDataStore
+    let installationId: String
     private let deviceAttributesProvider: DeviceAttributesProvider
     private let dateUtil: DateUtil
     private let deviceInfo: DeviceInfo
@@ -24,6 +25,13 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking {
 
         self.eventBusHandler = diGraph.eventBusHandler
         self.globalDataStore = diGraph.globalDataStore
+        if let existing = self.globalDataStore.installationId {
+            self.installationId = existing
+        } else {
+            let newId = UUID().uuidString
+            self.globalDataStore.installationId = newId
+            self.installationId = newId
+        }
         self.deviceAttributesProvider = diGraph.deviceAttributesProvider
         self.dateUtil = diGraph.dateUtil
         self.deviceInfo = diGraph.deviceInfo
@@ -117,15 +125,6 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking {
     ///   - traits: A dictionary of traits you know about the user. Things like: email, name, plan, etc.
     func identify(traits: Codable) {
         analytics.identify(traits: traits)
-    }
-
-    var installationId: String {
-        if let existing = globalDataStore.installationId {
-            return existing
-        }
-        let newId = UUID().uuidString
-        globalDataStore.installationId = newId
-        return newId
     }
 
     var registeredDeviceToken: String? {
