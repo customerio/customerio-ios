@@ -64,8 +64,8 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking {
         }
 
         // plugin to update context properties for each request
-        analytics.add(plugin: contextPlugin)
         contextPlugin.installationId = installationId
+        analytics.add(plugin: contextPlugin)
 
         // plugin that adds provider attributes (e.g. location) to identify context
         analytics.add(plugin: IdentifyContextPlugin(registry: diGraph.profileEnrichmentRegistry, logger: logger))
