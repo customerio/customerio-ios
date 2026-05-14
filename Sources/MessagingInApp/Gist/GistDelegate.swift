@@ -23,6 +23,16 @@ class GistDelegateImpl: GistDelegate {
     private let eventBusHandler: EventBusHandler
     private var eventListener: InAppEventListener?
     private let threadUtil: ThreadUtil
+
+    // In-memory set of `campaignDeliveryId` values for which we've already posted
+    // a `messageShown` (`opened`) metric this session. Used to suppress duplicate
+    // metric emissions when Gist invokes `messageShown` more than once for the
+    // same delivery. Lifetime is GistDelegateImpl-scoped (per-process); the
+    // backend already dedupes `(deliveryID, opened)` pairs, so this is pure
+    // noise reduction. Guarded by `seenMessageShownLock`.
+    private var seenMessageShownDeliveryIds: Set<String> = []
+    private let seenMessageShownLock = NSLock()
+
     init(logger: Logger, eventBusHandler: EventBusHandler) {
         self.logger = logger
         self.eventBusHandler = eventBusHandler
@@ -39,7 +49,11 @@ class GistDelegateImpl: GistDelegate {
         logger.logWithModuleTag("Message shown: \(message.describeForLogs)", level: .debug)
 
         if let deliveryId = message.campaignDeliveryId {
-            eventBusHandler.postEvent(TrackInAppMetricEvent(deliveryID: deliveryId, event: InAppMetric.opened.rawValue))
+            if shouldPostMessageShownMetric(forDeliveryId: deliveryId) {
+                eventBusHandler.postEvent(TrackInAppMetricEvent(deliveryID: deliveryId, event: InAppMetric.opened.rawValue))
+            } else {
+                logger.logWithModuleTag("Skipping duplicate messageShown metric for deliveryId: \(deliveryId)", level: .debug)
+            }
         }
         // To ensure the keyboard is dismissed on displaying an in-app message,
         // Update UI on main thread only.
@@ -78,6 +92,15 @@ class GistDelegateImpl: GistDelegate {
             actionValue: action,
             actionName: name
         )
+    }
+
+    /// Returns true the first time a given `deliveryId` is observed (and records it),
+    /// false on subsequent calls. Thread-safe via `seenMessageShownLock`.
+    private func shouldPostMessageShownMetric(forDeliveryId deliveryId: String) -> Bool {
+        seenMessageShownLock.lock()
+        defer { seenMessageShownLock.unlock() }
+
+        return seenMessageShownDeliveryIds.insert(deliveryId).inserted
     }
 }
 

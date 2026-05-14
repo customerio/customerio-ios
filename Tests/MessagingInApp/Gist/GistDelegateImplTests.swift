@@ -75,6 +75,37 @@ class GistDelegateImplTests: UnitTest {
         XCTAssertEqual(mockEventListener.messageShownReceivedArguments?.messageId, "test-message-id", "Message ID should match")
     }
 
+    func test_messageShown_givenSameDeliveryIdCalledTwice_expectOnePostEvent() {
+        let message = Message(messageId: "test-message-id", campaignId: "duplicate-delivery-id")
+
+        gistDelegate.messageShown(message: message)
+        gistDelegate.messageShown(message: message)
+
+        XCTAssertEqual(mockEventBusHandler.postEventCallsCount, 1, "EventBusHandler should post the metric exactly once for repeat deliveryId")
+        XCTAssertEqual(mockEventListener.messageShownCallsCount, 2, "EventListener.messageShown must still fire on every call (host UI side-effect)")
+    }
+
+    func test_messageShown_givenDifferentDeliveryIds_expectTwoPostEvents() {
+        let firstMessage = Message(messageId: "first-message-id", campaignId: "delivery-id-1")
+        let secondMessage = Message(messageId: "second-message-id", campaignId: "delivery-id-2")
+
+        gistDelegate.messageShown(message: firstMessage)
+        gistDelegate.messageShown(message: secondMessage)
+
+        XCTAssertEqual(mockEventBusHandler.postEventCallsCount, 2, "EventBusHandler should post one metric per unique deliveryId")
+        XCTAssertEqual(mockEventListener.messageShownCallsCount, 2, "EventListener.messageShown should fire for each call")
+    }
+
+    func test_messageShown_givenNilDeliveryId_doesNotCrashAndDoesNotPost() {
+        // Construct a Message with no `gist.campaignId` so `campaignDeliveryId` resolves to nil.
+        let message = Message(messageId: "test-message-id", queueId: nil, priority: nil, properties: nil)
+
+        gistDelegate.messageShown(message: message)
+
+        XCTAssertFalse(mockEventBusHandler.postEventCalled, "EventBusHandler should not post a metric when deliveryId is nil")
+        XCTAssertTrue(mockEventListener.messageShownCalled, "EventListener.messageShown must still fire when deliveryId is nil")
+    }
+
     func testMessageDismissed() {
         let message = Message(messageId: "test-message-id")
 
