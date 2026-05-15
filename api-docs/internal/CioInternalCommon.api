@@ -71,6 +71,7 @@ public final class CioInternalCommon.CioQueue {
 	public fun func deleteProcessedTask(_ task: QueueTaskMetadata, siteId: String);
 }
 public final class CioInternalCommon.CioSharedDataStore {
+	public var installationId: String?;
 	public var pushDeviceToken: String?;
 	public fun init(keyValueStorage: SharedKeyValueStorage);
 	public fun func deleteAll();
@@ -89,6 +90,7 @@ public final class CioInternalCommon.CustomerIO {
 	public var shared: CustomerIO;
 	public var implementation: (any CustomerIOInstance)?;
 	public var profileAttributes: Map<String, Any>;
+	public var installationId: String;
 	public var deviceAttributes: Map<String, Any>;
 	public var registeredDeviceToken: String?;
 	public fun func resetSharedTestEnvironment();
@@ -108,6 +110,7 @@ public final class CioInternalCommon.CustomerIO {
 }
 public interface CioInternalCommon.CustomerIOInstance {
 	public var profileAttributes: Map<String, Any>;
+	public var installationId: String;
 	public var deviceAttributes: Map<String, Any>;
 	public var registeredDeviceToken: String?;
 	public fun func setProfileAttributes(_ attributes: List<String: Any>);
@@ -255,6 +258,7 @@ public interface CioInternalCommon.FileStorage {
 public enum CioInternalCommon.FileType {
 }
 public interface CioInternalCommon.GlobalDataStore {
+	public var installationId: String?;
 	public var pushDeviceToken: String?;
 	public fun func deleteAll();
 }

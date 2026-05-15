@@ -101,6 +101,10 @@ public class DataPipeline: ModuleTopLevelObject<DataPipelineInstance>, DataPipel
         implementation?.setDeviceAttributes(attributes.sanitizedForJSON())
     }
 
+    public var installationId: String {
+        implementation?.installationId ?? ""
+    }
+
     public var registeredDeviceToken: String? {
         implementation?.registeredDeviceToken
     }

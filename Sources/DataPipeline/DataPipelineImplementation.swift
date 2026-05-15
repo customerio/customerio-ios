@@ -1,5 +1,6 @@
 import CioAnalytics
 import CioInternalCommon
+import Foundation
 
 class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking {
     private let moduleConfig: DataPipelineConfigOptions
@@ -9,6 +10,7 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking {
     let eventBusHandler: EventBusHandler
 
     private var globalDataStore: GlobalDataStore
+    let installationId: String
     private let deviceAttributesProvider: DeviceAttributesProvider
     private let dateUtil: DateUtil
     private let deviceInfo: DeviceInfo
@@ -23,6 +25,13 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking {
 
         self.eventBusHandler = diGraph.eventBusHandler
         self.globalDataStore = diGraph.globalDataStore
+        if let existing = globalDataStore.installationId {
+            self.installationId = existing
+        } else {
+            let newId = UUID().uuidString
+            globalDataStore.installationId = newId
+            self.installationId = newId
+        }
         self.deviceAttributesProvider = diGraph.deviceAttributesProvider
         self.dateUtil = diGraph.dateUtil
         self.deviceInfo = diGraph.deviceInfo
@@ -55,6 +64,7 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking {
         }
 
         // plugin to update context properties for each request
+        contextPlugin.installationId = installationId
         analytics.add(plugin: contextPlugin)
 
         // plugin that adds provider attributes (e.g. location) to identify context
