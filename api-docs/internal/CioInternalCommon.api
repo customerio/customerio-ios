@@ -192,6 +192,10 @@ public interface CioInternalCommon.DeviceInfo {
 	public var deviceLocale: String;
 	public fun func isPushSubscribed(completion: @escaping (Boolean) -> Unit);
 }
+public interface CioInternalCommon.DictionaryProtocol {
+	public fun subscript(key: Key) -> Value?;
+	public fun mutating func removeValue(forKey key: Key) -> Value?;
+}
 public interface CioInternalCommon.DoNotTrackScreenViewEvent {
 }
 public enum CioInternalCommon.DownloadFileType {
@@ -510,6 +514,13 @@ public interface CioInternalCommon.SharedKeyValueStorage {
 public final class CioInternalCommon.StringAnyEncodable {
 	public fun init(logger: Logger, _ data: List<String: Any>);
 	public fun func encode(to encoder: Encoder) throws;
+}
+public final class CioInternalCommon.Synchronized {
+	public var wrappedValue: T;
+	public fun init(_ initial: T);
+	public fun func mutating<Result>(_ body: (inout T) throws -> Result) rethrows -> Result;
+	public fun func using<Result>(_ body: (T) throws -> Result) rethrows -> Result;
+	public fun func atomicSetAndFetch(_ newValue: T) -> T;
 }
 public interface CioInternalCommon.SystemLogger {
 	public fun func log(_ message: String, _ level: CioLogLevel);
