@@ -203,7 +203,13 @@ public class CustomerIO: CustomerIOInstance {
     // Tip: Use `SdkInitializedUtil` in modules to see if the SDK has been initialized and get data it needs.
     public var implementation: CustomerIOInstance?
 
-    // private constructor to force use of singleton API
+    /// Bounded FIFO buffer that absorbs event-shaped public-API calls invoked
+    /// before `implementation` is set. Drained synchronously, in order, by
+    /// `initializeSharedInstance`/`setUpSharedInstanceForUnitTest` against the
+    /// new implementation. After drain, subsequent calls bypass the buffer.
+    let preInitEventBuffer = PreInitEventBuffer()
+
+    /// private constructor to force use of singleton API
     private init() {}
 
     #if DEBUG
@@ -212,6 +218,9 @@ public class CustomerIO: CustomerIOInstance {
 
     @discardableResult
     static func setUpSharedInstanceForUnitTest(implementation: CustomerIOInstance) -> CustomerIO {
+        // Drain any pre-init buffered events first so they replay in order
+        // against the new implementation before any post-init direct call.
+        shared.preInitEventBuffer.transitionToReady(implementation)
         shared.implementation = implementation
         return shared
     }
@@ -222,6 +231,9 @@ public class CustomerIO: CustomerIOInstance {
     #endif
 
     public static func initializeSharedInstance(with implementation: CustomerIOInstance) {
+        // Drain any pre-init buffered events first so they replay in order
+        // against the new implementation before any post-init direct call.
+        shared.preInitEventBuffer.transitionToReady(implementation)
         shared.implementation = implementation
         shared.postInitialize()
     }
@@ -237,6 +249,17 @@ public class CustomerIO: CustomerIOInstance {
 
     // MARK: - CustomerIOInstance implementation
 
+    /// Dispatch helper: when the SDK is initialized, calls the block against
+    /// the real implementation immediately; otherwise enqueues it onto the
+    /// pre-init buffer for replay once initialization completes.
+    private func dispatch(_ block: @escaping (CustomerIOInstance) -> Void) {
+        if let impl = implementation {
+            block(impl)
+        } else {
+            preInitEventBuffer.enqueue(block)
+        }
+    }
+
     @available(*, deprecated, message: "Use setProfileAttributes() instead")
     public var profileAttributes: [String: Any] {
         get { implementation?.profileAttributes ?? [:] }
@@ -244,29 +267,29 @@ public class CustomerIO: CustomerIOInstance {
     }
 
     public func setProfileAttributes(_ attributes: [String: Any]) {
-        implementation?.setProfileAttributes(attributes)
+        dispatch { $0.setProfileAttributes(attributes) }
     }
 
     public func identify(userId: String, traits: [String: Any]? = nil) {
-        implementation?.identify(userId: userId, traits: traits)
+        dispatch { $0.identify(userId: userId, traits: traits) }
     }
 
     @available(*, deprecated, message: "Use 'identify(userId:traits:)' with [String: Any] traits parameter instead. Support for Codable traits will be removed in a future version.")
     public func identify<RequestBody: Codable>(userId: String, traits: RequestBody?) {
-        implementation?.identify(userId: userId, traits: traits)
+        dispatch { $0.identify(userId: userId, traits: traits) }
     }
 
     public func clearIdentify() {
-        implementation?.clearIdentify()
+        dispatch { $0.clearIdentify() }
     }
 
     public var deviceAttributes: [String: Any] {
         get { [:] }
-        set { implementation?.setDeviceAttributes(newValue) }
+        set { setDeviceAttributes(newValue) }
     }
 
     public func setDeviceAttributes(_ attributes: [String: Any]) {
-        implementation?.setDeviceAttributes(attributes)
+        dispatch { $0.setDeviceAttributes(attributes) }
     }
 
     public var registeredDeviceToken: String? {
@@ -274,32 +297,32 @@ public class CustomerIO: CustomerIOInstance {
     }
 
     public func registerDeviceToken(_ deviceToken: String) {
-        implementation?.registerDeviceToken(deviceToken)
+        dispatch { $0.registerDeviceToken(deviceToken) }
     }
 
     public func deleteDeviceToken() {
-        implementation?.deleteDeviceToken()
+        dispatch { $0.deleteDeviceToken() }
     }
 
     public func track(name: String, properties: [String: Any]? = nil) {
-        implementation?.track(name: name, properties: properties)
+        dispatch { $0.track(name: name, properties: properties) }
     }
 
     @available(*, deprecated, message: "Use 'track(name:properties:)' with [String: Any] properties parameter instead. Support for Codable properties will be removed in a future version.")
     public func track<RequestBody: Codable>(name: String, properties: RequestBody?) {
-        implementation?.track(name: name, properties: properties)
+        dispatch { $0.track(name: name, properties: properties) }
     }
 
     public func screen(title: String, properties: [String: Any]? = nil) {
-        implementation?.screen(title: title, properties: properties)
+        dispatch { $0.screen(title: title, properties: properties) }
     }
 
     @available(*, deprecated, message: "Use 'screen(title:properties:)' with [String: Any] properties parameter instead. Support for Codable properties will be removed in a future version.")
     public func screen<RequestBody: Codable>(title: String, properties: RequestBody?) {
-        implementation?.screen(title: title, properties: properties)
+        dispatch { $0.screen(title: title, properties: properties) }
     }
 
     public func trackMetric(deliveryID: String, event: Metric, deviceToken: String) {
-        implementation?.trackMetric(deliveryID: deliveryID, event: event, deviceToken: deviceToken)
+        dispatch { $0.trackMetric(deliveryID: deliveryID, event: event, deviceToken: deviceToken) }
     }
 }
