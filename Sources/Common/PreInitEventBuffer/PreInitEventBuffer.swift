@@ -26,7 +26,7 @@ final class PreInitEventBuffer {
     }
 
     private enum EnqueueOutcome {
-        case enqueued
+        case enqueued(bufferedCount: Int)
         case dropped
         case executeNow(CustomerIOInstance)
     }
@@ -56,20 +56,33 @@ final class PreInitEventBuffer {
                 if blocks.count >= self.capacity {
                     return .dropped
                 }
-                state = .buffering(blocks + [block])
-                return .enqueued
+                let newBlocks = blocks + [block]
+                state = .buffering(newBlocks)
+                return .enqueued(bufferedCount: newBlocks.count)
             case .draining(let impl, let pending):
-                state = .draining(impl, pending + [block])
-                return .enqueued
+                let newPending = pending + [block]
+                state = .draining(impl, newPending)
+                return .enqueued(bufferedCount: newPending.count)
             case .ready(let impl):
                 return .executeNow(impl)
             }
         }
         switch outcome {
-        case .enqueued:
-            break
+        case .enqueued(let bufferedCount):
+            loggerProvider()?.debug(
+                "Pre-init event buffer accepted event (buffered count: \(bufferedCount)).",
+                Self.logTag
+            )
         case .dropped:
-            droppedCount.mutating { $0 += 1 }
+            let dropped = droppedCount.mutating { count -> Int in
+                count += 1
+                return count
+            }
+            loggerProvider()?.debug(
+                "Pre-init event buffer is at capacity (\(capacity)); dropping event. " +
+                    "Total dropped this session: \(dropped).",
+                Self.logTag
+            )
         case .executeNow(let impl):
             block(impl)
         }
@@ -115,18 +128,11 @@ final class PreInitEventBuffer {
 
         let droppedSnapshot = droppedCount.atomicSetAndFetch(0)
         let logger = loggerProvider()
-        if totalDrained > 0 {
-            logger?.debug(
-                "Pre-init event buffer drained \(totalDrained) event(s).",
-                Self.logTag
-            )
-        }
-        if droppedSnapshot > 0 {
-            logger?.debug(
-                "Pre-init event buffer dropped \(droppedSnapshot) event(s) due to capacity (\(capacity)).",
-                Self.logTag
-            )
-        }
+        logger?.debug(
+            "Pre-init event buffer transitioned to ready. Drained \(totalDrained) event(s) " +
+                "(dropped due to capacity this session: \(droppedSnapshot)).",
+            Self.logTag
+        )
     }
 
     // MARK: - Test-only inspection
