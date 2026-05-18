@@ -14,7 +14,6 @@ import Foundation
 /// )
 /// ```
 public struct LiveActivityConfig {
-
     /// Base URL of the Live Activities API endpoint.
     ///
     /// When `nil` (the default), the module registers with the SDK but makes no
@@ -29,13 +28,13 @@ public struct LiveActivityConfig {
 
     /// AppGroup container identifier used to share pre-loaded image assets with the
     /// widget extension. When `nil`, asset syncing is skipped.
-    internal var appGroupIdentifier: String?
+    var appGroupIdentifier: String?
 
     /// Image assets declared for pre-loading into the AppGroup container at initialize time.
-    internal var assetRegistrations: [AssetRegistration]
+    var assetRegistrations: [AssetRegistration]
 
     /// Activity types registered for SDK observation via `LiveActivityConfigBuilder.register(_:identifier:)`.
-    internal var registrations: [ActivityTypeRegistration]
+    var registrations: [ActivityTypeRegistration]
 
     public init(liveActivitiesBaseURL: URL? = nil, logLevel: CioLogLevel? = nil) {
         self.liveActivitiesBaseURL = liveActivitiesBaseURL

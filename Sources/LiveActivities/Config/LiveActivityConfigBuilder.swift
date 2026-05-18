@@ -1,7 +1,7 @@
 import CioInternalCommon
 import Foundation
 #if os(iOS)
-    import ActivityKit
+import ActivityKit
 #endif
 
 /// Fluent builder for `LiveActivityConfig`.
@@ -13,7 +13,6 @@ import Foundation
 ///     .build()
 /// ```
 public struct LiveActivityConfigBuilder {
-
     private var config: LiveActivityConfig
 
     /// Create a builder, optionally specifying the Live Activities API base URL.
@@ -22,7 +21,7 @@ public struct LiveActivityConfigBuilder {
     ///   (the default) to produce a module that compiles and runs but makes no network
     ///   requests. Update to a real URL before shipping.
     public init(baseURL: URL? = nil) {
-        config = LiveActivityConfig(liveActivitiesBaseURL: baseURL)
+        self.config = LiveActivityConfig(liveActivitiesBaseURL: baseURL)
     }
 
     // MARK: - Fluent configuration
@@ -32,13 +31,17 @@ public struct LiveActivityConfigBuilder {
     /// - Note: This is a temporary field while backend endpoint paths are being finalised.
     @discardableResult
     public func baseURL(_ url: URL) -> Self {
-        var copy = self; copy.config.liveActivitiesBaseURL = url; return copy
+        var copy = self
+        copy.config.liveActivitiesBaseURL = url
+        return copy
     }
 
     /// Override the SDK-wide log level for the Live Activities module only.
     @discardableResult
     public func logLevel(_ level: CioLogLevel) -> Self {
-        var copy = self; copy.config.logLevel = level; return copy
+        var copy = self
+        copy.config.logLevel = level
+        return copy
     }
 
     /// Register an `ActivityAttributes` type for SDK observation.
@@ -124,7 +127,9 @@ public struct LiveActivityConfigBuilder {
     /// widget extension target's entitlements.
     @discardableResult
     public func appGroup(_ identifier: String) -> Self {
-        var copy = self; copy.config.appGroupIdentifier = identifier; return copy
+        var copy = self
+        copy.config.appGroupIdentifier = identifier
+        return copy
     }
 
     /// Register a bundle asset for pre-loading into the AppGroup container.

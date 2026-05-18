@@ -10,7 +10,6 @@ import Foundation
 /// this type carries no `@available` restriction and can be stored without
 /// conditional compilation.
 struct ActivityTypeRegistration {
-
     /// The canonical identifier for this activity type.
     ///
     /// Used in API paths and as the key for the observation task registry.

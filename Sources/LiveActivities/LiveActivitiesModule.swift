@@ -13,7 +13,6 @@ import Foundation
 /// )
 /// ```
 public final class LiveActivitiesModule {
-
     private let config: LiveActivityConfig
     private let sdk: CIOLiveActivitiesSDKProviding
     private let tokenStorage: LiveActivityTokenStorage
