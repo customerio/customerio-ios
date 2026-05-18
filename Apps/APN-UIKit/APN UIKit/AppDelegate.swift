@@ -59,7 +59,21 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             config.flushAt(1)
         }
         config.addModule(LocationModule(config: LocationConfig(mode: .onAppStart)))
+
+        // Pre-init buffer validation scenarios.
+        // Set `preInitScenario` to one of the cases below, run the app, and
+        // watch the device log for "PreInitEventBuffer" lines. Server arrival
+        // visible in the workspace's Activity Log (using the configured
+        // cdpApiKey). Default is `.off`, leaving normal app behavior unchanged.
+        let preInitScenario: PreInitBufferScenario = .off
+        runPreInitScenario(preInitScenario)
+
         CustomerIO.initialize(withConfig: config.build())
+
+        if preInitScenario == .s7_doubleInit {
+            // Verify second initialize() is a no-op (no double drain).
+            CustomerIO.initialize(withConfig: config.build())
+        }
 
         // Initialize messaging features after initializing Customer.io SDK
         MessagingPushAPN.initialize(
@@ -78,11 +92,11 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             .setEventListener(self)
     }
 
-    // Handle Universal Link deep link from the Customer.io SDK. This function will get called if a push notification
-    // gets clicked that has a Universal Link deep link attached and the app is in the foreground. Otherwise, another function
-    // in your app may get called depending on what technology you use (Scenes, UIKit, Swift UI).
-    //
-    // Learn more: https://customer.io/docs/sdk/ios/push/#universal-links-deep-links
+    /// Handle Universal Link deep link from the Customer.io SDK. This function will get called if a push notification
+    /// gets clicked that has a Universal Link deep link attached and the app is in the foreground. Otherwise, another function
+    /// in your app may get called depending on what technology you use (Scenes, UIKit, Swift UI).
+    ///
+    /// Learn more: https://customer.io/docs/sdk/ios/push/#universal-links-deep-links
     func application(_ application: UIApplication, continue userActivity: NSUserActivity, restorationHandler: @escaping ([UIUserActivityRestoring]?) -> Void) -> Bool {
         guard let universalLinkUrl = userActivity.webpageURL else {
             return false
@@ -103,6 +117,52 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         // Called when the user discards a scene session.
         // If any sessions were discarded while the application was not running, this will be called shortly after application:didFinishLaunchingWithOptions.
         // Use this method to release any resources that were specific to the discarded scenes, as they will not return.
+    }
+
+    // MARK: - Pre-init buffer validation scenarios
+
+    /// Local test harness for validating the native pre-init event buffer.
+    /// Toggle `preInitScenario` in `application(_:didFinishLaunchingWithOptions:)`
+    /// to exercise a specific case while running the sample app, then watch the
+    /// device log for "PreInitEventBuffer" entries and check server arrival via
+    /// the workspace's Activity Log.
+    enum PreInitBufferScenario: String {
+        case off
+        case s1_singleEvent
+        case s2_orderingAcrossIdentities
+        case s3_overflow
+        case s4_zeroEvents
+        case s5_safeDefaults
+        case s7_doubleInit
+    }
+
+    private func runPreInitScenario(_ scenario: PreInitBufferScenario) {
+        let sdk = CustomerIO.shared
+        switch scenario {
+        case .off:
+            return
+        case .s1_singleEvent:
+            sdk.track(name: "preinit_single", properties: ["case": "S1"])
+        case .s2_orderingAcrossIdentities:
+            sdk.identify(userId: "alice", traits: ["case": "S2"])
+            sdk.track(name: "eventA", properties: ["case": "S2"])
+            sdk.clearIdentify()
+            sdk.identify(userId: "bob", traits: ["case": "S2"])
+            sdk.track(name: "eventB", properties: ["case": "S2"])
+        case .s3_overflow:
+            for i in 0 ..< 105 {
+                sdk.track(name: "preinit_overflow", properties: ["index": i])
+            }
+        case .s4_zeroEvents, .s7_doubleInit:
+            // No pre-init work; the validation is in the post-init log output.
+            return
+        case .s5_safeDefaults:
+            // CustomerIOInstance on iOS only exposes registeredDeviceToken as a
+            // read-side accessor. The meaningful check is that this read does
+            // not crash before CustomerIO.initialize() runs.
+            let token = sdk.registeredDeviceToken ?? "nil"
+            print("[PreInitBufferTest] S5 pre-init registeredDeviceToken: \(token)")
+        }
     }
 }
 
@@ -132,10 +192,10 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 //    }
 // }
 
-// In-app event listeners to handle user's response to in-app messages.
-// Registering event listeners is requiredf
+/// In-app event listeners to handle user's response to in-app messages.
+/// Registering event listeners is requiredf
 extension AppDelegate: InAppEventListener {
-    // Message is sent and shown to the user
+    /// Message is sent and shown to the user
     nonisolated func messageShown(message: InAppMessage) {
         CustomerIO.shared.track(
             name: "inapp shown",
@@ -143,7 +203,7 @@ extension AppDelegate: InAppEventListener {
         )
     }
 
-    // User taps X (close) button and in-app message is dismissed
+    /// User taps X (close) button and in-app message is dismissed
     nonisolated func messageDismissed(message: InAppMessage) {
         CustomerIO.shared.track(
             name: "inapp dismissed",
@@ -151,7 +211,7 @@ extension AppDelegate: InAppEventListener {
         )
     }
 
-    // In-app message produces an error - preventing message from appearing to the user
+    /// In-app message produces an error - preventing message from appearing to the user
     nonisolated func errorWithMessage(message: InAppMessage) {
         CustomerIO.shared.track(
             name: "inapp error",
@@ -159,7 +219,7 @@ extension AppDelegate: InAppEventListener {
         )
     }
 
-    // User perform an action on in-app message
+    /// User perform an action on in-app message
     nonisolated func messageActionTaken(message: InAppMessage, actionValue: String, actionName: String) {
         if actionName == "remove" || actionName == "test" {
             MessagingInApp.shared.dismissMessage()
