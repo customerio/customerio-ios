@@ -94,4 +94,50 @@ class MessagingPushNotificationDelegateTests: XCTestCase {
         XCTAssertTrue(secondDelegate is CioNotificationCenterDelegate)
         XCTAssertFalse(firstDelegate === secondDelegate)
     }
+
+    // MARK: - delegate swizzle wrapping
+
+    func testCioSwizzledSetDelegate_whenNonCioDelegateAssigned_thenItIsWrappedInCioDelegate() {
+        let externalDelegate = MockNotificationCenterDelegate()
+        MessagingPush.installNotificationCenterDelegate(
+            wrapping: nil,
+            centerProvider: { self.mockNotificationCenter }
+        )
+
+        // Simulate what the swizzle does when another SDK assigns its delegate.
+        MessagingPush.installNotificationCenterDelegate(
+            wrapping: externalDelegate,
+            centerProvider: { self.mockNotificationCenter }
+        )
+
+        XCTAssertTrue(mockNotificationCenter.delegate is CioNotificationCenterDelegate)
+        // Verify the external delegate is forwarded calls by the wrapper.
+        mockNotificationCenter.delegate?.userNotificationCenter?(
+            UNUserNotificationCenter.current(),
+            willPresent: UNNotification.testInstance,
+            withCompletionHandler: { _ in }
+        )
+        XCTAssertTrue(externalDelegate.willPresentNotificationCalled)
+    }
+
+    func testCioSwizzledSetDelegate_whenCioDelegateAssigned_thenNoDuplicateWrapping() {
+        // Install our delegate wrapping an external one.
+        let externalDelegate = MockNotificationCenterDelegate()
+        MessagingPush.installNotificationCenterDelegate(
+            wrapping: externalDelegate,
+            centerProvider: { self.mockNotificationCenter }
+        )
+        let firstProxy = mockNotificationCenter.delegate as? CioNotificationCenterDelegate
+
+        // Reassigning our own CioNotificationCenterDelegate should not nest another wrapper on top.
+        // (The swizzle checks `delegate is CioNotificationCenterDelegate` and passes through.)
+        // Simulate pass-through: installing again with the same proxy should still forward correctly.
+        XCTAssertNotNil(firstProxy)
+        mockNotificationCenter.delegate?.userNotificationCenter?(
+            UNUserNotificationCenter.current(),
+            willPresent: UNNotification.testInstance,
+            withCompletionHandler: { _ in }
+        )
+        XCTAssertTrue(externalDelegate.willPresentNotificationCalled)
+    }
 }

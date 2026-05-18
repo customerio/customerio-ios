@@ -22,6 +22,9 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
     /// AnyObject avoids a stored-property availability conflict (CioNotificationCenterDelegate is unavailable in app extensions).
     private var notificationCenterDelegate: AnyObject?
 
+    /// Guards against swizzling the delegate setter more than once; swizzling twice would undo the first swap.
+    private static var delegateSetterSwizzled = false
+
     // singleton constructor
     private init() {
         self.globalDataStore = DIGraphShared.shared.globalDataStore
@@ -131,6 +134,7 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
         wrapping wrappedDelegate: UNUserNotificationCenterDelegate?,
         centerProvider: UserNotificationCenterInstance
     ) {
+        beginSwizzlingDelegateSetter()
         let proxy = CioNotificationCenterDelegate(
             messagingPush: shared,
             config: { moduleConfig },
@@ -139,6 +143,40 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
         shared.notificationCenterDelegate = proxy
         var center = centerProvider()
         center.delegate = proxy
+    }
+
+    /// Swizzles `UNUserNotificationCenter.delegate` setter so that any future assignment routes through
+    /// `cio_swizzled_setDelegate`, which wraps non-CIO delegates rather than displacing the SDK.
+    /// The guard ensures the exchange happens exactly once; a second exchange would undo the first.
+    @available(iOSApplicationExtension, unavailable)
+    private static func beginSwizzlingDelegateSetter() {
+        guard !delegateSetterSwizzled else { return }
+        delegateSetterSwizzled = true
+
+        let originalSelector = #selector(setter: UNUserNotificationCenter.delegate)
+        let swizzledSelector = #selector(UNUserNotificationCenter.cio_swizzled_setDelegate(delegate:))
+
+        guard
+            let originalMethod = class_getInstanceMethod(UNUserNotificationCenter.self, originalSelector),
+            let swizzledMethod = class_getInstanceMethod(UNUserNotificationCenter.self, swizzledSelector)
+        else { return }
+
+        let didAdd = class_addMethod(
+            UNUserNotificationCenter.self,
+            originalSelector,
+            method_getImplementation(swizzledMethod),
+            method_getTypeEncoding(swizzledMethod)
+        )
+        if didAdd {
+            class_replaceMethod(
+                UNUserNotificationCenter.self,
+                swizzledSelector,
+                method_getImplementation(originalMethod),
+                method_getTypeEncoding(originalMethod)
+            )
+        } else {
+            method_exchangeImplementations(originalMethod, swizzledMethod)
+        }
     }
 
     /**
