@@ -23,14 +23,14 @@ class CustomerIOTest: UnitTest {
     }
 
     func test_initialize_givenPushDeviceTokenNotSet_expectRegisterDeviceTokenNotCalled() {
-        customerIO.postInitialize()
+        customerIO.postInitialize(impl: implmentationMock)
         XCTAssertFalse(implmentationMock.registerDeviceTokenCalled)
     }
 
     func test_initialize_givenPushDeviceTokenSet_expectRegisterDeviceTokenCalled() {
         let pushDeviceToken = String.random
         globalDataStoreMock.pushDeviceToken = pushDeviceToken
-        customerIO.postInitialize()
+        customerIO.postInitialize(impl: implmentationMock)
         XCTAssertTrue(implmentationMock.registerDeviceTokenCalled)
     }
 
@@ -71,9 +71,10 @@ class CustomerIOTest: UnitTest {
         XCTAssertFalse(freshImplementation.setDeviceAttributesCalled)
         XCTAssertFalse(freshImplementation.registerDeviceTokenCalled)
 
-        // Initialize. Expected order: implementation assigned →
-        // postInitialize() registers the stored token → drain replays the
-        // buffered setDeviceAttributes against the real implementation.
+        // Initialize. Expected order: postInitialize() registers the stored
+        // token on the impl → drain replays the buffered setDeviceAttributes
+        // against the real implementation → implementation published last so
+        // concurrent dispatch calls never race past replay.
         CustomerIO.initializeSharedInstance(with: freshImplementation)
 
         XCTAssertTrue(freshImplementation.registerDeviceTokenCalled, "postInitialize() should register the stored token before the buffer drains")

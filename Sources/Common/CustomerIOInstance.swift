@@ -215,7 +215,7 @@ public class CustomerIO: CustomerIOInstance {
     /// authoritative replay. Prevents the duplicate "Device Created or Updated"
     /// that would otherwise fire when both `postInitialize` and the buffered
     /// `registerDeviceToken` target the same stored token.
-    @Atomic private var hasPendingTokenRegistration: Bool = false
+    private let hasPendingTokenRegistration = Synchronized<Bool>(false)
 
     /// private constructor to force use of singleton API
     private init() {}
@@ -226,11 +226,11 @@ public class CustomerIO: CustomerIOInstance {
 
     @discardableResult
     static func setUpSharedInstanceForUnitTest(implementation: CustomerIOInstance) -> CustomerIO {
-        // Assign the implementation before draining so the buffered closures
-        // run against a fully wired SDK and the global token state is in place
-        // by the time buffered token-dependent calls replay.
-        shared.implementation = implementation
+        // Drain the buffer against the impl *before* publishing it on `shared`,
+        // so concurrent `dispatch` calls can't bypass replay while pre-init
+        // events are still queued.
         shared.preInitEventBuffer.transitionToReady(implementation)
+        shared.implementation = implementation
         return shared
     }
 
@@ -240,19 +240,18 @@ public class CustomerIO: CustomerIOInstance {
     #endif
 
     public static func initializeSharedInstance(with implementation: CustomerIOInstance) {
-        // Assign the implementation first so buffered closures find a real
-        // backend, then sync the stored device token before draining. The
-        // token sync must happen *before* the drain so buffered token-dependent
-        // calls (e.g. setDeviceAttributes) observe a non-nil contextPlugin
-        // token. If a `registerDeviceToken` was buffered pre-init,
-        // postInitialize defers to it so we don't emit a duplicate
-        // "Device Created or Updated".
-        shared.implementation = implementation
-        shared.postInitialize()
+        // Sync the stored device token first so buffered token-dependent calls
+        // (e.g. `setDeviceAttributes`) observe a non-nil contextPlugin token
+        // during replay. Then drain the buffer. Only after both have completed
+        // do we publish `implementation`, so concurrent `dispatch` calls on
+        // other threads either enqueue (and are picked up by the drain) or
+        // execute directly post-drain — never racing past in-flight replay.
+        shared.postInitialize(impl: implementation)
         shared.preInitEventBuffer.transitionToReady(implementation)
+        shared.implementation = implementation
     }
 
-    func postInitialize() {
+    func postInitialize(impl: CustomerIOInstance) {
         // Register the device token during SDK initialization to address device registration issues
         // arising from lifecycle differences between wrapper SDKs and native SDK.
         //
@@ -261,10 +260,14 @@ public class CustomerIO: CustomerIOInstance {
         // during the drain. Registering here would either duplicate the
         // resulting Device Created or Updated event (same token) or cause an
         // unnecessary delete-and-re-register cycle (different token).
-        guard !hasPendingTokenRegistration else { return }
+        guard !hasPendingTokenRegistration.wrappedValue else { return }
         let globalDataStore = diGraph.globalDataStore
         if let token = globalDataStore.pushDeviceToken {
-            registerDeviceToken(token)
+            // Call directly on `impl` rather than via `self.dispatch`/
+            // `registerDeviceToken`. `self.implementation` is intentionally
+            // still `nil` at this point so the buffer remains the only path
+            // for concurrent calls.
+            impl.registerDeviceToken(token)
         }
     }
 
@@ -321,7 +324,7 @@ public class CustomerIO: CustomerIOInstance {
         if let impl = implementation {
             impl.registerDeviceToken(deviceToken)
         } else {
-            hasPendingTokenRegistration = true
+            hasPendingTokenRegistration.wrappedValue = true
             preInitEventBuffer.enqueue { $0.registerDeviceToken(deviceToken) }
         }
     }
