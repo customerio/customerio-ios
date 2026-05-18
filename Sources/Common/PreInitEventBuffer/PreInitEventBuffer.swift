@@ -60,6 +60,9 @@ final class PreInitEventBuffer {
                 state = .buffering(newBlocks)
                 return .enqueued(bufferedCount: newBlocks.count)
             case .draining(let impl, let pending):
+                if pending.count >= self.capacity {
+                    return .dropped
+                }
                 let newPending = pending + [block]
                 state = .draining(impl, newPending)
                 return .enqueued(bufferedCount: newPending.count)

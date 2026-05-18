@@ -199,6 +199,35 @@ struct PreInitEventBufferTests {
         #expect(recorder.events == ["track:outer", "track:inner"])
     }
 
+    @Test func drainingStateEnforcesCapacity() {
+        // While in .draining (i.e. the drain is replaying outer blocks), any
+        // reentrant enqueue must respect the same capacity as .buffering.
+        // Without this guarantee, a launch-time burst racing the drain could
+        // grow `pending` past the documented bound and bypass drop accounting.
+        let buffer = makeBuffer(capacity: 2)
+        let recorder = RecordingInstance()
+        let bufferRef = buffer
+
+        // First block triggers 4 reentrant enqueues while the buffer is in
+        // .draining. Only the first 2 should be retained; the remaining 2
+        // must be counted as drops.
+        buffer.enqueue { impl in
+            impl.track(name: "outer", properties: nil)
+            for i in 0 ..< 4 {
+                bufferRef.enqueue { $0.track(name: "inner-\(i)", properties: nil) }
+            }
+        }
+        buffer.transitionToReady(recorder)
+
+        #expect(recorder.events == [
+            "track:outer",
+            "track:inner-0",
+            "track:inner-1"
+        ])
+        // 2 dropped during the draining phase; counter is reset after drain.
+        #expect(buffer.droppedEventCount == 0)
+    }
+
     @Test func concurrentEnqueuesArePreservedUpToCap() {
         let buffer = makeBuffer(capacity: 200)
         let recorder = RecordingInstance()
