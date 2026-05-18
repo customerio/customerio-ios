@@ -324,15 +324,23 @@ public class CustomerIO: CustomerIOInstance {
         if let impl = implementation {
             impl.registerDeviceToken(deviceToken)
         } else {
-            // Only set the deferral flag once we know the buffer actually
-            // retained the closure. If the buffer is at capacity and drops
-            // it, leave the flag clear so `postInitialize` will still
-            // register the stored device token as a fallback — without this
-            // gate, both the buffered closure AND the stored-token sync
-            // would be skipped, leaving the device unregistered.
-            let accepted = preInitEventBuffer.enqueue { $0.registerDeviceToken(deviceToken) }
-            if accepted {
-                hasPendingTokenRegistration.wrappedValue = true
+            // Enqueue and flag-set under a single critical section so
+            // `postInitialize` on another thread can't observe the
+            // intermediate state where the closure is buffered but the
+            // flag is still `false`. Without this atomicity, a concurrent
+            // `initializeSharedInstance` could register the stored token
+            // *and* drain the buffered call, producing a duplicate Device
+            // Created or Updated event.
+            //
+            // The flag is only set when the buffer actually retained the
+            // closure. If the buffer is at capacity and drops it, the flag
+            // stays `false` so `postInitialize` falls through to register
+            // the stored device token as a fallback.
+            hasPendingTokenRegistration.mutating { isPending in
+                let accepted = preInitEventBuffer.enqueue { $0.registerDeviceToken(deviceToken) }
+                if accepted {
+                    isPending = true
+                }
             }
         }
     }
