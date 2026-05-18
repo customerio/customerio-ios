@@ -324,8 +324,16 @@ public class CustomerIO: CustomerIOInstance {
         if let impl = implementation {
             impl.registerDeviceToken(deviceToken)
         } else {
-            hasPendingTokenRegistration.wrappedValue = true
-            preInitEventBuffer.enqueue { $0.registerDeviceToken(deviceToken) }
+            // Only set the deferral flag once we know the buffer actually
+            // retained the closure. If the buffer is at capacity and drops
+            // it, leave the flag clear so `postInitialize` will still
+            // register the stored device token as a fallback — without this
+            // gate, both the buffered closure AND the stored-token sync
+            // would be skipped, leaving the device unregistered.
+            let accepted = preInitEventBuffer.enqueue { $0.registerDeviceToken(deviceToken) }
+            if accepted {
+                hasPendingTokenRegistration.wrappedValue = true
+            }
         }
     }
 

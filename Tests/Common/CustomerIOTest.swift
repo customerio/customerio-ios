@@ -52,6 +52,37 @@ class CustomerIOTest: UnitTest {
         XCTAssertEqual(freshImplementation.registerDeviceTokenReceivedArguments, bufferedToken)
     }
 
+    func test_initializeSharedInstance_givenBufferAtCapacityAndDroppedRegisterDeviceToken_expectStoredTokenFallback() {
+        // Regression for the drop-and-flag race: if the pre-init buffer is
+        // already at capacity when `registerDeviceToken` arrives, the closure
+        // is dropped. `hasPendingTokenRegistration` must remain false so
+        // `postInitialize` still falls through to registering the stored
+        // token. Without that gate, the user's token would be lost *and*
+        // postInitialize would skip its fallback, leaving the device
+        // unregistered until the next launch.
+        let storedToken = String.random
+        let droppedToken = String.random
+        let freshImplementation = CustomerIOInstanceMock()
+        globalDataStoreMock.pushDeviceToken = storedToken
+
+        CustomerIO.resetSharedTestEnvironment()
+
+        // Fill the pre-init buffer to its default capacity (100). Each call
+        // routes through `dispatch` → `preInitEventBuffer.enqueue` because
+        // `implementation` is nil pre-init.
+        for index in 0 ..< 100 {
+            CustomerIO.shared.track(name: "preinit_\(index)")
+        }
+        // This call should hit the capacity ceiling and be dropped; the flag
+        // must NOT be set.
+        CustomerIO.shared.registerDeviceToken(droppedToken)
+
+        CustomerIO.initializeSharedInstance(with: freshImplementation)
+
+        XCTAssertEqual(freshImplementation.registerDeviceTokenCallsCount, 1, "postInitialize must fall back to the stored token when registerDeviceToken was dropped at capacity")
+        XCTAssertEqual(freshImplementation.registerDeviceTokenReceivedArguments, storedToken)
+    }
+
     func test_initializeSharedInstance_givenStoredTokenAndBufferedCall_expectTokenSyncedBeforeReplay() {
         // P2 #1 from PR review: postInitialize() must run before the buffer drain
         // so buffered token-dependent calls (e.g. setDeviceAttributes) observe a

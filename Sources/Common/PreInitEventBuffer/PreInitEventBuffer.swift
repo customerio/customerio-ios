@@ -49,7 +49,15 @@ final class PreInitEventBuffer {
     /// is already in the `ready` state. If the buffer is at capacity, the new
     /// call is dropped and the running drop counter is incremented (logged on
     /// the next `transitionToReady`).
-    func enqueue(_ block: @escaping Block) {
+    ///
+    /// Returns `true` when the call was either retained for replay or executed
+    /// inline against a ready implementation; `false` when the buffer was full
+    /// and the call was dropped. Callers that maintain external state tied to
+    /// an enqueued call (e.g. a "this token will be registered during drain"
+    /// flag) must gate that state on the return value so they don't strand
+    /// themselves when the buffer rejects the enqueue.
+    @discardableResult
+    func enqueue(_ block: @escaping Block) -> Bool {
         let outcome: EnqueueOutcome = state.mutating { state -> EnqueueOutcome in
             switch state {
             case .buffering(let blocks):
@@ -76,6 +84,7 @@ final class PreInitEventBuffer {
                 "Pre-init event buffer accepted event (buffered count: \(bufferedCount)).",
                 Self.logTag
             )
+            return true
         case .dropped:
             let dropped = droppedCount.mutating { count -> Int in
                 count += 1
@@ -86,8 +95,10 @@ final class PreInitEventBuffer {
                     "Total dropped this session: \(dropped).",
                 Self.logTag
             )
+            return false
         case .executeNow(let impl):
             block(impl)
+            return true
         }
     }
 
