@@ -66,44 +66,20 @@ public struct LiveActivityConfigBuilder {
             startObserving: { onPushToStartToken, onInstancePushToken, onActivityObserved, onStateUpdate, onEnd in
                 Task {
                     await withTaskGroup(of: Void.self) { group in
-                        // Monitor push-to-start token rotations for this type.
                         group.addTask {
                             for await token in Activity<T>.pushToStartTokenUpdates {
                                 await onPushToStartToken(token)
                             }
                         }
-                        // Monitor all current and future activities of this type.
                         group.addTask {
                             for await activity in Activity<T>.activityUpdates {
-                                let activityId = activity.attributes.activityInstanceId
-                                await onActivityObserved(activityId)
-                                // Instance push token — must be observed before state/lifecycle
-                                // so the backend has a valid token before any update arrives.
-                                Task {
-                                    for await token in activity.pushTokenUpdates {
-                                        await onInstancePushToken(activityId, token)
-                                    }
-                                }
-                                Task {
-                                    let encoder = JSONEncoder()
-                                    for await update in activity.contentUpdates {
-                                        if let data = try? encoder.encode(update.state) {
-                                            await onStateUpdate(activityId, data)
-                                        }
-                                    }
-                                }
-                                Task {
-                                    for await state in activity.activityStateUpdates {
-                                        switch state {
-                                        case .ended, .dismissed, .stale:
-                                            await onEnd(activityId)
-                                        case .active, .pending:
-                                            break
-                                        @unknown default:
-                                            break
-                                        }
-                                    }
-                                }
+                                await Self.observeActivity(
+                                    activity,
+                                    onInstancePushToken: onInstancePushToken,
+                                    onActivityObserved: onActivityObserved,
+                                    onStateUpdate: onStateUpdate,
+                                    onEnd: onEnd
+                                )
                             }
                         }
                     }
@@ -117,6 +93,45 @@ public struct LiveActivityConfigBuilder {
         )
         copy.config.registrations.append(registration)
         return copy
+    }
+
+    @available(iOS 17.2, *)
+    private static func observeActivity<T: CIOActivityAttribute>(
+        _ activity: Activity<T>,
+        onInstancePushToken: @escaping (String, Data) async -> Void,
+        onActivityObserved: @escaping (String) async -> Void,
+        onStateUpdate: @escaping (String, Data) async -> Void,
+        onEnd: @escaping (String) async -> Void
+    ) async {
+        let activityId = activity.attributes.activityInstanceId
+        await onActivityObserved(activityId)
+        // Instance push token — must be observed before state/lifecycle
+        // so the backend has a valid token before any update arrives.
+        Task {
+            for await token in activity.pushTokenUpdates {
+                await onInstancePushToken(activityId, token)
+            }
+        }
+        Task {
+            let encoder = JSONEncoder()
+            for await update in activity.contentUpdates {
+                if let data = try? encoder.encode(update.state) {
+                    await onStateUpdate(activityId, data)
+                }
+            }
+        }
+        Task {
+            for await state in activity.activityStateUpdates {
+                switch state {
+                case .ended, .dismissed, .stale:
+                    await onEnd(activityId)
+                case .active, .pending:
+                    break
+                @unknown default:
+                    break
+                }
+            }
+        }
     }
     #endif
 
