@@ -54,16 +54,7 @@ extension DIGraphShared {
     func testDependenciesAbleToResolve() -> Int {
         var countDependenciesResolved = 0
 
-        _ = automaticPushClickHandling
-        countDependenciesResolved += 1
-
-        _ = pushEventHandler
-        countDependenciesResolved += 1
-
         _ = pushClickHandler
-        countDependenciesResolved += 1
-
-        _ = pushEventHandlerProxy
         countDependenciesResolved += 1
 
         _ = pushHistory
@@ -78,40 +69,10 @@ extension DIGraphShared {
         _ = httpClient
         countDependenciesResolved += 1
 
-        _ = userNotificationCenter
-        countDependenciesResolved += 1
-
-        _ = userNotificationsFrameworkAdapter
-        countDependenciesResolved += 1
-
         return countDependenciesResolved
     }
 
     // Handle classes annotated with InjectRegisterShared
-    // AutomaticPushClickHandling
-    @available(iOSApplicationExtension, unavailable)
-    var automaticPushClickHandling: AutomaticPushClickHandling {
-        getOverriddenInstance() ??
-            newAutomaticPushClickHandling
-    }
-
-    @available(iOSApplicationExtension, unavailable)
-    private var newAutomaticPushClickHandling: AutomaticPushClickHandling {
-        AutomaticPushClickHandlingImpl(notificationCenterAdapter: userNotificationsFrameworkAdapter, logger: logger)
-    }
-
-    // PushEventHandler
-    @available(iOSApplicationExtension, unavailable)
-    var pushEventHandler: PushEventHandler {
-        getOverriddenInstance() ??
-            newPushEventHandler
-    }
-
-    @available(iOSApplicationExtension, unavailable)
-    private var newPushEventHandler: PushEventHandler {
-        IOSPushEventListener(jsonAdapter: jsonAdapter, pushEventHandlerProxy: pushEventHandlerProxy, moduleConfig: messagingPushConfigOptions, pushClickHandler: pushClickHandler, pushHistory: pushHistory, logger: logger, pushLogger: pushNotificationLogger)
-    }
-
     // PushClickHandler
     @available(iOSApplicationExtension, unavailable)
     var pushClickHandler: PushClickHandler {
@@ -122,20 +83,6 @@ extension DIGraphShared {
     @available(iOSApplicationExtension, unavailable)
     private var newPushClickHandler: PushClickHandler {
         PushClickHandlerImpl(deepLinkUtil: deepLinkUtil, messagingPush: messagingPushInstance, pushLogger: pushNotificationLogger, commonLogger: sdkCommonLogger)
-    }
-
-    // PushEventHandlerProxy (singleton)
-    @available(iOSApplicationExtension, unavailable)
-    var pushEventHandlerProxy: PushEventHandlerProxy {
-        getOverriddenInstance() ??
-            getSingletonOrCreate {
-                _get_pushEventHandlerProxy()
-            }
-    }
-
-    @available(iOSApplicationExtension, unavailable)
-    private func _get_pushEventHandlerProxy() -> PushEventHandlerProxy {
-        PushEventHandlerProxyImpl(logger: logger)
     }
 
     // PushHistory (singleton)
@@ -178,30 +125,6 @@ extension DIGraphShared {
 
     private var newHttpClient: HttpClient {
         RichPushHttpClient(jsonAdapter: jsonAdapter, httpRequestRunner: httpRequestRunner, logger: logger, userAgentUtil: userAgentUtil)
-    }
-
-    // UserNotificationCenter
-    var userNotificationCenter: UserNotificationCenter {
-        getOverriddenInstance() ??
-            newUserNotificationCenter
-    }
-
-    private var newUserNotificationCenter: UserNotificationCenter {
-        UserNotificationCenterImpl()
-    }
-
-    // UserNotificationsFrameworkAdapter (singleton)
-    @available(iOSApplicationExtension, unavailable)
-    var userNotificationsFrameworkAdapter: UserNotificationsFrameworkAdapter {
-        getOverriddenInstance() ??
-            getSingletonOrCreate {
-                _get_userNotificationsFrameworkAdapter()
-            }
-    }
-
-    @available(iOSApplicationExtension, unavailable)
-    private func _get_userNotificationsFrameworkAdapter() -> UserNotificationsFrameworkAdapter {
-        UserNotificationsFrameworkAdapterImpl(pushEventHandler: pushEventHandler, userNotificationCenter: userNotificationCenter, notificationCenterDelegateProxy: pushEventHandlerProxy)
     }
 }
 
