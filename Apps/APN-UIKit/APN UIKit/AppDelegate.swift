@@ -17,6 +17,10 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         // Override point for customization after application launch.
         initializeCioAndInAppListeners()
 
+        // SPIKE: plant grep-able needles via the public API immediately after init
+        // so we can verify on-disk bytes never contain the plaintext.
+        runSegmentStorageSpike()
+
         /*
          Registers the `AppDelegate` class to handle when a push notification gets clicked.
          This line of code is optional and only required if you have custom code that needs to run when a push notification gets clicked on.
@@ -26,6 +30,30 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 //        UNUserNotificationCenter.current().delegate = self
 
         return true
+    }
+
+    // SPIKE: feeds the public CIO/Segment API the canary strings that the
+    // post-run grep step looks for on disk. Throwaway code on a spike branch.
+    //
+    // NOTE: `clearIdentify()` triggers `analytics.reset()` which wipes the event
+    // queue on disk, defeating the post-run grep. To preserve the wrapped event
+    // files for verification, we skip clearIdentify() in the spike. The UserDefaults
+    // suite plist is what we really care about for the bypass question and that
+    // *is* persisted at the time the snapshot runs.
+    func runSegmentStorageSpike() {
+        let uuid = UUID().uuidString
+        let sdk = CustomerIO.shared
+        sdk.identify(userId: "SPIKE_USER_\(uuid)", traits: ["SPIKE_TRAIT_email": "SPIKE_TRAIT_VALUE_\(uuid)"])
+        sdk.track(name: "SPIKE_EVENT_1", properties: ["SPIKE_PROP_marker": "SPIKE_PROP_VALUE_1"])
+        sdk.track(name: "SPIKE_EVENT_2", properties: ["SPIKE_PROP_marker": "SPIKE_PROP_VALUE_2"])
+        sdk.track(name: "SPIKE_EVENT_3", properties: ["SPIKE_PROP_marker": "SPIKE_PROP_VALUE_3"])
+        sdk.screen(title: "SPIKE_SCREEN_1", properties: ["SPIKE_PROP_marker": "SPIKE_PROP_VALUE_screen"])
+        // group is not on the CIO public surface; alias is, so plant a needle there too.
+        sdk.alias(newId: "SPIKE_ALIAS_\(uuid)")
+        // INTENTIONALLY OMITTED for the spike: sdk.clearIdentify()
+        // It calls analytics.reset() which would wipe the wrapped event queue and the
+        // UserDefaults plist before the verifier can snapshot them.
+        print("[SegmentStorageSpike] spike sequence complete; uuid=\(uuid)")
     }
 
     func initializeCioAndInAppListeners() {
