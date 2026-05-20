@@ -52,30 +52,97 @@ struct GeofenceStorageTests {
     }
 
     @Test
-    func purgeExpiredCooldowns_givenExpiredKeys_expectRemoved() async {
+    func purgeExpiredCooldowns_givenSomeExpired_expectOnlyExpiredRemoved() async {
         let dir = makeTempDirectory()
         defer { try? FileManager.default.removeItem(at: dir) }
         let storage = makeStorage(directory: dir)
-        let t1 = Date(timeIntervalSince1970: 1700000000)
-        let t2 = Date(timeIntervalSince1970: 1700001000)
-        await storage.recordEventCooldown(key: "geo_1:enter", timestamp: t1)
-        await storage.recordEventCooldown(key: "geo_2:enter", timestamp: t2)
-        await storage.purgeExpiredCooldowns(keys: ["geo_1:enter"])
+        let interval: TimeInterval = 3600
+        let now = Date(timeIntervalSince1970: 1700000000)
+        let staleTimestamp = now.addingTimeInterval(-interval - 1)
+        let freshTimestamp = now.addingTimeInterval(-1)
+        await storage.recordEventCooldown(key: "geo_stale:enter", timestamp: staleTimestamp)
+        await storage.recordEventCooldown(key: "geo_fresh:enter", timestamp: freshTimestamp)
+
+        await storage.purgeExpiredCooldowns(now: now, interval: interval)
+
         let cooldowns = await storage.getEventCooldowns()
-        #expect(cooldowns.count == 1)
-        #expect(cooldowns["geo_1:enter"] == nil)
-        #expect(cooldowns["geo_2:enter"] == t2)
+        #expect(cooldowns["geo_stale:enter"] == nil)
+        #expect(cooldowns["geo_fresh:enter"] == freshTimestamp)
     }
 
     @Test
-    func purgeExpiredCooldowns_givenEmptyKeys_expectNoChange() async {
+    func purgeExpiredCooldowns_givenNoneExpired_expectAllRetained() async {
         let dir = makeTempDirectory()
         defer { try? FileManager.default.removeItem(at: dir) }
         let storage = makeStorage(directory: dir)
-        await storage.recordEventCooldown(key: "geo_1:enter", timestamp: Date())
-        await storage.purgeExpiredCooldowns(keys: [])
+        let now = Date(timeIntervalSince1970: 1700000000)
+        await storage.recordEventCooldown(key: "geo_1:enter", timestamp: now)
+
+        await storage.purgeExpiredCooldowns(now: now, interval: 3600)
+
         let cooldowns = await storage.getEventCooldowns()
-        #expect(cooldowns.count == 1)
+        #expect(cooldowns["geo_1:enter"] == now)
+    }
+
+    // MARK: - Atomic cooldown acquisition
+
+    @Test
+    func tryAcquireCooldown_givenNoExistingEntry_expectAcquiredAndRecorded() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let storage = makeStorage(directory: dir)
+        let now = Date(timeIntervalSince1970: 1700000000)
+
+        let acquired = await storage.tryAcquireCooldown(key: "geo_1:enter", now: now, interval: 3600)
+
+        #expect(acquired == true)
+        let cooldowns = await storage.getEventCooldowns()
+        #expect(cooldowns["geo_1:enter"] == now)
+    }
+
+    @Test
+    func tryAcquireCooldown_givenEntryWithinInterval_expectNotAcquiredAndTimestampUnchanged() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let storage = makeStorage(directory: dir)
+        let firstAttempt = Date(timeIntervalSince1970: 1700000000)
+        let secondAttempt = firstAttempt.addingTimeInterval(1800)
+
+        _ = await storage.tryAcquireCooldown(key: "geo_1:enter", now: firstAttempt, interval: 3600)
+        let acquired = await storage.tryAcquireCooldown(key: "geo_1:enter", now: secondAttempt, interval: 3600)
+
+        #expect(acquired == false)
+        let cooldowns = await storage.getEventCooldowns()
+        #expect(cooldowns["geo_1:enter"] == firstAttempt)
+    }
+
+    @Test
+    func tryAcquireCooldown_givenEntryAtIntervalBoundary_expectAcquiredAndTimestampReplaced() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let storage = makeStorage(directory: dir)
+        let firstAttempt = Date(timeIntervalSince1970: 1700000000)
+        let secondAttempt = firstAttempt.addingTimeInterval(3600)
+
+        _ = await storage.tryAcquireCooldown(key: "geo_1:enter", now: firstAttempt, interval: 3600)
+        let acquired = await storage.tryAcquireCooldown(key: "geo_1:enter", now: secondAttempt, interval: 3600)
+
+        #expect(acquired == true)
+        let cooldowns = await storage.getEventCooldowns()
+        #expect(cooldowns["geo_1:enter"] == secondAttempt)
+    }
+
+    @Test
+    func tryAcquireCooldown_givenDifferentKey_expectIndependentAcquisition() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let storage = makeStorage(directory: dir)
+        let now = Date(timeIntervalSince1970: 1700000000)
+
+        _ = await storage.tryAcquireCooldown(key: "geo_1:enter", now: now, interval: 3600)
+        let acquired = await storage.tryAcquireCooldown(key: "geo_2:enter", now: now, interval: 3600)
+
+        #expect(acquired == true)
     }
 
     @Test
@@ -137,7 +204,7 @@ struct GeofenceStorageTests {
                         case 1:
                             _ = await storage.getEventCooldowns()
                         case 2:
-                            await storage.purgeExpiredCooldowns(keys: ["geo_\(i):enter"])
+                            await storage.purgeExpiredCooldowns(now: Date(), interval: 3600)
                         default:
                             break
                         }

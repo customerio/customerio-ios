@@ -93,6 +93,10 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking {
             self.trackInAppMetric(deliveryID: metric.deliveryID, event: metric.event, metaData: metric.params)
         }
 
+        eventBusHandler.addObserver(TrackGeofenceMetricEvent.self) { metric in
+            self.track(name: metric.transition.trackEventName, properties: ["geofence_id": metric.geofenceId])
+        }
+
         eventBusHandler.addObserver(RegisterDeviceTokenEvent.self) { event in
             self.registerDeviceToken(event.token)
         }

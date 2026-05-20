@@ -48,6 +48,7 @@ public enum EventTypesRegistry {
             ResetEvent.self,
             TrackMetricEvent.self,
             TrackInAppMetricEvent.self,
+            TrackGeofenceMetricEvent.self,
             RegisterDeviceTokenEvent.self,
             DeleteDeviceTokenEvent.self,
             NewSubscriptionEvent.self
@@ -151,6 +152,22 @@ public struct TrackInAppMetricEvent: EventRepresentable {
         self.params = params
         self.deliveryID = deliveryID
         self.event = event
+        self.timestamp = timestamp
+    }
+}
+
+public struct TrackGeofenceMetricEvent: EventRepresentable {
+    public let storageId: String
+    public let params: [String: String]
+    public let geofenceId: String
+    public let transition: GeofenceTransition
+    public let timestamp: Date
+
+    public init(storageId: String = UUID().uuidString, geofenceId: String, transition: GeofenceTransition, timestamp: Date = Date(), params: [String: String] = [:]) {
+        self.storageId = storageId
+        self.params = params
+        self.geofenceId = geofenceId
+        self.transition = transition
         self.timestamp = timestamp
     }
 }

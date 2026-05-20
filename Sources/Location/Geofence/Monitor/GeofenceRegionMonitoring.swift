@@ -2,12 +2,6 @@ import CioInternalCommon
 import CoreLocation
 import Foundation
 
-/// Transition type for geofence boundary crossings.
-enum GeofenceTransition: String, Codable, Sendable {
-    case enter
-    case exit
-}
-
 /// Callback when a geofence transition occurs.
 /// Parameters: region identifier, transition type, user's current location (from CLLocationManager.location, may be nil).
 ///
