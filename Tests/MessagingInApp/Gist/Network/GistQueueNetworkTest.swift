@@ -33,6 +33,11 @@ class GistQueueNetworkTest: UnitTest {
         waitForExpectations(timeout: 1.0)
     }
 
+    // Flake-fix: drop the `waitForExpectations` and `expectation` — the
+    // completion handler had no assertions, so the wait was only stalling
+    // for an incidental `URLSession.shared` round-trip. The contract under
+    // test is the synchronous identifier-validation branch (no throw when
+    // anonymousId is present), which is verified by `XCTAssertNoThrow`.
     func test_request_withAnonymousId_expectSuccess() throws {
         let state = InAppMessageState(
             siteId: "test-site",
@@ -42,14 +47,7 @@ class GistQueueNetworkTest: UnitTest {
             anonymousId: "anon123"
         )
 
-        let expectation = expectation(description: "Request completes")
-
-        // Should not throw
-        XCTAssertNoThrow(try network.request(state: state, request: QueueEndpoint.getUserQueue, completionHandler: { _ in
-            expectation.fulfill()
-        }))
-
-        waitForExpectations(timeout: 1.0)
+        XCTAssertNoThrow(try network.request(state: state, request: QueueEndpoint.getUserQueue, completionHandler: { _ in }))
     }
 
     func test_request_withBothIdentifiers_expectSuccessWithUserId() throws {
@@ -125,6 +123,8 @@ class GistQueueNetworkTest: UnitTest {
         }
     }
 
+    // Flake-fix: same rationale as `test_request_withAnonymousId_expectSuccess`
+    // above — drop the wait; the identifier-validation branch is the contract.
     func test_request_withBlankUserIdAndValidAnonymousId_expectSuccess() throws {
         let state = InAppMessageState(
             siteId: "test-site",
@@ -134,13 +134,7 @@ class GistQueueNetworkTest: UnitTest {
             anonymousId: "anon123"
         )
 
-        let expectation = expectation(description: "Request completes")
-
         // Should not throw - falls back to anonymousId
-        XCTAssertNoThrow(try network.request(state: state, request: QueueEndpoint.getUserQueue, completionHandler: { _ in
-            expectation.fulfill()
-        }))
-
-        waitForExpectations(timeout: 1.0)
+        XCTAssertNoThrow(try network.request(state: state, request: QueueEndpoint.getUserQueue, completionHandler: { _ in }))
     }
 }
