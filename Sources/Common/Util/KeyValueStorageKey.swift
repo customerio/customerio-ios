@@ -11,4 +11,5 @@ public enum KeyValueStorageKey: String {
     case broadcastMessagesExpiry = "broadcast_messages_expiry"
     case broadcastMessagesTracking = "broadcast_messages_tracking"
     case inboxMessagesOpenedStatus = "inbox_messages_opened_status"
+    case geofenceUserId = "geofence_user_id"
 }
