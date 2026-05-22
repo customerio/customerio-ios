@@ -26,5 +26,4 @@ open class IntegrationTest: UnitTest {
 
         return MessagingPush.shared
     }
-
 }
