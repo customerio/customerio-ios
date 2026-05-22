@@ -57,9 +57,6 @@ extension DIGraphShared {
         _ = pushClickHandler
         countDependenciesResolved += 1
 
-        _ = pushHistory
-        countDependenciesResolved += 1
-
         _ = pushNotificationLogger
         countDependenciesResolved += 1
 
@@ -83,18 +80,6 @@ extension DIGraphShared {
     @available(iOSApplicationExtension, unavailable)
     private var newPushClickHandler: PushClickHandler {
         PushClickHandlerImpl(deepLinkUtil: deepLinkUtil, messagingPush: messagingPushInstance, pushLogger: pushNotificationLogger, commonLogger: sdkCommonLogger)
-    }
-
-    // PushHistory (singleton)
-    var pushHistory: PushHistory {
-        getOverriddenInstance() ??
-            getSingletonOrCreate {
-                _get_pushHistory()
-            }
-    }
-
-    private func _get_pushHistory() -> PushHistory {
-        PushHistoryImpl(lockManager: lockManager)
     }
 
     // PushNotificationLogger
