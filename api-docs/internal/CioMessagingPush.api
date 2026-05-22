@@ -45,10 +45,6 @@ public interface CioMessagingPush.PushNotification {
 	public var data: List<AnyHashable : Any>;
 	public var attachments: List<PushAttachment>;
 }
-public interface CioMessagingPush.PushNotificationAction {
-	public var push: any PushNotification;
-	public var didClickOnPush: Boolean;
-}
 public final class CioMessagingPush.RichPushHttpClient {
 	public fun func request(_ params: CioInternalCommon.HttpRequestParams, onComplete: @escaping (Result<Data, CioInternalCommon.HttpRequestError>) -> Unit);
 	public fun func downloadFile(url: URL, fileType: DownloadFileType, onComplete: @escaping (URL?) -> Unit);
