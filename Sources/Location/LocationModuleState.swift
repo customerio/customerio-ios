@@ -35,7 +35,13 @@ final class LocationModuleState {
         )
         let locationEnrichmentProvider = LocationProfileEnrichmentProvider(storage: storage, config: config)
         di.profileEnrichmentRegistry.register(locationEnrichmentProvider)
-        registerEventSubscriptions(coordinator: coordinator, eventBusHandler: di.eventBusHandler)
+        let geofenceEventTracker = makeGeofenceEventTracker(di: di)
+        registerEventSubscriptions(
+            coordinator: coordinator,
+            geofenceEventTracker: geofenceEventTracker,
+            eventBusHandler: di.eventBusHandler
+        )
+        Task { await geofenceEventTracker.flushPending() }
         let locationProvider = CoreLocationProvider(logger: di.logger)
         let implementation = LocationServicesImplementation(
             config: config,
@@ -49,10 +55,31 @@ final class LocationModuleState {
         Task { await implementation.setUpLifecycleObserver() }
     }
 
-    private func registerEventSubscriptions(coordinator: LocationSyncCoordinator, eventBusHandler: EventBusHandler) {
+    private func registerEventSubscriptions(
+        coordinator: LocationSyncCoordinator,
+        geofenceEventTracker: GeofenceEventTracker,
+        eventBusHandler: EventBusHandler
+    ) {
         eventBusHandler.addObserver(ProfileIdentifiedEvent.self) { _ in
             Task { await coordinator.syncCachedLocationIfNeeded() }
+            Task { await geofenceEventTracker.flushPending() }
         }
+    }
+
+    private func makeGeofenceEventTracker(di: DIGraphShared) -> GeofenceEventTracker {
+        let contextStore = di.backgroundDeliveryContextStore
+        let deliveryTracker: GeofenceDeliveryTracker? = di.getOptional(HttpClient.self).map {
+            GeofenceDeliveryTrackerImpl(httpClient: $0, contextStore: contextStore, logger: di.logger)
+        }
+        return GeofenceEventTracker(
+            storage: GeofenceStorage(),
+            pendingStore: PendingGeofenceMetricStore(),
+            deliveryTracker: deliveryTracker,
+            contextStore: contextStore,
+            eventBusHandler: di.eventBusHandler,
+            dateUtil: di.dateUtil,
+            logger: di.logger
+        )
     }
 
     /// The current Location services instance. Before initialization, returns an implementation that logs an error when used.

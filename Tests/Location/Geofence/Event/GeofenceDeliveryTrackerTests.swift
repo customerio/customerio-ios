@@ -6,13 +6,22 @@ import Testing
 
 @Suite("GeofenceDeliveryTracker")
 struct GeofenceDeliveryTrackerTests {
+    private func makeContextStore(host: String? = "cdp.customer.io/v1") -> BackgroundDeliveryContextStore {
+        let store = BackgroundDeliveryContextStore(
+            fileManager: .default,
+            directoryURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        )
+        if let host { store.setApiHost(host) }
+        return store
+    }
+
     private func makeTracker(
-        region: Region = .US,
+        contextStore: BackgroundDeliveryContextStore? = nil,
         httpClient: HttpClientMock = HttpClientMock()
     ) -> (tracker: GeofenceDeliveryTrackerImpl, httpClient: HttpClientMock) {
         let tracker = GeofenceDeliveryTrackerImpl(
             httpClient: httpClient,
-            region: region,
+            contextStore: contextStore ?? makeContextStore(),
             logger: LoggerMock()
         )
         return (tracker, httpClient)
@@ -44,7 +53,7 @@ struct GeofenceDeliveryTrackerTests {
 
     @Test
     func deliver_givenEnterTransition_expectAndroidWireFormat() async {
-        let (tracker, httpClient) = makeTracker(region: .US)
+        let (tracker, httpClient) = makeTracker()
         httpClient.requestClosure = { _, onComplete in onComplete(.success(Data())) }
 
         await withCheckedContinuation { continuation in
@@ -99,8 +108,8 @@ struct GeofenceDeliveryTrackerTests {
     }
 
     @Test
-    func deliver_givenEURegion_expectEUHost() async {
-        let (tracker, httpClient) = makeTracker(region: .EU)
+    func deliver_givenEUApiHost_expectEUUrl() async {
+        let (tracker, httpClient) = makeTracker(contextStore: makeContextStore(host: "cdp-eu.customer.io/v1"))
         httpClient.requestClosure = { _, onComplete in onComplete(.success(Data())) }
 
         await withCheckedContinuation { continuation in
@@ -111,6 +120,21 @@ struct GeofenceDeliveryTrackerTests {
 
         let url = httpClient.requestReceivedArguments?.params.url.absoluteString
         #expect(url == "https://cdp-eu.customer.io/v1/track")
+    }
+
+    @Test
+    func deliver_givenSchemeQualifiedHost_expectSchemeNotDuplicated() async {
+        let (tracker, httpClient) = makeTracker(contextStore: makeContextStore(host: "https://cdp.customer.io/v1"))
+        httpClient.requestClosure = { _, onComplete in onComplete(.success(Data())) }
+
+        await withCheckedContinuation { continuation in
+            tracker.deliver(metric: makeMetric(), userId: "user_42") { _ in
+                continuation.resume()
+            }
+        }
+
+        let url = httpClient.requestReceivedArguments?.params.url.absoluteString
+        #expect(url == "https://cdp.customer.io/v1/track")
     }
 
     // MARK: - Guard clauses
@@ -127,6 +151,20 @@ struct GeofenceDeliveryTrackerTests {
 
         #expect(httpClient.requestCallsCount == 0)
         if case .success = result { Issue.record("expected failure for empty userId") }
+    }
+
+    @Test
+    func deliver_givenNoPersistedApiHost_expectFailureAndNoHttpCall() async {
+        let (tracker, httpClient) = makeTracker(contextStore: makeContextStore(host: nil))
+
+        let result: Result<Void, HttpRequestError> = await withCheckedContinuation { continuation in
+            tracker.deliver(metric: makeMetric(), userId: "user_42") { result in
+                continuation.resume(returning: result)
+            }
+        }
+
+        #expect(httpClient.requestCallsCount == 0)
+        if case .success = result { Issue.record("expected failure for missing apiHost") }
     }
 
     // MARK: - Result propagation
