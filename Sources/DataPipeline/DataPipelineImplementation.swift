@@ -14,6 +14,7 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking {
     private let deviceInfo: DeviceInfo
     private let contextPlugin: Context
     private let profileStore: ProfileStore
+    private let backgroundDeliveryContextStore: BackgroundDeliveryContextStore
 
     init(diGraph: DIGraphShared, moduleConfig: DataPipelineConfigOptions) {
         self.moduleConfig = moduleConfig
@@ -27,6 +28,7 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking {
         self.dateUtil = diGraph.dateUtil
         self.deviceInfo = diGraph.deviceInfo
         self.profileStore = diGraph.profileStore
+        self.backgroundDeliveryContextStore = diGraph.backgroundDeliveryContextStore
 
         self.contextPlugin = Context(diGraph: diGraph)
 
@@ -69,6 +71,10 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking {
         // Register as DataPipelineTracking so modules (e.g. Location) can send track events via getOptional
         diGraph.register(self, forType: DataPipelineTracking.self)
 
+        // Persisted so cold-wake background-delivery callers can route requests without
+        // requiring DataPipeline to be initialized in their process.
+        backgroundDeliveryContextStore.setApiHost(moduleConfig.apiHost)
+
         // subscribe to journey events emmitted from push/in-app module to send them via datapipelines
         subscribeToJourneyEvents()
         postProfileAlreadyIdentified()
@@ -76,8 +82,10 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking {
 
     private func postProfileAlreadyIdentified() {
         if let siteId = moduleConfig.migrationSiteId, let identifier = profileStore.getProfileId(siteId: siteId) {
+            backgroundDeliveryContextStore.setUserId(identifier)
             eventBusHandler.postEvent(ProfileIdentifiedEvent(identifier: identifier))
         } else if let identifier = analytics.userId {
+            backgroundDeliveryContextStore.setUserId(identifier)
             eventBusHandler.postEvent(ProfileIdentifiedEvent(identifier: identifier))
         } else if !analytics.anonymousId.isEmpty {
             eventBusHandler.postEvent(AnonymousProfileIdentifiedEvent(identifier: analytics.anonymousId))
@@ -186,6 +194,9 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking {
             analytics.identify(userId: userId, traits: attributesDict)
         }
 
+        // Mirror to the background-delivery store for cold-wake direct-HTTP callers.
+        backgroundDeliveryContextStore.setUserId(userId)
+
         if isFirstTimeIdentifying || isChangingIdentifiedProfile {
             if let existingDeviceToken = registeredDeviceToken {
                 dataPipelinesLogger.automaticTokenRegistrationForNewProfile(token: existingDeviceToken, userId: userId)
@@ -199,6 +210,7 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking {
         let currentlyIdentifiedProfile = registeredUserId ?? "anonymous"
         logger.debug("deleting device info from \(currentlyIdentifiedProfile) to stop sending push to a profile that is no longer identified")
         deleteDeviceToken()
+        backgroundDeliveryContextStore.clearUserId()
 
         // reset all to default state
         logger.debug("resetting user profile")

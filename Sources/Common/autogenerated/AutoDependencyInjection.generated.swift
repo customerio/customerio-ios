@@ -53,6 +53,9 @@ extension DIGraphShared {
     func testDependenciesAbleToResolve() -> Int {
         var countDependenciesResolved = 0
 
+        _ = backgroundDeliveryContextStore
+        countDependenciesResolved += 1
+
         _ = deviceInfo
         countDependenciesResolved += 1
 
@@ -147,6 +150,12 @@ extension DIGraphShared {
     }
 
     // Handle classes annotated with InjectRegisterShared
+    // BackgroundDeliveryContextStore (custom. property getter provided via extension)
+    public var backgroundDeliveryContextStore: BackgroundDeliveryContextStore {
+        getOverriddenInstance() ??
+            customBackgroundDeliveryContextStore
+    }
+
     // DeviceInfo
     public var deviceInfo: DeviceInfo {
         getOverriddenInstance() ??
