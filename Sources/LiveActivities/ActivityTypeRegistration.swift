@@ -32,15 +32,16 @@ struct ActivityTypeRegistration {
     ///     when it is first seen. Used to populate the module's observed set.
     ///   - onStateUpdate: Invoked with `(activityId, contentStateJSON)` whenever
     ///     an active activity's content state changes.
-    ///   - onEnd: Invoked with the `activityId` when an activity ends, is
-    ///     dismissed, or goes stale.
-    let startObserving: (
-        _ onPushToStartToken: @escaping (Data) async -> Void,
-        _ onInstancePushToken: @escaping (String, Data) async -> Void,
-        _ onActivityObserved: @escaping (String) async -> Void,
-        _ onStateUpdate: @escaping (String, Data) async -> Void,
-        _ onEnd: @escaping (String) async -> Void
-    ) -> Task<Void, Never>
+    ///   - onEnd: Invoked with the `activityId` when an activity ends or is
+    ///     dismissed.
+    let startObserving:
+        (
+            _ onPushToStartToken: @escaping (Data) async -> Void,
+            _ onInstancePushToken: @escaping (String, Data) async -> Void,
+            _ onActivityObserved: @escaping (String) async -> Void,
+            _ onStateUpdate: @escaping (String, Data) async -> Void,
+            _ onEnd: @escaping (String) async -> Void
+        ) -> Task<Void, Never>
 
     /// Ends all currently-running activities of the registered type immediately.
     ///
