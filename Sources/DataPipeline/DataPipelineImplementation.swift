@@ -75,6 +75,14 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking {
         // requiring DataPipeline to be initialized in their process.
         backgroundDeliveryContextStore.setApiHost(moduleConfig.apiHost)
 
+        // cdpApiKey is only persisted when the customer explicitly opts in. Clearing on
+        // opt-out wipes any key left by a prior launch that had it enabled.
+        if moduleConfig.allowBackgroundDelivery {
+            backgroundDeliveryContextStore.setCdpApiKey(moduleConfig.cdpApiKey)
+        } else {
+            backgroundDeliveryContextStore.setCdpApiKey(nil)
+        }
+
         // subscribe to journey events emmitted from push/in-app module to send them via datapipelines
         subscribeToJourneyEvents()
         postProfileAlreadyIdentified()
