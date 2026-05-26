@@ -29,6 +29,9 @@ public final class CioInternalCommon.Atomic {
 	public var wrappedValue: DataType;
 	public fun init(wrappedValue: DataType);
 }
+public interface CioInternalCommon.BackgroundDeliveryCdpApiKeyProvider {
+	public var cdpApiKey: String?;
+}
 public final class CioInternalCommon.BackgroundDeliveryContext {
 	public var userId: String?;
 	public var apiHost: String?;
@@ -40,11 +43,21 @@ public final class CioInternalCommon.BackgroundDeliveryContextStore {
 	public var currentApiHost: String?;
 	public var currentCdpApiKey: String?;
 	public fun convenience init();
+	public fun func setCdpApiKeyProvider(_ provider: BackgroundDeliveryCdpApiKeyProvider?);
 	public fun func setUserId(_ userId: String?);
 	public fun func setApiHost(_ apiHost: String?);
 	public fun func setCdpApiKey(_ key: String?);
 	public fun func clearUserId();
 	public fun func reset();
+}
+public interface CioInternalCommon.BackgroundDeliveryHttpClient {
+	public fun func sendTrackEvent(eventName: String, userId: String, properties: List<String: Any>, completion: @escaping (Result<Unit, BackgroundDeliveryHttpError>) -> Unit);
+}
+public final class CioInternalCommon.BackgroundDeliveryHttpClientImpl {
+	public fun convenience init(contextStore: BackgroundDeliveryContextStore, requestRunner: HttpRequestRunner, logger: Logger);
+	public fun func sendTrackEvent(eventName: String, userId: String, properties: List<String: Any>, completion: @escaping (Result<Unit, BackgroundDeliveryHttpError>) -> Unit);
+}
+public enum CioInternalCommon.BackgroundDeliveryHttpError {
 }
 public enum CioInternalCommon.CIOApiEndpoint {
 }

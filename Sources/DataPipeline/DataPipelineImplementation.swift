@@ -1,7 +1,7 @@
 import CioAnalytics
 import CioInternalCommon
 
-class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking {
+class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking, BackgroundDeliveryCdpApiKeyProvider {
     private let moduleConfig: DataPipelineConfigOptions
     private let logger: Logger
     private let dataPipelinesLogger: DataPipelinesLogger
@@ -83,6 +83,10 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking {
             backgroundDeliveryContextStore.setCdpApiKey(nil)
         }
 
+        // Live provider for foreground real-time delivery — `currentCdpApiKey` returns the
+        // in-memory key even when `allowBackgroundDelivery` is off (no disk persistence).
+        backgroundDeliveryContextStore.setCdpApiKeyProvider(self)
+
         // subscribe to journey events emmitted from push/in-app module to send them via datapipelines
         subscribeToJourneyEvents()
         postProfileAlreadyIdentified()
@@ -116,6 +120,12 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking {
         eventBusHandler.addObserver(RegisterDeviceTokenEvent.self) { event in
             self.registerDeviceToken(event.token)
         }
+    }
+
+    // MARK: - BackgroundDeliveryCdpApiKeyProvider
+
+    var cdpApiKey: String? {
+        moduleConfig.cdpApiKey
     }
 
     var siteId: String?

@@ -113,4 +113,65 @@ struct BackgroundDeliveryContextStoreTests {
         #expect(reloaded.currentApiHost == "cdp.customer.io/v1")
         #expect(reloaded.currentCdpApiKey == "sk_test_abc")
     }
+
+    // MARK: - cdpApiKey provider
+
+    @Test
+    func currentCdpApiKey_givenProviderRegistered_expectProviderValueWins() {
+        let (store, dir) = makeStore()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        store.setCdpApiKey("persisted_key")
+        let provider = StubCdpApiKeyProvider(value: "live_key")
+        store.setCdpApiKeyProvider(provider)
+        #expect(store.currentCdpApiKey == "live_key")
+    }
+
+    @Test
+    func currentCdpApiKey_givenProviderNil_expectPersistedFallback() {
+        let (store, dir) = makeStore()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        store.setCdpApiKey("persisted_key")
+        #expect(store.currentCdpApiKey == "persisted_key")
+    }
+
+    @Test
+    func currentCdpApiKey_givenProviderReturnsNil_expectPersistedFallback() {
+        let (store, dir) = makeStore()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        store.setCdpApiKey("persisted_key")
+        let provider = StubCdpApiKeyProvider(value: nil)
+        store.setCdpApiKeyProvider(provider)
+        #expect(store.currentCdpApiKey == "persisted_key")
+    }
+
+    @Test
+    func currentCdpApiKey_givenProviderReturnsEmpty_expectPersistedFallback() {
+        let (store, dir) = makeStore()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        store.setCdpApiKey("persisted_key")
+        let provider = StubCdpApiKeyProvider(value: "")
+        store.setCdpApiKeyProvider(provider)
+        #expect(store.currentCdpApiKey == "persisted_key")
+    }
+
+    @Test
+    func currentCdpApiKey_givenProviderDeallocated_expectPersistedFallback() {
+        let (store, dir) = makeStore()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        store.setCdpApiKey("persisted_key")
+        autoreleasepool {
+            let provider = StubCdpApiKeyProvider(value: "live_key")
+            store.setCdpApiKeyProvider(provider)
+            #expect(store.currentCdpApiKey == "live_key")
+        }
+        // Provider was the only strong ref; after the autoreleasepool drains, the
+        // weak ref inside the store should be nil and we fall back to disk.
+        #expect(store.currentCdpApiKey == "persisted_key")
+    }
+}
+
+private final class StubCdpApiKeyProvider: BackgroundDeliveryCdpApiKeyProvider {
+    let value: String?
+    init(value: String?) { self.value = value }
+    var cdpApiKey: String? { value }
 }

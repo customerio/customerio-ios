@@ -71,10 +71,19 @@ class BackgroundDeliveryContextWriteTests: IntegrationTest {
 
     // MARK: - cdpApiKey persistence
 
+    //
+    // `currentCdpApiKey` consults the live provider (DataPipeline) before falling back to
+    // disk, so the persistence-level assertions read via a fresh `BackgroundDeliveryContextStore`
+    // that hasn't had a provider registered — only the on-disk state is visible.
+
+    private func reloadDiskState() -> BackgroundDeliveryContextStore {
+        BackgroundDeliveryContextStore(fileManager: .default, directoryURL: tempDirectory)
+    }
+
     func test_init_givenAllowBackgroundDeliveryDefaultOff_expectCdpApiKeyNotPersisted() {
         // Default config has allowBackgroundDelivery = false, so DataPipeline init must
         // not leave the key on disk.
-        XCTAssertNil(testStore.currentCdpApiKey)
+        XCTAssertNil(reloadDiskState().currentCdpApiKey)
     }
 
     func test_init_givenAllowBackgroundDeliveryOn_expectCdpApiKeyPersisted() {
@@ -82,17 +91,27 @@ class BackgroundDeliveryContextWriteTests: IntegrationTest {
             config.allowBackgroundDelivery(true)
         })
 
-        XCTAssertEqual(testStore.currentCdpApiKey, dataPipelineConfigOptions.cdpApiKey)
+        XCTAssertEqual(reloadDiskState().currentCdpApiKey, dataPipelineConfigOptions.cdpApiKey)
     }
 
     func test_init_givenStalePersistedKey_andAllowBackgroundDeliveryOff_expectKeyCleared() {
         // Simulate a key persisted by a prior launch that had the flag on. Re-init with
         // the flag off must wipe it — otherwise opting out wouldn't actually revoke disk access.
         testStore.setCdpApiKey("stale_key_from_prior_launch")
-        XCTAssertEqual(testStore.currentCdpApiKey, "stale_key_from_prior_launch")
+        XCTAssertEqual(reloadDiskState().currentCdpApiKey, "stale_key_from_prior_launch")
 
         setUp(modifySdkConfig: nil)
 
-        XCTAssertNil(testStore.currentCdpApiKey)
+        XCTAssertNil(reloadDiskState().currentCdpApiKey)
+    }
+
+    // MARK: - cdpApiKey live provider
+
+    func test_init_expectProviderReturnsInMemoryKeyEvenWhenPersistenceOff() {
+        // Default config has allowBackgroundDelivery = false (no disk persistence), but
+        // DataPipeline registers itself as the live provider so foreground real-time
+        // delivery still works — `currentCdpApiKey` returns the in-memory key.
+        XCTAssertNil(reloadDiskState().currentCdpApiKey)
+        XCTAssertEqual(testStore.currentCdpApiKey, dataPipelineConfigOptions.cdpApiKey)
     }
 }
