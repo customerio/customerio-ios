@@ -12,7 +12,10 @@ import Foundation
 /// `flushPending()` replays queued rows on module init and on every `ProfileIdentifiedEvent`.
 /// Concurrent deliveries for the same row are deduplicated in-process via the active-delivery
 /// ID set; on app kill the row stays on disk and is retried in the next process.
-final class GeofenceEventTracker {
+///
+/// `@unchecked Sendable`: all stored properties are `let`; mutable state is wrapped in
+/// `Synchronized`. Required for the weak capture in the `@Sendable` transition handler.
+final class GeofenceEventTracker: @unchecked Sendable {
     private let storage: GeofenceStorage
     private let pendingStore: PendingGeofenceMetricStore
     private let deliveryTracker: GeofenceDeliveryTracker?

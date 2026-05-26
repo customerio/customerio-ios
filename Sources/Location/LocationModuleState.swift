@@ -10,6 +10,9 @@ final class LocationModuleState {
 
     private var services: LocationServices = UninitializedLocationServices(logger: DIGraphShared.shared.logger)
     private let lock = NSLock()
+    /// Retains the geofence monitor across the process lifetime so CLLocationManager delegate
+    /// callbacks land on a live instance. Accessed only from the main actor.
+    @MainActor private var geofenceMonitor: GeofenceRegionMonitoring?
 
     private init() {}
 
@@ -35,13 +38,27 @@ final class LocationModuleState {
         )
         let locationEnrichmentProvider = LocationProfileEnrichmentProvider(storage: storage, config: config)
         di.profileEnrichmentRegistry.register(locationEnrichmentProvider)
-        let geofenceEventTracker = makeGeofenceEventTracker(di: di)
+        let geofenceStorage = GeofenceStorage()
+        let geofenceEventTracker = makeGeofenceEventTracker(di: di, geofenceStorage: geofenceStorage)
         registerEventSubscriptions(
             coordinator: coordinator,
             geofenceEventTracker: geofenceEventTracker,
             eventBusHandler: di.eventBusHandler
         )
         Task { await geofenceEventTracker.flushPending() }
+        Task { @MainActor [weak self] in
+            // Fetch cache BEFORE constructing the monitor: once CLLocationManager is created,
+            // its delegate is live and the OS can deliver queued cold-wake region callbacks.
+            // Any `await` between delegate-set and `startMonitoring` would drop those events.
+            let geofences = await geofenceStorage.getCachedGeofences()
+            let monitor = CoreLocationGeofenceMonitor(logger: di.logger)
+            self?.geofenceMonitor = monitor
+            GeofenceMonitorBinder.bind(
+                monitor: monitor,
+                geofences: geofences,
+                tracker: geofenceEventTracker
+            )
+        }
         let locationProvider = CoreLocationProvider(logger: di.logger)
         let implementation = LocationServicesImplementation(
             config: config,
@@ -66,13 +83,13 @@ final class LocationModuleState {
         }
     }
 
-    private func makeGeofenceEventTracker(di: DIGraphShared) -> GeofenceEventTracker {
+    private func makeGeofenceEventTracker(di: DIGraphShared, geofenceStorage: GeofenceStorage) -> GeofenceEventTracker {
         let contextStore = di.backgroundDeliveryContextStore
         let deliveryTracker: GeofenceDeliveryTracker? = di.getOptional(HttpClient.self).map {
             GeofenceDeliveryTrackerImpl(httpClient: $0, contextStore: contextStore, logger: di.logger)
         }
         return GeofenceEventTracker(
-            storage: GeofenceStorage(),
+            storage: geofenceStorage,
             pendingStore: PendingGeofenceMetricStore(),
             deliveryTracker: deliveryTracker,
             contextStore: contextStore,
