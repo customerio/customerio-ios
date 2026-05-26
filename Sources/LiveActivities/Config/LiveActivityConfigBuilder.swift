@@ -127,6 +127,7 @@ public struct LiveActivityConfigBuilder {
                     switch state {
                     case .ended, .dismissed:
                         await onEnd(activityId)
+                        return
                     case .active, .pending, .stale:
                         break
                     @unknown default:
