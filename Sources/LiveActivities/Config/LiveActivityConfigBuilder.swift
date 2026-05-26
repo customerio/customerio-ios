@@ -72,14 +72,18 @@ public struct LiveActivityConfigBuilder {
                             }
                         }
                         group.addTask {
-                            for await activity in Activity<T>.activityUpdates {
-                                await Self.observeActivity(
-                                    activity,
-                                    onInstancePushToken: onInstancePushToken,
-                                    onActivityObserved: onActivityObserved,
-                                    onStateUpdate: onStateUpdate,
-                                    onEnd: onEnd
-                                )
+                            await withTaskGroup(of: Void.self) { perActivityGroup in
+                                for await activity in Activity<T>.activityUpdates {
+                                    perActivityGroup.addTask {
+                                        await Self.observeActivity(
+                                            activity,
+                                            onInstancePushToken: onInstancePushToken,
+                                            onActivityObserved: onActivityObserved,
+                                            onStateUpdate: onStateUpdate,
+                                            onEnd: onEnd
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
@@ -107,28 +111,30 @@ public struct LiveActivityConfigBuilder {
         await onActivityObserved(activityId)
         // Instance push token — must be observed before state/lifecycle
         // so the backend has a valid token before any update arrives.
-        Task {
-            for await token in activity.pushTokenUpdates {
-                await onInstancePushToken(activityId, token)
-            }
-        }
-        Task {
-            let encoder = JSONEncoder()
-            for await update in activity.contentUpdates {
-                if let data = try? encoder.encode(update.state) {
-                    await onStateUpdate(activityId, data)
+        await withTaskGroup(of: Void.self) { group in
+            group.addTask {
+                for await token in activity.pushTokenUpdates {
+                    await onInstancePushToken(activityId, token)
                 }
             }
-        }
-        Task {
-            for await state in activity.activityStateUpdates {
-                switch state {
-                case .ended, .dismissed, .stale:
-                    await onEnd(activityId)
-                case .active, .pending:
-                    break
-                @unknown default:
-                    break
+            group.addTask {
+                let encoder = JSONEncoder()
+                for await update in activity.contentUpdates {
+                    if let data = try? encoder.encode(update.state) {
+                        await onStateUpdate(activityId, data)
+                    }
+                }
+            }
+            group.addTask {
+                for await state in activity.activityStateUpdates {
+                    switch state {
+                    case .ended, .dismissed, .stale:
+                        await onEnd(activityId)
+                    case .active, .pending:
+                        break
+                    @unknown default:
+                        break
+                    }
                 }
             }
         }
