@@ -29,7 +29,6 @@ public struct LiveActivityConfigBuilder {
     /// Set the base URL of the Live Activities API endpoint.
     ///
     /// - Note: This is a temporary field while backend endpoint paths are being finalised.
-    @discardableResult
     public func baseURL(_ url: URL) -> Self {
         var copy = self
         copy.config.liveActivitiesBaseURL = url
@@ -37,7 +36,6 @@ public struct LiveActivityConfigBuilder {
     }
 
     /// Override the SDK-wide log level for the Live Activities module only.
-    @discardableResult
     public func logLevel(_ level: CioLogLevel) -> Self {
         var copy = self
         copy.config.logLevel = level
@@ -58,7 +56,6 @@ public struct LiveActivityConfigBuilder {
     ///     consistent between the app and the Customer.io backend configuration.
     #if os(iOS)
     @available(iOS 17.2, *)
-    @discardableResult
     public func register<T: CIOActivityAttribute>(_ type: T.Type, identifier: String) -> Self {
         var copy = self
         let registration = ActivityTypeRegistration(
@@ -146,7 +143,6 @@ public struct LiveActivityConfigBuilder {
     ///
     /// The identifier must match the AppGroup declared in both the app target's and the
     /// widget extension target's entitlements.
-    @discardableResult
     public func appGroup(_ identifier: String) -> Self {
         var copy = self
         copy.config.appGroupIdentifier = identifier
@@ -161,7 +157,6 @@ public struct LiveActivityConfigBuilder {
     /// - Parameters:
     ///   - key: The string key used to retrieve this asset in the widget extension.
     ///   - url: The source URL of the asset file within the app bundle.
-    @discardableResult
     public func registerAsset(_ key: String, at url: URL) -> Self {
         var copy = self
         copy.config.assetRegistrations.append(AssetRegistration(key: key, sourceURL: url))
@@ -178,7 +173,6 @@ public struct LiveActivityConfigBuilder {
     ///   - key: The string key used to retrieve this asset in the widget extension.
     ///   - bundleResource: The resource name as passed to `Bundle.main.url(forResource:withExtension:)`.
     ///   - withExtension: The file extension, or `nil` to match any extension.
-    @discardableResult
     public func registerAsset(
         _ key: String,
         bundleResource: String,
