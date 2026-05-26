@@ -125,9 +125,9 @@ public struct LiveActivityConfigBuilder {
             group.addTask {
                 for await state in activity.activityStateUpdates {
                     switch state {
-                    case .ended, .dismissed, .stale:
+                    case .ended, .dismissed:
                         await onEnd(activityId)
-                    case .active, .pending:
+                    case .active, .pending, .stale:
                         break
                     @unknown default:
                         break
