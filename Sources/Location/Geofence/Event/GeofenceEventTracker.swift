@@ -1,6 +1,8 @@
 import CioInternalCommon
 import Foundation
 
+// sourcery: InjectRegisterShared = "GeofenceEventTracker"
+// sourcery: InjectCustomShared
 /// Sends geofence transition events through a three-layer delivery flow:
 /// 1. Cooldown-based deduplication (keyed by "geofenceId:transitionType")
 /// 2. Persist to `PendingGeofenceMetricStore` before any send attempt
@@ -135,5 +137,42 @@ final class GeofenceEventTracker: @unchecked Sendable {
             transition: metric.transition
         ))
         logger.geofenceEventTracked(geofenceId: metric.geofenceId, transition: metric.transition)
+    }
+}
+
+// MARK: - DI
+
+extension DIGraphShared {
+    var customGeofenceEventTracker: GeofenceEventTracker {
+        GeofenceEventTracker.shared(di: self)
+    }
+}
+
+extension GeofenceEventTracker {
+    private static let sharedHolder = Synchronized<GeofenceEventTracker?>(nil)
+
+    /// Lazily constructs and caches a process-wide singleton. Both `LocationModule.initialize`
+    /// (foreground) and `LocationModule.bootstrapForBackgroundDelivery` (cold-wake) resolve
+    /// through this DI accessor so they share the same tracker — same active-delivery dedup
+    /// set, same `PendingGeofenceMetricStore`, same cooldown actor.
+    static func shared(di: DIGraphShared) -> GeofenceEventTracker {
+        sharedHolder.mutating { current in
+            if let current { return current }
+            let deliveryTracker = GeofenceDeliveryTrackerImpl(
+                httpClient: di.backgroundDeliveryHttpClient,
+                logger: di.logger
+            )
+            let tracker = GeofenceEventTracker(
+                storage: di.geofenceStorage,
+                pendingStore: PendingGeofenceMetricStore(),
+                deliveryTracker: deliveryTracker,
+                contextStore: di.backgroundDeliveryContextStore,
+                eventBusHandler: di.eventBusHandler,
+                dateUtil: di.dateUtil,
+                logger: di.logger
+            )
+            current = tracker
+            return tracker
+        }
     }
 }

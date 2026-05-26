@@ -1,6 +1,8 @@
 import CioInternalCommon
 import Foundation
 
+// sourcery: InjectRegisterShared = "GeofenceStorage"
+// sourcery: InjectCustomShared
 /// Thread-safe persistence for geofence state.
 ///
 /// Implemented as an actor so all read-modify-write sequences are naturally atomic via
@@ -160,4 +162,16 @@ actor GeofenceStorage {
         decoder.dateDecodingStrategy = .secondsSince1970
         return decoder
     }
+}
+
+// MARK: - DI
+
+extension DIGraphShared {
+    var customGeofenceStorage: GeofenceStorage {
+        GeofenceStorage.shared
+    }
+}
+
+extension GeofenceStorage {
+    static let shared = GeofenceStorage()
 }

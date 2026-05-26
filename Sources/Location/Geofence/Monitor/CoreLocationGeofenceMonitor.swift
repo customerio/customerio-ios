@@ -121,3 +121,22 @@ final class CoreLocationGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @pr
         return LocationData(latitude: location.coordinate.latitude, longitude: location.coordinate.longitude)
     }
 }
+
+// MARK: - DI
+
+extension DIGraphShared {
+    /// Process-wide singleton. Hand-written rather than via Sourcery's `InjectRegisterShared`
+    /// because that template's eager-init resolution test references the property from a
+    /// non-isolated context, which clashes with `@MainActor` isolation propagated through
+    /// `GeofenceRegionMonitoring`. The override check below mirrors the generated DI accessors
+    /// so tests can still substitute via `di.override(value:forType:)`.
+    @MainActor
+    var geofenceMonitor: GeofenceRegionMonitoring {
+        getOverriddenInstance() ?? CoreLocationGeofenceMonitor.shared
+    }
+}
+
+extension CoreLocationGeofenceMonitor {
+    @MainActor
+    static let shared = CoreLocationGeofenceMonitor(logger: DIGraphShared.shared.logger)
+}
