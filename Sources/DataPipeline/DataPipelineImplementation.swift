@@ -14,6 +14,7 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking {
     private let deviceInfo: DeviceInfo
     private let contextPlugin: Context
     private let profileStore: ProfileStore
+    let storageManager: StorageManager?
 
     init(diGraph: DIGraphShared, moduleConfig: DataPipelineConfigOptions) {
         self.moduleConfig = moduleConfig
@@ -27,6 +28,7 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking {
         self.dateUtil = diGraph.dateUtil
         self.deviceInfo = diGraph.deviceInfo
         self.profileStore = diGraph.profileStore
+        self.storageManager = diGraph.storageManager
 
         self.contextPlugin = Context(diGraph: diGraph)
 

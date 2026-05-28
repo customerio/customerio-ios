@@ -1,0 +1,76 @@
+import SyncSqlCipher
+
+extension StorageManager {
+
+    // MARK: - Aggregation Config
+
+    public func getAggregationConfig() throws -> (payload: String, fetchedAt: String)? {
+        let rows = try db.query("SELECT payload, fetched_at FROM aggregation_rules WHERE id = 1")
+        guard let row = rows.first,
+              let payload = row["payload"] as? String,
+              let fetchedAt = row["fetched_at"] as? String
+        else { return nil }
+        return (payload: payload, fetchedAt: fetchedAt)
+    }
+
+    public func setAggregationConfig(payload: String, fetchedAt: String) throws {
+        try db.execute(
+            "INSERT INTO aggregation_rules(id, payload, fetched_at) VALUES(1,?,?)"
+                + " ON CONFLICT(id) DO UPDATE SET"
+                + " payload = excluded.payload,"
+                + " fetched_at = excluded.fetched_at",
+            payload, fetchedAt
+        )
+    }
+
+    // MARK: - Aggregation State
+
+    public func getAggregationState(ruleId: String) throws -> String? {
+        let rows = try db.query(
+            "SELECT state_json FROM aggregation_state WHERE rule_id = ?",
+            ruleId
+        )
+        return rows.first?["state_json"] as? String
+    }
+
+    public func getAggregationLastFlushed(ruleId: String) throws -> Int64? {
+        let rows = try db.query(
+            "SELECT last_flushed_at FROM aggregation_state WHERE rule_id = ?",
+            ruleId
+        )
+        return rows.first?["last_flushed_at"] as? Int64
+    }
+
+    public func setAggregationState(
+        ruleId: String,
+        stateJSON: String,
+        lastFlushedAt: Int64,
+        scope: String
+    ) throws {
+        try db.execute(
+            """
+            INSERT INTO aggregation_state(rule_id, state_json, last_flushed_at, scope)
+             VALUES(?,?,?,?)
+             ON CONFLICT(rule_id) DO UPDATE SET
+              state_json      = excluded.state_json,
+              last_flushed_at = excluded.last_flushed_at,
+              scope           = excluded.scope
+            """,
+            ruleId, stateJSON, lastFlushedAt, scope
+        )
+    }
+
+    public func deleteAggregationState(ruleId: String) throws {
+        try db.execute(
+            "DELETE FROM aggregation_state WHERE rule_id = ?",
+            ruleId
+        )
+    }
+
+    /// Clears only profile-scoped accumulator rows. Called on identity reset.
+    public func deleteProfileScopedAggregationState() throws {
+        try db.execute(
+            "DELETE FROM aggregation_state WHERE scope = 'profile' OR scope IS NULL"
+        )
+    }
+}
