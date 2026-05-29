@@ -34,7 +34,7 @@ public struct StorageManager {
 
     func getString(_ key: String, from table: String) throws -> String? {
         let rows = try db.query("SELECT value FROM \(table) WHERE key = ?", key)
-        return rows.first?["value"] as? String
+        return rows.first?.get("value", as: String.self)
     }
 
     func setString(_ value: String?, for key: String, in table: String) throws {
@@ -84,4 +84,6 @@ private struct CreateAggregationSchema: Migration {
             )
             """)
     }
+    
+    func down(_ ctx: MigrationContext) throws { }
 }

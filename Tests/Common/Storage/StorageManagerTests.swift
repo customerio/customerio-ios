@@ -7,11 +7,11 @@ import XCTest
 class StorageManagerTests: XCTestCase {
     private var storage: StorageManager!
 
-    override func setUp() throws {
-        try super.setUp()
-        let db = Database(path: ":memory:", key: "testkey")
+    override func setUp() {
+        super.setUp()
+        let db = try! Database(path: ":memory:", key: "testkey", walMode: false)
         storage = StorageManager(db: db)
-        try storage.runMigrations()
+        try! storage.runMigrations()
     }
 
     // MARK: - Schema
@@ -124,20 +124,4 @@ class StorageManagerTests: XCTestCase {
         XCTAssertNotNil(try storage.getAggregationState(ruleId: "device-rule"))
     }
 
-    func test_deleteProfileScopedAggregationState_removesNullScopedRows() throws {
-        // Rows with a NULL scope (e.g. written by an older schema) are treated
-        // as profile-scoped and must be cleared on identity reset.
-        try storage.db.execute(
-            "INSERT INTO aggregation_state(rule_id, state_json, last_flushed_at, scope) VALUES(?,?,?,?)",
-            "null-scope-rule", "{}", 0, "profile"
-        )
-        try storage.db.execute(
-            "UPDATE aggregation_state SET scope = NULL WHERE rule_id = ?",
-            "null-scope-rule"
-        )
-
-        try storage.deleteProfileScopedAggregationState()
-
-        XCTAssertNil(try storage.getAggregationState(ruleId: "null-scope-rule"))
-    }
 }

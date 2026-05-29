@@ -20,7 +20,7 @@ public extension DIGraphShared {
 
         do {
             let path = Self.databasePath(for: cdpApiKey)
-            let db = Database(path: path, key: cdpApiKey)
+            let db = try Database(path: path, key: cdpApiKey)
             let storage = StorageManager(db: db)
             try storage.runMigrations()
             register(storage, forType: StorageManager.self)
