@@ -16,4 +16,8 @@ struct GeofenceState: Codable, Equatable, Sendable {
     var movementTriggerCenter: LocationData?
     /// Cooldown records for geofence transition events, keyed by "geofenceId:transitionType".
     var eventCooldowns: [String: Date]?
+    /// Server-driven configuration from the last successful sync. `nil` when no sync has
+    /// landed a `config` block yet — consumers fall back to `GeofenceConfig.fallback` or
+    /// their component defaults.
+    var cachedConfig: GeofenceConfig?
 }
