@@ -5,7 +5,11 @@ extension StorageManager {
     // MARK: - Aggregation Config
 
     public func getAggregationConfig() throws -> (payload: String, fetchedAt: String)? {
-        let rows = try db.query("SELECT payload, fetched_at FROM aggregation_rules WHERE id = 1")
+        let rows = try db.query(
+            Select(col("payload"), col("fetched_at"))
+                .from("aggregation_rules")
+                .where(col("id") == 1)
+        )
         guard let row = rows.first,
               let payload = row.get("payload", as: String.self),
               let fetchedAt = row.get("fetched_at", as: String.self)
@@ -27,16 +31,18 @@ extension StorageManager {
 
     public func getAggregationState(ruleId: String) throws -> String? {
         let rows = try db.query(
-            "SELECT state_json FROM aggregation_state WHERE rule_id = ?",
-            ruleId
+            Select(col("state_json"))
+                .from("aggregation_state")
+                .where(col("rule_id") == ruleId)
         )
         return rows.first?.get("state_json", as: String.self)
     }
 
     public func getAggregationLastFlushed(ruleId: String) throws -> Int64? {
         let rows = try db.query(
-            "SELECT last_flushed_at FROM aggregation_state WHERE rule_id = ?",
-            ruleId
+            Select(col("last_flushed_at"))
+                .from("aggregation_state")
+                .where(col("rule_id") == ruleId)
         )
         return rows.first?.get("last_flushed_at", as: Int64.self)
     }

@@ -1,12 +1,12 @@
 import Foundation
-import SyncSqlCipher
+@preconcurrency import SyncSqlCipher
 
 /// Gateway for all encrypted on-disk storage used by the aggregation engine.
 ///
 /// Implemented as a `struct` because `SyncSqlCipher.Database` is internally
 /// thread-safe (DispatchQueue-serialized), so `StorageManager` carries no
 /// mutable state of its own.
-public struct StorageManager {
+public struct StorageManager: Sendable {
 
     let db: Database
 
