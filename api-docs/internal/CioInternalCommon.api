@@ -50,6 +50,10 @@ public final class CioInternalCommon.BackgroundDeliveryContextStore {
 	public fun func clearUserId();
 	public fun func reset();
 }
+public enum CioInternalCommon.BackgroundDeliveryHttp {
+	public fun func absoluteHost(_ host: String) -> String;
+	public fun func basicAuthValue(cdpApiKey: String) -> String;
+}
 public interface CioInternalCommon.BackgroundDeliveryHttpClient {
 	public fun func sendTrackEvent(eventName: String, userId: String, properties: List<String: Any>, completion: @escaping (Result<Unit, BackgroundDeliveryHttpError>) -> Unit);
 }
