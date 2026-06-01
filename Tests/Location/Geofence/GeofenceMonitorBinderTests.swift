@@ -94,6 +94,8 @@ struct StartMonitoringCall: Equatable {
 @MainActor
 final class GeofenceRegionMonitoringMock: GeofenceRegionMonitoring {
     var setOnTransitionCallsCount = 0
+    var setOnAuthorizationChangedCallsCount = 0
+    var lastAuthorizationChangedHandler: GeofenceAuthorizationChangedHandler?
     var startMonitoringCalls: [StartMonitoringCall] = []
     var stopMonitoringCalls: [String] = []
     var stopMonitoringAllCallsCount = 0
@@ -101,6 +103,11 @@ final class GeofenceRegionMonitoringMock: GeofenceRegionMonitoring {
 
     func setOnTransition(_ handler: GeofenceTransitionHandler?) {
         setOnTransitionCallsCount += 1
+    }
+
+    func setOnAuthorizationChanged(_ handler: GeofenceAuthorizationChangedHandler?) {
+        setOnAuthorizationChangedCallsCount += 1
+        lastAuthorizationChangedHandler = handler
     }
 
     func startMonitoring(identifier: String, center: LocationData, radius: Double, transitionTypes: Set<GeofenceTransition>) {

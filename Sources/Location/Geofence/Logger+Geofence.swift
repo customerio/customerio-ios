@@ -21,11 +21,17 @@ extension Logger {
         )
     }
 
-    func geofenceAlwaysAuthorizationRequired(currentStatus: CLAuthorizationStatus) {
-        error(
-            "Geofence monitoring requires 'Always' location authorization. Current status: \(currentStatus.rawValue). The host app must call CLLocationManager.requestAlwaysAuthorization().",
-            geofenceTag,
-            nil
+    func geofencePermissionUnavailable(currentStatus: CLAuthorizationStatus) {
+        info(
+            "Geofence registration skipped: location permission not granted (current status: \(currentStatus.rawValue)). The host app controls when and which permission to request.",
+            geofenceTag
+        )
+    }
+
+    func geofenceBackgroundDeliveryUnavailable(currentStatus: CLAuthorizationStatus) {
+        info(
+            "Geofence registered for foreground delivery only: WhenInUse authorization granted (current status: \(currentStatus.rawValue)). Background transitions require Always authorization.",
+            geofenceTag
         )
     }
 

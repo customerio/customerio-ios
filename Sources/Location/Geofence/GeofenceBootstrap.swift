@@ -15,6 +15,15 @@ enum GeofenceBootstrap {
         let monitor = di.geofenceMonitor
         let tracker = di.geofenceEventTracker
         GeofenceMonitorBinder.bind(monitor: monitor, geofences: geofences, tracker: tracker)
+
+        // Self-heal mid-process permission changes (Settings toggle, late prompt response).
+        // Bind is idempotent, and the handler replaces any prior one — no stacking when both
+        // foreground init and cold-wake bootstrap run in the same process.
+        monitor.setOnAuthorizationChanged {
+            Task { @MainActor in
+                await GeofenceBootstrap.wireMonitor(di: di)
+            }
+        }
     }
 
     /// Logs a one-line note when cold-wake real-time delivery is unavailable for this

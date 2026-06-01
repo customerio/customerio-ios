@@ -11,6 +11,10 @@ import Foundation
 /// main-actor reads, or an `await someActor.method()` to hand off to another isolation domain.
 typealias GeofenceTransitionHandler = @Sendable (String, GeofenceTransition, LocationData?) -> Void
 
+/// Callback when iOS reports a change to the location authorization status.
+/// Invoked on the main actor — same isolation domain as `CLLocationManagerDelegate`.
+typealias GeofenceAuthorizationChangedHandler = @MainActor () -> Void
+
 /// Abstracts CLLocationManager's region monitoring.
 ///
 /// The monitor owns a CLLocationManager and handles the delegate callbacks for region events.
@@ -24,6 +28,11 @@ typealias GeofenceTransitionHandler = @Sendable (String, GeofenceTransition, Loc
 protocol GeofenceRegionMonitoring: AnyObject, Sendable {
     /// Sets the handler called when a geofence transition (enter/exit) occurs.
     func setOnTransition(_ handler: GeofenceTransitionHandler?)
+
+    /// Sets the handler invoked when iOS reports an authorization status change. Lets callers
+    /// re-attempt registration when permission improves mid-process (e.g. host's permission
+    /// prompt resolved, or the user toggled the setting in Settings).
+    func setOnAuthorizationChanged(_ handler: GeofenceAuthorizationChangedHandler?)
 
     /// Starts monitoring a circular geofence region.
     /// - Parameters:
