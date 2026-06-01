@@ -98,7 +98,7 @@ struct EventPolicyEngineTests {
     }
 
     private func ruleset(filters: [FilterEntry]? = nil, rateLimits: [RateLimitEntry]? = nil) -> AggregationRuleset {
-        var parts: [String] = ["\"version\":1"]
+        var parts: [String] = []
         if let f = filters {
             let items = f.map { "{\"eventType\":\"\($0.eventType)\",\"name\":\"\($0.name)\"}" }
             parts.append("\"filters\":[\(items.joined(separator: ","))]")

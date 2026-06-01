@@ -43,7 +43,6 @@ public struct RateLimitEntry: Codable, Sendable {
 }
 
 public struct AggregationRuleset: Codable, Sendable {
-    public let version: Int
     public let filters: [FilterEntry]?
     public let rateLimits: [RateLimitEntry]?
     // rules reserved for next aggregation phase

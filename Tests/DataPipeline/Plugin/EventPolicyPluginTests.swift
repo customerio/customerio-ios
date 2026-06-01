@@ -81,7 +81,7 @@ struct EventPolicyPluginTests {
 
     private func filterRuleset(eventType: String, name: String) -> AggregationRuleset {
         let json = """
-        {"version":1,"filters":[{"eventType":"\(eventType)","name":"\(name)"}]}
+        {"filters":[{"eventType":"\(eventType)","name":"\(name)"}]}
         """
         return try! JSONDecoder().decode(AggregationRuleset.self, from: json.data(using: .utf8)!)
     }

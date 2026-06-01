@@ -10,7 +10,6 @@ struct AggregationRulesetTests {
     @Test func fullRuleset_allFieldsDecodeCorrectly() throws {
         let json = """
         {
-          "version": 2,
           "filters": [
             { "eventType": "track", "name": "page_viewed", "scope": "profile" }
           ],
@@ -21,8 +20,6 @@ struct AggregationRulesetTests {
         }
         """
         let ruleset = try decode(json)
-
-        #expect(ruleset.version == 2)
 
         let filter = try #require(ruleset.filters?.first)
         #expect(filter.eventType == "track")
@@ -41,7 +38,6 @@ struct AggregationRulesetTests {
     @Test func filterEntry_missingScope_defaultsToProfile() throws {
         let json = """
         {
-          "version": 1,
           "filters": [{ "eventType": "track", "name": "ev" }]
         }
         """
@@ -52,7 +48,6 @@ struct AggregationRulesetTests {
     @Test func rateLimitEntry_missingScope_defaultsToProfile() throws {
         let json = """
         {
-          "version": 1,
           "rateLimits": [{ "eventType": "track", "name": "ev", "windowSeconds": 60 }]
         }
         """
@@ -65,7 +60,6 @@ struct AggregationRulesetTests {
     @Test func unknownScopeValue_fallsBackToProfile() throws {
         let json = """
         {
-          "version": 1,
           "filters": [{ "eventType": "track", "name": "ev", "scope": "workspace" }]
         }
         """
@@ -76,11 +70,11 @@ struct AggregationRulesetTests {
     // MARK: - Nullable / absent arrays
 
     @Test func nullRules_doesNotThrow() throws {
-        _ = try decode(#"{ "version": 1, "rules": null }"#)
+        _ = try decode(#"{ "rules": null }"#)
     }
 
     @Test func absentFiltersAndRateLimits_areNil() throws {
-        let ruleset = try decode(#"{ "version": 1 }"#)
+        let ruleset = try decode(#"{}"#)
         #expect(ruleset.filters == nil)
         #expect(ruleset.rateLimits == nil)
     }
