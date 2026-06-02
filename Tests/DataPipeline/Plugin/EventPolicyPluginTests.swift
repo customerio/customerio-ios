@@ -83,14 +83,15 @@ struct EventPolicyPluginTests {
     @Test func update_withAggregationRules_persistsConfigToStorage() throws {
         let settings = try settingsWithFilters([("track", "page_viewed")])
         plugin.update(settings: settings, type: .initial)
-        #expecttry (storage.getAggregationConfig() != nil)
+        let config = try storage.getAggregationConfig()
+        #expect(config != nil)
     }
 
     @Test func update_withAggregationRules_persistedConfigDecodesCorrectly() throws {
         let settings = try settingsWithFilters([("track", "page_viewed")])
         plugin.update(settings: settings, type: .initial)
 
-        let config = try #requiretry (storage.getAggregationConfig())
+        let config = try #require(try storage.getAggregationConfig())
         let ruleset = try #require(try? JSONDecoder().decode(AggregationRuleset.self, from: Data(config.payload.utf8)))
         #expect(ruleset.filters?.first?.eventType == "track")
         #expect(ruleset.filters?.first?.name == "page_viewed")
@@ -99,14 +100,15 @@ struct EventPolicyPluginTests {
     @Test func update_withoutAggregationRules_doesNotWriteToStorage() throws {
         let settings = try settingsWithoutRules()
         plugin.update(settings: settings, type: .initial)
-        #expecttry (storage.getAggregationConfig() == nil)
+        let config = try storage.getAggregationConfig()
+        #expect(config == nil)
     }
 
     @Test func update_refresh_overwritesPreviouslyPersistedConfig() throws {
-        try plugin.update(settings: settingsWithFilters([("track", "page_viewed")]), type: .initial)
-        try plugin.update(settings: settingsWithFilters([("screen", "Home")]), type: .refresh)
+        plugin.update(settings: try settingsWithFilters([("track", "page_viewed")]), type: .initial)
+        plugin.update(settings: try settingsWithFilters([("screen", "Home")]), type: .refresh)
 
-        let config = try #requiretry (storage.getAggregationConfig())
+        let config = try #require(try storage.getAggregationConfig())
         let ruleset = try #require(try? JSONDecoder().decode(AggregationRuleset.self, from: Data(config.payload.utf8)))
         #expect(ruleset.filters?.first?.eventType == "screen")
         #expect(ruleset.filters?.first?.name == "Home")
