@@ -13,5 +13,6 @@
 --header strip
 
 --disable unusedArguments
+--disable hoistTry
 
 --enable isEmpty
