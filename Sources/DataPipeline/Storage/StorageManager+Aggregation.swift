@@ -2,7 +2,6 @@ import CioInternalCommon
 import SyncSqlCipher
 
 extension StorageManager {
-
     // MARK: - Aggregation Config
 
     func getAggregationConfig() throws -> (payload: String, fetchedAt: String)? {

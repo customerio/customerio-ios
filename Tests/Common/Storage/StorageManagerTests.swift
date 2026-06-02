@@ -20,5 +20,4 @@ class StorageManagerTests: XCTestCase {
         // Running a second time must not throw (all tables use IF NOT EXISTS).
         XCTAssertNoThrow(try storage.runMigrations())
     }
-
 }
