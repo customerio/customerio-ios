@@ -1,12 +1,12 @@
 import SyncSqlCipher
 
-extension StorageManager {
+public extension StorageManager {
     /// Returns `true` if the event should pass through (not rate-limited).
     /// Returns `false` if the event falls within the rate-limit window.
     ///
     /// The read and write execute on the same serialized connection — the
     /// two-step check-and-update is atomic with respect to all other DB callers.
-    public func checkAndUpdateRateLimit(
+    func checkAndUpdateRateLimit(
         key: String,
         now: Int64,
         windowSeconds: Int64,

@@ -58,12 +58,12 @@ class StorageManagerTests: XCTestCase {
         try storage.setAggregationState(
             ruleId: "rule-1",
             stateJSON: #"{"count":5}"#,
-            lastFlushedAt: 1_716_854_400,
+            lastFlushedAt: 1716854400,
             scope: "profile"
         )
 
         XCTAssertEqual(try storage.getAggregationState(ruleId: "rule-1"), #"{"count":5}"#)
-        XCTAssertEqual(try storage.getAggregationLastFlushed(ruleId: "rule-1"), 1_716_854_400)
+        XCTAssertEqual(try storage.getAggregationLastFlushed(ruleId: "rule-1"), 1716854400)
     }
 
     func test_setAggregationState_upsert_updatesExistingRow() throws {
@@ -123,5 +123,4 @@ class StorageManagerTests: XCTestCase {
         XCTAssertNil(try storage.getAggregationState(ruleId: "profile-rule"))
         XCTAssertNotNil(try storage.getAggregationState(ruleId: "device-rule"))
     }
-
 }

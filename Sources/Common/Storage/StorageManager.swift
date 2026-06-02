@@ -7,7 +7,6 @@ import Foundation
 /// thread-safe (DispatchQueue-serialized), so `StorageManager` carries no
 /// mutable state of its own.
 public struct StorageManager: Sendable {
-
     let db: Database
 
     public init(db: Database) {
@@ -84,6 +83,6 @@ private struct CreateAggregationSchema: Migration {
             )
             """)
     }
-    
-    func down(_ ctx: MigrationContext) throws { }
+
+    func down(_ ctx: MigrationContext) throws {}
 }

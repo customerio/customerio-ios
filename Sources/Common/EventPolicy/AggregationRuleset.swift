@@ -19,9 +19,9 @@ public struct FilterEntry: Codable, Sendable {
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
-        eventType = try c.decode(String.self, forKey: .eventType)
-        name      = try c.decode(String.self, forKey: .name)
-        scope     = try c.decodeIfPresent(RuleScope.self, forKey: .scope) ?? .profile
+        self.eventType = try c.decode(String.self, forKey: .eventType)
+        self.name = try c.decode(String.self, forKey: .name)
+        self.scope = try c.decodeIfPresent(RuleScope.self, forKey: .scope) ?? .profile
     }
 }
 
@@ -35,10 +35,10 @@ public struct RateLimitEntry: Codable, Sendable {
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
-        eventType     = try c.decode(String.self, forKey: .eventType)
-        name          = try c.decode(String.self, forKey: .name)
-        windowSeconds = try c.decode(Int.self,    forKey: .windowSeconds)
-        scope         = try c.decodeIfPresent(RuleScope.self, forKey: .scope) ?? .profile
+        self.eventType = try c.decode(String.self, forKey: .eventType)
+        self.name = try c.decode(String.self, forKey: .name)
+        self.windowSeconds = try c.decode(Int.self, forKey: .windowSeconds)
+        self.scope = try c.decodeIfPresent(RuleScope.self, forKey: .scope) ?? .profile
     }
 }
 

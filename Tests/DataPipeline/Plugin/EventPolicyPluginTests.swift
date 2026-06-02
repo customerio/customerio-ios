@@ -14,8 +14,8 @@ struct EventPolicyPluginTests {
         let db = try Database(path: ":memory:", key: "testkey", walMode: false)
         let storage = StorageManager(db: db)
         try storage.runMigrations()
-        engine = EventPolicyEngine(storage: storage)
-        plugin = EventPolicyPlugin(engine: engine)
+        self.engine = EventPolicyEngine(storage: storage)
+        self.plugin = EventPolicyPlugin(engine: engine)
     }
 
     // MARK: - No ruleset — everything passes

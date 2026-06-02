@@ -7,7 +7,6 @@ import Foundation
 /// protected by `Synchronized<>`, and `StorageManager.db` is serialized
 /// internally via a private DispatchQueue.
 public final class EventPolicyEngine: Sendable {
-
     /// Wire-format ruleset pre-processed into O(1) lookup structures.
     private struct ProcessedRuleset {
         /// Keys of the form `"\(eventType):\(name)"` for blocked events.
@@ -16,8 +15,8 @@ public final class EventPolicyEngine: Sendable {
         let rateLimitsByKey: [String: RateLimitEntry]
 
         init(_ ruleset: AggregationRuleset) {
-            filterKeys = Set((ruleset.filters ?? []).map { "\($0.eventType):\($0.name)" })
-            rateLimitsByKey = Dictionary(
+            self.filterKeys = Set((ruleset.filters ?? []).map { "\($0.eventType):\($0.name)" })
+            self.rateLimitsByKey = Dictionary(
                 (ruleset.rateLimits ?? []).map { ("\($0.eventType):\($0.name)", $0) },
                 uniquingKeysWith: { first, _ in first }
             )

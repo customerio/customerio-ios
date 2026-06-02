@@ -4,7 +4,6 @@ import Testing
 
 @Suite("AggregationRuleset decoding")
 struct AggregationRulesetTests {
-
     // MARK: - Full JSON decode
 
     @Test func fullRuleset_allFieldsDecodeCorrectly() throws {

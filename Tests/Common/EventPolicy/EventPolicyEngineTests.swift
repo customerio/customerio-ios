@@ -10,9 +10,9 @@ struct EventPolicyEngineTests {
 
     init() throws {
         let db = try Database(path: ":memory:", key: "testkey", walMode: false)
-        storage = StorageManager(db: db)
+        self.storage = StorageManager(db: db)
         try storage.runMigrations()
-        engine = EventPolicyEngine(storage: storage)
+        self.engine = EventPolicyEngine(storage: storage)
     }
 
     // MARK: - No ruleset
@@ -48,25 +48,25 @@ struct EventPolicyEngineTests {
 
     @Test func rateLimit_firstCallAllowed() {
         engine.load(ruleset: ruleset(rateLimits: [rateLimit("track", "btn", 3600)]))
-        #expect(engine.shouldAllow(eventType: "track", name: "btn", now: 1_000) == true)
+        #expect(engine.shouldAllow(eventType: "track", name: "btn", now: 1000) == true)
     }
 
     @Test func rateLimit_secondCallWithinWindowBlocked() {
         engine.load(ruleset: ruleset(rateLimits: [rateLimit("track", "btn", 3600)]))
-        _ = engine.shouldAllow(eventType: "track", name: "btn", now: 1_000)
-        #expect(engine.shouldAllow(eventType: "track", name: "btn", now: 1_001) == false)
+        _ = engine.shouldAllow(eventType: "track", name: "btn", now: 1000)
+        #expect(engine.shouldAllow(eventType: "track", name: "btn", now: 1001) == false)
     }
 
     @Test func rateLimit_callAfterWindowAllowed() {
         engine.load(ruleset: ruleset(rateLimits: [rateLimit("track", "btn", 3600)]))
-        _ = engine.shouldAllow(eventType: "track", name: "btn", now: 1_000)
-        #expect(engine.shouldAllow(eventType: "track", name: "btn", now: 1_000 + 3600 + 1) == true)
+        _ = engine.shouldAllow(eventType: "track", name: "btn", now: 1000)
+        #expect(engine.shouldAllow(eventType: "track", name: "btn", now: 1000 + 3600 + 1) == true)
     }
 
     @Test func rateLimit_wildcardMatchesAllEventsOfType() {
         engine.load(ruleset: ruleset(rateLimits: [rateLimit("track", "*", 3600)]))
-        _ = engine.shouldAllow(eventType: "track", name: "any_event", now: 1_000)
-        #expect(engine.shouldAllow(eventType: "track", name: "any_event", now: 1_001) == false)
+        _ = engine.shouldAllow(eventType: "track", name: "any_event", now: 1000)
+        #expect(engine.shouldAllow(eventType: "track", name: "any_event", now: 1001) == false)
     }
 
     // MARK: - Filter takes priority over rate-limit
@@ -74,7 +74,7 @@ struct EventPolicyEngineTests {
     @Test func filter_evaluatedBeforeRateLimit() {
         engine.load(ruleset: ruleset(
             filters: [filter("track", "ev")],
-            rateLimits: [rateLimit("track", "ev", 0)]  // windowSeconds=0 would allow via rate-limit alone
+            rateLimits: [rateLimit("track", "ev", 0)] // windowSeconds=0 would allow via rate-limit alone
         ))
         #expect(engine.shouldAllow(eventType: "track", name: "ev", now: 0) == false)
     }
