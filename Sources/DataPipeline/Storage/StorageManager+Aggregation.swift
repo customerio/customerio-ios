@@ -17,6 +17,10 @@ extension StorageManager {
         return (payload: payload, fetchedAt: fetchedAt)
     }
 
+    func deleteAggregationConfig() throws {
+        try db.execute("DELETE FROM aggregation_rules WHERE id = 1")
+    }
+
     func setAggregationConfig(payload: String, fetchedAt: String) throws {
         try db.execute(
             "INSERT INTO aggregation_rules(id, payload, fetched_at) VALUES(1,?,?)"

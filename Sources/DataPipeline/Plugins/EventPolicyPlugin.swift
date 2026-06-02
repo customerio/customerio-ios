@@ -26,6 +26,10 @@ class EventPolicyPlugin: EventPlugin {
            let payload = String(data: json, encoding: .utf8) {
             let fetchedAt = ISO8601DateFormatter().string(from: Date())
             try? storage?.setAggregationConfig(payload: payload, fetchedAt: fetchedAt)
+        } else if config != nil {
+            // Integration key was present but carried no rules — server explicitly removed them.
+            // Delete the cached config so stale rules aren't reloaded on next launch.
+            try? storage?.deleteAggregationConfig()
         }
     }
 

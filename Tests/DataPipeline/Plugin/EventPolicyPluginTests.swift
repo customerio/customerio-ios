@@ -104,6 +104,14 @@ struct EventPolicyPluginTests {
         #expect(config == nil)
     }
 
+    @Test func update_serverRemovesRules_deletesPreviouslyPersistedConfig() throws {
+        plugin.update(settings: try settingsWithFilters([("track", "page_viewed")]), type: .initial)
+        #expect(try storage.getAggregationConfig() != nil)
+
+        plugin.update(settings: try settingsWithoutRules(), type: .refresh)
+        #expect(try storage.getAggregationConfig() == nil)
+    }
+
     @Test func update_refresh_overwritesPreviouslyPersistedConfig() throws {
         try plugin.update(settings: settingsWithFilters([("track", "page_viewed")]), type: .initial)
         try plugin.update(settings: settingsWithFilters([("screen", "Home")]), type: .refresh)
