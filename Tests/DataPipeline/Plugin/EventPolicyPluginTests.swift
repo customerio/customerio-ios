@@ -7,15 +7,16 @@ import Testing
 
 @Suite("EventPolicyPlugin")
 struct EventPolicyPluginTests {
+    let storage: StorageManager
     let engine: EventPolicyEngine
     let plugin: EventPolicyPlugin
 
     init() throws {
         let db = try Database(path: ":memory:", key: "testkey", walMode: false)
-        let storage = StorageManager(db: db)
+        self.storage = StorageManager(db: db)
         try storage.runMigrations()
         self.engine = EventPolicyEngine(storage: storage)
-        self.plugin = EventPolicyPlugin(engine: engine)
+        self.plugin = EventPolicyPlugin(engine: engine, storage: storage)
     }
 
     // MARK: - No ruleset — everything passes
@@ -77,6 +78,40 @@ struct EventPolicyPluginTests {
         #expect(plugin.identify(event: event) == nil)
     }
 
+    // MARK: - Config persistence
+
+    @Test func update_withAggregationRules_persistsConfigToStorage() throws {
+        let settings = try settingsWithFilters([("track", "page_viewed")])
+        plugin.update(settings: settings, type: .initial)
+        #expecttry (storage.getAggregationConfig() != nil)
+    }
+
+    @Test func update_withAggregationRules_persistedConfigDecodesCorrectly() throws {
+        let settings = try settingsWithFilters([("track", "page_viewed")])
+        plugin.update(settings: settings, type: .initial)
+
+        let config = try #requiretry (storage.getAggregationConfig())
+        let ruleset = try #require(try? JSONDecoder().decode(AggregationRuleset.self, from: Data(config.payload.utf8)))
+        #expect(ruleset.filters?.first?.eventType == "track")
+        #expect(ruleset.filters?.first?.name == "page_viewed")
+    }
+
+    @Test func update_withoutAggregationRules_doesNotWriteToStorage() throws {
+        let settings = try settingsWithoutRules()
+        plugin.update(settings: settings, type: .initial)
+        #expecttry (storage.getAggregationConfig() == nil)
+    }
+
+    @Test func update_refresh_overwritesPreviouslyPersistedConfig() throws {
+        try plugin.update(settings: settingsWithFilters([("track", "page_viewed")]), type: .initial)
+        try plugin.update(settings: settingsWithFilters([("screen", "Home")]), type: .refresh)
+
+        let config = try #requiretry (storage.getAggregationConfig())
+        let ruleset = try #require(try? JSONDecoder().decode(AggregationRuleset.self, from: Data(config.payload.utf8)))
+        #expect(ruleset.filters?.first?.eventType == "screen")
+        #expect(ruleset.filters?.first?.name == "Home")
+    }
+
     // MARK: - Helpers
 
     private func filterRuleset(eventType: String, name: String) -> AggregationRuleset {
@@ -84,5 +119,31 @@ struct EventPolicyPluginTests {
         {"filters":[{"eventType":"\(eventType)","name":"\(name)"}]}
         """
         return try! JSONDecoder().decode(AggregationRuleset.self, from: json.data(using: .utf8)!)
+    }
+
+    private func settingsWithFilters(_ filters: [(eventType: String, name: String)]) throws -> Settings {
+        let filtersJSON = filters
+            .map { "{\"eventType\":\"\($0.eventType)\",\"name\":\"\($0.name)\"}" }
+            .joined(separator: ",")
+        return try settings(aggregationRulesJSON: "{\"filters\":[\(filtersJSON)]}")
+    }
+
+    private func settingsWithoutRules() throws -> Settings {
+        try settings(aggregationRulesJSON: nil)
+    }
+
+    private func settings(aggregationRulesJSON: String?) throws -> Settings {
+        let rulesFragment = aggregationRulesJSON.map { "\"aggregationRules\": \($0)," } ?? ""
+        let json = """
+        {
+            "integrations": {
+                "Customer.io Data Pipelines": {
+                    \(rulesFragment)
+                    "apiKey": "test-key"
+                }
+            }
+        }
+        """
+        return try JSONDecoder().decode(Settings.self, from: json.data(using: .utf8)!)
     }
 }

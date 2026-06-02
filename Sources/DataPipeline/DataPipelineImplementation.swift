@@ -81,7 +81,7 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking {
 
         // Add plugin to enforce server-driven filter and rate-limit rules
         if let engine = eventPolicyEngine {
-            analytics.add(plugin: EventPolicyPlugin(engine: engine))
+            analytics.add(plugin: EventPolicyPlugin(engine: engine, storage: storageManager))
         }
 
         // Add plugin to filter events based on SDK configuration
@@ -220,6 +220,7 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking {
         // reset all to default state
         logger.debug("resetting user profile")
         analytics.reset()
+        try? storageManager?.deleteProfileScopedAggregationState()
     }
 
     func deleteDeviceToken() {

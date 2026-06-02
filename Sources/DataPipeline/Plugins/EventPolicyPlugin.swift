@@ -1,13 +1,16 @@
 import CioAnalytics
 import CioInternalCommon
+import Foundation
 
 class EventPolicyPlugin: EventPlugin {
     let type = PluginType.enrichment
     weak var analytics: Analytics?
     private let engine: EventPolicyEngine
+    private let storage: StorageManager?
 
-    init(engine: EventPolicyEngine) {
+    init(engine: EventPolicyEngine, storage: StorageManager?) {
         self.engine = engine
+        self.storage = storage
     }
 
     func update(settings: Settings, type: UpdateType) {
@@ -15,7 +18,15 @@ class EventPolicyPlugin: EventPlugin {
             let aggregationRules: AggregationRuleset?
         }
         let config: IntegrationSettings? = settings.integrationSettings(forKey: "Customer.io Data Pipelines")
-        engine.load(ruleset: config?.aggregationRules)
+        let ruleset = config?.aggregationRules
+        engine.load(ruleset: ruleset)
+
+        if let ruleset,
+           let json = try? JSONEncoder().encode(ruleset),
+           let payload = String(data: json, encoding: .utf8) {
+            let fetchedAt = ISO8601DateFormatter().string(from: Date())
+            try? storage?.setAggregationConfig(payload: payload, fetchedAt: fetchedAt)
+        }
     }
 
     func track(event: TrackEvent) -> TrackEvent? {
