@@ -1,4 +1,4 @@
-@testable import CioInternalCommon
+@testable import CioDataPipelines
 import Foundation
 import Testing
 

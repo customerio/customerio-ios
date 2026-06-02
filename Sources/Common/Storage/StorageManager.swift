@@ -7,7 +7,9 @@ import Foundation
 /// thread-safe (DispatchQueue-serialized), so `StorageManager` carries no
 /// mutable state of its own.
 public struct StorageManager: Sendable {
-    let db: Database
+    // public so per-module StorageManager+X.swift extensions can reach it directly.
+    // Restrict to `package` once CocoaPods support is dropped.
+    public let db: Database
 
     public init(db: Database) {
         self.db = db

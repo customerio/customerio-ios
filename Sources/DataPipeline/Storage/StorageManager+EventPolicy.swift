@@ -1,6 +1,7 @@
+import CioInternalCommon
 import SyncSqlCipher
 
-public extension StorageManager {
+extension StorageManager {
     /// Returns `true` if the event should pass through (not rate-limited).
     /// Returns `false` if the event falls within the rate-limit window.
     ///

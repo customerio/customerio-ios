@@ -1,4 +1,5 @@
-@testable import CioInternalCommon
+@testable import CioDataPipelines
+import CioInternalCommon
 import SyncSqlCipher
 import Testing
 

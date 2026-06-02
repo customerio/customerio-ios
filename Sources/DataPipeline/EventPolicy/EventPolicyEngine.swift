@@ -1,3 +1,4 @@
+import CioInternalCommon
 import Foundation
 
 /// Synchronous, thread-safe engine that decides whether an event should be
@@ -6,7 +7,8 @@ import Foundation
 /// `@unchecked Sendable` is safe here: all mutable state (`processed`) is
 /// protected by `Synchronized<>`, and `StorageManager.db` is serialized
 /// internally via a private DispatchQueue.
-public final class EventPolicyEngine: Sendable {
+final class EventPolicyEngine: Sendable {
+
     /// Wire-format ruleset pre-processed into O(1) lookup structures.
     private struct ProcessedRuleset {
         /// Keys of the form `"\(eventType):\(name)"` for blocked events.
@@ -15,8 +17,8 @@ public final class EventPolicyEngine: Sendable {
         let rateLimitsByKey: [String: RateLimitEntry]
 
         init(_ ruleset: AggregationRuleset) {
-            self.filterKeys = Set((ruleset.filters ?? []).map { "\($0.eventType):\($0.name)" })
-            self.rateLimitsByKey = Dictionary(
+            filterKeys = Set((ruleset.filters ?? []).map { "\($0.eventType):\($0.name)" })
+            rateLimitsByKey = Dictionary(
                 (ruleset.rateLimits ?? []).map { ("\($0.eventType):\($0.name)", $0) },
                 uniquingKeysWith: { first, _ in first }
             )
@@ -26,17 +28,17 @@ public final class EventPolicyEngine: Sendable {
     private let storage: StorageManager
     private let processed = Synchronized<ProcessedRuleset?>(nil)
 
-    public init(storage: StorageManager) {
+    init(storage: StorageManager) {
         self.storage = storage
     }
 
     /// Replace the active ruleset. Call this after receiving updated config from the server.
-    public func load(ruleset: AggregationRuleset?) {
+    func load(ruleset: AggregationRuleset?) {
         processed.wrappedValue = ruleset.map { ProcessedRuleset($0) }
     }
 
     /// Returns `true` if the event is allowed through, `false` if it should be dropped.
-    public func shouldAllow(eventType: String, name: String) -> Bool {
+    func shouldAllow(eventType: String, name: String) -> Bool {
         shouldAllow(eventType: eventType, name: name, now: Int64(Date().timeIntervalSince1970))
     }
 
