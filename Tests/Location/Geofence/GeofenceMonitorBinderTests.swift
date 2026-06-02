@@ -27,58 +27,29 @@ struct GeofenceMonitorBinderTests {
         )
     }
 
-    private func makeGeofence(id: String, radius: Double, transitions: Set<GeofenceTransition>) -> Geofence {
-        Geofence(id: id, latitude: 1.0, longitude: 2.0, radius: radius, name: id, transitionTypes: transitions, lastUpdated: Date())
-    }
-
     @Test
-    func bind_givenGeofences_expectStartMonitoringForEach() {
-        let geofences = [
-            makeGeofence(id: "g1", radius: 100, transitions: [.enter]),
-            makeGeofence(id: "g2", radius: 200, transitions: [.enter, .exit])
-        ]
+    func bind_expectTransitionHandlerInstalled() {
         let monitor = GeofenceRegionMonitoringMock()
         let tracker = makeTracker()
 
-        GeofenceMonitorBinder.bind(monitor: monitor, geofences: geofences, tracker: tracker)
+        GeofenceMonitorBinder.bind(monitor: monitor, tracker: tracker)
 
         #expect(monitor.setOnTransitionCallsCount == 1)
-        #expect(monitor.startMonitoringCalls.count == 2)
-        let identifiers = Set(monitor.startMonitoringCalls.map(\.identifier))
-        #expect(identifiers == Set(["g1", "g2"]))
-        let g1 = monitor.startMonitoringCalls.first { $0.identifier == "g1" }
-        #expect(g1?.radius == 100)
-        #expect(g1?.transitionTypes == [.enter])
-        let g2 = monitor.startMonitoringCalls.first { $0.identifier == "g2" }
-        #expect(g2?.transitionTypes == [.enter, .exit])
-    }
-
-    @Test
-    func bind_givenEmpty_expectHandlerRegisteredAndNoMonitoring() {
-        let monitor = GeofenceRegionMonitoringMock()
-        let tracker = makeTracker()
-
-        GeofenceMonitorBinder.bind(monitor: monitor, geofences: [], tracker: tracker)
-
-        #expect(monitor.setOnTransitionCallsCount == 1)
+        // Binder no longer registers regions — that's the coordinator's job now.
         #expect(monitor.startMonitoringCalls.isEmpty)
     }
 
     /// Double-bind can happen when both `LocationModule.initialize` and
-    /// `LocationModule.bootstrapForBackgroundDelivery` run in the same process. Each call
-    /// re-installs the handler and re-registers the regions — `CLLocationManager.startMonitoring`
-    /// is idempotent for the same identifier, and the handler is replaced with an equivalent one.
+    /// `LocationModule.bootstrapForBackgroundDelivery` run in the same process.
     @Test
-    func bind_givenCalledTwice_expectHandlerReinstalledAndRegionsReregistered() {
-        let geofences = [makeGeofence(id: "g1", radius: 100, transitions: [.enter])]
+    func bind_givenCalledTwice_expectHandlerReinstalled() {
         let monitor = GeofenceRegionMonitoringMock()
         let tracker = makeTracker()
 
-        GeofenceMonitorBinder.bind(monitor: monitor, geofences: geofences, tracker: tracker)
-        GeofenceMonitorBinder.bind(monitor: monitor, geofences: geofences, tracker: tracker)
+        GeofenceMonitorBinder.bind(monitor: monitor, tracker: tracker)
+        GeofenceMonitorBinder.bind(monitor: monitor, tracker: tracker)
 
         #expect(monitor.setOnTransitionCallsCount == 2)
-        #expect(monitor.startMonitoringCalls.count == 2)
     }
 }
 

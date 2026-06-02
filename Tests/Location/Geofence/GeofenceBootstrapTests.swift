@@ -71,49 +71,80 @@ struct GeofenceBootstrapTests {
     // MARK: - Self-heal on authorization change
 
     @Test
-    func wireMonitor_givenInitialBind_expectAuthorizationHandlerInstalled() async {
+    func wireMonitor_givenInitialBind_expectTransitionHandlerAndCoordinatorApplyAndAuthHandler() async {
         let di = DIGraphShared.shared
-        let storage = GeofenceStorage(
-            fileManager: .default,
-            directoryURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-        )
-        di.override(value: storage, forType: GeofenceStorage.self)
         let monitor = GeofenceRegionMonitoringMock()
         di.override(value: monitor as GeofenceRegionMonitoring, forType: GeofenceRegionMonitoring.self)
+        let coordinator = GeofenceSyncCoordinatorMock()
+        di.override(value: coordinator as GeofenceSyncCoordinator, forType: GeofenceSyncCoordinator.self)
         defer { di.reset() }
 
         await GeofenceBootstrap.wireMonitor(di: di)
 
+        #expect(monitor.setOnTransitionCallsCount == 1)
+        #expect(coordinator.applyCachedRegistrationCallsCount == 1)
         #expect(monitor.setOnAuthorizationChangedCallsCount == 1)
         #expect(monitor.lastAuthorizationChangedHandler != nil)
     }
 
     @Test
-    func wireMonitor_givenAuthorizationFires_expectReRegistration() async {
+    func wireMonitor_givenCachedRegions_expectPipedToCoordinatorApply() async {
         let di = DIGraphShared.shared
         let storage = GeofenceStorage(
             fileManager: .default,
             directoryURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         )
-        let geofence = Geofence(
-            id: "g1", latitude: 1.0, longitude: 2.0, radius: 100,
-            name: "g1", transitionTypes: [.enter], lastUpdated: Date()
-        )
-        await storage.setCachedGeofences([geofence])
+        await storage.setCachedGeofences([
+            Geofence(
+                id: "g1",
+                latitude: 1,
+                longitude: 2,
+                radius: 100,
+                name: "g1",
+                transitionTypes: [.enter],
+                lastUpdated: Date(timeIntervalSince1970: 0)
+            )
+        ])
         di.override(value: storage, forType: GeofenceStorage.self)
         let monitor = GeofenceRegionMonitoringMock()
         di.override(value: monitor as GeofenceRegionMonitoring, forType: GeofenceRegionMonitoring.self)
+        let coordinator = GeofenceSyncCoordinatorMock()
+        di.override(value: coordinator as GeofenceSyncCoordinator, forType: GeofenceSyncCoordinator.self)
         defer { di.reset() }
 
         await GeofenceBootstrap.wireMonitor(di: di)
-        #expect(monitor.startMonitoringCalls.count == 1)
+
+        #expect(coordinator.applyCachedRegistrationReceivedArguments?.cachedRegions.map(\.id) == ["g1"])
+    }
+
+    @Test
+    func geofenceSyncCoordinator_givenRepeatedResolution_expectSameInstance() {
+        let di = DIGraphShared.shared
+        let first = di.geofenceSyncCoordinator as? GeofenceSyncCoordinatorImpl
+        let second = di.geofenceSyncCoordinator as? GeofenceSyncCoordinatorImpl
+        // Singleton-ness is load-bearing: the instance-level `refreshInProgress` dedup
+        // gate only deduplicates if every caller resolves to the same instance.
+        #expect(first === second)
+    }
+
+    @Test
+    func wireMonitor_givenAuthorizationFires_expectApplyCachedRegistrationRerun() async {
+        let di = DIGraphShared.shared
+        let monitor = GeofenceRegionMonitoringMock()
+        di.override(value: monitor as GeofenceRegionMonitoring, forType: GeofenceRegionMonitoring.self)
+        let coordinator = GeofenceSyncCoordinatorMock()
+        di.override(value: coordinator as GeofenceSyncCoordinator, forType: GeofenceSyncCoordinator.self)
+        defer { di.reset() }
+
+        await GeofenceBootstrap.wireMonitor(di: di)
+        #expect(coordinator.applyCachedRegistrationCallsCount == 1)
 
         // Simulate iOS reporting a permission change. The handler spawns a Task to re-run
         // wireMonitor; the sleep gives that Task time to schedule and complete.
         monitor.lastAuthorizationChangedHandler?()
         try? await Task.sleep(nanoseconds: 100000000)
 
-        #expect(monitor.startMonitoringCalls.count == 2)
+        #expect(coordinator.applyCachedRegistrationCallsCount == 2)
     }
 
     @Test
