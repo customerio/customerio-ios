@@ -11,6 +11,7 @@ protocol GeofenceSyncStorage: Sendable {
     func setCachedGeofences(_ regions: [Geofence]) async
     func setCachedConfig(_ config: GeofenceConfig) async
     func recordSync(timestamp: Date, location: LocationData) async
+    func clearUserScopedState() async
 }
 
 extension GeofenceStorage: GeofenceSyncStorage {}

@@ -83,6 +83,19 @@ actor GeofenceStorage {
         saveToDisk(state)
     }
 
+    /// Clears the cooldown map and the last-sync record (timestamp + location) but
+    /// preserves the cached geofences and config. Called on sign-out: the workspace cache
+    /// is shared across users, while cooldowns belong to the signed-out user and the
+    /// last-sync anchor would otherwise let the freshness gate skip the first sync for
+    /// the next signed-in user against stale state.
+    func clearUserScopedState() {
+        var state = loadFromDisk() ?? GeofenceState()
+        state.eventCooldowns = nil
+        state.lastServerSyncTimestamp = nil
+        state.lastServerSyncLocation = nil
+        saveToDisk(state)
+    }
+
     // MARK: - Cached Geofences
 
     func getCachedGeofences() -> [Geofence] {

@@ -128,6 +128,18 @@ struct LocationSyncCoordinatorTests {
     }
 
     @Test
+    func processLocationUpdate_givenObserverRegistered_expectObserverCalledWithLocation() async {
+        let (coordinator, _) = makeCoordinator()
+        let received = Synchronized<[LocationData]>([])
+        await coordinator.setOnLocationProcessed { location in
+            received.mutating { $0.append(location) }
+        }
+        let location = LocationData(latitude: 37, longitude: -122)
+        await coordinator.processLocationUpdate(location)
+        #expect(received.wrappedValue == [location])
+    }
+
+    @Test
     func clearCache_clearsStorage() async {
         let (coordinator, storage) = makeCoordinator()
         let location = LocationData(latitude: 1, longitude: 2)
