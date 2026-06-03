@@ -22,8 +22,9 @@ enum GeofenceBootstrap {
         // delegate call can land.
         let monitor = di.geofenceMonitor
         let tracker = di.geofenceEventTracker
-        GeofenceMonitorBinder.bind(monitor: monitor, tracker: tracker)
-        di.geofenceSyncCoordinator.applyCachedRegistration(
+        let coordinator = di.geofenceSyncCoordinator
+        GeofenceMonitorBinder.bind(monitor: monitor, tracker: tracker, coordinator: coordinator)
+        coordinator.applyCachedRegistration(
             cachedRegions: cachedRegions,
             anchor: lastSync?.location,
             config: cachedConfig,

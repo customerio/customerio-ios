@@ -7,11 +7,12 @@ import Testing
 @Suite("GeofenceMonitorBinder")
 @MainActor
 struct GeofenceMonitorBinderTests {
-    private func makeTracker() -> GeofenceEventTracker {
+    private func makeTracker(eventBusHandler: EventBusHandler) -> GeofenceEventTracker {
         let contextStore = BackgroundDeliveryContextStore(
             fileManager: .default,
             directoryURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         )
+        contextStore.setUserId("user-1")
         let storage = GeofenceStorage(
             fileManager: .default,
             directoryURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
@@ -21,78 +22,107 @@ struct GeofenceMonitorBinderTests {
             pendingStore: PendingGeofenceMetricStore(),
             deliveryTracker: nil,
             contextStore: contextStore,
-            eventBusHandler: EventBusHandlerMock(),
+            eventBusHandler: eventBusHandler,
             dateUtil: DateUtilStub(),
             logger: LoggerMock()
         )
     }
 
+    private func makeCoordinatorMock() -> GeofenceSyncCoordinatorMock {
+        let mock = GeofenceSyncCoordinatorMock()
+        mock.refreshReturnValue = .success(())
+        mock.handleMovementReturnValue = .success(())
+        return mock
+    }
+
+    /// Polls the fire-and-forget Task created inside the transition handler. Bounded by a
+    /// finite iteration count so a regression doesn't hang the suite.
+    private func awaitDispatch(_ condition: @autoclosure () -> Bool) async {
+        for _ in 0 ..< 50 {
+            if condition() { return }
+            await Task.yield()
+        }
+    }
+
     @Test
-    func bind_expectTransitionHandlerInstalled() {
-        let monitor = GeofenceRegionMonitoringMock()
-        let tracker = makeTracker()
+    func bind_givenMovementTriggerExit_expectCoordinatorHandleMovementCalledWithLocation() async {
+        let monitor = MockGeofenceRegionMonitor()
+        let coordinator = makeCoordinatorMock()
+        let eventBus = EventBusHandlerMock()
+        let tracker = makeTracker(eventBusHandler: eventBus)
 
-        GeofenceMonitorBinder.bind(monitor: monitor, tracker: tracker)
+        GeofenceMonitorBinder.bind(monitor: monitor, tracker: tracker, coordinator: coordinator)
+        monitor.simulateTransition(
+            identifier: GeofenceConstants.movementTriggerIdentifier,
+            transition: .exit,
+            location: LocationData(latitude: 37.0, longitude: -122.0)
+        )
+        await awaitDispatch(coordinator.handleMovementCallsCount > 0)
 
-        #expect(monitor.setOnTransitionCallsCount == 1)
-        // Binder no longer registers regions — that's the coordinator's job now.
-        #expect(monitor.startMonitoringCalls.isEmpty)
+        #expect(coordinator.handleMovementCallsCount == 1)
+        #expect(coordinator.handleMovementReceivedArguments?.latitude == 37.0)
+        #expect(coordinator.handleMovementReceivedArguments?.longitude == -122.0)
     }
 
-    /// Double-bind can happen when both `LocationModule.initialize` and
-    /// `LocationModule.bootstrapForBackgroundDelivery` run in the same process.
+    /// We only register the movement trigger for `.exit`; an unexpected `.enter` on the
+    /// reserved identifier must NOT fall through to either the tracker or the coordinator.
     @Test
-    func bind_givenCalledTwice_expectHandlerReinstalled() {
-        let monitor = GeofenceRegionMonitoringMock()
-        let tracker = makeTracker()
+    func bind_givenMovementTriggerEnter_expectNeitherDispatchPathFires() async {
+        let monitor = MockGeofenceRegionMonitor()
+        let coordinator = makeCoordinatorMock()
+        let eventBus = EventBusHandlerMock()
+        let tracker = makeTracker(eventBusHandler: eventBus)
 
-        GeofenceMonitorBinder.bind(monitor: monitor, tracker: tracker)
-        GeofenceMonitorBinder.bind(monitor: monitor, tracker: tracker)
+        GeofenceMonitorBinder.bind(monitor: monitor, tracker: tracker, coordinator: coordinator)
+        monitor.simulateTransition(
+            identifier: GeofenceConstants.movementTriggerIdentifier,
+            transition: .enter,
+            location: LocationData(latitude: 37.0, longitude: -122.0)
+        )
+        for _ in 0 ..< 10 { await Task.yield() }
 
-        #expect(monitor.setOnTransitionCallsCount == 2)
-    }
-}
-
-// MARK: - Mock
-
-struct StartMonitoringCall: Equatable {
-    let identifier: String
-    let center: LocationData
-    let radius: Double
-    let transitionTypes: Set<GeofenceTransition>
-}
-
-@MainActor
-final class GeofenceRegionMonitoringMock: GeofenceRegionMonitoring {
-    var setOnTransitionCallsCount = 0
-    var setOnAuthorizationChangedCallsCount = 0
-    var lastAuthorizationChangedHandler: GeofenceAuthorizationChangedHandler?
-    var startMonitoringCalls: [StartMonitoringCall] = []
-    var stopMonitoringCalls: [String] = []
-    var stopMonitoringAllCallsCount = 0
-    var monitoredRegionIdentifiers: Set<String> = []
-
-    func setOnTransition(_ handler: GeofenceTransitionHandler?) {
-        setOnTransitionCallsCount += 1
+        #expect(coordinator.handleMovementCallsCount == 0)
+        #expect(eventBus.postEventCallsCount == 0)
     }
 
-    func setOnAuthorizationChanged(_ handler: GeofenceAuthorizationChangedHandler?) {
-        setOnAuthorizationChangedCallsCount += 1
-        lastAuthorizationChangedHandler = handler
+    /// Skip rather than guess at a location — `handleMovement` needs a real position to
+    /// distance-compare against the API anchor.
+    @Test
+    func bind_givenMovementTriggerExitWithNilLocation_expectCoordinatorNotCalled() async {
+        let monitor = MockGeofenceRegionMonitor()
+        let coordinator = makeCoordinatorMock()
+        let eventBus = EventBusHandlerMock()
+        let tracker = makeTracker(eventBusHandler: eventBus)
+
+        GeofenceMonitorBinder.bind(monitor: monitor, tracker: tracker, coordinator: coordinator)
+        monitor.simulateTransition(
+            identifier: GeofenceConstants.movementTriggerIdentifier,
+            transition: .exit,
+            location: nil
+        )
+        for _ in 0 ..< 10 { await Task.yield() }
+
+        #expect(coordinator.handleMovementCallsCount == 0)
     }
 
-    func startMonitoring(identifier: String, center: LocationData, radius: Double, transitionTypes: Set<GeofenceTransition>) {
-        startMonitoringCalls.append(StartMonitoringCall(identifier: identifier, center: center, radius: radius, transitionTypes: transitionTypes))
-        monitoredRegionIdentifiers.insert(identifier)
-    }
+    @Test
+    func bind_givenBusinessGeofenceTransition_expectTrackerDispatchedAndCoordinatorIdle() async {
+        let monitor = MockGeofenceRegionMonitor()
+        let coordinator = makeCoordinatorMock()
+        let eventBus = EventBusHandlerMock()
+        let tracker = makeTracker(eventBusHandler: eventBus)
 
-    func stopMonitoring(identifier: String) {
-        stopMonitoringCalls.append(identifier)
-        monitoredRegionIdentifiers.remove(identifier)
-    }
+        GeofenceMonitorBinder.bind(monitor: monitor, tracker: tracker, coordinator: coordinator)
+        monitor.simulateTransition(
+            identifier: "business-region-1",
+            transition: .enter,
+            location: LocationData(latitude: 37.0, longitude: -122.0)
+        )
+        // With no deliveryTracker and a set userId, trackTransition posts a fallback event
+        // on the EventBus — observable signal that the binder routed to the tracker.
+        await awaitDispatch(eventBus.postEventCallsCount > 0)
 
-    func stopMonitoringAll() {
-        stopMonitoringAllCallsCount += 1
-        monitoredRegionIdentifiers.removeAll()
+        #expect(eventBus.postEventCallsCount == 1)
+        #expect(coordinator.handleMovementCallsCount == 0)
     }
 }

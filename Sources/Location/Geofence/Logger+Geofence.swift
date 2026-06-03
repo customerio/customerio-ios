@@ -68,4 +68,8 @@ extension Logger {
     func geofenceSyncCompleted(registeredCount: Int) {
         info("Sync completed: registered \(registeredCount) business geofences + 1 movement trigger", geofenceTag)
     }
+
+    func geofenceMovementTrigger(tier: HandleMovementTier) {
+        debug("Movement trigger EXIT: \(tier.rawValue)", geofenceTag)
+    }
 }

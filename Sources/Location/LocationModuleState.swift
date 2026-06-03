@@ -10,6 +10,8 @@ final class LocationModuleState {
 
     private var services: LocationServices = UninitializedLocationServices(logger: DIGraphShared.shared.logger)
     private let lock = NSLock()
+    /// Retains the foreground observer registered for geofence refresh.
+    private var geofenceForegroundToken: AppLifecycleObserverToken?
 
     private init() {}
 
@@ -35,8 +37,16 @@ final class LocationModuleState {
         )
         let locationEnrichmentProvider = LocationProfileEnrichmentProvider(storage: storage, config: config)
         di.profileEnrichmentRegistry.register(locationEnrichmentProvider)
-        registerEventSubscriptions(coordinator: coordinator, di: di)
+        registerEventSubscriptions(coordinator: coordinator, lastLocationStorage: storage, di: di)
         Task { await di.geofenceEventTracker.flushPending() }
+        let lifecycleNotifying = RealAppLifecycleNotifying()
+        // Foreground geofence refresh is intentionally mode-independent — geofence
+        // monitoring runs even when `LocationConfig.mode` disables periodic location
+        // updates. Skips silently with no cached anchor; movement EXIT drives the first
+        // registration in that case.
+        geofenceForegroundToken = lifecycleNotifying.addDidBecomeActiveObserver { [weak self] in
+            self?.refreshGeofencesIfPossible(lastLocationStorage: storage)
+        }
         Task { @MainActor in
             await GeofenceBootstrap.wireMonitor(di: di)
         }
@@ -46,17 +56,35 @@ final class LocationModuleState {
             logger: di.logger,
             locationProvider: locationProvider,
             locationSyncCoordinator: coordinator,
-            lifecycleNotifying: RealAppLifecycleNotifying(),
+            lifecycleNotifying: lifecycleNotifying,
             applicationStateProvider: RealApplicationStateProvider()
         )
         services = implementation
         Task { await implementation.setUpLifecycleObserver() }
     }
 
-    private func registerEventSubscriptions(coordinator: LocationSyncCoordinator, di: DIGraphShared) {
-        di.eventBusHandler.addObserver(ProfileIdentifiedEvent.self) { _ in
+    private func registerEventSubscriptions(
+        coordinator: LocationSyncCoordinator,
+        lastLocationStorage: LastLocationStorage,
+        di: DIGraphShared
+    ) {
+        di.eventBusHandler.addObserver(ProfileIdentifiedEvent.self) { [weak self] _ in
             Task { await coordinator.syncCachedLocationIfNeeded() }
             Task { await di.geofenceEventTracker.flushPending() }
+            self?.refreshGeofencesIfPossible(lastLocationStorage: lastLocationStorage)
+        }
+    }
+
+    /// Shared by the identify and foreground triggers. Mode-independent — geofence
+    /// registration is orthogonal to the location-tracking pipeline that populates
+    /// `LastLocationStorage` for enrichment.
+    private func refreshGeofencesIfPossible(lastLocationStorage: LastLocationStorage) {
+        guard let location = lastLocationStorage.getCachedLocation() else { return }
+        Task { @MainActor in
+            _ = await DIGraphShared.shared.geofenceSyncCoordinator.refresh(
+                latitude: location.latitude,
+                longitude: location.longitude
+            )
         }
     }
 

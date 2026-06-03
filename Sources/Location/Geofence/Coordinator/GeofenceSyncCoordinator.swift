@@ -1,4 +1,5 @@
 import CioInternalCommon
+import CoreLocation
 import Foundation
 
 /// Errors surfaced by `GeofenceSyncCoordinator` callers.
@@ -8,16 +9,28 @@ enum GeofenceSyncError: Error, Equatable {
     case fetchFailed(GeofenceApiError)
 }
 
-/// Sync pipeline for the on-device geofence cache. Two entry points:
+/// Which branch `handleMovement` took for the current EXIT.
+enum HandleMovementTier: String, Sendable {
+    /// Re-rank cached regions for the new location; no API call.
+    case localRerank
+    /// Anchor moved beyond `remoteFetchRefreshTriggerRadius` (or absent) — refetch from server.
+    case remoteRefresh
+}
+
+/// Sync pipeline for the on-device geofence cache. Entry points:
 ///
 /// - `refresh(latitude:longitude:)` — fetch from the server, distance-filter, register,
 ///   persist. Gated on identified user, in-flight dedup, and freshness.
+/// - `handleMovement(latitude:longitude:)` — movement-trigger EXIT entry. Two-tier:
+///   re-rank cache when within `remoteFetchRefreshTriggerRadius` of the API anchor,
+///   otherwise refetch from the server. Shares the same dedup gate as `refresh`.
 /// - `applyCachedRegistration(...)` — synchronously register from caller-fetched state,
 ///   used by cold-wake / boot / auth-change paths. Synchronous on the main actor so
 ///   `ownedRegionIdentifiers` is populated before the next yield — otherwise the OS may
 ///   deliver a queued cold-wake transition into an empty filter set.
-protocol GeofenceSyncCoordinator: AutoMockable, Sendable {
+protocol GeofenceSyncCoordinator: AutoMockable, AnyObject, Sendable {
     func refresh(latitude: Double, longitude: Double) async -> Result<Void, GeofenceSyncError>
+    func handleMovement(latitude: Double, longitude: Double) async -> Result<Void, GeofenceSyncError>
     @MainActor
     func applyCachedRegistration(
         cachedRegions: [Geofence],
@@ -59,18 +72,11 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
     }
 
     func refresh(latitude: Double, longitude: Double) async -> Result<Void, GeofenceSyncError> {
-        // Concurrent calls return `.alreadyInProgress` (not `.success`) so callers can
-        // distinguish a skip-due-to-dedup from a real completion.
-        let acquired: Bool = refreshInProgress.mutating { inProgress in
-            if inProgress { return false }
-            inProgress = true
-            return true
-        }
-        guard acquired else {
+        guard acquireGate() else {
             logger.geofenceSyncSkipped(reason: "refresh already in progress")
             return .failure(.alreadyInProgress)
         }
-        defer { refreshInProgress.wrappedValue = false }
+        defer { releaseGate() }
 
         guard let userId = contextStore.currentUserId, !userId.isEmpty else {
             logger.geofenceSyncSkipped(reason: "no identified user")
@@ -86,6 +92,111 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
             }
         }
 
+        return await performRemoteRefresh(
+            latitude: latitude,
+            longitude: longitude,
+            cachedConfig: cachedConfig
+        )
+    }
+
+    func handleMovement(latitude: Double, longitude: Double) async -> Result<Void, GeofenceSyncError> {
+        guard acquireGate() else {
+            logger.geofenceSyncSkipped(reason: "refresh already in progress")
+            return .failure(.alreadyInProgress)
+        }
+        defer { releaseGate() }
+
+        guard let userId = contextStore.currentUserId, !userId.isEmpty else {
+            logger.geofenceSyncSkipped(reason: "no identified user")
+            return .failure(.noIdentifiedUser)
+        }
+
+        let cachedConfig = await storage.getCachedConfig()
+        let anchor = await storage.getLastSync()?.location
+        let effectiveConfig = cachedConfig ?? .fallback
+        // No anchor → no Tier A reference; fall through to remote.
+        let needsRemoteFetch: Bool = {
+            guard let anchor else { return true }
+            let distance = CLLocation(latitude: anchor.latitude, longitude: anchor.longitude)
+                .distance(from: CLLocation(latitude: latitude, longitude: longitude))
+            return distance >= effectiveConfig.remoteFetchRefreshTriggerRadius
+        }()
+
+        if needsRemoteFetch {
+            logger.geofenceMovementTrigger(tier: .remoteRefresh)
+            return await performRemoteRefresh(
+                latitude: latitude,
+                longitude: longitude,
+                cachedConfig: cachedConfig
+            )
+        } else {
+            logger.geofenceMovementTrigger(tier: .localRerank)
+            let cachedRegions = await storage.getCachedGeofences()
+            return await performLocalRefresh(
+                latitude: latitude,
+                longitude: longitude,
+                config: effectiveConfig,
+                cachedRegions: cachedRegions
+            )
+        }
+    }
+
+    @MainActor
+    func applyCachedRegistration(
+        cachedRegions: [Geofence],
+        anchor: LocationData?,
+        config: GeofenceConfig?,
+        userId: String?
+    ) {
+        guard let userId, !userId.isEmpty else {
+            logger.geofenceSyncSkipped(reason: "no identified user")
+            return
+        }
+        guard !cachedRegions.isEmpty else {
+            logger.geofenceSyncSkipped(reason: "no cached regions to restore")
+            return
+        }
+        // Need an anchor to distance-filter and to center the movement trigger. Skipping
+        // when absent is safer than re-using an arbitrary location.
+        guard let anchor else {
+            logger.geofenceSyncSkipped(reason: "no last-sync anchor to restore from")
+            return
+        }
+        guard acquireGate() else {
+            logger.geofenceSyncSkipped(reason: "restore already in progress")
+            return
+        }
+        defer { releaseGate() }
+
+        let effectiveConfig = config ?? .fallback
+        let nearest = distanceFilter.nearest(cachedRegions, to: anchor, limit: effectiveConfig.maxBusinessGeofences)
+        registerWithOsSync(
+            businessRegions: nearest,
+            movementTriggerLocation: anchor,
+            movementTriggerRadius: effectiveConfig.localRefreshTriggerRadius
+        )
+        logger.geofenceSyncCompleted(registeredCount: nearest.count)
+    }
+
+    /// Returns false when another call already holds the gate; the caller short-circuits.
+    private func acquireGate() -> Bool {
+        refreshInProgress.mutating { inProgress in
+            if inProgress { return false }
+            inProgress = true
+            return true
+        }
+    }
+
+    private func releaseGate() {
+        refreshInProgress.wrappedValue = false
+    }
+
+    /// Fetch + filter + register + persist. Caller owns the dedup gate and user-id check.
+    private func performRemoteRefresh(
+        latitude: Double,
+        longitude: Double,
+        cachedConfig: GeofenceConfig?
+    ) async -> Result<Void, GeofenceSyncError> {
         let fetchResult = await awaitApiFetch(latitude: latitude, longitude: longitude)
         let response: GeofenceApiResponse
         switch fetchResult {
@@ -120,46 +231,26 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
         return .success(())
     }
 
-    @MainActor
-    func applyCachedRegistration(
-        cachedRegions: [Geofence],
-        anchor: LocationData?,
-        config: GeofenceConfig?,
-        userId: String?
-    ) {
-        guard let userId, !userId.isEmpty else {
-            logger.geofenceSyncSkipped(reason: "no identified user")
-            return
+    /// Re-rank cached regions for the new location and re-register with the OS. No API call,
+    /// no cache or `lastSync` writes — the API anchor is what `handleMovement` compared
+    /// against, so leaving it intact preserves the next Tier B threshold.
+    private func performLocalRefresh(
+        latitude: Double,
+        longitude: Double,
+        config: GeofenceConfig,
+        cachedRegions: [Geofence]
+    ) async -> Result<Void, GeofenceSyncError> {
+        let anchor = LocationData(latitude: latitude, longitude: longitude)
+        let nearest = distanceFilter.nearest(cachedRegions, to: anchor, limit: config.maxBusinessGeofences)
+        await MainActor.run {
+            registerWithOsSync(
+                businessRegions: nearest,
+                movementTriggerLocation: anchor,
+                movementTriggerRadius: config.localRefreshTriggerRadius
+            )
         }
-        guard !cachedRegions.isEmpty else {
-            logger.geofenceSyncSkipped(reason: "no cached regions to restore")
-            return
-        }
-        // Need an anchor to distance-filter and to center the movement trigger. Skipping
-        // when absent is safer than re-using an arbitrary location.
-        guard let anchor else {
-            logger.geofenceSyncSkipped(reason: "no last-sync anchor to restore from")
-            return
-        }
-        let acquired: Bool = refreshInProgress.mutating { inProgress in
-            if inProgress { return false }
-            inProgress = true
-            return true
-        }
-        guard acquired else {
-            logger.geofenceSyncSkipped(reason: "restore already in progress")
-            return
-        }
-        defer { refreshInProgress.wrappedValue = false }
-
-        let effectiveConfig = config ?? .fallback
-        let nearest = distanceFilter.nearest(cachedRegions, to: anchor, limit: effectiveConfig.maxBusinessGeofences)
-        registerWithOsSync(
-            businessRegions: nearest,
-            movementTriggerLocation: anchor,
-            movementTriggerRadius: effectiveConfig.localRefreshTriggerRadius
-        )
         logger.geofenceSyncCompleted(registeredCount: nearest.count)
+        return .success(())
     }
 
     private func awaitApiFetch(

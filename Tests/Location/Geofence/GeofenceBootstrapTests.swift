@@ -73,7 +73,7 @@ struct GeofenceBootstrapTests {
     @Test
     func wireMonitor_givenInitialBind_expectTransitionHandlerAndCoordinatorApplyAndAuthHandler() async {
         let di = DIGraphShared.shared
-        let monitor = GeofenceRegionMonitoringMock()
+        let monitor = MockGeofenceRegionMonitor()
         di.override(value: monitor as GeofenceRegionMonitoring, forType: GeofenceRegionMonitoring.self)
         let coordinator = GeofenceSyncCoordinatorMock()
         di.override(value: coordinator as GeofenceSyncCoordinator, forType: GeofenceSyncCoordinator.self)
@@ -84,7 +84,7 @@ struct GeofenceBootstrapTests {
         #expect(monitor.setOnTransitionCallsCount == 1)
         #expect(coordinator.applyCachedRegistrationCallsCount == 1)
         #expect(monitor.setOnAuthorizationChangedCallsCount == 1)
-        #expect(monitor.lastAuthorizationChangedHandler != nil)
+        #expect(monitor.onAuthorizationChanged != nil)
     }
 
     @Test
@@ -106,7 +106,7 @@ struct GeofenceBootstrapTests {
             )
         ])
         di.override(value: storage, forType: GeofenceStorage.self)
-        let monitor = GeofenceRegionMonitoringMock()
+        let monitor = MockGeofenceRegionMonitor()
         di.override(value: monitor as GeofenceRegionMonitoring, forType: GeofenceRegionMonitoring.self)
         let coordinator = GeofenceSyncCoordinatorMock()
         di.override(value: coordinator as GeofenceSyncCoordinator, forType: GeofenceSyncCoordinator.self)
@@ -130,7 +130,7 @@ struct GeofenceBootstrapTests {
     @Test
     func wireMonitor_givenAuthorizationFires_expectApplyCachedRegistrationRerun() async {
         let di = DIGraphShared.shared
-        let monitor = GeofenceRegionMonitoringMock()
+        let monitor = MockGeofenceRegionMonitor()
         di.override(value: monitor as GeofenceRegionMonitoring, forType: GeofenceRegionMonitoring.self)
         let coordinator = GeofenceSyncCoordinatorMock()
         di.override(value: coordinator as GeofenceSyncCoordinator, forType: GeofenceSyncCoordinator.self)
@@ -141,7 +141,7 @@ struct GeofenceBootstrapTests {
 
         // Simulate iOS reporting a permission change. The handler spawns a Task to re-run
         // wireMonitor; the sleep gives that Task time to schedule and complete.
-        monitor.lastAuthorizationChangedHandler?()
+        monitor.onAuthorizationChanged?()
         try? await Task.sleep(nanoseconds: 100000000)
 
         #expect(coordinator.applyCachedRegistrationCallsCount == 2)
