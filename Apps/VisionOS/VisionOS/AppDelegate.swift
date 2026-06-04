@@ -23,7 +23,8 @@ class AppDelegate: NSObject, UIApplicationDelegate {
                 withConfig:
                 SDKConfigBuilder(cdpApiKey: workspaceSettings.cdpApiKy)
                     .logLevel(.debug)
-                    .build())
+                    .build()
+            )
         }
 
         return true

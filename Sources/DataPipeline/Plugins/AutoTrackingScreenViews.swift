@@ -190,7 +190,8 @@ extension UIViewController {
         -> UIViewController? {
         if let navigationController = rootViewController as? UINavigationController {
             return getVisibleViewController(
-                fromRootViewController: navigationController.visibleViewController)
+                fromRootViewController: navigationController.visibleViewController
+            )
         }
         if let tabController = rootViewController as? UITabBarController {
             if let selected = tabController.selectedViewController {

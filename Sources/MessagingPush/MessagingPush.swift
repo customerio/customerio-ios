@@ -257,7 +257,8 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
             let pending = store.loadAll()
             guard !pending.isEmpty else {
                 logger.debug(
-                    "Pending push delivery store: nothing to flush on MessagingPush startup")
+                    "Pending push delivery store: nothing to flush on MessagingPush startup"
+                )
                 return
             }
 
