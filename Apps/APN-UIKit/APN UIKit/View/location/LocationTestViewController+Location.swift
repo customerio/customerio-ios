@@ -1,4 +1,5 @@
 import CioDataPipelines
+import CioInternalCommon
 import CioLocation
 import CoreLocation
 import UIKit
@@ -9,6 +10,85 @@ extension LocationTestViewController {
     func setupLocationManager() {
         locationManager.delegate = self
         locationManager.desiredAccuracy = kCLLocationAccuracyThreeKilometers
+    }
+
+    // MARK: - Background-location upgrade
+
+    func refreshGrantBackgroundLocationUI() {
+        guard grantBackgroundLocationButton != nil else { return }
+        let status = currentAuthorizationStatus()
+        switch status {
+        case .notDetermined:
+            grantBackgroundLocationButton.setTitle("Grant location access", for: .normal)
+            grantBackgroundLocationButton.isEnabled = true
+            grantBackgroundLocationButton.alpha = 1.0
+            grantBackgroundStatusLabel.text = "Current: Not determined. Tap to grant 'When In Use' first."
+        case .authorizedWhenInUse:
+            grantBackgroundLocationButton.setTitle("Upgrade to 'Always'", for: .normal)
+            grantBackgroundLocationButton.isEnabled = true
+            grantBackgroundLocationButton.alpha = 1.0
+            grantBackgroundStatusLabel.text = "Current: When In Use. Background geofence delivery requires 'Always'."
+        case .authorizedAlways:
+            grantBackgroundLocationButton.setTitle("Always — granted", for: .normal)
+            grantBackgroundLocationButton.isEnabled = false
+            grantBackgroundLocationButton.alpha = 0.6
+            grantBackgroundStatusLabel.text = "Current: Always. Background geofence delivery is enabled."
+        case .denied, .restricted:
+            grantBackgroundLocationButton.setTitle("Open Settings", for: .normal)
+            grantBackgroundLocationButton.isEnabled = true
+            grantBackgroundLocationButton.alpha = 1.0
+            grantBackgroundStatusLabel.text = "Current: Denied / Restricted. Enable location access in Settings."
+        @unknown default:
+            grantBackgroundLocationButton.setTitle("Grant background location", for: .normal)
+            grantBackgroundStatusLabel.text = "Current: Unknown status (\(status.rawValue))."
+        }
+    }
+
+    func handleGrantBackgroundLocationTap() {
+        let status = currentAuthorizationStatus()
+        switch status {
+        case .notDetermined:
+            // Foreground first; the auth-change delegate prompts for Always on success.
+            userRequestedAlwaysUpgrade = true
+            locationManager.requestWhenInUseAuthorization()
+        case .authorizedWhenInUse:
+            presentAlwaysRationale()
+        case .authorizedAlways:
+            return
+        case .denied, .restricted:
+            openSystemSettings()
+        @unknown default:
+            return
+        }
+    }
+
+    func presentAlwaysRationale() {
+        let alert = UIAlertController(
+            title: "Allow background location?",
+            message: "Geofence transitions only fire while the app is backgrounded if 'Always' authorization is granted. iOS shows this prompt at most once — after that, granting Always means opening the Settings app.",
+            preferredStyle: .alert
+        )
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        alert.addAction(UIAlertAction(title: "Continue", style: .default) { [weak self] _ in
+            self?.locationManager.requestAlwaysAuthorization()
+        })
+        alert.addAction(UIAlertAction(title: "Open Settings", style: .default) { [weak self] _ in
+            self?.openSystemSettings()
+        })
+        present(alert, animated: true)
+    }
+
+    func openSystemSettings() {
+        guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
+        UIApplication.shared.open(url)
+    }
+
+    func currentAuthorizationStatus() -> CLAuthorizationStatus {
+        if #available(iOS 14.0, *) {
+            return locationManager.authorizationStatus
+        } else {
+            return CLLocationManager.authorizationStatus()
+        }
     }
 
     func setLocation(latitude: Double, longitude: Double, sourceName: String? = nil) {

@@ -41,7 +41,7 @@ final class LocationModuleState {
         )
         let locationEnrichmentProvider = LocationProfileEnrichmentProvider(storage: storage, config: config)
         di.profileEnrichmentRegistry.register(locationEnrichmentProvider)
-        registerEventSubscriptions(coordinator: coordinator, lastLocationStorage: storage, di: di)
+        registerEventSubscriptions(coordinator: coordinator, lastLocationStorage: storage, mode: config.mode, di: di)
         Task { await di.geofenceEventTracker.flushPending() }
         let lifecycleNotifying = RealAppLifecycleNotifying()
         // Foreground geofence refresh is intentionally mode-independent — geofence
@@ -76,12 +76,20 @@ final class LocationModuleState {
     private func registerEventSubscriptions(
         coordinator: LocationSyncCoordinator,
         lastLocationStorage: LastLocationStorage,
+        mode: LocationTrackingMode,
         di: DIGraphShared
     ) {
         di.eventBusHandler.addObserver(ProfileIdentifiedEvent.self) { [weak self] _ in
             Task { await coordinator.syncCachedLocationIfNeeded() }
             Task { await di.geofenceEventTracker.flushPending() }
             self?.refreshGeofencesIfPossible(lastLocationStorage: lastLocationStorage)
+            // `.onAppStart`'s lifecycle one-shot fires per process, but `resetContext()`
+            // wipes the cached location on sign-out — a subsequent identify in the same
+            // process otherwise leaves the first-run rearm armed indefinitely. Forcing a
+            // fresh fix here lets `onLocationProcessed` drive the geofence rearm.
+            if mode == .onAppStart, lastLocationStorage.getCachedLocation() == nil {
+                self?.current.requestLocationUpdate()
+            }
         }
         di.eventBusHandler.addObserver(ResetEvent.self) { _ in
             Task { @MainActor in

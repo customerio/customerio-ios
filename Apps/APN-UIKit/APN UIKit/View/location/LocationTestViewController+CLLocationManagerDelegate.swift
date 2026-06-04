@@ -54,37 +54,55 @@ extension LocationTestViewController: @MainActor CLLocationManagerDelegate {
     }
 
     private func handleAuthorizationChange(_ status: CLAuthorizationStatus) {
-        // Handle "Request location once (SDK)" flow: user was waiting for permission, now call SDK.
-        if userRequestedSdkLocationUpdate {
-            userRequestedSdkLocationUpdate = false
-            switch status {
-            case .authorizedWhenInUse, .authorizedAlways:
-                lastSetLocationLabel.text = "Requested location once (SDK)..."
-                CustomerIO.location.requestLocationUpdate()
-                showToast(withMessage: "SDK requested location update")
-            case .denied, .restricted:
-                showLocationPermissionAlert()
-            case .notDetermined:
-                break
-            @unknown default:
-                break
-            }
+        refreshGrantBackgroundLocationUI()
+
+        if userRequestedAlwaysUpgrade {
+            userRequestedAlwaysUpgrade = false
+            handleAlwaysUpgradeResult(status)
             return
         }
-
-        // Only start fetching when the user explicitly tapped "Use Current Location" and we were waiting for permission.
-        // This avoids auto-fetching location when the screen opens and auth was already granted (e.g. returning to the app).
+        if userRequestedSdkLocationUpdate {
+            userRequestedSdkLocationUpdate = false
+            handleSdkLocationUpdateResult(status)
+            return
+        }
         guard userRequestedCurrentLocation else { return }
         userRequestedCurrentLocation = false
+        handleCurrentLocationResult(status)
+    }
 
+    /// WhenInUse here is the precondition; the rationale and the Always prompt fire in sequence.
+    private func handleAlwaysUpgradeResult(_ status: CLAuthorizationStatus) {
+        switch status {
+        case .authorizedWhenInUse:
+            presentAlwaysRationale()
+        case .denied, .restricted:
+            showLocationPermissionAlert()
+        default:
+            break
+        }
+    }
+
+    private func handleSdkLocationUpdateResult(_ status: CLAuthorizationStatus) {
+        switch status {
+        case .authorizedWhenInUse, .authorizedAlways:
+            lastSetLocationLabel.text = "Requested location once (SDK)..."
+            CustomerIO.location.requestLocationUpdate()
+            showToast(withMessage: "SDK requested location update")
+        case .denied, .restricted:
+            showLocationPermissionAlert()
+        default:
+            break
+        }
+    }
+
+    private func handleCurrentLocationResult(_ status: CLAuthorizationStatus) {
         switch status {
         case .authorizedWhenInUse, .authorizedAlways:
             startFetchingLocation()
         case .denied, .restricted:
             showLocationPermissionAlert()
-        case .notDetermined:
-            break
-        @unknown default:
+        default:
             break
         }
     }
