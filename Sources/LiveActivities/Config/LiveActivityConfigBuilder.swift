@@ -61,9 +61,7 @@ public struct LiveActivityConfigBuilder {
         var copy = self
         let registration = ActivityTypeRegistration(
             activityIdentifier: identifier,
-            startObserving: {
-                onPushToStartToken, onInstancePushToken, onActivityObserved, onStateUpdate,
-                    onEnd in
+            startObserving: { onPushToStartToken, onInstancePushToken, onActivityObserved, onStateUpdate, onEnd in
                 Task {
                     await withTaskGroup(of: Void.self) { group in
                         group.addTask {
