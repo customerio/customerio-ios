@@ -19,7 +19,8 @@ var products: [PackageDescription.Product] = [
     .library(name: "MessagingPushAPN", targets: ["CioMessagingPushAPN"]),
     .library(name: "MessagingPushFCM", targets: ["CioMessagingPushFCM"]),
     .library(name: "MessagingInApp", targets: ["CioMessagingInApp"]),
-    .library(name: "Location", targets: ["CioLocation"])
+    .library(name: "Location", targets: ["CioLocation"]),
+    .library(name: "LiveActivities", targets: ["CioLiveActivities"])
 ]
 
 // When we execute the automated test suite, we use tools to determine the code coverage of our tests. 
@@ -139,5 +140,10 @@ let package = Package(
         .testTarget(name: "LocationTests",
                     dependencies: ["CioLocation", "CioInternalCommon", "SharedTests"],
                     path: "Tests/Location"),
+
+        // Live Activities
+        .target(name: "CioLiveActivities",
+                dependencies: ["CioInternalCommon"],
+                path: "Sources/LiveActivities"),
     ]
 )
