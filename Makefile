@@ -21,7 +21,7 @@ lint:
 # specify swiftversion this way instead of .swift-version to (1) keep project files slim and (2) we can specify the version in a CI server matrix for multiple version testing. 
 # use the min Swift version that we support/test against. 
 format:
-	./binny swiftformat . --swiftversion 5.10 && ./binny swiftlint lint --fix
+	./binny swiftformat . --swiftversion 5.3 && ./binny swiftlint lint --fix
 
 # Check what code has not yet had documentation written for it. 
 
