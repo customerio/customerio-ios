@@ -34,7 +34,8 @@ struct MainScreen: View {
                         withConfig:
                         SDKConfigBuilder(cdpApiKey: workspaceSettings.cdpApiKy)
                             .logLevel(.debug)
-                            .build())
+                            .build()
+                    )
 
                     viewModel.successMessage = "SDK Initialized. You can now identify the user"
                     selectedExample = .identify

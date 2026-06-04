@@ -48,8 +48,10 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     func setVisibleWindow() {
         // If previous user is not a guest login and credentials were used to login into the app
         if let _ = storage.userEmailId {
-            let navigationController = UINavigationController(rootViewController: DashboardViewController
-                .newInstance())
+            let navigationController = UINavigationController(
+                rootViewController: DashboardViewController
+                    .newInstance()
+            )
             window?.rootViewController = navigationController
         } else {
             let navigationController = UINavigationController(rootViewController: LoginViewController.newInstance())

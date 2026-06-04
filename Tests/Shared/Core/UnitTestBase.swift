@@ -94,7 +94,9 @@ open class UnitTestBase<Component>: XCTestCase {
     }
 
     @discardableResult
-    open func initializeSDKComponents() -> Component? { nil }
+    open func initializeSDKComponents() -> Component? {
+        nil
+    }
 
     override open func tearDown() {
         // need to remove the observers for integration tests that utilizes actual NotificationCenter

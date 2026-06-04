@@ -7,9 +7,10 @@ struct FloatingTitleTextField: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(title).foregroundColor(
-                text.wrappedValue.isEmpty ? Color(.placeholderText) : .white)
-                .opacity(text.wrappedValue.isEmpty ? 0 : 1)
-                .offset(y: text.wrappedValue.isEmpty ? 20 : 0)
+                text.wrappedValue.isEmpty ? Color(.placeholderText) : .white
+            )
+            .opacity(text.wrappedValue.isEmpty ? 0 : 1)
+            .offset(y: text.wrappedValue.isEmpty ? 20 : 0)
 
             TextField(title, text: text)
         }

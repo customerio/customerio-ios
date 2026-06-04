@@ -11,6 +11,6 @@
   pathToBinaryInsideZip: "swiftlint"
 
 - name: swiftformat
-  version: 0.52.3
+  version: 0.61.1
   downloadUrl: "https://github.com/nicklockwood/SwiftFormat/releases/download/{version}/swiftformat.zip"
   pathToBinaryInsideZip: "swiftformat"
