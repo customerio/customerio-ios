@@ -36,7 +36,7 @@ public struct LiveActivityConfig {
     /// Activity types registered for SDK observation via `LiveActivityConfigBuilder.register(_:identifier:)`.
     var registrations: [ActivityTypeRegistration]
 
-    public init(liveActivitiesBaseURL: URL? = nil, logLevel: CioLogLevel? = nil) {
+    init(liveActivitiesBaseURL: URL? = nil, logLevel: CioLogLevel? = nil) {
         self.liveActivitiesBaseURL = liveActivitiesBaseURL
         self.logLevel = logLevel
         self.appGroupIdentifier = nil

@@ -1,5 +1,6 @@
 import CioInternalCommon
 import Foundation
+
 #if os(iOS)
 import ActivityKit
 #endif
@@ -60,7 +61,9 @@ public struct LiveActivityConfigBuilder {
         var copy = self
         let registration = ActivityTypeRegistration(
             activityIdentifier: identifier,
-            startObserving: { onPushToStartToken, onInstancePushToken, onActivityObserved, onStateUpdate, onEnd in
+            startObserving: {
+                onPushToStartToken, onInstancePushToken, onActivityObserved, onStateUpdate,
+                    onEnd in
                 Task {
                     await withTaskGroup(of: Void.self) { group in
                         group.addTask {
@@ -180,11 +183,16 @@ public struct LiveActivityConfigBuilder {
         withExtension ext: String? = nil
     ) -> Self {
         guard let url = Bundle.main.url(forResource: bundleResource, withExtension: ext) else {
-            fatalError(
+            // assertionFailure will throw a fatal error in debug builds (`-Onone`) but allow the app
+            // to continue to work in production build (`-O` or `-Ounchecked`). This works for SPM
+            // or CocoaPod distribution, but we will need to revisit it if we ever ship a precompiled
+            // version of the SDK.
+            assertionFailure(
                 "[CustomerIO] Asset '\(bundleResource)' declared for key '\(key)' "
                     + "was not found in the app bundle. "
                     + "Ensure the file is included in the app target's Copy Bundle Resources phase."
             )
+            return self
         }
         return registerAsset(key, at: url)
     }
