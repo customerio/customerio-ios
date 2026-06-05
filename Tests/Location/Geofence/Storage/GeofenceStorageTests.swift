@@ -186,6 +186,73 @@ struct GeofenceStorageTests {
         #expect(cooldowns["geo_1:enter"] == second)
     }
 
+    // MARK: - Cached geofences
+
+    private func makeGeofence(id: String, radius: Double = 100, transitions: Set<GeofenceTransition> = [.enter]) -> Geofence {
+        Geofence(id: id, latitude: 1.0, longitude: 2.0, radius: radius, name: id, transitionTypes: transitions, lastUpdated: Date(timeIntervalSince1970: 1700000000))
+    }
+
+    @Test
+    func getCachedGeofences_givenNoState_expectEmpty() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let storage = makeStorage(directory: dir)
+        let cached = await storage.getCachedGeofences()
+        #expect(cached.isEmpty)
+    }
+
+    @Test
+    func setCachedGeofences_thenGet_expectRoundTrip() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let storage = makeStorage(directory: dir)
+        let geofences = [
+            makeGeofence(id: "g1", radius: 100, transitions: [.enter]),
+            makeGeofence(id: "g2", radius: 200, transitions: [.enter, .exit])
+        ]
+        await storage.setCachedGeofences(geofences)
+        let cached = await storage.getCachedGeofences()
+        #expect(cached == geofences)
+    }
+
+    @Test
+    func setCachedGeofences_givenSecondCall_expectOverwrites() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let storage = makeStorage(directory: dir)
+        await storage.setCachedGeofences([makeGeofence(id: "g1")])
+        await storage.setCachedGeofences([makeGeofence(id: "g2"), makeGeofence(id: "g3")])
+        let cached = await storage.getCachedGeofences()
+        #expect(cached.map(\.id) == ["g2", "g3"])
+    }
+
+    @Test
+    func setCachedGeofences_givenNewStorageInstance_expectLoadsFromDisk() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        let storage1 = makeStorage(directory: dir)
+        await storage1.setCachedGeofences([makeGeofence(id: "g1")])
+
+        let storage2 = makeStorage(directory: dir)
+        let cached = await storage2.getCachedGeofences()
+        #expect(cached.map(\.id) == ["g1"])
+    }
+
+    @Test
+    func setCachedGeofences_doesNotClearCooldowns() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let storage = makeStorage(directory: dir)
+        let timestamp = Date(timeIntervalSince1970: 1700000000)
+        await storage.recordEventCooldown(key: "geo_1:enter", timestamp: timestamp)
+
+        await storage.setCachedGeofences([makeGeofence(id: "g1")])
+
+        let cooldowns = await storage.getEventCooldowns()
+        #expect(cooldowns["geo_1:enter"] == timestamp)
+    }
+
     // MARK: - Concurrent safety
 
     @Test

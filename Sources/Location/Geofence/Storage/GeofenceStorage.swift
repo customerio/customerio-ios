@@ -81,6 +81,18 @@ actor GeofenceStorage {
         saveToDisk(state)
     }
 
+    // MARK: - Cached Geofences
+
+    func getCachedGeofences() -> [Geofence] {
+        loadFromDisk()?.cachedGeofences ?? []
+    }
+
+    func setCachedGeofences(_ geofences: [Geofence]) {
+        var state = loadFromDisk() ?? GeofenceState()
+        state.cachedGeofences = geofences
+        saveToDisk(state)
+    }
+
     // MARK: - Private (file persistence)
 
     private func loadFromDisk() -> GeofenceState? {
