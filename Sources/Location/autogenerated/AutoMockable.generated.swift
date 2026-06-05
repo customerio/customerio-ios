@@ -197,6 +197,11 @@ class GeofenceSyncCoordinatorMock: GeofenceSyncCoordinator, Mock {
         refreshReceivedInvocations = []
 
         mockCalled = false // do last as resetting properties above can make this true
+        handleMovementCallsCount = 0
+        handleMovementReceivedArguments = nil
+        handleMovementReceivedInvocations = []
+
+        mockCalled = false // do last as resetting properties above can make this true
         applyCachedRegistrationCallsCount = 0
         applyCachedRegistrationReceivedArguments = nil
         applyCachedRegistrationReceivedInvocations = []
@@ -233,6 +238,37 @@ class GeofenceSyncCoordinatorMock: GeofenceSyncCoordinator, Mock {
         refreshReceivedArguments = (latitude: latitude, longitude: longitude)
         refreshReceivedInvocations.append((latitude: latitude, longitude: longitude))
         return refreshClosure.map { $0(latitude, longitude) } ?? refreshReturnValue
+    }
+
+    // MARK: - handleMovement
+
+    /// Number of times the function was called.
+    @Atomic private(set) var handleMovementCallsCount = 0
+    /// `true` if the function was ever called.
+    var handleMovementCalled: Bool {
+        handleMovementCallsCount > 0
+    }
+
+    /// The arguments from the *last* time the function was called.
+    @Atomic private(set) var handleMovementReceivedArguments: (latitude: Double, longitude: Double)?
+    /// Arguments from *all* of the times that the function was called.
+    @Atomic private(set) var handleMovementReceivedInvocations: [(latitude: Double, longitude: Double)] = []
+    /// Value to return from the mocked function.
+    var handleMovementReturnValue: Result<Void, GeofenceSyncError>!
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     The closure has first priority to return a value for the mocked function. If the closure returns `nil`,
+     then the mock will attempt to return the value for `handleMovementReturnValue`
+     */
+    var handleMovementClosure: ((Double, Double) -> Result<Void, GeofenceSyncError>)?
+
+    /// Mocked function for `handleMovement(latitude: Double, longitude: Double)`. Your opportunity to return a mocked value and check result of mock in test code.
+    func handleMovement(latitude: Double, longitude: Double) -> Result<Void, GeofenceSyncError> {
+        mockCalled = true
+        handleMovementCallsCount += 1
+        handleMovementReceivedArguments = (latitude: latitude, longitude: longitude)
+        handleMovementReceivedInvocations.append((latitude: latitude, longitude: longitude))
+        return handleMovementClosure.map { $0(latitude, longitude) } ?? handleMovementReturnValue
     }
 
     // MARK: - applyCachedRegistration

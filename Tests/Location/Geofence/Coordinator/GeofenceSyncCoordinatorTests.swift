@@ -610,6 +610,197 @@ struct GeofenceSyncCoordinatorTests {
         #expect(second.isSuccess)
         #expect(api.fetchGeofencesCallsCount == 1)
     }
+
+    // MARK: - handleMovement
+
+    @Test
+    func handleMovement_givenNoUserId_expectFailureAndNoApiCall() async {
+        let storage = makeStorage()
+        let setup = makeCoordinator(storage: storage, contextStore: makeContextStore(userId: nil))
+
+        let result = await setup.coordinator.handleMovement(latitude: 1.0, longitude: 2.0)
+
+        #expect(result.errorOrNil == .noIdentifiedUser)
+        #expect(setup.api.fetchGeofencesCallsCount == 0)
+        #expect(setup.monitor.startedRegions.isEmpty)
+    }
+
+    @Test
+    func handleMovement_givenNoAnchor_expectTierBRemoteFetch() async {
+        // No prior sync → no anchor → can't distance-compare, so default to remote fetch.
+        // Matches Android's `anchor == null` branch.
+        let storage = makeStorage()
+        let api = GeofenceApiServiceMock()
+        api.fetchGeofencesClosure = { _, _, completion in
+            completion(.success(makeApiResponse(regions: [makeRegion(id: "g1", latitude: 0, longitude: 0)])))
+        }
+        let setup = makeCoordinator(api: api, storage: storage)
+
+        let result = await setup.coordinator.handleMovement(latitude: 1.0, longitude: 2.0)
+
+        #expect(result.isSuccess)
+        #expect(setup.api.fetchGeofencesCallsCount == 1)
+    }
+
+    @Test
+    func handleMovement_givenMovementWithinThreshold_expectTierALocalRerankAndNoApiCall() async {
+        let storage = makeStorage()
+        let config = GeofenceConfig(
+            localRefreshTriggerRadius: 1000,
+            remoteFetchRefreshTriggerRadius: 5000,
+            remoteFetchRefreshExpiry: 3600,
+            duplicateEventsExpiry: 3600,
+            maxBusinessGeofences: 10
+        )
+        await storage.setCachedConfig(config)
+        // Anchor at (0, 0); cached regions arrayed nearby for re-rank verification.
+        await storage.recordSync(timestamp: Date(timeIntervalSince1970: 100), location: LocationData(latitude: 0, longitude: 0))
+        await storage.setCachedGeofences([
+            makeRegion(id: "near", latitude: 0, longitude: 0.0005),
+            makeRegion(id: "far", latitude: 1, longitude: 1)
+        ])
+        let api = GeofenceApiServiceMock()
+        let setup = makeCoordinator(api: api, storage: storage)
+
+        // New position ~111 m from anchor — within 5 km Tier B threshold.
+        let result = await setup.coordinator.handleMovement(latitude: 0, longitude: 0.001)
+
+        #expect(result.isSuccess)
+        #expect(setup.api.fetchGeofencesCallsCount == 0)
+        let businessRegistered = setup.monitor.startedRegions.filter { $0.identifier != GeofenceConstants.movementTriggerIdentifier }
+        #expect(businessRegistered.map(\.identifier) == ["near", "far"])
+    }
+
+    @Test
+    func handleMovement_givenMovementBeyondThreshold_expectTierBRemoteFetch() async {
+        let storage = makeStorage()
+        let config = GeofenceConfig(
+            localRefreshTriggerRadius: 1000,
+            remoteFetchRefreshTriggerRadius: 5000,
+            remoteFetchRefreshExpiry: 3600,
+            duplicateEventsExpiry: 3600,
+            maxBusinessGeofences: 10
+        )
+        await storage.setCachedConfig(config)
+        await storage.recordSync(timestamp: Date(timeIntervalSince1970: 100), location: LocationData(latitude: 0, longitude: 0))
+        let api = GeofenceApiServiceMock()
+        api.fetchGeofencesClosure = { _, _, completion in
+            completion(.success(makeApiResponse(regions: [makeRegion(id: "fresh", latitude: 1, longitude: 1)])))
+        }
+        let setup = makeCoordinator(api: api, storage: storage)
+
+        // ~157 km from anchor — well beyond 5 km Tier B threshold.
+        let result = await setup.coordinator.handleMovement(latitude: 1.0, longitude: 1.0)
+
+        #expect(result.isSuccess)
+        #expect(setup.api.fetchGeofencesCallsCount == 1)
+    }
+
+    @Test
+    func handleMovement_givenTierA_expectLastSyncAndCacheNotMutated() async {
+        // Tier A re-uses the existing API anchor — must not overwrite it, otherwise the next
+        // Tier B threshold check would always pass relative to wherever the user just stood.
+        let storage = makeStorage()
+        let originalAnchor = LocationData(latitude: 0, longitude: 0)
+        let originalTimestamp = Date(timeIntervalSince1970: 100)
+        let config = GeofenceConfig(
+            localRefreshTriggerRadius: 1000,
+            remoteFetchRefreshTriggerRadius: 5000,
+            remoteFetchRefreshExpiry: 3600,
+            duplicateEventsExpiry: 3600,
+            maxBusinessGeofences: 10
+        )
+        await storage.setCachedConfig(config)
+        await storage.recordSync(timestamp: originalTimestamp, location: originalAnchor)
+        await storage.setCachedGeofences([makeRegion(id: "g1", latitude: 0, longitude: 0)])
+        let setup = makeCoordinator(storage: storage)
+
+        _ = await setup.coordinator.handleMovement(latitude: 0, longitude: 0.001)
+
+        let lastSync = await storage.getLastSync()
+        #expect(lastSync?.location == originalAnchor)
+        #expect(lastSync?.timestamp == originalTimestamp)
+    }
+
+    @Test
+    func handleMovement_givenTierA_expectMovementTriggerRecenteredAtNewLocation() async {
+        // The movement trigger's job is to fire when the user leaves the *current* zone.
+        // After Tier A, it must center on where the user just stood, not the API anchor.
+        let storage = makeStorage()
+        let config = GeofenceConfig(
+            localRefreshTriggerRadius: 1000,
+            remoteFetchRefreshTriggerRadius: 5000,
+            remoteFetchRefreshExpiry: 3600,
+            duplicateEventsExpiry: 3600,
+            maxBusinessGeofences: 10
+        )
+        await storage.setCachedConfig(config)
+        await storage.recordSync(timestamp: Date(timeIntervalSince1970: 100), location: LocationData(latitude: 0, longitude: 0))
+        await storage.setCachedGeofences([makeRegion(id: "near", latitude: 0, longitude: 0.0005)])
+        let setup = makeCoordinator(storage: storage)
+
+        let newLocation = LocationData(latitude: 0, longitude: 0.001)
+        _ = await setup.coordinator.handleMovement(latitude: newLocation.latitude, longitude: newLocation.longitude)
+
+        let movementTrigger = setup.monitor.startedRegions.first { $0.identifier == GeofenceConstants.movementTriggerIdentifier }
+        #expect(movementTrigger?.center == newLocation)
+        #expect(movementTrigger?.radius == config.localRefreshTriggerRadius)
+    }
+
+    @Test
+    func handleMovement_givenInFlightRefresh_expectAlreadyInProgress() async {
+        // Shared `refreshInProgress` gate — a refresh holding it must short-circuit
+        // a concurrent movement EXIT. Verified by suspending the API mid-fetch on the
+        // first call, then issuing handleMovement while it's pending.
+        let storage = makeStorage()
+        let api = GeofenceApiServiceMock()
+        let suspendUntil = AsyncSignal()
+        let arrived = AsyncSignal()
+        api.fetchGeofencesClosure = { _, _, completion in
+            Task {
+                await arrived.fire()
+                await suspendUntil.wait()
+                completion(.success(makeApiResponse(regions: [])))
+            }
+        }
+        let setup = makeCoordinator(api: api, storage: storage)
+
+        async let firstRefresh = setup.coordinator.refresh(latitude: 0, longitude: 0)
+        await arrived.wait()
+        let movement = await setup.coordinator.handleMovement(latitude: 0, longitude: 0)
+        await suspendUntil.fire()
+        _ = await firstRefresh
+
+        #expect(movement.errorOrNil == .alreadyInProgress)
+    }
+
+    @Test
+    func refresh_givenInFlightHandleMovement_expectAlreadyInProgress() async {
+        // Reverse direction of the cross-entry gate — handleMovement holding it must
+        // short-circuit a concurrent refresh. Pinned independently because a regression
+        // that gave handleMovement its own gate would still pass the forward test.
+        let storage = makeStorage()
+        // No cached config → handleMovement falls back to `.fallback`, no anchor → Tier B.
+        let api = GeofenceApiServiceMock()
+        let suspendUntil = AsyncSignal()
+        let arrived = AsyncSignal()
+        api.fetchGeofencesClosure = { _, _, completion in
+            Task {
+                await arrived.fire()
+                await suspendUntil.wait()
+                completion(.success(makeApiResponse(regions: [])))
+            }
+        }
+        let setup = makeCoordinator(api: api, storage: storage)
+
+        async let firstMovement = setup.coordinator.handleMovement(latitude: 0, longitude: 0)
+        await arrived.wait()
+        let refreshResult = await setup.coordinator.refresh(latitude: 0, longitude: 0)
+        await suspendUntil.fire()
+        _ = await firstMovement
+
+        #expect(refreshResult.errorOrNil == .alreadyInProgress)
+    }
 }
 
 // MARK: - Result matchers
