@@ -29,6 +29,23 @@ public final class CioInternalCommon.Atomic {
 	public var wrappedValue: DataType;
 	public fun init(wrappedValue: DataType);
 }
+public final class CioInternalCommon.BackgroundDeliveryContext {
+	public var userId: String?;
+	public var apiHost: String?;
+	public var cdpApiKey: String?;
+	public fun init(userId: String? = nil, apiHost: String? = nil, cdpApiKey: String? = nil);
+}
+public final class CioInternalCommon.BackgroundDeliveryContextStore {
+	public var currentUserId: String?;
+	public var currentApiHost: String?;
+	public var currentCdpApiKey: String?;
+	public fun convenience init();
+	public fun func setUserId(_ userId: String?);
+	public fun func setApiHost(_ apiHost: String?);
+	public fun func setCdpApiKey(_ key: String?);
+	public fun func clearUserId();
+	public fun func reset();
+}
 public enum CioInternalCommon.CIOApiEndpoint {
 }
 public final class CioInternalCommon.CIODeviceInfo {
