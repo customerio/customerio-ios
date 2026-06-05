@@ -63,6 +63,23 @@ struct GeofenceMonitorBinderTests {
         #expect(monitor.setOnTransitionCallsCount == 1)
         #expect(monitor.startMonitoringCalls.isEmpty)
     }
+
+    /// Double-bind can happen when both `LocationModule.initialize` and
+    /// `LocationModule.bootstrapForBackgroundDelivery` run in the same process. Each call
+    /// re-installs the handler and re-registers the regions — `CLLocationManager.startMonitoring`
+    /// is idempotent for the same identifier, and the handler is replaced with an equivalent one.
+    @Test
+    func bind_givenCalledTwice_expectHandlerReinstalledAndRegionsReregistered() {
+        let geofences = [makeGeofence(id: "g1", radius: 100, transitions: [.enter])]
+        let monitor = GeofenceRegionMonitoringMock()
+        let tracker = makeTracker()
+
+        GeofenceMonitorBinder.bind(monitor: monitor, geofences: geofences, tracker: tracker)
+        GeofenceMonitorBinder.bind(monitor: monitor, geofences: geofences, tracker: tracker)
+
+        #expect(monitor.setOnTransitionCallsCount == 2)
+        #expect(monitor.startMonitoringCalls.count == 2)
+    }
 }
 
 // MARK: - Mock

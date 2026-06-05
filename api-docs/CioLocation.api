@@ -6,6 +6,7 @@ public final class CioLocation.LocationModule {
 	public final val moduleName: String;
 	public fun init(config: LocationConfig);
 	public fun func initialize();
+	public fun func bootstrapForBackgroundDelivery(launchOptions: List<UIApplication.LaunchOptionsKey: Any>?);
 }
 public interface CioLocation.LocationServices {
 	public fun func setLastKnownLocation(_ location: CLLocation);
