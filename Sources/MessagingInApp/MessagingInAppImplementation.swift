@@ -52,10 +52,17 @@ class MessagingInAppImplementation: MessagingInAppInstance {
             self.gist.setCurrentRoute(event.name)
         }
 
-        eventBusHandler.addObserver(ResetEvent.self) { _ in
+        eventBusHandler.addObserver(ResetEvent.self) { event in
             self.logger.logWithModuleTag("removing profile for in-app", level: .debug)
 
             self.gist.resetState()
+
+            // After reset, set the new anonymous ID if provided so in-app messaging
+            // can continue fetching messages for the anonymous user.
+            if let newAnonymousId = event.newAnonymousId, !newAnonymousId.isEmpty {
+                self.logger.logWithModuleTag("setting new anonymous profile \(newAnonymousId) for in-app after reset", level: .debug)
+                self.gist.setAnonymousId(newAnonymousId)
+            }
         }
     }
 
