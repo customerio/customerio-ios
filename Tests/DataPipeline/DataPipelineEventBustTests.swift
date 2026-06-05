@@ -58,6 +58,45 @@ class DataPipelineEventBustTests: IntegrationTest {
         )
     }
 
+    func testSubscribeToJourneyEvents_DataPipelineHandlesTrackGeofenceMetricEvent_enter() async {
+        let givenGeofenceId = String.random
+
+        await eventBusHandler.postEventAndWait(
+            TrackGeofenceMetricEvent(geofenceId: givenGeofenceId, transition: .enter)
+        )
+
+        guard let trackEvent = outputReader.lastEvent as? TrackEvent else {
+            XCTFail("recorded event is not an instance of TrackEvent")
+            return
+        }
+
+        XCTAssertEqual(trackEvent.type, "track")
+        XCTAssertEqual(trackEvent.event, "GeoFence Entered")
+        XCTAssertMatches(
+            trackEvent.properties,
+            ["geofence_id": givenGeofenceId]
+        )
+    }
+
+    func testSubscribeToJourneyEvents_DataPipelineHandlesTrackGeofenceMetricEvent_exit() async {
+        let givenGeofenceId = String.random
+
+        await eventBusHandler.postEventAndWait(
+            TrackGeofenceMetricEvent(geofenceId: givenGeofenceId, transition: .exit)
+        )
+
+        guard let trackEvent = outputReader.lastEvent as? TrackEvent else {
+            XCTFail("recorded event is not an instance of TrackEvent")
+            return
+        }
+
+        XCTAssertEqual(trackEvent.event, "GeoFence Exited")
+        XCTAssertMatches(
+            trackEvent.properties,
+            ["geofence_id": givenGeofenceId]
+        )
+    }
+
     func testSubscribeToJourneyEvents_DataPipelineHandlesRegisterDeviceEvent() async {
         let givenToken = String.random
 

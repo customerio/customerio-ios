@@ -45,13 +45,32 @@ actor GeofenceStorage {
         saveToDisk(state)
     }
 
-    func purgeExpiredCooldowns(keys: Set<String>) {
-        guard !keys.isEmpty else { return }
+    /// Atomically checks whether the cooldown window for `key` has expired and, if so,
+    /// records the new timestamp. Returns `true` when the caller may proceed (no active
+    /// cooldown), `false` when the event should be suppressed. The whole check-and-record
+    /// runs inside the actor with no `await` between steps, so concurrent callers cannot
+    /// both observe an expired window and both fire the event.
+    func tryAcquireCooldown(key: String, now: Date, interval: TimeInterval) -> Bool {
         var state = loadFromDisk() ?? GeofenceState()
         var cooldowns = state.eventCooldowns ?? [:]
-        for key in keys {
-            cooldowns.removeValue(forKey: key)
+        if let last = cooldowns[key], now.timeIntervalSince(last) < interval {
+            return false
         }
+        cooldowns[key] = now
+        state.eventCooldowns = cooldowns
+        saveToDisk(state)
+        return true
+    }
+
+    /// Atomically removes cooldown entries whose recorded timestamp is older than `interval`
+    /// before `now`. Filtering happens inside the actor so a concurrent `tryAcquireCooldown`
+    /// cannot have its fresh write deleted by a stale snapshot.
+    func purgeExpiredCooldowns(now: Date, interval: TimeInterval) {
+        var state = loadFromDisk() ?? GeofenceState()
+        guard var cooldowns = state.eventCooldowns, !cooldowns.isEmpty else { return }
+        let beforeCount = cooldowns.count
+        cooldowns = cooldowns.filter { now.timeIntervalSince($0.value) < interval }
+        if cooldowns.count == beforeCount { return }
         state.eventCooldowns = cooldowns
         saveToDisk(state)
     }

@@ -258,6 +258,8 @@ public interface CioInternalCommon.FileStorage {
 }
 public enum CioInternalCommon.FileType {
 }
+public enum CioInternalCommon.GeofenceTransition {
+}
 public interface CioInternalCommon.GlobalDataStore {
 	public var pushDeviceToken: String?;
 	public fun func deleteAll();
@@ -542,6 +544,14 @@ public final class CioInternalCommon.TrackEventQueueTaskData {
 	public final val identifier: String;
 	public final val attributesJsonString: String;
 	public fun init(identifier: String, attributesJsonString: String);
+}
+public final class CioInternalCommon.TrackGeofenceMetricEvent {
+	public final val storageId: String;
+	public final val params: List<String : String>;
+	public final val geofenceId: String;
+	public final val transition: GeofenceTransition;
+	public final val timestamp: Date;
+	public fun init(storageId: String = UUID().uuidString, geofenceId: String, transition: GeofenceTransition, timestamp: Date = Date(), params: List<String: String> = List<:>);
 }
 public final class CioInternalCommon.TrackInAppMetricEvent {
 	public final val storageId: String;

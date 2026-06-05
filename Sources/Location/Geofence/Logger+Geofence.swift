@@ -28,4 +28,20 @@ extension Logger {
             nil
         )
     }
+
+    // MARK: - Event Tracking
+
+    func geofenceEventTracked(geofenceId: String, transition: GeofenceTransition) {
+        debug(
+            "Tracked \(transition.rawValue) event for geofence \(geofenceId)",
+            geofenceTag
+        )
+    }
+
+    func geofenceEventSuppressed(geofenceId: String, transition: GeofenceTransition) {
+        debug(
+            "Suppressed duplicate \(transition.rawValue) event for geofence \(geofenceId), within cooldown",
+            geofenceTag
+        )
+    }
 }
