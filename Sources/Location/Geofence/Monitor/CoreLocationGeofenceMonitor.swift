@@ -13,10 +13,23 @@ import Foundation
 /// registered by the host app or other SDKs (CLLocationManager.monitoredRegions is shared app-wide).
 @MainActor
 final class CoreLocationGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preconcurrency CLLocationManagerDelegate {
+    /// Tier of capability available given the current `CLAuthorizationStatus`. The SDK never
+    /// requests permission — the host app owns that — so the monitor adapts to whatever was
+    /// granted: `.authorizedAlways` enables background delivery, `.authorizedWhenInUse` falls
+    /// back to foreground-only (regions still register and fire while foregrounded),
+    /// everything else skips registration.
+    enum PermissionTier: Equatable {
+        case backgroundDelivery
+        case foregroundOnly
+        case blocked
+    }
+
     private let manager: CLLocationManager
     private let logger: Logger
     private var onTransition: GeofenceTransitionHandler?
-    private var hasLoggedPermissionWarning = false
+    private var onAuthorizationChanged: GeofenceAuthorizationChangedHandler?
+    private var hasLoggedBlocked = false
+    private var hasLoggedForegroundOnly = false
     private var ownedRegionIdentifiers: Set<String> = []
 
     init(logger: Logger) {
@@ -34,8 +47,27 @@ final class CoreLocationGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @pr
         onTransition = handler
     }
 
+    func setOnAuthorizationChanged(_ handler: GeofenceAuthorizationChangedHandler?) {
+        onAuthorizationChanged = handler
+    }
+
     func startMonitoring(identifier: String, center: LocationData, radius: Double, transitionTypes: Set<GeofenceTransition>) {
-        guard checkAlwaysAuthorization() else { return }
+        let status = currentAuthorizationStatus()
+        switch Self.permissionTier(for: status) {
+        case .blocked:
+            if !hasLoggedBlocked {
+                hasLoggedBlocked = true
+                logger.geofencePermissionUnavailable(currentStatus: status)
+            }
+            return
+        case .foregroundOnly:
+            if !hasLoggedForegroundOnly {
+                hasLoggedForegroundOnly = true
+                logger.geofenceBackgroundDeliveryUnavailable(currentStatus: status)
+            }
+        case .backgroundDelivery:
+            break
+        }
 
         let coordinate = CLLocationCoordinate2D(latitude: center.latitude, longitude: center.longitude)
         guard CLLocationCoordinate2DIsValid(coordinate) else {
@@ -92,24 +124,35 @@ final class CoreLocationGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @pr
         logger.geofenceMonitoringFailed(region: identifier, error: error)
     }
 
+    // iOS 14+ fires this on delegate set with the current status, and again on every change.
+    // We surface it to callers so the bootstrap can re-attempt registration when permission
+    // improves mid-process (the initial fire after delegate-set is harmless — the bootstrap
+    // already read the current status synchronously before installing the handler).
+    func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+        onAuthorizationChanged?()
+    }
+
     // MARK: - Private
 
-    private func checkAlwaysAuthorization() -> Bool {
-        let status: CLAuthorizationStatus
-        if #available(iOS 14.0, *) {
-            status = manager.authorizationStatus
-        } else {
-            status = CLLocationManager.authorizationStatus()
+    nonisolated static func permissionTier(for status: CLAuthorizationStatus) -> PermissionTier {
+        switch status {
+        case .authorizedAlways:
+            return .backgroundDelivery
+        case .authorizedWhenInUse:
+            return .foregroundOnly
+        case .notDetermined, .restricted, .denied:
+            return .blocked
+        @unknown default:
+            return .blocked
         }
+    }
 
-        guard status == .authorizedAlways else {
-            if !hasLoggedPermissionWarning {
-                hasLoggedPermissionWarning = true
-                logger.geofenceAlwaysAuthorizationRequired(currentStatus: status)
-            }
-            return false
+    private func currentAuthorizationStatus() -> CLAuthorizationStatus {
+        if #available(iOS 14.0, *) {
+            return manager.authorizationStatus
+        } else {
+            return CLLocationManager.authorizationStatus()
         }
-        return true
     }
 
     private func currentLocationData() -> LocationData? {
@@ -132,7 +175,11 @@ extension DIGraphShared {
     /// so tests can still substitute via `di.override(value:forType:)`.
     @MainActor
     var geofenceMonitor: GeofenceRegionMonitoring {
-        getOverriddenInstance() ?? CoreLocationGeofenceMonitor.shared
+        // Explicit type on the optional pins the generic `T` in `getOverriddenInstance()` to
+        // the protocol — without it, Swift infers `T` as the concrete `CoreLocationGeofenceMonitor`
+        // from the `??` right-hand side and the override lookup misses by key.
+        let overridden: GeofenceRegionMonitoring? = getOverriddenInstance()
+        return overridden ?? CoreLocationGeofenceMonitor.shared
     }
 }
 
