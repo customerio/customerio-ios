@@ -28,9 +28,12 @@ enum HandleMovementTier: String, Sendable {
 ///   used by cold-wake / boot / auth-change paths. Synchronous on the main actor so
 ///   `ownedRegionIdentifiers` is populated before the next yield — otherwise the OS may
 ///   deliver a queued cold-wake transition into an empty filter set.
+/// - `reset()` — sign-out cleanup. Stops OS-side monitoring and clears user-scoped store
+///   state (cooldowns, last-sync). Preserves the workspace cache.
 protocol GeofenceSyncCoordinator: AutoMockable, AnyObject, Sendable {
     func refresh(latitude: Double, longitude: Double) async -> Result<Void, GeofenceSyncError>
     func handleMovement(latitude: Double, longitude: Double) async -> Result<Void, GeofenceSyncError>
+    func reset() async -> Result<Void, GeofenceSyncError>
     @MainActor
     func applyCachedRegistration(
         cachedRegions: [Geofence],
@@ -93,6 +96,7 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
         }
 
         return await performRemoteRefresh(
+            expectedUserId: userId,
             latitude: latitude,
             longitude: longitude,
             cachedConfig: cachedConfig
@@ -125,6 +129,7 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
         if needsRemoteFetch {
             logger.geofenceMovementTrigger(tier: .remoteRefresh)
             return await performRemoteRefresh(
+                expectedUserId: userId,
                 latitude: latitude,
                 longitude: longitude,
                 cachedConfig: cachedConfig
@@ -139,6 +144,27 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
                 cachedRegions: cachedRegions
             )
         }
+    }
+
+    func reset() async -> Result<Void, GeofenceSyncError> {
+        guard acquireGate() else {
+            logger.geofenceSyncSkipped(reason: "refresh already in progress")
+            return .failure(.alreadyInProgress)
+        }
+        defer { releaseGate() }
+
+        // If a new user signed in between sign-out and this handler firing, skip — their
+        // own refresh path will register the right state for them, and clearing here
+        // would undo it.
+        if let currentUserId = contextStore.currentUserId, !currentUserId.isEmpty {
+            logger.geofenceResetSuperseded()
+            return .success(())
+        }
+
+        await MainActor.run { monitor.stopMonitoringAll() }
+        await storage.clearUserScopedState()
+        logger.geofenceResetCompleted()
+        return .success(())
     }
 
     @MainActor
@@ -191,8 +217,11 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
         refreshInProgress.wrappedValue = false
     }
 
-    /// Fetch + filter + register + persist. Caller owns the dedup gate and user-id check.
+    /// Fetch + filter + register + persist. Caller owns the dedup gate and user-id check;
+    /// `expectedUserId` is the value captured before the API call so this helper can
+    /// re-check that the identified user hasn't changed during the (potentially long) fetch.
     private func performRemoteRefresh(
+        expectedUserId: String,
         latitude: Double,
         longitude: Double,
         cachedConfig: GeofenceConfig?
@@ -205,6 +234,14 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
         case .failure(let error):
             logger.geofenceSyncFetchFailed(error: error)
             return .failure(.fetchFailed(error))
+        }
+
+        // If the user signed out / changed during the API call, drop the result —
+        // registering and persisting for a stale user would attribute geofences and
+        // events to whoever signs in next.
+        if contextStore.currentUserId != expectedUserId {
+            logger.geofenceSyncSupersededByUserChange()
+            return .success(())
         }
 
         let parsedConfig = response.toDomainConfig()

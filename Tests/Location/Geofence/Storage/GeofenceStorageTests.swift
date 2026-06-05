@@ -453,6 +453,30 @@ struct GeofenceStorageTests {
     // MARK: - Concurrent safety
 
     @Test
+    func clearUserScopedState_expectCooldownsAndLastSyncCleared_workspaceCachePreserved() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let storage = makeStorage(directory: dir)
+        _ = await storage.tryAcquireCooldown(key: "g1:enter", now: Date(timeIntervalSince1970: 100), interval: 3600)
+        await storage.setCachedGeofences([
+            Geofence(id: "g1", latitude: 0, longitude: 0, radius: 100, name: "g1", transitionTypes: [.enter], lastUpdated: Date(timeIntervalSince1970: 0))
+        ])
+        await storage.setCachedConfig(.fallback)
+        await storage.recordSync(timestamp: Date(timeIntervalSince1970: 100), location: LocationData(latitude: 1, longitude: 2))
+
+        await storage.clearUserScopedState()
+
+        let cooldowns = await storage.getEventCooldowns()
+        let lastSync = await storage.getLastSync()
+        let regions = await storage.getCachedGeofences()
+        let config = await storage.getCachedConfig()
+        #expect(cooldowns.isEmpty)
+        #expect(lastSync == nil)
+        #expect(regions.map(\.id) == ["g1"])
+        #expect(config != nil)
+    }
+
+    @Test
     func concurrentOperations_expectNoCrash() async {
         let dir = makeTempDirectory()
         defer { try? FileManager.default.removeItem(at: dir) }

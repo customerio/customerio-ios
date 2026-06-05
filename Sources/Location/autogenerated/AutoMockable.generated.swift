@@ -202,6 +202,9 @@ class GeofenceSyncCoordinatorMock: GeofenceSyncCoordinator, Mock {
         handleMovementReceivedInvocations = []
 
         mockCalled = false // do last as resetting properties above can make this true
+        resetCallsCount = 0
+
+        mockCalled = false // do last as resetting properties above can make this true
         applyCachedRegistrationCallsCount = 0
         applyCachedRegistrationReceivedArguments = nil
         applyCachedRegistrationReceivedInvocations = []
@@ -269,6 +272,31 @@ class GeofenceSyncCoordinatorMock: GeofenceSyncCoordinator, Mock {
         handleMovementReceivedArguments = (latitude: latitude, longitude: longitude)
         handleMovementReceivedInvocations.append((latitude: latitude, longitude: longitude))
         return handleMovementClosure.map { $0(latitude, longitude) } ?? handleMovementReturnValue
+    }
+
+    // MARK: - reset
+
+    /// Number of times the function was called.
+    @Atomic private(set) var resetCallsCount = 0
+    /// `true` if the function was ever called.
+    var resetCalled: Bool {
+        resetCallsCount > 0
+    }
+
+    /// Value to return from the mocked function.
+    var resetReturnValue: Result<Void, GeofenceSyncError>!
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     The closure has first priority to return a value for the mocked function. If the closure returns `nil`,
+     then the mock will attempt to return the value for `resetReturnValue`
+     */
+    var resetClosure: (() -> Result<Void, GeofenceSyncError>)?
+
+    /// Mocked function for `reset()`. Your opportunity to return a mocked value and check result of mock in test code.
+    func reset() -> Result<Void, GeofenceSyncError> {
+        mockCalled = true
+        resetCallsCount += 1
+        return resetClosure.map { $0() } ?? resetReturnValue
     }
 
     // MARK: - applyCachedRegistration

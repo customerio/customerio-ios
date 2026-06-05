@@ -774,6 +774,137 @@ struct GeofenceSyncCoordinatorTests {
         #expect(movement.errorOrNil == .alreadyInProgress)
     }
 
+    // MARK: - reset
+
+    @Test
+    func reset_givenNoSignedInUser_expectStopMonitoringAndClearUserScopedState() async {
+        let storage = makeStorage()
+        await storage.setCachedGeofences([makeRegion(id: "keep", latitude: 0, longitude: 0)])
+        await storage.setCachedConfig(.fallback)
+        await storage.recordSync(timestamp: Date(timeIntervalSince1970: 100), location: LocationData(latitude: 0, longitude: 0))
+        _ = await storage.tryAcquireCooldown(key: "user-scoped", now: Date(timeIntervalSince1970: 100), interval: 3600)
+        let setup = makeCoordinator(storage: storage, contextStore: makeContextStore(userId: nil))
+
+        let result = await setup.coordinator.reset()
+
+        #expect(result.isSuccess)
+        #expect(setup.monitor.stopAllCallCount == 1)
+        // Workspace cache survives; user-scoped state is wiped.
+        let remainingRegions = await storage.getCachedGeofences()
+        let remainingConfig = await storage.getCachedConfig()
+        let remainingLastSync = await storage.getLastSync()
+        let remainingCooldowns = await storage.getEventCooldowns()
+        #expect(remainingRegions.map(\.id) == ["keep"])
+        #expect(remainingConfig != nil)
+        #expect(remainingLastSync == nil)
+        #expect(remainingCooldowns.isEmpty)
+    }
+
+    @Test
+    func reset_givenAnotherUserSignedIn_expectSkippedWithoutChanges() async {
+        // A re-login during the reset window must NOT wipe the new user's freshly-set state.
+        let storage = makeStorage()
+        await storage.setCachedGeofences([makeRegion(id: "keep", latitude: 0, longitude: 0)])
+        await storage.recordSync(timestamp: Date(timeIntervalSince1970: 100), location: LocationData(latitude: 0, longitude: 0))
+        _ = await storage.tryAcquireCooldown(key: "g1:enter", now: Date(timeIntervalSince1970: 100), interval: 3600)
+        let setup = makeCoordinator(storage: storage, contextStore: makeContextStore(userId: "new-user"))
+
+        let result = await setup.coordinator.reset()
+
+        #expect(result.isSuccess)
+        #expect(setup.monitor.stopAllCallCount == 0)
+        let lastSync = await storage.getLastSync()
+        let cooldowns = await storage.getEventCooldowns()
+        #expect(lastSync != nil)
+        #expect(cooldowns.count == 1)
+    }
+
+    @Test
+    func reset_givenInFlightRefresh_expectAlreadyInProgress() async {
+        let storage = makeStorage()
+        let api = GeofenceApiServiceMock()
+        let suspendUntil = AsyncSignal()
+        let arrived = AsyncSignal()
+        api.fetchGeofencesClosure = { _, _, completion in
+            Task {
+                await arrived.fire()
+                await suspendUntil.wait()
+                completion(.success(makeApiResponse(regions: [])))
+            }
+        }
+        let setup = makeCoordinator(api: api, storage: storage)
+
+        async let firstRefresh = setup.coordinator.refresh(latitude: 0, longitude: 0)
+        await arrived.wait()
+        let resetResult = await setup.coordinator.reset()
+        await suspendUntil.fire()
+        _ = await firstRefresh
+
+        #expect(resetResult.errorOrNil == .alreadyInProgress)
+    }
+
+    // MARK: - userId recheck after API
+
+    @Test
+    func refresh_givenUserSignedOutMidFetch_expectNoStorageWritesAndNoRegister() async {
+        let storage = makeStorage()
+        let contextStore = makeContextStore(userId: "user-1")
+        let api = GeofenceApiServiceMock()
+        let suspendUntil = AsyncSignal()
+        let arrived = AsyncSignal()
+        api.fetchGeofencesClosure = { _, _, completion in
+            Task {
+                await arrived.fire()
+                await suspendUntil.wait()
+                completion(.success(makeApiResponse(regions: [makeRegion(id: "g1", latitude: 0, longitude: 0)])))
+            }
+        }
+        let setup = makeCoordinator(api: api, storage: storage, contextStore: contextStore)
+
+        async let refreshResult = setup.coordinator.refresh(latitude: 0, longitude: 0)
+        await arrived.wait()
+        // User signs out while the API call is pending.
+        contextStore.setUserId(nil)
+        await suspendUntil.fire()
+        let result = await refreshResult
+
+        #expect(result.isSuccess)
+        // No register, no persistence — the result was attributed to a stale user.
+        #expect(setup.monitor.startedRegions.isEmpty)
+        let cached = await storage.getCachedGeofences()
+        #expect(cached.isEmpty)
+        let lastSync = await storage.getLastSync()
+        #expect(lastSync == nil)
+    }
+
+    @Test
+    func refresh_givenDifferentUserSignsInMidFetch_expectNoStorageWritesAndNoRegister() async {
+        let storage = makeStorage()
+        let contextStore = makeContextStore(userId: "user-1")
+        let api = GeofenceApiServiceMock()
+        let suspendUntil = AsyncSignal()
+        let arrived = AsyncSignal()
+        api.fetchGeofencesClosure = { _, _, completion in
+            Task {
+                await arrived.fire()
+                await suspendUntil.wait()
+                completion(.success(makeApiResponse(regions: [makeRegion(id: "g1", latitude: 0, longitude: 0)])))
+            }
+        }
+        let setup = makeCoordinator(api: api, storage: storage, contextStore: contextStore)
+
+        async let refreshResult = setup.coordinator.refresh(latitude: 0, longitude: 0)
+        await arrived.wait()
+        contextStore.setUserId("user-2")
+        await suspendUntil.fire()
+        let result = await refreshResult
+
+        #expect(result.isSuccess)
+        #expect(setup.monitor.startedRegions.isEmpty)
+        let cached = await storage.getCachedGeofences()
+        #expect(cached.isEmpty)
+    }
+
     @Test
     func refresh_givenInFlightHandleMovement_expectAlreadyInProgress() async {
         // Reverse direction of the cross-entry gate — handleMovement holding it must
@@ -827,6 +958,7 @@ private actor SpyGeofenceSyncStorage: GeofenceSyncStorage {
         case setCachedGeofences
         case setCachedConfig
         case recordSync
+        case clearUserScopedState
     }
 
     private let underlying: GeofenceStorage
@@ -864,6 +996,11 @@ private actor SpyGeofenceSyncStorage: GeofenceSyncStorage {
     func recordSync(timestamp: Date, location: LocationData) async {
         operations.append(.recordSync)
         await underlying.recordSync(timestamp: timestamp, location: location)
+    }
+
+    func clearUserScopedState() async {
+        operations.append(.clearUserScopedState)
+        await underlying.clearUserScopedState()
     }
 }
 

@@ -72,4 +72,20 @@ extension Logger {
     func geofenceMovementTrigger(tier: HandleMovementTier) {
         debug("Movement trigger EXIT: \(tier.rawValue)", geofenceTag)
     }
+
+    func geofenceSyncSupersededByUserChange() {
+        info("Sync result discarded: identified user changed during fetch", geofenceTag)
+    }
+
+    func geofenceResetCompleted() {
+        info("Reset completed: monitoring stopped and user-scoped state cleared", geofenceTag)
+    }
+
+    func geofenceResetSuperseded() {
+        debug("Reset skipped: another user is signed in", geofenceTag)
+    }
+
+    func geofenceFirstRunRearm() {
+        debug("First-run refresh re-armed by new location fix", geofenceTag)
+    }
 }
