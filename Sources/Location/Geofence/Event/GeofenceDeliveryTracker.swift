@@ -16,12 +16,12 @@ protocol GeofenceDeliveryTracker: AutoMockable {
 
 final class GeofenceDeliveryTrackerImpl: GeofenceDeliveryTracker {
     private let httpClient: HttpClient
-    private let region: Region
+    private let contextStore: BackgroundDeliveryContextStore
     private let logger: Logger
 
-    init(httpClient: HttpClient, region: Region, logger: Logger) {
+    init(httpClient: HttpClient, contextStore: BackgroundDeliveryContextStore, logger: Logger) {
         self.httpClient = httpClient
-        self.region = region
+        self.contextStore = contextStore
         self.logger = logger
     }
 
@@ -32,6 +32,10 @@ final class GeofenceDeliveryTrackerImpl: GeofenceDeliveryTracker {
     ) {
         guard !userId.isEmpty else {
             logger.error("cannot deliver geofence metric without a userId")
+            return onComplete(.failure(.noRequestMade(nil)))
+        }
+        guard let apiHost = contextStore.currentApiHost, !apiHost.isEmpty else {
+            logger.error("cannot deliver geofence metric without a persisted apiHost")
             return onComplete(.failure(.noRequestMade(nil)))
         }
 
@@ -52,7 +56,7 @@ final class GeofenceDeliveryTrackerImpl: GeofenceDeliveryTracker {
         let endpoint: CIOApiEndpoint = .trackPushMetricsCdp
         guard let httpParams = HttpRequestParams(
             endpoint: endpoint,
-            baseUrl: Self.apiHost(for: region),
+            baseUrl: Self.absoluteUrl(host: apiHost),
             headers: nil,
             body: try? JSONSerialization.data(withJSONObject: body)
         ) else {
@@ -70,10 +74,13 @@ final class GeofenceDeliveryTrackerImpl: GeofenceDeliveryTracker {
         }
     }
 
-    private static func apiHost(for region: Region) -> String {
-        switch region {
-        case .US: return "https://cdp.customer.io/v1"
-        case .EU: return "https://cdp-eu.customer.io/v1"
+    /// `BackgroundDeliveryContextStore.currentApiHost` is host-only (no scheme); the request
+    /// builder needs the full base URL, so prepend `https://` unless the caller has already
+    /// qualified it.
+    private static func absoluteUrl(host: String) -> String {
+        if host.hasPrefix("http://") || host.hasPrefix("https://") {
+            return host
         }
+        return "https://" + host
     }
 }
