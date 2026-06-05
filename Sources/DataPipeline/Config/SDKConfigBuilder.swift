@@ -44,6 +44,7 @@ public class SDKConfigBuilder {
     private var autoTrackDeviceAttributes: Bool = true
     private var migrationSiteId: String?
     private var screenViewUse: ScreenView = .all
+    private var allowBackgroundDelivery: Bool = false
     private var deepLinkCallback: DeepLinkCallback?
 
     // Optional modules (e.g. Location) to initialize with the SDK.
@@ -160,6 +161,17 @@ public class SDKConfigBuilder {
         return self
     }
 
+    /// When `true`, the SDK persists `cdpApiKey` on disk so background-delivery features
+    /// (e.g. cold-wake geofence transitions) can authenticate without the full SDK being
+    /// initialized in the process. Defaults to `false`: cold-wake transitions queue and
+    /// deliver on the next foreground session. Customers fetching keys from a backend
+    /// should leave this off.
+    @discardableResult
+    public func allowBackgroundDelivery(_ enabled: Bool) -> SDKConfigBuilder {
+        allowBackgroundDelivery = enabled
+        return self
+    }
+
     @discardableResult
     @available(iOSApplicationExtension, unavailable)
     public func deepLinkCallback(_ callback: @escaping DeepLinkCallback) -> SDKConfigBuilder {
@@ -207,6 +219,7 @@ public class SDKConfigBuilder {
             autoTrackDeviceAttributes: autoTrackDeviceAttributes,
             migrationSiteId: migrationSiteId,
             screenViewUse: screenViewUse,
+            allowBackgroundDelivery: allowBackgroundDelivery,
             autoConfiguredPlugins: configuredPlugins
         )
 
