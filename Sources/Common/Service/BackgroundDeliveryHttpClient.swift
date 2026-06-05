@@ -93,10 +93,10 @@ public final class BackgroundDeliveryHttpClientImpl: BackgroundDeliveryHttpClien
         }
         guard let params = HttpRequestParams(
             endpoint: .trackPushMetricsCdp,
-            baseUrl: Self.absoluteHost(apiHost),
+            baseUrl: BackgroundDeliveryHttp.absoluteHost(apiHost),
             headers: [
                 "Content-Type": "application/json; charset=utf-8",
-                "Authorization": "Basic \(Self.basicAuthValue(cdpApiKey: cdpApiKey))"
+                "Authorization": "Basic \(BackgroundDeliveryHttp.basicAuthValue(cdpApiKey: cdpApiKey))"
             ],
             body: bodyData
         ) else {
@@ -114,20 +114,6 @@ public final class BackgroundDeliveryHttpClientImpl: BackgroundDeliveryHttpClien
                 completion(.failure(.http(statusCode: statusCode)))
             }
         }
-    }
-
-    /// `apiHost` is stored host-only (e.g. `"cdp.customer.io/v1"`); prepend `https://`
-    /// unless the caller has already qualified it.
-    private static func absoluteHost(_ host: String) -> String {
-        if host.hasPrefix("http://") || host.hasPrefix("https://") {
-            return host
-        }
-        return "https://" + host
-    }
-
-    private static func basicAuthValue(cdpApiKey: String) -> String {
-        let raw = "\(cdpApiKey):"
-        return raw.data(using: .utf8)?.base64EncodedString() ?? raw
     }
 }
 

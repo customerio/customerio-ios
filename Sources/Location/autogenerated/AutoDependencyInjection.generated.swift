@@ -54,6 +54,9 @@ extension DIGraphShared {
     func testDependenciesAbleToResolve() -> Int {
         var countDependenciesResolved = 0
 
+        _ = geofenceApiService
+        countDependenciesResolved += 1
+
         _ = geofenceEventTracker
         countDependenciesResolved += 1
 
@@ -64,6 +67,12 @@ extension DIGraphShared {
     }
 
     // Handle classes annotated with InjectRegisterShared
+    // GeofenceApiService (custom. property getter provided via extension)
+    var geofenceApiService: GeofenceApiService {
+        getOverriddenInstance() ??
+            customGeofenceApiService
+    }
+
     // GeofenceEventTracker (custom. property getter provided via extension)
     var geofenceEventTracker: GeofenceEventTracker {
         getOverriddenInstance() ??
