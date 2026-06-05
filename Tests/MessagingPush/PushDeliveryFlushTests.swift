@@ -38,7 +38,7 @@ final class MessagingPushPendingPushFlushTests: UnitTest {
         // Override store so registerPendingPushDeliveryStore() inside initialize() doesn't replace it
         diGraphShared.override(value: pendingStoreMock, forType: PendingPushDeliveryStore.self)
 
-        mockCollection.add(mocks: [pendingStoreMock, pipelineMock])
+        mockCollection.add(mock: pendingStoreMock)
     }
 
     override func initializeSDKComponents() -> MessagingPushInstance? {
