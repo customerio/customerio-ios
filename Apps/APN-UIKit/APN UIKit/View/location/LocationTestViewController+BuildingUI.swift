@@ -73,6 +73,27 @@ extension LocationTestViewController {
         return button
     }
 
+    func createGrantBackgroundLocationButton() -> UIView {
+        let stackView = UIStackView()
+        stackView.axis = .vertical
+        stackView.spacing = 8
+
+        grantBackgroundLocationButton = ThemeButton()
+        grantBackgroundLocationButton.setTitle("Grant background location", for: .normal)
+        grantBackgroundLocationButton.titleLabel?.font = .systemFont(ofSize: 14)
+        grantBackgroundLocationButton.heightAnchor.constraint(equalToConstant: 50).isActive = true
+        grantBackgroundLocationButton.addTarget(self, action: #selector(grantBackgroundLocationTapped), for: .touchUpInside)
+        stackView.addArrangedSubview(grantBackgroundLocationButton)
+
+        grantBackgroundStatusLabel = UILabel()
+        grantBackgroundStatusLabel.font = .systemFont(ofSize: 12)
+        grantBackgroundStatusLabel.textColor = .darkGray
+        grantBackgroundStatusLabel.numberOfLines = 0
+        stackView.addArrangedSubview(grantBackgroundStatusLabel)
+
+        return stackView
+    }
+
     func createSdkLocationButtons() -> UIView {
         let stackView = UIStackView()
         stackView.axis = .vertical
