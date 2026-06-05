@@ -50,4 +50,22 @@ extension Logger {
             geofenceTag
         )
     }
+
+    // MARK: - Sync
+
+    func geofenceSyncSkipped(reason: String) {
+        debug("Sync skipped: \(reason)", geofenceTag)
+    }
+
+    func geofenceSyncSkippedFresh() {
+        debug("Sync skipped: last server fetch is within freshness window", geofenceTag)
+    }
+
+    func geofenceSyncFetchFailed(error: GeofenceApiError) {
+        self.error("Sync fetch failed: \(error)", geofenceTag, nil)
+    }
+
+    func geofenceSyncCompleted(registeredCount: Int) {
+        info("Sync completed: registered \(registeredCount) business geofences + 1 movement trigger", geofenceTag)
+    }
 }

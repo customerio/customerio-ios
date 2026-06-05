@@ -8,17 +8,31 @@ import Foundation
 @MainActor
 enum GeofenceBootstrap {
     static func wireMonitor(di: DIGraphShared) async {
-        // Fetch cache BEFORE touching the monitor: once CLLocationManager exists, its delegate
-        // is live and the OS can deliver queued cold-wake region callbacks. Any `await`
-        // between delegate-set and `startMonitoring` would drop those events.
-        let geofences = await di.geofenceStorage.getCachedGeofences()
+        // Phase 1: all async reads BEFORE constructing the monitor. The
+        // `CLLocationManager` delegate goes live the moment the monitor exists, so any
+        // `await` after that point lets the OS deliver queued cold-wake transitions into
+        // an empty `ownedRegionIdentifiers` set — and the delegate drops them.
+        let cachedRegions = await di.geofenceStorage.getCachedGeofences()
+        let cachedConfig = await di.geofenceStorage.getCachedConfig()
+        let lastSync = await di.geofenceStorage.getLastSync()
+        let userId = di.backgroundDeliveryContextStore.currentUserId
+
+        // Phase 2: synchronous on the main actor. No `await` between handler-bind and
+        // `startMonitoring`, so `ownedRegionIdentifiers` is populated before any new
+        // delegate call can land.
         let monitor = di.geofenceMonitor
         let tracker = di.geofenceEventTracker
-        GeofenceMonitorBinder.bind(monitor: monitor, geofences: geofences, tracker: tracker)
+        GeofenceMonitorBinder.bind(monitor: monitor, tracker: tracker)
+        di.geofenceSyncCoordinator.applyCachedRegistration(
+            cachedRegions: cachedRegions,
+            anchor: lastSync?.location,
+            config: cachedConfig,
+            userId: userId
+        )
 
         // Self-heal mid-process permission changes (Settings toggle, late prompt response).
-        // Bind is idempotent, and the handler replaces any prior one — no stacking when both
-        // foreground init and cold-wake bootstrap run in the same process.
+        // The handler replaces any prior one — no stacking when both foreground init and
+        // cold-wake bootstrap run in the same process.
         monitor.setOnAuthorizationChanged {
             Task { @MainActor in
                 await GeofenceBootstrap.wireMonitor(di: di)

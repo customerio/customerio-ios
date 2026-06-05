@@ -9,6 +9,14 @@ struct MonitoredRegionRecord: Sendable {
     let transitionTypes: Set<GeofenceTransition>
 }
 
+/// One entry per call into the mock — `operationLog` records these in arrival order
+/// so tests can assert sequencing (e.g. that `stopAll` ran before `start`).
+enum MockMonitorOperation: Sendable, Equatable {
+    case start(identifier: String)
+    case stop(identifier: String)
+    case stopAll
+}
+
 @MainActor
 final class MockGeofenceRegionMonitor: GeofenceRegionMonitoring {
     private var onTransition: GeofenceTransitionHandler?
@@ -16,6 +24,7 @@ final class MockGeofenceRegionMonitor: GeofenceRegionMonitoring {
     private(set) var startedRegions: [MonitoredRegionRecord] = []
     private(set) var stoppedIdentifiers: [String] = []
     private(set) var stopAllCallCount = 0
+    private(set) var operationLog: [MockMonitorOperation] = []
     private var activeIdentifiers: Set<String> = []
 
     var monitoredRegionIdentifiers: Set<String> {
@@ -38,16 +47,19 @@ final class MockGeofenceRegionMonitor: GeofenceRegionMonitoring {
             transitionTypes: transitionTypes
         ))
         activeIdentifiers.insert(identifier)
+        operationLog.append(.start(identifier: identifier))
     }
 
     func stopMonitoring(identifier: String) {
         stoppedIdentifiers.append(identifier)
         activeIdentifiers.remove(identifier)
+        operationLog.append(.stop(identifier: identifier))
     }
 
     func stopMonitoringAll() {
         stopAllCallCount += 1
         activeIdentifiers.removeAll()
+        operationLog.append(.stopAll)
     }
 
     func simulateTransition(identifier: String, transition: GeofenceTransition, location: LocationData?) {
