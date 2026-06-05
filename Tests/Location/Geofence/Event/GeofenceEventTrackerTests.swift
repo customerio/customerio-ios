@@ -86,7 +86,7 @@ struct GeofenceEventTrackerTests {
         let pending = makePendingStore(directory: dir)
         let delivery = GeofenceDeliveryTrackerMock()
         delivery.deliverClosure = { _, _, onComplete in
-            onComplete(.failure(.unsuccessfulStatusCode(503, apiMessage: "boom")))
+            onComplete(.failure(.http(statusCode: 503)))
         }
         let bus = EventBusHandlerMock()
         let tracker = makeTracker(
@@ -235,7 +235,7 @@ struct GeofenceEventTrackerTests {
         let pending = makePendingStore(directory: dir)
         let failingDelivery = GeofenceDeliveryTrackerMock()
         failingDelivery.deliverClosure = { _, _, onComplete in
-            onComplete(.failure(.unsuccessfulStatusCode(503, apiMessage: "boom")))
+            onComplete(.failure(.http(statusCode: 503)))
         }
         let priorTracker = makeTracker(
             storage: makeStorage(directory: dir),
@@ -271,7 +271,7 @@ struct GeofenceEventTrackerTests {
         let pending = makePendingStore(directory: dir)
         let failingDelivery = GeofenceDeliveryTrackerMock()
         failingDelivery.deliverClosure = { _, _, onComplete in
-            onComplete(.failure(.unsuccessfulStatusCode(503, apiMessage: "boom")))
+            onComplete(.failure(.http(statusCode: 503)))
         }
         let priorTracker = makeTracker(
             storage: makeStorage(directory: dir),
@@ -304,7 +304,7 @@ struct GeofenceEventTrackerTests {
         let pending = makePendingStore(directory: dir)
         let failingDelivery = GeofenceDeliveryTrackerMock()
         failingDelivery.deliverClosure = { _, _, onComplete in
-            onComplete(.failure(.unsuccessfulStatusCode(503, apiMessage: "boom")))
+            onComplete(.failure(.http(statusCode: 503)))
         }
         let priorTracker = makeTracker(
             storage: makeStorage(directory: dir),

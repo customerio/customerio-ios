@@ -56,6 +56,9 @@ extension DIGraphShared {
         _ = backgroundDeliveryContextStore
         countDependenciesResolved += 1
 
+        _ = backgroundDeliveryHttpClient
+        countDependenciesResolved += 1
+
         _ = deviceInfo
         countDependenciesResolved += 1
 
@@ -154,6 +157,12 @@ extension DIGraphShared {
     public var backgroundDeliveryContextStore: BackgroundDeliveryContextStore {
         getOverriddenInstance() ??
             customBackgroundDeliveryContextStore
+    }
+
+    // BackgroundDeliveryHttpClient (custom. property getter provided via extension)
+    public var backgroundDeliveryHttpClient: BackgroundDeliveryHttpClient {
+        getOverriddenInstance() ??
+            customBackgroundDeliveryHttpClient
     }
 
     // DeviceInfo

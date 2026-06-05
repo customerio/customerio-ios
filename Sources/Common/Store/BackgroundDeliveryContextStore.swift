@@ -19,6 +19,18 @@ public struct BackgroundDeliveryContext: Codable, Equatable, Sendable {
     }
 }
 
+/// Supplies the live `cdpApiKey` so foreground real-time delivery works without forcing
+/// customers to opt into on-disk persistence. `DataPipelineImplementation` registers itself
+/// at init; on cold-wake (no DataPipeline in this process) the provider is nil and callers
+/// fall back to the persisted value in `BackgroundDeliveryContextStore`.
+public protocol BackgroundDeliveryCdpApiKeyProvider: AnyObject {
+    var cdpApiKey: String? { get }
+}
+
+private final class WeakProviderRef {
+    weak var provider: BackgroundDeliveryCdpApiKeyProvider?
+}
+
 // sourcery: InjectRegisterShared = "BackgroundDeliveryContextStore"
 // sourcery: InjectCustomShared
 /// File-backed single store for `BackgroundDeliveryContext`. JSON file in Application Support
@@ -36,6 +48,7 @@ public final class BackgroundDeliveryContextStore: @unchecked Sendable {
     private let fileManager: FileManager
     private let directoryURL: URL?
     private let cache: Synchronized<BackgroundDeliveryContext>
+    private let providerRef: Synchronized<WeakProviderRef>
 
     public convenience init() {
         self.init(fileManager: .default, directoryURL: nil)
@@ -48,6 +61,7 @@ public final class BackgroundDeliveryContextStore: @unchecked Sendable {
         let url = Self.resolveFileURL(fileManager: fileManager, directoryURL: directoryURL)
         let initial = Self.loadFromDisk(fileManager: fileManager, fileURL: url) ?? BackgroundDeliveryContext()
         self.cache = Synchronized(initial)
+        self.providerRef = Synchronized(WeakProviderRef())
     }
 
     // MARK: - Getters
@@ -60,8 +74,20 @@ public final class BackgroundDeliveryContextStore: @unchecked Sendable {
         cache.using { $0.apiHost }
     }
 
+    /// Live key from the registered provider if present (foreground with DataPipeline init),
+    /// otherwise the persisted key (cold-wake, or foreground with `allowBackgroundDelivery` off
+    /// and no provider registered yet).
     public var currentCdpApiKey: String? {
-        cache.using { $0.cdpApiKey }
+        let live = providerRef.using { $0.provider?.cdpApiKey }
+        if let live, !live.isEmpty { return live }
+        return cache.using { $0.cdpApiKey }
+    }
+
+    /// Registers a live source for `cdpApiKey`. Held weakly so the provider's lifecycle
+    /// drives availability — when the provider is deallocated (or never registered, as on
+    /// cold-wake), `currentCdpApiKey` falls back to the persisted value.
+    public func setCdpApiKeyProvider(_ provider: BackgroundDeliveryCdpApiKeyProvider?) {
+        providerRef.mutating { $0.provider = provider }
     }
 
     // MARK: - Setters

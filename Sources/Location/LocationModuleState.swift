@@ -84,15 +84,15 @@ final class LocationModuleState {
     }
 
     private func makeGeofenceEventTracker(di: DIGraphShared, geofenceStorage: GeofenceStorage) -> GeofenceEventTracker {
-        let contextStore = di.backgroundDeliveryContextStore
-        let deliveryTracker: GeofenceDeliveryTracker? = di.getOptional(HttpClient.self).map {
-            GeofenceDeliveryTrackerImpl(httpClient: $0, contextStore: contextStore, logger: di.logger)
-        }
+        let deliveryTracker = GeofenceDeliveryTrackerImpl(
+            httpClient: di.backgroundDeliveryHttpClient,
+            logger: di.logger
+        )
         return GeofenceEventTracker(
             storage: geofenceStorage,
             pendingStore: PendingGeofenceMetricStore(),
             deliveryTracker: deliveryTracker,
-            contextStore: contextStore,
+            contextStore: di.backgroundDeliveryContextStore,
             eventBusHandler: di.eventBusHandler,
             dateUtil: di.dateUtil,
             logger: di.logger

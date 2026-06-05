@@ -111,16 +111,16 @@ class GeofenceDeliveryTrackerMock: GeofenceDeliveryTracker, Mock {
     }
 
     /// The arguments from the *last* time the function was called.
-    @Atomic private(set) var deliverReceivedArguments: (metric: PendingGeofenceMetric, userId: String, onComplete: (Result<Void, HttpRequestError>) -> Void)?
+    @Atomic private(set) var deliverReceivedArguments: (metric: PendingGeofenceMetric, userId: String, onComplete: (Result<Void, BackgroundDeliveryHttpError>) -> Void)?
     /// Arguments from *all* of the times that the function was called.
-    @Atomic private(set) var deliverReceivedInvocations: [(metric: PendingGeofenceMetric, userId: String, onComplete: (Result<Void, HttpRequestError>) -> Void)] = []
+    @Atomic private(set) var deliverReceivedInvocations: [(metric: PendingGeofenceMetric, userId: String, onComplete: (Result<Void, BackgroundDeliveryHttpError>) -> Void)] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
-    var deliverClosure: ((PendingGeofenceMetric, String, @escaping (Result<Void, HttpRequestError>) -> Void) -> Void)?
+    var deliverClosure: ((PendingGeofenceMetric, String, @escaping (Result<Void, BackgroundDeliveryHttpError>) -> Void) -> Void)?
 
-    /// Mocked function for `deliver(metric: PendingGeofenceMetric, userId: String, onComplete: @escaping (Result<Void, HttpRequestError>) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
-    func deliver(metric: PendingGeofenceMetric, userId: String, onComplete: @escaping (Result<Void, HttpRequestError>) -> Void) {
+    /// Mocked function for `deliver(metric: PendingGeofenceMetric, userId: String, onComplete: @escaping (Result<Void, BackgroundDeliveryHttpError>) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
+    func deliver(metric: PendingGeofenceMetric, userId: String, onComplete: @escaping (Result<Void, BackgroundDeliveryHttpError>) -> Void) {
         mockCalled = true
         deliverCallsCount += 1
         deliverReceivedArguments = (metric: metric, userId: userId, onComplete: onComplete)
