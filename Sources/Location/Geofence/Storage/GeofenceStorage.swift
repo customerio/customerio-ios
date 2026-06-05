@@ -95,6 +95,42 @@ actor GeofenceStorage {
         saveToDisk(state)
     }
 
+    // MARK: - Cached Config
+
+    func getCachedConfig() -> GeofenceConfig? {
+        loadFromDisk()?.cachedConfig
+    }
+
+    func setCachedConfig(_ config: GeofenceConfig) {
+        var state = loadFromDisk() ?? GeofenceState()
+        state.cachedConfig = config
+        saveToDisk(state)
+    }
+
+    // MARK: - Last Sync
+
+    /// Returns the last successful server sync as an atomic `(timestamp, location)` pair.
+    /// Returns `nil` if either half is missing — defensive against torn state that could
+    /// arise from older clients or future schema changes.
+    func getLastSync() -> LastSyncRecord? {
+        guard let state = loadFromDisk(),
+              let timestamp = state.lastServerSyncTimestamp,
+              let location = state.lastServerSyncLocation
+        else {
+            return nil
+        }
+        return LastSyncRecord(timestamp: timestamp, location: location)
+    }
+
+    /// Records a successful server sync. Writes both timestamp and location in the same
+    /// load-modify-save so a partial update cannot leave the two fields out of step.
+    func recordSync(timestamp: Date, location: LocationData) {
+        var state = loadFromDisk() ?? GeofenceState()
+        state.lastServerSyncTimestamp = timestamp
+        state.lastServerSyncLocation = location
+        saveToDisk(state)
+    }
+
     // MARK: - Private (file persistence)
 
     private func loadFromDisk() -> GeofenceState? {

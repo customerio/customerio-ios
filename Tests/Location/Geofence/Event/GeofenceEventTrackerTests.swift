@@ -226,6 +226,50 @@ struct GeofenceEventTrackerTests {
         #expect(delivery.deliverCallsCount == 2)
     }
 
+    @Test
+    func trackTransition_givenCachedConfigCooldown_expectServerValueWinsOverConstructorDefault() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let storage = makeStorage(directory: dir)
+        // Server-driven cooldown is 30 min; constructor's `cooldownInterval` is the
+        // test default (1h). The tracker should consult cached config first.
+        let serverCooldown: TimeInterval = 30 * 60
+        await storage.setCachedConfig(GeofenceConfig(
+            localRefreshTriggerRadius: 1000,
+            remoteFetchRefreshTriggerRadius: 3000,
+            remoteFetchRefreshExpiry: 24 * 60 * 60,
+            duplicateEventsExpiry: serverCooldown,
+            maxBusinessGeofences: 19
+        ))
+        let pending = makePendingStore(directory: dir)
+        let delivery = GeofenceDeliveryTrackerMock()
+        delivery.deliverClosure = { _, _, onComplete in onComplete(.success(())) }
+        let dateUtil = DateUtilStub()
+        let baseTime = Date(timeIntervalSince1970: 1700000000)
+        dateUtil.givenNow = baseTime
+        let bus = EventBusHandlerMock()
+        let tracker = makeTracker(
+            storage: storage,
+            pendingStore: pending,
+            deliveryTracker: delivery,
+            contextStore: makeContextStore(userId: "user_42"),
+            eventBus: bus,
+            dateUtil: dateUtil
+        )
+
+        await tracker.trackTransition(geofenceId: "geo_1", transition: .enter)
+        // Halfway through the server cooldown → suppressed (would have been allowed if
+        // the constructor's 1h default were in effect).
+        dateUtil.givenNow = baseTime.addingTimeInterval(serverCooldown / 2)
+        await tracker.trackTransition(geofenceId: "geo_1", transition: .enter)
+        #expect(delivery.deliverCallsCount == 1)
+
+        // Past the server cooldown but still within the constructor default → allowed.
+        dateUtil.givenNow = baseTime.addingTimeInterval(serverCooldown + 1)
+        await tracker.trackTransition(geofenceId: "geo_1", transition: .enter)
+        #expect(delivery.deliverCallsCount == 2)
+    }
+
     // MARK: - flushPending
 
     @Test

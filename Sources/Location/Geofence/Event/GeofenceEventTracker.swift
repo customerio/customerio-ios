@@ -58,8 +58,11 @@ final class GeofenceEventTracker: @unchecked Sendable {
     ) async {
         let cooldownKey = "\(geofenceId):\(transition.rawValue)"
         let now = dateUtil.now
+        // Cached config wins when present so a workspace can tune the dedup window without
+        // an SDK release; constructor default applies otherwise.
+        let interval = await storage.getCachedConfig()?.duplicateEventsExpiry ?? cooldownInterval
 
-        guard await storage.tryAcquireCooldown(key: cooldownKey, now: now, interval: cooldownInterval) else {
+        guard await storage.tryAcquireCooldown(key: cooldownKey, now: now, interval: interval) else {
             logger.geofenceEventSuppressed(geofenceId: geofenceId, transition: transition)
             return
         }
@@ -74,7 +77,7 @@ final class GeofenceEventTracker: @unchecked Sendable {
         _ = await pendingStore.append(metric)
 
         await deliver(metric: metric)
-        await storage.purgeExpiredCooldowns(now: now, interval: cooldownInterval)
+        await storage.purgeExpiredCooldowns(now: now, interval: interval)
     }
 
     /// Replays every queued metric through `deliver`.

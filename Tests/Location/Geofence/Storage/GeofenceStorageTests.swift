@@ -239,6 +239,203 @@ struct GeofenceStorageTests {
         #expect(cached.map(\.id) == ["g1"])
     }
 
+    // MARK: - Cached config
+
+    @Test
+    func getCachedConfig_givenNoState_expectNil() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let storage = makeStorage(directory: dir)
+        let config = await storage.getCachedConfig()
+        #expect(config == nil)
+    }
+
+    @Test
+    func setCachedConfig_thenGet_expectRoundTrip() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let storage = makeStorage(directory: dir)
+        let config = GeofenceConfig(
+            localRefreshTriggerRadius: 750,
+            remoteFetchRefreshTriggerRadius: 4000,
+            remoteFetchRefreshExpiry: 12 * 60 * 60,
+            duplicateEventsExpiry: 30 * 60,
+            maxBusinessGeofences: 10
+        )
+        await storage.setCachedConfig(config)
+        let cached = await storage.getCachedConfig()
+        #expect(cached == config)
+    }
+
+    @Test
+    func setCachedConfig_givenNewStorageInstance_expectLoadsFromDisk() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let config = GeofenceConfig.fallback
+
+        let storage1 = makeStorage(directory: dir)
+        await storage1.setCachedConfig(config)
+
+        let storage2 = makeStorage(directory: dir)
+        let cached = await storage2.getCachedConfig()
+        #expect(cached == config)
+    }
+
+    @Test
+    func setCachedConfig_doesNotClearGeofencesOrCooldowns() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let storage = makeStorage(directory: dir)
+        let timestamp = Date(timeIntervalSince1970: 1700000000)
+        await storage.recordEventCooldown(key: "geo_1:enter", timestamp: timestamp)
+        await storage.setCachedGeofences([makeGeofence(id: "g1")])
+
+        await storage.setCachedConfig(.fallback)
+
+        let cooldowns = await storage.getEventCooldowns()
+        #expect(cooldowns["geo_1:enter"] == timestamp)
+        let geofences = await storage.getCachedGeofences()
+        #expect(geofences.map(\.id) == ["g1"])
+    }
+
+    @Test
+    func setCachedConfig_givenSecondCall_expectOverwrites() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let storage = makeStorage(directory: dir)
+        await storage.setCachedConfig(.fallback)
+        let updated = GeofenceConfig(
+            localRefreshTriggerRadius: 500,
+            remoteFetchRefreshTriggerRadius: 2000,
+            remoteFetchRefreshExpiry: 60,
+            duplicateEventsExpiry: 30,
+            maxBusinessGeofences: 5
+        )
+        await storage.setCachedConfig(updated)
+        let cached = await storage.getCachedConfig()
+        #expect(cached == updated)
+    }
+
+    // MARK: - Last sync
+
+    @Test
+    func getLastSync_givenNoState_expectNil() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let storage = makeStorage(directory: dir)
+        let record = await storage.getLastSync()
+        #expect(record == nil)
+    }
+
+    @Test
+    func recordSync_thenGet_expectRoundTrip() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let storage = makeStorage(directory: dir)
+        let timestamp = Date(timeIntervalSince1970: 1700000000)
+        let location = LocationData(latitude: 37.7749, longitude: -122.4194)
+
+        await storage.recordSync(timestamp: timestamp, location: location)
+        let record = await storage.getLastSync()
+
+        #expect(record?.timestamp == timestamp)
+        #expect(record?.location == location)
+    }
+
+    @Test
+    func recordSync_givenSecondCall_expectOverwritesBothFields() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let storage = makeStorage(directory: dir)
+        let firstTime = Date(timeIntervalSince1970: 1700000000)
+        let firstLocation = LocationData(latitude: 37.7749, longitude: -122.4194)
+        let secondTime = Date(timeIntervalSince1970: 1700003600)
+        let secondLocation = LocationData(latitude: 40.7128, longitude: -74.0060)
+
+        await storage.recordSync(timestamp: firstTime, location: firstLocation)
+        await storage.recordSync(timestamp: secondTime, location: secondLocation)
+        let record = await storage.getLastSync()
+
+        #expect(record?.timestamp == secondTime)
+        #expect(record?.location == secondLocation)
+    }
+
+    @Test
+    func recordSync_givenNewStorageInstance_expectLoadsFromDisk() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let timestamp = Date(timeIntervalSince1970: 1700000000)
+        let location = LocationData(latitude: 1.0, longitude: 2.0)
+
+        let storage1 = makeStorage(directory: dir)
+        await storage1.recordSync(timestamp: timestamp, location: location)
+
+        let storage2 = makeStorage(directory: dir)
+        let record = await storage2.getLastSync()
+
+        #expect(record?.timestamp == timestamp)
+        #expect(record?.location == location)
+    }
+
+    @Test
+    func getLastSync_givenOnlyTimestampOnDisk_expectNilFromDefensiveGuard() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        // Write a state file with timestamp but no location — simulates a torn state from
+        // an older client or a partial future-schema migration.
+        var partial = GeofenceState()
+        partial.lastServerSyncTimestamp = Date(timeIntervalSince1970: 1700000000)
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .secondsSince1970
+        try? encoder.encode(partial).write(to: dir.appendingPathComponent("geofenceState.json"))
+
+        let storage = makeStorage(directory: dir)
+        let record = await storage.getLastSync()
+
+        #expect(record == nil)
+    }
+
+    @Test
+    func getLastSync_givenOnlyLocationOnDisk_expectNilFromDefensiveGuard() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        var partial = GeofenceState()
+        partial.lastServerSyncLocation = LocationData(latitude: 1.0, longitude: 2.0)
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .secondsSince1970
+        try? encoder.encode(partial).write(to: dir.appendingPathComponent("geofenceState.json"))
+
+        let storage = makeStorage(directory: dir)
+        let record = await storage.getLastSync()
+
+        #expect(record == nil)
+    }
+
+    @Test
+    func recordSync_doesNotClearOtherState() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let storage = makeStorage(directory: dir)
+        let cooldownTime = Date(timeIntervalSince1970: 1700000000)
+        await storage.recordEventCooldown(key: "geo_1:enter", timestamp: cooldownTime)
+        await storage.setCachedGeofences([makeGeofence(id: "g1")])
+        await storage.setCachedConfig(.fallback)
+
+        await storage.recordSync(
+            timestamp: Date(timeIntervalSince1970: 1700003600),
+            location: LocationData(latitude: 1.0, longitude: 2.0)
+        )
+
+        let cooldowns = await storage.getEventCooldowns()
+        #expect(cooldowns["geo_1:enter"] == cooldownTime)
+        let geofences = await storage.getCachedGeofences()
+        #expect(geofences.map(\.id) == ["g1"])
+        let config = await storage.getCachedConfig()
+        #expect(config == .fallback)
+    }
+
     @Test
     func setCachedGeofences_doesNotClearCooldowns() async {
         let dir = makeTempDirectory()
