@@ -10,22 +10,6 @@ import UserNotifications
  All of these wrappers should be small and simple. Their only job is to convert data types between SDK's abstracted data types and `UserNotifications` data types.
  */
 
-struct UNNotificationResponseWrapper: PushNotificationAction {
-    public let response: UNNotificationResponse
-
-    var push: PushNotification {
-        UNNotificationWrapper(notification: response.notification)
-    }
-
-    var didClickOnPush: Bool {
-        response.didClickOnPush
-    }
-
-    init(response: UNNotificationResponse) {
-        self.response = response
-    }
-}
-
 public struct UNNotificationWrapper: PushNotification {
     // Important: This class can be used to modify a push or read-only access on a push.
     // Return the modified content, first. If that is nil, then return the original content.
@@ -114,51 +98,5 @@ public struct UNNotificationWrapper: PushNotification {
 
         // We do not expect mutableCopy() to be nil, but it is possible according to the public-API. So we must have it be optional.
         self.mutableNotificationContent = notificationRequest.content.mutableCopy() as? UNMutableNotificationContent
-    }
-}
-
-class UNUserNotificationCenterDelegateWrapper: PushEventHandler, CustomStringConvertible {
-    private let delegate: UNUserNotificationCenterDelegate
-
-    var description: String {
-        let nestedDelegateDescription = String(describing: delegate)
-
-        return "Cio.NotificationCenterDelegateWrapper(\(nestedDelegateDescription))"
-    }
-
-    var identifier: String {
-        String(describing: delegate)
-    }
-
-    init(delegate: UNUserNotificationCenterDelegate) {
-        self.delegate = delegate
-    }
-
-    func onPushAction(_ pushAction: PushNotificationAction, completionHandler: @escaping () -> Void) {
-        guard let userNotificationsWrapperInstance = pushAction as? UNNotificationResponseWrapper else {
-            return
-        }
-
-        let delegateGotCalled: Void? = delegate.userNotificationCenter?(UNUserNotificationCenter.current(), didReceive: userNotificationsWrapperInstance.response, withCompletionHandler: completionHandler)
-
-        if delegateGotCalled == nil { // delegate did not implement this optional method. Call the completionHandler for them.
-            completionHandler()
-        }
-    }
-
-    func shouldDisplayPushAppInForeground(_ push: PushNotification, completionHandler: @escaping (Bool) -> Void) {
-        guard let unnotification = (push as? UNNotificationWrapper)?.notification else {
-            return
-        }
-
-        let delegateGotCalled: Void? = delegate.userNotificationCenter?(UNUserNotificationCenter.current(), willPresent: unnotification) { displayPushInForegroundOptions in
-            let shouldShowPush = !displayPushInForegroundOptions.isEmpty
-
-            completionHandler(shouldShowPush)
-        }
-
-        if delegateGotCalled == nil { // delegate did not implement this optional method. Call the completionHandler for them.
-            completionHandler(false)
-        }
     }
 }

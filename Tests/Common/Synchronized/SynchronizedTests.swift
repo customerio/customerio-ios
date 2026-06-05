@@ -5,7 +5,7 @@ import Testing
 
 // MARK: - Core read/write
 
-@Suite struct SynchronizedCoreTests {
+struct SynchronizedCoreTests {
     @Test func wrappedValueGetSet() {
         let box = Synchronized(42)
         #expect(box.wrappedValue == 42)
@@ -69,7 +69,7 @@ import Testing
 
 // MARK: - Arithmetic
 
-@Suite struct SynchronizedArithmeticTests {
+struct SynchronizedArithmeticTests {
     @Test func addRawValue() {
         let a = Synchronized(10)
         #expect(a + 5 == 15)
@@ -95,7 +95,7 @@ import Testing
 
 // MARK: - Bool
 
-@Suite struct SynchronizedBoolTests {
+struct SynchronizedBoolTests {
     @Test func toggle() {
         let flag = Synchronized(false)
         flag.toggle()
@@ -107,7 +107,7 @@ import Testing
 
 // MARK: - Collections
 
-@Suite struct SynchronizedCollectionTests {
+struct SynchronizedCollectionTests {
     @Test func countAndIsEmpty() {
         let list: Synchronized<[Int]> = Synchronized([])
         #expect(list.isEmpty)
@@ -184,7 +184,7 @@ import Testing
 
 // MARK: - Comparable
 
-@Suite struct SynchronizedComparableTests {
+struct SynchronizedComparableTests {
     @Test func lessThanRaw() {
         let a = Synchronized(1)
         #expect(a < 5)
@@ -212,7 +212,7 @@ import Testing
 
 // MARK: - Equatable
 
-@Suite struct SynchronizedEquatableTests {
+struct SynchronizedEquatableTests {
     @Test func equalBoxes() {
         let a = Synchronized("foo")
         let b = Synchronized("foo")
@@ -261,7 +261,7 @@ import Testing
 
 // MARK: - Hashable
 
-@Suite struct SynchronizedHashableTests {
+struct SynchronizedHashableTests {
     @Test func usableInSet() {
         let a = Synchronized(1)
         let b = Synchronized(2)
@@ -289,7 +289,7 @@ import Testing
 
 // MARK: - Dictionaries
 
-@Suite struct SynchronizedDictionaryTests {
+struct SynchronizedDictionaryTests {
     @Test func subscriptGetSet() {
         let dict: Synchronized<[String: Int]> = Synchronized([:])
         dict["a"] = 1

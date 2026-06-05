@@ -32,8 +32,9 @@ final class MessagingPushPendingPushFlushTests: UnitTest {
         pendingStoreMock.underlyingAppGroupSuiteName = "group.test.app.cio"
         pipelineMock = DataPipelineTrackingMock()
 
-        // Register pipeline mock before initialize() so getOptional(DataPipelineTracking.self) returns it
-        diGraphShared.register(pipelineMock, forType: DataPipelineTracking.self)
+        // Override pipeline mock so it is scoped to this test and cleaned up between tests,
+        // preventing a stale Task.detached from a prior test resolving the wrong mock instance.
+        diGraphShared.override(value: pipelineMock, forType: DataPipelineTracking.self)
         // Override store so registerPendingPushDeliveryStore() inside initialize() doesn't replace it
         diGraphShared.override(value: pendingStoreMock, forType: PendingPushDeliveryStore.self)
 

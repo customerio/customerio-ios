@@ -1,6 +1,6 @@
 import Foundation
 
-struct BuildEnvironment {
+enum BuildEnvironment {
     enum BuildInfo {
         static let buildTimestamp: TimeInterval = Date().timeIntervalSince1970
     }

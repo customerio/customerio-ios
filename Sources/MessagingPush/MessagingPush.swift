@@ -1,22 +1,29 @@
 import CioInternalCommon
 import Foundation
+
 #if canImport(UserNotifications)
 import UserNotifications
 #endif
 
-/**
- Swift code goes into this module that are common to *all* of the Messaging Push modules (APN, FCM, etc).
- So, performing an HTTP request to the API with a device token goes here.
- */
+/// Swift code goes into this module that are common to *all* of the Messaging Push modules (APN, FCM, etc).
+/// So, performing an HTTP request to the API with a device token goes here.
 public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, MessagingPushInstance {
     @_spi(Internal) public static var appDelegateIntegratedExplicitly: Bool = false
 
     @Atomic public private(set) static var shared = MessagingPush()
-    @Atomic public private(set) static var moduleConfig: MessagingPushConfigOptions = MessagingPushConfigBuilder().build()
+    @Atomic public private(set) static var moduleConfig: MessagingPushConfigOptions =
+        MessagingPushConfigBuilder().build()
 
     private static let moduleName = "MessagingPush"
 
     private var globalDataStore: GlobalDataStore
+
+    /// Holds a strong reference to the installed CioNotificationCenterDelegate. UNUserNotificationCenter only holds a weak reference.
+    /// AnyObject avoids a stored-property availability conflict (CioNotificationCenterDelegate is unavailable in app extensions).
+    private var notificationCenterDelegate: AnyObject?
+
+    /// Guards against swizzling the delegate setter more than once; swizzling twice would undo the first swap.
+    private static var delegateSetterSwizzled = false
 
     // singleton constructor
     private init() {
@@ -29,7 +36,10 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
     // In unit tests, any implementation of the interface works, while integration tests use the actual implementation.
 
     @discardableResult
-    static func setUpSharedInstanceForUnitTest(implementation: MessagingPushInstance, diGraphShared: DIGraphShared, config: MessagingPushConfigOptions) -> MessagingPushInstance {
+    static func setUpSharedInstanceForUnitTest(
+        implementation: MessagingPushInstance, diGraphShared: DIGraphShared,
+        config: MessagingPushConfigOptions
+    ) -> MessagingPushInstance {
         // initialize static properties before implementation creation, as they may be directly used by other classes
         moduleConfig = config
         shared.globalDataStore = diGraphShared.globalDataStore
@@ -38,15 +48,26 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
     }
 
     @discardableResult
-    static func setUpSharedInstanceForIntegrationTest(diGraphShared: DIGraphShared, config: MessagingPushConfigOptions) -> MessagingPushInstance {
+    static func setUpSharedInstanceForIntegrationTest(
+        diGraphShared: DIGraphShared, config: MessagingPushConfigOptions
+    ) -> MessagingPushInstance {
         moduleConfig = config
-        let implementation = MessagingPushImplementation(diGraph: diGraphShared, moduleConfig: config)
-        return setUpSharedInstanceForUnitTest(implementation: implementation, diGraphShared: diGraphShared, config: config)
+        let implementation = MessagingPushImplementation(
+            diGraph: diGraphShared, moduleConfig: config
+        )
+        return setUpSharedInstanceForUnitTest(
+            implementation: implementation, diGraphShared: diGraphShared, config: config
+        )
     }
 
     static func resetTestEnvironment() {
         moduleConfig = MessagingPushConfigBuilder().build()
         shared = MessagingPush()
+    }
+
+    @available(iOSApplicationExtension, unavailable)
+    static func resetNotificationCenterDelegate() {
+        shared.notificationCenterDelegate = nil
     }
     #endif
 
@@ -56,14 +77,19 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
      */
     @discardableResult
     @available(iOSApplicationExtension, unavailable)
-    public static func initialize(withConfig config: MessagingPushConfigOptions = MessagingPushConfigBuilder().build()) -> MessagingPushInstance {
+    public static func initialize(
+        withConfig config: MessagingPushConfigOptions = MessagingPushConfigBuilder().build()
+    ) -> MessagingPushInstance {
         shared.initializeModuleIfNotAlready {
             // set moduleConfig before creating implementation instance as dependencies inside instance may directly use moduleConfig from MessagingPush.
             Self.moduleConfig = config
             // Some part of the initialize is specific only to non-NSE targets.
             // Put those parts in this non-NSE initialize method.
-            if config.autoTrackPushEvents, !Self.appDelegateIntegratedExplicitly {
-                DIGraphShared.shared.automaticPushClickHandling.start()
+            if config.autoTrackPushEvents {
+                Self.installNotificationCenterDelegate(
+                    wrapping: UNUserNotificationCenter.current().delegate,
+                    centerProvider: { UNUserNotificationCenter.current() }
+                )
             }
             DIGraphShared.shared.registerPendingPushDeliveryStore()
             Self.schedulePendingPushDeliveryMetricsFlush()
@@ -80,7 +106,8 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
     @available(iOSApplicationExtension, introduced: 13.0)
     @available(visionOSApplicationExtension, introduced: 1.0)
     @discardableResult
-    public static func initializeForExtension(withConfig config: MessagingPushConfigOptions) -> MessagingPushInstance {
+    public static func initializeForExtension(withConfig config: MessagingPushConfigOptions)
+        -> MessagingPushInstance {
         shared.initializeModuleIfNotAlready {
             // set moduleConfig before creating implementation instance as dependencies inside instance may directly use moduleConfig from MessagingPush.
             Self.moduleConfig = config
@@ -95,6 +122,61 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
 
     private func getImplementation(config: MessagingPushConfigOptions) -> MessagingPushInstance {
         MessagingPushImplementation(diGraph: DIGraphShared.shared, moduleConfig: config)
+    }
+
+    @available(iOSApplicationExtension, unavailable)
+    var installedNotificationCenterDelegate: CioNotificationCenterDelegate? {
+        notificationCenterDelegate as? CioNotificationCenterDelegate
+    }
+
+    @available(iOSApplicationExtension, unavailable)
+    static func installNotificationCenterDelegate(
+        wrapping wrappedDelegate: UNUserNotificationCenterDelegate?,
+        centerProvider: UserNotificationCenterInstance
+    ) {
+        beginSwizzlingDelegateSetter()
+        let proxy = CioNotificationCenterDelegate(
+            messagingPush: shared,
+            config: { moduleConfig },
+            wrappedDelegate: wrappedDelegate
+        )
+        shared.notificationCenterDelegate = proxy
+        var center = centerProvider()
+        center.delegate = proxy
+    }
+
+    /// Swizzles `UNUserNotificationCenter.delegate` setter so that any future assignment routes through
+    /// `cio_swizzled_setDelegate`, which wraps non-CIO delegates rather than displacing the SDK.
+    /// The guard ensures the exchange happens exactly once; a second exchange would undo the first.
+    @available(iOSApplicationExtension, unavailable)
+    private static func beginSwizzlingDelegateSetter() {
+        guard !delegateSetterSwizzled else { return }
+        delegateSetterSwizzled = true
+
+        let originalSelector = #selector(setter: UNUserNotificationCenter.delegate)
+        let swizzledSelector = #selector(UNUserNotificationCenter.cio_swizzled_setDelegate(delegate:))
+
+        guard
+            let originalMethod = class_getInstanceMethod(UNUserNotificationCenter.self, originalSelector),
+            let swizzledMethod = class_getInstanceMethod(UNUserNotificationCenter.self, swizzledSelector)
+        else { return }
+
+        let didAdd = class_addMethod(
+            UNUserNotificationCenter.self,
+            originalSelector,
+            method_getImplementation(swizzledMethod),
+            method_getTypeEncoding(swizzledMethod)
+        )
+        if didAdd {
+            class_replaceMethod(
+                UNUserNotificationCenter.self,
+                swizzledSelector,
+                method_getImplementation(originalMethod),
+                method_getTypeEncoding(originalMethod)
+            )
+        } else {
+            method_exchangeImplementations(originalMethod, swizzledMethod)
+        }
     }
 
     /**
@@ -169,20 +251,34 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
     /// the correct app group. Skipped entirely when ``DataPipelineTracking`` is unavailable — metrics
     /// are preserved in the store for a future launch where DataPipeline is present.
     private static func schedulePendingPushDeliveryMetricsFlush() {
+        // Capture store and logger at call time so they are snapshotted to the correct registrations
+        // before the task runs. Resolving these inside the Task body risks picking up a mutated DI
+        // graph if initialize() is called concurrently with other DI graph setup.
+        let store = DIGraphShared.shared.pendingPushDeliveryStore
+        let logger = DIGraphShared.shared.logger
         Task.detached(priority: .utility) {
-            let store = DIGraphShared.shared.pendingPushDeliveryStore
-            let logger = DIGraphShared.shared.logger
             let pending = store.loadAll()
             guard !pending.isEmpty else {
-                logger.debug("Pending push delivery store: nothing to flush on MessagingPush startup")
+                logger.debug(
+                    "Pending push delivery store: nothing to flush on MessagingPush startup"
+                )
                 return
             }
 
+            // DataPipelineTracking is resolved inside the Task intentionally. On Flutter and
+            // React Native, MessagingPush.initialize() is called from the native AppDelegate
+            // before the cross-platform runtime has started, so DataPipeline may not be
+            // registered yet at call time. The scheduler delay gives the runtime time to
+            // complete its own initialization before we check for DataPipeline's presence.
             guard let pipeline = DIGraphShared.shared.getOptional(DataPipelineTracking.self) else {
-                logger.debug("Pending push delivery store: DataPipeline unavailable, skipping flush to preserve \(pending.count) metric(s)")
+                logger.debug(
+                    "Pending push delivery store: DataPipeline unavailable, skipping flush to preserve \(pending.count) metric(s)"
+                )
                 return
             }
-            logger.debug("Pending push delivery store: flushing \(pending.count) metric(s) on MessagingPush startup")
+            logger.debug(
+                "Pending push delivery store: flushing \(pending.count) metric(s) on MessagingPush startup"
+            )
             pending.forEach { metric in
                 pipeline.trackDeliveryEvent(
                     token: metric.deviceToken,
@@ -197,7 +293,9 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
                     "Pending push delivery store: failed to remove \(ids.count) flushed metric(s) (rows may re-send on next launch)"
                 )
             }
-            logger.debug("Pending push delivery store: finished flush attempt for \(pending.count) metric(s) on MessagingPush startup")
+            logger.debug(
+                "Pending push delivery store: finished flush attempt for \(pending.count) metric(s) on MessagingPush startup"
+            )
         }
     }
 }
@@ -238,7 +336,9 @@ extension DIGraphShared {
         if let overridden: RichPushDeliveryTracker = getOverriddenInstance() {
             deliveryTracker = overridden
         } else {
-            deliveryTracker = RichPushDeliveryTrackerImpl(httpClient: nseHttpClient, logger: logger)
+            deliveryTracker = RichPushDeliveryTrackerImpl(
+                httpClient: nseHttpClient, logger: logger
+            )
         }
 
         return (nseHttpClient, deliveryTracker)

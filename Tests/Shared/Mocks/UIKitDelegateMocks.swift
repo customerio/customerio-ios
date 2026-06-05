@@ -101,12 +101,21 @@ public extension UNUserNotificationCenter {
     }
 
     static func unswizzleNotificationCenter() {
+        NotificationCenterStub.shared = NotificationCenterStub() // reset before swapping back
         swizzleNotificationCenter() // Calling again will swap back
     }
 
     @objc class func currentMock() -> UNUserNotificationCenter {
-        let dummyObject = NSObject()
-        let notificationCenter = unsafeBitCast(dummyObject, to: UNUserNotificationCenter.self)
-        return notificationCenter
+        unsafeBitCast(NotificationCenterStub.shared, to: UNUserNotificationCenter.self)
     }
+}
+
+/// Backing object for the swizzled `UNUserNotificationCenter.current()`.
+/// Declares `delegate` as an ObjC dynamic property so reads and writes via
+/// the cast `UNUserNotificationCenter` reference resolve correctly at runtime.
+/// A single shared instance is used per swizzle cycle so that `.delegate` state
+/// is consistent across multiple calls to `current()` within one test.
+private class NotificationCenterStub: NSObject {
+    @objc dynamic var delegate: UNUserNotificationCenterDelegate?
+    static var shared = NotificationCenterStub()
 }

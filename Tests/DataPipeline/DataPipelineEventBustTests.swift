@@ -116,7 +116,7 @@ class DataPipelineEventBustTests: IntegrationTest {
         XCTAssertEqual(trackEvent.deviceToken, givenToken)
     }
 
-    func testGetOptionalDataPipelineTracking_returnsImplementationAndTrackSendsToAnalytics() async {
+    func testGetOptionalDataPipelineTracking_returnsImplementationAndTrackSendsToAnalytics() {
         // DataPipeline registers as DataPipelineTracking on init; Location (and others) resolve via getOptional.
         let pipeline = diGraphShared.getOptional(DataPipelineTracking.self)
         XCTAssertNotNil(pipeline, "DataPipelineTracking should be registered after DataPipeline init")

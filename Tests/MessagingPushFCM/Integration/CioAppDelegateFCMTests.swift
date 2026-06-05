@@ -55,7 +55,6 @@ class CioAppDelegateFCMTests: XCTestCase {
 
         appDelegateFCM = CioAppDelegate(
             messagingPush: mockMessagingPush,
-            userNotificationCenter: { self.mockNotificationCenter },
             appDelegate: mockAppDelegate,
             config: { self.createMockConfig() },
             logger: mockLogger
@@ -78,6 +77,7 @@ class CioAppDelegateFCMTests: XCTestCase {
         UNUserNotificationCenter.unswizzleNotificationCenter()
 
         MessagingPush.appDelegateIntegratedExplicitly = false
+        MessagingPush.resetNotificationCenterDelegate()
 
         super.tearDown()
     }
@@ -106,7 +106,6 @@ class CioAppDelegateFCMTests: XCTestCase {
     func testDidFinishLaunchings_whenAutoFetchDeviceTokenIsDisabled_thenFirebaseServiceDelegateIsNotSet() {
         appDelegateFCM = CioAppDelegate(
             messagingPush: mockMessagingPush,
-            userNotificationCenter: { self.mockNotificationCenter },
             appDelegate: mockAppDelegate,
             config: { self.createMockConfig(autoFetchDeviceToken: false) },
             logger: mockLogger
@@ -179,22 +178,5 @@ class CioAppDelegateFCMTests: XCTestCase {
         // Verify behavior
         XCTAssertTrue(mockAppDelegate.didRegisterForRemoteNotificationsCalled)
         XCTAssertEqual(mockAppDelegate.deviceTokenReceived, deviceToken)
-    }
-
-    func testUserNotificationCenterDidReceive_whenCalled_thenSuperIsCalled() {
-        // Setup
-        _ = appDelegateFCM.application(UIApplication.shared, didFinishLaunchingWithOptions: nil)
-
-        var completionHandlerCalled = false
-        let completionHandler = {
-            completionHandlerCalled = true
-        }
-
-        // Call the method
-        appDelegateFCM.userNotificationCenter(UNUserNotificationCenter.current(), didReceive: UNNotificationResponse.testInstance, withCompletionHandler: completionHandler)
-
-        // Verify behavior
-        XCTAssertTrue(mockNotificationCenterDelegate.didReceiveNotificationResponseCalled)
-        XCTAssertTrue(completionHandlerCalled)
     }
 }

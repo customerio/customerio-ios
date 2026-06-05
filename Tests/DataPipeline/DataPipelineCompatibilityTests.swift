@@ -500,7 +500,9 @@ private extension DataPipelineCompatibilityTests {
 
 private extension SavedEvent {
     var eventType: String? { self[keyPath: "type"] as? String }
-    subscript(mapKeyPath keyPath: KeyPath) -> [String: Any]? { value(keyPath: keyPath, reference: nil) as? [String: Any] }
+    subscript(mapKeyPath keyPath: KeyPath) -> [String: Any]? {
+        value(keyPath: keyPath, reference: nil) as? [String: Any]
+    }
 
     /// checks recursively if a given key exists anywhere in the event
     func containsKey(_ key: String) -> Bool {

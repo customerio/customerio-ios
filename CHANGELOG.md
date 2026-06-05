@@ -1,3 +1,9 @@
+## [4.5.0](https://github.com/customerio/customerio-ios/compare/4.4.3...4.5.0) (2026-06-05)
+
+### Features
+
+* dedup identify calls within a session when no traits supplied ([#1080](https://github.com/customerio/customerio-ios/issues/1080)) ([174e133](https://github.com/customerio/customerio-ios/commit/174e13316cc47df627b8ef71960f1d33433df80f))
+
 ## [4.4.3](https://github.com/customerio/customerio-ios/compare/4.4.2...4.4.3) (2026-05-08)
 
 ### Bug Fixes

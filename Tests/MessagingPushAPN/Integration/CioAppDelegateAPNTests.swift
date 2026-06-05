@@ -45,7 +45,6 @@ class CioAppDelegateAPNTests: XCTestCase {
         // Create CioAppDelegate with mocks
         appDelegateAPN = CioAppDelegate(
             messagingPush: mockMessagingPush,
-            userNotificationCenter: { self.mockNotificationCenter },
             appDelegate: mockAppDelegate,
             config: { self.createMockConfig() },
             logger: mockLogger
@@ -63,6 +62,7 @@ class CioAppDelegateAPNTests: XCTestCase {
         UNUserNotificationCenter.unswizzleNotificationCenter()
 
         MessagingPush.appDelegateIntegratedExplicitly = false
+        MessagingPush.resetNotificationCenterDelegate()
 
         super.tearDown()
     }
@@ -99,7 +99,6 @@ class CioAppDelegateAPNTests: XCTestCase {
         XCTAssertTrue(mockLogger.debugReceivedInvocations.contains {
             $0.message.contains("CIO: Registering for remote notifications")
         })
-        XCTAssertTrue(mockNotificationCenter.delegate === appDelegateAPN)
     }
 
     func testDidFailToRegisterForRemoteNotifications_whenCalled_thenSuperIsCalled() {
@@ -114,24 +113,5 @@ class CioAppDelegateAPNTests: XCTestCase {
         XCTAssertTrue(mockAppDelegate.didFailToRegisterForRemoteNotificationsCalled)
         XCTAssertEqual((mockAppDelegate.errorReceived as NSError?)?.domain, "test")
         XCTAssertTrue(mockMessagingPush?.deleteDeviceTokenCalled == true)
-    }
-
-    // MARK: - Tests for UNUserNotificationCenterDelegate methods
-
-    func testUserNotificationCenterDidReceive_whenCalled_thenSuperIsCalled() {
-        // Setup
-        _ = appDelegateAPN.application(UIApplication.shared, didFinishLaunchingWithOptions: nil)
-
-        var completionHandlerCalled = false
-        let completionHandler = {
-            completionHandlerCalled = true
-        }
-
-        // Call the method
-        appDelegateAPN.userNotificationCenter(UNUserNotificationCenter.current(), didReceive: UNNotificationResponse.testInstance, withCompletionHandler: completionHandler)
-
-        // Verify behavior
-        XCTAssertTrue(mockNotificationCenterDelegate.didReceiveNotificationResponseCalled)
-        XCTAssertTrue(completionHandlerCalled)
     }
 }
