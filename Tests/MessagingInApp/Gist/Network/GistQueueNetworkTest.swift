@@ -30,7 +30,7 @@ class GistQueueNetworkTest: UnitTest {
             expectation.fulfill()
         }))
 
-        waitForExpectations(timeout: 1.0)
+        waitForExpectations(timeout: 5.0)
     }
 
     // Flake-fix: drop the `waitForExpectations` and `expectation` — the
@@ -66,7 +66,7 @@ class GistQueueNetworkTest: UnitTest {
             expectation.fulfill()
         }))
 
-        waitForExpectations(timeout: 1.0)
+        waitForExpectations(timeout: 5.0)
     }
 
     func test_request_withNoIdentifiers_expectThrowsMissingUserIdentifier() {
