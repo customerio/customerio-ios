@@ -4,10 +4,10 @@ import Foundation
 /// Sends a single geofence transition event over direct HTTP to `/track`.
 ///
 /// This is the primary delivery path in the three-layer design. Callers persist
-/// the metric to `PendingGeofenceMetricStore` *before* calling `deliver`, then
+/// the metric to `PendingGeofenceMetricStore` *before* calling `trackMetric`, then
 /// remove it from the queue only after this returns success.
 protocol GeofenceDeliveryTracker: AutoMockable {
-    func deliver(
+    func trackMetric(
         metric: PendingGeofenceMetric,
         userId: String,
         onComplete: @escaping (Result<Void, BackgroundDeliveryHttpError>) -> Void
@@ -23,7 +23,7 @@ final class GeofenceDeliveryTrackerImpl: GeofenceDeliveryTracker {
         self.logger = logger
     }
 
-    func deliver(
+    func trackMetric(
         metric: PendingGeofenceMetric,
         userId: String,
         onComplete: @escaping (Result<Void, BackgroundDeliveryHttpError>) -> Void

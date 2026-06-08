@@ -143,38 +143,38 @@ class GeofenceDeliveryTrackerMock: GeofenceDeliveryTracker, Mock {
     init() {}
 
     public func resetMock() {
-        deliverCallsCount = 0
-        deliverReceivedArguments = nil
-        deliverReceivedInvocations = []
+        trackMetricCallsCount = 0
+        trackMetricReceivedArguments = nil
+        trackMetricReceivedInvocations = []
 
         mockCalled = false // do last as resetting properties above can make this true
     }
 
-    // MARK: - deliver
+    // MARK: - trackMetric
 
     /// Number of times the function was called.
-    @Atomic private(set) var deliverCallsCount = 0
+    @Atomic private(set) var trackMetricCallsCount = 0
     /// `true` if the function was ever called.
-    var deliverCalled: Bool {
-        deliverCallsCount > 0
+    var trackMetricCalled: Bool {
+        trackMetricCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    @Atomic private(set) var deliverReceivedArguments: (metric: PendingGeofenceMetric, userId: String, onComplete: (Result<Void, BackgroundDeliveryHttpError>) -> Void)?
+    @Atomic private(set) var trackMetricReceivedArguments: (metric: PendingGeofenceMetric, userId: String, onComplete: (Result<Void, BackgroundDeliveryHttpError>) -> Void)?
     /// Arguments from *all* of the times that the function was called.
-    @Atomic private(set) var deliverReceivedInvocations: [(metric: PendingGeofenceMetric, userId: String, onComplete: (Result<Void, BackgroundDeliveryHttpError>) -> Void)] = []
+    @Atomic private(set) var trackMetricReceivedInvocations: [(metric: PendingGeofenceMetric, userId: String, onComplete: (Result<Void, BackgroundDeliveryHttpError>) -> Void)] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
-    var deliverClosure: ((PendingGeofenceMetric, String, @escaping (Result<Void, BackgroundDeliveryHttpError>) -> Void) -> Void)?
+    var trackMetricClosure: ((PendingGeofenceMetric, String, @escaping (Result<Void, BackgroundDeliveryHttpError>) -> Void) -> Void)?
 
-    /// Mocked function for `deliver(metric: PendingGeofenceMetric, userId: String, onComplete: @escaping (Result<Void, BackgroundDeliveryHttpError>) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
-    func deliver(metric: PendingGeofenceMetric, userId: String, onComplete: @escaping (Result<Void, BackgroundDeliveryHttpError>) -> Void) {
+    /// Mocked function for `trackMetric(metric: PendingGeofenceMetric, userId: String, onComplete: @escaping (Result<Void, BackgroundDeliveryHttpError>) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
+    func trackMetric(metric: PendingGeofenceMetric, userId: String, onComplete: @escaping (Result<Void, BackgroundDeliveryHttpError>) -> Void) {
         mockCalled = true
-        deliverCallsCount += 1
-        deliverReceivedArguments = (metric: metric, userId: userId, onComplete: onComplete)
-        deliverReceivedInvocations.append((metric: metric, userId: userId, onComplete: onComplete))
-        deliverClosure?(metric, userId, onComplete)
+        trackMetricCallsCount += 1
+        trackMetricReceivedArguments = (metric: metric, userId: userId, onComplete: onComplete)
+        trackMetricReceivedInvocations.append((metric: metric, userId: userId, onComplete: onComplete))
+        trackMetricClosure?(metric, userId, onComplete)
     }
 }
 
