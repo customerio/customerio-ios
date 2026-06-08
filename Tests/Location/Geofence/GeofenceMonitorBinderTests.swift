@@ -7,7 +7,7 @@ import Testing
 @Suite("GeofenceMonitorBinder")
 @MainActor
 struct GeofenceMonitorBinderTests {
-    private func makeTracker(eventBusHandler: EventBusHandler) -> GeofenceEventTracker {
+    private func makeTracker(deliveryTracker: GeofenceDeliveryTracker) -> GeofenceEventTracker {
         let contextStore = BackgroundDeliveryContextStore(
             fileManager: .default,
             directoryURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
@@ -20,9 +20,9 @@ struct GeofenceMonitorBinderTests {
         return GeofenceEventTracker(
             storage: storage,
             pendingStore: PendingGeofenceMetricStore(),
-            deliveryTracker: nil,
+            deliveryTracker: deliveryTracker,
             contextStore: contextStore,
-            eventBusHandler: eventBusHandler,
+            eventBusHandler: EventBusHandlerMock(),
             dateUtil: DateUtilStub(),
             logger: LoggerMock()
         )
@@ -44,12 +44,17 @@ struct GeofenceMonitorBinderTests {
         }
     }
 
+    private func makeDeliveryMock() -> GeofenceDeliveryTrackerMock {
+        let delivery = GeofenceDeliveryTrackerMock()
+        delivery.trackMetricClosure = { _, _, onComplete in onComplete(.success(())) }
+        return delivery
+    }
+
     @Test
     func bind_givenMovementTriggerExit_expectCoordinatorHandleMovementCalledWithLocation() async {
         let monitor = MockGeofenceRegionMonitor()
         let coordinator = makeCoordinatorMock()
-        let eventBus = EventBusHandlerMock()
-        let tracker = makeTracker(eventBusHandler: eventBus)
+        let tracker = makeTracker(deliveryTracker: makeDeliveryMock())
 
         GeofenceMonitorBinder.bind(monitor: monitor, tracker: tracker, coordinator: coordinator)
         monitor.simulateTransition(
@@ -70,8 +75,8 @@ struct GeofenceMonitorBinderTests {
     func bind_givenMovementTriggerEnter_expectNeitherDispatchPathFires() async {
         let monitor = MockGeofenceRegionMonitor()
         let coordinator = makeCoordinatorMock()
-        let eventBus = EventBusHandlerMock()
-        let tracker = makeTracker(eventBusHandler: eventBus)
+        let delivery = makeDeliveryMock()
+        let tracker = makeTracker(deliveryTracker: delivery)
 
         GeofenceMonitorBinder.bind(monitor: monitor, tracker: tracker, coordinator: coordinator)
         monitor.simulateTransition(
@@ -84,7 +89,7 @@ struct GeofenceMonitorBinderTests {
         }
 
         #expect(coordinator.handleMovementCallsCount == 0)
-        #expect(eventBus.postEventCallsCount == 0)
+        #expect(delivery.trackMetricCallsCount == 0)
     }
 
     /// Skip rather than guess at a location — `handleMovement` needs a real position to
@@ -93,8 +98,7 @@ struct GeofenceMonitorBinderTests {
     func bind_givenMovementTriggerExitWithNilLocation_expectCoordinatorNotCalled() async {
         let monitor = MockGeofenceRegionMonitor()
         let coordinator = makeCoordinatorMock()
-        let eventBus = EventBusHandlerMock()
-        let tracker = makeTracker(eventBusHandler: eventBus)
+        let tracker = makeTracker(deliveryTracker: makeDeliveryMock())
 
         GeofenceMonitorBinder.bind(monitor: monitor, tracker: tracker, coordinator: coordinator)
         monitor.simulateTransition(
@@ -113,8 +117,8 @@ struct GeofenceMonitorBinderTests {
     func bind_givenBusinessGeofenceTransition_expectTrackerDispatchedAndCoordinatorIdle() async {
         let monitor = MockGeofenceRegionMonitor()
         let coordinator = makeCoordinatorMock()
-        let eventBus = EventBusHandlerMock()
-        let tracker = makeTracker(eventBusHandler: eventBus)
+        let delivery = makeDeliveryMock()
+        let tracker = makeTracker(deliveryTracker: delivery)
 
         GeofenceMonitorBinder.bind(monitor: monitor, tracker: tracker, coordinator: coordinator)
         monitor.simulateTransition(
@@ -122,11 +126,10 @@ struct GeofenceMonitorBinderTests {
             transition: .enter,
             location: LocationData(latitude: 37.0, longitude: -122.0)
         )
-        // With no deliveryTracker and a set userId, trackTransition posts a fallback event
-        // on the EventBus — observable signal that the binder routed to the tracker.
-        await awaitDispatch(eventBus.postEventCallsCount > 0)
+        // Tracker dispatch is observable via the delivery mock's call count.
+        await awaitDispatch(delivery.trackMetricCallsCount > 0)
 
-        #expect(eventBus.postEventCallsCount == 1)
+        #expect(delivery.trackMetricCallsCount == 1)
         #expect(coordinator.handleMovementCallsCount == 0)
     }
 }

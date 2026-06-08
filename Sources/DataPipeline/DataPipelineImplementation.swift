@@ -121,7 +121,7 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking, Ba
         }
 
         eventBusHandler.addObserver(TrackGeofenceMetricEvent.self) { metric in
-            self.track(name: metric.transition.trackEventName, properties: ["geofence_id": metric.geofenceId])
+            self.processGeofenceMetricEvent(metric)
         }
 
         eventBusHandler.addObserver(RegisterDeviceTokenEvent.self) { event in
