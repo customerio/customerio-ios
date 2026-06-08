@@ -24,31 +24,27 @@ public struct StorageManager: Sendable {
     // MARK: - sdk_meta (utility key/value table)
 
     public func getMetaValue(_ key: String) throws -> String? {
-        try getString(key, from: "sdk_meta")
+        try db.fetchOne(SdkMetaRecord.self, id: key)?.value
     }
 
     public func setMetaValue(_ value: String?, for key: String) throws {
-        try setString(value, for: key, in: "sdk_meta")
-    }
-
-    // MARK: - Generic helpers
-
-    func getString(_ key: String, from table: String) throws -> String? {
-        let rows = try db.query("SELECT value FROM \(table) WHERE key = ?", key)
-        return rows.first?.get("value", as: String.self)
-    }
-
-    func setString(_ value: String?, for key: String, in table: String) throws {
         if let value {
-            try db.execute(
-                "INSERT INTO \(table)(key, value) VALUES(?,?)"
-                    + " ON CONFLICT(key) DO UPDATE SET value = excluded.value",
-                key, value
-            )
+            _ = try db.save(SdkMetaRecord(key: key, value: value))
         } else {
-            try db.execute("DELETE FROM \(table) WHERE key = ?", key)
+            try db.execute("DELETE FROM sdk_meta WHERE key = ?", key)
         }
     }
+}
+
+// MARK: - Entity Records
+
+private struct SdkMetaRecord: Entity {
+    static let tableName = TableName("sdk_meta")
+    static let primaryKeyName = "key"
+    static let primaryKey: WritableKeyPath<SdkMetaRecord, String> & Sendable = \.key
+
+    var key: String
+    var value: String
 }
 
 // MARK: - Schema

@@ -5,16 +5,8 @@ extension StorageManager {
     // MARK: - Aggregation Config
 
     func getAggregationConfig() throws -> (payload: String, fetchedAt: String)? {
-        let rows = try db.query(
-            Select(col("payload"), col("fetched_at"))
-                .from("aggregation_rules")
-                .where(col("id") == 1)
-        )
-        guard let row = rows.first,
-              let payload = row.get("payload", as: String.self),
-              let fetchedAt = row.get("fetched_at", as: String.self)
-        else { return nil }
-        return (payload: payload, fetchedAt: fetchedAt)
+        guard let record = try db.fetchOne(AggregationRulesRecord.self, id: 1) else { return nil }
+        return (payload: record.payload, fetchedAt: record.fetchedAt)
     }
 
     func deleteAggregationConfig() throws {
@@ -22,33 +14,17 @@ extension StorageManager {
     }
 
     func setAggregationConfig(payload: String, fetchedAt: String) throws {
-        try db.execute(
-            "INSERT INTO aggregation_rules(id, payload, fetched_at) VALUES(1,?,?)"
-                + " ON CONFLICT(id) DO UPDATE SET"
-                + " payload = excluded.payload,"
-                + " fetched_at = excluded.fetched_at",
-            payload, fetchedAt
-        )
+        _ = try db.save(AggregationRulesRecord(payload: payload, fetchedAt: fetchedAt))
     }
 
     // MARK: - Aggregation State
 
     func getAggregationState(ruleId: String) throws -> String? {
-        let rows = try db.query(
-            Select(col("state_json"))
-                .from("aggregation_state")
-                .where(col("rule_id") == ruleId)
-        )
-        return rows.first?.get("state_json", as: String.self)
+        try db.fetchOne(AggregationStateRecord.self, id: ruleId)?.stateJson
     }
 
     func getAggregationLastFlushed(ruleId: String) throws -> Int64? {
-        let rows = try db.query(
-            Select(col("last_flushed_at"))
-                .from("aggregation_state")
-                .where(col("rule_id") == ruleId)
-        )
-        return rows.first?.get("last_flushed_at", as: Int64.self)
+        try db.fetchOne(AggregationStateRecord.self, id: ruleId)?.lastFlushedAt
     }
 
     func setAggregationState(
@@ -57,30 +33,55 @@ extension StorageManager {
         lastFlushedAt: Int64,
         scope: String
     ) throws {
-        try db.execute(
-            """
-            INSERT INTO aggregation_state(rule_id, state_json, last_flushed_at, scope)
-             VALUES(?,?,?,?)
-             ON CONFLICT(rule_id) DO UPDATE SET
-              state_json      = excluded.state_json,
-              last_flushed_at = excluded.last_flushed_at,
-              scope           = excluded.scope
-            """,
-            ruleId, stateJSON, lastFlushedAt, scope
-        )
+        _ = try db.save(AggregationStateRecord(
+            ruleId: ruleId,
+            stateJson: stateJSON,
+            lastFlushedAt: lastFlushedAt,
+            scope: scope
+        ))
     }
 
     func deleteAggregationState(ruleId: String) throws {
-        try db.execute(
-            "DELETE FROM aggregation_state WHERE rule_id = ?",
-            ruleId
-        )
+        try db.execute("DELETE FROM aggregation_state WHERE rule_id = ?", ruleId)
     }
 
     /// Clears only profile-scoped accumulator rows. Called on identity reset.
     func deleteProfileScopedAggregationState() throws {
-        try db.execute(
-            "DELETE FROM aggregation_state WHERE scope = 'profile' OR scope IS NULL"
-        )
+        try db.execute("DELETE FROM aggregation_state WHERE scope = 'profile' OR scope IS NULL")
+    }
+}
+
+// MARK: - Entity Records
+
+private struct AggregationRulesRecord: Entity {
+    static let tableName = TableName("aggregation_rules")
+    static let primaryKey: WritableKeyPath<AggregationRulesRecord, Int> & Sendable = \.id
+
+    var id: Int = 1
+    var payload: String
+    var fetchedAt: String
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case payload
+        case fetchedAt = "fetched_at"
+    }
+}
+
+private struct AggregationStateRecord: Entity {
+    static let tableName = TableName("aggregation_state")
+    static let primaryKeyName = "rule_id"
+    static let primaryKey: WritableKeyPath<AggregationStateRecord, String> & Sendable = \.ruleId
+
+    var ruleId: String
+    var stateJson: String
+    var lastFlushedAt: Int64
+    var scope: String
+
+    enum CodingKeys: String, CodingKey {
+        case ruleId = "rule_id"
+        case stateJson = "state_json"
+        case lastFlushedAt = "last_flushed_at"
+        case scope
     }
 }
