@@ -172,6 +172,9 @@ struct BackgroundDeliveryContextStoreTests {
 
 private final class StubCdpApiKeyProvider: BackgroundDeliveryCdpApiKeyProvider {
     let value: String?
-    init(value: String?) { self.value = value }
+    init(value: String?) {
+        self.value = value
+    }
+
     var cdpApiKey: String? { value }
 }
