@@ -13,7 +13,7 @@ Pod::Spec.new do |spec|
   spec.cocoapods_version = '>= 1.11.0'
 
   spec.platform = :ios
-  spec.ios.deployment_target = "13.0"
+  spec.ios.deployment_target = "15.0"
 
   path_to_source_for_module = "Sources/Location"
   spec.source_files = "#{path_to_source_for_module}/**/*{.swift}"
