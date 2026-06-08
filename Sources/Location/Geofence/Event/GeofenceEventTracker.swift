@@ -5,11 +5,15 @@ import Foundation
 // sourcery: InjectCustomShared
 /// Sends geofence transition events through a three-layer delivery flow:
 /// 1. Cooldown-based deduplication (keyed by "geofenceId:transitionType")
-/// 2. Persist to `PendingGeofenceMetricStore` before any send attempt
+/// 2. Persist to `PendingGeofenceMetricStore` before any send attempt, stamping
+///    the currently-identified userId so A's transitions always attribute to A
 /// 3. Dispatch in `deliver`:
-///    - No HttpClient → EventBus, drain row
-///    - No userId yet → retain row for the next flush
-///    - HTTP attempt → success drains; failure retains for retry
+///    - Stamped userId → direct-HTTP path with that userId; success drains the
+///      row, failure retains it for the next flush
+///    - No stamped userId → post to EventBus and drain; DataPipeline records
+///      the transition under its current identity (anonymous tracking when no
+///      one is identified). The captured timestamp + coordinates flow through
+///      the event so both paths attribute the transition to when it happened
 ///
 /// `flushPending()` replays queued rows on module init and on every `ProfileIdentifiedEvent`.
 /// Concurrent deliveries for the same row are deduplicated in-process via the active-delivery
@@ -20,7 +24,7 @@ import Foundation
 final class GeofenceEventTracker: @unchecked Sendable {
     private let storage: GeofenceStorage
     private let pendingStore: PendingGeofenceMetricStore
-    private let deliveryTracker: GeofenceDeliveryTracker?
+    private let deliveryTracker: GeofenceDeliveryTracker
     private let contextStore: BackgroundDeliveryContextStore
     private let eventBusHandler: EventBusHandler
     private let dateUtil: DateUtil
@@ -31,7 +35,7 @@ final class GeofenceEventTracker: @unchecked Sendable {
     init(
         storage: GeofenceStorage,
         pendingStore: PendingGeofenceMetricStore,
-        deliveryTracker: GeofenceDeliveryTracker?,
+        deliveryTracker: GeofenceDeliveryTracker,
         contextStore: BackgroundDeliveryContextStore,
         eventBusHandler: EventBusHandler,
         dateUtil: DateUtil,
@@ -49,8 +53,7 @@ final class GeofenceEventTracker: @unchecked Sendable {
     }
 
     /// Tracks a geofence transition event, suppressing duplicates within the cooldown window.
-    /// Persists the metric, then dispatches to one of the three delivery paths
-    /// (EventBus drain / queue-retain / direct HTTP) per the rules in `deliver`.
+    /// Persists the metric, then hands it to `deliver`.
     func trackTransition(
         geofenceId: String,
         transition: GeofenceTransition,
@@ -67,12 +70,18 @@ final class GeofenceEventTracker: @unchecked Sendable {
             return
         }
 
+        // Stamp the current userId so a row captured under user A always delivers
+        // as A — even if B signs in before the flush replays it. Nil when no user
+        // is identified at capture time; `deliver` routes nil-stamped rows to EventBus.
+        let liveUserId = contextStore.currentUserId
+        let stampedUserId: String? = (liveUserId?.isEmpty == false) ? liveUserId : nil
         let metric = PendingGeofenceMetric(
             geofenceId: geofenceId,
             transition: transition,
             latitude: location?.latitude,
             longitude: location?.longitude,
-            timestamp: now
+            timestamp: now,
+            userId: stampedUserId
         )
         _ = await pendingStore.append(metric)
 
@@ -104,25 +113,17 @@ final class GeofenceEventTracker: @unchecked Sendable {
         guard activeDeliveryKeys.mutating({ $0.insert(metric.key).inserted }) else { return }
         defer { activeDeliveryKeys.mutating { _ = $0.remove(metric.key) } }
 
-        guard let deliveryTracker else {
-            // No HTTP path will ever be available in this process (MessagingPush not
-            // initialized). Deliver via EventBus and drain; nothing would recover this
-            // row otherwise.
+        // Rows without a stamped userId (anonymous capture or legacy pre-stamping)
+        // route through EventBus instead — DataPipeline tracks anonymously under
+        // whatever identity is current at consume time.
+        guard let stampedUserId = metric.userId, !stampedUserId.isEmpty else {
             postEventBus(metric: metric)
             _ = await pendingStore.remove(key: metric.key)
             return
         }
 
-        guard let userId = contextStore.currentUserId, !userId.isEmpty else {
-            // No userId yet (signed out / not yet identified). Leave the row so a later
-            // ProfileIdentifiedEvent → flushPending can deliver it via direct HTTP with
-            // the right userId. No EventBus — that would attribute the event to the
-            // anonymous profile and duplicate when the flush succeeds.
-            return
-        }
-
         let success = await withCheckedContinuation { (continuation: CheckedContinuation<Bool, Never>) in
-            deliveryTracker.trackMetric(metric: metric, userId: userId) { result in
+            deliveryTracker.trackMetric(metric: metric, userId: stampedUserId) { result in
                 switch result {
                 case .success:
                     continuation.resume(returning: true)
@@ -136,14 +137,20 @@ final class GeofenceEventTracker: @unchecked Sendable {
             _ = await pendingStore.remove(key: metric.key)
             logger.geofenceEventTracked(geofenceId: metric.geofenceId, transition: metric.transition)
         }
-        // HTTP failure: row stays for next flush. No EventBus — same duplicate
-        // risk if a later flush succeeds.
+        // HTTP failure: row stays for next flush.
     }
 
+    /// Anonymous-attribution fallback used when a row carries no stamped userId.
+    /// The captured `timestamp` and coordinates flow through the event so DataPipeline
+    /// can record the transition under the moment it actually happened, not the
+    /// moment the flush ran.
     private func postEventBus(metric: PendingGeofenceMetric) {
         eventBusHandler.postEvent(TrackGeofenceMetricEvent(
             geofenceId: metric.geofenceId,
-            transition: metric.transition
+            transition: metric.transition,
+            timestamp: metric.timestamp,
+            latitude: metric.latitude,
+            longitude: metric.longitude
         ))
         logger.geofenceEventTracked(geofenceId: metric.geofenceId, transition: metric.transition)
     }

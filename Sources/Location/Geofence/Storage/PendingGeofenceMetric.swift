@@ -1,13 +1,16 @@
 import CioInternalCommon
 import Foundation
 
-/// A geofence transition queued for direct-HTTP delivery.
+/// A geofence transition queued for delivery (direct-HTTP when stamped with a
+/// userId, EventBus → DataPipeline anonymous when not).
 struct PendingGeofenceMetric: Codable, Equatable, Sendable {
     let geofenceId: String
     let transition: GeofenceTransition
     let latitude: Double?
     let longitude: Double?
     let timestamp: Date
+    /// The userId identified at capture time, or `nil` if none was identified.
+    let userId: String?
 
     /// Composite key over `(geofenceId, transition, timestamp_ms)` used for
     /// storage-layer dedup. Matches Android's `PendingGeofenceDelivery.key`.
@@ -21,13 +24,15 @@ struct PendingGeofenceMetric: Codable, Equatable, Sendable {
         transition: GeofenceTransition,
         latitude: Double?,
         longitude: Double?,
-        timestamp: Date
+        timestamp: Date,
+        userId: String? = nil
     ) {
         self.geofenceId = geofenceId
         self.transition = transition
         self.latitude = latitude
         self.longitude = longitude
         self.timestamp = timestamp
+        self.userId = userId
     }
 
     enum CodingKeys: String, CodingKey {
@@ -36,5 +41,6 @@ struct PendingGeofenceMetric: Codable, Equatable, Sendable {
         case latitude
         case longitude
         case timestamp
+        case userId = "user_id"
     }
 }

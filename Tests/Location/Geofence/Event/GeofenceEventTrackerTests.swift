@@ -32,9 +32,9 @@ struct GeofenceEventTrackerTests {
     private func makeTracker(
         storage: GeofenceStorage,
         pendingStore: PendingGeofenceMetricStore,
-        deliveryTracker: GeofenceDeliveryTracker?,
+        deliveryTracker: GeofenceDeliveryTracker,
         contextStore: BackgroundDeliveryContextStore,
-        eventBus: EventBusHandlerMock,
+        eventBus: EventBusHandlerMock = EventBusHandlerMock(),
         dateUtil: DateUtil = DateUtilStub()
     ) -> GeofenceEventTracker {
         GeofenceEventTracker(
@@ -62,13 +62,11 @@ struct GeofenceEventTrackerTests {
         let pending = makePendingStore(directory: dir)
         let delivery = GeofenceDeliveryTrackerMock()
         delivery.trackMetricClosure = { _, _, onComplete in onComplete(.success(())) }
-        let bus = EventBusHandlerMock()
         let tracker = makeTracker(
             storage: makeStorage(directory: dir),
             pendingStore: pending,
             deliveryTracker: delivery,
-            contextStore: makeContextStore(userId: "user_42"),
-            eventBus: bus
+            contextStore: makeContextStore(userId: "user_42")
         )
 
         await tracker.trackTransition(geofenceId: "geo_1", transition: .enter)
@@ -76,7 +74,6 @@ struct GeofenceEventTrackerTests {
         #expect(delivery.trackMetricCallsCount == 1)
         #expect(delivery.trackMetricReceivedArguments?.userId == "user_42")
         #expect(await pending.loadAll().isEmpty)
-        #expect(postedGeofenceEvents(from: bus).isEmpty)
     }
 
     @Test
@@ -88,61 +85,56 @@ struct GeofenceEventTrackerTests {
         delivery.trackMetricClosure = { _, _, onComplete in
             onComplete(.failure(.http(statusCode: 503)))
         }
-        let bus = EventBusHandlerMock()
         let tracker = makeTracker(
             storage: makeStorage(directory: dir),
             pendingStore: pending,
             deliveryTracker: delivery,
-            contextStore: makeContextStore(userId: "user_42"),
-            eventBus: bus
+            contextStore: makeContextStore(userId: "user_42")
         )
 
         await tracker.trackTransition(geofenceId: "geo_1", transition: .enter)
 
         #expect(await pending.loadAll().count == 1)
-        #expect(postedGeofenceEvents(from: bus).isEmpty)
     }
 
     @Test
-    func trackTransition_givenNoUserId_expectQueueRetainedNoEventBus() async {
+    func trackTransition_givenNoUserId_expectEventBusAndQueueDrained() async {
         let dir = makeTempDirectory()
         defer { try? FileManager.default.removeItem(at: dir) }
         let pending = makePendingStore(directory: dir)
         let delivery = GeofenceDeliveryTrackerMock()
         let bus = EventBusHandlerMock()
+        let dateUtil = DateUtilStub()
+        let captureTime = Date(timeIntervalSince1970: 1700000000)
+        dateUtil.givenNow = captureTime
         let tracker = makeTracker(
             storage: makeStorage(directory: dir),
             pendingStore: pending,
             deliveryTracker: delivery,
             contextStore: makeContextStore(),
-            eventBus: bus
+            eventBus: bus,
+            dateUtil: dateUtil
         )
 
-        await tracker.trackTransition(geofenceId: "geo_1", transition: .enter)
+        await tracker.trackTransition(
+            geofenceId: "geo_1",
+            transition: .enter,
+            location: LocationData(latitude: 12.34, longitude: 56.78)
+        )
 
+        // Anonymous capture: stamped userId is nil. HTTP path can't attribute,
+        // so the row is handed off to EventBus → DataPipeline (anonymous track)
+        // and drained from disk.
         #expect(delivery.trackMetricCallsCount == 0)
-        #expect(await pending.loadAll().count == 1)
-        #expect(postedGeofenceEvents(from: bus).isEmpty)
-    }
-
-    @Test
-    func trackTransition_givenNoDeliveryTracker_expectEventBusAndQueueDrained() async {
-        let dir = makeTempDirectory()
-        defer { try? FileManager.default.removeItem(at: dir) }
-        let pending = makePendingStore(directory: dir)
-        let bus = EventBusHandlerMock()
-        let tracker = makeTracker(
-            storage: makeStorage(directory: dir),
-            pendingStore: pending,
-            deliveryTracker: nil,
-            contextStore: makeContextStore(userId: "user_42"),
-            eventBus: bus
-        )
-
-        await tracker.trackTransition(geofenceId: "geo_1", transition: .enter)
-
         #expect(await pending.loadAll().isEmpty)
-        #expect(postedGeofenceEvents(from: bus).count == 1)
+
+        let posted = postedGeofenceEvents(from: bus)
+        #expect(posted.count == 1)
+        #expect(posted.first?.geofenceId == "geo_1")
+        #expect(posted.first?.transition == .enter)
+        #expect(posted.first?.timestamp == captureTime)
+        #expect(posted.first?.latitude == 12.34)
+        #expect(posted.first?.longitude == 56.78)
     }
 
     // MARK: - Cooldown
@@ -157,13 +149,11 @@ struct GeofenceEventTrackerTests {
         let dateUtil = DateUtilStub()
         let baseTime = Date(timeIntervalSince1970: 1700000000)
         dateUtil.givenNow = baseTime
-        let bus = EventBusHandlerMock()
         let tracker = makeTracker(
             storage: makeStorage(directory: dir),
             pendingStore: pending,
             deliveryTracker: delivery,
             contextStore: makeContextStore(userId: "user_42"),
-            eventBus: bus,
             dateUtil: dateUtil
         )
 
@@ -187,13 +177,11 @@ struct GeofenceEventTrackerTests {
         let dateUtil = DateUtilStub()
         let baseTime = Date(timeIntervalSince1970: 1700000000)
         dateUtil.givenNow = baseTime
-        let bus = EventBusHandlerMock()
         let tracker = makeTracker(
             storage: makeStorage(directory: dir),
             pendingStore: pending,
             deliveryTracker: delivery,
             contextStore: makeContextStore(userId: "user_42"),
-            eventBus: bus,
             dateUtil: dateUtil
         )
 
@@ -211,13 +199,11 @@ struct GeofenceEventTrackerTests {
         let pending = makePendingStore(directory: dir)
         let delivery = GeofenceDeliveryTrackerMock()
         delivery.trackMetricClosure = { _, _, onComplete in onComplete(.success(())) }
-        let bus = EventBusHandlerMock()
         let tracker = makeTracker(
             storage: makeStorage(directory: dir),
             pendingStore: pending,
             deliveryTracker: delivery,
-            contextStore: makeContextStore(userId: "user_42"),
-            eventBus: bus
+            contextStore: makeContextStore(userId: "user_42")
         )
 
         await tracker.trackTransition(geofenceId: "geo_1", transition: .enter)
@@ -247,13 +233,11 @@ struct GeofenceEventTrackerTests {
         let dateUtil = DateUtilStub()
         let baseTime = Date(timeIntervalSince1970: 1700000000)
         dateUtil.givenNow = baseTime
-        let bus = EventBusHandlerMock()
         let tracker = makeTracker(
             storage: storage,
             pendingStore: pending,
             deliveryTracker: delivery,
             contextStore: makeContextStore(userId: "user_42"),
-            eventBus: bus,
             dateUtil: dateUtil
         )
 
@@ -285,8 +269,7 @@ struct GeofenceEventTrackerTests {
             storage: makeStorage(directory: dir),
             pendingStore: pending,
             deliveryTracker: failingDelivery,
-            contextStore: makeContextStore(userId: "user_42"),
-            eventBus: EventBusHandlerMock()
+            contextStore: makeContextStore(userId: "user_42")
         )
         await priorTracker.trackTransition(geofenceId: "geo_1", transition: .enter)
         await priorTracker.trackTransition(geofenceId: "geo_2", transition: .enter)
@@ -298,8 +281,7 @@ struct GeofenceEventTrackerTests {
             storage: makeStorage(directory: dir),
             pendingStore: pending,
             deliveryTracker: delivery,
-            contextStore: makeContextStore(userId: "user_42"),
-            eventBus: EventBusHandlerMock()
+            contextStore: makeContextStore(userId: "user_42")
         )
 
         await tracker.flushPending()
@@ -321,24 +303,20 @@ struct GeofenceEventTrackerTests {
             storage: makeStorage(directory: dir),
             pendingStore: pending,
             deliveryTracker: failingDelivery,
-            contextStore: makeContextStore(userId: "user_42"),
-            eventBus: EventBusHandlerMock()
+            contextStore: makeContextStore(userId: "user_42")
         )
         await priorTracker.trackTransition(geofenceId: "geo_1", transition: .enter)
 
-        let bus = EventBusHandlerMock()
         let tracker = makeTracker(
             storage: makeStorage(directory: dir),
             pendingStore: pending,
             deliveryTracker: failingDelivery,
-            contextStore: makeContextStore(userId: "user_42"),
-            eventBus: bus
+            contextStore: makeContextStore(userId: "user_42")
         )
 
         await tracker.flushPending()
 
         #expect(await pending.loadAll().count == 1)
-        #expect(postedGeofenceEvents(from: bus).isEmpty)
     }
 
     @Test
@@ -354,8 +332,7 @@ struct GeofenceEventTrackerTests {
             storage: makeStorage(directory: dir),
             pendingStore: pending,
             deliveryTracker: failingDelivery,
-            contextStore: makeContextStore(userId: "user_42"),
-            eventBus: EventBusHandlerMock()
+            contextStore: makeContextStore(userId: "user_42")
         )
         await priorTracker.trackTransition(geofenceId: "geo_1", transition: .enter)
         await priorTracker.trackTransition(geofenceId: "geo_2", transition: .enter)
@@ -366,8 +343,7 @@ struct GeofenceEventTrackerTests {
             storage: makeStorage(directory: dir),
             pendingStore: pending,
             deliveryTracker: delivery,
-            contextStore: makeContextStore(userId: "user_42"),
-            eventBus: EventBusHandlerMock()
+            contextStore: makeContextStore(userId: "user_42")
         )
 
         // Fire two flushPending calls in parallel; active-delivery dedup must prevent
@@ -381,7 +357,10 @@ struct GeofenceEventTrackerTests {
     }
 
     @Test
-    func flushPending_givenNoUserIdTransitionThenIdentify_expectDeliveredAndDrained() async {
+    func flushPending_givenAnonymousCaptureThenIdentify_expectNoHttpBackfill() async {
+        // Regression: anonymous transitions must NOT auto-deliver as the next
+        // identified user via HTTP — they go through EventBus at capture time,
+        // not through HTTP after identify (which would mis-attribute).
         let dir = makeTempDirectory()
         defer { try? FileManager.default.removeItem(at: dir) }
         let pending = makePendingStore(directory: dir)
@@ -398,16 +377,130 @@ struct GeofenceEventTrackerTests {
         )
 
         await tracker.trackTransition(geofenceId: "geo_1", transition: .enter)
-        #expect(delivery.trackMetricCallsCount == 0)
-        #expect(await pending.loadAll().count == 1)
+        // Anonymous capture posts to EventBus and drains the queue at capture time.
+        #expect(await pending.loadAll().isEmpty)
+        #expect(postedGeofenceEvents(from: bus).count == 1)
 
         contextStore.setUserId("user_42")
         await tracker.flushPending()
 
+        // No HTTP backfill, no second EventBus post — the row is already gone.
+        #expect(delivery.trackMetricCallsCount == 0)
+        #expect(postedGeofenceEvents(from: bus).count == 1)
+    }
+
+    // MARK: - userId stamping
+
+    @Test
+    func trackTransition_givenIdentifiedUser_expectMetricStampedWithUserId() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let pending = makePendingStore(directory: dir)
+        let delivery = GeofenceDeliveryTrackerMock()
+        // Fail the HTTP send so the row survives on disk to inspect.
+        delivery.trackMetricClosure = { _, _, onComplete in
+            onComplete(.failure(.http(statusCode: 503)))
+        }
+        let tracker = makeTracker(
+            storage: makeStorage(directory: dir),
+            pendingStore: pending,
+            deliveryTracker: delivery,
+            contextStore: makeContextStore(userId: "user_A")
+        )
+
+        await tracker.trackTransition(geofenceId: "geo_1", transition: .enter)
+
+        let queued = await pending.loadAll()
+        #expect(queued.first?.userId == "user_A")
+    }
+
+    @Test
+    func flushPending_givenRowStampedDifferentFromCurrent_expectStampedUserIdUsed() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let pending = makePendingStore(directory: dir)
+        // Row was captured under user_A; current user is now user_B (after sign-out + new sign-in).
+        _ = await pending.append(PendingGeofenceMetric(
+            geofenceId: "geo_1", transition: .enter,
+            latitude: nil, longitude: nil,
+            timestamp: Date(timeIntervalSince1970: 1),
+            userId: "user_A"
+        ))
+        let delivery = GeofenceDeliveryTrackerMock()
+        delivery.trackMetricClosure = { _, _, onComplete in onComplete(.success(())) }
+        let tracker = makeTracker(
+            storage: makeStorage(directory: dir),
+            pendingStore: pending,
+            deliveryTracker: delivery,
+            contextStore: makeContextStore(userId: "user_B")
+        )
+
+        await tracker.flushPending()
+
         #expect(delivery.trackMetricCallsCount == 1)
-        #expect(delivery.trackMetricReceivedArguments?.userId == "user_42")
+        #expect(delivery.trackMetricReceivedArguments?.userId == "user_A")
+    }
+
+    @Test
+    func flushPending_givenStampedUserId_andNoCurrent_expectDeliveredWithStamped() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let pending = makePendingStore(directory: dir)
+        _ = await pending.append(PendingGeofenceMetric(
+            geofenceId: "geo_1", transition: .enter,
+            latitude: nil, longitude: nil,
+            timestamp: Date(timeIntervalSince1970: 1),
+            userId: "user_A"
+        ))
+        let delivery = GeofenceDeliveryTrackerMock()
+        delivery.trackMetricClosure = { _, _, onComplete in onComplete(.success(())) }
+        let tracker = makeTracker(
+            storage: makeStorage(directory: dir),
+            pendingStore: pending,
+            deliveryTracker: delivery,
+            contextStore: makeContextStore()
+        )
+
+        await tracker.flushPending()
+
+        #expect(delivery.trackMetricReceivedArguments?.userId == "user_A")
+    }
+
+    @Test
+    func flushPending_givenNilUserIdOnRow_expectEventBusPostNoHttpCall() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let pending = makePendingStore(directory: dir)
+        // Row with no stamped userId (anonymous capture or legacy pre-upgrade).
+        let capturedAt = Date(timeIntervalSince1970: 1700000000)
+        _ = await pending.append(PendingGeofenceMetric(
+            geofenceId: "geo_1", transition: .enter,
+            latitude: 12.34, longitude: 56.78,
+            timestamp: capturedAt,
+            userId: nil
+        ))
+        let delivery = GeofenceDeliveryTrackerMock()
+        let bus = EventBusHandlerMock()
+        let tracker = makeTracker(
+            storage: makeStorage(directory: dir),
+            pendingStore: pending,
+            deliveryTracker: delivery,
+            // Current user is set — proving that the live userId is NOT used as a fallback;
+            // the row is anonymous-tracked via EventBus instead.
+            contextStore: makeContextStore(userId: "user_current"),
+            eventBus: bus
+        )
+
+        await tracker.flushPending()
+
+        #expect(delivery.trackMetricCallsCount == 0)
         #expect(await pending.loadAll().isEmpty)
-        #expect(postedGeofenceEvents(from: bus).isEmpty)
+
+        let posted = postedGeofenceEvents(from: bus)
+        #expect(posted.count == 1)
+        #expect(posted.first?.timestamp == capturedAt)
+        #expect(posted.first?.latitude == 12.34)
+        #expect(posted.first?.longitude == 56.78)
     }
 
     // MARK: - clearPending
@@ -418,13 +511,11 @@ struct GeofenceEventTrackerTests {
         defer { try? FileManager.default.removeItem(at: dir) }
         let pending = makePendingStore(directory: dir)
         let delivery = GeofenceDeliveryTrackerMock()
-        let bus = EventBusHandlerMock()
         let tracker = makeTracker(
             storage: makeStorage(directory: dir),
             pendingStore: pending,
             deliveryTracker: delivery,
-            contextStore: makeContextStore(),
-            eventBus: bus
+            contextStore: makeContextStore()
         )
 
         _ = await pending.append(PendingGeofenceMetric(

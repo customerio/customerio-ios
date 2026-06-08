@@ -60,9 +60,16 @@ class DataPipelineEventBustTests: IntegrationTest {
 
     func testSubscribeToJourneyEvents_DataPipelineHandlesTrackGeofenceMetricEvent_enter() async {
         let givenGeofenceId = String.random
+        let capturedAt = Date(timeIntervalSince1970: 1700000000)
 
         await eventBusHandler.postEventAndWait(
-            TrackGeofenceMetricEvent(geofenceId: givenGeofenceId, transition: .enter)
+            TrackGeofenceMetricEvent(
+                geofenceId: givenGeofenceId,
+                transition: .enter,
+                timestamp: capturedAt,
+                latitude: 12.34,
+                longitude: 56.78
+            )
         )
 
         guard let trackEvent = outputReader.lastEvent as? TrackEvent else {
@@ -72,17 +79,25 @@ class DataPipelineEventBustTests: IntegrationTest {
 
         XCTAssertEqual(trackEvent.type, "track")
         XCTAssertEqual(trackEvent.event, "GeoFence Entered")
-        XCTAssertMatches(
-            trackEvent.properties,
-            ["geofence_id": givenGeofenceId]
-        )
+        let properties = trackEvent.properties?.dictionaryValue ?? [:]
+        XCTAssertEqual(properties["geofence_id"] as? String, givenGeofenceId)
+        XCTAssertEqual(properties["transition_type"] as? String, "enter")
+        XCTAssertEqual(properties["timestamp"] as? Int, Int(capturedAt.timeIntervalSince1970))
+        XCTAssertEqual(properties["latitude"] as? Double ?? 0, 12.34, accuracy: 0.0001)
+        XCTAssertEqual(properties["longitude"] as? Double ?? 0, 56.78, accuracy: 0.0001)
+        XCTAssertEqual(trackEvent.timestamp, capturedAt.string(format: .iso8601WithMilliseconds))
     }
 
     func testSubscribeToJourneyEvents_DataPipelineHandlesTrackGeofenceMetricEvent_exit() async {
         let givenGeofenceId = String.random
+        let capturedAt = Date(timeIntervalSince1970: 1700000000)
 
         await eventBusHandler.postEventAndWait(
-            TrackGeofenceMetricEvent(geofenceId: givenGeofenceId, transition: .exit)
+            TrackGeofenceMetricEvent(
+                geofenceId: givenGeofenceId,
+                transition: .exit,
+                timestamp: capturedAt
+            )
         )
 
         guard let trackEvent = outputReader.lastEvent as? TrackEvent else {
@@ -91,10 +106,13 @@ class DataPipelineEventBustTests: IntegrationTest {
         }
 
         XCTAssertEqual(trackEvent.event, "GeoFence Exited")
-        XCTAssertMatches(
-            trackEvent.properties,
-            ["geofence_id": givenGeofenceId]
-        )
+        let properties = trackEvent.properties?.dictionaryValue ?? [:]
+        XCTAssertEqual(properties["geofence_id"] as? String, givenGeofenceId)
+        XCTAssertEqual(properties["transition_type"] as? String, "exit")
+        XCTAssertEqual(properties["timestamp"] as? Int, Int(capturedAt.timeIntervalSince1970))
+        XCTAssertNil(properties["latitude"])
+        XCTAssertNil(properties["longitude"])
+        XCTAssertEqual(trackEvent.timestamp, capturedAt.string(format: .iso8601WithMilliseconds))
     }
 
     func testSubscribeToJourneyEvents_DataPipelineHandlesRegisterDeviceEvent() async {
