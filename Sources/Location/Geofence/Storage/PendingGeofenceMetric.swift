@@ -3,22 +3,26 @@ import Foundation
 
 /// A geofence transition queued for direct-HTTP delivery.
 struct PendingGeofenceMetric: Codable, Equatable, Sendable {
-    let id: UUID
     let geofenceId: String
     let transition: GeofenceTransition
     let latitude: Double?
     let longitude: Double?
     let timestamp: Date
 
+    /// Composite key over `(geofenceId, transition, timestamp_ms)` used for
+    /// storage-layer dedup. Matches Android's `PendingGeofenceDelivery.key`.
+    var key: String {
+        let ms = Int(timestamp.timeIntervalSince1970 * 1000)
+        return "\(geofenceId)_\(transition.rawValue)_\(ms)"
+    }
+
     init(
-        id: UUID = UUID(),
         geofenceId: String,
         transition: GeofenceTransition,
         latitude: Double?,
         longitude: Double?,
         timestamp: Date
     ) {
-        self.id = id
         self.geofenceId = geofenceId
         self.transition = transition
         self.latitude = latitude
@@ -27,7 +31,6 @@ struct PendingGeofenceMetric: Codable, Equatable, Sendable {
     }
 
     enum CodingKeys: String, CodingKey {
-        case id
         case geofenceId = "geofence_id"
         case transition
         case latitude

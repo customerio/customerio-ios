@@ -108,7 +108,7 @@ struct PendingGeofenceMetricStoreTests {
     // MARK: - Remove
 
     @Test
-    func remove_givenExistingId_expectRemovedAndReturnTrue() async {
+    func remove_givenExistingKey_expectRemovedAndReturnTrue() async {
         let dir = makeTempDirectory()
         defer { try? FileManager.default.removeItem(at: dir) }
         let store = makeStore(directory: dir)
@@ -117,7 +117,7 @@ struct PendingGeofenceMetricStoreTests {
         _ = await store.append(toKeep)
         _ = await store.append(toRemove)
 
-        let removed = await store.remove(id: toRemove.id)
+        let removed = await store.remove(key: toRemove.key)
         let items = await store.loadAll()
 
         #expect(removed == true)
@@ -126,14 +126,14 @@ struct PendingGeofenceMetricStoreTests {
     }
 
     @Test
-    func remove_givenMissingId_expectReturnFalseAndNoChange() async {
+    func remove_givenMissingKey_expectReturnFalseAndNoChange() async {
         let dir = makeTempDirectory()
         defer { try? FileManager.default.removeItem(at: dir) }
         let store = makeStore(directory: dir)
         let metric = makeMetric()
         _ = await store.append(metric)
 
-        let removed = await store.remove(id: UUID())
+        let removed = await store.remove(key: "nonexistent_key")
         let items = await store.loadAll()
 
         #expect(removed == false)
@@ -152,7 +152,7 @@ struct PendingGeofenceMetricStoreTests {
         _ = await store.append(first)
         _ = await store.append(second)
 
-        let success = await store.removeAll(ids: [first.id, second.id])
+        let success = await store.removeAll(keys: [first.key, second.key])
         let items = await store.loadAll()
 
         #expect(success == true)
@@ -169,7 +169,7 @@ struct PendingGeofenceMetricStoreTests {
         _ = await store.append(toKeep)
         _ = await store.append(toRemove)
 
-        let success = await store.removeAll(ids: [toRemove.id, UUID()])
+        let success = await store.removeAll(keys: [toRemove.key, "nonexistent_key"])
         let items = await store.loadAll()
 
         #expect(success == true)
@@ -183,10 +183,30 @@ struct PendingGeofenceMetricStoreTests {
         let store = makeStore(directory: dir)
         _ = await store.append(makeMetric())
 
-        let success = await store.removeAll(ids: [])
+        let success = await store.removeAll(keys: [])
         let items = await store.loadAll()
 
         #expect(success == true)
+        #expect(items.count == 1)
+    }
+
+    // MARK: - Duplicate-key dedup at append
+
+    @Test
+    func append_givenDuplicateKey_expectNoOpReturnTrue() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let store = makeStore(directory: dir)
+        let metric = makeMetric()
+        _ = await store.append(metric)
+
+        // Same geofenceId + transition + timestamp produces the same composite key.
+        // Storage layer rejects the duplicate so a cooldown-slip can't produce two rows.
+        let duplicate = makeMetric()
+        let appended = await store.append(duplicate)
+        let items = await store.loadAll()
+
+        #expect(appended == true)
         #expect(items.count == 1)
     }
 
