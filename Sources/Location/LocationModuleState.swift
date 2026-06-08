@@ -93,7 +93,14 @@ final class LocationModuleState {
         }
         di.eventBusHandler.addObserver(ResetEvent.self) { _ in
             Task { @MainActor in
-                _ = await DIGraphShared.shared.geofenceSyncCoordinator.reset()
+                // Run in parallel — independent operations on different actors.
+                // Drops queued direct-HTTP metrics so rows captured under the
+                // previous user are not flushed under the next one.
+                async let resetResult: Result<Void, GeofenceSyncError> =
+                    DIGraphShared.shared.geofenceSyncCoordinator.reset()
+                async let cleared: Void = DIGraphShared.shared.geofenceEventTracker.clearPending()
+                _ = await resetResult
+                await cleared
             }
         }
     }
