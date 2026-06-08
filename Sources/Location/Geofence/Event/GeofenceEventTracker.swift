@@ -116,7 +116,7 @@ final class GeofenceEventTracker: @unchecked Sendable {
         }
 
         let success = await withCheckedContinuation { (continuation: CheckedContinuation<Bool, Never>) in
-            deliveryTracker.deliver(metric: metric, userId: userId) { result in
+            deliveryTracker.trackMetric(metric: metric, userId: userId) { result in
                 switch result {
                 case .success:
                     continuation.resume(returning: true)

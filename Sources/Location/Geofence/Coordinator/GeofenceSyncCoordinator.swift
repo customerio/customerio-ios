@@ -88,8 +88,14 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
 
         let cachedConfig = await storage.getCachedConfig()
         if let lastSync = await storage.getLastSync() {
-            let expiry = cachedConfig?.remoteFetchRefreshExpiry ?? GeofenceConstants.staleSyncInterval
-            if dateUtil.now.timeIntervalSince(lastSync.timestamp) < expiry {
+            // Time-fresh alone isn't enough: if the app was killed while the user
+            // travelled far, no movement EXIT fired to update the cache.
+            let effectiveConfig = cachedConfig ?? .fallback
+            let timeSinceLastSync = dateUtil.now.timeIntervalSince(lastSync.timestamp)
+            let distanceFromAnchor = CLLocation(latitude: lastSync.location.latitude, longitude: lastSync.location.longitude)
+                .distance(from: CLLocation(latitude: latitude, longitude: longitude))
+            if timeSinceLastSync < effectiveConfig.remoteFetchRefreshExpiry,
+               distanceFromAnchor < effectiveConfig.remoteFetchRefreshTriggerRadius {
                 logger.geofenceSyncSkippedFresh()
                 return .success(())
             }
@@ -319,6 +325,9 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
                 transitionTypes: region.transitionTypes
             )
         }
+        // With no business regions, a movement trigger would just refetch and get the
+        // same empty result — leave it off until the next identify / foreground refresh.
+        guard !businessRegions.isEmpty else { return }
         monitor.startMonitoring(
             identifier: GeofenceConstants.movementTriggerIdentifier,
             center: movementTriggerLocation,

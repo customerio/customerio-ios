@@ -32,12 +32,12 @@ struct GeofenceDeliveryTrackerTests {
     // MARK: - Argument shaping
 
     @Test
-    func deliver_givenEnterTransition_expectAndroidWireFormat() async {
+    func trackMetric_givenEnterTransition_expectAndroidWireFormat() async {
         let (tracker, httpClient) = makeTracker()
         httpClient.sendTrackEventClosure = { _, _, _, completion in completion(.success(())) }
 
         await withCheckedContinuation { continuation in
-            tracker.deliver(metric: makeMetric(), userId: "user_42") { _ in
+            tracker.trackMetric(metric: makeMetric(), userId: "user_42") { _ in
                 continuation.resume()
             }
         }
@@ -54,12 +54,12 @@ struct GeofenceDeliveryTrackerTests {
     }
 
     @Test
-    func deliver_givenExitTransition_expectExitedEventName() async {
+    func trackMetric_givenExitTransition_expectExitedEventName() async {
         let (tracker, httpClient) = makeTracker()
         httpClient.sendTrackEventClosure = { _, _, _, completion in completion(.success(())) }
 
         await withCheckedContinuation { continuation in
-            tracker.deliver(metric: makeMetric(transition: .exit), userId: "user_42") { _ in
+            tracker.trackMetric(metric: makeMetric(transition: .exit), userId: "user_42") { _ in
                 continuation.resume()
             }
         }
@@ -68,12 +68,12 @@ struct GeofenceDeliveryTrackerTests {
     }
 
     @Test
-    func deliver_givenNilCoordinates_expectOmittedFromProperties() async {
+    func trackMetric_givenNilCoordinates_expectOmittedFromProperties() async {
         let (tracker, httpClient) = makeTracker()
         httpClient.sendTrackEventClosure = { _, _, _, completion in completion(.success(())) }
 
         await withCheckedContinuation { continuation in
-            tracker.deliver(
+            tracker.trackMetric(
                 metric: makeMetric(latitude: nil, longitude: nil),
                 userId: "user_42"
             ) { _ in continuation.resume() }
@@ -87,11 +87,11 @@ struct GeofenceDeliveryTrackerTests {
     // MARK: - Guard clauses
 
     @Test
-    func deliver_givenEmptyUserId_expectFailureAndNoHttpCall() async {
+    func trackMetric_givenEmptyUserId_expectFailureAndNoHttpCall() async {
         let (tracker, httpClient) = makeTracker()
 
         let result: Result<Void, BackgroundDeliveryHttpError> = await withCheckedContinuation { continuation in
-            tracker.deliver(metric: makeMetric(), userId: "") { result in
+            tracker.trackMetric(metric: makeMetric(), userId: "") { result in
                 continuation.resume(returning: result)
             }
         }
@@ -103,14 +103,14 @@ struct GeofenceDeliveryTrackerTests {
     // MARK: - Result propagation
 
     @Test
-    func deliver_givenHttpFailure_expectFailurePropagated() async {
+    func trackMetric_givenHttpFailure_expectFailurePropagated() async {
         let (tracker, httpClient) = makeTracker()
         httpClient.sendTrackEventClosure = { _, _, _, completion in
             completion(.failure(.http(statusCode: 500)))
         }
 
         let result: Result<Void, BackgroundDeliveryHttpError> = await withCheckedContinuation { continuation in
-            tracker.deliver(metric: makeMetric(), userId: "user_42") { result in
+            tracker.trackMetric(metric: makeMetric(), userId: "user_42") { result in
                 continuation.resume(returning: result)
             }
         }
