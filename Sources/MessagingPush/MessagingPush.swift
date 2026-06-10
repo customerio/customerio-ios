@@ -251,16 +251,25 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
     /// the correct app group. Skipped entirely when ``DataPipelineTracking`` is unavailable — metrics
     /// are preserved in the store for a future launch where DataPipeline is present.
     private static func schedulePendingPushDeliveryMetricsFlush() {
+        // Capture store and logger at call time so they are snapshotted to the correct registrations
+        // before the task runs. Resolving these inside the Task body risks picking up a mutated DI
+        // graph if initialize() is called concurrently with other DI graph setup.
+        let store = DIGraphShared.shared.pendingPushDeliveryStore
+        let logger = DIGraphShared.shared.logger
         Task.detached(priority: .utility) {
-            let store = DIGraphShared.shared.pendingPushDeliveryStore
-            let logger = DIGraphShared.shared.logger
             let pending = store.loadAll()
             guard !pending.isEmpty else {
                 logger.debug(
-                    "Pending push delivery store: nothing to flush on MessagingPush startup")
+                    "Pending push delivery store: nothing to flush on MessagingPush startup"
+                )
                 return
             }
 
+            // DataPipelineTracking is resolved inside the Task intentionally. On Flutter and
+            // React Native, MessagingPush.initialize() is called from the native AppDelegate
+            // before the cross-platform runtime has started, so DataPipeline may not be
+            // registered yet at call time. The scheduler delay gives the runtime time to
+            // complete its own initialization before we check for DataPipeline's presence.
             guard let pipeline = DIGraphShared.shared.getOptional(DataPipelineTracking.self) else {
                 logger.debug(
                     "Pending push delivery store: DataPipeline unavailable, skipping flush to preserve \(pending.count) metric(s)"

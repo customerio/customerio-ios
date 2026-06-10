@@ -18,6 +18,13 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking {
     let storageManager: StorageManager?
     let eventPolicyEngine: EventPolicyEngine?
 
+    /// Per-session tracker of the most recently identified userId. Used to dedup
+    /// no-traits identify calls against the same userId within a single process
+    /// lifetime. Reset by `clearIdentify()`. Not persisted across launches so
+    /// that the first identify per cold-start always runs the full path
+    /// (device-token re-registration + DCoU refresh).
+    private var lastIdentifiedUserIdThisSession: String?
+
     init(diGraph: DIGraphShared, moduleConfig: DataPipelineConfigOptions) {
         self.moduleConfig = moduleConfig
         self.logger = diGraph.logger
@@ -188,6 +195,17 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking {
             return
         }
 
+        // Per-session dedup: short-circuit when this exact userId was already
+        // identified during this process lifetime AND no traits are supplied.
+        // An explicit empty dict (`[:]`) is treated as "traits supplied" and
+        // passes through, because some integrations rely on the empty-traits
+        // identify call as an intentional no-op trait merge.
+        let hasNoTraits = attributesDict == nil && attributesCodable == nil
+        if hasNoTraits, let lastUserId = lastIdentifiedUserIdThisSession, lastUserId == userId {
+            logger.debug("identify(\(userId)) skipped — already identified this session, no traits")
+            return
+        }
+
         let currentlyIdentifiedProfile = registeredUserId
         let isChangingIdentifiedProfile = currentlyIdentifiedProfile != nil && currentlyIdentifiedProfile != userId
         let isFirstTimeIdentifying = currentlyIdentifiedProfile == nil
@@ -202,6 +220,11 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking {
         } else {
             analytics.identify(userId: userId, traits: attributesDict)
         }
+
+        // Update session tracker so subsequent no-traits same-userId calls
+        // within this session can dedup. Identify-with-traits passes through
+        // but still refreshes the session tracker.
+        lastIdentifiedUserIdThisSession = userId
 
         if isFirstTimeIdentifying || isChangingIdentifiedProfile {
             if let existingDeviceToken = registeredDeviceToken {
@@ -221,6 +244,10 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking {
         logger.debug("resetting user profile")
         analytics.reset()
         try? storageManager?.deleteProfileScopedAggregationState()
+
+        // Reset per-session identify dedup tracker so the next identify (even
+        // for the same userId) takes the full path.
+        lastIdentifiedUserIdThisSession = nil
     }
 
     func deleteDeviceToken() {

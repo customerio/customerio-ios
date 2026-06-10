@@ -4,8 +4,13 @@ import XCTest
 import UserNotifications
 
 final class KeyedArchiver: NSKeyedArchiver {
-    override func decodeObject(forKey _: String) -> Any { "" }
-    override func decodeInt64(forKey key: String) -> Int64 { 0 }
+    override func decodeObject(forKey _: String) -> Any {
+        ""
+    }
+
+    override func decodeInt64(forKey key: String) -> Int64 {
+        0
+    }
 }
 
 public extension UNNotificationResponse {

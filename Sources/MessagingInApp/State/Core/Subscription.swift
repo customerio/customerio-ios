@@ -108,7 +108,7 @@ public class Subscription<State> {
     /// - parameter newState: The store's new state, after the action has been reduced.
     public func skipRepeats(_ isRepeat: @escaping (_ oldState: State, _ newState: State) -> Bool)
         -> Subscription<State> {
-        return Subscription<State> { sink in
+        Subscription<State> { sink in
             self.observer = { oldState, newState in
                 switch (oldState, newState) {
                 case (let old?, let new):

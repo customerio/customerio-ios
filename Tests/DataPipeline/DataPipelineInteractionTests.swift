@@ -142,8 +142,10 @@ class CDPInteractionDefaultConfigTests: DataPipelineInteractionTests {
 
         customerIO.identify(userId: givenIdentifier)
 
-        XCTAssertEqual(outputReader.events.count, 1)
-        XCTAssertEqual(outputReader.identifyEvents.count, 1)
+        // Per-session dedup: a second no-traits identify against the same userId
+        // is short-circuited entirely, so no events should be emitted.
+        XCTAssertEqual(outputReader.events.count, 0)
+        XCTAssertEqual(outputReader.identifyEvents.count, 0)
     }
 
     func test_identify_givenNoProfilePreviouslyIdentified_expectPostProfileEventToEventBus() {
