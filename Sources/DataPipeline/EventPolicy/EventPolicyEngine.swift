@@ -53,12 +53,9 @@ final class EventPolicyEngine: Sendable {
         }
 
         if let rl = rs.rateLimitsByKey[exactKey] ?? rs.rateLimitsByKey[wildcardKey] {
-            // Use the rule's own key as the DB key so wildcard rules share one counter
-            // across all events of that type (e.g. "track:*" is one shared window).
-            let dbKey = "\(rl.eventType):\(rl.name)"
             // Fail open on DB error so a storage failure doesn't silently discard events.
             return (try? storage.checkAndUpdateRateLimit(
-                key: dbKey,
+                key: exactKey,
                 now: now,
                 windowSeconds: Int64(rl.windowSeconds),
                 scope: rl.scope.rawValue

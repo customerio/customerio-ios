@@ -64,10 +64,17 @@ struct EventPolicyEngineTests {
         #expect(engine.shouldAllow(eventType: "track", name: "btn", now: 1000 + 3600 + 1) == true)
     }
 
-    @Test func rateLimit_wildcardMatchesAllEventsOfType() {
+    @Test func rateLimit_wildcardBlocksRepeatedEventName() {
         engine.load(ruleset: ruleset(rateLimits: [rateLimit("track", "*", 3600)]))
         _ = engine.shouldAllow(eventType: "track", name: "any_event", now: 1000)
         #expect(engine.shouldAllow(eventType: "track", name: "any_event", now: 1001) == false)
+    }
+
+    @Test func rateLimit_wildcardGivesEachEventNameItsOwnWindow() {
+        engine.load(ruleset: ruleset(rateLimits: [rateLimit("track", "*", 3600)]))
+        _ = engine.shouldAllow(eventType: "track", name: "event_a", now: 1000)
+        #expect(engine.shouldAllow(eventType: "track", name: "event_b", now: 1001) == true)
+        #expect(engine.shouldAllow(eventType: "track", name: "event_a", now: 1001) == false)
     }
 
     // MARK: - Filter takes priority over rate-limit
