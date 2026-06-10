@@ -105,16 +105,16 @@ struct EventPolicyPluginTests {
     }
 
     @Test func update_serverRemovesRules_deletesPreviouslyPersistedConfig() throws {
-        plugin.update(settings: try settingsWithFilters([("track", "page_viewed")]), type: .initial)
+        try plugin.update(settings: settingsWithFilters([("track", "page_viewed")]), type: .initial)
         #expect(try storage.getAggregationConfig() != nil)
 
-        plugin.update(settings: try settingsWithoutRules(), type: .refresh)
+        try plugin.update(settings: settingsWithoutRules(), type: .refresh)
         #expect(try storage.getAggregationConfig() == nil)
     }
 
     @Test func update_refresh_overwritesPreviouslyPersistedConfig() throws {
-        plugin.update(settings: try settingsWithFilters([("track", "page_viewed")]), type: .initial)
-        plugin.update(settings: try settingsWithFilters([("screen", "Home")]), type: .refresh)
+        try plugin.update(settings: settingsWithFilters([("track", "page_viewed")]), type: .initial)
+        try plugin.update(settings: settingsWithFilters([("screen", "Home")]), type: .refresh)
 
         let config = try #require(try storage.getAggregationConfig())
         let ruleset = try #require(try? JSONDecoder().decode(AggregationRuleset.self, from: Data(config.payload.utf8)))

@@ -61,7 +61,8 @@ private struct CreateAggregationSchema: Migration {
                 payload    TEXT    NOT NULL,
                 fetched_at TEXT    NOT NULL
             )
-            """)
+            """
+        )
         // Per-rule accumulator state (counters for rate limiting).
         try ctx.execute(
             """
@@ -71,7 +72,8 @@ private struct CreateAggregationSchema: Migration {
                 last_flushed_at INTEGER NOT NULL DEFAULT 0,
                 scope           TEXT    NOT NULL DEFAULT 'profile'
             )
-            """)
+            """
+        )
         // General-purpose SDK key/value metadata.
         try ctx.execute(
             """
@@ -79,7 +81,8 @@ private struct CreateAggregationSchema: Migration {
                 key   TEXT NOT NULL PRIMARY KEY,
                 value TEXT NOT NULL
             )
-            """)
+            """
+        )
     }
 
     func down(_ ctx: MigrationContext) throws {}
