@@ -79,7 +79,9 @@ struct GeofenceMonitorBinderTests {
             transition: .enter,
             location: LocationData(latitude: 37.0, longitude: -122.0)
         )
-        for _ in 0 ..< 10 { await Task.yield() }
+        for _ in 0 ..< 10 {
+            await Task.yield()
+        }
 
         #expect(coordinator.handleMovementCallsCount == 0)
         #expect(eventBus.postEventCallsCount == 0)
@@ -100,7 +102,9 @@ struct GeofenceMonitorBinderTests {
             transition: .exit,
             location: nil
         )
-        for _ in 0 ..< 10 { await Task.yield() }
+        for _ in 0 ..< 10 {
+            await Task.yield()
+        }
 
         #expect(coordinator.handleMovementCallsCount == 0)
     }

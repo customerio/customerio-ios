@@ -454,7 +454,7 @@ struct GeofenceSyncCoordinatorTests {
     }
 
     @Test
-    func applyCachedRegistration_givenNoUserId_expectNoRegistration() async {
+    func applyCachedRegistration_givenNoUserId_expectNoRegistration() {
         let setup = makeCoordinator(storage: makeStorage())
 
         setup.coordinator.applyCachedRegistration(
@@ -468,7 +468,7 @@ struct GeofenceSyncCoordinatorTests {
     }
 
     @Test
-    func applyCachedRegistration_givenEmptyRegions_expectNoRegistration() async {
+    func applyCachedRegistration_givenEmptyRegions_expectNoRegistration() {
         let setup = makeCoordinator(storage: makeStorage())
 
         setup.coordinator.applyCachedRegistration(
@@ -482,7 +482,7 @@ struct GeofenceSyncCoordinatorTests {
     }
 
     @Test
-    func applyCachedRegistration_givenMissingAnchor_expectNoRegistration() async {
+    func applyCachedRegistration_givenMissingAnchor_expectNoRegistration() {
         // Without an anchor we can't distance-filter or place the movement trigger
         // sensibly — bail rather than re-using an arbitrary location.
         let setup = makeCoordinator(storage: makeStorage())
@@ -498,7 +498,7 @@ struct GeofenceSyncCoordinatorTests {
     }
 
     @Test
-    func applyCachedRegistration_givenAllInputs_expectNearestRegisteredPlusMovementTrigger() async {
+    func applyCachedRegistration_givenAllInputs_expectNearestRegisteredPlusMovementTrigger() {
         let config = GeofenceConfig(
             localRefreshTriggerRadius: 600,
             remoteFetchRefreshTriggerRadius: 3000,
@@ -537,7 +537,7 @@ struct GeofenceSyncCoordinatorTests {
     }
 
     @Test
-    func applyCachedRegistration_givenNilConfig_expectFallbackUsed() async {
+    func applyCachedRegistration_givenNilConfig_expectFallbackUsed() {
         let anchor = LocationData(latitude: 0, longitude: 0)
         let setup = makeCoordinator(storage: makeStorage())
 

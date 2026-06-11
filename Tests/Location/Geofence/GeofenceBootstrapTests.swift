@@ -172,6 +172,9 @@ struct GeofenceBootstrapTests {
 
 private final class StubProvider: BackgroundDeliveryCdpApiKeyProvider {
     let value: String?
-    init(value: String?) { self.value = value }
+    init(value: String?) {
+        self.value = value
+    }
+
     var cdpApiKey: String? { value }
 }
