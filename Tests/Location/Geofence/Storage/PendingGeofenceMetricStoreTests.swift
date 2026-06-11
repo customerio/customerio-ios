@@ -20,7 +20,8 @@ struct PendingGeofenceMetricStoreTests {
             transition: transition,
             latitude: 12.34,
             longitude: 56.78,
-            timestamp: Date(timeIntervalSince1970: 1700000000)
+            timestamp: Date(timeIntervalSince1970: 1700000000),
+            userId: nil
         )
     }
 
@@ -262,7 +263,8 @@ struct PendingGeofenceMetricStoreTests {
                                 transition: .enter,
                                 latitude: nil,
                                 longitude: nil,
-                                timestamp: Date()
+                                timestamp: Date(),
+                                userId: nil
                             ))
                         case 1:
                             _ = await store.loadAll()
