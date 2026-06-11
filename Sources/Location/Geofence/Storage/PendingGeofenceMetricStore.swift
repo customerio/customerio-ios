@@ -33,9 +33,14 @@ actor PendingGeofenceMetricStore {
     }
 
     /// Appends a metric. When over capacity, drops the **oldest** entries first.
+    /// A row with the same `key` is a no-op.
     /// Returns `false` if the file could not be persisted.
     func append(_ metric: PendingGeofenceMetric) -> Bool {
         var items = loadFromDisk()
+        if items.contains(where: { $0.key == metric.key }) {
+            // Already persisted — treat as success so the caller doesn't retry.
+            return true
+        }
         items.append(metric)
         if items.count > Self.maxEntries {
             items = Array(items.suffix(Self.maxEntries))
@@ -48,22 +53,22 @@ actor PendingGeofenceMetricStore {
         loadFromDisk()
     }
 
-    /// Removes one pending entry by id. Returns `true` when the entry was found and removed.
-    func remove(id: UUID) -> Bool {
+    /// Removes one pending entry by key. Returns `true` when the entry was found and removed.
+    func remove(key: String) -> Bool {
         var items = loadFromDisk()
         let originalCount = items.count
-        items.removeAll { $0.id == id }
+        items.removeAll { $0.key == key }
         guard items.count != originalCount else { return false }
         return saveToDisk(items)
     }
 
-    /// Removes entries whose ids are in `ids` in one read-modify-write.
-    /// Returns `true` when the file was updated, `false` when none of the ids were present.
-    func removeAll(ids: Set<UUID>) -> Bool {
-        guard !ids.isEmpty else { return true }
+    /// Removes entries whose keys are in `keys` in one read-modify-write.
+    /// Returns `true` when the file was updated, `false` when none of the keys were present.
+    func removeAll(keys: Set<String>) -> Bool {
+        guard !keys.isEmpty else { return true }
         var items = loadFromDisk()
         let originalCount = items.count
-        items.removeAll { ids.contains($0.id) }
+        items.removeAll { keys.contains($0.key) }
         guard items.count != originalCount else { return false }
         return saveToDisk(items)
     }

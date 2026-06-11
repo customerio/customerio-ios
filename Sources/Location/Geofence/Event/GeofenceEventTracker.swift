@@ -26,7 +26,7 @@ final class GeofenceEventTracker: @unchecked Sendable {
     private let dateUtil: DateUtil
     private let logger: Logger
     private let cooldownInterval: TimeInterval
-    private let activeDeliveryIds: Synchronized<Set<UUID>> = Synchronized([])
+    private let activeDeliveryKeys: Synchronized<Set<String>> = Synchronized([])
 
     init(
         storage: GeofenceStorage,
@@ -95,15 +95,15 @@ final class GeofenceEventTracker: @unchecked Sendable {
         // ProfileIdentifiedEvent-triggered flush, or two flushes) can't both send the
         // same row. The claim set is in-memory only — on app kill the row stays on
         // disk and is retried by flushPending in the next process.
-        guard activeDeliveryIds.mutating({ $0.insert(metric.id).inserted }) else { return }
-        defer { activeDeliveryIds.mutating { _ = $0.remove(metric.id) } }
+        guard activeDeliveryKeys.mutating({ $0.insert(metric.key).inserted }) else { return }
+        defer { activeDeliveryKeys.mutating { _ = $0.remove(metric.key) } }
 
         guard let deliveryTracker else {
             // No HTTP path will ever be available in this process (MessagingPush not
             // initialized). Deliver via EventBus and drain; nothing would recover this
             // row otherwise.
             postEventBus(metric: metric)
-            _ = await pendingStore.remove(id: metric.id)
+            _ = await pendingStore.remove(key: metric.key)
             return
         }
 
@@ -127,7 +127,7 @@ final class GeofenceEventTracker: @unchecked Sendable {
         }
 
         if success {
-            _ = await pendingStore.remove(id: metric.id)
+            _ = await pendingStore.remove(key: metric.key)
             logger.geofenceEventTracked(geofenceId: metric.geofenceId, transition: metric.transition)
         }
         // HTTP failure: row stays for next flush. No EventBus — same duplicate
