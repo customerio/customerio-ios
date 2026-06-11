@@ -88,12 +88,6 @@ final class GeofenceEventTracker: @unchecked Sendable {
         }
     }
 
-    /// Drops every queued metric so rows captured under the previous user
-    /// are not delivered under the next one.
-    func clearPending() async {
-        await pendingStore.clearAll()
-    }
-
     // MARK: - Private
 
     private func deliver(metric: PendingGeofenceMetric) async {

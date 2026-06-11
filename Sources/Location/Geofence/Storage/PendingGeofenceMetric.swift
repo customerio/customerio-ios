@@ -9,11 +9,13 @@ struct PendingGeofenceMetric: Codable, Equatable, Sendable {
     let longitude: Double?
     let timestamp: Date
 
-    /// Composite key over `(geofenceId, transition, timestamp_ms)` used for
+    /// Composite key over `(geofenceId, transition, timestamp_sec)` used for
     /// storage-layer dedup. Matches Android's `PendingGeofenceDelivery.key`.
+    /// Seconds (not ms) — cooldown gate dedups by `(geofenceId, transition)`
+    /// upstream, so finer precision adds nothing.
     var key: String {
-        let ms = Int(timestamp.timeIntervalSince1970 * 1000)
-        return "\(geofenceId)_\(transition.rawValue)_\(ms)"
+        let sec = Int(timestamp.timeIntervalSince1970)
+        return "\(geofenceId)_\(transition.rawValue)_\(sec)"
     }
 
     init(

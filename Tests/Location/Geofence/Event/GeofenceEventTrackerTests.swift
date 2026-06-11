@@ -409,36 +409,4 @@ struct GeofenceEventTrackerTests {
         #expect(await pending.loadAll().isEmpty)
         #expect(postedGeofenceEvents(from: bus).isEmpty)
     }
-
-    // MARK: - clearPending
-
-    @Test
-    func clearPending_givenQueuedRows_expectStoreEmpty() async {
-        let dir = makeTempDirectory()
-        defer { try? FileManager.default.removeItem(at: dir) }
-        let pending = makePendingStore(directory: dir)
-        let delivery = GeofenceDeliveryTrackerMock()
-        let bus = EventBusHandlerMock()
-        let tracker = makeTracker(
-            storage: makeStorage(directory: dir),
-            pendingStore: pending,
-            deliveryTracker: delivery,
-            contextStore: makeContextStore(),
-            eventBus: bus
-        )
-
-        _ = await pending.append(PendingGeofenceMetric(
-            geofenceId: "geo_1", transition: .enter,
-            latitude: nil, longitude: nil, timestamp: Date(timeIntervalSince1970: 1)
-        ))
-        _ = await pending.append(PendingGeofenceMetric(
-            geofenceId: "geo_2", transition: .exit,
-            latitude: nil, longitude: nil, timestamp: Date(timeIntervalSince1970: 2)
-        ))
-        #expect(await pending.loadAll().count == 2)
-
-        await tracker.clearPending()
-
-        #expect(await pending.loadAll().isEmpty)
-    }
 }
