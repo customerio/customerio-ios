@@ -50,7 +50,7 @@ let package = Package(
         
         // SSE (Server-Sent Events) client for real-time in-app messaging
         .package(url: "https://github.com/LaunchDarkly/swift-eventsource.git", .upToNextMajor(from: "3.3.0")),
-        .package(url: "https://github.com/customerio/SyncSqlCipher.git", from: "1.0.0")
+        .package(url: "https://github.com/customerio/SyncSqlCipher.git", from: "1.1.0")
     ],
     targets: [ 
         // Common - Code used by multiple modules in the SDK project.

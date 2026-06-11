@@ -31,7 +31,7 @@ public struct StorageManager: Sendable {
         if let value {
             _ = try db.save(SdkMetaRecord(key: key, value: value))
         } else {
-            try db.execute("DELETE FROM sdk_meta WHERE key = ?", key)
+            _ = try db.delete(from: SdkMetaRecord.self, id: key)
         }
     }
 }
