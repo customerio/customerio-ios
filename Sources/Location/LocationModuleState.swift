@@ -17,7 +17,8 @@ final class LocationModuleState {
     /// install's first GPS update still drives the initial geofence registration.
     private let lastSkippedForNoLocation = Synchronized<Bool>(false)
 
-    private init() {}
+    /// Internal init lets tests build instances independent of `.shared`.
+    init() {}
 
     /// Performs one-time setup of the Location module. Call from main thread (e.g. from `LocationModule.initialize()`).
     func performInitialization(config: LocationConfig) {
@@ -41,25 +42,16 @@ final class LocationModuleState {
         )
         let locationEnrichmentProvider = LocationProfileEnrichmentProvider(storage: storage, config: config)
         di.profileEnrichmentRegistry.register(locationEnrichmentProvider)
-        registerEventSubscriptions(coordinator: coordinator, lastLocationStorage: storage, mode: config.mode, di: di)
-        Task { await di.geofenceEventTracker.flushPending() }
         let lifecycleNotifying = RealAppLifecycleNotifying()
-        // Foreground geofence refresh is intentionally mode-independent — geofence
-        // monitoring runs even when `LocationConfig.mode` disables periodic location
-        // updates. Skips silently with no cached anchor; movement EXIT drives the first
-        // registration in that case.
-        geofenceForegroundToken = lifecycleNotifying.addDidBecomeActiveObserver { [weak self] in
-            self?.refreshGeofencesIfPossible(lastLocationStorage: storage)
-        }
-        // Rearm first-run refresh on the first fresh fix after an identify/foreground skip.
-        Task { [weak self] in
-            await coordinator.setOnLocationProcessed { location in
-                self?.rearmFirstRunRefreshIfArmed(location: location, di: di)
-            }
-        }
-        Task { @MainActor in
-            await GeofenceBootstrap.wireMonitor(di: di)
-        }
+
+        setupGeofence(
+            coordinator: coordinator,
+            lastLocationStorage: storage,
+            lifecycleNotifying: lifecycleNotifying,
+            mode: config.mode,
+            di: di
+        )
+
         let locationProvider = CoreLocationProvider(logger: di.logger)
         let implementation = LocationServicesImplementation(
             config: config,
@@ -71,6 +63,35 @@ final class LocationModuleState {
         )
         services = implementation
         Task { await implementation.setUpLifecycleObserver() }
+    }
+
+    /// Wires the geofence side of the Location module: event subscriptions, cold-wake
+    /// pending-flush, foreground refresh, first-run rearm, and OS monitor bootstrap.
+    func setupGeofence(
+        coordinator: LocationSyncCoordinator,
+        lastLocationStorage: LastLocationStorage,
+        lifecycleNotifying: AppLifecycleNotifying,
+        mode: LocationTrackingMode,
+        di: DIGraphShared
+    ) {
+        registerEventSubscriptions(coordinator: coordinator, lastLocationStorage: lastLocationStorage, mode: mode, di: di)
+        Task { await di.geofenceEventTracker.flushPending() }
+        // Foreground geofence refresh is intentionally mode-independent — geofence
+        // monitoring runs even when `LocationConfig.mode` disables periodic location
+        // updates. Skips silently with no cached anchor; movement EXIT drives the first
+        // registration in that case.
+        geofenceForegroundToken = lifecycleNotifying.addDidBecomeActiveObserver { [weak self] in
+            self?.refreshGeofencesIfPossible(lastLocationStorage: lastLocationStorage)
+        }
+        // Rearm first-run refresh on the first fresh fix after an identify/foreground skip.
+        Task {
+            await coordinator.setOnLocationProcessed { [weak self] location in
+                self?.rearmFirstRunRefreshIfArmed(location: location, di: di)
+            }
+        }
+        Task { @MainActor in
+            await GeofenceBootstrap.wireMonitor(di: di)
+        }
     }
 
     private func registerEventSubscriptions(
@@ -93,7 +114,7 @@ final class LocationModuleState {
         }
         di.eventBusHandler.addObserver(ResetEvent.self) { _ in
             Task { @MainActor in
-                _ = await DIGraphShared.shared.geofenceSyncCoordinator.reset()
+                _ = await di.geofenceSyncCoordinator.reset()
             }
         }
     }
