@@ -78,7 +78,7 @@ class DataPipelineEventBustTests: IntegrationTest {
         }
 
         XCTAssertEqual(trackEvent.type, "track")
-        XCTAssertEqual(trackEvent.event, "GeoFence Entered")
+        XCTAssertEqual(trackEvent.event, "CIO Geofence Entered")
         let properties = trackEvent.properties?.dictionaryValue ?? [:]
         XCTAssertEqual(properties["geofence_id"] as? String, givenGeofenceId)
         XCTAssertEqual(properties["transition_type"] as? String, "enter")
@@ -105,7 +105,7 @@ class DataPipelineEventBustTests: IntegrationTest {
             return
         }
 
-        XCTAssertEqual(trackEvent.event, "GeoFence Exited")
+        XCTAssertEqual(trackEvent.event, "CIO Geofence Exited")
         let properties = trackEvent.properties?.dictionaryValue ?? [:]
         XCTAssertEqual(properties["geofence_id"] as? String, givenGeofenceId)
         XCTAssertEqual(properties["transition_type"] as? String, "exit")

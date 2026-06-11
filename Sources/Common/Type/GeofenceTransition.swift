@@ -13,11 +13,11 @@ public enum GeofenceTransition: String, Codable, Sendable {
 
 public extension GeofenceTransition {
     /// Analytics event name for this transition. Matches the Android SDK's
-    /// `"GeoFence Entered"` / `"GeoFence Exited"` (capital F mid-word).
+    /// `"Geofence Entered"` / `"Geofence Exited"`.
     var trackEventName: String {
         switch self {
-        case .enter: return "GeoFence Entered"
-        case .exit: return "GeoFence Exited"
+        case .enter: return "CIO Geofence Entered"
+        case .exit: return "CIO Geofence Exited"
         }
     }
 }

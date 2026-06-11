@@ -39,7 +39,7 @@ struct BackgroundDeliveryHttpClientTests {
 
         await withCheckedContinuation { continuation in
             client.sendTrackEvent(
-                eventName: "GeoFence Entered",
+                eventName: "CIO Geofence Entered",
                 userId: "user_42",
                 properties: ["geofence_id": "geo_1", "transition_type": "enter"]
             ) { _ in continuation.resume() }
@@ -52,7 +52,7 @@ struct BackgroundDeliveryHttpClientTests {
         #expect(params?.headers?["Content-Type"] == "application/json; charset=utf-8")
 
         let body = params?.body.flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: Any] }
-        #expect(body?["event"] as? String == "GeoFence Entered")
+        #expect(body?["event"] as? String == "CIO Geofence Entered")
         #expect(body?["userId"] as? String == "user_42")
         let properties = body?["properties"] as? [String: Any]
         #expect(properties?["geofence_id"] as? String == "geo_1")

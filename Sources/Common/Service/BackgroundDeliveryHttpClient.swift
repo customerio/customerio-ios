@@ -18,7 +18,7 @@ public enum BackgroundDeliveryHttpError: Error, Equatable {
 public protocol BackgroundDeliveryHttpClient: AutoMockable, Sendable {
     /// Sends one CDP `/track` event.
     /// - Parameters:
-    ///   - eventName: `track` event name (e.g. `"GeoFence Entered"`).
+    ///   - eventName: `track` event name (e.g. `"Geofence Entered"`).
     ///   - userId: Identified user id. Caller must validate non-empty before calling.
     ///   - properties: Event properties payload.
     ///   - completion: Called on URLSession's delegate queue with success or error.
