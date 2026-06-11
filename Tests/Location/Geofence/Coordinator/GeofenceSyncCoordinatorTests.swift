@@ -130,11 +130,71 @@ struct GeofenceSyncCoordinatorTests {
         )
 
         let setup = makeCoordinator(storage: storage, dateUtil: dateUtil)
-        let result = await setup.coordinator.refresh(latitude: 1.0, longitude: 2.0)
+        // Same anchor → distance is 0; freshness gate skips API.
+        let result = await setup.coordinator.refresh(latitude: 0, longitude: 0)
 
         #expect(result.isSuccess)
         #expect(setup.api.fetchGeofencesCallsCount == 0)
         #expect(setup.monitor.startedRegions.isEmpty)
+    }
+
+    @Test
+    func refresh_givenTimeFreshButFarFromAnchor_expectApiCalled() async {
+        let storage = makeStorage()
+        let dateUtil = DateUtilStub()
+        // Time-fresh (100s ago vs 1h expiry) but caller is well beyond the 3km trigger radius.
+        let oneHour: TimeInterval = 60 * 60
+        await storage.setCachedConfig(GeofenceConfig(
+            localRefreshTriggerRadius: 1000,
+            remoteFetchRefreshTriggerRadius: 3000,
+            remoteFetchRefreshExpiry: oneHour,
+            duplicateEventsExpiry: 60,
+            maxBusinessGeofences: 10
+        ))
+        await storage.recordSync(
+            timestamp: dateUtil.givenNow.addingTimeInterval(-100),
+            location: LocationData(latitude: 0, longitude: 0)
+        )
+        let api = GeofenceApiServiceMock()
+        api.fetchGeofencesClosure = { _, _, completion in
+            completion(.success(makeApiResponse(regions: [])))
+        }
+        let setup = makeCoordinator(api: api, storage: storage, dateUtil: dateUtil)
+
+        // (1.0, 2.0) is ~248km from (0, 0) — way beyond 3km.
+        let result = await setup.coordinator.refresh(latitude: 1.0, longitude: 2.0)
+
+        #expect(result.isSuccess)
+        #expect(api.fetchGeofencesCallsCount == 1)
+    }
+
+    @Test
+    func refresh_givenTimeStaleButNearAnchor_expectApiCalled() async {
+        let storage = makeStorage()
+        let dateUtil = DateUtilStub()
+        // Time-stale (2h ago vs 1h expiry) at the same anchor (distance = 0).
+        let oneHour: TimeInterval = 60 * 60
+        await storage.setCachedConfig(GeofenceConfig(
+            localRefreshTriggerRadius: 1000,
+            remoteFetchRefreshTriggerRadius: 3000,
+            remoteFetchRefreshExpiry: oneHour,
+            duplicateEventsExpiry: 60,
+            maxBusinessGeofences: 10
+        ))
+        await storage.recordSync(
+            timestamp: dateUtil.givenNow.addingTimeInterval(-2 * oneHour),
+            location: LocationData(latitude: 0, longitude: 0)
+        )
+        let api = GeofenceApiServiceMock()
+        api.fetchGeofencesClosure = { _, _, completion in
+            completion(.success(makeApiResponse(regions: [])))
+        }
+        let setup = makeCoordinator(api: api, storage: storage, dateUtil: dateUtil)
+
+        let result = await setup.coordinator.refresh(latitude: 0, longitude: 0)
+
+        #expect(result.isSuccess)
+        #expect(api.fetchGeofencesCallsCount == 1)
     }
 
     @Test
@@ -179,7 +239,8 @@ struct GeofenceSyncCoordinatorTests {
         )
         let setup = makeCoordinator(storage: storage, dateUtil: dateUtil)
 
-        let result = await setup.coordinator.refresh(latitude: 1.0, longitude: 2.0)
+        // Same anchor → distance is 0; freshness gate skips even without a cached config.
+        let result = await setup.coordinator.refresh(latitude: 0, longitude: 0)
 
         #expect(result.isSuccess)
         #expect(setup.api.fetchGeofencesCallsCount == 0)
@@ -327,8 +388,9 @@ struct GeofenceSyncCoordinatorTests {
         )
         await storage.setCachedConfig(config)
         let api = GeofenceApiServiceMock()
+        let region = makeRegion(id: "g1", latitude: 37.7749, longitude: -122.4194)
         api.fetchGeofencesClosure = { _, _, completion in
-            completion(.success(makeApiResponse(regions: [])))
+            completion(.success(makeApiResponse(regions: [region])))
         }
 
         let setup = makeCoordinator(api: api, storage: storage)
@@ -341,6 +403,21 @@ struct GeofenceSyncCoordinatorTests {
         #expect(movementTrigger?.center.longitude == -122.4194)
         #expect(movementTrigger?.radius == 750)
         #expect(movementTrigger?.transitionTypes == [.exit])
+    }
+
+    @Test
+    func refresh_givenEmptyBusinessRegions_expectNoMovementTriggerRegistered() async {
+        let storage = makeStorage()
+        let api = GeofenceApiServiceMock()
+        api.fetchGeofencesClosure = { _, _, completion in
+            completion(.success(makeApiResponse(regions: [])))
+        }
+
+        let setup = makeCoordinator(api: api, storage: storage)
+        _ = await setup.coordinator.refresh(latitude: 37.7749, longitude: -122.4194)
+
+        // No business regions ⇒ no movement trigger either; refetch-on-move would just hit the same empty result.
+        #expect(setup.monitor.startedRegions.isEmpty)
     }
 
     @Test
