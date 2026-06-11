@@ -27,7 +27,7 @@ struct PendingGeofenceMetric: Codable, Equatable, Sendable {
         latitude: Double?,
         longitude: Double?,
         timestamp: Date,
-        userId: String? = nil
+        userId: String?
     ) {
         self.geofenceId = geofenceId
         self.transition = transition
