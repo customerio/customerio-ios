@@ -44,7 +44,7 @@ struct GeofenceDeliveryTrackerTests {
         }
 
         let args = httpClient.sendTrackEventReceivedArguments
-        #expect(args?.eventName == "GeoFence Entered")
+        #expect(args?.eventName == "CIO Geofence Entered")
         #expect(args?.userId == "user_42")
         let properties = args?.properties ?? [:]
         #expect(properties["geofence_id"] as? String == "geo_1")
@@ -65,7 +65,7 @@ struct GeofenceDeliveryTrackerTests {
             }
         }
 
-        #expect(httpClient.sendTrackEventReceivedArguments?.eventName == "GeoFence Exited")
+        #expect(httpClient.sendTrackEventReceivedArguments?.eventName == "CIO Geofence Exited")
     }
 
     @Test
