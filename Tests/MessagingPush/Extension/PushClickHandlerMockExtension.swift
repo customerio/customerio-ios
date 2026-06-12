@@ -1,4 +1,5 @@
 @testable import CioMessagingPush
+@testable import CioMessagingPushMocks
 import Foundation
 import XCTest
 

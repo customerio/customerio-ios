@@ -9,8 +9,9 @@ import FoundationNetworking
 #if canImport(UserNotifications)
 import UserNotifications
 #endif
-import CioInternalCommon
 import UIKit
+@testable import CioMessagingInApp
+@testable import CioInternalCommon
 
 /**
  ######################################################
