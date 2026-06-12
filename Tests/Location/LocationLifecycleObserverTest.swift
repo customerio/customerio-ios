@@ -1,5 +1,5 @@
 @testable import CioLocation
-import SharedTests
+@testable import SharedTests
 import Testing
 
 @Suite("Location")

@@ -1,7 +1,7 @@
 @testable import CioInternalCommon
 @testable import CioMessagingPush
 import Foundation
-import SharedTests
+@testable import SharedTests
 import XCTest
 
 /// Verifies app-group pending push delivery metrics are flushed when MessagingPush starts (main app launch path).

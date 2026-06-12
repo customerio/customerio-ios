@@ -1,4 +1,5 @@
 @testable import CioMessagingPush
+@testable import SharedTests
 import Foundation
 import XCTest
 

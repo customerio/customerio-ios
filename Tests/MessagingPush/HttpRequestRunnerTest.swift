@@ -1,6 +1,6 @@
 @testable import CioInternalCommon
 import Foundation
-import SharedTests
+@testable import SharedTests
 #if canImport(FoundationNetworking)
 import FoundationNetworking
 #endif

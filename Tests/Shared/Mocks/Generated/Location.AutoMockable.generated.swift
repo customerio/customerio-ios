@@ -1,5 +1,3 @@
-// Generated using Sourcery 2.0.3 — https://github.com/krzysztofzablocki/Sourcery
-// DO NOT EDIT
 // swiftlint:disable all
 
 import Foundation
@@ -9,7 +7,8 @@ import FoundationNetworking
 #if canImport(UserNotifications)
 import UserNotifications
 #endif
-import CioInternalCommon
+@testable import CioLocation
+@testable import CioInternalCommon
 
 /**
  ######################################################

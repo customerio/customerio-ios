@@ -1,7 +1,7 @@
 @testable import CioInternalCommon
 @testable import CioMessagingInApp
 import Foundation
-import SharedTests
+@testable import SharedTests
 import XCTest
 
 class MessagingInAppImplementationTest: IntegrationTest {

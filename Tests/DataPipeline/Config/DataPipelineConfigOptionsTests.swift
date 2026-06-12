@@ -1,6 +1,6 @@
 @testable import CioAnalytics
 @testable import CioDataPipelines
-import SharedTests
+@testable import SharedTests
 import XCTest
 
 // Tests to verify that configurations created by the SDK for our DataPipeline module and Segment analytics matches our expectations.

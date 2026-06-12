@@ -1,6 +1,6 @@
 @testable import CioInternalCommon
 @testable import CioMessagingPush
-import SharedTests
+@testable import SharedTests
 import XCTest
 
 class MessagingPushConfigBuilderTest: UnitTest {

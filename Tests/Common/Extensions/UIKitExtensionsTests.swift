@@ -1,5 +1,5 @@
 import Foundation
-import SharedTests
+@testable import SharedTests
 import SwiftUI
 import UIKit
 import XCTest

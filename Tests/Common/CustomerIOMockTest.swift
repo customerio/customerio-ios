@@ -1,4 +1,5 @@
 import Foundation
+@testable import SharedTests
 import Testing
 
 @testable import CioInternalCommon

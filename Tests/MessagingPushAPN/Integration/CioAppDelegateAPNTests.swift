@@ -1,7 +1,7 @@
 @testable import CioInternalCommon
 @_spi(Internal) @testable import CioMessagingPush
 @testable import CioMessagingPushAPN
-import SharedTests
+@testable import SharedTests
 import UIKit
 import UserNotifications
 import XCTest

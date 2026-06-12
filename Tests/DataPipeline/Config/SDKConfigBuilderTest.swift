@@ -1,7 +1,7 @@
 @testable import CioAnalytics
 @testable import CioDataPipelines
 import CioInternalCommon
-import SharedTests
+@testable import SharedTests
 import XCTest
 
 class SDKConfigBuilderTest: UnitTest {

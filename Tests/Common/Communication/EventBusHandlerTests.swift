@@ -1,5 +1,5 @@
 import Combine
-import SharedTests
+@testable import SharedTests
 import XCTest
 
 @testable import CioInternalCommon

@@ -1,7 +1,7 @@
 @testable import CioInternalCommon
 @testable import CioLocation
 import CoreLocation
-import SharedTests
+@testable import SharedTests
 import Testing
 
 @Suite("Location")

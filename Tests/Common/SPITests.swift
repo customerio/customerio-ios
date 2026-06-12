@@ -1,5 +1,5 @@
 @_spi(Internal) import CioInternalCommon
-import SharedTests
+@testable import SharedTests
 import XCTest
 
 /// Includes compile-time checks and validations for internal APIs marked with `@_spi(Internal)`.

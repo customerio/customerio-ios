@@ -1,7 +1,7 @@
 @testable import CioInternalCommon
 @testable import CioMessagingPush
 import Foundation
-import SharedTests
+@testable import SharedTests
 import UserNotifications
 import XCTest
 

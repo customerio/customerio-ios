@@ -1,7 +1,7 @@
 @_spi(Internal) @testable import CioInternalCommon
 @testable import CioMessagingPush
 import Foundation
-import SharedTests
+@testable import SharedTests
 import XCTest
 
 class DeepLinkUtilTest: UnitTest {

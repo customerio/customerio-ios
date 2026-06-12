@@ -1,4 +1,4 @@
-import SharedTests
+@testable import SharedTests
 
 class DIGraphTests: BaseDIGraphTest {
     func testDependencyGraphComplete() {

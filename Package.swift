@@ -67,9 +67,22 @@ let package = Package(
         .testTarget(name: "MigrationTests",
                     dependencies: ["CioTrackingMigration", "SharedTests"],
                     path: "Tests/Migration"),
-        // shared code dependency that other test targets use. 
+        // shared code dependency that other test targets use.
+        // This target also hosts the auto-generated AutoMockable mocks (Tests/Shared/Mocks/Generated/<Module>). The mocks
+        // live here, rather than inside each Sources/<Module> target, so they are NOT compiled into the products customers
+        // install. Because the mocks `@testable import` their source modules, SharedTests must depend on every module that
+        // has generated mocks. These dependencies are test-only (SharedTests is not a `.library` product).
         .target(name: "SharedTests",
-                dependencies: ["CioInternalCommon"],
+                dependencies: [
+                    "CioInternalCommon",
+                    "CioTrackingMigration",
+                    "CioMessagingPush",
+                    "CioDataPipelines",
+                    "CioMessagingPushAPN",
+                    "CioMessagingPushFCM",
+                    "CioMessagingInApp",
+                    "CioLocation"
+                ],
                 path: "Tests/Shared",
                 resources: [
                     .copy("SampleDataFiles") // static files that are used in test functions.

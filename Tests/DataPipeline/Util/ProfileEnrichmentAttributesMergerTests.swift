@@ -1,7 +1,7 @@
 @testable import CioDataPipelines
 @testable import CioInternalCommon
 import Foundation
-import SharedTests
+@testable import SharedTests
 import XCTest
 
 class ProfileEnrichmentAttributesMergerTests: UnitTest {

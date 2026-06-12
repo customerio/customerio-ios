@@ -1,6 +1,6 @@
 @testable import CioInternalCommon
 @testable import CioMessagingInApp
-import SharedTests
+@testable import SharedTests
 import XCTest
 
 /// Tests for `SseConnectionManager` actor.

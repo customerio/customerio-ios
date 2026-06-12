@@ -1,7 +1,7 @@
 @testable import CioInternalCommon
 @testable import CioTrackingMigration
 import Foundation
-import SharedTests
+@testable import SharedTests
 import XCTest
 
 class DataPipelineMigrationAssistantTests: UnitTest {

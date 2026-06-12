@@ -1,5 +1,5 @@
 @testable import CioInternalCommon
-import SharedTests
+@testable import SharedTests
 import XCTest
 
 class SdkConfigTest: UnitTest {

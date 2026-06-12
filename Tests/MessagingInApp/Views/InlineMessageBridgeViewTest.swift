@@ -1,4 +1,4 @@
-import SharedTests
+@testable import SharedTests
 import UIKit
 import XCTest
 

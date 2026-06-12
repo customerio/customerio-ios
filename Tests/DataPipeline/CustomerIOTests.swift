@@ -1,4 +1,5 @@
 import XCTest
+@testable import SharedTests
 
 @testable import CioDataPipelines
 @testable import CioInternalCommon
