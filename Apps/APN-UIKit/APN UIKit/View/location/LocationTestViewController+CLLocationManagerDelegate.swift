@@ -42,14 +42,23 @@ extension LocationTestViewController: @MainActor CLLocationManagerDelegate {
         showToast(withMessage: "Failed to get location: \(error.localizedDescription)")
     }
 
-    // iOS 14+ authorization change callback
+    /// **Customer integration pattern.** Call `CustomerIO.location.requestLocationUpdate()`
+    /// when permission lands in a granted state — the SDK uses that fix to bootstrap its
+    /// geofence sync. The call is idempotent, so it's safe to invoke on every delegate
+    /// firing.
     @available(iOS 14.0, *)
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
-        handleAuthorizationChange(manager.authorizationStatus)
+        let status = manager.authorizationStatus
+        if status == .authorizedWhenInUse || status == .authorizedAlways {
+            CustomerIO.location.requestLocationUpdate()
+        }
+        handleAuthorizationChange(status)
     }
 
-    // iOS 13 authorization change callback
     func locationManager(_ manager: CLLocationManager, didChangeAuthorization status: CLAuthorizationStatus) {
+        if status == .authorizedWhenInUse || status == .authorizedAlways {
+            CustomerIO.location.requestLocationUpdate()
+        }
         handleAuthorizationChange(status)
     }
 
