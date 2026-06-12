@@ -14,10 +14,6 @@ public extension DIGraphShared {
     /// gracefully; the aggregation engine will be a no-op in that case.
     @discardableResult
     func registerStorageManager(cdpApiKey: String) -> StorageManager? {
-        if let existing: StorageManager = getOptional(StorageManager.self) {
-            return existing
-        }
-
         do {
             let path = Self.databasePath(for: cdpApiKey)
             let db = try Database(path: path, key: cdpApiKey)
