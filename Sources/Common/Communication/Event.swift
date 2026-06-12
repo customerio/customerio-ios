@@ -51,7 +51,8 @@ public enum EventTypesRegistry {
             TrackGeofenceMetricEvent.self,
             RegisterDeviceTokenEvent.self,
             DeleteDeviceTokenEvent.self,
-            NewSubscriptionEvent.self
+            NewSubscriptionEvent.self,
+            LocationAcquiredEvent.self
         ]
     }
 

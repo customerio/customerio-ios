@@ -8,27 +8,30 @@ actor LocationSyncCoordinator {
     private let dataPipeline: DataPipelineTracking?
     private let dateUtil: DateUtil
     private let logger: Logger
-    private var onLocationProcessed: (@Sendable (LocationData) -> Void)?
+    private let eventBusHandler: EventBusHandler
 
     init(
         storage: LastLocationStorage,
         filter: LocationFilter,
         dataPipeline: DataPipelineTracking?,
         dateUtil: DateUtil,
-        logger: Logger
+        logger: Logger,
+        eventBusHandler: EventBusHandler
     ) {
         self.storage = storage
         self.filter = filter
         self.dataPipeline = dataPipeline
         self.dateUtil = dateUtil
         self.logger = logger
+        self.eventBusHandler = eventBusHandler
     }
 
     /// Called for every new location (from setLastKnownLocation or requestLocationUpdate). Always updates cache; sends track via pipeline when filter allows and user is identified.
     func processLocationUpdate(_ location: LocationData) {
         storage.setCachedLocation(location)
-        // Used by the geofence first-run race rearm in `LocationModuleState`.
-        onLocationProcessed?(location)
+        // Signals the geofence first-run-refresh re-arm. Routed through the EventBus so
+        // geofence can observe fixes without a direct reference to this coordinator.
+        eventBusHandler.postEvent(LocationAcquiredEvent(location: location))
 
         guard filter.shouldSyncToServer(newLocation: location) else {
             logger.locationSyncFiltered()
@@ -36,12 +39,6 @@ actor LocationSyncCoordinator {
         }
 
         trySendLocationTrack(location)
-    }
-
-    /// Registers an observer for every processed location. Used by the geofence module to
-    /// re-arm a refresh that previously skipped due to no cached location.
-    func setOnLocationProcessed(_ handler: (@Sendable (LocationData) -> Void)?) {
-        onLocationProcessed = handler
     }
 
     /// Called when ProfileIdentifiedEvent is received. Syncs cached location if present and the 24h + 1 km filter allows.

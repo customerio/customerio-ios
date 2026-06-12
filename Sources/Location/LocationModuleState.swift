@@ -38,7 +38,8 @@ final class LocationModuleState {
             filter: filter,
             dataPipeline: dataPipeline,
             dateUtil: di.dateUtil,
-            logger: di.logger
+            logger: di.logger,
+            eventBusHandler: di.eventBusHandler
         )
         let locationEnrichmentProvider = LocationProfileEnrichmentProvider(storage: storage, config: config)
         di.profileEnrichmentRegistry.register(locationEnrichmentProvider)
@@ -84,10 +85,8 @@ final class LocationModuleState {
             self?.refreshGeofencesIfPossible(lastLocationStorage: lastLocationStorage)
         }
         // Rearm first-run refresh on the first fresh fix after an identify/foreground skip.
-        Task {
-            await coordinator.setOnLocationProcessed { [weak self] location in
-                self?.rearmFirstRunRefreshIfArmed(location: location, di: di)
-            }
+        di.eventBusHandler.addObserver(LocationAcquiredEvent.self) { [weak self] event in
+            self?.rearmFirstRunRefreshIfArmed(location: event.location, di: di)
         }
         Task { @MainActor in
             await GeofenceBootstrap.wireMonitor(di: di)
@@ -107,7 +106,7 @@ final class LocationModuleState {
             // `.onAppStart`'s lifecycle one-shot fires per process, but `resetContext()`
             // wipes the cached location on sign-out — a subsequent identify in the same
             // process otherwise leaves the first-run rearm armed indefinitely. Forcing a
-            // fresh fix here lets `onLocationProcessed` drive the geofence rearm.
+            // fresh fix here lets the `LocationAcquiredEvent` observer drive the geofence rearm.
             if mode == .onAppStart, lastLocationStorage.getCachedLocation() == nil {
                 self?.current.requestLocationUpdate()
             }

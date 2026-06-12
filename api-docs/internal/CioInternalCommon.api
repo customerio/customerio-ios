@@ -337,6 +337,13 @@ public final class CioInternalCommon.JsonAdapter {
 }
 public enum CioInternalCommon.KeyValueStorageKey {
 }
+public final class CioInternalCommon.LocationAcquiredEvent {
+	public final val storageId: String;
+	public final val params: List<String : String>;
+	public final val location: LocationData;
+	public final val timestamp: Date;
+	public fun init(storageId: String = UUID().uuidString, location: LocationData, timestamp: Date = Date(), params: List<String: String> = List<:>);
+}
 public final class CioInternalCommon.LocationData {
 	public final val latitude: Double;
 	public final val longitude: Double;

@@ -112,7 +112,8 @@ private struct Fixture {
             filter: LocationFilter(storage: lastLocationStorage, dateUtil: DateUtilStub()),
             dataPipeline: nil,
             dateUtil: DateUtilStub(),
-            logger: LoggerMock()
+            logger: LoggerMock(),
+            eventBusHandler: bus
         )
         self.state = LocationModuleState()
     }
