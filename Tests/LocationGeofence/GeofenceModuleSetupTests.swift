@@ -1,20 +1,22 @@
 @testable import CioInternalCommon
-@testable import CioLocation
+import CioLocation
+@testable import CioLocationGeofence
+import CoreLocation
 import Foundation
 import SharedTests
 import Testing
 
-/// Validates the geofence wiring contract of `LocationModuleState.setupGeofence`
-/// without driving the full `performInitialization` path (which spins up
-/// `CLLocationManager`, lifecycle observers, and other non-geofence side effects).
+/// Validates the geofence wiring contract of `GeofenceModuleState.setup` without driving the
+/// full module `initialize()` path (which spins up `CLLocationManager`, lifecycle observers,
+/// and other side effects).
 ///
-/// Each test owns the EventBus, coordinator spy, monitor mock, and storage.
-/// `.serialized` because tests share `DIGraphShared.shared` overrides.
-@Suite("LocationModuleState.setupGeofence", .serialized)
-struct LocationModuleStateGeofenceTests {
+/// Each test owns the EventBus, coordinator spy, monitor mock, storage, and a stub
+/// `LocationServices`. `.serialized` because tests share `DIGraphShared.shared` overrides.
+@Suite("GeofenceModuleState.setup", .serialized)
+struct GeofenceModuleSetupTests {
     @Test
     @MainActor
-    func setupGeofence_givenResetEventDelivered_expectCoordinatorResetCalled() async throws {
+    func setup_givenResetEventDelivered_expectCoordinatorResetCalled() async throws {
         let f = Fixture()
         defer { f.cleanup() }
 
@@ -24,7 +26,7 @@ struct LocationModuleStateGeofenceTests {
             return .success(())
         }
 
-        f.wireGeofence()
+        f.wire()
 
         let deliver = try #require(f.bus.observers[ResetEvent.key], "ResetEvent observer must be registered")
         deliver(ResetEvent())
@@ -37,19 +39,20 @@ struct LocationModuleStateGeofenceTests {
 
     @Test
     @MainActor
-    func setupGeofence_expectBothEventObserversRegistered() throws {
+    func setup_expectEventObserversRegistered() throws {
         let f = Fixture()
         defer { f.cleanup() }
 
-        f.wireGeofence()
+        f.wire()
 
         #expect(f.bus.observers[ResetEvent.key] != nil, "ResetEvent observer must be registered")
         #expect(f.bus.observers[ProfileIdentifiedEvent.key] != nil, "ProfileIdentifiedEvent observer must be registered")
+        #expect(f.bus.observers[LocationAcquiredEvent.key] != nil, "LocationAcquiredEvent observer must be registered")
     }
 
     @Test
     @MainActor
-    func setupGeofence_givenProfileIdentifiedEventWithCachedLocation_expectRefreshCalledWithAnchor() async throws {
+    func setup_givenProfileIdentifiedEventWithCachedLocation_expectRefreshCalledWithAnchor() async throws {
         let f = Fixture(cachedLocation: LocationData(latitude: 12.34, longitude: 56.78))
         defer { f.cleanup() }
 
@@ -59,7 +62,7 @@ struct LocationModuleStateGeofenceTests {
             return .success(())
         }
 
-        f.wireGeofence()
+        f.wire()
 
         let deliver = try #require(f.bus.observers[ProfileIdentifiedEvent.key], "ProfileIdentifiedEvent observer must be registered")
         deliver(ProfileIdentifiedEvent(identifier: "u1"))
@@ -73,9 +76,8 @@ struct LocationModuleStateGeofenceTests {
     }
 }
 
-/// Per-test setup: overrides the DI shared singleton with capturing/mocking deps,
-/// builds a fresh `LocationModuleState`, and a real `LocationSyncCoordinator` over
-/// an in-memory location store. Optionally seeds a cached location.
+/// Per-test setup: overrides the DI shared singleton with capturing/mocking deps and builds
+/// a fresh `GeofenceModuleState` with a no-op lifecycle notifier and a stub `LocationServices`.
 @MainActor
 private struct Fixture {
     let di: DIGraphShared
@@ -83,9 +85,7 @@ private struct Fixture {
     let spyCoordinator: GeofenceSyncCoordinatorMock
     let mockMonitor: MockGeofenceRegionMonitor
     let tempDir: URL
-    let state: LocationModuleState
-    let locationCoordinator: LocationSyncCoordinator
-    let lastLocationStorage: LastLocationStorageImpl
+    let state: GeofenceModuleState
 
     init(cachedLocation: LocationData? = nil) {
         self.di = DIGraphShared.shared
@@ -103,29 +103,15 @@ private struct Fixture {
         let testStorage = GeofenceStorage(fileManager: .default, directoryURL: tempDir)
         di.override(value: testStorage, forType: GeofenceStorage.self)
 
-        self.lastLocationStorage = LastLocationStorageImpl(stateStore: InMemoryLastLocationStateStore())
-        if let cached = cachedLocation {
-            lastLocationStorage.setCachedLocation(cached)
-        }
-        self.locationCoordinator = LocationSyncCoordinator(
-            storage: lastLocationStorage,
-            filter: LocationFilter(storage: lastLocationStorage, dateUtil: DateUtilStub()),
-            dataPipeline: nil,
-            dateUtil: DateUtilStub(),
-            logger: LoggerMock(),
-            eventBusHandler: bus
+        let stubServices = StubLocationServices(cachedLocation: cachedLocation)
+        self.state = GeofenceModuleState(
+            lifecycleNotifying: NoOpAppLifecycleNotifying(),
+            locationServicesProvider: { stubServices }
         )
-        self.state = LocationModuleState()
     }
 
-    func wireGeofence(mode: LocationTrackingMode = .off) {
-        state.setupGeofence(
-            coordinator: locationCoordinator,
-            lastLocationStorage: lastLocationStorage,
-            lifecycleNotifying: NoOpAppLifecycleNotifying(),
-            mode: mode,
-            di: di
-        )
+    func wire() {
+        state.setup(di: di)
     }
 
     func cleanup() {
@@ -134,9 +120,38 @@ private struct Fixture {
     }
 }
 
-/// Captures registered observers so tests can deliver events synchronously
-/// without spinning up the real `CioEventBusHandler` and its async operation
-/// queue. Keyed by `EventRepresentable.key`.
+/// Stub `LocationServices` returning a fixed cached location; other operations are no-ops.
+private final class StubLocationServices: LocationServices, @unchecked Sendable {
+    private let cachedLocation: LocationData?
+
+    init(cachedLocation: LocationData?) {
+        self.cachedLocation = cachedLocation
+    }
+
+    func setLastKnownLocation(_ location: CLLocation) {}
+    func requestLocationUpdate() {}
+    func getLastKnownLocation() async -> LocationData? {
+        cachedLocation
+    }
+}
+
+/// No-op lifecycle notifier so the foreground observer never fires during tests.
+private final class NoOpAppLifecycleNotifying: AppLifecycleNotifying {
+    func addDidBecomeActiveObserver(using block: @escaping () -> Void) -> AppLifecycleObserverToken {
+        NoOpToken()
+    }
+
+    func addDidEnterBackgroundObserver(using block: @escaping () -> Void) -> AppLifecycleObserverToken {
+        NoOpToken()
+    }
+}
+
+private final class NoOpToken: AppLifecycleObserverToken {
+    func remove() {}
+}
+
+/// Captures registered observers so tests can deliver events synchronously without spinning
+/// up the real `CioEventBusHandler` and its async operation queue. Keyed by `EventRepresentable.key`.
 private final class CapturingEventBusHandler: EventBusHandler, @unchecked Sendable {
     private(set) var observers: [String: (AnyEventRepresentable) -> Void] = [:]
 

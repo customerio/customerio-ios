@@ -1,10 +1,8 @@
 import CioInternalCommon
 import Foundation
+import UIKit
 
-/// Configuration options for the Geofence module.
-///
-/// Currently exposes no options; it reserves the configuration entry point so future
-/// geofence settings can be added without a source-breaking change to `GeofenceModule`.
+/// Configuration options for the Geofence module. Currently has no options.
 public struct GeofenceModuleConfig: CustomerIOModuleConfig {
     public init() {}
 }
@@ -30,7 +28,34 @@ public final class GeofenceModule: CustomerIOModule {
         self.config = config
     }
 
+    /// Setup runs on `GeofenceModuleState.shared`, which lives for the process lifetime — the
+    /// SDK does not retain this facade after `initialize()` returns, so the module's foreground
+    /// observer and first-run state must outlive it.
     public func initialize() {
-        // Intentionally empty: this module registers no behavior on its own yet.
+        GeofenceModuleState.shared.setup(di: DIGraphShared.shared)
+    }
+
+    /// Bootstraps geofence cold-wake delivery from the host's `AppDelegate`.
+    ///
+    /// Wrapper SDKs (RN, Flutter) do not run `CustomerIO.initialize` in the cold-wake
+    /// process — there is no JS/Dart runtime. This entry reads all the state it needs
+    /// from persisted stores and wires up region monitoring and flushes any queued
+    /// transition deliveries without requiring any module's `initialize` to have run in
+    /// this process.
+    ///
+    /// Safe to call on every launch. When the SDK has been initialized via
+    /// `CustomerIO.initialize(withConfig:)`, the same DI-resolved singletons are reused —
+    /// no double-init, no duplicate monitoring.
+    @MainActor
+    public static func bootstrapForBackgroundDelivery(launchOptions: [UIApplication.LaunchOptionsKey: Any]?) {
+        // Reserved for future cold-wake detection (e.g. `launchOptions[.location]`).
+        _ = launchOptions
+
+        let di = DIGraphShared.shared
+        GeofenceBootstrap.emitDiscoverabilityLogIfNeeded(di: di)
+        Task { await di.geofenceEventTracker.flushPending() }
+        Task { @MainActor in
+            await GeofenceBootstrap.wireMonitor(di: di)
+        }
     }
 }

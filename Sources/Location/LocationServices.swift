@@ -42,6 +42,13 @@ public protocol LocationServices: AnyObject {
     /// The SDK does not request location permission. The host app must prompt for authorization
     /// (e.g. via `CLLocationManager.requestWhenInUseAuthorization()`) and only call this when permission is granted.
     func requestLocationUpdate()
+
+    /// Returns the most recent location the SDK has cached, or `nil` if none is known yet.
+    ///
+    /// The value comes from `setLastKnownLocation`, a `requestLocationUpdate` result, or a
+    /// previous session (the cache is persisted), so a location can be available before any
+    /// fix has been received in the current session.
+    func getLastKnownLocation() async -> LocationData?
 }
 
 // MARK: - UninitializedLocationServices
@@ -59,6 +66,11 @@ final class UninitializedLocationServices: LocationServices {
 
     func requestLocationUpdate() {
         logger.moduleNotInitialized()
+    }
+
+    func getLastKnownLocation() async -> LocationData? {
+        logger.moduleNotInitialized()
+        return nil
     }
 }
 
@@ -122,6 +134,10 @@ actor LocationServicesImplementation: LocationServices {
 
     nonisolated func requestLocationUpdate() {
         Task { await self.startRequestIfNeeded() }
+    }
+
+    nonisolated func getLastKnownLocation() async -> LocationData? {
+        await locationSyncCoordinator.getCachedLocation()
     }
 
     /// Cancels any in-flight location request. No-op if nothing in progress. Called automatically when the app enters background; not exposed on the public LocationServices protocol.
