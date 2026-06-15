@@ -125,13 +125,9 @@ public class CioEventBusHandler: EventBusHandler {
         logger.debug("EventBusHandler: Posting event - \(event)")
 
         let hasObservers = await eventBus.post(event)
+        await eventCache.addEvent(event: event)
 
         if !hasObservers {
-            // Only cache/store events that had no observers at post time. The cache exists so that
-            // late-arriving observers (registered after the event was posted) can replay missed
-            // events. If the event was already delivered directly, caching it would cause a second
-            // delivery when the observer's replayEvents() runs, producing duplicate callbacks.
-            await eventCache.addEvent(event: event)
             logger.debug("EventBusHandler: Storing event in memory - \(event)")
             await storeEvent(event)
         }
