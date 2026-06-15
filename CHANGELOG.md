@@ -1,3 +1,9 @@
+## [4.5.1](https://github.com/customerio/customerio-ios/compare/4.5.0...4.5.1) (2026-06-15)
+
+### Bug Fixes
+
+* move generated mocks into per-module mock targets (test isolation) ([#1093](https://github.com/customerio/customerio-ios/issues/1093)) ([6539766](https://github.com/customerio/customerio-ios/commit/65397666d4e82eeec788ade4fb4aea19c876890a))
+
 ## [4.5.0](https://github.com/customerio/customerio-ios/compare/4.4.3...4.5.0) (2026-06-05)
 
 ### Features
