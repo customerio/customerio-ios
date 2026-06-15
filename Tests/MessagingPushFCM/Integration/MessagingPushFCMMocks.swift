@@ -1,4 +1,5 @@
 @testable import CioInternalCommon
+@testable import CioMessagingPushMocks
 @testable import CioMessagingPush
 @testable import CioMessagingPushFCM
 import Foundation

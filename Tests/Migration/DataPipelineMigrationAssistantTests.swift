@@ -1,4 +1,6 @@
 @testable import CioInternalCommon
+@testable import CioInternalCommonMocks
+@testable import CioTrackingMigrationMocks
 @testable import CioTrackingMigration
 import Foundation
 import SharedTests
