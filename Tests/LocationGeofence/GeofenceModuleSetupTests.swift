@@ -1,5 +1,5 @@
 @testable import CioInternalCommon
-import CioLocation
+@_spi(Internal) import CioLocation
 @testable import CioLocationGeofence
 import CoreLocation
 import Foundation

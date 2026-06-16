@@ -25,6 +25,10 @@ public struct LocationAcquiredEvent: EventRepresentable {
     public let location: LocationData
     public let timestamp: Date
 
+    /// Not persisted: a location fix is only useful in the moment, so it is dropped when unobserved
+    /// rather than written to disk for replay.
+    public var isPersistent: Bool { false }
+
     public init(storageId: String = UUID().uuidString, location: LocationData, timestamp: Date = Date(), params: [String: String] = [:]) {
         self.storageId = storageId
         self.location = location

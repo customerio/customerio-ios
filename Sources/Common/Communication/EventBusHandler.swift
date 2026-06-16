@@ -127,7 +127,7 @@ public class CioEventBusHandler: EventBusHandler {
         let hasObservers = await eventBus.post(event)
         await eventCache.addEvent(event: event)
 
-        if !hasObservers {
+        if !hasObservers, event.isPersistent {
             logger.debug("EventBusHandler: Storing event in memory - \(event)")
             await storeEvent(event)
         }

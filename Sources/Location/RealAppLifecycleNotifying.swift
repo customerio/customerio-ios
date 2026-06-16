@@ -4,7 +4,7 @@ import UIKit
 /// Production implementation that registers for app lifecycle notifications via NotificationCenter.
 /// Observers are invoked on the main queue.
 /// Uses `RegistrationToken` so that when the token is released, the observer is automatically removed.
-public final class RealAppLifecycleNotifying: AppLifecycleNotifying {
+@_spi(Internal) public final class RealAppLifecycleNotifying: AppLifecycleNotifying {
     private let notificationCenter: NotificationCenter
 
     public init(notificationCenter: NotificationCenter = .default) {

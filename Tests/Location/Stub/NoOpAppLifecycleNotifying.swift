@@ -1,4 +1,4 @@
-@testable import CioLocation
+@_spi(Internal) @testable import CioLocation
 import Foundation
 
 /// No-op implementation of AppLifecycleNotifying for tests that don't need lifecycle behavior.

@@ -1,5 +1,5 @@
 import CioInternalCommon
-import CioLocation
+@_spi(Internal) import CioLocation
 import Foundation
 
 /// Holds the Geofence module's runtime state and performs one-time setup.

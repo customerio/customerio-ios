@@ -142,6 +142,25 @@ class EventBusHandlerTest: UnitTest {
         )
     }
 
+    func test_postEventAndWait_givenNoObserversAndTransientEvent_expectEventNotStored() async throws {
+        let eventBusHandler = initializeEventBusHandler()
+
+        // Given: a transient event (isPersistent == false) and an EventBus without observers
+        mockEventBus.postReturnValue = false
+        let event = LocationAcquiredEvent(location: LocationData(latitude: 0, longitude: 0))
+
+        // When: the event is posted and the full post/store sequence completes
+        await eventBusHandler.postEventAndWait(event)
+
+        // Then: it is posted but never written to persistent storage, even with no observers,
+        // so location-only apps don't accumulate undrained files on disk
+        XCTAssertEqual(mockEventBus.postCallsCount, 1, "post should be called once on EventBus")
+        XCTAssertEqual(
+            mockEventStorage.storeCallsCount, 0,
+            "Transient event should not be stored even when there are no observers"
+        )
+    }
+
     func test_postEvent_givenTimestampedEvent_expectObserverReceivesCorrectTimestamp() async throws {
         let eventBusHandler = initializeEventBusHandler()
         let eventPostedTimestamp = Date()

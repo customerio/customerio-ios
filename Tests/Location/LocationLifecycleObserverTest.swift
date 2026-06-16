@@ -1,4 +1,4 @@
-@testable import CioLocation
+@_spi(Internal) @testable import CioLocation
 import SharedTests
 import Testing
 

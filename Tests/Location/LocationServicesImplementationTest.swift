@@ -1,5 +1,5 @@
 @testable import CioInternalCommon
-@testable import CioLocation
+@_spi(Internal) @testable import CioLocation
 import CoreLocation
 import SharedTests
 import Testing
