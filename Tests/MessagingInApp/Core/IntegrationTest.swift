@@ -1,4 +1,5 @@
 import Foundation
+@testable import CioMessagingInAppMocks
 import XCTest
 
 @testable import CioInternalCommon

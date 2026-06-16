@@ -1,5 +1,6 @@
 @_spi(Internal) @testable import CioInternalCommon
 @testable import CioMessagingPush
+@testable import CioInternalCommonMocks
 import Foundation
 import SharedTests
 import XCTest

@@ -9,8 +9,9 @@ import FoundationNetworking
 #if canImport(UserNotifications)
 import UserNotifications
 #endif
-import CioInternalCommon
-import CioMessagingPush
+@testable import CioMessagingPushFCM
+@testable import CioMessagingPush
+@testable import CioInternalCommon
 
 /**
  ######################################################

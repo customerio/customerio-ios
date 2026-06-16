@@ -10,6 +10,9 @@ import UserNotifications
 {% for importModule in argument.imports|split:"-" %}
 import {{ importModule }}
 {% endfor %}
+{% for importModule in argument.testableImports|split:"-" %}
+@testable import {{ importModule }}
+{% endfor %}
 
 /**
 ######################################################

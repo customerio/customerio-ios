@@ -9,7 +9,8 @@ import FoundationNetworking
 #if canImport(UserNotifications)
 import UserNotifications
 #endif
-import CioInternalCommon
+@testable import CioDataPipelines
+@testable import CioInternalCommon
 
 /**
  ######################################################

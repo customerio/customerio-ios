@@ -57,7 +57,7 @@ let package = Package(
         .target(name: "CioInternalCommon",
                 path: "Sources/Common"),
         .testTarget(name: "CommonTests",
-                    dependencies: ["CioInternalCommon", "SharedTests"],
+                    dependencies: ["CioInternalCommon", "SharedTests", "CioInternalCommonMocks"],
                     path: "Tests/Common"),
         // Migration
         // this module handles Journeys tasks migration to Datapipeline.
@@ -65,9 +65,9 @@ let package = Package(
                 dependencies: ["CioInternalCommon"],
                 path: "Sources/Migration"),
         .testTarget(name: "MigrationTests",
-                    dependencies: ["CioTrackingMigration", "SharedTests"],
+                    dependencies: ["CioTrackingMigration", "SharedTests", "CioInternalCommonMocks", "CioTrackingMigrationMocks"],
                     path: "Tests/Migration"),
-        // shared code dependency that other test targets use. 
+        // shared code dependency that other test targets use.
         .target(name: "SharedTests",
                 dependencies: ["CioInternalCommon"],
                 path: "Tests/Shared",
@@ -75,12 +75,41 @@ let package = Package(
                     .copy("SampleDataFiles") // static files that are used in test functions.
                 ]),
 
+        // Per-module mock targets. The auto-generated AutoMockable mocks live here (Tests/Mocks/<Module>) instead of
+        // inside the shipped Sources/<Module> targets, so that:
+        //   1. mocks are never compiled into the products customers install (these targets are not `.library` products), and
+        //   2. each test target links only the mock targets it actually uses, preserving per-module test isolation
+        //      (e.g. MessagingPushTests does not transitively link DataPipeline / MessagingInApp).
+        // The generated mocks `@testable import` their source module(s); this is allowed because these targets are only
+        // ever built as dependencies of test targets (i.e. in the test build graph, where testability is enabled).
+        .target(name: "CioInternalCommonMocks",
+                dependencies: ["CioInternalCommon"],
+                path: "Tests/Mocks/Common"),
+        .target(name: "CioTrackingMigrationMocks",
+                dependencies: ["CioTrackingMigration", "CioInternalCommon"],
+                path: "Tests/Mocks/Migration"),
+        .target(name: "CioMessagingPushMocks",
+                dependencies: ["CioMessagingPush", "CioInternalCommon"],
+                path: "Tests/Mocks/MessagingPush"),
+        .target(name: "CioDataPipelinesMocks",
+                dependencies: ["CioDataPipelines", "CioInternalCommon"],
+                path: "Tests/Mocks/DataPipeline"),
+        .target(name: "CioMessagingPushAPNMocks",
+                dependencies: ["CioMessagingPushAPN", "CioMessagingPush", "CioInternalCommon"],
+                path: "Tests/Mocks/MessagingPushAPN"),
+        .target(name: "CioMessagingPushFCMMocks",
+                dependencies: ["CioMessagingPushFCM", "CioMessagingPush", "CioInternalCommon"],
+                path: "Tests/Mocks/MessagingPushFCM"),
+        .target(name: "CioMessagingInAppMocks",
+                dependencies: ["CioMessagingInApp", "CioInternalCommon"],
+                path: "Tests/Mocks/MessagingInApp"),
+
         // Messaging Push 
         .target(name: "CioMessagingPush",
                 dependencies: ["CioInternalCommon"],
                 path: "Sources/MessagingPush"),
         .testTarget(name: "MessagingPushTests",
-                    dependencies: ["CioMessagingPush", "SharedTests"],
+                    dependencies: ["CioMessagingPush", "SharedTests", "CioInternalCommonMocks", "CioMessagingPushMocks"],
                     path: "Tests/MessagingPush"),
         
         // Data Pipeline
@@ -91,7 +120,7 @@ let package = Package(
                     .process("Resources/PrivacyInfo.xcprivacy"),
                 ]),
         .testTarget(name: "DataPipelineTests",
-                    dependencies: ["CioDataPipelines", "CioInternalCommon", "SharedTests"],
+                    dependencies: ["CioDataPipelines", "CioInternalCommon", "SharedTests", "CioInternalCommonMocks", "CioDataPipelinesMocks"],
                     path: "Tests/DataPipeline"),
 
         // APN
@@ -102,7 +131,7 @@ let package = Package(
                     .process("Resources/PrivacyInfo.xcprivacy"),
                 ]),
         .testTarget(name: "MessagingPushAPNTests",
-                    dependencies: ["CioMessagingPushAPN", "SharedTests"],
+                    dependencies: ["CioMessagingPushAPN", "SharedTests", "CioInternalCommonMocks", "CioMessagingPushMocks", "CioMessagingPushAPNMocks"],
                     path: "Tests/MessagingPushAPN"),
         // FCM 
         .target(name: "CioMessagingPushFCM",
@@ -112,7 +141,7 @@ let package = Package(
                     .process("Resources/PrivacyInfo.xcprivacy"),
                 ]),
         .testTarget(name: "MessagingPushFCMTests",
-                    dependencies: ["CioMessagingPushFCM", "SharedTests"],
+                    dependencies: ["CioMessagingPushFCM", "SharedTests", "CioInternalCommonMocks", "CioMessagingPushMocks", "CioMessagingPushFCMMocks"],
                     path: "Tests/MessagingPushFCM"),
 
         // Messaging in-app
@@ -126,7 +155,7 @@ let package = Package(
                     .process("Resources/PrivacyInfo.xcprivacy"),
                 ]),
         .testTarget(name: "MessagingInAppTests",
-                    dependencies: ["CioMessagingInApp", "SharedTests"],
+                    dependencies: ["CioMessagingInApp", "SharedTests", "CioInternalCommonMocks", "CioMessagingInAppMocks"],
                     path: "Tests/MessagingInApp"),
 
         // Location
@@ -137,7 +166,7 @@ let package = Package(
                     .process("Resources/PrivacyInfo.xcprivacy"),
                 ]),
         .testTarget(name: "LocationTests",
-                    dependencies: ["CioLocation", "CioInternalCommon", "SharedTests"],
+                    dependencies: ["CioLocation", "CioInternalCommon", "SharedTests", "CioInternalCommonMocks"],
                     path: "Tests/Location"),
     ]
 )
