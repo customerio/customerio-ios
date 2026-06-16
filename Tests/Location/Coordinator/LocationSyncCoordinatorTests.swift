@@ -9,7 +9,8 @@ struct LocationSyncCoordinatorTests {
     private func makeCoordinator(
         dataPipeline: DataPipelineTrackingMock? = DataPipelineTrackingMock(),
         storage: LastLocationStorageImpl? = nil,
-        dateUtil: DateUtilStub? = nil
+        dateUtil: DateUtilStub? = nil,
+        eventBusHandler: EventBusHandler = EventBusHandlerMock()
     ) -> (LocationSyncCoordinator, LastLocationStorageImpl) {
         let store = storage ?? LastLocationStorageImpl(stateStore: InMemoryLastLocationStateStore())
         let util = dateUtil ?? DateUtilStub()
@@ -19,7 +20,8 @@ struct LocationSyncCoordinatorTests {
             filter: filter,
             dataPipeline: dataPipeline,
             dateUtil: util,
-            logger: LoggerMock()
+            logger: LoggerMock(),
+            eventBusHandler: eventBusHandler
         )
         return (coordinator, store)
     }
@@ -128,15 +130,13 @@ struct LocationSyncCoordinatorTests {
     }
 
     @Test
-    func processLocationUpdate_givenObserverRegistered_expectObserverCalledWithLocation() async {
-        let (coordinator, _) = makeCoordinator()
-        let received = Synchronized<[LocationData]>([])
-        await coordinator.setOnLocationProcessed { location in
-            received.mutating { $0.append(location) }
-        }
+    func processLocationUpdate_expectLocationAcquiredEventPosted() async {
+        let bus = EventBusHandlerMock()
+        let (coordinator, _) = makeCoordinator(eventBusHandler: bus)
         let location = LocationData(latitude: 37, longitude: -122)
         await coordinator.processLocationUpdate(location)
-        #expect(received.wrappedValue == [location])
+        let postedLocations = bus.postEventReceivedInvocations.compactMap { ($0 as? LocationAcquiredEvent)?.location }
+        #expect(postedLocations == [location])
     }
 
     @Test
