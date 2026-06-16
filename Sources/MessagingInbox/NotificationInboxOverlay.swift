@@ -20,32 +20,77 @@ import SwiftUI
 ///   ``InboxMessage`` fields and a read/unread indicator; rich/templated rendering lands later.
 @available(iOS 13.0, *)
 public struct NotificationInboxOverlay: View {
-    @ObservedObject private var viewModel: NotificationInboxViewModel
+    /// Latest messages, sorted newest-first by the underlying inbox API.
+    @State private var messages: [InboxMessage] = []
 
-    /// Creates an inbox view backed by the SDK's shared inbox.
+    /// True when the slide-out panel is visible.
+    @State private var isPanelOpen: Bool = false
+
+    /// Backing task for the live `messages()` observation; cancelled when the view disappears.
+    @State private var observationTask: Task<Void, Never>?
+
+    private let inbox: NotificationInbox
+
+    /// Creates an inbox overlay backed by the SDK's shared inbox.
     public init() {
-        self.init(viewModel: NotificationInboxViewModel())
+        self.inbox = MessagingInApp.shared.inbox
     }
 
-    init(viewModel: NotificationInboxViewModel) {
-        self.viewModel = viewModel
+    /// Number of unread messages, used to drive the badge.
+    private var unreadCount: Int {
+        messages.filter { !$0.opened }.count
     }
 
     public var body: some View {
         ZStack(alignment: .bottomTrailing) {
             // The slide-out panel sits behind the floating button so the button stays tappable.
-            if viewModel.isPanelOpen {
+            if isPanelOpen {
                 panel
                     .transition(.move(edge: .trailing).combined(with: .opacity))
             }
 
             // Render no chrome at all when there are no messages.
-            if !viewModel.messages.isEmpty {
+            if !messages.isEmpty {
                 floatingButton
             }
         }
-        .onAppear { viewModel.start() }
-        .onDisappear { viewModel.stop() }
+        .onAppear(perform: startObserving)
+        .onDisappear(perform: stopObserving)
+    }
+
+    // MARK: - Inbox observation
+
+    /// Begins observing the inbox. Safe to call multiple times; subsequent calls are no-ops
+    /// while an observation is already running. Emits an immediate snapshot, then follows the
+    /// live `messages()` stream until the view disappears.
+    private func startObserving() {
+        guard observationTask == nil else { return }
+
+        // Capture only the inbox dependency; state updates hop to the main actor.
+        let inbox = inbox
+        observationTask = Task { @MainActor in
+            messages = await inbox.getMessages()
+
+            for await updated in inbox.messages() {
+                if Task.isCancelled { break }
+                messages = updated
+            }
+        }
+    }
+
+    /// Stops observing the inbox and releases the backing task.
+    private func stopObserving() {
+        observationTask?.cancel()
+        observationTask = nil
+    }
+
+    /// Marks a message opened/unopened, mirroring its current state.
+    private func toggleOpened(_ message: InboxMessage) {
+        if message.opened {
+            inbox.markMessageUnopened(message: message)
+        } else {
+            inbox.markMessageOpened(message: message)
+        }
     }
 
     // MARK: - Floating button + badge
@@ -53,7 +98,7 @@ public struct NotificationInboxOverlay: View {
     private var floatingButton: some View {
         Button(action: {
             withAnimation(.easeInOut(duration: 0.3)) {
-                viewModel.togglePanel()
+                isPanelOpen.toggle()
             }
         }, label: {
             ZStack(alignment: .topTrailing) {
@@ -64,8 +109,8 @@ public struct NotificationInboxOverlay: View {
                     .clipShape(Circle())
                     .shadow(radius: 4)
 
-                if viewModel.unreadCount > 0 {
-                    Text("\(viewModel.unreadCount)")
+                if unreadCount > 0 {
+                    Text("\(unreadCount)")
                         .font(.caption)
                         .foregroundColor(.white)
                         .padding(5)
@@ -90,9 +135,9 @@ public struct NotificationInboxOverlay: View {
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
-                    ForEach(viewModel.messages, id: \.queueId) { message in
+                    ForEach(messages, id: \.queueId) { message in
                         InboxMessageRow(message: message) {
-                            viewModel.toggleOpened(message)
+                            toggleOpened(message)
                         }
                         Divider()
                     }
