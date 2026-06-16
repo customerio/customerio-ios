@@ -1,4 +1,6 @@
 import CioMessagingInApp
+import CioMessagingInbox
+import SwiftUI
 import UIKit
 
 // MARK: - InboxMessageCell
@@ -175,6 +177,29 @@ class InboxViewController: BaseViewController, UITableViewDelegate, UITableViewD
         setupUI()
         // Observer will provide initial messages when registered
         setupObserver()
+        // Overlay the opt-in visual inbox (floating button + unread badge + slide-out panel)
+        // from the MessagingInbox module on top of the existing headless-API demo screen.
+        setupVisualInboxOverlay()
+    }
+
+    /// Mounts the SwiftUI `NotificationInboxView` from the `CioMessagingInbox` module as a
+    /// transparent overlay so its floating button floats over the existing inbox list.
+    private func setupVisualInboxOverlay() {
+        let hostingController = UIHostingController(rootView: NotificationInboxView())
+        hostingController.view.backgroundColor = .clear
+
+        addChild(hostingController)
+        view.addSubview(hostingController.view)
+
+        hostingController.view.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            hostingController.view.topAnchor.constraint(equalTo: view.topAnchor),
+            hostingController.view.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            hostingController.view.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            hostingController.view.trailingAnchor.constraint(equalTo: view.trailingAnchor)
+        ])
+
+        hostingController.didMove(toParent: self)
     }
 
     deinit {

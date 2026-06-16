@@ -7,7 +7,8 @@ import Foundation
 /// This module renders a visual inbox (floating button, unread badge, slide-out panel)
 /// on top of the existing headless inbox API exposed via `MessagingInApp.shared.inbox`.
 ///
-/// This is the empty skeleton (Milestone 1, Work Unit 1): it establishes the SPM target,
-/// CocoaPods spec, and resource bundle so the package and pod resolve and build. The public
-/// SwiftUI UI (`NotificationInboxView` and its view model) lands in the next change.
+/// The public entry point is ``NotificationInboxView``, a SwiftUI view customers can mount
+/// anywhere in their view hierarchy. It overlays a floating button with an unread badge; tapping
+/// it reveals a slide-out panel listing inbox messages. The whole UI hides itself when there are
+/// no messages.
 enum MessagingInbox {}
