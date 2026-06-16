@@ -41,6 +41,11 @@ actor LocationSyncCoordinator {
         trySendLocationTrack(location)
     }
 
+    /// Returns the most recently cached location, or `nil` if none has been stored.
+    func getCachedLocation() -> LocationData? {
+        storage.getCachedLocation()
+    }
+
     /// Called when ProfileIdentifiedEvent is received. Syncs cached location if present and the 24h + 1 km filter allows.
     func syncCachedLocationIfNeeded() {
         guard let cached = storage.getCachedLocation() else {

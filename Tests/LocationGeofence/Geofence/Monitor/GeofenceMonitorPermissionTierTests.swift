@@ -1,4 +1,4 @@
-@testable import CioLocation
+@testable import CioLocationGeofence
 import CoreLocation
 import Foundation
 import Testing
