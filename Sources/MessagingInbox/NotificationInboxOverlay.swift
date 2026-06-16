@@ -4,12 +4,13 @@ import Foundation
 #if canImport(SwiftUI)
 import SwiftUI
 
-/// A SwiftUI view that overlays a visual notification inbox on top of your app.
+/// A SwiftUI overlay that renders a visual notification inbox on top of your app.
 ///
-/// Mount this view anywhere in your hierarchy (typically pinned to a corner via a `ZStack`
+/// Mount this overlay anywhere in your hierarchy (typically pinned to a corner via a `ZStack`
 /// or as a full-screen overlay). It renders:
 /// * a floating button with an unread-count badge, and
-/// * a slide-out panel listing inbox messages as simple placeholder rows.
+/// * a slide-out panel listing inbox messages as simple placeholder rows. The panel spans the
+///   screen width minus horizontal margins, capped at a tablet-friendly maximum width.
 ///
 /// State is driven entirely by the headless inbox API (`MessagingInApp.shared.inbox`): the view
 /// loads the current messages and then observes the live `messages()` stream for updates. When the
@@ -18,7 +19,7 @@ import SwiftUI
 /// - Note: This is the Milestone 1 placeholder UI. Rows show plain text derived from
 ///   ``InboxMessage`` fields and a read/unread indicator; rich/templated rendering lands later.
 @available(iOS 13.0, *)
-public struct NotificationInboxView: View {
+public struct NotificationInboxOverlay: View {
     @ObservedObject private var viewModel: NotificationInboxViewModel
 
     /// Creates an inbox view backed by the SDK's shared inbox.
@@ -98,7 +99,7 @@ public struct NotificationInboxView: View {
                 }
             }
         }
-        .frame(maxWidth: 320, maxHeight: 480, alignment: .top)
+        .frame(maxWidth: 480, maxHeight: 480, alignment: .top)
         .background(Color(.systemBackground))
         .cornerRadius(12)
         .shadow(radius: 8)

@@ -182,10 +182,10 @@ class InboxViewController: BaseViewController, UITableViewDelegate, UITableViewD
         setupVisualInboxOverlay()
     }
 
-    /// Mounts the SwiftUI `NotificationInboxView` from the `CioMessagingInbox` module as a
+    /// Mounts the SwiftUI `NotificationInboxOverlay` from the `CioMessagingInbox` module as a
     /// transparent overlay so its floating button floats over the existing inbox list.
     private func setupVisualInboxOverlay() {
-        let hostingController = UIHostingController(rootView: NotificationInboxView())
+        let hostingController = UIHostingController(rootView: NotificationInboxOverlay())
         hostingController.view.backgroundColor = .clear
 
         addChild(hostingController)
