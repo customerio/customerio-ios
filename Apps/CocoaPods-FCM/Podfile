@@ -9,6 +9,7 @@ target 'test cocoapods' do
   pod 'CustomerIODataPipelines', :path => sdk_local_path
   pod 'CustomerIOMessagingPush', :path => sdk_local_path
   pod 'CustomerIOMessagingInApp', :path => sdk_local_path
+  pod 'CustomerIOMessagingInbox', :path => sdk_local_path
   pod 'CustomerIOMessagingPushFCM', :path => sdk_local_path
   pod 'CustomerIOLocation', :path => sdk_local_path
 

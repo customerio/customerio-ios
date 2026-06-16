@@ -1,5 +1,6 @@
 import CioDataPipelines
 import CioInternalCommon
+import CioMessagingInbox
 import SwiftUI
 import UserNotifications
 
@@ -140,6 +141,10 @@ struct DashboardView: View {
                 EnvironmentText()
             }
             .padding()
+
+            // Floating Customer.io notification inbox, pinned to the bottom-trailing corner.
+            NotificationInboxOverlay()
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
         }
         // Can only use 1 alert() in a View so we combine the different types of Alerts into 1 function.
         .alert(item: $blockingAlert) { alert in

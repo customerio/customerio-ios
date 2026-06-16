@@ -4,31 +4,49 @@ import CioMessagingInApp
 import Foundation
 import XCTest
 
-/// Minimal coverage for the `MessagingInbox` module.
+/// Coverage for the `MessagingInbox` module.
 ///
-/// `NotificationInboxOverlay` now holds its state inline as SwiftUI `@State` (no view model), so
-/// there is no separate state-holder to unit test. These tests instead lock the headless
-/// read/unread contract that the overlay's row action (`toggleOpened`) relies on: an unopened
-/// message gets marked opened, and vice versa.
+/// `NotificationInboxOverlay` holds its state inline as SwiftUI `@State` (no view model), so there
+/// is no separate state-holder to unit test. SwiftUI lifecycle (`onAppear`, the live stream) is not
+/// unit-testable here and is intentionally not exercised. These tests instead cover the overlay's
+/// testable seams: the pure `unreadCount(in:)` helper that drives the badge, and the `toggleOpened`
+/// row action wired to the injected inbox.
 @available(iOS 13.0, *)
-final class NotificationInboxReadStateTests: XCTestCase {
-    func test_markOpened_whenMessageUnopened_thenInboxRecordsOpen() {
-        let inbox = FakeNotificationInbox()
-        let message = makeMessage(queueId: "a", opened: false)
+final class NotificationInboxOverlayTests: XCTestCase {
+    // MARK: - unreadCount(in:)
 
-        // Mirrors the overlay's row action for an unopened message.
-        inbox.markMessageOpened(message: message)
+    func test_unreadCount_whenMixedOpenedAndUnopened_thenCountsOnlyUnopened() {
+        let messages = [
+            makeMessage(queueId: "a", opened: false),
+            makeMessage(queueId: "b", opened: true),
+            makeMessage(queueId: "c", opened: false),
+            makeMessage(queueId: "d", opened: true)
+        ]
+
+        XCTAssertEqual(NotificationInboxOverlay.unreadCount(in: messages), 2)
+    }
+
+    func test_unreadCount_whenEmpty_thenZero() {
+        XCTAssertEqual(NotificationInboxOverlay.unreadCount(in: []), 0)
+    }
+
+    // MARK: - toggleOpened(_:)
+
+    func test_toggleOpened_whenMessageUnopened_thenInboxRecordsOpen() {
+        let inbox = FakeNotificationInbox()
+        let overlay = NotificationInboxOverlay(inbox: inbox)
+
+        overlay.toggleOpened(makeMessage(queueId: "a", opened: false))
 
         XCTAssertEqual(inbox.markOpenedCalls, ["a"])
         XCTAssertTrue(inbox.markUnopenedCalls.isEmpty)
     }
 
-    func test_markUnopened_whenMessageOpened_thenInboxRecordsUnopen() {
+    func test_toggleOpened_whenMessageOpened_thenInboxRecordsUnopen() {
         let inbox = FakeNotificationInbox()
-        let message = makeMessage(queueId: "b", opened: true)
+        let overlay = NotificationInboxOverlay(inbox: inbox)
 
-        // Mirrors the overlay's row action for an already-opened message.
-        inbox.markMessageUnopened(message: message)
+        overlay.toggleOpened(makeMessage(queueId: "b", opened: true))
 
         XCTAssertEqual(inbox.markUnopenedCalls, ["b"])
         XCTAssertTrue(inbox.markOpenedCalls.isEmpty)

@@ -18,6 +18,12 @@ import SwiftUI
 ///
 /// - Note: This is the Milestone 1 placeholder UI. Rows show plain text derived from
 ///   ``InboxMessage`` fields and a read/unread indicator; rich/templated rendering lands later.
+///
+/// ## Usage
+/// Mount it in a `ZStack` (or as an `.overlay`) so it floats over your existing content:
+/// ```swift
+/// ZStack { MyDashboard(); NotificationInboxOverlay() }
+/// ```
 @available(iOS 13.0, *)
 public struct NotificationInboxOverlay: View {
     /// Latest messages, sorted newest-first by the underlying inbox API.
@@ -29,6 +35,9 @@ public struct NotificationInboxOverlay: View {
     /// Backing task for the live `messages()` observation; cancelled when the view disappears.
     @State private var observationTask: Task<Void, Never>?
 
+    /// Vertical inset that keeps the slide-out panel clear of the floating button.
+    private let panelBottomInset: CGFloat = 88
+
     private let inbox: NotificationInbox
 
     /// Creates an inbox overlay backed by the SDK's shared inbox.
@@ -36,9 +45,20 @@ public struct NotificationInboxOverlay: View {
         self.inbox = MessagingInApp.shared.inbox
     }
 
+    /// Creates an inbox overlay backed by the supplied inbox. Used by tests to inject a fake.
+    init(inbox: NotificationInbox) {
+        self.inbox = inbox
+    }
+
+    /// Number of unread messages in the given list. Pure function so it can be unit tested
+    /// without driving SwiftUI state.
+    static func unreadCount(in messages: [InboxMessage]) -> Int {
+        messages.filter { !$0.opened }.count
+    }
+
     /// Number of unread messages, used to drive the badge.
     private var unreadCount: Int {
-        messages.filter { !$0.opened }.count
+        Self.unreadCount(in: messages)
     }
 
     public var body: some View {
@@ -85,7 +105,7 @@ public struct NotificationInboxOverlay: View {
     }
 
     /// Marks a message opened/unopened, mirroring its current state.
-    private func toggleOpened(_ message: InboxMessage) {
+    func toggleOpened(_ message: InboxMessage) {
         if message.opened {
             inbox.markMessageUnopened(message: message)
         } else {
@@ -121,6 +141,8 @@ public struct NotificationInboxOverlay: View {
             }
         })
         .padding(16)
+        // `.accessibility(label:)` is the iOS 13-safe form; `.accessibilityLabel` is iOS 14+.
+        .accessibility(label: Text(unreadCount > 0 ? "Notifications, \(unreadCount) unread" : "Notifications"))
     }
 
     // MARK: - Slide-out panel
@@ -149,7 +171,7 @@ public struct NotificationInboxOverlay: View {
         .cornerRadius(12)
         .shadow(radius: 8)
         .padding(.horizontal, 16)
-        .padding(.bottom, 88) // keep the panel clear of the floating button
+        .padding(.bottom, panelBottomInset)
     }
 }
 
@@ -185,6 +207,7 @@ struct InboxMessageRow: View {
                 Text(message.opened ? "Mark unread" : "Mark read")
                     .font(.caption)
             }
+            .accessibility(label: Text(message.opened ? "Mark as unread" : "Mark as read"))
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
