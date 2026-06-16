@@ -6,10 +6,13 @@
 	Docs for this section: https://developer.apple.com/documentation/bundleresources/privacy_manifest_files/describing_data_use_in_privacy_manifests
 	This section describes what information this module collects about the app user.
 
-	NOTE: the data-use declaration is intentionally left empty for now. The geofence module
-	collects precise location (linked to the identified profile) and sends it to Customer.io;
-	the NSPrivacyCollectedDataTypes entry below must be completed, after privacy review, before
-	this module is released.
+	The geofence module reports region entry/exit to Customer.io as a "Geofence
+	Entered/Exited" event (geofence id + transition type) tied to the identified
+	user — product-interaction + user-id data. It does not send the device's
+	coordinates, so no location data type is collected.
+
+	`NSPrivacyCollectedDataTypeLinked` is false because anonymous profiles make
+	linkage to a person optional.
 
 	The SDK does NOT request location permissions - host apps are responsible for:
 	- Adding NSLocationWhenInUseUsageDescription / NSLocationAlwaysAndWhenInUseUsageDescription to their Info.plist
@@ -17,6 +20,34 @@
 	-->
 	<key>NSPrivacyCollectedDataTypes</key>
 	<array>
+		<dict>
+			<key>NSPrivacyCollectedDataType</key>
+			<string>NSPrivacyCollectedDataTypeProductInteraction</string>
+			<key>NSPrivacyCollectedDataTypeLinked</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypeTracking</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypePurposes</key>
+			<array>
+				<string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+				<string>NSPrivacyCollectedDataTypePurposeAnalytics</string>
+				<string>NSPrivacyCollectedDataTypePurposeProductPersonalization</string>
+			</array>
+		</dict>
+		<dict>
+			<key>NSPrivacyCollectedDataType</key>
+			<string>NSPrivacyCollectedDataTypeUserID</string>
+			<key>NSPrivacyCollectedDataTypeLinked</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypeTracking</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypePurposes</key>
+			<array>
+				<string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+				<string>NSPrivacyCollectedDataTypePurposeAnalytics</string>
+				<string>NSPrivacyCollectedDataTypePurposeProductPersonalization</string>
+			</array>
+		</dict>
 	</array>
 
 	<!--
