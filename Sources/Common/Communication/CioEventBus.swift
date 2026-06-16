@@ -18,13 +18,13 @@ actor CioEventBus {
     /// Returned by `addObserver` to give the caller both a unique token (for future
     /// single-observer removal) and the cache snapshot to replay outside the actor.
     struct ObserverRegistration {
-        let token: RegistrationToken
+        let token: RegistrationToken<UUID>
         /// Snapshot of cached events at registration time. Thread-safe to read outside
         /// the actor because Swift Array is a value type (copy-on-write).
         let eventsToReplay: [AnyEventRepresentable]
     }
 
-    private var observers: [String: [RegistrationToken: Action]] = [:]
+    private var observers: [String: [UUID: Action]] = [:]
     private var cache: [String: RingBuffer<AnyEventRepresentable>] = [:]
     private let maxEventsPerType = 100
 
@@ -37,8 +37,14 @@ actor CioEventBus {
     /// The cache is intentionally **not** cleared on registration: every observer, past
     /// and future, receives the full history for its event type.
     func addObserver(key: String, action: @escaping Action) -> ObserverRegistration {
-        let token = RegistrationToken()
-        observers[key, default: [:]][token] = action
+        let uuid = UUID()
+        let token = RegistrationToken(identifier: uuid) { [weak self] in
+            // Uncomment once callers retain the token.
+            // Task { [weak self] in
+            //     await self?.removeObserver(key: key, identifier: uuid)
+            // }
+        }
+        observers[key, default: [:]][uuid] = action
         return ObserverRegistration(
             token: token,
             eventsToReplay: cache[key]?.toArray() ?? []
@@ -50,9 +56,9 @@ actor CioEventBus {
         observers[key] = nil
     }
 
-    /// Removes the single observer identified by `token`, leaving other observers intact.
-    func removeObserver(key: String, token: RegistrationToken) {
-        observers[key]?[token] = nil
+    /// Removes the single observer identified by `identifier`, leaving other observers intact.
+    func removeObserver(key: String, identifier: UUID) {
+        observers[key]?[identifier] = nil
         if observers[key]?.isEmpty == true {
             observers[key] = nil
         }

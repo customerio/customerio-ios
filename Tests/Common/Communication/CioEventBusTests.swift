@@ -58,7 +58,7 @@ class CioEventBusTest: XCTestCase {
         let bus = CioEventBus()
         let regA = await bus.addObserver(key: ProfileIdentifiedEvent.key) { _ in }
         let regB = await bus.addObserver(key: ProfileIdentifiedEvent.key) { _ in }
-        XCTAssertNotEqual(regA.token, regB.token)
+        XCTAssertNotEqual(regA.token.identifier, regB.token.identifier)
     }
 
     // MARK: - post
@@ -135,7 +135,7 @@ class CioEventBusTest: XCTestCase {
 
     // MARK: - removeObserver (token-based)
 
-    func test_removeObserver_givenToken_expectOnlyThatObserverRemoved() async {
+    func test_removeObserver_givenIdentifier_expectOnlyThatObserverRemoved() async {
         let bus = CioEventBus()
         var receivedA = 0
         var receivedB = 0
@@ -143,7 +143,7 @@ class CioEventBusTest: XCTestCase {
         let regA = await bus.addObserver(key: ProfileIdentifiedEvent.key) { _ in receivedA += 1 }
         _ = await bus.addObserver(key: ProfileIdentifiedEvent.key) { _ in receivedB += 1 }
 
-        await bus.removeObserver(key: ProfileIdentifiedEvent.key, token: regA.token)
+        await bus.removeObserver(key: ProfileIdentifiedEvent.key, identifier: regA.token.identifier)
 
         let event = ProfileIdentifiedEvent(identifier: "test")
         let actions = await bus.post(event)
@@ -156,10 +156,24 @@ class CioEventBusTest: XCTestCase {
     func test_removeObserver_givenLastObserver_expectKeyCleared() async {
         let bus = CioEventBus()
         let reg = await bus.addObserver(key: ProfileIdentifiedEvent.key) { _ in }
-        await bus.removeObserver(key: ProfileIdentifiedEvent.key, token: reg.token)
+        await bus.removeObserver(key: ProfileIdentifiedEvent.key, identifier: reg.token.identifier)
 
         let actions = await bus.post(ProfileIdentifiedEvent(identifier: "test"))
         XCTAssertTrue(actions.isEmpty)
+    }
+
+    func test_removeObserver_givenUnknownIdentifier_expectNoObserversAffected() async {
+        let bus = CioEventBus()
+        var received = 0
+        _ = await bus.addObserver(key: ProfileIdentifiedEvent.key) { _ in received += 1 }
+
+        await bus.removeObserver(key: ProfileIdentifiedEvent.key, identifier: UUID())
+
+        let event = ProfileIdentifiedEvent(identifier: "test")
+        let actions = await bus.post(event)
+        actions.forEach { $0(event) }
+
+        XCTAssertEqual(received, 1, "observer with a different identifier must not be removed")
     }
 
     // MARK: - seedCache

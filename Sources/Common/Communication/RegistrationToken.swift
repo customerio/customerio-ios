@@ -1,12 +1,17 @@
 import Foundation
 
-/// An opaque token issued when an observer is registered on the event bus.
-/// Held by the caller to enable future per-observer removal without clearing
-/// all observers for the same event type.
-public struct RegistrationToken: Hashable, Sendable {
-    let id: UUID
+/// A token that maintains a registration by its retention. When this token is deallocated,
+/// the registration that generated it will be removed (the action runs once).
+final class RegistrationToken<Identifier: Hashable & Sendable>: Sendable {
+    let identifier: Identifier
+    private let action: @Sendable () -> Void
 
-    public init() {
-        self.id = UUID()
+    init(identifier: Identifier, action: @Sendable @escaping () -> Void) {
+        self.identifier = identifier
+        self.action = action
+    }
+
+    deinit {
+        action()
     }
 }

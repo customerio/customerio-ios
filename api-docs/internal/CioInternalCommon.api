@@ -79,6 +79,15 @@ public final class CioInternalCommon.CioThreadUtil {
 	public fun func runMain(_ block: @escaping () -> Unit);
 	public fun func runBackground(_ block: @escaping () -> Unit);
 }
+public final class CioInternalCommon.CombinedCacheEventBusHandler {
+	public fun init(eventStorage: EventStorage, logger: Logger);
+	public fun func loadEventsFromStorage() async;
+	public fun func addObserver<E: EventRepresentable>(_ eventType: E.Type, action: @escaping (E) -> Unit);
+	public fun func removeObserver<E: EventRepresentable>(for eventType: E.Type);
+	public fun func postEvent<E: EventRepresentable>(_ event: E);
+	public fun func postEventAndWait<E: EventRepresentable>(_ event: E) async;
+	public fun func removeFromStorage<E: EventRepresentable>(_ event: E) async;
+}
 public final class CioInternalCommon.CreateQueueStorageTaskResult {
 	public final val success: Boolean;
 	public final val queueStatus: QueueStatus;
