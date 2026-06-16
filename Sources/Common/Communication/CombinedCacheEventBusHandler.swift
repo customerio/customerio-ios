@@ -1,5 +1,6 @@
 import Foundation
 
+// swiftlint:disable orphaned_doc_comment
 /// Actor-backed implementation of `EventBusHandler`.
 ///
 /// Replaces the `OperationQueue`-based `CioEventBusHandler` with a single `CioEventBus`
@@ -9,6 +10,9 @@ import Foundation
 /// `CioEventBusHandler` and `CombinedCacheEventBusHandler` both conform to `EventBusHandler`,
 /// allowing them to be swapped for testing or gradual rollout.
 /// `CioEventBusHandler` remains the default registered in the DI graph.
+// sourcery: InjectRegisterShared = "EventBusHandler"
+// sourcery: InjectSingleton
+// swiftlint:enable orphaned_doc_comment
 public class CombinedCacheEventBusHandler: EventBusHandler {
     private let bus: CioEventBus
     let eventStorage: EventStorage
@@ -27,10 +31,14 @@ public class CombinedCacheEventBusHandler: EventBusHandler {
     public func loadEventsFromStorage() async {
         for eventType in EventTypesRegistry.allEventTypes() {
             do {
-                let events: [AnyEventRepresentable] = try await eventStorage.loadEvents(ofType: eventType.key)
+                let events: [AnyEventRepresentable] = try await eventStorage.loadEvents(
+                    ofType: eventType.key
+                )
                 await bus.seedCache(events, forKey: eventType.key)
             } catch {
-                logger.debug("CombinedCacheEventBusHandler: Error loading events for \(eventType): \(error)")
+                logger.debug(
+                    "CombinedCacheEventBusHandler: Error loading events for \(eventType): \(error)"
+                )
             }
         }
     }
@@ -40,7 +48,9 @@ public class CombinedCacheEventBusHandler: EventBusHandler {
     /// Registration and the cache snapshot are taken atomically inside the actor.
     /// Events posted after registration returns are delivered directly to the observer;
     /// events already in the cache at registration time are replayed exactly once.
-    public func addObserver<E: EventRepresentable>(_ eventType: E.Type, action: @escaping (E) -> Void) {
+    public func addObserver<E: EventRepresentable>(
+        _ eventType: E.Type, action: @escaping (E) -> Void
+    ) {
         logger.debug("CombinedCacheEventBusHandler: Adding observer for \(eventType)")
         Task { [weak self] in
             guard let self else { return }
@@ -49,7 +59,9 @@ public class CombinedCacheEventBusHandler: EventBusHandler {
                 if let typed = event as? E {
                     action(typed)
                 } else {
-                    self?.logger.debug("CombinedCacheEventBusHandler: Event type mismatch for key \(E.key)")
+                    self?.logger.debug(
+                        "CombinedCacheEventBusHandler: Event type mismatch for key \(E.key)"
+                    )
                 }
             }
             // Replay is performed outside the actor to keep delivery concurrent.

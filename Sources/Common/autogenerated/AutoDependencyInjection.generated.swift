@@ -56,9 +56,6 @@ extension DIGraphShared {
         _ = deviceInfo
         countDependenciesResolved += 1
 
-        _ = eventBusHandler
-        countDependenciesResolved += 1
-
         _ = profileStore
         countDependenciesResolved += 1
 
@@ -75,6 +72,9 @@ extension DIGraphShared {
         countDependenciesResolved += 1
 
         _ = threadUtil
+        countDependenciesResolved += 1
+
+        _ = eventBusHandler
         countDependenciesResolved += 1
 
         _ = sdkClient
@@ -157,18 +157,6 @@ extension DIGraphShared {
         CIODeviceInfo()
     }
 
-    // EventBusHandler (singleton)
-    public var eventBusHandler: EventBusHandler {
-        getOverriddenInstance() ??
-            getSingletonOrCreate {
-                _get_eventBusHandler()
-            }
-    }
-
-    private func _get_eventBusHandler() -> EventBusHandler {
-        CioEventBusHandler(eventBus: eventBus, eventCache: eventCache, eventStorage: eventStorage, logger: logger)
-    }
-
     // ProfileStore
     public var profileStore: ProfileStore {
         getOverriddenInstance() ??
@@ -229,6 +217,18 @@ extension DIGraphShared {
 
     private var newThreadUtil: ThreadUtil {
         CioThreadUtil()
+    }
+
+    // EventBusHandler (singleton)
+    public var eventBusHandler: EventBusHandler {
+        getOverriddenInstance() ??
+            getSingletonOrCreate {
+                _get_eventBusHandler()
+            }
+    }
+
+    private func _get_eventBusHandler() -> EventBusHandler {
+        CombinedCacheEventBusHandler(eventStorage: eventStorage, logger: logger)
     }
 
     // SdkClient (custom. property getter provided via extension)

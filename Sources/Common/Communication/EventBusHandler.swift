@@ -10,12 +10,6 @@ public protocol EventBusHandler {
     func removeFromStorage<E: EventRepresentable>(_ event: E) async
 }
 
-// swiftlint:disable orphaned_doc_comment
-/// `EventBusHandler` acts as a central hub for managing events in the application.
-/// It interfaces with both an event bus for real-time event handling and an event storage system for persisting events.
-// sourcery: InjectRegisterShared = "EventBusHandler"
-// sourcery: InjectSingleton
-// swiftlint:enable orphaned_doc_comment
 public class CioEventBusHandler: EventBusHandler {
     private let eventBus: EventBus
     private let eventCache: EventCache
@@ -67,7 +61,9 @@ public class CioEventBusHandler: EventBusHandler {
     /// - Parameters:
     ///   - eventType: The event type to observe.
     ///   - action: The action to execute when the event is observed.
-    public func addObserver<E: EventRepresentable>(_ eventType: E.Type, action: @escaping (E) -> Void) {
+    public func addObserver<E: EventRepresentable>(
+        _ eventType: E.Type, action: @escaping (E) -> Void
+    ) {
         logger.debug("EventBusHandler: Adding observer for event type - \(eventType)")
 
         let adaptedAction: (AnyEventRepresentable) -> Void = { event in
@@ -96,7 +92,9 @@ public class CioEventBusHandler: EventBusHandler {
 
     /// Replays events of a specific type to any new observers, ensuring they receive past events.
     /// - Parameter eventType: The event type for which to replay events.
-    private func replayEvents<E: EventRepresentable>(forType eventType: E.Type, action: @escaping (AnyEventRepresentable) -> Void) async {
+    private func replayEvents<E: EventRepresentable>(
+        forType eventType: E.Type, action: @escaping (AnyEventRepresentable) -> Void
+    ) async {
         let key = eventType.key
         logger.debug("Replaying events for key: \(key)")
         let storedEvents = await eventCache.getEvent(key)

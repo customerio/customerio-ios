@@ -154,7 +154,7 @@ class CombinedCacheEventBusHandlerTest: UnitTest {
         let handler = makeHandler()
 
         // Wait long enough for loadEventsFromStorage to attempt all event types.
-        try? await Task.sleep(nanoseconds: 200_000_000)
+        try? await Task.sleep(nanoseconds: 200000000)
 
         // Posting after a failed load should still work gracefully.
         await handler.postEventAndWait(ProfileIdentifiedEvent(identifier: "fallback"))
@@ -174,11 +174,11 @@ class CombinedCacheEventBusHandlerTest: UnitTest {
         // postEventAndWait goes through the actor. The remove Task ran earlier and
         // will have completed its actor call before the post call in most runs.
         // Use a short sleep to give both Tasks time to schedule their actor calls.
-        try? await Task.sleep(nanoseconds: 100_000_000)
+        try? await Task.sleep(nanoseconds: 100000000)
 
         await handler.postEventAndWait(ProfileIdentifiedEvent(identifier: "after-remove"))
 
-        try? await Task.sleep(nanoseconds: 100_000_000)
+        try? await Task.sleep(nanoseconds: 100000000)
         XCTAssertFalse(received, "removed observer must not receive events")
     }
 }

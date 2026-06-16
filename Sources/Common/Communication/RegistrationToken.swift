@@ -7,6 +7,6 @@ public struct RegistrationToken: Hashable, Sendable {
     let id: UUID
 
     public init() {
-        id = UUID()
+        self.id = UUID()
     }
 }
