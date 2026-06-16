@@ -224,6 +224,7 @@ jobs:
             CustomerIOMessagingPushFCM.podspec
             CustomerIOMessagingInApp.podspec
             CustomerIOLocation.podspec
+            CustomerIOLocationGeofence.podspec
             CustomerIO.podspec
           )
 
