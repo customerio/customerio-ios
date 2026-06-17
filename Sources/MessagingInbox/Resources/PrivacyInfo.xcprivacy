@@ -3,38 +3,19 @@
 <plist version="1.0">
 <dict>
 	<!--
-	See DataPipelines module for documentation of this file. Including resources for each section to learn more. 	
-   -->   
+	See DataPipelines module for documentation of this file. Including resources for each section to learn more.
+
+	NOTE: This module is under development. Data collection and accessed-API
+	declarations will be added when the visual inbox functionality is implemented.
+	-->
 	<key>NSPrivacyCollectedDataTypes</key>
 	<array>
-		<dict>
-			<key>NSPrivacyCollectedDataType</key>
-			<string>NSPrivacyCollectedDataTypeProductInteraction</string>
-			<key>NSPrivacyCollectedDataTypeLinked</key>
-			<false/>
-			<key>NSPrivacyCollectedDataTypeTracking</key>
-			<false/>
-			<key>NSPrivacyCollectedDataTypePurposes</key>
-			<array>
-                <string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
-				<string>NSPrivacyCollectedDataTypePurposeAnalytics</string>				
-				<string>NSPrivacyCollectedDataTypePurposeProductPersonalization</string>
-			</array>
-		</dict>		
 	</array>
 
 	<key>NSPrivacyAccessedAPITypes</key>
 	<array>
-		<dict>
-			<key>NSPrivacyAccessedAPIType</key>
-			<string>NSPrivacyAccessedAPICategoryUserDefaults</string>
-			<key>NSPrivacyAccessedAPITypeReasons</key>
-			<array>
-				<string>CA92.1</string>
-			</array>
-		</dict>
 	</array>
-	
+
 	<key>NSPrivacyTracking</key>
 	<false/>
 </dict>
