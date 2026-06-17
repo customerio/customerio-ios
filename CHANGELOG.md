@@ -1,3 +1,9 @@
+## [4.5.2](https://github.com/customerio/customerio-ios/compare/4.5.1...4.5.2) (2026-06-16)
+
+### Bug Fixes
+
+* Corrected SSE Heartbeat test ([#1097](https://github.com/customerio/customerio-ios/issues/1097)) ([ac4659c](https://github.com/customerio/customerio-ios/commit/ac4659caffa82bae339f3538b6f765c32a2617a1))
+
 ## [4.5.1](https://github.com/customerio/customerio-ios/compare/4.5.0...4.5.1) (2026-06-15)
 
 ### Bug Fixes
