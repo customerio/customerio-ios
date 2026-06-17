@@ -11,6 +11,28 @@ public enum BackgroundDeliveryHttpError: Error, Equatable {
     case transport
 }
 
+/// One CDP `/track` request for a background-delivery caller. Bundles the request-body fields
+/// into one value so the client signature stays stable as the payload grows.
+public struct BackgroundTrackRequest {
+    /// `track` event name (e.g. `"Geofence Entered"`).
+    public let eventName: String
+    /// Identified user id. Caller must validate non-empty before sending.
+    public let userId: String
+    /// Custom event properties payload.
+    public let properties: [String: Any]
+    /// When the event occurred. Serialized into the reserved top-level `timestamp` field so the
+    /// endpoint attributes the event to this instant rather than to when it was received; nil omits
+    /// the field. The client owns the wire format, keeping it identical to the analytics channel.
+    public let timestamp: Date?
+
+    public init(eventName: String, userId: String, properties: [String: Any] = [:], timestamp: Date? = nil) {
+        self.eventName = eventName
+        self.userId = userId
+        self.properties = properties
+        self.timestamp = timestamp
+    }
+}
+
 /// Direct-HTTP POST for background-delivery callers. Composes the `/track` URL from
 /// `apiHost` in `BackgroundDeliveryContextStore` and authenticates with `cdpApiKey`.
 /// Works in cold-wake state — no dependency on MessagingPush or any other module's
@@ -18,14 +40,10 @@ public enum BackgroundDeliveryHttpError: Error, Equatable {
 public protocol BackgroundDeliveryHttpClient: AutoMockable, Sendable {
     /// Sends one CDP `/track` event.
     /// - Parameters:
-    ///   - eventName: `track` event name (e.g. `"Geofence Entered"`).
-    ///   - userId: Identified user id. Caller must validate non-empty before calling.
-    ///   - properties: Event properties payload.
+    ///   - request: The event to deliver. See `BackgroundTrackRequest`.
     ///   - completion: Called on URLSession's delegate queue with success or error.
     func sendTrackEvent(
-        eventName: String,
-        userId: String,
-        properties: [String: Any],
+        _ request: BackgroundTrackRequest,
         completion: @escaping (Result<Void, BackgroundDeliveryHttpError>) -> Void
     )
 }
@@ -71,9 +89,7 @@ public final class BackgroundDeliveryHttpClientImpl: BackgroundDeliveryHttpClien
     }
 
     public func sendTrackEvent(
-        eventName: String,
-        userId: String,
-        properties: [String: Any],
+        _ request: BackgroundTrackRequest,
         completion: @escaping (Result<Void, BackgroundDeliveryHttpError>) -> Void
     ) {
         guard let apiHost = contextStore.currentApiHost, !apiHost.isEmpty else {
@@ -83,11 +99,15 @@ public final class BackgroundDeliveryHttpClientImpl: BackgroundDeliveryHttpClien
             return completion(.failure(.missingCdpApiKey))
         }
 
-        let body: [String: Any] = [
-            "event": eventName,
-            "userId": userId,
-            "properties": properties
+        var body: [String: Any] = [
+            "event": request.eventName,
+            "userId": request.userId,
+            "properties": request.properties
         ]
+        // Reserved top-level field: a bare integer here is read as milliseconds, so send the ISO-8601 string.
+        if let timestamp = request.timestamp {
+            body["timestamp"] = timestamp.string(format: .iso8601WithMilliseconds)
+        }
         guard let bodyData = try? JSONSerialization.data(withJSONObject: body) else {
             return completion(.failure(.invalidRequest))
         }

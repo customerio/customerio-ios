@@ -110,21 +110,21 @@ public class BackgroundDeliveryHttpClientMock: BackgroundDeliveryHttpClient, Moc
     }
 
     /// The arguments from the *last* time the function was called.
-    @Atomic public private(set) var sendTrackEventReceivedArguments: (eventName: String, userId: String, properties: [String: Any], completion: (Result<Void, BackgroundDeliveryHttpError>) -> Void)?
+    @Atomic public private(set) var sendTrackEventReceivedArguments: (request: BackgroundTrackRequest, completion: (Result<Void, BackgroundDeliveryHttpError>) -> Void)?
     /// Arguments from *all* of the times that the function was called.
-    @Atomic public private(set) var sendTrackEventReceivedInvocations: [(eventName: String, userId: String, properties: [String: Any], completion: (Result<Void, BackgroundDeliveryHttpError>) -> Void)] = []
+    @Atomic public private(set) var sendTrackEventReceivedInvocations: [(request: BackgroundTrackRequest, completion: (Result<Void, BackgroundDeliveryHttpError>) -> Void)] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
-    public var sendTrackEventClosure: ((String, String, [String: Any], @escaping (Result<Void, BackgroundDeliveryHttpError>) -> Void) -> Void)?
+    public var sendTrackEventClosure: ((BackgroundTrackRequest, @escaping (Result<Void, BackgroundDeliveryHttpError>) -> Void) -> Void)?
 
-    /// Mocked function for `sendTrackEvent(eventName: String, userId: String, properties: [String: Any], completion: @escaping (Result<Void, BackgroundDeliveryHttpError>) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
-    public func sendTrackEvent(eventName: String, userId: String, properties: [String: Any], completion: @escaping (Result<Void, BackgroundDeliveryHttpError>) -> Void) {
+    /// Mocked function for `sendTrackEvent(_ request: BackgroundTrackRequest, completion: @escaping (Result<Void, BackgroundDeliveryHttpError>) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func sendTrackEvent(_ request: BackgroundTrackRequest, completion: @escaping (Result<Void, BackgroundDeliveryHttpError>) -> Void) {
         mockCalled = true
         sendTrackEventCallsCount += 1
-        sendTrackEventReceivedArguments = (eventName: eventName, userId: userId, properties: properties, completion: completion)
-        sendTrackEventReceivedInvocations.append((eventName: eventName, userId: userId, properties: properties, completion: completion))
-        sendTrackEventClosure?(eventName, userId, properties, completion)
+        sendTrackEventReceivedArguments = (request: request, completion: completion)
+        sendTrackEventReceivedInvocations.append((request: request, completion: completion))
+        sendTrackEventClosure?(request, completion)
     }
 }
 

@@ -39,9 +39,12 @@ struct BackgroundDeliveryHttpClientTests {
 
         await withCheckedContinuation { continuation in
             client.sendTrackEvent(
-                eventName: "CIO Geofence Entered",
-                userId: "user_42",
-                properties: ["geofence_id": "geo_1", "transition_type": "enter"]
+                BackgroundTrackRequest(
+                    eventName: "CIO Geofence Entered",
+                    userId: "user_42",
+                    properties: ["geofence_id": "geo_1", "transition_type": "enter"],
+                    timestamp: Date(timeIntervalSince1970: 1700000000)
+                )
             ) { _ in continuation.resume() }
         }
 
@@ -54,9 +57,26 @@ struct BackgroundDeliveryHttpClientTests {
         let body = params?.body.flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: Any] }
         #expect(body?["event"] as? String == "CIO Geofence Entered")
         #expect(body?["userId"] as? String == "user_42")
+        #expect(body?["timestamp"] as? String == "2023-11-14T22:13:20.000Z")
         let properties = body?["properties"] as? [String: Any]
         #expect(properties?["geofence_id"] as? String == "geo_1")
         #expect(properties?["transition_type"] as? String == "enter")
+    }
+
+    @Test
+    func sendTrackEvent_givenNilTimestamp_expectTimestampOmittedFromBody() async {
+        let (client, runner) = makeClient(store: makeStore())
+        runner.requestClosure = { _, _, onComplete in onComplete(Data(), makeOkResponse(), nil) }
+
+        await withCheckedContinuation { continuation in
+            client.sendTrackEvent(BackgroundTrackRequest(eventName: "event", userId: "user")) { _ in
+                continuation.resume()
+            }
+        }
+
+        let body = runner.requestReceivedArguments?.params.body
+            .flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: Any] }
+        #expect(body?["timestamp"] == nil)
     }
 
     @Test
@@ -65,7 +85,7 @@ struct BackgroundDeliveryHttpClientTests {
         runner.requestClosure = { _, _, onComplete in onComplete(Data(), makeOkResponse(), nil) }
 
         await withCheckedContinuation { continuation in
-            client.sendTrackEvent(eventName: "event", userId: "user", properties: [:]) { _ in
+            client.sendTrackEvent(BackgroundTrackRequest(eventName: "event", userId: "user")) { _ in
                 continuation.resume()
             }
         }
@@ -80,7 +100,7 @@ struct BackgroundDeliveryHttpClientTests {
         let (client, runner) = makeClient(store: makeStore(host: nil))
 
         let result: Result<Void, BackgroundDeliveryHttpError> = await withCheckedContinuation { continuation in
-            client.sendTrackEvent(eventName: "event", userId: "user", properties: [:]) { continuation.resume(returning: $0) }
+            client.sendTrackEvent(BackgroundTrackRequest(eventName: "event", userId: "user")) { continuation.resume(returning: $0) }
         }
 
         #expect(runner.requestCallsCount == 0)
@@ -96,7 +116,7 @@ struct BackgroundDeliveryHttpClientTests {
         let (client, runner) = makeClient(store: makeStore(cdpApiKey: nil))
 
         let result: Result<Void, BackgroundDeliveryHttpError> = await withCheckedContinuation { continuation in
-            client.sendTrackEvent(eventName: "event", userId: "user", properties: [:]) { continuation.resume(returning: $0) }
+            client.sendTrackEvent(BackgroundTrackRequest(eventName: "event", userId: "user")) { continuation.resume(returning: $0) }
         }
 
         #expect(runner.requestCallsCount == 0)
@@ -115,7 +135,7 @@ struct BackgroundDeliveryHttpClientTests {
         runner.requestClosure = { _, _, onComplete in onComplete(nil, makeOkResponse(statusCode: 500), nil) }
 
         let result: Result<Void, BackgroundDeliveryHttpError> = await withCheckedContinuation { continuation in
-            client.sendTrackEvent(eventName: "event", userId: "user", properties: [:]) { continuation.resume(returning: $0) }
+            client.sendTrackEvent(BackgroundTrackRequest(eventName: "event", userId: "user")) { continuation.resume(returning: $0) }
         }
 
         if case .failure(let error) = result {
@@ -131,7 +151,7 @@ struct BackgroundDeliveryHttpClientTests {
         runner.requestClosure = { _, _, onComplete in onComplete(nil, makeOkResponse(statusCode: 204), nil) }
 
         let result: Result<Void, BackgroundDeliveryHttpError> = await withCheckedContinuation { continuation in
-            client.sendTrackEvent(eventName: "event", userId: "user", properties: [:]) { continuation.resume(returning: $0) }
+            client.sendTrackEvent(BackgroundTrackRequest(eventName: "event", userId: "user")) { continuation.resume(returning: $0) }
         }
 
         if case .failure = result { Issue.record("expected success for 204") }
@@ -143,7 +163,7 @@ struct BackgroundDeliveryHttpClientTests {
         runner.requestClosure = { _, _, onComplete in onComplete(nil, nil, URLError(.notConnectedToInternet)) }
 
         let result: Result<Void, BackgroundDeliveryHttpError> = await withCheckedContinuation { continuation in
-            client.sendTrackEvent(eventName: "event", userId: "user", properties: [:]) { continuation.resume(returning: $0) }
+            client.sendTrackEvent(BackgroundTrackRequest(eventName: "event", userId: "user")) { continuation.resume(returning: $0) }
         }
 
         if case .failure(let error) = result {
