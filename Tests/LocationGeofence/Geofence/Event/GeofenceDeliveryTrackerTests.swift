@@ -31,7 +31,7 @@ struct GeofenceDeliveryTrackerTests {
     @Test
     func trackMetric_givenEnterTransition_expectAndroidWireFormat() async {
         let (tracker, httpClient) = makeTracker()
-        httpClient.sendTrackEventClosure = { _, _, _, completion in completion(.success(())) }
+        httpClient.sendTrackEventClosure = { _, completion in completion(.success(())) }
 
         await withCheckedContinuation { continuation in
             tracker.trackMetric(metric: makeMetric(), userId: "user_42") { _ in
@@ -40,9 +40,10 @@ struct GeofenceDeliveryTrackerTests {
         }
 
         let args = httpClient.sendTrackEventReceivedArguments
-        #expect(args?.eventName == "CIO Geofence Entered")
-        #expect(args?.userId == "user_42")
-        let properties = args?.properties ?? [:]
+        #expect(args?.request.eventName == "CIO Geofence Entered")
+        #expect(args?.request.userId == "user_42")
+        #expect(args?.request.timestamp == Date(timeIntervalSince1970: 1700000000))
+        let properties = args?.request.properties ?? [:]
         #expect(properties["geofence_id"] as? String == "geo_1")
         #expect(properties["transition_type"] as? String == "enter")
         #expect(properties["timestamp"] as? Int == 1700000000)
@@ -53,7 +54,7 @@ struct GeofenceDeliveryTrackerTests {
     @Test
     func trackMetric_givenExitTransition_expectExitedEventName() async {
         let (tracker, httpClient) = makeTracker()
-        httpClient.sendTrackEventClosure = { _, _, _, completion in completion(.success(())) }
+        httpClient.sendTrackEventClosure = { _, completion in completion(.success(())) }
 
         await withCheckedContinuation { continuation in
             tracker.trackMetric(metric: makeMetric(transition: .exit), userId: "user_42") { _ in
@@ -61,7 +62,7 @@ struct GeofenceDeliveryTrackerTests {
             }
         }
 
-        #expect(httpClient.sendTrackEventReceivedArguments?.eventName == "CIO Geofence Exited")
+        #expect(httpClient.sendTrackEventReceivedArguments?.request.eventName == "CIO Geofence Exited")
     }
 
     // MARK: - Guard clauses
@@ -85,7 +86,7 @@ struct GeofenceDeliveryTrackerTests {
     @Test
     func trackMetric_givenHttpFailure_expectFailurePropagated() async {
         let (tracker, httpClient) = makeTracker()
-        httpClient.sendTrackEventClosure = { _, _, _, completion in
+        httpClient.sendTrackEventClosure = { _, completion in
             completion(.failure(.http(statusCode: 500)))
         }
 

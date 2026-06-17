@@ -40,9 +40,12 @@ final class GeofenceDeliveryTrackerImpl: GeofenceDeliveryTracker {
         ]
 
         httpClient.sendTrackEvent(
-            eventName: metric.transition.trackEventName,
-            userId: userId,
-            properties: properties,
+            BackgroundTrackRequest(
+                eventName: metric.transition.trackEventName,
+                userId: userId,
+                properties: properties,
+                timestamp: metric.timestamp
+            ),
             completion: onComplete
         )
     }
