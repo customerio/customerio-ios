@@ -16,6 +16,10 @@ public protocol EventRepresentable: Equatable, Codable {
     var params: [String: String] { get }
     /// Timestamp indicating when the event was created.
     var timestamp: Date { get }
+    /// Whether the event should be persisted to disk when posted with no observers, so it can be
+    /// replayed once an observer registers. Defaults to `true`; transient events override to `false`
+    /// and are dropped when unobserved. The in-memory cache applies regardless.
+    var isPersistent: Bool { get }
 }
 
 // Default implementation for `EventRepresentable`
@@ -30,6 +34,8 @@ public extension EventRepresentable {
     var key: String {
         Self.key
     }
+
+    var isPersistent: Bool { true }
 }
 
 // MARK: - Event Types Registry

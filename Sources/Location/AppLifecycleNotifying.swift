@@ -2,9 +2,9 @@ import Foundation
 
 /// Token returned when registering a lifecycle observer. Retain the token; call `remove()` to unregister, or let it deallocate and the registration is removed automatically.
 ///
-/// SDK-internal infrastructure: `public` so the geofence module (which depends on Location)
-/// can reuse it. Not intended for app code.
-public protocol AppLifecycleObserverToken: AnyObject {
+/// SDK-internal infrastructure: `@_spi(Internal)` so the geofence module (which depends on Location)
+/// can reuse it without exposing it on the public API. Not intended for app code.
+@_spi(Internal) public protocol AppLifecycleObserverToken: AnyObject {
     /// Unregisters the observer. Safe to call multiple times; only the first call has effect.
     func remove()
 }
@@ -12,9 +12,9 @@ public protocol AppLifecycleObserverToken: AnyObject {
 /// Abstracts registration for app lifecycle notifications (didBecomeActive, didEnterBackground).
 /// Enables tests to simulate lifecycle events without NotificationCenter or run loop.
 ///
-/// SDK-internal infrastructure: `public` so the geofence module (which depends on Location)
-/// can reuse it. Not intended for app code.
-public protocol AppLifecycleNotifying: AnyObject {
+/// SDK-internal infrastructure: `@_spi(Internal)` so the geofence module (which depends on Location)
+/// can reuse it without exposing it on the public API. Not intended for app code.
+@_spi(Internal) public protocol AppLifecycleNotifying: AnyObject {
     /// Registers for UIApplication.didBecomeActiveNotification. The block is invoked when the app becomes active.
     /// - Parameter block: Called when the notification fires (production: on main queue).
     /// - Returns: Token to retain; call `remove()` to unregister or release the token to unregister on dealloc.

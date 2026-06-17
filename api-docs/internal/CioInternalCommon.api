@@ -264,6 +264,7 @@ public interface CioInternalCommon.EventRepresentable {
 	public var storageId: String;
 	public var params: List<String : String>;
 	public var timestamp: Date;
+	public var isPersistent: Boolean;
 }
 public interface CioInternalCommon.EventStorage {
 	public fun func store(event: AnyEventRepresentable) async throws;
@@ -342,6 +343,7 @@ public final class CioInternalCommon.LocationAcquiredEvent {
 	public final val params: List<String : String>;
 	public final val location: LocationData;
 	public final val timestamp: Date;
+	public var isPersistent: Boolean;
 	public fun init(storageId: String = UUID().uuidString, location: LocationData, timestamp: Date = Date(), params: List<String: String> = List<:>);
 }
 public final class CioInternalCommon.LocationData {
