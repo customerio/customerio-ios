@@ -507,6 +507,13 @@ public interface CioInternalCommon.SharedKeyValueStorage {
 	public fun func setData(_ value: Data?, forKey key: KeyValueStorageKey);
 	public fun func deleteAll();
 }
+public final class CioInternalCommon.StorageManager {
+	public final val db: Database;
+	public fun init(db: Database);
+	public fun func runMigrations(extra: List<any Migration> = []) throws;
+	public fun func getMetaValue(_ key: String) throws -> String?;
+	public fun func setMetaValue(_ value: String?, for key: String) throws;
+}
 public final class CioInternalCommon.StringAnyEncodable {
 	public fun init(logger: Logger, _ data: List<String: Any>);
 	public fun func encode(to encoder: Encoder) throws;
