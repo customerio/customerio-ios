@@ -25,6 +25,7 @@ declare -a PUBLIC_MODULES=(
     "MessagingPushAPN:CioMessagingPushAPN"
     "MessagingPushFCM:CioMessagingPushFCM"
     "MessagingInApp:CioMessagingInApp"
+    "MessagingInbox:CioMessagingInbox"
     "Location:CioLocation"
 )
 
