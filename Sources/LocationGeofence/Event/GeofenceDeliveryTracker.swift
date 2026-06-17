@@ -33,13 +33,11 @@ final class GeofenceDeliveryTrackerImpl: GeofenceDeliveryTracker {
             return onComplete(.failure(.invalidRequest))
         }
 
-        var properties: [String: Any] = [
+        let properties: [String: Any] = [
             "geofence_id": metric.geofenceId,
             "transition_type": metric.transition.rawValue,
             "timestamp": Int(metric.timestamp.timeIntervalSince1970)
         ]
-        if let latitude = metric.latitude { properties["latitude"] = latitude }
-        if let longitude = metric.longitude { properties["longitude"] = longitude }
 
         httpClient.sendTrackEvent(
             eventName: metric.transition.trackEventName,

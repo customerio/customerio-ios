@@ -27,7 +27,7 @@ enum GeofenceMonitorBinder {
                 Task { _ = await coordinator?.handleMovement(latitude: location.latitude, longitude: location.longitude) }
                 return
             }
-            Task { await tracker?.trackTransition(geofenceId: identifier, transition: transition, location: location) }
+            Task { await tracker?.trackTransition(geofenceId: identifier, transition: transition) }
         }
     }
 }

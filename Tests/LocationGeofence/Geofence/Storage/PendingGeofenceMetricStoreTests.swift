@@ -18,8 +18,6 @@ struct PendingGeofenceMetricStoreTests {
         PendingGeofenceMetric(
             geofenceId: geofenceId,
             transition: transition,
-            latitude: 12.34,
-            longitude: 56.78,
             timestamp: Date(timeIntervalSince1970: 1700000000),
             userId: nil
         )
@@ -261,8 +259,6 @@ struct PendingGeofenceMetricStoreTests {
                             _ = await store.append(PendingGeofenceMetric(
                                 geofenceId: "geo_\(i)_\(j)",
                                 transition: .enter,
-                                latitude: nil,
-                                longitude: nil,
                                 timestamp: Date(),
                                 userId: nil
                             ))

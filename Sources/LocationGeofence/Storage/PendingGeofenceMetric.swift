@@ -6,8 +6,6 @@ import Foundation
 struct PendingGeofenceMetric: Codable, Equatable, Sendable {
     let geofenceId: String
     let transition: GeofenceTransition
-    let latitude: Double?
-    let longitude: Double?
     let timestamp: Date
     /// The userId identified at capture time, or `nil` if none was identified.
     let userId: String?
@@ -24,15 +22,11 @@ struct PendingGeofenceMetric: Codable, Equatable, Sendable {
     init(
         geofenceId: String,
         transition: GeofenceTransition,
-        latitude: Double?,
-        longitude: Double?,
         timestamp: Date,
         userId: String?
     ) {
         self.geofenceId = geofenceId
         self.transition = transition
-        self.latitude = latitude
-        self.longitude = longitude
         self.timestamp = timestamp
         self.userId = userId
     }
@@ -40,8 +34,6 @@ struct PendingGeofenceMetric: Codable, Equatable, Sendable {
     enum CodingKeys: String, CodingKey {
         case geofenceId = "geofence_id"
         case transition
-        case latitude
-        case longitude
         case timestamp
         case userId = "user_id"
     }

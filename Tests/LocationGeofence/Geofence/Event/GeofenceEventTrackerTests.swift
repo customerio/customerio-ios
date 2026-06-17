@@ -116,11 +116,7 @@ struct GeofenceEventTrackerTests {
             dateUtil: dateUtil
         )
 
-        await tracker.trackTransition(
-            geofenceId: "geo_1",
-            transition: .enter,
-            location: LocationData(latitude: 12.34, longitude: 56.78)
-        )
+        await tracker.trackTransition(geofenceId: "geo_1", transition: .enter)
 
         // Anonymous capture: stamped userId is nil. HTTP path can't attribute,
         // so the row is handed off to EventBus → DataPipeline (anonymous track)
@@ -133,8 +129,6 @@ struct GeofenceEventTrackerTests {
         #expect(posted.first?.geofenceId == "geo_1")
         #expect(posted.first?.transition == .enter)
         #expect(posted.first?.timestamp == captureTime)
-        #expect(posted.first?.latitude == 12.34)
-        #expect(posted.first?.longitude == 56.78)
     }
 
     // MARK: - Cooldown
@@ -422,7 +416,6 @@ struct GeofenceEventTrackerTests {
         // Row was captured under user_A; current user is now user_B (after sign-out + new sign-in).
         _ = await pending.append(PendingGeofenceMetric(
             geofenceId: "geo_1", transition: .enter,
-            latitude: nil, longitude: nil,
             timestamp: Date(timeIntervalSince1970: 1),
             userId: "user_A"
         ))
@@ -448,7 +441,6 @@ struct GeofenceEventTrackerTests {
         let pending = makePendingStore(directory: dir)
         _ = await pending.append(PendingGeofenceMetric(
             geofenceId: "geo_1", transition: .enter,
-            latitude: nil, longitude: nil,
             timestamp: Date(timeIntervalSince1970: 1),
             userId: "user_A"
         ))
@@ -475,7 +467,6 @@ struct GeofenceEventTrackerTests {
         let capturedAt = Date(timeIntervalSince1970: 1700000000)
         _ = await pending.append(PendingGeofenceMetric(
             geofenceId: "geo_1", transition: .enter,
-            latitude: 12.34, longitude: 56.78,
             timestamp: capturedAt,
             userId: nil
         ))
@@ -499,7 +490,5 @@ struct GeofenceEventTrackerTests {
         let posted = postedGeofenceEvents(from: bus)
         #expect(posted.count == 1)
         #expect(posted.first?.timestamp == capturedAt)
-        #expect(posted.first?.latitude == 12.34)
-        #expect(posted.first?.longitude == 56.78)
     }
 }

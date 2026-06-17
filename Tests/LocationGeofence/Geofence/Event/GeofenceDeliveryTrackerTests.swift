@@ -16,15 +16,11 @@ struct GeofenceDeliveryTrackerTests {
     private func makeMetric(
         geofenceId: String = "geo_1",
         transition: GeofenceTransition = .enter,
-        latitude: Double? = 12.34,
-        longitude: Double? = 56.78,
         timestamp: Date = Date(timeIntervalSince1970: 1700000000)
     ) -> PendingGeofenceMetric {
         PendingGeofenceMetric(
             geofenceId: geofenceId,
             transition: transition,
-            latitude: latitude,
-            longitude: longitude,
             timestamp: timestamp,
             userId: nil
         )
@@ -49,9 +45,9 @@ struct GeofenceDeliveryTrackerTests {
         let properties = args?.properties ?? [:]
         #expect(properties["geofence_id"] as? String == "geo_1")
         #expect(properties["transition_type"] as? String == "enter")
-        #expect(properties["latitude"] as? Double == 12.34)
-        #expect(properties["longitude"] as? Double == 56.78)
         #expect(properties["timestamp"] as? Int == 1700000000)
+        #expect(properties["latitude"] == nil)
+        #expect(properties["longitude"] == nil)
     }
 
     @Test
@@ -66,23 +62,6 @@ struct GeofenceDeliveryTrackerTests {
         }
 
         #expect(httpClient.sendTrackEventReceivedArguments?.eventName == "CIO Geofence Exited")
-    }
-
-    @Test
-    func trackMetric_givenNilCoordinates_expectOmittedFromProperties() async {
-        let (tracker, httpClient) = makeTracker()
-        httpClient.sendTrackEventClosure = { _, _, _, completion in completion(.success(())) }
-
-        await withCheckedContinuation { continuation in
-            tracker.trackMetric(
-                metric: makeMetric(latitude: nil, longitude: nil),
-                userId: "user_42"
-            ) { _ in continuation.resume() }
-        }
-
-        let properties = httpClient.sendTrackEventReceivedArguments?.properties ?? [:]
-        #expect(properties["latitude"] == nil)
-        #expect(properties["longitude"] == nil)
     }
 
     // MARK: - Guard clauses

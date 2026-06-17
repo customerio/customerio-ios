@@ -12,8 +12,8 @@ import Foundation
 ///      row, failure retains it for the next flush
 ///    - No stamped userId → post to EventBus and drain; DataPipeline records
 ///      the transition under its current identity (anonymous tracking when no
-///      one is identified). The captured timestamp + coordinates flow through
-///      the event so both paths attribute the transition to when it happened
+///      one is identified). The captured timestamp flows through the event so
+///      both paths attribute the transition to when it happened
 ///
 /// `flushPending()` replays queued rows on module init and on every `ProfileIdentifiedEvent`.
 /// Concurrent deliveries for the same row are deduplicated in-process via the active-delivery
@@ -56,8 +56,7 @@ final class GeofenceEventTracker: @unchecked Sendable {
     /// Persists the metric, then hands it to `deliver`.
     func trackTransition(
         geofenceId: String,
-        transition: GeofenceTransition,
-        location: LocationData? = nil
+        transition: GeofenceTransition
     ) async {
         let cooldownKey = "\(geofenceId):\(transition.rawValue)"
         let now = dateUtil.now
@@ -78,8 +77,6 @@ final class GeofenceEventTracker: @unchecked Sendable {
         let metric = PendingGeofenceMetric(
             geofenceId: geofenceId,
             transition: transition,
-            latitude: location?.latitude,
-            longitude: location?.longitude,
             timestamp: now,
             userId: stampedUserId
         )
@@ -135,16 +132,14 @@ final class GeofenceEventTracker: @unchecked Sendable {
     }
 
     /// Anonymous-attribution fallback used when a row carries no stamped userId.
-    /// The captured `timestamp` and coordinates flow through the event so DataPipeline
-    /// can record the transition under the moment it actually happened, not the
-    /// moment the flush ran.
+    /// The captured `timestamp` flows through the event so DataPipeline can record
+    /// the transition under the moment it actually happened, not the moment the
+    /// flush ran.
     private func postEventBus(metric: PendingGeofenceMetric) {
         eventBusHandler.postEvent(TrackGeofenceMetricEvent(
             geofenceId: metric.geofenceId,
             transition: metric.transition,
-            timestamp: metric.timestamp,
-            latitude: metric.latitude,
-            longitude: metric.longitude
+            timestamp: metric.timestamp
         ))
         logger.geofenceEventTracked(geofenceId: metric.geofenceId, transition: metric.transition)
     }

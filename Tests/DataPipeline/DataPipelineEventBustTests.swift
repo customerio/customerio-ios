@@ -66,9 +66,7 @@ class DataPipelineEventBustTests: IntegrationTest {
             TrackGeofenceMetricEvent(
                 geofenceId: givenGeofenceId,
                 transition: .enter,
-                timestamp: capturedAt,
-                latitude: 12.34,
-                longitude: 56.78
+                timestamp: capturedAt
             )
         )
 
@@ -83,8 +81,8 @@ class DataPipelineEventBustTests: IntegrationTest {
         XCTAssertEqual(properties["geofence_id"] as? String, givenGeofenceId)
         XCTAssertEqual(properties["transition_type"] as? String, "enter")
         XCTAssertEqual(properties["timestamp"] as? Int, Int(capturedAt.timeIntervalSince1970))
-        XCTAssertEqual(properties["latitude"] as? Double ?? 0, 12.34, accuracy: 0.0001)
-        XCTAssertEqual(properties["longitude"] as? Double ?? 0, 56.78, accuracy: 0.0001)
+        XCTAssertNil(properties["latitude"])
+        XCTAssertNil(properties["longitude"])
         XCTAssertEqual(trackEvent.timestamp, capturedAt.string(format: .iso8601WithMilliseconds))
     }
 
