@@ -53,6 +53,23 @@ public final class DIGraphShared: @unchecked Sendable {
         }
     }
 
+    /// Gets an existing singleton of the specified type T, or calls the factory to create and store one.
+    /// If the factory returns nil, nothing is stored and nil is returned.
+    /// Overrides (test mocks) take precedence. The check-and-create is atomic under the lock.
+    /// - Parameters:
+    ///   - type: The type of the singleton instance to retrieve or create.
+    ///   - factory: A closure that creates a new instance of type T, or nil if creation fails.
+    public func getOrCreate<T>(of type: T.Type = T.self, with factory: () -> T?) -> T? {
+        let typeName = String(describing: type)
+        return lock.withLock {
+            if let overridden = overrides[typeName] as? T { return overridden }
+            if let existing = singletons[typeName] as? T { return existing }
+            guard let new = factory() else { return nil }
+            singletons[typeName] = new
+            return new
+        }
+    }
+
     /// Gets a singleton instance of the specified type T. If that instance doesn't exist,
     /// it is created using the provided factory closure, stored, and then returned.
     /// Parameters:
