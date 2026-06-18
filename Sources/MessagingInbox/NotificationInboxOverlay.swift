@@ -73,6 +73,11 @@ public struct NotificationInboxOverlay: View {
             // Always show the button so the inbox is reachable even when empty.
             floatingButton
         }
+        // Fill the host so the bottom-trailing alignment actually pins the button to the
+        // bottom-right corner. Without this the ZStack shrinks to its content and a full-screen
+        // host (e.g. a UIHostingController) centers it. Empty areas stay transparent to touches,
+        // so content underneath the overlay remains interactive.
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
         .onAppear(perform: startObserving)
         .onDisappear(perform: stopObserving)
     }
@@ -148,9 +153,24 @@ public struct NotificationInboxOverlay: View {
 
     private var panel: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text("Inbox")
-                .font(.headline)
-                .padding()
+            HStack {
+                Text("Inbox")
+                    .font(.headline)
+
+                Spacer()
+
+                // Explicit dismiss control (tapping the floating button again also closes it).
+                Button(action: {
+                    withAnimation(.easeInOut(duration: 0.3)) {
+                        isPanelOpen = false
+                    }
+                }, label: {
+                    Image(systemName: "xmark")
+                        .foregroundColor(.secondary)
+                })
+                .accessibility(label: Text("Close inbox"))
+            }
+            .padding()
 
             Divider()
 
