@@ -75,8 +75,7 @@ public struct NotificationInboxOverlay: View {
         }
         // Fill the host so the bottom-trailing alignment actually pins the button to the
         // bottom-right corner. Without this the ZStack shrinks to its content and a full-screen
-        // host (e.g. a UIHostingController) centers it. Empty areas stay transparent to touches,
-        // so content underneath the overlay remains interactive.
+        // host (e.g. a UIHostingController) centers it.
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
         .onAppear(perform: startObserving)
         .onDisappear(perform: stopObserving)
@@ -93,7 +92,12 @@ public struct NotificationInboxOverlay: View {
         // Capture only the inbox dependency; state updates hop to the main actor.
         let inbox = inbox
         observationTask = Task { @MainActor in
-            messages = await inbox.getMessages()
+            // The initial fetch can resume after the task is cancelled (e.g. a quick
+            // disappear/reappear); bail before assigning so a stale snapshot can't land or a
+            // second observation overlap.
+            let initial = await inbox.getMessages()
+            if Task.isCancelled { return }
+            messages = initial
 
             for await updated in inbox.messages() {
                 if Task.isCancelled { break }
