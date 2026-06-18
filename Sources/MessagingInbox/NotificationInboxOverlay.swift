@@ -185,11 +185,14 @@ public struct NotificationInboxOverlay: View {
                 }
             }
         }
-        .frame(maxWidth: 480, maxHeight: 480, alignment: .top)
+        // Fill the available height (capped in width for tablets). The outer paddings reserve a
+        // top inset and keep the panel clear of the floating button at the bottom.
+        .frame(maxWidth: 480, maxHeight: .infinity, alignment: .top)
         .background(Color(.systemBackground))
         .cornerRadius(12)
         .shadow(radius: 8)
         .padding(.horizontal, 16)
+        .padding(.top, 16)
         .padding(.bottom, panelBottomInset)
     }
 }
