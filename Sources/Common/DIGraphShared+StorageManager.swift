@@ -9,14 +9,11 @@ public extension DIGraphShared {
     /// Returns `nil` and logs an error if the database cannot be opened or migrations fail.
     @discardableResult
     func registerStorageManager(cdpApiKey: String) -> StorageManager? {
-        // If recovery already created an instance for the same key, reuse it.
-        if let existing = getOptional(StorageManager.self), existing.cdpApiKey == cdpApiKey {
-            return existing
+        getOrCreate(of: StorageManager.self, matching: { $0.cdpApiKey == cdpApiKey }) {
+            guard let storage = makeStorageManager(cdpApiKey: cdpApiKey) else { return nil }
+            Self.writeStoredApiKey(cdpApiKey)
+            return storage
         }
-        guard let storage = makeStorageManager(cdpApiKey: cdpApiKey) else { return nil }
-        register(storage, forType: StorageManager.self)
-        Self.writeStoredApiKey(cdpApiKey)
-        return storage
     }
 
     /// The registered ``StorageManager``, or `nil` if ``registerStorageManager(cdpApiKey:)``
