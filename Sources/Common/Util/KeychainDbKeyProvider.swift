@@ -30,7 +30,7 @@ public struct KeychainDbKeyProvider: DbKeyProvider, @unchecked Sendable {
         if let existing = try loadKey(account: account) {
             return existing
         }
-        let newKey = generateKey()
+        let newKey = try generateKey()
         try storeKey(newKey, account: account)
         return newKey
     }
@@ -87,9 +87,12 @@ public struct KeychainDbKeyProvider: DbKeyProvider, @unchecked Sendable {
         }
     }
 
-    private func generateKey() -> String {
+    private func generateKey() throws -> String {
         var bytes = [UInt8](repeating: 0, count: 32)
-        _ = SecRandomCopyBytes(kSecRandomDefault, bytes.count, &bytes)
+        let status = SecRandomCopyBytes(kSecRandomDefault, bytes.count, &bytes)
+        guard status == errSecSuccess else {
+            throw KeychainDbKeyError.keyGenerationFailed(status: status)
+        }
         return bytes.map { String(format: "%02x", $0) }.joined()
     }
 }
@@ -99,5 +102,6 @@ public struct KeychainDbKeyProvider: DbKeyProvider, @unchecked Sendable {
 enum KeychainDbKeyError: Error {
     case readFailed(status: OSStatus)
     case writeFailed(status: OSStatus)
+    case keyGenerationFailed(status: OSStatus)
     case invalidData
 }
