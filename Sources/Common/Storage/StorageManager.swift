@@ -18,7 +18,7 @@ public struct StorageManager: Sendable {
     /// Apply schema migrations. Must be called once before any other method.
     /// Pass `extra` migrations from modules that extend the schema.
     public func runMigrations(extra: [any Migration] = []) throws {
-        try db.migrate([CreateSdkMetaSchema()] + extra)
+        try db.migrate([CreateSdkMetaSchema(), CreateAggregationTablesSchema()] + extra)
     }
 
     // MARK: - sdk_meta (utility key/value table)
@@ -47,6 +47,26 @@ private struct CreateSdkMetaSchema: Migration {
             CREATE TABLE IF NOT EXISTS sdk_meta (
                 key   TEXT NOT NULL PRIMARY KEY,
                 value TEXT NOT NULL
+            )
+            """
+        )
+    }
+
+    func down(_ ctx: MigrationContext) throws {}
+}
+
+private struct CreateAggregationTablesSchema: Migration {
+    let id = "002-create-aggregation-tables"
+
+    func up(_ ctx: MigrationContext) throws {
+        // Per-rule accumulator state (counters for rate limiting).
+        try ctx.execute(
+            """
+            CREATE TABLE IF NOT EXISTS aggregation_state (
+                rule_id         TEXT    NOT NULL PRIMARY KEY,
+                state_json      TEXT    NOT NULL,
+                last_flushed_at INTEGER NOT NULL DEFAULT 0,
+                scope           TEXT    NOT NULL DEFAULT 'profile'
             )
             """
         )
