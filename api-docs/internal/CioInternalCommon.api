@@ -140,6 +140,7 @@ public final class CioInternalCommon.DIGraphShared {
 	public fun func getOverriddenInstance<T: Any>() -> T?;
 	public fun func getOptional<T: Any>(_ type: T.Type = T.self) -> T?;
 	public fun func register<T: Any>(_ value: T, forType type: T.Type);
+	public fun func getOrCreate<T>(of type: T.Type = T.self, with factory: () -> T?) -> T?;
 	public fun func getSingletonOrCreate<T>(of type: T.Type = T.self, with factory: () -> T) -> T;
 	public fun func reset();
 }
@@ -509,7 +510,8 @@ public interface CioInternalCommon.SharedKeyValueStorage {
 }
 public final class CioInternalCommon.StorageManager {
 	public final val db: Database;
-	public fun init(db: Database);
+	public final val cdpApiKey: String;
+	public fun init(db: Database, cdpApiKey: String);
 	public fun func runMigrations(extra: List<any Migration> = []) throws;
 	public fun func getMetaValue(_ key: String) throws -> String?;
 	public fun func setMetaValue(_ value: String?, for key: String) throws;
