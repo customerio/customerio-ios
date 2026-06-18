@@ -140,7 +140,7 @@ public final class CioInternalCommon.DIGraphShared {
 	public fun func getOverriddenInstance<T: Any>() -> T?;
 	public fun func getOptional<T: Any>(_ type: T.Type = T.self) -> T?;
 	public fun func register<T: Any>(_ value: T, forType type: T.Type);
-	public fun func getOrCreate<T>(of type: T.Type = T.self, with factory: () -> T?) -> T?;
+	public fun func getOrCreate<T>(of type: T.Type = T.self, matching predicate: ((T) -> Boolean)? = nil, with factory: () -> T?) -> T?;
 	public fun func getSingletonOrCreate<T>(of type: T.Type = T.self, with factory: () -> T) -> T;
 	public fun func reset();
 }
