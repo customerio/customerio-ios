@@ -1,0 +1,4 @@
+public final class CioMessagingInbox.NotificationInboxOverlay {
+	public var body: some View;
+	public fun init();
+}
