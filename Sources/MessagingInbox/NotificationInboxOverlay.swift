@@ -13,8 +13,9 @@ import SwiftUI
 ///   screen width minus horizontal margins, capped at a tablet-friendly maximum width.
 ///
 /// State is driven entirely by the headless inbox API (`MessagingInApp.shared.inbox`): the view
-/// loads the current messages and then observes the live `messages()` stream for updates. When the
-/// inbox is empty, the view renders nothing (no button, no badge, no panel).
+/// loads the current messages and then observes the live `messages()` stream for updates. The
+/// floating button is always shown so the inbox stays reachable even when empty; the unread badge
+/// only appears when there are unread messages, and an empty inbox opens to an empty panel.
 ///
 /// - Note: This is the Milestone 1 placeholder UI. Rows show plain text derived from
 ///   ``InboxMessage`` fields and a read/unread indicator; rich/templated rendering lands later.
@@ -69,10 +70,8 @@ public struct NotificationInboxOverlay: View {
                     .transition(.move(edge: .trailing).combined(with: .opacity))
             }
 
-            // Render no chrome at all when there are no messages.
-            if !messages.isEmpty {
-                floatingButton
-            }
+            // Always show the button so the inbox is reachable even when empty.
+            floatingButton
         }
         .onAppear(perform: startObserving)
         .onDisappear(perform: stopObserving)
