@@ -93,6 +93,8 @@ actor GeofenceStorage {
         state.eventCooldowns = nil
         state.lastServerSyncTimestamp = nil
         state.lastServerSyncLocation = nil
+        state.movementTriggerCenter = nil
+        state.monitoredGeofenceIds = nil
         saveToDisk(state)
     }
 
@@ -141,6 +143,33 @@ actor GeofenceStorage {
         var state = loadFromDisk() ?? GeofenceState()
         state.lastServerSyncTimestamp = timestamp
         state.lastServerSyncLocation = location
+        saveToDisk(state)
+    }
+
+    // MARK: - Last Registration
+
+    /// Center of the most recent OS registration (the movement-trigger center). The sync
+    /// decision measures distance from here to detect a stale ranking — the device moved
+    /// beyond the trigger radius while the app was dead, so the registered nearest-set is
+    /// no longer the closest geofences and needs a local re-rank.
+    func getLastRegistrationCenter() -> LocationData? {
+        loadFromDisk()?.movementTriggerCenter
+    }
+
+    /// Business geofence IDs registered with the OS at the last registration. Lets the sync
+    /// decision spot a cache that holds regions while nothing is registered (e.g. regs lost
+    /// on sign-out) and re-register instead of skipping.
+    func getRegisteredBusinessIds() -> Set<String> {
+        loadFromDisk()?.monitoredGeofenceIds ?? []
+    }
+
+    /// Records the registration anchor + business IDs in one load-modify-save. Updated on every
+    /// registration, including a local re-rank, so the ranking-staleness reference follows the
+    /// device. Distinct from `recordSync` (the API-fetch anchor), which a local re-rank leaves intact.
+    func recordRegistration(center: LocationData, businessIds: Set<String>) {
+        var state = loadFromDisk() ?? GeofenceState()
+        state.movementTriggerCenter = center
+        state.monitoredGeofenceIds = businessIds
         saveToDisk(state)
     }
 

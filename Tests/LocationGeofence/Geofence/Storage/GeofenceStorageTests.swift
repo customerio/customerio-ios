@@ -260,7 +260,8 @@ struct GeofenceStorageTests {
             remoteFetchRefreshTriggerRadius: 4000,
             remoteFetchRefreshExpiry: 12 * 60 * 60,
             duplicateEventsExpiry: 30 * 60,
-            maxBusinessGeofences: 10
+            maxBusinessGeofences: 10,
+            maxMonitoringDistance: 50000
         )
         await storage.setCachedConfig(config)
         let cached = await storage.getCachedConfig()
@@ -309,7 +310,8 @@ struct GeofenceStorageTests {
             remoteFetchRefreshTriggerRadius: 2000,
             remoteFetchRefreshExpiry: 60,
             duplicateEventsExpiry: 30,
-            maxBusinessGeofences: 5
+            maxBusinessGeofences: 5,
+            maxMonitoringDistance: GeofenceConstants.noMonitoringDistanceCap
         )
         await storage.setCachedConfig(updated)
         let cached = await storage.getCachedConfig()
@@ -453,7 +455,20 @@ struct GeofenceStorageTests {
     // MARK: - Concurrent safety
 
     @Test
-    func clearUserScopedState_expectCooldownsAndLastSyncCleared_workspaceCachePreserved() async {
+    func recordRegistration_thenGet_expectRoundTrip() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let storage = makeStorage(directory: dir)
+        let center = LocationData(latitude: 37.7749, longitude: -122.4194)
+
+        await storage.recordRegistration(center: center, businessIds: ["g1", "g2"])
+
+        #expect(await storage.getLastRegistrationCenter() == center)
+        #expect(await storage.getRegisteredBusinessIds() == ["g1", "g2"])
+    }
+
+    @Test
+    func clearUserScopedState_expectCooldownsLastSyncAndRegistrationCleared_workspaceCachePreserved() async {
         let dir = makeTempDirectory()
         defer { try? FileManager.default.removeItem(at: dir) }
         let storage = makeStorage(directory: dir)
@@ -463,6 +478,7 @@ struct GeofenceStorageTests {
         ])
         await storage.setCachedConfig(.fallback)
         await storage.recordSync(timestamp: Date(timeIntervalSince1970: 100), location: LocationData(latitude: 1, longitude: 2))
+        await storage.recordRegistration(center: LocationData(latitude: 1, longitude: 2), businessIds: ["g1"])
 
         await storage.clearUserScopedState()
 
@@ -472,6 +488,10 @@ struct GeofenceStorageTests {
         let config = await storage.getCachedConfig()
         #expect(cooldowns.isEmpty)
         #expect(lastSync == nil)
+        // Registration is user-scoped — cleared so the next user re-registers from their own refresh.
+        #expect(await storage.getLastRegistrationCenter() == nil)
+        #expect(await storage.getRegisteredBusinessIds().isEmpty)
+        // Workspace cache is shared across users — preserved.
         #expect(regions.map(\.id) == ["g1"])
         #expect(config != nil)
     }

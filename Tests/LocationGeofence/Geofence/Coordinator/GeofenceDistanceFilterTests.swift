@@ -22,19 +22,19 @@ struct GeofenceDistanceFilterTests {
 
     @Test
     func nearest_givenEmpty_expectEmpty() {
-        #expect(filter.nearest([], to: origin, limit: 5).isEmpty)
+        #expect(filter.nearest([], to: origin, limit: 5, maxDistance: GeofenceConstants.noMonitoringDistanceCap).isEmpty)
     }
 
     @Test
     func nearest_givenLimitZero_expectEmpty() {
         let regions = [makeRegion(id: "a", latitude: 0.1, longitude: 0.1)]
-        #expect(filter.nearest(regions, to: origin, limit: 0).isEmpty)
+        #expect(filter.nearest(regions, to: origin, limit: 0, maxDistance: GeofenceConstants.noMonitoringDistanceCap).isEmpty)
     }
 
     @Test
     func nearest_givenLimitNegative_expectEmpty() {
         let regions = [makeRegion(id: "a", latitude: 0.1, longitude: 0.1)]
-        #expect(filter.nearest(regions, to: origin, limit: -3).isEmpty)
+        #expect(filter.nearest(regions, to: origin, limit: -3, maxDistance: GeofenceConstants.noMonitoringDistanceCap).isEmpty)
     }
 
     @Test
@@ -43,7 +43,7 @@ struct GeofenceDistanceFilterTests {
             makeRegion(id: "a", latitude: 0.1, longitude: 0.1),
             makeRegion(id: "b", latitude: 0.2, longitude: 0.2)
         ]
-        let result = filter.nearest(regions, to: origin, limit: 10)
+        let result = filter.nearest(regions, to: origin, limit: 10, maxDistance: GeofenceConstants.noMonitoringDistanceCap)
         #expect(result.count == 2)
         #expect(Set(result.map(\.id)) == ["a", "b"])
     }
@@ -57,7 +57,7 @@ struct GeofenceDistanceFilterTests {
             makeRegion(id: "c", latitude: 0.5, longitude: 0),
             makeRegion(id: "d", latitude: 10.0, longitude: 0)
         ]
-        let result = filter.nearest(regions, to: origin, limit: 2)
+        let result = filter.nearest(regions, to: origin, limit: 2, maxDistance: GeofenceConstants.noMonitoringDistanceCap)
         #expect(result.map(\.id) == ["c", "b"])
     }
 
@@ -69,7 +69,28 @@ struct GeofenceDistanceFilterTests {
             makeRegion(id: "a", latitude: 0.1, longitude: 0),
             makeRegion(id: "m", latitude: 0.1, longitude: 0)
         ]
-        let result = filter.nearest(regions, to: origin, limit: 3)
+        let result = filter.nearest(regions, to: origin, limit: 3, maxDistance: GeofenceConstants.noMonitoringDistanceCap)
         #expect(result.map(\.id) == ["a", "m", "z"])
+    }
+
+    @Test
+    func nearest_givenMaxDistance_expectExcludesRegionsBeyondCap() {
+        let regions = [
+            makeRegion(id: "near", latitude: 0.01, longitude: 0), // ~1.1 km
+            makeRegion(id: "far", latitude: 1.0, longitude: 0) // ~111 km
+        ]
+        let result = filter.nearest(regions, to: origin, limit: 5, maxDistance: 5000) // 5 km cap
+        #expect(result.map(\.id) == ["near"])
+    }
+
+    @Test
+    func nearest_givenNoMaxDistance_expectAllIncluded() {
+        let regions = [
+            makeRegion(id: "near", latitude: 0.01, longitude: 0),
+            makeRegion(id: "far", latitude: 1.0, longitude: 0)
+        ]
+        // The no-cap sentinel includes every region regardless of distance.
+        let result = filter.nearest(regions, to: origin, limit: 5, maxDistance: GeofenceConstants.noMonitoringDistanceCap)
+        #expect(result.map(\.id) == ["near", "far"])
     }
 }

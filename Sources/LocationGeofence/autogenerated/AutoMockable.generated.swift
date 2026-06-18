@@ -95,38 +95,38 @@ class GeofenceApiServiceMock: GeofenceApiService, Mock {
     init() {}
 
     public func resetMock() {
-        fetchGeofencesCallsCount = 0
-        fetchGeofencesReceivedArguments = nil
-        fetchGeofencesReceivedInvocations = []
+        fetchAllGeofencesCallsCount = 0
+        fetchAllGeofencesReceivedArguments = nil
+        fetchAllGeofencesReceivedInvocations = []
 
         mockCalled = false // do last as resetting properties above can make this true
     }
 
-    // MARK: - fetchGeofences
+    // MARK: - fetchAllGeofences
 
     /// Number of times the function was called.
-    @Atomic private(set) var fetchGeofencesCallsCount = 0
+    @Atomic private(set) var fetchAllGeofencesCallsCount = 0
     /// `true` if the function was ever called.
-    var fetchGeofencesCalled: Bool {
-        fetchGeofencesCallsCount > 0
+    var fetchAllGeofencesCalled: Bool {
+        fetchAllGeofencesCallsCount > 0
     }
 
     /// The arguments from the *last* time the function was called.
-    @Atomic private(set) var fetchGeofencesReceivedArguments: (latitude: Double, longitude: Double, completion: (Result<GeofenceApiResponse, GeofenceApiError>) -> Void)?
+    @Atomic private(set) var fetchAllGeofencesReceivedArguments: ((Result<GeofenceApiResponse, GeofenceApiError>) -> Void)?
     /// Arguments from *all* of the times that the function was called.
-    @Atomic private(set) var fetchGeofencesReceivedInvocations: [(latitude: Double, longitude: Double, completion: (Result<GeofenceApiResponse, GeofenceApiError>) -> Void)] = []
+    @Atomic private(set) var fetchAllGeofencesReceivedInvocations: [(Result<GeofenceApiResponse, GeofenceApiError>) -> Void] = []
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
      */
-    var fetchGeofencesClosure: ((Double, Double, @escaping (Result<GeofenceApiResponse, GeofenceApiError>) -> Void) -> Void)?
+    var fetchAllGeofencesClosure: ((@escaping (Result<GeofenceApiResponse, GeofenceApiError>) -> Void) -> Void)?
 
-    /// Mocked function for `fetchGeofences(latitude: Double, longitude: Double, completion: @escaping (Result<GeofenceApiResponse, GeofenceApiError>) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
-    func fetchGeofences(latitude: Double, longitude: Double, completion: @escaping (Result<GeofenceApiResponse, GeofenceApiError>) -> Void) {
+    /// Mocked function for `fetchAllGeofences(completion: @escaping (Result<GeofenceApiResponse, GeofenceApiError>) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
+    func fetchAllGeofences(completion: @escaping (Result<GeofenceApiResponse, GeofenceApiError>) -> Void) {
         mockCalled = true
-        fetchGeofencesCallsCount += 1
-        fetchGeofencesReceivedArguments = (latitude: latitude, longitude: longitude, completion: completion)
-        fetchGeofencesReceivedInvocations.append((latitude: latitude, longitude: longitude, completion: completion))
-        fetchGeofencesClosure?(latitude, longitude, completion)
+        fetchAllGeofencesCallsCount += 1
+        fetchAllGeofencesReceivedArguments = completion
+        fetchAllGeofencesReceivedInvocations.append(completion)
+        fetchAllGeofencesClosure?(completion)
     }
 }
 
@@ -313,19 +313,23 @@ class GeofenceSyncCoordinatorMock: GeofenceSyncCoordinator, Mock {
     @Atomic private(set) var applyCachedRegistrationReceivedArguments: (cachedRegions: [Geofence], anchor: LocationData?, config: GeofenceConfig?, userId: String?)?
     /// Arguments from *all* of the times that the function was called.
     @Atomic private(set) var applyCachedRegistrationReceivedInvocations: [(cachedRegions: [Geofence], anchor: LocationData?, config: GeofenceConfig?, userId: String?)] = []
+    /// Value to return from the mocked function.
+    var applyCachedRegistrationReturnValue: GeofenceRegistration?
     /**
      Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     The closure has first priority to return a value for the mocked function. If the closure returns `nil`,
+     then the mock will attempt to return the value for `applyCachedRegistrationReturnValue`
      */
-    var applyCachedRegistrationClosure: (([Geofence], LocationData?, GeofenceConfig?, String?) -> Void)?
+    var applyCachedRegistrationClosure: (([Geofence], LocationData?, GeofenceConfig?, String?) -> GeofenceRegistration?)?
 
     /// Mocked function for `applyCachedRegistration(cachedRegions: [Geofence], anchor: LocationData?, config: GeofenceConfig?, userId: String?)`. Your opportunity to return a mocked value and check result of mock in test code.
     @MainActor
-    func applyCachedRegistration(cachedRegions: [Geofence], anchor: LocationData?, config: GeofenceConfig?, userId: String?) {
+    func applyCachedRegistration(cachedRegions: [Geofence], anchor: LocationData?, config: GeofenceConfig?, userId: String?) -> GeofenceRegistration? {
         mockCalled = true
         applyCachedRegistrationCallsCount += 1
         applyCachedRegistrationReceivedArguments = (cachedRegions: cachedRegions, anchor: anchor, config: config, userId: userId)
         applyCachedRegistrationReceivedInvocations.append((cachedRegions: cachedRegions, anchor: anchor, config: config, userId: userId))
-        applyCachedRegistrationClosure?(cachedRegions, anchor, config, userId)
+        return applyCachedRegistrationClosure.map { $0(cachedRegions, anchor, config, userId) } ?? applyCachedRegistrationReturnValue
     }
 }
 

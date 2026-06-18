@@ -11,11 +11,10 @@ enum GeofenceApiError: Error, Equatable {
     case decoding
 }
 
-/// Fetches nearby geofences + workspace config from the CDP API.
+/// Fetches geofences + workspace config from the CDP API.
 protocol GeofenceApiService: AutoMockable, Sendable {
-    func fetchGeofences(
-        latitude: Double,
-        longitude: Double,
+    /// Fetch-all: returns the full (capped) set with no location sent.
+    func fetchAllGeofences(
         completion: @escaping (Result<GeofenceApiResponse, GeofenceApiError>) -> Void
     )
 }
@@ -45,9 +44,14 @@ final class GeofenceApiServiceImpl: GeofenceApiService, @unchecked Sendable {
         self.logger = logger
     }
 
-    func fetchGeofences(
-        latitude: Double,
-        longitude: Double,
+    func fetchAllGeofences(
+        completion: @escaping (Result<GeofenceApiResponse, GeofenceApiError>) -> Void
+    ) {
+        request(queryItems: [], completion: completion)
+    }
+
+    private func request(
+        queryItems: [URLQueryItem],
         completion: @escaping (Result<GeofenceApiResponse, GeofenceApiError>) -> Void
     ) {
         guard let apiHost = contextStore.currentApiHost, !apiHost.isEmpty else {
@@ -56,7 +60,7 @@ final class GeofenceApiServiceImpl: GeofenceApiService, @unchecked Sendable {
         guard let cdpApiKey = contextStore.currentCdpApiKey, !cdpApiKey.isEmpty else {
             return completion(.failure(.missingCdpApiKey))
         }
-        guard let url = Self.composeUrl(apiHost: apiHost, latitude: latitude, longitude: longitude) else {
+        guard let url = Self.composeUrl(apiHost: apiHost, queryItems: queryItems) else {
             return completion(.failure(.invalidRequest))
         }
 
@@ -90,14 +94,11 @@ final class GeofenceApiServiceImpl: GeofenceApiService, @unchecked Sendable {
         }
     }
 
-    /// Composes `https://{apiHost}/geofences/nearby?latitude=…&longitude=…`.
-    /// URLComponents handles percent-encoding for the query values.
-    static func composeUrl(apiHost: String, latitude: Double, longitude: Double) -> URL? {
+    /// Composes `https://{apiHost}/geofences/nearby` with the given query items (empty for
+    /// fetch-all). URLComponents handles percent-encoding for the query values.
+    static func composeUrl(apiHost: String, queryItems: [URLQueryItem]) -> URL? {
         var components = URLComponents(string: BackgroundDeliveryHttp.absoluteHost(apiHost) + endpointPath)
-        components?.queryItems = [
-            URLQueryItem(name: "latitude", value: "\(latitude)"),
-            URLQueryItem(name: "longitude", value: "\(longitude)")
-        ]
+        components?.queryItems = queryItems.isEmpty ? nil : queryItems
         return components?.url
     }
 }

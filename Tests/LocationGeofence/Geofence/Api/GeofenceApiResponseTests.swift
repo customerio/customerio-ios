@@ -105,6 +105,66 @@ struct GeofenceApiResponseTests {
         #expect(config?.duplicateEventsExpiry == 60)
     }
 
+    @Test
+    func toDomainConfig_givenLocalRefreshRadiusBelowMin_expectClampedToMin() throws {
+        let response = try decode("{\"config\":{\"local_refresh_trigger_radius\":10},\"geofences\":[]}")
+        #expect(response.toDomainConfig()?.localRefreshTriggerRadius == GeofenceConstants.minLocalRefreshRadius)
+    }
+
+    @Test
+    func toDomainConfig_givenLocalRefreshRadiusAboveMax_expectClampedToMax() throws {
+        let response = try decode("{\"config\":{\"local_refresh_trigger_radius\":99999},\"geofences\":[]}")
+        #expect(response.toDomainConfig()?.localRefreshTriggerRadius == GeofenceConstants.maxLocalRefreshRadius)
+    }
+
+    @Test
+    func toDomainConfig_givenExpiriesOutOfRange_expectClamped() throws {
+        // 1s (below the 1-min min) and 48h (above the 24h max), both in ms.
+        let json = """
+        {"config":{"remote_fetch_refresh_expiry_time":1000,"duplicate_events_expiry_time":172800000},"geofences":[]}
+        """
+        let response = try decode(json)
+        let config = response.toDomainConfig()
+        #expect(config?.remoteFetchRefreshExpiry == GeofenceConstants.minRemoteFetchRefreshExpiry)
+        #expect(config?.duplicateEventsExpiry == GeofenceConstants.maxDuplicateEventsExpiry)
+    }
+
+    @Test
+    func toDomainConfig_givenMaxMonitoringDistanceAbsent_expectDefaultCap() throws {
+        // The server omits the field today — apply the default cap, not "unlimited".
+        let response = try decode("{\"config\":{\"local_refresh_trigger_radius\":3000},\"geofences\":[]}")
+        #expect(response.toDomainConfig()?.maxMonitoringDistance == GeofenceConstants.defaultMaxMonitoringDistance)
+    }
+
+    @Test
+    func toDomainConfig_givenMaxMonitoringDistanceZero_expectNoCap() throws {
+        // An explicit 0 is the server's way to turn the cap off.
+        let json = """
+        {"config":{"local_refresh_trigger_radius":3000,"max_monitoring_distance":0},"geofences":[]}
+        """
+        let response = try decode(json)
+        #expect(response.toDomainConfig()?.maxMonitoringDistance == GeofenceConstants.noMonitoringDistanceCap)
+    }
+
+    @Test
+    func toDomainConfig_givenMaxMonitoringDistanceBelowTriggerRadius_expectDefaultCap() throws {
+        // A cap below the trigger radius would create a dead-zone → falls back to the default cap.
+        let json = """
+        {"config":{"local_refresh_trigger_radius":3000,"max_monitoring_distance":1000},"geofences":[]}
+        """
+        let response = try decode(json)
+        #expect(response.toDomainConfig()?.maxMonitoringDistance == GeofenceConstants.defaultMaxMonitoringDistance)
+    }
+
+    @Test
+    func toDomainConfig_givenMaxMonitoringDistanceAboveTriggerRadius_expectPreserved() throws {
+        let json = """
+        {"config":{"local_refresh_trigger_radius":3000,"max_monitoring_distance":10000},"geofences":[]}
+        """
+        let response = try decode(json)
+        #expect(response.toDomainConfig()?.maxMonitoringDistance == 10000)
+    }
+
     // MARK: - Region mapping
 
     @Test
