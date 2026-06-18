@@ -15,6 +15,10 @@ enum GeofenceBootstrap {
         let cachedRegions = await di.geofenceStorage.getCachedGeofences()
         let cachedConfig = await di.geofenceStorage.getCachedConfig()
         let lastSync = await di.geofenceStorage.getLastSync()
+        // Prefer the last registration center over the fetch anchor: a local re-rank moves the
+        // registration center but leaves lastSync at the fetch point, so restoring from lastSync
+        // would revert the OS to the older nearest-set. Falls back to lastSync before any re-rank.
+        let restoreAnchor = await di.geofenceStorage.getLastRegistrationCenter() ?? lastSync?.location
         let userId = di.backgroundDeliveryContextStore.currentUserId
 
         // Phase 2: synchronous on the main actor. No `await` between handler-bind and
@@ -24,12 +28,21 @@ enum GeofenceBootstrap {
         let tracker = di.geofenceEventTracker
         let coordinator = di.geofenceSyncCoordinator
         GeofenceMonitorBinder.bind(monitor: monitor, tracker: tracker, coordinator: coordinator)
-        coordinator.applyCachedRegistration(
+        let registration = coordinator.applyCachedRegistration(
             cachedRegions: cachedRegions,
-            anchor: lastSync?.location,
+            anchor: restoreAnchor,
             config: cachedConfig,
             userId: userId
         )
+        // Persist what was registered as the ranking-staleness reference. The await is safe here:
+        // applyCachedRegistration already ran startMonitoring synchronously, so the cold-wake
+        // no-await window has closed and a queued transition can't land in an empty filter.
+        if let registration {
+            await di.geofenceStorage.recordRegistration(
+                center: registration.center,
+                businessIds: registration.businessIds
+            )
+        }
 
         // Self-heal mid-process permission changes (Settings toggle, late prompt response).
         // The handler replaces any prior one — no stacking when both foreground init and

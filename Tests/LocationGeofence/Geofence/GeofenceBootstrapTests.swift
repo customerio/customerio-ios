@@ -118,6 +118,97 @@ struct GeofenceBootstrapTests {
     }
 
     @Test
+    func wireMonitor_givenRegistrationCenterAndLastSync_expectAnchorFromRegistrationCenter() async {
+        // A local re-rank moved the registration center past the fetch anchor. Restore must use
+        // the registration center so cold boot reproduces the last-monitored set, not the older one.
+        let di = DIGraphShared.shared
+        let storage = GeofenceStorage(
+            directoryURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        )
+        await storage.recordSync(timestamp: Date(), location: LocationData(latitude: 0, longitude: 0))
+        await storage.recordRegistration(center: LocationData(latitude: 10, longitude: 20), businessIds: ["g1"])
+        di.override(value: storage, forType: GeofenceStorage.self)
+        let monitor = MockGeofenceRegionMonitor()
+        di.override(value: monitor as GeofenceRegionMonitoring, forType: GeofenceRegionMonitoring.self)
+        let coordinator = GeofenceSyncCoordinatorMock()
+        di.override(value: coordinator as GeofenceSyncCoordinator, forType: GeofenceSyncCoordinator.self)
+        defer { di.reset() }
+
+        await GeofenceBootstrap.wireMonitor(di: di)
+
+        let anchor = coordinator.applyCachedRegistrationReceivedArguments?.anchor
+        #expect(anchor?.latitude == 10)
+        #expect(anchor?.longitude == 20)
+    }
+
+    @Test
+    func wireMonitor_givenNoRegistrationCenter_expectAnchorFromLastSync() async {
+        // First restore after a remote fetch (no local re-rank yet): fall back to the fetch anchor.
+        let di = DIGraphShared.shared
+        let storage = GeofenceStorage(
+            directoryURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        )
+        await storage.recordSync(timestamp: Date(), location: LocationData(latitude: 5, longitude: 6))
+        di.override(value: storage, forType: GeofenceStorage.self)
+        let monitor = MockGeofenceRegionMonitor()
+        di.override(value: monitor as GeofenceRegionMonitoring, forType: GeofenceRegionMonitoring.self)
+        let coordinator = GeofenceSyncCoordinatorMock()
+        di.override(value: coordinator as GeofenceSyncCoordinator, forType: GeofenceSyncCoordinator.self)
+        defer { di.reset() }
+
+        await GeofenceBootstrap.wireMonitor(di: di)
+
+        let anchor = coordinator.applyCachedRegistrationReceivedArguments?.anchor
+        #expect(anchor?.latitude == 5)
+        #expect(anchor?.longitude == 6)
+    }
+
+    @Test
+    func wireMonitor_givenCoordinatorReturnsRegistration_expectPersistedAsReference() async {
+        // The registration applyCachedRegistration reports is persisted as the ranking-staleness
+        // reference so a later refresh measures distance from the actually-registered set.
+        let di = DIGraphShared.shared
+        let storage = GeofenceStorage(
+            directoryURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        )
+        di.override(value: storage, forType: GeofenceStorage.self)
+        let monitor = MockGeofenceRegionMonitor()
+        di.override(value: monitor as GeofenceRegionMonitoring, forType: GeofenceRegionMonitoring.self)
+        let coordinator = GeofenceSyncCoordinatorMock()
+        coordinator.applyCachedRegistrationReturnValue = GeofenceRegistration(
+            center: LocationData(latitude: 12, longitude: 34),
+            businessIds: ["g1"]
+        )
+        di.override(value: coordinator as GeofenceSyncCoordinator, forType: GeofenceSyncCoordinator.self)
+        defer { di.reset() }
+
+        await GeofenceBootstrap.wireMonitor(di: di)
+
+        let persisted = await storage.getLastRegistrationCenter()
+        #expect(persisted == LocationData(latitude: 12, longitude: 34))
+        #expect(await storage.getRegisteredBusinessIds() == ["g1"])
+    }
+
+    @Test
+    func wireMonitor_givenCoordinatorReturnsNil_expectNoRegistrationPersisted() async {
+        let di = DIGraphShared.shared
+        let storage = GeofenceStorage(
+            directoryURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        )
+        di.override(value: storage, forType: GeofenceStorage.self)
+        let monitor = MockGeofenceRegionMonitor()
+        di.override(value: monitor as GeofenceRegionMonitoring, forType: GeofenceRegionMonitoring.self)
+        let coordinator = GeofenceSyncCoordinatorMock()
+        coordinator.applyCachedRegistrationReturnValue = nil
+        di.override(value: coordinator as GeofenceSyncCoordinator, forType: GeofenceSyncCoordinator.self)
+        defer { di.reset() }
+
+        await GeofenceBootstrap.wireMonitor(di: di)
+
+        #expect(await storage.getLastRegistrationCenter() == nil)
+    }
+
+    @Test
     func geofenceSyncCoordinator_givenRepeatedResolution_expectSameInstance() {
         let di = DIGraphShared.shared
         let first = di.geofenceSyncCoordinator as? GeofenceSyncCoordinatorImpl

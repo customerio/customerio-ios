@@ -9,11 +9,14 @@ enum GeofenceConstants {
     /// iOS allows 20 total monitored regions; 1 is reserved for the movement trigger.
     static let maxMonitoredGeofences = 19
 
-    /// Radius of the Movement Trigger Geofence in meters.
-    static let movementTriggerRadius: Double = 1000
+    /// Fallback for `localRefreshTriggerRadius` (meters) — the movement-trigger geofence radius and
+    /// the ranking-staleness threshold. Server config overrides it.
+    static let movementTriggerRadius: Double = 3000
 
-    /// Distance from last server sync (in meters) that triggers a new server fetch.
-    static let serverFetchDistance: Double = 3000
+    /// Fallback for `remoteFetchRefreshTriggerRadius` (meters) — distance from the last API fetch at
+    /// which the `nearby` mode re-fetches. Unused by `fetchAll` (movement never re-fetches). Server
+    /// config overrides it.
+    static let serverFetchDistance: Double = 20000
 
     /// Cooldown interval (in seconds) for suppressing duplicate enter/exit events for the same geofence.
     static let eventCooldownInterval: TimeInterval = 1 * 60 * 60
