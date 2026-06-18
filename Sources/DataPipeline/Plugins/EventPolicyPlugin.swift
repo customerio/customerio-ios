@@ -3,7 +3,7 @@ import CioInternalCommon
 import Foundation
 
 class EventPolicyPlugin: EventPlugin {
-    let type = PluginType.enrichment
+    let type = PluginType.before
     weak var analytics: Analytics?
     private let engine: EventPolicyEngine
     private let storage: StorageManager?

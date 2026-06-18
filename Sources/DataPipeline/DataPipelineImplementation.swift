@@ -83,13 +83,15 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking {
         // plugin that adds provider attributes (e.g. location) to identify context
         analytics.add(plugin: IdentifyContextPlugin(registry: diGraph.profileEnrichmentRegistry, logger: logger))
 
-        // plugin to publish data pipeline events
-        analytics.add(plugin: DataPipelinePublishedEvents(diGraph: diGraph))
-
-        // Add plugin to enforce server-driven filter and rate-limit rules
+        // Add plugin to enforce server-driven filter and rate-limit rules.
+        // Must be registered before DataPipelinePublishedEvents so that a
+        // blocked event never triggers EventBus notifications downstream.
         if let engine = eventPolicyEngine {
             analytics.add(plugin: EventPolicyPlugin(engine: engine, storage: storageManager))
         }
+
+        // plugin to publish data pipeline events
+        analytics.add(plugin: DataPipelinePublishedEvents(diGraph: diGraph))
 
         // Add plugin to filter events based on SDK configuration
         analytics.add(plugin: ScreenFilterPlugin(screenViewUse: moduleConfig.screenViewUse))
@@ -210,9 +212,12 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking {
         let isChangingIdentifiedProfile = currentlyIdentifiedProfile != nil && currentlyIdentifiedProfile != userId
         let isFirstTimeIdentifying = currentlyIdentifiedProfile == nil
 
-        if isChangingIdentifiedProfile, let _ = registeredDeviceToken {
-            dataPipelinesLogger.logDeletingTokenDueToNewProfileIdentification()
-            deleteDeviceToken()
+        if isChangingIdentifiedProfile {
+            if let _ = registeredDeviceToken {
+                dataPipelinesLogger.logDeletingTokenDueToNewProfileIdentification()
+                deleteDeviceToken()
+            }
+            try? storageManager?.deleteProfileScopedAggregationState()
         }
 
         if let attributes = attributesCodable {
