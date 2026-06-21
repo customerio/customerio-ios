@@ -19,6 +19,7 @@ var products: [PackageDescription.Product] = [
     .library(name: "MessagingPushAPN", targets: ["CioMessagingPushAPN"]),
     .library(name: "MessagingPushFCM", targets: ["CioMessagingPushFCM"]),
     .library(name: "MessagingInApp", targets: ["CioMessagingInApp"]),
+    .library(name: "MessagingInbox", targets: ["CioMessagingInbox"]),
     .library(name: "Location", targets: ["CioLocation"])
 ]
 
@@ -35,7 +36,14 @@ if (ProcessInfo.processInfo.environment["CI"] != nil) { // true if running on a 
 let package = Package(
     name: "Customer.io",
     platforms: [
-        .iOS(.v13)
+        // NOTE (Visual Inbox / Jist): SwiftPM enforces a platform floor package-wide, and the
+        // Jist product currently declares a minimum of iOS 15. Because the Visual Inbox overlay
+        // (`CioMessagingInbox`) links Jist, the package floor is raised to iOS 15 here.
+        // This is a TEMPORARY consequence of the Jist dependency — the documented Milestone-0
+        // item is to lower Jist's iOS floor to 13, after which this should revert to `.iOS(.v13)`.
+        // All SDK *source* remains iOS 13-compatible (Jist usage is `@available(iOS 15, *)`-gated).
+        // TODO: revert to `.iOS(.v13)` once Jist's iOS deployment target is lowered to 13.
+        .iOS(.v15)
     ],
     products: products,
     dependencies: [
@@ -49,7 +57,12 @@ let package = Package(
         .package(name: "CioAnalytics", url: "https://github.com/customerio/cdp-analytics-swift.git", .exact("1.7.3+cio.1")),
         
         // SSE (Server-Sent Events) client for real-time in-app messaging
-        .package(url: "https://github.com/LaunchDarkly/swift-eventsource.git", .upToNextMajor(from: "3.3.0"))
+        .package(url: "https://github.com/LaunchDarkly/swift-eventsource.git", .upToNextMajor(from: "3.3.0")),
+
+        // Jist SwiftUI renderer used by the Visual Inbox overlay (`CioMessagingInbox`).
+        // Consumed from the published Jist repo on `main` (its root Package.swift exposes the `Jist` product).
+        // TODO: pin to a tagged release once Jist cuts one.
+        .package(url: "https://github.com/customerio/jist.git", branch: "main")
     ],
     targets: [ 
         // Common - Code used by multiple modules in the SDK project.
@@ -157,6 +170,23 @@ let package = Package(
         .testTarget(name: "MessagingInAppTests",
                     dependencies: ["CioMessagingInApp", "SharedTests", "CioInternalCommonMocks", "CioMessagingInAppMocks"],
                     path: "Tests/MessagingInApp"),
+
+        // Messaging Inbox (Visual Inbox overlay UI)
+        // SwiftUI overlay that renders the visual inbox via Jist. Wraps the headless data layer
+        // exposed by CioMessagingInApp through the @_spi(VisualInbox) facade.
+        .target(name: "CioMessagingInbox",
+                dependencies: [
+                    "CioMessagingInApp",
+                    "CioInternalCommon",
+                    .product(name: "Jist", package: "jist")
+                ],
+                path: "Sources/MessagingInbox",
+                resources: [
+                    .process("Resources/PrivacyInfo.xcprivacy"),
+                ]),
+        .testTarget(name: "MessagingInboxTests",
+                    dependencies: ["CioMessagingInbox", "CioMessagingInApp", "SharedTests", "CioInternalCommonMocks"],
+                    path: "Tests/MessagingInbox"),
 
         // Location
         .target(name: "CioLocation",
