@@ -51,10 +51,6 @@ Pod::Spec.new do |spec|
     ss.dependency "CustomerIOMessagingInApp", "= #{spec.version.to_s}"
   end
 
-  spec.subspec "MessagingInbox" do |ss|
-    ss.dependency "CustomerIOMessagingInbox", "= #{spec.version.to_s}"
-  end
-
   spec.subspec "Location" do |ss|
     ss.dependency "CustomerIOLocation", "= #{spec.version.to_s}"
   end

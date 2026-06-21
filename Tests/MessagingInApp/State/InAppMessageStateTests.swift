@@ -47,6 +47,7 @@ class InAppMessageStateTests: IntegrationTest {
             inAppMessageManager: inAppMessageManager,
             anonymousMessageManager: diGraphShared.anonymousMessageManager,
             inboxMessageCache: diGraphShared.inboxMessageCacheManager,
+            visualInboxRepository: diGraphShared.visualInboxRepository,
             logger: diGraphShared.logger
         )
 
