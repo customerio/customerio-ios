@@ -104,6 +104,9 @@ extension DIGraphShared {
         _ = jsonAdapter
         countDependenciesResolved += 1
 
+        _ = dbKeyProvider
+        countDependenciesResolved += 1
+
         _ = lockManager
         countDependenciesResolved += 1
 
@@ -325,6 +328,18 @@ extension DIGraphShared {
 
     private var newJsonAdapter: JsonAdapter {
         JsonAdapter(log: logger)
+    }
+
+    // DbKeyProvider (singleton)
+    public var dbKeyProvider: DbKeyProvider {
+        getOverriddenInstance() ??
+            getSingletonOrCreate {
+                _get_dbKeyProvider()
+            }
+    }
+
+    private func _get_dbKeyProvider() -> DbKeyProvider {
+        KeychainDbKeyProvider()
     }
 
     // LockManager (singleton)
