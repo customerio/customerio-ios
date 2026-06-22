@@ -214,6 +214,7 @@ jobs:
       - name: '⚠️ Note: Pushing to cocoapods is flaky. If you see some errors in these logs while deploying, re-run this GitHub Action to try deployment again and it might fix the issue.'
         run: echo ''
       - name: Push all podspecs to CocoaPods
+        id: push-pods
         run: |
           podspecs=(
             CustomerIOCommon.podspec
@@ -228,13 +229,24 @@ jobs:
           )
 
           failed_pods=()
+          published_pods=()
           for podspec in "${podspecs[@]}"; do
             if ! ./scripts/push-cocoapod.sh "$podspec"; then
               failed_pods+=("$podspec")
+            else
+              published_pods+=("$podspec")
             fi
           done
 
           if [[ ${#failed_pods[@]} -gt 0 ]]; then
+            # Expose which pods did/didn't publish so the failure notification can report a
+            # PARTIAL publish. A partial publish is dangerous: the git tag + SwiftPM release
+            # already succeeded earlier in this workflow, so consumers see the new version,
+            # but CocoaPods `pod install` (and the React Native / Flutter wrappers) break
+            # until the missing pods are pushed. These outputs are written before `exit 1`
+            # so they remain available to later `if: failure()` steps.
+            echo "failed_pods=${failed_pods[*]}" >> "$GITHUB_OUTPUT"
+            echo "published_pods=${published_pods[*]}" >> "$GITHUB_OUTPUT"
             echo "::error::The following pods failed to publish: ${failed_pods[*]}"
             exit 1
           fi
@@ -277,9 +289,53 @@ jobs:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_NOTIFY_RELEASES_WEBHOOK_URL }}
           SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
 
+      # A PARTIAL publish (some podspecs pushed, others failed) is the most dangerous failure
+      # mode: the git tag + SwiftPM release already succeeded, so the new version looks shipped,
+      # but CocoaPods `pod install` and the React Native / Flutter wrappers break until the
+      # missing pods are pushed. Give it a dedicated, actionable Slack alert that names the
+      # affected pods and the fix (re-run this idempotent job).
+      - name: Notify team of partial CocoaPods publish
+        uses: slackapi/slack-github-action@70cd7be8e40a46e8b0eced40b0de447bdb42f68e # v1.26.0
+        if: ${{ failure() && steps.push-pods.outputs.failed_pods != '' }}
+        with:
+          # Use block kit for format of the JSON payloads: https://app.slack.com/block-kit-builder
+          payload: |
+            {
+              "text": "iOS SDK PARTIAL CocoaPods publish",
+              "username": "iOS deployment bot",
+              "icon_url": "https://pngimg.com/uploads/apple_logo/apple_logo_PNG19687.png",
+              "channel": "#squad-mobile",
+              "blocks": [
+                  {
+                      "type": "section",
+                      "text": {
+                          "type": "mrkdwn",
+                          "text": "*iOS* SDK :rotating_light: *PARTIAL* CocoaPods publish :rotating_light:"
+                      }
+                  },
+                  {
+                      "type": "divider"
+                  },
+                  {
+                      "type": "section",
+                      "text": {
+                          "type": "mrkdwn",
+                          "text": "*Version ${{ steps.get-version.outputs.version }}*\n\nThe git tag and Swift Package Manager release succeeded, but some pods *failed to publish to CocoaPods trunk*. This version is now in a half-published state: SwiftPM consumers get it, but CocoaPods `pod install` and the React Native / Flutter wrappers will fail until the missing pods are pushed.\n\n:x: *Failed to publish:* `${{ steps.push-pods.outputs.failed_pods }}`\n:white_check_mark: *Published:* `${{ steps.push-pods.outputs.published_pods }}`\n\n*Fix:* re-run the *Deploy SDK to Cocoapods* job — it is idempotent (already-published versions are treated as success), so it will push only the missing pods. <https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}|CI server logs> · <https://github.com/customerio/mobile/blob/main/GIT-WORKFLOW.md|Deployment docs>"
+                      }
+                  }
+              ]
+            }
+        env:
+          # Incoming webhook URL that sends message into the correct Slack channel.
+          # Help on how to get the webhook URL: https://github.com/marketplace/actions/slack-send#setup-2
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_NOTIFY_RELEASES_WEBHOOK_URL }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+
       - name: Notify team of failure
         uses: slackapi/slack-github-action@70cd7be8e40a46e8b0eced40b0de447bdb42f68e # v1.26.0
-        if: ${{ failure() }} # only run this if any previous step failed
+        # Generic failure (checkout, cocoapods install, etc.). Skipped when the push step
+        # reported failed pods, since the partial-publish step above covers that case.
+        if: ${{ failure() && steps.push-pods.outputs.failed_pods == '' }}
         with:
           # Use block kit for format of the JSON payloads: https://app.slack.com/block-kit-builder
           payload: |
