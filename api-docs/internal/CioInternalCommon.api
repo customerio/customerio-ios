@@ -49,16 +49,6 @@ public final class CioInternalCommon.CioAppGroupPendingPushDeliveryStore {
 	public fun func remove(id: UUID) -> Boolean;
 	public fun func removeAll(ids: Set<UUID>) -> Boolean;
 }
-public final class CioInternalCommon.CioEventBusHandler {
-	public fun init(eventBus: EventBus, eventCache: EventCache, eventStorage: EventStorage, logger: Logger);
-	public fun deinit;
-	public fun func loadEventsFromStorage() async;
-	public fun func addObserver<E: EventRepresentable>(_ eventType: E.Type, action: @escaping (E) -> Unit);
-	public fun func removeObserver<E: EventRepresentable>(for eventType: E.Type);
-	public fun func postEvent<E: EventRepresentable>(_ event: E);
-	public fun func postEventAndWait<E: EventRepresentable>(_ event: E) async;
-	public fun func removeFromStorage<E: EventRepresentable>(_ event: E) async;
-}
 public enum CioInternalCommon.CioLogLevel {
 }
 public final class CioInternalCommon.CioProfileStore {
@@ -78,6 +68,15 @@ public final class CioInternalCommon.CioSharedDataStore {
 public final class CioInternalCommon.CioThreadUtil {
 	public fun func runMain(_ block: @escaping () -> Unit);
 	public fun func runBackground(_ block: @escaping () -> Unit);
+}
+public final class CioInternalCommon.CombinedCacheEventBusHandler {
+	public fun init(eventStorage: EventStorage, logger: Logger);
+	public fun func loadEventsFromStorage() async;
+	public fun func addObserver<E: EventRepresentable>(_ eventType: E.Type, action: @escaping (E) -> Unit);
+	public fun func removeObserver<E: EventRepresentable>(for eventType: E.Type);
+	public fun func postEvent<E: EventRepresentable>(_ event: E);
+	public fun func postEventAndWait<E: EventRepresentable>(_ event: E) async;
+	public fun func removeFromStorage<E: EventRepresentable>(_ event: E) async;
 }
 public final class CioInternalCommon.CreateQueueStorageTaskResult {
 	public final val success: Boolean;
@@ -205,11 +204,6 @@ public final class CioInternalCommon.ErrorMessageResponse {
 }
 public final class CioInternalCommon.ErrorsMessageResponse {
 	public final val meta: ErrorsMessageResponse.Meta;
-}
-public interface CioInternalCommon.EventBus {
-	public fun func post(_ event: AnyEventRepresentable) async -> Boolean;
-	public fun func addObserver(_ eventType: String, action: @escaping (AnyEventRepresentable) -> Unit) async;
-	public fun func removeObserver(for eventType: String) async;
 }
 public interface CioInternalCommon.EventBusHandler {
 	public fun func loadEventsFromStorage() async;
