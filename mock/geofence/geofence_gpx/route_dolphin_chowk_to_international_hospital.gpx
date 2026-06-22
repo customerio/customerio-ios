@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="customerio-ios" xmlns="http://www.topografix.com/GPX/1/1">
+  <wpt lat="31.369925648604756" lon="74.17104591045377">
+    <name>Start - Dolphin Chowk (outside)</name>
+    <time>2026-06-23T10:00:00Z</time>
+  </wpt>
+  <wpt lat="31.374514966747476" lon="74.17821277281845">
+    <name>McDonald's (BTL)</name>
+    <time>2026-06-23T10:00:33Z</time>
+  </wpt>
+  <wpt lat="31.373874" lon="74.185398">
+    <name>KFC (BTL) - geofence</name>
+    <time>2026-06-23T10:01:00Z</time>
+  </wpt>
+  <wpt lat="31.377538" lon="74.186889">
+    <name>Gloria Jean's (BTL) - geofence</name>
+    <time>2026-06-23T10:01:16Z</time>
+  </wpt>
+  <wpt lat="31.38790816139985" lon="74.18780261404211">
+    <name>End - International Hospital (BTL) (outside)</name>
+    <time>2026-06-23T10:02:00Z</time>
+  </wpt>
+  <wpt lat="31.38790816139985" lon="74.18780261404211">
+    <name>Parked (3 min before loop)</name>
+    <time>2026-06-23T10:05:00Z</time>
+  </wpt>
+</gpx>
