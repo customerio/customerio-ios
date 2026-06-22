@@ -1,18 +1,12 @@
 import Foundation
 
-// swiftlint:disable orphaned_doc_comment
-/// Actor-backed implementation of `EventBusHandler`.
-///
-/// Replaces the `OperationQueue`-based `CioEventBusHandler` with a single `CioEventBus`
-/// actor that serializes observer registration and event enqueuing atomically, eliminating
-/// the race condition where an event could be both directly delivered and replayed.
-///
-/// `CioEventBusHandler` and `CombinedCacheEventBusHandler` both conform to `EventBusHandler`,
-/// allowing them to be swapped for testing or gradual rollout.
-/// `CioEventBusHandler` remains the default registered in the DI graph.
 // sourcery: InjectRegisterShared = "EventBusHandler"
 // sourcery: InjectSingleton
-// swiftlint:enable orphaned_doc_comment
+/// Actor-backed implementation of `EventBusHandler`.
+///
+/// Uses a single `CioEventBus` actor that serializes observer registration and event
+/// enqueuing atomically, eliminating the race condition where an event could be both
+/// directly delivered and replayed.
 public class CombinedCacheEventBusHandler: EventBusHandler {
     private let bus: CioEventBus
     let eventStorage: EventStorage

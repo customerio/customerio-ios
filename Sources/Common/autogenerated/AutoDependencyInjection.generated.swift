@@ -86,9 +86,6 @@ extension DIGraphShared {
         _ = deviceMetricsGrabber
         countDependenciesResolved += 1
 
-        _ = eventBusObserversHolder
-        countDependenciesResolved += 1
-
         _ = eventCache
         countDependenciesResolved += 1
 
@@ -120,9 +117,6 @@ extension DIGraphShared {
         countDependenciesResolved += 1
 
         _ = dateUtil
-        countDependenciesResolved += 1
-
-        _ = eventBus
         countDependenciesResolved += 1
 
         _ = systemLogger
@@ -261,18 +255,6 @@ extension DIGraphShared {
         DeviceMetricsGrabberImpl()
     }
 
-    // EventBusObserversHolder (singleton)
-    var eventBusObserversHolder: EventBusObserversHolder {
-        getOverriddenInstance() ??
-            getSingletonOrCreate {
-                _get_eventBusObserversHolder()
-            }
-    }
-
-    private func _get_eventBusObserversHolder() -> EventBusObserversHolder {
-        EventBusObserversHolder()
-    }
-
     // EventCache (singleton)
     var eventCache: EventCache {
         getOverriddenInstance() ??
@@ -393,18 +375,6 @@ extension DIGraphShared {
 
     private var newDateUtil: DateUtil {
         SdkDateUtil()
-    }
-
-    // EventBus (singleton)
-    var eventBus: EventBus {
-        getOverriddenInstance() ??
-            getSingletonOrCreate {
-                _get_eventBus()
-            }
-    }
-
-    private func _get_eventBus() -> EventBus {
-        SharedEventBus(holder: eventBusObserversHolder)
     }
 
     // SystemLogger
