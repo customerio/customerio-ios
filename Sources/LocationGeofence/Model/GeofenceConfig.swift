@@ -12,7 +12,7 @@ import Foundation
 /// for the SDK-built movement-trigger geofence. `0` is a valid server-side kill switch —
 /// disables business region registration for the account without uninstalling the SDK.
 struct GeofenceConfig: Codable, Equatable, Sendable {
-    /// Movement-trigger geofence radius in meters. Default 1000m.
+    /// Movement-trigger geofence radius in meters. Default 3000m.
     let localRefreshTriggerRadius: Double
     /// Distance in meters from the last server sync that triggers a fresh server fetch. Currently
     /// unread (`fetchAll` never re-fetches on movement); reserved for a future location-bound sync
