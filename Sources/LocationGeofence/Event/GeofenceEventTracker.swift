@@ -69,6 +69,20 @@ final class GeofenceEventTracker: @unchecked Sendable {
             return
         }
 
+        // === TESTING-ONLY === geofence-testing branch only — must not merge.
+        // Posts an `NSNotification` per transition the SDK accepts (post-cooldown gate)
+        // so a sample-app observer can show a visible signal without watching logs.
+        NotificationCenter.default.post(
+            name: Notification.Name("cioGeofenceTransitionForTesting"),
+            object: nil,
+            userInfo: [
+                "geofenceId": geofenceId,
+                "transition": transition.rawValue,
+                "timestamp": now
+            ]
+        )
+        // === END TESTING-ONLY ===
+
         // Stamp the current userId so a row captured under user A always delivers
         // as A — even if B signs in before the flush replays it. Nil when no user
         // is identified at capture time; `deliver` routes nil-stamped rows to EventBus.

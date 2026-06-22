@@ -6,6 +6,7 @@ import CioMessagingInApp
 import CioMessagingPush
 import CioMessagingPushAPN
 import UIKit
+import UserNotifications // testing-only — for GeofenceTestNotifier
 
 @main
 class AppDelegateWithCioIntegration: CioAppDelegateWrapper<AppDelegate> {}
@@ -30,6 +31,12 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 
     func initializeCioAndInAppListeners() {
+        // === TESTING-ONLY === geofence-testing branch only — must not merge.
+        // Installs BEFORE CustomerIO.initialize so the dispatcher is wired
+        // into the singleton logger before SDK init starts emitting.
+        SdkFileLogger.install()
+        // === END TESTING-ONLY ===
+
         // Set default setting if those don't exist
         DIGraphShared.shared.settingsService.setDefaultSettings()
 
@@ -63,6 +70,11 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         config.addModule(LocationModule(config: LocationConfig(mode: locationMode)))
         config.addModule(GeofenceModule())
         CustomerIO.initialize(withConfig: config.build())
+
+        // === TESTING-ONLY === geofence-testing branch only — must not merge.
+        // Shows a local UNNotification on every geofence transition the SDK accepts.
+        GeofenceTestNotifier.install()
+        // === END TESTING-ONLY ===
 
         // Initialize messaging features after initializing Customer.io SDK
         MessagingPushAPN.initialize(
@@ -173,5 +185,104 @@ extension AppDelegate: InAppEventListener {
             "action-value": actionValue,
             "action-name": actionName
         ])
+    }
+}
+
+// =============================================================================
+// === TESTING-ONLY === geofence-testing branch only — must not merge.
+// Listens for `cioGeofenceTransitionForTesting` posted by `GeofenceEventTracker`
+// (testing-only hook in the SDK) and shows a local UNNotification per
+// transition. Paired with the mock in `Sources/Location/Geofence/Api/GeofenceApiService.swift`.
+// =============================================================================
+enum GeofenceTestNotifier {
+    private static let notificationName = Notification.Name("cioGeofenceTransitionForTesting")
+    // Testing-only: install() runs once on main thread from AppDelegate.
+    nonisolated(unsafe) private static var observerToken: NSObjectProtocol?
+
+    static func install() {
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, _ in }
+        observerToken = NotificationCenter.default.addObserver(
+            forName: notificationName,
+            object: nil,
+            queue: .main
+        ) { notification in
+            postLocalNotification(notification)
+        }
+    }
+
+    private static func postLocalNotification(_ notification: Notification) {
+        guard let userInfo = notification.userInfo,
+              let geofenceId = userInfo["geofenceId"] as? String,
+              let transition = userInfo["transition"] as? String
+        else {
+            return
+        }
+        let content = UNMutableNotificationContent()
+        content.title = "Geofence \(transition.uppercased())"
+        content.body = "id=\(geofenceId)"
+        content.sound = .default
+
+        let request = UNNotificationRequest(
+            identifier: "\(geofenceId)-\(transition)-\(Date().timeIntervalSince1970)",
+            content: content,
+            trigger: nil
+        )
+        UNUserNotificationCenter.current().add(request)
+    }
+}
+
+// =============================================================================
+// === TESTING-ONLY === geofence-testing branch only — must not merge.
+// Mirrors every SDK log line to a file in the app's Documents directory.
+//
+// File: <App Sandbox>/Documents/cio-logs-<yyyyMMdd-HHmmss>.log
+// Pull: Xcode → Window → Devices and Simulators → select app → Download Container,
+//       then inspect <Container>/AppData/Documents/cio-logs-*.log
+//
+// setLogDispatcher REPLACES the default systemLogger path, so we re-emit to
+// `print` ourselves to keep Xcode console output active.
+// =============================================================================
+enum SdkFileLogger {
+    nonisolated(unsafe) private static var fileURL: URL?
+    private static let lock = NSLock()
+
+    private static let fileTimestampFormat: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyyMMdd-HHmmss"
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        return formatter
+    }()
+
+    private static let lineTimestampFormat: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "HH:mm:ss.SSS"
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        return formatter
+    }()
+
+    static func install() {
+        let documentsDir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first
+            ?? FileManager.default.temporaryDirectory
+        let timestamp = fileTimestampFormat.string(from: Date())
+        let logFile = documentsDir.appendingPathComponent("cio-logs-\(timestamp).log")
+        fileURL = logFile
+        FileManager.default.createFile(atPath: logFile.path, contents: nil)
+
+        // App has its own DIGraphShared (shadowing); the SDK's lives in CioInternalCommon.
+        CioInternalCommon.DIGraphShared.shared.logger.setLogDispatcher { level, message in
+            print("[CIO] \(message)")
+            let line = "\(lineTimestampFormat.string(from: Date())) \(level) \(message)\n"
+            lock.lock()
+            defer { lock.unlock() }
+            guard let data = line.data(using: .utf8),
+                  let handle = try? FileHandle(forWritingTo: logFile)
+            else {
+                return
+            }
+            defer { handle.closeFile() }
+            handle.seekToEndOfFile()
+            handle.write(data)
+        }
+        print("[CIO] SDK logs mirroring to \(logFile.path)")
     }
 }
