@@ -64,6 +64,17 @@ public protocol NotificationInbox: Sendable {
     ///   - actionName: Optional name of the action clicked (e.g., "view_details", "dismiss")
     func trackMessageClicked(message: InboxMessage, actionName: String?)
 
+    /// Registers (or clears, with `nil`) the host listener notified of inbox message actions.
+    /// Used by `MessagingInApp.setInboxEventListener(_:)`; not intended for direct host use.
+    func setInboxEventListener(_ listener: InboxEventListener?)
+
+    /// Forwards a non-dismiss inbox action to the registered ``InboxEventListener``, if any.
+    ///
+    /// - Returns: `true` if a listener is set AND it reported it handled the action (so the SDK
+    ///   should suppress its default navigation); `false` otherwise (no listener, or the listener
+    ///   deferred to the SDK default).
+    func notifyMessageActionTaken(message: InboxMessage, actionValue: String, actionName: String) -> Bool
+
     /// Modern Swift Concurrency API for observing inbox changes.
     ///
     /// Returns an async stream that emits inbox messages whenever they change.

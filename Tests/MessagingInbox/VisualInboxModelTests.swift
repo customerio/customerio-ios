@@ -1,6 +1,7 @@
 @_spi(VisualInbox) import CioMessagingInApp
 @testable import CioMessagingInbox
 import Foundation
+import Jist
 import XCTest
 
 /// Coverage for the Visual Inbox overlay state holder.
@@ -153,6 +154,82 @@ final class VisualInboxModelTests: XCTestCase {
         await provider.waitForDismisses(expected: 2)
 
         XCTAssertEqual(provider.dismissedIds, ["a", "a"])
+    }
+
+    // MARK: - non-dismiss action mapping (items 12, 13)
+
+    func test_isDismiss_whenBehaviorDismiss_thenTrue() {
+        let event = makeActionEvent(name: "messageAction", fields: ["behavior": "dismiss"])
+        XCTAssertTrue(VisualInboxMessageRow.isDismiss(event))
+    }
+
+    func test_isDismiss_whenNameDismissOrSentinelUrl_thenTrue() {
+        XCTAssertTrue(VisualInboxMessageRow.isDismiss(makeActionEvent(name: "dismiss", fields: [:])))
+        XCTAssertTrue(VisualInboxMessageRow.isDismiss(makeActionEvent(name: "messageAction", fields: ["url": "#dismiss"])))
+    }
+
+    func test_isDismiss_whenRealUrlAction_thenFalse() {
+        let event = makeActionEvent(name: "messageAction", fields: ["url": "https://customer.io", "behavior": "openUrl"])
+        XCTAssertFalse(VisualInboxMessageRow.isDismiss(event))
+    }
+
+    func test_resolve_whenOpenUrlBehavior_thenMapsUrlAndBehavior() {
+        let event = makeActionEvent(name: "messageAction", fields: ["url": "https://customer.io", "behavior": "openUrl"])
+        let resolution = VisualInboxMessageRow.resolve(event)
+        XCTAssertEqual(resolution, InboxActionResolution(actionName: "messageAction", url: "https://customer.io", behavior: .openUrl))
+    }
+
+    func test_resolve_whenDeeplinkBehavior_thenMapsDeeplink() {
+        let event = makeActionEvent(name: "messageAction", fields: ["url": "myapp://home", "behavior": "deeplink"])
+        let resolution = VisualInboxMessageRow.resolve(event)
+        XCTAssertEqual(resolution.behavior, .deeplink)
+        XCTAssertEqual(resolution.url, "myapp://home")
+    }
+
+    func test_resolve_whenNoBehavior_thenBehaviorNoneUrlPreserved() {
+        let event = makeActionEvent(name: "messageAction", fields: ["url": "https://customer.io"])
+        let resolution = VisualInboxMessageRow.resolve(event)
+        XCTAssertEqual(resolution.behavior, .none)
+        XCTAssertEqual(resolution.url, "https://customer.io")
+    }
+
+    func test_resolve_whenNoData_thenNilUrlNoneBehavior() {
+        let event = JistActionEvent(component: "c", name: "messageAction", data: nil, meta: nil)
+        let resolution = VisualInboxMessageRow.resolve(event)
+        XCTAssertNil(resolution.url)
+        XCTAssertEqual(resolution.behavior, .none)
+        XCTAssertEqual(resolution.actionName, "messageAction")
+    }
+
+    func test_handleAction_whenHostHandles_thenReturnsTrueAndForwardsValue() async {
+        let provider = FakeVisualInboxProvider()
+        provider.stubHostHandled = true
+        let model = VisualInboxModel(provider: provider)
+
+        let handled = await model.handleAction(messageId: "a", actionName: "messageAction", actionValue: "https://customer.io")
+
+        XCTAssertTrue(handled)
+        XCTAssertEqual(provider.handledActions.count, 1)
+        XCTAssertEqual(provider.handledActions.first?.messageId, "a")
+        XCTAssertEqual(provider.handledActions.first?.actionValue, "https://customer.io")
+    }
+
+    func test_handleAction_whenHostDefers_thenReturnsFalse() async {
+        let provider = FakeVisualInboxProvider()
+        provider.stubHostHandled = false
+        let model = VisualInboxModel(provider: provider)
+
+        let handled = await model.handleAction(messageId: "a", actionName: "messageAction", actionValue: "")
+
+        XCTAssertFalse(handled)
+        XCTAssertEqual(provider.handledActions.count, 1)
+    }
+
+    /// Builds a `JistActionEvent` whose `data` is an object of string fields, matching the live inbox
+    /// templates (the action's url/behavior live in `properties[name]`).
+    private func makeActionEvent(name: String, fields: [String: String]) -> JistActionEvent {
+        let object = fields.mapValues { JistValue.string($0) }
+        return JistActionEvent(component: "messageAction", name: name, data: .object(object), meta: nil)
     }
 
     // MARK: - relative dates (item 3)
@@ -399,6 +476,26 @@ private final class FakeVisualInboxProvider: VisualInboxProvider, @unchecked Sen
         let didDismiss = !missingMessageIds.contains(messageId)
         lock.unlock()
         return didDismiss
+    }
+
+    /// One recorded non-dismiss action routed through `handleMessageAction`.
+    struct HandledAction: Equatable {
+        let messageId: String
+        let actionName: String
+        let actionValue: String
+    }
+
+    /// Recorded non-dismiss actions routed through `handleMessageAction`, in order.
+    private(set) var handledActions: [HandledAction] = []
+    /// What `handleMessageAction` should report the host did (true = host handled → suppress nav).
+    var stubHostHandled = false
+
+    func handleMessageAction(messageId: String, actionName: String, actionValue: String) async -> Bool {
+        lock.lock()
+        handledActions.append(HandledAction(messageId: messageId, actionName: actionName, actionValue: actionValue))
+        let handled = stubHostHandled
+        lock.unlock()
+        return handled
     }
 
     /// Waits until the model's detached dismiss Task records at least `expected` dismisses.

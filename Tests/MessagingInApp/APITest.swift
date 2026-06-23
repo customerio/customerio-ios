@@ -20,8 +20,10 @@ class MessagingInAppAPITest: UnitTest {
 
         MessagingInApp.initialize(withConfig: MessagingInAppConfigBuilder(siteId: "", region: .US).build())
         MessagingInApp.shared.setEventListener(self)
+        MessagingInApp.shared.setInboxEventListener(self)
 
         mock.setEventListener(self)
+        mock.setInboxEventListener(self)
     }
 
     func test_allPublicModuleConfigOptions() throws {
@@ -47,4 +49,15 @@ extension MessagingInAppAPITest: InAppEventListener {
     func errorWithMessage(message: InAppMessage) {}
 
     func messageActionTaken(message: InAppMessage, actionValue: String, actionName: String) {}
+}
+
+extension MessagingInAppAPITest: InboxEventListener {
+    func inboxMessageActionTaken(message: InboxMessage, actionValue: String, actionName: String) -> Bool {
+        // make sure all properties needed by a host are accessible.
+        _ = message.queueId
+        _ = message.deliveryId
+        _ = actionValue
+        _ = actionName
+        return false
+    }
 }

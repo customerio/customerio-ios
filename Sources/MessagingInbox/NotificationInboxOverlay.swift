@@ -4,6 +4,7 @@ import Foundation
 #if canImport(SwiftUI)
 import Jist
 import SwiftUI
+import UIKit
 
 /// A SwiftUI overlay that renders the Visual Notification Inbox on top of your app.
 ///
@@ -213,11 +214,57 @@ public struct NotificationInboxOverlay: View {
                         theme: model.theme,
                         // Web parity (item 1): tapping a message dismisses it. The row resolves the
                         // Jist action to a dismiss and calls back here; the model removes it.
-                        onDismiss: { model.dismiss(messageId: message.id) }
+                        onDismiss: { model.dismiss(messageId: message.id) },
+                        // Non-dismiss actions (items 12/13): the row resolves the Jist action; the
+                        // overlay tracks the click + offers it to the host, then runs default nav.
+                        onAction: { resolution in handleNonDismissAction(messageId: message.id, resolution: resolution) }
                     )
                     Divider()
                 }
             }
+        }
+    }
+
+    // MARK: - Non-dismiss action handling (items 12 + 13)
+
+    /// Tracks the click + offers the action to the host listener (via the model/data layer), then runs
+    /// the SDK default navigation only if the host did NOT handle it.
+    ///
+    /// Default navigation (item 12):
+    ///  - `openUrl` / `newTab` / a plain http(s) url → open the url via `UIApplication.shared.open`.
+    ///  - `deeplink` → handed to the host; if there's no host listener (or it deferred) we log, since
+    ///    the SDK can't know the host's in-app routing. We never force-unwrap a url.
+    private func handleNonDismissAction(messageId: String, resolution: InboxActionResolution) {
+        Task {
+            let handledByHost = await model.handleAction(
+                messageId: messageId,
+                actionName: resolution.actionName,
+                actionValue: resolution.url ?? ""
+            )
+            guard !handledByHost else { return }
+            performDefaultNavigation(resolution)
+        }
+    }
+
+    /// The SDK's default navigation for an un-intercepted, non-dismiss action. Robust to a missing or
+    /// malformed url — no force-unwrap, no crash.
+    private func performDefaultNavigation(_ resolution: InboxActionResolution) {
+        let logger = DIGraphShared.shared.logger
+        switch resolution.behavior {
+        case .deeplink:
+            // Deep links require host routing; with no host handler we can only log.
+            logger.debug("[CIO-Inbox] deeplink action not handled by host: \(resolution.url ?? "<none>")")
+        case .openUrl, .newTab, .none:
+            guard let urlString = resolution.url, let url = URL(string: urlString) else {
+                logger.debug("[CIO-Inbox] action has no openable url (name=\(resolution.actionName))")
+                return
+            }
+            guard url.scheme == "http" || url.scheme == "https" else {
+                // A non-web url with no explicit deeplink behavior — let the host decide; log only.
+                logger.debug("[CIO-Inbox] action url is not http(s) and was not host-handled: \(urlString)")
+                return
+            }
+            UIApplication.shared.open(url)
         }
     }
 }
@@ -250,6 +297,9 @@ struct VisualInboxMessageRow: View {
     let theme: [String: JistValue]
     /// Called when the message's Jist action resolves to a dismiss (item 1).
     let onDismiss: () -> Void
+    /// Called when the message's Jist action is a NON-dismiss action (items 12/13). Carries the
+    /// resolved action so the overlay can track the click, offer it to the host, and navigate.
+    let onAction: (InboxActionResolution) -> Void
 
     var body: some View {
         Group {
@@ -288,27 +338,46 @@ struct VisualInboxMessageRow: View {
         }
     }
 
-    // MARK: - Jist action handling (item 1)
+    // MARK: - Jist action handling (items 1, 12, 13)
 
     /// Maps a Jist `onAction` event to host behavior. Web parity: a "dismiss" action removes the
-    /// message. Any other action (real url / other behavior) is a deferred no-op for now.
+    /// message (item 1). Any other action is resolved (item 12 nav + item 13 host listener) and
+    /// forwarded via `onAction`.
     ///
     /// The live inbox templates emit the action as `name == "messageAction"` with the message's
-    /// `properties.messageAction = { behavior: "dismiss" }`, so the dismiss signal we match is
-    /// `data.behavior == "dismiss"`. We also accept the Jist-demo sentinels (`name == "dismiss"` or
-    /// `data.url == "#dismiss"`) as a fallback.
+    /// `properties.messageAction` carrying either `{ behavior: "dismiss" }` (dismiss) or a
+    /// `{ url, behavior }` for navigation. We also accept the Jist-demo dismiss sentinels
+    /// (`name == "dismiss"` or `data.url == "#dismiss"`) as a fallback.
     private func handleAction(_ event: JistActionEvent) {
-        let behavior = event.data?.objectValue?["behavior"]?.stringValue
-        let url = event.data?.objectValue?["url"]?.stringValue
-        if behavior == "dismiss" || event.name == "dismiss" || url == "#dismiss" {
+        if Self.isDismiss(event) {
             onDismiss()
             return
         }
-        // Real-url / deeplink navigation + host action callback are deferred (#12 / #13). Log so the
-        // action is observable instead of silently dropped.
-        // swiftlint:disable:next todo
-        // TODO(#12/#13): map real-url actions to navigation / a host action callback.
-        DIGraphShared.shared.logger.debug("[CIO-Inbox] unhandled inbox action name=\(event.name) behavior=\(behavior ?? "<none>") url=\(url ?? "<none>") (real-url nav deferred)")
+        onAction(Self.resolve(event))
+    }
+
+    /// Whether the event resolves to a dismiss (kept EXACTLY as the original matching: data behavior
+    /// `dismiss`, action name `dismiss`, or the `#dismiss` url sentinel).
+    static func isDismiss(_ event: JistActionEvent) -> Bool {
+        let behavior = event.data?.objectValue?["behavior"]?.stringValue
+        let url = event.data?.objectValue?["url"]?.stringValue
+        return behavior == "dismiss" || event.name == "dismiss" || url == "#dismiss"
+    }
+
+    /// Pure mapping from a non-dismiss Jist `onAction` event to an ``InboxActionResolution``. The
+    /// action's url + behavior live in `event.data` (the message's `properties[name]`). Robust to
+    /// missing/malformed fields — every field is optional and never force-unwrapped.
+    static func resolve(_ event: JistActionEvent) -> InboxActionResolution {
+        let data = event.data?.objectValue
+        let url = data?["url"]?.stringValue
+        let behavior: InboxActionResolution.Behavior
+        switch data?["behavior"]?.stringValue {
+        case "openUrl": behavior = .openUrl
+        case "newTab": behavior = .newTab
+        case "deeplink": behavior = .deeplink
+        default: behavior = .none
+        }
+        return InboxActionResolution(actionName: event.name, url: url, behavior: behavior)
     }
 
     // MARK: - Relative dates (item 3)

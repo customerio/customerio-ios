@@ -15,6 +15,11 @@ class DefaultNotificationInbox: NotificationInbox, @unchecked Sendable {
     /// Subscriber for inbox messages state changes (kept alive to receive callbacks)
     private var storeSubscriber: InAppMessageStoreSubscriber?
 
+    /// Host listener notified of inbox message actions (item 13). Guarded by `inboxEventListenerLock`
+    /// because it is set/read from arbitrary threads (the public setter vs. the action callback).
+    private var inboxEventListener: InboxEventListener?
+    private let inboxEventListenerLock = NSLock()
+
     /// Subscription task for inbox messages state changes
     private var subscriptionTask: Task<Void, Never>?
 
@@ -140,6 +145,20 @@ class DefaultNotificationInbox: NotificationInbox, @unchecked Sendable {
 
     func trackMessageClicked(message: InboxMessage, actionName: String?) {
         inAppMessageManager.dispatch(action: .inboxAction(action: .trackClicked(message: message, actionName: actionName)))
+    }
+
+    func setInboxEventListener(_ listener: InboxEventListener?) {
+        inboxEventListenerLock.lock()
+        inboxEventListener = listener
+        inboxEventListenerLock.unlock()
+    }
+
+    func notifyMessageActionTaken(message: InboxMessage, actionValue: String, actionName: String) -> Bool {
+        inboxEventListenerLock.lock()
+        let listener = inboxEventListener
+        inboxEventListenerLock.unlock()
+        guard let listener = listener else { return false }
+        return listener.inboxMessageActionTaken(message: message, actionValue: actionValue, actionName: actionName)
     }
 
     // MARK: - Private Helper Methods

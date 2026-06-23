@@ -73,6 +73,9 @@ public final class CioMessagingInApp.InAppMessage {
 	public final val deliveryId: String?;
 	public final val elementId: String?;
 }
+public interface CioMessagingInApp.InboxEventListener {
+	public fun func inboxMessageActionTaken(message: InboxMessage, actionValue: String, actionName: String) -> Boolean;
+}
 public final class CioMessagingInApp.InboxMessage {
 	public final val queueId: String;
 	public final val deliveryId: String?;
@@ -139,6 +142,7 @@ public final class CioMessagingInApp.MessagingInApp {
 	public var inbox: any NotificationInbox;
 	public fun func initialize(withConfig config: MessagingInAppConfigOptions) -> MessagingInAppInstance;
 	public fun func setEventListener(_ eventListener: InAppEventListener?);
+	public fun func setInboxEventListener(_ inboxEventListener: InboxEventListener?);
 	public fun func dismissMessage();
 }
 public final class CioMessagingInApp.MessagingInAppConfigBuilder {
@@ -154,6 +158,7 @@ public final class CioMessagingInApp.MessagingInAppConfigOptions {
 public interface CioMessagingInApp.MessagingInAppInstance {
 	public var inbox: any NotificationInbox;
 	public fun func setEventListener(_ eventListener: InAppEventListener?);
+	public fun func setInboxEventListener(_ inboxEventListener: InboxEventListener?);
 	public fun func dismissMessage();
 }
 public final class CioMessagingInApp.ModalMessageManager {
@@ -169,6 +174,8 @@ public interface CioMessagingInApp.NotificationInbox {
 	public fun func markMessageUnopened(message: InboxMessage);
 	public fun func markMessageDeleted(message: InboxMessage);
 	public fun func trackMessageClicked(message: InboxMessage, actionName: String?);
+	public fun func setInboxEventListener(_ listener: InboxEventListener?);
+	public fun func notifyMessageActionTaken(message: InboxMessage, actionValue: String, actionName: String) -> Boolean;
 	public fun func messages(topic: String?) -> AsyncStream<List<InboxMessage>>;
 }
 public interface CioMessagingInApp.NotificationInboxChangeListener {
@@ -200,6 +207,7 @@ public interface CioMessagingInApp.VisualInboxProvider {
 	public fun func themeJSON() async -> List<String: Any>?;
 	public fun func markOpened(messageId: String) async -> Boolean;
 	public fun func dismiss(messageId: String) async -> Boolean;
+	public fun func handleMessageAction(messageId: String, actionName: String, actionValue: String) async -> Boolean;
 }
 public final class CioMessagingInApp.VisualInboxSnapshot {
 	public final val state: VisualInboxState;

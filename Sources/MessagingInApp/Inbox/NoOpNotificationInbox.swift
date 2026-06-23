@@ -46,4 +46,12 @@ class NoOpNotificationInbox: NotificationInbox {
     func trackMessageClicked(message: InboxMessage, actionName: String?) {
         // No-op
     }
+
+    func setInboxEventListener(_ listener: InboxEventListener?) {
+        // No-op
+    }
+
+    func notifyMessageActionTaken(message: InboxMessage, actionValue: String, actionName: String) -> Bool {
+        false
+    }
 }

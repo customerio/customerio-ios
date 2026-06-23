@@ -69,6 +69,10 @@ class MessagingInAppImplementation: MessagingInAppInstance {
         gist.setEventListener(eventListener)
     }
 
+    func setInboxEventListener(_ inboxEventListener: InboxEventListener?) {
+        notificationInbox.setInboxEventListener(inboxEventListener)
+    }
+
     // Dismiss in-app message
     func dismissMessage() {
         gist.dismissMessage()
