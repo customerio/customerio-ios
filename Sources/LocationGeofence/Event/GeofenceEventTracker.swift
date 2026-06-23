@@ -74,11 +74,16 @@ final class GeofenceEventTracker: @unchecked Sendable {
         // is identified at capture time; `deliver` routes nil-stamped rows to EventBus.
         let liveUserId = contextStore.currentUserId
         let stampedUserId: String? = (liveUserId?.isEmpty == false) ? liveUserId : nil
+        // Resolve the geofence name now and carry it on the metric; nil when unavailable so the
+        // event omits `geofence_name` rather than sending an empty value.
+        let cachedName = await storage.getCachedGeofences().first { $0.id == geofenceId }?.name
+        let geofenceName = (cachedName?.isEmpty == false) ? cachedName : nil
         let metric = PendingGeofenceMetric(
             geofenceId: geofenceId,
             transition: transition,
             timestamp: now,
-            userId: stampedUserId
+            userId: stampedUserId,
+            name: geofenceName
         )
         _ = await pendingStore.append(metric)
 
@@ -139,7 +144,8 @@ final class GeofenceEventTracker: @unchecked Sendable {
         eventBusHandler.postEvent(TrackGeofenceMetricEvent(
             geofenceId: metric.geofenceId,
             transition: metric.transition,
-            timestamp: metric.timestamp
+            timestamp: metric.timestamp,
+            name: metric.name
         ))
         logger.geofenceEventTracked(geofenceId: metric.geofenceId, transition: metric.transition)
     }

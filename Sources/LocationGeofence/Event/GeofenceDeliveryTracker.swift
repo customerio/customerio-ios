@@ -33,17 +33,11 @@ final class GeofenceDeliveryTrackerImpl: GeofenceDeliveryTracker {
             return onComplete(.failure(.invalidRequest))
         }
 
-        let properties: [String: Any] = [
-            "geofence_id": metric.geofenceId,
-            "transition_type": metric.transition.rawValue,
-            "timestamp": Int(metric.timestamp.timeIntervalSince1970)
-        ]
-
         httpClient.sendTrackEvent(
             BackgroundTrackRequest(
                 eventName: metric.transition.trackEventName,
                 userId: userId,
-                properties: properties,
+                properties: metric.trackEventProperties,
                 timestamp: metric.timestamp
             ),
             completion: onComplete

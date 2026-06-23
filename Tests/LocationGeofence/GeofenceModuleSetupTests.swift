@@ -11,8 +11,9 @@ import Testing
 /// full module `initialize()` path (which spins up `CLLocationManager`, lifecycle observers,
 /// and other side effects).
 ///
-/// Each test owns the EventBus, coordinator spy, monitor mock, storage, and a stub
-/// `LocationServices`. `.serialized` because tests share `DIGraphShared.shared` overrides.
+/// Each test owns a private `DIGraphShared` instance (EventBus, coordinator spy, monitor mock,
+/// storage, stub `LocationServices`), so a fire-and-forget refresh `Task` can never resolve a
+/// dependency another suite swapped on the shared graph. `.serialized` to keep ordering stable.
 @Suite("GeofenceModuleState.setup", .serialized)
 struct GeofenceModuleSetupTests {
     @Test
@@ -75,6 +76,35 @@ struct GeofenceModuleSetupTests {
         #expect(received?.1 == 56.78)
         #expect(f.spyCoordinator.refreshCallsCount == 1)
     }
+
+    @Test
+    @MainActor
+    func setup_givenProfileIdentifiedEventWithRegistrationCenter_expectRefreshAnchoredThereNotCache() async throws {
+        // A movement-walked registration center exists. It must win over the Location cache, which
+        // movement never updates and is stale on relaunch — anchoring there would clobber the good
+        // registration with a far-away ranking.
+        let f = Fixture(cachedLocation: LocationData(latitude: 12.34, longitude: 56.78))
+        defer { f.cleanup() }
+
+        await f.di.geofenceStorage.recordRegistration(center: LocationData(latitude: 10, longitude: 20), businessIds: ["g1"])
+
+        let (refreshSignal, refreshContinuation) = AsyncStream<(Double, Double)>.makeStream()
+        f.spyCoordinator.refreshClosure = { lat, lon in
+            refreshContinuation.yield((lat, lon))
+            return .success(())
+        }
+
+        f.wire()
+
+        let deliver = try #require(f.bus.observers[ProfileIdentifiedEvent.key], "ProfileIdentifiedEvent observer must be registered")
+        deliver(ProfileIdentifiedEvent(identifier: "u1"))
+
+        var iter = refreshSignal.makeAsyncIterator()
+        let received = await iter.next()
+
+        #expect(received?.0 == 10)
+        #expect(received?.1 == 20)
+    }
 }
 
 /// Per-test setup: overrides the DI shared singleton with capturing/mocking deps and builds
@@ -89,7 +119,7 @@ private struct Fixture {
     let state: GeofenceModuleState
 
     init(cachedLocation: LocationData? = nil) {
-        self.di = DIGraphShared.shared
+        self.di = DIGraphShared()
 
         self.bus = CapturingEventBusHandler()
         di.override(value: bus as EventBusHandler, forType: EventBusHandler.self)
@@ -106,7 +136,6 @@ private struct Fixture {
 
         let stubServices = StubLocationServices(cachedLocation: cachedLocation)
         self.state = GeofenceModuleState(
-            lifecycleNotifying: NoOpAppLifecycleNotifying(),
             locationServicesProvider: { stubServices }
         )
     }
@@ -134,21 +163,6 @@ private final class StubLocationServices: LocationServices, @unchecked Sendable 
     func getLastKnownLocation() async -> LocationData? {
         cachedLocation
     }
-}
-
-/// No-op lifecycle notifier so the foreground observer never fires during tests.
-private final class NoOpAppLifecycleNotifying: AppLifecycleNotifying {
-    func addDidBecomeActiveObserver(using block: @escaping () -> Void) -> AppLifecycleObserverToken {
-        NoOpToken()
-    }
-
-    func addDidEnterBackgroundObserver(using block: @escaping () -> Void) -> AppLifecycleObserverToken {
-        NoOpToken()
-    }
-}
-
-private final class NoOpToken: AppLifecycleObserverToken {
-    func remove() {}
 }
 
 /// Captures registered observers so tests can deliver events synchronously without spinning

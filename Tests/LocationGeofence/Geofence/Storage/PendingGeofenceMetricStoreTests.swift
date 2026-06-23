@@ -19,7 +19,8 @@ struct PendingGeofenceMetricStoreTests {
             geofenceId: geofenceId,
             transition: transition,
             timestamp: Date(timeIntervalSince1970: 1700000000),
-            userId: nil
+            userId: nil,
+            name: nil
         )
     }
 
@@ -260,7 +261,8 @@ struct PendingGeofenceMetricStoreTests {
                                 geofenceId: "geo_\(i)_\(j)",
                                 transition: .enter,
                                 timestamp: Date(),
-                                userId: nil
+                                userId: nil,
+                                name: nil
                             ))
                         case 1:
                             _ = await store.loadAll()

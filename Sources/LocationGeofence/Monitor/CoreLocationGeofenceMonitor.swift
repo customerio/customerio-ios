@@ -43,6 +43,17 @@ final class CoreLocationGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @pr
         ownedRegionIdentifiers
     }
 
+    var osMonitoredRegionIdentifiers: Set<String> {
+        Set(manager.monitoredRegions.map(\.identifier))
+    }
+
+    func adoptExistingRegions(matching identifiers: Set<String>) {
+        let adopted = identifiers.intersection(osMonitoredRegionIdentifiers)
+        guard !adopted.isEmpty else { return }
+        ownedRegionIdentifiers.formUnion(adopted)
+        logger.geofenceRegionsAdopted(count: adopted.count)
+    }
+
     func setOnTransition(_ handler: GeofenceTransitionHandler?) {
         onTransition = handler
     }

@@ -29,8 +29,25 @@ final class MockGeofenceRegionMonitor: GeofenceRegionMonitoring {
     private(set) var operationLog: [MockMonitorOperation] = []
     private var activeIdentifiers: Set<String> = []
 
+    /// Seedable OS-persisted set — tests set this to model regions the OS still monitors on a
+    /// fresh process (where `activeIdentifiers`, the in-memory ownership filter, starts empty).
+    var osMonitoredRegions: Set<String> = []
+    private(set) var adoptExistingRegionsCallsCount = 0
+    private(set) var adoptedIdentifiers: Set<String> = []
+
     var monitoredRegionIdentifiers: Set<String> {
         activeIdentifiers
+    }
+
+    var osMonitoredRegionIdentifiers: Set<String> {
+        osMonitoredRegions
+    }
+
+    func adoptExistingRegions(matching identifiers: Set<String>) {
+        adoptExistingRegionsCallsCount += 1
+        let adopted = identifiers.intersection(osMonitoredRegions)
+        adoptedIdentifiers.formUnion(adopted)
+        activeIdentifiers.formUnion(adopted)
     }
 
     func setOnTransition(_ handler: GeofenceTransitionHandler?) {

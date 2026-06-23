@@ -10,12 +10,7 @@ extension DataPipelineImplementation {
     /// `metric.timestamp` so a flush replayed hours after capture still attributes
     /// the transition to when it happened, not when it was sent.
     func processGeofenceMetricEvent(_ metric: TrackGeofenceMetricEvent) {
-        let properties: [String: Any] = [
-            "geofence_id": metric.geofenceId,
-            "transition_type": metric.transition.rawValue,
-            "timestamp": Int(metric.timestamp.timeIntervalSince1970)
-        ]
-        var trackEvent = TrackEvent(event: metric.transition.trackEventName, properties: try? JSON(properties))
+        var trackEvent = TrackEvent(event: metric.transition.trackEventName, properties: try? JSON(metric.trackEventProperties))
         trackEvent.timestamp = metric.timestamp.string(format: .iso8601WithMilliseconds)
         analytics.process(event: trackEvent)
     }

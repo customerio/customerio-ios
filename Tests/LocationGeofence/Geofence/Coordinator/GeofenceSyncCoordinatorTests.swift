@@ -96,7 +96,7 @@ struct GeofenceSyncCoordinatorTests {
                 remoteFetchRefreshExpiryTime: config.remoteFetchRefreshExpiry * 1000,
                 duplicateEventsExpiryTime: config.duplicateEventsExpiry * 1000,
                 maxMonitoringDistance: config.maxMonitoringDistance,
-                ios: GeofenceApiPlatformConfig(maxBusinessGeofences: config.maxBusinessGeofences)
+                ios: GeofenceApiPlatformConfig(maxBusinessGeofence: config.maxBusinessGeofences)
             )
         }
         return GeofenceApiResponse(config: apiConfig, geofences: apiRegions)

@@ -14,7 +14,7 @@ public enum BackgroundDeliveryHttpError: Error, Equatable {
 /// One CDP `/track` request for a background-delivery caller. Bundles the request-body fields
 /// into one value so the client signature stays stable as the payload grows.
 public struct BackgroundTrackRequest {
-    /// `track` event name (e.g. `"Geofence Entered"`).
+    /// CDP `track` event name.
     public let eventName: String
     /// Identified user id. Caller must validate non-empty before sending.
     public let userId: String
