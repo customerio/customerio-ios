@@ -23,6 +23,8 @@ let package = Package(
                 .product(name: "DataPipelines", package: "customerio-ios"),
                 .product(name: "MessagingPushAPN", package: "customerio-ios"),
                 .product(name: "MessagingInApp", package: "customerio-ios"),
+                // Visual Notification Inbox overlay (`CioMessagingInbox`) so sample apps can mount it.
+                .product(name: "MessagingInbox", package: "customerio-ios"),
                 .product(name: "Location", package: "customerio-ios")
             ],
             path: "Source"

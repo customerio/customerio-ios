@@ -157,6 +157,16 @@ public protocol VisualInboxProvider: Sendable {
     ///   permanently deduping a mark that never applied.
     @discardableResult
     func markOpened(messageId: String) async -> Bool
+
+    /// Dismisses (removes) a message via the existing headless `markMessageDeleted` plumbing (no new
+    /// mutation path). Looked up by the snapshot id so the overlay never has to hold an internal
+    /// `InboxMessage`. Web parity: tapping a message dismisses it; dismissing the last message empties
+    /// the list and drives the inbox to `.hidden` (panel auto-closes, bell hides).
+    /// - Returns: `true` if a matching message was still present in the store and the delete was
+    ///   issued; `false` if the message was gone (the dismiss was a no-op). Callers use this to avoid
+    ///   permanently deduping a dismiss that never applied.
+    @discardableResult
+    func dismiss(messageId: String) async -> Bool
 }
 
 // MARK: - Implementation
@@ -321,6 +331,22 @@ final class VisualInboxProviderImpl: VisualInboxProvider, @unchecked Sendable {
             return false
         }
         inbox.markMessageOpened(message: message)
+        return true
+    }
+
+    @discardableResult
+    func dismiss(messageId: String) async -> Bool {
+        // Resolve the full InboxMessage from current state so we reuse the existing headless
+        // markMessageDeleted plumbing (which dispatches the .deleteMessage action). No new mutation
+        // path. The store change then flows through observe() → the message leaves the selection →
+        // computeLoadState empties → .hidden when it was the last message.
+        let state = await inAppMessageManager.state
+        guard let message = state.inboxMessages.first(where: { $0.queueId == messageId }) else {
+            // Message no longer in the store → nothing to delete. Report no-op so the caller doesn't
+            // permanently dedupe a dismiss that never applied.
+            return false
+        }
+        inbox.markMessageDeleted(message: message)
         return true
     }
 }
