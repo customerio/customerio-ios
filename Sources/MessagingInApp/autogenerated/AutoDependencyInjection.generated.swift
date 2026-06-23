@@ -2,8 +2,8 @@
 // DO NOT EDIT
 // swiftlint:disable all
 
-import CioInternalCommon
 import Foundation
+import CioInternalCommon
 import UIKit
 
 /**
@@ -85,6 +85,9 @@ extension DIGraphShared {
         _ = inboxMessageCacheManager
         countDependenciesResolved += 1
 
+        _ = inboxNetworkClient
+        countDependenciesResolved += 1
+
         _ = logManager
         countDependenciesResolved += 1
 
@@ -104,6 +107,9 @@ extension DIGraphShared {
         countDependenciesResolved += 1
 
         _ = sseServiceProtocol
+        countDependenciesResolved += 1
+
+        _ = visualInboxRepository
         countDependenciesResolved += 1
 
         return countDependenciesResolved
@@ -224,6 +230,16 @@ extension DIGraphShared {
         InboxMessageCacheManager(keyValueStore: sharedKeyValueStorage, logger: logger)
     }
 
+    // InboxNetworkClient
+    var inboxNetworkClient: InboxNetworkClient {
+        getOverriddenInstance() ??
+            newInboxNetworkClient
+    }
+
+    private var newInboxNetworkClient: InboxNetworkClient {
+        InboxNetworkClientImpl(gistQueueNetwork: gistQueueNetwork)
+    }
+
     // LogManager
     var logManager: LogManager {
         getOverriddenInstance() ??
@@ -243,7 +259,7 @@ extension DIGraphShared {
     }
 
     private func _get_queueManager() -> QueueManager {
-        QueueManager(keyValueStore: sharedKeyValueStorage, gistQueueNetwork: gistQueueNetwork, inAppMessageManager: inAppMessageManager, anonymousMessageManager: anonymousMessageManager, inboxMessageCache: inboxMessageCacheManager, logger: logger)
+        QueueManager(keyValueStore: sharedKeyValueStorage, gistQueueNetwork: gistQueueNetwork, inAppMessageManager: inAppMessageManager, anonymousMessageManager: anonymousMessageManager, inboxMessageCache: inboxMessageCacheManager, visualInboxRepository: visualInboxRepository, logger: logger)
     }
 
     // ApplicationStateProvider
@@ -298,6 +314,18 @@ extension DIGraphShared {
 
     private func _get_sseServiceProtocol() -> SseServiceProtocol {
         SseService(logger: logger)
+    }
+
+    // VisualInboxRepository (singleton)
+    var visualInboxRepository: VisualInboxRepository {
+        getOverriddenInstance() ??
+            getSingletonOrCreate {
+                _get_visualInboxRepository()
+            }
+    }
+
+    private func _get_visualInboxRepository() -> VisualInboxRepository {
+        VisualInboxRepositoryImpl(networkClient: inboxNetworkClient, inAppMessageManager: inAppMessageManager, keyValueStore: sharedKeyValueStorage, sleeper: sleeper, dateUtil: dateUtil, logger: logger)
     }
 }
 
