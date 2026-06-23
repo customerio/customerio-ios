@@ -49,26 +49,26 @@ protocol VisualInboxRepository: AnyObject, Sendable {
     ///   so callers can detect a `false → true` transition.
     @discardableResult
     func setInboxEnabled(_ enabled: Bool) async -> Bool
+
+    /// Emits once every time `loadState` is (re)computed. The overlay subscribes to react to
+    /// enablement/visibility changes without polling; emissions are signals only (the subscriber
+    /// reads current cached state) and never trigger a network fetch.
+    func loadStateChanges() async -> AsyncStream<Void>
 }
 
 // sourcery: InjectRegisterShared = "VisualInboxRepository"
 // sourcery: InjectSingleton
-/// Default actor-isolated implementation of the visual-inbox data layer.
-///
-/// Thread safety: implemented as an `actor` so all cache reads/writes and load-state transitions
-/// are serialized without manual locking.
+/// Default actor-isolated implementation of the visual-inbox data layer. Implemented as an `actor`
+/// so all cache reads/writes and load-state transitions are serialized without manual locking.
 ///
 /// Freshness model (matches Android): templates/branding are revalidated against the server
-/// **once per session** — the first `enableAndLoad()` of the process performs the network GET
-/// through the existing `GistQueueNetwork` path; later same-session loads serve the stored payload
-/// without a network call. There is no wall-clock TTL. Because the repository is a DI singleton,
-/// the in-memory gate naturally resets on process restart (= new session) and only then; a logout
-/// clears the persisted assets elsewhere.
+/// **once per session** (first `enableAndLoad()` of the process, via `GistQueueNetwork`); later
+/// same-session loads serve the stored payload with no network call. No wall-clock TTL — the
+/// in-memory gate resets only on process restart (DI singleton); logout clears persisted assets.
 ///
-/// Serve-stale: messages are served stale by the headless layer itself — a failed poll never
-/// dispatches new inbox messages, so the in-app store retains its last-known-good set (persisted
-/// across launches via the headless 304 cache). Templates/branding are served stale here by
-/// returning the last stored payload through a failed revalidation.
+/// Serve-stale: a failed poll never dispatches new inbox messages, so the store retains its
+/// last-known-good set (persisted via the headless 304 cache); templates/branding fall back to the
+/// last stored payload on failed revalidation.
 actor VisualInboxRepositoryImpl: VisualInboxRepository {
     private let networkClient: InboxNetworkClient
     private let inAppMessageManager: InAppMessageManager
@@ -80,23 +80,26 @@ actor VisualInboxRepositoryImpl: VisualInboxRepository {
     /// source and same-session payload source).
     private let assetsCache: InboxRenderAssetsCache
 
-    private var currentLoadState: VisualInboxLoadState = .idle
+    private var currentLoadState: VisualInboxLoadState = .idle {
+        didSet { loadStateObservers.notify() }
+    }
 
-    /// In-flight guard: true while a network revalidation (templates+branding) is running, so
-    /// overlapping polls don't launch duplicate concurrent fetches. Actor isolation makes the
-    /// check+set atomic.
+    /// Live observers of `loadState` changes (see `loadStateChanges()`); actor isolation serializes
+    /// add/remove/notify, so no manual locking.
+    private var loadStateObservers = VisualInboxLoadStateObservers()
+
+    /// In-flight guard: true while a templates+branding revalidation runs, so overlapping polls
+    /// don't launch duplicate fetches (actor isolation makes check+set atomic).
     private var isFetchInFlight = false
 
-    /// Session-scoped revalidation gate. False until the first successful-or-attempted revalidation
-    /// of this session; once true, same-session loads serve the stored payload without a network
-    /// call. The repository is a DI singleton, so this resets to false on process restart — i.e. a
-    /// new session always revalidates exactly once. It resets ONLY on process restart.
+    /// Session-scoped revalidation gate: false until this session's first revalidation, then
+    /// same-session loads serve the stored payload with no network call. Resets ONLY on process
+    /// restart (DI singleton) — i.e. a new session revalidates exactly once.
     private var didRevalidateThisSession = false
 
-    /// Strong reference to the in-app store subscriber for inbox-message changes. The store holds the
-    /// subscriber weakly, so we must retain it for the lifetime of the repository. Kept so that
-    /// inbox messages arriving via the SSE path (`processInboxMessages`, which never runs the queue
-    /// HTTP pipeline) still trigger a `loadState` recompute. See `subscribeToInboxMessageChanges`.
+    /// Strong reference to the weakly-held in-app store subscriber for inbox-message changes, so
+    /// messages arriving via the SSE path (`processInboxMessages`, which skips the queue HTTP
+    /// pipeline) still trigger a `loadState` recompute. See `subscribeToInboxMessageChanges`.
     private var messagesSubscriber: InAppMessageStoreSubscriber?
 
     /// Current time, sourced from the injectable `DateUtil` so tests can control it.
@@ -180,6 +183,27 @@ actor VisualInboxRepositoryImpl: VisualInboxRepository {
 
     var isInboxVisible: Bool {
         get async { currentLoadState.isInboxVisible }
+    }
+
+    // MARK: - Reactive observation
+
+    func loadStateChanges() async -> AsyncStream<Void> {
+        AsyncStream { continuation in
+            let id = UUID()
+            // Stream builder runs synchronously on the caller; defer register/unregister onto the actor.
+            Task { await self.addLoadStateObserver(id: id, continuation: continuation) }
+            continuation.onTermination = { @Sendable _ in
+                Task { await self.removeLoadStateObserver(id: id) }
+            }
+        }
+    }
+
+    private func addLoadStateObserver(id: UUID, continuation: AsyncStream<Void>.Continuation) {
+        loadStateObservers.add(id: id, continuation: continuation)
+    }
+
+    private func removeLoadStateObserver(id: UUID) {
+        loadStateObservers.remove(id: id)
     }
 
     // MARK: - Loading
