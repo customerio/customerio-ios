@@ -154,6 +154,9 @@ public enum CioInternalCommon.DateFormat {
 public interface CioInternalCommon.DateUtil {
 	public var now: Date;
 }
+public interface CioInternalCommon.DbKeyProvider {
+	public fun func getOrCreateDbKey(account: String) throws -> String;
+}
 public interface CioInternalCommon.DeepLinkUtil {
 	public fun @_spi(Internal) func setDeepLinkCallback(_ callback: @escaping DeepLinkCallback);
 	public fun func handleDeepLink(_ deepLinkUrl: URL);
@@ -301,6 +304,10 @@ public final class CioInternalCommon.JsonAdapter {
 	public fun func toJsonString<T: Encodable>(_ obj: T, nilIfEmpty: Boolean = true) -> String?;
 }
 public enum CioInternalCommon.KeyValueStorageKey {
+}
+public final class CioInternalCommon.KeychainDbKeyProvider {
+	public fun init();
+	public fun func getOrCreateDbKey(account: String) throws -> String;
 }
 public final class CioInternalCommon.LocationData {
 	public final val latitude: Double;
