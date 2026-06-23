@@ -182,3 +182,33 @@ public final class CioMessagingInApp.Subscription {
 	public fun init(sink: @escaping (@escaping (State?, State) -> Unit) -> Unit);
 	public fun func skipRepeats(_ isRepeat: @escaping (_ oldState: State, _ newState: State) -> Boolean) -> Subscription<State>;
 }
+public final class CioMessagingInApp.VisualInboxMessageSnapshot {
+	public final val id: String;
+	public final val type: String;
+	public final val properties: Map<String, Any>;
+	public final val opened: Boolean;
+	public final val sentAt: Date;
+	public fun init(id: String, type: String, properties: List<String: Any>, opened: Boolean, sentAt: Date);
+}
+public interface CioMessagingInApp.VisualInboxProvider {
+	public fun func observe() -> AsyncStream<VisualInboxSnapshot>;
+	public fun func load() async;
+	public fun func state() async -> VisualInboxState;
+	public fun func messages() async -> List<VisualInboxMessageSnapshot>;
+	public fun func unopenedCount() async -> Int;
+	public fun func templatesJSON() async -> List<String: Any>?;
+	public fun func themeJSON() async -> List<String: Any>?;
+	public fun func markOpened(messageId: String) async -> Boolean;
+}
+public final class CioMessagingInApp.VisualInboxSnapshot {
+	public final val state: VisualInboxState;
+	public final val messages: List<VisualInboxMessageSnapshot>;
+	public final val unopenedCount: Int;
+	public final val templatesJSON: Map<String, Any>?;
+	public final val themeJSON: Map<String, Any>?;
+	public fun init(state: VisualInboxState, messages: List<VisualInboxMessageSnapshot>, unopenedCount: Int, templatesJSON: List<String: Any>?, themeJSON: List<String: Any>?);
+	public fun func == (lhs: VisualInboxSnapshot, rhs: VisualInboxSnapshot) -> Boolean;
+}
+public enum CioMessagingInApp.VisualInboxState {
+	public var isVisible: Boolean;
+}
