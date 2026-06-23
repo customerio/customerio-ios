@@ -10,9 +10,13 @@ public struct StorageManager: Sendable {
     // public so per-module StorageManager+X.swift extensions can reach it directly.
     // Restrict to `package` once CocoaPods support is dropped.
     public let db: Database
+    /// The CDP API key this instance was opened with. Used to detect key mismatches
+    /// when a recovered instance is already registered in the DI graph.
+    public let cdpApiKey: String
 
-    public init(db: Database) {
+    public init(db: Database, cdpApiKey: String) {
         self.db = db
+        self.cdpApiKey = cdpApiKey
     }
 
     /// Apply schema migrations. Must be called once before any other method.
