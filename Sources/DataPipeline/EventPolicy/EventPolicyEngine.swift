@@ -8,6 +8,16 @@ import Foundation
 /// protected by `Synchronized<>`, and `StorageManager.db` is serialized
 /// internally via a private DispatchQueue.
 final class EventPolicyEngine: Sendable {
+    // Generates the EventKey for a given event name and type.
+    private static func eventKey(eventType: String, name: String) -> String {
+        "\(eventType):\(name)"
+    }
+
+    /// Generates the EventKey for an event name that matches all named events.
+    private static func wildcardEventKey(eventType: String) -> String {
+        "\(eventType):*"
+    }
+
     /// Wire-format ruleset pre-processed into O(1) lookup structures.
     private struct ProcessedRuleset {
         /// Keys of the form `"\(eventType):\(name)"` for blocked events.
@@ -16,9 +26,15 @@ final class EventPolicyEngine: Sendable {
         let rateLimitsByKey: [String: RateLimitEntry]
 
         init(_ ruleset: AggregationRuleset) {
-            self.filterKeys = Set((ruleset.filters ?? []).map { "\($0.eventType):\($0.name)" })
+            self.filterKeys = Set(
+                (ruleset.filters ?? []).map {
+                    EventPolicyEngine.eventKey(eventType: $0.eventType, name: $0.name)
+                }
+            )
             self.rateLimitsByKey = Dictionary(
-                (ruleset.rateLimits ?? []).map { ("\($0.eventType):\($0.name)", $0) },
+                (ruleset.rateLimits ?? []).map {
+                    (EventPolicyEngine.eventKey(eventType: $0.eventType, name: $0.name), $0)
+                },
                 uniquingKeysWith: { first, _ in first }
             )
         }
@@ -43,23 +59,24 @@ final class EventPolicyEngine: Sendable {
 
     /// Time-injectable overload used by tests.
     func shouldAllow(eventType: String, name: String, now: Int64) -> Bool {
-        guard let rs = processed.wrappedValue else { return true }
+        guard let ruleSet = processed.wrappedValue else { return true }
 
-        let exactKey = "\(eventType):\(name)"
-        let wildcardKey = "\(eventType):*"
+        let exactKey = EventPolicyEngine.eventKey(eventType: eventType, name: name)
+        let wildcardKey = EventPolicyEngine.wildcardEventKey(eventType: eventType)
 
-        if rs.filterKeys.contains(exactKey) || rs.filterKeys.contains(wildcardKey) {
+        if ruleSet.filterKeys.contains(exactKey) || ruleSet.filterKeys.contains(wildcardKey) {
             return false
         }
 
-        if let rl = rs.rateLimitsByKey[exactKey] ?? rs.rateLimitsByKey[wildcardKey] {
+        if let rateLimit = ruleSet.rateLimitsByKey[exactKey] ?? ruleSet.rateLimitsByKey[wildcardKey] {
             // Fail open on DB error so a storage failure doesn't silently discard events.
-            return (try? storage.checkAndUpdateRateLimit(
-                key: exactKey,
-                now: now,
-                windowSeconds: Int64(rl.windowSeconds),
-                scope: rl.scope.rawValue
-            )) ?? true
+            return
+                (try? storage.checkAndUpdateRateLimit(
+                    key: exactKey,
+                    now: now,
+                    windowSeconds: Int64(rateLimit.windowSeconds),
+                    scope: rateLimit.scope.rawValue
+                )) ?? true
         }
 
         return true
