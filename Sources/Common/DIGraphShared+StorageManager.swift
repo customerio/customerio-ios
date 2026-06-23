@@ -41,7 +41,8 @@ public extension DIGraphShared {
     private func makeStorageManager(cdpApiKey: String) -> StorageManager? {
         do {
             let path = Self.databasePath(for: cdpApiKey)
-            let db = try Database(path: path, key: cdpApiKey)
+            let encryptionKey = try dbKeyProvider.getOrCreateDbKey(account: cdpApiKey)
+            let db = try Database(path: path, key: encryptionKey)
             let storage = StorageManager(db: db, cdpApiKey: cdpApiKey)
             try storage.runMigrations()
             return storage
