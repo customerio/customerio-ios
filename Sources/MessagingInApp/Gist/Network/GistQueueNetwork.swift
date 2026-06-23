@@ -26,6 +26,11 @@ class GistQueueNetworkImpl: GistQueueNetwork {
 
         var urlRequest = URLRequest(url: baseURL.appendingPathComponent(request.path))
         urlRequest.httpMethod = request.method.rawValue
+        // Apply a per-request timeout when the endpoint declares one (queue endpoints keep the
+        // URLSession default; the visual-inbox templates/branding fetches set 5s).
+        if let timeoutInterval = request.timeoutInterval {
+            urlRequest.timeoutInterval = timeoutInterval
+        }
         urlRequest.addValue(state.siteId, forHTTPHeaderField: HTTPHeader.siteId.rawValue)
         urlRequest.addValue(state.dataCenter, forHTTPHeaderField: HTTPHeader.cioDataCenter.rawValue)
         urlRequest.addValue(sdkClient.sdkVersion, forHTTPHeaderField: HTTPHeader.cioClientVersion.rawValue)
