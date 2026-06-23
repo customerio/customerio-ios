@@ -19,7 +19,6 @@ var products: [PackageDescription.Product] = [
     .library(name: "MessagingPushAPN", targets: ["CioMessagingPushAPN"]),
     .library(name: "MessagingPushFCM", targets: ["CioMessagingPushFCM"]),
     .library(name: "MessagingInApp", targets: ["CioMessagingInApp"]),
-    .library(name: "MessagingInbox", targets: ["CioMessagingInbox"]),
     .library(name: "Location", targets: ["CioLocation"])
 ]
 
@@ -158,14 +157,6 @@ let package = Package(
         .testTarget(name: "MessagingInAppTests",
                     dependencies: ["CioMessagingInApp", "SharedTests", "CioInternalCommonMocks", "CioMessagingInAppMocks"],
                     path: "Tests/MessagingInApp"),
-
-        // Messaging Inbox (opt-in visual inbox UI rendered on top of the headless inbox API)
-        .target(name: "CioMessagingInbox",
-                dependencies: ["CioMessagingInApp", "CioInternalCommon"],
-                path: "Sources/MessagingInbox",
-                resources: [
-                    .process("Resources/PrivacyInfo.xcprivacy"),
-                ]),
 
         // Location
         .target(name: "CioLocation",
