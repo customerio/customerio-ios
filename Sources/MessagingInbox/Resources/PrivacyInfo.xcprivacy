@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!--
+	This module renders the visual inbox UI on top of the headless inbox API. It does not itself
+	collect data or call any required-reason APIs — message collection and storage live in the
+	MessagingInApp / DataPipeline modules, which declare those in their own manifests. Both arrays
+	are intentionally empty here.
+	Docs: https://developer.apple.com/documentation/bundleresources/privacy_manifest_files
+	-->
+	<key>NSPrivacyCollectedDataTypes</key>
+	<array>
+	</array>
+
+	<key>NSPrivacyAccessedAPITypes</key>
+	<array>
+	</array>
+
+	<key>NSPrivacyTracking</key>
+	<false/>
+</dict>
+</plist>
