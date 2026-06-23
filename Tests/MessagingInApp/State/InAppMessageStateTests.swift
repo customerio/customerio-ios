@@ -1,6 +1,7 @@
 @testable import CioInternalCommon
 @testable import CioMessagingInAppMocks
 @testable import CioMessagingInApp
+import SharedTests
 import XCTest
 
 extension InAppMessageManager {
@@ -642,6 +643,209 @@ class InAppMessageStateTests: IntegrationTest {
         await inAppMessageManager.dispatchAsync(action: .resetState)
         state = await inAppMessageManager.state
         XCTAssertEqual(state.useSse, false)
+    }
+
+    // MARK: - Visual Inbox: enablement trigger + messages cache population
+
+    /// A queue body carrying one `cio_inbox` visual-inbox message.
+    private func visualInboxQueueBody() -> Data {
+        let json = """
+        {
+          "inAppMessages": [],
+          "inboxMessages": [
+            {
+              "queueId": "inbox-poll-1",
+              "deliveryId": "d-1",
+              "sentAt": "2026-01-01T00:00:00.000Z",
+              "topics": ["cio_inbox"],
+              "type": "card",
+              "opened": false
+            }
+          ]
+        }
+        """
+        return json.data(using: .utf8)!
+    }
+
+    /// Polls `condition` until it returns true or the timeout elapses (async-friendly).
+    private func waitUntil(
+        timeout: TimeInterval = 5.0,
+        pollInterval: TimeInterval = 0.1,
+        file: StaticString = #file,
+        line: UInt = #line,
+        _ condition: @escaping () async -> Bool
+    ) async {
+        let deadline = Date().addingTimeInterval(timeout)
+        repeat {
+            if await condition() { return }
+            try? await Task.sleep(nanoseconds: UInt64(pollInterval * 1000000000))
+        } while Date() < deadline
+        XCTFail("Condition not met within \(timeout) seconds.", file: file, line: line)
+    }
+
+    func test_fetch_givenInboxEnabledHeaderAndInboxMessages_expectRepositoryLoadsVisible() async throws {
+        await inAppMessageManager.dispatchAsync(action: .initialize(siteId: .random, dataCenter: .random, environment: .production))
+        await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: .random))
+        let state = await inAppMessageManager.state
+
+        // Wire a QueueManager whose visual-inbox repository uses a STUBBED inbox network client, so the
+        // enablement-triggered templates/branding fetch resolves locally (no real HTTP).
+        let networkStub = InboxNetworkClientStub()
+        networkStub.handler = { endpoint, _ in
+            endpoint == .getTemplates
+                ? InboxNetworkClientStub.response(json: #"{ "welcome": [ { "version": 1 } ] }"#)
+                : InboxNetworkClientStub.response(json: #"{ "theme": {}, "patterns": { "inbox": {} } }"#)
+        }
+        let sleeperStub = SleeperMock()
+        sleeperStub.sleepClosure = { _ in }
+        let repository = VisualInboxRepositoryImpl(
+            networkClient: networkStub,
+            inAppMessageManager: inAppMessageManager,
+            keyValueStore: InMemorySharedKeyValueStorage(),
+            sleeper: sleeperStub,
+            dateUtil: diGraphShared.dateUtil,
+            logger: diGraphShared.logger
+        )
+        let stubbedQueueManager = QueueManager(
+            keyValueStore: diGraphShared.sharedKeyValueStorage,
+            gistQueueNetwork: gistQueueNetworkMock,
+            inAppMessageManager: inAppMessageManager,
+            anonymousMessageManager: diGraphShared.anonymousMessageManager,
+            inboxMessageCache: diGraphShared.inboxMessageCacheManager,
+            visualInboxRepository: repository,
+            logger: diGraphShared.logger
+        )
+
+        let headers = [
+            "x-gist-queue-polling-interval": "600",
+            "x-cio-inbox-enabled": "true"
+        ]
+        setupHttpResponse(code: 200, body: visualInboxQueueBody(), headers: headers)
+
+        stubbedQueueManager.fetchUserQueue(state: state) { _ in }
+
+        // The enablement header flips the gate true and triggers enableAndLoad(); messages from the
+        // poll populate the per-user cache. Expect the repository to settle on a visible inbox.
+        await waitUntil { await repository.loadState == .visible(messageCount: 1) }
+        let enabled = await repository.isInboxEnabled
+        XCTAssertTrue(enabled)
+        let selected = await repository.selectedMessages()
+        XCTAssertEqual(selected.map(\.queueId), ["inbox-poll-1"])
+    }
+
+    func test_fetch_givenInboxEnabledThenDisabled_expectLoadStateBecomesHidden() async throws {
+        // Regression: a poll that DISABLES the inbox (enabled true→false) must recompute loadState to
+        // hidden so the overlay hides. The pipeline runs enableAndLoad() unconditionally; it self-gates
+        // on the disabled flag and sets .hidden. (Previously an early return left loadState stale at
+        // .visible after a disabling poll.)
+        await inAppMessageManager.dispatchAsync(action: .initialize(siteId: .random, dataCenter: .random, environment: .production))
+        await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: .random))
+        let state = await inAppMessageManager.state
+
+        let networkStub = InboxNetworkClientStub()
+        networkStub.handler = { endpoint, _ in
+            endpoint == .getTemplates
+                ? InboxNetworkClientStub.response(json: #"{ "welcome": [ { "version": 1 } ] }"#)
+                : InboxNetworkClientStub.response(json: #"{ "theme": {}, "patterns": { "inbox": {} } }"#)
+        }
+        let sleeperStub = SleeperMock()
+        sleeperStub.sleepClosure = { _ in }
+        let repository = VisualInboxRepositoryImpl(
+            networkClient: networkStub,
+            inAppMessageManager: inAppMessageManager,
+            keyValueStore: InMemorySharedKeyValueStorage(),
+            sleeper: sleeperStub,
+            dateUtil: diGraphShared.dateUtil,
+            logger: diGraphShared.logger
+        )
+        let stubbedQueueManager = QueueManager(
+            keyValueStore: diGraphShared.sharedKeyValueStorage,
+            gistQueueNetwork: gistQueueNetworkMock,
+            inAppMessageManager: inAppMessageManager,
+            anonymousMessageManager: diGraphShared.anonymousMessageManager,
+            inboxMessageCache: diGraphShared.inboxMessageCacheManager,
+            visualInboxRepository: repository,
+            logger: diGraphShared.logger
+        )
+
+        // 1) Poll with inbox ENABLED -> repository settles visible.
+        setupHttpResponse(code: 200, body: visualInboxQueueBody(), headers: [
+            "x-gist-queue-polling-interval": "600",
+            "x-cio-inbox-enabled": "true"
+        ])
+        stubbedQueueManager.fetchUserQueue(state: state) { _ in }
+        await waitUntil { await repository.loadState == .visible(messageCount: 1) }
+        let enabledAfterFirst = await repository.isInboxEnabled
+        XCTAssertTrue(enabledAfterFirst)
+
+        // 2) Poll with inbox DISABLED -> loadState must flip to hidden (overlay hides).
+        setupHttpResponse(code: 200, body: visualInboxQueueBody(), headers: [
+            "x-gist-queue-polling-interval": "600",
+            "x-cio-inbox-enabled": "false"
+        ])
+        stubbedQueueManager.fetchUserQueue(state: state) { _ in }
+
+        await waitUntil { await repository.loadState == .hidden(reason: "inbox disabled") }
+        let visible = await repository.isInboxVisible
+        XCTAssertFalse(visible, "a disabling poll must hide the inbox, not leave it stale at visible")
+        let enabledAfterSecond = await repository.isInboxEnabled
+        XCTAssertFalse(enabledAfterSecond)
+    }
+
+    func test_fetch_givenInboxMessagesInPoll_expectMessagesReadLiveFromState() async throws {
+        await inAppMessageManager.dispatchAsync(action: .initialize(siteId: .random, dataCenter: .random, environment: .production))
+        await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: .random))
+        let state = await inAppMessageManager.state
+
+        // Build a repository + queue manager wired to THIS test's in-app store so the visual inbox
+        // reads the same state the poll dispatches into (no shared-singleton bleed across tests).
+        let networkStub = InboxNetworkClientStub()
+        networkStub.handler = { endpoint, _ in
+            endpoint == .getTemplates
+                ? InboxNetworkClientStub.response(json: #"{ "welcome": [ { "version": 1 } ] }"#)
+                : InboxNetworkClientStub.response(json: #"{ "theme": {}, "patterns": { "inbox": {} } }"#)
+        }
+        let sleeperStub = SleeperMock()
+        sleeperStub.sleepClosure = { _ in }
+        let repository = VisualInboxRepositoryImpl(
+            networkClient: networkStub,
+            inAppMessageManager: inAppMessageManager,
+            keyValueStore: InMemorySharedKeyValueStorage(),
+            sleeper: sleeperStub,
+            dateUtil: diGraphShared.dateUtil,
+            logger: diGraphShared.logger
+        )
+        let stubbedQueueManager = QueueManager(
+            keyValueStore: diGraphShared.sharedKeyValueStorage,
+            gistQueueNetwork: gistQueueNetworkMock,
+            inAppMessageManager: inAppMessageManager,
+            anonymousMessageManager: diGraphShared.anonymousMessageManager,
+            inboxMessageCache: diGraphShared.inboxMessageCacheManager,
+            visualInboxRepository: repository,
+            logger: diGraphShared.logger
+        )
+
+        // A poll dispatches its inbox messages into the in-app store; the visual inbox reads them
+        // live on selectedMessages() (no separate messages cache).
+        setupHttpResponse(code: 200, body: visualInboxQueueBody(), headers: ["x-gist-queue-polling-interval": "600"])
+
+        stubbedQueueManager.fetchUserQueue(state: state) { _ in }
+
+        // The poll populates state, and the visual inbox selects the cio_inbox message from it.
+        await waitUntil {
+            let selected = await repository.selectedMessages()
+            return selected.map(\.queueId) == ["inbox-poll-1"]
+        }
+
+        // Serve-stale for messages is the headless layer's job: a failed poll never re-dispatches
+        // messages, so state (and therefore the selection) is retained. An explicit empty dispatch
+        // is a genuine "no messages" signal and selectedMessages() reports empty.
+        await inAppMessageManager.dispatchAsync(action: .processInboxMessages(messages: []))
+        let stateAfter = await inAppMessageManager.waitForState { $0.inboxMessages.isEmpty }
+        XCTAssertTrue(stateAfter.inboxMessages.isEmpty)
+
+        let afterEmpty = await repository.selectedMessages()
+        XCTAssertEqual(afterEmpty.map(\.queueId), [], "messages are read live from state, so an empty state selects nothing")
     }
 
     // MARK: - SSE Header Detection Tests
