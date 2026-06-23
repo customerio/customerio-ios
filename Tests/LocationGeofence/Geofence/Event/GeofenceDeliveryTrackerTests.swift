@@ -1,4 +1,5 @@
 @testable import CioInternalCommon
+@testable import CioInternalCommonMocks
 @testable import CioLocationGeofence
 import Foundation
 import SharedTests

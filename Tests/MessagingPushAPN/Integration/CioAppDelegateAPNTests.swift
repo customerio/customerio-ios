@@ -1,4 +1,6 @@
 @testable import CioInternalCommon
+@testable import CioInternalCommonMocks
+@testable import CioMessagingPushMocks
 @_spi(Internal) @testable import CioMessagingPush
 @testable import CioMessagingPushAPN
 import SharedTests

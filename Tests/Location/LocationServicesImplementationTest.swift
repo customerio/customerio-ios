@@ -1,4 +1,5 @@
 @testable import CioInternalCommon
+@testable import CioInternalCommonMocks
 @_spi(Internal) @testable import CioLocation
 import CoreLocation
 import SharedTests

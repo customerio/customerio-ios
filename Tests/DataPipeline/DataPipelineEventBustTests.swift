@@ -1,4 +1,6 @@
 @testable import CioAnalytics
+@testable import CioDataPipelinesMocks
+@testable import CioInternalCommonMocks
 @testable import CioDataPipelines
 @testable import CioInternalCommon
 import Foundation

@@ -1,3 +1,21 @@
+## [4.5.3](https://github.com/customerio/customerio-ios/compare/4.5.2...4.5.3) (2026-06-22)
+
+### Bug Fixes
+
+* Resolve duplicate event delivery bugs ([#1099](https://github.com/customerio/customerio-ios/issues/1099)) ([8aacf3a](https://github.com/customerio/customerio-ios/commit/8aacf3ac782e9c7914e1e4158832489c19390b5b))
+
+## [4.5.2](https://github.com/customerio/customerio-ios/compare/4.5.1...4.5.2) (2026-06-16)
+
+### Bug Fixes
+
+* Corrected SSE Heartbeat test ([#1097](https://github.com/customerio/customerio-ios/issues/1097)) ([ac4659c](https://github.com/customerio/customerio-ios/commit/ac4659caffa82bae339f3538b6f765c32a2617a1))
+
+## [4.5.1](https://github.com/customerio/customerio-ios/compare/4.5.0...4.5.1) (2026-06-15)
+
+### Bug Fixes
+
+* move generated mocks into per-module mock targets (test isolation) ([#1093](https://github.com/customerio/customerio-ios/issues/1093)) ([6539766](https://github.com/customerio/customerio-ios/commit/65397666d4e82eeec788ade4fb4aea19c876890a))
+
 ## [4.5.0](https://github.com/customerio/customerio-ios/compare/4.4.3...4.5.0) (2026-06-05)
 
 ### Features

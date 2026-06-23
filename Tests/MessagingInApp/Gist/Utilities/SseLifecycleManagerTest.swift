@@ -1,4 +1,6 @@
 @testable import CioInternalCommon
+@testable import CioInternalCommonMocks
+@testable import CioMessagingInAppMocks
 @testable import CioMessagingInApp
 import SharedTests
 import UIKit

@@ -62,9 +62,6 @@ extension DIGraphShared {
         _ = deviceInfo
         countDependenciesResolved += 1
 
-        _ = eventBusHandler
-        countDependenciesResolved += 1
-
         _ = profileStore
         countDependenciesResolved += 1
 
@@ -83,6 +80,9 @@ extension DIGraphShared {
         _ = threadUtil
         countDependenciesResolved += 1
 
+        _ = eventBusHandler
+        countDependenciesResolved += 1
+
         _ = sdkClient
         countDependenciesResolved += 1
 
@@ -90,9 +90,6 @@ extension DIGraphShared {
         countDependenciesResolved += 1
 
         _ = deviceMetricsGrabber
-        countDependenciesResolved += 1
-
-        _ = eventBusObserversHolder
         countDependenciesResolved += 1
 
         _ = eventCache
@@ -126,9 +123,6 @@ extension DIGraphShared {
         countDependenciesResolved += 1
 
         _ = dateUtil
-        countDependenciesResolved += 1
-
-        _ = eventBus
         countDependenciesResolved += 1
 
         _ = systemLogger
@@ -173,18 +167,6 @@ extension DIGraphShared {
 
     private var newDeviceInfo: DeviceInfo {
         CIODeviceInfo()
-    }
-
-    // EventBusHandler (singleton)
-    public var eventBusHandler: EventBusHandler {
-        getOverriddenInstance() ??
-            getSingletonOrCreate {
-                _get_eventBusHandler()
-            }
-    }
-
-    private func _get_eventBusHandler() -> EventBusHandler {
-        CioEventBusHandler(eventBus: eventBus, eventCache: eventCache, eventStorage: eventStorage, logger: logger)
     }
 
     // ProfileStore
@@ -249,6 +231,18 @@ extension DIGraphShared {
         CioThreadUtil()
     }
 
+    // EventBusHandler (singleton)
+    public var eventBusHandler: EventBusHandler {
+        getOverriddenInstance() ??
+            getSingletonOrCreate {
+                _get_eventBusHandler()
+            }
+    }
+
+    private func _get_eventBusHandler() -> EventBusHandler {
+        CombinedCacheEventBusHandler(eventStorage: eventStorage, logger: logger)
+    }
+
     // SdkClient (custom. property getter provided via extension)
     public var sdkClient: SdkClient {
         getOverriddenInstance() ??
@@ -277,18 +271,6 @@ extension DIGraphShared {
 
     private var newDeviceMetricsGrabber: DeviceMetricsGrabber {
         DeviceMetricsGrabberImpl()
-    }
-
-    // EventBusObserversHolder (singleton)
-    var eventBusObserversHolder: EventBusObserversHolder {
-        getOverriddenInstance() ??
-            getSingletonOrCreate {
-                _get_eventBusObserversHolder()
-            }
-    }
-
-    private func _get_eventBusObserversHolder() -> EventBusObserversHolder {
-        EventBusObserversHolder()
     }
 
     // EventCache (singleton)
@@ -411,18 +393,6 @@ extension DIGraphShared {
 
     private var newDateUtil: DateUtil {
         SdkDateUtil()
-    }
-
-    // EventBus (singleton)
-    var eventBus: EventBus {
-        getOverriddenInstance() ??
-            getSingletonOrCreate {
-                _get_eventBus()
-            }
-    }
-
-    private func _get_eventBus() -> EventBus {
-        SharedEventBus(holder: eventBusObserversHolder)
     }
 
     // SystemLogger
