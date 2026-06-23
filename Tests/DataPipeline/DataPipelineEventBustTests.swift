@@ -68,7 +68,8 @@ class DataPipelineEventBustTests: IntegrationTest {
             TrackGeofenceMetricEvent(
                 geofenceId: givenGeofenceId,
                 transition: .enter,
-                timestamp: capturedAt
+                timestamp: capturedAt,
+                name: "HQ"
             )
         )
 
@@ -78,11 +79,12 @@ class DataPipelineEventBustTests: IntegrationTest {
         }
 
         XCTAssertEqual(trackEvent.type, "track")
-        XCTAssertEqual(trackEvent.event, "CIO Geofence Entered")
+        XCTAssertEqual(trackEvent.event, "geofence_entered")
         let properties = trackEvent.properties?.dictionaryValue ?? [:]
         XCTAssertEqual(properties["geofence_id"] as? String, givenGeofenceId)
         XCTAssertEqual(properties["transition_type"] as? String, "enter")
         XCTAssertEqual(properties["timestamp"] as? Int, Int(capturedAt.timeIntervalSince1970))
+        XCTAssertEqual(properties["geofence_name"] as? String, "HQ")
         XCTAssertNil(properties["latitude"])
         XCTAssertNil(properties["longitude"])
         XCTAssertEqual(trackEvent.timestamp, capturedAt.string(format: .iso8601WithMilliseconds))
@@ -96,7 +98,8 @@ class DataPipelineEventBustTests: IntegrationTest {
             TrackGeofenceMetricEvent(
                 geofenceId: givenGeofenceId,
                 transition: .exit,
-                timestamp: capturedAt
+                timestamp: capturedAt,
+                name: nil
             )
         )
 
@@ -105,11 +108,13 @@ class DataPipelineEventBustTests: IntegrationTest {
             return
         }
 
-        XCTAssertEqual(trackEvent.event, "CIO Geofence Exited")
+        XCTAssertEqual(trackEvent.event, "geofence_exited")
         let properties = trackEvent.properties?.dictionaryValue ?? [:]
         XCTAssertEqual(properties["geofence_id"] as? String, givenGeofenceId)
         XCTAssertEqual(properties["transition_type"] as? String, "exit")
         XCTAssertEqual(properties["timestamp"] as? Int, Int(capturedAt.timeIntervalSince1970))
+        // No name on the event → property omitted entirely.
+        XCTAssertNil(properties["geofence_name"])
         XCTAssertNil(properties["latitude"])
         XCTAssertNil(properties["longitude"])
         XCTAssertEqual(trackEvent.timestamp, capturedAt.string(format: .iso8601WithMilliseconds))

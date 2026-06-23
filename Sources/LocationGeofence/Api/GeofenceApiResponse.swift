@@ -21,7 +21,7 @@ struct GeofenceApiConfig: Decodable {
 }
 
 struct GeofenceApiPlatformConfig: Decodable {
-    let maxBusinessGeofences: Int?
+    let maxBusinessGeofence: Int?
 }
 
 struct GeofenceApiRegion: Decodable {
@@ -32,8 +32,33 @@ struct GeofenceApiRegion: Decodable {
     let radius: Double
     let externalId: String?
     let transitionTypes: [String]?
-    /// Wire format is seconds since epoch.
+    /// Wire format is milliseconds since epoch.
     let lastUpdated: Double?
+}
+
+extension GeofenceApiRegion {
+    private enum CodingKeys: String, CodingKey {
+        case id, name, latitude, longitude, radius, externalId, transitionTypes, lastUpdated
+    }
+
+    /// The backend sends `id` as a JSON number; mocked/legacy payloads used strings. Accept either
+    /// and normalize to `String` — the value is used verbatim as the OS region identifier, which is
+    /// string-typed. Declared in an extension so the memberwise init stays available to tests.
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        if let stringId = try? container.decode(String.self, forKey: .id) {
+            self.id = stringId
+        } else {
+            self.id = try String(container.decode(Int.self, forKey: .id))
+        }
+        self.name = try container.decodeIfPresent(String.self, forKey: .name)
+        self.latitude = try container.decode(Double.self, forKey: .latitude)
+        self.longitude = try container.decode(Double.self, forKey: .longitude)
+        self.radius = try container.decode(Double.self, forKey: .radius)
+        self.externalId = try container.decodeIfPresent(String.self, forKey: .externalId)
+        self.transitionTypes = try container.decodeIfPresent([String].self, forKey: .transitionTypes)
+        self.lastUpdated = try container.decodeIfPresent(Double.self, forKey: .lastUpdated)
+    }
 }
 
 // MARK: - Domain mapping
@@ -53,7 +78,7 @@ extension GeofenceApiResponse {
 extension GeofenceApiConfig {
     /// Coerces raw server values into sane bounds so a misconfigured backend can't push monitoring
     /// into a pathological state: non-positive values fall back; positive out-of-range radii/expiries
-    /// clamp; `ios.maxBusinessGeofences` out of 0…19 falls back (`0` is a valid kill switch).
+    /// clamp; `ios.maxBusinessGeofence` out of 0…19 falls back (`0` is a valid kill switch).
     func toDomain() -> GeofenceConfig {
         let localRefresh = positive(localRefreshTriggerRadius)
             .map { $0.clamped(to: GeofenceConstants.minLocalRefreshRadius ... GeofenceConstants.maxLocalRefreshRadius) }
@@ -83,7 +108,7 @@ extension GeofenceApiConfig {
             duplicateEventsExpiry: positive(duplicateEventsExpiryTime)
                 .map { ($0 / 1000).clamped(to: GeofenceConstants.minDuplicateEventsExpiry ... GeofenceConstants.maxDuplicateEventsExpiry) }
                 ?? GeofenceConstants.eventCooldownInterval,
-            maxBusinessGeofences: (ios?.maxBusinessGeofences).flatMap { value in
+            maxBusinessGeofences: (ios?.maxBusinessGeofence).flatMap { value in
                 (0 ... GeofenceConstants.maxMonitoredGeofences).contains(value) ? value : nil
             } ?? GeofenceConstants.maxMonitoredGeofences,
             maxMonitoringDistance: cap
@@ -114,7 +139,7 @@ extension GeofenceApiRegion {
             radius: radius,
             name: name ?? "",
             transitionTypes: Self.resolveTransitionTypes(transitionTypes),
-            lastUpdated: lastUpdated.map { Date(timeIntervalSince1970: $0) } ?? Date(timeIntervalSince1970: 0)
+            lastUpdated: lastUpdated.map { Date(timeIntervalSince1970: $0 / 1000) } ?? Date(timeIntervalSince1970: 0)
         )
     }
 

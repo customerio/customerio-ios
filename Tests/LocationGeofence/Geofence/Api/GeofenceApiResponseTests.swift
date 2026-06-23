@@ -54,7 +54,7 @@ struct GeofenceApiResponseTests {
     @Test
     func toDomainConfig_givenIosMaxBusinessGeofencesZero_expectKillSwitchPreserved() throws {
         let json = """
-        {"config":{"ios":{"max_business_geofences":0}},"geofences":[]}
+        {"config":{"ios":{"max_business_geofence":0}},"geofences":[]}
         """
         let response = try decode(json)
         #expect(response.toDomainConfig()?.maxBusinessGeofences == 0)
@@ -63,7 +63,7 @@ struct GeofenceApiResponseTests {
     @Test
     func toDomainConfig_givenIosMaxBusinessGeofencesOutOfRange_expectFallback() throws {
         let json = """
-        {"config":{"ios":{"max_business_geofences":25}},"geofences":[]}
+        {"config":{"ios":{"max_business_geofence":25}},"geofences":[]}
         """
         let response = try decode(json)
         #expect(response.toDomainConfig()?.maxBusinessGeofences == GeofenceConstants.maxMonitoredGeofences)
@@ -73,7 +73,7 @@ struct GeofenceApiResponseTests {
     func toDomainConfig_givenIosMaxBusinessGeofencesAtUpperBound_expectPreserved() throws {
         // 19 is the inclusive upper bound (movement trigger consumes the 20th OS slot).
         let json = """
-        {"config":{"ios":{"max_business_geofences":19}},"geofences":[]}
+        {"config":{"ios":{"max_business_geofence":19}},"geofences":[]}
         """
         let response = try decode(json)
         #expect(response.toDomainConfig()?.maxBusinessGeofences == 19)
@@ -82,7 +82,7 @@ struct GeofenceApiResponseTests {
     @Test
     func toDomainConfig_givenIosMaxBusinessGeofencesNegative_expectFallback() throws {
         let json = """
-        {"config":{"ios":{"max_business_geofences":-1}},"geofences":[]}
+        {"config":{"ios":{"max_business_geofence":-1}},"geofences":[]}
         """
         let response = try decode(json)
         #expect(response.toDomainConfig()?.maxBusinessGeofences == GeofenceConstants.maxMonitoredGeofences)
@@ -168,6 +168,25 @@ struct GeofenceApiResponseTests {
     // MARK: - Region mapping
 
     @Test
+    func toDomainRegions_givenNumericId_expectDecodedAsString() throws {
+        // The backend sends `id` as a JSON number; it must decode and normalize to a String.
+        let json = """
+        {"geofences":[{"id":4,"latitude":1,"longitude":2,"radius":100}]}
+        """
+        let response = try decode(json)
+        #expect(response.toDomainRegions().first?.id == "4")
+    }
+
+    @Test
+    func toDomainRegions_givenStringId_expectDecodedUnchanged() throws {
+        let json = """
+        {"geofences":[{"id":"g1","latitude":1,"longitude":2,"radius":100}]}
+        """
+        let response = try decode(json)
+        #expect(response.toDomainRegions().first?.id == "g1")
+    }
+
+    @Test
     func toDomainRegions_givenMinimalRegion_expectDefaults() throws {
         let json = """
         {"geofences":[{"id":"g1","latitude":1,"longitude":2,"radius":100}]}
@@ -209,9 +228,10 @@ struct GeofenceApiResponseTests {
     }
 
     @Test
-    func toDomainRegions_givenLastUpdatedSeconds_expectDate() throws {
+    func toDomainRegions_givenLastUpdatedMillis_expectConvertedToSeconds() throws {
+        // Wire value is epoch milliseconds; the domain `Date` is seconds.
         let json = """
-        {"geofences":[{"id":"g1","latitude":1,"longitude":2,"radius":100,"last_updated":1700000000}]}
+        {"geofences":[{"id":"g1","latitude":1,"longitude":2,"radius":100,"last_updated":1700000000000}]}
         """
         let response = try decode(json)
         #expect(response.toDomainRegions().first?.lastUpdated == Date(timeIntervalSince1970: 1700000000))

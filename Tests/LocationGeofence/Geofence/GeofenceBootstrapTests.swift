@@ -210,6 +210,102 @@ struct GeofenceBootstrapTests {
         #expect(await storage.getLastRegistrationCenter() == nil)
     }
 
+    // MARK: - Adopt OS-persisted regions
+
+    @Test
+    func wireMonitor_givenOsStillMonitorsOurRegions_expectAdoptedWithoutReregistering() async {
+        // Relaunch: the OS kept the regions we registered last session. Re-claim them instead of
+        // re-registering, and leave the persisted registration center untouched.
+        let di = DIGraphShared.shared
+        let storage = GeofenceStorage(
+            directoryURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        )
+        await storage.setCachedGeofences([
+            Geofence(
+                id: "g1",
+                latitude: 1,
+                longitude: 2,
+                radius: 100,
+                name: "g1",
+                transitionTypes: [.enter],
+                lastUpdated: Date(timeIntervalSince1970: 0)
+            )
+        ])
+        await storage.recordRegistration(center: LocationData(latitude: 10, longitude: 20), businessIds: ["g1"])
+        di.override(value: storage, forType: GeofenceStorage.self)
+        let monitor = MockGeofenceRegionMonitor()
+        monitor.osMonitoredRegions = ["g1", GeofenceConstants.movementTriggerIdentifier]
+        di.override(value: monitor as GeofenceRegionMonitoring, forType: GeofenceRegionMonitoring.self)
+        let coordinator = GeofenceSyncCoordinatorMock()
+        di.override(value: coordinator as GeofenceSyncCoordinator, forType: GeofenceSyncCoordinator.self)
+        defer { di.reset() }
+
+        await GeofenceBootstrap.wireMonitor(di: di)
+
+        #expect(monitor.adoptExistingRegionsCallsCount == 1)
+        #expect(monitor.adoptedIdentifiers == ["g1", GeofenceConstants.movementTriggerIdentifier])
+        #expect(coordinator.applyCachedRegistrationCallsCount == 0)
+        #expect(await storage.getLastRegistrationCenter() == LocationData(latitude: 10, longitude: 20))
+    }
+
+    @Test
+    func wireMonitor_givenOsAlsoMonitorsHostAppRegions_expectOnlyOwnRegionsAdopted() async {
+        // CLLocationManager.monitoredRegions is app-wide. Adoption must claim only the SDK's own
+        // regions (cached geofences + movement trigger), never the host app's.
+        let di = DIGraphShared.shared
+        let storage = GeofenceStorage(
+            directoryURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        )
+        await storage.setCachedGeofences([
+            Geofence(
+                id: "g1",
+                latitude: 1,
+                longitude: 2,
+                radius: 100,
+                name: "g1",
+                transitionTypes: [.enter],
+                lastUpdated: Date(timeIntervalSince1970: 0)
+            )
+        ])
+        await storage.recordRegistration(center: LocationData(latitude: 10, longitude: 20), businessIds: ["g1"])
+        di.override(value: storage, forType: GeofenceStorage.self)
+        let monitor = MockGeofenceRegionMonitor()
+        monitor.osMonitoredRegions = ["g1", GeofenceConstants.movementTriggerIdentifier, "host.app.region"]
+        di.override(value: monitor as GeofenceRegionMonitoring, forType: GeofenceRegionMonitoring.self)
+        let coordinator = GeofenceSyncCoordinatorMock()
+        di.override(value: coordinator as GeofenceSyncCoordinator, forType: GeofenceSyncCoordinator.self)
+        defer { di.reset() }
+
+        await GeofenceBootstrap.wireMonitor(di: di)
+
+        #expect(monitor.adoptedIdentifiers == ["g1", GeofenceConstants.movementTriggerIdentifier])
+        #expect(coordinator.applyCachedRegistrationCallsCount == 0)
+    }
+
+    @Test
+    func wireMonitor_givenOsRetainedOnlyASubset_expectReregisterNotPartialAdopt() async {
+        // Partial drop: last session registered g1 + g2, but the OS now holds only g1 + the trigger
+        // (g2 dropped — a monitoring failure, or only some survived). Adopting the subset would leave
+        // g2 unmonitored, so fall through and re-register from cache instead.
+        let di = DIGraphShared.shared
+        let storage = GeofenceStorage(
+            directoryURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        )
+        await storage.recordRegistration(center: LocationData(latitude: 10, longitude: 20), businessIds: ["g1", "g2"])
+        di.override(value: storage, forType: GeofenceStorage.self)
+        let monitor = MockGeofenceRegionMonitor()
+        monitor.osMonitoredRegions = ["g1", GeofenceConstants.movementTriggerIdentifier]
+        di.override(value: monitor as GeofenceRegionMonitoring, forType: GeofenceRegionMonitoring.self)
+        let coordinator = GeofenceSyncCoordinatorMock()
+        di.override(value: coordinator as GeofenceSyncCoordinator, forType: GeofenceSyncCoordinator.self)
+        defer { di.reset() }
+
+        await GeofenceBootstrap.wireMonitor(di: di)
+
+        #expect(monitor.adoptExistingRegionsCallsCount == 0)
+        #expect(coordinator.applyCachedRegistrationCallsCount == 1)
+    }
+
     @Test
     func geofenceSyncCoordinator_givenRepeatedResolution_expectSameInstance() {
         let di = DIGraphShared.shared

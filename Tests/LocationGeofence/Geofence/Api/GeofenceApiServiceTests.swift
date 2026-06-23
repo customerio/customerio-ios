@@ -153,7 +153,7 @@ struct GeofenceApiServiceTests {
             "remote_fetch_refresh_trigger_radius": 4000,
             "remote_fetch_refresh_expiry_time": 43200000,
             "duplicate_events_expiry_time": 1800000,
-            "ios": { "max_business_geofences": 10 }
+            "ios": { "max_business_geofence": 10 }
           },
           "geofences": [
             {

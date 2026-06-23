@@ -88,4 +88,8 @@ extension Logger {
     func geofenceFirstRunRearm() {
         debug("First-run refresh re-armed by new location fix", geofenceTag)
     }
+
+    func geofenceRegionsAdopted(count: Int) {
+        debug("Adopted \(count) OS-persisted region(s) on launch; skipping re-registration", geofenceTag)
+    }
 }

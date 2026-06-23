@@ -17,13 +17,15 @@ struct GeofenceDeliveryTrackerTests {
     private func makeMetric(
         geofenceId: String = "geo_1",
         transition: GeofenceTransition = .enter,
-        timestamp: Date = Date(timeIntervalSince1970: 1700000000)
+        timestamp: Date = Date(timeIntervalSince1970: 1700000000),
+        name: String? = nil
     ) -> PendingGeofenceMetric {
         PendingGeofenceMetric(
             geofenceId: geofenceId,
             transition: transition,
             timestamp: timestamp,
-            userId: nil
+            userId: nil,
+            name: name
         )
     }
 
@@ -41,7 +43,7 @@ struct GeofenceDeliveryTrackerTests {
         }
 
         let args = httpClient.sendTrackEventReceivedArguments
-        #expect(args?.request.eventName == "CIO Geofence Entered")
+        #expect(args?.request.eventName == "geofence_entered")
         #expect(args?.request.userId == "user_42")
         #expect(args?.request.timestamp == Date(timeIntervalSince1970: 1700000000))
         let properties = args?.request.properties ?? [:]
@@ -50,6 +52,23 @@ struct GeofenceDeliveryTrackerTests {
         #expect(properties["timestamp"] as? Int == 1700000000)
         #expect(properties["latitude"] == nil)
         #expect(properties["longitude"] == nil)
+        // No name on the metric → property omitted entirely (not sent empty/null).
+        #expect(properties["geofence_name"] == nil)
+    }
+
+    @Test
+    func trackMetric_givenName_expectGeofenceNameProperty() async {
+        let (tracker, httpClient) = makeTracker()
+        httpClient.sendTrackEventClosure = { _, completion in completion(.success(())) }
+
+        await withCheckedContinuation { continuation in
+            tracker.trackMetric(metric: makeMetric(name: "HQ"), userId: "user_42") { _ in
+                continuation.resume()
+            }
+        }
+
+        let properties = httpClient.sendTrackEventReceivedArguments?.request.properties ?? [:]
+        #expect(properties["geofence_name"] as? String == "HQ")
     }
 
     @Test
@@ -63,7 +82,7 @@ struct GeofenceDeliveryTrackerTests {
             }
         }
 
-        #expect(httpClient.sendTrackEventReceivedArguments?.request.eventName == "CIO Geofence Exited")
+        #expect(httpClient.sendTrackEventReceivedArguments?.request.eventName == "geofence_exited")
     }
 
     // MARK: - Guard clauses
