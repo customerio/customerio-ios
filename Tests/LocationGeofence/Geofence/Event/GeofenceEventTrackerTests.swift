@@ -219,7 +219,8 @@ struct GeofenceEventTrackerTests {
             remoteFetchRefreshTriggerRadius: 3000,
             remoteFetchRefreshExpiry: 24 * 60 * 60,
             duplicateEventsExpiry: serverCooldown,
-            maxBusinessGeofences: 19
+            maxBusinessGeofences: 19,
+            maxMonitoringDistance: GeofenceConstants.noMonitoringDistanceCap
         ))
         let pending = makePendingStore(directory: dir)
         let delivery = GeofenceDeliveryTrackerMock()

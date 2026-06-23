@@ -12,9 +12,11 @@ import Foundation
 /// for the SDK-built movement-trigger geofence. `0` is a valid server-side kill switch —
 /// disables business region registration for the account without uninstalling the SDK.
 struct GeofenceConfig: Codable, Equatable, Sendable {
-    /// Movement-trigger geofence radius in meters. Default 1000m.
+    /// Movement-trigger geofence radius in meters. Default 3000m.
     let localRefreshTriggerRadius: Double
-    /// Distance in meters from the last server sync that triggers a fresh server fetch.
+    /// Distance in meters from the last server sync that triggers a fresh server fetch. Currently
+    /// unread (`fetchAll` never re-fetches on movement); reserved for a future location-bound sync
+    /// mode and still decoded because the server sends it. See `GeofenceSyncMode`.
     let remoteFetchRefreshTriggerRadius: Double
     /// Freshness window for cached sync. A successful sync within this interval suppresses
     /// redundant API calls from identify / app-launch triggers.
@@ -24,6 +26,12 @@ struct GeofenceConfig: Codable, Equatable, Sendable {
     /// Maximum number of business geofences to monitor. Always 0…19 on iOS (movement
     /// trigger consumes the 20th OS slot).
     let maxBusinessGeofences: Int
+    /// Maximum distance in meters from the device at which a geofence is registered with the OS.
+    /// Geofences beyond it are skipped and re-added by a later re-rank as the device moves closer;
+    /// `GeofenceConstants.noMonitoringDistanceCap` means no cap. The server value and `fallback`
+    /// apply `GeofenceConstants.defaultMaxMonitoringDistance` when the server omits it (see
+    /// `GeofenceApiConfig.toDomain`).
+    let maxMonitoringDistance: Double
 }
 
 extension GeofenceConfig {
@@ -34,6 +42,7 @@ extension GeofenceConfig {
         remoteFetchRefreshTriggerRadius: GeofenceConstants.serverFetchDistance,
         remoteFetchRefreshExpiry: GeofenceConstants.staleSyncInterval,
         duplicateEventsExpiry: GeofenceConstants.eventCooldownInterval,
-        maxBusinessGeofences: GeofenceConstants.maxMonitoredGeofences
+        maxBusinessGeofences: GeofenceConstants.maxMonitoredGeofences,
+        maxMonitoringDistance: GeofenceConstants.defaultMaxMonitoringDistance
     )
 }
