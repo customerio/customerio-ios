@@ -10,6 +10,7 @@ protocol CIOLiveActivitiesSDKProviding {
     var installationId: String { get }
     var eventBusHandler: EventBusHandler { get }
     var logger: Logger { get }
+    var storageManager: StorageManager? { get }
 }
 
 extension CustomerIO: CIOLiveActivitiesSDKProviding {
@@ -19,6 +20,10 @@ extension CustomerIO: CIOLiveActivitiesSDKProviding {
 
     var logger: Logger {
         DIGraphShared.shared.logger
+    }
+
+    var storageManager: StorageManager? {
+        DIGraphShared.shared.storageManager
     }
 
     // installationId is already declared on CustomerIO via CustomerIOInstance.

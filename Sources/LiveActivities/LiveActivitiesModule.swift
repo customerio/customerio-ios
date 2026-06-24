@@ -28,10 +28,11 @@ public final class LiveActivitiesModule {
     /// - Returns: The initialized module instance.
     @discardableResult
     public static func initialize(_ config: LiveActivityConfig) -> LiveActivitiesModule {
+        let sdk = CustomerIO.shared
         let module = LiveActivitiesModule(
             config: config,
-            sdk: CustomerIO.shared,
-            tokenStorage: FileActivityTokenStore()
+            sdk: sdk,
+            tokenStorage: StorageManagerActivityTokenStore(storage: sdk.storageManager)
         )
         module.performInitialization()
         return module
