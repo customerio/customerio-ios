@@ -28,8 +28,7 @@ final class CoreLocationGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @pr
     private let logger: Logger
     private var onTransition: GeofenceTransitionHandler?
     private var onAuthorizationChanged: GeofenceAuthorizationChangedHandler?
-    private var hasLoggedBlocked = false
-    private var hasLoggedForegroundOnly = false
+    private var lastLoggedPermissionTier: PermissionTier?
     private var ownedRegionIdentifiers: Set<String> = []
 
     init(logger: Logger) {
@@ -63,22 +62,8 @@ final class CoreLocationGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @pr
     }
 
     func startMonitoring(identifier: String, center: LocationData, radius: Double, transitionTypes: Set<GeofenceTransition>) {
-        let status = currentAuthorizationStatus()
-        switch Self.permissionTier(for: status) {
-        case .blocked:
-            if !hasLoggedBlocked {
-                hasLoggedBlocked = true
-                logger.geofencePermissionUnavailable(currentStatus: status)
-            }
-            return
-        case .foregroundOnly:
-            if !hasLoggedForegroundOnly {
-                hasLoggedForegroundOnly = true
-                logger.geofenceBackgroundDeliveryUnavailable(currentStatus: status)
-            }
-        case .backgroundDelivery:
-            break
-        }
+        reportPermissionTier()
+        guard Self.permissionTier(for: currentAuthorizationStatus()) != .blocked else { return }
 
         let coordinate = CLLocationCoordinate2D(latitude: center.latitude, longitude: center.longitude)
         guard CLLocationCoordinate2DIsValid(coordinate) else {
@@ -155,6 +140,21 @@ final class CoreLocationGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @pr
             return .blocked
         @unknown default:
             return .blocked
+        }
+    }
+
+    func reportPermissionTier() {
+        let status = currentAuthorizationStatus()
+        let tier = Self.permissionTier(for: status)
+        guard tier != lastLoggedPermissionTier else { return }
+        lastLoggedPermissionTier = tier
+        switch tier {
+        case .blocked:
+            logger.geofencePermissionUnavailable(currentStatus: status)
+        case .foregroundOnly:
+            logger.geofenceBackgroundDeliveryUnavailable(currentStatus: status)
+        case .backgroundDelivery:
+            logger.geofenceBackgroundDeliveryAvailable(currentStatus: status)
         }
     }
 

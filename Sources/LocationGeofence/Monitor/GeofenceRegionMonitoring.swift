@@ -60,4 +60,8 @@ protocol GeofenceRegionMonitoring: AnyObject, Sendable {
     /// monitor, without re-registering them. Restores transition recognition on a fresh process
     /// where the OS kept monitoring but the in-memory ownership set was lost.
     func adoptExistingRegions(matching identifiers: Set<String>)
+
+    /// Logs the current authorization tier (background delivery / foreground only / blocked),
+    /// deduped so it emits only when the tier changes since the last report.
+    func reportPermissionTier()
 }

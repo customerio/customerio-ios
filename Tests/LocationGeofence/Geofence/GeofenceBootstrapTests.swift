@@ -87,6 +87,7 @@ struct GeofenceBootstrapTests {
         #expect(coordinator.applyCachedRegistrationCallsCount == 1)
         #expect(monitor.setOnAuthorizationChangedCallsCount == 1)
         #expect(monitor.onAuthorizationChanged != nil)
+        #expect(monitor.reportPermissionTierCallsCount == 1)
     }
 
     @Test
@@ -246,6 +247,8 @@ struct GeofenceBootstrapTests {
         #expect(monitor.adoptedIdentifiers == ["g1", GeofenceConstants.movementTriggerIdentifier])
         #expect(coordinator.applyCachedRegistrationCallsCount == 0)
         #expect(await storage.getLastRegistrationCenter() == LocationData(latitude: 10, longitude: 20))
+        // Adopt skips startMonitoring, so wireMonitor itself must report the tier.
+        #expect(monitor.reportPermissionTierCallsCount == 1)
     }
 
     @Test

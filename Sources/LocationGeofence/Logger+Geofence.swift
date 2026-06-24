@@ -35,6 +35,13 @@ extension Logger {
         )
     }
 
+    func geofenceBackgroundDeliveryAvailable(currentStatus: CLAuthorizationStatus) {
+        info(
+            "Geofence background delivery active: Always authorization granted (current status: \(currentStatus.rawValue)).",
+            geofenceTag
+        )
+    }
+
     // MARK: - Event Tracking
 
     func geofenceEventTracked(geofenceId: String, transition: GeofenceTransition) {
