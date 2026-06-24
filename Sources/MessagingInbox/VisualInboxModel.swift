@@ -155,16 +155,18 @@ final class VisualInboxModel: ObservableObject {
         let newUnopened = newMessages.filter { !$0.opened }.count
         let newTemplates = VisualInboxJistDecoder.decodeTemplates(await provider.templatesJSON())
         let newTheme = VisualInboxJistDecoder.decodeTheme(await provider.themeJSON())
-        let newChrome = await provider.brandingChrome()
         if Task.isCancelled { return }
         state = newState
         messages = newMessages
         unopenedCount = newUnopened
         templates = newTemplates
         theme = newTheme
-        chrome = newChrome
         decodedData = Self.decodeData(for: newMessages)
         logMissingTemplates()
+        // Chrome is backfilled via apply() on the observe() stream (see below). Deliberately NOT read
+        // here: an extra await in this one-shot refresh widens a window where a late resume overwrites
+        // newer observe() state (e.g. unopenedCount) with a stale early read.
+        backfillChromeIfNeeded()
     }
 
     /// Publishes a coalesced snapshot from the `observe()` stream. Runs on the main actor (the model
@@ -177,18 +179,20 @@ final class VisualInboxModel: ObservableObject {
         theme = VisualInboxJistDecoder.decodeTheme(snapshot.themeJSON)
         decodedData = Self.decodeData(for: snapshot.messages)
         logMissingTemplates()
-        // Branding is fetched in refresh() (it's stable per session). But if a snapshot arrives via
-        // observe() before that completes — e.g. load() returns while a revalidation is still in
-        // flight, so refresh() runs before branding is cached — chrome would stay nil and the
-        // bell/panel would keep fallback colors until the next refresh(). Backfill it here once
-        // branding becomes available so the branded chrome appears without waiting for a later mark.
-        if chrome == nil {
-            // Explicitly main-actor so the `@Published chrome` mutation after the await is guaranteed
-            // on the main thread (the model documents main-thread-only @Published mutations).
-            Task { @MainActor [weak self] in
-                guard let self else { return }
-                if let resolved = await self.provider.brandingChrome() { self.chrome = resolved }
-            }
+        backfillChromeIfNeeded()
+    }
+
+    /// Fetches the branding chrome once it's available, off the synchronous state-publish path.
+    ///
+    /// Chrome is branding-derived and stable per session, so it's loaded lazily rather than read
+    /// inline in `refresh()`/`apply()` (an extra await there can let a late resume clobber newer
+    /// state). Runs at most once (guarded by `chrome == nil`) and hops to the main actor for the
+    /// `@Published` mutation.
+    private func backfillChromeIfNeeded() {
+        guard chrome == nil else { return }
+        Task { @MainActor [weak self] in
+            guard let self, self.chrome == nil else { return }
+            if let resolved = await self.provider.brandingChrome() { self.chrome = resolved }
         }
     }
 
