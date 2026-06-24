@@ -553,7 +553,7 @@ struct GeofenceEventTrackerTests {
     @Test
     func trackTransition_givenCachedGeofenceWithEmptyName_expectNilName() async {
         // The API maps an absent name to "". Empty must resolve to nil so the event omits
-        // `geofence_name` rather than sending an empty string.
+        // `geofenceName` rather than sending an empty string.
         let dir = makeTempDirectory()
         defer { try? FileManager.default.removeItem(at: dir) }
         let storage = makeStorage(directory: dir)

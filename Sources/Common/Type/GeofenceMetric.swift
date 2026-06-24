@@ -13,15 +13,19 @@ public protocol GeofenceMetric {
 }
 
 public extension GeofenceMetric {
-    /// `/track` event properties. `geofence_name` is included only when a name is available.
+    /// `/track` event name. The same name for every transition; the direction is the
+    /// `transition` property.
+    var trackEventName: String { "Geofence Transition" }
+
+    /// `/track` event properties. `geofenceName` is included only when a name is available.
+    /// `timestamp` is not a property — it is set on the event envelope by each delivery path.
     var trackEventProperties: [String: Any] {
         var properties: [String: Any] = [
-            "geofence_id": geofenceId,
-            "transition_type": transition.rawValue,
-            "timestamp": Int(timestamp.timeIntervalSince1970)
+            "transition": transition.rawValue,
+            "geofenceId": geofenceId
         ]
         if let name {
-            properties["geofence_name"] = name
+            properties["geofenceName"] = name
         }
         return properties
     }

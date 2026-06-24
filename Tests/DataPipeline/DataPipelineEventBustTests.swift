@@ -79,12 +79,13 @@ class DataPipelineEventBustTests: IntegrationTest {
         }
 
         XCTAssertEqual(trackEvent.type, "track")
-        XCTAssertEqual(trackEvent.event, "geofence_entered")
+        XCTAssertEqual(trackEvent.event, "Geofence Transition")
         let properties = trackEvent.properties?.dictionaryValue ?? [:]
-        XCTAssertEqual(properties["geofence_id"] as? String, givenGeofenceId)
-        XCTAssertEqual(properties["transition_type"] as? String, "enter")
-        XCTAssertEqual(properties["timestamp"] as? Int, Int(capturedAt.timeIntervalSince1970))
-        XCTAssertEqual(properties["geofence_name"] as? String, "HQ")
+        XCTAssertEqual(properties["geofenceId"] as? String, givenGeofenceId)
+        XCTAssertEqual(properties["transition"] as? String, "enter")
+        XCTAssertEqual(properties["geofenceName"] as? String, "HQ")
+        // timestamp lives on the event envelope, not in properties.
+        XCTAssertNil(properties["timestamp"])
         XCTAssertNil(properties["latitude"])
         XCTAssertNil(properties["longitude"])
         XCTAssertEqual(trackEvent.timestamp, capturedAt.string(format: .iso8601WithMilliseconds))
@@ -108,13 +109,14 @@ class DataPipelineEventBustTests: IntegrationTest {
             return
         }
 
-        XCTAssertEqual(trackEvent.event, "geofence_exited")
+        XCTAssertEqual(trackEvent.event, "Geofence Transition")
         let properties = trackEvent.properties?.dictionaryValue ?? [:]
-        XCTAssertEqual(properties["geofence_id"] as? String, givenGeofenceId)
-        XCTAssertEqual(properties["transition_type"] as? String, "exit")
-        XCTAssertEqual(properties["timestamp"] as? Int, Int(capturedAt.timeIntervalSince1970))
+        XCTAssertEqual(properties["geofenceId"] as? String, givenGeofenceId)
+        XCTAssertEqual(properties["transition"] as? String, "exit")
         // No name on the event → property omitted entirely.
-        XCTAssertNil(properties["geofence_name"])
+        XCTAssertNil(properties["geofenceName"])
+        // timestamp lives on the event envelope, not in properties.
+        XCTAssertNil(properties["timestamp"])
         XCTAssertNil(properties["latitude"])
         XCTAssertNil(properties["longitude"])
         XCTAssertEqual(trackEvent.timestamp, capturedAt.string(format: .iso8601WithMilliseconds))

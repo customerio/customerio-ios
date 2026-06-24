@@ -41,9 +41,9 @@ struct BackgroundDeliveryHttpClientTests {
         await withCheckedContinuation { continuation in
             client.sendTrackEvent(
                 BackgroundTrackRequest(
-                    eventName: "geofence_entered",
+                    eventName: "Geofence Transition",
                     userId: "user_42",
-                    properties: ["geofence_id": "geo_1", "transition_type": "enter"],
+                    properties: ["geofenceId": "geo_1", "transition": "enter"],
                     timestamp: Date(timeIntervalSince1970: 1700000000)
                 )
             ) { _ in continuation.resume() }
@@ -56,12 +56,12 @@ struct BackgroundDeliveryHttpClientTests {
         #expect(params?.headers?["Content-Type"] == "application/json; charset=utf-8")
 
         let body = params?.body.flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: Any] }
-        #expect(body?["event"] as? String == "geofence_entered")
+        #expect(body?["event"] as? String == "Geofence Transition")
         #expect(body?["userId"] as? String == "user_42")
         #expect(body?["timestamp"] as? String == "2023-11-14T22:13:20.000Z")
         let properties = body?["properties"] as? [String: Any]
-        #expect(properties?["geofence_id"] as? String == "geo_1")
-        #expect(properties?["transition_type"] as? String == "enter")
+        #expect(properties?["geofenceId"] as? String == "geo_1")
+        #expect(properties?["transition"] as? String == "enter")
     }
 
     @Test
