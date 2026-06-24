@@ -80,8 +80,10 @@ public protocol VisualInboxProvider: Sendable {
 
     /// Notifies the host ``InboxEventListener`` that a message was first shown (rendered in the visible
     /// inbox). Resolved by id from the store and forwarded via the existing headless plumbing, which
-    /// dedupes so it fires at most once per message per session. No-op if the message is gone.
-    func notifyMessageShown(messageId: String) async
+    /// dedupes so it fires at most once per message per session.
+    /// - Returns: `true` if the message was still in the store (notify forwarded); `false` if it was
+    ///   gone (no-op) — callers use this to avoid permanently deduping a "shown" that never fired.
+    func notifyMessageShown(messageId: String) async -> Bool
 }
 
 // MARK: - Implementation
@@ -292,19 +294,26 @@ final class VisualInboxProviderImpl: VisualInboxProvider, @unchecked Sendable {
         // trackMessageClicked plumbing (dispatches the .trackClicked action). Always tracked,
         // independent of whether the host intercepts the action below.
         inbox.trackMessageClicked(message: message, actionName: actionName)
-        // Forward to the host listener; if it handles the action, the overlay suppresses default nav.
-        let handled = inbox.notifyMessageActionTaken(message: message, actionValue: actionValue, actionName: actionName)
+        // Forward to the host listener on the main actor: this runs from an async Task off the main
+        // thread, but the tap originated on the UI and hosts expect a main-thread callback. If it
+        // handles the action, the overlay suppresses default navigation.
+        let handled = await MainActor.run {
+            inbox.notifyMessageActionTaken(message: message, actionValue: actionValue, actionName: actionName)
+        }
         return handled ? .handledByHost : .notHandled
     }
 
-    func notifyMessageShown(messageId: String) async {
+    func notifyMessageShown(messageId: String) async -> Bool {
         // Resolve the full InboxMessage so the host listener receives a real message. The headless
         // plumbing dedupes "shown" per id, so calling this on every render is safe.
         let state = await inAppMessageManager.state
         guard let message = state.inboxMessages.first(where: { $0.queueId == messageId }) else {
-            return
+            // Message gone from the store → nothing to notify. Report no-op so the caller doesn't
+            // permanently dedupe a "shown" that never fired.
+            return false
         }
         inbox.notifyMessageShown(message: message)
+        return true
     }
 }
 

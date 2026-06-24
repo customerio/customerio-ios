@@ -284,8 +284,12 @@ final class VisualInboxModel: ObservableObject {
     func markShown(messageId: String) {
         guard !shownMessageIds.contains(messageId) else { return }
         shownMessageIds.insert(messageId)
-        Task { [provider] in
-            await provider.notifyMessageShown(messageId: messageId)
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            let didNotify = await self.provider.notifyMessageShown(messageId: messageId)
+            // If the message had already left the store the notify no-ops; release the reservation so
+            // a later render can retry (mirrors markVisibleMessagesOpened's failed-mark handling).
+            if !didNotify { self.shownMessageIds.remove(messageId) }
         }
     }
 }

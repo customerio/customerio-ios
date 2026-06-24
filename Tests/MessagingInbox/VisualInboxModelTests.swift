@@ -545,10 +545,16 @@ private final class FakeVisualInboxProvider: VisualInboxProvider, @unchecked Sen
         return handled ? .handledByHost : .notHandled
     }
 
-    func notifyMessageShown(messageId: String) async {
+    /// When true, `notifyMessageShown` reports the message was missing (no-op) so the model releases
+    /// its reservation.
+    var stubShownMissing = false
+
+    func notifyMessageShown(messageId: String) async -> Bool {
         lock.lock()
         shownIds.append(messageId)
+        let missing = stubShownMissing
         lock.unlock()
+        return !missing
     }
 
     /// Waits until the model's detached dismiss Task records at least `expected` dismisses.

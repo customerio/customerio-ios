@@ -226,7 +226,7 @@ public interface CioMessagingInApp.VisualInboxProvider {
 	public fun func markOpened(messageId: String) async -> Boolean;
 	public fun func dismiss(messageId: String) async -> Boolean;
 	public fun func handleMessageAction(messageId: String, actionName: String, actionValue: String) async -> VisualInboxActionOutcome;
-	public fun func notifyMessageShown(messageId: String) async;
+	public fun func notifyMessageShown(messageId: String) async -> Boolean;
 }
 public final class CioMessagingInApp.VisualInboxSnapshot {
 	public final val state: VisualInboxState;

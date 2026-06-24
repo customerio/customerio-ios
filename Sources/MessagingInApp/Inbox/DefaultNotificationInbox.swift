@@ -152,7 +152,8 @@ class DefaultNotificationInbox: NotificationInbox, @unchecked Sendable {
         openedMessageIdsLock.unlock()
         guard !alreadyOpened else { return }
         // Reflect the just-applied opened state: the resolved `message` predates the dispatch above.
-        currentInboxEventListener()?.inboxMessageOpened(message: message.copy(opened: true))
+        let listener = currentInboxEventListener()
+        deliverOnMain { listener?.inboxMessageOpened(message: message.copy(opened: true)) }
     }
 
     func markMessageUnopened(message: InboxMessage) {
@@ -161,8 +162,9 @@ class DefaultNotificationInbox: NotificationInbox, @unchecked Sendable {
 
     func markMessageDeleted(message: InboxMessage) {
         inAppMessageManager.dispatch(action: .inboxAction(action: .deleteMessage(message: message)))
-        // Observe-only host callback (item 13): a message was dismissed/removed.
-        currentInboxEventListener()?.inboxMessageDismissed(message: message)
+        // Observe-only host callback: a message was dismissed/removed.
+        let listener = currentInboxEventListener()
+        deliverOnMain { listener?.inboxMessageDismissed(message: message) }
     }
 
     func trackMessageClicked(message: InboxMessage, actionName: String?) {
@@ -187,7 +189,20 @@ class DefaultNotificationInbox: NotificationInbox, @unchecked Sendable {
         if !alreadyShown { shownMessageIds.insert(message.queueId) }
         shownMessageIdsLock.unlock()
         guard !alreadyShown else { return }
-        currentInboxEventListener()?.inboxMessageShown(message: message)
+        let listener = currentInboxEventListener()
+        deliverOnMain { listener?.inboxMessageShown(message: message) }
+    }
+
+    /// Delivers a host `InboxEventListener` callback on the main thread. Inbox mutations can be
+    /// triggered from background queues (the data layer / SwiftUI Tasks), but host UI code expects
+    /// its callbacks on main. Runs inline when already on main (so callers/tests observe it
+    /// synchronously), otherwise hops to the main queue.
+    private func deliverOnMain(_ work: @escaping () -> Void) {
+        if Thread.isMainThread {
+            work()
+        } else {
+            DispatchQueue.main.async(execute: work)
+        }
     }
 
     /// Thread-safe read of the host listener (set/read from arbitrary threads).
