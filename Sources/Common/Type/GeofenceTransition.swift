@@ -10,13 +10,3 @@ public enum GeofenceTransition: String, Codable, Sendable {
     case enter
     case exit
 }
-
-public extension GeofenceTransition {
-    /// Analytics event name for this transition.
-    var trackEventName: String {
-        switch self {
-        case .enter: return "geofence_entered"
-        case .exit: return "geofence_exited"
-        }
-    }
-}

@@ -32,7 +32,7 @@ struct GeofenceDeliveryTrackerTests {
     // MARK: - Argument shaping
 
     @Test
-    func trackMetric_givenEnterTransition_expectAndroidWireFormat() async {
+    func trackMetric_givenEnterTransition_expectTransitionEventPayload() async {
         let (tracker, httpClient) = makeTracker()
         httpClient.sendTrackEventClosure = { _, completion in completion(.success(())) }
 
@@ -43,17 +43,18 @@ struct GeofenceDeliveryTrackerTests {
         }
 
         let args = httpClient.sendTrackEventReceivedArguments
-        #expect(args?.request.eventName == "geofence_entered")
+        #expect(args?.request.eventName == "Geofence Transition")
         #expect(args?.request.userId == "user_42")
+        // timestamp rides on the request envelope, not in properties.
         #expect(args?.request.timestamp == Date(timeIntervalSince1970: 1700000000))
         let properties = args?.request.properties ?? [:]
-        #expect(properties["geofence_id"] as? String == "geo_1")
-        #expect(properties["transition_type"] as? String == "enter")
-        #expect(properties["timestamp"] as? Int == 1700000000)
+        #expect(properties["geofenceId"] as? String == "geo_1")
+        #expect(properties["transition"] as? String == "enter")
+        #expect(properties["timestamp"] == nil)
         #expect(properties["latitude"] == nil)
         #expect(properties["longitude"] == nil)
         // No name on the metric → property omitted entirely (not sent empty/null).
-        #expect(properties["geofence_name"] == nil)
+        #expect(properties["geofenceName"] == nil)
     }
 
     @Test
@@ -68,11 +69,11 @@ struct GeofenceDeliveryTrackerTests {
         }
 
         let properties = httpClient.sendTrackEventReceivedArguments?.request.properties ?? [:]
-        #expect(properties["geofence_name"] as? String == "HQ")
+        #expect(properties["geofenceName"] as? String == "HQ")
     }
 
     @Test
-    func trackMetric_givenExitTransition_expectExitedEventName() async {
+    func trackMetric_givenExitTransition_expectSameEventNameAndExitProperty() async {
         let (tracker, httpClient) = makeTracker()
         httpClient.sendTrackEventClosure = { _, completion in completion(.success(())) }
 
@@ -82,7 +83,9 @@ struct GeofenceDeliveryTrackerTests {
             }
         }
 
-        #expect(httpClient.sendTrackEventReceivedArguments?.request.eventName == "geofence_exited")
+        let args = httpClient.sendTrackEventReceivedArguments
+        #expect(args?.request.eventName == "Geofence Transition")
+        #expect(args?.request.properties["transition"] as? String == "exit")
     }
 
     // MARK: - Guard clauses

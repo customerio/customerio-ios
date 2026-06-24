@@ -35,7 +35,7 @@ final class GeofenceDeliveryTrackerImpl: GeofenceDeliveryTracker {
 
         httpClient.sendTrackEvent(
             BackgroundTrackRequest(
-                eventName: metric.transition.trackEventName,
+                eventName: metric.trackEventName,
                 userId: userId,
                 properties: metric.trackEventProperties,
                 timestamp: metric.timestamp
