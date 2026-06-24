@@ -183,7 +183,9 @@ final class VisualInboxModel: ObservableObject {
         // bell/panel would keep fallback colors until the next refresh(). Backfill it here once
         // branding becomes available so the branded chrome appears without waiting for a later mark.
         if chrome == nil {
-            Task { [weak self] in
+            // Explicitly main-actor so the `@Published chrome` mutation after the await is guaranteed
+            // on the main thread (the model documents main-thread-only @Published mutations).
+            Task { @MainActor [weak self] in
                 guard let self else { return }
                 if let resolved = await self.provider.brandingChrome() { self.chrome = resolved }
             }
