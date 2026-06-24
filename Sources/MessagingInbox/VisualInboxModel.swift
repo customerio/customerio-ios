@@ -177,6 +177,17 @@ final class VisualInboxModel: ObservableObject {
         theme = VisualInboxJistDecoder.decodeTheme(snapshot.themeJSON)
         decodedData = Self.decodeData(for: snapshot.messages)
         logMissingTemplates()
+        // Branding is fetched in refresh() (it's stable per session). But if a snapshot arrives via
+        // observe() before that completes — e.g. load() returns while a revalidation is still in
+        // flight, so refresh() runs before branding is cached — chrome would stay nil and the
+        // bell/panel would keep fallback colors until the next refresh(). Backfill it here once
+        // branding becomes available so the branded chrome appears without waiting for a later mark.
+        if chrome == nil {
+            Task { [weak self] in
+                guard let self else { return }
+                if let resolved = await self.provider.brandingChrome() { self.chrome = resolved }
+            }
+        }
     }
 
     /// Emits a one-time [CIO-Inbox] error for each message whose `type` has no matching decoded

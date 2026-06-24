@@ -153,7 +153,10 @@ public struct NotificationInboxView: View {
                 logger.debug("[CIO-Inbox] action url is not http(s) and was not host-handled: \(urlString)")
                 return
             }
-            UIApplication.shared.open(url)
+            // `performDefaultNavigation` runs inside an unstructured Task (after awaiting the
+            // main-actor model), so hop back to the main actor: UIApplication.shared.open is a
+            // UIKit/main-thread API.
+            DispatchQueue.main.async { UIApplication.shared.open(url) }
         }
     }
 }

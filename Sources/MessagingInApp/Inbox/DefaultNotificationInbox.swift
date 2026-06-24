@@ -26,6 +26,11 @@ class DefaultNotificationInbox: NotificationInbox, @unchecked Sendable {
     private var shownMessageIds: Set<String> = []
     private let shownMessageIdsLock = NSLock()
 
+    /// Ids already reported "opened" so the host `inboxMessageOpened` callback fires at most once per
+    /// message per session (mirrors `shownMessageIds`). Guarded by `openedMessageIdsLock`.
+    private var openedMessageIds: Set<String> = []
+    private let openedMessageIdsLock = NSLock()
+
     /// Subscription task for inbox messages state changes
     private var subscriptionTask: Task<Void, Never>?
 
@@ -139,8 +144,15 @@ class DefaultNotificationInbox: NotificationInbox, @unchecked Sendable {
 
     func markMessageOpened(message: InboxMessage) {
         inAppMessageManager.dispatch(action: .inboxAction(action: .updateOpened(message: message, opened: true)))
-        // Observe-only host callback (item 13): a message was opened.
-        currentInboxEventListener()?.inboxMessageOpened(message: message)
+        // Observe-only host callback: a message was opened. Dedupe per session (mirrors
+        // notifyMessageShown) so repeated marks — incl. via the public API — fire it at most once.
+        openedMessageIdsLock.lock()
+        let alreadyOpened = openedMessageIds.contains(message.queueId)
+        if !alreadyOpened { openedMessageIds.insert(message.queueId) }
+        openedMessageIdsLock.unlock()
+        guard !alreadyOpened else { return }
+        // Reflect the just-applied opened state: the resolved `message` predates the dispatch above.
+        currentInboxEventListener()?.inboxMessageOpened(message: message.copy(opened: true))
     }
 
     func markMessageUnopened(message: InboxMessage) {
