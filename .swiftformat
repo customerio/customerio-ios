@@ -1,4 +1,4 @@
---exclude Pods, Package.swift, Apps/*/Pods
+--exclude Pods, Package.swift, Apps/*/Pods, Apps/*/spm_packages
 
 --binarygrouping none 
 --decimalgrouping none 
@@ -13,5 +13,23 @@
 --header strip
 
 --disable unusedArguments
+--disable blankLineAfterImports
+--disable blankLinesBetweenImports
+--disable docComments
+--disable headerFileName
+--disable noForceUnwrapInTests
+--disable preferForLoop
+--disable redundantEquatable
+--disable redundantMemberwiseInit
+--disable redundantNilInit
+--disable redundantPublic
+--disable redundantSendable
+--disable redundantThrows
+--disable redundantVariable
+--disable simplifyGenericConstraints
+--disable sortImports
+--disable swiftTestingTestCaseNames
+--disable wrapMultilineStatementBraces
+--disable wrapPropertyBodies
 
 --enable isEmpty

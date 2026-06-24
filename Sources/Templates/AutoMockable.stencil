@@ -10,6 +10,9 @@ import UserNotifications
 {% for importModule in argument.imports|split:"-" %}
 import {{ importModule }}
 {% endfor %}
+{% for importModule in argument.testableImports|split:"-" %}
+@testable import {{ importModule }}
+{% endfor %}
 
 /**
 ######################################################
@@ -99,7 +102,11 @@ class ExampleTest: XCTestCase {
 {% macro parameterValueWithCast param %}{% if param|annotated:"TypeCast" %}{{ param.annotations["TypeCast"] }}{% else %}{{ param.name }}{% endif %}{% endmacro %}
 
 {% macro methodThrowableErrorDeclaration method %}
-    var {% call swiftifyMethodName method %}ThrowableError: Error?
+    let _{% call swiftifyMethodName method %}ThrowableError: CioInternalCommon.Synchronized<Error?> = .init(nil)
+    var {% call swiftifyMethodName method %}ThrowableError: Error? {
+        get { _{% call swiftifyMethodName method %}ThrowableError.wrappedValue }
+        set { _{% call swiftifyMethodName method %}ThrowableError.wrappedValue = newValue }
+    }
 {% endmacro %}
 
 {% macro methodThrowableErrorUsage method %}
@@ -110,12 +117,12 @@ class ExampleTest: XCTestCase {
 
 {% macro methodReceivedParameters method %}
     {%if method.parameters.count == 1 %}
-        {% call swiftifyMethodName method %}ReceivedArguments = ({% for param in method.parameters %}{% if not param|annotated:"SkipParamCapture" %}{{ param.name }}{% if not forloop.last%}, {% endif %}{% endif %}{% endfor %})
-        {% call swiftifyMethodName method %}ReceivedInvocations.append(({% for param in method.parameters %}{%if not param|annotated:"SkipParamCapture" %}{{ param.name }}{% if not forloop.last%}, {% endif %}{% endif %}{% endfor %}))
+        _{% call swiftifyMethodName method %}ReceivedArguments.wrappedValue = ({% for param in method.parameters %}{% if not param|annotated:"SkipParamCapture" %}{{ param.name }}{% if not forloop.last%}, {% endif %}{% endif %}{% endfor %})
+        _{% call swiftifyMethodName method %}ReceivedInvocations.append(({% for param in method.parameters %}{%if not param|annotated:"SkipParamCapture" %}{{ param.name }}{% if not forloop.last%}, {% endif %}{% endif %}{% endfor %}))
     {% else %}
     {% if not method.parameters.count == 0 %}
-        {% call swiftifyMethodName method %}ReceivedArguments = ({% for param in method.parameters %}{%if not param|annotated:"SkipParamCapture" %}{{ param.name }}: {% call parameterValueWithCast param %}{% if not forloop.last%}, {% endif %}{% endif %}{% endfor %})
-        {% call swiftifyMethodName method %}ReceivedInvocations.append(({% for param in method.parameters %}{%if not param|annotated:"SkipParamCapture" %}{{ param.name }}: {% call parameterValueWithCast param %}{% if not forloop.last%}, {% endif %}{% endif %}{% endfor %}))
+        _{% call swiftifyMethodName method %}ReceivedArguments.wrappedValue = ({% for param in method.parameters %}{%if not param|annotated:"SkipParamCapture" %}{{ param.name }}: {% call parameterValueWithCast param %}{% if not forloop.last%}, {% endif %}{% endif %}{% endfor %})
+        _{% call swiftifyMethodName method %}ReceivedInvocations.append(({% for param in method.parameters %}{%if not param|annotated:"SkipParamCapture" %}{{ param.name }}: {% call parameterValueWithCast param %}{% if not forloop.last%}, {% endif %}{% endif %}{% endfor %}))
     {% endif %}
     {% endif %}
 {% endmacro %}
@@ -150,7 +157,10 @@ class ExampleTest: XCTestCase {
     {% if not method|annotated:"DuplicateMethod" %}
     {% if not method.isInitializer %}
     /// Number of times the function was called.  
-    @Atomic {{ type.accessLevel }} private(set) var {% call swiftifyMethodName method %}CallsCount = 0
+    private let _{% call swiftifyMethodName method %}CallsCount: CioInternalCommon.Synchronized<Int> = .init(0)
+    {{ type.accessLevel }} var {% call swiftifyMethodName method %}CallsCount: Int {
+         _{% call swiftifyMethodName method %}CallsCount.wrappedValue
+    }
     /// `true` if the function was ever called. 
     {{ type.accessLevel }} var {% call swiftifyMethodName method %}Called: Bool {
         return {% call swiftifyMethodName method %}CallsCount > 0
@@ -159,18 +169,34 @@ class ExampleTest: XCTestCase {
     {% endif %} {# endif DuplicateMethod #}
     {% if method.parameters.count == 1 %}
     /// The arguments from the *last* time the function was called. 
-    @Atomic {{ type.accessLevel }} private(set) var {% call swiftifyMethodName method %}ReceivedArguments: ({% for param in method.parameters %}{%if not param|annotated:"SkipParamCapture" %}{{ param.unwrappedTypeName if param.typeAttributes.escaping else param.typeName }}{{ ', ' if not forloop.last }}{% endif %}{% endfor %})?
+    private let _{% call swiftifyMethodName method %}ReceivedArguments: CioInternalCommon.Synchronized<({% for param in method.parameters %}{%if not param|annotated:"SkipParamCapture" %}{{ param.unwrappedTypeName if param.typeAttributes.escaping else param.typeName }}{{ ', ' if not forloop.last }}{% endif %}{% endfor %})?> = .init(nil)
+    {{ type.accessLevel }} var {% call swiftifyMethodName method %}ReceivedArguments: ({% for param in method.parameters %}{%if not param|annotated:"SkipParamCapture" %}{{ param.unwrappedTypeName if param.typeAttributes.escaping else param.typeName }}{{ ', ' if not forloop.last }}{% endif %}{% endfor %})? {
+        _{% call swiftifyMethodName method %}ReceivedArguments.wrappedValue
+    }
     /// Arguments from *all* of the times that the function was called. 
-    @Atomic {{ type.accessLevel }} private(set) var {% call swiftifyMethodName method %}ReceivedInvocations: [({% for param in method.parameters %}{%if not param|annotated:"SkipParamCapture" %}{{ param.unwrappedTypeName if param.typeAttributes.escaping else param.typeName }}{{ ', ' if not forloop.last }}{% endif %}{% endfor %})] = []
+    private let _{% call swiftifyMethodName method %}ReceivedInvocations: CioInternalCommon.Synchronized<[({% for param in method.parameters %}{%if not param|annotated:"SkipParamCapture" %}{{ param.unwrappedTypeName if param.typeAttributes.escaping else param.typeName }}{{ ', ' if not forloop.last }}{% endif %}{% endfor %})]> = .init([])
+    {{ type.accessLevel }} var {% call swiftifyMethodName method %}ReceivedInvocations: [({% for param in method.parameters %}{%if not param|annotated:"SkipParamCapture" %}{{ param.unwrappedTypeName if param.typeAttributes.escaping else param.typeName }}{{ ', ' if not forloop.last }}{% endif %}{% endfor %})] {
+        _{% call swiftifyMethodName method %}ReceivedInvocations.wrappedValue
+    }
     {% elif not method.parameters.count == 0 %}
     /// The arguments from the *last* time the function was called. 
-    @Atomic {{ type.accessLevel }} private(set) var {% call swiftifyMethodName method %}ReceivedArguments: ({% for param in method.parameters %}{{ param.name }}: {% call parameterTypeName param true %}{{ ', ' if not forloop.last }}{% endfor %})?
+    private let _{% call swiftifyMethodName method %}ReceivedArguments: CioInternalCommon.Synchronized<({% for param in method.parameters %}{{ param.name }}: {% call parameterTypeName param true %}{{ ', ' if not forloop.last }}{% endfor %})?> = .init(nil)
+    {{ type.accessLevel }} var {% call swiftifyMethodName method %}ReceivedArguments: ({% for param in method.parameters %}{{ param.name }}: {% call parameterTypeName param true %}{{ ', ' if not forloop.last }}{% endfor %})? {
+        _{% call swiftifyMethodName method %}ReceivedArguments.wrappedValue
+    }
     /// Arguments from *all* of the times that the function was called. 
-    @Atomic {{ type.accessLevel }} private(set) var {% call swiftifyMethodName method %}ReceivedInvocations: [({% for param in method.parameters %}{{ param.name }}: {% call parameterTypeName param true %}{{ ', ' if not forloop.last }}{% endfor %})] = []
+    private let _{% call swiftifyMethodName method %}ReceivedInvocations: CioInternalCommon.Synchronized<[({% for param in method.parameters %}{{ param.name }}: {% call parameterTypeName param true %}{{ ', ' if not forloop.last }}{% endfor %})]> = .init([])
+    {{ type.accessLevel }} var {% call swiftifyMethodName method %}ReceivedInvocations: [({% for param in method.parameters %}{{ param.name }}: {% call parameterTypeName param true %}{{ ', ' if not forloop.last }}{% endfor %})] {
+        _{% call swiftifyMethodName method %}ReceivedInvocations.wrappedValue
+    }
     {% endif %}
     {% if not method.returnTypeName.isVoid and not method.isInitializer %}
     /// Value to return from the mocked function. 
-    {{ type.accessLevel }} var {% call swiftifyMethodName method %}ReturnValue: {{ method.returnTypeName }}{{ '!' if not method.isOptionalReturnType }}
+    private let _{% call swiftifyMethodName method %}ReturnValue: CioInternalCommon.Synchronized<{{ method.returnTypeName }}{{ '?' if not method.isOptionalReturnType }}> = .init(nil)
+    {{ type.accessLevel }} var {% call swiftifyMethodName method %}ReturnValue: {{ method.returnTypeName }}{{ '!' if not method.isOptionalReturnType }} {
+        get { _{% call swiftifyMethodName method %}ReturnValue.wrappedValue }
+        set { _{% call swiftifyMethodName method %}ReturnValue.wrappedValue = newValue }
+    }
     {% endif %}
     {% call methodClosureDeclaration method %}
 
@@ -188,7 +214,7 @@ class ExampleTest: XCTestCase {
         {% call methodThrowableErrorUsage method %}
         {% endif %}
         self.mockCalled = true
-        {% call swiftifyMethodNameOrDuplicate method %}CallsCount += 1
+        _{% call swiftifyMethodNameOrDuplicate method %}CallsCount += 1
         {% call methodReceivedParameters method %}
         {% if method.returnTypeName.isVoid %}
         {% if method.throws %}try {% endif %}{% call methodClosureName method %}?({% call methodClosureCallParameters method %})
@@ -208,7 +234,11 @@ class ExampleTest: XCTestCase {
      When setter of the property called, the value given to setter is set here. 
      When the getter of the property called, the value set here will be returned. Your chance to mock the property. 
      */
-    {{ type.accessLevel }} var {% call underlyingMockedVariableName variable %}: {{ variable.typeName }}{% if variable.isArray %} = []{% elif variable.isDictionary %} = [:]{% elif variable.isOptional %} = nil{% else %}!{% endif %}
+     private let _{% call underlyingMockedVariableName variable %}: CioInternalCommon.Synchronized<{{ variable.typeName }}{% if variable.isArray %}> = .init([]){% elif variable.isDictionary %}> = .init([:]){% elif variable.isOptional %}> = .init(nil){% else %}?> = .init(nil){% endif %}
+    {{ type.accessLevel }} var {% call underlyingMockedVariableName variable %}: {{ variable.typeName }}{% if not variable.isArray and not variable.isDictionary and not variable.isOptional %}!{% endif %} {
+        get { _{% call underlyingMockedVariableName variable %}.wrappedValue }
+        set { _{% call underlyingMockedVariableName variable %}.wrappedValue = newValue }
+    }
     /// `true` if the getter or setter of property is called at least once. 
     {{ type.accessLevel }} var {% call mockedVariableName variable %}Called: Bool {
         {% call mockedVariableName variable %}GetCalled || {% call mockedVariableName variable %}SetCalled
@@ -217,22 +247,29 @@ class ExampleTest: XCTestCase {
     {{ type.accessLevel }} var {% call mockedVariableName variable %}GetCalled: Bool {
         {% call mockedVariableName variable %}GetCallsCount > 0
     } 
-    {{ type.accessLevel }} var {% call mockedVariableName variable %}GetCallsCount = 0
+    private let _{% call mockedVariableName variable %}GetCallsCount: CioInternalCommon.Synchronized<Int> = .init(0)
+    {{ type.accessLevel }} var {% call mockedVariableName variable %}GetCallsCount: Int {
+        _{% call mockedVariableName variable %}GetCallsCount.wrappedValue
+    }
     /// `true` if the setter called on the property at least once. 
     {{ type.accessLevel }} var {% call mockedVariableName variable %}SetCalled: Bool {
         {% call mockedVariableName variable %}SetCallsCount > 0
     } 
-    {{ type.accessLevel }} var {% call mockedVariableName variable %}SetCallsCount = 0
+
+    private let _{% call mockedVariableName variable %}SetCallsCount: CioInternalCommon.Synchronized<Int> = .init(0)
+    {{ type.accessLevel }} var {% call mockedVariableName variable %}SetCallsCount: Int {
+        _{% call mockedVariableName variable %}SetCallsCount.wrappedValue
+    }
     /// The mocked property with a getter and setter. 
     {{ type.accessLevel }} var {% call mockedVariableName variable %}: {{ variable.typeName }} {
         get { 
             self.mockCalled = true
-            {% call mockedVariableName variable %}GetCallsCount += 1
+            _{% call mockedVariableName variable %}GetCallsCount += 1
             return {% call underlyingMockedVariableName variable %} 
         }
         set(value) { 
             self.mockCalled = true
-            {% call mockedVariableName variable %}SetCallsCount += 1
+            _{% call mockedVariableName variable %}SetCallsCount += 1
             {% call underlyingMockedVariableName variable %} = value 
         }
     }    
@@ -250,9 +287,13 @@ class ExampleTest: XCTestCase {
  See the SDK documentation to learn the basics behind using the mock classes in the SDK. 
  */
 {% call addPropertyWrappers type %}
-{{ type.accessLevel }} class {{ type.name }}Mock: {{ type.name }}, {{ argument.moduleName }}Mock {
+{{ type.accessLevel }} class {{ type.name }}Mock: @unchecked Sendable, {{ type.name }}, {{ argument.moduleName }}Mock {
     /// If *any* interactions done on mock. `true` if any method or property getter/setter called. 
-    {{ type.accessLevel }} var mockCalled: Bool = false // 
+    private let _mockCalled: CioInternalCommon.Synchronized<Bool> = .init(false)
+    {{ type.accessLevel }} var mockCalled: Bool  {
+        get { _mockCalled.wrappedValue }
+        set { _mockCalled.wrappedValue = newValue }
+    }
 
     {{ type.accessLevel }} init() {
     }
@@ -266,19 +307,19 @@ class ExampleTest: XCTestCase {
     {% if variable.isOptional %}
         {% call mockedVariableName variable %} = nil 
     {% endif %}         
-        {% call mockedVariableName variable %}GetCallsCount = 0
-        {% call mockedVariableName variable %}SetCallsCount = 0
+        _{% call mockedVariableName variable %}GetCallsCount.wrappedValue = 0
+        _{% call mockedVariableName variable %}SetCallsCount.wrappedValue = 0
 {% endfor %}
 {% for method in type.allMethods|!definedInExtension %}
     {% if method|annotated:"IfCanImport" %}
     #if canImport({{ method.annotations["IfCanImport"] }})
     {% endif %}
     {% if not method|annotated:"DuplicateMethod" %}
-        {% call swiftifyMethodName method %}CallsCount = 0
+        _{% call swiftifyMethodName method %}CallsCount.wrappedValue = 0
     {% endif %}        
     {% if method.parameters.count > 0 %}
-        {% call swiftifyMethodName method %}ReceivedArguments = nil 
-        {% call swiftifyMethodName method %}ReceivedInvocations = []
+        _{% call swiftifyMethodName method %}ReceivedArguments.wrappedValue = nil 
+        _{% call swiftifyMethodName method %}ReceivedInvocations.wrappedValue = []
     {% endif %}
     {% if method|annotated:"IfCanImport" %}
     #endif 

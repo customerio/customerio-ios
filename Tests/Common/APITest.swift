@@ -1,4 +1,5 @@
 import CioInternalCommon // do not use `@testable` so we can test functions are made public and not `internal`.
+@testable import CioInternalCommonMocks
 import Foundation
 import Testing
 

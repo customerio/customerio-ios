@@ -1,5 +1,6 @@
 // import CioMessagingPush // do not import. We want to test that customers only need to import 'CioMessagingPushFCM'
 import CioMessagingPushFCM // do not use `@testable` so we can test functions are made public and not `internal`.
+@testable import CioMessagingPushFCMMocks
 import Foundation
 import SharedTests
 import XCTest

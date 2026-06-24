@@ -45,13 +45,13 @@ public class MessagingPushConfigBuilder {
         self.cdpApiKey = ""
     }
 
+    /// Initializes new `MessagingPushConfigBuilder` with required configuration options.
+    /// - Parameters:
+    ///   - cdpApiKey: Customer.io Data Pipeline API Key required for NotificationServiceExtension only to track metrics
     @available(iOS, unavailable)
     @available(visionOS, unavailable)
     @available(iOSApplicationExtension, introduced: 13.0)
     @available(visionOSApplicationExtension, introduced: 1.0)
-    /// Initializes new `MessagingPushConfigBuilder` with required configuration options.
-    /// - Parameters:
-    ///   - cdpApiKey: Customer.io Data Pipeline API Key required for NotificationServiceExtension only to track metrics
     public init(cdpApiKey: String) {
         self.cdpApiKey = cdpApiKey
     }

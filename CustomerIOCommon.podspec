@@ -1,6 +1,6 @@
 Pod::Spec.new do |spec|
   spec.name         = "CustomerIOCommon"
-  spec.version      = "4.4.3" # Don't modify this line - it's automatically updated
+  spec.version      = "4.5.2" # Don't modify this line - it's automatically updated
   spec.summary      = "Official Customer.io SDK for iOS."
   spec.homepage     = "https://github.com/customerio/customerio-ios"
   spec.documentation_url = 'https://customer.io/docs/sdk/ios/'
@@ -21,4 +21,6 @@ Pod::Spec.new do |spec|
   spec.exclude_files = "Sources/**/*{.md}"
 
   spec.module_name = "CioInternalCommon" # the `import X` name when using SDK in Swift files
+
+  spec.dependency 'SyncSqlCipher', '1.1.0'
 end

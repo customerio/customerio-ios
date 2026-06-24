@@ -1,4 +1,5 @@
 @testable import CioInternalCommon
+@testable import CioMessagingInAppMocks
 @testable import CioMessagingInApp
 import Foundation
 import SharedTests
@@ -66,10 +67,12 @@ class MessagingInAppImplementationTest: IntegrationTest {
         let createDefaultExpectation: (String, Bool) -> XCTestExpectation = { description, expectToHappen in
             let expectation = self.expectation(description: description)
 
-            // Setup expectation to only assert that the event happened or did not.
-            // The number of times the expectation is called is not checked as it has been unreliable.
-            // Instead, have the test function check the number of times a mock was called.
-            expectation.assertForOverFulfill = false
+            // Previously set to false because over-fulfillment was occurring intermittently.
+            // Root cause was a retain cycle in MessagingInAppImplementation's event bus observer
+            // closures (strong self capture → NotificationCenter retained the closure → prevented
+            // deallocation between tests, leaving stale observers registered). Fixed by using
+            // [weak self] in all observer closures, so this can now be enforced again.
+            expectation.assertForOverFulfill = true
             expectation.isInverted = !expectToHappen
 
             return expectation

@@ -26,12 +26,4 @@ open class IntegrationTest: UnitTest {
 
         return MessagingPush.shared
     }
-
-    // Create new mock instance and setup with set of defaults.
-    func getNewPushEventHandler() -> PushEventHandlerMock {
-        let newInstance = PushEventHandlerMock()
-        // We expect that each instance has it's own unique identifier.
-        newInstance.underlyingIdentifier = .random
-        return newInstance
-    }
 }

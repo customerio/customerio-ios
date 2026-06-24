@@ -197,5 +197,7 @@ public struct LiveActivityConfigBuilder {
 
     // MARK: - Build
 
-    public func build() -> LiveActivityConfig { config }
+    public func build() -> LiveActivityConfig {
+        config
+    }
 }

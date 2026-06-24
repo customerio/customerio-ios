@@ -85,7 +85,6 @@ struct MainLayoutView<ContentView: View>: View {
             }
             .markdownTheme(.tutorial)
             .markdownCodeSyntaxHighlighter(.splash)
-
             .padding([.top, .trailing], 24)
             .textFieldStyle(.roundedBorder)
 

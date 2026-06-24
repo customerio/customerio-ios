@@ -25,7 +25,6 @@ public class RichPushHttpClient: HttpClient {
                 params: params,
                 session: getSessionForRequest(url: params.url)
             ) { data, response, error in
-
                 if let error = error {
                     logger.error("Error sending request \(error.localizedDescription).")
                     if let error = self.isUrlError(error) {
