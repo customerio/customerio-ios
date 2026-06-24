@@ -54,6 +54,19 @@ public struct VisualInboxMessageSnapshot: Identifiable {
     }
 }
 
+/// Result of routing a non-dismiss inbox action through the data layer, so the overlay knows
+/// whether to run its default navigation.
+@_spi(VisualInbox)
+public enum VisualInboxActionOutcome: Equatable {
+    /// The message was no longer in the store: nothing was tracked or offered to the host. The
+    /// overlay must NOT run default navigation (the message — and its row — are gone).
+    case messageMissing
+    /// The host listener handled the action. The overlay should suppress its default navigation.
+    case handledByHost
+    /// The click was tracked but no host listener handled it. The overlay runs its default navigation.
+    case notHandled
+}
+
 /// Inbox chrome colors (bell / panel / badge / divider) parsed from `patterns.inbox`, plus the
 /// optional `patterns.modes.dark` raw overrides, handed to the overlay so it can drive its chrome
 /// from backend branding instead of hardcoded colors. All hex strings are optional: a workspace that

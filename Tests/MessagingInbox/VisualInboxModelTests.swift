@@ -201,28 +201,38 @@ final class VisualInboxModelTests: XCTestCase {
         XCTAssertEqual(resolution.actionName, "messageAction")
     }
 
-    func test_handleAction_whenHostHandles_thenReturnsTrueAndForwardsValue() async {
+    func test_handleAction_whenHostHandles_thenReturnsHandledAndForwardsValue() async {
         let provider = FakeVisualInboxProvider()
         provider.stubHostHandled = true
         let model = VisualInboxModel(provider: provider)
 
-        let handled = await model.handleAction(messageId: "a", actionName: "messageAction", actionValue: "https://customer.io")
+        let outcome = await model.handleAction(messageId: "a", actionName: "messageAction", actionValue: "https://customer.io")
 
-        XCTAssertTrue(handled)
+        XCTAssertEqual(outcome, .handledByHost)
         XCTAssertEqual(provider.handledActions.count, 1)
         XCTAssertEqual(provider.handledActions.first?.messageId, "a")
         XCTAssertEqual(provider.handledActions.first?.actionValue, "https://customer.io")
     }
 
-    func test_handleAction_whenHostDefers_thenReturnsFalse() async {
+    func test_handleAction_whenHostDefers_thenReturnsNotHandled() async {
         let provider = FakeVisualInboxProvider()
         provider.stubHostHandled = false
         let model = VisualInboxModel(provider: provider)
 
-        let handled = await model.handleAction(messageId: "a", actionName: "messageAction", actionValue: "")
+        let outcome = await model.handleAction(messageId: "a", actionName: "messageAction", actionValue: "")
 
-        XCTAssertFalse(handled)
+        XCTAssertEqual(outcome, .notHandled)
         XCTAssertEqual(provider.handledActions.count, 1)
+    }
+
+    func test_handleAction_whenMessageMissing_thenReturnsMessageMissing() async {
+        let provider = FakeVisualInboxProvider()
+        provider.stubMessageMissing = true
+        let model = VisualInboxModel(provider: provider)
+
+        let outcome = await model.handleAction(messageId: "gone", actionName: "messageAction", actionValue: "https://customer.io")
+
+        XCTAssertEqual(outcome, .messageMissing)
     }
 
     // MARK: - shown (observe-only host callback)
@@ -522,13 +532,17 @@ private final class FakeVisualInboxProvider: VisualInboxProvider, @unchecked Sen
     private(set) var handledActions: [HandledAction] = []
     /// What `handleMessageAction` should report the host did (true = host handled → suppress nav).
     var stubHostHandled = false
+    /// When true, `handleMessageAction` reports the message was missing from the store.
+    var stubMessageMissing = false
 
-    func handleMessageAction(messageId: String, actionName: String, actionValue: String) async -> Bool {
+    func handleMessageAction(messageId: String, actionName: String, actionValue: String) async -> VisualInboxActionOutcome {
         lock.lock()
         handledActions.append(HandledAction(messageId: messageId, actionName: actionName, actionValue: actionValue))
+        let missing = stubMessageMissing
         let handled = stubHostHandled
         lock.unlock()
-        return handled
+        if missing { return .messageMissing }
+        return handled ? .handledByHost : .notHandled
     }
 
     func notifyMessageShown(messageId: String) async {

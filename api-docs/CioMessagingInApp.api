@@ -193,6 +193,8 @@ public final class CioMessagingInApp.Subscription {
 	public fun init(sink: @escaping (@escaping (State?, State) -> Unit) -> Unit);
 	public fun func skipRepeats(_ isRepeat: @escaping (_ oldState: State, _ newState: State) -> Boolean) -> Subscription<State>;
 }
+public enum CioMessagingInApp.VisualInboxActionOutcome {
+}
 public final class CioMessagingInApp.VisualInboxChrome {
 	public final val bellBackground: String?;
 	public final val bellIconColor: String?;
@@ -223,7 +225,7 @@ public interface CioMessagingInApp.VisualInboxProvider {
 	public fun func brandingChrome() async -> VisualInboxChrome?;
 	public fun func markOpened(messageId: String) async -> Boolean;
 	public fun func dismiss(messageId: String) async -> Boolean;
-	public fun func handleMessageAction(messageId: String, actionName: String, actionValue: String) async -> Boolean;
+	public fun func handleMessageAction(messageId: String, actionName: String, actionValue: String) async -> VisualInboxActionOutcome;
 	public fun func notifyMessageShown(messageId: String) async;
 }
 public final class CioMessagingInApp.VisualInboxSnapshot {

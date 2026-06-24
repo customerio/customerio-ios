@@ -74,10 +74,9 @@ public protocol VisualInboxProvider: Sendable {
     ///  - forwards the action to the registered host ``InboxEventListener``.
     ///
     /// Dismiss is NOT routed here — the overlay handles dismiss before calling this.
-    /// - Returns: `true` if the host listener reported it handled the action (the overlay should then
-    ///   suppress its default navigation); `false` if there was no listener, the listener deferred, or
-    ///   the message was no longer in the store.
-    func handleMessageAction(messageId: String, actionName: String, actionValue: String) async -> Bool
+    /// - Returns: a ``VisualInboxActionOutcome`` distinguishing a missing message (skip default nav)
+    ///   from a host-handled action (suppress nav) and an un-handled action (run default nav).
+    func handleMessageAction(messageId: String, actionName: String, actionValue: String) async -> VisualInboxActionOutcome
 
     /// Notifies the host ``InboxEventListener`` that a message was first shown (rendered in the visible
     /// inbox). Resolved by id from the store and forwarded via the existing headless plumbing, which
@@ -280,19 +279,22 @@ final class VisualInboxProviderImpl: VisualInboxProvider, @unchecked Sendable {
         return true
     }
 
-    func handleMessageAction(messageId: String, actionName: String, actionValue: String) async -> Bool {
+    func handleMessageAction(messageId: String, actionName: String, actionValue: String) async -> VisualInboxActionOutcome {
         // Resolve the full InboxMessage from current state so we can (a) track the click via the
         // existing headless plumbing and (b) hand the host listener a real message. No new path.
         let state = await inAppMessageManager.state
         guard let message = state.inboxMessages.first(where: { $0.queueId == messageId }) else {
-            return false
+            // Message gone from the store (e.g. dismissed between render and tap): don't track or
+            // navigate — its row is on its way out.
+            return .messageMissing
         }
-        // Item 3: track a "clicked" metric for the non-dismiss action via the existing headless
+        // Track a "clicked" metric for the non-dismiss action via the existing headless
         // trackMessageClicked plumbing (dispatches the .trackClicked action). Always tracked,
         // independent of whether the host intercepts the action below.
         inbox.trackMessageClicked(message: message, actionName: actionName)
-        // Item 13: forward to the host listener; true suppresses the SDK's default navigation.
-        return inbox.notifyMessageActionTaken(message: message, actionValue: actionValue, actionName: actionName)
+        // Forward to the host listener; if it handles the action, the overlay suppresses default nav.
+        let handled = inbox.notifyMessageActionTaken(message: message, actionValue: actionValue, actionName: actionName)
+        return handled ? .handledByHost : .notHandled
     }
 
     func notifyMessageShown(messageId: String) async {

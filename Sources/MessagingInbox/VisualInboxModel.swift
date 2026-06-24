@@ -270,11 +270,9 @@ final class VisualInboxModel: ObservableObject {
     // MARK: - Non-dismiss actions (items 12 + 13)
 
     /// Routes a NON-dismiss inbox action through the data layer (track click + host listener) and
-    /// returns whether the host intercepted it. Awaited by the row so the overlay can run its default
-    /// navigation only when the host did NOT handle the action.
-    /// - Returns: `true` if the host listener handled the action (suppress default nav); `false`
-    ///   otherwise (run the SDK default).
-    func handleAction(messageId: String, actionName: String, actionValue: String) async -> Bool {
+    /// reports the outcome. Awaited by the row so the overlay runs its default navigation only when
+    /// the action was tracked but un-handled (not when the host handled it or the message is gone).
+    func handleAction(messageId: String, actionName: String, actionValue: String) async -> VisualInboxActionOutcome {
         await provider.handleMessageAction(messageId: messageId, actionName: actionName, actionValue: actionValue)
     }
 

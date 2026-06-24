@@ -125,13 +125,22 @@ public struct NotificationInboxView: View {
     ///    the SDK can't know the host's in-app routing. We never force-unwrap a url.
     private func handleNonDismissAction(messageId: String, resolution: InboxActionResolution) {
         Task {
-            let handledByHost = await model.handleAction(
+            let outcome = await model.handleAction(
                 messageId: messageId,
                 actionName: resolution.actionName,
                 actionValue: resolution.url ?? ""
             )
-            guard !handledByHost else { return }
-            performDefaultNavigation(resolution)
+            switch outcome {
+            case .handledByHost:
+                // Host intercepted the action — suppress the SDK default navigation.
+                return
+            case .messageMissing:
+                // Message gone from the store (tapped after removal): nothing tracked, don't navigate.
+                DIGraphShared.shared.logger.debug("[CIO-Inbox] action on missing message \(messageId): skipping default navigation")
+                return
+            case .notHandled:
+                performDefaultNavigation(resolution)
+            }
         }
     }
 
