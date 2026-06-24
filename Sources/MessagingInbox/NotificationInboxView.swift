@@ -24,6 +24,9 @@ import UIKit
 public struct NotificationInboxView: View {
     @ObservedObject private var model: VisualInboxModel
 
+    /// Drives dark-mode branding resolution for the row divider.
+    @Environment(\.colorScheme) private var colorScheme
+
     /// True when this view owns the model's lifecycle (standalone use) vs. observing a shared model
     /// owned by ``NotificationInboxOverlay``.
     private let ownsModelLifecycle: Bool
@@ -83,7 +86,9 @@ public struct NotificationInboxView: View {
     }
 
     private var messageList: some View {
-        ScrollView {
+        // Branding-first row divider (falls back to the system separator color).
+        let colors = ResolvedInboxColors.resolve(chrome: model.chrome, isDark: colorScheme == .dark)
+        return ScrollView {
             VStack(alignment: .leading, spacing: 0) {
                 // No-template messages are skipped (item 4): `renderableMessages` drops any message
                 // whose `type` has no matching decoded template (logged once by the model).
@@ -103,7 +108,7 @@ public struct NotificationInboxView: View {
                     // Shown (item 13): a message is reported once when it first renders here (deduped
                     // in the model + data layer so it fires at most once per message per session).
                     .onAppear { model.markShown(messageId: message.id) }
-                    Divider()
+                    colors.divider.frame(height: 1)
                 }
             }
         }

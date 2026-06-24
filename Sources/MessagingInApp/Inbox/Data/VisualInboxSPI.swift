@@ -45,6 +45,11 @@ public protocol VisualInboxProvider: Sendable {
     /// `[String: JistValue]`.
     func themeJSON() async -> [String: Any]?
 
+    /// Inbox chrome colors (bell / panel / badge / divider) parsed from `patterns.inbox`, plus the
+    /// optional `patterns.modes.dark` overrides, so the overlay drives its chrome from backend
+    /// branding. Nil when no branding is cached; individual fields are nil when not configured.
+    func brandingChrome() async -> VisualInboxChrome?
+
     /// Marks a message opened via the existing headless plumbing (no new mutation path). Looked up
     /// by the snapshot id so the overlay never has to hold an internal `InboxMessage`.
     /// - Returns: `true` if a matching message was still present in the store and the mark was
@@ -229,6 +234,20 @@ final class VisualInboxProviderImpl: VisualInboxProvider, @unchecked Sendable {
 
     func themeJSON() async -> [String: Any]? {
         await repository.branding()?.theme
+    }
+
+    func brandingChrome() async -> VisualInboxChrome? {
+        guard let branding = await repository.branding() else { return nil }
+        let chrome = branding.chrome
+        return VisualInboxChrome(
+            bellBackground: chrome.floatingIcon.background,
+            bellIconColor: chrome.floatingIcon.color,
+            panelBackground: chrome.background,
+            dividerColor: chrome.dividerColor ?? chrome.borderColor,
+            badgeBackground: chrome.unreadIndicator?.background,
+            cornerRadius: chrome.cornerRadius,
+            darkModePattern: branding.darkModePattern
+        )
     }
 
     @discardableResult

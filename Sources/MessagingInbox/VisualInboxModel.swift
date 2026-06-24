@@ -34,6 +34,12 @@ final class VisualInboxModel: ObservableObject {
     /// Branding theme decoded into Jist types, refreshed alongside `messages`.
     @Published private(set) var theme: [String: JistValue] = [:]
 
+    /// Backend-branding chrome colors (bell / panel / badge / divider, parsed from `patterns.inbox`
+    /// plus optional dark-mode overrides). Drives the overlay's chrome instead of hardcoded colors;
+    /// nil until the first load, and nil-per-field when a workspace hasn't configured inbox branding.
+    /// Branding is stable per session, so it's fetched on `refresh()` (not per `observe()` emission).
+    @Published private(set) var chrome: VisualInboxChrome?
+
     /// Each message's `properties` decoded into Jist render data, keyed by message id. Decoded ONCE
     /// per `messages` refresh (here, not per render) so the row body just reads the prepared value
     /// instead of re-decoding `[String: Any]` on every recompose.
@@ -149,12 +155,14 @@ final class VisualInboxModel: ObservableObject {
         let newUnopened = newMessages.filter { !$0.opened }.count
         let newTemplates = VisualInboxJistDecoder.decodeTemplates(await provider.templatesJSON())
         let newTheme = VisualInboxJistDecoder.decodeTheme(await provider.themeJSON())
+        let newChrome = await provider.brandingChrome()
         if Task.isCancelled { return }
         state = newState
         messages = newMessages
         unopenedCount = newUnopened
         templates = newTemplates
         theme = newTheme
+        chrome = newChrome
         decodedData = Self.decodeData(for: newMessages)
         logMissingTemplates()
     }

@@ -23,6 +23,9 @@ import SwiftUI
 public struct NotificationInboxOverlay: View {
     @StateObject private var model: VisualInboxModel
 
+    /// Drives dark-mode branding resolution for the panel chrome.
+    @Environment(\.colorScheme) private var colorScheme
+
     /// True when the slide-out panel is visible.
     @State private var isPanelOpen: Bool = false
 
@@ -103,15 +106,17 @@ public struct NotificationInboxOverlay: View {
     // MARK: - Slide-out panel (items 6, 7, 11)
 
     private var panel: some View {
+        // Branding-first panel surface + corner radius (falls back to the system background / 12pt).
+        let colors = ResolvedInboxColors.resolve(chrome: model.chrome, isDark: colorScheme == .dark)
         // No header (title / close button) — matches web. The panel closes via the scrim tap or by
         // tapping the bell again. The panel CONTENT is the embeddable `NotificationInboxView`, sharing
         // this overlay's model (so bell, panel, and overlay all observe the same state).
-        VStack(alignment: .leading, spacing: 0) {
+        return VStack(alignment: .leading, spacing: 0) {
             NotificationInboxView(model: model)
         }
         .frame(maxWidth: 480, maxHeight: .infinity, alignment: .top)
-        .background(Color(.systemBackground))
-        .cornerRadius(12)
+        .background(colors.panelBackground)
+        .cornerRadius(colors.cornerRadius)
         .shadow(radius: 8)
         .padding(.horizontal, 16)
         .padding(.top, 16)

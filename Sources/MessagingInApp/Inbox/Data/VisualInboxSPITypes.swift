@@ -54,6 +54,57 @@ public struct VisualInboxMessageSnapshot: Identifiable {
     }
 }
 
+/// Inbox chrome colors (bell / panel / badge / divider) parsed from `patterns.inbox`, plus the
+/// optional `patterns.modes.dark` raw overrides, handed to the overlay so it can drive its chrome
+/// from backend branding instead of hardcoded colors. All hex strings are optional: a workspace that
+/// hasn't configured inbox branding leaves them nil and the overlay falls back to its own defaults.
+@_spi(VisualInbox)
+public struct VisualInboxChrome: Equatable {
+    /// `patterns.inbox.floatingIcon.background` — the bell circle fill.
+    public let bellBackground: String?
+    /// `patterns.inbox.floatingIcon.color` — the bell glyph tint.
+    public let bellIconColor: String?
+    /// `patterns.inbox.background` — the panel surface.
+    public let panelBackground: String?
+    /// `patterns.inbox.dividerColor` (falling back to `borderColor`) — the row divider.
+    public let dividerColor: String?
+    /// `patterns.inbox.unreadIndicator.background` — the unread badge fill.
+    public let badgeBackground: String?
+    /// `patterns.inbox.cornerRadius` — the panel corner radius (points).
+    public let cornerRadius: Double?
+    /// `patterns.modes.dark` raw overrides (OPTIONAL; nil in most workspaces). Resolved by the overlay
+    /// only in dark mode, by digging the same keys nested under `dark.inbox`.
+    public let darkModePattern: [String: Any]?
+
+    public init(
+        bellBackground: String?,
+        bellIconColor: String?,
+        panelBackground: String?,
+        dividerColor: String?,
+        badgeBackground: String?,
+        cornerRadius: Double?,
+        darkModePattern: [String: Any]?
+    ) {
+        self.bellBackground = bellBackground
+        self.bellIconColor = bellIconColor
+        self.panelBackground = panelBackground
+        self.dividerColor = dividerColor
+        self.badgeBackground = badgeBackground
+        self.cornerRadius = cornerRadius
+        self.darkModePattern = darkModePattern
+    }
+
+    public static func == (lhs: VisualInboxChrome, rhs: VisualInboxChrome) -> Bool {
+        lhs.bellBackground == rhs.bellBackground &&
+            lhs.bellIconColor == rhs.bellIconColor &&
+            lhs.panelBackground == rhs.panelBackground &&
+            lhs.dividerColor == rhs.dividerColor &&
+            lhs.badgeBackground == rhs.badgeBackground &&
+            lhs.cornerRadius == rhs.cornerRadius &&
+            NSDictionary(dictionary: lhs.darkModePattern ?? [:]).isEqual(to: rhs.darkModePattern ?? [:])
+    }
+}
+
 /// A single coalesced snapshot of everything the overlay renders from, emitted by
 /// ``VisualInboxProvider/observe()`` whenever the underlying data layer changes.
 ///

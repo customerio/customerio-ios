@@ -21,6 +21,9 @@ import SwiftUI
 public struct NotificationInboxBell: View {
     @ObservedObject private var model: VisualInboxModel
 
+    /// Drives dark-mode branding resolution for the bell chrome.
+    @Environment(\.colorScheme) private var colorScheme
+
     /// True when this view owns the model's lifecycle (standalone use) vs. observing a shared model
     /// owned by ``NotificationInboxOverlay`` (which drives start/stop itself).
     private let ownsModelLifecycle: Bool
@@ -55,13 +58,16 @@ public struct NotificationInboxBell: View {
     }
 
     private var button: some View {
-        Button(action: onTap, label: {
+        // Branding-first chrome colors (bell fill / glyph / badge), with a contrast-aware glyph
+        // fallback so a light branded bell never renders a white glyph on a white circle.
+        let colors = ResolvedInboxColors.resolve(chrome: model.chrome, isDark: colorScheme == .dark)
+        return Button(action: onTap, label: {
             ZStack(alignment: .topTrailing) {
                 // Default bundled SF Symbol bell (branding SVG bell is deferred).
                 Image(systemName: "bell.fill")
-                    .foregroundColor(.white)
+                    .foregroundColor(colors.bellIcon)
                     .frame(width: 56, height: 56)
-                    .background(Color.accentColor)
+                    .background(colors.bellBackground)
                     .clipShape(Circle())
                     .shadow(radius: 4)
 
@@ -70,7 +76,7 @@ public struct NotificationInboxBell: View {
                         .font(.caption)
                         .foregroundColor(.white)
                         .padding(5)
-                        .background(Color.red)
+                        .background(colors.badge)
                         .clipShape(Circle())
                         .offset(x: 4, y: -4)
                 }
