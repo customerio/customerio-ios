@@ -1,22 +1,32 @@
-import CioMessagingInbox
+#if canImport(UIKit)
 import SwiftUI
 import UIKit
 
-/// Hosts the Visual Notification Inbox overlay (`NotificationInboxOverlay`, a SwiftUI view) in a
-/// dedicated, passthrough `UIWindow` so the floating bell + slide-out panel appear app-wide on top of
-/// the existing UIKit UI — regardless of which view controller is on screen.
+/// Convenience entry point for mounting the Visual Notification Inbox overlay app-wide from a UIKit
+/// host.
 ///
-/// Why a separate window (not a child of the root VC): the app swaps its root view controller on
-/// login/logout, and pushes navigation controllers. A persistent overlay window survives those
-/// swaps and always stays above the app content. The window is set just below the system alert level
-/// so it floats over normal app windows but never above system alerts.
+/// It hosts ``NotificationInboxOverlay`` in a dedicated, passthrough `UIWindow` so the floating bell +
+/// slide-out panel appear on top of the existing UIKit UI regardless of which view controller is on
+/// screen, and survive root-view-controller swaps (login/logout) and navigation.
+///
+/// ## Usage
+/// ```swift
+/// func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options: UIScene.ConnectionOptions) {
+///     guard let windowScene = scene as? UIWindowScene else { return }
+///     if #available(iOS 15.0, *) { CioInboxOverlay.install(in: windowScene) }
+/// }
+/// ```
+///
+/// SwiftUI host (no UIKit window needed): place ``NotificationInboxOverlay`` in a `ZStack` instead.
 @available(iOS 15.0, *)
 @MainActor
-enum InboxOverlayWindow {
+public enum CioInboxOverlay {
+    /// The single overlay window, retained so it stays on screen for the app's lifetime.
     private static var window: PassthroughWindow?
 
-    /// Creates (once) and shows the overlay window for the given scene.
-    static func install(in windowScene: UIWindowScene) {
+    /// Creates (once) and shows the overlay window for the given scene. Idempotent — a second call is
+    /// a no-op while a window already exists.
+    public static func install(in windowScene: UIWindowScene) {
         guard window == nil else { return }
 
         let overlayWindow = PassthroughWindow(windowScene: windowScene)
@@ -52,7 +62,7 @@ enum InboxOverlayWindow {
 ///  - **panel closed** → capture only the floating bell's region (bottom-trailing); every other touch
 ///    falls through to the app window beneath, keeping the rest of the app usable.
 @available(iOS 15.0, *)
-private final class PassthroughWindow: UIWindow {
+final class PassthroughWindow: UIWindow {
     /// Set by the overlay via `onPanelPresentationChange`. When true, the panel/scrim is on screen.
     var isPanelOpen = false
 
@@ -80,3 +90,4 @@ private final class PassthroughWindow: UIWindow {
         return bellHitRect().contains(point) ? hit : nil
     }
 }
+#endif

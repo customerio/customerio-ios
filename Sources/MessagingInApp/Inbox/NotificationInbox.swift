@@ -75,6 +75,11 @@ public protocol NotificationInbox: Sendable {
     ///   deferred to the SDK default).
     func notifyMessageActionTaken(message: InboxMessage, actionValue: String, actionName: String) -> Bool
 
+    /// Notifies the registered ``InboxEventListener`` that a message was first shown (rendered in the
+    /// visible inbox). Deduped by the SDK so it fires at most once per message per app session — safe
+    /// to call on every render. No-op if no listener is set.
+    func notifyMessageShown(message: InboxMessage)
+
     /// Modern Swift Concurrency API for observing inbox changes.
     ///
     /// Returns an async stream that emits inbox messages whenever they change.

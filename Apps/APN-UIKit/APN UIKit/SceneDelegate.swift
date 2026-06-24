@@ -1,3 +1,4 @@
+import CioMessagingInbox
 import UIKit
 
 class SceneDelegate: UIResponder, UIWindowSceneDelegate {
@@ -18,7 +19,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         // Mount the Visual Notification Inbox overlay (floating bell + panel) app-wide in its own
         // passthrough window so it persists across root-VC swaps (login/logout) and navigation.
         if #available(iOS 15.0, *) {
-            InboxOverlayWindow.install(in: windowScene)
+            CioInboxOverlay.install(in: windowScene)
         }
     }
 

@@ -25,4 +25,35 @@ public protocol InboxEventListener: AutoMockable {
     /// - Returns: `true` if the host fully handled the action and the SDK should suppress its default
     ///   navigation; `false` to let the SDK run its default behavior.
     func inboxMessageActionTaken(message: InboxMessage, actionValue: String, actionName: String) -> Bool
+
+    /// Called when an inbox message is first shown to the user (rendered in the visible panel/list).
+    ///
+    /// Fired once per message per render session (deduped by the SDK) — not on every recompose. This
+    /// is an observe-only callback; its return value has no effect on SDK behavior.
+    /// - Parameter message: The inbox message that became visible.
+    func inboxMessageShown(message: InboxMessage)
+
+    /// Called when an inbox message is opened (the SDK marks it opened — e.g. when the panel opens and
+    /// its messages are auto-marked, deduped by the SDK so it never fires twice for the same message).
+    ///
+    /// Observe-only; its return value has no effect on SDK behavior.
+    /// - Parameter message: The inbox message that was opened.
+    func inboxMessageOpened(message: InboxMessage)
+
+    /// Called when an inbox message is dismissed (removed) — e.g. the web-parity tap-to-dismiss.
+    ///
+    /// Observe-only; its return value has no effect on SDK behavior.
+    /// - Parameter message: The inbox message that was dismissed.
+    func inboxMessageDismissed(message: InboxMessage)
+}
+
+// MARK: - Default implementations (source compatibility)
+
+public extension InboxEventListener {
+    /// Default no-op so adding these observe callbacks stays source-compatible with existing listeners.
+    func inboxMessageShown(message: InboxMessage) {}
+    /// Default no-op so adding these observe callbacks stays source-compatible with existing listeners.
+    func inboxMessageOpened(message: InboxMessage) {}
+    /// Default no-op so adding these observe callbacks stays source-compatible with existing listeners.
+    func inboxMessageDismissed(message: InboxMessage) {}
 }

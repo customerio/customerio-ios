@@ -73,6 +73,11 @@ public protocol VisualInboxProvider: Sendable {
     ///   suppress its default navigation); `false` if there was no listener, the listener deferred, or
     ///   the message was no longer in the store.
     func handleMessageAction(messageId: String, actionName: String, actionValue: String) async -> Bool
+
+    /// Notifies the host ``InboxEventListener`` that a message was first shown (rendered in the visible
+    /// inbox). Resolved by id from the store and forwarded via the existing headless plumbing, which
+    /// dedupes so it fires at most once per message per session. No-op if the message is gone.
+    func notifyMessageShown(messageId: String) async
 }
 
 // MARK: - Implementation
@@ -269,6 +274,16 @@ final class VisualInboxProviderImpl: VisualInboxProvider, @unchecked Sendable {
         inbox.trackMessageClicked(message: message, actionName: actionName)
         // Item 13: forward to the host listener; true suppresses the SDK's default navigation.
         return inbox.notifyMessageActionTaken(message: message, actionValue: actionValue, actionName: actionName)
+    }
+
+    func notifyMessageShown(messageId: String) async {
+        // Resolve the full InboxMessage so the host listener receives a real message. The headless
+        // plumbing dedupes "shown" per id, so calling this on every render is safe.
+        let state = await inAppMessageManager.state
+        guard let message = state.inboxMessages.first(where: { $0.queueId == messageId }) else {
+            return
+        }
+        inbox.notifyMessageShown(message: message)
     }
 }
 

@@ -1146,6 +1146,21 @@ public class InboxEventListenerMock: InboxEventListener, Mock {
         inboxMessageActionTakenReceivedInvocations = []
 
         mockCalled = false // do last as resetting properties above can make this true
+        inboxMessageShownCallsCount = 0
+        inboxMessageShownReceivedArguments = nil
+        inboxMessageShownReceivedInvocations = []
+
+        mockCalled = false // do last as resetting properties above can make this true
+        inboxMessageOpenedCallsCount = 0
+        inboxMessageOpenedReceivedArguments = nil
+        inboxMessageOpenedReceivedInvocations = []
+
+        mockCalled = false // do last as resetting properties above can make this true
+        inboxMessageDismissedCallsCount = 0
+        inboxMessageDismissedReceivedArguments = nil
+        inboxMessageDismissedReceivedInvocations = []
+
+        mockCalled = false // do last as resetting properties above can make this true
     }
 
     // MARK: - inboxMessageActionTaken
@@ -1177,6 +1192,87 @@ public class InboxEventListenerMock: InboxEventListener, Mock {
         inboxMessageActionTakenReceivedArguments = (message: message, actionValue: actionValue, actionName: actionName)
         inboxMessageActionTakenReceivedInvocations.append((message: message, actionValue: actionValue, actionName: actionName))
         return inboxMessageActionTakenClosure.map { $0(message, actionValue, actionName) } ?? inboxMessageActionTakenReturnValue
+    }
+
+    // MARK: - inboxMessageShown
+
+    /// Number of times the function was called.
+    @Atomic public private(set) var inboxMessageShownCallsCount = 0
+    /// `true` if the function was ever called.
+    public var inboxMessageShownCalled: Bool {
+        inboxMessageShownCallsCount > 0
+    }
+
+    /// The arguments from the *last* time the function was called.
+    @Atomic public private(set) var inboxMessageShownReceivedArguments: InboxMessage?
+    /// Arguments from *all* of the times that the function was called.
+    @Atomic public private(set) var inboxMessageShownReceivedInvocations: [InboxMessage] = []
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     */
+    public var inboxMessageShownClosure: ((InboxMessage) -> Void)?
+
+    /// Mocked function for `inboxMessageShown(message: InboxMessage)`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func inboxMessageShown(message: InboxMessage) {
+        mockCalled = true
+        inboxMessageShownCallsCount += 1
+        inboxMessageShownReceivedArguments = message
+        inboxMessageShownReceivedInvocations.append(message)
+        inboxMessageShownClosure?(message)
+    }
+
+    // MARK: - inboxMessageOpened
+
+    /// Number of times the function was called.
+    @Atomic public private(set) var inboxMessageOpenedCallsCount = 0
+    /// `true` if the function was ever called.
+    public var inboxMessageOpenedCalled: Bool {
+        inboxMessageOpenedCallsCount > 0
+    }
+
+    /// The arguments from the *last* time the function was called.
+    @Atomic public private(set) var inboxMessageOpenedReceivedArguments: InboxMessage?
+    /// Arguments from *all* of the times that the function was called.
+    @Atomic public private(set) var inboxMessageOpenedReceivedInvocations: [InboxMessage] = []
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     */
+    public var inboxMessageOpenedClosure: ((InboxMessage) -> Void)?
+
+    /// Mocked function for `inboxMessageOpened(message: InboxMessage)`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func inboxMessageOpened(message: InboxMessage) {
+        mockCalled = true
+        inboxMessageOpenedCallsCount += 1
+        inboxMessageOpenedReceivedArguments = message
+        inboxMessageOpenedReceivedInvocations.append(message)
+        inboxMessageOpenedClosure?(message)
+    }
+
+    // MARK: - inboxMessageDismissed
+
+    /// Number of times the function was called.
+    @Atomic public private(set) var inboxMessageDismissedCallsCount = 0
+    /// `true` if the function was ever called.
+    public var inboxMessageDismissedCalled: Bool {
+        inboxMessageDismissedCallsCount > 0
+    }
+
+    /// The arguments from the *last* time the function was called.
+    @Atomic public private(set) var inboxMessageDismissedReceivedArguments: InboxMessage?
+    /// Arguments from *all* of the times that the function was called.
+    @Atomic public private(set) var inboxMessageDismissedReceivedInvocations: [InboxMessage] = []
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     */
+    public var inboxMessageDismissedClosure: ((InboxMessage) -> Void)?
+
+    /// Mocked function for `inboxMessageDismissed(message: InboxMessage)`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func inboxMessageDismissed(message: InboxMessage) {
+        mockCalled = true
+        inboxMessageDismissedCallsCount += 1
+        inboxMessageDismissedReceivedArguments = message
+        inboxMessageDismissedReceivedInvocations.append(message)
+        inboxMessageDismissedClosure?(message)
     }
 }
 

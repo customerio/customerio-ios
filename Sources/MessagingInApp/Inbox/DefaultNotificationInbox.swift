@@ -20,6 +20,12 @@ class DefaultNotificationInbox: NotificationInbox, @unchecked Sendable {
     private var inboxEventListener: InboxEventListener?
     private let inboxEventListenerLock = NSLock()
 
+    /// Message ids already reported to the host via `inboxMessageShown`, so "shown" fires at most once
+    /// per message per app session even though the UI may call `notifyMessageShown` on every render.
+    /// Guarded by `shownMessageIdsLock` because `notifyMessageShown` can be called off the main thread.
+    private var shownMessageIds: Set<String> = []
+    private let shownMessageIdsLock = NSLock()
+
     /// Subscription task for inbox messages state changes
     private var subscriptionTask: Task<Void, Never>?
 
@@ -133,6 +139,8 @@ class DefaultNotificationInbox: NotificationInbox, @unchecked Sendable {
 
     func markMessageOpened(message: InboxMessage) {
         inAppMessageManager.dispatch(action: .inboxAction(action: .updateOpened(message: message, opened: true)))
+        // Observe-only host callback (item 13): a message was opened.
+        currentInboxEventListener()?.inboxMessageOpened(message: message)
     }
 
     func markMessageUnopened(message: InboxMessage) {
@@ -141,6 +149,8 @@ class DefaultNotificationInbox: NotificationInbox, @unchecked Sendable {
 
     func markMessageDeleted(message: InboxMessage) {
         inAppMessageManager.dispatch(action: .inboxAction(action: .deleteMessage(message: message)))
+        // Observe-only host callback (item 13): a message was dismissed/removed.
+        currentInboxEventListener()?.inboxMessageDismissed(message: message)
     }
 
     func trackMessageClicked(message: InboxMessage, actionName: String?) {
@@ -154,11 +164,25 @@ class DefaultNotificationInbox: NotificationInbox, @unchecked Sendable {
     }
 
     func notifyMessageActionTaken(message: InboxMessage, actionValue: String, actionName: String) -> Bool {
-        inboxEventListenerLock.lock()
-        let listener = inboxEventListener
-        inboxEventListenerLock.unlock()
-        guard let listener = listener else { return false }
+        guard let listener = currentInboxEventListener() else { return false }
         return listener.inboxMessageActionTaken(message: message, actionValue: actionValue, actionName: actionName)
+    }
+
+    func notifyMessageShown(message: InboxMessage) {
+        // Dedupe: only fire "shown" the first time we see this message id this session.
+        shownMessageIdsLock.lock()
+        let alreadyShown = shownMessageIds.contains(message.queueId)
+        if !alreadyShown { shownMessageIds.insert(message.queueId) }
+        shownMessageIdsLock.unlock()
+        guard !alreadyShown else { return }
+        currentInboxEventListener()?.inboxMessageShown(message: message)
+    }
+
+    /// Thread-safe read of the host listener (set/read from arbitrary threads).
+    private func currentInboxEventListener() -> InboxEventListener? {
+        inboxEventListenerLock.lock()
+        defer { inboxEventListenerLock.unlock() }
+        return inboxEventListener
     }
 
     // MARK: - Private Helper Methods

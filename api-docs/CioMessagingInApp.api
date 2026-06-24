@@ -75,6 +75,9 @@ public final class CioMessagingInApp.InAppMessage {
 }
 public interface CioMessagingInApp.InboxEventListener {
 	public fun func inboxMessageActionTaken(message: InboxMessage, actionValue: String, actionName: String) -> Boolean;
+	public fun func inboxMessageShown(message: InboxMessage);
+	public fun func inboxMessageOpened(message: InboxMessage);
+	public fun func inboxMessageDismissed(message: InboxMessage);
 }
 public final class CioMessagingInApp.InboxMessage {
 	public final val queueId: String;
@@ -176,6 +179,7 @@ public interface CioMessagingInApp.NotificationInbox {
 	public fun func trackMessageClicked(message: InboxMessage, actionName: String?);
 	public fun func setInboxEventListener(_ listener: InboxEventListener?);
 	public fun func notifyMessageActionTaken(message: InboxMessage, actionValue: String, actionName: String) -> Boolean;
+	public fun func notifyMessageShown(message: InboxMessage);
 	public fun func messages(topic: String?) -> AsyncStream<List<InboxMessage>>;
 }
 public interface CioMessagingInApp.NotificationInboxChangeListener {
@@ -208,6 +212,7 @@ public interface CioMessagingInApp.VisualInboxProvider {
 	public fun func markOpened(messageId: String) async -> Boolean;
 	public fun func dismiss(messageId: String) async -> Boolean;
 	public fun func handleMessageAction(messageId: String, actionName: String, actionValue: String) async -> Boolean;
+	public fun func notifyMessageShown(messageId: String) async;
 }
 public final class CioMessagingInApp.VisualInboxSnapshot {
 	public final val state: VisualInboxState;

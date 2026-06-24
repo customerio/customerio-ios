@@ -54,4 +54,8 @@ class NoOpNotificationInbox: NotificationInbox {
     func notifyMessageActionTaken(message: InboxMessage, actionValue: String, actionName: String) -> Bool {
         false
     }
+
+    func notifyMessageShown(message: InboxMessage) {
+        // No-op
+    }
 }

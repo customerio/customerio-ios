@@ -397,6 +397,52 @@ class NotificationInboxTest: UnitTest {
         XCTAssertEqual(listener.inboxMessageActionTakenCallsCount, 0)
     }
 
+    // MARK: - observe-only listener callbacks (shown / opened / dismissed)
+
+    func test_markMessageOpened_whenListenerSet_expectInboxMessageOpenedFired() {
+        inAppMessageManagerMock.dispatchReturnValue = Task {}
+        let listener = InboxEventListenerMock()
+        notificationInbox.setInboxEventListener(listener)
+
+        notificationInbox.markMessageOpened(message: makeInboxMessage(queueId: "q-1"))
+
+        XCTAssertEqual(listener.inboxMessageOpenedCallsCount, 1)
+        XCTAssertEqual(listener.inboxMessageOpenedReceivedArguments?.queueId, "q-1")
+    }
+
+    func test_markMessageDeleted_whenListenerSet_expectInboxMessageDismissedFired() {
+        inAppMessageManagerMock.dispatchReturnValue = Task {}
+        let listener = InboxEventListenerMock()
+        notificationInbox.setInboxEventListener(listener)
+
+        notificationInbox.markMessageDeleted(message: makeInboxMessage(queueId: "q-1"))
+
+        XCTAssertEqual(listener.inboxMessageDismissedCallsCount, 1)
+        XCTAssertEqual(listener.inboxMessageDismissedReceivedArguments?.queueId, "q-1")
+    }
+
+    func test_notifyMessageShown_whenCalledTwiceForSameId_expectFiredOnce() {
+        let listener = InboxEventListenerMock()
+        notificationInbox.setInboxEventListener(listener)
+        let message = makeInboxMessage(queueId: "q-1")
+
+        notificationInbox.notifyMessageShown(message: message)
+        notificationInbox.notifyMessageShown(message: message)
+
+        XCTAssertEqual(listener.inboxMessageShownCallsCount, 1)
+        XCTAssertEqual(listener.inboxMessageShownReceivedArguments?.queueId, "q-1")
+    }
+
+    func test_notifyMessageShown_whenDifferentIds_expectFiredForEach() {
+        let listener = InboxEventListenerMock()
+        notificationInbox.setInboxEventListener(listener)
+
+        notificationInbox.notifyMessageShown(message: makeInboxMessage(queueId: "q-1"))
+        notificationInbox.notifyMessageShown(message: makeInboxMessage(queueId: "q-2"))
+
+        XCTAssertEqual(listener.inboxMessageShownCallsCount, 2)
+    }
+
     private func makeInboxMessage(queueId: String) -> InboxMessage {
         InboxMessage(queueId: queueId, deliveryId: "d-\(queueId)", expiry: nil, sentAt: Date(), topics: [], type: "", opened: false, priority: nil, properties: [:])
     }

@@ -225,6 +225,30 @@ final class VisualInboxModelTests: XCTestCase {
         XCTAssertEqual(provider.handledActions.count, 1)
     }
 
+    // MARK: - shown (observe-only host callback)
+
+    func test_markShown_whenCalledTwiceForSameId_thenForwardedOnce() async {
+        let provider = FakeVisualInboxProvider()
+        let model = VisualInboxModel(provider: provider)
+
+        model.markShown(messageId: "a")
+        model.markShown(messageId: "a")
+        await provider.waitForShown(expected: 1)
+
+        XCTAssertEqual(provider.shownIds, ["a"])
+    }
+
+    func test_markShown_whenDifferentIds_thenEachForwardedOnce() async {
+        let provider = FakeVisualInboxProvider()
+        let model = VisualInboxModel(provider: provider)
+
+        model.markShown(messageId: "a")
+        model.markShown(messageId: "b")
+        await provider.waitForShown(expected: 2)
+
+        XCTAssertEqual(Set(provider.shownIds), ["a", "b"])
+    }
+
     /// Builds a `JistActionEvent` whose `data` is an object of string fields, matching the live inbox
     /// templates (the action's url/behavior live in `properties[name]`).
     private func makeActionEvent(name: String, fields: [String: String]) -> JistActionEvent {
@@ -381,6 +405,9 @@ private final class FakeVisualInboxProvider: VisualInboxProvider, @unchecked Sen
     /// Ids passed to `dismiss`, in order, for the dismiss/onAction tests.
     private(set) var dismissedIds: [String] = []
 
+    /// Ids passed to `notifyMessageShown`, in order, for the shown-callback tests.
+    private(set) var shownIds: [String] = []
+
     /// Snapshot emitted to `observe()` subscribers on subscribe.
     var initialSnapshot: VisualInboxSnapshot?
     private var observeContinuation: AsyncStream<VisualInboxSnapshot>.Continuation?
@@ -498,6 +525,12 @@ private final class FakeVisualInboxProvider: VisualInboxProvider, @unchecked Sen
         return handled
     }
 
+    func notifyMessageShown(messageId: String) async {
+        lock.lock()
+        shownIds.append(messageId)
+        lock.unlock()
+    }
+
     /// Waits until the model's detached dismiss Task records at least `expected` dismisses.
     func waitForDismisses(expected: Int) async {
         for _ in 0 ..< 200 {
@@ -515,6 +548,17 @@ private final class FakeVisualInboxProvider: VisualInboxProvider, @unchecked Sen
         for _ in 0 ..< 200 {
             lock.lock()
             let count = markedOpenedIds.count
+            lock.unlock()
+            if count >= expected { return }
+            try? await Task.sleep(nanoseconds: 1000000) // 1ms
+        }
+    }
+
+    /// Waits until the model's detached shown Task records at least `expected` shown reports.
+    func waitForShown(expected: Int) async {
+        for _ in 0 ..< 200 {
+            lock.lock()
+            let count = shownIds.count
             lock.unlock()
             if count >= expected { return }
             try? await Task.sleep(nanoseconds: 1000000) // 1ms

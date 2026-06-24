@@ -58,6 +58,15 @@ final class VisualInboxModel: ObservableObject {
         return messages.filter { templates[$0.type] != nil }
     }
 
+    /// Whether any inbox chrome (bell/panel) should be shown. Hidden state shows nothing (item 11).
+    /// Shared by the bell, panel, and overlay so all three react identically to a visibility flip.
+    var showsChrome: Bool {
+        switch state {
+        case .hidden: return false
+        case .idle, .loading, .visible: return true
+        }
+    }
+
     /// Backing task for the load + refresh cycle; cancelled when the view disappears.
     private var refreshTask: Task<Void, Never>?
 
@@ -73,6 +82,10 @@ final class VisualInboxModel: ObservableObject {
     /// In-flight guard for dismiss (web parity: tap → dismiss). A message id present here has a
     /// dismiss in flight, so a rapid double-tap / re-entrant `onAction` can't double-fire the delete.
     private var dismissingIds: Set<String> = []
+
+    /// Ids already reported as "shown" so we dispatch the host-callback Task at most once per message
+    /// (the data layer dedupes too, but this avoids spawning a Task on every recompose).
+    private var shownMessageIds: Set<String> = []
 
     init(provider: VisualInboxProvider) {
         self.provider = provider
@@ -238,6 +251,19 @@ final class VisualInboxModel: ObservableObject {
     ///   otherwise (run the SDK default).
     func handleAction(messageId: String, actionName: String, actionValue: String) async -> Bool {
         await provider.handleMessageAction(messageId: messageId, actionName: actionName, actionValue: actionValue)
+    }
+
+    // MARK: - Shown (observe-only host callback)
+
+    /// Reports that a message has been rendered (shown) in the visible inbox so the data layer can
+    /// fire the host `inboxMessageShown` callback. Deduped both here (so we don't dispatch a Task per
+    /// recompose) and in the data layer (so the host fires at most once per message per session).
+    func markShown(messageId: String) {
+        guard !shownMessageIds.contains(messageId) else { return }
+        shownMessageIds.insert(messageId)
+        Task { [provider] in
+            await provider.notifyMessageShown(messageId: messageId)
+        }
     }
 }
 #endif
