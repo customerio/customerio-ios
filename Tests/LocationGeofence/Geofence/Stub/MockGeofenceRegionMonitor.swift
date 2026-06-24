@@ -34,6 +34,7 @@ final class MockGeofenceRegionMonitor: GeofenceRegionMonitoring {
     var osMonitoredRegions: Set<String> = []
     private(set) var adoptExistingRegionsCallsCount = 0
     private(set) var adoptedIdentifiers: Set<String> = []
+    private(set) var reportPermissionTierCallsCount = 0
 
     var monitoredRegionIdentifiers: Set<String> {
         activeIdentifiers
@@ -48,6 +49,10 @@ final class MockGeofenceRegionMonitor: GeofenceRegionMonitoring {
         let adopted = identifiers.intersection(osMonitoredRegions)
         adoptedIdentifiers.formUnion(adopted)
         activeIdentifiers.formUnion(adopted)
+    }
+
+    func reportPermissionTier() {
+        reportPermissionTierCallsCount += 1
     }
 
     func setOnTransition(_ handler: GeofenceTransitionHandler?) {

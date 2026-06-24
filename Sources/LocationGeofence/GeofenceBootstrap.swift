@@ -67,6 +67,10 @@ enum GeofenceBootstrap {
             }
         }
 
+        // The adopt path above skips `startMonitoring` (the other tier-log site), so without this
+        // a relaunch that re-claims OS-persisted regions would report nothing about delivery readiness.
+        monitor.reportPermissionTier()
+
         // Self-heal mid-process permission changes (Settings toggle, late prompt response).
         // The handler replaces any prior one — no stacking when both foreground init and
         // cold-wake bootstrap run in the same process.
