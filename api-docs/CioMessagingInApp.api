@@ -193,6 +193,17 @@ public final class CioMessagingInApp.Subscription {
 	public fun init(sink: @escaping (@escaping (State?, State) -> Unit) -> Unit);
 	public fun func skipRepeats(_ isRepeat: @escaping (_ oldState: State, _ newState: State) -> Boolean) -> Subscription<State>;
 }
+public final class CioMessagingInApp.VisualInboxChrome {
+	public final val bellBackground: String?;
+	public final val bellIconColor: String?;
+	public final val panelBackground: String?;
+	public final val dividerColor: String?;
+	public final val badgeBackground: String?;
+	public final val cornerRadius: Double?;
+	public final val darkModePattern: Map<String, Any>?;
+	public fun init(bellBackground: String?, bellIconColor: String?, panelBackground: String?, dividerColor: String?, badgeBackground: String?, cornerRadius: Double?, darkModePattern: List<String: Any>?);
+	public fun func == (lhs: VisualInboxChrome, rhs: VisualInboxChrome) -> Boolean;
+}
 public final class CioMessagingInApp.VisualInboxMessageSnapshot {
 	public final val id: String;
 	public final val type: String;
@@ -209,6 +220,7 @@ public interface CioMessagingInApp.VisualInboxProvider {
 	public fun func unopenedCount() async -> Int;
 	public fun func templatesJSON() async -> List<String: Any>?;
 	public fun func themeJSON() async -> List<String: Any>?;
+	public fun func brandingChrome() async -> VisualInboxChrome?;
 	public fun func markOpened(messageId: String) async -> Boolean;
 	public fun func dismiss(messageId: String) async -> Boolean;
 	public fun func handleMessageAction(messageId: String, actionName: String, actionValue: String) async -> Boolean;

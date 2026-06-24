@@ -481,6 +481,12 @@ private final class FakeVisualInboxProvider: VisualInboxProvider, @unchecked Sen
         stubTheme
     }
 
+    var stubChrome: VisualInboxChrome?
+
+    func brandingChrome() async -> VisualInboxChrome? {
+        stubChrome
+    }
+
     /// Total number of `markOpened` attempts (including no-ops), for the retry test.
     private(set) var markAttempts: [String] = []
 
