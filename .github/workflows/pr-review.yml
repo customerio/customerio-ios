@@ -17,6 +17,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Run danger 
-        run: npx danger@11 ci --dangerfile dangerfile.js
+        run: npx danger@12 ci --dangerfile dangerfile.js
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
