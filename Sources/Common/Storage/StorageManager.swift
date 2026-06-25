@@ -66,7 +66,7 @@ private struct CreateAggregationTablesSchema: Migration {
                 rule_id         TEXT    NOT NULL PRIMARY KEY,
                 state_json      TEXT    NOT NULL,
                 last_flushed_at INTEGER NOT NULL DEFAULT 0,
-                scope           TEXT    NOT NULL DEFAULT 'profile'
+                scope           TEXT    NOT NULL
             )
             """
         )

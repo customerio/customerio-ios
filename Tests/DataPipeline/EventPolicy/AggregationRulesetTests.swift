@@ -31,16 +31,38 @@ struct AggregationRulesetTests {
         #expect(rl.scope == .device)
     }
 
-    // MARK: - Scope defaulting
+    // MARK: - Tolerant parsing
 
-    @Test func rateLimitEntry_missingScope_defaultsToProfile() throws {
+    @Test func filterEntry_missingRequiredField_isSkipped() throws {
+        let json = #"{ "filters": [{ "name": "ev" }] }"#
+        let ruleset = try decode(json)
+        #expect(ruleset.filters?.isEmpty == true)
+    }
+
+    @Test func rateLimitEntry_missingScope_isSkipped() throws {
+        let json = #"{ "rateLimits": [{ "eventType": "track", "name": "ev", "windowSeconds": 60 }] }"#
+        let ruleset = try decode(json)
+        #expect(ruleset.rateLimits?.isEmpty == true)
+    }
+
+    @Test func rateLimitEntry_unknownScope_isSkipped() throws {
+        let json = #"{ "rateLimits": [{ "eventType": "track", "name": "ev", "windowSeconds": 60, "scope": "workspace" }] }"#
+        let ruleset = try decode(json)
+        #expect(ruleset.rateLimits?.isEmpty == true)
+    }
+
+    @Test func partiallyInvalidEntries_validOnesRetained() throws {
         let json = """
         {
-          "rateLimits": [{ "eventType": "track", "name": "ev", "windowSeconds": 60 }]
+          "rateLimits": [
+            { "eventType": "track", "name": "bad" },
+            { "eventType": "track", "name": "good", "windowSeconds": 30, "scope": "profile" }
+          ]
         }
         """
         let ruleset = try decode(json)
-        #expect(ruleset.rateLimits?.first?.scope == .profile)
+        #expect(ruleset.rateLimits?.count == 1)
+        #expect(ruleset.rateLimits?.first?.name == "good")
     }
 
     // MARK: - Nullable / absent arrays

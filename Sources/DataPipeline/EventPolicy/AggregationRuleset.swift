@@ -3,11 +3,6 @@ import Foundation
 enum RuleScope: String, Codable, Sendable {
     case profile
     case device
-
-    init(from decoder: Decoder) throws {
-        let raw = try decoder.singleValueContainer().decode(String.self)
-        self = RuleScope(rawValue: raw) ?? .profile
-    }
 }
 
 struct FilterEntry: Codable, Sendable {
@@ -20,20 +15,31 @@ struct RateLimitEntry: Codable, Sendable {
     let name: String
     let windowSeconds: Int
     let scope: RuleScope
-
-    enum CodingKeys: String, CodingKey { case eventType, name, windowSeconds, scope }
-
-    init(from decoder: Decoder) throws {
-        let c = try decoder.container(keyedBy: CodingKeys.self)
-        self.eventType = try c.decode(String.self, forKey: .eventType)
-        self.name = try c.decode(String.self, forKey: .name)
-        self.windowSeconds = try c.decode(Int.self, forKey: .windowSeconds)
-        self.scope = try c.decodeIfPresent(RuleScope.self, forKey: .scope) ?? .profile
-    }
 }
 
 struct AggregationRuleset: Codable, Sendable {
     let filters: [FilterEntry]?
     let rateLimits: [RateLimitEntry]?
     // rules reserved for next aggregation phase
+
+    private enum CodingKeys: String, CodingKey { case filters, rateLimits }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        filters = try c.decodeIfPresent([Failable<FilterEntry>].self, forKey: .filters)?.compactMap(\.value)
+        rateLimits = try c.decodeIfPresent([Failable<RateLimitEntry>].self, forKey: .rateLimits)?.compactMap(\.value)
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encodeIfPresent(filters, forKey: .filters)
+        try c.encodeIfPresent(rateLimits, forKey: .rateLimits)
+    }
+}
+
+private struct Failable<T: Decodable>: Decodable {
+    let value: T?
+    init(from decoder: Decoder) throws {
+        value = try? T(from: decoder)
+    }
 }

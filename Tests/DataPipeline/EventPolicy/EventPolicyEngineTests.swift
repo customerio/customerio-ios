@@ -102,7 +102,7 @@ struct EventPolicyEngineTests {
     }
 
     private func rateLimit(_ eventType: String, _ name: String, _ windowSeconds: Int) -> RateLimitEntry {
-        decode("{\"eventType\":\"\(eventType)\",\"name\":\"\(name)\",\"windowSeconds\":\(windowSeconds)}")
+        decode("{\"eventType\":\"\(eventType)\",\"name\":\"\(name)\",\"windowSeconds\":\(windowSeconds),\"scope\":\"profile\"}")
     }
 
     private func ruleset(filters: [FilterEntry]? = nil, rateLimits: [RateLimitEntry]? = nil) -> AggregationRuleset {
@@ -112,7 +112,7 @@ struct EventPolicyEngineTests {
             parts.append("\"filters\":[\(items.joined(separator: ","))]")
         }
         if let rl = rateLimits {
-            let items = rl.map { "{\"eventType\":\"\($0.eventType)\",\"name\":\"\($0.name)\",\"windowSeconds\":\($0.windowSeconds)}" }
+            let items = rl.map { "{\"eventType\":\"\($0.eventType)\",\"name\":\"\($0.name)\",\"windowSeconds\":\($0.windowSeconds),\"scope\":\"\($0.scope.rawValue)\"}" }
             parts.append("\"rateLimits\":[\(items.joined(separator: ","))]")
         }
         return decode("{\(parts.joined(separator: ","))}")
