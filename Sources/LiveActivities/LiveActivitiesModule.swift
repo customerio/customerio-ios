@@ -107,6 +107,7 @@ public final class LiveActivitiesModule {
         _installationId.wrappedValue = sdk.installationId
         _registeredDeviceToken.wrappedValue = sdk.registeredDeviceToken
 
+        syncAssets()
         registerEventBusObservers()
 
         #if os(iOS)
@@ -114,6 +115,25 @@ public final class LiveActivitiesModule {
             startObserving(registration: registration)
         }
         #endif
+    }
+
+    /// Copy new or changed bundle assets into the AppGroup container.
+    ///
+    /// Skipped silently when no AppGroup identifier or no asset registrations are
+    /// configured. Logs a warning on failure — asset sync failure does not prevent
+    /// activity observation from starting.
+    private func syncAssets() {
+        guard
+            let appGroupIdentifier = config.appGroupIdentifier,
+            !config.assetRegistrations.isEmpty
+        else { return }
+
+        do {
+            let writer = try AssetLibraryWriter(appGroupIdentifier: appGroupIdentifier)
+            try writer.sync(registrations: config.assetRegistrations)
+        } catch {
+            sdk.logger.error("Live Activities asset sync failed: \(error)", "LiveActivities", nil)
+        }
     }
 
     private func registerEventBusObservers() {
