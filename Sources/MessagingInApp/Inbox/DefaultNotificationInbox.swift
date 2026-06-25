@@ -144,18 +144,16 @@ class DefaultNotificationInbox: NotificationInbox, @unchecked Sendable {
 
     func markMessageOpened(message: InboxMessage) {
         inAppMessageManager.dispatch(action: .inboxAction(action: .updateOpened(message: message, opened: true)))
-        // Observe-only host callback: a message was opened. Only record the per-session dedupe id once
-        // a listener is actually present to receive it — otherwise a listener registered later would
-        // never get callbacks for ids marked while none was set. Dedupe (mirrors notifyMessageShown)
-        // so repeated marks — incl. via the public API — fire it at most once.
-        guard let listener = currentInboxEventListener() else { return }
+        // Observe-only host callback: a message was opened. Dedupe per session (mirrors
+        // notifyMessageShown) so repeated marks — incl. via the public API — fire it at most once.
         openedMessageIdsLock.lock()
         let alreadyOpened = openedMessageIds.contains(message.queueId)
         if !alreadyOpened { openedMessageIds.insert(message.queueId) }
         openedMessageIdsLock.unlock()
         guard !alreadyOpened else { return }
         // Reflect the just-applied opened state: the resolved `message` predates the dispatch above.
-        deliverOnMain { listener.inboxMessageOpened(message: message.copy(opened: true)) }
+        let listener = currentInboxEventListener()
+        deliverOnMain { listener?.inboxMessageOpened(message: message.copy(opened: true)) }
     }
 
     func markMessageUnopened(message: InboxMessage) {
@@ -185,15 +183,14 @@ class DefaultNotificationInbox: NotificationInbox, @unchecked Sendable {
     }
 
     func notifyMessageShown(message: InboxMessage) {
-        // Only record the per-session dedupe id once a listener is present to receive it — otherwise a
-        // listener registered later would never get "shown" for ids reported while none was set.
-        guard let listener = currentInboxEventListener() else { return }
+        // Dedupe: only fire "shown" the first time we see this message id this session.
         shownMessageIdsLock.lock()
         let alreadyShown = shownMessageIds.contains(message.queueId)
         if !alreadyShown { shownMessageIds.insert(message.queueId) }
         shownMessageIdsLock.unlock()
         guard !alreadyShown else { return }
-        deliverOnMain { listener.inboxMessageShown(message: message) }
+        let listener = currentInboxEventListener()
+        deliverOnMain { listener?.inboxMessageShown(message: message) }
     }
 
     /// Delivers a host `InboxEventListener` callback on the main thread. Inbox mutations can be
