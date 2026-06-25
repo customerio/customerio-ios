@@ -64,12 +64,19 @@ final class VisualInboxModel: ObservableObject {
         return messages.filter { templates[$0.type] != nil }
     }
 
-    /// Whether any inbox chrome (bell/panel) should be shown. Hidden state shows nothing (item 11).
+    /// Whether any inbox chrome (bell/panel) should be shown. Hidden state shows nothing.
     /// Shared by the bell, panel, and overlay so all three react identically to a visibility flip.
     var showsChrome: Bool {
         switch state {
-        case .hidden: return false
-        case .idle, .loading, .visible: return true
+        case .hidden:
+            return false
+        case .idle, .loading:
+            return true
+        case .visible:
+            // Visible but every message lacks a Jist template → nothing can render (each is logged +
+            // skipped). Show no chrome rather than a bell over a blank/“caught up” panel; chrome
+            // reappears if a renderable message arrives.
+            return !renderableMessages.isEmpty
         }
     }
 

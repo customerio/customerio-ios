@@ -62,8 +62,10 @@ public struct NotificationInboxView: View {
     /// otherwise the Jist-rendered list.
     @ViewBuilder
     private var content: some View {
-        if model.renderableMessages.isEmpty, case .visible = model.state {
-            // Visible with no messages → genuine "caught up" empty state.
+        if model.messages.isEmpty, case .visible = model.state {
+            // Genuinely caught up: visible with NO messages at all. Keyed off the full message list
+            // (not `renderableMessages`) so messages that merely lack a template don't read as
+            // "caught up". (When embedded standalone; the overlay hides chrome entirely in that case.)
             VStack {
                 Spacer()
                 Text("You're all caught up")
@@ -72,7 +74,7 @@ public struct NotificationInboxView: View {
                 Spacer()
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-        } else if model.renderableMessages.isEmpty {
+        } else if model.messages.isEmpty {
             // idle/loading (pre-first-snapshot or fetch in progress) → spinner, not the empty copy.
             VStack {
                 Spacer()

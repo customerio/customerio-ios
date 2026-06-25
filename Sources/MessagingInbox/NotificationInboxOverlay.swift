@@ -84,12 +84,23 @@ public struct NotificationInboxOverlay: View {
         // (and doesn't silently reappear if the inbox becomes visible again).
         .onChange(of: model.showsChrome) { visible in
             if !visible, isPanelOpen { isPanelOpen = false }
+            // Re-notify when chrome visibility flips: if the inbox goes hidden while the panel flag is
+            // still settling, the host must stop full-screen capture so touches aren't swallowed with
+            // nothing on screen.
+            notifyPanelPresentation()
         }
-        // Notify the host of panel open/close so a passthrough-window mount can toggle full-screen
-        // touch capture (panel open → scrim blocks click-through; closed → pass through).
-        .onChange(of: isPanelOpen) { open in
-            onPanelPresentationChange?(open)
+        // Notify the host of panel presentation so a passthrough-window mount can toggle full-screen
+        // touch capture (presented → scrim blocks click-through; not → pass through).
+        .onChange(of: isPanelOpen) { _ in
+            notifyPanelPresentation()
         }
+    }
+
+    /// The panel is "presented" (host should capture full-screen touches) only when it is open AND the
+    /// inbox chrome is shown. Keying the host callback off BOTH prevents leaving touch capture on after
+    /// the inbox goes hidden while `isPanelOpen` is still true.
+    private func notifyPanelPresentation() {
+        onPanelPresentationChange?(isPanelOpen && model.showsChrome)
     }
 
     private func setPanel(open: Bool) {
