@@ -26,8 +26,8 @@ struct AggregationRuleset: Codable, Sendable {
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
-        filters = try c.decodeIfPresent([Failable<FilterEntry>].self, forKey: .filters)?.compactMap(\.value)
-        rateLimits = try c.decodeIfPresent([Failable<RateLimitEntry>].self, forKey: .rateLimits)?.compactMap(\.value)
+        self.filters = try c.decodeIfPresent([Failable<FilterEntry>].self, forKey: .filters)?.compactMap(\.value)
+        self.rateLimits = try c.decodeIfPresent([Failable<RateLimitEntry>].self, forKey: .rateLimits)?.compactMap(\.value)
     }
 
     func encode(to encoder: Encoder) throws {
@@ -40,6 +40,6 @@ struct AggregationRuleset: Codable, Sendable {
 private struct Failable<T: Decodable>: Decodable {
     let value: T?
     init(from decoder: Decoder) throws {
-        value = try? T(from: decoder)
+        self.value = try? T(from: decoder)
     }
 }
