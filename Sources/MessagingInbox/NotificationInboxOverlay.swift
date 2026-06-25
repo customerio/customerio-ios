@@ -100,8 +100,15 @@ public struct NotificationInboxOverlay: View {
     /// Whether any chrome (bell/panel) should be shown. Hidden state shows nothing.
     private var showsChrome: Bool {
         switch model.state {
-        case .hidden: return false
-        case .idle, .loading, .visible: return true
+        case .hidden:
+            return false
+        case .idle, .loading:
+            return true
+        case .visible:
+            // Visible but every message lacks a Jist template → nothing can render (each is logged +
+            // skipped by the model). Show no chrome rather than a bell over a blank/“caught up” panel;
+            // it reappears if a renderable message arrives.
+            return !model.renderableMessages.isEmpty
         }
     }
 
