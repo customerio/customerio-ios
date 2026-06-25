@@ -23,7 +23,10 @@ let package = Package(
                 .product(name: "DataPipelines", package: "customerio-ios"),
                 .product(name: "MessagingPushAPN", package: "customerio-ios"),
                 .product(name: "MessagingInApp", package: "customerio-ios"),
-                .product(name: "Location", package: "customerio-ios")
+                .product(name: "Location", package: "customerio-ios"),
+                .product(name: "LiveActivities", package: "customerio-ios"),
+                .product(name: "LiveActivities_Attributes", package: "customerio-ios"),
+                .product(name: "LiveActivities_Templates", package: "customerio-ios")
             ],
             path: "Source"
         )

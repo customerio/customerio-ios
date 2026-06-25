@@ -38,6 +38,7 @@ class DashboardViewController: BaseViewController {
         setEmailAndDeviceToken()
         configureVersionLabel()
         addAccessibilityIdentifiersForAppium()
+        addLiveActivityButtonIfSupported()
     }
 
     func configureDashboardRouter() {
@@ -113,6 +114,30 @@ class DashboardViewController: BaseViewController {
             userEmailLabel.text = email
         }
         deviceTokenLabel.text = CustomerIO.shared.registeredDeviceToken ?? "Not Registered"
+    }
+
+    // MARK: - Live Activities
+
+    func addLiveActivityButtonIfSupported() {
+        guard #available(iOS 17.2, *),
+              let superview = inboxButton.superview else { return }
+
+        let button = ThemeButton()
+        button.setTitle("Live Activities", for: .normal)
+        button.translatesAutoresizingMaskIntoConstraints = false
+        button.addTarget(self, action: #selector(openLiveActivities), for: .touchUpInside)
+        superview.addSubview(button)
+
+        NSLayoutConstraint.activate([
+            button.topAnchor.constraint(equalTo: inboxButton.bottomAnchor, constant: 8),
+            button.leadingAnchor.constraint(equalTo: inboxButton.leadingAnchor),
+            button.trailingAnchor.constraint(equalTo: inboxButton.trailingAnchor),
+            button.heightAnchor.constraint(equalToConstant: 50),
+        ])
+    }
+
+    @objc func openLiveActivities() {
+        dashboardRouter?.routeToLiveActivities()
     }
 
     // MARK: - Actions
