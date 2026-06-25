@@ -13,16 +13,6 @@ enum RuleScope: String, Codable, Sendable {
 struct FilterEntry: Codable, Sendable {
     let eventType: String
     let name: String
-    let scope: RuleScope
-
-    enum CodingKeys: String, CodingKey { case eventType, name, scope }
-
-    init(from decoder: Decoder) throws {
-        let c = try decoder.container(keyedBy: CodingKeys.self)
-        self.eventType = try c.decode(String.self, forKey: .eventType)
-        self.name = try c.decode(String.self, forKey: .name)
-        self.scope = try c.decodeIfPresent(RuleScope.self, forKey: .scope) ?? .profile
-    }
 }
 
 struct RateLimitEntry: Codable, Sendable {

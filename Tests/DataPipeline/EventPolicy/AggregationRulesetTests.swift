@@ -10,7 +10,7 @@ struct AggregationRulesetTests {
         let json = """
         {
           "filters": [
-            { "eventType": "track", "name": "page_viewed", "scope": "profile" }
+            { "eventType": "track", "name": "page_viewed" }
           ],
           "rateLimits": [
             { "eventType": "track", "name": "button_clicked", "windowSeconds": 3600, "scope": "device" }
@@ -23,7 +23,6 @@ struct AggregationRulesetTests {
         let filter = try #require(ruleset.filters?.first)
         #expect(filter.eventType == "track")
         #expect(filter.name == "page_viewed")
-        #expect(filter.scope == .profile)
 
         let rl = try #require(ruleset.rateLimits?.first)
         #expect(rl.eventType == "track")
@@ -34,16 +33,6 @@ struct AggregationRulesetTests {
 
     // MARK: - Scope defaulting
 
-    @Test func filterEntry_missingScope_defaultsToProfile() throws {
-        let json = """
-        {
-          "filters": [{ "eventType": "track", "name": "ev" }]
-        }
-        """
-        let ruleset = try decode(json)
-        #expect(ruleset.filters?.first?.scope == .profile)
-    }
-
     @Test func rateLimitEntry_missingScope_defaultsToProfile() throws {
         let json = """
         {
@@ -52,18 +41,6 @@ struct AggregationRulesetTests {
         """
         let ruleset = try decode(json)
         #expect(ruleset.rateLimits?.first?.scope == .profile)
-    }
-
-    // MARK: - Unknown scope value
-
-    @Test func unknownScopeValue_fallsBackToProfile() throws {
-        let json = """
-        {
-          "filters": [{ "eventType": "track", "name": "ev", "scope": "workspace" }]
-        }
-        """
-        let ruleset = try decode(json)
-        #expect(ruleset.filters?.first?.scope == .profile)
     }
 
     // MARK: - Nullable / absent arrays
