@@ -2,28 +2,40 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<!--
-	Docs for this section: https://developer.apple.com/documentation/bundleresources/privacy_manifest_files/describing_data_use_in_privacy_manifests
-	This section describes what information this module collects about the app user.
-
-	NOTE: the data-use declaration is intentionally left empty for now. The geofence module
-	collects precise location (linked to the identified profile) and sends it to Customer.io;
-	the NSPrivacyCollectedDataTypes entry below must be completed, after privacy review, before
-	this module is released.
-
-	The SDK does NOT request location permissions - host apps are responsible for:
-	- Adding NSLocationWhenInUseUsageDescription / NSLocationAlwaysAndWhenInUseUsageDescription to their Info.plist
-	- Requesting permissions from users at appropriate times
-	-->
+	<!-- Geofence transitions are sent via /track with the user id; the device's
+	     coordinates are never sent, so no location data type is declared. -->
 	<key>NSPrivacyCollectedDataTypes</key>
 	<array>
+		<dict>
+			<key>NSPrivacyCollectedDataType</key>
+			<string>NSPrivacyCollectedDataTypeProductInteraction</string>
+			<key>NSPrivacyCollectedDataTypeLinked</key>
+			<false/> <!-- anonymous profiles make person-linkage optional -->
+			<key>NSPrivacyCollectedDataTypeTracking</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypePurposes</key>
+			<array>
+				<string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+				<string>NSPrivacyCollectedDataTypePurposeAnalytics</string>
+				<string>NSPrivacyCollectedDataTypePurposeProductPersonalization</string>
+			</array>
+		</dict>
+		<dict>
+			<key>NSPrivacyCollectedDataType</key>
+			<string>NSPrivacyCollectedDataTypeUserID</string>
+			<key>NSPrivacyCollectedDataTypeLinked</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypeTracking</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypePurposes</key>
+			<array>
+				<string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+				<string>NSPrivacyCollectedDataTypePurposeAnalytics</string>
+				<string>NSPrivacyCollectedDataTypePurposeProductPersonalization</string>
+			</array>
+		</dict>
 	</array>
 
-	<!--
-	Docs: https://developer.apple.com/documentation/bundleresources/privacy_manifest_files/describing_use_of_required_reason_api
-	Documents if this module uses certain system calls and why.
-	CoreLocation is not a "required reason" API, so nothing is declared here.
-	-->
 	<key>NSPrivacyAccessedAPITypes</key>
 	<array>
 	</array>
