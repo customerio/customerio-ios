@@ -8,9 +8,11 @@ import Foundation
 /// (`CustomerIO.shared`) is used in production.
 protocol CIOLiveActivitiesSDKProviding {
     var installationId: String { get }
+    var registeredDeviceToken: String? { get }
     var eventBusHandler: EventBusHandler { get }
     var logger: Logger { get }
     var storageManager: StorageManager? { get }
+    func track(name: String, properties: [String: Any]?)
 }
 
 extension CustomerIO: CIOLiveActivitiesSDKProviding {
@@ -26,5 +28,6 @@ extension CustomerIO: CIOLiveActivitiesSDKProviding {
         DIGraphShared.shared.storageManager
     }
 
-    // installationId is already declared on CustomerIO via CustomerIOInstance.
+    // installationId and registeredDeviceToken are already declared on CustomerIO
+    // via CustomerIOInstance. track(name:properties:) is also already on CustomerIO.
 }

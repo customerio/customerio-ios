@@ -8,7 +8,7 @@ import ActivityKit
 /// Fluent builder for `LiveActivityConfig`.
 ///
 /// ```swift
-/// LiveActivityConfigBuilder(baseURL: URL(string: "https://…")!)
+/// LiveActivityConfigBuilder()
 ///     .logLevel(.debug)
 ///     .appGroup("group.io.customer.example")
 ///     .build()
@@ -16,25 +16,11 @@ import ActivityKit
 public struct LiveActivityConfigBuilder {
     private var config: LiveActivityConfig
 
-    /// Create a builder, optionally specifying the Live Activities API base URL.
-    ///
-    /// - Parameter baseURL: Base URL of the Live Activities API endpoint. Pass `nil`
-    ///   (the default) to produce a module that compiles and runs but makes no network
-    ///   requests. Update to a real URL before shipping.
-    public init(baseURL: URL? = nil) {
-        self.config = LiveActivityConfig(liveActivitiesBaseURL: baseURL)
+    public init() {
+        self.config = LiveActivityConfig()
     }
 
     // MARK: - Fluent configuration
-
-    /// Set the base URL of the Live Activities API endpoint.
-    ///
-    /// - Note: This is a temporary field while backend endpoint paths are being finalised.
-    public func baseURL(_ url: URL) -> Self {
-        var copy = self
-        copy.config.liveActivitiesBaseURL = url
-        return copy
-    }
 
     /// Override the SDK-wide log level for the Live Activities module only.
     public func logLevel(_ level: CioLogLevel) -> Self {
@@ -101,12 +87,15 @@ public struct LiveActivityConfigBuilder {
     private static func observeActivity<T: CIOActivityAttribute>(
         _ activity: Activity<T>,
         onInstancePushToken: @escaping (String, Data) async -> Void,
-        onActivityObserved: @escaping (String) async -> Void,
+        onActivityObserved: @escaping (String, Data?, Date?) async -> Void,
         onStateUpdate: @escaping (String, Data) async -> Void,
-        onEnd: @escaping (String) async -> Void
+        onEnd: @escaping (String, Data?) async -> Void
     ) async {
         let activityId = activity.attributes.activityInstanceId
-        await onActivityObserved(activityId)
+        let encoder = JSONEncoder()
+        let initialStateData = try? encoder.encode(activity.content.state)
+        await onActivityObserved(activityId, initialStateData, activity.content.staleDate)
+        let tracker = ContentStateTracker(initialStateData)
         // Instance push token — must be observed before state/lifecycle
         // so the backend has a valid token before any update arrives.
         await withTaskGroup(of: Void.self) { group in
@@ -116,9 +105,9 @@ public struct LiveActivityConfigBuilder {
                 }
             }
             group.addTask {
-                let encoder = JSONEncoder()
                 for await update in activity.contentUpdates {
                     if let data = try? encoder.encode(update.state) {
+                        await tracker.update(data)
                         await onStateUpdate(activityId, data)
                     }
                 }
@@ -127,7 +116,8 @@ public struct LiveActivityConfigBuilder {
                 for await state in activity.activityStateUpdates {
                     switch state {
                     case .ended, .dismissed:
-                        await onEnd(activityId)
+                        let finalData = await tracker.current()
+                        await onEnd(activityId, finalData)
                         return
                     case .active, .pending, .stale:
                         break
@@ -201,3 +191,25 @@ public struct LiveActivityConfigBuilder {
         config
     }
 }
+
+#if os(iOS)
+/// Tracks the most recent content state across concurrent observation tasks.
+///
+/// Shared between the contentUpdates and activityStateUpdates tasks inside
+/// `observeActivity` so the end event can include the final content state.
+private actor ContentStateTracker {
+    private var lastData: Data?
+
+    init(_ data: Data?) {
+        lastData = data
+    }
+
+    func update(_ data: Data) {
+        lastData = data
+    }
+
+    func current() -> Data? {
+        lastData
+    }
+}
+#endif

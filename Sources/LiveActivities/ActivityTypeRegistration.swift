@@ -28,19 +28,20 @@ struct ActivityTypeRegistration {
     ///   - onInstancePushToken: Invoked with `(activityId, tokenData)` when an
     ///     activity becomes active and again on token rotation. The backend uses
     ///     this token to deliver APNs content-state updates to the instance.
-    ///   - onActivityObserved: Invoked once per activity with its `activityId`
-    ///     when it is first seen. Used to populate the module's observed set.
+    ///   - onActivityObserved: Invoked once per activity with its `activityId`,
+    ///     the JSON-encoded initial content state (if encodable), and the
+    ///     activity's stale date (if set by the host app) when first seen.
     ///   - onStateUpdate: Invoked with `(activityId, contentStateJSON)` whenever
     ///     an active activity's content state changes.
-    ///   - onEnd: Invoked with the `activityId` when an activity ends or is
-    ///     dismissed.
+    ///   - onEnd: Invoked with the `activityId` and JSON-encoded final content
+    ///     state (if available) when an activity ends or is dismissed.
     let startObserving:
         (
             _ onPushToStartToken: @escaping (Data) async -> Void,
             _ onInstancePushToken: @escaping (String, Data) async -> Void,
-            _ onActivityObserved: @escaping (String) async -> Void,
+            _ onActivityObserved: @escaping (String, Data?, Date?) async -> Void,
             _ onStateUpdate: @escaping (String, Data) async -> Void,
-            _ onEnd: @escaping (String) async -> Void
+            _ onEnd: @escaping (String, Data?) async -> Void
         ) -> Task<Void, Never>
 
     /// Ends all currently-running activities of the registered type immediately.

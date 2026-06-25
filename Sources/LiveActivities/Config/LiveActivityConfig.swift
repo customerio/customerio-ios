@@ -8,21 +8,12 @@ import Foundation
 /// ```swift
 /// CustomerIO.initialize(withConfig: config)
 /// LiveActivitiesModule.initialize(
-///     LiveActivityConfigBuilder(baseURL: URL(string: "https://…")!)
+///     LiveActivityConfigBuilder()
 ///         .register(OrderAttributes.self, identifier: "io.customer.liveactivities.order")
 ///         .build()
 /// )
 /// ```
 public struct LiveActivityConfig {
-    /// Base URL of the Live Activities API endpoint.
-    ///
-    /// When `nil` (the default), the module registers with the SDK but makes no
-    /// network requests — useful during development before the endpoint is provisioned.
-    ///
-    /// - Note: This is a temporary field while backend endpoint paths are being finalised.
-    ///   It will be removed once the SDK derives the URL from the configured region automatically.
-    public var liveActivitiesBaseURL: URL?
-
     /// Module-level log level override. When `nil`, the SDK-wide log level is used.
     public var logLevel: CioLogLevel?
 
@@ -36,8 +27,7 @@ public struct LiveActivityConfig {
     /// Activity types registered for SDK observation via `LiveActivityConfigBuilder.register(_:identifier:)`.
     var registrations: [ActivityTypeRegistration]
 
-    init(liveActivitiesBaseURL: URL? = nil, logLevel: CioLogLevel? = nil) {
-        self.liveActivitiesBaseURL = liveActivitiesBaseURL
+    init(logLevel: CioLogLevel? = nil) {
         self.logLevel = logLevel
         self.appGroupIdentifier = nil
         self.assetRegistrations = []
