@@ -176,7 +176,17 @@ final class VisualInboxModelTests: XCTestCase {
     func test_resolve_whenOpenUrlBehavior_thenMapsUrlAndBehavior() {
         let event = makeActionEvent(name: "messageAction", fields: ["url": "https://customer.io", "behavior": "openUrl"])
         let resolution = VisualInboxMessageRow.resolve(event)
-        XCTAssertEqual(resolution, InboxActionResolution(actionName: "messageAction", url: "https://customer.io", behavior: .openUrl))
+        XCTAssertEqual(resolution, InboxActionResolution(actionName: "messageAction", url: "https://customer.io", behavior: .openUrl, dismiss: false))
+    }
+
+    func test_resolve_whenDismissFlagTrue_thenResolutionDismisses() {
+        let event = makeActionEvent(name: "messageAction", fields: ["behavior": "performAction", "dismiss": "true"])
+        XCTAssertTrue(VisualInboxMessageRow.resolve(event).dismiss)
+    }
+
+    func test_resolve_whenNoDismissFlag_thenResolutionDoesNotDismiss() {
+        let event = makeActionEvent(name: "messageAction", fields: ["url": "https://customer.io", "behavior": "openUrl"])
+        XCTAssertFalse(VisualInboxMessageRow.resolve(event).dismiss)
     }
 
     func test_resolve_whenDeeplinkBehavior_thenMapsDeeplink() {

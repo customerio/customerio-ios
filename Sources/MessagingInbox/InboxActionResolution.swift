@@ -20,4 +20,7 @@ struct InboxActionResolution: Equatable {
     let url: String?
     /// The resolved action behavior.
     let behavior: Behavior
+    /// "Auto dismiss on click": `data.dismiss == true` — the message should be removed after its
+    /// (non-dismiss) action runs.
+    let dismiss: Bool
 }

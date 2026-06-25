@@ -99,7 +99,10 @@ struct VisualInboxMessageRow: View {
         case "deeplink": behavior = .deeplink
         default: behavior = .none
         }
-        return InboxActionResolution(actionName: event.name, url: url, behavior: behavior)
+        // "Auto dismiss on click": a standalone `dismiss` flag (boolean true, or the string "true")
+        // alongside a non-dismiss behavior means "run the action AND remove the message".
+        let dismiss = data?["dismiss"]?.boolValue == true || data?["dismiss"]?.stringValue == "true"
+        return InboxActionResolution(actionName: event.name, url: url, behavior: behavior, dismiss: dismiss)
     }
 
     // MARK: - Relative dates (item 3)
