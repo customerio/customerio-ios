@@ -191,5 +191,8 @@ let package = Package(
         .target(name: "CioLiveActivities",
                 dependencies: ["CioInternalCommon", "CioLiveActivities_Attributes"],
                 path: "Sources/LiveActivities"),
+        .testTarget(name: "LiveActivitiesTests",
+                    dependencies: ["CioLiveActivities", "CioInternalCommon"],
+                    path: "Tests/LiveActivities"),
     ]
 )
