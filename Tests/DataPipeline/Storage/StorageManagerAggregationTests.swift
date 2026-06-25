@@ -9,7 +9,7 @@ class StorageManagerAggregationTests: XCTestCase {
     override func setUp() {
         super.setUp()
         let db = try! Database(path: ":memory:", key: "testkey", walMode: false)
-        storage = StorageManager(db: db)
+        storage = StorageManager(db: db, cdpApiKey: "testkey")
         try! storage.runMigrations()
     }
 

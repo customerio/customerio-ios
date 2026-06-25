@@ -13,7 +13,7 @@ struct EventPolicyPluginTests {
 
     init() throws {
         let db = try Database(path: ":memory:", key: "testkey", walMode: false)
-        self.storage = StorageManager(db: db)
+        self.storage = StorageManager(db: db, cdpApiKey: "testkey")
         try storage.runMigrations()
         self.engine = EventPolicyEngine(storage: storage)
         self.plugin = EventPolicyPlugin(engine: engine, storage: storage)

@@ -8,7 +8,7 @@ class DataPipelineClearIdentifyTests: UnitTest {
 
     override func setUpDependencies() {
         let db = try! Database(path: ":memory:", key: "testkey", walMode: false)
-        testStorage = StorageManager(db: db)
+        testStorage = StorageManager(db: db, cdpApiKey: "testkey")
         try! testStorage.runMigrations()
         diGraphShared.override(value: testStorage, forType: StorageManager.self)
         super.setUpDependencies()
