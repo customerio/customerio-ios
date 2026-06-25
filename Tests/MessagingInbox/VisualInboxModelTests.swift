@@ -54,6 +54,8 @@ final class VisualInboxModelTests: XCTestCase {
             makeSnapshot(id: "b", opened: false),
             makeSnapshot(id: "c", opened: true) // already opened — never marked
         ]
+        // Messages must be renderable (have a template) to be marked opened.
+        provider.stubTemplates = ["test": [["version": "1", "root": ["type": "placeholder"]]]]
         let model = VisualInboxModel(provider: provider)
         await model.refresh()
 
@@ -71,6 +73,7 @@ final class VisualInboxModelTests: XCTestCase {
     func test_markVisibleMessagesOpened_whenMarkNoOps_thenIdStaysRetryable() async {
         let provider = FakeVisualInboxProvider()
         provider.stubMessages = [makeSnapshot(id: "a", opened: false)]
+        provider.stubTemplates = ["test": [["version": "1", "root": ["type": "placeholder"]]]]
         // First round: "a" is gone from the store, so the mark no-ops.
         provider.missingMessageIds = ["a"]
         let model = VisualInboxModel(provider: provider)
@@ -93,6 +96,7 @@ final class VisualInboxModelTests: XCTestCase {
     func test_markVisibleMessagesOpened_whenAllOpened_thenNothingMarked() async {
         let provider = FakeVisualInboxProvider()
         provider.stubMessages = [makeSnapshot(id: "a", opened: true)]
+        provider.stubTemplates = ["test": [["version": "1", "root": ["type": "placeholder"]]]]
         let model = VisualInboxModel(provider: provider)
         await model.refresh()
 

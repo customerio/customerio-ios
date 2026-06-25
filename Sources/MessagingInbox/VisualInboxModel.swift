@@ -184,7 +184,10 @@ final class VisualInboxModel: ObservableObject {
     /// (and re-callable as new messages scroll into view). The `markedOpenedIds` guard dedupes so a
     /// message is never marked repeatedly across panel open/close cycles or refreshes.
     func markVisibleMessagesOpened() {
-        let toMark = messages.filter { !$0.opened && !markedOpenedIds.contains($0.id) }
+        // Only mark messages the user can actually see: `renderableMessages` (those with a template).
+        // Messages skipped for a missing template are never shown in the list, so they must not be
+        // marked opened.
+        let toMark = renderableMessages.filter { !$0.opened && !markedOpenedIds.contains($0.id) }
         guard !toMark.isEmpty else { return }
         // Reserve ids synchronously (on the main actor) so a re-entrant call can't double-fire the
         // same mark while the async marks are in flight.
