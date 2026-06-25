@@ -76,12 +76,23 @@ public struct NotificationInboxOverlay: View {
         // (and doesn't silently reappear if the inbox becomes visible again).
         .onChange(of: showsChrome) { visible in
             if !visible, isPanelOpen { isPanelOpen = false }
+            // Re-notify when chrome visibility flips: if the inbox goes hidden while the panel flag is
+            // still settling, the host must stop full-screen capture so touches aren't swallowed with
+            // nothing on screen.
+            notifyPanelPresentation()
         }
-        // Notify the host of panel open/close so a passthrough-window mount can toggle full-screen
-        // touch capture (panel open → scrim blocks click-through; closed → pass through).
-        .onChange(of: isPanelOpen) { open in
-            onPanelPresentationChange?(open)
+        // Notify the host of panel presentation so a passthrough-window mount can toggle full-screen
+        // touch capture (presented → scrim blocks click-through; not → pass through).
+        .onChange(of: isPanelOpen) { _ in
+            notifyPanelPresentation()
         }
+    }
+
+    /// The panel is "presented" (host should capture full-screen touches) only when it is open AND the
+    /// inbox chrome is shown. Keying the host callback off BOTH prevents leaving touch capture on after
+    /// the inbox goes `.hidden` while `isPanelOpen` is still true.
+    private func notifyPanelPresentation() {
+        onPanelPresentationChange?(isPanelOpen && showsChrome)
     }
 
     // MARK: - Derived UI state
@@ -155,8 +166,10 @@ public struct NotificationInboxOverlay: View {
     /// visible-but-empty, otherwise the Jist-rendered list.
     @ViewBuilder
     private var content: some View {
-        if model.renderableMessages.isEmpty, case .visible = model.state {
-            // Visible with no messages → genuine "caught up" empty state.
+        if model.messages.isEmpty, case .visible = model.state {
+            // Genuinely caught up: visible with NO messages at all. Keyed off the full message list
+            // (not `renderableMessages`) so messages that merely lack a template don't read as
+            // "caught up" — those still exist, they just can't render.
             VStack {
                 Spacer()
                 Text("You're all caught up")
@@ -165,7 +178,7 @@ public struct NotificationInboxOverlay: View {
                 Spacer()
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-        } else if model.renderableMessages.isEmpty {
+        } else if model.messages.isEmpty {
             // idle/loading (pre-first-snapshot or fetch in progress) → spinner, not the empty copy.
             VStack {
                 Spacer()
@@ -174,6 +187,8 @@ public struct NotificationInboxOverlay: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
+            // Messages exist → render the renderable ones. If every message lacks a template the list
+            // is blank (each is logged + skipped); we deliberately do NOT claim "caught up" here.
             messageList
         }
     }

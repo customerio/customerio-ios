@@ -62,9 +62,12 @@ private final class PassthroughWindow: UIWindow {
         let buttonSize: CGFloat = 56
         let padding: CGFloat = 16
         let slop: CGFloat = 12
+        // The unread badge is drawn offset beyond the bell's top-trailing corner, so extend the hit
+        // area up and toward the trailing edge so taps on the badge hit the overlay too (not the app).
+        let badgeAllowance: CGFloat = 20
         let left = bounds.maxX - safeAreaInsets.right - padding - buttonSize - slop
-        let top = bounds.maxY - safeAreaInsets.bottom - padding - buttonSize - slop
-        return CGRect(x: left, y: top, width: buttonSize + slop * 2, height: buttonSize + slop * 2)
+        let top = bounds.maxY - safeAreaInsets.bottom - padding - buttonSize - slop - badgeAllowance
+        return CGRect(x: left, y: top, width: buttonSize + slop * 2 + badgeAllowance, height: buttonSize + slop * 2 + badgeAllowance)
     }
 
     override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
