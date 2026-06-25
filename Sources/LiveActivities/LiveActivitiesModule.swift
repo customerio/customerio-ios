@@ -27,6 +27,11 @@ public final class LiveActivitiesModule {
     /// The installation ID captured during initialization. Immutable after that point.
     private let _installationId = Synchronized<String?>(nil)
 
+    /// The most recently registered APNs device token. Updated via RegisterDeviceTokenEvent.
+    /// Used to detect a nil-to-real transition so stored push-to-start tokens can be resubmitted
+    /// with a valid deviceId if they were originally sent before the token was available.
+    private let _registeredDeviceToken = Synchronized<String?>(nil)
+
     private let _observedActivitiesContinuation = Synchronized<AsyncStream<LiveActivityInfo>.Continuation?>(nil)
     private let _observedActivitiesStream = Synchronized<AsyncStream<LiveActivityInfo>?>(nil)
 
@@ -100,6 +105,7 @@ public final class LiveActivitiesModule {
         sdk.logger.debug("LiveActivities module initialized.", "LiveActivities")
 
         _installationId.wrappedValue = sdk.installationId
+        _registeredDeviceToken.wrappedValue = sdk.registeredDeviceToken
 
         registerEventBusObservers()
 
@@ -119,6 +125,14 @@ public final class LiveActivitiesModule {
         }
         sdk.eventBusHandler.addObserver(ResetEvent.self) { [weak self] _ in
             Task { [weak self] in await self?.handleReset() }
+        }
+        sdk.eventBusHandler.addObserver(RegisterDeviceTokenEvent.self) { [weak self] event in
+            guard let self else { return }
+            let previous = self._registeredDeviceToken.wrappedValue
+            self._registeredDeviceToken.wrappedValue = event.token
+            let wasAbsent = previous == nil || previous?.isEmpty == true
+            guard wasAbsent, !event.token.isEmpty else { return }
+            self.resubmitPushToStartTokens(deviceToken: event.token)
         }
     }
 
@@ -215,6 +229,23 @@ public final class LiveActivitiesModule {
         )
 
         _observationTasks.mutating { $0[identifier] = task }
+    }
+    #endif
+
+    #if os(iOS)
+    private func resubmitPushToStartTokens(deviceToken: String) {
+        for registration in config.registrations {
+            let identifier = registration.activityIdentifier
+            guard let tokenHex = tokenStorage.getPushToStartToken(activityType: identifier) else { continue }
+            sdk.track(name: "Live Notification Token", properties: [
+                "registrationType": "push_to_start",
+                "notificationType": identifier,
+                "platform": "ios",
+                "deviceId": deviceToken,
+                "pushToStartToken": tokenHex,
+                "installationId": _installationId.wrappedValue ?? ""
+            ])
+        }
     }
     #endif
 
