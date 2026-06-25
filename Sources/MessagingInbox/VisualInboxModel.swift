@@ -81,6 +81,9 @@ final class VisualInboxModel: ObservableObject {
     /// enablement/visibility/messages/opened-state change, with no recompose or navigation.
     private var observeTask: Task<Void, Never>?
 
+    /// In-flight branding-chrome load; cancel-and-replaced by `reloadChrome()` so emissions don't stack.
+    private var chromeLoadTask: Task<Void, Never>?
+
     /// In-flight / already-done guard for auto-mark-opened (item 8). A message id present here has
     /// either been marked or is being marked, so it is never marked twice.
     private var markedOpenedIds: Set<String> = []
@@ -105,6 +108,7 @@ final class VisualInboxModel: ObservableObject {
     deinit {
         refreshTask?.cancel()
         observeTask?.cancel()
+        chromeLoadTask?.cancel()
     }
 
     // MARK: - Lifecycle
@@ -142,6 +146,8 @@ final class VisualInboxModel: ObservableObject {
         refreshTask = nil
         observeTask?.cancel()
         observeTask = nil
+        chromeLoadTask?.cancel()
+        chromeLoadTask = nil
     }
 
     /// Pulls the latest state + messages + unopened count from the data layer onto the main actor.
@@ -163,10 +169,9 @@ final class VisualInboxModel: ObservableObject {
         theme = newTheme
         decodedData = Self.decodeData(for: newMessages)
         logMissingTemplates()
-        // Chrome is backfilled via apply() on the observe() stream (see below). Deliberately NOT read
-        // here: an extra await in this one-shot refresh widens a window where a late resume overwrites
-        // newer observe() state (e.g. unopenedCount) with a stale early read.
-        backfillChromeIfNeeded()
+        // Chrome is loaded off this synchronous state-publish path (a chrome await here would widen a
+        // window where a late resume overwrites newer observe() state, e.g. unopenedCount).
+        reloadChrome()
     }
 
     /// Publishes a coalesced snapshot from the `observe()` stream. Runs on the main actor (the model
@@ -179,20 +184,24 @@ final class VisualInboxModel: ObservableObject {
         theme = VisualInboxJistDecoder.decodeTheme(snapshot.themeJSON)
         decodedData = Self.decodeData(for: snapshot.messages)
         logMissingTemplates()
-        backfillChromeIfNeeded()
+        reloadChrome()
     }
 
-    /// Fetches the branding chrome once it's available, off the synchronous state-publish path.
+    /// (Re)loads the branding chrome off the synchronous state-publish path.
     ///
-    /// Chrome is branding-derived and stable per session, so it's loaded lazily rather than read
-    /// inline in `refresh()`/`apply()` (an extra await there can let a late resume clobber newer
-    /// state). Runs at most once (guarded by `chrome == nil`) and hops to the main actor for the
-    /// `@Published` mutation.
-    private func backfillChromeIfNeeded() {
-        guard chrome == nil else { return }
-        Task { @MainActor [weak self] in
-            guard let self, self.chrome == nil else { return }
-            if let resolved = await self.provider.brandingChrome() { self.chrome = resolved }
+    /// Loaded here rather than inline in `refresh()`/`apply()` because an extra await there can let a
+    /// late resume clobber newer observe() state. Unlike the message `theme`, branding chrome can also
+    /// change when the branding cache updates, so this is NOT a load-once: it re-reads on each refresh
+    /// so bell/panel/badge colors track branding. Coalesced via a single cancel-and-replace task so
+    /// frequent `observe()` emissions can't stack redundant in-flight loads. Mutates `@Published
+    /// chrome` on the main actor.
+    private func reloadChrome() {
+        chromeLoadTask?.cancel()
+        chromeLoadTask = Task { @MainActor [weak self] in
+            guard let self else { return }
+            let resolved = await self.provider.brandingChrome()
+            if Task.isCancelled { return }
+            if let resolved { self.chrome = resolved }
         }
     }
 
