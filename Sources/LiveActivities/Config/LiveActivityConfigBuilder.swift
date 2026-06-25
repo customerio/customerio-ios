@@ -1,4 +1,5 @@
 import CioInternalCommon
+import CioLiveActivities_Attributes
 import Foundation
 
 #if os(iOS)
