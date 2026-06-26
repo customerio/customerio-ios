@@ -14,12 +14,9 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
         window = UIWindow(windowScene: windowScene)
         setVisibleWindow()
-
-        // Mount the Visual Notification Inbox overlay (floating bell + panel) app-wide in its own
-        // passthrough window so it persists across root-VC swaps (login/logout) and navigation.
-        if #available(iOS 15.0, *) {
-            InboxOverlayWindow.install(in: windowScene)
-        }
+        // The Visual Notification Inbox is placed directly in the Dashboard screen via the
+        // public `NotificationInboxBell` / `NotificationInboxView` views (see DashboardViewController)
+        // — the recommended integration — rather than a separate passthrough overlay window.
     }
 
     func sceneDidDisconnect(_ scene: UIScene) {

@@ -15,6 +15,22 @@ class DefaultNotificationInbox: NotificationInbox, @unchecked Sendable {
     /// Subscriber for inbox messages state changes (kept alive to receive callbacks)
     private var storeSubscriber: InAppMessageStoreSubscriber?
 
+    /// Host listener notified of inbox message actions (item 13). Guarded by `inboxEventListenerLock`
+    /// because it is set/read from arbitrary threads (the public setter vs. the action callback).
+    private var inboxEventListener: InboxEventListener?
+    private let inboxEventListenerLock = NSLock()
+
+    /// Message ids already reported to the host via `inboxMessageShown`, so "shown" fires at most once
+    /// per message per app session even though the UI may call `notifyMessageShown` on every render.
+    /// Guarded by `shownMessageIdsLock` because `notifyMessageShown` can be called off the main thread.
+    private var shownMessageIds: Set<String> = []
+    private let shownMessageIdsLock = NSLock()
+
+    /// Ids already reported "opened" so the host `inboxMessageOpened` callback fires at most once per
+    /// message per session (mirrors `shownMessageIds`). Guarded by `openedMessageIdsLock`.
+    private var openedMessageIds: Set<String> = []
+    private let openedMessageIdsLock = NSLock()
+
     /// Subscription task for inbox messages state changes
     private var subscriptionTask: Task<Void, Never>?
 
@@ -128,6 +144,16 @@ class DefaultNotificationInbox: NotificationInbox, @unchecked Sendable {
 
     func markMessageOpened(message: InboxMessage) {
         inAppMessageManager.dispatch(action: .inboxAction(action: .updateOpened(message: message, opened: true)))
+        // Observe-only host callback: a message was opened. Dedupe per session (mirrors
+        // notifyMessageShown) so repeated marks — incl. via the public API — fire it at most once.
+        openedMessageIdsLock.lock()
+        let alreadyOpened = openedMessageIds.contains(message.queueId)
+        if !alreadyOpened { openedMessageIds.insert(message.queueId) }
+        openedMessageIdsLock.unlock()
+        guard !alreadyOpened else { return }
+        // Reflect the just-applied opened state: the resolved `message` predates the dispatch above.
+        let listener = currentInboxEventListener()
+        deliverOnMain { listener?.inboxMessageOpened(message: message.copy(opened: true)) }
     }
 
     func markMessageUnopened(message: InboxMessage) {
@@ -136,10 +162,54 @@ class DefaultNotificationInbox: NotificationInbox, @unchecked Sendable {
 
     func markMessageDeleted(message: InboxMessage) {
         inAppMessageManager.dispatch(action: .inboxAction(action: .deleteMessage(message: message)))
+        // Observe-only host callback: a message was dismissed/removed.
+        let listener = currentInboxEventListener()
+        deliverOnMain { listener?.inboxMessageDismissed(message: message) }
     }
 
     func trackMessageClicked(message: InboxMessage, actionName: String?) {
         inAppMessageManager.dispatch(action: .inboxAction(action: .trackClicked(message: message, actionName: actionName)))
+    }
+
+    func setInboxEventListener(_ listener: InboxEventListener?) {
+        inboxEventListenerLock.lock()
+        inboxEventListener = listener
+        inboxEventListenerLock.unlock()
+    }
+
+    func notifyMessageActionTaken(message: InboxMessage, actionValue: String, actionName: String) -> Bool {
+        guard let listener = currentInboxEventListener() else { return false }
+        return listener.inboxMessageActionTaken(message: message, actionValue: actionValue, actionName: actionName)
+    }
+
+    func notifyMessageShown(message: InboxMessage) {
+        // Dedupe: only fire "shown" the first time we see this message id this session.
+        shownMessageIdsLock.lock()
+        let alreadyShown = shownMessageIds.contains(message.queueId)
+        if !alreadyShown { shownMessageIds.insert(message.queueId) }
+        shownMessageIdsLock.unlock()
+        guard !alreadyShown else { return }
+        let listener = currentInboxEventListener()
+        deliverOnMain { listener?.inboxMessageShown(message: message) }
+    }
+
+    /// Delivers a host `InboxEventListener` callback on the main thread. Inbox mutations can be
+    /// triggered from background queues (the data layer / SwiftUI Tasks), but host UI code expects
+    /// its callbacks on main. Runs inline when already on main (so callers/tests observe it
+    /// synchronously), otherwise hops to the main queue.
+    private func deliverOnMain(_ work: @escaping () -> Void) {
+        if Thread.isMainThread {
+            work()
+        } else {
+            DispatchQueue.main.async(execute: work)
+        }
+    }
+
+    /// Thread-safe read of the host listener (set/read from arbitrary threads).
+    private func currentInboxEventListener() -> InboxEventListener? {
+        inboxEventListenerLock.lock()
+        defer { inboxEventListenerLock.unlock() }
+        return inboxEventListener
     }
 
     // MARK: - Private Helper Methods

@@ -107,6 +107,13 @@ private final class NoOpNotificationInboxFake: NotificationInbox, @unchecked Sen
     func markMessageUnopened(message: InboxMessage) {}
     func markMessageDeleted(message: InboxMessage) {}
     func trackMessageClicked(message: InboxMessage, actionName: String?) {}
+    func setInboxEventListener(_ listener: InboxEventListener?) {}
+    func notifyMessageActionTaken(message: InboxMessage, actionValue: String, actionName: String) -> Bool {
+        false
+    }
+
+    func notifyMessageShown(message: InboxMessage) {}
+
     func messages(topic: String?) -> AsyncStream<[InboxMessage]> {
         AsyncStream { $0.finish() }
     }

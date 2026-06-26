@@ -1,6 +1,7 @@
 @_spi(VisualInbox) import CioMessagingInApp
 @testable import CioMessagingInbox
 import Foundation
+import Jist
 import XCTest
 
 /// Coverage for the Visual Inbox overlay state holder.
@@ -155,6 +156,126 @@ final class VisualInboxModelTests: XCTestCase {
         XCTAssertEqual(provider.dismissedIds, ["a", "a"])
     }
 
+    // MARK: - non-dismiss action mapping (items 12, 13)
+
+    func test_isDismiss_whenBehaviorDismiss_thenTrue() {
+        let event = makeActionEvent(name: "messageAction", fields: ["behavior": "dismiss"])
+        XCTAssertTrue(VisualInboxMessageRow.isDismiss(event))
+    }
+
+    func test_isDismiss_whenNameDismissOrSentinelUrl_thenTrue() {
+        XCTAssertTrue(VisualInboxMessageRow.isDismiss(makeActionEvent(name: "dismiss", fields: [:])))
+        XCTAssertTrue(VisualInboxMessageRow.isDismiss(makeActionEvent(name: "messageAction", fields: ["url": "#dismiss"])))
+    }
+
+    func test_isDismiss_whenRealUrlAction_thenFalse() {
+        let event = makeActionEvent(name: "messageAction", fields: ["url": "https://customer.io", "behavior": "openUrl"])
+        XCTAssertFalse(VisualInboxMessageRow.isDismiss(event))
+    }
+
+    func test_resolve_whenOpenUrlBehavior_thenMapsUrlAndBehavior() {
+        let event = makeActionEvent(name: "messageAction", fields: ["url": "https://customer.io", "behavior": "openUrl"])
+        let resolution = VisualInboxMessageRow.resolve(event)
+        XCTAssertEqual(resolution, InboxActionResolution(actionName: "messageAction", url: "https://customer.io", behavior: .openUrl, dismiss: false))
+    }
+
+    func test_resolve_whenDismissFlagTrue_thenResolutionDismisses() {
+        let event = makeActionEvent(name: "messageAction", fields: ["behavior": "performAction", "dismiss": "true"])
+        XCTAssertTrue(VisualInboxMessageRow.resolve(event).dismiss)
+    }
+
+    func test_resolve_whenNoDismissFlag_thenResolutionDoesNotDismiss() {
+        let event = makeActionEvent(name: "messageAction", fields: ["url": "https://customer.io", "behavior": "openUrl"])
+        XCTAssertFalse(VisualInboxMessageRow.resolve(event).dismiss)
+    }
+
+    func test_resolve_whenDeeplinkBehavior_thenMapsDeeplink() {
+        let event = makeActionEvent(name: "messageAction", fields: ["url": "myapp://home", "behavior": "deeplink"])
+        let resolution = VisualInboxMessageRow.resolve(event)
+        XCTAssertEqual(resolution.behavior, .deeplink)
+        XCTAssertEqual(resolution.url, "myapp://home")
+    }
+
+    func test_resolve_whenNoBehavior_thenBehaviorNoneUrlPreserved() {
+        let event = makeActionEvent(name: "messageAction", fields: ["url": "https://customer.io"])
+        let resolution = VisualInboxMessageRow.resolve(event)
+        XCTAssertEqual(resolution.behavior, .none)
+        XCTAssertEqual(resolution.url, "https://customer.io")
+    }
+
+    func test_resolve_whenNoData_thenNilUrlNoneBehavior() {
+        let event = JistActionEvent(component: "c", name: "messageAction", data: nil, meta: nil)
+        let resolution = VisualInboxMessageRow.resolve(event)
+        XCTAssertNil(resolution.url)
+        XCTAssertEqual(resolution.behavior, .none)
+        XCTAssertEqual(resolution.actionName, "messageAction")
+    }
+
+    func test_handleAction_whenHostHandles_thenReturnsHandledAndForwardsValue() async {
+        let provider = FakeVisualInboxProvider()
+        provider.stubHostHandled = true
+        let model = VisualInboxModel(provider: provider)
+
+        let outcome = await model.handleAction(messageId: "a", actionName: "messageAction", actionValue: "https://customer.io")
+
+        XCTAssertEqual(outcome, .handledByHost)
+        XCTAssertEqual(provider.handledActions.count, 1)
+        XCTAssertEqual(provider.handledActions.first?.messageId, "a")
+        XCTAssertEqual(provider.handledActions.first?.actionValue, "https://customer.io")
+    }
+
+    func test_handleAction_whenHostDefers_thenReturnsNotHandled() async {
+        let provider = FakeVisualInboxProvider()
+        provider.stubHostHandled = false
+        let model = VisualInboxModel(provider: provider)
+
+        let outcome = await model.handleAction(messageId: "a", actionName: "messageAction", actionValue: "")
+
+        XCTAssertEqual(outcome, .notHandled)
+        XCTAssertEqual(provider.handledActions.count, 1)
+    }
+
+    func test_handleAction_whenMessageMissing_thenReturnsMessageMissing() async {
+        let provider = FakeVisualInboxProvider()
+        provider.stubMessageMissing = true
+        let model = VisualInboxModel(provider: provider)
+
+        let outcome = await model.handleAction(messageId: "gone", actionName: "messageAction", actionValue: "https://customer.io")
+
+        XCTAssertEqual(outcome, .messageMissing)
+    }
+
+    // MARK: - shown (observe-only host callback)
+
+    func test_markShown_whenCalledTwiceForSameId_thenForwardedOnce() async {
+        let provider = FakeVisualInboxProvider()
+        let model = VisualInboxModel(provider: provider)
+
+        model.markShown(messageId: "a")
+        model.markShown(messageId: "a")
+        await provider.waitForShown(expected: 1)
+
+        XCTAssertEqual(provider.shownIds, ["a"])
+    }
+
+    func test_markShown_whenDifferentIds_thenEachForwardedOnce() async {
+        let provider = FakeVisualInboxProvider()
+        let model = VisualInboxModel(provider: provider)
+
+        model.markShown(messageId: "a")
+        model.markShown(messageId: "b")
+        await provider.waitForShown(expected: 2)
+
+        XCTAssertEqual(Set(provider.shownIds), ["a", "b"])
+    }
+
+    /// Builds a `JistActionEvent` whose `data` is an object of string fields, matching the live inbox
+    /// templates (the action's url/behavior live in `properties[name]`).
+    private func makeActionEvent(name: String, fields: [String: String]) -> JistActionEvent {
+        let object = fields.mapValues { JistValue.string($0) }
+        return JistActionEvent(component: "messageAction", name: name, data: .object(object), meta: nil)
+    }
+
     // MARK: - relative dates (item 3)
 
     func test_relativeDate_whenValid_thenLocalizedRelativeString() {
@@ -304,6 +425,9 @@ private final class FakeVisualInboxProvider: VisualInboxProvider, @unchecked Sen
     /// Ids passed to `dismiss`, in order, for the dismiss/onAction tests.
     private(set) var dismissedIds: [String] = []
 
+    /// Ids passed to `notifyMessageShown`, in order, for the shown-callback tests.
+    private(set) var shownIds: [String] = []
+
     /// Snapshot emitted to `observe()` subscribers on subscribe.
     var initialSnapshot: VisualInboxSnapshot?
     private var observeContinuation: AsyncStream<VisualInboxSnapshot>.Continuation?
@@ -377,6 +501,12 @@ private final class FakeVisualInboxProvider: VisualInboxProvider, @unchecked Sen
         stubTheme
     }
 
+    var stubChrome: VisualInboxChrome?
+
+    func brandingChrome() async -> VisualInboxChrome? {
+        stubChrome
+    }
+
     /// Total number of `markOpened` attempts (including no-ops), for the retry test.
     private(set) var markAttempts: [String] = []
 
@@ -401,6 +531,42 @@ private final class FakeVisualInboxProvider: VisualInboxProvider, @unchecked Sen
         return didDismiss
     }
 
+    /// One recorded non-dismiss action routed through `handleMessageAction`.
+    struct HandledAction: Equatable {
+        let messageId: String
+        let actionName: String
+        let actionValue: String
+    }
+
+    /// Recorded non-dismiss actions routed through `handleMessageAction`, in order.
+    private(set) var handledActions: [HandledAction] = []
+    /// What `handleMessageAction` should report the host did (true = host handled → suppress nav).
+    var stubHostHandled = false
+    /// When true, `handleMessageAction` reports the message was missing from the store.
+    var stubMessageMissing = false
+
+    func handleMessageAction(messageId: String, actionName: String, actionValue: String) async -> VisualInboxActionOutcome {
+        lock.lock()
+        handledActions.append(HandledAction(messageId: messageId, actionName: actionName, actionValue: actionValue))
+        let missing = stubMessageMissing
+        let handled = stubHostHandled
+        lock.unlock()
+        if missing { return .messageMissing }
+        return handled ? .handledByHost : .notHandled
+    }
+
+    /// When true, `notifyMessageShown` reports the message was missing (no-op) so the model releases
+    /// its reservation.
+    var stubShownMissing = false
+
+    func notifyMessageShown(messageId: String) async -> Bool {
+        lock.lock()
+        shownIds.append(messageId)
+        let missing = stubShownMissing
+        lock.unlock()
+        return !missing
+    }
+
     /// Waits until the model's detached dismiss Task records at least `expected` dismisses.
     func waitForDismisses(expected: Int) async {
         for _ in 0 ..< 200 {
@@ -418,6 +584,17 @@ private final class FakeVisualInboxProvider: VisualInboxProvider, @unchecked Sen
         for _ in 0 ..< 200 {
             lock.lock()
             let count = markedOpenedIds.count
+            lock.unlock()
+            if count >= expected { return }
+            try? await Task.sleep(nanoseconds: 1000000) // 1ms
+        }
+    }
+
+    /// Waits until the model's detached shown Task records at least `expected` shown reports.
+    func waitForShown(expected: Int) async {
+        for _ in 0 ..< 200 {
+            lock.lock()
+            let count = shownIds.count
             lock.unlock()
             if count >= expected { return }
             try? await Task.sleep(nanoseconds: 1000000) // 1ms
