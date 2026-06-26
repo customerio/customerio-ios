@@ -37,7 +37,8 @@ final class GeofenceDeliveryTrackerImpl: GeofenceDeliveryTracker {
             BackgroundTrackRequest(
                 eventName: metric.trackEventName,
                 userId: userId,
-                properties: metric.trackEventProperties,
+                // TESTING-ONLY (geofence-testing branch): `…ForTesting` adds trigger location, distance, radius, timestamp.
+                properties: metric.trackEventPropertiesForTesting,
                 timestamp: metric.timestamp
             ),
             completion: onComplete

@@ -197,7 +197,7 @@ extension AppDelegate: InAppEventListener {
 enum GeofenceTestNotifier {
     private static let notificationName = Notification.Name("cioGeofenceTransitionForTesting")
     // Testing-only: install() runs once on main thread from AppDelegate.
-    nonisolated(unsafe) private static var observerToken: NSObjectProtocol?
+    private nonisolated(unsafe) static var observerToken: NSObjectProtocol?
 
     static func install() {
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, _ in }
@@ -243,7 +243,7 @@ enum GeofenceTestNotifier {
 // `print` ourselves to keep Xcode console output active.
 // =============================================================================
 enum SdkFileLogger {
-    nonisolated(unsafe) private static var fileURL: URL?
+    private nonisolated(unsafe) static var fileURL: URL?
     private static let lock = NSLock()
 
     private static let fileTimestampFormat: DateFormatter = {

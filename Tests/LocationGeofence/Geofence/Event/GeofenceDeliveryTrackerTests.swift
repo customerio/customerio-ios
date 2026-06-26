@@ -52,7 +52,9 @@ struct GeofenceDeliveryTrackerTests {
         let properties = args?.request.properties ?? [:]
         #expect(properties["geofenceId"] as? String == "geo_1")
         #expect(properties["transition"] as? String == "enter")
-        #expect(properties["timestamp"] == nil)
+        // TESTING-ONLY (geofence-testing branch): the HTTP path uses `trackEventPropertiesForTesting`,
+        // which adds `timestamp` to properties (on top of the envelope) for verification.
+        #expect(properties["timestamp"] as? String == "2023-11-14T22:13:20.000Z")
         #expect(properties["latitude"] == nil)
         #expect(properties["longitude"] == nil)
         // No name on the metric → property omitted entirely (not sent empty/null).

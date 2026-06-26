@@ -1,4 +1,5 @@
 import CioInternalCommon
+import CoreLocation // TESTING-ONLY (geofence-testing branch): CLLocation.distance for payload diagnostics
 import Foundation
 
 // sourcery: InjectRegisterShared = "GeofenceEventTracker"
@@ -54,9 +55,12 @@ final class GeofenceEventTracker: @unchecked Sendable {
 
     /// Tracks a geofence transition event, suppressing duplicates within the cooldown window.
     /// Persists the metric, then hands it to `deliver`.
+    /// `triggeredLocation` is TESTING-ONLY (geofence-testing branch) — the device location the
+    /// transition fired at, used to compute distance-from-geofence for the payload.
     func trackTransition(
         geofenceId: String,
-        transition: GeofenceTransition
+        transition: GeofenceTransition,
+        triggeredLocation: LocationData? = nil
     ) async {
         let cooldownKey = "\(geofenceId):\(transition.rawValue)"
         let now = dateUtil.now
@@ -90,15 +94,29 @@ final class GeofenceEventTracker: @unchecked Sendable {
         let stampedUserId: String? = (liveUserId?.isEmpty == false) ? liveUserId : nil
         // Resolve the geofence name now and carry it on the metric; nil when unavailable so the
         // event omits `geofence_name` rather than sending an empty value.
-        let cachedName = await storage.getCachedGeofences().first { $0.id == geofenceId }?.name
+        let cachedGeofence = await storage.getCachedGeofences().first { $0.id == geofenceId }
+        let cachedName = cachedGeofence?.name
         let geofenceName = (cachedName?.isEmpty == false) ? cachedName : nil
+        // === TESTING-ONLY === geofence-testing branch only — must not merge.
+        // Distance from the trigger location to the geofence center, paired with the radius below,
+        // so geofence accuracy (distance vs radius at the boundary) can be verified from the payload.
+        var distanceMeters: Double?
+        if let triggeredLocation, let cachedGeofence {
+            distanceMeters = CLLocation(latitude: triggeredLocation.latitude, longitude: triggeredLocation.longitude)
+                .distance(from: CLLocation(latitude: cachedGeofence.latitude, longitude: cachedGeofence.longitude))
+        }
+        // === END TESTING-ONLY ===
         let metric = PendingGeofenceMetric(
             geofenceId: geofenceId,
             transition: transition,
             timestamp: now,
             userId: stampedUserId,
             name: geofenceName,
-            transitionId: UUID().uuidString
+            transitionId: UUID().uuidString,
+            triggeredLatitude: triggeredLocation?.latitude,
+            triggeredLongitude: triggeredLocation?.longitude,
+            distanceFromGeofenceMeters: distanceMeters,
+            geofenceRadius: cachedGeofence?.radius
         )
         _ = await pendingStore.append(metric)
 

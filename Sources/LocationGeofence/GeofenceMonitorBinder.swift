@@ -27,7 +27,8 @@ enum GeofenceMonitorBinder {
                 Task { _ = await coordinator?.handleMovement(latitude: location.latitude, longitude: location.longitude) }
                 return
             }
-            Task { await tracker?.trackTransition(geofenceId: identifier, transition: transition) }
+            // `triggeredLocation` is TESTING-ONLY (geofence-testing branch) — feeds distance-from-geofence diagnostics.
+            Task { await tracker?.trackTransition(geofenceId: identifier, transition: transition, triggeredLocation: location) }
         }
     }
 }
