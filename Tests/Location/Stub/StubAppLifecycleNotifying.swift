@@ -1,4 +1,4 @@
-@_spi(Internal) @testable import CioLocation
+@testable import CioLocation
 import Foundation
 
 /// Stub implementation of AppLifecycleNotifying for tests. Holds registered blocks and exposes
