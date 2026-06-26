@@ -241,6 +241,13 @@ class DashboardViewController: BaseViewController {
 /// click-through. While it's closed, only the floating bell's bottom-trailing corner stays
 /// interactive — and only if the overlay actually drew the bell there — so touches elsewhere (and an
 /// empty corner when the inbox is hidden) fall through to the dashboard.
+///
+/// NOTE: this is a **sample-grade** hand-rolled hit-test for embedding a SwiftUI overlay in a UIKit
+/// host, with inherent edge cases — e.g. touch capture is held for `closeSettleDelay` so taps don't
+/// leak through the fading scrim, which can briefly (~0.45s) block the dashboard if the inbox hides
+/// *instantly* (rather than via a panel close). In a SwiftUI app, mount `NotificationInboxOverlay`
+/// directly in a `ZStack` (see the CocoaPods-FCM sample) — SwiftUI handles touch passthrough
+/// natively and none of this container is needed.
 private final class InboxOverlayPassthroughView: UIView {
     /// `true` while the panel is presented or still animating closed; the container then captures the
     /// full screen. Driven indirectly via `setPanelPresented(_:)`.
