@@ -54,6 +54,8 @@ final class VisualInboxModelTests: XCTestCase {
             makeSnapshot(id: "b", opened: false),
             makeSnapshot(id: "c", opened: true) // already opened — never marked
         ]
+        // Messages must be renderable (have a template) to be marked opened.
+        provider.stubTemplates = ["test": [["version": "1", "root": ["type": "placeholder"]]]]
         let model = VisualInboxModel(provider: provider)
         await model.refresh()
 
@@ -71,6 +73,7 @@ final class VisualInboxModelTests: XCTestCase {
     func test_markVisibleMessagesOpened_whenMarkNoOps_thenIdStaysRetryable() async {
         let provider = FakeVisualInboxProvider()
         provider.stubMessages = [makeSnapshot(id: "a", opened: false)]
+        provider.stubTemplates = ["test": [["version": "1", "root": ["type": "placeholder"]]]]
         // First round: "a" is gone from the store, so the mark no-ops.
         provider.missingMessageIds = ["a"]
         let model = VisualInboxModel(provider: provider)
@@ -93,6 +96,7 @@ final class VisualInboxModelTests: XCTestCase {
     func test_markVisibleMessagesOpened_whenAllOpened_thenNothingMarked() async {
         let provider = FakeVisualInboxProvider()
         provider.stubMessages = [makeSnapshot(id: "a", opened: true)]
+        provider.stubTemplates = ["test": [["version": "1", "root": ["type": "placeholder"]]]]
         let model = VisualInboxModel(provider: provider)
         await model.refresh()
 
@@ -101,6 +105,92 @@ final class VisualInboxModelTests: XCTestCase {
         try? await Task.sleep(nanoseconds: 20000000) // 20ms
 
         XCTAssertTrue(provider.markedOpenedIds.isEmpty)
+    }
+
+    // MARK: - dismiss (web parity: tap → dismiss)
+
+    func test_dismiss_whenCalled_thenProviderDismissesMessage() async {
+        let provider = FakeVisualInboxProvider()
+        provider.stubMessages = [makeSnapshot(id: "a", opened: false)]
+        let model = VisualInboxModel(provider: provider)
+        await model.refresh()
+
+        model.dismiss(messageId: "a")
+        await provider.waitForDismisses(expected: 1)
+
+        XCTAssertEqual(provider.dismissedIds, ["a"])
+    }
+
+    func test_dismiss_whenCalledTwiceWhileInFlight_thenDismissedOnce() async {
+        let provider = FakeVisualInboxProvider()
+        provider.stubMessages = [makeSnapshot(id: "a", opened: false)]
+        let model = VisualInboxModel(provider: provider)
+        await model.refresh()
+
+        // Two synchronous calls before the first dismiss Task finishes: the in-flight guard dedupes.
+        model.dismiss(messageId: "a")
+        model.dismiss(messageId: "a")
+        await provider.waitForDismisses(expected: 1)
+        try? await Task.sleep(nanoseconds: 20000000) // 20ms — give any (incorrect) second dismiss a chance.
+
+        XCTAssertEqual(provider.dismissedIds, ["a"])
+    }
+
+    /// A dismiss that NO-OPs (message already gone → `dismiss` returns false) must NOT permanently
+    /// dedupe the id; a later dismiss with the message present must re-issue.
+    func test_dismiss_whenDismissNoOps_thenIdStaysRetryable() async {
+        let provider = FakeVisualInboxProvider()
+        provider.stubMessages = [makeSnapshot(id: "a", opened: false)]
+        provider.missingMessageIds = ["a"]
+        let model = VisualInboxModel(provider: provider)
+        await model.refresh()
+
+        model.dismiss(messageId: "a")
+        await provider.waitForDismisses(expected: 1)
+
+        provider.missingMessageIds = []
+        model.dismiss(messageId: "a")
+        await provider.waitForDismisses(expected: 2)
+
+        XCTAssertEqual(provider.dismissedIds, ["a", "a"])
+    }
+
+    // MARK: - relative dates (item 3)
+
+    func test_relativeDate_whenValid_thenLocalizedRelativeString() {
+        // Uses the OS's RelativeDateTimeFormatter (localized), so we don't assert exact wording —
+        // just that a past timestamp yields a non-empty string distinct from the raw ISO input.
+        let now = Date(timeIntervalSince1970: 1000000)
+        let iso = ISO8601DateFormatter().string(from: now.addingTimeInterval(-7200))
+        let result = VisualInboxMessageRow.relativeDate(from: iso, now: now)
+        XCTAssertFalse(result.isEmpty)
+        XCTAssertNotEqual(result, iso)
+    }
+
+    func test_relativeDate_whenUnparseable_thenReturnsRawString() {
+        XCTAssertEqual(VisualInboxMessageRow.relativeDate(from: "not-a-date"), "not-a-date")
+    }
+
+    // MARK: - no-template skip (item 4)
+
+    func test_renderableMessages_whenTypeHasNoTemplate_thenSkipped() async {
+        let provider = FakeVisualInboxProvider()
+        provider.stubMessages = [
+            VisualInboxMessageSnapshot(id: "a", type: "known", properties: [:], opened: false, sentAt: Date()),
+            VisualInboxMessageSnapshot(id: "b", type: "unknown", properties: [:], opened: false, sentAt: Date())
+        ]
+        // Only "known" has a decoded template version in the registry. The root node uses an
+        // unrecognized type so it decodes to JistNode.unknown (a valid, minimal template).
+        provider.stubTemplates = ["known": [["version": "1", "root": ["type": "placeholder"]]]]
+        let model = VisualInboxModel(provider: provider)
+        await model.refresh()
+
+        if #available(iOS 15.0, *) {
+            XCTAssertEqual(model.renderableMessages.map(\.id), ["a"])
+        } else {
+            // Below the Jist floor the fallback row renders every message (no template lookup).
+            XCTAssertEqual(model.renderableMessages.map(\.id), ["a", "b"])
+        }
     }
 
     // MARK: - reactive observe() subscription (the bug fix)
@@ -207,9 +297,12 @@ private final class FakeVisualInboxProvider: VisualInboxProvider, @unchecked Sen
     private(set) var markedOpenedIds: [String] = []
     private let lock = NSLock()
 
-    /// Ids that `markOpened` should report as a NO-OP (message no longer in the store → returns
-    /// false). Empty by default, so every mark "applies". Used by the failed-mark-retry test.
+    /// Ids that `markOpened` / `dismiss` should report as a NO-OP (message no longer in the store →
+    /// returns false). Empty by default, so every mark "applies". Used by the failed-mark-retry test.
     var missingMessageIds: Set<String> = []
+
+    /// Ids passed to `dismiss`, in order, for the dismiss/onAction tests.
+    private(set) var dismissedIds: [String] = []
 
     /// Snapshot emitted to `observe()` subscribers on subscribe.
     var initialSnapshot: VisualInboxSnapshot?
@@ -297,6 +390,26 @@ private final class FakeVisualInboxProvider: VisualInboxProvider, @unchecked Sen
         }
         lock.unlock()
         return didMark
+    }
+
+    @discardableResult
+    func dismiss(messageId: String) async -> Bool {
+        lock.lock()
+        dismissedIds.append(messageId)
+        let didDismiss = !missingMessageIds.contains(messageId)
+        lock.unlock()
+        return didDismiss
+    }
+
+    /// Waits until the model's detached dismiss Task records at least `expected` dismisses.
+    func waitForDismisses(expected: Int) async {
+        for _ in 0 ..< 200 {
+            lock.lock()
+            let count = dismissedIds.count
+            lock.unlock()
+            if count >= expected { return }
+            try? await Task.sleep(nanoseconds: 1000000) // 1ms
+        }
     }
 
     /// Waits until the model's detached mark Task reaches the expected number of marks (or a budget
