@@ -45,3 +45,28 @@ extension GeofenceConfig {
         maxMonitoringDistance: GeofenceConstants.defaultMaxMonitoringDistance
     )
 }
+
+// === TESTING-ONLY (geofence-testing branch) — must not merge. ===
+/// Forces candidate geofence config values (overriding server/cached/fallback) so on-device tests
+/// can validate settings before they're proposed server-side. Auto-disabled under XCTest/Swift
+/// Testing so unit tests keep exercising real config values. `duplicateEventsExpiry` and
+/// `maxBusinessGeofences` are passed through unchanged.
+enum GeofenceTestConfigOverride {
+    private static var isActive: Bool {
+        ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] == nil
+    }
+
+    static func apply(to config: GeofenceConfig) -> GeofenceConfig {
+        guard isActive else { return config }
+        return GeofenceConfig(
+            localRefreshTriggerRadius: 5000,
+            remoteFetchRefreshTriggerRadius: 20000,
+            remoteFetchRefreshExpiry: 60 * 60, // 1 hour
+            duplicateEventsExpiry: config.duplicateEventsExpiry,
+            maxBusinessGeofences: config.maxBusinessGeofences,
+            maxMonitoringDistance: 50000 // 50 km
+        )
+    }
+}
+
+// === END TESTING-ONLY ===

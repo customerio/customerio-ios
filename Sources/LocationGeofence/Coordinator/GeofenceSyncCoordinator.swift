@@ -96,7 +96,7 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
         }
 
         let cachedConfig = await storage.getCachedConfig()
-        let effectiveConfig = cachedConfig ?? .fallback
+        let effectiveConfig = GeofenceTestConfigOverride.apply(to: cachedConfig ?? .fallback) // TESTING-ONLY override
         let location = LocationData(latitude: latitude, longitude: longitude)
         switch await refreshAction(location: location, config: effectiveConfig) {
         case .remote:
@@ -134,7 +134,7 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
 
         let cachedConfig = await storage.getCachedConfig()
         let anchor = await storage.getLastSync()?.location
-        let effectiveConfig = cachedConfig ?? .fallback
+        let effectiveConfig = GeofenceTestConfigOverride.apply(to: cachedConfig ?? .fallback) // TESTING-ONLY override
         let movement = LocationData(latitude: latitude, longitude: longitude)
 
         // No anchor (first EXIT after install / clearAll / sign-out) bootstraps from the server;
@@ -207,7 +207,7 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
         }
         defer { releaseGate() }
 
-        let effectiveConfig = config ?? .fallback
+        let effectiveConfig = GeofenceTestConfigOverride.apply(to: config ?? .fallback) // TESTING-ONLY override
         let nearest = distanceFilter.nearest(cachedRegions, to: anchor, limit: effectiveConfig.maxBusinessGeofences, maxDistance: effectiveConfig.maxMonitoringDistance)
         registerWithOsSync(
             businessRegions: nearest,
@@ -264,7 +264,7 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
 
         let parsedConfig = response.toDomainConfig()
         let regions = response.toDomainRegions()
-        let effectiveConfig = parsedConfig ?? cachedConfig ?? .fallback
+        let effectiveConfig = GeofenceTestConfigOverride.apply(to: parsedConfig ?? cachedConfig ?? .fallback) // TESTING-ONLY override
         let anchor = LocationData(latitude: latitude, longitude: longitude)
         let nearest = distanceFilter.nearest(regions, to: anchor, limit: effectiveConfig.maxBusinessGeofences, maxDistance: effectiveConfig.maxMonitoringDistance)
         await MainActor.run {

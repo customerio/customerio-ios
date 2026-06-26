@@ -217,9 +217,13 @@ enum GeofenceTestNotifier {
         else {
             return
         }
+        let name = userInfo["name"] as? String
         let content = UNMutableNotificationContent()
-        content.title = "Geofence \(transition.uppercased())"
-        content.body = "id=\(geofenceId)"
+        content.title = "Geofence \(transition.uppercased())" + (name.map { " — \($0)" } ?? "")
+        var bodyParts = ["id=\(geofenceId)"]
+        if let distance = userInfo["distanceMeters"] as? Double { bodyParts.append("dist=\(Int(distance.rounded()))m") }
+        if let radius = userInfo["radiusMeters"] as? Double { bodyParts.append("r=\(Int(radius.rounded()))m") }
+        content.body = bodyParts.joined(separator: " · ")
         content.sound = .default
 
         let request = UNNotificationRequest(

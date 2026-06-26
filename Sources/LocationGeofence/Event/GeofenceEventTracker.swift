@@ -73,20 +73,6 @@ final class GeofenceEventTracker: @unchecked Sendable {
             return
         }
 
-        // === TESTING-ONLY === geofence-testing branch only — must not merge.
-        // Posts an `NSNotification` per transition the SDK accepts (post-cooldown gate)
-        // so a sample-app observer can show a visible signal without watching logs.
-        NotificationCenter.default.post(
-            name: Notification.Name("cioGeofenceTransitionForTesting"),
-            object: nil,
-            userInfo: [
-                "geofenceId": geofenceId,
-                "transition": transition.rawValue,
-                "timestamp": now
-            ]
-        )
-        // === END TESTING-ONLY ===
-
         // Stamp the current userId so a row captured under user A always delivers
         // as A — even if B signs in before the flush replays it. Nil when no user
         // is identified at capture time; `deliver` routes nil-stamped rows to EventBus.
@@ -147,6 +133,7 @@ final class GeofenceEventTracker: @unchecked Sendable {
         // whatever identity is current at consume time.
         guard let stampedUserId = metric.userId, !stampedUserId.isEmpty else {
             postEventBus(metric: metric)
+            postTransitionTestNotification(metric: metric) // TESTING-ONLY
             _ = await pendingStore.remove(key: metric.key)
             return
         }
@@ -165,6 +152,7 @@ final class GeofenceEventTracker: @unchecked Sendable {
         if success {
             _ = await pendingStore.remove(key: metric.key)
             logger.geofenceEventTracked(geofenceId: metric.geofenceId, transition: metric.transition)
+            postTransitionTestNotification(metric: metric) // TESTING-ONLY
         }
         // HTTP failure: row stays for next flush.
     }
@@ -183,6 +171,27 @@ final class GeofenceEventTracker: @unchecked Sendable {
         ))
         logger.geofenceEventTracked(geofenceId: metric.geofenceId, transition: metric.transition)
     }
+
+    // === TESTING-ONLY (geofence-testing branch) — must not merge. ===
+    /// Posts a local-notification signal when an event is actually sent (HTTP success or EventBus
+    /// post), carrying name/distance/radius, so a sample-app observer can cross-verify each send
+    /// against the CDP dashboard.
+    private func postTransitionTestNotification(metric: PendingGeofenceMetric) {
+        var userInfo: [String: Any] = [
+            "geofenceId": metric.geofenceId,
+            "transition": metric.transition.rawValue,
+            "timestamp": metric.timestamp
+        ]
+        if let name = metric.name { userInfo["name"] = name }
+        if let distance = metric.distanceFromGeofenceMeters { userInfo["distanceMeters"] = distance }
+        if let radius = metric.geofenceRadius { userInfo["radiusMeters"] = radius }
+        NotificationCenter.default.post(
+            name: Notification.Name("cioGeofenceTransitionForTesting"),
+            object: nil,
+            userInfo: userInfo
+        )
+    }
+    // === END TESTING-ONLY ===
 }
 
 // MARK: - DI
