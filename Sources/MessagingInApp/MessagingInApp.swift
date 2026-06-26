@@ -8,6 +8,9 @@ public protocol MessagingInAppInstance: AutoMockable {
     // sourcery:Name=setEventListener
     func setEventListener(_ eventListener: InAppEventListener?)
 
+    // sourcery:Name=setInboxEventListener
+    func setInboxEventListener(_ inboxEventListener: InboxEventListener?)
+
     func dismissMessage()
 }
 
@@ -78,6 +81,13 @@ public class MessagingInApp: ModuleTopLevelObject<MessagingInAppInstance>, Messa
 
     public func setEventListener(_ eventListener: InAppEventListener?) {
         implementation?.setEventListener(eventListener)
+    }
+
+    /// Registers a listener notified when the user takes an action on a Visual Notification Inbox
+    /// message. The listener can intercept the action (return `true`) to suppress the SDK's default
+    /// navigation. See ``InboxEventListener``.
+    public func setInboxEventListener(_ inboxEventListener: InboxEventListener?) {
+        implementation?.setInboxEventListener(inboxEventListener)
     }
 
     // Dismiss in-app message
