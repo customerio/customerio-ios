@@ -55,8 +55,10 @@ class DashboardViewController: BaseViewController {
         let passthrough = InboxOverlayPassthroughView()
         passthrough.backgroundColor = .clear
         let overlay = NotificationInboxOverlay(onPanelPresentationChange: { [weak passthrough] isOpen in
-            // Capture full-screen touches only while the panel is presented; pass through otherwise.
-            passthrough?.capturesAllTouches = isOpen
+            // Capture full-screen touches while the panel is presented; pass through otherwise. The
+            // view keeps capturing briefly after `isOpen` flips false so taps don't leak to the
+            // dashboard through the still-fading scrim.
+            passthrough?.setPanelPresented(isOpen)
         })
         let host = UIHostingController(rootView: overlay)
         host.view.backgroundColor = .clear
@@ -235,42 +237,57 @@ class DashboardViewController: BaseViewController {
 
 /// Full-screen container that hosts the SwiftUI `NotificationInboxOverlay` in a UIKit screen.
 ///
-/// While the inbox panel is closed (`capturesAllTouches == false`) only the floating bell's
-/// bottom-trailing corner stays interactive; touches anywhere else fall through to the views behind
-/// it, so the dashboard stays usable. While the panel is open the overlay's scrim must block
-/// click-through, so the host flips `capturesAllTouches` to `true` via `onPanelPresentationChange`
-/// and the container captures the full screen.
-///
-/// We gate the closed state on an explicit corner zone rather than SwiftUI's "no hit on empty space"
-/// behavior: once the hosting view has laid out the full-screen scrim/panel, it no longer reports
-/// empty regions as passthrough, which would otherwise leave the whole screen capturing touches
-/// after the panel is opened once.
+/// While the panel is presented the container captures the full screen so the overlay's scrim blocks
+/// click-through. While it's closed, only the floating bell's bottom-trailing corner stays
+/// interactive — and only if the overlay actually drew the bell there — so touches elsewhere (and an
+/// empty corner when the inbox is hidden) fall through to the dashboard.
 private final class InboxOverlayPassthroughView: UIView {
-    /// Set from `NotificationInboxOverlay`'s `onPanelPresentationChange`: `true` while the panel is open.
-    var capturesAllTouches = false
+    /// `true` while the panel is presented or still animating closed; the container then captures the
+    /// full screen. Driven indirectly via `setPanelPresented(_:)`.
+    private var capturesAllTouches = false
+
+    /// Pending "stop capturing" work, scheduled when the panel closes and cancelled if it reopens.
+    private var endCaptureWorkItem: DispatchWorkItem?
+
+    /// Roughly the panel's close-animation settle time. Capture is held this long after the panel
+    /// reports closed so taps don't leak to the dashboard through the still-fading scrim.
+    private let closeSettleDelay: TimeInterval = 0.45
 
     /// Size of the bottom-trailing square kept interactive while the panel is closed — large enough to
     /// cover the overlay's floating bell (56pt) + its 16pt padding + unread badge overhang.
     private let bellZoneSize: CGFloat = 160
 
+    /// Driven by `NotificationInboxOverlay.onPanelPresentationChange`: capture turns on immediately on
+    /// open, and turns off only after `closeSettleDelay` on close (a reopen within the window cancels
+    /// the pending turn-off), so the fading scrim keeps blocking taps during the close animation.
+    func setPanelPresented(_ presented: Bool) {
+        endCaptureWorkItem?.cancel()
+        endCaptureWorkItem = nil
+        if presented {
+            capturesAllTouches = true
+        } else {
+            let work = DispatchWorkItem { [weak self] in self?.capturesAllTouches = false }
+            endCaptureWorkItem = work
+            DispatchQueue.main.asyncAfter(deadline: .now() + closeSettleDelay, execute: work)
+        }
+    }
+
     override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
         if capturesAllTouches {
             return super.hitTest(point, with: event)
         }
-        // Panel closed: only the bell's corner is interactive; pass everything else through. The
-        // overlay pins the bell to SwiftUI's bottom-TRAILING corner — the right in LTR, the left in
-        // RTL — so anchor the zone to the trailing edge per the resolved layout direction (otherwise
-        // the bell is untappable in RTL and the wrong corner intercepts touches).
+        // Panel closed: only the bell's corner is interactive. The overlay pins the bell to SwiftUI's
+        // bottom-TRAILING corner — right in LTR, left in RTL — so anchor the zone to the trailing edge
+        // per the resolved layout direction.
         let originX = effectiveUserInterfaceLayoutDirection == .rightToLeft
             ? bounds.minX
             : bounds.maxX - bellZoneSize
-        let bellZone = CGRect(
-            x: originX,
-            y: bounds.maxY - bellZoneSize,
-            width: bellZoneSize,
-            height: bellZoneSize
-        )
+        let bellZone = CGRect(x: originX, y: bounds.maxY - bellZoneSize, width: bellZoneSize, height: bellZoneSize)
         guard bellZone.contains(point) else { return nil }
-        return super.hitTest(point, with: event)
+        // Within the corner, capture only if the overlay actually drew content there (the bell). When
+        // the inbox is hidden no bell is drawn, so `super.hitTest` resolves to this container — pass
+        // through (return nil) to keep the dashboard usable under an empty corner.
+        let hit = super.hitTest(point, with: event)
+        return hit === self ? nil : hit
     }
 }
