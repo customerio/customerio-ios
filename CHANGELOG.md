@@ -1,3 +1,9 @@
+## [4.5.3](https://github.com/customerio/customerio-ios/compare/4.5.2...4.5.3) (2026-06-22)
+
+### Bug Fixes
+
+* Resolve duplicate event delivery bugs ([#1099](https://github.com/customerio/customerio-ios/issues/1099)) ([8aacf3a](https://github.com/customerio/customerio-ios/commit/8aacf3ac782e9c7914e1e4158832489c19390b5b))
+
 ## [4.5.2](https://github.com/customerio/customerio-ios/compare/4.5.1...4.5.2) (2026-06-16)
 
 ### Bug Fixes
