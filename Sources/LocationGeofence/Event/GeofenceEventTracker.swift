@@ -136,8 +136,13 @@ final class GeofenceEventTracker: @unchecked Sendable {
         if success {
             logger.geofenceEventTracked(geofenceId: metric.geofenceId, transition: metric.transition)
         } else {
-            // Send failed: restore the row so the next flush retries it.
-            _ = await pendingStore.append(metric)
+            // Send failed: restore the row so the next flush retries it. If the restore write itself
+            // fails (e.g. disk error) the event can't be retried — surface it so the rare loss is
+            // diagnosable rather than silent.
+            let restored = await pendingStore.append(metric)
+            if !restored {
+                logger.geofenceEventRestoreFailed(geofenceId: metric.geofenceId, transition: metric.transition)
+            }
         }
     }
 
