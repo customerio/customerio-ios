@@ -40,37 +40,42 @@ class DashboardViewController: BaseViewController {
         setEmailAndDeviceToken()
         configureVersionLabel()
         addAccessibilityIdentifiersForAppium()
-        addVisualInboxBell()
+        addVisualInboxOverlay()
     }
 
-    /// Demonstrates the recommended Visual Notification Inbox integration: place the SDK's public
-    /// `NotificationInboxBell` directly in your screen (here, pinned bottom-trailing on the dashboard)
-    /// and present `NotificationInboxView` when tapped — no app-wide passthrough overlay window needed.
-    /// The bell hides itself when there is nothing to show.
-    private func addVisualInboxBell() {
+    /// Demonstrates the drop-in Visual Notification Inbox integration: mount the SDK's public
+    /// `NotificationInboxOverlay` (floating bell + slide-out panel + dismiss scrim) on top of the
+    /// screen. Because the overlay is SwiftUI and this is a UIKit host, it's hosted in a full-screen
+    /// passthrough view: while the panel is closed, taps outside the bell fall through to the
+    /// dashboard; while it's open, the overlay captures them (so the scrim blocks click-through).
+    /// `onPanelPresentationChange` drives that capture toggle. The bell hides itself when there is
+    /// nothing to show.
+    private func addVisualInboxOverlay() {
         guard #available(iOS 15.0, *) else { return }
-        let bell = NotificationInboxBell(onTap: { [weak self] in self?.presentVisualInbox() })
-        let host = UIHostingController(rootView: bell)
+        let passthrough = InboxOverlayPassthroughView()
+        passthrough.backgroundColor = .clear
+        let overlay = NotificationInboxOverlay(onPanelPresentationChange: { [weak passthrough] isOpen in
+            // Capture full-screen touches only while the panel is presented; pass through otherwise.
+            passthrough?.capturesAllTouches = isOpen
+        })
+        let host = UIHostingController(rootView: overlay)
         host.view.backgroundColor = .clear
         addChild(host)
-        view.addSubview(host.view)
+        passthrough.addSubview(host.view)
         host.view.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(passthrough)
+        passthrough.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
-            host.view.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -16),
-            host.view.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -16),
-            host.view.widthAnchor.constraint(equalToConstant: 72),
-            host.view.heightAnchor.constraint(equalToConstant: 72)
+            passthrough.topAnchor.constraint(equalTo: view.topAnchor),
+            passthrough.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            passthrough.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            passthrough.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            host.view.topAnchor.constraint(equalTo: passthrough.topAnchor),
+            host.view.leadingAnchor.constraint(equalTo: passthrough.leadingAnchor),
+            host.view.trailingAnchor.constraint(equalTo: passthrough.trailingAnchor),
+            host.view.bottomAnchor.constraint(equalTo: passthrough.bottomAnchor)
         ])
         host.didMove(toParent: self)
-    }
-
-    /// Presents the embeddable `NotificationInboxView` (the Jist-rendered message list) in a sheet.
-    @available(iOS 15.0, *)
-    private func presentVisualInbox() {
-        let host = UIHostingController(rootView: NotificationInboxView())
-        host.title = "Notifications"
-        let nav = UINavigationController(rootViewController: host)
-        present(nav, animated: true)
     }
 
     func configureDashboardRouter() {
@@ -225,5 +230,41 @@ class DashboardViewController: BaseViewController {
 
     @IBAction func openLocationTest(_ sender: UIButton) {
         dashboardRouter?.routeToLocationTest()
+    }
+}
+
+/// Full-screen container that hosts the SwiftUI `NotificationInboxOverlay` in a UIKit screen.
+///
+/// While the inbox panel is closed (`capturesAllTouches == false`) only the floating bell's
+/// bottom-trailing corner stays interactive; touches anywhere else fall through to the views behind
+/// it, so the dashboard stays usable. While the panel is open the overlay's scrim must block
+/// click-through, so the host flips `capturesAllTouches` to `true` via `onPanelPresentationChange`
+/// and the container captures the full screen.
+///
+/// We gate the closed state on an explicit corner zone rather than SwiftUI's "no hit on empty space"
+/// behavior: once the hosting view has laid out the full-screen scrim/panel, it no longer reports
+/// empty regions as passthrough, which would otherwise leave the whole screen capturing touches
+/// after the panel is opened once.
+private final class InboxOverlayPassthroughView: UIView {
+    /// Set from `NotificationInboxOverlay`'s `onPanelPresentationChange`: `true` while the panel is open.
+    var capturesAllTouches = false
+
+    /// Size of the bottom-trailing square kept interactive while the panel is closed — large enough to
+    /// cover the overlay's floating bell (56pt) + its 16pt padding + unread badge overhang.
+    private let bellZoneSize: CGFloat = 160
+
+    override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
+        if capturesAllTouches {
+            return super.hitTest(point, with: event)
+        }
+        // Panel closed: only the bell's corner is interactive; pass everything else through.
+        let bellZone = CGRect(
+            x: bounds.maxX - bellZoneSize,
+            y: bounds.maxY - bellZoneSize,
+            width: bellZoneSize,
+            height: bellZoneSize
+        )
+        guard bellZone.contains(point) else { return nil }
+        return super.hitTest(point, with: event)
     }
 }
