@@ -163,12 +163,10 @@ class LiveActivitiesViewController: BaseViewController {
 
     @objc private func toggleLiveScore() {
         if let activity = liveScoreActivity {
-            Task {
+            Task { @MainActor in
                 await activity.end(using: nil, dismissalPolicy: .default)
                 self.liveScoreActivity = nil
-                DispatchQueue.main.async {
-                    self.liveScoreButton?.setTitle("Start Live Score", for: .normal)
-                }
+                self.liveScoreButton?.setTitle("Start Live Score", for: .normal)
             }
         } else {
             do {
@@ -191,12 +189,10 @@ class LiveActivitiesViewController: BaseViewController {
 
     @objc private func toggleDelivery() {
         if let activity = deliveryActivity {
-            Task {
+            Task { @MainActor in
                 await activity.end(using: nil, dismissalPolicy: .default)
                 self.deliveryActivity = nil
-                DispatchQueue.main.async {
-                    self.deliveryButton?.setTitle("Start Delivery Tracking", for: .normal)
-                }
+                self.deliveryButton?.setTitle("Start Delivery Tracking", for: .normal)
             }
         } else {
             do {
@@ -223,12 +219,10 @@ class LiveActivitiesViewController: BaseViewController {
 
     @objc private func toggleCountdown() {
         if let activity = countdownActivity {
-            Task {
+            Task { @MainActor in
                 await activity.end(using: nil, dismissalPolicy: .default)
                 self.countdownActivity = nil
-                DispatchQueue.main.async {
-                    self.countdownButton?.setTitle("Start Countdown Timer", for: .normal)
-                }
+                self.countdownButton?.setTitle("Start Countdown Timer", for: .normal)
             }
         } else {
             do {
@@ -254,12 +248,10 @@ class LiveActivitiesViewController: BaseViewController {
 
     @objc private func toggleFlight() {
         if let activity = flightActivity {
-            Task {
+            Task { @MainActor in
                 await activity.end(using: nil, dismissalPolicy: .default)
                 self.flightActivity = nil
-                DispatchQueue.main.async {
-                    self.flightButton?.setTitle("Start Flight Status", for: .normal)
-                }
+                self.flightButton?.setTitle("Start Flight Status", for: .normal)
             }
         } else {
             do {
@@ -290,12 +282,10 @@ class LiveActivitiesViewController: BaseViewController {
 
     @objc private func toggleAuction() {
         if let activity = auctionActivity {
-            Task {
+            Task { @MainActor in
                 await activity.end(using: nil, dismissalPolicy: .default)
                 self.auctionActivity = nil
-                DispatchQueue.main.async {
-                    self.auctionButton?.setTitle("Start Auction Bid", for: .normal)
-                }
+                self.auctionButton?.setTitle("Start Auction Bid", for: .normal)
             }
         } else {
             do {
