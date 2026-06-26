@@ -48,8 +48,19 @@ private func reducer(action: InAppMessageAction, state: InAppMessageState) -> In
         return state.copy(messagesInQueue: Set(messages))
 
     case .processInboxMessages(let messages):
-        // Already deduplicated/sorted by middleware
-        return state.copy(inboxMessages: messages)
+        // Already deduplicated/sorted by middleware.
+        //
+        // Dismiss-resurrection guard: a poll's `/queue` response can still contain a message the user
+        // just deleted (eventual consistency / cached queue). Replacing the whole list with the server
+        // response would resurrect that row and keep the overlay chrome visible. So:
+        //  1. Filter incoming to exclude any tombstoned id (don't resurrect a deleted message).
+        //  2. Prune any tombstone whose id is NOT in the incoming list — the server has caught up, so
+        //     the tombstone is no longer needed (and a later, genuinely-new message reusing the id
+        //     wouldn't be wrongly suppressed).
+        let incomingIds = Set(messages.map(\.queueId))
+        let filteredMessages = messages.filter { !state.deletedInboxMessageIds.contains($0.queueId) }
+        let prunedTombstones = state.deletedInboxMessageIds.intersection(incomingIds)
+        return state.copy(inboxMessages: filteredMessages, deletedInboxMessageIds: prunedTombstones)
 
     case .embedMessages(let messages):
         var newEmbeddedMessages = state.embeddedMessagesState
@@ -135,11 +146,13 @@ private func reducer(action: InAppMessageAction, state: InAppMessageState) -> In
             return state.copy(inboxMessages: updatedMessages)
 
         case .deleteMessage(let message):
-            // Remove deleted message from state
+            // Remove deleted message from the current list AND tombstone its id so a stale poll
+            // response (eventual consistency) can't resurrect it on the next `processInboxMessages`.
             let updatedMessages = state.inboxMessages.filter { inboxMessage in
                 inboxMessage.queueId != message.queueId
             }
-            return state.copy(inboxMessages: updatedMessages)
+            let updatedTombstones = state.deletedInboxMessageIds.union([message.queueId])
+            return state.copy(inboxMessages: updatedMessages, deletedInboxMessageIds: updatedTombstones)
 
         case .trackClicked:
             // No state update needed for tracking clicks

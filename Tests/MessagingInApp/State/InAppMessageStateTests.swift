@@ -1842,6 +1842,85 @@ class InAppMessageStateTests: IntegrationTest {
         let finalState = await inAppMessageManager.state
         XCTAssertTrue(finalState.inboxMessages.isEmpty)
     }
+
+    // MARK: - Inbox dismiss-resurrection (tombstone) tests
+
+    private func makeInboxMessage(queueId: String, sentAt: Date = Date()) -> InboxMessage {
+        InboxMessage(
+            queueId: queueId,
+            deliveryId: "delivery-\(queueId)",
+            expiry: nil,
+            sentAt: sentAt,
+            topics: [],
+            type: "welcome",
+            opened: false,
+            priority: nil,
+            properties: [:]
+        )
+    }
+
+    func test_deleteThenReprocess_givenServerStillReturnsDeletedMessage_expectMessageStaysGone() async throws {
+        await inAppMessageManager.dispatchAsync(action: .initialize(siteId: .random, dataCenter: .random, environment: .production))
+        await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: .random))
+
+        let keep = makeInboxMessage(queueId: "keep-1")
+        let doomed = makeInboxMessage(queueId: "doomed-1")
+
+        // Seed the inbox with both messages.
+        await inAppMessageManager.dispatchAsync(action: .processInboxMessages(messages: [keep, doomed]))
+        var state = await inAppMessageManager.waitForState { Set($0.inboxMessages.map(\.queueId)) == ["keep-1", "doomed-1"] }
+        XCTAssertEqual(Set(state.inboxMessages.map(\.queueId)), ["keep-1", "doomed-1"])
+
+        // User deletes one message: it's removed from the list AND tombstoned.
+        await inAppMessageManager.dispatchAsync(action: .inboxAction(action: .deleteMessage(message: doomed)))
+        state = await inAppMessageManager.waitForState { $0.inboxMessages.map(\.queueId) == ["keep-1"] }
+        XCTAssertEqual(state.inboxMessages.map(\.queueId), ["keep-1"])
+        XCTAssertTrue(state.deletedInboxMessageIds.contains("doomed-1"), "deleted id should be tombstoned")
+
+        // A stale poll (eventual consistency) still returns the deleted message.
+        await inAppMessageManager.dispatchAsync(action: .processInboxMessages(messages: [keep, doomed]))
+        state = await inAppMessageManager.state
+        XCTAssertEqual(state.inboxMessages.map(\.queueId), ["keep-1"], "tombstoned message must not resurrect")
+        XCTAssertTrue(state.deletedInboxMessageIds.contains("doomed-1"), "tombstone retained while server still returns the id")
+    }
+
+    func test_deleteThenReprocess_givenServerNoLongerReturnsDeletedMessage_expectTombstonePruned() async throws {
+        await inAppMessageManager.dispatchAsync(action: .initialize(siteId: .random, dataCenter: .random, environment: .production))
+        await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: .random))
+
+        let keep = makeInboxMessage(queueId: "keep-1")
+        let doomed = makeInboxMessage(queueId: "doomed-1")
+
+        await inAppMessageManager.dispatchAsync(action: .processInboxMessages(messages: [keep, doomed]))
+        _ = await inAppMessageManager.waitForState { Set($0.inboxMessages.map(\.queueId)) == ["keep-1", "doomed-1"] }
+
+        await inAppMessageManager.dispatchAsync(action: .inboxAction(action: .deleteMessage(message: doomed)))
+        var state = await inAppMessageManager.waitForState { $0.deletedInboxMessageIds.contains("doomed-1") }
+        XCTAssertTrue(state.deletedInboxMessageIds.contains("doomed-1"))
+
+        // The server has caught up: the next poll no longer contains the deleted id.
+        await inAppMessageManager.dispatchAsync(action: .processInboxMessages(messages: [keep]))
+        state = await inAppMessageManager.state
+        XCTAssertEqual(state.inboxMessages.map(\.queueId), ["keep-1"])
+        XCTAssertFalse(state.deletedInboxMessageIds.contains("doomed-1"), "tombstone pruned once server stops returning the id")
+    }
+
+    func test_resetState_expectInboxTombstonesCleared() async throws {
+        await inAppMessageManager.dispatchAsync(action: .initialize(siteId: .random, dataCenter: .random, environment: .production))
+        await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: .random))
+
+        let doomed = makeInboxMessage(queueId: "doomed-1")
+        await inAppMessageManager.dispatchAsync(action: .processInboxMessages(messages: [doomed]))
+        _ = await inAppMessageManager.waitForState { $0.inboxMessages.map(\.queueId) == ["doomed-1"] }
+
+        await inAppMessageManager.dispatchAsync(action: .inboxAction(action: .deleteMessage(message: doomed)))
+        var state = await inAppMessageManager.waitForState { $0.deletedInboxMessageIds.contains("doomed-1") }
+        XCTAssertTrue(state.deletedInboxMessageIds.contains("doomed-1"))
+
+        await inAppMessageManager.dispatchAsync(action: .resetState)
+        state = await inAppMessageManager.state
+        XCTAssertTrue(state.deletedInboxMessageIds.isEmpty, "resetState clears inbox tombstones")
+    }
 }
 
 extension InAppMessageManager {
