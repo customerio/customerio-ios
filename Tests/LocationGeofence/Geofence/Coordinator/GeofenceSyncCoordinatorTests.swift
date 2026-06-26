@@ -520,7 +520,7 @@ struct GeofenceSyncCoordinatorTests {
     }
 
     @Test
-    func refresh_givenSuccess_expectStopMonitoringAllBeforeStartMonitoring() async {
+    func refresh_givenSuccess_expectRegistrationOrderStopAllThenTriggerThenBusiness() async {
         let storage = makeStorage()
         let api = GeofenceApiServiceMock()
         let region = makeRegion(id: "g1", latitude: 1.0, longitude: 2.0)
@@ -531,11 +531,12 @@ struct GeofenceSyncCoordinatorTests {
         let setup = makeCoordinator(api: api, storage: storage)
         _ = await setup.coordinator.refresh(latitude: 1.0, longitude: 2.0)
 
-        // Verify operations actually arrived in `stopAll → start business → start movement` order.
+        // Verify operations arrived in `stopAll → start movement → start business` order — the
+        // trigger goes first so it isn't starved when business regions fill the shared OS budget.
         #expect(setup.monitor.operationLog == [
             .stopAll,
-            .start(identifier: "g1"),
-            .start(identifier: GeofenceConstants.movementTriggerIdentifier)
+            .start(identifier: GeofenceConstants.movementTriggerIdentifier),
+            .start(identifier: "g1")
         ])
     }
 
