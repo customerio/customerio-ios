@@ -275,12 +275,14 @@ final class VisualInboxModel: ObservableObject {
         guard !dismissingIds.contains(messageId) else { return }
         dismissingIds.insert(messageId)
         Task { [weak self, provider] in
-            _ = await provider.dismiss(messageId: messageId)
-            // Always release the reservation once the dismiss completes — on success too, not only on
-            // a no-op. The data layer now tombstones the id so a stale poll can't resurrect the row;
-            // but if a row WITH the same id ever legitimately reappears (e.g. after the tombstone is
-            // pruned), it must remain dismissible rather than be permanently swallowed by this guard.
-            self?.dismissingIds.remove(messageId)
+            let didDismiss = await provider.dismiss(messageId: messageId)
+            // Release the reservation only on a no-op (message already gone) so the id stays
+            // retryable. On success keep it reserved: the data-layer tombstone prevents the row from
+            // resurrecting, and a second in-flight dismiss for the same id must not re-run the delete
+            // plumbing (duplicate network call + host `inboxMessageDismissed`).
+            if !didDismiss {
+                self?.dismissingIds.remove(messageId)
+            }
             await self?.refresh()
         }
     }
