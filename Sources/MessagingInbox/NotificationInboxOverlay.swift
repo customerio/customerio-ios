@@ -104,10 +104,10 @@ public struct NotificationInboxOverlay: View {
     }
 
     private func setPanel(open: Bool) {
-        // Spring (no fixed duration) chosen to approximate Compose's default slide+fade enter/exit
-        // springs on Android: smooth, slightly springy, no bounce. `dampingFraction: 0.85` keeps it
-        // critically-ish damped (no overshoot) while `response: 0.35` keeps it snappy.
-        withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+        // Slide the panel with a spring — iOS's natural idiom for fluid, interruptible UI motion
+        // (the same feel as sheets and navigation). No fixed duration; lightly damped so the panel
+        // settles quickly and smoothly without overshoot.
+        withAnimation(.spring(response: 0.4, dampingFraction: 0.9)) {
             isPanelOpen = open
         }
         // Auto-mark-opened (item 8): when the panel becomes visible, mark the visible messages
