@@ -41,6 +41,23 @@ final class VisualInboxModel: ObservableObject {
 
     private let provider: VisualInboxProvider
 
+    /// SDK logger for [CIO-Inbox] diagnostics (e.g. the no-template skip in item 4).
+    private let logger: Logger = DIGraphShared.shared.logger
+
+    /// Ids already logged as "no matching template" so the skip warning is emitted once per message
+    /// rather than on every refresh/recompose.
+    private var loggedMissingTemplateIds: Set<String> = []
+
+    /// Messages that have a matching decoded template and are therefore renderable via Jist.
+    ///
+    /// No-template fallback (item 4): a message whose `type` is not in the decoded templates registry
+    /// is skipped (not rendered as a blank row) and logged once as a [CIO-Inbox] error. We can't skip
+    /// in pre-iOS-15 fallback rows (no templates there), so the skip only applies when Jist renders.
+    var renderableMessages: [VisualInboxMessageSnapshot] {
+        guard #available(iOS 15.0, *) else { return messages }
+        return messages.filter { templates[$0.type] != nil }
+    }
+
     /// Backing task for the load + refresh cycle; cancelled when the view disappears.
     private var refreshTask: Task<Void, Never>?
 
@@ -52,6 +69,10 @@ final class VisualInboxModel: ObservableObject {
     /// In-flight / already-done guard for auto-mark-opened (item 8). A message id present here has
     /// either been marked or is being marked, so it is never marked twice.
     private var markedOpenedIds: Set<String> = []
+
+    /// In-flight guard for dismiss (web parity: tap → dismiss). A message id present here has a
+    /// dismiss in flight, so a rapid double-tap / re-entrant `onAction` can't double-fire the delete.
+    private var dismissingIds: Set<String> = []
 
     init(provider: VisualInboxProvider) {
         self.provider = provider
@@ -122,6 +143,7 @@ final class VisualInboxModel: ObservableObject {
         templates = newTemplates
         theme = newTheme
         decodedData = Self.decodeData(for: newMessages)
+        logMissingTemplates()
     }
 
     /// Publishes a coalesced snapshot from the `observe()` stream. Runs on the main actor (the model
@@ -133,6 +155,18 @@ final class VisualInboxModel: ObservableObject {
         templates = VisualInboxJistDecoder.decodeTemplates(snapshot.templatesJSON)
         theme = VisualInboxJistDecoder.decodeTheme(snapshot.themeJSON)
         decodedData = Self.decodeData(for: snapshot.messages)
+        logMissingTemplates()
+    }
+
+    /// Emits a one-time [CIO-Inbox] error for each message whose `type` has no matching decoded
+    /// template (item 4). These messages are skipped by `renderableMessages` so they never render as
+    /// a blank row. Logged once per id to avoid per-refresh spam.
+    private func logMissingTemplates() {
+        guard #available(iOS 15.0, *) else { return }
+        for message in messages where templates[message.type] == nil && !loggedMissingTemplateIds.contains(message.id) {
+            loggedMissingTemplateIds.insert(message.id)
+            logger.error("[CIO-Inbox] skipping message \(message.id): no template for type \"\(message.type)\" in registry")
+        }
     }
 
     /// Decodes each message's `properties` into Jist render data once, keyed by message id.
@@ -150,7 +184,10 @@ final class VisualInboxModel: ObservableObject {
     /// (and re-callable as new messages scroll into view). The `markedOpenedIds` guard dedupes so a
     /// message is never marked repeatedly across panel open/close cycles or refreshes.
     func markVisibleMessagesOpened() {
-        let toMark = messages.filter { !$0.opened && !markedOpenedIds.contains($0.id) }
+        // Only mark messages the user can actually see: `renderableMessages` (those with a template).
+        // Messages skipped for a missing template are never shown in the list, so they must not be
+        // marked opened.
+        let toMark = renderableMessages.filter { !$0.opened && !markedOpenedIds.contains($0.id) }
         guard !toMark.isEmpty else { return }
         // Reserve ids synchronously (on the main actor) so a re-entrant call can't double-fire the
         // same mark while the async marks are in flight.
@@ -166,6 +203,27 @@ final class VisualInboxModel: ObservableObject {
                 if !didMark {
                     self?.markedOpenedIds.remove(message.id)
                 }
+            }
+            await self?.refresh()
+        }
+    }
+
+    // MARK: - Dismiss (web parity: tap → dismiss)
+
+    /// Dismisses (removes) a message, mirroring web behavior where tapping a message removes it from
+    /// the list. Dismissing the last message empties the list, which drives the data layer to
+    /// `.hidden` — the panel auto-closes and the bell hides (item 2).
+    ///
+    /// The `dismissingIds` guard dedupes so a rapid double-tap / re-entrant `onAction` for the same
+    /// message can't dispatch the delete twice. If the dismiss no-ops (message already gone) the
+    /// reservation is released so the id stays retryable.
+    func dismiss(messageId: String) {
+        guard !dismissingIds.contains(messageId) else { return }
+        dismissingIds.insert(messageId)
+        Task { [weak self, provider] in
+            let didDismiss = await provider.dismiss(messageId: messageId)
+            if !didDismiss {
+                self?.dismissingIds.remove(messageId)
             }
             await self?.refresh()
         }

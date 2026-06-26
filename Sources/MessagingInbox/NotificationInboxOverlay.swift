@@ -25,14 +25,22 @@ public struct NotificationInboxOverlay: View {
     /// Vertical inset that keeps the slide-out panel clear of the floating button.
     private let panelBottomInset: CGFloat = 88
 
+    /// Called whenever the slide-out panel opens (`true`) or closes (`false`). Hosts that mount the
+    /// overlay in a passthrough window use this to capture touches full-screen while the panel is
+    /// open (so the scrim blocks click-through) and pass through when it's closed.
+    private let onPanelPresentationChange: ((Bool) -> Void)?
+
     /// Creates an inbox overlay backed by the SDK's shared Visual Inbox data layer.
-    public init() {
+    /// - Parameter onPanelPresentationChange: optional callback invoked when the panel opens/closes.
+    public init(onPanelPresentationChange: ((Bool) -> Void)? = nil) {
         _model = StateObject(wrappedValue: VisualInboxModel())
+        self.onPanelPresentationChange = onPanelPresentationChange
     }
 
     /// Creates an inbox overlay backed by the supplied model. Used by tests/previews to inject a fake.
-    init(model: VisualInboxModel) {
+    init(model: VisualInboxModel, onPanelPresentationChange: ((Bool) -> Void)? = nil) {
         _model = StateObject(wrappedValue: model)
+        self.onPanelPresentationChange = onPanelPresentationChange
     }
 
     public var body: some View {
@@ -41,7 +49,8 @@ public struct NotificationInboxOverlay: View {
             // host app. Tapping the scrim closes the panel. Only present while open AND chrome is
             // shown — a hidden inbox hides all chrome, including an open panel/scrim.
             if isPanelOpen, showsChrome {
-                Color.black.opacity(0.2)
+                // Scrim opacity 0.32 for cross-platform parity (Android uses the same value).
+                Color.black.opacity(0.32)
                     .ignoresSafeAreaCompat()
                     .contentShape(Rectangle())
                     .onTapGesture { setPanel(open: false) }
@@ -67,7 +76,23 @@ public struct NotificationInboxOverlay: View {
         // (and doesn't silently reappear if the inbox becomes visible again).
         .onChange(of: showsChrome) { visible in
             if !visible, isPanelOpen { isPanelOpen = false }
+            // Re-notify when chrome visibility flips: if the inbox goes hidden while the panel flag is
+            // still settling, the host must stop full-screen capture so touches aren't swallowed with
+            // nothing on screen.
+            notifyPanelPresentation()
         }
+        // Notify the host of panel presentation so a passthrough-window mount can toggle full-screen
+        // touch capture (presented → scrim blocks click-through; not → pass through).
+        .onChange(of: isPanelOpen) { _ in
+            notifyPanelPresentation()
+        }
+    }
+
+    /// The panel is "presented" (host should capture full-screen touches) only when it is open AND the
+    /// inbox chrome is shown. Keying the host callback off BOTH prevents leaving touch capture on after
+    /// the inbox goes `.hidden` while `isPanelOpen` is still true.
+    private func notifyPanelPresentation() {
+        onPanelPresentationChange?(isPanelOpen && showsChrome)
     }
 
     // MARK: - Derived UI state
@@ -75,8 +100,15 @@ public struct NotificationInboxOverlay: View {
     /// Whether any chrome (bell/panel) should be shown. Hidden state shows nothing.
     private var showsChrome: Bool {
         switch model.state {
-        case .hidden: return false
-        case .idle, .loading, .visible: return true
+        case .hidden:
+            return false
+        case .idle, .loading:
+            return true
+        case .visible:
+            // Visible but every message lacks a Jist template → nothing can render (each is logged +
+            // skipped by the model). Show no chrome rather than a bell over a blank/“caught up” panel;
+            // it reappears if a renderable message arrives.
+            return !model.renderableMessages.isEmpty
         }
     }
 
@@ -123,23 +155,9 @@ public struct NotificationInboxOverlay: View {
     // MARK: - Slide-out panel (items 6, 7, 11)
 
     private var panel: some View {
+        // No header (title / close button) — matches web. The panel closes via the scrim tap or by
+        // tapping the bell again.
         VStack(alignment: .leading, spacing: 0) {
-            HStack {
-                Text("Inbox")
-                    .font(.headline)
-
-                Spacer()
-
-                Button(action: { setPanel(open: false) }, label: {
-                    Image(systemName: "xmark")
-                        .foregroundColor(.secondary)
-                })
-                .accessibility(label: Text("Close inbox"))
-            }
-            .padding()
-
-            Divider()
-
             content
         }
         .frame(maxWidth: 480, maxHeight: .infinity, alignment: .top)
@@ -156,7 +174,9 @@ public struct NotificationInboxOverlay: View {
     @ViewBuilder
     private var content: some View {
         if model.messages.isEmpty, case .visible = model.state {
-            // Visible with no messages → genuine "caught up" empty state.
+            // Genuinely caught up: visible with NO messages at all. Keyed off the full message list
+            // (not `renderableMessages`) so messages that merely lack a template don't read as
+            // "caught up" — those still exist, they just can't render.
             VStack {
                 Spacer()
                 Text("You're all caught up")
@@ -174,6 +194,8 @@ public struct NotificationInboxOverlay: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
+            // Messages exist → render the renderable ones. If every message lacks a template the list
+            // is blank (each is logged + skipped); we deliberately do NOT claim "caught up" here.
             messageList
         }
     }
@@ -181,12 +203,17 @@ public struct NotificationInboxOverlay: View {
     private var messageList: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
-                ForEach(model.messages) { message in
+                // No-template messages are skipped (item 4): `renderableMessages` drops any message
+                // whose `type` has no matching decoded template (logged once by the model).
+                ForEach(model.renderableMessages) { message in
                     VisualInboxMessageRow(
                         message: message,
                         data: model.decodedData[message.id] ?? [:],
                         templates: model.templates,
-                        theme: model.theme
+                        theme: model.theme,
+                        // Web parity (item 1): tapping a message dismisses it. The row resolves the
+                        // Jist action to a dismiss and calls back here; the model removes it.
+                        onDismiss: { model.dismiss(messageId: message.id) }
                     )
                     Divider()
                 }
@@ -221,6 +248,8 @@ struct VisualInboxMessageRow: View {
     let data: [String: JistValue]
     let templates: [String: [JistTemplate]]
     let theme: [String: JistValue]
+    /// Called when the message's Jist action resolves to a dismiss (item 1).
+    let onDismiss: () -> Void
 
     var body: some View {
         Group {
@@ -230,12 +259,12 @@ struct VisualInboxMessageRow: View {
                     templates: templates,
                     data: data,
                     theme: theme,
+                    // Dark-mode parity (item 5): `.auto` follows the system color scheme.
                     mode: .auto,
-                    formatDate: nil,
-                    // swiftlint:disable:next todo
-                    // TODO: action mapping is deferred (scope items 12/13). For now actions are a
-                    // no-op hook — wire to trackMessageClicked / deep-link handling later.
-                    onAction: { _ in }
+                    // Relative dates (item 3): Jist passes an ISO-8601 string; we return web-aligned
+                    // relative time ("just now", "2h ago", "3d ago").
+                    formatDate: { iso, _ in Self.relativeDate(from: iso) },
+                    onAction: handleAction
                 )
             } else {
                 fallbackRow
@@ -257,6 +286,63 @@ struct VisualInboxMessageRow: View {
                 .font(.caption)
                 .foregroundColor(.secondary)
         }
+    }
+
+    // MARK: - Jist action handling (item 1)
+
+    /// Maps a Jist `onAction` event to host behavior. Web parity: a "dismiss" action removes the
+    /// message. Any other action (real url / other behavior) is a deferred no-op for now.
+    ///
+    /// The live inbox templates emit the action as `name == "messageAction"` with the message's
+    /// `properties.messageAction = { behavior: "dismiss" }`, so the dismiss signal we match is
+    /// `data.behavior == "dismiss"`. We also accept the Jist-demo sentinels (`name == "dismiss"` or
+    /// `data.url == "#dismiss"`) as a fallback.
+    private func handleAction(_ event: JistActionEvent) {
+        let behavior = event.data?.objectValue?["behavior"]?.stringValue
+        let url = event.data?.objectValue?["url"]?.stringValue
+        if behavior == "dismiss" || event.name == "dismiss" || url == "#dismiss" {
+            onDismiss()
+            return
+        }
+        // Real-url / deeplink navigation + host action callback are deferred (#12 / #13). Log so the
+        // action is observable instead of silently dropped.
+        // swiftlint:disable:next todo
+        // TODO(#12/#13): map real-url actions to navigation / a host action callback.
+        DIGraphShared.shared.logger.debug("[CIO-Inbox] unhandled inbox action name=\(event.name) behavior=\(behavior ?? "<none>") url=\(url ?? "<none>") (real-url nav deferred)")
+    }
+
+    // MARK: - Relative dates (item 3)
+
+    private static let isoParser: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter
+    }()
+
+    /// Fallback parser for ISO-8601 strings WITHOUT fractional seconds (the primary parser is strict
+    /// about its option set, so a no-millisecond timestamp needs this variant).
+    private static let isoParserNoFraction: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime]
+        return formatter
+    }()
+
+    /// System-localized relative-time formatter (the platform equivalent of web's
+    /// `Intl.RelativeTimeFormat`): produces translated output ("2 hours ago", "yesterday", …) in the
+    /// device locale, so the inbox is i18n-ready without us hand-rolling/translating strings.
+    private static let relativeFormatter: RelativeDateTimeFormatter = {
+        let formatter = RelativeDateTimeFormatter()
+        formatter.unitsStyle = .full
+        return formatter
+    }()
+
+    /// Localized relative time from an ISO-8601 timestamp (translation-ready via the OS). Falls back
+    /// to the raw string if it can't be parsed (so a row never renders worse than before).
+    static func relativeDate(from iso: String, now: Date = Date()) -> String {
+        guard let date = isoParser.date(from: iso) ?? isoParserNoFraction.date(from: iso) else {
+            return iso
+        }
+        return relativeFormatter.localizedString(for: date, relativeTo: now)
     }
 }
 #endif
