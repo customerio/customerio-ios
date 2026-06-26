@@ -1,4 +1,4 @@
-import ActivityKit
+@unsafe @preconcurrency import ActivityKit
 import CioLiveActivities_Attributes
 import CioLiveActivities_Templates
 import UIKit
