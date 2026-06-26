@@ -1,5 +1,7 @@
 import CioDataPipelines
 import CioInternalCommon
+import CioMessagingInbox
+import SwiftUI
 import UIKit
 
 class DashboardViewController: BaseViewController {
@@ -38,6 +40,37 @@ class DashboardViewController: BaseViewController {
         setEmailAndDeviceToken()
         configureVersionLabel()
         addAccessibilityIdentifiersForAppium()
+        addVisualInboxBell()
+    }
+
+    /// Demonstrates the recommended Visual Notification Inbox integration: place the SDK's public
+    /// `NotificationInboxBell` directly in your screen (here, pinned bottom-trailing on the dashboard)
+    /// and present `NotificationInboxView` when tapped — no app-wide passthrough overlay window needed.
+    /// The bell hides itself when there is nothing to show.
+    private func addVisualInboxBell() {
+        guard #available(iOS 15.0, *) else { return }
+        let bell = NotificationInboxBell(onTap: { [weak self] in self?.presentVisualInbox() })
+        let host = UIHostingController(rootView: bell)
+        host.view.backgroundColor = .clear
+        addChild(host)
+        view.addSubview(host.view)
+        host.view.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            host.view.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -16),
+            host.view.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -16),
+            host.view.widthAnchor.constraint(equalToConstant: 72),
+            host.view.heightAnchor.constraint(equalToConstant: 72)
+        ])
+        host.didMove(toParent: self)
+    }
+
+    /// Presents the embeddable `NotificationInboxView` (the Jist-rendered message list) in a sheet.
+    @available(iOS 15.0, *)
+    private func presentVisualInbox() {
+        let host = UIHostingController(rootView: NotificationInboxView())
+        host.title = "Notifications"
+        let nav = UINavigationController(rootViewController: host)
+        present(nav, animated: true)
     }
 
     func configureDashboardRouter() {

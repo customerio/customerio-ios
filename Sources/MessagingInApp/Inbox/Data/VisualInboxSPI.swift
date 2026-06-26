@@ -7,114 +7,9 @@ import Foundation
 // data layer. It is gated behind `@_spi(VisualInbox)` so it stays off the public SDK surface (only a
 // sibling module that writes `@_spi(VisualInbox) import CioMessagingInApp` can see it). The internal
 // data-layer types stay `internal`; this layer exposes plain Foundation value types instead, leaving
-// the headless public `NotificationInbox` API untouched.
-
-/// Visibility/loading signal the overlay renders from. Mirrors the internal `VisualInboxLoadState`
-/// but is a self-contained SPI value type (no internal types leak across the module boundary).
-@_spi(VisualInbox)
-public enum VisualInboxState: Equatable {
-    /// Nothing fetched yet for the current user.
-    case idle
-    /// A fetch is in flight — the overlay shows a loading affordance.
-    case loading
-    /// Fully renderable: enabled, with messages + templates + branding all available.
-    case visible(messageCount: Int)
-    /// Not renderable (disabled, or any of messages/templates/branding missing). The overlay hides
-    /// all chrome. `reason` is diagnostic only. This is NOT an error state.
-    case hidden(reason: String)
-
-    /// Whether the overlay should show the inbox chrome (bell + panel).
-    public var isVisible: Bool {
-        if case .visible = self { return true }
-        return false
-    }
-}
-
-/// A single inbox message, flattened to the minimum the overlay needs to render it via Jist.
-///
-/// `properties` is preserved as a typed `[String: Any]` (nested objects/arrays/numbers/bools/dates
-/// intact — no string flattening) so the overlay can decode it into Jist's `[String: JistValue]`.
-@_spi(VisualInbox)
-public struct VisualInboxMessageSnapshot: Identifiable {
-    /// Stable identifier (the underlying message's queueId).
-    public let id: String
-    /// Jist message type — selects a template from the registry.
-    public let type: String
-    /// Typed, nested-preserving properties handed to the Jist renderer.
-    public let properties: [String: Any]
-    /// Whether the user has opened this message.
-    public let opened: Bool
-    /// Original send time.
-    public let sentAt: Date
-
-    public init(id: String, type: String, properties: [String: Any], opened: Bool, sentAt: Date) {
-        self.id = id
-        self.type = type
-        self.properties = properties
-        self.opened = opened
-        self.sentAt = sentAt
-    }
-}
-
-/// A single coalesced snapshot of everything the overlay renders from, emitted by
-/// ``VisualInboxProvider/observe()`` whenever the underlying data layer changes.
-///
-/// Bundling state + messages + count + rendering inputs into one value lets the overlay model
-/// publish atomically (one `@Published` write per emission) and lets the provider de-dupe emissions
-/// (only forward an emission when the snapshot actually differs from the last one).
-@_spi(VisualInbox)
-public struct VisualInboxSnapshot: Equatable {
-    public let state: VisualInboxState
-    public let messages: [VisualInboxMessageSnapshot]
-    public let unopenedCount: Int
-    /// Raw templates registry JSON, decoded by the overlay into Jist types.
-    public let templatesJSON: [String: Any]?
-    /// Raw branding theme JSON, decoded by the overlay into Jist types.
-    public let themeJSON: [String: Any]?
-
-    public init(
-        state: VisualInboxState,
-        messages: [VisualInboxMessageSnapshot],
-        unopenedCount: Int,
-        templatesJSON: [String: Any]?,
-        themeJSON: [String: Any]?
-    ) {
-        self.state = state
-        self.messages = messages
-        self.unopenedCount = unopenedCount
-        self.templatesJSON = templatesJSON
-        self.themeJSON = themeJSON
-    }
-
-    /// Structural equality used purely to de-dupe emissions. Compares every render-affecting field:
-    /// state, count, per-message identity/opened/type AND the render payload (each message's
-    /// `properties` plus the raw `templatesJSON`/`themeJSON`). Content-only changes — e.g. a Jist row's
-    /// properties or an updated template/theme arriving while `state`/ids are unchanged — must count as
-    /// DIFFERENT so `emitSnapshot` forwards them; otherwise `VisualInboxModel.apply` keeps rendering
-    /// stale rows/theme. The `[String: Any]` dictionaries aren't `Equatable`, so they're compared via
-    /// `NSDictionary(dictionary:).isEqual`, mirroring `InboxBranding`/`InboxTemplatesRegistry`.
-    public static func == (lhs: VisualInboxSnapshot, rhs: VisualInboxSnapshot) -> Bool {
-        lhs.state == rhs.state &&
-            lhs.unopenedCount == rhs.unopenedCount &&
-            lhs.messages.count == rhs.messages.count &&
-            zip(lhs.messages, rhs.messages).allSatisfy { l, r in
-                l.id == r.id && l.opened == r.opened && l.type == r.type &&
-                    NSDictionary(dictionary: l.properties).isEqual(to: r.properties)
-            } &&
-            jsonEqual(lhs.templatesJSON, rhs.templatesJSON) &&
-            jsonEqual(lhs.themeJSON, rhs.themeJSON)
-    }
-
-    /// Compares two optional `[String: Any]` render-payload dictionaries (nil == nil, nil != non-nil),
-    /// using `NSDictionary.isEqual` for the non-nil case (same approach as the data-layer types).
-    private static func jsonEqual(_ lhs: [String: Any]?, _ rhs: [String: Any]?) -> Bool {
-        switch (lhs, rhs) {
-        case (nil, nil): return true
-        case (let l?, let r?): return NSDictionary(dictionary: l).isEqual(to: r)
-        default: return false
-        }
-    }
-}
+// the headless public `NotificationInbox` API untouched. The SPI value types
+// (`VisualInboxState`/`VisualInboxMessageSnapshot`/`VisualInboxSnapshot`) live in
+// `VisualInboxSPITypes.swift`.
 
 /// Read-facing cross-module facade over the Visual Inbox data layer.
 ///
@@ -150,6 +45,11 @@ public protocol VisualInboxProvider: Sendable {
     /// `[String: JistValue]`.
     func themeJSON() async -> [String: Any]?
 
+    /// Inbox chrome colors (bell / panel / badge / divider) parsed from `patterns.inbox`, plus the
+    /// optional `patterns.modes.dark` overrides, so the overlay drives its chrome from backend
+    /// branding. Nil when no branding is cached; individual fields are nil when not configured.
+    func brandingChrome() async -> VisualInboxChrome?
+
     /// Marks a message opened via the existing headless plumbing (no new mutation path). Looked up
     /// by the snapshot id so the overlay never has to hold an internal `InboxMessage`.
     /// - Returns: `true` if a matching message was still present in the store and the mark was
@@ -167,6 +67,23 @@ public protocol VisualInboxProvider: Sendable {
     ///   permanently deduping a dismiss that never applied.
     @discardableResult
     func dismiss(messageId: String) async -> Bool
+
+    /// Handles a NON-dismiss inbox action (item 12 / item 13). Resolves the full message by id, then:
+    ///  - tracks a "clicked" metric via the existing headless `trackMessageClicked` plumbing (no new
+    ///    network path), and
+    ///  - forwards the action to the registered host ``InboxEventListener``.
+    ///
+    /// Dismiss is NOT routed here — the overlay handles dismiss before calling this.
+    /// - Returns: a ``VisualInboxActionOutcome`` distinguishing a missing message (skip default nav)
+    ///   from a host-handled action (suppress nav) and an un-handled action (run default nav).
+    func handleMessageAction(messageId: String, actionName: String, actionValue: String) async -> VisualInboxActionOutcome
+
+    /// Notifies the host ``InboxEventListener`` that a message was first shown (rendered in the visible
+    /// inbox). Resolved by id from the store and forwarded via the existing headless plumbing, which
+    /// dedupes so it fires at most once per message per session.
+    /// - Returns: `true` if the message was still in the store (notify forwarded); `false` if it was
+    ///   gone (no-op) — callers use this to avoid permanently deduping a "shown" that never fired.
+    func notifyMessageShown(messageId: String) async -> Bool
 }
 
 // MARK: - Implementation
@@ -320,6 +237,20 @@ final class VisualInboxProviderImpl: VisualInboxProvider, @unchecked Sendable {
         await repository.branding()?.theme
     }
 
+    func brandingChrome() async -> VisualInboxChrome? {
+        guard let branding = await repository.branding() else { return nil }
+        let chrome = branding.chrome
+        return VisualInboxChrome(
+            bellBackground: chrome.floatingIcon.background,
+            bellIconColor: chrome.floatingIcon.color,
+            panelBackground: chrome.background,
+            dividerColor: chrome.dividerColor ?? chrome.borderColor,
+            badgeBackground: chrome.unreadIndicator?.background,
+            cornerRadius: chrome.cornerRadius,
+            darkModePattern: branding.darkModePattern
+        )
+    }
+
     @discardableResult
     func markOpened(messageId: String) async -> Bool {
         // Resolve the full InboxMessage from current state so we reuse the existing headless
@@ -347,6 +278,41 @@ final class VisualInboxProviderImpl: VisualInboxProvider, @unchecked Sendable {
             return false
         }
         inbox.markMessageDeleted(message: message)
+        return true
+    }
+
+    func handleMessageAction(messageId: String, actionName: String, actionValue: String) async -> VisualInboxActionOutcome {
+        // Resolve the full InboxMessage from current state so we can (a) track the click via the
+        // existing headless plumbing and (b) hand the host listener a real message. No new path.
+        let state = await inAppMessageManager.state
+        guard let message = state.inboxMessages.first(where: { $0.queueId == messageId }) else {
+            // Message gone from the store (e.g. dismissed between render and tap): don't track or
+            // navigate — its row is on its way out.
+            return .messageMissing
+        }
+        // Track a "clicked" metric for the non-dismiss action via the existing headless
+        // trackMessageClicked plumbing (dispatches the .trackClicked action). Always tracked,
+        // independent of whether the host intercepts the action below.
+        inbox.trackMessageClicked(message: message, actionName: actionName)
+        // Forward to the host listener on the main actor: this runs from an async Task off the main
+        // thread, but the tap originated on the UI and hosts expect a main-thread callback. If it
+        // handles the action, the overlay suppresses default navigation.
+        let handled = await MainActor.run {
+            inbox.notifyMessageActionTaken(message: message, actionValue: actionValue, actionName: actionName)
+        }
+        return handled ? .handledByHost : .notHandled
+    }
+
+    func notifyMessageShown(messageId: String) async -> Bool {
+        // Resolve the full InboxMessage so the host listener receives a real message. The headless
+        // plumbing dedupes "shown" per id, so calling this on every render is safe.
+        let state = await inAppMessageManager.state
+        guard let message = state.inboxMessages.first(where: { $0.queueId == messageId }) else {
+            // Message gone from the store → nothing to notify. Report no-op so the caller doesn't
+            // permanently dedupe a "shown" that never fired.
+            return false
+        }
+        inbox.notifyMessageShown(message: message)
         return true
     }
 }

@@ -351,6 +351,102 @@ class NotificationInboxTest: UnitTest {
         XCTAssertNil(actionName)
     }
 
+    // MARK: - inbox event listener tests (item 13)
+
+    func test_notifyMessageActionTaken_whenNoListener_expectFalse() {
+        let message = makeInboxMessage(queueId: "q-1")
+        let handled = notificationInbox.notifyMessageActionTaken(message: message, actionValue: "https://customer.io", actionName: "messageAction")
+        XCTAssertFalse(handled)
+    }
+
+    func test_notifyMessageActionTaken_whenListenerHandles_expectTrueAndForwardsFields() {
+        let listener = InboxEventListenerMock()
+        listener.inboxMessageActionTakenReturnValue = true
+        notificationInbox.setInboxEventListener(listener)
+
+        let message = makeInboxMessage(queueId: "q-1")
+        let handled = notificationInbox.notifyMessageActionTaken(message: message, actionValue: "https://customer.io", actionName: "messageAction")
+
+        XCTAssertTrue(handled)
+        XCTAssertEqual(listener.inboxMessageActionTakenCallsCount, 1)
+        XCTAssertEqual(listener.inboxMessageActionTakenReceivedArguments?.message.queueId, "q-1")
+        XCTAssertEqual(listener.inboxMessageActionTakenReceivedArguments?.actionValue, "https://customer.io")
+        XCTAssertEqual(listener.inboxMessageActionTakenReceivedArguments?.actionName, "messageAction")
+    }
+
+    func test_notifyMessageActionTaken_whenListenerDefers_expectFalse() {
+        let listener = InboxEventListenerMock()
+        listener.inboxMessageActionTakenReturnValue = false
+        notificationInbox.setInboxEventListener(listener)
+
+        let handled = notificationInbox.notifyMessageActionTaken(message: makeInboxMessage(queueId: "q-1"), actionValue: "", actionName: "messageAction")
+
+        XCTAssertFalse(handled)
+        XCTAssertEqual(listener.inboxMessageActionTakenCallsCount, 1)
+    }
+
+    func test_setInboxEventListener_whenClearedWithNil_expectNoLongerNotified() {
+        let listener = InboxEventListenerMock()
+        listener.inboxMessageActionTakenReturnValue = true
+        notificationInbox.setInboxEventListener(listener)
+        notificationInbox.setInboxEventListener(nil)
+
+        let handled = notificationInbox.notifyMessageActionTaken(message: makeInboxMessage(queueId: "q-1"), actionValue: "", actionName: "messageAction")
+
+        XCTAssertFalse(handled)
+        XCTAssertEqual(listener.inboxMessageActionTakenCallsCount, 0)
+    }
+
+    // MARK: - observe-only listener callbacks (shown / opened / dismissed)
+
+    func test_markMessageOpened_whenListenerSet_expectInboxMessageOpenedFired() {
+        inAppMessageManagerMock.dispatchReturnValue = Task {}
+        let listener = InboxEventListenerMock()
+        notificationInbox.setInboxEventListener(listener)
+
+        notificationInbox.markMessageOpened(message: makeInboxMessage(queueId: "q-1"))
+
+        XCTAssertEqual(listener.inboxMessageOpenedCallsCount, 1)
+        XCTAssertEqual(listener.inboxMessageOpenedReceivedArguments?.queueId, "q-1")
+    }
+
+    func test_markMessageDeleted_whenListenerSet_expectInboxMessageDismissedFired() {
+        inAppMessageManagerMock.dispatchReturnValue = Task {}
+        let listener = InboxEventListenerMock()
+        notificationInbox.setInboxEventListener(listener)
+
+        notificationInbox.markMessageDeleted(message: makeInboxMessage(queueId: "q-1"))
+
+        XCTAssertEqual(listener.inboxMessageDismissedCallsCount, 1)
+        XCTAssertEqual(listener.inboxMessageDismissedReceivedArguments?.queueId, "q-1")
+    }
+
+    func test_notifyMessageShown_whenCalledTwiceForSameId_expectFiredOnce() {
+        let listener = InboxEventListenerMock()
+        notificationInbox.setInboxEventListener(listener)
+        let message = makeInboxMessage(queueId: "q-1")
+
+        notificationInbox.notifyMessageShown(message: message)
+        notificationInbox.notifyMessageShown(message: message)
+
+        XCTAssertEqual(listener.inboxMessageShownCallsCount, 1)
+        XCTAssertEqual(listener.inboxMessageShownReceivedArguments?.queueId, "q-1")
+    }
+
+    func test_notifyMessageShown_whenDifferentIds_expectFiredForEach() {
+        let listener = InboxEventListenerMock()
+        notificationInbox.setInboxEventListener(listener)
+
+        notificationInbox.notifyMessageShown(message: makeInboxMessage(queueId: "q-1"))
+        notificationInbox.notifyMessageShown(message: makeInboxMessage(queueId: "q-2"))
+
+        XCTAssertEqual(listener.inboxMessageShownCallsCount, 2)
+    }
+
+    private func makeInboxMessage(queueId: String) -> InboxMessage {
+        InboxMessage(queueId: queueId, deliveryId: "d-\(queueId)", expiry: nil, sentAt: Date(), topics: [], type: "", opened: false, priority: nil, properties: [:])
+    }
+
     // MARK: - addChangeListener tests
 
     func test_addChangeListener_expectImmediateCallbackWithCurrentMessages() async {
