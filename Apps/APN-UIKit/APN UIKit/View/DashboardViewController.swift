@@ -257,9 +257,15 @@ private final class InboxOverlayPassthroughView: UIView {
         if capturesAllTouches {
             return super.hitTest(point, with: event)
         }
-        // Panel closed: only the bell's corner is interactive; pass everything else through.
+        // Panel closed: only the bell's corner is interactive; pass everything else through. The
+        // overlay pins the bell to SwiftUI's bottom-TRAILING corner — the right in LTR, the left in
+        // RTL — so anchor the zone to the trailing edge per the resolved layout direction (otherwise
+        // the bell is untappable in RTL and the wrong corner intercepts touches).
+        let originX = effectiveUserInterfaceLayoutDirection == .rightToLeft
+            ? bounds.minX
+            : bounds.maxX - bellZoneSize
         let bellZone = CGRect(
-            x: bounds.maxX - bellZoneSize,
+            x: originX,
             y: bounds.maxY - bellZoneSize,
             width: bellZoneSize,
             height: bellZoneSize

@@ -180,10 +180,8 @@ class InboxViewController: BaseViewController, UITableViewDelegate, UITableViewD
         addVisualInboxBell()
     }
 
-    /// Demonstrates the granular Visual Inbox UI (alongside this screen's headless `addChangeListener`
-    /// table): place the SDK's public `NotificationInboxBell` wherever you like — here pinned
-    /// bottom-trailing — and present the embeddable `NotificationInboxView` (the Jist-rendered list)
-    /// when it's tapped. The bell hides itself when there is nothing to show.
+    /// Demonstrates the granular Visual Inbox UI alongside this screen's headless `addChangeListener`
+    /// table: place `NotificationInboxBell` (here bottom-trailing) and present `NotificationInboxView`.
     private func addVisualInboxBell() {
         guard #available(iOS 15.0, *) else { return }
         let bell = NotificationInboxBell(onTap: { [weak self] in self?.presentVisualInboxList() })
@@ -206,11 +204,7 @@ class InboxViewController: BaseViewController, UITableViewDelegate, UITableViewD
     private func presentVisualInboxList() {
         let host = UIHostingController(rootView: NotificationInboxView())
         host.title = "Visual Inbox"
-        host.navigationItem.rightBarButtonItem = UIBarButtonItem(
-            barButtonSystemItem: .done,
-            target: self,
-            action: #selector(dismissVisualInboxList)
-        )
+        host.navigationItem.rightBarButtonItem = UIBarButtonItem(barButtonSystemItem: .done, target: self, action: #selector(dismissVisualInboxList))
         let nav = UINavigationController(rootViewController: host)
         nav.modalPresentationStyle = .pageSheet
         if let sheet = nav.sheetPresentationController {
