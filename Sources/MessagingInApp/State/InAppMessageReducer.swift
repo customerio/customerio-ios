@@ -57,9 +57,14 @@ private func reducer(action: InAppMessageAction, state: InAppMessageState) -> In
         //  2. Prune any tombstone whose id is NOT in the incoming list — the server has caught up, so
         //     the tombstone is no longer needed (and a later, genuinely-new message reusing the id
         //     wouldn't be wrongly suppressed).
+        //  Only a NON-EMPTY poll is authoritative enough to prune (step 2): an empty/transient
+        //  response carries no "server forgot this id" signal, so keep all tombstones then —
+        //  otherwise a later poll re-echoing a dismissed id would resurrect it.
         let incomingIds = Set(messages.map(\.queueId))
         let filteredMessages = messages.filter { !state.deletedInboxMessageIds.contains($0.queueId) }
-        let prunedTombstones = state.deletedInboxMessageIds.intersection(incomingIds)
+        let prunedTombstones = incomingIds.isEmpty
+            ? state.deletedInboxMessageIds
+            : state.deletedInboxMessageIds.intersection(incomingIds)
         return state.copy(inboxMessages: filteredMessages, deletedInboxMessageIds: prunedTombstones)
 
     case .embedMessages(let messages):

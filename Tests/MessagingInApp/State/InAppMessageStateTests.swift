@@ -1905,6 +1905,25 @@ class InAppMessageStateTests: IntegrationTest {
         XCTAssertFalse(state.deletedInboxMessageIds.contains("doomed-1"), "tombstone pruned once server stops returning the id")
     }
 
+    func test_deleteThenEmptyPoll_givenTransientEmptyResponse_expectTombstoneRetained() async throws {
+        await inAppMessageManager.dispatchAsync(action: .initialize(siteId: .random, dataCenter: .random, environment: .production))
+        await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: .random))
+
+        let doomed = makeInboxMessage(queueId: "doomed-1")
+        await inAppMessageManager.dispatchAsync(action: .processInboxMessages(messages: [doomed]))
+        _ = await inAppMessageManager.waitForState { $0.inboxMessages.map(\.queueId) == ["doomed-1"] }
+
+        await inAppMessageManager.dispatchAsync(action: .inboxAction(action: .deleteMessage(message: doomed)))
+        var state = await inAppMessageManager.waitForState { $0.deletedInboxMessageIds.contains("doomed-1") }
+        XCTAssertTrue(state.deletedInboxMessageIds.contains("doomed-1"))
+
+        // An empty/transient poll is NOT authoritative — it must not prune the tombstone, otherwise a
+        // later poll re-echoing the id would resurrect the dismissed message.
+        await inAppMessageManager.dispatchAsync(action: .processInboxMessages(messages: []))
+        state = await inAppMessageManager.state
+        XCTAssertTrue(state.deletedInboxMessageIds.contains("doomed-1"), "empty poll must retain tombstones")
+    }
+
     func test_resetState_expectInboxTombstonesCleared() async throws {
         await inAppMessageManager.dispatchAsync(action: .initialize(siteId: .random, dataCenter: .random, environment: .production))
         await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: .random))
