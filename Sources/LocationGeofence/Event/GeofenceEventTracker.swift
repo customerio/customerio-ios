@@ -7,17 +7,20 @@ import Foundation
 /// 1. Cooldown-based deduplication (keyed by "geofenceId:transitionType")
 /// 2. Persist to `PendingGeofenceMetricStore` before any send attempt, stamping
 ///    the currently-identified userId so A's transitions always attribute to A
-/// 3. Dispatch in `deliver`:
-///    - Stamped userId → direct-HTTP path with that userId; success drains the
-///      row, failure retains it for the next flush
-///    - No stamped userId → post to EventBus and drain; DataPipeline records
-///      the transition under its current identity (anonymous tracking when no
-///      one is identified). The captured timestamp flows through the event so
-///      both paths attribute the transition to when it happened
+/// 3. Dispatch in `deliver`, which claims the row (durably removing it) before sending so a
+///    process death after a successful send can't re-deliver it on the next flush:
+///    - Stamped userId → direct-HTTP path with that userId; on failure the row is restored
+///      for the next flush
+///    - No stamped userId → post to EventBus; DataPipeline records the transition under its
+///      current identity (anonymous tracking when no one is identified). The captured timestamp
+///      flows through the event so both paths attribute the transition to when it happened
 ///
 /// `flushPending()` replays queued rows on module init and on every `ProfileIdentifiedEvent`.
-/// Concurrent deliveries for the same row are deduplicated in-process via the active-delivery
-/// ID set; on app kill the row stays on disk and is retried in the next process.
+/// Concurrent deliveries are deduplicated in-process via the active-delivery ID set and across
+/// processes via the durable claim (atomic remove-before-send): exactly one channel sends a given
+/// row. A row killed before it is claimed stays on disk for the next flush; the claim trades a
+/// narrow at-most-once window (a crash between claim and the send reaching the backend) for no
+/// duplicate deliveries.
 ///
 /// `@unchecked Sendable`: all stored properties are `let`; mutable state is wrapped in
 /// `Synchronized`. Required for the weak capture in the `@Sendable` transition handler.
@@ -102,19 +105,20 @@ final class GeofenceEventTracker: @unchecked Sendable {
     // MARK: - Private
 
     private func deliver(metric: PendingGeofenceMetric) async {
-        // Claim before delivering so two concurrent callers (e.g. trackTransition and a
-        // ProfileIdentifiedEvent-triggered flush, or two flushes) can't both send the
-        // same row. The claim set is in-memory only — on app kill the row stays on
-        // disk and is retried by flushPending in the next process.
+        // Fast in-process guard so concurrent callers don't both attempt the same row.
+        // In-memory only; the durable claim below covers separate processes.
         guard activeDeliveryKeys.mutating({ $0.insert(metric.key).inserted }) else { return }
         defer { activeDeliveryKeys.mutating { _ = $0.remove(metric.key) } }
 
+        // Durable claim: remove before sending so a successful send can't be re-delivered after a
+        // crash. A lost claim means another channel took it; restored below only on failure.
+        guard await pendingStore.remove(key: metric.key) else { return }
+
         // Rows without a stamped userId (anonymous capture or legacy pre-stamping)
         // route through EventBus instead — DataPipeline tracks anonymously under
-        // whatever identity is current at consume time.
+        // whatever identity is current at consume time, with its own durable delivery.
         guard let stampedUserId = metric.userId, !stampedUserId.isEmpty else {
             postEventBus(metric: metric)
-            _ = await pendingStore.remove(key: metric.key)
             return
         }
 
@@ -130,10 +134,11 @@ final class GeofenceEventTracker: @unchecked Sendable {
         }
 
         if success {
-            _ = await pendingStore.remove(key: metric.key)
             logger.geofenceEventTracked(geofenceId: metric.geofenceId, transition: metric.transition)
+        } else {
+            // Send failed: restore the row so the next flush retries it.
+            _ = await pendingStore.append(metric)
         }
-        // HTTP failure: row stays for next flush.
     }
 
     /// Anonymous-attribution fallback used when a row carries no stamped userId.
