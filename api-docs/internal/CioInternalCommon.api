@@ -58,7 +58,7 @@ public interface CioInternalCommon.BackgroundDeliveryHttpClient {
 	public fun func sendTrackEvent(_ request: BackgroundTrackRequest, completion: @escaping (Result<Unit, BackgroundDeliveryHttpError>) -> Unit);
 }
 public final class CioInternalCommon.BackgroundDeliveryHttpClientImpl {
-	public fun convenience init(contextStore: BackgroundDeliveryContextStore, requestRunner: HttpRequestRunner, logger: Logger);
+	public fun convenience init(contextStore: BackgroundDeliveryContextStore, requestRunner: HttpRequestRunner, logger: Logger, requestTimeout: TimeInterval = 8, resourceTimeout: TimeInterval = 8);
 	public fun func sendTrackEvent(_ request: BackgroundTrackRequest, completion: @escaping (Result<Unit, BackgroundDeliveryHttpError>) -> Unit);
 }
 public enum CioInternalCommon.BackgroundDeliveryHttpError {
