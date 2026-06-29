@@ -1,10 +1,3 @@
-public interface CioLocation.AppLifecycleNotifying {
-	public fun func addDidBecomeActiveObserver(using block: @escaping () -> Unit) -> AppLifecycleObserverToken;
-	public fun func addDidEnterBackgroundObserver(using block: @escaping () -> Unit) -> AppLifecycleObserverToken;
-}
-public interface CioLocation.AppLifecycleObserverToken {
-	public fun func remove();
-}
 public final class CioLocation.LocationConfig {
 	public final val mode: LocationTrackingMode;
 	public fun init(mode: LocationTrackingMode);
@@ -20,9 +13,4 @@ public interface CioLocation.LocationServices {
 	public fun func getLastKnownLocation() async -> LocationData?;
 }
 public enum CioLocation.LocationTrackingMode {
-}
-public final class CioLocation.RealAppLifecycleNotifying {
-	public fun init(notificationCenter: NotificationCenter = .default);
-	public fun func addDidBecomeActiveObserver(using block: @escaping () -> Unit) -> AppLifecycleObserverToken;
-	public fun func addDidEnterBackgroundObserver(using block: @escaping () -> Unit) -> AppLifecycleObserverToken;
 }
