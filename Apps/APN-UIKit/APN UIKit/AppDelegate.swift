@@ -1,5 +1,7 @@
 import CioDataPipelines
 import CioInternalCommon
+import CioLiveActivities
+import CioLiveActivities_Templates
 import CioLocation
 import CioMessagingInApp
 import CioMessagingPush
@@ -12,6 +14,7 @@ class AppDelegateWithCioIntegration: CioAppDelegateWrapper<AppDelegate> {}
 class AppDelegate: UIResponder, UIApplicationDelegate {
     var storage = DIGraphShared.shared.storage
     var deepLinkHandler = DIGraphShared.shared.deepLinksHandlerUtil
+    private var liveActivities: LiveActivitiesModule?
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         // Override point for customization after application launch.
@@ -76,6 +79,18 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
                 region: settings.inApp.region.toCIORegion()
             ).build())
             .setEventListener(self)
+
+        if #available(iOS 17.2, *) {
+            liveActivities = LiveActivitiesModule.initialize(
+                LiveActivityConfigBuilder()
+                    .register(CIOLiveScoreAttributes.self, identifier: CIOLiveScoreAttributes.identifier)
+                    .register(CIODeliveryTrackingAttributes.self, identifier: CIODeliveryTrackingAttributes.identifier)
+                    .register(CIOCountdownTimerAttributes.self, identifier: CIOCountdownTimerAttributes.identifier)
+                    .register(CIOFlightStatusAttributes.self, identifier: CIOFlightStatusAttributes.identifier)
+                    .register(CIOAuctionBidAttributes.self, identifier: CIOAuctionBidAttributes.identifier)
+                    .build()
+            )
+        }
     }
 
     // Handle Universal Link deep link from the Customer.io SDK. This function will get called if a push notification
