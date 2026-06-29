@@ -58,14 +58,6 @@ extension Logger {
         )
     }
 
-    func geofenceEventRestoreFailed(geofenceId: String, transition: GeofenceTransition) {
-        error(
-            "Failed to re-queue \(transition.rawValue) event for geofence \(geofenceId) after a failed send; it will not be retried",
-            geofenceTag,
-            nil
-        )
-    }
-
     // MARK: - Sync
 
     func geofenceSyncSkipped(reason: String) {

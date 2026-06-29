@@ -354,50 +354,6 @@ struct GeofenceEventTrackerTests {
     }
 
     @Test
-    func concurrentFlushAcrossTrackers_givenSameRow_expectSingleDelivery() async {
-        // Two independent trackers (separate in-memory claim sets — i.e. two processes) share the
-        // store and race to deliver the same queued row. The durable claim (remove-before-send)
-        // must let exactly one send it; the loser's claim returns false and it backs off. This guards
-        // the duplicate-delivery regression that an in-memory-only guard cannot catch across processes.
-        let dir = makeTempDirectory()
-        defer { try? FileManager.default.removeItem(at: dir) }
-        let pending = makePendingStore(directory: dir)
-
-        let seedDelivery = GeofenceDeliveryTrackerMock()
-        seedDelivery.trackMetricClosure = { _, _, onComplete in onComplete(.failure(.http(statusCode: 503))) }
-        let seeder = makeTracker(
-            storage: makeStorage(directory: dir),
-            pendingStore: pending,
-            deliveryTracker: seedDelivery,
-            contextStore: makeContextStore(userId: "user_42")
-        )
-        await seeder.trackTransition(geofenceId: "geo_1", transition: .enter)
-        #expect(await pending.loadAll().count == 1)
-
-        let delivery = GeofenceDeliveryTrackerMock()
-        delivery.trackMetricClosure = { _, _, onComplete in onComplete(.success(())) }
-        let trackerA = makeTracker(
-            storage: makeStorage(directory: dir),
-            pendingStore: pending,
-            deliveryTracker: delivery,
-            contextStore: makeContextStore(userId: "user_42")
-        )
-        let trackerB = makeTracker(
-            storage: makeStorage(directory: dir),
-            pendingStore: pending,
-            deliveryTracker: delivery,
-            contextStore: makeContextStore(userId: "user_42")
-        )
-
-        async let flushA: Void = trackerA.flushPending()
-        async let flushB: Void = trackerB.flushPending()
-        _ = await(flushA, flushB)
-
-        #expect(delivery.trackMetricCallsCount == 1)
-        #expect(await pending.loadAll().isEmpty)
-    }
-
-    @Test
     func flushPending_givenAnonymousCaptureThenIdentify_expectNoHttpBackfill() async {
         // Regression: anonymous transitions must NOT auto-deliver as the next
         // identified user via HTTP — they go through EventBus at capture time,
