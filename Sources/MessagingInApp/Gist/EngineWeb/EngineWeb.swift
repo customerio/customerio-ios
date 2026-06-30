@@ -17,6 +17,7 @@ protocol EngineWebInstance: AutoMockable {
     var delegate: EngineWebDelegate? { get set }
     var view: UIView { get }
     func cleanEngineWeb()
+    func updateColorScheme(_ scheme: String)
 }
 
 public class EngineWeb: NSObject, EngineWebInstance {
@@ -89,6 +90,17 @@ public class EngineWeb: NSObject, EngineWebInstance {
         } else {
             logger.logWithModuleTag("Invalid URL: \(messageUrl)", level: .error)
             delegate?.error()
+        }
+    }
+
+    public func updateColorScheme(_ scheme: String) {
+        do {
+            let jsonData = try JSONEncoder().encode(["action": "updateColorScheme", "colorScheme": scheme])
+            guard let jsonString = String(data: jsonData, encoding: .utf8) else { return }
+            let js = "window.postMessage(\(jsonString), '*');"
+            webView.evaluateJavaScript(js, completionHandler: nil)
+        } catch {
+            logger.logWithModuleTag("Failed to encode color scheme update: \(error)", level: .error)
         }
     }
 

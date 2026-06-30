@@ -27,7 +27,8 @@ class MessagingInAppImplementation: MessagingInAppInstance {
         inAppMessageManager.dispatch(action: .initialize(
             siteId: moduleConfig.siteId,
             dataCenter: moduleConfig.region.rawValue,
-            environment: GistEnvironment.production
+            environment: GistEnvironment.production,
+            colorScheme: moduleConfig.colorScheme
         )) {
             self.subscribeToEventBus()
         }
@@ -72,5 +73,9 @@ class MessagingInAppImplementation: MessagingInAppInstance {
     // Dismiss in-app message
     func dismissMessage() {
         gist.dismissMessage()
+    }
+
+    func setColorScheme(_ colorScheme: ColorScheme) {
+        inAppMessageManager.dispatch(action: .setColorScheme(colorScheme: colorScheme))
     }
 }

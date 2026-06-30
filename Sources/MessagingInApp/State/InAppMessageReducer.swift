@@ -26,8 +26,11 @@ func inAppMessageReducer(logger: Logger) -> InAppMessageReducer {
 /// Reducer function implementation for managing InAppMessageState based on the action received.
 private func reducer(action: InAppMessageAction, state: InAppMessageState) -> InAppMessageState {
     switch action {
-    case .initialize(let siteId, let dataCenter, let environment):
-        return InAppMessageState(siteId: siteId, dataCenter: dataCenter, environment: environment)
+    case .initialize(let siteId, let dataCenter, let environment, let colorScheme):
+        return InAppMessageState(siteId: siteId, dataCenter: dataCenter, environment: environment, colorScheme: colorScheme)
+
+    case .setColorScheme(let colorScheme):
+        return state.copy(colorScheme: colorScheme)
 
     case .setPollingInterval(let interval):
         return state.copy(pollInterval: interval)
@@ -153,7 +156,8 @@ private func reducer(action: InAppMessageAction, state: InAppMessageState) -> In
         return InAppMessageState(
             siteId: state.siteId,
             dataCenter: state.dataCenter,
-            environment: state.environment
+            environment: state.environment,
+            colorScheme: state.colorScheme
         )
     }
 }
