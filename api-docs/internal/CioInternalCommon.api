@@ -299,6 +299,7 @@ public interface CioInternalCommon.GeofenceMetric {
 	public var transition: GeofenceTransition;
 	public var timestamp: Date;
 	public var name: String?;
+	public var transitionId: String;
 }
 public enum CioInternalCommon.GeofenceTransition {
 }
@@ -602,7 +603,8 @@ public final class CioInternalCommon.TrackGeofenceMetricEvent {
 	public final val transition: GeofenceTransition;
 	public final val timestamp: Date;
 	public final val name: String?;
-	public fun init(storageId: String = UUID().uuidString, geofenceId: String, transition: GeofenceTransition, timestamp: Date = Date(), name: String?, params: List<String: String> = List<:>);
+	public final val transitionId: String;
+	public fun init(storageId: String = UUID().uuidString, geofenceId: String, transition: GeofenceTransition, timestamp: Date = Date(), name: String?, transitionId: String, params: List<String: String> = List<:>);
 }
 public final class CioInternalCommon.TrackInAppMetricEvent {
 	public final val storageId: String;

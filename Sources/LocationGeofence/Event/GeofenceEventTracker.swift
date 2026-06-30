@@ -83,7 +83,8 @@ final class GeofenceEventTracker: @unchecked Sendable {
             transition: transition,
             timestamp: now,
             userId: stampedUserId,
-            name: geofenceName
+            name: geofenceName,
+            transitionId: UUID().uuidString
         )
         _ = await pendingStore.append(metric)
 
@@ -145,7 +146,8 @@ final class GeofenceEventTracker: @unchecked Sendable {
             geofenceId: metric.geofenceId,
             transition: metric.transition,
             timestamp: metric.timestamp,
-            name: metric.name
+            name: metric.name,
+            transitionId: metric.transitionId
         ))
         logger.geofenceEventTracked(geofenceId: metric.geofenceId, transition: metric.transition)
     }
