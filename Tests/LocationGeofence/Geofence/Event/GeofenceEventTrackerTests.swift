@@ -100,6 +100,29 @@ struct GeofenceEventTrackerTests {
     }
 
     @Test
+    func trackTransition_givenDeliveryFailsThenFlush_expectSameTransitionIdReused() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let pending = makePendingStore(directory: dir)
+        let delivery = GeofenceDeliveryTrackerMock()
+        delivery.trackMetricClosure = { _, _, onComplete in onComplete(.failure(.transport)) }
+        let tracker = makeTracker(
+            storage: makeStorage(directory: dir),
+            pendingStore: pending,
+            deliveryTracker: delivery,
+            contextStore: makeContextStore(userId: "user_42")
+        )
+
+        await tracker.trackTransition(geofenceId: "geo_1", transition: .enter) // attempt 1 fails → row persists
+        await tracker.flushPending() // attempt 2 replays the persisted row
+
+        let metrics = delivery.trackMetricReceivedInvocations.map(\.metric)
+        #expect(metrics.count == 2)
+        #expect(metrics.first?.transitionId.isEmpty == false) // minted at capture
+        #expect(metrics[0].transitionId == metrics[1].transitionId) // reloaded from disk, reused verbatim
+    }
+
+    @Test
     func trackTransition_givenNoUserId_expectEventBusAndQueueDrained() async {
         let dir = makeTempDirectory()
         defer { try? FileManager.default.removeItem(at: dir) }
@@ -421,7 +444,8 @@ struct GeofenceEventTrackerTests {
             geofenceId: "geo_1", transition: .enter,
             timestamp: Date(timeIntervalSince1970: 1),
             userId: "user_A",
-            name: nil
+            name: nil,
+            transitionId: "txn_a"
         ))
         let delivery = GeofenceDeliveryTrackerMock()
         delivery.trackMetricClosure = { _, _, onComplete in onComplete(.success(())) }
@@ -447,7 +471,8 @@ struct GeofenceEventTrackerTests {
             geofenceId: "geo_1", transition: .enter,
             timestamp: Date(timeIntervalSince1970: 1),
             userId: "user_A",
-            name: nil
+            name: nil,
+            transitionId: "txn_a"
         ))
         let delivery = GeofenceDeliveryTrackerMock()
         delivery.trackMetricClosure = { _, _, onComplete in onComplete(.success(())) }
@@ -474,7 +499,8 @@ struct GeofenceEventTrackerTests {
             geofenceId: "geo_1", transition: .enter,
             timestamp: capturedAt,
             userId: nil,
-            name: nil
+            name: nil,
+            transitionId: "txn_a"
         ))
         let delivery = GeofenceDeliveryTrackerMock()
         let bus = EventBusHandlerMock()

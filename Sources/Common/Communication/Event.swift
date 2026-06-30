@@ -170,6 +170,7 @@ public struct TrackGeofenceMetricEvent: EventRepresentable, GeofenceMetric {
     public let transition: GeofenceTransition
     public let timestamp: Date
     public let name: String?
+    public let transitionId: String
 
     public init(
         storageId: String = UUID().uuidString,
@@ -177,6 +178,7 @@ public struct TrackGeofenceMetricEvent: EventRepresentable, GeofenceMetric {
         transition: GeofenceTransition,
         timestamp: Date = Date(),
         name: String?,
+        transitionId: String,
         params: [String: String] = [:]
     ) {
         self.storageId = storageId
@@ -185,6 +187,7 @@ public struct TrackGeofenceMetricEvent: EventRepresentable, GeofenceMetric {
         self.transition = transition
         self.timestamp = timestamp
         self.name = name
+        self.transitionId = transitionId
     }
 }
 

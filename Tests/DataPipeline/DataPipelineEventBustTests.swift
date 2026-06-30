@@ -69,7 +69,8 @@ class DataPipelineEventBustTests: IntegrationTest {
                 geofenceId: givenGeofenceId,
                 transition: .enter,
                 timestamp: capturedAt,
-                name: "HQ"
+                name: "HQ",
+                transitionId: "txn_enter_1"
             )
         )
 
@@ -89,6 +90,8 @@ class DataPipelineEventBustTests: IntegrationTest {
         XCTAssertNil(properties["latitude"])
         XCTAssertNil(properties["longitude"])
         XCTAssertEqual(trackEvent.timestamp, capturedAt.string(format: .iso8601WithMilliseconds))
+        // EventBus path carries the transitionId through to the analytics payload.
+        XCTAssertEqual(properties["transitionId"] as? String, "txn_enter_1")
     }
 
     func testSubscribeToJourneyEvents_DataPipelineHandlesTrackGeofenceMetricEvent_exit() async {
@@ -100,7 +103,8 @@ class DataPipelineEventBustTests: IntegrationTest {
                 geofenceId: givenGeofenceId,
                 transition: .exit,
                 timestamp: capturedAt,
-                name: nil
+                name: nil,
+                transitionId: "txn_exit_1"
             )
         )
 

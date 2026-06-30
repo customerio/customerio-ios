@@ -14,13 +14,18 @@ struct PendingGeofenceMetricStoreTests {
         PendingGeofenceMetricStore(fileManager: .default, directoryURL: directory)
     }
 
-    private func makeMetric(geofenceId: String = "geo_1", transition: GeofenceTransition = .enter) -> PendingGeofenceMetric {
+    private func makeMetric(
+        geofenceId: String = "geo_1",
+        transition: GeofenceTransition = .enter,
+        transitionId: String = "txn_store"
+    ) -> PendingGeofenceMetric {
         PendingGeofenceMetric(
             geofenceId: geofenceId,
             transition: transition,
             timestamp: Date(timeIntervalSince1970: 1700000000),
             userId: nil,
-            name: nil
+            name: nil,
+            transitionId: transitionId
         )
     }
 
@@ -262,7 +267,8 @@ struct PendingGeofenceMetricStoreTests {
                                 transition: .enter,
                                 timestamp: Date(),
                                 userId: nil,
-                                name: nil
+                                name: nil,
+                                transitionId: "txn_\(i)_\(j)"
                             ))
                         case 1:
                             _ = await store.loadAll()

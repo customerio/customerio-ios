@@ -18,14 +18,16 @@ struct GeofenceDeliveryTrackerTests {
         geofenceId: String = "geo_1",
         transition: GeofenceTransition = .enter,
         timestamp: Date = Date(timeIntervalSince1970: 1700000000),
-        name: String? = nil
+        name: String? = nil,
+        transitionId: String = "txn_abc"
     ) -> PendingGeofenceMetric {
         PendingGeofenceMetric(
             geofenceId: geofenceId,
             transition: transition,
             timestamp: timestamp,
             userId: nil,
-            name: name
+            name: name,
+            transitionId: transitionId
         )
     }
 
@@ -55,6 +57,8 @@ struct GeofenceDeliveryTrackerTests {
         #expect(properties["longitude"] == nil)
         // No name on the metric → property omitted entirely (not sent empty/null).
         #expect(properties["geofenceName"] == nil)
+        // transitionId carried through verbatim from the persisted row.
+        #expect(properties["transitionId"] as? String == "txn_abc")
     }
 
     @Test

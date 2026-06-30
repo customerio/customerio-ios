@@ -12,6 +12,7 @@ struct PendingGeofenceMetric: Codable, Equatable, Sendable, GeofenceMetric {
     /// The geofence's name, resolved at capture time, or `nil` when unavailable. Travels with the
     /// metric so a delayed flush still has it even after the geofence leaves the cache.
     let name: String?
+    let transitionId: String
 
     /// Composite key over `(geofenceId, transition, timestamp_sec)` used for
     /// storage-layer dedup. Matches Android's `PendingGeofenceDelivery.key`.
@@ -27,13 +28,15 @@ struct PendingGeofenceMetric: Codable, Equatable, Sendable, GeofenceMetric {
         transition: GeofenceTransition,
         timestamp: Date,
         userId: String?,
-        name: String?
+        name: String?,
+        transitionId: String
     ) {
         self.geofenceId = geofenceId
         self.transition = transition
         self.timestamp = timestamp
         self.userId = userId
         self.name = name
+        self.transitionId = transitionId
     }
 
     enum CodingKeys: String, CodingKey {
@@ -42,5 +45,6 @@ struct PendingGeofenceMetric: Codable, Equatable, Sendable, GeofenceMetric {
         case timestamp
         case userId = "user_id"
         case name = "geofence_name"
+        case transitionId = "transition_id"
     }
 }
