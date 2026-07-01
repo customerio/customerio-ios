@@ -20,7 +20,9 @@ var products: [PackageDescription.Product] = [
     .library(name: "MessagingPushFCM", targets: ["CioMessagingPushFCM"]),
     .library(name: "MessagingInApp", targets: ["CioMessagingInApp"]),
     .library(name: "Location", targets: ["CioLocation"]),
-    .library(name: "LiveActivities", targets: ["CioLiveActivities"])
+    .library(name: "LiveActivities", targets: ["CioLiveActivities"]),
+    .library(name: "LiveActivities_Attributes", targets: ["CioLiveActivities_Attributes"]),
+    .library(name: "LiveActivities_Templates", targets: ["CioLiveActivities_Templates"])
 ]
 
 // When we execute the automated test suite, we use tools to determine the code coverage of our tests. 
@@ -172,9 +174,25 @@ let package = Package(
                     dependencies: ["CioLocation", "CioInternalCommon", "SharedTests", "CioInternalCommonMocks"],
                     path: "Tests/Location"),
 
-        // Live Activities
+        // Live Activities — protocol only, no SDK dependency.
+        // Safe to import in any target (app, widget extension) that needs CIOActivityAttribute.
+        .target(name: "CioLiveActivities_Attributes",
+                dependencies: [],
+                path: "Sources/LiveActivities_Attributes"),
+
+        // Live Activities — bundled templates.
+        // Pairs each built-in ActivityAttributes type with its Widget implementation.
+        // Import in both the app target and the widget extension when using built-in templates.
+        .target(name: "CioLiveActivities_Templates",
+                dependencies: ["CioLiveActivities_Attributes"],
+                path: "Sources/LiveActivities_Templates"),
+
+        // Live Activities — observation module.
         .target(name: "CioLiveActivities",
-                dependencies: ["CioInternalCommon"],
+                dependencies: ["CioInternalCommon", "CioLiveActivities_Attributes"],
                 path: "Sources/LiveActivities"),
+        .testTarget(name: "LiveActivitiesTests",
+                    dependencies: ["CioLiveActivities", "CioInternalCommon"],
+                    path: "Tests/LiveActivities"),
     ]
 )

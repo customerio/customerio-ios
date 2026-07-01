@@ -38,6 +38,7 @@ class DashboardViewController: BaseViewController {
         setEmailAndDeviceToken()
         configureVersionLabel()
         addAccessibilityIdentifiersForAppium()
+        addLiveActivityButtonIfSupported()
     }
 
     func configureDashboardRouter() {
@@ -113,6 +114,27 @@ class DashboardViewController: BaseViewController {
             userEmailLabel.text = email
         }
         deviceTokenLabel.text = CustomerIO.shared.registeredDeviceToken ?? "Not Registered"
+    }
+
+    // MARK: - Live Activities
+
+    func addLiveActivityButtonIfSupported() {
+        // The dashboard buttons live in a vertical, fill-equally UIStackView. Insert as an
+        // *arranged* subview so the stack reflows (pushes Logout down) and sizes/styles it like
+        // its siblings — adding it as a plain subview overlaps the next button.
+        guard #available(iOS 17.2, *),
+              let stack = inboxButton.superview as? UIStackView else { return }
+
+        let button = ThemeButton()
+        button.setTitle("Live Activities", for: .normal)
+        button.addTarget(self, action: #selector(openLiveActivities), for: .touchUpInside)
+
+        let insertIndex = (stack.arrangedSubviews.firstIndex(of: inboxButton) ?? (stack.arrangedSubviews.count - 1)) + 1
+        stack.insertArrangedSubview(button, at: insertIndex)
+    }
+
+    @objc func openLiveActivities() {
+        dashboardRouter?.routeToLiveActivities()
     }
 
     // MARK: - Actions

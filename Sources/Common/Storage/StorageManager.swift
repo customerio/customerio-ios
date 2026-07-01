@@ -1,5 +1,5 @@
 import Foundation
-@preconcurrency import SyncSqlCipher
+@_exported @preconcurrency import SyncSqlCipher
 
 /// Gateway for all encrypted on-disk storage used by the aggregation engine.
 ///
@@ -22,7 +22,7 @@ public struct StorageManager: Sendable {
     /// Apply schema migrations. Must be called once before any other method.
     /// Pass `extra` migrations from modules that extend the schema.
     public func runMigrations(extra: [any Migration] = []) throws {
-        try db.migrate([CreateSdkMetaSchema()] + extra)
+        try db.migrate([CreateSdkMetaSchema(), CreateLiveActivityTokensSchema()] + extra)
     }
 
     // MARK: - sdk_meta (utility key/value table)
@@ -38,25 +38,6 @@ public struct StorageManager: Sendable {
             _ = try db.delete(from: SdkMetaRecord.self, id: key)
         }
     }
-}
-
-// MARK: - Schema
-
-private struct CreateSdkMetaSchema: Migration {
-    let id = "001-create-sdk-meta"
-
-    func up(_ ctx: MigrationContext) throws {
-        try ctx.execute(
-            """
-            CREATE TABLE IF NOT EXISTS sdk_meta (
-                key   TEXT NOT NULL PRIMARY KEY,
-                value TEXT NOT NULL
-            )
-            """
-        )
-    }
-
-    func down(_ ctx: MigrationContext) throws {}
 }
 
 // MARK: - Entity Records
