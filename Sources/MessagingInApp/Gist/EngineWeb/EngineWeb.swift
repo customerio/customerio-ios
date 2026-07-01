@@ -96,6 +96,8 @@ public class EngineWeb: NSObject, EngineWebInstance {
     }
 
     public func updateColorScheme(_ scheme: String) {
+        applyInterfaceStyle(scheme)
+
         do {
             let jsonData = try JSONEncoder().encode(["action": "updateColorScheme", "colorScheme": scheme])
             guard let jsonString = String(data: jsonData, encoding: .utf8) else { return }
@@ -103,6 +105,17 @@ public class EngineWeb: NSObject, EngineWebInstance {
             webView.evaluateJavaScript(js, completionHandler: nil)
         } catch {
             logger.logWithModuleTag("Failed to encode color scheme update: \(error)", level: .error)
+        }
+    }
+
+    private func applyInterfaceStyle(_ scheme: String) {
+        switch scheme {
+        case "dark":
+            webView.overrideUserInterfaceStyle = .dark
+        case "light":
+            webView.overrideUserInterfaceStyle = .light
+        default:
+            webView.overrideUserInterfaceStyle = .unspecified
         }
     }
 
@@ -173,6 +186,8 @@ extension EngineWeb: WKScriptMessageHandler {
 // swiftlint:enable cyclomatic_complexity
 extension EngineWeb: WKNavigationDelegate {
     public func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        let resolvedScheme = colorSchemeMode.resolve(with: webView.traitCollection)
+        applyInterfaceStyle(resolvedScheme)
         currentConfiguration = EngineWebConfiguration(
             siteId: currentConfiguration.siteId,
             dataCenter: currentConfiguration.dataCenter,

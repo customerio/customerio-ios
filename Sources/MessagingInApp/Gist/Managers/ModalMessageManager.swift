@@ -5,9 +5,12 @@ import UIKit
 public class ModalMessageManager: BaseMessageManager {
     private var modalViewManager: ModalViewManager?
     var inAppMessageStoreSubscriber: InAppMessageStoreSubscriber?
+    private var colorSchemeSubscriber: InAppMessageStoreSubscriber?
+
     override init(state: InAppMessageState, message: Message) {
         super.init(state: state, message: message)
         subscribeToInAppMessageState()
+        subscribeToColorSchemeChanges()
     }
 
     deinit {
@@ -20,9 +23,9 @@ public class ModalMessageManager: BaseMessageManager {
         inAppMessageStoreSubscriber = {
             let subscriber = InAppMessageStoreSubscriber { [self] state in
                 let messageState = state.modalMessageState
-                let colorScheme = state.colorScheme
                 switch messageState {
                 case .displayed:
+                    let colorScheme = MessagingInAppImplementation.currentColorScheme
                     threadUtil.runMain {
                         // Subclasses (Modal or Inline) can show differently
                         self.onMessageDisplayed(colorScheme: colorScheme)
@@ -95,11 +98,30 @@ public class ModalMessageManager: BaseMessageManager {
         modalViewManager.dismissModalView(completionHandler: dismissalHandler)
     }
 
+    private func subscribeToColorSchemeChanges() {
+        colorSchemeSubscriber = {
+            let subscriber = InAppMessageStoreSubscriber { [weak self] state in
+                guard let self else { return }
+                let colorScheme = MessagingInAppImplementation.currentColorScheme
+                self.threadUtil.runMain {
+                    self.modalViewManager?.updateColorScheme(colorScheme)
+                }
+            }
+            self.inAppMessageManager.subscribe(keyPath: \.colorScheme, subscriber: subscriber)
+            return subscriber
+        }()
+    }
+
     open func unsubscribeFromInAppMessageState() {
-        guard let subscriber = inAppMessageStoreSubscriber else { return }
-        logger.logWithModuleTag("Unsubscribing BaseMessageManager from InAppMessageState", level: .debug)
-        inAppMessageManager.unsubscribe(subscriber: subscriber)
-        inAppMessageStoreSubscriber = nil
+        if let subscriber = inAppMessageStoreSubscriber {
+            logger.logWithModuleTag("Unsubscribing BaseMessageManager from InAppMessageState", level: .debug)
+            inAppMessageManager.unsubscribe(subscriber: subscriber)
+            inAppMessageStoreSubscriber = nil
+        }
+        if let subscriber = colorSchemeSubscriber {
+            inAppMessageManager.unsubscribe(subscriber: subscriber)
+            colorSchemeSubscriber = nil
+        }
     }
 
     private func finishDismissal(messageState: ModalMessageState) {

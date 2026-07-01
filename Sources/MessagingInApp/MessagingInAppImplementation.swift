@@ -2,6 +2,8 @@ import CioInternalCommon
 import Foundation
 
 class MessagingInAppImplementation: MessagingInAppInstance {
+    @Atomic static var currentColorScheme: ColorScheme = .auto
+
     private let moduleConfig: MessagingInAppConfigOptions
 
     private let logger: Logger
@@ -20,6 +22,7 @@ class MessagingInAppImplementation: MessagingInAppInstance {
         self.eventBusHandler = diGraph.eventBusHandler
         self.notificationInbox = diGraph.notificationInbox
 
+        Self.currentColorScheme = moduleConfig.colorScheme
         subscribeToInAppMessageState()
     }
 
@@ -76,6 +79,7 @@ class MessagingInAppImplementation: MessagingInAppInstance {
     }
 
     func setColorScheme(_ colorScheme: ColorScheme) {
+        Self.currentColorScheme = colorScheme
         inAppMessageManager.dispatch(action: .setColorScheme(colorScheme: colorScheme))
     }
 }

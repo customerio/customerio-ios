@@ -49,7 +49,7 @@ open class BaseMessageManager {
         self.deeplinkUtil = diGraph.deepLinkUtil
 
         // Create engine
-        let resolvedColorScheme = state.colorScheme.resolve(with: UITraitCollection.current)
+        let resolvedColorScheme = MessagingInAppImplementation.currentColorScheme.resolve(with: UITraitCollection.current)
         let engineWebConfiguration = EngineWebConfiguration(
             siteId: state.siteId,
             dataCenter: state.dataCenter,
@@ -100,14 +100,11 @@ open class BaseMessageManager {
     }
 
     private func handleTraitCollectionChange(_ traitCollection: UITraitCollection) {
-        inAppMessageManager.fetchState { [weak self] state in
-            guard let self else { return }
-            let resolved = state.colorScheme.resolve(with: traitCollection)
-            if resolved != self.lastResolvedColorScheme {
-                self.lastResolvedColorScheme = resolved
-                self.threadUtil.runMain {
-                    self.engine.updateColorScheme(resolved)
-                }
+        let resolved = MessagingInAppImplementation.currentColorScheme.resolve(with: traitCollection)
+        if resolved != lastResolvedColorScheme {
+            lastResolvedColorScheme = resolved
+            threadUtil.runMain { [weak self] in
+                self?.engine.updateColorScheme(resolved)
             }
         }
     }

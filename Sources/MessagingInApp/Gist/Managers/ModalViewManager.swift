@@ -11,7 +11,7 @@ class ModalViewManager {
     var viewController: GistModalViewController!
     var position: MessagePosition
     var overlayColor: String?
-    let colorScheme: ColorScheme
+    var colorScheme: ColorScheme
 
     init(gistView: GistView, position: MessagePosition, overlayColor: String?, colorScheme: ColorScheme = .auto) {
         self.viewController = GistModalViewController()
@@ -84,6 +84,11 @@ class ModalViewManager {
         window?.isHidden = true
         viewController.removeFromParent()
         window = nil
+    }
+
+    func updateColorScheme(_ newColorScheme: ColorScheme) {
+        colorScheme = newColorScheme
+        applyColorSchemeToWindow()
     }
 
     private func applyColorSchemeToWindow() {
