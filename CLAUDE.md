@@ -1,229 +1,161 @@
-# CLAUDE.md
+# Customer.io iOS SDK - Agent and Contributor Guide
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Guidance for coding agents and contributors working in this repository. This is a public repository: never commit credentials, API keys, tokens, or customer data, in code, config, tests, or docs.
 
-# Customer.io iOS SDK - Developer Guide
-
-After completing planned changes to the code, ALWAYS build the code to make sure it's working, before continuing to the next step.
-After making changes to Unit Tests, ALWAYS test the changed test classes. Avoid testing the whole module or the whole SDK, unless absolutely necessary.
+Core loop: after completing planned changes, ALWAYS build the affected module before moving on. After changing unit tests, ALWAYS run the changed test classes. Avoid running the whole suite unless necessary.
 
 ## Commands
-- Build single module: `xcodebuild -scheme MessagingPushAPN -configuration Debug -workspace ./.swiftpm/xcode/package.xcworkspace -destination 'platform=iOS Simulator,id=SIMULATOR_ID' -allowProvisioningUpdates build`
-  - More details in the section `Building` below
-- Test single file (with xcodebuild): `xcodebuild test-without-building -workspace ./.swiftpm/xcode/package.xcworkspace -destination 'platform=iOS Simulator,id=SIMULATOR_ID' -scheme Customer.io-Package -only-testing:TestSuiteName/TestClassName`
-  - More details in section `Testing` below
-- Format: `make format` (run before lint)
-- Lint: `make lint`
-- Generate code and mocks: `make generate`
-  - After `make generate`, always run `make format` first and then `make lint`
+
+- Format: `make format` (SwiftFormat pinned to `--swiftversion 5.3`, then SwiftLint autofix)
+- Lint: `make lint` (SwiftLint `--strict`)
+- Generate DI code and mocks: `make generate`, then `make format`, then `make lint`
+- Regenerate public API baseline: `./scripts/generate-api-docs.sh` (requires sourcekitten)
+- Build one module:
+  `xcodebuild -scheme MessagingPushAPN -configuration Debug -workspace ./.swiftpm/xcode/package.xcworkspace -destination 'platform=iOS Simulator,id=<SIMULATOR_ID>' -allowProvisioningUpdates build`
+- Build everything: same command with `-scheme Customer.io-Package`
+
+All `make` targets shell out to `./binny`, which is not committed. Install binny first (see `docs/dev-notes/DEVELOPMENT.md`); it downloads the exact tool versions pinned in `binny-tools.yml`. Do not use globally installed sourcery/swiftlint/swiftformat, versions matter.
+
+## Pull Request Requirements (CI will fail otherwise)
+
+1. **PR title must be a conventional commit.** CI lints the title (`lint-pr-title` check). Format: `type(optional-scope): description`, for example `fix(inbox): ...`, `ci: ...`, `chore(geofence): ...`. Breaking changes use `type!: description`. Titles drive semantic-release versioning when squash-merged.
+2. **Code must be formatted.** CI runs `make format` and fails on any resulting diff, then runs `make lint`. Run `make format` before every push.
+3. **Generated code must be current.** No CI job runs Sourcery for you; stale `*.generated.swift` files show up as compile errors. After changing any protocol marked `AutoMockable` or DI-registered types, run `make generate`.
+4. **Public API changes must update the baseline.** The `check-api-breaking-changes` job regenerates `api-docs/*.api` and fails if they differ from what is committed. If you intentionally changed the public API, run `./scripts/generate-api-docs.sh` and commit the updated `api-docs/` files. Unintentional diffs mean you leaked API surface.
+5. **Keep SPM and CocoaPods in sync.** Danger warns when `Package.swift` changes without matching `.podspec` changes (or vice versa). A dependency added in one place must be added in both.
+6. **Tests must pass.** CI runs the full suite via fastlane scan (scheme `Customer.io-Package`, iPhone 16 simulator) with code coverage uploaded to Codecov.
+
+## Releases and Versioning
+
+- Releases are fully automated with semantic-release from `main` (`beta` and `alpha` are prerelease branches). Conventional commit types decide the bump: `fix` = patch, `feat` = minor, `!` or a BREAKING CHANGE footer = major. Types like `chore`, `ci`, `docs`, `refactor`, `test` do not release.
+- NEVER manually edit version numbers. `Sources/Common/Version.swift`, all `.podspec` files, and `CHANGELOG.md` are updated by the release pipeline.
+- The SDK ships via both Swift Package Manager and CocoaPods (9 podspecs). Git tags are bare versions (`1.2.3`).
 
 ## Code Style
-- Swift 5.3+ with protocol-oriented design
-- Naming: CamelCase for types, camelCase for properties/methods
-- Descriptive method names (e.g., `identify`, `registerDeviceToken`)
-- Always use a constructor-based dependency injection pattern, and use `DIGraphShared` only for top-level module initialization
-- Modular architecture (Common, DataPipeline, MessagingPush, etc.)
-- Document public APIs with doc comments
-- Always add doc comments to Protocol, no matter if those are public or internal. When component implements protocol, do not repeat the same docs.
-- Error handling: prefer `throws`/`do-try-catch`, but use Result types when existing code is using it
-- Avoid force unwrapping (!) except in tests
-- Always prefer `weak` over `unowned` for weak type of references. `unowned` could easily produce a crash if the lifecycle between components is changed.
-- Keep classes/structs/enums/actors small and with a single responsibility
-- Keep methods small and focused
+
+- swift-tools-version is 5.5 and SwiftFormat is pinned to Swift 5.3 idioms; do not use newer language features the pinned tooling cannot handle. CI compiles with a current Xcode toolchain, but source must stay compatible with the pinned tooling.
+- Naming: CamelCase for types, camelCase for properties/methods; descriptive method names (`identify`, `registerDeviceToken`)
+- Constructor-based dependency injection; use `DIGraphShared` only for top-level module initialization
+- Document public APIs with doc comments. Always add doc comments to protocols (public or internal); do not repeat docs on conforming types.
+- Error handling: prefer `throws` and `do-try-catch`; use Result only where surrounding code already does
+- Avoid force unwrapping (`!`) except in tests
+- Prefer `weak` over `unowned`
+- Keep types and methods small and single-purpose
 
 ## Prohibited Actions
-- DO NOT manually edit any `.generated.swift` files
-- DO NOT expose internal modules to end users
-- DO NOT modify Package.swift unless asked for
-- DO NOT commit configuration files with actual credentials
-- DO NOT include files with credentials in the context sent to the model
-- DO NOT put credentials in generated code, and instead always put a placeholder (even when credentials are available from some other files)
-- DO NOT use iOS features unavailable in iOS 13 unless compatibility fallback is included. Always point out when a post iOS 13 feature is added.
 
-## Memory considerations
-- In the capture list, for closures, be explicit and capture only what is needed, not the entire `self`
-- Type usages:
-  - Use structs (value types) for data models when possible
-  - Use classes (reference types) when identity or inheritance is needed
-  - Prefer value semantics for API boundaries to avoid unexpected side effects
-- Resources clean up:
-  - Implement `deinit` for classes that need cleanup
-  - Cancel any async operations in `deinit`
-  - Dispose of resources explicitly when needed (e.g., file handles, network connections)
+- DO NOT manually edit any `*.generated.swift` file; change the source protocol or template and run `make generate`
+- DO NOT expose internal modules to end users (products in `Package.swift` are customer-visible)
+- DO NOT modify `Package.swift` unless asked; if you do, mirror the change in the podspecs
+- DO NOT manually bump versions, edit `CHANGELOG.md`, or create release tags
+- DO NOT commit configuration files with real credentials, and DO NOT put credentials in generated code; always use placeholders
+- DO NOT use iOS features unavailable in iOS 13 unless a compatibility fallback is included; call out any post-iOS-13 API you add
+
+## Memory
+
+- In closure capture lists, capture only what is needed, not `self` wholesale
+- Use structs for data models; classes only when identity or inheritance is needed; prefer value semantics at API boundaries
+- Implement `deinit` cleanup for classes that own resources; cancel async operations in `deinit`
 - Document memory ownership expectations in public APIs
-- Design APIs to make the correct memory pattern obvious to users
 
-## Thread safety
-- Prefer high-level concurrency models (Swift Concurrency) over low-level ones (GCD)
-- Avoid `sync` operation in GDC unless no alternative. Always point out when `sync` is included in generated code.
-- Prefer Actor over DispatchQueue unless it produces significant performance degradation
-- Ensure UI operations happen on the main thread
-- Design with immutability in mind for concurrent operation
-- Create clear boundaries between thread-safe and thread-unsafe components
-- Design APIs that help prevent thread safety issues
-- When testing concurrent code, include stress tests
-- Document the threading model clearly, especially for the SDK's public APIs
+## Thread Safety
 
-## Committing and Pushing with Git
-- Use `lefthook` for git hooks
-  - Install with `brew install lefthook`
-  - Configure with `lefthook install`
-- Before doing a commit, ensure that pre-commit from `.lefthook.yml` is installed
-- Before doing a push, ensure that pre-push from `.lefthook.yml` is installed
+- Prefer Swift Concurrency over GCD; prefer actors over DispatchQueue unless performance forbids it
+- Avoid `sync` GCD operations; call it out explicitly if generated code includes one
+- UI work happens on the main thread
+- Design with immutability for concurrent code; document the threading model of public APIs
+- Include stress tests when testing concurrent code
 
 ## Project Structure
-- `Sources/` - Main SDK code organized by modules:
-  - `Common/` - Shared core functionality
-  - `DataPipeline/` - Customer identification and event tracking
-  - `MessagingPush/` - Base push notification functionality
-  - `MessagingPushAPN/` - Apple Push Notification implementation
-  - `MessagingPushFCM/` - Firebase Cloud Messaging implementation
-  - `MessagingInApp/` - In-app messaging functionality
-  - `Migration/` - Migration tools for version upgrades
-  - `Templates/` - Sourcery templates for code generation
-- `Tests/` - Test files organized by module
-- `Apps/` - Sample applications demonstrating SDK usage
+
+- `Sources/` - SDK code by module:
+  - `Common/` - shared core (`CioInternalCommon`, internal)
+  - `DataPipeline/` - identification and event tracking (`CioDataPipelines`)
+  - `MessagingPush/`, `MessagingPushAPN/`, `MessagingPushFCM/` - push messaging
+  - `MessagingInApp/` - in-app messaging
+  - `Location/` - location and geofencing (`CioLocation`)
+  - `Migration/` - upgrade migration tools (`CioTrackingMigration`, internal)
+  - `Templates/` - Sourcery templates (`AutoDependencyInjection.stencil`, `AutoMockable.stencil`)
+- `Tests/` - tests by module, plus:
+  - `Tests/Shared/` - shared test infrastructure (`UnitTestBase`, stubs in `Tests/Shared/Stub`)
+  - `Tests/Mocks/<Module>/` - generated mocks, one SPM mock target per module, never shipped to customers
+- `Apps/` - sample apps (APN-UIKit, CocoaPods-FCM, and others)
+- `api-docs/` - committed public API baseline used by the breaking-change check
+- `docs/dev-notes/` - deeper dev docs (development setup, QA, in-app messaging, min versions)
 
 ## Architecture
 
-### Module Architecture
-- Each module exposes a public-facing facade extending `ModuleTopLevelObject`
-- Implementation classes are hidden from SDK users
-- Public protocols define the interface contracts
-- Builder pattern for configuration options
+- Each module exposes a public facade extending `ModuleTopLevelObject`; implementation classes stay internal
+- Public protocols define interface contracts; builder pattern for configuration
 
-### Initialization Pattern
+### Initialization pattern
+
 ```swift
-// Configure module with builder pattern
-let config = DataPipelineConfigBuilder()
-    .siteId("your-site-id")
-    .apiKey("your-api-key")
+let config = SDKConfigBuilder(cdpApiKey: "YOUR_CDP_API_KEY")
+    .region(.US)
     .build()
 
-// Initialize the module
-DataPipeline.initialize(moduleConfig: config)
-
-// Use the shared instance
-DataPipeline.shared.identify(userId: "customer-id")
+CustomerIO.initialize(withConfig: config)
+CustomerIO.shared.identify(userId: "customer-id")
 ```
 
-### Dependency Injection
-- Always use a constructor-based dependency injection pattern
-- `DIGraphShared` serves as the central dependency registry, which should be used only for top-level module initialization
-- Modules obtain dependencies through constructor injection
-- Avoid the Singleton pattern whenever you can
-- Thread-safe access via `Swift Structured Concurrency` and `@Atomic` property wrapper
-- Testing uses the override mechanism to substitute components
+Optional modules register through the builder before `CustomerIO.initialize(withConfig:)`.
 
-### Inter-Module Communication
-- Event-based architecture using `EventBus`
-- Type-safe event publishing and subscription
-- Modules can react to events without direct dependencies
-- Key events include profile identification, device token registration, etc.
+### Dependency injection
 
-## Before Building and Testing
-Before building the code and running tests, ALWAYS use the following command to detect available simulators:
+- Constructor injection everywhere; `DIGraphShared` is the central registry, used only at module initialization
+- Avoid singletons where possible; thread-safe access via Swift Concurrency and the `@Atomic` property wrapper
+- Tests substitute components with `diGraphShared.override(value:forType:)`, reset between tests
+
+### Inter-module communication
+
+- Event-based via `EventBus`, type-safe publish/subscribe
+- Modules react to events (profile identified, device token registered, etc.) without direct dependencies
+
+## Building and Testing
+
+Before building or testing, list available simulators and pick one (prefer already-booted):
+
 ```bash
 xcrun simctl list devices available
 ```
-Prefer to use Booted Simulators.
 
-## Building
+Build for testing once per session or after code changes:
 
-After completing planned changes to the code, ALWAYS compile to make sure it's working, before continuing to the next step.
-
-### Building a single module
-Example:
 ```bash
-xcodebuild -scheme MessagingPushAPN -configuration Debug -workspace ./.swiftpm/xcode/package.xcworkspace -destination 'platform=iOS Simulator,id=SIMULATOR_ID' -allowProvisioningUpdates build
+xcodebuild build-for-testing -destination 'platform=iOS Simulator,id=<SIMULATOR_ID>' -allowProvisioningUpdates -scheme Customer.io-Package -workspace ./.swiftpm/xcode/package.xcworkspace
 ```
 
-### Building the whole SDK
-Example:
+Run a single test class:
+
 ```bash
-xcodebuild -scheme Customer.io-Package -configuration Debug -workspace ./.swiftpm/xcode/package.xcworkspace -destination 'platform=iOS Simulator,id=SIMULATOR_ID' -allowProvisioningUpdates build
+xcodebuild test-without-building -workspace ./.swiftpm/xcode/package.xcworkspace -destination 'platform=iOS Simulator,id=<SIMULATOR_ID>' -scheme Customer.io-Package -only-testing:MessagingPushTests/CioProviderAgnosticAppDelegateTests
 ```
 
-## Testing
+Run a whole suite: drop the `/TestClassName` part.
 
-### Test Structure
+### Test frameworks
 
-- **Base Test Classes**: 
-  - `UnitTestBase<Component>`: Generic base class for all tests, supporting different module interfaces
-  - `UnitTest`: Convenience subclass of `UnitTestBase<CustomerIO>` for SDK-wide tests
-  - Module-specific test bases (e.g., `DataPipeline/UnitTest`) extend the shared base class
+- The suite is mixed: most files use XCTest; newer tests (all of `Tests/Location`, some others) use Swift Testing (`import Testing`).
+- Match the framework already used by the file or module you are editing. Base classes (`UnitTestBase`, module `UnitTest` subclasses) are XCTest-based.
+- Run tests through `xcodebuild` as shown above, not `swift test`; the Swift Testing tests require a newer swift-tools-version than the manifest declares to run under `swift test`.
 
-### Test Types
+### Test structure
 
-- **Unit Tests**: Test individual components in isolation
-  - Focus on specific functions and classes
-  - Heavy use of mocks and stubs
-  - Run synchronously for predictability
+- `UnitTestBase<Component>` is the generic base; `UnitTest` is the SDK-wide convenience subclass; modules have their own `UnitTest` subclasses
+- Unit tests isolate components with mocks; integration tests extend the same bases with more realistic setup
+- Generated mocks (Sourcery, `AutoMockable` protocols) live in `Tests/Mocks/<Module>` and track invocations, arguments, and return values; add mocks to a `MockCollection` for cleanup
+- Manual stubs for system interfaces (DeviceInfo, DateUtil, HttpRequestRunner) live in `Tests/Shared/Stub`
+- Async helpers: `waitForAsyncOperation`, `runOnBackground`, thread-util stubbing to run async code synchronously
+- Name tests `testMethodName_whenCondition_thenResult`; follow Arrange-Act-Assert; keep tests isolated via setup/teardown (`cleanupTestEnvironment()`, `deleteAllPersistentData()`)
 
-- **Integration Tests**: Test interactions between components
-  - Less mocking, closer to real behavior
-  - Test module initialization and communication
-  - Extend unit test classes with additional setup for more realistic environments
+## Git Hooks
 
-### Mocking Strategy
+- Hooks are managed by [lefthook](https://github.com/evilmartians/lefthook), config in `lefthook.yml` (repo root)
+- Install: `brew install lefthook && lefthook install`
+- pre-commit runs `make format` and re-stages files; pre-push runs `make lint` (warn-only)
 
-- **Auto-Generated Mocks**: 
-  - Created via Sourcery using protocols marked with `AutoMockable`
-  - Generated into module's `autogenerated` directory
-  - Track invocation counts, arguments, and return values
-  - Mocks may be added to a local instance of a MockCollection for cleanup
+## More Documentation
 
-- **Manual Stubs**: 
-  - Implement specific behaviors needed for tests
-  - Used for system interfaces (DeviceInfo, DateUtil, etc.)
-  - Stored in `Tests/Shared/Stub` directory
-
-### Testing Utilities
-
-- **DIGraph Overrides**: Dependency injection enables replacing components for testing
-  - `diGraphShared.override(value:forType:)` for swapping implementations
-  - Reset between tests to maintain isolation
-
-- **Test Environment Management**:
-  - `setUp()`: Configures test environment and dependencies
-  - `cleanupTestEnvironment()`: Removes test artifacts
-  - `deleteAllPersistentData()`: Ensures test isolation
-
-- **Async Testing Helpers**:
-  - `waitForAsyncOperation`: Simplifies testing async code
-  - `runOnBackground`: Executes code in the background 
-  - Thread util stubbing to make async code run synchronously
-
-- **Verification Utilities**:
-  - Custom matchers for deeply comparing objects
-  - Sample data files for consistent test data
-  - OutputReaderPlugin for validating event tracking behavior
-
-### Testing Patterns
-
-- Extensive use of XCTest assertions
-- Test doubles follow AAA pattern (Arrange, Act, Assert)
-- Always use clearly named test functions following `testMethodName_whenCondition_thenResult` format
-- Tests check both state and behavior
-- Emphasis on test isolation through proper setup/teardown
-
-### Running Tests
-
-#### Build the code before testing
-If you are running the test for the first time in the session, or changes have been made, rebuild the code for testing.
-Example:
-```bash
-xcodebuild build-for-testing -destination 'platform=iOS Simulator,id=SIMULATOR_ID' -allowProvisioningUpdates -scheme Customer.io-Package -workspace ./.swiftpm/xcode/package.xcworkspace
-```
-
-#### Command Line with xcodebuild
-To run tests from the command line with xcodebuild:
-Example:
-```bash
-xcodebuild test-without-building -workspace ./.swiftpm/xcode/package.xcworkspace -destination 'platform=iOS Simulator,id=A7D4BD50-572C-491A-9713-4A3B9DB04B44' -scheme Customer.io-Package -only-testing:MessagingPushTests/CioProviderAgnosticAppDelegateTests
-```
-
-To run all tests in a suite:
-```bash
-xcodebuild test-without-building -workspace ./.swiftpm/xcode/package.xcworkspace -destination 'platform=iOS Simulator,id=A7D4BD50-572C-491A-9713-4A3B9DB04B44' -scheme Customer.io-Package -only-testing:MessagingPushTests
-```
+- `docs/dev-notes/DEVELOPMENT.md` - environment setup, binny, codegen
+- `docs/dev-notes/` - background queue, event tracking, identity, in-app messaging, minimum OS versions, QA
