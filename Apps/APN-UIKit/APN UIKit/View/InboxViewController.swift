@@ -1,4 +1,6 @@
 import CioMessagingInApp
+import CioMessagingInbox
+import SwiftUI
 import UIKit
 
 // MARK: - InboxMessageCell
@@ -175,6 +177,45 @@ class InboxViewController: BaseViewController, UITableViewDelegate, UITableViewD
         setupUI()
         // Observer will provide initial messages when registered
         setupObserver()
+        addVisualInboxBell()
+    }
+
+    /// Demonstrates the granular Visual Inbox UI alongside this screen's headless `addChangeListener`
+    /// table: place `NotificationInboxBell` (here bottom-trailing) and present `NotificationInboxView`.
+    private func addVisualInboxBell() {
+        guard #available(iOS 15.0, *) else { return }
+        let bell = NotificationInboxBell(onTap: { [weak self] in self?.presentVisualInboxList() })
+        let host = UIHostingController(rootView: bell)
+        host.view.backgroundColor = .clear
+        addChild(host)
+        view.addSubview(host.view)
+        host.view.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            host.view.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -16),
+            host.view.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -16),
+            host.view.widthAnchor.constraint(equalToConstant: 72),
+            host.view.heightAnchor.constraint(equalToConstant: 72)
+        ])
+        host.didMove(toParent: self)
+    }
+
+    /// Presents the embeddable `NotificationInboxView` in a dismissible sheet (Done button + grabber).
+    @available(iOS 15.0, *)
+    private func presentVisualInboxList() {
+        let host = UIHostingController(rootView: NotificationInboxView())
+        host.title = "Visual Inbox"
+        host.navigationItem.rightBarButtonItem = UIBarButtonItem(barButtonSystemItem: .done, target: self, action: #selector(dismissVisualInboxList))
+        let nav = UINavigationController(rootViewController: host)
+        nav.modalPresentationStyle = .pageSheet
+        if let sheet = nav.sheetPresentationController {
+            sheet.detents = [.medium(), .large()]
+            sheet.prefersGrabberVisible = true
+        }
+        present(nav, animated: true)
+    }
+
+    @objc private func dismissVisualInboxList() {
+        dismiss(animated: true)
     }
 
     deinit {
