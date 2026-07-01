@@ -91,14 +91,15 @@ jobs:
         uses: cycjimmy/semantic-release-action@0a51e81a6baff2acad3ee88f4121c589c73d0f0e # v4.2.0
         id: semantic-release
         with:
-          # version numbers below can be in many forms: M, M.m, M.m.p
-          # version should be greater than the 22.0.1 (https://github.com/semantic-release/semantic-release/releases/tag/v22.0.1)
-          # because previous version had a bug in commit analyzer
-          semantic_version: latest
+          # Versions are pinned so a new semantic-release or plugin release cannot change
+          # deployment behavior without a change in this repo. Bump deliberately.
+          # Must stay above 22.0.1, which had a bug in the commit analyzer:
+          # https://github.com/semantic-release/semantic-release/releases/tag/v22.0.1
+          semantic_version: 25.0.5
           extra_plugins: |
             conventional-changelog-conventionalcommits@8
-            @semantic-release/github
-            @semantic-release/exec
+            @semantic-release/github@12.0.9
+            @semantic-release/exec@7.1.0
         env:
           # Needs to push git commits to repo. Needs write access.
           GITHUB_TOKEN: ${{ steps.generate_token.outputs.token }}
@@ -185,6 +186,8 @@ jobs:
     env:
       COCOAPODS_TRUNK_TOKEN: ${{ secrets.COCOAPODS_TRUNK_TOKEN }}
     runs-on: macos-15
+    outputs:
+      version: ${{ steps.get-version.outputs.version }}
     steps:
       - name: Checkout git tag that got created in previous step
         uses: actions/checkout@v4
@@ -210,27 +213,45 @@ jobs:
       - uses: customerio/mobile-ci-tools/github-actions/ios/setup-ios/v1@MacOS-15+iOS-26
 
       - name: Install cocoapods
-        run: gem install cocoapods
-      - name: '⚠️ Note: Pushing to cocoapods is flaky. If you see some errors in these logs while deploying, re-run this GitHub Action to try deployment again and it might fix the issue.'
-        run: echo ''
+        # Pinned so a new cocoapods release cannot break deployments. Bump deliberately.
+        run: gem install cocoapods -v 1.16.2
+
       - name: Push all podspecs to CocoaPods
         run: |
-          podspecs=(
-            CustomerIOCommon.podspec
-            CustomerIOTrackingMigration.podspec
-            CustomerIODataPipelines.podspec
-            CustomerIOMessagingPush.podspec
-            CustomerIOMessagingPushAPN.podspec
-            CustomerIOMessagingPushFCM.podspec
-            CustomerIOMessagingInApp.podspec
-            CustomerIOLocation.podspec
-            CustomerIO.podspec
+          # Podspecs are grouped into tiers by their dependencies on each other.
+          # Pods within a tier do not depend on each other, so they push in parallel.
+          # Tiers push in order because `pod trunk push` lints each podspec and the
+          # dependency versions pushed by the previous tier must already exist.
+          tiers=(
+            "CustomerIOCommon.podspec"
+            "CustomerIOTrackingMigration.podspec CustomerIOMessagingPush.podspec CustomerIOMessagingInApp.podspec CustomerIOLocation.podspec"
+            "CustomerIODataPipelines.podspec CustomerIOMessagingPushAPN.podspec CustomerIOMessagingPushFCM.podspec"
+            "CustomerIO.podspec"
           )
 
           failed_pods=()
-          for podspec in "${podspecs[@]}"; do
-            if ! ./scripts/push-cocoapod.sh "$podspec"; then
-              failed_pods+=("$podspec")
+          for tier in "${tiers[@]}"; do
+            pids=()
+            specs=()
+            for podspec in $tier; do
+              ./scripts/push-cocoapod.sh "$podspec" > "push-log-$podspec.txt" 2>&1 &
+              pids+=($!)
+              specs+=("$podspec")
+            done
+
+            for i in "${!pids[@]}"; do
+              if ! wait "${pids[$i]}"; then
+                failed_pods+=("${specs[$i]}")
+              fi
+              echo "::group::${specs[$i]}"
+              cat "push-log-${specs[$i]}.txt"
+              echo "::endgroup::"
+            done
+
+            # Stop if anything in this tier failed. Later tiers depend on this one,
+            # so pushing them would fail anyway.
+            if [[ ${#failed_pods[@]} -gt 0 ]]; then
+              break
             fi
           done
 
@@ -322,8 +343,47 @@ jobs:
     steps:
       - name: Wait for CocoaPods CDN propagation
         run: |
-          echo "Waiting for CocoaPods CDN to propagate..."
-          sleep 1200 # Wait for 20 minute to allow CocoaPods CDN to propagate the changes.
+          # Poll the CocoaPods CDN until it serves the new version of every pod,
+          # instead of sleeping a fixed 20 minutes. Propagation usually takes a few
+          # minutes, so this typically saves 15+ minutes per release.
+          # The CDN shards its pod index by the first 3 hex chars of md5(pod name).
+          version="${{ needs.deploy-cocoapods.outputs.version }}"
+          if [[ -z "$version" ]]; then
+            echo "::error::Could not determine the released version to wait for."
+            exit 1
+          fi
+
+          pods=(
+            CustomerIOCommon
+            CustomerIOTrackingMigration
+            CustomerIODataPipelines
+            CustomerIOMessagingPush
+            CustomerIOMessagingPushAPN
+            CustomerIOMessagingPushFCM
+            CustomerIOMessagingInApp
+            CustomerIOLocation
+            CustomerIO
+          )
+
+          # Give up after 20 minutes, the previous fixed wait time. On timeout we
+          # continue instead of failing, matching the old behavior of proceeding
+          # after the sleep regardless of CDN state.
+          deadline=$((SECONDS + 1200))
+          for pod in "${pods[@]}"; do
+            md5=$(printf '%s' "$pod" | md5sum | cut -c1-3)
+            shard="${md5:0:1}_${md5:1:1}_${md5:2:1}"
+            url="https://cdn.cocoapods.org/all_pods_versions_${shard}.txt"
+
+            until curl -sf "${url}?cachebust=$(date +%s)" | grep "^${pod}/" | tr '/' '\n' | grep -qx "$version"; do
+              if (( SECONDS >= deadline )); then
+                echo "::warning::Timed out waiting for the CDN to serve ${pod} ${version}. Continuing anyway."
+                exit 0
+              fi
+              echo "CDN does not serve ${pod} ${version} yet. Retrying in 30s..."
+              sleep 30
+            done
+            echo "CDN serves ${pod} ${version}."
+          done
           echo "CocoaPods CDN propagation completed."
 
   # New job to build sample apps after successful deployment to CocoaPods
