@@ -19,7 +19,7 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
     /// The most recent pending-metrics flush task dispatched by `schedulePendingPushDeliveryMetricsFlush()`.
     /// Internal so tests can await its completion deterministically: a flush task that outlives a test
     /// would otherwise resolve `DataPipelineTracking` mocks registered by the next test and track into them.
-    @Atomic static var pendingMetricsFlushTask: Task<Void, Never>? = nil
+    @Atomic static var pendingMetricsFlushTask: Task<Void, Never>?
 
     private var globalDataStore: GlobalDataStore
 
