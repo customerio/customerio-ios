@@ -23,6 +23,7 @@ class ModalViewManager {
     func showModalView(completionHandler: @escaping () -> Void) {
         viewController.view.isHidden = true
         window = getUIWindow()
+        inheritAppInterfaceStyle()
         window?.rootViewController = viewController
         window?.isHidden = false
         var finalPosition: CGFloat = 0
@@ -81,6 +82,19 @@ class ModalViewManager {
         window?.isHidden = true
         viewController.removeFromParent()
         window = nil
+    }
+
+    private func inheritAppInterfaceStyle() {
+        guard let appWindow = UIApplication.shared.connectedScenes
+            .compactMap({ $0 as? UIWindowScene })
+            .flatMap({ $0.windows })
+            .first(where: { $0 !== self.window }) else { return }
+
+        if appWindow.overrideUserInterfaceStyle != .unspecified {
+            window?.overrideUserInterfaceStyle = appWindow.overrideUserInterfaceStyle
+        } else if let rootVC = appWindow.rootViewController, rootVC.overrideUserInterfaceStyle != .unspecified {
+            window?.overrideUserInterfaceStyle = rootVC.overrideUserInterfaceStyle
+        }
     }
 
     private func getUIWindow() -> UIWindow {

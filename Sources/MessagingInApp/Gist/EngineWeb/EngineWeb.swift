@@ -35,7 +35,8 @@ public class EngineWeb: NSObject, EngineWebInstance {
         webView
     }
 
-    private let currentConfiguration: EngineWebConfiguration
+    private var currentConfiguration: EngineWebConfiguration
+    private let colorSchemeMode: ColorScheme
 
     public private(set) var currentRoute: String {
         get { _currentRoute }
@@ -46,6 +47,7 @@ public class EngineWeb: NSObject, EngineWebInstance {
     init(configuration: EngineWebConfiguration, state: InAppMessageState, message: Message) {
         self.currentMessage = message
         self.currentConfiguration = configuration
+        self.colorSchemeMode = state.colorScheme
 
         super.init()
 
@@ -171,6 +173,15 @@ extension EngineWeb: WKScriptMessageHandler {
 // swiftlint:enable cyclomatic_complexity
 extension EngineWeb: WKNavigationDelegate {
     public func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        currentConfiguration = EngineWebConfiguration(
+            siteId: currentConfiguration.siteId,
+            dataCenter: currentConfiguration.dataCenter,
+            instanceId: currentConfiguration.instanceId,
+            endpoint: currentConfiguration.endpoint,
+            messageId: currentConfiguration.messageId,
+            properties: currentConfiguration.properties,
+            colorScheme: colorSchemeMode.resolve(with: webView.traitCollection)
+        )
         injectConfiguration(currentConfiguration)
     }
 
