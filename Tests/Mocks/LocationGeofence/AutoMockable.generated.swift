@@ -105,6 +105,11 @@ class GeofenceApiServiceMock: @unchecked Sendable, GeofenceApiService, Mock {
         _fetchAllGeofencesReceivedInvocations.wrappedValue = []
 
         mockCalled = false // do last as resetting properties above can make this true
+        _fetchNearbyGeofencesCallsCount.wrappedValue = 0
+        _fetchNearbyGeofencesReceivedArguments.wrappedValue = nil
+        _fetchNearbyGeofencesReceivedInvocations.wrappedValue = []
+
+        mockCalled = false // do last as resetting properties above can make this true
     }
 
     // MARK: - fetchAllGeofences
@@ -144,6 +149,45 @@ class GeofenceApiServiceMock: @unchecked Sendable, GeofenceApiService, Mock {
         _fetchAllGeofencesReceivedArguments.wrappedValue = completion
         _fetchAllGeofencesReceivedInvocations.append(completion)
         fetchAllGeofencesClosure?(completion)
+    }
+
+    // MARK: - fetchNearbyGeofences
+
+    /// Number of times the function was called.
+    private let _fetchNearbyGeofencesCallsCount: CioInternalCommon.Synchronized<Int> = .init(0)
+    var fetchNearbyGeofencesCallsCount: Int {
+        _fetchNearbyGeofencesCallsCount.wrappedValue
+    }
+
+    /// `true` if the function was ever called.
+    var fetchNearbyGeofencesCalled: Bool {
+        fetchNearbyGeofencesCallsCount > 0
+    }
+
+    /// The arguments from the *last* time the function was called.
+    private let _fetchNearbyGeofencesReceivedArguments: CioInternalCommon.Synchronized<(latitude: Double, longitude: Double, completion: (Result<GeofenceApiResponse, GeofenceApiError>) -> Void)?> = .init(nil)
+    var fetchNearbyGeofencesReceivedArguments: (latitude: Double, longitude: Double, completion: (Result<GeofenceApiResponse, GeofenceApiError>) -> Void)? {
+        _fetchNearbyGeofencesReceivedArguments.wrappedValue
+    }
+
+    /// Arguments from *all* of the times that the function was called.
+    private let _fetchNearbyGeofencesReceivedInvocations: CioInternalCommon.Synchronized<[(latitude: Double, longitude: Double, completion: (Result<GeofenceApiResponse, GeofenceApiError>) -> Void)]> = .init([])
+    var fetchNearbyGeofencesReceivedInvocations: [(latitude: Double, longitude: Double, completion: (Result<GeofenceApiResponse, GeofenceApiError>) -> Void)] {
+        _fetchNearbyGeofencesReceivedInvocations.wrappedValue
+    }
+
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     */
+    var fetchNearbyGeofencesClosure: ((Double, Double, @escaping (Result<GeofenceApiResponse, GeofenceApiError>) -> Void) -> Void)?
+
+    /// Mocked function for `fetchNearbyGeofences(latitude: Double, longitude: Double, completion: @escaping (Result<GeofenceApiResponse, GeofenceApiError>) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
+    func fetchNearbyGeofences(latitude: Double, longitude: Double, completion: @escaping (Result<GeofenceApiResponse, GeofenceApiError>) -> Void) {
+        mockCalled = true
+        _fetchNearbyGeofencesCallsCount += 1
+        _fetchNearbyGeofencesReceivedArguments.wrappedValue = (latitude: latitude, longitude: longitude, completion: completion)
+        _fetchNearbyGeofencesReceivedInvocations.append((latitude: latitude, longitude: longitude, completion: completion))
+        fetchNearbyGeofencesClosure?(latitude, longitude, completion)
     }
 }
 

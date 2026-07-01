@@ -59,8 +59,7 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
     // all are immutable injected deps.
     let storage: GeofenceSyncStorage
     let dateUtil: DateUtil
-    /// Defaults to `GeofenceSyncMode.active` (the shipped mode); injectable as the seam for a
-    /// future location-bound mode (see `GeofenceSyncMode`).
+    /// Defaults to `GeofenceSyncMode.active` (the shipped mode); injectable so tests can pin a mode.
     let syncMode: GeofenceSyncMode
     private let refreshInProgress = Synchronized<Bool>(false)
 
@@ -136,10 +135,11 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
         let cachedConfig = await storage.getCachedConfig()
         let anchor = await storage.getLastSync()?.location
         let effectiveConfig = cachedConfig ?? .fallback
-        // No anchor (first EXIT after install / clearAll / sign-out) bootstraps from the server.
-        // Otherwise re-rank the cached set locally: fetchAll holds the complete workspace, so
-        // movement never re-fetches.
-        if anchor == nil {
+        let movement = LocationData(latitude: latitude, longitude: longitude)
+
+        // No anchor (first EXIT after install / clearAll / sign-out) bootstraps from the server;
+        // otherwise refetch only when fetchNearby has moved beyond its set. fetchAll always re-ranks.
+        if anchor == nil || movedBeyondRefetchRadius(from: anchor, to: movement, config: effectiveConfig) {
             logger.geofenceMovementTrigger(tier: .remoteRefresh)
             return await performRemoteRefresh(
                 expectedUserId: userId,
@@ -244,7 +244,7 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
         longitude: Double,
         cachedConfig: GeofenceConfig?
     ) async -> Result<Void, GeofenceSyncError> {
-        let fetchResult = await awaitApiFetch()
+        let fetchResult = await awaitApiFetch(latitude: latitude, longitude: longitude)
         let response: GeofenceApiResponse
         switch fetchResult {
         case .success(let value):
@@ -317,14 +317,16 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
 // MARK: - OS registration & fetch plumbing
 
 private extension GeofenceSyncCoordinatorImpl {
-    /// `fetchAll` sends no location — the precise location that drives on-device ranking and the
-    /// anchor never leaves the coordinator. Kept as a `switch` so a future location-bound mode
-    /// (see `GeofenceSyncMode`) slots in here.
-    func awaitApiFetch() async -> Result<GeofenceApiResponse, GeofenceApiError> {
+    /// Dispatches the fetch per `syncMode`. `fetchAll` sends no location; `fetchNearby` sends a
+    /// coarsened coordinate (the precise location that drives on-device ranking never leaves the
+    /// coordinator — only `GeofenceApiService` coarsens what it transmits). See `GeofenceSyncMode`.
+    func awaitApiFetch(latitude: Double, longitude: Double) async -> Result<GeofenceApiResponse, GeofenceApiError> {
         await withCheckedContinuation { continuation in
             switch syncMode {
             case .fetchAll:
                 apiService.fetchAllGeofences { continuation.resume(returning: $0) }
+            case .fetchNearby:
+                apiService.fetchNearbyGeofences(latitude: latitude, longitude: longitude) { continuation.resume(returning: $0) }
             }
         }
     }

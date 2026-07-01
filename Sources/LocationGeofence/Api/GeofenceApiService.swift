@@ -17,6 +17,14 @@ protocol GeofenceApiService: AutoMockable, Sendable {
     func fetchAllGeofences(
         completion: @escaping (Result<GeofenceApiResponse, GeofenceApiError>) -> Void
     )
+
+    /// Fetch-nearby: returns the set ranked around the device. The coordinate is coarsened before
+    /// it's sent (see `CoordinateCoarsener`) so an approximate, not exact, location leaves the device.
+    func fetchNearbyGeofences(
+        latitude: Double,
+        longitude: Double,
+        completion: @escaping (Result<GeofenceApiResponse, GeofenceApiError>) -> Void
+    )
 }
 
 // sourcery: InjectRegisterShared = "GeofenceApiService"
@@ -48,6 +56,18 @@ final class GeofenceApiServiceImpl: GeofenceApiService, @unchecked Sendable {
         completion: @escaping (Result<GeofenceApiResponse, GeofenceApiError>) -> Void
     ) {
         request(queryItems: [], completion: completion)
+    }
+
+    func fetchNearbyGeofences(
+        latitude: Double,
+        longitude: Double,
+        completion: @escaping (Result<GeofenceApiResponse, GeofenceApiError>) -> Void
+    ) {
+        let coarse = CoordinateCoarsener.coarsen(latitude: latitude, longitude: longitude)
+        request(queryItems: [
+            URLQueryItem(name: "latitude", value: "\(coarse.latitude)"),
+            URLQueryItem(name: "longitude", value: "\(coarse.longitude)")
+        ], completion: completion)
     }
 
     private func request(

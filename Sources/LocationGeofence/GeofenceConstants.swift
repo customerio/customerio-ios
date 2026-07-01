@@ -13,9 +13,9 @@ enum GeofenceConstants {
     /// the ranking-staleness threshold. Server config overrides it.
     static let movementTriggerRadius: Double = 3000
 
-    /// Fallback for `remoteFetchRefreshTriggerRadius` (meters). Currently unread — `fetchAll` never
-    /// re-fetches on movement — but kept (server still sends it) and reserved for a future
-    /// location-bound sync mode. See `GeofenceSyncMode`.
+    /// Fallback for `remoteFetchRefreshTriggerRadius` (meters): how far the device must move from the
+    /// last fetch anchor before a location-bound sync (`GeofenceSyncMode.fetchNearby`) refetches a
+    /// fresh nearby set. Unused by `fetchAll`, which holds the complete workspace. See `GeofenceSyncMode`.
     static let serverFetchDistance: Double = 20000
 
     /// Default `maxMonitoringDistance` (meters) applied when the server omits the field — which it
