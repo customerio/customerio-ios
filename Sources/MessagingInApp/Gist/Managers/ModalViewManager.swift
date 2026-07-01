@@ -98,6 +98,7 @@ class ModalViewManager {
         case .dark:
             window?.overrideUserInterfaceStyle = .dark
         case .auto:
+            window?.overrideUserInterfaceStyle = .unspecified
             inheritAppInterfaceStyle()
         }
     }
