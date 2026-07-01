@@ -2,26 +2,28 @@ import CioInternalCommon
 import Foundation
 
 extension StorageManager {
-    func getLiveActivityPushToken(activityType: String) throws -> String? {
-        try db.fetchOne(LiveActivityTokenRecord.self, id: activityType)?.tokenHex
+    /// The last push-to-start registration signature (`"<token>|<userId>"`) sent for
+    /// `activityType`, or `nil` if none has been recorded.
+    func getRegistrationSignature(activityType: String) throws -> String? {
+        try db.fetchOne(LiveActivityRegistrationRecord.self, id: activityType)?.signature
     }
 
-    func setLiveActivityPushToken(activityType: String, tokenHex: String) throws {
-        _ = try db.save(LiveActivityTokenRecord(activityType: activityType, tokenHex: tokenHex))
+    func setRegistrationSignature(activityType: String, signature: String) throws {
+        _ = try db.save(LiveActivityRegistrationRecord(activityType: activityType, signature: signature))
     }
 
-    func clearAllLiveActivityPushTokens() throws {
-        _ = try db.execute("DELETE FROM live_activity_push_tokens")
+    func clearAllLiveActivityRegistrations() throws {
+        _ = try db.execute("DELETE FROM live_activity_pts_registrations")
     }
 }
 
 // MARK: - Entity Record
 
-private struct LiveActivityTokenRecord: Entity {
-    static let tableName = TableName("live_activity_push_tokens")
+private struct LiveActivityRegistrationRecord: Entity {
+    static let tableName = TableName("live_activity_pts_registrations")
     static let primaryKeyName = "activityType"
-    static let primaryKey: WritableKeyPath<LiveActivityTokenRecord, String> & Sendable = \.activityType
+    static let primaryKey: WritableKeyPath<LiveActivityRegistrationRecord, String> & Sendable = \.activityType
 
     var activityType: String
-    var tokenHex: String
+    var signature: String
 }

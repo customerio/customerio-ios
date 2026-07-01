@@ -26,6 +26,9 @@ declare -a PUBLIC_MODULES=(
     "MessagingPushFCM:CioMessagingPushFCM"
     "MessagingInApp:CioMessagingInApp"
     "Location:CioLocation"
+    "LiveActivities:CioLiveActivities"
+    "LiveActivities_Attributes:CioLiveActivities_Attributes"
+    "LiveActivities_Templates:CioLiveActivities_Templates"
 )
 
 # Internal modules (only available when CI environment variable is set)

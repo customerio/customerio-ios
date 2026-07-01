@@ -1,7 +1,6 @@
 import SwiftUI
 
 extension Color {
-
     /// Initialise a `Color` from a hex string.
     ///
     /// Accepts 6-digit (`RRGGBB`) and 8-digit (`RRGGBBAA`) hex strings,

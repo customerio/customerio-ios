@@ -10,7 +10,6 @@ import ActivityKit
 /// gate, terminal, delay, and in-flight progress updates.
 @available(iOS 17.2, *)
 public struct CIOFlightStatusAttributes: CIOActivityAttribute {
-
     public static let identifier = "io.customer.liveactivities.flightstatus"
 
     // MARK: - Nested types

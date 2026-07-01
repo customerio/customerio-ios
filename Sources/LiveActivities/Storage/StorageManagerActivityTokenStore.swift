@@ -3,10 +3,9 @@ import Foundation
 
 /// `LiveActivityTokenStorage` backed by the shared encrypted `StorageManager`.
 ///
-/// When `storage` is `nil` (e.g. SDK not yet initialised), all operations are
-/// no-ops: `getPushToStartToken` returns `nil` and writes are silently dropped.
-/// The only observable effect is that push-to-start tokens are re-sent to the
-/// backend on every launch until a `StorageManager` is available.
+/// When `storage` is `nil` (e.g. SDK not yet initialised), reads return `nil` and writes
+/// are silently dropped. The only observable effect is that a push-to-start registration
+/// may be re-sent on a future launch until a `StorageManager` is available.
 final class StorageManagerActivityTokenStore: LiveActivityTokenStorage {
     private let storage: StorageManager?
 
@@ -14,15 +13,15 @@ final class StorageManagerActivityTokenStore: LiveActivityTokenStorage {
         self.storage = storage
     }
 
-    func getPushToStartToken(activityType: String) -> String? {
-        try? storage?.getLiveActivityPushToken(activityType: activityType)
+    func registrationSignature(activityType: String) -> String? {
+        (try? storage?.getRegistrationSignature(activityType: activityType)) ?? nil
     }
 
-    func setPushToStartToken(activityType: String, tokenHex: String) {
-        try? storage?.setLiveActivityPushToken(activityType: activityType, tokenHex: tokenHex)
+    func setRegistrationSignature(activityType: String, signature: String) {
+        try? storage?.setRegistrationSignature(activityType: activityType, signature: signature)
     }
 
     func clearAll() {
-        try? storage?.clearAllLiveActivityPushTokens()
+        try? storage?.clearAllLiveActivityRegistrations()
     }
 }

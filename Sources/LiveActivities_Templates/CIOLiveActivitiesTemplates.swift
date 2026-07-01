@@ -19,12 +19,11 @@ import Foundation
 /// }
 /// ```
 public enum CIOLiveActivitiesTemplates {
-
     // Constructed once in configure() and then read-only for the process lifetime.
     // nonisolated(unsafe) is safe here: WidgetKit guarantees that configure() is
     // called in WidgetBundle.init() before any Widget.body is evaluated, so the
     // single write always happens before any reads. No concurrent writes occur.
-    nonisolated(unsafe) private static var _assetLibrary: CIOAssetLibrary = .init(path: nil)
+    private nonisolated(unsafe) static var _assetLibrary: CIOAssetLibrary = .init(path: nil)
 
     /// Configure the shared asset library for the widget extension.
     ///

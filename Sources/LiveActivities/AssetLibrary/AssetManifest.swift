@@ -6,7 +6,6 @@ import Foundation
 /// extension. Both sides must agree on this schema — any change here must be
 /// reflected in `Sources/LiveActivities_Templates/AssetLibrary/CIOAssetLibrary.swift`.
 struct AssetManifest: Codable {
-
     let version: Int
 
     /// AssetKey → entry mapping.

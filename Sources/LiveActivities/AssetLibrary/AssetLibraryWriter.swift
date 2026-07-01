@@ -7,7 +7,6 @@ import Foundation
 /// Sync is idempotent — assets whose SHA-256 hash is unchanged are skipped.
 /// A garbage-collection sweep removes unreferenced hash files after each write.
 struct AssetLibraryWriter {
-
     // The path of the assets directory relative to the AppGroup container root.
     //
     // NOTE: This value must match `CIOAssetLibrary.assetsSubpath` in
@@ -23,7 +22,8 @@ struct AssetLibraryWriter {
     init(appGroupIdentifier: String) throws {
         guard
             let containerURL = FileManager.default.containerURL(
-                forSecurityApplicationGroupIdentifier: appGroupIdentifier)
+                forSecurityApplicationGroupIdentifier: appGroupIdentifier
+            )
         else {
             throw AssetLibraryError.appGroupNotFound(appGroupIdentifier)
         }
@@ -39,7 +39,8 @@ struct AssetLibraryWriter {
     /// - Throws: File-system or encoding errors.
     func sync(registrations: [AssetRegistration]) throws {
         try FileManager.default.createDirectory(
-            at: assetsURL, withIntermediateDirectories: true)
+            at: assetsURL, withIntermediateDirectories: true
+        )
 
         var manifest = loadManifest() ?? AssetManifest()
 
@@ -81,7 +82,8 @@ struct AssetLibraryWriter {
         for filename in contents where filename != Self.manifestFilename {
             if !referenced.contains(filename) {
                 try? FileManager.default.removeItem(
-                    at: assetsURL.appendingPathComponent(filename))
+                    at: assetsURL.appendingPathComponent(filename)
+                )
             }
         }
     }

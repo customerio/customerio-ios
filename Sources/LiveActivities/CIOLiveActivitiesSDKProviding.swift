@@ -1,13 +1,12 @@
 import CioInternalCommon
 import Foundation
 
-/// The SDK capabilities that `LiveActivitiesModule` requires from the host SDK.
+/// The SDK capabilities that the Live Activities module requires from the host SDK.
 ///
 /// Declared as a protocol so the module can be tested without depending on the real
-/// `CustomerIO.shared` singleton. Pass a conforming mock in unit tests; the default
+/// `CustomerIO.shared` singleton. Pass a conforming fake in unit tests; the default
 /// (`CustomerIO.shared`) is used in production.
 protocol CIOLiveActivitiesSDKProviding {
-    var installationId: String { get }
     var registeredDeviceToken: String? { get }
     var eventBusHandler: EventBusHandler { get }
     var logger: Logger { get }
@@ -28,6 +27,6 @@ extension CustomerIO: CIOLiveActivitiesSDKProviding {
         DIGraphShared.shared.storageManager
     }
 
-    // installationId and registeredDeviceToken are already declared on CustomerIO
-    // via CustomerIOInstance. track(name:properties:) is also already on CustomerIO.
+    // registeredDeviceToken is already declared on CustomerIO via CustomerIOInstance.
+    // track(name:properties:) is also already on CustomerIO.
 }

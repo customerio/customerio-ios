@@ -1,0 +1,85 @@
+public final class CioLiveActivities_Templates.CIOActivityBranding {
+	public var logoKey: String?;
+	public var name: String;
+	public var accentColor: String?;
+	public fun init(name: String, logoKey: String? = nil, accentColor: String? = nil);
+}
+public final class CioLiveActivities_Templates.CIOAssetLibrary {
+	public fun init(path: URL?);
+	public fun convenience init(appGroup: String) throws;
+	public fun func url(for key: String) -> URL?;
+	public fun func image(for key: String) -> some View;
+}
+public enum CioLiveActivities_Templates.CIOAssetLibraryError {
+}
+public final class CioLiveActivities_Templates.CIOAuctionBidAttributes {
+	public final val identifier: String;
+	public var activityInstanceId: String;
+	public var branding: CIOActivityBranding;
+	public var itemTitle: String;
+	public var itemImageKey: String?;
+	public var currencySymbol: String;
+	public fun init(activityInstanceId: String, branding: CIOActivityBranding, itemTitle: String, itemImageKey: String? = nil, currencySymbol: String = "$");
+}
+public final class CioLiveActivities_Templates.CIOAuctionBidLiveActivity {
+	public var body: some WidgetConfiguration;
+	public fun init();
+}
+public final class CioLiveActivities_Templates.CIOCountdownTimerAttributes {
+	public final val identifier: String;
+	public var activityInstanceId: String;
+	public var branding: CIOActivityBranding;
+	public var title: String;
+	public var heroImageKey: String?;
+	public fun init(activityInstanceId: String, branding: CIOActivityBranding, title: String, heroImageKey: String? = nil);
+}
+public final class CioLiveActivities_Templates.CIOCountdownTimerLiveActivity {
+	public var body: some WidgetConfiguration;
+	public fun init();
+}
+public final class CioLiveActivities_Templates.CIODeliveryTrackingAttributes {
+	public final val identifier: String;
+	public var activityInstanceId: String;
+	public var branding: CIOActivityBranding;
+	public var orderId: String;
+	public var recipientName: String?;
+	public fun init(activityInstanceId: String, branding: CIOActivityBranding, orderId: String, recipientName: String? = nil);
+}
+public final class CioLiveActivities_Templates.CIODeliveryTrackingLiveActivity {
+	public var body: some WidgetConfiguration;
+	public fun init();
+}
+public final class CioLiveActivities_Templates.CIOFlightStatusAttributes {
+	public final val identifier: String;
+	public var activityInstanceId: String;
+	public var branding: CIOActivityBranding;
+	public var flightNumber: String;
+	public var origin: CIOFlightStatusAttributes.Airport;
+	public var destination: CIOFlightStatusAttributes.Airport;
+	public fun init(activityInstanceId: String, branding: CIOActivityBranding, flightNumber: String, origin: Airport, destination: Airport);
+}
+public final class CioLiveActivities_Templates.CIOFlightStatusLiveActivity {
+	public var body: some WidgetConfiguration;
+	public fun init();
+}
+public enum CioLiveActivities_Templates.CIOLiveActivitiesTemplates {
+	public var assetLibrary: CIOAssetLibrary;
+	public fun func configure(appGroup: String);
+}
+public final class CioLiveActivities_Templates.CIOLiveScoreAttributes {
+	public final val identifier: String;
+	public var activityInstanceId: String;
+	public var homeTeam: CIOLiveScoreAttributes.Team;
+	public var awayTeam: CIOLiveScoreAttributes.Team;
+	public var sport: String;
+	public var leagueLogoKey: String?;
+	public fun init(activityInstanceId: String, homeTeam: Team, awayTeam: Team, sport: String, leagueLogoKey: String? = nil);
+}
+public final class CioLiveActivities_Templates.CIOLiveScoreLiveActivity {
+	public var body: some WidgetConfiguration;
+	public fun init();
+}
+public final class CioLiveActivities_Templates.CIOLiveScoreWatchLiveActivity {
+	public var body: some WidgetConfiguration;
+	public fun init();
+}

@@ -1,0 +1,3 @@
+public interface CioLiveActivities_Attributes.CIOActivityAttribute {
+	public var activityInstanceId: String;
+}
