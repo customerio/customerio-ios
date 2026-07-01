@@ -20,11 +20,12 @@ public class ModalMessageManager: BaseMessageManager {
         inAppMessageStoreSubscriber = {
             let subscriber = InAppMessageStoreSubscriber { [self] state in
                 let messageState = state.modalMessageState
+                let colorScheme = state.colorScheme
                 switch messageState {
                 case .displayed:
                     threadUtil.runMain {
                         // Subclasses (Modal or Inline) can show differently
-                        self.onMessageDisplayed()
+                        self.onMessageDisplayed(colorScheme: colorScheme)
                     }
                 case .dismissed, .initial:
                     threadUtil.runMain {
@@ -41,7 +42,7 @@ public class ModalMessageManager: BaseMessageManager {
     }
 
     // Show the modal when the message is displayed
-    func onMessageDisplayed() {
+    func onMessageDisplayed(colorScheme: ColorScheme = .auto) {
         guard isMessageLoaded else {
             logger.logWithModuleTag(
                 "Message not loaded yet. Skipping loadModalMessage for \(currentMessage.describeForLogs).",
@@ -62,7 +63,8 @@ public class ModalMessageManager: BaseMessageManager {
         modalViewManager = ModalViewManager(
             gistView: gistView,
             position: gistProperties.position,
-            overlayColor: gistProperties.overlayColor
+            overlayColor: gistProperties.overlayColor,
+            colorScheme: colorScheme
         )
         // Show the modal with an optional completion
         modalViewManager?.showModalView { [weak self] in

@@ -11,19 +11,21 @@ class ModalViewManager {
     var viewController: GistModalViewController!
     var position: MessagePosition
     var overlayColor: String?
+    let colorScheme: ColorScheme
 
-    init(gistView: GistView, position: MessagePosition, overlayColor: String?) {
+    init(gistView: GistView, position: MessagePosition, overlayColor: String?, colorScheme: ColorScheme = .auto) {
         self.viewController = GistModalViewController()
         viewController.gistView = gistView
         viewController.setup(position: position)
         self.position = position
         self.overlayColor = overlayColor
+        self.colorScheme = colorScheme
     }
 
     func showModalView(completionHandler: @escaping () -> Void) {
         viewController.view.isHidden = true
         window = getUIWindow()
-        inheritAppInterfaceStyle()
+        applyColorSchemeToWindow()
         window?.rootViewController = viewController
         window?.isHidden = false
         var finalPosition: CGFloat = 0
@@ -82,6 +84,17 @@ class ModalViewManager {
         window?.isHidden = true
         viewController.removeFromParent()
         window = nil
+    }
+
+    private func applyColorSchemeToWindow() {
+        switch colorScheme {
+        case .light:
+            window?.overrideUserInterfaceStyle = .light
+        case .dark:
+            window?.overrideUserInterfaceStyle = .dark
+        case .auto:
+            inheritAppInterfaceStyle()
+        }
     }
 
     private func inheritAppInterfaceStyle() {
