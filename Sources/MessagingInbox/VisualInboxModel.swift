@@ -276,6 +276,10 @@ final class VisualInboxModel: ObservableObject {
         dismissingIds.insert(messageId)
         Task { [weak self, provider] in
             let didDismiss = await provider.dismiss(messageId: messageId)
+            // Release the reservation only on a no-op (message already gone) so the id stays
+            // retryable. On success keep it reserved: the data-layer tombstone prevents the row from
+            // resurrecting, and a second in-flight dismiss for the same id must not re-run the delete
+            // plumbing (duplicate network call + host `inboxMessageDismissed`).
             if !didDismiss {
                 self?.dismissingIds.remove(messageId)
             }

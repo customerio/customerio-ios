@@ -104,7 +104,10 @@ public struct NotificationInboxOverlay: View {
     }
 
     private func setPanel(open: Bool) {
-        withAnimation(.easeInOut(duration: 0.3)) {
+        // Slide the panel with a spring — iOS's natural idiom for fluid, interruptible UI motion
+        // (the same feel as sheets and navigation). No fixed duration; lightly damped so the panel
+        // settles quickly and smoothly without overshoot.
+        withAnimation(.spring(response: 0.4, dampingFraction: 0.9)) {
             isPanelOpen = open
         }
         // Auto-mark-opened (item 8): when the panel becomes visible, mark the visible messages
