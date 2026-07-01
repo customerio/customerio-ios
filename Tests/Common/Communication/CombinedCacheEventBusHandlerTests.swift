@@ -167,18 +167,14 @@ class CombinedCacheEventBusHandlerTest: UnitTest {
         let handler = makeHandler()
         var received = false
 
-        // Register and then immediately remove.
+        // Register and then immediately remove. The handler applies operations in call
+        // order (FIFO chain), and postEventAndWait joins that chain, so by the time it
+        // returns the add and remove have both been applied and delivery has completed.
         handler.addObserver(ProfileIdentifiedEvent.self) { _ in received = true }
         handler.removeObserver(for: ProfileIdentifiedEvent.self)
 
-        // postEventAndWait goes through the actor. The remove Task ran earlier and
-        // will have completed its actor call before the post call in most runs.
-        // Use a short sleep to give both Tasks time to schedule their actor calls.
-        try? await Task.sleep(nanoseconds: 100000000)
-
         await handler.postEventAndWait(ProfileIdentifiedEvent(identifier: "after-remove"))
 
-        try? await Task.sleep(nanoseconds: 100000000)
         XCTAssertFalse(received, "removed observer must not receive events")
     }
 }

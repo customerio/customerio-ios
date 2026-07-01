@@ -47,6 +47,15 @@ struct LocationServicesImplementationTests {
         }
     }
 
+    /// Polls until `condition` is true, with a generous deadline for loaded CI machines.
+    /// Use when a later step depends on a fire-and-forget task having fully completed.
+    private func waitUntil(_ condition: () -> Bool) async {
+        let deadline = Date().addingTimeInterval(5)
+        while !condition(), Date() < deadline {
+            await Task.yield()
+        }
+    }
+
     @Test
     func setLastKnownLocation_givenTrackingDisabled_expectNoTrackCalled() async {
         let pipelineMock = DataPipelineTrackingMock()
@@ -98,6 +107,10 @@ struct LocationServicesImplementationTests {
         let location2 = CLLocation(latitude: 40.7128, longitude: -74.0060)
 
         service.setLastKnownLocation(location1)
+        // Each setLastKnownLocation call spawns an independent task, so back-to-back calls
+        // can be processed out of order. Wait until location1 is tracked (and recorded by
+        // the filter) before posting location2, so the filter deterministically denies it.
+        await waitUntil { pipelineMock.trackCallsCount == 1 }
         service.setLastKnownLocation(location2)
         await yieldForLocationTask()
 
