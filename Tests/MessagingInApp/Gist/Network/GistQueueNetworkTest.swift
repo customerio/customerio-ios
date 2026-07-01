@@ -14,6 +14,9 @@ class GistQueueNetworkTest: UnitTest {
 
     // MARK: - User Identifier Validation
 
+    // Flake-fix: drop the `waitForExpectations` and `expectation`, same rationale as
+    // `test_request_withAnonymousId_expectSuccess` below. The wait stalled on a real
+    // `URLSession.shared` round-trip, which repeatedly exceeded the timeout on CI.
     func test_request_withUserId_expectSuccess() throws {
         let state = InAppMessageState(
             siteId: "test-site",
@@ -23,14 +26,8 @@ class GistQueueNetworkTest: UnitTest {
             anonymousId: nil
         )
 
-        let expectation = expectation(description: "Request completes")
-
         // Should not throw
-        XCTAssertNoThrow(try network.request(state: state, request: QueueEndpoint.getUserQueue, completionHandler: { _ in
-            expectation.fulfill()
-        }))
-
-        waitForExpectations(timeout: 5.0)
+        XCTAssertNoThrow(try network.request(state: state, request: QueueEndpoint.getUserQueue, completionHandler: { _ in }))
     }
 
     // Flake-fix: drop the `waitForExpectations` and `expectation` — the
@@ -50,6 +47,7 @@ class GistQueueNetworkTest: UnitTest {
         XCTAssertNoThrow(try network.request(state: state, request: QueueEndpoint.getUserQueue, completionHandler: { _ in }))
     }
 
+    // Flake-fix: same rationale as `test_request_withAnonymousId_expectSuccess` above.
     func test_request_withBothIdentifiers_expectSuccessWithUserId() throws {
         let state = InAppMessageState(
             siteId: "test-site",
@@ -59,14 +57,8 @@ class GistQueueNetworkTest: UnitTest {
             anonymousId: "anon123"
         )
 
-        let expectation = expectation(description: "Request completes")
-
         // Should not throw and should prefer userId
-        XCTAssertNoThrow(try network.request(state: state, request: QueueEndpoint.getUserQueue, completionHandler: { _ in
-            expectation.fulfill()
-        }))
-
-        waitForExpectations(timeout: 5.0)
+        XCTAssertNoThrow(try network.request(state: state, request: QueueEndpoint.getUserQueue, completionHandler: { _ in }))
     }
 
     func test_request_withNoIdentifiers_expectThrowsMissingUserIdentifier() {

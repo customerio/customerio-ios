@@ -16,6 +16,11 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
 
     private static let moduleName = "MessagingPush"
 
+    /// The most recent pending-metrics flush task dispatched by `schedulePendingPushDeliveryMetricsFlush()`.
+    /// Internal so tests can await its completion deterministically: a flush task that outlives a test
+    /// would otherwise resolve `DataPipelineTracking` mocks registered by the next test and track into them.
+    @Atomic static var pendingMetricsFlushTask: Task<Void, Never>? = nil
+
     private var globalDataStore: GlobalDataStore
 
     /// Holds a strong reference to the installed CioNotificationCenterDelegate. UNUserNotificationCenter only holds a weak reference.
@@ -256,7 +261,7 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
         // graph if initialize() is called concurrently with other DI graph setup.
         let store = DIGraphShared.shared.pendingPushDeliveryStore
         let logger = DIGraphShared.shared.logger
-        Task.detached(priority: .utility) {
+        pendingMetricsFlushTask = Task.detached(priority: .utility) {
             let pending = store.loadAll()
             guard !pending.isEmpty else {
                 logger.debug(

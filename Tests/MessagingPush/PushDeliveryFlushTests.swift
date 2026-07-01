@@ -47,24 +47,20 @@ final class MessagingPushPendingPushFlushTests: UnitTest {
         nil
     }
 
-    func test_initialize_flushesPendingMetrics_loadAllThenRemoveAllAfterEnqueue() {
-        let loadExpectation = expectation(description: "pending store loadAll during MessagingPush flush")
-        let removeExpectation = expectation(description: "pending store removeAll(ids:) after flushed metrics")
+    // All tests below await MessagingPush.pendingMetricsFlushTask instead of waiting on
+    // expectations with a wall-clock timeout. This is deterministic on loaded CI machines
+    // and, critically, guarantees the detached flush task cannot outlive the test: a leaked
+    // task resolves DataPipelineTracking at flush time, so it would track into whichever
+    // mock the *next* test registered in the DI graph.
+
+    func test_initialize_flushesPendingMetrics_loadAllThenRemoveAllAfterEnqueue() async {
         let metric = pendingMetric
-        pendingStoreMock.loadAllClosure = {
-            loadExpectation.fulfill()
-            return [metric]
-        }
-        pendingStoreMock.removeAllClosure = { ids in
-            if ids.contains(metric.id) {
-                removeExpectation.fulfill()
-            }
-            return true
-        }
+        pendingStoreMock.loadAllReturnValue = [metric]
+        pendingStoreMock.removeAllReturnValue = true
 
         MessagingPush.initialize(withConfig: messagingPushConfigOptions)
+        await MessagingPush.pendingMetricsFlushTask?.value
 
-        wait(for: [loadExpectation, removeExpectation], timeout: 2.0)
         XCTAssertEqual(pendingStoreMock.loadAllCallsCount, 1, "startup should read pending list from app group store")
         XCTAssertEqual(pendingStoreMock.removeAllCallsCount, 1, "flushed rows should be batch-removed via removeAll(ids:)")
         XCTAssertEqual(pendingStoreMock.removeAllReceivedArguments, Set([metric.id]))
@@ -74,37 +70,29 @@ final class MessagingPushPendingPushFlushTests: UnitTest {
         XCTAssertEqual(pipelineMock.trackDeliveryEventInvocations.first?.event, metric.event.rawValue)
     }
 
-    func test_initialize_whenNoPendingMetrics_expectLoadAllOnlyNoRemoves() {
-        let loadExpectation = expectation(description: "pending store loadAll during MessagingPush flush (empty store)")
-        pendingStoreMock.loadAllClosure = {
-            loadExpectation.fulfill()
-            return []
-        }
+    func test_initialize_whenNoPendingMetrics_expectLoadAllOnlyNoRemoves() async {
+        pendingStoreMock.loadAllReturnValue = []
 
         MessagingPush.initialize(withConfig: messagingPushConfigOptions)
+        await MessagingPush.pendingMetricsFlushTask?.value
 
-        wait(for: [loadExpectation], timeout: 2.0)
         XCTAssertEqual(pendingStoreMock.loadAllCallsCount, 1)
         XCTAssertEqual(pendingStoreMock.removeAllCallsCount, 0, "removeAll should not be called when store is empty")
         XCTAssertEqual(pipelineMock.trackDeliveryEventCallsCount, 0, "no metrics should be forwarded when store is empty")
     }
 
-    func test_initialize_whenDataPipelineNotInitialized_expectLoadAllButNoTracking() {
-        // Simulate DataPipeline not being initialized — no DataPipelineTracking registered
+    func test_initialize_whenDataPipelineNotInitialized_expectLoadAllButNoTracking() async {
+        // Simulate DataPipeline not being initialized: no DataPipelineTracking registered
         diGraphShared.reset()
         diGraphShared.override(value: pendingStoreMock, forType: PendingPushDeliveryStore.self)
 
-        let loadExpectation = expectation(description: "pending store loadAll called even without DataPipeline")
-        let metric = pendingMetric
-        pendingStoreMock.loadAllClosure = {
-            loadExpectation.fulfill()
-            return [metric]
-        }
+        pendingStoreMock.loadAllReturnValue = [pendingMetric]
         pendingStoreMock.removeAllReturnValue = true
 
         MessagingPush.initialize(withConfig: messagingPushConfigOptions)
+        await MessagingPush.pendingMetricsFlushTask?.value
 
-        wait(for: [loadExpectation], timeout: 2.0)
+        XCTAssertEqual(pendingStoreMock.loadAllCallsCount, 1, "pending store should be read even without DataPipeline")
         XCTAssertEqual(pipelineMock.trackDeliveryEventCallsCount, 0, "no events should be tracked when DataPipeline is absent")
         XCTAssertEqual(pendingStoreMock.removeAllCallsCount, 0, "metrics must be preserved in the store when DataPipeline is absent")
     }

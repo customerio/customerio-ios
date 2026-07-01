@@ -237,25 +237,33 @@ struct SynchronizedEquatableTests {
         #expect(!(a != a))
     }
 
-    // Calls a == b and b == a concurrently. Without the ObjectIdentifier lock-ordering in ==,
-    // this reliably deadlocks. The 30s timeout converts a hang into a test failure.
+    // Calls a == b and b == a concurrently from two threads in tight loops. Without the
+    // ObjectIdentifier lock-ordering in ==, this reliably deadlocks; the timeout converts
+    // a hang into a test failure. Exactly two threads are used on purpose: dispatching
+    // thousands of separate blocks to the global queue caused GCD thread explosion and
+    // false timeouts on loaded CI runners, while two looping threads apply constant
+    // opposite-order lock pressure and finish in milliseconds when the ordering is correct.
     @Test func equalsConcurrentlyDoesNotDeadlock() {
         let a = Synchronized(1)
         let b = Synchronized(1)
         let group = DispatchGroup()
 
-        for _ in 0 ..< 1000 {
-            group.enter()
-            DispatchQueue.global().async { _ = a == b
-                group.leave()
+        group.enter()
+        DispatchQueue.global().async {
+            for _ in 0 ..< 1000 {
+                _ = a == b
             }
-            group.enter()
-            DispatchQueue.global().async { _ = b == a
-                group.leave()
+            group.leave()
+        }
+        group.enter()
+        DispatchQueue.global().async {
+            for _ in 0 ..< 1000 {
+                _ = b == a
             }
+            group.leave()
         }
 
-        #expect(group.wait(timeout: .now() + 30) == .success)
+        #expect(group.wait(timeout: .now() + 60) == .success)
     }
 }
 

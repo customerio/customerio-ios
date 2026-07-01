@@ -12,12 +12,34 @@ public class CombinedCacheEventBusHandler: EventBusHandler {
     let eventStorage: EventStorage
     let logger: Logger
 
+    /// Tail of the FIFO operation chain. Every bus operation started from a synchronous
+    /// entry point (`addObserver`, `removeObserver`, `postEvent`) is appended here so that
+    /// operations reach the actor in call order. Without this, each entry point spawning
+    /// an independent `Task` allowed e.g. `addObserver` followed by `removeObserver` to be
+    /// applied in reverse, leaving the observer registered.
+    private let lastOperation = Synchronized<Task<Void, Never>?>(nil)
+
     public init(eventStorage: EventStorage, logger: Logger) {
         self.bus = CioEventBus()
         self.eventStorage = eventStorage
         self.logger = logger
-        Task { [weak self] in
+        enqueue { [weak self] in
             await self?.loadEventsFromStorage()
+        }
+    }
+
+    /// Appends `operation` to the FIFO chain. Each operation awaits the previous one,
+    /// guaranteeing call-order execution while callers remain synchronous.
+    @discardableResult
+    private func enqueue(_ operation: @escaping () async -> Void) -> Task<Void, Never> {
+        lastOperation.mutating { last in
+            let previous = last
+            let next = Task {
+                await previous?.value
+                await operation()
+            }
+            last = next
+            return next
         }
     }
 
@@ -46,7 +68,7 @@ public class CombinedCacheEventBusHandler: EventBusHandler {
         _ eventType: E.Type, action: @escaping (E) -> Void
     ) {
         logger.debug("CombinedCacheEventBusHandler: Adding observer for \(eventType)")
-        Task { [weak self] in
+        enqueue { [weak self] in
             guard let self else { return }
             let registration = await bus.addObserver(key: E.key) { [weak self] event in
                 guard self != nil else { return }
@@ -70,7 +92,7 @@ public class CombinedCacheEventBusHandler: EventBusHandler {
 
     /// Removes all observers for `eventType`.
     public func removeObserver<E: EventRepresentable>(for eventType: E.Type) {
-        Task { [weak self] in
+        enqueue { [weak self] in
             guard let self else { return }
             await bus.removeAllObservers(key: E.key)
         }
@@ -79,9 +101,9 @@ public class CombinedCacheEventBusHandler: EventBusHandler {
     /// Posts `event` asynchronously. Prefer `postEventAndWait` when delivery must
     /// complete before the next line of code runs (e.g. in tests).
     public func postEvent<E: EventRepresentable>(_ event: E) {
-        Task { [weak self] in
+        enqueue { [weak self] in
             guard let self else { return }
-            await postEventAndWait(event)
+            await postAndDeliver(event)
         }
     }
 
@@ -90,7 +112,17 @@ public class CombinedCacheEventBusHandler: EventBusHandler {
     /// The event is always added to the in-memory cache. If no observers exist at
     /// post time, the event is also written to persistent storage so that a future
     /// observer can receive it via replay.
+    ///
+    /// Joins the FIFO operation chain, so any `addObserver`/`removeObserver` call made
+    /// before this one is guaranteed to be applied before the event is delivered.
     public func postEventAndWait<E: EventRepresentable>(_ event: E) async {
+        await enqueue { [weak self] in
+            guard let self else { return }
+            await postAndDeliver(event)
+        }.value
+    }
+
+    private func postAndDeliver<E: EventRepresentable>(_ event: E) async {
         logger.debug("CombinedCacheEventBusHandler: Posting event \(event)")
         let observers = await bus.post(event)
         // Deliver outside the actor so callbacks run concurrently and cannot deadlock.
