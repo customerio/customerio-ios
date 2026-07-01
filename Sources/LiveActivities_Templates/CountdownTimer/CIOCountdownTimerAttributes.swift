@@ -10,7 +10,6 @@ import ActivityKit
 /// configurable messaging. Supports a post-expiry state via `expiredMessage`.
 @available(iOS 17.2, *)
 public struct CIOCountdownTimerAttributes: CIOActivityAttribute {
-
     public static let identifier = "io.customer.liveactivities.countdowntimer"
 
     // MARK: - Static attributes

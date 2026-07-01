@@ -13,7 +13,6 @@ import ActivityKit
 /// `"delivery-door"`) and push the relevant key as status changes.
 @available(iOS 17.2, *)
 public struct CIODeliveryTrackingAttributes: CIOActivityAttribute {
-
     public static let identifier = "io.customer.liveactivities.deliverytracking"
 
     // MARK: - Static attributes

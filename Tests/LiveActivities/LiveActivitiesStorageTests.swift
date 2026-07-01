@@ -15,8 +15,7 @@ private func makeTempStorage() throws -> StorageManager {
 
 // MARK: - Migration
 
-@Suite struct LiveActivityMigrationTests {
-
+struct LiveActivityMigrationTests {
     @Test func migration_createsTable_withoutError() throws {
         _ = try makeTempStorage()
     }
@@ -29,89 +28,75 @@ private func makeTempStorage() throws -> StorageManager {
     }
 }
 
-// MARK: - getLiveActivityPushToken
+// MARK: - getRegistrationSignature
 
-@Suite struct LiveActivityStorageGetTests {
-
-    @Test func getToken_returnsNil_whenNoRecordExists() throws {
+struct LiveActivityRegistrationGetTests {
+    @Test func getSignature_returnsNil_whenNoRecordExists() throws {
         let storage = try makeTempStorage()
-        let token = try storage.getLiveActivityPushToken(activityType: "OrderActivity")
-        #expect(token == nil)
+        #expect(try storage.getRegistrationSignature(activityType: "OrderActivity") == nil)
     }
 
-    @Test func getToken_returnsNil_forUnknownActivityType() throws {
+    @Test func getSignature_returnsNil_forUnknownActivityType() throws {
         let storage = try makeTempStorage()
-        try storage.setLiveActivityPushToken(activityType: "OrderActivity", tokenHex: "aabbcc")
-        let token = try storage.getLiveActivityPushToken(activityType: "ShipmentActivity")
-        #expect(token == nil)
+        try storage.setRegistrationSignature(activityType: "OrderActivity", signature: "aabbcc|user-1")
+        #expect(try storage.getRegistrationSignature(activityType: "ShipmentActivity") == nil)
     }
 
-    @Test func getToken_returnsStoredToken() throws {
+    @Test func getSignature_returnsStoredSignature() throws {
         let storage = try makeTempStorage()
-        try storage.setLiveActivityPushToken(activityType: "OrderActivity", tokenHex: "deadbeef")
-        let token = try storage.getLiveActivityPushToken(activityType: "OrderActivity")
-        #expect(token == "deadbeef")
+        try storage.setRegistrationSignature(activityType: "OrderActivity", signature: "deadbeef|user-1")
+        #expect(try storage.getRegistrationSignature(activityType: "OrderActivity") == "deadbeef|user-1")
     }
 }
 
-// MARK: - setLiveActivityPushToken
+// MARK: - setRegistrationSignature
 
-@Suite struct LiveActivityStorageSetTests {
-
-    @Test func setToken_persistsTokenHex() throws {
+struct LiveActivityRegistrationSetTests {
+    @Test func setSignature_persistsValue() throws {
         let storage = try makeTempStorage()
-        try storage.setLiveActivityPushToken(activityType: "OrderActivity", tokenHex: "cafebabe")
-        let token = try storage.getLiveActivityPushToken(activityType: "OrderActivity")
-        #expect(token == "cafebabe")
+        try storage.setRegistrationSignature(activityType: "OrderActivity", signature: "cafebabe|user-1")
+        #expect(try storage.getRegistrationSignature(activityType: "OrderActivity") == "cafebabe|user-1")
     }
 
-    @Test func setToken_upserts_onConflict() throws {
+    @Test func setSignature_upserts_onConflict() throws {
         let storage = try makeTempStorage()
-        try storage.setLiveActivityPushToken(activityType: "OrderActivity", tokenHex: "first")
-        try storage.setLiveActivityPushToken(activityType: "OrderActivity", tokenHex: "second")
-        let token = try storage.getLiveActivityPushToken(activityType: "OrderActivity")
-        #expect(token == "second")
+        try storage.setRegistrationSignature(activityType: "OrderActivity", signature: "first|user-1")
+        try storage.setRegistrationSignature(activityType: "OrderActivity", signature: "second|user-2")
+        #expect(try storage.getRegistrationSignature(activityType: "OrderActivity") == "second|user-2")
     }
 
-    @Test func setToken_storesIndependentlyPerActivityType() throws {
+    @Test func setSignature_storesIndependentlyPerActivityType() throws {
         let storage = try makeTempStorage()
-        try storage.setLiveActivityPushToken(activityType: "OrderActivity", tokenHex: "token-order")
-        try storage.setLiveActivityPushToken(activityType: "ShipmentActivity", tokenHex: "token-ship")
-        let orderToken = try storage.getLiveActivityPushToken(activityType: "OrderActivity")
-        let shipToken = try storage.getLiveActivityPushToken(activityType: "ShipmentActivity")
-        #expect(orderToken == "token-order")
-        #expect(shipToken == "token-ship")
+        try storage.setRegistrationSignature(activityType: "OrderActivity", signature: "order|user-1")
+        try storage.setRegistrationSignature(activityType: "ShipmentActivity", signature: "ship|user-1")
+        #expect(try storage.getRegistrationSignature(activityType: "OrderActivity") == "order|user-1")
+        #expect(try storage.getRegistrationSignature(activityType: "ShipmentActivity") == "ship|user-1")
     }
 }
 
-// MARK: - clearAllLiveActivityPushTokens
+// MARK: - clearAllLiveActivityRegistrations
 
-@Suite struct LiveActivityStorageClearTests {
-
+struct LiveActivityRegistrationClearTests {
     @Test func clear_removesAllRecords() throws {
         let storage = try makeTempStorage()
-        try storage.setLiveActivityPushToken(activityType: "OrderActivity", tokenHex: "aaa")
-        try storage.setLiveActivityPushToken(activityType: "ShipmentActivity", tokenHex: "bbb")
-        try storage.clearAllLiveActivityPushTokens()
-        let order = try storage.getLiveActivityPushToken(activityType: "OrderActivity")
-        let ship = try storage.getLiveActivityPushToken(activityType: "ShipmentActivity")
-        #expect(order == nil)
-        #expect(ship == nil)
+        try storage.setRegistrationSignature(activityType: "OrderActivity", signature: "aaa|u")
+        try storage.setRegistrationSignature(activityType: "ShipmentActivity", signature: "bbb|u")
+        try storage.clearAllLiveActivityRegistrations()
+        #expect(try storage.getRegistrationSignature(activityType: "OrderActivity") == nil)
+        #expect(try storage.getRegistrationSignature(activityType: "ShipmentActivity") == nil)
     }
 
     @Test func clear_isNoOp_whenTableIsAlreadyEmpty() throws {
         let storage = try makeTempStorage()
-        try storage.clearAllLiveActivityPushTokens()
-        let token = try storage.getLiveActivityPushToken(activityType: "Any")
-        #expect(token == nil)
+        try storage.clearAllLiveActivityRegistrations()
+        #expect(try storage.getRegistrationSignature(activityType: "Any") == nil)
     }
 
-    @Test func setToken_afterClear_persistsCorrectly() throws {
+    @Test func setSignature_afterClear_persistsCorrectly() throws {
         let storage = try makeTempStorage()
-        try storage.setLiveActivityPushToken(activityType: "OrderActivity", tokenHex: "old")
-        try storage.clearAllLiveActivityPushTokens()
-        try storage.setLiveActivityPushToken(activityType: "OrderActivity", tokenHex: "new")
-        let token = try storage.getLiveActivityPushToken(activityType: "OrderActivity")
-        #expect(token == "new")
+        try storage.setRegistrationSignature(activityType: "OrderActivity", signature: "old|u")
+        try storage.clearAllLiveActivityRegistrations()
+        try storage.setRegistrationSignature(activityType: "OrderActivity", signature: "new|u")
+        #expect(try storage.getRegistrationSignature(activityType: "OrderActivity") == "new|u")
     }
 }

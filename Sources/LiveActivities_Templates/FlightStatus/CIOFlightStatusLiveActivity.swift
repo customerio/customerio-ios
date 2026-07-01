@@ -16,13 +16,13 @@ public struct CIOFlightStatusLiveActivity: Widget {
 @available(iOS 17.2, *)
 @MainActor
 private func makeFlightStatusConfiguration()
-    -> ActivityConfiguration<CIOFlightStatusAttributes>
-{
+    -> ActivityConfiguration<CIOFlightStatusAttributes> {
     ActivityConfiguration(for: CIOFlightStatusAttributes.self) { context in
         FlightStatusBannerView(attributes: context.attributes, state: context.state)
             .environment(\.cioAssetLibrary, CIOLiveActivitiesTemplates.assetLibrary)
             .activityBackgroundTint(
-                context.attributes.branding.accentColor.flatMap(Color.init(hex:)) ?? .blue)
+                context.attributes.branding.accentColor.flatMap(Color.init(hex:)) ?? .blue
+            )
             .activitySystemActionForegroundColor(.white)
     } dynamicIsland: { context in
         DynamicIsland {

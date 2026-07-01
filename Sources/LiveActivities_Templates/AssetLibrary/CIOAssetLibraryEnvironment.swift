@@ -6,7 +6,7 @@ private struct CIOAssetLibraryKey: EnvironmentKey {
     static let defaultValue: CIOAssetLibrary = .init(path: nil)
 }
 
-extension EnvironmentValues {
+public extension EnvironmentValues {
     /// The `CIOAssetLibrary` instance available to Live Activity views.
     ///
     /// Customer.io built-in templates inject `CIOLiveActivitiesTemplates.assetLibrary`
@@ -19,7 +19,7 @@ extension EnvironmentValues {
     /// }
     /// ```
     /// Views read it via `@Environment(\.cioAssetLibrary)`.
-    public var cioAssetLibrary: CIOAssetLibrary {
+    var cioAssetLibrary: CIOAssetLibrary {
         get { self[CIOAssetLibraryKey.self] }
         set { self[CIOAssetLibraryKey.self] = newValue }
     }

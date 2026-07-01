@@ -16,13 +16,13 @@ public struct CIODeliveryTrackingLiveActivity: Widget {
 @available(iOS 17.2, *)
 @MainActor
 private func makeDeliveryTrackingConfiguration()
-    -> ActivityConfiguration<CIODeliveryTrackingAttributes>
-{
+    -> ActivityConfiguration<CIODeliveryTrackingAttributes> {
     ActivityConfiguration(for: CIODeliveryTrackingAttributes.self) { context in
         DeliveryTrackingBannerView(attributes: context.attributes, state: context.state)
             .environment(\.cioAssetLibrary, CIOLiveActivitiesTemplates.assetLibrary)
             .activityBackgroundTint(
-                context.attributes.branding.accentColor.flatMap(Color.init(hex:)) ?? .indigo)
+                context.attributes.branding.accentColor.flatMap(Color.init(hex:)) ?? .indigo
+            )
             .activitySystemActionForegroundColor(.white)
     } dynamicIsland: { context in
         DynamicIsland {
@@ -37,7 +37,7 @@ private func makeDeliveryTrackingConfiguration()
                 if let arrival = context.state.estimatedArrival {
                     VStack(alignment: .trailing, spacing: 1) {
                         Text("ETA").font(.system(size: 9)).foregroundColor(.secondary)
-                        Text(timerInterval: Date()...arrival, countsDown: true)
+                        Text(timerInterval: Date() ... arrival, countsDown: true)
                             .font(.caption.bold()).monospacedDigit()
                     }
                 }
@@ -53,7 +53,7 @@ private func makeDeliveryTrackingConfiguration()
             )
         } compactTrailing: {
             if let arrival = context.state.estimatedArrival {
-                Text(timerInterval: Date()...arrival, countsDown: true)
+                Text(timerInterval: Date() ... arrival, countsDown: true)
                     .font(.system(size: 10, weight: .semibold)).monospacedDigit()
             }
         } minimal: {
@@ -93,7 +93,7 @@ private struct DeliveryTrackingBannerView: View {
                     HStack(spacing: 4) {
                         Text("ETA")
                             .font(.caption).foregroundColor(.white.opacity(0.7))
-                        Text(timerInterval: Date()...arrival, countsDown: true)
+                        Text(timerInterval: Date() ... arrival, countsDown: true)
                             .font(.caption.bold()).monospacedDigit()
                             .foregroundColor(.white)
                     }
@@ -118,7 +118,7 @@ private struct DeliveryStepIndicator: View {
 
     var body: some View {
         HStack(spacing: 3) {
-            ForEach(1...max(1, total), id: \.self) { step in
+            ForEach(1 ... max(1, total), id: \.self) { step in
                 Circle()
                     .fill(step <= current ? Color.white : Color.white.opacity(0.3))
                     .frame(width: 6, height: 6)

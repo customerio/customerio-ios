@@ -8,7 +8,6 @@ import ActivityKit
 /// Tracks a two-team match in any sport with real-time score, period, and clock updates.
 @available(iOS 17.2, *)
 public struct CIOLiveScoreAttributes: CIOActivityAttribute {
-
     public static let identifier = "io.customer.liveactivities.livescore"
 
     // MARK: - Nested types

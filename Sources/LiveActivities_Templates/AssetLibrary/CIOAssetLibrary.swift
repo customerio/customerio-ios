@@ -13,7 +13,6 @@ import SwiftUI
 /// let assetLibrary = CIOLiveActivitiesTemplates.assetLibrary
 /// ```
 public final class CIOAssetLibrary: Sendable {
-
     // The path of the assets directory relative to the AppGroup container root.
     //
     // NOTE: This value must match `AssetLibraryWriter.assetsSubpath` in
@@ -50,7 +49,8 @@ public final class CIOAssetLibrary: Sendable {
     public convenience init(appGroup: String) throws {
         guard
             let containerURL = FileManager.default.containerURL(
-                forSecurityApplicationGroupIdentifier: appGroup)
+                forSecurityApplicationGroupIdentifier: appGroup
+            )
         else {
             throw CIOAssetLibraryError.appGroupNotFound(appGroup)
         }
@@ -81,15 +81,14 @@ public final class CIOAssetLibrary: Sendable {
     @ViewBuilder
     public func image(for key: String) -> some View {
         #if os(iOS)
-            if let url = url(for: key),
-                let uiImage = UIImage(contentsOfFile: url.path)
-            {
-                Image(uiImage: uiImage)
-            } else {
-                Color.clear
-            }
-        #else
+        if let url = url(for: key),
+           let uiImage = UIImage(contentsOfFile: url.path) {
+            Image(uiImage: uiImage)
+        } else {
             Color.clear
+        }
+        #else
+        Color.clear
         #endif
     }
 

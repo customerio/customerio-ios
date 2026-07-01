@@ -16,13 +16,13 @@ public struct CIOCountdownTimerLiveActivity: Widget {
 @available(iOS 17.2, *)
 @MainActor
 private func makeCountdownTimerConfiguration()
-    -> ActivityConfiguration<CIOCountdownTimerAttributes>
-{
+    -> ActivityConfiguration<CIOCountdownTimerAttributes> {
     ActivityConfiguration(for: CIOCountdownTimerAttributes.self) { context in
         CountdownTimerBannerView(attributes: context.attributes, state: context.state)
             .environment(\.cioAssetLibrary, CIOLiveActivitiesTemplates.assetLibrary)
             .activityBackgroundTint(
-                context.attributes.branding.accentColor.flatMap(Color.init(hex:)) ?? .orange)
+                context.attributes.branding.accentColor.flatMap(Color.init(hex:)) ?? .orange
+            )
             .activitySystemActionForegroundColor(.white)
     } dynamicIsland: { context in
         DynamicIsland {
@@ -91,7 +91,7 @@ private struct CountdownView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(state.statusMessage)
                     .font(.caption).foregroundColor(.white.opacity(0.8))
-                Text(timerInterval: now...state.targetDate, countsDown: true)
+                Text(timerInterval: now ... state.targetDate, countsDown: true)
                     .font(.title2.bold()).monospacedDigit()
                     .foregroundColor(.white)
             }
@@ -109,7 +109,7 @@ private struct CountdownCompactView: View {
             Image(systemName: "checkmark.circle.fill")
                 .foregroundColor(.green)
         } else {
-            Text(timerInterval: now...state.targetDate, countsDown: true)
+            Text(timerInterval: now ... state.targetDate, countsDown: true)
                 .font(.system(size: 10, weight: .bold)).monospacedDigit()
         }
     }

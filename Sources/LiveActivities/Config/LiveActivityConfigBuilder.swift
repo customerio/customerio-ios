@@ -2,15 +2,12 @@ import CioInternalCommon
 import CioLiveActivities_Attributes
 import Foundation
 
-#if os(iOS)
-import ActivityKit
-#endif
-
 /// Fluent builder for `LiveActivityConfig`.
 ///
 /// ```swift
 /// LiveActivityConfigBuilder()
 ///     .logLevel(.debug)
+///     .register(OrderAttributes.self, identifier: "io.customer.liveactivities.order")
 ///     .appGroup("group.io.customer.example")
 ///     .build()
 /// ```
@@ -32,102 +29,23 @@ public struct LiveActivityConfigBuilder {
 
     /// Register an `ActivityAttributes` type for SDK observation.
     ///
-    /// The SDK will monitor all live activities whose attributes type is `T`,
-    /// reporting content state changes and push-to-start token rotations to the
-    /// Customer.io backend. Call once per distinct `ActivityAttributes` type.
+    /// The SDK monitors all live activities whose attributes type is `T`, forwarding
+    /// push-to-start and per-instance push tokens to the Customer.io backend, and enables the
+    /// local `start`/`update`/`end` API for this type. Call once per distinct type.
     ///
     /// - Parameters:
     ///   - type: The `ActivityAttributes` conformance to observe.
     ///   - identifier: A stable reverse-DNS identifier for this activity type,
-    ///     e.g. `"io.customer.liveactivities.scoreboard"`. Used in API paths and
-    ///     matched server-side to route pushes to the correct devices. Must be
-    ///     consistent between the app and the Customer.io backend configuration.
+    ///     e.g. `"io.customer.liveactivities.scoreboard"`. Sent as `notificationType` and matched
+    ///     server-side to route pushes. Must be consistent between the app and the backend.
     #if os(iOS)
     @available(iOS 17.2, *)
     public func register<T: CIOActivityAttribute>(_ type: T.Type, identifier: String) -> Self {
         var copy = self
-        let registration = ActivityTypeRegistration(
-            activityIdentifier: identifier,
-            startObserving: { onPushToStartToken, onInstancePushToken, onActivityObserved, onStateUpdate, onEnd in
-                Task {
-                    await withTaskGroup(of: Void.self) { group in
-                        group.addTask {
-                            for await token in Activity<T>.pushToStartTokenUpdates {
-                                await onPushToStartToken(token)
-                            }
-                        }
-                        group.addTask {
-                            await withTaskGroup(of: Void.self) { perActivityGroup in
-                                for await activity in Activity<T>.activityUpdates {
-                                    perActivityGroup.addTask {
-                                        await Self.observeActivity(
-                                            activity,
-                                            onInstancePushToken: onInstancePushToken,
-                                            onActivityObserved: onActivityObserved,
-                                            onStateUpdate: onStateUpdate,
-                                            onEnd: onEnd
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            endAllActivities: {
-                for activity in Activity<T>.activities {
-                    await activity.end(dismissalPolicy: .immediate)
-                }
-            }
+        copy.config.registrations.append(
+            LiveActivityObservation.registration(for: T.self, identifier: identifier)
         )
-        copy.config.registrations.append(registration)
         return copy
-    }
-
-    @available(iOS 17.2, *)
-    private static func observeActivity<T: CIOActivityAttribute>(
-        _ activity: Activity<T>,
-        onInstancePushToken: @escaping (String, Data) async -> Void,
-        onActivityObserved: @escaping (String, Data?, Date?) async -> Void,
-        onStateUpdate: @escaping (String, Data) async -> Void,
-        onEnd: @escaping (String, Data?) async -> Void
-    ) async {
-        let activityId = activity.attributes.activityInstanceId
-        let encoder = JSONEncoder()
-        let initialStateData = try? encoder.encode(activity.content.state)
-        await onActivityObserved(activityId, initialStateData, activity.content.staleDate)
-        let tracker = ContentStateTracker(initialStateData)
-        // Instance push token — must be observed before state/lifecycle
-        // so the backend has a valid token before any update arrives.
-        await withTaskGroup(of: Void.self) { group in
-            group.addTask {
-                for await token in activity.pushTokenUpdates {
-                    await onInstancePushToken(activityId, token)
-                }
-            }
-            group.addTask {
-                for await update in activity.contentUpdates {
-                    if let data = try? encoder.encode(update.state) {
-                        await tracker.update(data)
-                        await onStateUpdate(activityId, data)
-                    }
-                }
-            }
-            group.addTask {
-                for await state in activity.activityStateUpdates {
-                    switch state {
-                    case .ended, .dismissed:
-                        let finalData = await tracker.current()
-                        await onEnd(activityId, finalData)
-                        return
-                    case .active, .pending, .stale:
-                        break
-                    @unknown default:
-                        break
-                    }
-                }
-            }
-        }
     }
     #endif
 
@@ -158,9 +76,9 @@ public struct LiveActivityConfigBuilder {
 
     /// Register a named bundle resource for pre-loading into the AppGroup container.
     ///
-    /// Resolves the resource via `Bundle.main.url(forResource:withExtension:)` and
-    /// calls `fatalError` with a diagnostic message if the resource is not found, so
-    /// misconfigured asset keys surface immediately at launch.
+    /// Resolves the resource via `Bundle.main.url(forResource:withExtension:)` and calls
+    /// `assertionFailure` (fatal in debug, no-op in release) if the resource is not found, so
+    /// misconfigured asset keys surface immediately during development.
     ///
     /// - Parameters:
     ///   - key: The string key used to retrieve this asset in the widget extension.
@@ -172,10 +90,6 @@ public struct LiveActivityConfigBuilder {
         withExtension ext: String? = nil
     ) -> Self {
         guard let url = Bundle.main.url(forResource: bundleResource, withExtension: ext) else {
-            // assertionFailure will throw a fatal error in debug builds (`-Onone`) but allow the app
-            // to continue to work in production build (`-O` or `-Ounchecked`). This works for SPM
-            // or CocoaPod distribution, but we will need to revisit it if we ever ship a precompiled
-            // version of the SDK.
             assertionFailure(
                 "[CustomerIO] Asset '\(bundleResource)' declared for key '\(key)' "
                     + "was not found in the app bundle. "
@@ -192,25 +106,3 @@ public struct LiveActivityConfigBuilder {
         config
     }
 }
-
-#if os(iOS)
-/// Tracks the most recent content state across concurrent observation tasks.
-///
-/// Shared between the contentUpdates and activityStateUpdates tasks inside
-/// `observeActivity` so the end event can include the final content state.
-private actor ContentStateTracker {
-    private var lastData: Data?
-
-    init(_ data: Data?) {
-        lastData = data
-    }
-
-    func update(_ data: Data) {
-        lastData = data
-    }
-
-    func current() -> Data? {
-        lastData
-    }
-}
-#endif

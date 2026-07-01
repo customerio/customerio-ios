@@ -14,7 +14,8 @@ class AppDelegateWithCioIntegration: CioAppDelegateWrapper<AppDelegate> {}
 class AppDelegate: UIResponder, UIApplicationDelegate {
     var storage = DIGraphShared.shared.storage
     var deepLinkHandler = DIGraphShared.shared.deepLinksHandlerUtil
-    private var liveActivities: LiveActivitiesModule?
+    /// Exposed so the Live Activities demo screen can drive start/update/end through the SDK.
+    private(set) static var liveActivities: LiveActivitiesModule?
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         // Override point for customization after application launch.
@@ -81,7 +82,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             .setEventListener(self)
 
         if #available(iOS 17.2, *) {
-            liveActivities = LiveActivitiesModule.initialize(
+            Self.liveActivities = LiveActivitiesModule.initialize(
                 LiveActivityConfigBuilder()
                     .register(CIOLiveScoreAttributes.self, identifier: CIOLiveScoreAttributes.identifier)
                     .register(CIODeliveryTrackingAttributes.self, identifier: CIODeliveryTrackingAttributes.identifier)

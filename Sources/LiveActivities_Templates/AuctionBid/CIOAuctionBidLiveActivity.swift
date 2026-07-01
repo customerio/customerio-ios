@@ -16,14 +16,14 @@ public struct CIOAuctionBidLiveActivity: Widget {
 @available(iOS 17.2, *)
 @MainActor
 private func makeAuctionBidConfiguration()
-    -> ActivityConfiguration<CIOAuctionBidAttributes>
-{
+    -> ActivityConfiguration<CIOAuctionBidAttributes> {
     ActivityConfiguration(for: CIOAuctionBidAttributes.self) { context in
         AuctionBidBannerView(attributes: context.attributes, state: context.state)
             .environment(\.cioAssetLibrary, CIOLiveActivitiesTemplates.assetLibrary)
             .activityBackgroundTint(
                 context.attributes.branding.accentColor.flatMap(Color.init(hex:))
-                    ?? Color(red: 0.12, green: 0.08, blue: 0.20))
+                    ?? Color(red: 0.12, green: 0.08, blue: 0.20)
+            )
             .activitySystemActionForegroundColor(.white)
     } dynamicIsland: { context in
         DynamicIsland {
@@ -39,7 +39,7 @@ private func makeAuctionBidConfiguration()
             DynamicIslandExpandedRegion(.trailing) {
                 VStack(alignment: .trailing, spacing: 2) {
                     Text("Ends in").font(.system(size: 9)).foregroundColor(.secondary)
-                    Text(timerInterval: Date()...context.state.endTime, countsDown: true)
+                    Text(timerInterval: Date() ... context.state.endTime, countsDown: true)
                         .font(.caption.bold()).monospacedDigit()
                 }
                 .padding(.trailing, 4)
@@ -53,7 +53,7 @@ private func makeAuctionBidConfiguration()
             Text("\(context.attributes.currencySymbol)\(context.state.currentBid)")
                 .font(.caption.bold()).monospacedDigit()
         } compactTrailing: {
-            Text(timerInterval: Date()...context.state.endTime, countsDown: true)
+            Text(timerInterval: Date() ... context.state.endTime, countsDown: true)
                 .font(.system(size: 10, weight: .bold)).monospacedDigit()
         } minimal: {
             Text(context.attributes.currencySymbol)
@@ -91,7 +91,7 @@ private struct AuctionBidBannerView: View {
                     Spacer()
                     VStack(alignment: .trailing, spacing: 1) {
                         Text("Ends in").font(.system(size: 9)).foregroundColor(.white.opacity(0.6))
-                        Text(timerInterval: Date()...state.endTime, countsDown: true)
+                        Text(timerInterval: Date() ... state.endTime, countsDown: true)
                             .font(.caption.bold()).monospacedDigit().foregroundColor(.white)
                     }
                 }

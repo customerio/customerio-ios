@@ -5,8 +5,7 @@ import Testing
 
 // MARK: - LiveActivityConfig defaults
 
-@Suite struct LiveActivityConfigDefaultTests {
-
+struct LiveActivityConfigDefaultTests {
     @Test func defaultLogLevel_isNil() {
         let config = LiveActivityConfig()
         #expect(config.logLevel == nil)
@@ -44,6 +43,7 @@ private struct TestActivityAttributes: CIOActivityAttribute {
     struct ContentState: Codable, Hashable {
         var progress: Double
     }
+
     let activityInstanceId: String
 }
 
@@ -52,12 +52,11 @@ private struct AnotherActivityAttributes: CIOActivityAttribute {
     struct ContentState: Codable, Hashable {
         var label: String
     }
+
     let activityInstanceId: String
 }
 
-@Suite
 struct LiveActivityConfigBuilderTests {
-
     @Test func defaultBuilder_hasNoRegistrations() {
         let config = LiveActivityConfigBuilder().build()
         #expect(config.registrations.isEmpty)

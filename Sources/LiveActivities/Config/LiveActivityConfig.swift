@@ -36,7 +36,7 @@ public struct LiveActivityConfig {
 }
 
 /// A single image asset declared for pre-loading into the AppGroup container.
-struct AssetRegistration {
+struct AssetRegistration: Sendable {
     let key: String
     let sourceURL: URL
 }

@@ -119,21 +119,18 @@ class DashboardViewController: BaseViewController {
     // MARK: - Live Activities
 
     func addLiveActivityButtonIfSupported() {
+        // The dashboard buttons live in a vertical, fill-equally UIStackView. Insert as an
+        // *arranged* subview so the stack reflows (pushes Logout down) and sizes/styles it like
+        // its siblings — adding it as a plain subview overlaps the next button.
         guard #available(iOS 17.2, *),
-              let superview = inboxButton.superview else { return }
+              let stack = inboxButton.superview as? UIStackView else { return }
 
         let button = ThemeButton()
         button.setTitle("Live Activities", for: .normal)
-        button.translatesAutoresizingMaskIntoConstraints = false
         button.addTarget(self, action: #selector(openLiveActivities), for: .touchUpInside)
-        superview.addSubview(button)
 
-        NSLayoutConstraint.activate([
-            button.topAnchor.constraint(equalTo: inboxButton.bottomAnchor, constant: 8),
-            button.leadingAnchor.constraint(equalTo: inboxButton.leadingAnchor),
-            button.trailingAnchor.constraint(equalTo: inboxButton.trailingAnchor),
-            button.heightAnchor.constraint(equalToConstant: 50),
-        ])
+        let insertIndex = (stack.arrangedSubviews.firstIndex(of: inboxButton) ?? (stack.arrangedSubviews.count - 1)) + 1
+        stack.insertArrangedSubview(button, at: insertIndex)
     }
 
     @objc func openLiveActivities() {

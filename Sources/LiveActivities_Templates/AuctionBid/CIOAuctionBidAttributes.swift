@@ -10,7 +10,6 @@ import ActivityKit
 /// per-user standing (winning / outbid).
 @available(iOS 17.2, *)
 public struct CIOAuctionBidAttributes: CIOActivityAttribute {
-
     public static let identifier = "io.customer.liveactivities.auctionbid"
 
     // MARK: - Static attributes
