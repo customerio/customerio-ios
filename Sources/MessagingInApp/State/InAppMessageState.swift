@@ -19,6 +19,13 @@ struct InAppMessageState: Equatable, CustomStringConvertible {
     let messagesInQueue: Set<Message>
     let inboxMessages: [InboxMessage] // Array allows all-properties equality to work
     let shownMessageQueueIds: Set<String>
+    /// Client-side tombstones for inbox messages the user has deleted this session. A delete removes
+    /// the message locally AND on the server, but a subsequent poll's `/queue` response can still
+    /// contain the just-deleted message (eventual consistency / cached queue) — replaying it would
+    /// resurrect the row and keep the overlay chrome visible. We therefore exclude tombstoned ids from
+    /// any incoming `processInboxMessages`, and prune a tombstone once the server response no longer
+    /// contains it (the delete has propagated). Internal-only: not part of equality / public API.
+    let deletedInboxMessageIds: Set<String>
 
     init(
         siteId: String = "",
@@ -34,7 +41,8 @@ struct InAppMessageState: Equatable, CustomStringConvertible {
         embeddedMessagesState: EmbeddedMessagesState = EmbeddedMessagesState(),
         messagesInQueue: Set<Message> = [],
         inboxMessages: [InboxMessage] = [],
-        shownMessageQueueIds: Set<String> = []
+        shownMessageQueueIds: Set<String> = [],
+        deletedInboxMessageIds: Set<String> = []
     ) {
         self.siteId = siteId
         self.dataCenter = dataCenter
@@ -50,6 +58,7 @@ struct InAppMessageState: Equatable, CustomStringConvertible {
         self.messagesInQueue = messagesInQueue
         self.inboxMessages = inboxMessages
         self.shownMessageQueueIds = shownMessageQueueIds
+        self.deletedInboxMessageIds = deletedInboxMessageIds
     }
 
     /// Copies the current state and replaces the given properties with the new values.
@@ -65,7 +74,8 @@ struct InAppMessageState: Equatable, CustomStringConvertible {
         embeddedMessagesState: EmbeddedMessagesState? = nil,
         messagesInQueue: Set<Message>? = nil,
         inboxMessages: [InboxMessage]? = nil,
-        shownMessageQueueIds: Set<String>? = nil
+        shownMessageQueueIds: Set<String>? = nil,
+        deletedInboxMessageIds: Set<String>? = nil
     ) -> InAppMessageState {
         InAppMessageState(
             siteId: siteId,
@@ -81,7 +91,8 @@ struct InAppMessageState: Equatable, CustomStringConvertible {
             embeddedMessagesState: embeddedMessagesState ?? self.embeddedMessagesState,
             messagesInQueue: messagesInQueue ?? self.messagesInQueue,
             inboxMessages: inboxMessages ?? self.inboxMessages,
-            shownMessageQueueIds: shownMessageQueueIds ?? self.shownMessageQueueIds
+            shownMessageQueueIds: shownMessageQueueIds ?? self.shownMessageQueueIds,
+            deletedInboxMessageIds: deletedInboxMessageIds ?? self.deletedInboxMessageIds
         )
     }
 
