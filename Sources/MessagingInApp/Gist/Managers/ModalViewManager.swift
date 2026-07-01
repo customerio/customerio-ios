@@ -105,7 +105,7 @@ class ModalViewManager {
     private func inheritAppInterfaceStyle() {
         guard let appWindow = UIApplication.shared.connectedScenes
             .compactMap({ $0 as? UIWindowScene })
-            .flatMap({ $0.windows })
+            .flatMap(\.windows)
             .first(where: { $0 !== self.window }) else { return }
 
         if appWindow.overrideUserInterfaceStyle != .unspecified {

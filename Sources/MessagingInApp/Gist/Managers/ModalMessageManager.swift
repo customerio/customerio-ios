@@ -100,7 +100,7 @@ public class ModalMessageManager: BaseMessageManager {
 
     private func subscribeToColorSchemeChanges() {
         colorSchemeSubscriber = {
-            let subscriber = InAppMessageStoreSubscriber { [weak self] state in
+            let subscriber = InAppMessageStoreSubscriber { [weak self] _ in
                 guard let self else { return }
                 let colorScheme = MessagingInAppImplementation.currentColorScheme
                 self.threadUtil.runMain {
