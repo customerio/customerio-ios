@@ -12,7 +12,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - uses: customerio/mobile-ci-tools/github-actions/ios/setup-ios/v1@MacOS-15+iOS-26
+      - uses: customerio/mobile-ci-tools/github-actions/ios/setup-ios/v1@6249921af6c2171d4b71e5e18045a474729b412c # head of MacOS-15+iOS-26 (Xcode 26.2 + simulator pre-warm); replace once merged and tagged
       
       - name: Install sourcekitten
         run: brew install sourcekitten
