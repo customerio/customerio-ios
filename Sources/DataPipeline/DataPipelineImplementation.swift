@@ -1,5 +1,6 @@
 import CioAnalytics
 import CioInternalCommon
+import Foundation
 
 class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking {
     private let moduleConfig: DataPipelineConfigOptions
@@ -14,6 +15,8 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking {
     private let deviceInfo: DeviceInfo
     private let contextPlugin: Context
     private let profileStore: ProfileStore
+    let storageManager: StorageManager?
+    let eventPolicyEngine: EventPolicyEngine?
 
     /// Per-session tracker of the most recently identified userId. Used to dedup
     /// no-traits identify calls against the same userId within a single process
@@ -34,6 +37,19 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking {
         self.dateUtil = diGraph.dateUtil
         self.deviceInfo = diGraph.deviceInfo
         self.profileStore = diGraph.profileStore
+        self.storageManager = diGraph.storageManager
+
+        if let storage = diGraph.storageManager {
+            let engine = EventPolicyEngine(storage: storage)
+            if let config = try? storage.getAggregationConfig(),
+               let data = config.payload.data(using: .utf8),
+               let ruleset = try? JSONDecoder().decode(AggregationRuleset.self, from: data) {
+                engine.load(ruleset: ruleset)
+            }
+            self.eventPolicyEngine = engine
+        } else {
+            self.eventPolicyEngine = nil
+        }
 
         self.contextPlugin = Context(diGraph: diGraph)
 
@@ -69,6 +85,11 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking {
 
         // plugin to publish data pipeline events
         analytics.add(plugin: DataPipelinePublishedEvents(diGraph: diGraph))
+
+        // Add plugin to enforce server-driven filter and rate-limit rules
+        if let engine = eventPolicyEngine {
+            analytics.add(plugin: EventPolicyPlugin(engine: engine, storage: storageManager))
+        }
 
         // Add plugin to filter events based on SDK configuration
         analytics.add(plugin: ScreenFilterPlugin(screenViewUse: moduleConfig.screenViewUse))
@@ -222,6 +243,7 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking {
         // reset all to default state
         logger.debug("resetting user profile")
         analytics.reset()
+        try? storageManager?.deleteProfileScopedAggregationState()
 
         // Reset per-session identify dedup tracker so the next identify (even
         // for the same userId) takes the full path.
