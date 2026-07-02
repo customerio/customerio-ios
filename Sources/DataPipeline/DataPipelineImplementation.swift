@@ -1,5 +1,6 @@
 import CioAnalytics
 import CioInternalCommon
+import Foundation
 
 class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking {
     private let moduleConfig: DataPipelineConfigOptions
@@ -14,6 +15,8 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking {
     private let deviceInfo: DeviceInfo
     private let contextPlugin: Context
     private let profileStore: ProfileStore
+    let storageManager: StorageManager?
+    let eventPolicyEngine: EventPolicyEngine?
 
     /// Per-session tracker of the most recently identified userId. Used to dedup
     /// no-traits identify calls against the same userId within a single process
@@ -34,6 +37,19 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking {
         self.dateUtil = diGraph.dateUtil
         self.deviceInfo = diGraph.deviceInfo
         self.profileStore = diGraph.profileStore
+        self.storageManager = diGraph.storageManager
+
+        if let storage = diGraph.storageManager {
+            let engine = EventPolicyEngine(storage: storage)
+            if let payload = try? storage.getAggregationConfig(),
+               let data = payload.data(using: .utf8),
+               let ruleset = try? JSONDecoder().decode(AggregationRuleset.self, from: data) {
+                engine.load(ruleset: ruleset)
+            }
+            self.eventPolicyEngine = engine
+        } else {
+            self.eventPolicyEngine = nil
+        }
 
         self.contextPlugin = Context(diGraph: diGraph)
 
@@ -66,6 +82,13 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking {
 
         // plugin that adds provider attributes (e.g. location) to identify context
         analytics.add(plugin: IdentifyContextPlugin(registry: diGraph.profileEnrichmentRegistry, logger: logger))
+
+        // Add plugin to enforce server-driven filter and rate-limit rules.
+        // Must be registered before DataPipelinePublishedEvents so that a
+        // blocked event never triggers EventBus notifications downstream.
+        if let engine = eventPolicyEngine {
+            analytics.add(plugin: EventPolicyPlugin(engine: engine, storage: storageManager))
+        }
 
         // plugin to publish data pipeline events
         analytics.add(plugin: DataPipelinePublishedEvents(diGraph: diGraph))
@@ -189,9 +212,12 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking {
         let isChangingIdentifiedProfile = currentlyIdentifiedProfile != nil && currentlyIdentifiedProfile != userId
         let isFirstTimeIdentifying = currentlyIdentifiedProfile == nil
 
-        if isChangingIdentifiedProfile, let _ = registeredDeviceToken {
-            dataPipelinesLogger.logDeletingTokenDueToNewProfileIdentification()
-            deleteDeviceToken()
+        if isChangingIdentifiedProfile {
+            if let _ = registeredDeviceToken {
+                dataPipelinesLogger.logDeletingTokenDueToNewProfileIdentification()
+                deleteDeviceToken()
+            }
+            try? storageManager?.deleteProfileScopedAggregationState()
         }
 
         if let attributes = attributesCodable {
@@ -222,6 +248,7 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking {
         // reset all to default state
         logger.debug("resetting user profile")
         analytics.reset()
+        try? storageManager?.deleteProfileScopedAggregationState()
 
         // Reset per-session identify dedup tracker so the next identify (even
         // for the same userId) takes the full path.
