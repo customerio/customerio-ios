@@ -76,6 +76,12 @@ class SettingsViewModel {
         settings.messaging.showPushAppInForeground = value
     }
 
+    // -- Location
+
+    func locationTrackingModeUpdated(_ mode: LocationTrackingModeSetting) {
+        settings.location = LocationSettings(trackingMode: mode)
+    }
+
     // -- Messaging In App
 
     func inAppSideIdUpdated(_ siteId: String) {

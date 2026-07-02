@@ -8,24 +8,30 @@ actor LocationSyncCoordinator {
     private let dataPipeline: DataPipelineTracking?
     private let dateUtil: DateUtil
     private let logger: Logger
+    private let eventBusHandler: EventBusHandler
 
     init(
         storage: LastLocationStorage,
         filter: LocationFilter,
         dataPipeline: DataPipelineTracking?,
         dateUtil: DateUtil,
-        logger: Logger
+        logger: Logger,
+        eventBusHandler: EventBusHandler
     ) {
         self.storage = storage
         self.filter = filter
         self.dataPipeline = dataPipeline
         self.dateUtil = dateUtil
         self.logger = logger
+        self.eventBusHandler = eventBusHandler
     }
 
     /// Called for every new location (from setLastKnownLocation or requestLocationUpdate). Always updates cache; sends track via pipeline when filter allows and user is identified.
     func processLocationUpdate(_ location: LocationData) {
         storage.setCachedLocation(location)
+        // Signals the geofence first-run-refresh re-arm. Routed through the EventBus so
+        // geofence can observe fixes without a direct reference to this coordinator.
+        eventBusHandler.postEvent(LocationAcquiredEvent(location: location))
 
         guard filter.shouldSyncToServer(newLocation: location) else {
             logger.locationSyncFiltered()
@@ -33,6 +39,11 @@ actor LocationSyncCoordinator {
         }
 
         trySendLocationTrack(location)
+    }
+
+    /// Returns the most recently cached location, or `nil` if none has been stored.
+    func getCachedLocation() -> LocationData? {
+        storage.getCachedLocation()
     }
 
     /// Called when ProfileIdentifiedEvent is received. Syncs cached location if present and the 24h + 1 km filter allows.

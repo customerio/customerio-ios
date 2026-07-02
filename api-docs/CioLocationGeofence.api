@@ -1,0 +1,9 @@
+public final class CioLocationGeofence.GeofenceModule {
+	public final val moduleName: String;
+	public fun init(config: GeofenceModuleConfig = GeofenceModuleConfig());
+	public fun func initialize();
+	public fun func bootstrapForBackgroundDelivery(launchOptions: List<UIApplication.LaunchOptionsKey: Any>?);
+}
+public final class CioLocationGeofence.GeofenceModuleConfig {
+	public fun init();
+}

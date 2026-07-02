@@ -44,5 +44,7 @@
 	</array>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>This app uses your location to test the Customer.io Location module.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>This app uses your location to test the Customer.io Geofence module.</string>
 </dict>
 </plist>

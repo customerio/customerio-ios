@@ -1,12 +1,44 @@
 import CioDataPipelines
 import CioInternalCommon
+import CioLocation
 import Foundation
 
 struct Settings: Codable {
     var dataPipelines: DataPipelinesSettings
     var messaging: MessagingPushAPNSettings
     var inApp: MessagingInAppSettings
+    /// Optional so existing serialized installs (which predate this field) still decode.
+    /// Callers fall back to `.onAppStart` to match the hardcoded behavior this replaced.
+    var location: LocationSettings?
     var internalSettings: InternalSettings
+}
+
+struct LocationSettings: Codable {
+    var trackingMode: LocationTrackingModeSetting
+}
+
+enum LocationTrackingModeSetting: String, Codable, CaseIterable {
+    case off
+    case manual
+    case onAppStart
+}
+
+extension LocationTrackingModeSetting {
+    func toCIOMode() -> LocationTrackingMode {
+        switch self {
+        case .off: return .off
+        case .manual: return .manual
+        case .onAppStart: return .onAppStart
+        }
+    }
+
+    var displayName: String {
+        switch self {
+        case .off: return "OFF"
+        case .manual: return "MANUAL"
+        case .onAppStart: return "ON_APP_START"
+        }
+    }
 }
 
 struct DataPipelinesSettings: Codable {

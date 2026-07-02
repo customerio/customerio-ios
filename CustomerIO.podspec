@@ -54,4 +54,8 @@ Pod::Spec.new do |spec|
   spec.subspec "Location" do |ss|
     ss.dependency "CustomerIOLocation", "= #{spec.version.to_s}"
   end
+
+  spec.subspec "LocationGeofence" do |ss|
+    ss.dependency "CustomerIOLocationGeofence", "= #{spec.version.to_s}"
+  end
 end

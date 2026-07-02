@@ -16,6 +16,10 @@ public protocol EventRepresentable: Equatable, Codable {
     var params: [String: String] { get }
     /// Timestamp indicating when the event was created.
     var timestamp: Date { get }
+    /// Whether the event should be persisted to disk when posted with no observers, so it can be
+    /// replayed once an observer registers. Defaults to `true`; transient events override to `false`
+    /// and are dropped when unobserved. The in-memory cache applies regardless.
+    var isPersistent: Bool { get }
 }
 
 // Default implementation for `EventRepresentable`
@@ -30,6 +34,8 @@ public extension EventRepresentable {
     var key: String {
         Self.key
     }
+
+    var isPersistent: Bool { true }
 }
 
 // MARK: - Event Types Registry
@@ -48,9 +54,11 @@ public enum EventTypesRegistry {
             ResetEvent.self,
             TrackMetricEvent.self,
             TrackInAppMetricEvent.self,
+            TrackGeofenceMetricEvent.self,
             RegisterDeviceTokenEvent.self,
             DeleteDeviceTokenEvent.self,
-            NewSubscriptionEvent.self
+            NewSubscriptionEvent.self,
+            LocationAcquiredEvent.self
         ]
     }
 
@@ -155,6 +163,34 @@ public struct TrackInAppMetricEvent: EventRepresentable {
     }
 }
 
+public struct TrackGeofenceMetricEvent: EventRepresentable, GeofenceMetric {
+    public let storageId: String
+    public let params: [String: String]
+    public let geofenceId: String
+    public let transition: GeofenceTransition
+    public let timestamp: Date
+    public let name: String?
+    public let transitionId: String
+
+    public init(
+        storageId: String = UUID().uuidString,
+        geofenceId: String,
+        transition: GeofenceTransition,
+        timestamp: Date = Date(),
+        name: String?,
+        transitionId: String,
+        params: [String: String] = [:]
+    ) {
+        self.storageId = storageId
+        self.params = params
+        self.geofenceId = geofenceId
+        self.transition = transition
+        self.timestamp = timestamp
+        self.name = name
+        self.transitionId = transitionId
+    }
+}
+
 public struct RegisterDeviceTokenEvent: EventRepresentable {
     public let storageId: String
     public let params: [String: String]
@@ -190,6 +226,29 @@ public struct NewSubscriptionEvent: EventRepresentable {
     init<E: EventRepresentable>(storageId: String = UUID().uuidString, subscribedEventType: E.Type, timestamp: Date = Date(), params: [String: String] = [:]) {
         self.storageId = storageId
         self.subscribedEventType = E.key
+        self.timestamp = timestamp
+        self.params = params
+    }
+}
+
+/// Posted whenever the Location module finishes processing a fresh location fix
+/// (the fix has been cached and evaluated for sync). Observed by the geofence wiring
+/// to re-arm its first-run refresh after a fix arrives following an earlier
+/// "no cached location" skip. Routing this through the EventBus keeps geofence
+/// decoupled from `LocationSyncCoordinator`'s internals.
+public struct LocationAcquiredEvent: EventRepresentable {
+    public let storageId: String
+    public let params: [String: String]
+    public let location: LocationData
+    public let timestamp: Date
+
+    /// Not persisted: a location fix is only useful in the moment, so it is dropped when unobserved
+    /// rather than written to disk for replay.
+    public var isPersistent: Bool { false }
+
+    public init(storageId: String = UUID().uuidString, location: LocationData, timestamp: Date = Date(), params: [String: String] = [:]) {
+        self.storageId = storageId
+        self.location = location
         self.timestamp = timestamp
         self.params = params
     }

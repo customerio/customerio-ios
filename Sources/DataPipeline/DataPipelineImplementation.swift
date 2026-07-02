@@ -1,7 +1,7 @@
 import CioAnalytics
 import CioInternalCommon
 
-class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking {
+class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking, BackgroundDeliveryCdpApiKeyProvider {
     private let moduleConfig: DataPipelineConfigOptions
     private let logger: Logger
     private let dataPipelinesLogger: DataPipelinesLogger
@@ -14,6 +14,7 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking {
     private let deviceInfo: DeviceInfo
     private let contextPlugin: Context
     private let profileStore: ProfileStore
+    private let backgroundDeliveryContextStore: BackgroundDeliveryContextStore
 
     /// Per-session tracker of the most recently identified userId. Used to dedup
     /// no-traits identify calls against the same userId within a single process
@@ -34,6 +35,7 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking {
         self.dateUtil = diGraph.dateUtil
         self.deviceInfo = diGraph.deviceInfo
         self.profileStore = diGraph.profileStore
+        self.backgroundDeliveryContextStore = diGraph.backgroundDeliveryContextStore
 
         self.contextPlugin = Context(diGraph: diGraph)
 
@@ -76,6 +78,22 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking {
         // Register as DataPipelineTracking so modules (e.g. Location) can send track events via getOptional
         diGraph.register(self, forType: DataPipelineTracking.self)
 
+        // Persisted so cold-wake background-delivery callers can route requests without
+        // requiring DataPipeline to be initialized in their process.
+        backgroundDeliveryContextStore.setApiHost(moduleConfig.apiHost)
+
+        // cdpApiKey is only persisted when the customer explicitly opts in. Clearing on
+        // opt-out wipes any key left by a prior launch that had it enabled.
+        if moduleConfig.allowBackgroundDelivery {
+            backgroundDeliveryContextStore.setCdpApiKey(moduleConfig.cdpApiKey)
+        } else {
+            backgroundDeliveryContextStore.setCdpApiKey(nil)
+        }
+
+        // Live provider for foreground real-time delivery — `currentCdpApiKey` returns the
+        // in-memory key even when `allowBackgroundDelivery` is off (no disk persistence).
+        backgroundDeliveryContextStore.setCdpApiKeyProvider(self)
+
         // subscribe to journey events emmitted from push/in-app module to send them via datapipelines
         subscribeToJourneyEvents()
         postProfileAlreadyIdentified()
@@ -83,8 +101,10 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking {
 
     private func postProfileAlreadyIdentified() {
         if let siteId = moduleConfig.migrationSiteId, let identifier = profileStore.getProfileId(siteId: siteId) {
+            backgroundDeliveryContextStore.setUserId(identifier)
             eventBusHandler.postEvent(ProfileIdentifiedEvent(identifier: identifier))
         } else if let identifier = analytics.userId {
+            backgroundDeliveryContextStore.setUserId(identifier)
             eventBusHandler.postEvent(ProfileIdentifiedEvent(identifier: identifier))
         } else if !analytics.anonymousId.isEmpty {
             eventBusHandler.postEvent(AnonymousProfileIdentifiedEvent(identifier: analytics.anonymousId))
@@ -100,9 +120,19 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking {
             self.trackInAppMetric(deliveryID: metric.deliveryID, event: metric.event, metaData: metric.params)
         }
 
+        eventBusHandler.addObserver(TrackGeofenceMetricEvent.self) { metric in
+            self.processGeofenceMetricEvent(metric)
+        }
+
         eventBusHandler.addObserver(RegisterDeviceTokenEvent.self) { event in
             self.registerDeviceToken(event.token)
         }
+    }
+
+    // MARK: - BackgroundDeliveryCdpApiKeyProvider
+
+    var cdpApiKey: String? {
+        moduleConfig.cdpApiKey
     }
 
     var siteId: String?
@@ -200,6 +230,8 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking {
             analytics.identify(userId: userId, traits: attributesDict)
         }
 
+        // Mirror to the background-delivery store for cold-wake direct-HTTP callers.
+        backgroundDeliveryContextStore.setUserId(userId)
         // Update session tracker so subsequent no-traits same-userId calls
         // within this session can dedup. Identify-with-traits passes through
         // but still refreshes the session tracker.
@@ -218,6 +250,7 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking {
         let currentlyIdentifiedProfile = registeredUserId ?? "anonymous"
         logger.debug("deleting device info from \(currentlyIdentifiedProfile) to stop sending push to a profile that is no longer identified")
         deleteDeviceToken()
+        backgroundDeliveryContextStore.clearUserId()
 
         // reset all to default state
         logger.debug("resetting user profile")

@@ -19,7 +19,8 @@ var products: [PackageDescription.Product] = [
     .library(name: "MessagingPushAPN", targets: ["CioMessagingPushAPN"]),
     .library(name: "MessagingPushFCM", targets: ["CioMessagingPushFCM"]),
     .library(name: "MessagingInApp", targets: ["CioMessagingInApp"]),
-    .library(name: "Location", targets: ["CioLocation"])
+    .library(name: "Location", targets: ["CioLocation"]),
+    .library(name: "LocationGeofence", targets: ["CioLocationGeofence"])
 ]
 
 // When we execute the automated test suite, we use tools to determine the code coverage of our tests. 
@@ -103,6 +104,9 @@ let package = Package(
         .target(name: "CioMessagingInAppMocks",
                 dependencies: ["CioMessagingInApp", "CioInternalCommon"],
                 path: "Tests/Mocks/MessagingInApp"),
+        .target(name: "CioLocationGeofenceMocks",
+                dependencies: ["CioLocationGeofence", "CioLocation", "CioInternalCommon"],
+                path: "Tests/Mocks/LocationGeofence"),
 
         // Messaging Push 
         .target(name: "CioMessagingPush",
@@ -168,5 +172,16 @@ let package = Package(
         .testTarget(name: "LocationTests",
                     dependencies: ["CioLocation", "CioInternalCommon", "SharedTests", "CioInternalCommonMocks"],
                     path: "Tests/Location"),
+
+        // Location Geofence - opt-in geofence module that depends on Location.
+        .target(name: "CioLocationGeofence",
+                dependencies: ["CioLocation", "CioInternalCommon"],
+                path: "Sources/LocationGeofence",
+                resources: [
+                    .process("Resources/PrivacyInfo.xcprivacy"),
+                ]),
+        .testTarget(name: "LocationGeofenceTests",
+                    dependencies: ["CioLocationGeofence", "CioLocation", "CioInternalCommon", "SharedTests", "CioInternalCommonMocks", "CioLocationGeofenceMocks"],
+                    path: "Tests/LocationGeofence"),
     ]
 )

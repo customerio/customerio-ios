@@ -1,6 +1,7 @@
 import CioDataPipelines
 import CioInternalCommon
 import CioLocation
+import CioLocationGeofence
 import CioMessagingInApp
 import CioMessagingPush
 import CioMessagingPushAPN
@@ -58,7 +59,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         if settings.internalSettings.testMode {
             config.flushAt(1)
         }
-        config.addModule(LocationModule(config: LocationConfig(mode: .onAppStart)))
+        let locationMode = settings.location?.trackingMode.toCIOMode() ?? .onAppStart
+        config.addModule(LocationModule(config: LocationConfig(mode: locationMode)))
+        config.addModule(GeofenceModule())
         CustomerIO.initialize(withConfig: config.build())
 
         // Initialize messaging features after initializing Customer.io SDK

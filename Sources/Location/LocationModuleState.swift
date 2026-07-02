@@ -1,7 +1,5 @@
 import CioInternalCommon
-import CoreLocation
 import Foundation
-import UIKit
 
 /// Holds the Location module's runtime state and performs one-time initialization.
 /// CLLocationManager and related setup are created on the main thread during `performInitialization(config:)`.
@@ -11,7 +9,8 @@ final class LocationModuleState {
     private var services: LocationServices = UninitializedLocationServices(logger: DIGraphShared.shared.logger)
     private let lock = NSLock()
 
-    private init() {}
+    /// Internal init lets tests build instances independent of `.shared`.
+    init() {}
 
     /// Performs one-time setup of the Location module. Call from main thread (e.g. from `LocationModule.initialize()`).
     func performInitialization(config: LocationConfig) {
@@ -31,11 +30,14 @@ final class LocationModuleState {
             filter: filter,
             dataPipeline: dataPipeline,
             dateUtil: di.dateUtil,
-            logger: di.logger
+            logger: di.logger,
+            eventBusHandler: di.eventBusHandler
         )
         let locationEnrichmentProvider = LocationProfileEnrichmentProvider(storage: storage, config: config)
         di.profileEnrichmentRegistry.register(locationEnrichmentProvider)
-        registerEventSubscriptions(coordinator: coordinator, eventBusHandler: di.eventBusHandler)
+
+        registerEventSubscriptions(coordinator: coordinator, storage: storage, mode: config.mode, di: di)
+
         let locationProvider = CoreLocationProvider(logger: di.logger)
         let implementation = LocationServicesImplementation(
             config: config,
@@ -49,9 +51,20 @@ final class LocationModuleState {
         Task { await implementation.setUpLifecycleObserver() }
     }
 
-    private func registerEventSubscriptions(coordinator: LocationSyncCoordinator, eventBusHandler: EventBusHandler) {
-        eventBusHandler.addObserver(ProfileIdentifiedEvent.self) { _ in
+    private func registerEventSubscriptions(
+        coordinator: LocationSyncCoordinator,
+        storage: LastLocationStorage,
+        mode: LocationTrackingMode,
+        di: DIGraphShared
+    ) {
+        di.eventBusHandler.addObserver(ProfileIdentifiedEvent.self) { [weak self] _ in
             Task { await coordinator.syncCachedLocationIfNeeded() }
+            // In `.onAppStart` the per-process one-shot fix already fired; a re-identify after
+            // `resetContext()` wiped the cache otherwise leaves no location until the next launch.
+            // Requesting a fresh fix keeps the cached location (and any downstream observers) current.
+            if mode == .onAppStart, storage.getCachedLocation() == nil {
+                self?.current.requestLocationUpdate()
+            }
         }
     }
 

@@ -10,6 +10,7 @@ public final class CioLocation.LocationModule {
 public interface CioLocation.LocationServices {
 	public fun func setLastKnownLocation(_ location: CLLocation);
 	public fun func requestLocationUpdate();
+	public fun func getLastKnownLocation() async -> LocationData?;
 }
 public enum CioLocation.LocationTrackingMode {
 }

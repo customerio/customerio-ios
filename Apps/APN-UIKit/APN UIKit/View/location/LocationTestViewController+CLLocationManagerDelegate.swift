@@ -42,49 +42,76 @@ extension LocationTestViewController: @MainActor CLLocationManagerDelegate {
         showToast(withMessage: "Failed to get location: \(error.localizedDescription)")
     }
 
-    // iOS 14+ authorization change callback
+    /// **Customer integration pattern.** Call `CustomerIO.location.requestLocationUpdate()`
+    /// when permission lands in a granted state — the SDK uses that fix to bootstrap its
+    /// geofence sync. The call is idempotent, so it's safe to invoke on every delegate
+    /// firing.
     @available(iOS 14.0, *)
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
-        handleAuthorizationChange(manager.authorizationStatus)
+        let status = manager.authorizationStatus
+        if status == .authorizedWhenInUse || status == .authorizedAlways {
+            CustomerIO.location.requestLocationUpdate()
+        }
+        handleAuthorizationChange(status)
     }
 
-    // iOS 13 authorization change callback
     func locationManager(_ manager: CLLocationManager, didChangeAuthorization status: CLAuthorizationStatus) {
+        if status == .authorizedWhenInUse || status == .authorizedAlways {
+            CustomerIO.location.requestLocationUpdate()
+        }
         handleAuthorizationChange(status)
     }
 
     private func handleAuthorizationChange(_ status: CLAuthorizationStatus) {
-        // Handle "Request location once (SDK)" flow: user was waiting for permission, now call SDK.
-        if userRequestedSdkLocationUpdate {
-            userRequestedSdkLocationUpdate = false
-            switch status {
-            case .authorizedWhenInUse, .authorizedAlways:
-                lastSetLocationLabel.text = "Requested location once (SDK)..."
-                CustomerIO.location.requestLocationUpdate()
-                showToast(withMessage: "SDK requested location update")
-            case .denied, .restricted:
-                showLocationPermissionAlert()
-            case .notDetermined:
-                break
-            @unknown default:
-                break
-            }
+        refreshGrantBackgroundLocationUI()
+
+        if userRequestedAlwaysUpgrade {
+            userRequestedAlwaysUpgrade = false
+            handleAlwaysUpgradeResult(status)
             return
         }
-
-        // Only start fetching when the user explicitly tapped "Use Current Location" and we were waiting for permission.
-        // This avoids auto-fetching location when the screen opens and auth was already granted (e.g. returning to the app).
+        if userRequestedSdkLocationUpdate {
+            userRequestedSdkLocationUpdate = false
+            handleSdkLocationUpdateResult(status)
+            return
+        }
         guard userRequestedCurrentLocation else { return }
         userRequestedCurrentLocation = false
+        handleCurrentLocationResult(status)
+    }
 
+    /// WhenInUse here is the precondition; the rationale and the Always prompt fire in sequence.
+    private func handleAlwaysUpgradeResult(_ status: CLAuthorizationStatus) {
+        switch status {
+        case .authorizedWhenInUse:
+            presentAlwaysRationale()
+        case .denied, .restricted:
+            showLocationPermissionAlert()
+        default:
+            break
+        }
+    }
+
+    private func handleSdkLocationUpdateResult(_ status: CLAuthorizationStatus) {
+        switch status {
+        case .authorizedWhenInUse, .authorizedAlways:
+            lastSetLocationLabel.text = "Requested location once (SDK)..."
+            CustomerIO.location.requestLocationUpdate()
+            showToast(withMessage: "SDK requested location update")
+        case .denied, .restricted:
+            showLocationPermissionAlert()
+        default:
+            break
+        }
+    }
+
+    private func handleCurrentLocationResult(_ status: CLAuthorizationStatus) {
         switch status {
         case .authorizedWhenInUse, .authorizedAlways:
             startFetchingLocation()
         case .denied, .restricted:
             showLocationPermissionAlert()
-        case .notDetermined:
-            break
-        @unknown default:
+        default:
             break
         }
     }

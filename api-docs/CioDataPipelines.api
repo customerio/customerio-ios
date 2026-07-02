@@ -43,6 +43,7 @@ public final class CioDataPipelines.DataPipelineConfigOptions {
 	public final val autoTrackDeviceAttributes: Boolean;
 	public final val migrationSiteId: String?;
 	public final val screenViewUse: ScreenView;
+	public final val allowBackgroundDelivery: Boolean;
 }
 public interface CioDataPipelines.DataPipelineInstance {
 	public var analytics: Analytics;
@@ -61,6 +62,7 @@ public final class CioDataPipelines.SDKConfigBuilder {
 	public fun func autoTrackDeviceAttributes(_ autoTrack: Boolean) -> SDKConfigBuilder;
 	public fun func migrationSiteId(_ siteId: String) -> SDKConfigBuilder;
 	public fun func screenViewUse(screenView: ScreenView) -> SDKConfigBuilder;
+	public fun func allowBackgroundDelivery(_ enabled: Boolean) -> SDKConfigBuilder;
 	public fun func deepLinkCallback(_ callback: @escaping DeepLinkCallback) -> SDKConfigBuilder;
 	public fun func addModule(_ module: CustomerIOModule) -> SDKConfigBuilder;
 	public fun func build() -> SDKConfigBuilderResult;

@@ -16,7 +16,8 @@ struct LocationServicesImplementationTests {
             filter: filter,
             dataPipeline: dataPipeline,
             dateUtil: dateUtil,
-            logger: LoggerMock()
+            logger: LoggerMock(),
+            eventBusHandler: EventBusHandlerMock()
         )
     }
 

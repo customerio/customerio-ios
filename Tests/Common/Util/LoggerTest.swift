@@ -239,6 +239,38 @@ class LoggerTest: UnitTest {
         XCTAssertEqual(errorInvocation.first?.level, .error)
         XCTAssertEqual(errorInvocation.first?.message, errorMessage)
     }
+
+    func test_dispatcherWithTag_expectTagPrefixedMessage() {
+        let dispatcherMock = DispatcherMock()
+        logger.setLogLevel(.debug)
+        logger.setLogDispatcher(dispatcherMock.closure)
+
+        logger.debug("Test debug message", "MyTag")
+        logger.info("Test info message", "MyTag")
+        logger.error("Test error message", "MyTag", nil)
+
+        XCTAssertEqual(dispatcherMock.invocations(for: .debug).first?.message, "[MyTag] Test debug message")
+        XCTAssertEqual(dispatcherMock.invocations(for: .info).first?.message, "[MyTag] Test info message")
+        XCTAssertEqual(dispatcherMock.invocations(for: .error).first?.message, "[MyTag] Test error message")
+    }
+
+    func test_dispatcherWithTagAndError_expectTagPrefixedAndErrorSuffixedMessage() {
+        let dispatcherMock = DispatcherMock()
+        let error = NSError(
+            domain: "io.customer",
+            code: 12,
+            userInfo: [NSLocalizedDescriptionKey: "Localized error"]
+        )
+        logger.setLogLevel(.error)
+        logger.setLogDispatcher(dispatcherMock.closure)
+
+        logger.error("Test error message", "MyTag", error)
+
+        XCTAssertEqual(
+            dispatcherMock.invocations(for: .error).first?.message,
+            "[MyTag] Test error message Error: Localized error"
+        )
+    }
 }
 
 class DispatcherMock {

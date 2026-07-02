@@ -29,6 +29,47 @@ public final class CioInternalCommon.Atomic {
 	public var wrappedValue: DataType;
 	public fun init(wrappedValue: DataType);
 }
+public interface CioInternalCommon.BackgroundDeliveryCdpApiKeyProvider {
+	public var cdpApiKey: String?;
+}
+public final class CioInternalCommon.BackgroundDeliveryContext {
+	public var userId: String?;
+	public var apiHost: String?;
+	public var cdpApiKey: String?;
+	public fun init(userId: String? = nil, apiHost: String? = nil, cdpApiKey: String? = nil);
+}
+public final class CioInternalCommon.BackgroundDeliveryContextStore {
+	public var currentUserId: String?;
+	public var currentApiHost: String?;
+	public var currentCdpApiKey: String?;
+	public fun convenience init();
+	public fun func setCdpApiKeyProvider(_ provider: BackgroundDeliveryCdpApiKeyProvider?);
+	public fun func setUserId(_ userId: String?);
+	public fun func setApiHost(_ apiHost: String?);
+	public fun func setCdpApiKey(_ key: String?);
+	public fun func clearUserId();
+	public fun func reset();
+}
+public enum CioInternalCommon.BackgroundDeliveryHttp {
+	public fun func absoluteHost(_ host: String) -> String;
+	public fun func basicAuthValue(cdpApiKey: String) -> String;
+}
+public interface CioInternalCommon.BackgroundDeliveryHttpClient {
+	public fun func sendTrackEvent(_ request: BackgroundTrackRequest, completion: @escaping (Result<Unit, BackgroundDeliveryHttpError>) -> Unit);
+}
+public final class CioInternalCommon.BackgroundDeliveryHttpClientImpl {
+	public fun convenience init(contextStore: BackgroundDeliveryContextStore, requestRunner: HttpRequestRunner, logger: Logger, requestTimeout: TimeInterval = 8, resourceTimeout: TimeInterval = 8);
+	public fun func sendTrackEvent(_ request: BackgroundTrackRequest, completion: @escaping (Result<Unit, BackgroundDeliveryHttpError>) -> Unit);
+}
+public enum CioInternalCommon.BackgroundDeliveryHttpError {
+}
+public final class CioInternalCommon.BackgroundTrackRequest {
+	public final val eventName: String;
+	public final val userId: String;
+	public final val properties: Map<String, Any>;
+	public final val timestamp: Date?;
+	public fun init(eventName: String, userId: String, properties: List<String: Any> = List<:>, timestamp: Date? = nil);
+}
 public enum CioInternalCommon.CIOApiEndpoint {
 }
 public final class CioInternalCommon.CIODeviceInfo {
@@ -224,6 +265,7 @@ public interface CioInternalCommon.EventRepresentable {
 	public var storageId: String;
 	public var params: List<String : String>;
 	public var timestamp: Date;
+	public var isPersistent: Boolean;
 }
 public interface CioInternalCommon.EventStorage {
 	public fun func store(event: AnyEventRepresentable) async throws;
@@ -251,6 +293,15 @@ public interface CioInternalCommon.FileStorage {
 	public fun func delete(siteId: String, type: FileType, fileId: String) -> Boolean;
 }
 public enum CioInternalCommon.FileType {
+}
+public interface CioInternalCommon.GeofenceMetric {
+	public var geofenceId: String;
+	public var transition: GeofenceTransition;
+	public var timestamp: Date;
+	public var name: String?;
+	public var transitionId: String;
+}
+public enum CioInternalCommon.GeofenceTransition {
 }
 public interface CioInternalCommon.GlobalDataStore {
 	public var pushDeviceToken: String?;
@@ -294,6 +345,14 @@ public final class CioInternalCommon.JsonAdapter {
 	public fun func toJsonString<T: Encodable>(_ obj: T, nilIfEmpty: Boolean = true) -> String?;
 }
 public enum CioInternalCommon.KeyValueStorageKey {
+}
+public final class CioInternalCommon.LocationAcquiredEvent {
+	public final val storageId: String;
+	public final val params: List<String : String>;
+	public final val location: LocationData;
+	public final val timestamp: Date;
+	public var isPersistent: Boolean;
+	public fun init(storageId: String = UUID().uuidString, location: LocationData, timestamp: Date = Date(), params: List<String: String> = List<:>);
 }
 public final class CioInternalCommon.LocationData {
 	public final val latitude: Double;
@@ -536,6 +595,16 @@ public final class CioInternalCommon.TrackEventQueueTaskData {
 	public final val identifier: String;
 	public final val attributesJsonString: String;
 	public fun init(identifier: String, attributesJsonString: String);
+}
+public final class CioInternalCommon.TrackGeofenceMetricEvent {
+	public final val storageId: String;
+	public final val params: List<String : String>;
+	public final val geofenceId: String;
+	public final val transition: GeofenceTransition;
+	public final val timestamp: Date;
+	public final val name: String?;
+	public final val transitionId: String;
+	public fun init(storageId: String = UUID().uuidString, geofenceId: String, transition: GeofenceTransition, timestamp: Date = Date(), name: String?, transitionId: String, params: List<String: String> = List<:>);
 }
 public final class CioInternalCommon.TrackInAppMetricEvent {
 	public final val storageId: String;

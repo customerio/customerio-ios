@@ -88,8 +88,9 @@ public class CombinedCacheEventBusHandler: EventBusHandler {
     /// Posts `event` and returns only after all current observers have been invoked.
     ///
     /// The event is always added to the in-memory cache. If no observers exist at
-    /// post time, the event is also written to persistent storage so that a future
-    /// observer can receive it via replay.
+    /// post time, a persistent event is also written to storage so a future observer
+    /// can receive it via replay. Transient events (`isPersistent == false`) are never
+    /// written to disk — they are only useful in the moment.
     public func postEventAndWait<E: EventRepresentable>(_ event: E) async {
         logger.debug("CombinedCacheEventBusHandler: Posting event \(event)")
         let observers = await bus.post(event)
@@ -97,7 +98,7 @@ public class CombinedCacheEventBusHandler: EventBusHandler {
         for observer in observers {
             observer(event)
         }
-        if observers.isEmpty {
+        if observers.isEmpty, event.isPersistent {
             logger.debug("CombinedCacheEventBusHandler: No observers, persisting event \(event)")
             do {
                 try await eventStorage.store(event: event)
