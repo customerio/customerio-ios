@@ -99,4 +99,28 @@ extension Logger {
     func geofenceRegionsAdopted(count: Int) {
         debug("Adopted \(count) OS-persisted region(s) on launch; skipping re-registration", geofenceTag)
     }
+
+    // MARK: - OS Region Monitoring (diagnostics)
+
+    func geofenceRegionRegistered(identifier: String, latitude: Double, longitude: Double, radius: Double) {
+        debug("OS monitoring STARTED for geofence \(identifier) at (\(latitude), \(longitude)) radius \(radius)m", geofenceTag)
+    }
+
+    func geofenceRegionDeregistered(identifier: String) {
+        debug("OS monitoring STOPPED for geofence \(identifier)", geofenceTag)
+    }
+
+    func geofenceRegionsCleared(identifiers: Set<String>) {
+        debug("OS monitoring STOPPED for all \(identifiers.count) SDK-owned geofence(s): \(identifiers.sorted().joined(separator: ", "))", geofenceTag)
+    }
+
+    /// Logged for every OS enter/exit callback the SDK receives, including regions it does not own,
+    /// so a missing log means the OS never fired and an "ignoring" log means the SDK saw it but
+    /// filtered it out.
+    func geofenceOsTransitionReceived(identifier: String, transition: GeofenceTransition, observed: Bool) {
+        debug(
+            "OS \(transition.rawValue) callback for region \(identifier) — \(observed ? "observing (SDK-owned)" : "ignoring (not registered by SDK)")",
+            geofenceTag
+        )
+    }
 }

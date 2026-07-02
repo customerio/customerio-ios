@@ -78,6 +78,7 @@ final class CoreLocationGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @pr
 
         ownedRegionIdentifiers.insert(identifier)
         manager.startMonitoring(for: region)
+        logger.geofenceRegionRegistered(identifier: identifier, latitude: center.latitude, longitude: center.longitude, radius: clampedRadius)
     }
 
     func stopMonitoring(identifier: String) {
@@ -85,6 +86,7 @@ final class CoreLocationGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @pr
         if let region = manager.monitoredRegions.first(where: { $0.identifier == identifier }) {
             manager.stopMonitoring(for: region)
         }
+        logger.geofenceRegionDeregistered(identifier: identifier)
     }
 
     func stopMonitoringAll() {
@@ -95,21 +97,24 @@ final class CoreLocationGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @pr
                 manager.stopMonitoring(for: region)
             }
         }
+        if !identifiers.isEmpty {
+            logger.geofenceRegionsCleared(identifiers: identifiers)
+        }
     }
 
     // MARK: - CLLocationManagerDelegate
 
     func locationManager(_ manager: CLLocationManager, didEnterRegion region: CLRegion) {
-        guard let circularRegion = region as? CLCircularRegion,
-              ownedRegionIdentifiers.contains(circularRegion.identifier)
-        else { return }
+        let owned = ownedRegionIdentifiers.contains(region.identifier)
+        logger.geofenceOsTransitionReceived(identifier: region.identifier, transition: .enter, observed: owned)
+        guard let circularRegion = region as? CLCircularRegion, owned else { return }
         onTransition?(circularRegion.identifier, .enter, currentLocationData())
     }
 
     func locationManager(_ manager: CLLocationManager, didExitRegion region: CLRegion) {
-        guard let circularRegion = region as? CLCircularRegion,
-              ownedRegionIdentifiers.contains(circularRegion.identifier)
-        else { return }
+        let owned = ownedRegionIdentifiers.contains(region.identifier)
+        logger.geofenceOsTransitionReceived(identifier: region.identifier, transition: .exit, observed: owned)
+        guard let circularRegion = region as? CLCircularRegion, owned else { return }
         onTransition?(circularRegion.identifier, .exit, currentLocationData())
     }
 
