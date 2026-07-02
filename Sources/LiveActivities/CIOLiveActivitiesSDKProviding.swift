@@ -10,7 +10,7 @@ protocol CIOLiveActivitiesSDKProviding {
     var registeredDeviceToken: String? { get }
     var eventBusHandler: EventBusHandler { get }
     var logger: Logger { get }
-    var storageManager: StorageManager? { get }
+    var sharedKeyValueStorage: SharedKeyValueStorage { get }
     func track(name: String, properties: [String: Any]?)
 }
 
@@ -23,8 +23,8 @@ extension CustomerIO: CIOLiveActivitiesSDKProviding {
         DIGraphShared.shared.logger
     }
 
-    var storageManager: StorageManager? {
-        DIGraphShared.shared.storageManager
+    var sharedKeyValueStorage: SharedKeyValueStorage {
+        DIGraphShared.shared.sharedKeyValueStorage
     }
 
     // registeredDeviceToken is already declared on CustomerIO via CustomerIOInstance.

@@ -27,7 +27,7 @@ private func makeLiveScoreConfiguration() -> ActivityConfiguration<CIOLiveScoreA
     ActivityConfiguration(for: CIOLiveScoreAttributes.self) { context in
         LiveScoreBannerView(attributes: context.attributes, state: context.state)
             .environment(\.cioAssetLibrary, CIOLiveActivitiesTemplates.assetLibrary)
-            .activityBackgroundTint(.black)
+            .activityBackgroundTint(CIOLiveActivitiesTemplates.branding?.accentColor.flatMap(Color.init(hex:)) ?? .black)
             .activitySystemActionForegroundColor(.white)
     } dynamicIsland: { context in
         DynamicIsland {
@@ -48,19 +48,29 @@ private func makeLiveScoreConfiguration() -> ActivityConfiguration<CIOLiveScoreA
                 .padding(.trailing, 4)
             }
             DynamicIslandExpandedRegion(.bottom) {
-                LiveScorePeriodView(state: context.state)
+                LiveScoreSubtitleView(state: context.state)
             }
         } compactLeading: {
-            Text("\(context.state.homeScore)")
+            Text(liveScoreText(context.state.homeScore))
                 .font(.caption.bold()).monospacedDigit()
         } compactTrailing: {
-            Text("\(context.state.awayScore)")
+            Text(liveScoreText(context.state.awayScore))
                 .font(.caption.bold()).monospacedDigit()
         } minimal: {
-            Text("\(context.state.homeScore)-\(context.state.awayScore)")
-                .font(.system(size: 10, weight: .bold)).monospacedDigit()
+            Image(systemName: "sportscourt")
+                .font(.system(size: 10))
         }
     }
+}
+
+@available(iOS 17.2, *)
+private func liveScoreText(_ score: Int?) -> String {
+    score.map(String.init) ?? "-"
+}
+
+@available(iOS 17.2, *)
+private func liveScoreStatusColor(_ hex: String?, fallback: Color) -> Color {
+    hex.flatMap(Color.init(hex:)) ?? fallback
 }
 
 // MARK: - Banner
@@ -73,23 +83,23 @@ private struct LiveScoreBannerView: View {
     var body: some View {
         VStack(spacing: 4) {
             HStack {
-                CIOBrandingView(branding: CIOActivityBranding(
-                    name: attributes.sport,
-                    logoKey: attributes.leagueLogoKey
-                ))
-                .frame(height: 16)
+                if let image = attributes.image {
+                    CIOAssetImage(key: image).frame(height: 16)
+                } else {
+                    CIOBrandingView(appBranding: CIOLiveActivitiesTemplates.branding).frame(height: 16)
+                }
                 Spacer()
-                LiveScorePeriodView(state: state)
+                LiveScoreSubtitleView(state: state)
             }
             HStack(spacing: 0) {
                 LiveScoreTeamColumn(team: attributes.homeTeam, score: state.homeScore)
                     .frame(maxWidth: .infinity)
-                Text("vs")
-                    .font(.caption2)
-                    .foregroundColor(.secondary)
-                    .frame(minWidth: 28)
                 LiveScoreTeamColumn(team: attributes.awayTeam, score: state.awayScore)
                     .frame(maxWidth: .infinity)
+            }
+            if let stale = state.staleMessage {
+                Text(stale)
+                    .font(.caption2).foregroundColor(.white.opacity(0.6))
             }
         }
         .padding(.horizontal, 16)
@@ -103,17 +113,25 @@ private struct LiveScoreBannerView: View {
 @available(iOS 17.2, *)
 private struct LiveScoreTeamColumn: View {
     let team: CIOLiveScoreAttributes.Team
-    let score: Int
+    let score: Int?
+
+    private var initials: String {
+        String(team.name.prefix(3)).uppercased()
+    }
 
     var body: some View {
         VStack(spacing: 4) {
-            if let logoKey = team.logoKey {
-                CIOAssetImage(key: logoKey).frame(width: 32, height: 32)
+            if let logo = team.logo {
+                CIOAssetImage(key: logo).frame(width: 32, height: 32)
+            } else {
+                Text(initials)
+                    .font(.caption.bold())
+                    .frame(width: 32, height: 32)
             }
             Text(team.name)
                 .font(.caption.bold())
                 .foregroundColor(.secondary)
-            Text("\(score)")
+            Text(liveScoreText(score))
                 .font(.title.bold())
                 .monospacedDigit()
         }
@@ -121,19 +139,14 @@ private struct LiveScoreTeamColumn: View {
 }
 
 @available(iOS 17.2, *)
-private struct LiveScorePeriodView: View {
+private struct LiveScoreSubtitleView: View {
     let state: CIOLiveScoreAttributes.ContentState
 
     var body: some View {
-        VStack(spacing: 1) {
-            if let message = state.statusMessage {
-                Text(message).font(.caption2).foregroundColor(.secondary)
-            } else {
-                Text(state.period).font(.caption2).foregroundColor(.secondary)
-                if let clock = state.clock {
-                    Text(clock).font(.system(size: 9, weight: .semibold)).monospacedDigit()
-                }
-            }
+        if let subtitle = state.subtitle {
+            Text(subtitle)
+                .font(.caption2)
+                .foregroundColor(liveScoreStatusColor(state.statusColor, fallback: .secondary))
         }
     }
 }

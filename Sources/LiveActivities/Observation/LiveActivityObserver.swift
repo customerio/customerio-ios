@@ -76,7 +76,12 @@ final class LiveActivityObserver: @unchecked Sendable {
             }
         )
 
-        tasks.mutating { $0[identifier] = registration.startObserving(sinks) }
+        tasks.mutating { existing in
+            // Cancel any prior task for this type before replacing, so a repeated `start()`
+            // (double init / re-entrancy) can't leave a second observer running in parallel.
+            existing[identifier]?.cancel()
+            existing[identifier] = registration.startObserving(sinks)
+        }
     }
 }
 
@@ -100,22 +105,30 @@ enum LiveActivityObservation {
                             }
                         }
                         group.addTask {
-                            // `activityUpdates` can re-emit the same activity (state transitions,
-                            // relaunch replay). Dedup by the system `activity.id` so we observe
-                            // each instance exactly once — otherwise multiple token streams race.
+                            // Observe each activity instance exactly once, deduped by the system
+                            // `activity.id`, across BOTH sources:
+                            //   1. `Activity.activities` — the current snapshot, which resumes
+                            //      activities that started while the app was terminated (e.g.
+                            //      push-to-start) or that survive a relaunch.
+                            //   2. `activityUpdates` — activities started from now on.
+                            // `activityUpdates` alone does not reliably replay already-running
+                            // activities on a cold-launch subscription, so the snapshot is required
+                            // to avoid missing their instance-token updates and end. The shared
+                            // dedup set makes observing both sources safe.
                             let observedIds = Synchronized<Set<String>>([])
+                            let claimUnobserved: @Sendable (String) -> Bool = { activityId in
+                                observedIds.mutating { ids -> Bool in
+                                    guard !ids.contains(activityId) else { return false }
+                                    ids.insert(activityId)
+                                    return true
+                                }
+                            }
                             await withTaskGroup(of: Void.self) { perActivity in
-                                for await activity in Activity<T>.activityUpdates {
-                                    let activityId = activity.id
-                                    let isNew = observedIds.mutating { ids -> Bool in
-                                        guard !ids.contains(activityId) else { return false }
-                                        ids.insert(activityId)
-                                        return true
-                                    }
-                                    guard isNew else { continue }
-                                    perActivity.addTask {
-                                        await observe(activity, sinks: sinks)
-                                    }
+                                for activity in Activity<T>.activities where claimUnobserved(activity.id) {
+                                    perActivity.addTask { await observe(activity, sinks: sinks) }
+                                }
+                                for await activity in Activity<T>.activityUpdates where claimUnobserved(activity.id) {
+                                    perActivity.addTask { await observe(activity, sinks: sinks) }
                                 }
                             }
                         }

@@ -21,7 +21,7 @@ private func makeFlightStatusConfiguration()
         FlightStatusBannerView(attributes: context.attributes, state: context.state)
             .environment(\.cioAssetLibrary, CIOLiveActivitiesTemplates.assetLibrary)
             .activityBackgroundTint(
-                context.attributes.branding.accentColor.flatMap(Color.init(hex:)) ?? .blue
+                CIOLiveActivitiesTemplates.branding?.accentColor.flatMap(Color.init(hex:)) ?? .blue
             )
             .activitySystemActionForegroundColor(.white)
     } dynamicIsland: { context in
@@ -48,20 +48,30 @@ private func makeFlightStatusConfiguration()
                 FlightProgressBar(fraction: context.state.progressFraction ?? 0)
             }
             DynamicIslandExpandedRegion(.bottom) {
-                Text(context.state.statusMessage)
-                    .font(.caption2).foregroundColor(.secondary)
+                Text(context.state.title)
+                    .font(.caption2)
+                    .foregroundColor(flightStatusColor(context.state.statusColor, fallback: .secondary))
             }
         } compactLeading: {
-            Text(context.attributes.flightNumber)
-                .font(.caption2.bold())
+            if let header = context.attributes.header {
+                Text(header).font(.caption2.bold())
+            } else {
+                Image(systemName: "airplane").font(.system(size: 10))
+            }
         } compactTrailing: {
-            Text(context.state.statusMessage)
-                .font(.system(size: 9)).lineLimit(1)
+            if let status = context.state.status {
+                Text(status).font(.system(size: 9)).lineLimit(1)
+            }
         } minimal: {
             Image(systemName: "airplane")
                 .font(.system(size: 10))
         }
     }
+}
+
+@available(iOS 17.2, *)
+private func flightStatusColor(_ hex: String?, fallback: Color) -> Color {
+    hex.flatMap(Color.init(hex:)) ?? fallback
 }
 
 // MARK: - Banner
@@ -71,37 +81,49 @@ private struct FlightStatusBannerView: View {
     let attributes: CIOFlightStatusAttributes
     let state: CIOFlightStatusAttributes.ContentState
 
+    private var statusColor: Color { flightStatusColor(state.statusColor, fallback: .white) }
+
     var body: some View {
         VStack(spacing: 8) {
             HStack {
-                CIOBrandingView(branding: attributes.branding).frame(height: 16)
+                CIOBrandingView(appBranding: CIOLiveActivitiesTemplates.branding).frame(height: 16)
                 Spacer()
-                Text(attributes.flightNumber)
-                    .font(.caption.bold()).foregroundColor(.white.opacity(0.8))
+                if let header = attributes.header {
+                    Text(header)
+                        .font(.caption.bold()).foregroundColor(.white.opacity(0.8))
+                }
             }
             HStack(spacing: 8) {
                 FlightEndpointView(
                     code: attributes.origin.code,
                     city: attributes.origin.city,
-                    time: state.scheduledDeparture
+                    time: state.scheduledDeparture.value
                 )
                 FlightProgressBar(fraction: state.progressFraction ?? 0)
                 FlightEndpointView(
                     code: attributes.destination.code,
                     city: attributes.destination.city,
-                    time: state.estimatedArrival
+                    time: state.estimatedArrival.value
                 )
             }
             HStack {
-                Text(state.statusMessage)
-                    .font(.caption.bold()).foregroundColor(.white)
+                Text(state.title)
+                    .font(.caption.bold()).foregroundColor(statusColor)
                 Spacer()
-                if let gate = state.gate {
-                    FlightInfoChip(label: "Gate", value: gate)
+                if let status = state.status {
+                    Text(status)
+                        .font(.caption.bold()).foregroundColor(.white.opacity(0.8))
                 }
-                if let terminal = state.terminal {
-                    FlightInfoChip(label: "Terminal", value: terminal)
-                }
+            }
+            if let subtitle = state.subtitle {
+                Text(subtitle)
+                    .font(.caption2).foregroundColor(.white.opacity(0.7))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            if let stale = state.staleMessage {
+                Text(stale)
+                    .font(.caption2).foregroundColor(.white.opacity(0.6))
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
         .padding(.horizontal, 16)
@@ -154,23 +176,6 @@ private struct FlightProgressBar: View {
             }
         }
         .frame(height: 20)
-    }
-}
-
-@available(iOS 17.2, *)
-private struct FlightInfoChip: View {
-    let label: String
-    let value: String
-
-    var body: some View {
-        VStack(spacing: 1) {
-            Text(label).font(.system(size: 8)).foregroundColor(.white.opacity(0.6))
-            Text(value).font(.caption.bold()).foregroundColor(.white)
-        }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 4)
-        .background(Color.white.opacity(0.15))
-        .clipShape(RoundedRectangle(cornerRadius: 6))
     }
 }
 #endif

@@ -82,16 +82,21 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             .setEventListener(self)
 
         if #available(iOS 17.2, *) {
-            Self.liveActivities = LiveActivitiesModule.initialize(
-                LiveActivityConfigBuilder()
-                    .register(CIOLiveScoreAttributes.self, identifier: CIOLiveScoreAttributes.identifier)
-                    .register(CIODeliveryTrackingAttributes.self, identifier: CIODeliveryTrackingAttributes.identifier)
-                    .register(CIOCountdownTimerAttributes.self, identifier: CIOCountdownTimerAttributes.identifier)
-                    .register(CIOFlightStatusAttributes.self, identifier: CIOFlightStatusAttributes.identifier)
-                    .register(CIOAuctionBidAttributes.self, identifier: CIOAuctionBidAttributes.identifier)
-                    .build()
-            )
+            initializeLiveActivities()
         }
+    }
+
+    @available(iOS 17.2, *)
+    private func initializeLiveActivities() {
+        Self.liveActivities = LiveActivitiesModule.initialize(
+            LiveActivityConfigBuilder()
+                .register(CIOLiveScoreAttributes.self, identifier: CIOLiveScoreAttributes.identifier)
+                .register(CIODeliveryTrackingAttributes.self, identifier: CIODeliveryTrackingAttributes.identifier)
+                .register(CIOCountdownTimerAttributes.self, identifier: CIOCountdownTimerAttributes.identifier)
+                .register(CIOFlightStatusAttributes.self, identifier: CIOFlightStatusAttributes.identifier)
+                .register(CIOAuctionBidAttributes.self, identifier: CIOAuctionBidAttributes.identifier)
+                .build()
+        )
     }
 
     // Handle Universal Link deep link from the Customer.io SDK. This function will get called if a push notification

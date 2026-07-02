@@ -45,7 +45,7 @@ struct LiveActivityRegistrarTests {
         h.identity.userId = "user-1"
         h.registrar.reevaluate()
         #expect(h.cap.count == 1)
-        #expect(h.store.signatures["t"] == "aabb|user-1")
+        #expect(h.store.signatures["t"] == "dev|aabb|user-1")
     }
 
     @Test func pushToStart_deferred_untilDeviceTokenArrives() {
@@ -81,7 +81,22 @@ struct LiveActivityRegistrarTests {
         h.identity.userId = "user-2"
         h.registrar.reevaluate()
         #expect(h.cap.count == 2)
-        #expect(h.store.signatures["t"] == "aabb|user-2")
+        #expect(h.store.signatures["t"] == "dev|aabb|user-2")
+    }
+
+    @Test func pushToStart_deviceTokenRotation_reRegisters() {
+        let h = makeHarness()
+        h.identity.userId = "user-1"
+        h.identity.deviceToken = "dev"
+        h.registrar.handlePushToStartToken(notificationType: "t", attributesType: "A", token: token)
+        #expect(h.cap.count == 1)
+
+        // Device token rotates (same push-to-start token + user): must re-register against the
+        // new device rather than dedup as unchanged.
+        h.identity.deviceToken = "dev2"
+        h.registrar.reevaluate()
+        #expect(h.cap.count == 2)
+        #expect(h.store.signatures["t"] == "dev2|aabb|user-1")
     }
 
     @Test func instanceToken_dedupsByToken_reSendsOnChange() {
@@ -119,6 +134,49 @@ struct LiveActivityRegistrarTests {
         #expect(h.cap.count == 1)
     }
 
+    @Test func instanceToken_notResent_onRelaunch_withPersistedStore() {
+        // Shared store simulates persistence across launches; each registrar is a fresh process.
+        let sharedStore = FakeTokenStore()
+        // Each call is a fresh "process": new in-memory registrar/identity (identified, with a
+        // device token) over the SAME persisted store.
+        func makeRegistrar() -> (LiveActivityRegistrar, TrackCapture) {
+            let cap = TrackCapture()
+            let identity = LiveActivityIdentity()
+            identity.userId = "user-1"
+            identity.deviceToken = "dev"
+            let reporter = LiveActivityReporter(
+                track: { name, props in cap.record(name, props) },
+                currentUserId: { identity.userId },
+                deviceToken: { identity.deviceToken },
+                logger: NoopLogger()
+            )
+            return (LiveActivityRegistrar(identity: identity, store: sharedStore, reporter: reporter), cap)
+        }
+
+        // Launch 1: observe instance token → sends once.
+        let (r1, cap1) = makeRegistrar()
+        r1.handleInstanceToken(notificationType: "t", instanceUUID: "i1", token: token)
+        #expect(cap1.count == 1)
+
+        // Relaunch: fresh in-memory registrar, SAME persisted store, re-observe the same token.
+        let (r2, cap2) = makeRegistrar()
+        r2.handleInstanceToken(notificationType: "t", instanceUUID: "i1", token: token)
+        #expect(cap2.isEmpty) // persisted signature ⇒ no re-send
+    }
+
+    @Test func instanceToken_reSent_afterEnded() {
+        let h = makeHarness()
+        h.identity.userId = "user-1"
+        h.identity.deviceToken = "dev"
+        h.registrar.handleInstanceToken(notificationType: "t", instanceUUID: "i1", token: token)
+        #expect(h.cap.count == 1)
+
+        // Ending clears the persisted instance signature, so the same token re-registers after.
+        h.registrar.handleActivityEnded(instanceUUID: "i1")
+        h.registrar.handleInstanceToken(notificationType: "t", instanceUUID: "i1", token: token)
+        #expect(h.cap.count == 2)
+    }
+
     @Test func handleReset_clearsSignatures() {
         let h = makeHarness()
         h.identity.userId = "user-1"
@@ -145,6 +203,6 @@ struct LiveActivityRegistrarTests {
         h.identity.userId = "user-1"
         h.registrar.reevaluate()
         #expect(h.cap.count == 2)
-        #expect(h.store.signatures["t"] == "aabb|user-1")
+        #expect(h.store.signatures["t"] == "dev|aabb|user-1")
     }
 }

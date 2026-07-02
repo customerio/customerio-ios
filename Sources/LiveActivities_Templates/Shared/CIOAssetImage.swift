@@ -22,23 +22,38 @@ struct CIOAssetImage: View {
     }
 }
 
-/// Brand logo resolved from `CIOAssetLibrary`, with the brand name as a text fallback.
+/// A logo resolved from `CIOAssetLibrary` by key, with a text name as fallback.
 ///
-/// Reads the library from the environment via `\.cioAssetLibrary`.
+/// Used both for the app-level brand (via ``init(appBranding:)``) and for per-activity
+/// logos such as a sports league (pass `logoKey`/`name` directly). Reads the library
+/// from the environment via `\.cioAssetLibrary`.
 struct CIOBrandingView: View {
-    let branding: CIOActivityBranding
+    let logoKey: String?
+    let name: String
 
     @Environment(\.cioAssetLibrary) private var assetLibrary
 
+    /// Renders the app-level branding configured via
+    /// `CIOLiveActivitiesTemplates.configure(appGroup:branding:)`. When no branding was
+    /// supplied, shows nothing.
+    init(appBranding: CIOActivityBranding?) {
+        self.init(logoKey: appBranding?.logoKey, name: appBranding?.name ?? "")
+    }
+
+    init(logoKey: String?, name: String) {
+        self.logoKey = logoKey
+        self.name = name
+    }
+
     var body: some View {
-        if let logoKey = branding.logoKey,
+        if let logoKey,
            let url = assetLibrary.url(for: logoKey),
            let uiImage = UIImage(contentsOfFile: url.path) {
             Image(uiImage: uiImage)
                 .resizable()
                 .scaledToFit()
         } else {
-            Text(branding.name)
+            Text(name)
                 .font(.caption.bold())
         }
     }

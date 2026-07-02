@@ -7,7 +7,10 @@ import ActivityKit
 /// Attributes for the Flight Status template.
 ///
 /// Tracks a single flight from departure through arrival with real-time
-/// gate, terminal, delay, and in-flight progress updates.
+/// status, progress, and freeform detail lines.
+///
+/// Text fields (`header`, `status`, `title`, `subtitle`) are freeform slots rendered
+/// verbatim; the SDK never composes them.
 @available(iOS 17.2, *)
 public struct CIOFlightStatusAttributes: CIOActivityAttribute {
     public static let identifier = "io.customer.liveactivities.flightstatus"
@@ -29,22 +32,19 @@ public struct CIOFlightStatusAttributes: CIOActivityAttribute {
     // MARK: - Static attributes
 
     public var activityInstanceId: String
-    public var branding: CIOActivityBranding
-    /// Flight number e.g. `"AA1234"`.
-    public var flightNumber: String
+    /// Optional top line, e.g. flight number or airline. Rendered verbatim.
+    public var header: String?
     public var origin: Airport
     public var destination: Airport
 
     public init(
         activityInstanceId: String,
-        branding: CIOActivityBranding,
-        flightNumber: String,
+        header: String? = nil,
         origin: Airport,
         destination: Airport
     ) {
         self.activityInstanceId = activityInstanceId
-        self.branding = branding
-        self.flightNumber = flightNumber
+        self.header = header
         self.origin = origin
         self.destination = destination
     }
@@ -52,38 +52,38 @@ public struct CIOFlightStatusAttributes: CIOActivityAttribute {
     // MARK: - Dynamic content state
 
     public struct ContentState: Codable, Hashable, Sendable {
-        /// Human-readable status e.g. `"On time"`, `"Delayed 45 min"`, `"Boarding now"`.
-        public var statusMessage: String
-        /// Gate identifier. `nil` when not yet assigned.
-        public var gate: String?
-        /// Terminal identifier. `nil` when not yet assigned.
-        public var terminal: String?
-        public var scheduledDeparture: Date
-        public var estimatedArrival: Date
+        /// Optional short status label, e.g. `"On time"`, `"Delayed"`, `"Boarding"`. Rendered verbatim.
+        public var status: String?
+        /// Primary contextual line. Rendered verbatim.
+        public var title: String
+        /// Optional secondary line, e.g. gate / terminal / zone / bag. Rendered verbatim.
+        public var subtitle: String?
+        public var scheduledDeparture: EpochMillisDate
+        public var estimatedArrival: EpochMillisDate
         /// In-flight progress fraction 0.0–1.0. `nil` before departure.
         public var progressFraction: Double?
-        /// Positive delay in minutes. `nil` when on time.
-        public var delayMinutes: Int?
+        /// Hex color (e.g. `"#34C759"`) applied to status accents. `nil` uses the template tint.
+        public var statusColor: String?
         /// Message shown when the activity becomes stale.
         public var staleMessage: String?
 
         public init(
-            statusMessage: String,
-            gate: String? = nil,
-            terminal: String? = nil,
-            scheduledDeparture: Date,
-            estimatedArrival: Date,
+            status: String? = nil,
+            title: String,
+            subtitle: String? = nil,
+            scheduledDeparture: EpochMillisDate,
+            estimatedArrival: EpochMillisDate,
             progressFraction: Double? = nil,
-            delayMinutes: Int? = nil,
+            statusColor: String? = nil,
             staleMessage: String? = nil
         ) {
-            self.statusMessage = statusMessage
-            self.gate = gate
-            self.terminal = terminal
+            self.status = status
+            self.title = title
+            self.subtitle = subtitle
             self.scheduledDeparture = scheduledDeparture
             self.estimatedArrival = estimatedArrival
             self.progressFraction = progressFraction
-            self.delayMinutes = delayMinutes
+            self.statusColor = statusColor
             self.staleMessage = staleMessage
         }
     }

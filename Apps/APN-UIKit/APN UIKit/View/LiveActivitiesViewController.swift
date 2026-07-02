@@ -2,30 +2,166 @@
 import CioLiveActivities
 import CioLiveActivities_Attributes
 import CioLiveActivities_Templates
+import Foundation
 import UIKit
+
+// Demo screen exercising all five Live Activity templates plus adopt / error / debug paths.
+// Length rules are relaxed here since it intentionally wires up many independent controls.
+// swiftlint:disable file_length type_body_length
+
+// MARK: - Phase driver
+
+/// Type-erased interface so the view controller can hold heterogeneous per-template drivers.
+@available(iOS 17.2, *)
+@MainActor
+protocol LiveActivityDemoDriving: AnyObject {
+    var title: String { get }
+    var isActive: Bool { get }
+    var onChange: (() -> Void)? { get set }
+    /// Start if idle, end (with the final content state) if active.
+    func toggle()
+    /// Advance to the next phase (sends an `update`).
+    func advance()
+    /// Start, step through every phase on a timer, then end — hands-free.
+    func autoRun()
+}
+
+/// Drives one template through an ordered list of realistic phases via the SDK's local API.
+/// `phases[0]` is the start content; each subsequent phase is an `update`; `endState` is the
+/// final content sent on `end`. This mirrors the Android demo's step arrays.
+@available(iOS 17.2, *)
+@MainActor
+final class LiveActivityDemoDriver<A: CIOActivityAttribute>: LiveActivityDemoDriving where A.ContentState: Sendable {
+    let title: String
+    private let module: () -> LiveActivitiesModule?
+    private let makeAttributes: (String) -> A
+    private let phases: [A.ContentState]
+    private let endState: A.ContentState
+    private let log: (String) -> Void
+    private let autoStepDelay: TimeInterval = 3
+
+    private var handle: CIOLiveActivity<A>?
+    private var phaseIndex = 0
+    private var autoTask: Task<Void, Never>?
+
+    var onChange: (() -> Void)?
+    var isActive: Bool { handle != nil }
+
+    init(
+        title: String,
+        module: @escaping () -> LiveActivitiesModule?,
+        phases: [A.ContentState],
+        endState: A.ContentState,
+        log: @escaping (String) -> Void,
+        makeAttributes: @escaping (String) -> A
+    ) {
+        self.title = title
+        self.module = module
+        self.phases = phases
+        self.endState = endState
+        self.log = log
+        self.makeAttributes = makeAttributes
+    }
+
+    func toggle() {
+        if isActive { end() } else { start() }
+    }
+
+    private func start() {
+        guard let module = module() else {
+            log("\(title): SDK not initialized")
+            return
+        }
+        do {
+            handle = try module.start(contentState: phases[0], attributes: makeAttributes)
+            phaseIndex = 0
+            log("\(title): start — phase 1/\(phases.count)")
+            onChange?()
+        } catch {
+            log("\(title): start failed — \(error)")
+        }
+    }
+
+    func advance() {
+        guard let handle else {
+            log("\(title): start it first")
+            return
+        }
+        guard phaseIndex < phases.count - 1 else {
+            log("\(title): already at last phase (\(phases.count)/\(phases.count))")
+            return
+        }
+        phaseIndex += 1
+        let state = phases[phaseIndex]
+        let step = phaseIndex + 1
+        let total = phases.count
+        let name = title
+        let record = log
+        Task { @MainActor in
+            await handle.update(state)
+            record("\(name): update — phase \(step)/\(total)")
+        }
+    }
+
+    private func end() {
+        autoTask?.cancel()
+        autoTask = nil
+        guard let handle else { return }
+        // Reset state up front so a second tap is a no-op (the button flips back to "Start").
+        self.handle = nil
+        phaseIndex = 0
+        handle.endDetached(endState) // fire-and-forget via the async helper below
+        log("\(title): end")
+        onChange?()
+    }
+
+    func autoRun() {
+        guard !isActive else {
+            log("\(title): already running")
+            return
+        }
+        start()
+        guard handle != nil else { return }
+        let total = phases.count
+        let name = title
+        let record = log
+        let delay = autoStepDelay
+        autoTask = Task { @MainActor [weak self] in
+            for index in 1 ..< total {
+                try? await Task.sleep(nanoseconds: UInt64(delay * 1000000000))
+                guard !Task.isCancelled, let self, let handle = self.handle else { return }
+                await handle.update(self.phases[index])
+                self.phaseIndex = index
+                record("\(name): auto — phase \(index + 1)/\(total)")
+            }
+            try? await Task.sleep(nanoseconds: UInt64(delay * 1000000000))
+            guard !Task.isCancelled, let self else { return }
+            self.end()
+        }
+    }
+}
+
+@available(iOS 17.2, *)
+private extension CIOLiveActivity {
+    /// Fire-and-forget end used by the driver's synchronous `end()`.
+    @MainActor
+    func endDetached(_ finalContentState: Attributes.ContentState) {
+        Task { @MainActor in await self.end(finalContentState) }
+    }
+}
+
+// MARK: - View controller
 
 @available(iOS 17.2, *)
 class LiveActivitiesViewController: BaseViewController {
-    // MARK: - Active activities
+    private var drivers: [any LiveActivityDemoDriving] = []
 
-    // Handles returned by the SDK's `start`, so update/end route through Customer.io
-    // (and emit the local `Live Notification Event`s). A backend push that ends/updates
-    // an activity is applied by the OS and is never reported.
-    private var liveScoreActivity: CIOLiveActivity<CIOLiveScoreAttributes>?
-    private var deliveryActivity: CIOLiveActivity<CIODeliveryTrackingAttributes>?
-    private var countdownActivity: CIOLiveActivity<CIOCountdownTimerAttributes>?
-    private var flightActivity: CIOLiveActivity<CIOFlightStatusAttributes>?
-    private var auctionActivity: CIOLiveActivity<CIOAuctionBidAttributes>?
+    // Adopt demo: an activity the app creates itself, then hands to the SDK via `adopt`.
+    private var adoptHandle: CIOLiveActivity<CIOCountdownTimerAttributes>?
+    private weak var adoptButton: ThemeButton?
 
-    // MARK: - Buttons
-
-    private weak var liveScoreButton: ThemeButton?
-    private weak var deliveryButton: ThemeButton?
-    private weak var countdownButton: ThemeButton?
-    private weak var flightButton: ThemeButton?
-    private weak var auctionButton: ThemeButton?
-
-    private let demoBranding = CIOActivityBranding(name: "Next Level Sports", logoKey: "NL-Logo", accentColor: "#F26726")
+    private let logView = UITextView()
+    private var observeTask: Task<Void, Never>?
 
     // MARK: - Lifecycle
 
@@ -34,11 +170,26 @@ class LiveActivitiesViewController: BaseViewController {
         title = "Live Activities"
         view.backgroundColor = .systemBackground
         buildUI()
+        observeAppearedActivities()
     }
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         navigationController?.isNavigationBarHidden = false
+    }
+
+    deinit { observeTask?.cancel() }
+
+    // MARK: - observedActivities stream
+
+    private func observeAppearedActivities() {
+        observeTask = Task { @MainActor [weak self] in
+            guard let stream = AppDelegate.liveActivities?.observedActivities else { return }
+            for await info in stream {
+                let user = info.userId.isEmpty ? "(anon)" : info.userId
+                self?.appendLog("observed: \(info.activityType) · id=\(info.activityId.prefix(8))… · user=\(user)")
+            }
+        }
     }
 
     // MARK: - UI
@@ -77,48 +228,236 @@ class LiveActivitiesViewController: BaseViewController {
             stack.bottomAnchor.constraint(equalTo: content.bottomAnchor, constant: -20)
         ])
 
-        let liveScoreBtn = makeButton(title: "Start Live Score", action: #selector(toggleLiveScore))
-        liveScoreButton = liveScoreBtn
-        stack.addArrangedSubview(makeCard(
-            title: "Live Score",
-            description: "Scoreboard with team scores, period, and clock.",
-            buttons: [liveScoreBtn, makeButton(title: "Update Live Score", action: #selector(updateLiveScore))]
-        ))
+        for (driver, description) in makeDrivers() {
+            drivers.append(driver)
+            stack.addArrangedSubview(makeDriverCard(driver, description: description))
+        }
 
-        let deliveryBtn = makeButton(title: "Start Delivery Tracking", action: #selector(toggleDelivery))
-        deliveryButton = deliveryBtn
-        stack.addArrangedSubview(makeCard(
-            title: "Delivery Tracking",
-            description: "Step-based order progress with ETA countdown.",
-            buttons: [deliveryBtn, makeButton(title: "Update Delivery Tracking", action: #selector(updateDelivery))]
-        ))
-
-        let countdownBtn = makeButton(title: "Start Countdown Timer", action: #selector(toggleCountdown))
-        countdownButton = countdownBtn
-        stack.addArrangedSubview(makeCard(
-            title: "Countdown Timer",
-            description: "Countdown to a target date with configurable messaging.",
-            buttons: [countdownBtn, makeButton(title: "Update Countdown Timer", action: #selector(updateCountdown))]
-        ))
-
-        let flightBtn = makeButton(title: "Start Flight Status", action: #selector(toggleFlight))
-        flightButton = flightBtn
-        stack.addArrangedSubview(makeCard(
-            title: "Flight Status",
-            description: "Real-time flight tracking with gate and in-flight progress.",
-            buttons: [flightBtn, makeButton(title: "Update Flight Status", action: #selector(updateFlight))]
-        ))
-
-        let auctionBtn = makeButton(title: "Start Auction Bid", action: #selector(toggleAuction))
-        auctionButton = auctionBtn
-        stack.addArrangedSubview(makeCard(
-            title: "Auction Bid",
-            description: "Live auction with current bid, bid count, and countdown.",
-            buttons: [auctionBtn, makeButton(title: "Update Auction Bid", action: #selector(updateAuction))]
-        ))
+        stack.addArrangedSubview(makeAdoptCard())
+        stack.addArrangedSubview(makeDebugCard())
     }
 
-    private func makeCard(title: String, description: String, buttons: [ThemeButton]) -> UIView {
+    // Builds one driver per template, each with a realistic multi-phase sequence including
+    // edge cases: Live Score status tint, Delivery stale message, Countdown expiry, Flight
+    // delay-red, Auction winning/outbid tints.
+    // swiftlint:disable:next function_body_length
+    private func makeDrivers() -> [(any LiveActivityDemoDriving, String)] {
+        let module: () -> LiveActivitiesModule? = { AppDelegate.liveActivities }
+        let log: (String) -> Void = { [weak self] line in self?.appendLog(line) }
+        func future(_ seconds: TimeInterval) -> EpochMillisDate {
+            EpochMillisDate(Date().addingTimeInterval(seconds))
+        }
+
+        let liveScore = LiveActivityDemoDriver<CIOLiveScoreAttributes>(
+            title: "Live Score",
+            module: module,
+            phases: [
+                .init(subtitle: "Starts in 15 Min"),
+                .init(homeScore: 7, awayScore: 0, subtitle: "1st Quarter · 12:00"),
+                .init(homeScore: 14, awayScore: 10, subtitle: "2nd Quarter · 05:30"),
+                .init(homeScore: 21, awayScore: 21, subtitle: "4th Quarter · 00:42", statusColor: "#FFCC00")
+            ],
+            endState: .init(homeScore: 24, awayScore: 21, subtitle: "Final Score"),
+            log: log
+        ) { CIOLiveScoreAttributes(activityInstanceId: $0, homeTeam: .init(name: "LAL"), awayTeam: .init(name: "BOS")) }
+
+        let delivery = LiveActivityDemoDriver<CIODeliveryTrackingAttributes>(
+            title: "Delivery Tracking",
+            module: module,
+            phases: [
+                .init(title: "Order placed", subtitle: "For Mahmoud", progress: .init(current: 1, total: 4)),
+                .init(title: "Preparing your order", progress: .init(current: 2, total: 4), estimatedArrival: future(1800)),
+                .init(title: "Out for delivery", subtitle: "Driver: Sam", progress: .init(current: 3, total: 4), estimatedArrival: future(600), statusColor: "#34C759"),
+                .init(title: "Tracking paused", progress: .init(current: 3, total: 4), staleMessage: "Location may be out of date")
+            ],
+            endState: .init(title: "Delivered", progress: .init(current: 4, total: 4), estimatedArrival: future(0)),
+            log: log
+        ) { CIODeliveryTrackingAttributes(activityInstanceId: $0, header: "Order #ABC-1234") }
+
+        let countdown = LiveActivityDemoDriver<CIOCountdownTimerAttributes>(
+            title: "Countdown Timer",
+            module: module,
+            phases: [
+                .init(targetDate: future(3600), subtitle: "Sale starts in"),
+                .init(targetDate: future(60), subtitle: "Almost there"),
+                .init(targetDate: future(-1), subtitle: "Sale ended", expiredMessage: "Sale is live!")
+            ],
+            endState: .init(targetDate: future(0), subtitle: "Sale ended", expiredMessage: "Sale is live!"),
+            log: log
+        ) { CIOCountdownTimerAttributes(activityInstanceId: $0, title: "Flash Sale") }
+
+        let flight = LiveActivityDemoDriver<CIOFlightStatusAttributes>(
+            title: "Flight Status",
+            module: module,
+            phases: [
+                .init(status: "On Time", title: "Boarding soon", subtitle: "Gate B12 · Terminal 2", scheduledDeparture: future(1800), estimatedArrival: future(21600)),
+                .init(status: "Boarding", title: "Boarding at gate B12", subtitle: "Gate B12 · Zone 3", scheduledDeparture: future(900), estimatedArrival: future(21600)),
+                .init(status: "In Flight", title: "2h 15m until landing", subtitle: "Gate B12 · Terminal 2", scheduledDeparture: future(0), estimatedArrival: future(8100), progressFraction: 0.55),
+                .init(status: "Delayed", title: "Delayed 25 min", subtitle: "Gate B12 · Terminal 2", scheduledDeparture: future(1500), estimatedArrival: future(21600), statusColor: "#CC3330")
+            ],
+            endState: .init(status: "Landed", title: "Arrived at JFK", subtitle: "Terminal 2 · Bag 4", scheduledDeparture: future(0), estimatedArrival: future(0)),
+            log: log
+        ) { CIOFlightStatusAttributes(activityInstanceId: $0, header: "CIO101", origin: .init(code: "SFO", city: "San Francisco"), destination: .init(code: "JFK", city: "New York")) }
+
+        let auction = LiveActivityDemoDriver<CIOAuctionBidAttributes>(
+            title: "Auction Bid",
+            module: module,
+            phases: [
+                .init(currentBid: "100.00", subtitle: "5 bids", statusMessage: "You've been outbid", endTime: future(3600), statusColor: "#CC3330"),
+                .init(currentBid: "150.00", subtitle: "8 bids", statusMessage: "You're winning", endTime: future(3600), statusColor: "#36AE3F"),
+                .init(currentBid: "175.00", subtitle: "11 bids", statusMessage: "You've been outbid", endTime: future(1800), statusColor: "#CC3330")
+            ],
+            endState: .init(currentBid: "250.00", subtitle: "12 bids", statusMessage: "Auction ended", endTime: future(0)),
+            log: log
+        ) { CIOAuctionBidAttributes(activityInstanceId: $0, title: "Vintage Watch") }
+
+        return [
+            (liveScore, "Scoreboard; last update tints the status (statusColor)."),
+            (delivery, "Step progress + ETA; phase 4 sends a staleMessage."),
+            (countdown, "Countdown; last phase is post-target with an expiredMessage."),
+            (flight, "Gate → in-flight progress → a delayed (red) phase."),
+            (auction, "Outbid → winning → outbid, driven by statusColor (green/red).")
+        ]
+    }
+
+    private func makeDriverCard(_ driver: any LiveActivityDemoDriving, description: String) -> UIView {
+        let startButton = makeButton("Start \(driver.title)")
+        startButton.addAction(UIAction { [weak driver] _ in driver?.toggle() }, for: .touchUpInside)
+        driver.onChange = { [weak driver, weak startButton] in
+            guard let driver else { return }
+            startButton?.setTitle("\(driver.isActive ? "End" : "Start") \(driver.title)", for: .normal)
+        }
+
+        let updateButton = makeButton("Update (next phase)")
+        updateButton.addAction(UIAction { [weak driver] _ in driver?.advance() }, for: .touchUpInside)
+
+        let autoButton = makeButton("Auto-run all phases")
+        autoButton.addAction(UIAction { [weak driver] _ in driver?.autoRun() }, for: .touchUpInside)
+
+        return makeCard(title: driver.title, description: description, buttons: [startButton, updateButton, autoButton])
+    }
+
+    private func makeAdoptCard() -> UIView {
+        let startButton = makeButton("Start (app-created) & Adopt")
+        adoptButton = startButton
+        startButton.addAction(UIAction { [weak self] _ in self?.toggleAdopt() }, for: .touchUpInside)
+
+        let updateButton = makeButton("Update Adopted")
+        updateButton.addAction(UIAction { [weak self] _ in self?.updateAdopt() }, for: .touchUpInside)
+
+        return makeCard(
+            title: "Adopt (escape hatch)",
+            description: "The app creates the activity itself with Activity.request, then hands it to the SDK via adopt() so update/end route through Customer.io.",
+            buttons: [startButton, updateButton]
+        )
+    }
+
+    private func makeDebugCard() -> UIView {
+        let unknownButton = makeButton("Start unregistered type (error)")
+        unknownButton.addAction(UIAction { [weak self] _ in self?.triggerUnknownType() }, for: .touchUpInside)
+
+        let clearButton = makeButton("Clear log")
+        clearButton.addAction(UIAction { [weak self] _ in self?.logView.text = "" }, for: .touchUpInside)
+
+        logView.isEditable = false
+        logView.font = .monospacedSystemFont(ofSize: 11, weight: .regular)
+        logView.backgroundColor = UIColor(white: 0.06, alpha: 1.0)
+        logView.textColor = UIColor(white: 0.9, alpha: 1.0)
+        logView.layer.cornerRadius = 8
+        logView.heightAnchor.constraint(equalToConstant: 180).isActive = true
+
+        return makeCard(
+            title: "Errors & Debug",
+            description: "Trigger the typeNotRegistered error path, and watch the observedActivities stream + local start/update/end. (Push tokens aren't publicly readable — they go to Customer.io / os_log.)",
+            buttons: [unknownButton, clearButton],
+            extraViews: [logView]
+        )
+    }
+
+    // MARK: - Adopt handlers
+
+    private func toggleAdopt() {
+        if let handle = adoptHandle {
+            Task { @MainActor in
+                await handle.end(.init(targetDate: EpochMillisDate(Date()), subtitle: "Adopted — ended", expiredMessage: "Done"))
+                self.adoptHandle = nil
+                self.adoptButton?.setTitle("Start (app-created) & Adopt", for: .normal)
+                self.appendLog("Adopt: ended")
+            }
+            return
+        }
+        do {
+            let attributes = CIOCountdownTimerAttributes(
+                activityInstanceId: UUID().uuidString.lowercased(),
+                title: "Adopted Countdown"
+            )
+            let state = CIOCountdownTimerAttributes.ContentState(
+                targetDate: EpochMillisDate(Date().addingTimeInterval(3600)),
+                subtitle: "Adopted (app-created)"
+            )
+            let content = ActivityContent(state: state, staleDate: nil)
+            let activity = try Activity.request(attributes: attributes, content: content, pushType: nil)
+            adoptHandle = AppDelegate.liveActivities?.adopt(activity)
+            adoptButton?.setTitle("End Adopted", for: .normal)
+            appendLog("Adopt: app-created activity adopted")
+        } catch {
+            appendLog("Adopt: failed — \(error)")
+            showToast(withMessage: "Adopt failed: \(error.localizedDescription)")
+        }
+    }
+
+    private func updateAdopt() {
+        guard let handle = adoptHandle else {
+            showToast(withMessage: "Start & adopt first")
+            return
+        }
+        Task { @MainActor in
+            await handle.update(.init(targetDate: EpochMillisDate(Date().addingTimeInterval(60)), subtitle: "Adopted — updated"))
+            self.appendLog("Adopt: updated")
+        }
+    }
+
+    // MARK: - Error path
+
+    /// A type that is never passed to `LiveActivityConfigBuilder.register`, so `start` throws
+    /// `LiveActivityError.typeNotRegistered` before requesting anything — the iOS analog of
+    /// Android's "unknown template" path.
+    @available(iOS 17.2, *)
+    private struct UnregisteredDemoAttributes: CIOActivityAttribute {
+        struct ContentState: Codable, Hashable, Sendable {}
+        var activityInstanceId: String
+        // Built inside the type so `ContentState` resolves to the nested struct, not the
+        // `ActivityAttributes.ContentState` associatedtype existential.
+        static let sampleState = ContentState()
+    }
+
+    private func triggerUnknownType() {
+        do {
+            // Explicit closure type pins the generic `Attributes` so the content-state resolves.
+            let makeAttributes: (String) -> UnregisteredDemoAttributes = { UnregisteredDemoAttributes(activityInstanceId: $0) }
+            _ = try AppDelegate.liveActivities?.start(
+                contentState: UnregisteredDemoAttributes.sampleState,
+                attributes: makeAttributes
+            )
+            appendLog("Unknown type: unexpectedly started (no error thrown)")
+        } catch {
+            appendLog("Unknown type: threw (expected) — \(error)")
+            showToast(withMessage: "Expected error: \(error)")
+        }
+    }
+
+    // MARK: - Log
+
+    private func appendLog(_ line: String) {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "HH:mm:ss"
+        let entry = "\(formatter.string(from: Date()))  \(line)\n"
+        logView.text = entry + logView.text
+    }
+
+    // MARK: - View builders
+
+    private func makeCard(title: String, description: String, buttons: [ThemeButton], extraViews: [UIView] = []) -> UIView {
         let card = UIView()
         card.backgroundColor = UIColor(white: 0.97, alpha: 1.0)
         card.layer.cornerRadius = 10
@@ -153,262 +492,18 @@ class LiveActivitiesViewController: BaseViewController {
         for button in buttons {
             stack.addArrangedSubview(button)
         }
+        for extra in extraViews {
+            stack.addArrangedSubview(extra)
+        }
         return card
     }
 
-    private func makeButton(title: String, action: Selector) -> ThemeButton {
+    private func makeButton(_ title: String) -> ThemeButton {
         let button = ThemeButton()
         button.setTitle(title, for: .normal)
         button.heightAnchor.constraint(equalToConstant: 50).isActive = true
-        button.addTarget(self, action: action, for: .touchUpInside)
         return button
     }
-
-    // MARK: - Update actions (send a mock content-state update → emits an `update` event)
-
-    @objc private func updateLiveScore() {
-        guard let handle = liveScoreActivity else {
-            showToast(withMessage: "Start Live Score first")
-            return
-        }
-        Task { @MainActor in
-            await handle.update(.init(homeScore: Int.random(in: 0 ... 5), awayScore: Int.random(in: 0 ... 5), period: "2nd"))
-        }
-    }
-
-    @objc private func updateDelivery() {
-        guard let handle = deliveryActivity else {
-            showToast(withMessage: "Start Delivery Tracking first")
-            return
-        }
-        Task { @MainActor in
-            await handle.update(.init(
-                statusMessage: "Nearby",
-                stepCurrent: 3,
-                stepTotal: 4,
-                estimatedArrival: Date().addingTimeInterval(600)
-            ))
-        }
-    }
-
-    @objc private func updateCountdown() {
-        guard let handle = countdownActivity else {
-            showToast(withMessage: "Start Countdown Timer first")
-            return
-        }
-        Task { @MainActor in
-            await handle.update(.init(
-                targetDate: Date().addingTimeInterval(1800),
-                statusMessage: "Almost there",
-                expiredMessage: "Sale is live!"
-            ))
-        }
-    }
-
-    @objc private func updateFlight() {
-        guard let handle = flightActivity else {
-            showToast(withMessage: "Start Flight Status first")
-            return
-        }
-        Task { @MainActor in
-            await handle.update(.init(
-                statusMessage: "Boarding",
-                gate: "B14",
-                terminal: "2",
-                scheduledDeparture: Date().addingTimeInterval(900),
-                estimatedArrival: Date().addingTimeInterval(21600)
-            ))
-        }
-    }
-
-    @objc private func updateAuction() {
-        guard let handle = auctionActivity else {
-            showToast(withMessage: "Start Auction Bid first")
-            return
-        }
-        Task { @MainActor in
-            await handle.update(.init(
-                currentBid: "150.00",
-                bidCount: 8,
-                endTime: Date().addingTimeInterval(1800),
-                statusMessage: "New high bid"
-            ))
-        }
-    }
-
-    // MARK: - Toggle actions
-
-    @objc private func toggleLiveScore() {
-        if let handle = liveScoreActivity {
-            Task { @MainActor in
-                await handle.end(.init(homeScore: 2, awayScore: 1, period: "Final"))
-                self.liveScoreActivity = nil
-                self.liveScoreButton?.setTitle("Start Live Score", for: .normal)
-            }
-        } else {
-            do {
-                liveScoreActivity = try AppDelegate.liveActivities?.start(
-                    contentState: .init(homeScore: 0, awayScore: 0, period: "1st")
-                ) { activityInstanceId in
-                    CIOLiveScoreAttributes(
-                        activityInstanceId: activityInstanceId,
-                        homeTeam: .init(name: "HME"),
-                        awayTeam: .init(name: "AWY"),
-                        sport: "Demo"
-                    )
-                }
-                liveScoreButton?.setTitle("End Live Score", for: .normal)
-            } catch {
-                NSLog("[LiveActivities] Failed to start Live Score: \(error)")
-                showToast(withMessage: "Failed to start Live Score: \(error.localizedDescription)")
-            }
-        }
-    }
-
-    @objc private func toggleDelivery() {
-        if let handle = deliveryActivity {
-            Task { @MainActor in
-                await handle.end(.init(
-                    statusMessage: "Delivered",
-                    stepCurrent: 4,
-                    stepTotal: 4,
-                    estimatedArrival: Date()
-                ))
-                self.deliveryActivity = nil
-                self.deliveryButton?.setTitle("Start Delivery Tracking", for: .normal)
-            }
-        } else {
-            do {
-                deliveryActivity = try AppDelegate.liveActivities?.start(
-                    contentState: .init(
-                        statusMessage: "Out for delivery",
-                        stepCurrent: 2,
-                        stepTotal: 4,
-                        estimatedArrival: Date().addingTimeInterval(3600)
-                    )
-                ) { activityInstanceId in
-                    CIODeliveryTrackingAttributes(
-                        activityInstanceId: activityInstanceId,
-                        branding: self.demoBranding,
-                        orderId: "ORD-001"
-                    )
-                }
-                deliveryButton?.setTitle("End Delivery Tracking", for: .normal)
-            } catch {
-                NSLog("[LiveActivities] Failed to start Delivery Tracking: \(error)")
-                showToast(withMessage: "Failed to start Delivery Tracking: \(error.localizedDescription)")
-            }
-        }
-    }
-
-    @objc private func toggleCountdown() {
-        if let handle = countdownActivity {
-            Task { @MainActor in
-                await handle.end(.init(
-                    targetDate: Date(),
-                    statusMessage: "Sale ended",
-                    expiredMessage: "Sale is live!"
-                ))
-                self.countdownActivity = nil
-                self.countdownButton?.setTitle("Start Countdown Timer", for: .normal)
-            }
-        } else {
-            do {
-                countdownActivity = try AppDelegate.liveActivities?.start(
-                    contentState: .init(
-                        targetDate: Date().addingTimeInterval(3600),
-                        statusMessage: "Sale ends in",
-                        expiredMessage: "Sale is live!"
-                    )
-                ) { activityInstanceId in
-                    CIOCountdownTimerAttributes(
-                        activityInstanceId: activityInstanceId,
-                        branding: self.demoBranding,
-                        title: "Flash Sale"
-                    )
-                }
-                countdownButton?.setTitle("End Countdown Timer", for: .normal)
-            } catch {
-                NSLog("[LiveActivities] Failed to start Countdown Timer: \(error)")
-                showToast(withMessage: "Failed to start Countdown Timer: \(error.localizedDescription)")
-            }
-        }
-    }
-
-    @objc private func toggleFlight() {
-        if let handle = flightActivity {
-            Task { @MainActor in
-                await handle.end(.init(
-                    statusMessage: "Landed",
-                    gate: "B12",
-                    terminal: "2",
-                    scheduledDeparture: Date(),
-                    estimatedArrival: Date()
-                ))
-                self.flightActivity = nil
-                self.flightButton?.setTitle("Start Flight Status", for: .normal)
-            }
-        } else {
-            do {
-                let now = Date()
-                flightActivity = try AppDelegate.liveActivities?.start(
-                    contentState: .init(
-                        statusMessage: "On Time",
-                        gate: "B12",
-                        terminal: "2",
-                        scheduledDeparture: now.addingTimeInterval(1800),
-                        estimatedArrival: now.addingTimeInterval(21600)
-                    )
-                ) { activityInstanceId in
-                    CIOFlightStatusAttributes(
-                        activityInstanceId: activityInstanceId,
-                        branding: self.demoBranding,
-                        flightNumber: "CIO101",
-                        origin: .init(code: "SFO", city: "San Francisco"),
-                        destination: .init(code: "JFK", city: "New York")
-                    )
-                }
-                flightButton?.setTitle("End Flight Status", for: .normal)
-            } catch {
-                NSLog("[LiveActivities] Failed to start Flight Status: \(error)")
-                showToast(withMessage: "Failed to start Flight Status: \(error.localizedDescription)")
-            }
-        }
-    }
-
-    @objc private func toggleAuction() {
-        if let handle = auctionActivity {
-            Task { @MainActor in
-                await handle.end(.init(
-                    currentBid: "250.00",
-                    bidCount: 12,
-                    endTime: Date(),
-                    statusMessage: "Auction ended"
-                ))
-                self.auctionActivity = nil
-                self.auctionButton?.setTitle("Start Auction Bid", for: .normal)
-            }
-        } else {
-            do {
-                auctionActivity = try AppDelegate.liveActivities?.start(
-                    contentState: .init(
-                        currentBid: "100.00",
-                        bidCount: 5,
-                        endTime: Date().addingTimeInterval(3600),
-                        statusMessage: "You've been outbid"
-                    )
-                ) { activityInstanceId in
-                    CIOAuctionBidAttributes(
-                        activityInstanceId: activityInstanceId,
-                        branding: self.demoBranding,
-                        itemTitle: "Vintage Watch"
-                    )
-                }
-                auctionButton?.setTitle("End Auction Bid", for: .normal)
-            } catch {
-                NSLog("[LiveActivities] Failed to start Auction Bid: \(error)")
-                showToast(withMessage: "Failed to start Auction Bid: \(error.localizedDescription)")
-            }
-        }
-    }
 }
+
+// swiftlint:enable file_length type_body_length

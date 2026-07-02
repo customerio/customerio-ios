@@ -32,31 +32,56 @@ final class LiveActivityReporter: @unchecked Sendable {
 
     // MARK: - Lifecycle events (local operations only)
 
-    func reportStart(instanceUUID: String, notificationType: String, payload: [String: Any]?) {
-        reportLifecycle(eventType: "start", instanceUUID: instanceUUID, notificationType: notificationType, payload: payload)
+    /// Reports a `start`: sends both the static `attributes` object and the dynamic
+    /// `contentState` object (both nil-omitted if not encodable).
+    func reportStart(instanceUUID: String, notificationType: String, attributes: [String: Any]?, contentState: [String: Any]?) {
+        reportLifecycle(
+            eventType: LiveActivityContract.EventType.start,
+            instanceUUID: instanceUUID,
+            notificationType: notificationType,
+            attributes: attributes,
+            contentState: contentState
+        )
     }
 
-    func reportUpdate(instanceUUID: String, notificationType: String, payload: [String: Any]?) {
-        reportLifecycle(eventType: "update", instanceUUID: instanceUUID, notificationType: notificationType, payload: payload)
+    /// Reports an `update`: sends the dynamic `contentState` object.
+    func reportUpdate(instanceUUID: String, notificationType: String, contentState: [String: Any]?) {
+        reportLifecycle(
+            eventType: LiveActivityContract.EventType.update,
+            instanceUUID: instanceUUID,
+            notificationType: notificationType,
+            attributes: nil,
+            contentState: contentState
+        )
     }
 
-    func reportEnd(instanceUUID: String, notificationType: String) {
-        reportLifecycle(eventType: "end", instanceUUID: instanceUUID, notificationType: notificationType, payload: nil)
+    /// Reports an `end`: optionally sends a final `contentState` object (nil-omitted).
+    func reportEnd(instanceUUID: String, notificationType: String, contentState: [String: Any]? = nil) {
+        reportLifecycle(
+            eventType: LiveActivityContract.EventType.end,
+            instanceUUID: instanceUUID,
+            notificationType: notificationType,
+            attributes: nil,
+            contentState: contentState
+        )
     }
 
-    private func reportLifecycle(eventType: String, instanceUUID: String, notificationType: String, payload: [String: Any]?) {
+    private func reportLifecycle(eventType: String, instanceUUID: String, notificationType: String, attributes: [String: Any]?, contentState: [String: Any]?) {
         guard let deviceId = gatedDeviceId(for: "\(eventType) event") else { return }
         var properties: [String: Any] = [
-            "eventType": eventType,
-            "instanceUUID": instanceUUID,
-            "deviceId": deviceId,
-            "platform": "ios",
-            "notificationType": notificationType
+            LiveActivityContract.Key.eventType: eventType,
+            LiveActivityContract.Key.instanceUUID: instanceUUID,
+            LiveActivityContract.Key.deviceId: deviceId,
+            LiveActivityContract.Key.platform: LiveActivityContract.platform,
+            LiveActivityContract.Key.notificationType: notificationType
         ]
-        if let payload, !payload.isEmpty {
-            properties["payload"] = payload
+        if let attributes, !attributes.isEmpty {
+            properties[LiveActivityContract.Key.attributes] = attributes
         }
-        track("Live Notification Event", properties)
+        if let contentState, !contentState.isEmpty {
+            properties[LiveActivityContract.Key.contentState] = contentState
+        }
+        track(LiveActivityContract.Event.lifecycle, properties)
         logger.debug(
             "Sent 'Live Notification Event' eventType=\(eventType) instanceUUID=\(instanceUUID) notificationType=\(notificationType)",
             "LiveActivities"
@@ -67,13 +92,13 @@ final class LiveActivityReporter: @unchecked Sendable {
 
     func sendPushToStartToken(notificationType: String, attributesType: String, pushToStartToken: String) {
         guard let deviceId = gatedDeviceId(for: "push_to_start token") else { return }
-        track("Live Notification Token", [
-            "registrationType": "push_to_start",
-            "notificationType": notificationType,
-            "platform": "ios",
-            "deviceId": deviceId,
-            "pushToStartToken": pushToStartToken,
-            "attributesType": attributesType
+        track(LiveActivityContract.Event.token, [
+            LiveActivityContract.Key.registrationType: LiveActivityContract.RegistrationType.pushToStart,
+            LiveActivityContract.Key.notificationType: notificationType,
+            LiveActivityContract.Key.platform: LiveActivityContract.platform,
+            LiveActivityContract.Key.deviceId: deviceId,
+            LiveActivityContract.Key.pushToStartToken: pushToStartToken,
+            LiveActivityContract.Key.attributesType: attributesType
         ])
         logger.debug(
             "Sent 'Live Notification Token' registrationType=push_to_start notificationType=\(notificationType) attributesType=\(attributesType)",
@@ -83,13 +108,13 @@ final class LiveActivityReporter: @unchecked Sendable {
 
     func sendInstanceToken(notificationType: String, instanceUUID: String, instanceToken: String) {
         guard let deviceId = gatedDeviceId(for: "instance token") else { return }
-        track("Live Notification Token", [
-            "registrationType": "instance",
-            "notificationType": notificationType,
-            "platform": "ios",
-            "deviceId": deviceId,
-            "instanceUUID": instanceUUID,
-            "instanceToken": instanceToken
+        track(LiveActivityContract.Event.token, [
+            LiveActivityContract.Key.registrationType: LiveActivityContract.RegistrationType.instance,
+            LiveActivityContract.Key.notificationType: notificationType,
+            LiveActivityContract.Key.platform: LiveActivityContract.platform,
+            LiveActivityContract.Key.deviceId: deviceId,
+            LiveActivityContract.Key.instanceUUID: instanceUUID,
+            LiveActivityContract.Key.instanceToken: instanceToken
         ])
         logger.debug(
             "Sent 'Live Notification Token' registrationType=instance notificationType=\(notificationType) instanceUUID=\(instanceUUID)",
@@ -115,20 +140,17 @@ final class LiveActivityReporter: @unchecked Sendable {
 
     // MARK: - Payload encoding
 
-    // Pinned encoder for content-state payloads. `.millisecondsSince1970` matches the Android
-    // convention; the exact wire contract (units / key casing) is still pending backend
-    // confirmation (see plan decision #3).
-    static let payloadEncoder: JSONEncoder = {
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .millisecondsSince1970
-        return encoder
-    }()
+    // Pinned encoder for the `attributes` / `contentState` objects. Date fields are modeled
+    // with `EpochMillisDate`, which encodes to an epoch-millisecond number, so no
+    // `dateEncodingStrategy` is needed here — this keeps the local CDP-event wire format
+    // byte-for-byte consistent with what ActivityKit decodes on a server push.
+    static let payloadEncoder = JSONEncoder()
 
-    /// Encodes a `Codable` content state into a JSON object for the `payload` field.
-    /// Returns `nil` when the state is not encodable as a JSON object.
-    static func payload<State: Encodable>(from state: State) -> [String: Any]? {
+    /// Encodes a `Codable` value (`Attributes` or `ContentState`) into a JSON object.
+    /// Returns `nil` when the value is not encodable as a JSON object.
+    static func encode(_ value: some Encodable) -> [String: Any]? {
         guard
-            let data = try? payloadEncoder.encode(state),
+            let data = try? payloadEncoder.encode(value),
             let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
         else { return nil }
         return object

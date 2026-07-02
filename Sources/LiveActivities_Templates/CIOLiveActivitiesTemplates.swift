@@ -25,17 +25,27 @@ public enum CIOLiveActivitiesTemplates {
     // single write always happens before any reads. No concurrent writes occur.
     private nonisolated(unsafe) static var _assetLibrary: CIOAssetLibrary = .init(path: nil)
 
-    /// Configure the shared asset library for the widget extension.
+    // Set once in configure() alongside the asset library; see the note above for why
+    // nonisolated(unsafe) is safe here.
+    private nonisolated(unsafe) static var _branding: CIOActivityBranding?
+
+    /// Configure the shared asset library and branding for the widget extension.
     ///
     /// Must be called exactly once, in `WidgetBundle.init()`, before any widget renders.
     /// If the AppGroup container or asset manifest cannot be found, the shared library
     /// silently degrades to a null instance — every asset request returns an empty
     /// placeholder rather than crashing.
     ///
-    /// - Parameter appGroup: The AppGroup container identifier declared in both
-    ///   the app target's and widget extension target's entitlements.
-    public static func configure(appGroup: String) {
+    /// - Parameters:
+    ///   - appGroup: The AppGroup container identifier declared in both the app target's
+    ///     and widget extension target's entitlements.
+    ///   - branding: App-level branding (logo, name, accent color) applied across every
+    ///     Customer.io template. Shared for the whole app rather than set per activity
+    ///     type. When `nil`, each template falls back to its built-in accent color and
+    ///     omits the brand logo.
+    public static func configure(appGroup: String, branding: CIOActivityBranding? = nil) {
         _assetLibrary = (try? CIOAssetLibrary(appGroup: appGroup)) ?? .init(path: nil)
+        _branding = branding
     }
 
     /// The shared `CIOAssetLibrary` instance for this widget extension process.
@@ -43,4 +53,8 @@ public enum CIOLiveActivitiesTemplates {
     /// Returns a null instance (every lookup returns `nil` / empty placeholder)
     /// before `configure(appGroup:)` has been called.
     public static var assetLibrary: CIOAssetLibrary { _assetLibrary }
+
+    /// The app-level branding supplied to `configure(appGroup:branding:)`, or `nil`
+    /// if none was provided.
+    public static var branding: CIOActivityBranding? { _branding }
 }

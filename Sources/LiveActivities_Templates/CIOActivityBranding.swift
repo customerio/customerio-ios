@@ -1,9 +1,11 @@
 #if os(iOS)
 
-/// Branding configuration shared across all Customer.io Live Activity templates.
+/// App-level branding shared across all Customer.io Live Activity templates.
 ///
-/// Embed this in the static `ActivityAttributes` of any template to allow the
-/// host app to supply a logo asset and accent color at activity-creation time.
+/// Registered once in the widget extension via
+/// `CIOLiveActivitiesTemplates.configure(appGroup:branding:)` and applied to every
+/// template this app renders — it is *not* set per activity type. Mirrors the Android
+/// `LiveNotificationBranding` app-level configuration.
 public struct CIOActivityBranding: Codable, Hashable, Sendable {
     /// AssetKey for the brand logo image, resolved via `CIOAssetLibrary`.
     /// When `nil` or the key is not found, `name` is displayed as a text fallback.

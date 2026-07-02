@@ -6,97 +6,108 @@ import Testing
 
 // MARK: - Helpers
 
-private func makeTempStorage() throws -> StorageManager {
-    let db = try Database(path: ":memory:", key: "test-key", walMode: false)
-    let storage = StorageManager(db: db, cdpApiKey: "test-key")
-    try storage.runMigrations()
-    return storage
+private func makeStore() -> (KeyValueLiveActivityTokenStore, InMemoryKeyValueStorage) {
+    let kv = InMemoryKeyValueStorage()
+    return (KeyValueLiveActivityTokenStore(storage: kv), kv)
 }
 
-// MARK: - Migration
-
-struct LiveActivityMigrationTests {
-    @Test func migration_createsTable_withoutError() throws {
-        _ = try makeTempStorage()
-    }
-
-    @Test func migration_isIdempotent() throws {
-        let db = try Database(path: ":memory:", key: "test-key", walMode: false)
-        let storage = StorageManager(db: db, cdpApiKey: "test-key")
-        try storage.runMigrations()
-        try storage.runMigrations()
-    }
-}
-
-// MARK: - getRegistrationSignature
+// MARK: - registrationSignature
 
 struct LiveActivityRegistrationGetTests {
-    @Test func getSignature_returnsNil_whenNoRecordExists() throws {
-        let storage = try makeTempStorage()
-        #expect(try storage.getRegistrationSignature(activityType: "OrderActivity") == nil)
+    @Test func getSignature_returnsNil_whenNoRecordExists() {
+        let (store, _) = makeStore()
+        #expect(store.registrationSignature(activityType: "OrderActivity") == nil)
     }
 
-    @Test func getSignature_returnsNil_forUnknownActivityType() throws {
-        let storage = try makeTempStorage()
-        try storage.setRegistrationSignature(activityType: "OrderActivity", signature: "aabbcc|user-1")
-        #expect(try storage.getRegistrationSignature(activityType: "ShipmentActivity") == nil)
+    @Test func getSignature_returnsNil_forUnknownActivityType() {
+        let (store, _) = makeStore()
+        store.setRegistrationSignature(activityType: "OrderActivity", signature: "aabbcc|user-1")
+        #expect(store.registrationSignature(activityType: "ShipmentActivity") == nil)
     }
 
-    @Test func getSignature_returnsStoredSignature() throws {
-        let storage = try makeTempStorage()
-        try storage.setRegistrationSignature(activityType: "OrderActivity", signature: "deadbeef|user-1")
-        #expect(try storage.getRegistrationSignature(activityType: "OrderActivity") == "deadbeef|user-1")
+    @Test func getSignature_returnsStoredSignature() {
+        let (store, _) = makeStore()
+        store.setRegistrationSignature(activityType: "OrderActivity", signature: "deadbeef|user-1")
+        #expect(store.registrationSignature(activityType: "OrderActivity") == "deadbeef|user-1")
     }
 }
 
 // MARK: - setRegistrationSignature
 
 struct LiveActivityRegistrationSetTests {
-    @Test func setSignature_persistsValue() throws {
-        let storage = try makeTempStorage()
-        try storage.setRegistrationSignature(activityType: "OrderActivity", signature: "cafebabe|user-1")
-        #expect(try storage.getRegistrationSignature(activityType: "OrderActivity") == "cafebabe|user-1")
+    @Test func setSignature_persistsValue() {
+        let (store, _) = makeStore()
+        store.setRegistrationSignature(activityType: "OrderActivity", signature: "cafebabe|user-1")
+        #expect(store.registrationSignature(activityType: "OrderActivity") == "cafebabe|user-1")
     }
 
-    @Test func setSignature_upserts_onConflict() throws {
-        let storage = try makeTempStorage()
-        try storage.setRegistrationSignature(activityType: "OrderActivity", signature: "first|user-1")
-        try storage.setRegistrationSignature(activityType: "OrderActivity", signature: "second|user-2")
-        #expect(try storage.getRegistrationSignature(activityType: "OrderActivity") == "second|user-2")
+    @Test func setSignature_upserts_onConflict() {
+        let (store, _) = makeStore()
+        store.setRegistrationSignature(activityType: "OrderActivity", signature: "first|user-1")
+        store.setRegistrationSignature(activityType: "OrderActivity", signature: "second|user-2")
+        #expect(store.registrationSignature(activityType: "OrderActivity") == "second|user-2")
     }
 
-    @Test func setSignature_storesIndependentlyPerActivityType() throws {
-        let storage = try makeTempStorage()
-        try storage.setRegistrationSignature(activityType: "OrderActivity", signature: "order|user-1")
-        try storage.setRegistrationSignature(activityType: "ShipmentActivity", signature: "ship|user-1")
-        #expect(try storage.getRegistrationSignature(activityType: "OrderActivity") == "order|user-1")
-        #expect(try storage.getRegistrationSignature(activityType: "ShipmentActivity") == "ship|user-1")
+    @Test func setSignature_storesIndependentlyPerActivityType() {
+        let (store, _) = makeStore()
+        store.setRegistrationSignature(activityType: "OrderActivity", signature: "order|user-1")
+        store.setRegistrationSignature(activityType: "ShipmentActivity", signature: "ship|user-1")
+        #expect(store.registrationSignature(activityType: "OrderActivity") == "order|user-1")
+        #expect(store.registrationSignature(activityType: "ShipmentActivity") == "ship|user-1")
+    }
+
+    @Test func setSignature_survivesReload_fromSameBackingStore() {
+        let kv = InMemoryKeyValueStorage()
+        KeyValueLiveActivityTokenStore(storage: kv)
+            .setRegistrationSignature(activityType: "OrderActivity", signature: "persisted|user-1")
+        // A fresh store instance over the same backing storage sees the value.
+        let reopened = KeyValueLiveActivityTokenStore(storage: kv)
+        #expect(reopened.registrationSignature(activityType: "OrderActivity") == "persisted|user-1")
     }
 }
 
-// MARK: - clearAllLiveActivityRegistrations
+// MARK: - clearAll
 
 struct LiveActivityRegistrationClearTests {
-    @Test func clear_removesAllRecords() throws {
-        let storage = try makeTempStorage()
-        try storage.setRegistrationSignature(activityType: "OrderActivity", signature: "aaa|u")
-        try storage.setRegistrationSignature(activityType: "ShipmentActivity", signature: "bbb|u")
-        try storage.clearAllLiveActivityRegistrations()
-        #expect(try storage.getRegistrationSignature(activityType: "OrderActivity") == nil)
-        #expect(try storage.getRegistrationSignature(activityType: "ShipmentActivity") == nil)
+    @Test func clear_removesAllRecords() {
+        let (store, _) = makeStore()
+        store.setRegistrationSignature(activityType: "OrderActivity", signature: "aaa|u")
+        store.setRegistrationSignature(activityType: "ShipmentActivity", signature: "bbb|u")
+        store.clearAll()
+        #expect(store.registrationSignature(activityType: "OrderActivity") == nil)
+        #expect(store.registrationSignature(activityType: "ShipmentActivity") == nil)
     }
 
-    @Test func clear_isNoOp_whenTableIsAlreadyEmpty() throws {
-        let storage = try makeTempStorage()
-        try storage.clearAllLiveActivityRegistrations()
-        #expect(try storage.getRegistrationSignature(activityType: "Any") == nil)
+    @Test func clear_isNoOp_whenAlreadyEmpty() {
+        let (store, _) = makeStore()
+        store.clearAll()
+        #expect(store.registrationSignature(activityType: "Any") == nil)
     }
 
-    @Test func setSignature_afterClear_persistsCorrectly() throws {
-        let storage = try makeTempStorage()
-        try storage.setRegistrationSignature(activityType: "OrderActivity", signature: "old|u")
-        try storage.clearAllLiveActivityRegistrations()
-        try storage.setRegistrationSignature(activityType: "OrderActivity", signature: "new|u")
-        #expect(try storage.getRegistrationSignature(activityType: "OrderActivity") == "new|u")
+    @Test func setSignature_afterClear_persistsCorrectly() {
+        let (store, _) = makeStore()
+        store.setRegistrationSignature(activityType: "OrderActivity", signature: "old|u")
+        store.clearAll()
+        store.setRegistrationSignature(activityType: "OrderActivity", signature: "new|u")
+        #expect(store.registrationSignature(activityType: "OrderActivity") == "new|u")
+    }
+
+    @Test func clearRegistrationSignature_removesOnlyThatKey() {
+        let (store, _) = makeStore()
+        store.setRegistrationSignature(activityType: "OrderActivity", signature: "a|u")
+        store.setRegistrationSignature(activityType: "instance:i1", signature: "dev|tok")
+        store.clearRegistrationSignature(activityType: "instance:i1")
+        #expect(store.registrationSignature(activityType: "instance:i1") == nil)
+        #expect(store.registrationSignature(activityType: "OrderActivity") == "a|u")
+    }
+
+    @Test func clear_leavesUnrelatedKeysIntact() {
+        let kv = InMemoryKeyValueStorage()
+        kv.setString("device-token-abc", forKey: .pushDeviceToken)
+        let store = KeyValueLiveActivityTokenStore(storage: kv)
+        store.setRegistrationSignature(activityType: "OrderActivity", signature: "aaa|u")
+        store.clearAll()
+        // clearAll must only remove our own key, not wipe the shared store.
+        #expect(kv.string(.pushDeviceToken) == "device-token-abc")
     }
 }

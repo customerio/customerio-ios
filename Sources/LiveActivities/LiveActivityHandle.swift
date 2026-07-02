@@ -1,3 +1,4 @@
+import CioInternalCommon
 import CioLiveActivities_Attributes
 import Foundation
 
@@ -23,12 +24,14 @@ public struct CIOLiveActivity<Attributes: CIOActivityAttribute> {
 
     private let reporter: LiveActivityReporter
     private let notificationType: String
+    private let logger: Logger
 
-    init(id: String, activity: Activity<Attributes>, reporter: LiveActivityReporter, notificationType: String) {
+    init(id: String, activity: Activity<Attributes>, reporter: LiveActivityReporter, notificationType: String, logger: Logger) {
         self.id = id
         self.activity = activity
         self.reporter = reporter
         self.notificationType = notificationType
+        self.logger = logger
     }
 
     /// Apply a local content-state update and report an `update` event.
@@ -37,15 +40,21 @@ public struct CIOLiveActivity<Attributes: CIOActivityAttribute> {
         staleDate: Date? = nil,
         alert: AlertConfiguration? = nil
     ) async {
+        LiveActivityFieldValidation.warnIfMissingRequired(
+            contentState: contentState,
+            operation: "update",
+            notificationType: notificationType,
+            logger: logger
+        )
         await activity.update(ActivityContent(state: contentState, staleDate: staleDate), alertConfiguration: alert)
         reporter.reportUpdate(
             instanceUUID: id,
             notificationType: notificationType,
-            payload: LiveActivityReporter.payload(from: contentState)
+            contentState: LiveActivityReporter.encode(contentState)
         )
     }
 
-    /// End the activity locally and report an `end` event.
+    /// End the activity locally and report an `end` event with an optional final content-state.
     public func end(
         _ finalContentState: Attributes.ContentState? = nil,
         dismissalPolicy: ActivityUIDismissalPolicy = .default
@@ -55,7 +64,11 @@ public struct CIOLiveActivity<Attributes: CIOActivityAttribute> {
         } else {
             await activity.end(nil, dismissalPolicy: dismissalPolicy)
         }
-        reporter.reportEnd(instanceUUID: id, notificationType: notificationType)
+        reporter.reportEnd(
+            instanceUUID: id,
+            notificationType: notificationType,
+            contentState: finalContentState.flatMap(LiveActivityReporter.encode)
+        )
     }
 }
 #endif

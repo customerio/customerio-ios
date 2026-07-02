@@ -65,7 +65,7 @@ public final class LiveActivitiesModule {
         let module = LiveActivitiesModule(
             config: config,
             sdk: sdk,
-            tokenStorage: StorageManagerActivityTokenStore(storage: sdk.storageManager)
+            tokenStorage: KeyValueLiveActivityTokenStore(storage: sdk.sharedKeyValueStorage)
         )
         module.performInitialization()
         return module
@@ -128,17 +128,26 @@ public final class LiveActivitiesModule {
             throw LiveActivityError.typeNotRegistered(String(describing: Attributes.self))
         }
         let id = UUID().uuidString.lowercased()
+        let builtAttributes = attributes(id)
+        LiveActivityFieldValidation.warnIfMissingRequired(
+            attributes: builtAttributes,
+            contentState: contentState,
+            operation: "start",
+            notificationType: notificationType,
+            logger: sdk.logger
+        )
         let activity = try Activity.request(
-            attributes: attributes(id),
+            attributes: builtAttributes,
             content: ActivityContent(state: contentState, staleDate: staleDate, relevanceScore: relevanceScore),
             pushType: .token
         )
         reporter.reportStart(
             instanceUUID: id,
             notificationType: notificationType,
-            payload: LiveActivityReporter.payload(from: contentState)
+            attributes: LiveActivityReporter.encode(builtAttributes),
+            contentState: LiveActivityReporter.encode(contentState)
         )
-        return CIOLiveActivity(id: id, activity: activity, reporter: reporter, notificationType: notificationType)
+        return CIOLiveActivity(id: id, activity: activity, reporter: reporter, notificationType: notificationType, logger: sdk.logger)
     }
 
     /// Wrap an activity your app created directly, so you can report `update`/`end` through the
@@ -153,7 +162,8 @@ public final class LiveActivitiesModule {
             id: activity.attributes.activityInstanceId,
             activity: activity,
             reporter: reporter,
-            notificationType: notificationType
+            notificationType: notificationType,
+            logger: sdk.logger
         )
     }
     #endif

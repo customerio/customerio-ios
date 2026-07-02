@@ -60,14 +60,19 @@ public struct LiveActivityConfigBuilder {
         return copy
     }
 
-    /// Register a bundle asset for pre-loading into the AppGroup container.
+    /// Register an asset for pre-loading into the AppGroup container.
     ///
     /// The asset is copied on first use and on any subsequent change (detected via
     /// SHA-256 hash). Assets are addressed by `key` in the widget extension.
     ///
+    /// Both local (`file://`) and remote (`http`/`https`) URLs are supported. Remote assets
+    /// are downloaded off the init thread and cached on disk keyed by the URL, so the same
+    /// URL is not re-fetched on later launches. The cache has no expiry — publish changed
+    /// art under a new URL or `key`.
+    ///
     /// - Parameters:
     ///   - key: The string key used to retrieve this asset in the widget extension.
-    ///   - url: The source URL of the asset file within the app bundle.
+    ///   - url: The source URL of the asset — a bundle/`file://` URL or a remote `http(s)` URL.
     public func registerAsset(_ key: String, at url: URL) -> Self {
         var copy = self
         copy.config.assetRegistrations.append(AssetRegistration(key: key, sourceURL: url))

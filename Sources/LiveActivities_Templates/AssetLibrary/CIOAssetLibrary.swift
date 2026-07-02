@@ -1,3 +1,4 @@
+import CioLiveActivities_Attributes
 import Foundation
 import SwiftUI
 
@@ -13,14 +14,6 @@ import SwiftUI
 /// let assetLibrary = CIOLiveActivitiesTemplates.assetLibrary
 /// ```
 public final class CIOAssetLibrary: Sendable {
-    // The path of the assets directory relative to the AppGroup container root.
-    //
-    // NOTE: This value must match `AssetLibraryWriter.assetsSubpath` in
-    // Sources/LiveActivities/AssetLibrary/AssetLibraryWriter.swift.
-    // Both sides must always agree on this path.
-    private static let assetsSubpath = "cio/assets"
-    private static let manifestFilename = "manifest.json"
-
     /// The resolved assets directory URL. `nil` on a null instance.
     private let assetsURL: URL?
 
@@ -54,10 +47,8 @@ public final class CIOAssetLibrary: Sendable {
         else {
             throw CIOAssetLibraryError.appGroupNotFound(appGroup)
         }
-        let assetsURL = containerURL
-            .appendingPathComponent("cio")
-            .appendingPathComponent("assets")
-        let manifestURL = assetsURL.appendingPathComponent(Self.manifestFilename)
+        let assetsURL = LiveActivityAssetLocation.assetsDirectory(inContainer: containerURL)
+        let manifestURL = assetsURL.appendingPathComponent(LiveActivityAssetLocation.manifestFilename)
         guard FileManager.default.fileExists(atPath: manifestURL.path) else {
             throw CIOAssetLibraryError.manifestNotFound(appGroup)
         }
@@ -105,7 +96,7 @@ public final class CIOAssetLibrary: Sendable {
     }
 
     private static func loadManifest(assetsURL: URL) -> [String: ManifestEntry]? {
-        let manifestURL = assetsURL.appendingPathComponent(manifestFilename)
+        let manifestURL = assetsURL.appendingPathComponent(LiveActivityAssetLocation.manifestFilename)
         guard let data = try? Data(contentsOf: manifestURL) else { return nil }
         return (try? JSONDecoder().decode(Manifest.self, from: data))?.assets
     }

@@ -7,10 +7,13 @@ import ActivityKit
 /// Attributes for the Delivery Tracking template.
 ///
 /// Tracks an order from dispatch through delivery with step-based progress
-/// and an estimated arrival countdown. `statusImageKey` in `ContentState`
-/// is the primary demonstration of dynamic asset library usage — pre-load
-/// one image per delivery stage (e.g. `"delivery-warehouse"`, `"delivery-truck"`,
-/// `"delivery-door"`) and push the relevant key as status changes.
+/// and an estimated arrival countdown. `image` in `ContentState` is the primary
+/// demonstration of dynamic asset library usage — pre-load one image per delivery
+/// stage (e.g. `"delivery-warehouse"`, `"delivery-truck"`, `"delivery-door"`) and
+/// push the relevant asset reference as status changes.
+///
+/// Text fields (`header`, `title`, `subtitle`) are freeform slots rendered verbatim;
+/// the SDK never composes them.
 @available(iOS 17.2, *)
 public struct CIODeliveryTrackingAttributes: CIOActivityAttribute {
     public static let identifier = "io.customer.liveactivities.deliverytracking"
@@ -18,56 +21,66 @@ public struct CIODeliveryTrackingAttributes: CIOActivityAttribute {
     // MARK: - Static attributes
 
     public var activityInstanceId: String
-    public var branding: CIOActivityBranding
-    public var orderId: String
-    public var recipientName: String?
+    /// Optional top line, e.g. a brand or order label. Rendered verbatim.
+    public var header: String?
 
     public init(
         activityInstanceId: String,
-        branding: CIOActivityBranding,
-        orderId: String,
-        recipientName: String? = nil
+        header: String? = nil
     ) {
         self.activityInstanceId = activityInstanceId
-        self.branding = branding
-        self.orderId = orderId
-        self.recipientName = recipientName
+        self.header = header
+    }
+
+    // MARK: - Nested types
+
+    /// Step-based delivery progress.
+    public struct Progress: Codable, Hashable, Sendable {
+        /// Current progress step (1-based).
+        public var current: Int
+        /// Total number of progress steps.
+        public var total: Int
+
+        public init(current: Int, total: Int) {
+            self.current = current
+            self.total = total
+        }
     }
 
     // MARK: - Dynamic content state
 
     public struct ContentState: Codable, Hashable, Sendable {
-        /// Human-readable status label e.g. `"Your order is out for delivery"`.
-        public var statusMessage: String
-        /// AssetKey for the status illustration. Pre-load all stage images at
-        /// SDK configure time; push the appropriate key as the delivery progresses.
-        public var statusImageKey: String?
-        /// Current progress step (1-based).
-        public var stepCurrent: Int
-        /// Total number of progress steps.
-        public var stepTotal: Int
+        /// Primary status line, e.g. `"Your order is out for delivery"`. Rendered verbatim.
+        public var title: String
+        /// Optional secondary line, e.g. recipient / driver / detail. Rendered verbatim.
+        public var subtitle: String?
+        /// Asset reference for the status illustration (bundle name / asset key / URL),
+        /// resolved via `CIOAssetLibrary`. Pre-load stage images at configure time.
+        public var image: String?
+        /// Step-based delivery progress.
+        public var progress: Progress
         /// Estimated arrival time, used to render a live countdown.
-        public var estimatedArrival: Date?
-        /// Driver or courier name.
-        public var driverName: String?
+        public var estimatedArrival: EpochMillisDate?
+        /// Hex color (e.g. `"#34C759"`) applied to status accents. `nil` uses the template tint.
+        public var statusColor: String?
         /// Message shown when the activity becomes stale.
         public var staleMessage: String?
 
         public init(
-            statusMessage: String,
-            statusImageKey: String? = nil,
-            stepCurrent: Int,
-            stepTotal: Int,
-            estimatedArrival: Date? = nil,
-            driverName: String? = nil,
+            title: String,
+            subtitle: String? = nil,
+            image: String? = nil,
+            progress: Progress,
+            estimatedArrival: EpochMillisDate? = nil,
+            statusColor: String? = nil,
             staleMessage: String? = nil
         ) {
-            self.statusMessage = statusMessage
-            self.statusImageKey = statusImageKey
-            self.stepCurrent = stepCurrent
-            self.stepTotal = stepTotal
+            self.title = title
+            self.subtitle = subtitle
+            self.image = image
+            self.progress = progress
             self.estimatedArrival = estimatedArrival
-            self.driverName = driverName
+            self.statusColor = statusColor
             self.staleMessage = staleMessage
         }
     }

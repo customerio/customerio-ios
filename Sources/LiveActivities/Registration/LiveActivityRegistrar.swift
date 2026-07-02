@@ -5,8 +5,10 @@ import Foundation
 ///
 /// Registration is a CDP track event, so the data pipeline owns delivery — this type only
 /// decides timing. It holds the latest observed tokens and (re)sends them whenever the device
-/// token or user changes, for each type whose `"<token>|<userId>"` signature isn't already
-/// stored. Because a token captured while anonymous or before a device token exists is held
+/// token or user changes, for each type whose `"<deviceToken>|<pushToStartToken>|<userId>"`
+/// signature isn't already stored — the deviceToken is part of the signature so a device-token
+/// rotation re-registers the token against the new device. Because a token captured while
+/// anonymous or before a device token exists is held
 /// pending (not sent, not stored), a registration skipped in that state re-fires automatically
 /// once the user is identified / a token arrives — the same model as the Android registrar.
 final class LiveActivityRegistrar: @unchecked Sendable {
@@ -28,8 +30,6 @@ final class LiveActivityRegistrar: @unchecked Sendable {
     private let pendingPushToStart = Synchronized<[String: PendingPushToStart]>([:])
     /// Latest observed instance token per instanceUUID, awaiting a registrable state.
     private let pendingInstance = Synchronized<[String: PendingInstance]>([:])
-    /// In-memory dedup of the last instance token sent per instanceUUID.
-    private let sentInstance = Synchronized<[String: String]>([:])
     /// Serializes `flushPending` so concurrent callers (the push-to-start task, per-activity
     /// observers, and identity/device-token events) can't each pass the dedup checks and
     /// double-send. Cheap: the body only enqueues CDP track events.
@@ -56,7 +56,6 @@ final class LiveActivityRegistrar: @unchecked Sendable {
     /// observer — so if we dropped them here, the next login would have nothing to re-register.
     func handleReset() {
         pendingInstance.wrappedValue = [:]
-        sentInstance.wrappedValue = [:]
         store.clearAll()
     }
 
@@ -76,10 +75,17 @@ final class LiveActivityRegistrar: @unchecked Sendable {
         flushPending()
     }
 
-    /// An activity ended — drop its per-instance state so the maps don't grow unbounded.
+    /// An activity ended — drop its per-instance state (in-memory + persisted) so the store
+    /// doesn't grow unbounded and a reused id would re-register.
     func handleActivityEnded(instanceUUID: String) {
         pendingInstance.mutating { $0[instanceUUID] = nil }
-        sentInstance.mutating { $0[instanceUUID] = nil }
+        store.clearRegistrationSignature(activityType: Self.instanceStoreKey(instanceUUID))
+    }
+
+    /// Store key for a per-instance signature. Namespaced so it can't collide with a
+    /// push-to-start key (an activity type identifier).
+    private static func instanceStoreKey(_ instanceUUID: String) -> String {
+        "instance:\(instanceUUID)"
     }
 
     // MARK: - Flush
@@ -95,7 +101,9 @@ final class LiveActivityRegistrar: @unchecked Sendable {
         else { return }
 
         for (notificationType, pending) in pendingPushToStart.wrappedValue {
-            let signature = "\(pending.tokenHex)|\(userId)"
+            // Include the deviceToken so a device-token rotation (same push-to-start token + user)
+            // re-registers against the new device rather than being skipped as unchanged.
+            let signature = "\(deviceToken)|\(pending.tokenHex)|\(userId)"
             guard store.registrationSignature(activityType: notificationType) != signature else { continue }
             reporter.sendPushToStartToken(
                 notificationType: notificationType,
@@ -106,19 +114,19 @@ final class LiveActivityRegistrar: @unchecked Sendable {
         }
 
         for (instanceUUID, pending) in pendingInstance.wrappedValue {
-            // Atomically claim the send: check-and-set in one locked step so concurrent
-            // callers (rapid token updates / multiple observers) can't each pass the guard.
-            let shouldSend = sentInstance.mutating { sent -> Bool in
-                guard sent[instanceUUID] != pending.tokenHex else { return false }
-                sent[instanceUUID] = pending.tokenHex
-                return true
-            }
-            guard shouldSend else { continue }
+            // Dedup persists across launches (like push-to-start): keyed by instanceUUID with a
+            // `deviceToken|token` value, so an unchanged instance token on relaunch is skipped,
+            // while a rotated token or a new device re-registers. `flushPending` is serialized by
+            // `flushLock`, so this check-then-set is atomic against concurrent callers.
+            let storeKey = Self.instanceStoreKey(instanceUUID)
+            let sendKey = "\(deviceToken)|\(pending.tokenHex)"
+            guard store.registrationSignature(activityType: storeKey) != sendKey else { continue }
             reporter.sendInstanceToken(
                 notificationType: pending.notificationType,
                 instanceUUID: instanceUUID,
                 instanceToken: pending.tokenHex
             )
+            store.setRegistrationSignature(activityType: storeKey, signature: sendKey)
         }
     }
 }

@@ -22,7 +22,7 @@ public struct StorageManager: Sendable {
     /// Apply schema migrations. Must be called once before any other method.
     /// Pass `extra` migrations from modules that extend the schema.
     public func runMigrations(extra: [any Migration] = []) throws {
-        try db.migrate([CreateSdkMetaSchema(), CreateLiveActivityTokensSchema()] + extra)
+        try db.migrate([CreateSdkMetaSchema()] + extra)
     }
 
     // MARK: - sdk_meta (utility key/value table)

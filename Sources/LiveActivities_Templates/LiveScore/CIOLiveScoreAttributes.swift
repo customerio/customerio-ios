@@ -5,7 +5,10 @@ import ActivityKit
 
 /// Attributes for the Live Score template.
 ///
-/// Tracks a two-team match in any sport with real-time score, period, and clock updates.
+/// Tracks a two-team match with real-time score updates and a freeform bottom label
+/// (e.g. `"Starts in 15 Min"`, `"2nd half · 55:67"`, `"Final Score"`).
+///
+/// The `subtitle` slot is freeform and rendered verbatim; the SDK never composes it.
 @available(iOS 17.2, *)
 public struct CIOLiveScoreAttributes: CIOActivityAttribute {
     public static let identifier = "io.customer.liveactivities.livescore"
@@ -15,12 +18,13 @@ public struct CIOLiveScoreAttributes: CIOActivityAttribute {
     public struct Team: Codable, Hashable, Sendable {
         /// Display name for the team.
         public var name: String
-        /// AssetKey for the team logo, resolved via `CIOAssetLibrary`.
-        public var logoKey: String?
+        /// Asset reference for the team logo (bundle name / asset key / URL), resolved via
+        /// `CIOAssetLibrary`. `nil` falls back to the team name's initials.
+        public var logo: String?
 
-        public init(name: String, logoKey: String? = nil) {
+        public init(name: String, logo: String? = nil) {
             self.name = name
-            self.logoKey = logoKey
+            self.logo = logo
         }
     }
 
@@ -29,52 +33,47 @@ public struct CIOLiveScoreAttributes: CIOActivityAttribute {
     public var activityInstanceId: String
     public var homeTeam: Team
     public var awayTeam: Team
-    /// Sport identifier used for layout hints (e.g. `"soccer"`, `"basketball"`).
-    public var sport: String
-    /// AssetKey for the league or competition logo.
-    public var leagueLogoKey: String?
+    /// Asset reference for the league or app icon (bundle name / asset key / URL).
+    public var image: String?
 
     public init(
         activityInstanceId: String,
         homeTeam: Team,
         awayTeam: Team,
-        sport: String,
-        leagueLogoKey: String? = nil
+        image: String? = nil
     ) {
         self.activityInstanceId = activityInstanceId
         self.homeTeam = homeTeam
         self.awayTeam = awayTeam
-        self.sport = sport
-        self.leagueLogoKey = leagueLogoKey
+        self.image = image
     }
 
     // MARK: - Dynamic content state
 
     public struct ContentState: Codable, Hashable, Sendable {
-        public var homeScore: Int
-        public var awayScore: Int
-        /// Period label e.g. `"2nd Quarter"`, `"HT"`, `"FT"`.
-        public var period: String
-        /// Game clock string e.g. `"14:32"`. `nil` when not applicable.
-        public var clock: String?
-        /// Override label for special situations e.g. `"Penalty Shootout"`.
-        public var statusMessage: String?
+        /// Home team score. `nil` pre-game.
+        public var homeScore: Int?
+        /// Away team score. `nil` pre-game.
+        public var awayScore: Int?
+        /// Freeform bottom label e.g. `"Starts in 15 Min"`, `"2nd half · 55:67"`, `"Final Score"`.
+        /// Rendered verbatim.
+        public var subtitle: String?
+        /// Hex color (e.g. `"#34C759"`) applied to accents. `nil` uses the template tint.
+        public var statusColor: String?
         /// Message shown when the activity becomes stale.
         public var staleMessage: String?
 
         public init(
-            homeScore: Int,
-            awayScore: Int,
-            period: String,
-            clock: String? = nil,
-            statusMessage: String? = nil,
+            homeScore: Int? = nil,
+            awayScore: Int? = nil,
+            subtitle: String? = nil,
+            statusColor: String? = nil,
             staleMessage: String? = nil
         ) {
             self.homeScore = homeScore
             self.awayScore = awayScore
-            self.period = period
-            self.clock = clock
-            self.statusMessage = statusMessage
+            self.subtitle = subtitle
+            self.statusColor = statusColor
             self.staleMessage = staleMessage
         }
     }
