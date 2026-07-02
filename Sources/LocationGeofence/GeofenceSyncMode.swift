@@ -13,19 +13,19 @@ enum RefreshAction: Equatable {
 
 /// How the SDK fetches a user's geofences.
 ///
-/// `fetchAll` is the only mode: the backend returns the full (capped) set and the SDK never sends
-/// device location to fetch. This is a deliberate privacy posture — there is intentionally no code
-/// path that transmits location off-device.
+/// - `fetchNearby` — sends the device coordinate so the backend returns the set ranked around the
+///   device, and refetches when the device moves beyond `GeofenceConfig.remoteFetchRefreshTriggerRadius`
+///   from the last fetch anchor. The request carries no user identifier, so the coordinate isn't
+///   attributable to a person.
+/// - `fetchAll` — sends no location; the backend returns the full (capped) workspace set.
 ///
-/// To re-introduce a location-bound mode later (needs backend support; a deliberate SDK release,
-/// never a runtime or server-pushed toggle that could silently start sending location): add a case
-/// here, restore the coordinate coarsener + `GeofenceApiService.fetchNearbyGeofences`, branch on it
-/// in `GeofenceSyncCoordinator.awaitApiFetch`, and re-add the movement re-fetch rule (compare
-/// distance-from-last-fetch against `GeofenceConfig.remoteFetchRefreshTriggerRadius`) in the refresh
-/// and `handleMovement` decisions.
+/// Both modes are fully implemented; `active` selects the one the SDK ships with. It is
+/// **compile-time only** — never a runtime or server-pushed toggle — so whether location is sent can
+/// only change in a deliberate SDK release.
 enum GeofenceSyncMode: Equatable {
     case fetchAll
+    case fetchNearby
 
     /// The mode the SDK ships with. Compile-time only — see the type doc.
-    static let active: GeofenceSyncMode = .fetchAll
+    static let active: GeofenceSyncMode = .fetchNearby
 }

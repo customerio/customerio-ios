@@ -14,9 +14,8 @@ import Foundation
 struct GeofenceConfig: Codable, Equatable, Sendable {
     /// Movement-trigger geofence radius in meters. Default 3000m.
     let localRefreshTriggerRadius: Double
-    /// Distance in meters from the last server sync that triggers a fresh server fetch. Currently
-    /// unread (`fetchAll` never re-fetches on movement); reserved for a future location-bound sync
-    /// mode and still decoded because the server sends it. See `GeofenceSyncMode`.
+    /// Distance in meters from the last server fetch that triggers a fresh fetch. Used by
+    /// `fetchNearby`; unread by `fetchAll`, which holds the whole workspace. See `GeofenceSyncMode`.
     let remoteFetchRefreshTriggerRadius: Double
     /// Freshness window for cached sync. A successful sync within this interval suppresses
     /// redundant API calls from identify / app-launch triggers.

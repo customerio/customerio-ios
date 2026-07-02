@@ -15,12 +15,21 @@ extension GeofenceSyncCoordinatorImpl {
         let distanceFromLastRegistration = (await storage.getLastRegistrationCenter()).map { distance(from: $0, to: location) } ?? 0
 
         if isStaleInTime(lastSync: lastSync, config: config) { return .remote }
+        if movedBeyondRefetchRadius(from: lastSync?.location, to: location, config: config) { return .remote }
         // Device left the trigger radius since the nearest-set was last ranked — re-rank locally,
         // no network. This is the EXIT the live movement trigger fires on; refresh() catches one
         // missed while the app was dead (no boundary crossing to wake it).
         if distanceFromLastRegistration >= config.localRefreshTriggerRadius { return .local }
         if await hasUnregisteredCache() { return .local }
         return .skip
+    }
+
+    /// In `fetchNearby`, true once the device has moved beyond the refetch radius from the fetch
+    /// anchor — the cached set was ranked around that anchor and no longer covers the area. Always
+    /// false for `fetchAll` (it holds the whole workspace) or when there's no anchor to measure from.
+    func movedBeyondRefetchRadius(from anchor: LocationData?, to location: LocationData, config: GeofenceConfig) -> Bool {
+        guard syncMode == .fetchNearby, let anchor else { return false }
+        return distance(from: anchor, to: location) >= config.remoteFetchRefreshTriggerRadius
     }
 
     /// Cache aged out of its freshness window (or was never fetched).

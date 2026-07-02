@@ -17,6 +17,14 @@ protocol GeofenceApiService: AutoMockable, Sendable {
     func fetchAllGeofences(
         completion: @escaping (Result<GeofenceApiResponse, GeofenceApiError>) -> Void
     )
+
+    /// Fetch-nearby: returns the set ranked around the device location. The request carries no user
+    /// identifier (only the workspace API key), so the coordinate can't be attributed to a person.
+    func fetchNearbyGeofences(
+        latitude: Double,
+        longitude: Double,
+        completion: @escaping (Result<GeofenceApiResponse, GeofenceApiError>) -> Void
+    )
 }
 
 // sourcery: InjectRegisterShared = "GeofenceApiService"
@@ -48,6 +56,17 @@ final class GeofenceApiServiceImpl: GeofenceApiService, @unchecked Sendable {
         completion: @escaping (Result<GeofenceApiResponse, GeofenceApiError>) -> Void
     ) {
         request(queryItems: [], completion: completion)
+    }
+
+    func fetchNearbyGeofences(
+        latitude: Double,
+        longitude: Double,
+        completion: @escaping (Result<GeofenceApiResponse, GeofenceApiError>) -> Void
+    ) {
+        request(queryItems: [
+            URLQueryItem(name: "latitude", value: "\(latitude)"),
+            URLQueryItem(name: "longitude", value: "\(longitude)")
+        ], completion: completion)
     }
 
     private func request(

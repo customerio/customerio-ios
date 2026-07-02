@@ -998,6 +998,110 @@ struct GeofenceSyncCoordinatorTests {
     }
 
     @Test
+    func handleMovement_givenFetchNearbyMovementBeyondThreshold_expectRemoteFetch() async {
+        // fetchNearby only holds the set around the last fetch anchor, so a move beyond the refetch
+        // radius refetches a fresh nearby set (unlike fetchAll, which re-ranks).
+        let storage = makeStorage()
+        let config = GeofenceConfig(
+            localRefreshTriggerRadius: 1000,
+            remoteFetchRefreshTriggerRadius: 5000,
+            remoteFetchRefreshExpiry: 3600,
+            duplicateEventsExpiry: 3600,
+            maxBusinessGeofences: 10,
+            maxMonitoringDistance: GeofenceConstants.noMonitoringDistanceCap
+        )
+        await storage.setCachedConfig(config)
+        await storage.recordSync(timestamp: Date(timeIntervalSince1970: 100), location: LocationData(latitude: 0, longitude: 0))
+        let api = GeofenceApiServiceMock()
+        api.fetchNearbyGeofencesClosure = { _, _, completion in
+            completion(.success(makeApiResponse(regions: [makeRegion(id: "g1", latitude: 1, longitude: 1)])))
+        }
+        let setup = makeCoordinator(api: api, storage: storage, syncMode: .fetchNearby)
+
+        // ~157 km from anchor — beyond the 5 km refetch radius.
+        let result = await setup.coordinator.handleMovement(latitude: 1.0, longitude: 1.0)
+
+        #expect(result.isSuccess)
+        #expect(setup.api.fetchNearbyGeofencesCallsCount == 1)
+        #expect(setup.api.fetchAllGeofencesCallsCount == 0)
+    }
+
+    @Test
+    func handleMovement_givenFetchNearbyNoAnchor_expectRemoteFetchViaNearby() async {
+        // No prior sync → no anchor → bootstrap remote, and in fetchNearby that goes through
+        // fetchNearbyGeofences (not fetchAll).
+        let storage = makeStorage()
+        let api = GeofenceApiServiceMock()
+        api.fetchNearbyGeofencesClosure = { _, _, completion in
+            completion(.success(makeApiResponse(regions: [makeRegion(id: "g1", latitude: 1, longitude: 2)])))
+        }
+        let setup = makeCoordinator(api: api, storage: storage, syncMode: .fetchNearby)
+
+        let result = await setup.coordinator.handleMovement(latitude: 1.0, longitude: 2.0)
+
+        #expect(result.isSuccess)
+        #expect(setup.api.fetchNearbyGeofencesCallsCount == 1)
+        #expect(setup.api.fetchAllGeofencesCallsCount == 0)
+    }
+
+    @Test
+    func handleMovement_givenFetchNearbyMovementWithinThreshold_expectLocalRerankNoFetch() async {
+        let storage = makeStorage()
+        let config = GeofenceConfig(
+            localRefreshTriggerRadius: 1000,
+            remoteFetchRefreshTriggerRadius: 5000,
+            remoteFetchRefreshExpiry: 3600,
+            duplicateEventsExpiry: 3600,
+            maxBusinessGeofences: 10,
+            maxMonitoringDistance: GeofenceConstants.noMonitoringDistanceCap
+        )
+        await storage.setCachedConfig(config)
+        await storage.recordSync(timestamp: Date(timeIntervalSince1970: 100), location: LocationData(latitude: 0, longitude: 0))
+        await storage.setCachedGeofences([makeRegion(id: "cached", latitude: 0, longitude: 0.0005)])
+        let setup = makeCoordinator(storage: storage, syncMode: .fetchNearby)
+
+        // ~111 m from anchor — within the 5 km refetch radius, so re-rank locally.
+        let result = await setup.coordinator.handleMovement(latitude: 0, longitude: 0.001)
+
+        #expect(result.isSuccess)
+        #expect(setup.api.fetchNearbyGeofencesCallsCount == 0)
+        #expect(setup.api.fetchAllGeofencesCallsCount == 0)
+        #expect(setup.monitor.startedRegions.contains { $0.identifier == "cached" })
+    }
+
+    @Test
+    func refresh_givenFetchNearbyMovedBeyondRefetchRadius_expectRemoteFetchNotFetchAll() async {
+        // Time-fresh, but the device moved beyond the refetch radius from the last fetch anchor:
+        // fetchNearby must refetch, and via fetchNearbyGeofences (not fetchAll).
+        let storage = makeStorage()
+        let dateUtil = DateUtilStub()
+        dateUtil.givenNow = Date(timeIntervalSince1970: 1000)
+        let config = GeofenceConfig(
+            localRefreshTriggerRadius: 1000,
+            remoteFetchRefreshTriggerRadius: 5000,
+            remoteFetchRefreshExpiry: 3600,
+            duplicateEventsExpiry: 3600,
+            maxBusinessGeofences: 10,
+            maxMonitoringDistance: GeofenceConstants.noMonitoringDistanceCap
+        )
+        await storage.setCachedConfig(config)
+        // Fetched recently (time-fresh) at (0, 0).
+        await storage.recordSync(timestamp: dateUtil.givenNow.addingTimeInterval(-100), location: LocationData(latitude: 0, longitude: 0))
+        let api = GeofenceApiServiceMock()
+        api.fetchNearbyGeofencesClosure = { _, _, completion in
+            completion(.success(makeApiResponse(regions: [makeRegion(id: "g1", latitude: 1, longitude: 1)])))
+        }
+        let setup = makeCoordinator(api: api, storage: storage, dateUtil: dateUtil, syncMode: .fetchNearby)
+
+        // ~157 km from the fetch anchor — beyond the 5 km refetch radius.
+        let result = await setup.coordinator.refresh(latitude: 1.0, longitude: 1.0)
+
+        #expect(result.isSuccess)
+        #expect(setup.api.fetchNearbyGeofencesCallsCount == 1)
+        #expect(setup.api.fetchAllGeofencesCallsCount == 0)
+    }
+
+    @Test
     func handleMovement_givenLocalRerank_expectLastSyncAndCacheNotMutated() async {
         // A local re-rank re-uses the existing API anchor — must not overwrite lastSync, or the
         // time-staleness reference would drift to wherever the user just stood.
