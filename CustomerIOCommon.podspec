@@ -21,4 +21,6 @@ Pod::Spec.new do |spec|
   spec.exclude_files = "Sources/**/*{.md}"
 
   spec.module_name = "CioInternalCommon" # the `import X` name when using SDK in Swift files
+
+  spec.dependency 'SyncSqlCipher', '1.1.0'
 end

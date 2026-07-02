@@ -1,5 +1,6 @@
 import CioAnalytics
 import CioInternalCommon
+import Foundation
 
 class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking {
     private let moduleConfig: DataPipelineConfigOptions
@@ -14,6 +15,7 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking {
     private let deviceInfo: DeviceInfo
     private let contextPlugin: Context
     private let profileStore: ProfileStore
+    let storageManager: StorageManager?
 
     /// Per-session tracker of the most recently identified userId. Used to dedup
     /// no-traits identify calls against the same userId within a single process
@@ -34,6 +36,7 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking {
         self.dateUtil = diGraph.dateUtil
         self.deviceInfo = diGraph.deviceInfo
         self.profileStore = diGraph.profileStore
+        self.storageManager = diGraph.storageManager
 
         self.contextPlugin = Context(diGraph: diGraph)
 
