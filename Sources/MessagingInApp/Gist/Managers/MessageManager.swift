@@ -23,6 +23,8 @@ open class BaseMessageManager {
     var engine: EngineWebInstance!
     var gistView: GistView!
     var deeplinkUtil: DeepLinkUtil
+    private var lastResolvedColorScheme: String?
+    private var colorSchemeSubscriber: InAppMessageStoreSubscriber?
 
     // MARK: - Initializers
 
@@ -47,13 +49,15 @@ open class BaseMessageManager {
         self.deeplinkUtil = diGraph.deepLinkUtil
 
         // Create engine
+        let resolvedColorScheme = MessagingInAppImplementation.currentColorScheme.resolve(with: UITraitCollection.current)
         let engineWebConfiguration = EngineWebConfiguration(
             siteId: state.siteId,
             dataCenter: state.dataCenter,
             instanceId: message.instanceId,
             endpoint: state.environment.networkSettings.engineAPI,
             messageId: message.messageId,
-            properties: message.properties.mapValues { AnyEncodable($0) }
+            properties: message.properties.mapValues { AnyEncodable($0) },
+            colorScheme: resolvedColorScheme
         )
         self.engine = engineWebProvider.getEngineWebInstance(
             configuration: engineWebConfiguration,
@@ -64,12 +68,51 @@ open class BaseMessageManager {
 
         // Create GistView
         self.gistView = GistView(message: currentMessage, engineView: engine.view)
+        self.lastResolvedColorScheme = resolvedColorScheme
 
         // Set delegate and subscribe
         engine.delegate = self
+
+        // Subscribe to runtime colorScheme changes
+        subscribeToColorSchemeChanges()
+
+        // Handle system trait collection changes (dark mode toggle)
+        gistView.onTraitCollectionChange = { [weak self] traitCollection in
+            self?.handleTraitCollectionChange(traitCollection)
+        }
+    }
+
+    private func subscribeToColorSchemeChanges() {
+        colorSchemeSubscriber = {
+            let subscriber = InAppMessageStoreSubscriber { [weak self] state in
+                guard let self else { return }
+                let resolved = state.colorScheme.resolve(with: UITraitCollection.current)
+                if resolved != self.lastResolvedColorScheme {
+                    self.lastResolvedColorScheme = resolved
+                    self.threadUtil.runMain {
+                        self.engine.updateColorScheme(resolved)
+                    }
+                }
+            }
+            self.inAppMessageManager.subscribe(keyPath: \.colorScheme, subscriber: subscriber)
+            return subscriber
+        }()
+    }
+
+    private func handleTraitCollectionChange(_ traitCollection: UITraitCollection) {
+        let resolved = MessagingInAppImplementation.currentColorScheme.resolve(with: traitCollection)
+        if resolved != lastResolvedColorScheme {
+            lastResolvedColorScheme = resolved
+            threadUtil.runMain { [weak self] in
+                self?.engine.updateColorScheme(resolved)
+            }
+        }
     }
 
     deinit {
+        if let subscriber = colorSchemeSubscriber {
+            inAppMessageManager.unsubscribe(subscriber: subscriber)
+        }
         removeEngineWebView()
     }
 

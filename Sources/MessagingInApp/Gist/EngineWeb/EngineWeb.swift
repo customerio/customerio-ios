@@ -17,6 +17,7 @@ protocol EngineWebInstance: AutoMockable {
     var delegate: EngineWebDelegate? { get set }
     var view: UIView { get }
     func cleanEngineWeb()
+    func updateColorScheme(_ scheme: String)
 }
 
 public class EngineWeb: NSObject, EngineWebInstance {
@@ -34,7 +35,8 @@ public class EngineWeb: NSObject, EngineWebInstance {
         webView
     }
 
-    private let currentConfiguration: EngineWebConfiguration
+    private var currentConfiguration: EngineWebConfiguration
+    private let colorSchemeMode: ColorScheme
 
     public private(set) var currentRoute: String {
         get { _currentRoute }
@@ -45,6 +47,7 @@ public class EngineWeb: NSObject, EngineWebInstance {
     init(configuration: EngineWebConfiguration, state: InAppMessageState, message: Message) {
         self.currentMessage = message
         self.currentConfiguration = configuration
+        self.colorSchemeMode = state.colorScheme
 
         super.init()
 
@@ -89,6 +92,30 @@ public class EngineWeb: NSObject, EngineWebInstance {
         } else {
             logger.logWithModuleTag("Invalid URL: \(messageUrl)", level: .error)
             delegate?.error()
+        }
+    }
+
+    public func updateColorScheme(_ scheme: String) {
+        applyInterfaceStyle(scheme)
+
+        do {
+            let jsonData = try JSONEncoder().encode(["action": "updateColorScheme", "colorScheme": scheme])
+            guard let jsonString = String(data: jsonData, encoding: .utf8) else { return }
+            let js = "window.postMessage(\(jsonString), '*');"
+            webView.evaluateJavaScript(js, completionHandler: nil)
+        } catch {
+            logger.logWithModuleTag("Failed to encode color scheme update: \(error)", level: .error)
+        }
+    }
+
+    private func applyInterfaceStyle(_ scheme: String) {
+        switch scheme {
+        case "dark":
+            webView.overrideUserInterfaceStyle = .dark
+        case "light":
+            webView.overrideUserInterfaceStyle = .light
+        default:
+            webView.overrideUserInterfaceStyle = .unspecified
         }
     }
 
@@ -159,6 +186,17 @@ extension EngineWeb: WKScriptMessageHandler {
 // swiftlint:enable cyclomatic_complexity
 extension EngineWeb: WKNavigationDelegate {
     public func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        let resolvedScheme = colorSchemeMode.resolve(with: webView.traitCollection)
+        applyInterfaceStyle(resolvedScheme)
+        currentConfiguration = EngineWebConfiguration(
+            siteId: currentConfiguration.siteId,
+            dataCenter: currentConfiguration.dataCenter,
+            instanceId: currentConfiguration.instanceId,
+            endpoint: currentConfiguration.endpoint,
+            messageId: currentConfiguration.messageId,
+            properties: currentConfiguration.properties,
+            colorScheme: colorSchemeMode.resolve(with: webView.traitCollection)
+        )
         injectConfiguration(currentConfiguration)
     }
 

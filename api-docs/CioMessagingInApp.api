@@ -8,10 +8,13 @@ public final class CioMessagingInApp.AnyEncodable {
 public interface CioMessagingInApp.AnyStoreSubscriber {
 	public fun func _newState(state: Any);
 }
+public enum CioMessagingInApp.ColorScheme {
+}
 public final class CioMessagingInApp.EngineWeb {
 	public var delegate: (any EngineWebDelegate)?;
 	public var view: UIView;
 	public var currentRoute: String;
+	public fun func updateColorScheme(_ scheme: String);
 	public fun func cleanEngineWeb();
 }
 public interface CioMessagingInApp.EngineWebDelegate {
@@ -44,6 +47,7 @@ public final class CioMessagingInApp.GistProperties {
 public final class CioMessagingInApp.GistView {
 	public var delegate: (any GistViewDelegate)?;
 	public var lifecycleDelegate: (any GistViewLifecycleDelegate)?;
+	public fun override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?);
 	public fun override func removeFromSuperview();
 }
 public interface CioMessagingInApp.GistViewDelegate {
@@ -140,9 +144,11 @@ public final class CioMessagingInApp.MessagingInApp {
 	public fun func initialize(withConfig config: MessagingInAppConfigOptions) -> MessagingInAppInstance;
 	public fun func setEventListener(_ eventListener: InAppEventListener?);
 	public fun func dismissMessage();
+	public fun func setColorScheme(_ colorScheme: ColorScheme);
 }
 public final class CioMessagingInApp.MessagingInAppConfigBuilder {
 	public fun init(siteId: String, region: Region);
+	public fun func setColorScheme(_ colorScheme: ColorScheme) -> MessagingInAppConfigBuilder;
 	public fun func build() -> MessagingInAppConfigOptions;
 }
 public enum CioMessagingInApp.MessagingInAppConfigBuilderError {
@@ -150,11 +156,13 @@ public enum CioMessagingInApp.MessagingInAppConfigBuilderError {
 public final class CioMessagingInApp.MessagingInAppConfigOptions {
 	public final val siteId: String;
 	public final val region: Region;
+	public final val colorScheme: ColorScheme;
 }
 public interface CioMessagingInApp.MessagingInAppInstance {
 	public var inbox: any NotificationInbox;
 	public fun func setEventListener(_ eventListener: InAppEventListener?);
 	public fun func dismissMessage();
+	public fun func setColorScheme(_ colorScheme: ColorScheme);
 }
 public final class CioMessagingInApp.ModalMessageManager {
 	public fun deinit;

@@ -8,6 +8,7 @@ struct EngineWebConfiguration: Encodable {
     let messageId: String
     let livePreview: Bool = false
     let properties: [String: AnyEncodable?]?
+    let colorScheme: String?
 
     init(
         siteId: String,
@@ -15,7 +16,8 @@ struct EngineWebConfiguration: Encodable {
         instanceId: String,
         endpoint: String,
         messageId: String,
-        properties: [String: AnyEncodable?]?
+        properties: [String: AnyEncodable?]?,
+        colorScheme: String? = nil
     ) {
         self.siteId = siteId
         self.dataCenter = dataCenter
@@ -23,5 +25,6 @@ struct EngineWebConfiguration: Encodable {
         self.endpoint = endpoint
         self.messageId = messageId
         self.properties = properties
+        self.colorScheme = colorScheme
     }
 }
