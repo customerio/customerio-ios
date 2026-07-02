@@ -1,3 +1,5 @@
+public enum CioLocationGeofence.GeofenceLocationMode {
+}
 public final class CioLocationGeofence.GeofenceModule {
 	public final val moduleName: String;
 	public fun init(config: GeofenceModuleConfig = GeofenceModuleConfig());
@@ -5,5 +7,9 @@ public final class CioLocationGeofence.GeofenceModule {
 	public fun func bootstrapForBackgroundDelivery(launchOptions: List<UIApplication.LaunchOptionsKey: Any>?);
 }
 public final class CioLocationGeofence.GeofenceModuleConfig {
-	public fun init();
+	public final val locationMode: GeofenceLocationMode;
+	public fun init(locationMode: GeofenceLocationMode = .automatic);
+}
+public interface CioLocationGeofence.GeofenceServices {
+	public fun func refreshFromCurrentLocation();
 }

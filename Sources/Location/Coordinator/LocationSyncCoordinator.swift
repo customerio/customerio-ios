@@ -26,12 +26,20 @@ actor LocationSyncCoordinator {
         self.eventBusHandler = eventBusHandler
     }
 
-    /// Called for every new location (from setLastKnownLocation or requestLocationUpdate). Always updates cache; sends track via pipeline when filter allows and user is identified.
-    func processLocationUpdate(_ location: LocationData) {
-        storage.setCachedLocation(location)
+    /// Called for every new location (from setLastKnownLocation or requestLocationUpdate). Records the
+    /// fix as last-known and posts `LocationAcquiredEvent` for every fix. Only when `track` is true does
+    /// it also persist the fix (for identify enrichment) and send a `CIO Location Update` track (when the
+    /// filter allows and the user is identified). `track` is false for silent, internal fixes (e.g.
+    /// geofencing): those must not emit analytics or enrich identify, so they are not persisted.
+    func processLocationUpdate(_ location: LocationData, track: Bool = true) {
+        storage.setLastKnownLocation(location)
         // Signals the geofence first-run-refresh re-arm. Routed through the EventBus so
         // geofence can observe fixes without a direct reference to this coordinator.
         eventBusHandler.postEvent(LocationAcquiredEvent(location: location))
+
+        guard track else { return }
+
+        storage.setCachedLocation(location)
 
         guard filter.shouldSyncToServer(newLocation: location) else {
             logger.locationSyncFiltered()
@@ -41,9 +49,9 @@ actor LocationSyncCoordinator {
         trySendLocationTrack(location)
     }
 
-    /// Returns the most recently cached location, or `nil` if none has been stored.
-    func getCachedLocation() -> LocationData? {
-        storage.getCachedLocation()
+    /// Returns the last-known location from any source, or `nil` if none is known yet.
+    func getLastKnownLocation() -> LocationData? {
+        storage.getLastKnownLocation()
     }
 
     /// Called when ProfileIdentifiedEvent is received. Syncs cached location if present and the 24h + 1 km filter allows.
