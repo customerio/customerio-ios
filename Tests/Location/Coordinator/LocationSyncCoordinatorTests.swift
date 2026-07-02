@@ -28,13 +28,32 @@ struct LocationSyncCoordinatorTests {
     }
 
     @Test
-    func processLocationUpdate_alwaysUpdatesCache() async {
+    func processLocationUpdate_whenTracking_updatesCache() async {
         let (coordinator, storage) = makeCoordinator()
         let location = LocationData(latitude: 37.7749, longitude: -122.4194)
         await coordinator.processLocationUpdate(location)
         let cached = storage.getCachedLocation()
         #expect(cached?.latitude == 37.7749)
         #expect(cached?.longitude == -122.4194)
+    }
+
+    @Test
+    func processLocationUpdate_whenSilent_recordsLastKnownButDoesNotPersistOrTrack() async {
+        let pipelineMock = DataPipelineTrackingMock()
+        let bus = EventBusHandlerMock()
+        let (coordinator, storage) = makeCoordinator(dataPipeline: pipelineMock, eventBusHandler: bus)
+        let location = LocationData(latitude: 37.7749, longitude: -122.4194)
+
+        await coordinator.processLocationUpdate(location, track: false)
+
+        // Silent fix is readable as last-known and drives geofencing via the event, but must not
+        // persist (identify enrichment reads the persisted cache) or emit analytics.
+        let postedLocations = bus.postEventReceivedInvocations.compactMap { ($0 as? LocationAcquiredEvent)?.location }
+        #expect(postedLocations == [location])
+        #expect(await coordinator.getLastKnownLocation()?.latitude == 37.7749)
+        #expect(storage.getCachedLocation() == nil)
+        #expect(pipelineMock.trackCallsCount == 0)
+        #expect(storage.getLastSynced() == nil)
     }
 
     @Test

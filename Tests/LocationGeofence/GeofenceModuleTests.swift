@@ -14,4 +14,14 @@ struct GeofenceModuleTests {
         // Scaffold module performs no setup yet; this guards the no-op contract.
         GeofenceModule().initialize()
     }
+
+    @Test
+    func config_defaultLocationMode_isAutomatic() {
+        #expect(GeofenceModuleConfig().locationMode == .automatic)
+    }
+
+    @Test
+    func config_givenExplicitLocationMode_isStored() {
+        #expect(GeofenceModuleConfig(locationMode: .manual).locationMode == .manual)
+    }
 }

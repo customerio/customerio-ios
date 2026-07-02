@@ -2,9 +2,14 @@ import CioInternalCommon
 import Foundation
 import UIKit
 
-/// Configuration options for the Geofence module. Currently has no options.
+/// Configuration options for the Geofence module.
 public struct GeofenceModuleConfig: CustomerIOModuleConfig {
-    public init() {}
+    /// How the module acquires the device location it needs for geofencing. Default is `.automatic`.
+    public let locationMode: GeofenceLocationMode
+
+    public init(locationMode: GeofenceLocationMode = .automatic) {
+        self.locationMode = locationMode
+    }
 }
 
 /// Opt-in on-device geofence module. Depends on the Location module: register both via
@@ -32,7 +37,7 @@ public final class GeofenceModule: CustomerIOModule {
     /// SDK does not retain this facade after `initialize()` returns, so the module's foreground
     /// observer and first-run state must outlive it.
     public func initialize() {
-        GeofenceModuleState.shared.setup(di: DIGraphShared.shared)
+        GeofenceModuleState.shared.setup(di: DIGraphShared.shared, locationMode: config.locationMode)
     }
 
     /// Bootstraps geofence cold-wake delivery from the host's `AppDelegate`.
