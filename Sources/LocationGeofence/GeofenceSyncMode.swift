@@ -13,9 +13,10 @@ enum RefreshAction: Equatable {
 
 /// How the SDK fetches a user's geofences.
 ///
-/// - `fetchNearby` — sends a coarsened device coordinate (see `CoordinateCoarsener`) so the backend
-///   returns the set ranked around the device, and refetches when the device moves beyond
-///   `GeofenceConfig.remoteFetchRefreshTriggerRadius` from the last fetch anchor.
+/// - `fetchNearby` — sends the device coordinate so the backend returns the set ranked around the
+///   device, and refetches when the device moves beyond `GeofenceConfig.remoteFetchRefreshTriggerRadius`
+///   from the last fetch anchor. The request carries no user identifier, so the coordinate isn't
+///   attributable to a person.
 /// - `fetchAll` — sends no location; the backend returns the full (capped) workspace set.
 ///
 /// Both modes are fully implemented; `active` selects the one the SDK ships with. It is

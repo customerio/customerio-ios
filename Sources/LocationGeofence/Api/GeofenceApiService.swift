@@ -18,8 +18,8 @@ protocol GeofenceApiService: AutoMockable, Sendable {
         completion: @escaping (Result<GeofenceApiResponse, GeofenceApiError>) -> Void
     )
 
-    /// Fetch-nearby: returns the set ranked around the device. The coordinate is coarsened before
-    /// it's sent (see `CoordinateCoarsener`) so an approximate, not exact, location leaves the device.
+    /// Fetch-nearby: returns the set ranked around the device location. The request carries no user
+    /// identifier (only the workspace API key), so the coordinate can't be attributed to a person.
     func fetchNearbyGeofences(
         latitude: Double,
         longitude: Double,
@@ -63,10 +63,9 @@ final class GeofenceApiServiceImpl: GeofenceApiService, @unchecked Sendable {
         longitude: Double,
         completion: @escaping (Result<GeofenceApiResponse, GeofenceApiError>) -> Void
     ) {
-        let coarse = CoordinateCoarsener.coarsen(latitude: latitude, longitude: longitude)
         request(queryItems: [
-            URLQueryItem(name: "latitude", value: "\(coarse.latitude)"),
-            URLQueryItem(name: "longitude", value: "\(coarse.longitude)")
+            URLQueryItem(name: "latitude", value: "\(latitude)"),
+            URLQueryItem(name: "longitude", value: "\(longitude)")
         ], completion: completion)
     }
 

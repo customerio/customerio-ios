@@ -55,21 +55,21 @@ struct GeofenceApiServiceTests {
     }
 
     @Test
-    func fetchNearbyGeofences_givenCoordinate_expectCoarsenedLatLonQuery() async {
+    func fetchNearbyGeofences_givenCoordinate_expectLatLonQuerySentAsIs() async {
         let (service, runner) = makeService(store: makeStore())
         runner.requestClosure = { _, _, onComplete in
             onComplete("{\"geofences\":[]}".data(using: .utf8), makeOkResponse(), nil)
         }
 
         await withCheckedContinuation { continuation in
-            // Full-precision input is snapped to the ~500 m grid and trimmed to clean 6 dp before it's sent.
+            // The request carries no user identifier, so the exact coordinate is sent unmodified.
             service.fetchNearbyGeofences(latitude: 37.7749295, longitude: -122.4194155) { _ in continuation.resume() }
         }
 
         let url = runner.requestReceivedArguments?.params.url
         let items = URLComponents(url: url!, resolvingAgainstBaseURL: false)?.queryItems
-        #expect(items?.first(where: { $0.name == "latitude" })?.value == "37.773985")
-        #expect(items?.first(where: { $0.name == "longitude" })?.value == "-122.417457")
+        #expect(items?.first(where: { $0.name == "latitude" })?.value == "37.7749295")
+        #expect(items?.first(where: { $0.name == "longitude" })?.value == "-122.4194155")
     }
 
     @Test

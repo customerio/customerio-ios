@@ -317,9 +317,8 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
 // MARK: - OS registration & fetch plumbing
 
 private extension GeofenceSyncCoordinatorImpl {
-    /// Dispatches the fetch per `syncMode`. `fetchAll` sends no location; `fetchNearby` sends a
-    /// coarsened coordinate (the precise location that drives on-device ranking never leaves the
-    /// coordinator — only `GeofenceApiService` coarsens what it transmits). See `GeofenceSyncMode`.
+    /// Dispatches the fetch per `syncMode`. `fetchAll` sends no location; `fetchNearby` sends the
+    /// device coordinate (the request carries no user identifier). See `GeofenceSyncMode`.
     func awaitApiFetch(latitude: Double, longitude: Double) async -> Result<GeofenceApiResponse, GeofenceApiError> {
         await withCheckedContinuation { continuation in
             switch syncMode {
