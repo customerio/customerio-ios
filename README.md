@@ -6,7 +6,7 @@
 
 ![min swift version is 5.3](https://img.shields.io/badge/min%20Swift%20version-5.3-orange)
 ![min ios version is 13](https://img.shields.io/badge/min%20iOS%20version-13-blue)
-[![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.0-4baaaa.svg)](code_of_conduct.md) 
+[![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.0-4baaaa.svg)](CODE_OF_CONDUCT.md)
 [![codecov](https://codecov.io/gh/customerio/customerio-ios/branch/develop/graph/badge.svg?token=IZ9RP9XD1O)](https://codecov.io/gh/customerio/customerio-ios)
 
 # Customer.io iOS SDK
@@ -53,7 +53,7 @@ See our complete SDK documentation at [https://customer.io/docs/sdk/ios/](https:
 
 Thanks for taking an interest in our project! We welcome your contributions. Check out [our development instructions](docs/dev-notes/DEVELOPMENT.md) to get your environment set up and start contributing.
 
-> **Note**: We value an open, welcoming, diverse, inclusive, and healthy community for this project. We expect all  contributors to follow our [code of conduct](CODE_OF_CONDUCT.md). 
+> **Note**: We value an open, welcoming, diverse, inclusive, and healthy community for this project. We expect all contributors to follow our [code of conduct](CODE_OF_CONDUCT.md). 
 
 # License
 
