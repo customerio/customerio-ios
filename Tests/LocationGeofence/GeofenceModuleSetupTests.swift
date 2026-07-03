@@ -41,6 +41,36 @@ struct GeofenceModuleSetupTests {
 
     @Test
     @MainActor
+    func setup_givenResetEvent_clearsRefreshArm_soLaterFixDoesNotRefresh() async throws {
+        // Reset must drop a pending refresh intent; otherwise a fix after logout would drive a
+        // refresh carried over from the previous user's session.
+        let f = Fixture(cachedLocation: LocationData(latitude: 1, longitude: 2))
+        defer { f.cleanup() }
+
+        let (refreshSignal, refreshContinuation) = AsyncStream<Void>.makeStream()
+        f.spyCoordinator.refreshClosure = { _, _ in
+            refreshContinuation.yield()
+            return .success(())
+        }
+
+        f.wire()
+        var iter = refreshSignal.makeAsyncIterator()
+        _ = await iter.next() // drain the launch refresh (cached anchor clears the no-anchor arm)
+
+        // Arm an explicit refresh, then deliver reset — reset must clear the arm.
+        f.state.onRefreshRequested()
+        let reset = try #require(f.bus.observers[ResetEvent.key], "ResetEvent observer must be registered")
+        reset(ResetEvent())
+
+        // A later fix must NOT drive a refresh, because reset cleared the explicit arm.
+        let locAcquired = try #require(f.bus.observers[LocationAcquiredEvent.key], "LocationAcquiredEvent observer must be registered")
+        locAcquired(LocationAcquiredEvent(location: LocationData(latitude: 3, longitude: 4)))
+
+        #expect(f.spyCoordinator.refreshCallsCount == 1) // only the launch refresh
+    }
+
+    @Test
+    @MainActor
     func setup_expectEventObserversRegistered() throws {
         let f = Fixture()
         defer { f.cleanup() }

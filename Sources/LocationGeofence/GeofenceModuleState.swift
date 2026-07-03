@@ -60,7 +60,12 @@ final class GeofenceModuleState {
             Task { await di.geofenceEventTracker.flushPending() }
             self?.refreshGeofencesIfPossible(di: di)
         }
-        di.eventBusHandler.addObserver(ResetEvent.self) { _ in
+        di.eventBusHandler.addObserver(ResetEvent.self) { [weak self] _ in
+            // Drop any pending refresh intent so a previous user's request can't drive a sync for
+            // the next user — matches the coordinator's user-scoped reset. Cleared synchronously
+            // here so it lands before a re-login's `ProfileIdentifiedEvent` re-arms.
+            self?.explicitRefreshRequested.wrappedValue = false
+            self?.lastSkippedForNoLocation.wrappedValue = false
             Task { @MainActor in
                 _ = await di.geofenceSyncCoordinator.reset()
             }
