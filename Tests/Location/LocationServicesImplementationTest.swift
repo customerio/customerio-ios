@@ -1,6 +1,6 @@
 @testable import CioInternalCommon
 @testable import CioInternalCommonMocks
-@testable import CioLocation
+@_spi(Geofence) @testable import CioLocation
 import CoreLocation
 import SharedTests
 import Testing
@@ -178,6 +178,35 @@ struct LocationServicesImplementationTests {
         #expect(pipelineMock.trackCallsCount == 0)
         let requestCount = await mockProvider.requestLocationCallCount
         #expect(requestCount == 0)
+    }
+
+    @Test
+    func requestLocationUpdateSilently_givenTrackingDisabled_expectProviderCalledButNoTrack() async {
+        let mockProvider = MockLocationProvider()
+        await mockProvider.setResult(.success(LocationSnapshot(
+            latitude: 37.7749,
+            longitude: -122.4194,
+            timestamp: Date(),
+            horizontalAccuracy: 100,
+            altitude: nil
+        )))
+        let pipelineMock = DataPipelineTrackingMock()
+        let service = makeImplementation(
+            mode: .off,
+            dataPipeline: pipelineMock,
+            logger: LoggerMock(),
+            locationProvider: mockProvider
+        )
+
+        service.requestLocationUpdateSilently()
+        await yieldForLocationTask()
+
+        // Silent acquisition ignores the .off tracking mode (geofencing needs a fix even when
+        // tracking is off) but must never emit analytics. The fix is readable as last-known.
+        let requestCount = await mockProvider.requestLocationCallCount
+        #expect(requestCount == 1)
+        #expect(pipelineMock.trackCallsCount == 0)
+        #expect(await service.getLastKnownLocation()?.latitude == 37.7749)
     }
 
     @Test
