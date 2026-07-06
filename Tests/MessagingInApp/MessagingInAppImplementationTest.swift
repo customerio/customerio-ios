@@ -108,10 +108,11 @@ class MessagingInAppImplementationTest: IntegrationTest {
         inAppMessageManagerMock.subscribeReturnValue = Task {}
 
         if let dispatchArgs = inAppMessageManagerMock.dispatchReceivedArguments?.action {
-            if case .initialize(let siteId, let dataCenter, let environment) = dispatchArgs {
+            if case .initialize(let siteId, let dataCenter, let environment, let colorScheme) = dispatchArgs {
                 XCTAssertEqual(siteId, messagingInAppConfigOptions.siteId)
                 XCTAssertEqual(dataCenter, messagingInAppConfigOptions.region.rawValue)
                 XCTAssertEqual(environment, GistEnvironment.production)
+                XCTAssertEqual(colorScheme, messagingInAppConfigOptions.colorScheme)
             } else {
                 XCTFail("Expected dispatch action to be .initialize")
             }

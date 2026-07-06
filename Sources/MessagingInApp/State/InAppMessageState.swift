@@ -8,6 +8,7 @@ struct InAppMessageState: Equatable, CustomStringConvertible {
     let siteId: String
     let dataCenter: String
     let environment: GistEnvironment
+    let colorScheme: ColorScheme
     let pollInterval: Double
     let userId: String?
     let anonymousId: String?
@@ -23,6 +24,7 @@ struct InAppMessageState: Equatable, CustomStringConvertible {
         siteId: String = "",
         dataCenter: String = "",
         environment: GistEnvironment = .production,
+        colorScheme: ColorScheme = .auto,
         pollInterval: Double = 600,
         userId: String? = nil,
         anonymousId: String? = nil,
@@ -37,6 +39,7 @@ struct InAppMessageState: Equatable, CustomStringConvertible {
         self.siteId = siteId
         self.dataCenter = dataCenter
         self.environment = environment
+        self.colorScheme = colorScheme
         self.pollInterval = pollInterval
         self.userId = userId
         self.anonymousId = anonymousId
@@ -52,6 +55,7 @@ struct InAppMessageState: Equatable, CustomStringConvertible {
     /// Copies the current state and replaces the given properties with the new values.
     /// It is useful when updating state with only a few properties and keeping the rest as is.
     func copy(
+        colorScheme: ColorScheme? = nil,
         pollInterval: Double? = nil,
         userId: String? = nil,
         anonymousId: String? = nil,
@@ -67,6 +71,7 @@ struct InAppMessageState: Equatable, CustomStringConvertible {
             siteId: siteId,
             dataCenter: dataCenter,
             environment: environment,
+            colorScheme: colorScheme ?? self.colorScheme,
             pollInterval: pollInterval ?? self.pollInterval,
             userId: userId ?? self.userId,
             anonymousId: anonymousId ?? self.anonymousId,
@@ -84,6 +89,7 @@ struct InAppMessageState: Equatable, CustomStringConvertible {
         lhs.siteId == rhs.siteId &&
             lhs.dataCenter == rhs.dataCenter &&
             lhs.environment == rhs.environment &&
+            lhs.colorScheme == rhs.colorScheme &&
             lhs.pollInterval == rhs.pollInterval &&
             lhs.userId == rhs.userId &&
             lhs.anonymousId == rhs.anonymousId &&
@@ -101,6 +107,7 @@ struct InAppMessageState: Equatable, CustomStringConvertible {
             siteId: '\(siteId)',
             dataCenter: '\(dataCenter)',
             environment: \(environment),
+            colorScheme: \(colorScheme),
             pollInterval: \(pollInterval),
             userId: \(String(describing: userId)),
             anonymousId: \(String(describing: anonymousId)),
@@ -150,6 +157,7 @@ extension InAppMessageState {
         putIfDifferent(\.siteId, as: "siteId")
         putIfDifferent(\.dataCenter, as: "dataCenter")
         putIfDifferent(\.environment, as: "environment")
+        putIfDifferent(\.colorScheme, as: "colorScheme")
         putIfDifferent(\.pollInterval, as: "pollInterval")
         putIfDifferent(\.userId, as: "userId")
         putIfDifferent(\.anonymousId, as: "anonymousId")

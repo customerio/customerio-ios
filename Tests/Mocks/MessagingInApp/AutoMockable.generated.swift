@@ -494,6 +494,27 @@ class EngineWebInstanceMock: @unchecked Sendable, EngineWebInstance, Mock {
         _cleanEngineWebCallsCount += 1
         cleanEngineWebClosure?()
     }
+
+    // MARK: - updateColorScheme
+
+    private let _updateColorSchemeCallsCount: CioInternalCommon.Synchronized<Int> = .init(0)
+    var updateColorSchemeCallsCount: Int {
+        _updateColorSchemeCallsCount.wrappedValue
+    }
+
+    var updateColorSchemeCalled: Bool {
+        updateColorSchemeCallsCount > 0
+    }
+
+    var updateColorSchemeReceivedArguments: String?
+    var updateColorSchemeClosure: ((String) -> Void)?
+
+    func updateColorScheme(_ scheme: String) {
+        mockCalled = true
+        _updateColorSchemeCallsCount += 1
+        updateColorSchemeReceivedArguments = scheme
+        updateColorSchemeClosure?(scheme)
+    }
 }
 
 /**
@@ -1913,6 +1934,27 @@ public class MessagingInAppInstanceMock: @unchecked Sendable, MessagingInAppInst
         mockCalled = true
         _dismissMessageCallsCount += 1
         dismissMessageClosure?()
+    }
+
+    // MARK: - setColorScheme
+
+    private let _setColorSchemeCallsCount: CioInternalCommon.Synchronized<Int> = .init(0)
+    public var setColorSchemeCallsCount: Int {
+        _setColorSchemeCallsCount.wrappedValue
+    }
+
+    public var setColorSchemeCalled: Bool {
+        setColorSchemeCallsCount > 0
+    }
+
+    public var setColorSchemeReceivedArguments: ColorScheme?
+    public var setColorSchemeClosure: ((ColorScheme) -> Void)?
+
+    public func setColorScheme(_ colorScheme: ColorScheme) {
+        mockCalled = true
+        _setColorSchemeCallsCount += 1
+        setColorSchemeReceivedArguments = colorScheme
+        setColorSchemeClosure?(colorScheme)
     }
 }
 

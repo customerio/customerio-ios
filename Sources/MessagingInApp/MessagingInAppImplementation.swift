@@ -2,6 +2,12 @@ import CioInternalCommon
 import Foundation
 
 class MessagingInAppImplementation: MessagingInAppInstance {
+    // Synchronous storage for color scheme to avoid a race condition where
+    // setColorScheme() dispatches to the async store but a message displays
+    // before the store processes it. The store dispatch keeps state consistent
+    // for subscribers; this static provides the immediate value for rendering.
+    @Atomic static var currentColorScheme: ColorScheme = .auto
+
     private let moduleConfig: MessagingInAppConfigOptions
 
     private let logger: Logger
@@ -20,6 +26,7 @@ class MessagingInAppImplementation: MessagingInAppInstance {
         self.eventBusHandler = diGraph.eventBusHandler
         self.notificationInbox = diGraph.notificationInbox
 
+        Self.currentColorScheme = moduleConfig.colorScheme
         subscribeToInAppMessageState()
     }
 
@@ -27,7 +34,8 @@ class MessagingInAppImplementation: MessagingInAppInstance {
         inAppMessageManager.dispatch(action: .initialize(
             siteId: moduleConfig.siteId,
             dataCenter: moduleConfig.region.rawValue,
-            environment: GistEnvironment.production
+            environment: GistEnvironment.production,
+            colorScheme: moduleConfig.colorScheme
         )) {
             self.subscribeToEventBus()
         }
@@ -72,5 +80,10 @@ class MessagingInAppImplementation: MessagingInAppInstance {
     // Dismiss in-app message
     func dismissMessage() {
         gist.dismissMessage()
+    }
+
+    func setColorScheme(_ colorScheme: ColorScheme) {
+        Self.currentColorScheme = colorScheme
+        inAppMessageManager.dispatch(action: .setColorScheme(colorScheme: colorScheme))
     }
 }

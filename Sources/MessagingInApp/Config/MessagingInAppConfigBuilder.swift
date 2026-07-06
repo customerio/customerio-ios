@@ -18,6 +18,7 @@ public class MessagingInAppConfigBuilder {
     // configuration options for MessagingInAppConfigOptions
     private let siteId: String
     private let region: Region
+    private var colorScheme: ColorScheme = .auto
 
     /// Initializes new `MessagingInAppConfigBuilder` with required configuration options.
     /// - Parameters:
@@ -28,11 +29,18 @@ public class MessagingInAppConfigBuilder {
         self.region = region
     }
 
+    @discardableResult
+    public func setColorScheme(_ colorScheme: ColorScheme) -> MessagingInAppConfigBuilder {
+        self.colorScheme = colorScheme
+        return self
+    }
+
     /// Builds and returns `MessagingInAppConfigOptions` instance from the configured properties.
     public func build() -> MessagingInAppConfigOptions {
         MessagingInAppConfigOptions(
             siteId: siteId,
-            region: region
+            region: region,
+            colorScheme: colorScheme
         )
     }
 }
@@ -74,6 +82,16 @@ public extension MessagingInAppConfigBuilder {
         let regionStr = sdkConfig[Keys.region.rawValue] as? String ?? ""
         let region = Region.getRegion(from: regionStr)
 
-        return MessagingInAppConfigBuilder(siteId: siteId, region: region).build()
+        let builder = MessagingInAppConfigBuilder(siteId: siteId, region: region)
+
+        if let colorSchemeStr = config["colorScheme"] as? String {
+            switch colorSchemeStr {
+            case "light": builder.setColorScheme(.light)
+            case "dark": builder.setColorScheme(.dark)
+            default: builder.setColorScheme(.auto)
+            }
+        }
+
+        return builder.build()
     }
 }

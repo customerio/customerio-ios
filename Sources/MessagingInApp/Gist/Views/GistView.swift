@@ -16,6 +16,7 @@ public protocol GistViewLifecycleDelegate: AnyObject {
 public class GistView: UIView {
     public weak var delegate: GistViewDelegate?
     public weak var lifecycleDelegate: GistViewLifecycleDelegate?
+    var onTraitCollectionChange: ((UITraitCollection) -> Void)?
     var message: Message?
 
     convenience init(message: Message, engineView: UIView) {
@@ -23,6 +24,13 @@ public class GistView: UIView {
         self.message = message
         addSubview(engineView)
         engineView.autoresizingMask = [.flexibleWidth, .flexibleHeight, .flexibleBottomMargin, .flexibleRightMargin]
+    }
+
+    override public func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+        super.traitCollectionDidChange(previousTraitCollection)
+        if traitCollection.userInterfaceStyle != previousTraitCollection?.userInterfaceStyle {
+            onTraitCollectionChange?(traitCollection)
+        }
     }
 
     override public func removeFromSuperview() {

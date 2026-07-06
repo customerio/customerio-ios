@@ -28,6 +28,7 @@ func userAuthenticationMiddleware() -> InAppMessageMiddleware {
         // Block actions that require valid userId or anonymousId unless at least one is set.
         switch action {
         case .initialize,
+             .setColorScheme,
              .setUserIdentifier,
              .setAnonymousIdentifier,
              .setPageRoute,

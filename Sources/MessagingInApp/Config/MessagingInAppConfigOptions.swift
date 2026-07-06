@@ -6,4 +6,5 @@ import CioInternalCommon
 public struct MessagingInAppConfigOptions {
     public let siteId: String
     public let region: Region
+    public let colorScheme: ColorScheme
 }
