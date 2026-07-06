@@ -1,8 +1,9 @@
 public final class CioLiveActivities_Templates.CIOActivityBranding {
 	public var logoKey: String?;
 	public var name: String;
-	public var accentColor: String?;
-	public fun init(name: String, logoKey: String? = nil, accentColor: String? = nil);
+	public var backgroundColor: String?;
+	public var textColor: String?;
+	public fun init(name: String, logoKey: String? = nil, backgroundColor: String? = nil, textColor: String? = nil);
 }
 public final class CioLiveActivities_Templates.CIOAssetLibrary {
 	public fun init(path: URL?);
