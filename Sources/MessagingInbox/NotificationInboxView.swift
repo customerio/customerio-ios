@@ -58,11 +58,16 @@ public struct NotificationInboxView: View {
             .onAppear { if marksOpenedOnAppear { model.markVisibleMessagesOpened() } }
     }
 
-    /// Panel body driven by load state: spinner while loading, empty placeholder when visible-but-empty,
-    /// otherwise the Jist-rendered list.
+    /// Panel body driven by load state: nothing when the inbox is hidden, spinner while loading,
+    /// empty placeholder when visible-but-empty, otherwise the Jist-rendered list.
     @ViewBuilder
     private var content: some View {
-        if model.messages.isEmpty, case .visible = model.state {
+        if case .hidden = model.state {
+            // Inbox is not renderable (disabled workspace, missing templates/branding). Render
+            // nothing — matching the overlay, which hides its chrome entirely in this state —
+            // rather than a perpetual spinner (empty + hidden) or a stale list (messages + hidden).
+            EmptyView()
+        } else if model.messages.isEmpty, case .visible = model.state {
             // Genuinely caught up: visible with NO messages at all. Keyed off the full message list
             // (not `renderableMessages`) so messages that merely lack a template don't read as
             // "caught up". (When embedded standalone; the overlay hides chrome entirely in that case.)
