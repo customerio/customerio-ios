@@ -13,6 +13,9 @@ public struct CIODeliveryTrackingLiveActivity: Widget {
 
 // MARK: - Configuration
 
+// The Live Activity + Dynamic Island DSL (expanded/compact/minimal regions) makes this a single
+// long-but-flat declarative body; splitting it would obscure the layout rather than clarify it.
+// swiftlint:disable function_body_length
 @available(iOS 17.2, *)
 @MainActor
 private func makeDeliveryTrackingConfiguration()
@@ -79,6 +82,8 @@ private func makeDeliveryTrackingConfiguration()
         }
     }
 }
+
+// swiftlint:enable function_body_length
 
 @available(iOS 17.2, *)
 private func deliveryStatusColor(_ hex: String?, fallback: Color) -> Color {
