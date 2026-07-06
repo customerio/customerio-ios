@@ -9,6 +9,8 @@ public protocol MessagingInAppInstance: AutoMockable {
     func setEventListener(_ eventListener: InAppEventListener?)
 
     func dismissMessage()
+
+    func setColorScheme(_ colorScheme: ColorScheme)
 }
 
 public class MessagingInApp: ModuleTopLevelObject<MessagingInAppInstance>, MessagingInAppInstance {
@@ -83,5 +85,9 @@ public class MessagingInApp: ModuleTopLevelObject<MessagingInAppInstance>, Messa
     // Dismiss in-app message
     public func dismissMessage() {
         implementation?.dismissMessage()
+    }
+
+    public func setColorScheme(_ colorScheme: ColorScheme) {
+        implementation?.setColorScheme(colorScheme)
     }
 }

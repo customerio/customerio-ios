@@ -1,3 +1,9 @@
+## [4.6.0](https://github.com/customerio/customerio-ios/compare/4.5.3...4.6.0) (2026-07-06)
+
+### Features
+
+* **in-app:** add dark mode support for in-app messages ([#1131](https://github.com/customerio/customerio-ios/issues/1131)) ([f92d058](https://github.com/customerio/customerio-ios/commit/f92d058b40be00492757f5343f00d317d6e53a3e))
+
 ## [4.5.3](https://github.com/customerio/customerio-ios/compare/4.5.2...4.5.3) (2026-06-22)
 
 ### Bug Fixes
