@@ -195,7 +195,7 @@ extension EngineWeb: WKNavigationDelegate {
             endpoint: currentConfiguration.endpoint,
             messageId: currentConfiguration.messageId,
             properties: currentConfiguration.properties,
-            colorScheme: colorSchemeMode.resolve(with: webView.traitCollection)
+            colorScheme: resolvedScheme
         )
         injectConfiguration(currentConfiguration)
     }
