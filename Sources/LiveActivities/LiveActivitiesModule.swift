@@ -127,7 +127,7 @@ public final class LiveActivitiesModule {
         guard let notificationType = notificationType(forTypeName: String(describing: Attributes.self)) else {
             throw LiveActivityError.typeNotRegistered(String(describing: Attributes.self))
         }
-        let id = UUID().uuidString.lowercased()
+        let id = ULID.generate()
         let builtAttributes = attributes(id)
         LiveActivityFieldValidation.warnIfMissingRequired(
             attributes: builtAttributes,
