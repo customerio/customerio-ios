@@ -95,6 +95,13 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
                 .register(CIOCountdownTimerAttributes.self, identifier: CIOCountdownTimerAttributes.identifier)
                 .register(CIOFlightStatusAttributes.self, identifier: CIOFlightStatusAttributes.identifier)
                 .register(CIOAuctionBidAttributes.self, identifier: CIOAuctionBidAttributes.identifier)
+                .appGroup("group.io.customer.ios-sample.apn-spm.APN-UIKit.cio")
+                .registerAsset("chica_logo", bundleResource: "chica_logo", withExtension: "png")
+                .registerAsset("delivery_food", bundleResource: "delivery_food", withExtension: "png")
+                .registerAsset("chica_thumb", bundleResource: "chica_thumb", withExtension: "png")
+                .registerAsset("toronto_fc", bundleResource: "toronto_fc", withExtension: "png")
+                .registerAsset("sj_quakes", bundleResource: "sj_quakes", withExtension: "png")
+                .registerAsset("mls_logo", bundleResource: "mls_logo", withExtension: "png")
                 .build()
         )
     }

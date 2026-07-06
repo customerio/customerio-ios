@@ -26,12 +26,24 @@ public struct CIOLiveActivity<Attributes: CIOActivityAttribute> {
     private let notificationType: String
     private let logger: Logger
 
-    init(id: String, activity: Activity<Attributes>, reporter: LiveActivityReporter, notificationType: String, logger: Logger) {
+    /// Marks this activity as an SDK-initiated end so observation doesn't misread the resulting
+    /// terminal state as a user dismissal and double-report.
+    private let markLocalEnd: @Sendable (String) -> Void
+
+    init(
+        id: String,
+        activity: Activity<Attributes>,
+        reporter: LiveActivityReporter,
+        notificationType: String,
+        logger: Logger,
+        markLocalEnd: @escaping @Sendable (String) -> Void
+    ) {
         self.id = id
         self.activity = activity
         self.reporter = reporter
         self.notificationType = notificationType
         self.logger = logger
+        self.markLocalEnd = markLocalEnd
     }
 
     /// Apply a local content-state update and report an `update` event.
@@ -59,6 +71,9 @@ public struct CIOLiveActivity<Attributes: CIOActivityAttribute> {
         _ finalContentState: Attributes.ContentState? = nil,
         dismissalPolicy: ActivityUIDismissalPolicy = .default
     ) async {
+        // Mark before ending so the marker is set before ActivityKit emits any terminal state to
+        // the observer, avoiding a race where `.dismissed` arrives first.
+        markLocalEnd(id)
         if let finalContentState {
             await activity.end(ActivityContent(state: finalContentState, staleDate: nil), dismissalPolicy: dismissalPolicy)
         } else {

@@ -119,6 +119,10 @@ final class FakeTokenStore: LiveActivityTokenStorage, @unchecked Sendable {
         lock.withLock { _signatures[activityType] = nil }
     }
 
+    func allRegistrationKeys() -> [String] {
+        lock.withLock { Array(_signatures.keys) }
+    }
+
     func clearAll() {
         lock.withLock { _signatures.removeAll() }
     }

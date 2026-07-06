@@ -36,6 +36,7 @@ public final class LiveActivitiesModule {
     private let sdk: CIOLiveActivitiesSDKProviding
 
     private let identity = LiveActivityIdentity()
+    private let localEndTracker = LiveActivityLocalEndTracker()
     private let reporter: LiveActivityReporter
     private let registrar: LiveActivityRegistrar
     private let observer: LiveActivityObserver
@@ -95,6 +96,7 @@ public final class LiveActivitiesModule {
         self.observer = LiveActivityObserver(
             registrations: config.registrations,
             registrar: registrar,
+            localEndTracker: localEndTracker,
             onActivityAppeared: { [identity, observedContinuation] notificationType, activityInstanceId in
                 let info = LiveActivityInfo(
                     activityId: activityInstanceId,
@@ -102,6 +104,10 @@ public final class LiveActivitiesModule {
                     userId: identity.userId ?? ""
                 )
                 observedContinuation.wrappedValue?.yield(info)
+            },
+            onUserDismissed: { [reporter] notificationType, activityInstanceId in
+                // A user swipe-away — report `end` (matches Android's dismiss-intent behavior).
+                reporter.reportEnd(instanceUUID: activityInstanceId, notificationType: notificationType)
             }
         )
 
@@ -147,7 +153,14 @@ public final class LiveActivitiesModule {
             attributes: LiveActivityReporter.encode(builtAttributes),
             contentState: LiveActivityReporter.encode(contentState)
         )
-        return CIOLiveActivity(id: id, activity: activity, reporter: reporter, notificationType: notificationType, logger: sdk.logger)
+        return CIOLiveActivity(
+            id: id,
+            activity: activity,
+            reporter: reporter,
+            notificationType: notificationType,
+            logger: sdk.logger,
+            markLocalEnd: { [localEndTracker] in localEndTracker.markEnded($0) }
+        )
     }
 
     /// Wrap an activity your app created directly, so you can report `update`/`end` through the
@@ -163,7 +176,8 @@ public final class LiveActivitiesModule {
             activity: activity,
             reporter: reporter,
             notificationType: notificationType,
-            logger: sdk.logger
+            logger: sdk.logger,
+            markLocalEnd: { [localEndTracker] in localEndTracker.markEnded($0) }
         )
     }
     #endif
@@ -187,6 +201,11 @@ public final class LiveActivitiesModule {
         sdk.logger.debug("LiveActivities module initialized.", "LiveActivities")
 
         identity.deviceToken = sdk.registeredDeviceToken
+
+        // Seed any persisted push-to-start token before adding observers: the event-bus replays the
+        // last identify / device-token events to the new observers, and that replay flushes the
+        // seeded token — so registration no longer depends on ActivityKit re-yielding the token.
+        registrar.seedPendingPushToStartFromStore()
 
         syncAssets()
         registerEventBusObservers()
@@ -239,10 +258,15 @@ public final class LiveActivitiesModule {
     private func handleReset() async {
         // NOTE: force-ending all activities on reset is under review (plan decision #2) —
         // it may remove activities the user still wants and emits no `end` event.
+        //
+        // Clear the identified user *before* force-ending: reset is a logout, so no lifecycle
+        // event should fire, and gating the reporter off first ensures the terminal states these
+        // ends produce can't be misreported as user dismissals (the reporter drops when anonymous).
+        identity.userId = nil
+        localEndTracker.clearAll()
         for registration in config.registrations {
             await registration.endAllActivities()
         }
-        identity.userId = nil
         registrar.handleReset()
         observer.restart()
         observedContinuation.wrappedValue?.finish()

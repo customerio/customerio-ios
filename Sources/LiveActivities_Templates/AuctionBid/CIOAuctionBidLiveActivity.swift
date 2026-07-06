@@ -20,47 +20,40 @@ private func makeAuctionBidConfiguration()
     ActivityConfiguration(for: CIOAuctionBidAttributes.self) { context in
         AuctionBidBannerView(attributes: context.attributes, state: context.state)
             .environment(\.cioAssetLibrary, CIOLiveActivitiesTemplates.assetLibrary)
-            .activityBackgroundTint(
-                CIOLiveActivitiesTemplates.branding?.accentColor.flatMap(Color.init(hex:))
-                    ?? Color(red: 0.12, green: 0.08, blue: 0.20)
-            )
-            .activitySystemActionForegroundColor(.white)
+            .activityBackgroundTint(CIOTemplateStyle.background(fallback: Color(red: 0.12, green: 0.08, blue: 0.20)))
+            .activitySystemActionForegroundColor(CIOTemplateStyle.text)
     } dynamicIsland: { context in
         DynamicIsland {
             DynamicIslandExpandedRegion(.leading) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(context.attributes.title)
-                        .font(.caption.bold()).lineLimit(1)
-                    HStack(spacing: 0) {
-                        Text(context.attributes.currencySymbol)
-                        Text(context.state.currentBid)
-                    }
-                    .font(.subheadline.bold()).monospacedDigit()
-                }
-                .padding(.leading, 4)
+                CIOBrandingView(appBranding: CIOLiveActivitiesTemplates.branding)
+                    .environment(\.cioAssetLibrary, CIOLiveActivitiesTemplates.assetLibrary)
+                    .frame(height: 20)
+                    .padding(.leading, 4)
             }
             DynamicIslandExpandedRegion(.trailing) {
-                Text(timerInterval: Date() ... context.state.endTime.value, countsDown: true)
-                    .font(.caption.bold()).monospacedDigit()
+                // Island renders on the black pill — keep content light.
+                auctionTrailing(context.state, color: .white)
                     .padding(.trailing, 4)
             }
             DynamicIslandExpandedRegion(.bottom) {
-                Text(context.state.statusMessage)
-                    .font(.caption2)
-                    .foregroundColor(auctionStatusColor(context.state.statusColor, fallback: .secondary))
+                HStack(spacing: 8) {
+                    auctionBid(context.attributes, state: context.state)
+                        .font(.headline.bold()).monospacedDigit()
+                    Text(context.attributes.title)
+                        .font(.caption).foregroundColor(.white.opacity(0.7)).lineLimit(1)
+                    Spacer()
+                }
             }
         } compactLeading: {
-            HStack(spacing: 0) {
-                Text(context.attributes.currencySymbol)
-                Text(context.state.currentBid)
-            }
-            .font(.caption.bold()).monospacedDigit()
+            CIOBrandingView(appBranding: CIOLiveActivitiesTemplates.branding)
+                .environment(\.cioAssetLibrary, CIOLiveActivitiesTemplates.assetLibrary)
+                .frame(width: 20, height: 20)
         } compactTrailing: {
-            Text(timerInterval: Date() ... context.state.endTime.value, countsDown: true)
-                .font(.system(size: 10, weight: .bold)).monospacedDigit()
+            auctionTrailing(context.state, color: .white)
         } minimal: {
-            Text(context.attributes.currencySymbol)
-                .font(.system(size: 10, weight: .black))
+            CIOBrandingView(appBranding: CIOLiveActivitiesTemplates.branding)
+                .environment(\.cioAssetLibrary, CIOLiveActivitiesTemplates.assetLibrary)
+                .frame(width: 18, height: 18)
         }
     }
 }
@@ -70,6 +63,31 @@ private func auctionStatusColor(_ hex: String?, fallback: Color) -> Color {
     hex.flatMap(Color.init(hex:)) ?? fallback
 }
 
+/// The "$1,250"-style bid amount as a single concatenated `Text` (so callers can style it).
+@available(iOS 17.2, *)
+private func auctionBid(_ attributes: CIOAuctionBidAttributes, state: CIOAuctionBidAttributes.ContentState) -> Text {
+    Text(attributes.currencySymbol) + Text(state.currentBid)
+}
+
+/// Trailing value for the Dynamic Island: a live countdown while bidding, else the status.
+/// The countdown range is only built before `endTime`, so it can't form an invalid interval.
+@available(iOS 17.2, *)
+@ViewBuilder
+private func auctionTrailing(_ state: CIOAuctionBidAttributes.ContentState, color: Color) -> some View {
+    if Date() < state.endTime.value {
+        HStack(spacing: 2) {
+            Image(systemName: "alarm").font(.system(size: 9))
+            Text(timerInterval: Date() ... state.endTime.value, countsDown: true)
+                .font(.system(size: 11, weight: .bold)).monospacedDigit()
+        }
+        .foregroundColor(color)
+    } else {
+        Text(state.statusMessage)
+            .font(.system(size: 11, weight: .bold)).lineLimit(1)
+            .foregroundColor(auctionStatusColor(state.statusColor, fallback: color))
+    }
+}
+
 // MARK: - Banner
 
 @available(iOS 17.2, *)
@@ -77,47 +95,63 @@ private struct AuctionBidBannerView: View {
     let attributes: CIOAuctionBidAttributes
     let state: CIOAuctionBidAttributes.ContentState
 
-    private var statusColor: Color { auctionStatusColor(state.statusColor, fallback: .white.opacity(0.7)) }
+    private var isEnded: Bool { Date() >= state.endTime.value }
+    private var statusColor: Color { auctionStatusColor(state.statusColor, fallback: CIOTemplateStyle.text) }
 
     var body: some View {
-        HStack(spacing: 12) {
-            if let image = attributes.image {
-                CIOAssetImage(key: image)
-                    .frame(width: 56, height: 56)
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                CIOBrandingView(appBranding: CIOLiveActivitiesTemplates.branding, showsName: true)
+                    .foregroundColor(CIOTemplateStyle.text)
+                Spacer()
+                // While bidding, the status sits top-right; once ended it becomes the headline.
+                if !isEnded {
+                    Text(state.statusMessage)
+                        .font(.caption).foregroundColor(statusColor)
+                }
             }
-            VStack(alignment: .leading, spacing: 4) {
-                HStack {
-                    if let header = attributes.header {
-                        Text(header)
-                            .font(.caption2).foregroundColor(.white.opacity(0.6))
+            HStack(alignment: .center, spacing: 12) {
+                VStack(alignment: .leading, spacing: 4) {
+                    if isEnded {
+                        Text(state.statusMessage)
+                            .font(.title2.bold())
+                            .foregroundColor(statusColor)
+                        // Won-style detail (item + final price) shown when a result image is present;
+                        // a bare outcome (e.g. "lost") sends no image and shows only the headline.
+                        if attributes.image != nil {
+                            HStack(spacing: 6) {
+                                Text(attributes.title)
+                                    .foregroundColor(CIOTemplateStyle.text.opacity(0.8))
+                                auctionBid(attributes, state: state)
+                                    .foregroundColor(CIOTemplateStyle.text)
+                            }
+                            .font(.subheadline).monospacedDigit()
+                        }
                     } else {
-                        CIOBrandingView(appBranding: CIOLiveActivitiesTemplates.branding).frame(height: 14)
+                        auctionBid(attributes, state: state)
+                            .font(.title.bold()).monospacedDigit()
+                            .foregroundColor(CIOTemplateStyle.text)
+                        HStack(spacing: 8) {
+                            Text(attributes.title)
+                            if let subtitle = state.subtitle {
+                                Text(subtitle)
+                            }
+                            HStack(spacing: 2) {
+                                Image(systemName: "alarm")
+                                Text(timerInterval: Date() ... state.endTime.value, countsDown: true)
+                                    .monospacedDigit()
+                            }
+                        }
+                        .font(.caption).foregroundColor(CIOTemplateStyle.text.opacity(0.8)).lineLimit(1)
                     }
-                    Spacer()
-                    if let subtitle = state.subtitle {
-                        Text(subtitle)
-                            .font(.caption2).foregroundColor(.white.opacity(0.6))
+                    if let stale = state.staleMessage {
+                        Text(stale)
+                            .font(.caption2).foregroundColor(CIOTemplateStyle.text.opacity(0.6))
                     }
                 }
-                Text(attributes.title)
-                    .font(.caption).foregroundColor(.white.opacity(0.8)).lineLimit(1)
-                HStack(alignment: .lastTextBaseline, spacing: 4) {
-                    HStack(spacing: 0) {
-                        Text(attributes.currencySymbol)
-                        Text(state.currentBid)
-                    }
-                    .font(.title2.bold()).monospacedDigit().foregroundColor(.white)
-                    Spacer()
-                    Text(timerInterval: Date() ... state.endTime.value, countsDown: true)
-                        .font(.caption.bold()).monospacedDigit().foregroundColor(.white)
-                }
-                Text(state.statusMessage)
-                    .font(.caption.bold())
-                    .foregroundColor(statusColor)
-                if let stale = state.staleMessage {
-                    Text(stale)
-                        .font(.caption2).foregroundColor(.white.opacity(0.6))
+                Spacer(minLength: 12)
+                if let image = attributes.image {
+                    CIOAssetImage(key: image).frame(width: 60, height: 60)
                 }
             }
         }

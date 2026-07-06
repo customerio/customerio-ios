@@ -48,29 +48,63 @@ final class LiveActivityRegistrar: @unchecked Sendable {
         flushPending()
     }
 
-    /// Reset (logout): clear the persisted signatures so the next identified session
-    /// re-registers, and drop instance state (reset ends all activities).
+    /// Reset (logout): clear the dedup signatures so the next identified session re-registers, and
+    /// drop instance state (reset ends all activities).
     ///
-    /// The pending *push-to-start* tokens are deliberately kept: they're per-app and stay valid
-    /// across logout, and ActivityKit does not re-emit an unchanged token to the restarted
-    /// observer — so if we dropped them here, the next login would have nothing to re-register.
+    /// The *persisted push-to-start token values* (`ptsvalue:` keys) are deliberately preserved:
+    /// they're per-app and stay valid across logout, and ActivityKit does not re-emit an unchanged
+    /// token to the restarted observer — so keeping the value lets the next login re-register it,
+    /// even across a process restart (the in-memory `pendingPushToStart` alone would be lost then).
     func handleReset() {
         pendingInstance.wrappedValue = [:]
-        store.clearAll()
+        for key in store.allRegistrationKeys() where !key.hasPrefix(Self.pushToStartValuePrefix) {
+            store.clearRegistrationSignature(activityType: key)
+        }
+    }
+
+    /// Seed `pendingPushToStart` from the persisted token values so a push-to-start token can be
+    /// registered on a launch where ActivityKit does not re-yield it. Call once at init, before the
+    /// event-bus observers are added (their replayed identify / device-token events trigger the
+    /// flush that actually registers). Persisted values never clobber a fresher in-memory capture.
+    func seedPendingPushToStartFromStore() {
+        for key in store.allRegistrationKeys() where key.hasPrefix(Self.pushToStartValuePrefix) {
+            let notificationType = String(key.dropFirst(Self.pushToStartValuePrefix.count))
+            guard
+                let raw = store.registrationSignature(activityType: key),
+                let separator = raw.firstIndex(of: "|")
+            else { continue }
+            let attributesType = String(raw[..<separator])
+            let tokenHex = String(raw[raw.index(after: separator)...])
+            guard !tokenHex.isEmpty else { continue }
+            pendingPushToStart.mutating { pending in
+                if pending[notificationType] == nil {
+                    pending[notificationType] = PendingPushToStart(attributesType: attributesType, tokenHex: tokenHex)
+                }
+            }
+        }
+        flushPending()
     }
 
     // MARK: - Observation callbacks
 
     func handlePushToStartToken(notificationType: String, attributesType: String, token: Data) {
+        let tokenHex = token.hexString
         pendingPushToStart.mutating {
-            $0[notificationType] = PendingPushToStart(attributesType: attributesType, tokenHex: token.hexString)
+            $0[notificationType] = PendingPushToStart(attributesType: attributesType, tokenHex: tokenHex)
         }
+        // Persist the token *value* (not just the dedup signature) so a future cold launch can
+        // re-seed and register it even if ActivityKit doesn't re-yield the (unchanged) token.
+        store.setRegistrationSignature(
+            activityType: Self.pushToStartValueKey(notificationType),
+            signature: "\(attributesType)|\(tokenHex)"
+        )
         flushPending()
     }
 
     func handleInstanceToken(notificationType: String, instanceUUID: String, token: Data) {
+        let tokenHex = token.hexString
         pendingInstance.mutating {
-            $0[instanceUUID] = PendingInstance(notificationType: notificationType, tokenHex: token.hexString)
+            $0[instanceUUID] = PendingInstance(notificationType: notificationType, tokenHex: tokenHex)
         }
         flushPending()
     }
@@ -86,6 +120,13 @@ final class LiveActivityRegistrar: @unchecked Sendable {
     /// push-to-start key (an activity type identifier).
     private static func instanceStoreKey(_ instanceUUID: String) -> String {
         "instance:\(instanceUUID)"
+    }
+
+    /// Key prefix for a persisted push-to-start token value. Namespaced so it can't collide with a
+    /// push-to-start dedup signature (bare activity type) or a per-instance signature.
+    private static let pushToStartValuePrefix = "ptsvalue:"
+    private static func pushToStartValueKey(_ notificationType: String) -> String {
+        pushToStartValuePrefix + notificationType
     }
 
     // MARK: - Flush

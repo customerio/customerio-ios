@@ -6,6 +6,21 @@ import Foundation
 import ActivityKit
 #endif
 
+/// How the first observed terminal ActivityKit state should be handled.
+enum LiveActivityTerminalAction: Equatable {
+    /// App/SDK/backend/system end — clean up local state, report nothing.
+    case cleanupOnly
+    /// User swiped the activity away — report an `end` event, then clean up.
+    case reportUserDismiss
+}
+
+/// Pure decision for the terminal-state discriminator, factored out of ActivityKit observation so
+/// it is unit-testable. A user dismissal is the case where the *first* terminal state observed is
+/// `.dismissed` and the SDK did not end the activity itself.
+func liveActivityTerminalAction(firstTerminalIsDismissed: Bool, wasLocalEnd: Bool) -> LiveActivityTerminalAction {
+    (firstTerminalIsDismissed && !wasLocalEnd) ? .reportUserDismiss : .cleanupOnly
+}
+
 /// Owns the ActivityKit observation lifecycle for all registered activity types.
 ///
 /// Starts one root task per registration, can `restart` after a reset, and cancels everything
@@ -16,7 +31,9 @@ import ActivityKit
 final class LiveActivityObserver: @unchecked Sendable {
     private let registrations: [ActivityTypeRegistration]
     private let registrar: LiveActivityRegistrar
+    private let localEndTracker: LiveActivityLocalEndTracker
     private let onActivityAppeared: @Sendable (_ notificationType: String, _ activityInstanceId: String) -> Void
+    private let onUserDismissed: @Sendable (_ notificationType: String, _ activityInstanceId: String) -> Void
 
     /// Running root tasks keyed by notificationType.
     private let tasks = Synchronized<[String: Task<Void, Never>]>([:])
@@ -24,11 +41,15 @@ final class LiveActivityObserver: @unchecked Sendable {
     init(
         registrations: [ActivityTypeRegistration],
         registrar: LiveActivityRegistrar,
-        onActivityAppeared: @escaping @Sendable (_ notificationType: String, _ activityInstanceId: String) -> Void
+        localEndTracker: LiveActivityLocalEndTracker,
+        onActivityAppeared: @escaping @Sendable (_ notificationType: String, _ activityInstanceId: String) -> Void,
+        onUserDismissed: @escaping @Sendable (_ notificationType: String, _ activityInstanceId: String) -> Void
     ) {
         self.registrations = registrations
         self.registrar = registrar
+        self.localEndTracker = localEndTracker
         self.onActivityAppeared = onActivityAppeared
+        self.onUserDismissed = onUserDismissed
     }
 
     func start() {
@@ -57,7 +78,9 @@ final class LiveActivityObserver: @unchecked Sendable {
 
     private func startObserving(_ registration: ActivityTypeRegistration) {
         let registrar = self.registrar
+        let localEndTracker = self.localEndTracker
         let onAppeared = onActivityAppeared
+        let onUserDismissed = self.onUserDismissed
         let identifier = registration.activityIdentifier
         let attributesType = registration.attributesTypeName
 
@@ -73,6 +96,12 @@ final class LiveActivityObserver: @unchecked Sendable {
             },
             onActivityEnded: { instanceId in
                 registrar.handleActivityEnded(instanceUUID: instanceId)
+            },
+            onUserDismissed: { instanceId in
+                onUserDismissed(identifier, instanceId)
+            },
+            consumeLocalEnd: { instanceId in
+                localEndTracker.consume(instanceId)
             }
         )
 
@@ -154,14 +183,33 @@ enum LiveActivityObservation {
                 }
             }
             group.addTask {
+                // The first terminal state observed distinguishes a user's manual dismissal from an
+                // app/SDK/backend end:
+                //   • `.ended` first  → the app (`CIOLiveActivity.end`), a backend push, or the
+                //                       system ended it. Not a user swipe; clean up, report nothing
+                //                       (a local end already reported via the handle; a backend end
+                //                       must not be echoed).
+                //   • `.dismissed` first → the user swiped it away. Report `end` — unless it was a
+                //                       local `end(.immediate)` whose `.ended` the stream coalesced
+                //                       (caught by the local-end marker).
                 for await state in activity.activityStateUpdates {
+                    let firstTerminalIsDismissed: Bool
                     switch state {
-                    case .ended, .dismissed:
-                        sinks.onActivityEnded(instanceId)
-                        return
-                    default:
-                        break
+                    case .ended: firstTerminalIsDismissed = false
+                    case .dismissed: firstTerminalIsDismissed = true
+                    default: continue // not terminal — keep observing
                     }
+                    let action = liveActivityTerminalAction(
+                        firstTerminalIsDismissed: firstTerminalIsDismissed,
+                        // Consume the marker on any terminal so a local end never leaks a marker
+                        // and never double-reports.
+                        wasLocalEnd: sinks.consumeLocalEnd(instanceId)
+                    )
+                    if action == .reportUserDismiss {
+                        sinks.onUserDismissed(instanceId)
+                    }
+                    sinks.onActivityEnded(instanceId)
+                    return
                 }
             }
         }

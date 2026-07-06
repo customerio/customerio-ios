@@ -3,13 +3,24 @@ import Foundation
 /// Sinks the observation bridge calls as ActivityKit emits tokens and lifecycle transitions.
 ///
 /// The bridge only forwards raw signals; all policy (dedup, auth gating, event emission) lives
-/// in `LiveActivityRegistrar` / `LiveActivityReporter`. No lifecycle *events* are emitted from
-/// observation — `onActivityAppeared`/`onActivityEnded` are used for token capture and cleanup only.
+/// in `LiveActivityRegistrar` / `LiveActivityReporter`. `onActivityAppeared`/`onActivityEnded` are
+/// used for token capture and cleanup only. The one lifecycle *event* observation emits is
+/// `onUserDismissed` — a user's manual swipe-away — which the bridge distinguishes from an
+/// app/SDK/backend-initiated end via the terminal-state path and `consumeLocalEnd`.
 struct LiveActivityObservationSinks: Sendable {
     let onPushToStartToken: @Sendable (_ token: Data) -> Void
     let onInstanceToken: @Sendable (_ activityInstanceId: String, _ token: Data) -> Void
     let onActivityAppeared: @Sendable (_ activityInstanceId: String) -> Void
     let onActivityEnded: @Sendable (_ activityInstanceId: String) -> Void
+
+    /// Called only when the user manually dismisses (swipes away) the activity — never for an
+    /// app/SDK `end()` or a backend/system end. The reporter turns this into an `end` event.
+    let onUserDismissed: @Sendable (_ activityInstanceId: String) -> Void
+
+    /// Returns whether this activity was ended locally by the SDK (via `CIOLiveActivity.end`),
+    /// consuming the marker. Used to suppress a spurious user-dismissal report when a local end
+    /// reaches `.dismissed` without an observed `.ended` (e.g. `.immediate` dismissal policy).
+    let consumeLocalEnd: @Sendable (_ activityInstanceId: String) -> Bool
 }
 
 /// Type-erased descriptor for a single registered `ActivityAttributes` type.

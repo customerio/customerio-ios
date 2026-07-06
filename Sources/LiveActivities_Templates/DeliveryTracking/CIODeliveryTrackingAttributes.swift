@@ -57,6 +57,9 @@ public struct CIODeliveryTrackingAttributes: CIOActivityAttribute {
         /// Asset reference for the status illustration (bundle name / asset key / URL),
         /// resolved via `CIOAssetLibrary`. Pre-load stage images at configure time.
         public var image: String?
+        /// Optional asset reference for the icon that rides the progress bar
+        /// (resolved via `CIOAssetLibrary`). When absent, a plain filled thumb is drawn.
+        public var progressIcon: String?
         /// Step-based delivery progress.
         public var progress: Progress
         /// Estimated arrival time, used to render a live countdown.
@@ -70,6 +73,7 @@ public struct CIODeliveryTrackingAttributes: CIOActivityAttribute {
             title: String,
             subtitle: String? = nil,
             image: String? = nil,
+            progressIcon: String? = nil,
             progress: Progress,
             estimatedArrival: EpochMillisDate? = nil,
             statusColor: String? = nil,
@@ -78,6 +82,7 @@ public struct CIODeliveryTrackingAttributes: CIOActivityAttribute {
             self.title = title
             self.subtitle = subtitle
             self.image = image
+            self.progressIcon = progressIcon
             self.progress = progress
             self.estimatedArrival = estimatedArrival
             self.statusColor = statusColor

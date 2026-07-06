@@ -51,6 +51,12 @@
 		669B9FCF2D8B2D430087CC20 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 669B9FA72D8B2D430087CC20 /* SceneDelegate.swift */; };
 		669B9FD02D8B2D430087CC20 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 669B9F9E2D8B2D430087CC20 /* Assets.xcassets */; };
 		669B9FD12D8B2D430087CC20 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 669B9FA12D8B2D430087CC20 /* GoogleService-Info.plist */; };
+		71806CD668414813AED2D51A /* chica_logo.png in Resources */ = {isa = PBXBuildFile; fileRef = C166C59B389F438F9654DB27 /* chica_logo.png */; };
+		B56E773EA3F2463EA185279A /* delivery_food.png in Resources */ = {isa = PBXBuildFile; fileRef = D7772EF56D3744359C15F17E /* delivery_food.png */; };
+		A1B2C3D4E5F60718293A4B5C /* chica_thumb.png in Resources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4B5D /* chica_thumb.png */; };
+		A1B2C3D4E5F60718293A4C60 /* toronto_fc.png in Resources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4C61 /* toronto_fc.png */; };
+		A1B2C3D4E5F60718293A4C70 /* sj_quakes.png in Resources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4C71 /* sj_quakes.png */; };
+		A1B2C3D4E5F60718293A4C80 /* mls_logo.png in Resources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4C81 /* mls_logo.png */; };
 		669B9FD32D8B2D430087CC20 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 669B9FA42D8B2D430087CC20 /* LaunchScreen.storyboard */; };
 		669B9FD42D8B2D430087CC20 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 669B9FA62D8B2D430087CC20 /* Main.storyboard */; };
 		669B9FD52D8B2D430087CC20 /* BuildEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 669B9F9F2D8B2D430087CC20 /* BuildEnvironment.swift */; };
@@ -165,6 +171,12 @@
 		669B9F9F2D8B2D430087CC20 /* BuildEnvironment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = BuildEnvironment.swift; path = ../BuildEnvironment.swift; sourceTree = "<group>"; };
 		669B9FA02D8B2D430087CC20 /* DIGraphShared.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DIGraphShared.swift; sourceTree = "<group>"; };
 		669B9FA12D8B2D430087CC20 /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
+		C166C59B389F438F9654DB27 /* chica_logo.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = chica_logo.png; sourceTree = "<group>"; };
+		D7772EF56D3744359C15F17E /* delivery_food.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = delivery_food.png; sourceTree = "<group>"; };
+		A1B2C3D4E5F60718293A4B5D /* chica_thumb.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = chica_thumb.png; sourceTree = "<group>"; };
+		A1B2C3D4E5F60718293A4C61 /* toronto_fc.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = toronto_fc.png; sourceTree = "<group>"; };
+		A1B2C3D4E5F60718293A4C71 /* sj_quakes.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = sj_quakes.png; sourceTree = "<group>"; };
+		A1B2C3D4E5F60718293A4C81 /* mls_logo.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = mls_logo.png; sourceTree = "<group>"; };
 		669B9FA22D8B2D430087CC20 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		669B9FA32D8B2D430087CC20 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		669B9FA52D8B2D430087CC20 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/Main.storyboard; sourceTree = "<group>"; };
@@ -423,6 +435,12 @@
 				669B9F9F2D8B2D430087CC20 /* BuildEnvironment.swift */,
 				669B9FA02D8B2D430087CC20 /* DIGraphShared.swift */,
 				669B9FA12D8B2D430087CC20 /* GoogleService-Info.plist */,
+				C166C59B389F438F9654DB27 /* chica_logo.png */,
+				D7772EF56D3744359C15F17E /* delivery_food.png */,
+				A1B2C3D4E5F60718293A4B5D /* chica_thumb.png */,
+				A1B2C3D4E5F60718293A4C61 /* toronto_fc.png */,
+				A1B2C3D4E5F60718293A4C71 /* sj_quakes.png */,
+				A1B2C3D4E5F60718293A4C81 /* mls_logo.png */,
 				669B9FA22D8B2D430087CC20 /* Info.plist */,
 				669B9FA42D8B2D430087CC20 /* LaunchScreen.storyboard */,
 				669B9FA62D8B2D430087CC20 /* Main.storyboard */,
@@ -647,6 +665,12 @@
 			files = (
 				669B9FD02D8B2D430087CC20 /* Assets.xcassets in Resources */,
 				669B9FD12D8B2D430087CC20 /* GoogleService-Info.plist in Resources */,
+				71806CD668414813AED2D51A /* chica_logo.png in Resources */,
+				B56E773EA3F2463EA185279A /* delivery_food.png in Resources */,
+				A1B2C3D4E5F60718293A4B5C /* chica_thumb.png in Resources */,
+				A1B2C3D4E5F60718293A4C60 /* toronto_fc.png in Resources */,
+				A1B2C3D4E5F60718293A4C70 /* sj_quakes.png in Resources */,
+				A1B2C3D4E5F60718293A4C80 /* mls_logo.png in Resources */,
 				669B9FD32D8B2D430087CC20 /* LaunchScreen.storyboard in Resources */,
 				669B9FD42D8B2D430087CC20 /* Main.storyboard in Resources */,
 			);
@@ -1002,6 +1026,7 @@
 				INFOPLIST_KEY_CFBundleDisplayName = "Native iOS";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "This app uses your location to test the Customer.io Location module.";
 				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
+				INFOPLIST_KEY_NSSupportsLiveActivitiesFrequentUpdates = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				INFOPLIST_KEY_UIMainStoryboardFile = Main;
@@ -1041,6 +1066,7 @@
 				INFOPLIST_KEY_CFBundleDisplayName = "Native iOS";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "This app uses your location to test the Customer.io Location module.";
 				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
+				INFOPLIST_KEY_NSSupportsLiveActivitiesFrequentUpdates = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				INFOPLIST_KEY_UIMainStoryboardFile = Main;

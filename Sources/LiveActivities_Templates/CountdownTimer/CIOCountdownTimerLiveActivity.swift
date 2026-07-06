@@ -20,10 +20,8 @@ private func makeCountdownTimerConfiguration()
     ActivityConfiguration(for: CIOCountdownTimerAttributes.self) { context in
         CountdownTimerBannerView(attributes: context.attributes, state: context.state)
             .environment(\.cioAssetLibrary, CIOLiveActivitiesTemplates.assetLibrary)
-            .activityBackgroundTint(
-                CIOLiveActivitiesTemplates.branding?.accentColor.flatMap(Color.init(hex:)) ?? .orange
-            )
-            .activitySystemActionForegroundColor(.white)
+            .activityBackgroundTint(CIOTemplateStyle.background(fallback: .orange))
+            .activitySystemActionForegroundColor(CIOTemplateStyle.text)
     } dynamicIsland: { context in
         DynamicIsland {
             DynamicIslandExpandedRegion(.leading) {
@@ -32,12 +30,21 @@ private func makeCountdownTimerConfiguration()
                     .frame(height: 20)
                     .padding(.leading, 4)
             }
-            DynamicIslandExpandedRegion(.center) {
-                CountdownView(state: context.state)
+            DynamicIslandExpandedRegion(.trailing) {
+                // Island renders on the system's black pill — keep the value light.
+                countdownValue(context.state, color: .white, font: .title3.bold())
+                    .padding(.trailing, 4)
+            }
+            DynamicIslandExpandedRegion(.bottom) {
+                if Date() < context.state.targetDate.value {
+                    Text(context.state.subtitle)
+                        .font(.caption2).foregroundColor(.white.opacity(0.8))
+                }
             }
         } compactLeading: {
-            Text(context.attributes.title)
-                .font(.caption2.bold()).lineLimit(1)
+            CIOBrandingView(appBranding: CIOLiveActivitiesTemplates.branding)
+                .environment(\.cioAssetLibrary, CIOLiveActivitiesTemplates.assetLibrary)
+                .frame(width: 20, height: 20)
         } compactTrailing: {
             CountdownCompactView(state: context.state)
         } minimal: {
@@ -51,6 +58,28 @@ private func countdownStatusColor(_ hex: String?, fallback: Color) -> Color {
     hex.flatMap(Color.init(hex:)) ?? fallback
 }
 
+/// The countdown value shown on the trailing edge: a live timer while running, or the
+/// `expiredMessage` once `targetDate` has passed. The range is only built while `now` is
+/// before the target, so it can never form an invalid (crashing) interval.
+@available(iOS 17.2, *)
+@ViewBuilder
+private func countdownValue(
+    _ state: CIOCountdownTimerAttributes.ContentState,
+    color: Color,
+    font: Font
+) -> some View {
+    let now = Date()
+    if now < state.targetDate.value {
+        Text(timerInterval: now ... state.targetDate.value, countsDown: true)
+            .font(font).monospacedDigit()
+            .foregroundColor(color)
+    } else if let expired = state.expiredMessage {
+        Text(expired)
+            .font(font)
+            .foregroundColor(countdownStatusColor(state.statusColor, fallback: color))
+    }
+}
+
 // MARK: - Banner
 
 @available(iOS 17.2, *)
@@ -58,31 +87,29 @@ private struct CountdownTimerBannerView: View {
     let attributes: CIOCountdownTimerAttributes
     let state: CIOCountdownTimerAttributes.ContentState
 
+    private var isRunning: Bool { Date() < state.targetDate.value }
+
     var body: some View {
-        HStack(spacing: 12) {
-            if let image = attributes.image {
-                CIOAssetImage(key: image)
-                    .frame(width: 56, height: 56)
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
-            }
+        HStack(alignment: .center, spacing: 12) {
             VStack(alignment: .leading, spacing: 4) {
-                HStack {
-                    if let header = attributes.header {
-                        Text(header)
-                            .font(.caption2).foregroundColor(.white.opacity(0.7))
-                    } else {
-                        CIOBrandingView(appBranding: CIOLiveActivitiesTemplates.branding).frame(height: 14)
-                    }
-                    Spacer()
-                }
+                CIOBrandingView(appBranding: CIOLiveActivitiesTemplates.branding, showsName: true)
+                    .foregroundColor(CIOTemplateStyle.text)
                 Text(attributes.title)
-                    .font(.headline).foregroundColor(.white)
-                CountdownView(state: state)
+                    .font(.headline)
+                    .foregroundColor(CIOTemplateStyle.text)
+                // Status message only while counting down; the expired state shows just the message.
+                if isRunning {
+                    Text(state.subtitle)
+                        .font(.subheadline)
+                        .foregroundColor(CIOTemplateStyle.text.opacity(0.8))
+                }
                 if let stale = state.staleMessage {
                     Text(stale)
-                        .font(.caption2).foregroundColor(.white.opacity(0.6))
+                        .font(.caption2).foregroundColor(CIOTemplateStyle.text.opacity(0.6))
                 }
             }
+            Spacer(minLength: 12)
+            countdownValue(state, color: CIOTemplateStyle.text, font: .system(size: 26, weight: .heavy))
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
@@ -92,39 +119,17 @@ private struct CountdownTimerBannerView: View {
 // MARK: - Sub-views
 
 @available(iOS 17.2, *)
-private struct CountdownView: View {
-    let state: CIOCountdownTimerAttributes.ContentState
-
-    var body: some View {
-        let now = Date()
-        if now >= state.targetDate.value, let expired = state.expiredMessage {
-            Text(expired)
-                .font(.subheadline.bold())
-                .foregroundColor(countdownStatusColor(state.statusColor, fallback: .white))
-        } else {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(state.subtitle)
-                    .font(.caption).foregroundColor(.white.opacity(0.8))
-                Text(timerInterval: now ... state.targetDate.value, countsDown: true)
-                    .font(.title2.bold()).monospacedDigit()
-                    .foregroundColor(.white)
-            }
-        }
-    }
-}
-
-@available(iOS 17.2, *)
 private struct CountdownCompactView: View {
     let state: CIOCountdownTimerAttributes.ContentState
 
     var body: some View {
         let now = Date()
-        if now >= state.targetDate.value {
-            Image(systemName: "checkmark.circle.fill")
-                .foregroundColor(countdownStatusColor(state.statusColor, fallback: .white))
-        } else {
+        if now < state.targetDate.value {
             Text(timerInterval: now ... state.targetDate.value, countsDown: true)
-                .font(.system(size: 10, weight: .bold)).monospacedDigit()
+                .font(.system(size: 12, weight: .bold)).monospacedDigit()
+        } else if let expired = state.expiredMessage {
+            Text(expired)
+                .font(.system(size: 12, weight: .bold)).lineLimit(1)
         }
     }
 }

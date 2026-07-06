@@ -20,16 +20,13 @@ private func makeFlightStatusConfiguration()
     ActivityConfiguration(for: CIOFlightStatusAttributes.self) { context in
         FlightStatusBannerView(attributes: context.attributes, state: context.state)
             .environment(\.cioAssetLibrary, CIOLiveActivitiesTemplates.assetLibrary)
-            .activityBackgroundTint(
-                CIOLiveActivitiesTemplates.branding?.accentColor.flatMap(Color.init(hex:)) ?? .blue
-            )
-            .activitySystemActionForegroundColor(.white)
+            .activityBackgroundTint(CIOTemplateStyle.background(fallback: .blue))
+            .activitySystemActionForegroundColor(CIOTemplateStyle.text)
     } dynamicIsland: { context in
         DynamicIsland {
             DynamicIslandExpandedRegion(.leading) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(context.attributes.origin.code)
-                        .font(.caption.bold())
+                    Text(context.attributes.origin.code).font(.caption.bold())
                     Text(context.attributes.origin.city)
                         .font(.system(size: 9)).foregroundColor(.secondary)
                 }
@@ -37,15 +34,15 @@ private func makeFlightStatusConfiguration()
             }
             DynamicIslandExpandedRegion(.trailing) {
                 VStack(alignment: .trailing, spacing: 2) {
-                    Text(context.attributes.destination.code)
-                        .font(.caption.bold())
+                    Text(context.attributes.destination.code).font(.caption.bold())
                     Text(context.attributes.destination.city)
                         .font(.system(size: 9)).foregroundColor(.secondary)
                 }
                 .padding(.trailing, 4)
             }
             DynamicIslandExpandedRegion(.center) {
-                FlightProgressBar(fraction: context.state.progressFraction ?? 0)
+                // Island renders on the black pill — keep the bar light.
+                FlightProgressBar(fraction: context.state.progressFraction ?? 0, color: .white)
             }
             DynamicIslandExpandedRegion(.bottom) {
                 Text(context.state.title)
@@ -53,18 +50,15 @@ private func makeFlightStatusConfiguration()
                     .foregroundColor(flightStatusColor(context.state.statusColor, fallback: .secondary))
             }
         } compactLeading: {
-            if let header = context.attributes.header {
-                Text(header).font(.caption2.bold())
-            } else {
-                Image(systemName: "airplane").font(.system(size: 10))
-            }
+            CIOBrandingView(appBranding: CIOLiveActivitiesTemplates.branding)
+                .environment(\.cioAssetLibrary, CIOLiveActivitiesTemplates.assetLibrary)
+                .frame(width: 20, height: 20)
         } compactTrailing: {
-            if let status = context.state.status {
-                Text(status).font(.system(size: 9)).lineLimit(1)
-            }
+            flightCompactTime(context.state)
         } minimal: {
-            Image(systemName: "airplane")
-                .font(.system(size: 10))
+            CIOBrandingView(appBranding: CIOLiveActivitiesTemplates.branding)
+                .environment(\.cioAssetLibrary, CIOLiveActivitiesTemplates.assetLibrary)
+                .frame(width: 18, height: 18)
         }
     }
 }
@@ -74,6 +68,22 @@ private func flightStatusColor(_ hex: String?, fallback: Color) -> Color {
     hex.flatMap(Color.init(hex:)) ?? fallback
 }
 
+/// Compact trailing time: a countdown to the next event (departure, then arrival), or the
+/// clock time once it has passed. The range is only built before the target, so it can't trap.
+@available(iOS 17.2, *)
+@ViewBuilder
+private func flightCompactTime(_ state: CIOFlightStatusAttributes.ContentState) -> some View {
+    let now = Date()
+    let target = now < state.scheduledDeparture.value ? state.scheduledDeparture.value : state.estimatedArrival.value
+    if now < target {
+        Text(timerInterval: now ... target, countsDown: true)
+            .font(.system(size: 11, weight: .bold)).monospacedDigit()
+    } else {
+        Text(target, style: .time)
+            .font(.system(size: 11, weight: .bold))
+    }
+}
+
 // MARK: - Banner
 
 @available(iOS 17.2, *)
@@ -81,48 +91,48 @@ private struct FlightStatusBannerView: View {
     let attributes: CIOFlightStatusAttributes
     let state: CIOFlightStatusAttributes.ContentState
 
-    private var statusColor: Color { flightStatusColor(state.statusColor, fallback: .white) }
+    private var isLanded: Bool { Date() >= state.estimatedArrival.value }
+    private var isInFlight: Bool { state.progressFraction != nil && !isLanded }
+    private var statusColor: Color { flightStatusColor(state.statusColor, fallback: CIOTemplateStyle.text) }
 
     var body: some View {
-        VStack(spacing: 8) {
-            HStack {
-                CIOBrandingView(appBranding: CIOLiveActivitiesTemplates.branding).frame(height: 16)
-                Spacer()
+        VStack(alignment: .leading, spacing: 8) {
+            // Top: brand logo + flight number, status on the right (hidden once landed).
+            HStack(spacing: 6) {
+                CIOBrandingView(appBranding: CIOLiveActivitiesTemplates.branding)
+                    .frame(width: 22, height: 22)
                 if let header = attributes.header {
-                    Text(header)
-                        .font(.caption.bold()).foregroundColor(.white.opacity(0.8))
+                    Text(header).font(.subheadline.weight(.semibold))
                 }
-            }
-            HStack(spacing: 8) {
-                FlightEndpointView(
-                    code: attributes.origin.code,
-                    city: attributes.origin.city,
-                    time: state.scheduledDeparture.value
-                )
-                FlightProgressBar(fraction: state.progressFraction ?? 0)
-                FlightEndpointView(
-                    code: attributes.destination.code,
-                    city: attributes.destination.city,
-                    time: state.estimatedArrival.value
-                )
-            }
-            HStack {
-                Text(state.title)
-                    .font(.caption.bold()).foregroundColor(statusColor)
                 Spacer()
-                if let status = state.status {
-                    Text(status)
-                        .font(.caption.bold()).foregroundColor(.white.opacity(0.8))
+                if !isLanded, let status = state.status {
+                    Text(status).font(.subheadline).foregroundColor(statusColor)
                 }
             }
-            if let subtitle = state.subtitle {
+            .foregroundColor(CIOTemplateStyle.text)
+
+            Text(state.title)
+                .font(.title3.bold())
+                .foregroundColor(CIOTemplateStyle.text)
+                .frame(maxWidth: .infinity, alignment: isInFlight ? .center : .leading)
+
+            // In-flight shows the progress bar; otherwise the freeform detail line.
+            if isInFlight {
+                FlightProgressBar(fraction: state.progressFraction ?? 0, color: CIOTemplateStyle.text)
+            } else if let subtitle = state.subtitle {
                 Text(subtitle)
-                    .font(.caption2).foregroundColor(.white.opacity(0.7))
+                    .font(.subheadline).foregroundColor(CIOTemplateStyle.text.opacity(0.8))
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
+
+            // Route row, hidden once landed.
+            if !isLanded {
+                FlightRouteRow(origin: attributes.origin, destination: attributes.destination, color: CIOTemplateStyle.text)
+            }
+
             if let stale = state.staleMessage {
                 Text(stale)
-                    .font(.caption2).foregroundColor(.white.opacity(0.6))
+                    .font(.caption2).foregroundColor(CIOTemplateStyle.text.opacity(0.6))
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
@@ -134,48 +144,43 @@ private struct FlightStatusBannerView: View {
 // MARK: - Sub-views
 
 @available(iOS 17.2, *)
-private struct FlightEndpointView: View {
-    let code: String
-    let city: String
-    let time: Date
-
-    private static let timeFormatter: DateFormatter = {
-        let f = DateFormatter()
-        f.dateFormat = "HH:mm"
-        return f
-    }()
+private struct FlightRouteRow: View {
+    let origin: CIOFlightStatusAttributes.Airport
+    let destination: CIOFlightStatusAttributes.Airport
+    let color: Color
 
     var body: some View {
-        VStack(spacing: 2) {
-            Text(code).font(.headline).foregroundColor(.white)
-            Text(city).font(.system(size: 9)).foregroundColor(.white.opacity(0.7)).lineLimit(1)
-            Text(Self.timeFormatter.string(from: time))
-                .font(.caption2.bold()).foregroundColor(.white.opacity(0.8))
+        HStack {
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Text(origin.code).font(.title3.bold())
+                Text("Departure").font(.caption).foregroundColor(color.opacity(0.7))
+            }
+            Spacer()
+            Image(systemName: "airplane")
+            Spacer()
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Text("Arrival").font(.caption).foregroundColor(color.opacity(0.7))
+                Text(destination.code).font(.title3.bold())
+            }
         }
-        .frame(minWidth: 52)
+        .foregroundColor(color)
     }
 }
 
 @available(iOS 17.2, *)
 private struct FlightProgressBar: View {
     let fraction: Double
+    let color: Color
 
     var body: some View {
         GeometryReader { geo in
             ZStack(alignment: .leading) {
-                Capsule()
-                    .fill(Color.white.opacity(0.3))
-                    .frame(height: 3)
-                Capsule()
-                    .fill(Color.white)
-                    .frame(width: geo.size.width * max(0, min(1, fraction)), height: 3)
-                Image(systemName: "airplane")
-                    .font(.system(size: 10))
-                    .foregroundColor(.white)
-                    .offset(x: geo.size.width * max(0, min(1, fraction)) - 6, y: -6)
+                Capsule().fill(color.opacity(0.3)).frame(height: 4)
+                Capsule().fill(color)
+                    .frame(width: geo.size.width * max(0, min(1, fraction)), height: 4)
             }
         }
-        .frame(height: 20)
+        .frame(height: 4)
     }
 }
 #endif

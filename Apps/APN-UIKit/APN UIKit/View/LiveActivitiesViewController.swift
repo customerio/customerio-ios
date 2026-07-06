@@ -252,25 +252,24 @@ class LiveActivitiesViewController: BaseViewController {
             title: "Live Score",
             module: module,
             phases: [
-                .init(subtitle: "Starts in 15 Min"),
-                .init(homeScore: 7, awayScore: 0, subtitle: "1st Quarter · 12:00"),
-                .init(homeScore: 14, awayScore: 10, subtitle: "2nd Quarter · 05:30"),
-                .init(homeScore: 21, awayScore: 21, subtitle: "4th Quarter · 00:42", statusColor: "#FFCC00")
+                .init(subtitle: "15 min"),
+                .init(homeScore: 1, awayScore: 0, subtitle: "22:14"),
+                .init(homeScore: 2, awayScore: 2, subtitle: "55:67"),
+                .init(homeScore: 2, awayScore: 3, subtitle: "88:20", statusColor: "#FFCC00")
             ],
-            endState: .init(homeScore: 24, awayScore: 21, subtitle: "Final Score"),
+            endState: .init(homeScore: 2, awayScore: 3, subtitle: "Final"),
             log: log
-        ) { CIOLiveScoreAttributes(activityInstanceId: $0, homeTeam: .init(name: "LAL"), awayTeam: .init(name: "BOS")) }
+        ) { CIOLiveScoreAttributes(activityInstanceId: $0, homeTeam: .init(name: "Toronto FC", logo: "toronto_fc"), awayTeam: .init(name: "San Jose Quakes", logo: "sj_quakes"), image: "mls_logo") }
 
         let delivery = LiveActivityDemoDriver<CIODeliveryTrackingAttributes>(
             title: "Delivery Tracking",
             module: module,
             phases: [
-                .init(title: "Order placed", subtitle: "For Mahmoud", progress: .init(current: 1, total: 4)),
-                .init(title: "Preparing your order", progress: .init(current: 2, total: 4), estimatedArrival: future(1800)),
-                .init(title: "Out for delivery", subtitle: "Driver: Sam", progress: .init(current: 3, total: 4), estimatedArrival: future(600), statusColor: "#34C759"),
-                .init(title: "Tracking paused", progress: .init(current: 3, total: 4), staleMessage: "Location may be out of date")
+                .init(title: "Order placed", subtitle: "Arriving at 1:45 PM", image: "delivery_food", progressIcon: "chica_thumb", progress: .init(current: 1, total: 4), estimatedArrival: future(1800)),
+                .init(title: "Preparing your order…", subtitle: "Arriving at 1:45 PM", image: "delivery_food", progressIcon: "chica_thumb", progress: .init(current: 2, total: 4), estimatedArrival: future(1500)),
+                .init(title: "Out for delivery", subtitle: "Arriving at 1:30 PM", image: "delivery_food", progressIcon: "chica_thumb", progress: .init(current: 3, total: 4), estimatedArrival: future(600), statusColor: "#34C759")
             ],
-            endState: .init(title: "Delivered", progress: .init(current: 4, total: 4), estimatedArrival: future(0)),
+            endState: .init(title: "Delivered", subtitle: "Arrived at 1:28 PM", image: "delivery_food", progressIcon: "chica_thumb", progress: .init(current: 4, total: 4)),
             log: log
         ) { CIODeliveryTrackingAttributes(activityInstanceId: $0, header: "Order #ABC-1234") }
 
@@ -295,7 +294,7 @@ class LiveActivitiesViewController: BaseViewController {
                 .init(status: "In Flight", title: "2h 15m until landing", subtitle: "Gate B12 · Terminal 2", scheduledDeparture: future(0), estimatedArrival: future(8100), progressFraction: 0.55),
                 .init(status: "Delayed", title: "Delayed 25 min", subtitle: "Gate B12 · Terminal 2", scheduledDeparture: future(1500), estimatedArrival: future(21600), statusColor: "#CC3330")
             ],
-            endState: .init(status: "Landed", title: "Arrived at JFK", subtitle: "Terminal 2 · Bag 4", scheduledDeparture: future(0), estimatedArrival: future(0)),
+            endState: .init(status: "Landed", title: "Welcome to New York!", subtitle: "Terminal 2 · Gate 4 · Bag 5", scheduledDeparture: future(0), estimatedArrival: future(0)),
             log: log
         ) { CIOFlightStatusAttributes(activityInstanceId: $0, header: "CIO101", origin: .init(code: "SFO", city: "San Francisco"), destination: .init(code: "JFK", city: "New York")) }
 

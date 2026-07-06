@@ -28,12 +28,15 @@ struct LiveActivityRegistrarTests {
     // token = Data([0xaa, 0xbb]) → "aabb"
     private let token = Data([0xAA, 0xBB])
 
-    @Test func pushToStart_whileAnonymous_isDeferred_notStored() {
+    @Test func pushToStart_whileAnonymous_isDeferred_valuePersisted_noDedupSignature() {
         let h = makeHarness()
         h.identity.deviceToken = "dev"
         h.registrar.handlePushToStartToken(notificationType: "t", attributesType: "A", token: token)
         #expect(h.cap.isEmpty)
-        #expect(h.store.signatures.isEmpty)
+        // No dedup signature yet (so it will register on identify) …
+        #expect(h.store.signatures["t"] == nil)
+        // … but the token value IS persisted, so a future launch can re-seed and register it.
+        #expect(h.store.signatures["ptsvalue:t"] == "A|aabb")
     }
 
     @Test func pushToStart_refires_onIdentify() {
@@ -177,15 +180,68 @@ struct LiveActivityRegistrarTests {
         #expect(h.cap.count == 2)
     }
 
-    @Test func handleReset_clearsSignatures() {
+    @Test func handleReset_clearsDedupSignatures_keepsPersistedPushToStartTokens() {
         let h = makeHarness()
         h.identity.userId = "user-1"
         h.identity.deviceToken = "dev"
         h.registrar.handlePushToStartToken(notificationType: "t", attributesType: "A", token: token)
-        #expect(h.store.signatures.isEmpty == false)
+        #expect(h.store.signatures["t"] == "dev|aabb|user-1")
+        #expect(h.store.signatures["ptsvalue:t"] == "A|aabb")
 
         h.registrar.handleReset()
-        #expect(h.store.signatures.isEmpty)
+        // Dedup signature cleared (forces re-register next session) …
+        #expect(h.store.signatures["t"] == nil)
+        // … but the persisted per-app token value survives logout.
+        #expect(h.store.signatures["ptsvalue:t"] == "A|aabb")
+    }
+
+    @Test func seedFromStore_registersPersistedToken_onLaunch_withoutActivityKitReemission() {
+        // A previous launch persisted the token value while identified (dedup signature present):
+        // a fresh "process" with a cleared dedup signature must re-register from the persisted
+        // value alone — no `handlePushToStartToken` call (ActivityKit didn't re-yield).
+        let sharedStore = FakeTokenStore()
+        sharedStore.setRegistrationSignature(activityType: "ptsvalue:t", signature: "A|aabb")
+
+        let cap = TrackCapture()
+        let identity = LiveActivityIdentity()
+        identity.userId = "user-1"
+        identity.deviceToken = "dev"
+        let reporter = LiveActivityReporter(
+            track: { name, props in cap.record(name, props) },
+            currentUserId: { identity.userId },
+            deviceToken: { identity.deviceToken },
+            logger: NoopLogger()
+        )
+        let registrar = LiveActivityRegistrar(identity: identity, store: sharedStore, reporter: reporter)
+
+        registrar.seedPendingPushToStartFromStore()
+        #expect(cap.count == 1)
+        #expect(cap.string(0, "pushToStartToken") == "aabb")
+        #expect(cap.string(0, "attributesType") == "A")
+        #expect(sharedStore.signatures["t"] == "dev|aabb|user-1")
+    }
+
+    @Test func seedFromStore_deferred_whileAnonymous_thenRegistersOnIdentify() {
+        let sharedStore = FakeTokenStore()
+        sharedStore.setRegistrationSignature(activityType: "ptsvalue:t", signature: "A|aabb")
+
+        let cap = TrackCapture()
+        let identity = LiveActivityIdentity()
+        identity.deviceToken = "dev" // anonymous at launch
+        let reporter = LiveActivityReporter(
+            track: { name, props in cap.record(name, props) },
+            currentUserId: { identity.userId },
+            deviceToken: { identity.deviceToken },
+            logger: NoopLogger()
+        )
+        let registrar = LiveActivityRegistrar(identity: identity, store: sharedStore, reporter: reporter)
+
+        registrar.seedPendingPushToStartFromStore()
+        #expect(cap.isEmpty) // gated off while anonymous
+
+        identity.userId = "user-1"
+        registrar.reevaluate()
+        #expect(cap.count == 1) // seeded token registers on identify
     }
 
     @Test func pushToStart_reRegisters_afterResetThenReidentify() {

@@ -14,14 +14,23 @@ public struct CIOActivityBranding: Codable, Hashable, Sendable {
     /// Human-readable brand name. Always displayed when no logo is available.
     public var name: String
 
-    /// Hex color string for the brand accent color (e.g. `"#FF5733"`).
-    /// `nil` uses the template's built-in default.
-    public var accentColor: String?
+    /// Hex color string (e.g. `"#FF5733"`) for the lock-screen card background.
+    /// `nil` uses each template's built-in default.
+    public var backgroundColor: String?
 
-    public init(name: String, logoKey: String? = nil, accentColor: String? = nil) {
+    /// Hex color for lock-screen text/scores. `nil` defaults to white.
+    public var textColor: String?
+
+    public init(
+        name: String,
+        logoKey: String? = nil,
+        backgroundColor: String? = nil,
+        textColor: String? = nil
+    ) {
         self.name = name
         self.logoKey = logoKey
-        self.accentColor = accentColor
+        self.backgroundColor = backgroundColor
+        self.textColor = textColor
     }
 }
 

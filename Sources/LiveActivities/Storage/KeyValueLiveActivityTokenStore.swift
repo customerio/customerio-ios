@@ -38,6 +38,10 @@ final class KeyValueLiveActivityTokenStore: LiveActivityTokenStorage {
         }
     }
 
+    func allRegistrationKeys() -> [String] {
+        lock.withLock { Array(load().keys) }
+    }
+
     func clearAll() {
         // Only remove our own key — `SharedKeyValueStorage.deleteAll()` would wipe the
         // entire shared store (installationId, device token, …).
