@@ -279,7 +279,7 @@ final class VisualInboxModel: ObservableObject {
             // Release the reservation only on a no-op (message already gone) so the id stays
             // retryable. On success keep it reserved: the data-layer tombstone prevents the row from
             // resurrecting, and a second in-flight dismiss for the same id must not re-run the delete
-            // plumbing (duplicate network call + host `inboxMessageDismissed`).
+            // plumbing (duplicate network call + host `messageDismissed`).
             if !didDismiss {
                 self?.dismissingIds.remove(messageId)
             }
@@ -299,7 +299,7 @@ final class VisualInboxModel: ObservableObject {
     // MARK: - Shown (observe-only host callback)
 
     /// Reports that a message has been rendered (shown) in the visible inbox so the data layer can
-    /// fire the host `inboxMessageShown` callback. Deduped both here (so we don't dispatch a Task per
+    /// fire the host `messageShown` callback. Deduped both here (so we don't dispatch a Task per
     /// recompose) and in the data layer (so the host fires at most once per message per session).
     func markShown(messageId: String) {
         guard !shownMessageIds.contains(messageId) else { return }

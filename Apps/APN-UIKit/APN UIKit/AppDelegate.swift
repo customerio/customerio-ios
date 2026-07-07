@@ -81,7 +81,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
         // Visual Notification Inbox action listener. Observational here (logs each callback and
         // returns `false` so the SDK runs its default action handling). A host that wants to
-        // intercept an action returns `true` from `inboxMessageActionTaken`.
+        // intercept an action returns `true` from `messageActionTaken`.
         MessagingInApp.shared.setInboxEventListener(inboxEventListener)
     }
 
@@ -181,13 +181,13 @@ extension AppDelegate: InAppEventListener {
 }
 
 /// Sample listener for Visual Notification Inbox events. Observational: it logs each callback and
-/// returns `false` from `inboxMessageActionTaken` so the SDK still applies its default action
+/// returns `false` from `messageActionTaken` so the SDK still applies its default action
 /// handling (e.g. opening an http(s) url). Return `true` instead to fully handle the action and
 /// suppress the SDK's default behavior.
 class SampleInboxEventListener: InboxEventListener {
     private static let log = OSLog(subsystem: "io.customer.ios-sample.apn-uikit", category: "CIO-Inbox")
 
-    func inboxMessageActionTaken(message: InboxMessage, actionValue: String, actionName: String) -> Bool {
+    func messageActionTaken(message: InboxMessage, actionName: String, actionValue: String) -> Bool {
         os_log(
             "[CIO-Inbox] sample listener: actionTaken queueId=%{public}@ name=%{public}@ value=%{public}@",
             log: Self.log,
@@ -199,15 +199,15 @@ class SampleInboxEventListener: InboxEventListener {
         return false
     }
 
-    func inboxMessageShown(message: InboxMessage) {
+    func messageShown(message: InboxMessage) {
         os_log("[CIO-Inbox] sample listener: shown queueId=%{public}@", log: Self.log, type: .info, message.queueId)
     }
 
-    func inboxMessageOpened(message: InboxMessage) {
+    func messageOpened(message: InboxMessage) {
         os_log("[CIO-Inbox] sample listener: opened queueId=%{public}@", log: Self.log, type: .info, message.queueId)
     }
 
-    func inboxMessageDismissed(message: InboxMessage) {
+    func messageDismissed(message: InboxMessage) {
         os_log("[CIO-Inbox] sample listener: dismissed queueId=%{public}@", log: Self.log, type: .info, message.queueId)
     }
 }
