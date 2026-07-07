@@ -78,10 +78,10 @@ public final class CioMessagingInApp.InAppMessage {
 	public final val elementId: String?;
 }
 public interface CioMessagingInApp.InboxEventListener {
-	public fun func inboxMessageActionTaken(message: InboxMessage, actionValue: String, actionName: String) -> Boolean;
-	public fun func inboxMessageShown(message: InboxMessage);
-	public fun func inboxMessageOpened(message: InboxMessage);
-	public fun func inboxMessageDismissed(message: InboxMessage);
+	public fun func messageActionTaken(message: InboxMessage, actionName: String, actionValue: String) -> Boolean;
+	public fun func messageShown(message: InboxMessage);
+	public fun func messageOpened(message: InboxMessage);
+	public fun func messageDismissed(message: InboxMessage);
 }
 public final class CioMessagingInApp.InboxMessage {
 	public final val queueId: String;

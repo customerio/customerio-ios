@@ -52,7 +52,7 @@ extension MessagingInAppAPITest: InAppEventListener {
 }
 
 extension MessagingInAppAPITest: InboxEventListener {
-    func inboxMessageActionTaken(message: InboxMessage, actionValue: String, actionName: String) -> Bool {
+    func messageActionTaken(message: InboxMessage, actionName: String, actionValue: String) -> Bool {
         // make sure all properties needed by a host are accessible.
         _ = message.queueId
         _ = message.deliveryId
