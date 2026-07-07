@@ -84,7 +84,8 @@ struct GeofenceSyncCoordinatorTests {
                 radius: region.radius,
                 externalId: nil,
                 transitionTypes: region.transitionTypes.map(\.rawValue),
-                lastUpdated: region.lastUpdated.timeIntervalSince1970
+                lastUpdated: region.lastUpdated.timeIntervalSince1970,
+                geosetIds: region.geosetIds.isEmpty ? nil : region.geosetIds
             )
         }
         let apiConfig = config.map { config in
