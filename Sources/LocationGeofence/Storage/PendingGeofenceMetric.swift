@@ -13,14 +13,21 @@ struct PendingGeofenceMetric: Codable, Equatable, Sendable, GeofenceMetric {
     /// metric so a delayed flush still has it even after the geofence leaves the cache.
     let name: String?
     let transitionId: String
+    /// The geoset this row was fanned out for, or `nil` when the geofence is in no geoset.
+    /// One physical transition of a geofence in N geosets produces N rows, one per geoset.
+    /// Optional so rows persisted by pre-geoset SDK versions still decode.
+    let geosetId: String?
 
-    /// Composite key over `(geofenceId, transition, timestamp_sec)` used for
+    /// Composite key over `(geofenceId, transition, timestamp_sec, geosetId)` used for
     /// storage-layer dedup. Matches Android's `PendingGeofenceDelivery.key`.
     /// Seconds (not ms) — cooldown gate dedups by `(geofenceId, transition)`
-    /// upstream, so finer precision adds nothing.
+    /// upstream, so finer precision adds nothing. The geoset suffix keeps the
+    /// fan-out rows of one transition from colliding with each other.
     var key: String {
         let sec = Int(timestamp.timeIntervalSince1970)
-        return "\(geofenceId)_\(transition.rawValue)_\(sec)"
+        let base = "\(geofenceId)_\(transition.rawValue)_\(sec)"
+        guard let geosetId else { return base }
+        return "\(base)_\(geosetId)"
     }
 
     init(
@@ -29,7 +36,8 @@ struct PendingGeofenceMetric: Codable, Equatable, Sendable, GeofenceMetric {
         timestamp: Date,
         userId: String?,
         name: String?,
-        transitionId: String
+        transitionId: String,
+        geosetId: String? = nil
     ) {
         self.geofenceId = geofenceId
         self.transition = transition
@@ -37,6 +45,7 @@ struct PendingGeofenceMetric: Codable, Equatable, Sendable, GeofenceMetric {
         self.userId = userId
         self.name = name
         self.transitionId = transitionId
+        self.geosetId = geosetId
     }
 
     enum CodingKeys: String, CodingKey {
@@ -46,5 +55,6 @@ struct PendingGeofenceMetric: Codable, Equatable, Sendable, GeofenceMetric {
         case userId = "user_id"
         case name = "geofence_name"
         case transitionId = "transition_id"
+        case geosetId = "geoset_id"
     }
 }

@@ -34,11 +34,13 @@ struct GeofenceApiRegion: Decodable {
     let transitionTypes: [String]?
     /// Wire format is milliseconds since epoch.
     let lastUpdated: Double?
+    /// IDs of the geosets this geofence belongs to; missing or empty means none.
+    let geosetIds: [String]?
 }
 
 extension GeofenceApiRegion {
     private enum CodingKeys: String, CodingKey {
-        case id, name, latitude, longitude, radius, externalId, transitionTypes, lastUpdated
+        case id, name, latitude, longitude, radius, externalId, transitionTypes, lastUpdated, geosetIds
     }
 
     /// The backend sends `id` as a JSON number; mocked/legacy payloads used strings. Accept either
@@ -58,6 +60,7 @@ extension GeofenceApiRegion {
         self.externalId = try container.decodeIfPresent(String.self, forKey: .externalId)
         self.transitionTypes = try container.decodeIfPresent([String].self, forKey: .transitionTypes)
         self.lastUpdated = try container.decodeIfPresent(Double.self, forKey: .lastUpdated)
+        self.geosetIds = try container.decodeIfPresent([String].self, forKey: .geosetIds)
     }
 }
 
@@ -139,7 +142,8 @@ extension GeofenceApiRegion {
             radius: radius,
             name: name ?? "",
             transitionTypes: Self.resolveTransitionTypes(transitionTypes),
-            lastUpdated: lastUpdated.map { Date(timeIntervalSince1970: $0 / 1000) } ?? Date(timeIntervalSince1970: 0)
+            lastUpdated: lastUpdated.map { Date(timeIntervalSince1970: $0 / 1000) } ?? Date(timeIntervalSince1970: 0),
+            geosetIds: geosetIds ?? []
         )
     }
 

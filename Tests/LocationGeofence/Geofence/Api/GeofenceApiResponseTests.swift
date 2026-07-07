@@ -245,4 +245,23 @@ struct GeofenceApiResponseTests {
         let response = try decode(json)
         #expect(response.toDomainRegions().first?.transitionTypes == [.enter, .exit])
     }
+
+    @Test
+    func toDomainRegions_givenGeosetIds_expectCarriedToDomain() throws {
+        let json = """
+        {"geofences":[{"id":"g1","latitude":1,"longitude":2,"radius":100,"geoset_ids":["set_y","set_z"]}]}
+        """
+        let response = try decode(json)
+        #expect(response.toDomainRegions().first?.geosetIds == ["set_y", "set_z"])
+    }
+
+    @Test
+    func toDomainRegions_givenMissingGeosetIds_expectEmpty() throws {
+        // Backend rolls `geoset_ids` out gradually; absent means no geoset membership.
+        let json = """
+        {"geofences":[{"id":"g1","latitude":1,"longitude":2,"radius":100}]}
+        """
+        let response = try decode(json)
+        #expect(response.toDomainRegions().first?.geosetIds == [])
+    }
 }

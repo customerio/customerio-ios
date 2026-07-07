@@ -215,6 +215,48 @@ struct PendingGeofenceMetricStoreTests {
         #expect(items.count == 1)
     }
 
+    // MARK: - Geoset fan-out keys
+
+    @Test
+    func append_givenSameTransitionDifferentGeosets_expectBothRowsKept() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let store = makeStore(directory: dir)
+        let timestamp = Date(timeIntervalSince1970: 1700000000)
+        // One physical transition fanned out to two geosets: identical
+        // (geofenceId, transition, timestamp), distinct geosetId suffixes.
+        let rowY = PendingGeofenceMetric(
+            geofenceId: "geo_1", transition: .enter, timestamp: timestamp,
+            userId: nil, name: nil, transitionId: "txn_y", geosetId: "set_y"
+        )
+        let rowZ = PendingGeofenceMetric(
+            geofenceId: "geo_1", transition: .enter, timestamp: timestamp,
+            userId: nil, name: nil, transitionId: "txn_z", geosetId: "set_z"
+        )
+
+        _ = await store.append(rowY)
+        _ = await store.append(rowZ)
+        let items = await store.loadAll()
+
+        #expect(rowY.key != rowZ.key)
+        #expect(items.count == 2)
+    }
+
+    @Test
+    func decode_givenLegacyRowWithoutGeosetId_expectNilGeosetId() throws {
+        // Rows persisted by pre-geoset SDK versions have no `geoset_id` field and
+        // must keep decoding after an upgrade.
+        let legacyJson = """
+        {"geofence_id":"geo_1","transition":"enter","timestamp":1700000000,"transition_id":"txn_legacy"}
+        """
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .secondsSince1970
+        let metric = try decoder.decode(PendingGeofenceMetric.self, from: Data(legacyJson.utf8))
+
+        #expect(metric.geosetId == nil)
+        #expect(metric.key == "geo_1_enter_1700000000")
+    }
+
     // MARK: - Clear
 
     @Test

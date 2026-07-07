@@ -52,8 +52,11 @@ final class GeofenceEventTracker: @unchecked Sendable {
         self.cooldownInterval = cooldownInterval
     }
 
-    /// Tracks a geofence transition event, suppressing duplicates within the cooldown window.
-    /// Persists the metric, then hands it to `deliver`.
+    /// Tracks a geofence transition, suppressing duplicates within the cooldown window.
+    /// Fans the transition out to one metric per geoset the geofence belongs to (a single
+    /// metric without a geosetId when it belongs to none), persists every row, then hands
+    /// each to `deliver`. The cooldown is evaluated once per geofence, before fan-out, so
+    /// all rows of one transition are suppressed or emitted together.
     func trackTransition(
         geofenceId: String,
         transition: GeofenceTransition
@@ -74,21 +77,38 @@ final class GeofenceEventTracker: @unchecked Sendable {
         // is identified at capture time; `deliver` routes nil-stamped rows to EventBus.
         let liveUserId = contextStore.currentUserId
         let stampedUserId: String? = (liveUserId?.isEmpty == false) ? liveUserId : nil
-        // Resolve the geofence name now and carry it on the metric; nil when unavailable so the
-        // event omits `geofence_name` rather than sending an empty value.
-        let cachedName = await storage.getCachedGeofences().first { $0.id == geofenceId }?.name
+        // Resolve the geofence name and geoset membership now and carry them on the metric;
+        // name is nil when unavailable so the event omits `geofenceName` rather than sending
+        // an empty value.
+        let cachedGeofence = await storage.getCachedGeofences().first { $0.id == geofenceId }
+        let cachedName = cachedGeofence?.name
         let geofenceName = (cachedName?.isEmpty == false) ? cachedName : nil
-        let metric = PendingGeofenceMetric(
-            geofenceId: geofenceId,
-            transition: transition,
-            timestamp: now,
-            userId: stampedUserId,
-            name: geofenceName,
-            transitionId: UUID().uuidString
-        )
-        _ = await pendingStore.append(metric)
+        // One standalone event per geoset, each carrying a scalar geosetId plus the
+        // geofence id/name as metadata, so segment and campaign matching needs no joins
+        // at ingest. No geoset membership (or the geofence has left the cache) emits a
+        // single event without a geosetId, preserving pre-geoset behavior.
+        let memberGeosetIds = cachedGeofence?.geosetIds ?? []
+        let geosetIds: [String?] = memberGeosetIds.isEmpty ? [nil] : memberGeosetIds
+        let metrics = geosetIds.map { geosetId in
+            PendingGeofenceMetric(
+                geofenceId: geofenceId,
+                transition: transition,
+                timestamp: now,
+                userId: stampedUserId,
+                name: geofenceName,
+                transitionId: UUID().uuidString,
+                geosetId: geosetId
+            )
+        }
+        // Persist every row before any send attempt so an app kill mid-delivery
+        // loses none of the fan-out.
+        for metric in metrics {
+            _ = await pendingStore.append(metric)
+        }
 
-        await deliver(metric: metric)
+        for metric in metrics {
+            await deliver(metric: metric)
+        }
         await storage.purgeExpiredCooldowns(now: now, interval: interval)
     }
 
@@ -147,7 +167,8 @@ final class GeofenceEventTracker: @unchecked Sendable {
             transition: metric.transition,
             timestamp: metric.timestamp,
             name: metric.name,
-            transitionId: metric.transitionId
+            transitionId: metric.transitionId,
+            geosetId: metric.geosetId
         ))
         logger.geofenceEventTracked(geofenceId: metric.geofenceId, transition: metric.transition)
     }
