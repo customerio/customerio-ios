@@ -370,7 +370,7 @@ struct GeofenceEventTrackerTests {
         // either metric from being delivered twice.
         async let flush1: Void = tracker.flushPending()
         async let flush2: Void = tracker.flushPending()
-        _ = await(flush1, flush2)
+        _ = await (flush1, flush2)
 
         #expect(delivery.trackMetricCallsCount == 2)
         #expect(await pending.loadAll().isEmpty)
