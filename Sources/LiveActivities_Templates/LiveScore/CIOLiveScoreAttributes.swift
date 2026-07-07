@@ -50,7 +50,7 @@ public struct CIOLiveScoreAttributes: CIOActivityAttribute {
 
     // MARK: - Dynamic content state
 
-    public struct ContentState: Codable, Hashable, Sendable {
+    public struct ContentState: Codable, Hashable, Sendable, CIOMetadataCarrying {
         /// Home team score. `nil` pre-game.
         public var homeScore: Int?
         /// Away team score. `nil` pre-game.
@@ -62,19 +62,23 @@ public struct CIOLiveScoreAttributes: CIOActivityAttribute {
         public var statusColor: String?
         /// Message shown when the activity becomes stale.
         public var staleMessage: String?
+        /// Customer.io delivery + deep-link metadata for the push that produced this state.
+        public var cioMetadata: CIOLiveActivityMetadata?
 
         public init(
             homeScore: Int? = nil,
             awayScore: Int? = nil,
             subtitle: String? = nil,
             statusColor: String? = nil,
-            staleMessage: String? = nil
+            staleMessage: String? = nil,
+            cioMetadata: CIOLiveActivityMetadata? = nil
         ) {
             self.homeScore = homeScore
             self.awayScore = awayScore
             self.subtitle = subtitle
             self.statusColor = statusColor
             self.staleMessage = staleMessage
+            self.cioMetadata = cioMetadata
         }
     }
 }

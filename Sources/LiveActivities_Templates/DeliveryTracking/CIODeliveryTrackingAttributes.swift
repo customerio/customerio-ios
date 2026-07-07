@@ -49,7 +49,7 @@ public struct CIODeliveryTrackingAttributes: CIOActivityAttribute {
 
     // MARK: - Dynamic content state
 
-    public struct ContentState: Codable, Hashable, Sendable {
+    public struct ContentState: Codable, Hashable, Sendable, CIOMetadataCarrying {
         /// Primary status line, e.g. `"Your order is out for delivery"`. Rendered verbatim.
         public var title: String
         /// Optional secondary line, e.g. recipient / driver / detail. Rendered verbatim.
@@ -68,6 +68,8 @@ public struct CIODeliveryTrackingAttributes: CIOActivityAttribute {
         public var statusColor: String?
         /// Message shown when the activity becomes stale.
         public var staleMessage: String?
+        /// Customer.io delivery + deep-link metadata for the push that produced this state.
+        public var cioMetadata: CIOLiveActivityMetadata?
 
         public init(
             title: String,
@@ -77,7 +79,8 @@ public struct CIODeliveryTrackingAttributes: CIOActivityAttribute {
             progress: Progress,
             estimatedArrival: EpochMillisDate? = nil,
             statusColor: String? = nil,
-            staleMessage: String? = nil
+            staleMessage: String? = nil,
+            cioMetadata: CIOLiveActivityMetadata? = nil
         ) {
             self.title = title
             self.subtitle = subtitle
@@ -87,6 +90,7 @@ public struct CIODeliveryTrackingAttributes: CIOActivityAttribute {
             self.estimatedArrival = estimatedArrival
             self.statusColor = statusColor
             self.staleMessage = staleMessage
+            self.cioMetadata = cioMetadata
         }
     }
 }

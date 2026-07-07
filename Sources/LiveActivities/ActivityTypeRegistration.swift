@@ -1,3 +1,4 @@
+import CioLiveActivities_Attributes
 import Foundation
 
 /// Sinks the observation bridge calls as ActivityKit emits tokens and lifecycle transitions.
@@ -16,6 +17,12 @@ struct LiveActivityObservationSinks: Sendable {
     /// Called only when the user manually dismisses (swipes away) the activity — never for an
     /// app/SDK `end()` or a backend/system end. The reporter turns this into an `end` event.
     let onUserDismissed: @Sendable (_ activityInstanceId: String) -> Void
+
+    /// Called with the Customer.io delivery metadata carried in a content-state — on first
+    /// observation (the start push's state) and on every subsequent push update. Used to report
+    /// `delivered` receipts and to record the current tap destination for `opened` tracking.
+    /// Not called for content-states without metadata (e.g. locally-driven updates).
+    let onContentMetadata: @Sendable (_ activityInstanceId: String, _ metadata: CIOLiveActivityMetadata) -> Void
 
     /// Returns whether this activity was ended locally by the SDK (via `CIOLiveActivity.end`),
     /// consuming the marker. Used to suppress a spurious user-dismissal report when a local end

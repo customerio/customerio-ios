@@ -22,6 +22,7 @@ private func makeAuctionBidConfiguration()
             .environment(\.cioAssetLibrary, CIOLiveActivitiesTemplates.assetLibrary)
             .activityBackgroundTint(CIOTemplateStyle.background(fallback: Color(red: 0.12, green: 0.08, blue: 0.20)))
             .activitySystemActionForegroundColor(CIOTemplateStyle.text)
+            .widgetURL(context.state.cioMetadata?.deepLink.flatMap(URL.init(string:)))
     } dynamicIsland: { context in
         DynamicIsland {
             DynamicIslandExpandedRegion(.leading) {

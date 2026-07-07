@@ -32,6 +32,7 @@ private func makeLiveScoreConfiguration() -> ActivityConfiguration<CIOLiveScoreA
             .environment(\.cioAssetLibrary, CIOLiveActivitiesTemplates.assetLibrary)
             .activityBackgroundTint(liveScoreBackgroundColor)
             .activitySystemActionForegroundColor(liveScoreTextColor)
+            .widgetURL(context.state.cioMetadata?.deepLink.flatMap(URL.init(string:)))
     } dynamicIsland: { context in
         DynamicIsland {
             DynamicIslandExpandedRegion(.leading) {

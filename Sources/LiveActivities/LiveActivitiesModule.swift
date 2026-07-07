@@ -39,7 +39,12 @@ public final class LiveActivitiesModule {
     private let localEndTracker = LiveActivityLocalEndTracker()
     private let reporter: LiveActivityReporter
     private let registrar: LiveActivityRegistrar
+    private let deliveryTracker: LiveActivityDeliveryTracker
     private let observer: LiveActivityObserver
+
+    /// Latest delivery metadata observed per activity instance, used to attribute an `opened`
+    /// metric and resolve the deep link when the app is opened from a tapped activity.
+    private let latestMetadata = Synchronized<[String: CIOLiveActivityMetadata]>([:])
 
     private let observedContinuation = Synchronized<AsyncStream<LiveActivityInfo>.Continuation?>(nil)
     private let observedStream = Synchronized<AsyncStream<LiveActivityInfo>?>(nil)
@@ -93,6 +98,17 @@ public final class LiveActivitiesModule {
         self.reporter = reporter
         self.registrar = registrar
 
+        let deliveryTracker = LiveActivityDeliveryTracker(
+            postMetric: { [sdk] deliveryId, event, deliveryToken in
+                sdk.eventBusHandler.postEvent(
+                    TrackMetricEvent(deliveryID: deliveryId, event: event, deviceToken: deliveryToken)
+                )
+            },
+            store: tokenStorage,
+            logger: sdk.logger
+        )
+        self.deliveryTracker = deliveryTracker
+
         self.observer = LiveActivityObserver(
             registrations: config.registrations,
             registrar: registrar,
@@ -108,6 +124,12 @@ public final class LiveActivitiesModule {
             onUserDismissed: { [reporter] notificationType, activityInstanceId in
                 // A user swipe-away — report `end` (matches Android's dismiss-intent behavior).
                 reporter.reportEnd(instanceUUID: activityInstanceId, notificationType: notificationType)
+            },
+            onContentMetadata: { [deliveryTracker, latestMetadata] _, activityInstanceId, metadata in
+                // A backend push (start or update) carrying Customer.io delivery metadata: report a
+                // `delivered` receipt (deduped by delivery id) and remember the tap destination.
+                latestMetadata.mutating { $0[activityInstanceId] = metadata }
+                deliveryTracker.reportDelivered(metadata: metadata)
             }
         )
 
@@ -181,6 +203,28 @@ public final class LiveActivitiesModule {
         )
     }
     #endif
+
+    // MARK: - Deep link / open tracking
+
+    /// Report an `opened` metric when the app is opened from a tapped Live Activity. Call this from
+    /// your `UIApplicationDelegate.application(_:open:options:)` /
+    /// `UISceneDelegate.scene(_:openURLContexts:)` — the same place you already route your app's
+    /// deep links — mirroring how push taps are forwarded to the SDK.
+    ///
+    /// If the URL matches a Customer.io-tracked activity's deep link, the SDK reports an `opened`
+    /// metric (the same metric normal push uses) and returns `true`. Returns `false` for unrelated
+    /// URLs. Navigation stays with your existing URL routing: because a Live Activity tap arrives
+    /// through the normal `openURL` path (not a push-tap callback), the SDK does not re-open the URL
+    /// — that would re-enter `openURL` and loop.
+    @discardableResult
+    public func handleDeepLinkOpen(_ url: URL) -> Bool {
+        let target = url.absoluteString
+        guard let metadata = latestMetadata.wrappedValue.values.first(where: { $0.deepLink == target }) else {
+            return false
+        }
+        deliveryTracker.reportOpened(metadata: metadata)
+        return true
+    }
 
     // MARK: - Private
 
@@ -264,6 +308,7 @@ public final class LiveActivitiesModule {
         // ends produce can't be misreported as user dismissals (the reporter drops when anonymous).
         identity.userId = nil
         localEndTracker.clearAll()
+        latestMetadata.wrappedValue = [:]
         for registration in config.registrations {
             await registration.endAllActivities()
         }

@@ -9,6 +9,7 @@ public final class CioLiveActivities.LiveActivitiesModule {
 	public fun func initialize(_ config: LiveActivityConfig) -> LiveActivitiesModule;
 	public fun func start<Attributes: CIOActivityAttribute>(contentState: Attributes.ContentState, staleDate: Date? = nil, relevanceScore: Double = 0, attributes: (_ activityInstanceId: String) -> Attributes) throws -> CIOLiveActivity<Attributes>;
 	public fun func adopt<Attributes: CIOActivityAttribute>(_ activity: Activity<Attributes>) -> CIOLiveActivity<Attributes>;
+	public fun func handleDeepLinkOpen(_ url: URL) -> Boolean;
 }
 public final class CioLiveActivities.LiveActivityConfig {
 	public var logLevel: CioLogLevel?;

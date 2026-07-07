@@ -39,7 +39,7 @@ public struct CIOCountdownTimerAttributes: CIOActivityAttribute {
 
     // MARK: - Dynamic content state
 
-    public struct ContentState: Codable, Hashable, Sendable {
+    public struct ContentState: Codable, Hashable, Sendable, CIOMetadataCarrying {
         /// The countdown target. Dynamic so the deadline can be extended via push.
         public var targetDate: EpochMillisDate
         /// Label displayed above the timer e.g. `"Sale ends in"`. Rendered verbatim.
@@ -51,19 +51,23 @@ public struct CIOCountdownTimerAttributes: CIOActivityAttribute {
         public var statusColor: String?
         /// Message shown when the activity becomes stale.
         public var staleMessage: String?
+        /// Customer.io delivery + deep-link metadata for the push that produced this state.
+        public var cioMetadata: CIOLiveActivityMetadata?
 
         public init(
             targetDate: EpochMillisDate,
             subtitle: String,
             expiredMessage: String? = nil,
             statusColor: String? = nil,
-            staleMessage: String? = nil
+            staleMessage: String? = nil,
+            cioMetadata: CIOLiveActivityMetadata? = nil
         ) {
             self.targetDate = targetDate
             self.subtitle = subtitle
             self.expiredMessage = expiredMessage
             self.statusColor = statusColor
             self.staleMessage = staleMessage
+            self.cioMetadata = cioMetadata
         }
     }
 }

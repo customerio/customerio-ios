@@ -1,3 +1,4 @@
+import CioLiveActivities
 import UIKit
 
 class SceneDelegate: UIResponder, UIWindowSceneDelegate {
@@ -64,8 +65,24 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     func scene(_ scene: UIScene, openURLContexts URLContexts: Set<UIOpenURLContext>) {
         for context in URLContexts {
             let url = context.url
+            if #available(iOS 17.2, *) {
+                // Live Activity tap: let the SDK report an `opened` metric (no-op for non-CIO URLs),
+                // then route to the Live Activities screen. Mirrors how push taps are forwarded.
+                AppDelegate.liveActivities?.handleDeepLinkOpen(url)
+                if url.host == LiveActivitiesViewController.deepLinkHost {
+                    routeToLiveActivities()
+                    continue
+                }
+            }
             _ = deepLinkHandler.handleAppSchemeDeepLink(url)
         }
+    }
+
+    @available(iOS 17.2, *)
+    private func routeToLiveActivities() {
+        guard let nav = window?.rootViewController as? UINavigationController else { return }
+        if nav.topViewController is LiveActivitiesViewController { return }
+        nav.pushViewController(LiveActivitiesViewController(), animated: true)
     }
 
     // Universal Links - handling universal links that come into the mobile app, not from the Customer.io SDK.

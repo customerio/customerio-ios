@@ -51,7 +51,7 @@ public struct CIOFlightStatusAttributes: CIOActivityAttribute {
 
     // MARK: - Dynamic content state
 
-    public struct ContentState: Codable, Hashable, Sendable {
+    public struct ContentState: Codable, Hashable, Sendable, CIOMetadataCarrying {
         /// Optional short status label, e.g. `"On time"`, `"Delayed"`, `"Boarding"`. Rendered verbatim.
         public var status: String?
         /// Primary contextual line. Rendered verbatim.
@@ -66,6 +66,8 @@ public struct CIOFlightStatusAttributes: CIOActivityAttribute {
         public var statusColor: String?
         /// Message shown when the activity becomes stale.
         public var staleMessage: String?
+        /// Customer.io delivery + deep-link metadata for the push that produced this state.
+        public var cioMetadata: CIOLiveActivityMetadata?
 
         public init(
             status: String? = nil,
@@ -75,7 +77,8 @@ public struct CIOFlightStatusAttributes: CIOActivityAttribute {
             estimatedArrival: EpochMillisDate,
             progressFraction: Double? = nil,
             statusColor: String? = nil,
-            staleMessage: String? = nil
+            staleMessage: String? = nil,
+            cioMetadata: CIOLiveActivityMetadata? = nil
         ) {
             self.status = status
             self.title = title
@@ -85,6 +88,7 @@ public struct CIOFlightStatusAttributes: CIOActivityAttribute {
             self.progressFraction = progressFraction
             self.statusColor = statusColor
             self.staleMessage = staleMessage
+            self.cioMetadata = cioMetadata
         }
     }
 }

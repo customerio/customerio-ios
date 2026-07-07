@@ -25,6 +25,7 @@ private func makeDeliveryTrackingConfiguration()
             .environment(\.cioAssetLibrary, CIOLiveActivitiesTemplates.assetLibrary)
             .activityBackgroundTint(CIOTemplateStyle.background(fallback: .indigo))
             .activitySystemActionForegroundColor(CIOTemplateStyle.text)
+            .widgetURL(context.state.cioMetadata?.deepLink.flatMap(URL.init(string:)))
     } dynamicIsland: { context in
         DynamicIsland {
             DynamicIslandExpandedRegion(.leading) {

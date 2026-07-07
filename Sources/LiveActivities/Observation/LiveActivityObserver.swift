@@ -34,6 +34,7 @@ final class LiveActivityObserver: @unchecked Sendable {
     private let localEndTracker: LiveActivityLocalEndTracker
     private let onActivityAppeared: @Sendable (_ notificationType: String, _ activityInstanceId: String) -> Void
     private let onUserDismissed: @Sendable (_ notificationType: String, _ activityInstanceId: String) -> Void
+    private let onContentMetadata: @Sendable (_ notificationType: String, _ activityInstanceId: String, _ metadata: CIOLiveActivityMetadata) -> Void
 
     /// Running root tasks keyed by notificationType.
     private let tasks = Synchronized<[String: Task<Void, Never>]>([:])
@@ -43,13 +44,15 @@ final class LiveActivityObserver: @unchecked Sendable {
         registrar: LiveActivityRegistrar,
         localEndTracker: LiveActivityLocalEndTracker,
         onActivityAppeared: @escaping @Sendable (_ notificationType: String, _ activityInstanceId: String) -> Void,
-        onUserDismissed: @escaping @Sendable (_ notificationType: String, _ activityInstanceId: String) -> Void
+        onUserDismissed: @escaping @Sendable (_ notificationType: String, _ activityInstanceId: String) -> Void,
+        onContentMetadata: @escaping @Sendable (_ notificationType: String, _ activityInstanceId: String, _ metadata: CIOLiveActivityMetadata) -> Void
     ) {
         self.registrations = registrations
         self.registrar = registrar
         self.localEndTracker = localEndTracker
         self.onActivityAppeared = onActivityAppeared
         self.onUserDismissed = onUserDismissed
+        self.onContentMetadata = onContentMetadata
     }
 
     func start() {
@@ -81,6 +84,7 @@ final class LiveActivityObserver: @unchecked Sendable {
         let localEndTracker = self.localEndTracker
         let onAppeared = onActivityAppeared
         let onUserDismissed = self.onUserDismissed
+        let onContentMetadata = self.onContentMetadata
         let identifier = registration.activityIdentifier
         let attributesType = registration.attributesTypeName
 
@@ -99,6 +103,9 @@ final class LiveActivityObserver: @unchecked Sendable {
             },
             onUserDismissed: { instanceId in
                 onUserDismissed(identifier, instanceId)
+            },
+            onContentMetadata: { instanceId, metadata in
+                onContentMetadata(identifier, instanceId, metadata)
             },
             consumeLocalEnd: { instanceId in
                 localEndTracker.consume(instanceId)
@@ -176,10 +183,26 @@ enum LiveActivityObservation {
     private static func observe<T: CIOActivityAttribute>(_ activity: Activity<T>, sinks: LiveActivityObservationSinks) async {
         let instanceId = activity.attributes.activityInstanceId
         sinks.onActivityAppeared(instanceId)
+        // The initial content-state (from the start push) may carry Customer.io delivery metadata;
+        // surface it so a push-to-start `delivered` receipt is reported and the tap destination is
+        // recorded — even on a cold-launch snapshot where no `contentUpdates` will replay.
+        if let metadata = (activity.content.state as? CIOMetadataCarrying)?.cioMetadata {
+            sinks.onContentMetadata(instanceId, metadata)
+        }
         await withTaskGroup(of: Void.self) { group in
             group.addTask {
                 for await token in activity.pushTokenUpdates {
                     sinks.onInstanceToken(instanceId, token)
+                }
+            }
+            group.addTask {
+                // Each backend push update carries its own delivery id in the content-state; surface
+                // it for a per-update `delivered` receipt. (Runs only while the process is alive —
+                // updates delivered to a killed app can't be observed and are dropped by design.)
+                for await content in activity.contentUpdates {
+                    if let metadata = (content.state as? CIOMetadataCarrying)?.cioMetadata {
+                        sinks.onContentMetadata(instanceId, metadata)
+                    }
                 }
             }
             group.addTask {

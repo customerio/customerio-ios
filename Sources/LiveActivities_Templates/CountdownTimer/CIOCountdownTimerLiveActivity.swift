@@ -22,6 +22,7 @@ private func makeCountdownTimerConfiguration()
             .environment(\.cioAssetLibrary, CIOLiveActivitiesTemplates.assetLibrary)
             .activityBackgroundTint(CIOTemplateStyle.background(fallback: .orange))
             .activitySystemActionForegroundColor(CIOTemplateStyle.text)
+            .widgetURL(context.state.cioMetadata?.deepLink.flatMap(URL.init(string:)))
     } dynamicIsland: { context in
         DynamicIsland {
             DynamicIslandExpandedRegion(.leading) {

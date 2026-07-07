@@ -1,6 +1,15 @@
 public interface CioLiveActivities_Attributes.CIOActivityAttribute {
 	public var activityInstanceId: String;
 }
+public final class CioLiveActivities_Attributes.CIOLiveActivityMetadata {
+	public var deliveryId: String?;
+	public var deliveryToken: String?;
+	public var deepLink: String?;
+	public fun init(deliveryId: String? = nil, deliveryToken: String? = nil, deepLink: String? = nil);
+}
+public interface CioLiveActivities_Attributes.CIOMetadataCarrying {
+	public var cioMetadata: CIOLiveActivityMetadata?;
+}
 public final class CioLiveActivities_Attributes.EpochMillisDate {
 	public var date: Date;
 	public fun init(_ date: Date);

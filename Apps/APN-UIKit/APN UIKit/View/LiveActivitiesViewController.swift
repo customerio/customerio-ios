@@ -154,6 +154,12 @@ private extension CIOLiveActivity {
 
 @available(iOS 17.2, *)
 class LiveActivitiesViewController: BaseViewController {
+    /// App-scheme deep link that routes to this screen (used as the demo activities' tap target,
+    /// and matched by `SceneDelegate` to push this screen + let the SDK track `opened`).
+    static let deepLink = "apn-uikit://live-activities"
+    /// Host component of `deepLink`, matched by `SceneDelegate` for routing.
+    static let deepLinkHost = "live-activities"
+
     private var drivers: [any LiveActivityDemoDriving] = []
 
     // Adopt demo: an activity the app creates itself, then hands to the SDK via `adopt`.
@@ -247,12 +253,17 @@ class LiveActivitiesViewController: BaseViewController {
         func future(_ seconds: TimeInterval) -> EpochMillisDate {
             EpochMillisDate(Date().addingTimeInterval(seconds))
         }
+        // Deep link back to this Live Activities screen. Set on the start content-state so the
+        // activity's tap target (`widgetURL`) routes here — used to exercise tap → open tracking.
+        // (Locally-started activities carry no delivery id, so no `opened` metric fires; a real
+        // Customer.io push carries the id in the same `cioMetadata`.)
+        let laDeepLink = CIOLiveActivityMetadata(deepLink: LiveActivitiesViewController.deepLink)
 
         let liveScore = LiveActivityDemoDriver<CIOLiveScoreAttributes>(
             title: "Live Score",
             module: module,
             phases: [
-                .init(subtitle: "15 min"),
+                .init(subtitle: "15 min", cioMetadata: laDeepLink),
                 .init(homeScore: 1, awayScore: 0, subtitle: "22:14"),
                 .init(homeScore: 2, awayScore: 2, subtitle: "55:67"),
                 .init(homeScore: 2, awayScore: 3, subtitle: "88:20", statusColor: "#FFCC00")
@@ -265,7 +276,7 @@ class LiveActivitiesViewController: BaseViewController {
             title: "Delivery Tracking",
             module: module,
             phases: [
-                .init(title: "Order placed", subtitle: "Arriving at 1:45 PM", image: "delivery_food", progressIcon: "chica_thumb", progress: .init(current: 1, total: 4), estimatedArrival: future(1800)),
+                .init(title: "Order placed", subtitle: "Arriving at 1:45 PM", image: "delivery_food", progressIcon: "chica_thumb", progress: .init(current: 1, total: 4), estimatedArrival: future(1800), cioMetadata: laDeepLink),
                 .init(title: "Preparing your order…", subtitle: "Arriving at 1:45 PM", image: "delivery_food", progressIcon: "chica_thumb", progress: .init(current: 2, total: 4), estimatedArrival: future(1500)),
                 .init(title: "Out for delivery", subtitle: "Arriving at 1:30 PM", image: "delivery_food", progressIcon: "chica_thumb", progress: .init(current: 3, total: 4), estimatedArrival: future(600), statusColor: "#34C759")
             ],
@@ -277,7 +288,7 @@ class LiveActivitiesViewController: BaseViewController {
             title: "Countdown Timer",
             module: module,
             phases: [
-                .init(targetDate: future(3600), subtitle: "Sale starts in"),
+                .init(targetDate: future(3600), subtitle: "Sale starts in", cioMetadata: laDeepLink),
                 .init(targetDate: future(60), subtitle: "Almost there"),
                 .init(targetDate: future(-1), subtitle: "Sale ended", expiredMessage: "Sale is live!")
             ],
@@ -289,7 +300,7 @@ class LiveActivitiesViewController: BaseViewController {
             title: "Flight Status",
             module: module,
             phases: [
-                .init(status: "On Time", title: "Boarding soon", subtitle: "Gate B12 · Terminal 2", scheduledDeparture: future(1800), estimatedArrival: future(21600)),
+                .init(status: "On Time", title: "Boarding soon", subtitle: "Gate B12 · Terminal 2", scheduledDeparture: future(1800), estimatedArrival: future(21600), cioMetadata: laDeepLink),
                 .init(status: "Boarding", title: "Boarding at gate B12", subtitle: "Gate B12 · Zone 3", scheduledDeparture: future(900), estimatedArrival: future(21600)),
                 .init(status: "In Flight", title: "2h 15m until landing", subtitle: "Gate B12 · Terminal 2", scheduledDeparture: future(0), estimatedArrival: future(8100), progressFraction: 0.55),
                 .init(status: "Delayed", title: "Delayed 25 min", subtitle: "Gate B12 · Terminal 2", scheduledDeparture: future(1500), estimatedArrival: future(21600), statusColor: "#CC3330")
@@ -302,7 +313,7 @@ class LiveActivitiesViewController: BaseViewController {
             title: "Auction Bid",
             module: module,
             phases: [
-                .init(currentBid: "100.00", subtitle: "5 bids", statusMessage: "You've been outbid", endTime: future(3600), statusColor: "#CC3330"),
+                .init(currentBid: "100.00", subtitle: "5 bids", statusMessage: "You've been outbid", endTime: future(3600), statusColor: "#CC3330", cioMetadata: laDeepLink),
                 .init(currentBid: "150.00", subtitle: "8 bids", statusMessage: "You're winning", endTime: future(3600), statusColor: "#36AE3F"),
                 .init(currentBid: "175.00", subtitle: "11 bids", statusMessage: "You've been outbid", endTime: future(1800), statusColor: "#CC3330")
             ],
