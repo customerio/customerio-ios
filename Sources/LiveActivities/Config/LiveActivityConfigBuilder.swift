@@ -12,7 +12,6 @@ import ActivityKit
 /// LiveActivityConfigBuilder()
 ///     .logLevel(.debug)
 ///     .register(OrderAttributes.self, identifier: "io.customer.liveactivities.order")
-///     .appGroup("group.io.customer.example")
 ///     .build()
 /// ```
 public struct LiveActivityConfigBuilder {
@@ -66,62 +65,6 @@ public struct LiveActivityConfigBuilder {
         return copy
     }
     #endif
-
-    /// Declare the AppGroup container identifier used to share pre-loaded image assets
-    /// with the widget extension.
-    ///
-    /// The identifier must match the AppGroup declared in both the app target's and the
-    /// widget extension target's entitlements.
-    public func appGroup(_ identifier: String) -> Self {
-        var copy = self
-        copy.config.appGroupIdentifier = identifier
-        return copy
-    }
-
-    /// Register an asset for pre-loading into the AppGroup container.
-    ///
-    /// The asset is copied on first use and on any subsequent change (detected via
-    /// SHA-256 hash). Assets are addressed by `key` in the widget extension.
-    ///
-    /// Both local (`file://`) and remote (`http`/`https`) URLs are supported. Remote assets
-    /// are downloaded off the init thread and cached on disk keyed by the URL, so the same
-    /// URL is not re-fetched on later launches. The cache has no expiry — publish changed
-    /// art under a new URL or `key`.
-    ///
-    /// - Parameters:
-    ///   - key: The string key used to retrieve this asset in the widget extension.
-    ///   - url: The source URL of the asset — a bundle/`file://` URL or a remote `http(s)` URL.
-    public func registerAsset(_ key: String, at url: URL) -> Self {
-        var copy = self
-        copy.config.assetRegistrations.append(AssetRegistration(key: key, sourceURL: url))
-        return copy
-    }
-
-    /// Register a named bundle resource for pre-loading into the AppGroup container.
-    ///
-    /// Resolves the resource via `Bundle.main.url(forResource:withExtension:)` and calls
-    /// `assertionFailure` (fatal in debug, no-op in release) if the resource is not found, so
-    /// misconfigured asset keys surface immediately during development.
-    ///
-    /// - Parameters:
-    ///   - key: The string key used to retrieve this asset in the widget extension.
-    ///   - bundleResource: The resource name as passed to `Bundle.main.url(forResource:withExtension:)`.
-    ///   - withExtension: The file extension, or `nil` to match any extension.
-    public func registerAsset(
-        _ key: String,
-        bundleResource: String,
-        withExtension ext: String? = nil
-    ) -> Self {
-        guard let url = Bundle.main.url(forResource: bundleResource, withExtension: ext) else {
-            assertionFailure(
-                "[CustomerIO] Asset '\(bundleResource)' declared for key '\(key)' "
-                    + "was not found in the app bundle. "
-                    + "Ensure the file is included in the app target's Copy Bundle Resources phase."
-            )
-            return self
-        }
-        return registerAsset(key, at: url)
-    }
 
     // MARK: - Build
 

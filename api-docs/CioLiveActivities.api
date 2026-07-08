@@ -18,9 +18,6 @@ public final class CioLiveActivities.LiveActivityConfigBuilder {
 	public fun func logLevel(_ level: CioLogLevel) -> Self;
 	public fun func register<T: CIOActivityAttribute>(_ type: T.Type, identifier: String) -> Self;
 	public fun func register<T: ActivityAttributes>(_ type: T.Type, identifier: String) -> Self;
-	public fun func appGroup(_ identifier: String) -> Self;
-	public fun func registerAsset(_ key: String, at url: URL) -> Self;
-	public fun func registerAsset(_ key: String, bundleResource: String, withExtension ext: String? = nil) -> Self;
 	public fun func build() -> LiveActivityConfig;
 }
 public enum CioLiveActivities.LiveActivityError {

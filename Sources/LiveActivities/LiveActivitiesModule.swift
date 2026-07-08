@@ -220,31 +220,8 @@ public final class LiveActivitiesModule {
         // seeded token — so registration no longer depends on ActivityKit re-yielding the token.
         registrar.seedPendingPushToStartFromStore()
 
-        syncAssets()
         registerEventBusObservers()
         observer.start()
-    }
-
-    /// Copy new or changed bundle assets into the AppGroup container, off the init thread.
-    ///
-    /// Skipped silently when no AppGroup identifier or no asset registrations are configured.
-    /// Failures are logged and do not prevent observation from starting.
-    private func syncAssets() {
-        guard
-            let appGroupIdentifier = config.appGroupIdentifier,
-            !config.assetRegistrations.isEmpty
-        else { return }
-
-        let registrations = config.assetRegistrations
-        let logger = sdk.logger
-        Task.detached(priority: .utility) {
-            do {
-                let writer = try AssetLibraryWriter(appGroupIdentifier: appGroupIdentifier)
-                try writer.sync(registrations: registrations)
-            } catch {
-                logger.error("Live Activities asset sync failed: \(error)", "LiveActivities", nil)
-            }
-        }
     }
 
     private func registerEventBusObservers() {

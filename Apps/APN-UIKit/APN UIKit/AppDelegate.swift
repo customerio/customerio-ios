@@ -1,7 +1,6 @@
 import CioDataPipelines
 import CioInternalCommon
 import CioLiveActivities
-import CioLiveActivities_Templates
 import CioLocation
 import CioMessagingInApp
 import CioMessagingPush
@@ -88,20 +87,11 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     @available(iOS 17.2, *)
     private func initializeLiveActivities() {
+        // Register the app's own activity type. `DeliveryActivityAttributes` is defined in the
+        // widget extension folder and shared with this target; the SDK matches it by type name.
         Self.liveActivities = LiveActivitiesModule.initialize(
             LiveActivityConfigBuilder()
-                .register(CIOLiveScoreAttributes.self, identifier: CIOLiveScoreAttributes.identifier)
-                .register(CIODeliveryTrackingAttributes.self, identifier: CIODeliveryTrackingAttributes.identifier)
-                .register(CIOCountdownTimerAttributes.self, identifier: CIOCountdownTimerAttributes.identifier)
-                .register(CIOFlightStatusAttributes.self, identifier: CIOFlightStatusAttributes.identifier)
-                .register(CIOAuctionBidAttributes.self, identifier: CIOAuctionBidAttributes.identifier)
-                .appGroup("group.io.customer.ios-sample.apn-spm.APN-UIKit.cio")
-                .registerAsset("chica_logo", bundleResource: "chica_logo", withExtension: "png")
-                .registerAsset("delivery_food", bundleResource: "delivery_food", withExtension: "png")
-                .registerAsset("chica_thumb", bundleResource: "chica_thumb", withExtension: "png")
-                .registerAsset("toronto_fc", bundleResource: "toronto_fc", withExtension: "png")
-                .registerAsset("sj_quakes", bundleResource: "sj_quakes", withExtension: "png")
-                .registerAsset("mls_logo", bundleResource: "mls_logo", withExtension: "png")
+                .register(DeliveryActivityAttributes.self, identifier: DeliveryActivityAttributes.identifier)
                 .build()
         )
     }

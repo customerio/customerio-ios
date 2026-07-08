@@ -16,16 +16,6 @@ struct LiveActivityConfigDefaultTests {
         #expect(config.registrations.isEmpty)
     }
 
-    @Test func defaultAppGroupIdentifier_isNil() {
-        let config = LiveActivityConfig()
-        #expect(config.appGroupIdentifier == nil)
-    }
-
-    @Test func defaultAssetRegistrations_isEmpty() {
-        let config = LiveActivityConfig()
-        #expect(config.assetRegistrations.isEmpty)
-    }
-
     @Test func initWithLogLevel_setsLogLevel() {
         let config = LiveActivityConfig(logLevel: .debug)
         #expect(config.logLevel == .debug)
@@ -67,21 +57,6 @@ struct LiveActivityConfigBuilderTests {
             .logLevel(.error)
             .build()
         #expect(config.logLevel == .error)
-    }
-
-    @Test func appGroupFluent_setsIdentifier() {
-        let config = LiveActivityConfigBuilder()
-            .appGroup("group.io.customer.example")
-            .build()
-        #expect(config.appGroupIdentifier == "group.io.customer.example")
-    }
-
-    @Test func registerAsset_addsAssetRegistration() {
-        let url = URL(fileURLWithPath: "/tmp/image.png")
-        let config = LiveActivityConfigBuilder()
-            .registerAsset("logo", at: url)
-            .build()
-        #expect(config.assetRegistrations.count == 1)
     }
 
     @Test func register_addsOneRegistration() {

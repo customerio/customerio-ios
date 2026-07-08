@@ -1,13 +1,13 @@
 @unsafe @preconcurrency import ActivityKit
 import CioLiveActivities
 import CioLiveActivities_Attributes
-import CioLiveActivities_Templates
 import Foundation
 import UIKit
 
-// Demo screen exercising all five Live Activity templates plus adopt / error / debug paths.
-// Length rules are relaxed here since it intentionally wires up many independent controls.
-// swiftlint:disable file_length type_body_length
+// Demo screen exercising the app's delivery-tracking Live Activity via the SDK's local API,
+// plus the adopt / unregistered-type / debug paths.
+// Length rules are relaxed here since it intentionally wires up several independent controls.
+// swiftlint:disable file_length
 
 // MARK: - Phase driver
 
@@ -163,7 +163,7 @@ class LiveActivitiesViewController: BaseViewController {
     private var drivers: [any LiveActivityDemoDriving] = []
 
     // Adopt demo: an activity the app creates itself, then hands to the SDK via `adopt`.
-    private var adoptHandle: CIOLiveActivity<CIOCountdownTimerAttributes>?
+    private var adoptHandle: CIOLiveActivity<DeliveryActivityAttributes>?
     private weak var adoptButton: ThemeButton?
 
     private let logView = UITextView()
@@ -227,10 +227,8 @@ class LiveActivitiesViewController: BaseViewController {
         stack.addArrangedSubview(makeDebugCard())
     }
 
-    // Builds one driver per template, each with a realistic multi-phase sequence including
-    // edge cases: Live Score status tint, Delivery stale message, Countdown expiry, Flight
-    // delay-red, Auction winning/outbid tints.
-    // swiftlint:disable:next function_body_length
+    // Builds the delivery-tracking driver with a realistic multi-phase sequence: order placed →
+    // preparing → out for delivery (green tint) → delivered, each phase sending an `update`.
     private func makeDrivers() -> [(any LiveActivityDemoDriving, String)] {
         let module: () -> LiveActivitiesModule? = { AppDelegate.liveActivities }
         let log: (String) -> Void = { [weak self] line in self?.appendLog(line) }
@@ -243,79 +241,21 @@ class LiveActivitiesViewController: BaseViewController {
         // Customer.io push carries the id in the same `cioMetadata`.)
         let laDeepLink = CIOLiveActivityMetadata(deepLink: LiveActivitiesViewController.deepLink)
 
-        let liveScore = LiveActivityDemoDriver<CIOLiveScoreAttributes>(
-            title: "Live Score",
-            module: module,
-            attributes: CIOLiveScoreAttributes(homeTeam: .init(name: "Toronto FC", logo: "toronto_fc"), awayTeam: .init(name: "San Jose Quakes", logo: "sj_quakes"), image: "mls_logo"),
-            phases: [
-                .init(subtitle: "15 min", cioMetadata: laDeepLink),
-                .init(homeScore: 1, awayScore: 0, subtitle: "22:14"),
-                .init(homeScore: 2, awayScore: 2, subtitle: "55:67"),
-                .init(homeScore: 2, awayScore: 3, subtitle: "88:20", statusColor: "#FFCC00")
-            ],
-            endState: .init(homeScore: 2, awayScore: 3, subtitle: "Final"),
-            log: log
-        )
-
-        let delivery = LiveActivityDemoDriver<CIODeliveryTrackingAttributes>(
+        let delivery = LiveActivityDemoDriver<DeliveryActivityAttributes>(
             title: "Delivery Tracking",
             module: module,
-            attributes: CIODeliveryTrackingAttributes(header: "Order #ABC-1234"),
+            attributes: DeliveryActivityAttributes(orderNumber: "Order #ABC-1234"),
             phases: [
-                .init(title: "Order placed", subtitle: "Arriving at 1:45 PM", image: "delivery_food", progressIcon: "chica_thumb", progress: .init(current: 1, total: 4), estimatedArrival: future(1800), cioMetadata: laDeepLink),
-                .init(title: "Preparing your order…", subtitle: "Arriving at 1:45 PM", image: "delivery_food", progressIcon: "chica_thumb", progress: .init(current: 2, total: 4), estimatedArrival: future(1500)),
-                .init(title: "Out for delivery", subtitle: "Arriving at 1:30 PM", image: "delivery_food", progressIcon: "chica_thumb", progress: .init(current: 3, total: 4), estimatedArrival: future(600), statusColor: "#34C759")
+                .init(title: "Order placed", subtitle: "Arriving at 1:45 PM", progress: .init(current: 1, total: 4), estimatedArrival: future(1800), cioMetadata: laDeepLink),
+                .init(title: "Preparing your order…", subtitle: "Arriving at 1:45 PM", progress: .init(current: 2, total: 4), estimatedArrival: future(1500)),
+                .init(title: "Out for delivery", subtitle: "Arriving at 1:30 PM", progress: .init(current: 3, total: 4), estimatedArrival: future(600), statusColor: "#34C759")
             ],
-            endState: .init(title: "Delivered", subtitle: "Arrived at 1:28 PM", image: "delivery_food", progressIcon: "chica_thumb", progress: .init(current: 4, total: 4)),
-            log: log
-        )
-
-        let countdown = LiveActivityDemoDriver<CIOCountdownTimerAttributes>(
-            title: "Countdown Timer",
-            module: module,
-            attributes: CIOCountdownTimerAttributes(title: "Flash Sale"),
-            phases: [
-                .init(targetDate: future(3600), subtitle: "Sale starts in", cioMetadata: laDeepLink),
-                .init(targetDate: future(60), subtitle: "Almost there"),
-                .init(targetDate: future(-1), subtitle: "Sale ended", expiredMessage: "Sale is live!")
-            ],
-            endState: .init(targetDate: future(0), subtitle: "Sale ended", expiredMessage: "Sale is live!"),
-            log: log
-        )
-
-        let flight = LiveActivityDemoDriver<CIOFlightStatusAttributes>(
-            title: "Flight Status",
-            module: module,
-            attributes: CIOFlightStatusAttributes(header: "CIO101", origin: .init(code: "SFO", city: "San Francisco"), destination: .init(code: "JFK", city: "New York")),
-            phases: [
-                .init(status: "On Time", title: "Boarding soon", subtitle: "Gate B12 · Terminal 2", scheduledDeparture: future(1800), estimatedArrival: future(21600), cioMetadata: laDeepLink),
-                .init(status: "Boarding", title: "Boarding at gate B12", subtitle: "Gate B12 · Zone 3", scheduledDeparture: future(900), estimatedArrival: future(21600)),
-                .init(status: "In Flight", title: "2h 15m until landing", subtitle: "Gate B12 · Terminal 2", scheduledDeparture: future(0), estimatedArrival: future(8100), progressFraction: 0.55),
-                .init(status: "Delayed", title: "Delayed 25 min", subtitle: "Gate B12 · Terminal 2", scheduledDeparture: future(1500), estimatedArrival: future(21600), statusColor: "#CC3330")
-            ],
-            endState: .init(status: "Landed", title: "Welcome to New York!", subtitle: "Terminal 2 · Gate 4 · Bag 5", scheduledDeparture: future(0), estimatedArrival: future(0)),
-            log: log
-        )
-
-        let auction = LiveActivityDemoDriver<CIOAuctionBidAttributes>(
-            title: "Auction Bid",
-            module: module,
-            attributes: CIOAuctionBidAttributes(title: "Vintage Watch"),
-            phases: [
-                .init(currentBid: "100.00", subtitle: "5 bids", statusMessage: "You've been outbid", endTime: future(3600), statusColor: "#CC3330", cioMetadata: laDeepLink),
-                .init(currentBid: "150.00", subtitle: "8 bids", statusMessage: "You're winning", endTime: future(3600), statusColor: "#36AE3F"),
-                .init(currentBid: "175.00", subtitle: "11 bids", statusMessage: "You've been outbid", endTime: future(1800), statusColor: "#CC3330")
-            ],
-            endState: .init(currentBid: "250.00", subtitle: "12 bids", statusMessage: "Auction ended", endTime: future(0)),
+            endState: .init(title: "Delivered", subtitle: "Arrived at 1:28 PM", progress: .init(current: 4, total: 4)),
             log: log
         )
 
         return [
-            (liveScore, "Scoreboard; last update tints the status (statusColor)."),
-            (delivery, "Step progress + ETA; phase 4 sends a staleMessage."),
-            (countdown, "Countdown; last phase is post-target with an expiredMessage."),
-            (flight, "Gate → in-flight progress → a delayed (red) phase."),
-            (auction, "Outbid → winning → outbid, driven by statusColor (green/red).")
+            (delivery, "Step progress + live ETA countdown; the out-for-delivery phase tints green (statusColor).")
         ]
     }
 
@@ -378,7 +318,7 @@ class LiveActivitiesViewController: BaseViewController {
     private func toggleAdopt() {
         if let handle = adoptHandle {
             Task { @MainActor in
-                await handle.end(.init(targetDate: EpochSecondsDate(Date()), subtitle: "Adopted — ended", expiredMessage: "Done"))
+                await handle.end(.init(title: "Delivered", subtitle: "Adopted — ended", progress: .init(current: 4, total: 4)))
                 self.adoptHandle = nil
                 self.adoptButton?.setTitle("Start (app-created) & Adopt", for: .normal)
                 self.appendLog("Adopt: ended")
@@ -386,12 +326,12 @@ class LiveActivitiesViewController: BaseViewController {
             return
         }
         do {
-            let attributes = CIOCountdownTimerAttributes(
-                title: "Adopted Countdown"
-            )
-            let state = CIOCountdownTimerAttributes.ContentState(
-                targetDate: EpochSecondsDate(Date().addingTimeInterval(3600)),
-                subtitle: "Adopted (app-created)"
+            let attributes = DeliveryActivityAttributes(orderNumber: "Order #ADOPT-1")
+            let state = DeliveryActivityAttributes.ContentState(
+                title: "Adopted (app-created)",
+                subtitle: "Order placed",
+                progress: .init(current: 1, total: 4),
+                estimatedArrival: EpochSecondsDate(Date().addingTimeInterval(1800))
             )
             let content = ActivityContent(state: state, staleDate: nil)
             let activity = try Activity.request(attributes: attributes, content: content, pushType: nil)
@@ -410,7 +350,7 @@ class LiveActivitiesViewController: BaseViewController {
             return
         }
         Task { @MainActor in
-            await handle.update(.init(targetDate: EpochSecondsDate(Date().addingTimeInterval(60)), subtitle: "Adopted — updated"))
+            await handle.update(.init(title: "Out for delivery", subtitle: "Adopted — updated", progress: .init(current: 3, total: 4), estimatedArrival: EpochSecondsDate(Date().addingTimeInterval(600))))
             self.appendLog("Adopt: updated")
         }
     }
@@ -503,4 +443,4 @@ class LiveActivitiesViewController: BaseViewController {
     }
 }
 
-// swiftlint:enable file_length type_body_length
+// swiftlint:enable file_length
