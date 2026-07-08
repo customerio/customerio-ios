@@ -2,9 +2,6 @@ import Foundation
 
 /// SDK data that is common between all site ids.
 public protocol GlobalDataStore: AutoMockable {
-    // Stable per-installation UUID, generated on first use and never reset
-    var installationId: String? { get set }
-
     // APN or FCM device token
     var pushDeviceToken: String? { get set }
 
@@ -15,11 +12,6 @@ public protocol GlobalDataStore: AutoMockable {
 // sourcery: InjectRegisterShared = "GlobalDataStore"
 public class CioSharedDataStore: GlobalDataStore {
     private let keyValueStorage: SharedKeyValueStorage
-
-    public var installationId: String? {
-        get { keyValueStorage.string(.installationId) }
-        set { keyValueStorage.setString(newValue, forKey: .installationId) }
-    }
 
     public var pushDeviceToken: String? {
         get {

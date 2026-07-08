@@ -61,12 +61,6 @@ public protocol CustomerIOInstance: AutoMockable {
      */
     func clearIdentify()
 
-    // MARK: - Installation
-
-    /// A stable, unique identifier for this app installation.
-    /// Generated on first SDK use and persisted across launches. Not reset by `clearIdentify()`.
-    var installationId: String { get }
-
     // MARK: - Device
 
     /**
@@ -264,10 +258,6 @@ public class CustomerIO: CustomerIOInstance {
 
     public func clearIdentify() {
         implementation?.clearIdentify()
-    }
-
-    public var installationId: String {
-        implementation?.installationId ?? ""
     }
 
     public var deviceAttributes: [String: Any] {

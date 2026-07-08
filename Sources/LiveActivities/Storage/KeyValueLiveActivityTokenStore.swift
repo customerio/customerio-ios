@@ -2,7 +2,7 @@ import CioInternalCommon
 import Foundation
 
 /// `LiveActivityTokenStorage` backed by the SDK's shared key-value storage — the same
-/// UserDefaults-backed store that holds `installationId` and the push device token.
+/// UserDefaults-backed store that holds the push device token.
 ///
 /// All per-activity-type signatures are persisted together as a single JSON
 /// `[activityType: signature]` map under one key, so the store needs no schema and no
@@ -44,7 +44,7 @@ final class KeyValueLiveActivityTokenStore: LiveActivityTokenStorage {
 
     func clearAll() {
         // Only remove our own key — `SharedKeyValueStorage.deleteAll()` would wipe the
-        // entire shared store (installationId, device token, …).
+        // entire shared store (device token, …).
         lock.withLock { storage.setString(nil, forKey: key) }
     }
 

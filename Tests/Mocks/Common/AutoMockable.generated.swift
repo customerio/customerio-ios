@@ -150,55 +150,6 @@ public class CustomerIOInstanceMock: @unchecked Sendable, CustomerIOInstance, Mo
      When setter of the property called, the value given to setter is set here.
      When the getter of the property called, the value set here will be returned. Your chance to mock the property.
      */
-    private let _underlyingInstallationId: CioInternalCommon.Synchronized<String?> = .init(nil)
-    public var underlyingInstallationId: String! {
-        get { _underlyingInstallationId.wrappedValue }
-        set { _underlyingInstallationId.wrappedValue = newValue }
-    }
-
-    /// `true` if the getter or setter of property is called at least once.
-    public var installationIdCalled: Bool {
-        installationIdGetCalled || installationIdSetCalled
-    }
-
-    /// `true` if the getter called on the property at least once.
-    public var installationIdGetCalled: Bool {
-        installationIdGetCallsCount > 0
-    }
-
-    private let _installationIdGetCallsCount: CioInternalCommon.Synchronized<Int> = .init(0)
-    public var installationIdGetCallsCount: Int {
-        _installationIdGetCallsCount.wrappedValue
-    }
-
-    /// `true` if the setter called on the property at least once.
-    public var installationIdSetCalled: Bool {
-        installationIdSetCallsCount > 0
-    }
-
-    private let _installationIdSetCallsCount: CioInternalCommon.Synchronized<Int> = .init(0)
-    public var installationIdSetCallsCount: Int {
-        _installationIdSetCallsCount.wrappedValue
-    }
-
-    /// The mocked property with a getter and setter.
-    public var installationId: String {
-        get {
-            mockCalled = true
-            _installationIdGetCallsCount += 1
-            return underlyingInstallationId
-        }
-        set(value) {
-            mockCalled = true
-            _installationIdSetCallsCount += 1
-            underlyingInstallationId = value
-        }
-    }
-
-    /**
-     When setter of the property called, the value given to setter is set here.
-     When the getter of the property called, the value set here will be returned. Your chance to mock the property.
-     */
     private let _underlyingDeviceAttributes: CioInternalCommon.Synchronized<[String: Any]> = .init([:])
     public var underlyingDeviceAttributes: [String: Any] {
         get { _underlyingDeviceAttributes.wrappedValue }
@@ -296,8 +247,6 @@ public class CustomerIOInstanceMock: @unchecked Sendable, CustomerIOInstance, Mo
     public func resetMock() {
         _profileAttributesGetCallsCount.wrappedValue = 0
         _profileAttributesSetCallsCount.wrappedValue = 0
-        _installationIdGetCallsCount.wrappedValue = 0
-        _installationIdSetCallsCount.wrappedValue = 0
         _deviceAttributesGetCallsCount.wrappedValue = 0
         _deviceAttributesSetCallsCount.wrappedValue = 0
         registeredDeviceToken = nil
@@ -2268,55 +2217,6 @@ public class GlobalDataStoreMock: @unchecked Sendable, GlobalDataStore, Mock {
      When setter of the property called, the value given to setter is set here.
      When the getter of the property called, the value set here will be returned. Your chance to mock the property.
      */
-    private let _underlyingInstallationId: CioInternalCommon.Synchronized<String?> = .init(nil)
-    public var underlyingInstallationId: String? {
-        get { _underlyingInstallationId.wrappedValue }
-        set { _underlyingInstallationId.wrappedValue = newValue }
-    }
-
-    /// `true` if the getter or setter of property is called at least once.
-    public var installationIdCalled: Bool {
-        installationIdGetCalled || installationIdSetCalled
-    }
-
-    /// `true` if the getter called on the property at least once.
-    public var installationIdGetCalled: Bool {
-        installationIdGetCallsCount > 0
-    }
-
-    private let _installationIdGetCallsCount: CioInternalCommon.Synchronized<Int> = .init(0)
-    public var installationIdGetCallsCount: Int {
-        _installationIdGetCallsCount.wrappedValue
-    }
-
-    /// `true` if the setter called on the property at least once.
-    public var installationIdSetCalled: Bool {
-        installationIdSetCallsCount > 0
-    }
-
-    private let _installationIdSetCallsCount: CioInternalCommon.Synchronized<Int> = .init(0)
-    public var installationIdSetCallsCount: Int {
-        _installationIdSetCallsCount.wrappedValue
-    }
-
-    /// The mocked property with a getter and setter.
-    public var installationId: String? {
-        get {
-            mockCalled = true
-            _installationIdGetCallsCount += 1
-            return underlyingInstallationId
-        }
-        set(value) {
-            mockCalled = true
-            _installationIdSetCallsCount += 1
-            underlyingInstallationId = value
-        }
-    }
-
-    /**
-     When setter of the property called, the value given to setter is set here.
-     When the getter of the property called, the value set here will be returned. Your chance to mock the property.
-     */
     private let _underlyingPushDeviceToken: CioInternalCommon.Synchronized<String?> = .init(nil)
     public var underlyingPushDeviceToken: String? {
         get { _underlyingPushDeviceToken.wrappedValue }
@@ -2363,9 +2263,6 @@ public class GlobalDataStoreMock: @unchecked Sendable, GlobalDataStore, Mock {
     }
 
     public func resetMock() {
-        installationId = nil
-        _installationIdGetCallsCount.wrappedValue = 0
-        _installationIdSetCallsCount.wrappedValue = 0
         pushDeviceToken = nil
         _pushDeviceTokenGetCallsCount.wrappedValue = 0
         _pushDeviceTokenSetCallsCount.wrappedValue = 0

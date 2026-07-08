@@ -7,7 +7,6 @@ class Context: Plugin {
     public weak var analytics: Analytics?
 
     public var deviceToken: String?
-    public var installationId: String?
     public var attributes: [String: Any] = [:]
 
     let userAgentUtil: UserAgentUtil
@@ -33,10 +32,6 @@ class Context: Plugin {
             if let token = deviceToken, bgToken == nil {
                 context[keyPath: "device.token"] = token
                 workingEvent.context = try JSON(context)
-            }
-
-            if let id = installationId {
-                context[keyPath: "device.installationId"] = id
             }
 
             // Our push logic is currently hardcoded against ios
