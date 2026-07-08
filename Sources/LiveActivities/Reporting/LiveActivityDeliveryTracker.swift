@@ -21,8 +21,10 @@ final class LiveActivityDeliveryTracker: @unchecked Sendable {
     private let store: LiveActivityTokenStorage
     private let logger: Logger
 
-    /// Namespace for persisted `delivered` dedup markers in the shared token store.
-    static let deliveredKeyPrefix = "delivered:"
+    /// Retention window for `delivered` dedup markers. Matches Android's `LiveNotificationStore`
+    /// TTL. A delivery id older than this can't be re-reported in practice (ActivityKit won't
+    /// replay a week-old snapshot, and delivery ids are unique per push), so pruning is lossless.
+    private static let deliveredTTL: TimeInterval = 7 * 24 * 60 * 60
 
     init(
         postMetric: @escaping @Sendable (_ deliveryId: String, _ event: String, _ deliveryToken: String) -> Void,
@@ -38,10 +40,9 @@ final class LiveActivityDeliveryTracker: @unchecked Sendable {
     /// `CIO-Delivery-ID`. No-op when the state carries no delivery id (e.g. a locally-driven state).
     func reportDelivered(metadata: CIOLiveActivityMetadata) {
         guard let deliveryId = metadata.deliveryId, !deliveryId.isEmpty else { return }
-        let key = Self.deliveredKeyPrefix + deliveryId
-        guard store.registrationSignature(activityType: key) == nil else { return }
+        guard !store.hasFreshDeliveredMarker(deliveryId, ttl: Self.deliveredTTL) else { return }
         postMetric(deliveryId, Metric.delivered.rawValue, metadata.deliveryToken ?? "")
-        store.setRegistrationSignature(activityType: key, signature: "1")
+        store.setDeliveredMarker(deliveryId, at: Date())
         logger.debug("Reported Live Activity 'delivered' deliveryId=\(deliveryId)", "LiveActivities")
     }
 

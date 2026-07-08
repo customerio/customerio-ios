@@ -111,3 +111,50 @@ struct LiveActivityRegistrationClearTests {
         #expect(kv.string(.pushDeviceToken) == "device-token-abc")
     }
 }
+
+// MARK: - Delivered dedup markers (TTL-bounded, separate map)
+
+struct LiveActivityDeliveredMarkerTests {
+    private let ttl: TimeInterval = 7 * 24 * 60 * 60
+
+    @Test func freshMarker_isDeduped() {
+        let (store, _) = makeStore()
+        #expect(store.hasFreshDeliveredMarker("d1", ttl: ttl) == false)
+        store.setDeliveredMarker("d1", at: Date())
+        #expect(store.hasFreshDeliveredMarker("d1", ttl: ttl) == true)
+    }
+
+    @Test func expiredMarker_isNotFresh() {
+        let (store, _) = makeStore()
+        store.setDeliveredMarker("d1", at: Date(timeIntervalSinceNow: -(ttl + 60)))
+        #expect(store.hasFreshDeliveredMarker("d1", ttl: ttl) == false)
+    }
+
+    @Test func expiredMarker_isPrunedFromStorage() {
+        let (store, kv) = makeStore()
+        store.setDeliveredMarker("old", at: Date(timeIntervalSinceNow: -(ttl + 60)))
+        store.setDeliveredMarker("new", at: Date())
+        // First delivered-marker access lazily prunes expired entries and persists the result.
+        _ = store.hasFreshDeliveredMarker("new", ttl: ttl)
+        // A fresh store over the same backing sees only the surviving marker.
+        let reopened = KeyValueLiveActivityTokenStore(storage: kv)
+        #expect(reopened.hasFreshDeliveredMarker("new", ttl: ttl) == true)
+        #expect(reopened.hasFreshDeliveredMarker("old", ttl: ttl) == false)
+    }
+
+    @Test func deliveredMarkers_areIsolatedFromRegistrationMap() {
+        let (store, _) = makeStore()
+        store.setDeliveredMarker("d1", at: Date())
+        store.setRegistrationSignature(activityType: "OrderActivity", signature: "sig|u")
+        // Delivery markers live in a separate map: registration lookups never see them.
+        #expect(store.registrationSignature(activityType: "d1") == nil)
+        #expect(store.allRegistrationKeys() == ["OrderActivity"])
+    }
+
+    @Test func clearAll_dropsDeliveredMarkers() {
+        let (store, _) = makeStore()
+        store.setDeliveredMarker("d1", at: Date())
+        store.clearAll()
+        #expect(store.hasFreshDeliveredMarker("d1", ttl: ttl) == false)
+    }
+}

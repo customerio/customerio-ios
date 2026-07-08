@@ -124,7 +124,24 @@ final class FakeTokenStore: LiveActivityTokenStorage, @unchecked Sendable {
     }
 
     func clearAll() {
-        lock.withLock { _signatures.removeAll() }
+        lock.withLock {
+            _signatures.removeAll()
+            _delivered.removeAll()
+        }
+    }
+
+    private var _delivered: [String: Date] = [:]
+
+    func hasFreshDeliveredMarker(_ deliveryId: String, ttl: TimeInterval) -> Bool {
+        lock.withLock {
+            _delivered = _delivered.filter { Date().timeIntervalSince($0.value) <= ttl }
+            guard let at = _delivered[deliveryId] else { return false }
+            return Date().timeIntervalSince(at) <= ttl
+        }
+    }
+
+    func setDeliveredMarker(_ deliveryId: String, at date: Date) {
+        lock.withLock { _delivered[deliveryId] = date }
     }
 
     private var _instanceIds: [String: String] = [:]
