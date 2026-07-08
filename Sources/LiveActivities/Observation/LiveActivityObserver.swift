@@ -32,9 +32,9 @@ final class LiveActivityObserver: @unchecked Sendable {
     private let registrations: [ActivityTypeRegistration]
     private let registrar: LiveActivityRegistrar
     private let localEndTracker: LiveActivityLocalEndTracker
-    private let onActivityAppeared: @Sendable (_ notificationType: String, _ activityInstanceId: String) -> Void
-    private let onUserDismissed: @Sendable (_ notificationType: String, _ activityInstanceId: String) -> Void
-    private let onContentMetadata: @Sendable (_ notificationType: String, _ activityInstanceId: String, _ metadata: CIOLiveActivityMetadata) -> Void
+    private let store: LiveActivityTokenStorage
+    private let onUserDismissed: @Sendable (_ notificationType: String, _ cioInstanceId: String) -> Void
+    private let onContentMetadata: @Sendable (_ notificationType: String, _ cioInstanceId: String, _ metadata: CIOLiveActivityMetadata) -> Void
 
     /// Running root tasks keyed by notificationType.
     private let tasks = Synchronized<[String: Task<Void, Never>]>([:])
@@ -43,14 +43,14 @@ final class LiveActivityObserver: @unchecked Sendable {
         registrations: [ActivityTypeRegistration],
         registrar: LiveActivityRegistrar,
         localEndTracker: LiveActivityLocalEndTracker,
-        onActivityAppeared: @escaping @Sendable (_ notificationType: String, _ activityInstanceId: String) -> Void,
-        onUserDismissed: @escaping @Sendable (_ notificationType: String, _ activityInstanceId: String) -> Void,
-        onContentMetadata: @escaping @Sendable (_ notificationType: String, _ activityInstanceId: String, _ metadata: CIOLiveActivityMetadata) -> Void
+        store: LiveActivityTokenStorage,
+        onUserDismissed: @escaping @Sendable (_ notificationType: String, _ cioInstanceId: String) -> Void,
+        onContentMetadata: @escaping @Sendable (_ notificationType: String, _ cioInstanceId: String, _ metadata: CIOLiveActivityMetadata) -> Void
     ) {
         self.registrations = registrations
         self.registrar = registrar
         self.localEndTracker = localEndTracker
-        self.onActivityAppeared = onActivityAppeared
+        self.store = store
         self.onUserDismissed = onUserDismissed
         self.onContentMetadata = onContentMetadata
     }
@@ -82,7 +82,7 @@ final class LiveActivityObserver: @unchecked Sendable {
     private func startObserving(_ registration: ActivityTypeRegistration) {
         let registrar = self.registrar
         let localEndTracker = self.localEndTracker
-        let onAppeared = onActivityAppeared
+        let store = self.store
         let onUserDismissed = self.onUserDismissed
         let onContentMetadata = self.onContentMetadata
         let identifier = registration.activityIdentifier
@@ -95,9 +95,6 @@ final class LiveActivityObserver: @unchecked Sendable {
             onInstanceToken: { instanceId, token in
                 registrar.handleInstanceToken(notificationType: identifier, instanceUUID: instanceId, token: token)
             },
-            onActivityAppeared: { instanceId in
-                onAppeared(identifier, instanceId)
-            },
             onActivityEnded: { instanceId in
                 registrar.handleActivityEnded(instanceUUID: instanceId)
             },
@@ -109,6 +106,15 @@ final class LiveActivityObserver: @unchecked Sendable {
             },
             consumeLocalEnd: { instanceId in
                 localEndTracker.consume(instanceId)
+            },
+            resolveInstanceId: { activityId, attributesInstanceId in
+                store.resolveInstanceId(forActivityId: activityId) {
+                    if let attributesInstanceId, !attributesInstanceId.isEmpty { return attributesInstanceId }
+                    return ULID.generate()
+                }
+            },
+            clearInstanceIdMapping: { activityId in
+                store.clearInstanceId(forActivityId: activityId)
             }
         )
 
@@ -127,17 +133,48 @@ final class LiveActivityObserver: @unchecked Sendable {
 /// generic `Activity<T>` stream handling here rather than in the config builder.
 enum LiveActivityObservation {
     #if os(iOS)
-    @available(iOS 17.2, *)
+    /// Registration for a `CIOActivityAttribute` type: full observation **including push-to-start**.
+    /// For a backend-created activity the instance id is read from its attributes (`cioInstanceId`).
+    @available(iOS 16.2, *)
     static func registration<T: CIOActivityAttribute>(for type: T.Type, identifier: String) -> ActivityTypeRegistration {
+        makeRegistration(for: T.self, identifier: identifier, observesPushToStart: true) { $0.attributes.cioInstanceId }
+    }
+
+    /// Registration for a plain `ActivityAttributes` type: instance-token, lifecycle and relaunch
+    /// observation only — **no push-to-start** (the backend can't stamp an id into attributes the
+    /// SDK can read), so the instance id is the SDK-minted one recovered from the persisted map.
+    @available(iOS 16.2, *)
+    static func registration<T: ActivityAttributes>(for type: T.Type, identifier: String) -> ActivityTypeRegistration {
+        makeRegistration(for: T.self, identifier: identifier, observesPushToStart: false) { _ in nil }
+    }
+
+    /// Shared observation wiring for both registration flavors. `attributesInstanceId` extracts the
+    /// id from an activity's attributes (conforming types) or returns `nil` (plain types); the
+    /// resolved id then comes from the token store's persisted map, falling back to that value or a
+    /// freshly minted ULID.
+    @available(iOS 16.2, *)
+    private static func makeRegistration<T: ActivityAttributes>(
+        for type: T.Type,
+        identifier: String,
+        observesPushToStart: Bool,
+        attributesInstanceId: @escaping @Sendable (Activity<T>) -> String?
+    ) -> ActivityTypeRegistration {
         ActivityTypeRegistration(
             activityIdentifier: identifier,
             attributesTypeName: String(describing: T.self),
             startObserving: { sinks in
                 Task {
                     await withTaskGroup(of: Void.self) { group in
-                        group.addTask {
-                            for await token in Activity<T>.pushToStartTokenUpdates {
-                                sinks.onPushToStartToken(token)
+                        if observesPushToStart {
+                            group.addTask {
+                                // Push-to-start is the only iOS 17.2 dependency. On 16.2–17.1 the SDK
+                                // still observes instance-token updates, content/state changes, and
+                                // local start/update/end — it just can't receive push-to-start tokens.
+                                if #available(iOS 17.2, *) {
+                                    for await token in Activity<T>.pushToStartTokenUpdates {
+                                        sinks.onPushToStartToken(token)
+                                    }
+                                }
                             }
                         }
                         group.addTask {
@@ -161,10 +198,10 @@ enum LiveActivityObservation {
                             }
                             await withTaskGroup(of: Void.self) { perActivity in
                                 for activity in Activity<T>.activities where claimUnobserved(activity.id) {
-                                    perActivity.addTask { await observe(activity, sinks: sinks) }
+                                    perActivity.addTask { await observe(activity, attributesInstanceId: attributesInstanceId(activity), sinks: sinks) }
                                 }
                                 for await activity in Activity<T>.activityUpdates where claimUnobserved(activity.id) {
-                                    perActivity.addTask { await observe(activity, sinks: sinks) }
+                                    perActivity.addTask { await observe(activity, attributesInstanceId: attributesInstanceId(activity), sinks: sinks) }
                                 }
                             }
                         }
@@ -179,10 +216,9 @@ enum LiveActivityObservation {
         )
     }
 
-    @available(iOS 17.2, *)
-    private static func observe<T: CIOActivityAttribute>(_ activity: Activity<T>, sinks: LiveActivityObservationSinks) async {
-        let instanceId = activity.attributes.activityInstanceId
-        sinks.onActivityAppeared(instanceId)
+    @available(iOS 16.2, *)
+    private static func observe<T: ActivityAttributes>(_ activity: Activity<T>, attributesInstanceId: String?, sinks: LiveActivityObservationSinks) async {
+        let instanceId = sinks.resolveInstanceId(activity.id, attributesInstanceId)
         // The initial content-state (from the start push) may carry Customer.io delivery metadata;
         // surface it so a push-to-start `delivered` receipt is reported and the tap destination is
         // recorded — even on a cold-launch snapshot where no `contentUpdates` will replay.
@@ -232,6 +268,7 @@ enum LiveActivityObservation {
                         sinks.onUserDismissed(instanceId)
                     }
                     sinks.onActivityEnded(instanceId)
+                    sinks.clearInstanceIdMapping(activity.id)
                     return
                 }
             }

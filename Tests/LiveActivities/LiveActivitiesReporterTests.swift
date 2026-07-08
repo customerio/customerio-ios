@@ -58,7 +58,7 @@ struct LiveActivityReporterShapeTests {
         #expect(cap.count == 1)
         #expect(cap.events[0].name == "Live Notification Event")
         #expect(cap.string(0, "eventType") == "start")
-        #expect(cap.string(0, "instanceUUID") == "i1")
+        #expect(cap.string(0, "cioInstanceId") == "i1")
         #expect(cap.string(0, "notificationType") == "type.a")
         #expect(cap.string(0, "deviceId") == "dev-token")
         #expect(cap.string(0, "platform") == "ios")
@@ -111,48 +111,48 @@ struct LiveActivityReporterShapeTests {
         let cap = identifiedCapture()
         cap.makeReporter().sendInstanceToken(notificationType: "type.a", instanceUUID: "i1", instanceToken: "ddeeff")
         #expect(cap.string(0, "registrationType") == "instance")
-        #expect(cap.string(0, "instanceUUID") == "i1")
+        #expect(cap.string(0, "cioInstanceId") == "i1")
         #expect(cap.string(0, "instanceToken") == "ddeeff")
     }
 }
 
-// MARK: - Date wire format (epoch ms round-trip)
+// MARK: - Date wire format (epoch seconds round-trip)
 
-struct EpochMillisDateTests {
-    /// The reporter's `payloadEncoder` must emit epoch-millisecond numbers for date fields,
-    /// and `EpochMillisDate` must decode those same numbers back to the original instant —
+struct EpochSecondsDateTests {
+    /// The reporter's `payloadEncoder` must emit epoch-second numbers for date fields,
+    /// and `EpochSecondsDate` must decode those same numbers back to the original instant —
     /// this is the contract ActivityKit relies on when it decodes a server push.
-    @Test func encodesToEpochMillisNumber() throws {
-        // 2021-01-01T00:00:00Z == 1_609_459_200_000 ms
+    @Test func encodesToEpochSecondsNumber() throws {
+        // 2021-01-01T00:00:00Z == 1_609_459_200 s
         let date = Date(timeIntervalSince1970: 1609459200)
-        let wrapper = EpochMillisDate(date)
+        let wrapper = EpochSecondsDate(date)
         let data = try LiveActivityReporter.payloadEncoder.encode(wrapper)
-        #expect(String(decoding: data, as: UTF8.self) == "1609459200000")
+        #expect(String(decoding: data, as: UTF8.self) == "1609459200")
     }
 
-    @Test func roundTripsThroughJSON_toTheMillisecond() throws {
-        let original = EpochMillisDate(Date(timeIntervalSince1970: 1700000000.123))
+    @Test func roundTripsThroughJSON_toTheSecond() throws {
+        let original = EpochSecondsDate(Date(timeIntervalSince1970: 1700000000.4))
         let data = try LiveActivityReporter.payloadEncoder.encode(original)
-        let decoded = try JSONDecoder().decode(EpochMillisDate.self, from: data)
-        // Encoded as ms (rounded), so the round-trip is exact to the millisecond.
-        let expectedMillis = (original.date.timeIntervalSince1970 * 1000).rounded()
-        #expect((decoded.date.timeIntervalSince1970 * 1000).rounded() == expectedMillis)
+        let decoded = try JSONDecoder().decode(EpochSecondsDate.self, from: data)
+        // Encoded as whole seconds (rounded), so the round-trip is exact to the second.
+        let expectedSeconds = original.date.timeIntervalSince1970.rounded()
+        #expect(decoded.date.timeIntervalSince1970.rounded() == expectedSeconds)
     }
 
-    @Test func decodesFromEpochMillisNumber() throws {
-        let json = Data("1609459200000".utf8)
-        let decoded = try JSONDecoder().decode(EpochMillisDate.self, from: json)
+    @Test func decodesFromEpochSecondsNumber() throws {
+        let json = Data("1609459200".utf8)
+        let decoded = try JSONDecoder().decode(EpochSecondsDate.self, from: json)
         #expect(decoded.date == Date(timeIntervalSince1970: 1609459200))
     }
 
-    /// Encoding a content-state that contains an `EpochMillisDate` through the reporter's
-    /// `encode(_:)` helper must yield an epoch-ms number under the field key.
-    @Test func contentStateEncodesDateAsEpochMillis() throws {
+    /// Encoding a content-state that contains an `EpochSecondsDate` through the reporter's
+    /// `encode(_:)` helper must yield an epoch-second number under the field key.
+    @Test func contentStateEncodesDateAsEpochSeconds() throws {
         struct State: Encodable {
-            let endTime: EpochMillisDate
+            let endTime: EpochSecondsDate
         }
-        let state = State(endTime: EpochMillisDate(Date(timeIntervalSince1970: 1609459200)))
+        let state = State(endTime: EpochSecondsDate(Date(timeIntervalSince1970: 1609459200)))
         let object = LiveActivityReporter.encode(state)
-        #expect(object?["endTime"] as? Int64 == 1609459200000 || object?["endTime"] as? Int == 1609459200000)
+        #expect(object?["endTime"] as? Int64 == 1609459200 || object?["endTime"] as? Int == 1609459200)
     }
 }

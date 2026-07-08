@@ -5,7 +5,7 @@ import WidgetKit
 
 // MARK: - Widget
 
-@available(iOS 17.2, *)
+@available(iOS 16.2, *)
 public struct CIOCountdownTimerLiveActivity: Widget {
     public init() {}
     public var body: some WidgetConfiguration { makeCountdownTimerConfiguration() }
@@ -13,7 +13,7 @@ public struct CIOCountdownTimerLiveActivity: Widget {
 
 // MARK: - Configuration
 
-@available(iOS 17.2, *)
+@available(iOS 16.2, *)
 @MainActor
 private func makeCountdownTimerConfiguration()
     -> ActivityConfiguration<CIOCountdownTimerAttributes> {
@@ -54,7 +54,7 @@ private func makeCountdownTimerConfiguration()
     }
 }
 
-@available(iOS 17.2, *)
+@available(iOS 16.2, *)
 private func countdownStatusColor(_ hex: String?, fallback: Color) -> Color {
     hex.flatMap(Color.init(hex:)) ?? fallback
 }
@@ -62,7 +62,7 @@ private func countdownStatusColor(_ hex: String?, fallback: Color) -> Color {
 /// The countdown value shown on the trailing edge: a live timer while running, or the
 /// `expiredMessage` once `targetDate` has passed. The range is only built while `now` is
 /// before the target, so it can never form an invalid (crashing) interval.
-@available(iOS 17.2, *)
+@available(iOS 16.2, *)
 @ViewBuilder
 private func countdownValue(
     _ state: CIOCountdownTimerAttributes.ContentState,
@@ -83,7 +83,7 @@ private func countdownValue(
 
 // MARK: - Banner
 
-@available(iOS 17.2, *)
+@available(iOS 16.2, *)
 private struct CountdownTimerBannerView: View {
     let attributes: CIOCountdownTimerAttributes
     let state: CIOCountdownTimerAttributes.ContentState
@@ -93,7 +93,7 @@ private struct CountdownTimerBannerView: View {
     var body: some View {
         HStack(alignment: .center, spacing: 12) {
             VStack(alignment: .leading, spacing: 4) {
-                CIOBrandingView(appBranding: CIOLiveActivitiesTemplates.branding, showsName: true)
+                CIOBrandingView(appBranding: CIOLiveActivitiesTemplates.branding)
                     .foregroundColor(CIOTemplateStyle.text)
                 Text(attributes.title)
                     .font(.headline)
@@ -119,7 +119,7 @@ private struct CountdownTimerBannerView: View {
 
 // MARK: - Sub-views
 
-@available(iOS 17.2, *)
+@available(iOS 16.2, *)
 private struct CountdownCompactView: View {
     let state: CIOCountdownTimerAttributes.ContentState
 

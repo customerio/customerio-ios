@@ -10,7 +10,7 @@ import SwiftUI
 ///
 /// > Note: These apply to the **lock-screen** presentation. The Dynamic Island always
 /// > renders on the system's black pill, so island text stays light regardless.
-@available(iOS 17.2, *)
+@available(iOS 16.2, *)
 enum CIOTemplateStyle {
     /// Lock-screen card background: brand `backgroundColor`, else the template's `fallback`.
     static func background(fallback: Color) -> Color {

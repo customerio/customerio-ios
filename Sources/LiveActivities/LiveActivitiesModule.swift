@@ -26,7 +26,7 @@ public enum LiveActivityError: Error {
 /// )
 /// // Start an activity locally — the SDK mints its id and reports a `start` event:
 /// let handle = try liveActivities.start(contentState: .init(...)) { id in
-///     OrderAttributes(activityInstanceId: id, ...)
+///     OrderAttributes(cioInstanceId: id, ...)
 /// }
 /// await handle.update(.init(...))
 /// await handle.end(.init(...))
@@ -34,6 +34,7 @@ public enum LiveActivityError: Error {
 public final class LiveActivitiesModule {
     private let config: LiveActivityConfig
     private let sdk: CIOLiveActivitiesSDKProviding
+    private let tokenStorage: LiveActivityTokenStorage
 
     private let identity = LiveActivityIdentity()
     private let localEndTracker = LiveActivityLocalEndTracker()
@@ -45,21 +46,6 @@ public final class LiveActivitiesModule {
     /// Latest delivery metadata observed per activity instance, used to attribute an `opened`
     /// metric and resolve the deep link when the app is opened from a tapped activity.
     private let latestMetadata = Synchronized<[String: CIOLiveActivityMetadata]>([:])
-
-    private let observedContinuation = Synchronized<AsyncStream<LiveActivityInfo>.Continuation?>(nil)
-    private let observedStream = Synchronized<AsyncStream<LiveActivityInfo>?>(nil)
-
-    // MARK: - Public API
-
-    /// Emits a `LiveActivityInfo` each time the SDK begins observing a new activity instance
-    /// (host-app-initiated, push-to-start, or launch replay).
-    ///
-    /// > Note: This is a single-consumer stream. Iterate it from exactly one place. It buffers up
-    /// > to 10 events for subscribers that attach shortly after `initialize`, and is finished and
-    /// > replaced on `ResetEvent` — re-subscribe after any subsequent reset.
-    public var observedActivities: AsyncStream<LiveActivityInfo> {
-        observedStream.wrappedValue ?? AsyncStream { _ in }
-    }
 
     // MARK: - Entry point
 
@@ -86,6 +72,7 @@ public final class LiveActivitiesModule {
     ) {
         self.config = config
         self.sdk = sdk
+        self.tokenStorage = tokenStorage
 
         let identity = self.identity
         let reporter = LiveActivityReporter(
@@ -113,66 +100,55 @@ public final class LiveActivitiesModule {
             registrations: config.registrations,
             registrar: registrar,
             localEndTracker: localEndTracker,
-            onActivityAppeared: { [identity, observedContinuation] notificationType, activityInstanceId in
-                let info = LiveActivityInfo(
-                    activityId: activityInstanceId,
-                    activityType: notificationType,
-                    userId: identity.userId ?? ""
-                )
-                observedContinuation.wrappedValue?.yield(info)
-            },
-            onUserDismissed: { [reporter] notificationType, activityInstanceId in
+            store: tokenStorage,
+            onUserDismissed: { [reporter] notificationType, cioInstanceId in
                 // A user swipe-away — report `end` (matches Android's dismiss-intent behavior).
-                reporter.reportEnd(instanceUUID: activityInstanceId, notificationType: notificationType)
+                reporter.reportEnd(instanceUUID: cioInstanceId, notificationType: notificationType)
             },
-            onContentMetadata: { [deliveryTracker, latestMetadata] _, activityInstanceId, metadata in
+            onContentMetadata: { [deliveryTracker, latestMetadata] _, cioInstanceId, metadata in
                 // A backend push (start or update) carrying Customer.io delivery metadata: report a
                 // `delivered` receipt (deduped by delivery id) and remember the tap destination.
-                latestMetadata.mutating { $0[activityInstanceId] = metadata }
+                latestMetadata.mutating { $0[cioInstanceId] = metadata }
                 deliveryTracker.reportDelivered(metadata: metadata)
             }
         )
-
-        makeNewObservedActivitiesStream()
     }
 
     // MARK: - Local lifecycle API
 
     #if os(iOS)
-    /// Start a Live Activity locally. The SDK mints the correlation id, passes it to your
-    /// `attributes` builder, requests the activity, and reports a `start` event.
+    /// Start a Live Activity locally. Pass your fully-built `attributes` and initial
+    /// `contentState`; the SDK requests the activity, mints and tracks its correlation id
+    /// internally, and reports a `start` event. You never supply or see the id at the call site.
+    ///
+    /// Works with any `ActivityAttributes` type — conforming to `CIOActivityAttribute` is only
+    /// required for push-to-start.
     ///
     /// - Returns: A handle whose `update`/`end` report the corresponding events.
     /// - Throws: `LiveActivityError.typeNotRegistered` if `Attributes` was not registered.
-    @available(iOS 17.2, *)
+    @available(iOS 16.2, *)
     @discardableResult
-    public func start<Attributes: CIOActivityAttribute>(
+    public func start<Attributes: ActivityAttributes>(
+        _ attributes: Attributes,
         contentState: Attributes.ContentState,
         staleDate: Date? = nil,
-        relevanceScore: Double = 0,
-        attributes: (_ activityInstanceId: String) -> Attributes
+        relevanceScore: Double = 0
     ) throws -> CIOLiveActivity<Attributes> {
         guard let notificationType = notificationType(forTypeName: String(describing: Attributes.self)) else {
             throw LiveActivityError.typeNotRegistered(String(describing: Attributes.self))
         }
-        let id = ULID.generate()
-        let builtAttributes = attributes(id)
-        LiveActivityFieldValidation.warnIfMissingRequired(
-            attributes: builtAttributes,
-            contentState: contentState,
-            operation: "start",
-            notificationType: notificationType,
-            logger: sdk.logger
-        )
         let activity = try Activity.request(
-            attributes: builtAttributes,
+            attributes: attributes,
             content: ActivityContent(state: contentState, staleDate: staleDate, relevanceScore: relevanceScore),
             pushType: .token
         )
+        // Mint (and persist) the correlation id keyed by the system Activity.id, atomically so the
+        // registration observer picking up this same activity resolves to the identical id.
+        let id = tokenStorage.resolveInstanceId(forActivityId: activity.id) { ULID.generate() }
         reporter.reportStart(
             instanceUUID: id,
             notificationType: notificationType,
-            attributes: LiveActivityReporter.encode(builtAttributes),
+            attributes: LiveActivityReporter.encode(attributes),
             contentState: LiveActivityReporter.encode(contentState)
         )
         return CIOLiveActivity(
@@ -187,14 +163,16 @@ public final class LiveActivitiesModule {
 
     /// Wrap an activity your app created directly, so you can report `update`/`end` through the
     /// returned handle. Does not report a `start` event (use `start` for that). Token capture for
-    /// registered types happens automatically via observation regardless of `adopt`.
-    @available(iOS 17.2, *)
+    /// registered types happens automatically via observation regardless of `adopt`. Works with any
+    /// `ActivityAttributes` type.
+    @available(iOS 16.2, *)
     @discardableResult
-    public func adopt<Attributes: CIOActivityAttribute>(_ activity: Activity<Attributes>) -> CIOLiveActivity<Attributes> {
+    public func adopt<Attributes: ActivityAttributes>(_ activity: Activity<Attributes>) -> CIOLiveActivity<Attributes> {
         let notificationType = notificationType(forTypeName: String(describing: Attributes.self))
             ?? String(describing: Attributes.self)
+        let id = tokenStorage.resolveInstanceId(forActivityId: activity.id) { ULID.generate() }
         return CIOLiveActivity(
-            id: activity.attributes.activityInstanceId,
+            id: id,
             activity: activity,
             reporter: reporter,
             notificationType: notificationType,
@@ -230,15 +208,6 @@ public final class LiveActivitiesModule {
 
     private func notificationType(forTypeName name: String) -> String? {
         config.registrations.first { $0.attributesTypeName == name }?.activityIdentifier
-    }
-
-    private func makeNewObservedActivitiesStream() {
-        let (stream, continuation) = AsyncStream.makeStream(
-            of: LiveActivityInfo.self,
-            bufferingPolicy: .bufferingNewest(10)
-        )
-        observedContinuation.wrappedValue = continuation
-        observedStream.wrappedValue = stream
     }
 
     private func performInitialization() {
@@ -314,7 +283,5 @@ public final class LiveActivitiesModule {
         }
         registrar.handleReset()
         observer.restart()
-        observedContinuation.wrappedValue?.finish()
-        makeNewObservedActivitiesStream()
     }
 }

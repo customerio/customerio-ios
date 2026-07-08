@@ -31,10 +31,10 @@ protocol LiveActivityDemoDriving: AnyObject {
 /// final content sent on `end`. This mirrors the Android demo's step arrays.
 @available(iOS 17.2, *)
 @MainActor
-final class LiveActivityDemoDriver<A: CIOActivityAttribute>: LiveActivityDemoDriving where A.ContentState: Sendable {
+final class LiveActivityDemoDriver<A: ActivityAttributes>: LiveActivityDemoDriving where A.ContentState: Sendable {
     let title: String
     private let module: () -> LiveActivitiesModule?
-    private let makeAttributes: (String) -> A
+    private let attributes: A
     private let phases: [A.ContentState]
     private let endState: A.ContentState
     private let log: (String) -> Void
@@ -50,17 +50,17 @@ final class LiveActivityDemoDriver<A: CIOActivityAttribute>: LiveActivityDemoDri
     init(
         title: String,
         module: @escaping () -> LiveActivitiesModule?,
+        attributes: A,
         phases: [A.ContentState],
         endState: A.ContentState,
-        log: @escaping (String) -> Void,
-        makeAttributes: @escaping (String) -> A
+        log: @escaping (String) -> Void
     ) {
         self.title = title
         self.module = module
+        self.attributes = attributes
         self.phases = phases
         self.endState = endState
         self.log = log
-        self.makeAttributes = makeAttributes
     }
 
     func toggle() {
@@ -73,7 +73,7 @@ final class LiveActivityDemoDriver<A: CIOActivityAttribute>: LiveActivityDemoDri
             return
         }
         do {
-            handle = try module.start(contentState: phases[0], attributes: makeAttributes)
+            handle = try module.start(attributes, contentState: phases[0])
             phaseIndex = 0
             log("\(title): start — phase 1/\(phases.count)")
             onChange?()
@@ -167,7 +167,6 @@ class LiveActivitiesViewController: BaseViewController {
     private weak var adoptButton: ThemeButton?
 
     private let logView = UITextView()
-    private var observeTask: Task<Void, Never>?
 
     // MARK: - Lifecycle
 
@@ -176,26 +175,11 @@ class LiveActivitiesViewController: BaseViewController {
         title = "Live Activities"
         view.backgroundColor = .systemBackground
         buildUI()
-        observeAppearedActivities()
     }
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         navigationController?.isNavigationBarHidden = false
-    }
-
-    deinit { observeTask?.cancel() }
-
-    // MARK: - observedActivities stream
-
-    private func observeAppearedActivities() {
-        observeTask = Task { @MainActor [weak self] in
-            guard let stream = AppDelegate.liveActivities?.observedActivities else { return }
-            for await info in stream {
-                let user = info.userId.isEmpty ? "(anon)" : info.userId
-                self?.appendLog("observed: \(info.activityType) · id=\(info.activityId.prefix(8))… · user=\(user)")
-            }
-        }
     }
 
     // MARK: - UI
@@ -250,8 +234,8 @@ class LiveActivitiesViewController: BaseViewController {
     private func makeDrivers() -> [(any LiveActivityDemoDriving, String)] {
         let module: () -> LiveActivitiesModule? = { AppDelegate.liveActivities }
         let log: (String) -> Void = { [weak self] line in self?.appendLog(line) }
-        func future(_ seconds: TimeInterval) -> EpochMillisDate {
-            EpochMillisDate(Date().addingTimeInterval(seconds))
+        func future(_ seconds: TimeInterval) -> EpochSecondsDate {
+            EpochSecondsDate(Date().addingTimeInterval(seconds))
         }
         // Deep link back to this Live Activities screen. Set on the start content-state so the
         // activity's tap target (`widgetURL`) routes here — used to exercise tap → open tracking.
@@ -262,6 +246,7 @@ class LiveActivitiesViewController: BaseViewController {
         let liveScore = LiveActivityDemoDriver<CIOLiveScoreAttributes>(
             title: "Live Score",
             module: module,
+            attributes: CIOLiveScoreAttributes(homeTeam: .init(name: "Toronto FC", logo: "toronto_fc"), awayTeam: .init(name: "San Jose Quakes", logo: "sj_quakes"), image: "mls_logo"),
             phases: [
                 .init(subtitle: "15 min", cioMetadata: laDeepLink),
                 .init(homeScore: 1, awayScore: 0, subtitle: "22:14"),
@@ -270,11 +255,12 @@ class LiveActivitiesViewController: BaseViewController {
             ],
             endState: .init(homeScore: 2, awayScore: 3, subtitle: "Final"),
             log: log
-        ) { CIOLiveScoreAttributes(activityInstanceId: $0, homeTeam: .init(name: "Toronto FC", logo: "toronto_fc"), awayTeam: .init(name: "San Jose Quakes", logo: "sj_quakes"), image: "mls_logo") }
+        )
 
         let delivery = LiveActivityDemoDriver<CIODeliveryTrackingAttributes>(
             title: "Delivery Tracking",
             module: module,
+            attributes: CIODeliveryTrackingAttributes(header: "Order #ABC-1234"),
             phases: [
                 .init(title: "Order placed", subtitle: "Arriving at 1:45 PM", image: "delivery_food", progressIcon: "chica_thumb", progress: .init(current: 1, total: 4), estimatedArrival: future(1800), cioMetadata: laDeepLink),
                 .init(title: "Preparing your order…", subtitle: "Arriving at 1:45 PM", image: "delivery_food", progressIcon: "chica_thumb", progress: .init(current: 2, total: 4), estimatedArrival: future(1500)),
@@ -282,11 +268,12 @@ class LiveActivitiesViewController: BaseViewController {
             ],
             endState: .init(title: "Delivered", subtitle: "Arrived at 1:28 PM", image: "delivery_food", progressIcon: "chica_thumb", progress: .init(current: 4, total: 4)),
             log: log
-        ) { CIODeliveryTrackingAttributes(activityInstanceId: $0, header: "Order #ABC-1234") }
+        )
 
         let countdown = LiveActivityDemoDriver<CIOCountdownTimerAttributes>(
             title: "Countdown Timer",
             module: module,
+            attributes: CIOCountdownTimerAttributes(title: "Flash Sale"),
             phases: [
                 .init(targetDate: future(3600), subtitle: "Sale starts in", cioMetadata: laDeepLink),
                 .init(targetDate: future(60), subtitle: "Almost there"),
@@ -294,11 +281,12 @@ class LiveActivitiesViewController: BaseViewController {
             ],
             endState: .init(targetDate: future(0), subtitle: "Sale ended", expiredMessage: "Sale is live!"),
             log: log
-        ) { CIOCountdownTimerAttributes(activityInstanceId: $0, title: "Flash Sale") }
+        )
 
         let flight = LiveActivityDemoDriver<CIOFlightStatusAttributes>(
             title: "Flight Status",
             module: module,
+            attributes: CIOFlightStatusAttributes(header: "CIO101", origin: .init(code: "SFO", city: "San Francisco"), destination: .init(code: "JFK", city: "New York")),
             phases: [
                 .init(status: "On Time", title: "Boarding soon", subtitle: "Gate B12 · Terminal 2", scheduledDeparture: future(1800), estimatedArrival: future(21600), cioMetadata: laDeepLink),
                 .init(status: "Boarding", title: "Boarding at gate B12", subtitle: "Gate B12 · Zone 3", scheduledDeparture: future(900), estimatedArrival: future(21600)),
@@ -307,11 +295,12 @@ class LiveActivitiesViewController: BaseViewController {
             ],
             endState: .init(status: "Landed", title: "Welcome to New York!", subtitle: "Terminal 2 · Gate 4 · Bag 5", scheduledDeparture: future(0), estimatedArrival: future(0)),
             log: log
-        ) { CIOFlightStatusAttributes(activityInstanceId: $0, header: "CIO101", origin: .init(code: "SFO", city: "San Francisco"), destination: .init(code: "JFK", city: "New York")) }
+        )
 
         let auction = LiveActivityDemoDriver<CIOAuctionBidAttributes>(
             title: "Auction Bid",
             module: module,
+            attributes: CIOAuctionBidAttributes(title: "Vintage Watch"),
             phases: [
                 .init(currentBid: "100.00", subtitle: "5 bids", statusMessage: "You've been outbid", endTime: future(3600), statusColor: "#CC3330", cioMetadata: laDeepLink),
                 .init(currentBid: "150.00", subtitle: "8 bids", statusMessage: "You're winning", endTime: future(3600), statusColor: "#36AE3F"),
@@ -319,7 +308,7 @@ class LiveActivitiesViewController: BaseViewController {
             ],
             endState: .init(currentBid: "250.00", subtitle: "12 bids", statusMessage: "Auction ended", endTime: future(0)),
             log: log
-        ) { CIOAuctionBidAttributes(activityInstanceId: $0, title: "Vintage Watch") }
+        )
 
         return [
             (liveScore, "Scoreboard; last update tints the status (statusColor)."),
@@ -378,7 +367,7 @@ class LiveActivitiesViewController: BaseViewController {
 
         return makeCard(
             title: "Errors & Debug",
-            description: "Trigger the typeNotRegistered error path, and watch the observedActivities stream + local start/update/end. (Push tokens aren't publicly readable — they go to Customer.io / os_log.)",
+            description: "Trigger the typeNotRegistered error path + local start/update/end. (Push tokens aren't publicly readable — they go to Customer.io / os_log.)",
             buttons: [unknownButton, clearButton],
             extraViews: [logView]
         )
@@ -389,7 +378,7 @@ class LiveActivitiesViewController: BaseViewController {
     private func toggleAdopt() {
         if let handle = adoptHandle {
             Task { @MainActor in
-                await handle.end(.init(targetDate: EpochMillisDate(Date()), subtitle: "Adopted — ended", expiredMessage: "Done"))
+                await handle.end(.init(targetDate: EpochSecondsDate(Date()), subtitle: "Adopted — ended", expiredMessage: "Done"))
                 self.adoptHandle = nil
                 self.adoptButton?.setTitle("Start (app-created) & Adopt", for: .normal)
                 self.appendLog("Adopt: ended")
@@ -398,11 +387,10 @@ class LiveActivitiesViewController: BaseViewController {
         }
         do {
             let attributes = CIOCountdownTimerAttributes(
-                activityInstanceId: UUID().uuidString.lowercased(),
                 title: "Adopted Countdown"
             )
             let state = CIOCountdownTimerAttributes.ContentState(
-                targetDate: EpochMillisDate(Date().addingTimeInterval(3600)),
+                targetDate: EpochSecondsDate(Date().addingTimeInterval(3600)),
                 subtitle: "Adopted (app-created)"
             )
             let content = ActivityContent(state: state, staleDate: nil)
@@ -422,20 +410,21 @@ class LiveActivitiesViewController: BaseViewController {
             return
         }
         Task { @MainActor in
-            await handle.update(.init(targetDate: EpochMillisDate(Date().addingTimeInterval(60)), subtitle: "Adopted — updated"))
+            await handle.update(.init(targetDate: EpochSecondsDate(Date().addingTimeInterval(60)), subtitle: "Adopted — updated"))
             self.appendLog("Adopt: updated")
         }
     }
 
     // MARK: - Error path
 
-    /// A type that is never passed to `LiveActivityConfigBuilder.register`, so `start` throws
+    /// A plain `ActivityAttributes` type (no `CIOActivityAttribute` conformance) that is never
+    /// passed to `LiveActivityConfigBuilder.register`, so `start` throws
     /// `LiveActivityError.typeNotRegistered` before requesting anything — the iOS analog of
-    /// Android's "unknown template" path.
+    /// Android's "unknown template" path. Also demonstrates that custom rendering needs no CIO
+    /// protocol on the attributes.
     @available(iOS 17.2, *)
-    private struct UnregisteredDemoAttributes: CIOActivityAttribute {
+    private struct UnregisteredDemoAttributes: ActivityAttributes {
         struct ContentState: Codable, Hashable, Sendable {}
-        var activityInstanceId: String
         // Built inside the type so `ContentState` resolves to the nested struct, not the
         // `ActivityAttributes.ContentState` associatedtype existential.
         static let sampleState = ContentState()
@@ -443,11 +432,9 @@ class LiveActivitiesViewController: BaseViewController {
 
     private func triggerUnknownType() {
         do {
-            // Explicit closure type pins the generic `Attributes` so the content-state resolves.
-            let makeAttributes: (String) -> UnregisteredDemoAttributes = { UnregisteredDemoAttributes(activityInstanceId: $0) }
             _ = try AppDelegate.liveActivities?.start(
-                contentState: UnregisteredDemoAttributes.sampleState,
-                attributes: makeAttributes
+                UnregisteredDemoAttributes(),
+                contentState: UnregisteredDemoAttributes.sampleState
             )
             appendLog("Unknown type: unexpectedly started (no error thrown)")
         } catch {

@@ -11,7 +11,7 @@ import ActivityKit
 ///
 /// Text fields (`header`, `status`, `title`, `subtitle`) are freeform slots rendered
 /// verbatim; the SDK never composes them.
-@available(iOS 17.2, *)
+@available(iOS 16.2, *)
 public struct CIOFlightStatusAttributes: CIOActivityAttribute {
     public static let identifier = "io.customer.liveactivities.flightstatus"
 
@@ -31,19 +31,18 @@ public struct CIOFlightStatusAttributes: CIOActivityAttribute {
 
     // MARK: - Static attributes
 
-    public var activityInstanceId: String
+    /// SDK-managed correlation id; set by the SDK (local start) or backend (push-to-start). Omitted from init.
+    public var cioInstanceId: String = ""
     /// Optional top line, e.g. flight number or airline. Rendered verbatim.
     public var header: String?
     public var origin: Airport
     public var destination: Airport
 
     public init(
-        activityInstanceId: String,
         header: String? = nil,
         origin: Airport,
         destination: Airport
     ) {
-        self.activityInstanceId = activityInstanceId
         self.header = header
         self.origin = origin
         self.destination = destination
@@ -58,8 +57,8 @@ public struct CIOFlightStatusAttributes: CIOActivityAttribute {
         public var title: String
         /// Optional secondary line, e.g. gate / terminal / zone / bag. Rendered verbatim.
         public var subtitle: String?
-        public var scheduledDeparture: EpochMillisDate
-        public var estimatedArrival: EpochMillisDate
+        public var scheduledDeparture: EpochSecondsDate
+        public var estimatedArrival: EpochSecondsDate
         /// In-flight progress fraction 0.0–1.0. `nil` before departure.
         public var progressFraction: Double?
         /// Hex color (e.g. `"#34C759"`) applied to status accents. `nil` uses the template tint.
@@ -73,8 +72,8 @@ public struct CIOFlightStatusAttributes: CIOActivityAttribute {
             status: String? = nil,
             title: String,
             subtitle: String? = nil,
-            scheduledDeparture: EpochMillisDate,
-            estimatedArrival: EpochMillisDate,
+            scheduledDeparture: EpochSecondsDate,
+            estimatedArrival: EpochSecondsDate,
             progressFraction: Double? = nil,
             statusColor: String? = nil,
             staleMessage: String? = nil,

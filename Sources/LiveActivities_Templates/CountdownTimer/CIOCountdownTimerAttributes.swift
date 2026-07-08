@@ -11,13 +11,14 @@ import ActivityKit
 ///
 /// Text fields (`header`, `title`, `subtitle`, `expiredMessage`) are freeform slots rendered
 /// verbatim; the SDK never composes them.
-@available(iOS 17.2, *)
+@available(iOS 16.2, *)
 public struct CIOCountdownTimerAttributes: CIOActivityAttribute {
     public static let identifier = "io.customer.liveactivities.countdowntimer"
 
     // MARK: - Static attributes
 
-    public var activityInstanceId: String
+    /// SDK-managed correlation id; set by the SDK (local start) or backend (push-to-start). Omitted from init.
+    public var cioInstanceId: String = ""
     /// Optional top line, e.g. a brand label. Rendered verbatim.
     public var header: String?
     /// Primary title displayed above the countdown e.g. `"Flash Sale"`. Rendered verbatim.
@@ -26,12 +27,10 @@ public struct CIOCountdownTimerAttributes: CIOActivityAttribute {
     public var image: String?
 
     public init(
-        activityInstanceId: String,
         header: String? = nil,
         title: String,
         image: String? = nil
     ) {
-        self.activityInstanceId = activityInstanceId
         self.header = header
         self.title = title
         self.image = image
@@ -41,7 +40,7 @@ public struct CIOCountdownTimerAttributes: CIOActivityAttribute {
 
     public struct ContentState: Codable, Hashable, Sendable, CIOMetadataCarrying {
         /// The countdown target. Dynamic so the deadline can be extended via push.
-        public var targetDate: EpochMillisDate
+        public var targetDate: EpochSecondsDate
         /// Label displayed above the timer e.g. `"Sale ends in"`. Rendered verbatim.
         public var subtitle: String
         /// Replaces the countdown once `targetDate` has passed e.g. `"Sale is live!"`.
@@ -55,7 +54,7 @@ public struct CIOCountdownTimerAttributes: CIOActivityAttribute {
         public var cioMetadata: CIOLiveActivityMetadata?
 
         public init(
-            targetDate: EpochMillisDate,
+            targetDate: EpochSecondsDate,
             subtitle: String,
             expiredMessage: String? = nil,
             statusColor: String? = nil,

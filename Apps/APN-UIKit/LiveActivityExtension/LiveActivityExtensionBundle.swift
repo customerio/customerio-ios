@@ -8,7 +8,6 @@ struct LiveActivityExtensionBundle: WidgetBundle {
         CIOLiveActivitiesTemplates.configure(
             appGroup: "group.io.customer.ios-sample.apn-spm.APN-UIKit.cio",
             branding: CIOActivityBranding(
-                name: "Chica's Chicken",
                 logoKey: "chica_logo",
                 backgroundColor: "#FFFFFF",
                 textColor: "#0A2540"

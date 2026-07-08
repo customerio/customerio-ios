@@ -5,7 +5,7 @@ import WidgetKit
 
 // MARK: - Widget
 
-@available(iOS 17.2, *)
+@available(iOS 16.2, *)
 public struct CIOAuctionBidLiveActivity: Widget {
     public init() {}
     public var body: some WidgetConfiguration { makeAuctionBidConfiguration() }
@@ -13,7 +13,7 @@ public struct CIOAuctionBidLiveActivity: Widget {
 
 // MARK: - Configuration
 
-@available(iOS 17.2, *)
+@available(iOS 16.2, *)
 @MainActor
 private func makeAuctionBidConfiguration()
     -> ActivityConfiguration<CIOAuctionBidAttributes> {
@@ -59,20 +59,20 @@ private func makeAuctionBidConfiguration()
     }
 }
 
-@available(iOS 17.2, *)
+@available(iOS 16.2, *)
 private func auctionStatusColor(_ hex: String?, fallback: Color) -> Color {
     hex.flatMap(Color.init(hex:)) ?? fallback
 }
 
 /// The "$1,250"-style bid amount as a single concatenated `Text` (so callers can style it).
-@available(iOS 17.2, *)
+@available(iOS 16.2, *)
 private func auctionBid(_ attributes: CIOAuctionBidAttributes, state: CIOAuctionBidAttributes.ContentState) -> Text {
     Text(attributes.currencySymbol) + Text(state.currentBid)
 }
 
 /// Trailing value for the Dynamic Island: a live countdown while bidding, else the status.
 /// The countdown range is only built before `endTime`, so it can't form an invalid interval.
-@available(iOS 17.2, *)
+@available(iOS 16.2, *)
 @ViewBuilder
 private func auctionTrailing(_ state: CIOAuctionBidAttributes.ContentState, color: Color) -> some View {
     if Date() < state.endTime.value {
@@ -91,7 +91,7 @@ private func auctionTrailing(_ state: CIOAuctionBidAttributes.ContentState, colo
 
 // MARK: - Banner
 
-@available(iOS 17.2, *)
+@available(iOS 16.2, *)
 private struct AuctionBidBannerView: View {
     let attributes: CIOAuctionBidAttributes
     let state: CIOAuctionBidAttributes.ContentState
@@ -102,7 +102,7 @@ private struct AuctionBidBannerView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                CIOBrandingView(appBranding: CIOLiveActivitiesTemplates.branding, showsName: true)
+                CIOBrandingView(appBranding: CIOLiveActivitiesTemplates.branding)
                     .foregroundColor(CIOTemplateStyle.text)
                 Spacer()
                 // While bidding, the status sits top-right; once ended it becomes the headline.

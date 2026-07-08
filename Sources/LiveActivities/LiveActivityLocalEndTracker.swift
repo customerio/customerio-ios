@@ -13,17 +13,17 @@ import Foundation
 final class LiveActivityLocalEndTracker: @unchecked Sendable {
     private let ids = Synchronized<Set<String>>([])
 
-    /// Mark that `activityInstanceId` is being ended locally by the SDK.
-    func markEnded(_ activityInstanceId: String) {
-        ids.mutating { $0.insert(activityInstanceId) }
+    /// Mark that `cioInstanceId` is being ended locally by the SDK.
+    func markEnded(_ cioInstanceId: String) {
+        ids.mutating { $0.insert(cioInstanceId) }
     }
 
-    /// Returns whether `activityInstanceId` was marked as a local end, clearing the marker so it
+    /// Returns whether `cioInstanceId` was marked as a local end, clearing the marker so it
     /// is consumed exactly once.
-    func consume(_ activityInstanceId: String) -> Bool {
+    func consume(_ cioInstanceId: String) -> Bool {
         ids.mutating { set in
-            guard set.contains(activityInstanceId) else { return false }
-            set.remove(activityInstanceId)
+            guard set.contains(cioInstanceId) else { return false }
+            set.remove(cioInstanceId)
             return true
         }
     }

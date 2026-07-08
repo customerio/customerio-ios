@@ -44,7 +44,7 @@ private struct TestActivityAttributes: CIOActivityAttribute {
         var progress: Double
     }
 
-    let activityInstanceId: String
+    let cioInstanceId: String
 }
 
 @available(iOS 17.2, *)
@@ -53,7 +53,7 @@ private struct AnotherActivityAttributes: CIOActivityAttribute {
         var label: String
     }
 
-    let activityInstanceId: String
+    let cioInstanceId: String
 }
 
 struct LiveActivityConfigBuilderTests {

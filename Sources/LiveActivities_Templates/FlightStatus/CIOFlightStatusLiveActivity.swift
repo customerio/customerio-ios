@@ -5,7 +5,7 @@ import WidgetKit
 
 // MARK: - Widget
 
-@available(iOS 17.2, *)
+@available(iOS 16.2, *)
 public struct CIOFlightStatusLiveActivity: Widget {
     public init() {}
     public var body: some WidgetConfiguration { makeFlightStatusConfiguration() }
@@ -13,7 +13,7 @@ public struct CIOFlightStatusLiveActivity: Widget {
 
 // MARK: - Configuration
 
-@available(iOS 17.2, *)
+@available(iOS 16.2, *)
 @MainActor
 private func makeFlightStatusConfiguration()
     -> ActivityConfiguration<CIOFlightStatusAttributes> {
@@ -64,14 +64,14 @@ private func makeFlightStatusConfiguration()
     }
 }
 
-@available(iOS 17.2, *)
+@available(iOS 16.2, *)
 private func flightStatusColor(_ hex: String?, fallback: Color) -> Color {
     hex.flatMap(Color.init(hex:)) ?? fallback
 }
 
 /// Compact trailing time: a countdown to the next event (departure, then arrival), or the
 /// clock time once it has passed. The range is only built before the target, so it can't trap.
-@available(iOS 17.2, *)
+@available(iOS 16.2, *)
 @ViewBuilder
 private func flightCompactTime(_ state: CIOFlightStatusAttributes.ContentState) -> some View {
     let now = Date()
@@ -87,7 +87,7 @@ private func flightCompactTime(_ state: CIOFlightStatusAttributes.ContentState) 
 
 // MARK: - Banner
 
-@available(iOS 17.2, *)
+@available(iOS 16.2, *)
 private struct FlightStatusBannerView: View {
     let attributes: CIOFlightStatusAttributes
     let state: CIOFlightStatusAttributes.ContentState
@@ -144,7 +144,7 @@ private struct FlightStatusBannerView: View {
 
 // MARK: - Sub-views
 
-@available(iOS 17.2, *)
+@available(iOS 16.2, *)
 private struct FlightRouteRow: View {
     let origin: CIOFlightStatusAttributes.Airport
     let destination: CIOFlightStatusAttributes.Airport
@@ -168,7 +168,7 @@ private struct FlightRouteRow: View {
     }
 }
 
-@available(iOS 17.2, *)
+@available(iOS 16.2, *)
 private struct FlightProgressBar: View {
     let fraction: Double
     let color: Color

@@ -126,4 +126,19 @@ final class FakeTokenStore: LiveActivityTokenStorage, @unchecked Sendable {
     func clearAll() {
         lock.withLock { _signatures.removeAll() }
     }
+
+    private var _instanceIds: [String: String] = [:]
+
+    func resolveInstanceId(forActivityId activityId: String, orCreate: () -> String) -> String {
+        lock.withLock {
+            if let existing = _instanceIds[activityId] { return existing }
+            let created = orCreate()
+            _instanceIds[activityId] = created
+            return created
+        }
+    }
+
+    func clearInstanceId(forActivityId activityId: String) {
+        lock.withLock { _instanceIds[activityId] = nil }
+    }
 }

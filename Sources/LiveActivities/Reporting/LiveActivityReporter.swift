@@ -70,7 +70,7 @@ final class LiveActivityReporter: @unchecked Sendable {
         guard let deviceId = gatedDeviceId(for: "\(eventType) event") else { return }
         var properties: [String: Any] = [
             LiveActivityContract.Key.eventType: eventType,
-            LiveActivityContract.Key.instanceUUID: instanceUUID,
+            LiveActivityContract.Key.cioInstanceId: instanceUUID,
             LiveActivityContract.Key.deviceId: deviceId,
             LiveActivityContract.Key.platform: LiveActivityContract.platform,
             LiveActivityContract.Key.notificationType: notificationType
@@ -113,7 +113,7 @@ final class LiveActivityReporter: @unchecked Sendable {
             LiveActivityContract.Key.notificationType: notificationType,
             LiveActivityContract.Key.platform: LiveActivityContract.platform,
             LiveActivityContract.Key.deviceId: deviceId,
-            LiveActivityContract.Key.instanceUUID: instanceUUID,
+            LiveActivityContract.Key.cioInstanceId: instanceUUID,
             LiveActivityContract.Key.instanceToken: instanceToken
         ])
         logger.debug(
@@ -141,7 +141,7 @@ final class LiveActivityReporter: @unchecked Sendable {
     // MARK: - Payload encoding
 
     // Pinned encoder for the `attributes` / `contentState` objects. Date fields are modeled
-    // with `EpochMillisDate`, which encodes to an epoch-millisecond number, so no
+    // with `EpochSecondsDate`, which encodes to an epoch-second number, so no
     // `dateEncodingStrategy` is needed here — this keeps the local CDP-event wire format
     // byte-for-byte consistent with what ActivityKit decodes on a server push.
     static let payloadEncoder = JSONEncoder()

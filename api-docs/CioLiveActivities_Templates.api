@@ -1,9 +1,8 @@
 public final class CioLiveActivities_Templates.CIOActivityBranding {
 	public var logoKey: String?;
-	public var name: String;
 	public var backgroundColor: String?;
 	public var textColor: String?;
-	public fun init(name: String, logoKey: String? = nil, backgroundColor: String? = nil, textColor: String? = nil);
+	public fun init(logoKey: String? = nil, backgroundColor: String? = nil, textColor: String? = nil);
 }
 public final class CioLiveActivities_Templates.CIOAssetLibrary {
 	public fun init(path: URL?);
@@ -15,12 +14,12 @@ public enum CioLiveActivities_Templates.CIOAssetLibraryError {
 }
 public final class CioLiveActivities_Templates.CIOAuctionBidAttributes {
 	public final val identifier: String;
-	public var activityInstanceId: String;
+	public var cioInstanceId: String;
 	public var header: String?;
 	public var title: String;
 	public var image: String?;
 	public var currencySymbol: String;
-	public fun init(activityInstanceId: String, header: String? = nil, title: String, image: String? = nil, currencySymbol: String = "$");
+	public fun init(header: String? = nil, title: String, image: String? = nil, currencySymbol: String = "$");
 }
 public final class CioLiveActivities_Templates.CIOAuctionBidLiveActivity {
 	public var body: some WidgetConfiguration;
@@ -28,11 +27,11 @@ public final class CioLiveActivities_Templates.CIOAuctionBidLiveActivity {
 }
 public final class CioLiveActivities_Templates.CIOCountdownTimerAttributes {
 	public final val identifier: String;
-	public var activityInstanceId: String;
+	public var cioInstanceId: String;
 	public var header: String?;
 	public var title: String;
 	public var image: String?;
-	public fun init(activityInstanceId: String, header: String? = nil, title: String, image: String? = nil);
+	public fun init(header: String? = nil, title: String, image: String? = nil);
 }
 public final class CioLiveActivities_Templates.CIOCountdownTimerLiveActivity {
 	public var body: some WidgetConfiguration;
@@ -40,9 +39,9 @@ public final class CioLiveActivities_Templates.CIOCountdownTimerLiveActivity {
 }
 public final class CioLiveActivities_Templates.CIODeliveryTrackingAttributes {
 	public final val identifier: String;
-	public var activityInstanceId: String;
+	public var cioInstanceId: String;
 	public var header: String?;
-	public fun init(activityInstanceId: String, header: String? = nil);
+	public fun init(header: String? = nil);
 }
 public final class CioLiveActivities_Templates.CIODeliveryTrackingLiveActivity {
 	public var body: some WidgetConfiguration;
@@ -50,11 +49,11 @@ public final class CioLiveActivities_Templates.CIODeliveryTrackingLiveActivity {
 }
 public final class CioLiveActivities_Templates.CIOFlightStatusAttributes {
 	public final val identifier: String;
-	public var activityInstanceId: String;
+	public var cioInstanceId: String;
 	public var header: String?;
 	public var origin: CIOFlightStatusAttributes.Airport;
 	public var destination: CIOFlightStatusAttributes.Airport;
-	public fun init(activityInstanceId: String, header: String? = nil, origin: Airport, destination: Airport);
+	public fun init(header: String? = nil, origin: Airport, destination: Airport);
 }
 public final class CioLiveActivities_Templates.CIOFlightStatusLiveActivity {
 	public var body: some WidgetConfiguration;
@@ -67,11 +66,11 @@ public enum CioLiveActivities_Templates.CIOLiveActivitiesTemplates {
 }
 public final class CioLiveActivities_Templates.CIOLiveScoreAttributes {
 	public final val identifier: String;
-	public var activityInstanceId: String;
+	public var cioInstanceId: String;
 	public var homeTeam: CIOLiveScoreAttributes.Team;
 	public var awayTeam: CIOLiveScoreAttributes.Team;
 	public var image: String?;
-	public fun init(activityInstanceId: String, homeTeam: Team, awayTeam: Team, image: String? = nil);
+	public fun init(homeTeam: Team, awayTeam: Team, image: String? = nil);
 }
 public final class CioLiveActivities_Templates.CIOLiveScoreLiveActivity {
 	public var body: some WidgetConfiguration;

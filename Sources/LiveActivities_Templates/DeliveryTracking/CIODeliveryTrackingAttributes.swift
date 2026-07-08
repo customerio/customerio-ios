@@ -14,21 +14,20 @@ import ActivityKit
 ///
 /// Text fields (`header`, `title`, `subtitle`) are freeform slots rendered verbatim;
 /// the SDK never composes them.
-@available(iOS 17.2, *)
+@available(iOS 16.2, *)
 public struct CIODeliveryTrackingAttributes: CIOActivityAttribute {
     public static let identifier = "io.customer.liveactivities.deliverytracking"
 
     // MARK: - Static attributes
 
-    public var activityInstanceId: String
+    /// SDK-managed correlation id; set by the SDK (local start) or backend (push-to-start). Omitted from init.
+    public var cioInstanceId: String = ""
     /// Optional top line, e.g. a brand or order label. Rendered verbatim.
     public var header: String?
 
     public init(
-        activityInstanceId: String,
         header: String? = nil
     ) {
-        self.activityInstanceId = activityInstanceId
         self.header = header
     }
 
@@ -63,7 +62,7 @@ public struct CIODeliveryTrackingAttributes: CIOActivityAttribute {
         /// Step-based delivery progress.
         public var progress: Progress
         /// Estimated arrival time, used to render a live countdown.
-        public var estimatedArrival: EpochMillisDate?
+        public var estimatedArrival: EpochSecondsDate?
         /// Hex color (e.g. `"#34C759"`) applied to status accents. `nil` uses the template tint.
         public var statusColor: String?
         /// Message shown when the activity becomes stale.
@@ -77,7 +76,7 @@ public struct CIODeliveryTrackingAttributes: CIOActivityAttribute {
             image: String? = nil,
             progressIcon: String? = nil,
             progress: Progress,
-            estimatedArrival: EpochMillisDate? = nil,
+            estimatedArrival: EpochSecondsDate? = nil,
             statusColor: String? = nil,
             staleMessage: String? = nil,
             cioMetadata: CIOLiveActivityMetadata? = nil

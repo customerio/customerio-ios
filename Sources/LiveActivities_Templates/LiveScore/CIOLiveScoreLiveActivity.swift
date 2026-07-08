@@ -5,7 +5,7 @@ import WidgetKit
 
 // MARK: - Widget
 
-@available(iOS 17.2, *)
+@available(iOS 16.2, *)
 public struct CIOLiveScoreLiveActivity: Widget {
     public init() {}
     public var body: some WidgetConfiguration { makeLiveScoreConfiguration() }
@@ -24,7 +24,7 @@ public struct CIOLiveScoreWatchLiveActivity: Widget {
 // The Live Activity + Dynamic Island DSL (expanded/compact/minimal regions) makes this a single
 // long-but-flat declarative body; splitting it would obscure the layout rather than clarify it.
 // swiftlint:disable function_body_length
-@available(iOS 17.2, *)
+@available(iOS 16.2, *)
 @MainActor
 private func makeLiveScoreConfiguration() -> ActivityConfiguration<CIOLiveScoreAttributes> {
     ActivityConfiguration(for: CIOLiveScoreAttributes.self) { context in
@@ -86,30 +86,30 @@ private func makeLiveScoreConfiguration() -> ActivityConfiguration<CIOLiveScoreA
 
 // swiftlint:enable function_body_length
 
-@available(iOS 17.2, *)
+@available(iOS 16.2, *)
 private func liveScoreText(_ score: Int?) -> String {
     score.map(String.init) ?? "-"
 }
 
-@available(iOS 17.2, *)
+@available(iOS 16.2, *)
 private func liveScoreStatusColor(_ hex: String?, fallback: Color) -> Color {
     hex.flatMap(Color.init(hex:)) ?? fallback
 }
 
-@available(iOS 17.2, *)
+@available(iOS 16.2, *)
 private func liveScoreHasScore(_ state: CIOLiveScoreAttributes.ContentState) -> Bool {
     state.homeScore != nil || state.awayScore != nil
 }
 
-@available(iOS 17.2, *)
+@available(iOS 16.2, *)
 private var liveScoreBackgroundColor: Color { CIOTemplateStyle.background(fallback: .black) }
 
-@available(iOS 17.2, *)
+@available(iOS 16.2, *)
 private var liveScoreTextColor: Color { CIOTemplateStyle.text }
 
 /// The league / broadcaster mark used in the center of the banner and the compact island.
 /// Falls back to a system symbol when no `image` asset is configured.
-@available(iOS 17.2, *)
+@available(iOS 16.2, *)
 @ViewBuilder
 private func liveScoreLeagueMark(_ imageKey: String?) -> some View {
     if let imageKey {
@@ -123,7 +123,7 @@ private func liveScoreLeagueMark(_ imageKey: String?) -> some View {
 
 // MARK: - Banner
 
-@available(iOS 17.2, *)
+@available(iOS 16.2, *)
 private struct LiveScoreBannerView: View {
     let attributes: CIOLiveScoreAttributes
     let state: CIOLiveScoreAttributes.ContentState
@@ -178,7 +178,7 @@ private struct LiveScoreBannerView: View {
 // MARK: - Sub-views
 
 /// A team crest on a white disc, falling back to the team-name initials when no logo resolves.
-@available(iOS 17.2, *)
+@available(iOS 16.2, *)
 private struct LiveScoreCrest: View {
     let team: CIOLiveScoreAttributes.Team
     var size: CGFloat = 40
@@ -200,7 +200,7 @@ private struct LiveScoreCrest: View {
     }
 }
 
-@available(iOS 17.2, *)
+@available(iOS 16.2, *)
 private struct LiveScoreTeamColumn: View {
     let team: CIOLiveScoreAttributes.Team
     let score: Int?
@@ -228,7 +228,7 @@ private struct LiveScoreTeamColumn: View {
     }
 }
 
-@available(iOS 17.2, *)
+@available(iOS 16.2, *)
 private struct LiveScoreSubtitleView: View {
     let state: CIOLiveScoreAttributes.ContentState
 

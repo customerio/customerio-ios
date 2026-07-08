@@ -9,7 +9,7 @@ import ActivityKit
 /// (e.g. `"Starts in 15 Min"`, `"2nd half · 55:67"`, `"Final Score"`).
 ///
 /// The `subtitle` slot is freeform and rendered verbatim; the SDK never composes it.
-@available(iOS 17.2, *)
+@available(iOS 16.2, *)
 public struct CIOLiveScoreAttributes: CIOActivityAttribute {
     public static let identifier = "io.customer.liveactivities.livescore"
 
@@ -30,19 +30,19 @@ public struct CIOLiveScoreAttributes: CIOActivityAttribute {
 
     // MARK: - Static attributes
 
-    public var activityInstanceId: String
+    /// SDK-managed correlation id. Set by the SDK (local start) or the backend (push-to-start);
+    /// you never populate it, so it is omitted from the initializer.
+    public var cioInstanceId: String = ""
     public var homeTeam: Team
     public var awayTeam: Team
     /// Asset reference for the league or app icon (bundle name / asset key / URL).
     public var image: String?
 
     public init(
-        activityInstanceId: String,
         homeTeam: Team,
         awayTeam: Team,
         image: String? = nil
     ) {
-        self.activityInstanceId = activityInstanceId
         self.homeTeam = homeTeam
         self.awayTeam = awayTeam
         self.image = image

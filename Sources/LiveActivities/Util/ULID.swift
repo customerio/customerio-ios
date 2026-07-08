@@ -55,8 +55,8 @@ enum ULID {
 
     /// 10 cryptographically random bytes (80 bits) from `SecRandomCopyBytes`.
     ///
-    /// Following the idiom in `KeychainDbKeyProvider`, a non-`errSecSuccess` result falls back
-    /// to `arc4random_buf` rather than throwing, so id generation never fails at the call site.
+    /// A non-`errSecSuccess` result falls back to `arc4random_buf` rather than throwing, so
+    /// id generation never fails at the call site.
     private static func randomBytes() -> [UInt8] {
         var bytes = [UInt8](repeating: 0, count: 10)
         let status = SecRandomCopyBytes(kSecRandomDefault, bytes.count, &bytes)

@@ -1,6 +1,6 @@
 import Foundation
 
-/// A `Date` wrapper that is `Codable` as an epoch-millisecond number.
+/// A `Date` wrapper that is `Codable` as an epoch-**second** number.
 ///
 /// Live Activity content-state and attributes are decoded on-device by ActivityKit
 /// using its **own** `JSONDecoder` when a backend push arrives — the SDK cannot inject a
@@ -9,12 +9,12 @@ import Foundation
 /// field on a template's `Attributes`/`ContentState` is represented by this type instead of
 /// a bare `Date`.
 ///
-/// - Decodes from a JSON number interpreted as milliseconds since 1970 (UTC).
-/// - Encodes to a JSON number of milliseconds since 1970 (UTC).
+/// - Decodes from a JSON number interpreted as seconds since 1970 (UTC).
+/// - Encodes to a JSON number of seconds since 1970 (UTC).
 ///
-/// This matches the Android SDK convention (epoch ms) and the value the reporter's
-/// `payloadEncoder` produces, so a round trip is lossless to the millisecond.
-public struct EpochMillisDate: Codable, Hashable, Sendable {
+/// Seconds is the Customer.io backend contract for content-state timestamps; the reporter's
+/// `payloadEncoder` produces the same representation, so a round trip is lossless to the second.
+public struct EpochSecondsDate: Codable, Hashable, Sendable {
     /// The wrapped date value.
     public var date: Date
 
@@ -24,18 +24,18 @@ public struct EpochMillisDate: Codable, Hashable, Sendable {
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.singleValueContainer()
-        let millis = try container.decode(Int64.self)
-        self.date = Date(timeIntervalSince1970: TimeInterval(millis) / 1000)
+        let seconds = try container.decode(Int64.self)
+        self.date = Date(timeIntervalSince1970: TimeInterval(seconds))
     }
 
     public func encode(to encoder: Encoder) throws {
         var container = encoder.singleValueContainer()
-        let millis = Int64((date.timeIntervalSince1970 * 1000).rounded())
-        try container.encode(millis)
+        let seconds = Int64(date.timeIntervalSince1970.rounded())
+        try container.encode(seconds)
     }
 }
 
-public extension EpochMillisDate {
+public extension EpochSecondsDate {
     /// Convenience accessor for the wrapped `Date`.
     var value: Date { date }
 }

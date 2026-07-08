@@ -59,7 +59,6 @@ public class DataPipeline: ModuleTopLevelObject<DataPipelineInstance>, DataPipel
         shared.initializeModuleIfNotAlready {
             Self.moduleConfig = moduleConfig
 
-            DIGraphShared.shared.registerStorageManager(cdpApiKey: moduleConfig.cdpApiKey)
             return DataPipelineImplementation(diGraph: DIGraphShared.shared, moduleConfig: moduleConfig)
         }
 

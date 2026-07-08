@@ -13,8 +13,8 @@ import ActivityKit
 ///
 /// > Important: Ending or updating the underlying `activity` directly (bypassing this handle)
 /// > performs the ActivityKit operation but emits no Customer.io event.
-@available(iOS 17.2, *)
-public struct CIOLiveActivity<Attributes: CIOActivityAttribute> {
+@available(iOS 16.2, *)
+public struct CIOLiveActivity<Attributes: ActivityAttributes> {
     /// The stable correlation id (minted by the SDK for local starts, or carried in the
     /// attributes for push-to-start), reported to the backend as `instanceUUID`.
     public let id: String
@@ -52,12 +52,6 @@ public struct CIOLiveActivity<Attributes: CIOActivityAttribute> {
         staleDate: Date? = nil,
         alert: AlertConfiguration? = nil
     ) async {
-        LiveActivityFieldValidation.warnIfMissingRequired(
-            contentState: contentState,
-            operation: "update",
-            notificationType: notificationType,
-            logger: logger
-        )
         await activity.update(ActivityContent(state: contentState, staleDate: staleDate), alertConfiguration: alert)
         reporter.reportUpdate(
             instanceUUID: id,

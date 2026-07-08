@@ -24,4 +24,14 @@ protocol LiveActivityTokenStorage {
     func allRegistrationKeys() -> [String]
     /// Remove all stored entries (e.g. full teardown), forcing re-registration.
     func clearAll()
+
+    /// Returns the CIO instance id mapped to a system `Activity.id`, creating and persisting one
+    /// via `orCreate` if none exists yet. Atomic: concurrent callers (a local `start` and the
+    /// registration observer picking up the same activity) resolve to a single id. Persisting the
+    /// mapping lets the observer recover a locally-started activity's id after a relaunch, where the
+    /// minted id is no longer in memory and — for non-`CIOActivityAttribute` types — is not in the
+    /// activity's attributes either.
+    func resolveInstanceId(forActivityId activityId: String, orCreate: () -> String) -> String
+    /// Remove the `Activity.id` → instance id mapping (on activity end).
+    func clearInstanceId(forActivityId activityId: String)
 }

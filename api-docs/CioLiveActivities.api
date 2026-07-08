@@ -5,10 +5,9 @@ public final class CioLiveActivities.CIOLiveActivity {
 	public fun func end(_ finalContentState: Attributes.ContentState? = nil, dismissalPolicy: ActivityUIDismissalPolicy = .default) async;
 }
 public final class CioLiveActivities.LiveActivitiesModule {
-	public var observedActivities: AsyncStream<LiveActivityInfo>;
 	public fun func initialize(_ config: LiveActivityConfig) -> LiveActivitiesModule;
-	public fun func start<Attributes: CIOActivityAttribute>(contentState: Attributes.ContentState, staleDate: Date? = nil, relevanceScore: Double = 0, attributes: (_ activityInstanceId: String) -> Attributes) throws -> CIOLiveActivity<Attributes>;
-	public fun func adopt<Attributes: CIOActivityAttribute>(_ activity: Activity<Attributes>) -> CIOLiveActivity<Attributes>;
+	public fun func start<Attributes: ActivityAttributes>(_ attributes: Attributes, contentState: Attributes.ContentState, staleDate: Date? = nil, relevanceScore: Double = 0) throws -> CIOLiveActivity<Attributes>;
+	public fun func adopt<Attributes: ActivityAttributes>(_ activity: Activity<Attributes>) -> CIOLiveActivity<Attributes>;
 	public fun func handleDeepLinkOpen(_ url: URL) -> Boolean;
 }
 public final class CioLiveActivities.LiveActivityConfig {
@@ -18,15 +17,11 @@ public final class CioLiveActivities.LiveActivityConfigBuilder {
 	public fun init();
 	public fun func logLevel(_ level: CioLogLevel) -> Self;
 	public fun func register<T: CIOActivityAttribute>(_ type: T.Type, identifier: String) -> Self;
+	public fun func register<T: ActivityAttributes>(_ type: T.Type, identifier: String) -> Self;
 	public fun func appGroup(_ identifier: String) -> Self;
 	public fun func registerAsset(_ key: String, at url: URL) -> Self;
 	public fun func registerAsset(_ key: String, bundleResource: String, withExtension ext: String? = nil) -> Self;
 	public fun func build() -> LiveActivityConfig;
 }
 public enum CioLiveActivities.LiveActivityError {
-}
-public final class CioLiveActivities.LiveActivityInfo {
-	public final val activityId: String;
-	public final val activityType: String;
-	public final val userId: String;
 }

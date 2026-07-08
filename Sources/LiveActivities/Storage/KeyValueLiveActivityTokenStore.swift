@@ -48,6 +48,32 @@ final class KeyValueLiveActivityTokenStore: LiveActivityTokenStorage {
         lock.withLock { storage.setString(nil, forKey: key) }
     }
 
+    func resolveInstanceId(forActivityId activityId: String, orCreate: () -> String) -> String {
+        lock.withLock {
+            var map = load()
+            let mapKey = Self.instanceIdKey(activityId)
+            if let existing = map[mapKey] { return existing }
+            let created = orCreate()
+            map[mapKey] = created
+            save(map)
+            return created
+        }
+    }
+
+    func clearInstanceId(forActivityId activityId: String) {
+        lock.withLock {
+            var map = load()
+            map[Self.instanceIdKey(activityId)] = nil
+            save(map)
+        }
+    }
+
+    /// Namespaced key for an `Activity.id` → instance id mapping, so it can't collide with a
+    /// registration signature (bare activity type / `instance:` / `ptsvalue:` keys).
+    private static func instanceIdKey(_ activityId: String) -> String {
+        "aid:" + activityId
+    }
+
     // MARK: - JSON map persistence
 
     private func load() -> [String: String] {

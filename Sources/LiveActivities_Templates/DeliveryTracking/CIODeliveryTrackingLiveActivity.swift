@@ -5,7 +5,7 @@ import WidgetKit
 
 // MARK: - Widget
 
-@available(iOS 17.2, *)
+@available(iOS 16.2, *)
 public struct CIODeliveryTrackingLiveActivity: Widget {
     public init() {}
     public var body: some WidgetConfiguration { makeDeliveryTrackingConfiguration() }
@@ -16,7 +16,7 @@ public struct CIODeliveryTrackingLiveActivity: Widget {
 // The Live Activity + Dynamic Island DSL (expanded/compact/minimal regions) makes this a single
 // long-but-flat declarative body; splitting it would obscure the layout rather than clarify it.
 // swiftlint:disable function_body_length
-@available(iOS 17.2, *)
+@available(iOS 16.2, *)
 @MainActor
 private func makeDeliveryTrackingConfiguration()
     -> ActivityConfiguration<CIODeliveryTrackingAttributes> {
@@ -86,14 +86,14 @@ private func makeDeliveryTrackingConfiguration()
 
 // swiftlint:enable function_body_length
 
-@available(iOS 17.2, *)
+@available(iOS 16.2, *)
 private func deliveryStatusColor(_ hex: String?, fallback: Color) -> Color {
     hex.flatMap(Color.init(hex:)) ?? fallback
 }
 
 // MARK: - Banner
 
-@available(iOS 17.2, *)
+@available(iOS 16.2, *)
 private struct DeliveryTrackingBannerView: View {
     let attributes: CIODeliveryTrackingAttributes
     let state: CIODeliveryTrackingAttributes.ContentState
@@ -104,7 +104,7 @@ private struct DeliveryTrackingBannerView: View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .top, spacing: 12) {
                 VStack(alignment: .leading, spacing: 4) {
-                    CIOBrandingView(appBranding: CIOLiveActivitiesTemplates.branding, showsName: true)
+                    CIOBrandingView(appBranding: CIOLiveActivitiesTemplates.branding)
                         .foregroundColor(CIOTemplateStyle.text)
                     Text(state.title)
                         .font(.title3.bold())
@@ -143,7 +143,7 @@ private struct DeliveryTrackingBannerView: View {
 ///
 /// The riding icon is `iconKey` resolved via `CIOAssetLibrary`; when absent a plain
 /// filled thumb is drawn so the bar degrades gracefully without an asset.
-@available(iOS 17.2, *)
+@available(iOS 16.2, *)
 private struct DeliveryProgressBar: View {
     let current: Int
     let total: Int
@@ -191,7 +191,7 @@ private struct DeliveryProgressBar: View {
     }
 }
 
-@available(iOS 17.2, *)
+@available(iOS 16.2, *)
 private struct DeliveryStepIndicator: View {
     let current: Int
     let total: Int

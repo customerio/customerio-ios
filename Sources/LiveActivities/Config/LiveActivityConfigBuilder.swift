@@ -2,6 +2,10 @@ import CioInternalCommon
 import CioLiveActivities_Attributes
 import Foundation
 
+#if os(iOS)
+import ActivityKit
+#endif
+
 /// Fluent builder for `LiveActivityConfig`.
 ///
 /// ```swift
@@ -38,9 +42,23 @@ public struct LiveActivityConfigBuilder {
     ///   - identifier: A stable reverse-DNS identifier for this activity type,
     ///     e.g. `"io.customer.liveactivities.scoreboard"`. Sent as `notificationType` and matched
     ///     server-side to route pushes. Must be consistent between the app and the backend.
+    ///
+    /// Conform `T` to `CIOActivityAttribute` (adding a `cioInstanceId` field) to also enable
+    /// **push-to-start**. A plain `ActivityAttributes` type is fully supported for local
+    /// `start`/`adopt`, instance-token push updates, and relaunch recovery — everything except
+    /// push-to-start. The correct behavior is selected automatically by which overload applies.
     #if os(iOS)
-    @available(iOS 17.2, *)
+    @available(iOS 16.2, *)
     public func register<T: CIOActivityAttribute>(_ type: T.Type, identifier: String) -> Self {
+        var copy = self
+        copy.config.registrations.append(
+            LiveActivityObservation.registration(for: T.self, identifier: identifier)
+        )
+        return copy
+    }
+
+    @available(iOS 16.2, *)
+    public func register<T: ActivityAttributes>(_ type: T.Type, identifier: String) -> Self {
         var copy = self
         copy.config.registrations.append(
             LiveActivityObservation.registration(for: T.self, identifier: identifier)

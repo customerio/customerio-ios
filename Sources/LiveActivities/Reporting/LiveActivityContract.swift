@@ -18,7 +18,7 @@ enum LiveActivityContract {
     enum Key {
         static let eventType = "eventType"
         static let registrationType = "registrationType"
-        static let instanceUUID = "instanceUUID"
+        static let cioInstanceId = "cioInstanceId"
         static let deviceId = "deviceId"
         static let platform = "platform"
         static let notificationType = "notificationType"

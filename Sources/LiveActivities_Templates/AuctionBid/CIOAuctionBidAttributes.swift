@@ -11,13 +11,14 @@ import ActivityKit
 ///
 /// Text fields (`header`, `title`, `subtitle`, `statusMessage`) are freeform slots rendered
 /// verbatim; the SDK never composes them.
-@available(iOS 17.2, *)
+@available(iOS 16.2, *)
 public struct CIOAuctionBidAttributes: CIOActivityAttribute {
     public static let identifier = "io.customer.liveactivities.auctionbid"
 
     // MARK: - Static attributes
 
-    public var activityInstanceId: String
+    /// SDK-managed correlation id; set by the SDK (local start) or backend (push-to-start). Omitted from init.
+    public var cioInstanceId: String = ""
     /// Optional top line, e.g. a brand or auction house label. Rendered verbatim.
     public var header: String?
     /// Display name of the item being auctioned. Rendered verbatim.
@@ -28,13 +29,11 @@ public struct CIOAuctionBidAttributes: CIOActivityAttribute {
     public var currencySymbol: String
 
     public init(
-        activityInstanceId: String,
         header: String? = nil,
         title: String,
         image: String? = nil,
         currencySymbol: String = "$"
     ) {
-        self.activityInstanceId = activityInstanceId
         self.header = header
         self.title = title
         self.image = image
@@ -51,7 +50,7 @@ public struct CIOAuctionBidAttributes: CIOActivityAttribute {
         /// Status label e.g. `"You're winning"`, `"You've been outbid"`, `"Auction ended"`. Rendered verbatim.
         public var statusMessage: String
         /// Auction end time, used to render a live countdown.
-        public var endTime: EpochMillisDate
+        public var endTime: EpochSecondsDate
         /// Hex color (e.g. `"#34C759"`) applied to the status message. `nil` uses the template tint.
         public var statusColor: String?
         /// Message shown when the activity becomes stale.
@@ -63,7 +62,7 @@ public struct CIOAuctionBidAttributes: CIOActivityAttribute {
             currentBid: String,
             subtitle: String? = nil,
             statusMessage: String,
-            endTime: EpochMillisDate,
+            endTime: EpochSecondsDate,
             statusColor: String? = nil,
             staleMessage: String? = nil,
             cioMetadata: CIOLiveActivityMetadata? = nil
