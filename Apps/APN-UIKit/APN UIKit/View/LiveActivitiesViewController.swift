@@ -142,7 +142,7 @@ final class LiveActivityDemoDriver<A: ActivityAttributes>: LiveActivityDemoDrivi
 }
 
 @available(iOS 17.2, *)
-private extension CIOLiveActivity {
+private extension CIOLiveActivity where Attributes.ContentState: Sendable {
     /// Fire-and-forget end used by the driver's synchronous `end()`.
     @MainActor
     func endDetached(_ finalContentState: Attributes.ContentState) {
