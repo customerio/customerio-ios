@@ -78,6 +78,18 @@ struct LiveActivitiesDeliveryTests {
         #expect(cap.metrics.count == 1)
     }
 
+    @Test func delivered_expiredMarker_reReports() {
+        // A dedup marker older than the 7-day TTL must not suppress a (practically impossible)
+        // re-report: the stale marker is ignored and the delivery is reported again.
+        let h = makeHarness()
+        h.store.setDeliveredMarker("d1", at: Date(timeIntervalSinceNow: -(7 * 24 * 60 * 60 + 60)))
+        h.tracker.reportDelivered(metadata: .init(deliveryId: "d1", deliveryToken: "t1"))
+        #expect(h.cap.metrics.count == 1)
+        // …and the refreshed marker now dedups again.
+        h.tracker.reportDelivered(metadata: .init(deliveryId: "d1", deliveryToken: "t1"))
+        #expect(h.cap.metrics.count == 1)
+    }
+
     @Test func opened_reportsEachTap_notDeduped() {
         let h = makeHarness()
         h.tracker.reportOpened(metadata: .init(deliveryId: "d1", deliveryToken: "t1"))

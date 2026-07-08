@@ -25,6 +25,14 @@ protocol LiveActivityTokenStorage {
     /// Remove all stored entries (e.g. full teardown), forcing re-registration.
     func clearAll()
 
+    /// Whether a still-fresh `delivered` dedup marker exists for `deliveryId` (reported less than
+    /// `ttl` ago). Markers older than `ttl` are pruned lazily (once per process) before answering,
+    /// so the delivery history stays bounded. Delivery markers live in their own storage map, so
+    /// registration-signature lookups never parse delivery history.
+    func hasFreshDeliveredMarker(_ deliveryId: String, ttl: TimeInterval) -> Bool
+    /// Record a `delivered` dedup marker for `deliveryId`, timestamped `date` (enables TTL expiry).
+    func setDeliveredMarker(_ deliveryId: String, at date: Date)
+
     /// Returns the CIO instance id mapped to a system `Activity.id`, creating and persisting one
     /// via `orCreate` if none exists yet. Atomic: concurrent callers (a local `start` and the
     /// registration observer picking up the same activity) resolve to a single id. Persisting the
