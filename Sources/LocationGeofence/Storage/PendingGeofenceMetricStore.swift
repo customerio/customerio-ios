@@ -32,16 +32,17 @@ actor PendingGeofenceMetricStore {
         self.directoryURL = directoryURL
     }
 
-    /// Appends a metric. When over capacity, drops the **oldest** entries first.
-    /// A row with the same `key` is a no-op.
+    /// Appends metrics in one read-modify-write so a transition's fan-out persists atomically —
+    /// a crash can't save some rows and lose the rest. Rows whose `key` already exists (on disk
+    /// or earlier in `metrics`) are a no-op. When over capacity, drops the **oldest** first.
     /// Returns `false` if the file could not be persisted.
-    func append(_ metric: PendingGeofenceMetric) -> Bool {
+    func append(_ metrics: [PendingGeofenceMetric]) -> Bool {
+        guard !metrics.isEmpty else { return true }
         var items = loadFromDisk()
-        if items.contains(where: { $0.key == metric.key }) {
-            // Already persisted — treat as success so the caller doesn't retry.
-            return true
+        var keys = Set(items.map(\.key))
+        for metric in metrics where keys.insert(metric.key).inserted {
+            items.append(metric)
         }
-        items.append(metric)
         if items.count > Self.maxEntries {
             items = Array(items.suffix(Self.maxEntries))
         }

@@ -256,10 +256,42 @@ struct GeofenceApiResponseTests {
     }
 
     @Test
+    func toDomainRegions_givenNumericGeosetIds_expectNormalizedToStrings() throws {
+        // The server contract: `geoset_ids` is `[]int64`, so ids arrive as JSON numbers. This is the
+        // common case and must always decode; we normalize to String for downstream flexibility.
+        let json = """
+        {"geofences":[{"id":"g1","latitude":1,"longitude":2,"radius":100,"geoset_ids":[1,3,7]}]}
+        """
+        let response = try decode(json)
+        #expect(response.toDomainRegions().first?.geosetIds == ["1", "3", "7"])
+    }
+
+    @Test
+    func toDomainRegions_givenLargeInt64GeosetId_expectNoPrecisionLoss() throws {
+        // int64 exceeds JSON/Double safe-integer range; decoding via Int64 (not Double) keeps large
+        // ids exact. 9007199254740993 (2^53 + 1) would collapse to ...992 through a Double.
+        let json = """
+        {"geofences":[{"id":"g1","latitude":1,"longitude":2,"radius":100,"geoset_ids":[9007199254740993]}]}
+        """
+        let response = try decode(json)
+        #expect(response.toDomainRegions().first?.geosetIds == ["9007199254740993"])
+    }
+
+    @Test
     func toDomainRegions_givenMissingGeosetIds_expectEmpty() throws {
         // Backend rolls `geoset_ids` out gradually; absent means no geoset membership.
         let json = """
         {"geofences":[{"id":"g1","latitude":1,"longitude":2,"radius":100}]}
+        """
+        let response = try decode(json)
+        #expect(response.toDomainRegions().first?.geosetIds == [])
+    }
+
+    @Test
+    func toDomainRegions_givenNullGeosetIds_expectEmpty() throws {
+        // Explicit JSON null must decode to no membership, not throw and fail the whole response.
+        let json = """
+        {"geofences":[{"id":"g1","latitude":1,"longitude":2,"radius":100,"geoset_ids":null}]}
         """
         let response = try decode(json)
         #expect(response.toDomainRegions().first?.geosetIds == [])

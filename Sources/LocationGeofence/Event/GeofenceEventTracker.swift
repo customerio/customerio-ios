@@ -83,12 +83,15 @@ final class GeofenceEventTracker: @unchecked Sendable {
         let cachedGeofence = await storage.getCachedGeofences().first { $0.id == geofenceId }
         let cachedName = cachedGeofence?.name
         let geofenceName = (cachedName?.isEmpty == false) ? cachedName : nil
-        // One standalone event per geoset, each carrying a scalar geosetId plus the
-        // geofence id/name as metadata, so segment and campaign matching needs no joins
-        // at ingest. No geoset membership (or the geofence has left the cache) emits a
-        // single event without a geosetId, preserving pre-geoset behavior.
-        let memberGeosetIds = cachedGeofence?.geosetIds ?? []
+        // One event per geoset (scalar geosetId + geofence id/name as metadata) so matching needs no
+        // joins; no geosets (or the fence left the cache) → one event without a geosetId.
+        // Dedupe geoset ids so a fence listing the same one twice doesn't emit duplicate events.
+        var seenGeosetIds = Set<String>()
+        let memberGeosetIds = (cachedGeofence?.geosetIds ?? []).filter { seenGeosetIds.insert($0).inserted }
         let geosetIds: [String?] = memberGeosetIds.isEmpty ? [nil] : memberGeosetIds
+        // One transitionId for the whole crossing so downstream correlates the fan-out as one
+        // transition; geosetId distinguishes the rows.
+        let transitionId = UUID().uuidString
         let metrics = geosetIds.map { geosetId in
             PendingGeofenceMetric(
                 geofenceId: geofenceId,
@@ -96,18 +99,21 @@ final class GeofenceEventTracker: @unchecked Sendable {
                 timestamp: now,
                 userId: stampedUserId,
                 name: geofenceName,
-                transitionId: UUID().uuidString,
+                transitionId: transitionId,
                 geosetId: geosetId
             )
         }
-        // Persist every row before any send attempt so an app kill mid-delivery
-        // loses none of the fan-out.
-        for metric in metrics {
-            _ = await pendingStore.append(metric)
-        }
+        // Persist all rows in one atomic write: a per-row loop could save some and lose the rest on
+        // an app kill, and the cooldown is already spent so the lost ones would never retry.
+        _ = await pendingStore.append(metrics)
 
-        for metric in metrics {
-            await deliver(metric: metric)
+        // Deliver concurrently so N geosets don't serialize N round-trips inside the OS's short
+        // background wake window. Safe: distinct keys (no dedup-claim collision), and rows are
+        // already persisted so any that don't finish are retried by flushPending.
+        await withTaskGroup(of: Void.self) { group in
+            for metric in metrics {
+                group.addTask { await self.deliver(metric: metric) }
+            }
         }
         await storage.purgeExpiredCooldowns(now: now, interval: interval)
     }

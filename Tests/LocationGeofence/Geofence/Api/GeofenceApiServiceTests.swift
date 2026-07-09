@@ -55,7 +55,7 @@ struct GeofenceApiServiceTests {
     }
 
     @Test
-    func fetchNearbyGeofences_givenCoordinate_expectLatLonQuerySentAsIs() async {
+    func fetchNearbyGeofences_givenCoordinate_expectPostToNearestWithJsonBody() async {
         let (service, runner) = makeService(store: makeStore())
         runner.requestClosure = { _, _, onComplete in
             onComplete("{\"geofences\":[]}".data(using: .utf8), makeOkResponse(), nil)
@@ -63,13 +63,17 @@ struct GeofenceApiServiceTests {
 
         await withCheckedContinuation { continuation in
             // The request carries no user identifier, so the exact coordinate is sent unmodified.
-            service.fetchNearbyGeofences(latitude: 37.7749295, longitude: -122.4194155) { _ in continuation.resume() }
+            service.fetchNearbyGeofences(latitude: 37.7749295, longitude: -122.4194155, radius: 20000) { _ in continuation.resume() }
         }
 
-        let url = runner.requestReceivedArguments?.params.url
-        let items = URLComponents(url: url!, resolvingAgainstBaseURL: false)?.queryItems
-        #expect(items?.first(where: { $0.name == "latitude" })?.value == "37.7749295")
-        #expect(items?.first(where: { $0.name == "longitude" })?.value == "-122.4194155")
+        let params = runner.requestReceivedArguments?.params
+        #expect(params?.method == "POST")
+        #expect(params?.url.absoluteString == "https://cdp.customer.io/v1/geofences/nearest")
+        #expect(params?.headers?["Content-Type"] == "application/json")
+        let body = (try? JSONSerialization.jsonObject(with: params?.body ?? Data())) as? [String: Double]
+        #expect(body?["latitude"] == 37.7749295)
+        #expect(body?["longitude"] == -122.4194155)
+        #expect(body?["radius"] == 20000)
     }
 
     @Test

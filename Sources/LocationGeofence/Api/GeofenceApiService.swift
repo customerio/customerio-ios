@@ -20,9 +20,11 @@ protocol GeofenceApiService: AutoMockable, Sendable {
 
     /// Fetch-nearby: returns the set ranked around the device location. The request carries no user
     /// identifier (only the workspace API key), so the coordinate can't be attributed to a person.
+    /// `radius` bounds the search in metres (the caller's server-fetch distance).
     func fetchNearbyGeofences(
         latitude: Double,
         longitude: Double,
+        radius: Double,
         completion: @escaping (Result<GeofenceApiResponse, GeofenceApiError>) -> Void
     )
 }
@@ -33,7 +35,8 @@ protocol GeofenceApiService: AutoMockable, Sendable {
 /// inside the injected stores/runner (already thread-safe). Lets callers invoke this from
 /// a `Task` without an isolation hop.
 final class GeofenceApiServiceImpl: GeofenceApiService, @unchecked Sendable {
-    private static let endpointPath = "/geofences/nearby"
+    private static let nearestPath = "/geofences/nearest"
+    private static let allPath = "/geofences/nearby"
 
     private let contextStore: BackgroundDeliveryContextStore
     private let requestRunner: HttpRequestRunner
@@ -55,22 +58,28 @@ final class GeofenceApiServiceImpl: GeofenceApiService, @unchecked Sendable {
     func fetchAllGeofences(
         completion: @escaping (Result<GeofenceApiResponse, GeofenceApiError>) -> Void
     ) {
-        request(queryItems: [], completion: completion)
+        request(path: Self.allPath, method: "GET", body: nil, completion: completion)
     }
 
     func fetchNearbyGeofences(
         latitude: Double,
         longitude: Double,
+        radius: Double,
         completion: @escaping (Result<GeofenceApiResponse, GeofenceApiError>) -> Void
     ) {
-        request(queryItems: [
-            URLQueryItem(name: "latitude", value: "\(latitude)"),
-            URLQueryItem(name: "longitude", value: "\(longitude)")
-        ], completion: completion)
+        let body: Data
+        do {
+            body = try JSONEncoder().encode(NearestRequest(latitude: latitude, longitude: longitude, radius: radius))
+        } catch {
+            return completion(.failure(.invalidRequest))
+        }
+        request(path: Self.nearestPath, method: "POST", body: body, completion: completion)
     }
 
     private func request(
-        queryItems: [URLQueryItem],
+        path: String,
+        method: String,
+        body: Data?,
         completion: @escaping (Result<GeofenceApiResponse, GeofenceApiError>) -> Void
     ) {
         guard let apiHost = contextStore.currentApiHost, !apiHost.isEmpty else {
@@ -79,18 +88,22 @@ final class GeofenceApiServiceImpl: GeofenceApiService, @unchecked Sendable {
         guard let cdpApiKey = contextStore.currentCdpApiKey, !cdpApiKey.isEmpty else {
             return completion(.failure(.missingCdpApiKey))
         }
-        guard let url = Self.composeUrl(apiHost: apiHost, queryItems: queryItems) else {
+        guard let url = Self.composeUrl(apiHost: apiHost, path: path) else {
             return completion(.failure(.invalidRequest))
         }
 
+        var headers: HttpHeaders = [
+            "Accept": "application/json",
+            "Authorization": "Basic \(BackgroundDeliveryHttp.basicAuthValue(cdpApiKey: cdpApiKey))"
+        ]
+        if body != nil {
+            headers["Content-Type"] = "application/json"
+        }
         let params = HttpRequestParams(
-            method: "GET",
+            method: method,
             url: url,
-            headers: [
-                "Accept": "application/json",
-                "Authorization": "Basic \(BackgroundDeliveryHttp.basicAuthValue(cdpApiKey: cdpApiKey))"
-            ],
-            body: nil
+            headers: headers,
+            body: body
         )
 
         requestRunner.request(params: params, session: session) { data, response, error in
@@ -113,13 +126,18 @@ final class GeofenceApiServiceImpl: GeofenceApiService, @unchecked Sendable {
         }
     }
 
-    /// Composes `https://{apiHost}/geofences/nearby` with the given query items (empty for
-    /// fetch-all). URLComponents handles percent-encoding for the query values.
-    static func composeUrl(apiHost: String, queryItems: [URLQueryItem]) -> URL? {
-        var components = URLComponents(string: BackgroundDeliveryHttp.absoluteHost(apiHost) + endpointPath)
-        components?.queryItems = queryItems.isEmpty ? nil : queryItems
-        return components?.url
+    /// Composes `https://{apiHost}{path}`. URLComponents normalizes the host + path.
+    static func composeUrl(apiHost: String, path: String) -> URL? {
+        URLComponents(string: BackgroundDeliveryHttp.absoluteHost(apiHost) + path)?.url
     }
+}
+
+/// Body of `POST /geofences/nearest`. `radius` bounds the search in metres; `limit` is optional
+/// server-side and omitted.
+private struct NearestRequest: Encodable {
+    let latitude: Double
+    let longitude: Double
+    let radius: Double
 }
 
 private extension JSONDecoder {
