@@ -100,55 +100,11 @@ class GeofenceApiServiceMock: @unchecked Sendable, GeofenceApiService, Mock {
     init() {}
 
     public func resetMock() {
-        _fetchAllGeofencesCallsCount.wrappedValue = 0
-        _fetchAllGeofencesReceivedArguments.wrappedValue = nil
-        _fetchAllGeofencesReceivedInvocations.wrappedValue = []
-
-        mockCalled = false // do last as resetting properties above can make this true
         _fetchNearbyGeofencesCallsCount.wrappedValue = 0
         _fetchNearbyGeofencesReceivedArguments.wrappedValue = nil
         _fetchNearbyGeofencesReceivedInvocations.wrappedValue = []
 
         mockCalled = false // do last as resetting properties above can make this true
-    }
-
-    // MARK: - fetchAllGeofences
-
-    /// Number of times the function was called.
-    private let _fetchAllGeofencesCallsCount: CioInternalCommon.Synchronized<Int> = .init(0)
-    var fetchAllGeofencesCallsCount: Int {
-        _fetchAllGeofencesCallsCount.wrappedValue
-    }
-
-    /// `true` if the function was ever called.
-    var fetchAllGeofencesCalled: Bool {
-        fetchAllGeofencesCallsCount > 0
-    }
-
-    /// The arguments from the *last* time the function was called.
-    private let _fetchAllGeofencesReceivedArguments: CioInternalCommon.Synchronized<((Result<GeofenceApiResponse, GeofenceApiError>) -> Void)?> = .init(nil)
-    var fetchAllGeofencesReceivedArguments: ((Result<GeofenceApiResponse, GeofenceApiError>) -> Void)? {
-        _fetchAllGeofencesReceivedArguments.wrappedValue
-    }
-
-    /// Arguments from *all* of the times that the function was called.
-    private let _fetchAllGeofencesReceivedInvocations: CioInternalCommon.Synchronized<[(Result<GeofenceApiResponse, GeofenceApiError>) -> Void]> = .init([])
-    var fetchAllGeofencesReceivedInvocations: [(Result<GeofenceApiResponse, GeofenceApiError>) -> Void] {
-        _fetchAllGeofencesReceivedInvocations.wrappedValue
-    }
-
-    /**
-     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
-     */
-    var fetchAllGeofencesClosure: ((@escaping (Result<GeofenceApiResponse, GeofenceApiError>) -> Void) -> Void)?
-
-    /// Mocked function for `fetchAllGeofences(completion: @escaping (Result<GeofenceApiResponse, GeofenceApiError>) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
-    func fetchAllGeofences(completion: @escaping (Result<GeofenceApiResponse, GeofenceApiError>) -> Void) {
-        mockCalled = true
-        _fetchAllGeofencesCallsCount += 1
-        _fetchAllGeofencesReceivedArguments.wrappedValue = completion
-        _fetchAllGeofencesReceivedInvocations.append(completion)
-        fetchAllGeofencesClosure?(completion)
     }
 
     // MARK: - fetchNearbyGeofences

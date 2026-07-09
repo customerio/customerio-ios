@@ -13,12 +13,7 @@ enum GeofenceApiError: Error, Equatable {
 
 /// Fetches geofences + workspace config from the CDP API.
 protocol GeofenceApiService: AutoMockable, Sendable {
-    /// Fetch-all: returns the full (capped) set with no location sent.
-    func fetchAllGeofences(
-        completion: @escaping (Result<GeofenceApiResponse, GeofenceApiError>) -> Void
-    )
-
-    /// Fetch-nearby: returns the set ranked around the device location. The request carries no user
+    /// Returns the geofence set ranked around the device location. The request carries no user
     /// identifier (only the workspace API key), so the coordinate can't be attributed to a person.
     /// `radius` bounds the search in metres (the caller's server-fetch distance).
     func fetchNearbyGeofences(
@@ -36,7 +31,6 @@ protocol GeofenceApiService: AutoMockable, Sendable {
 /// a `Task` without an isolation hop.
 final class GeofenceApiServiceImpl: GeofenceApiService, @unchecked Sendable {
     private static let nearestPath = "/geofences/nearest"
-    private static let allPath = "/geofences/nearby"
 
     private let contextStore: BackgroundDeliveryContextStore
     private let requestRunner: HttpRequestRunner
@@ -55,12 +49,6 @@ final class GeofenceApiServiceImpl: GeofenceApiService, @unchecked Sendable {
         self.logger = logger
     }
 
-    func fetchAllGeofences(
-        completion: @escaping (Result<GeofenceApiResponse, GeofenceApiError>) -> Void
-    ) {
-        request(path: Self.allPath, method: "GET", body: nil, completion: completion)
-    }
-
     func fetchNearbyGeofences(
         latitude: Double,
         longitude: Double,
@@ -73,13 +61,12 @@ final class GeofenceApiServiceImpl: GeofenceApiService, @unchecked Sendable {
         } catch {
             return completion(.failure(.invalidRequest))
         }
-        request(path: Self.nearestPath, method: "POST", body: body, completion: completion)
+        post(path: Self.nearestPath, body: body, completion: completion)
     }
 
-    private func request(
+    private func post(
         path: String,
-        method: String,
-        body: Data?,
+        body: Data,
         completion: @escaping (Result<GeofenceApiResponse, GeofenceApiError>) -> Void
     ) {
         guard let apiHost = contextStore.currentApiHost, !apiHost.isEmpty else {
@@ -92,15 +79,13 @@ final class GeofenceApiServiceImpl: GeofenceApiService, @unchecked Sendable {
             return completion(.failure(.invalidRequest))
         }
 
-        var headers: HttpHeaders = [
+        let headers: HttpHeaders = [
             "Accept": "application/json",
+            "Content-Type": "application/json",
             "Authorization": "Basic \(BackgroundDeliveryHttp.basicAuthValue(cdpApiKey: cdpApiKey))"
         ]
-        if body != nil {
-            headers["Content-Type"] = "application/json"
-        }
         let params = HttpRequestParams(
-            method: method,
+            method: "POST",
             url: url,
             headers: headers,
             body: body
@@ -132,7 +117,7 @@ final class GeofenceApiServiceImpl: GeofenceApiService, @unchecked Sendable {
     }
 }
 
-/// Body of `POST /geofences/nearest`. `radius` bounds the search in metres; `limit` is optional
+/// Body of the nearby geofence fetch. `radius` bounds the search in metres; `limit` is optional
 /// server-side and omitted.
 private struct NearestRequest: Encodable {
     let latitude: Double

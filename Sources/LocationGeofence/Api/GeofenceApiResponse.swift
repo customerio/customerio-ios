@@ -1,7 +1,7 @@
 import CioInternalCommon
 import Foundation
 
-/// Wire shape of `GET /geofences/nearby`. Every field on `config` and per-region
+/// Wire shape of the nearby geofence fetch response. Every field on `config` and per-region
 /// `transitionTypes` / `lastUpdated` is optional so backend can roll fields out
 /// gradually; per-field fallbacks live in `toDomain`.
 struct GeofenceApiResponse: Decodable {

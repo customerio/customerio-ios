@@ -24,11 +24,11 @@ extension GeofenceSyncCoordinatorImpl {
         return .skip
     }
 
-    /// In `fetchNearby`, true once the device has moved beyond the refetch radius from the fetch
-    /// anchor — the cached set was ranked around that anchor and no longer covers the area. Always
-    /// false for `fetchAll` (it holds the whole workspace) or when there's no anchor to measure from.
+    /// True once the device has moved beyond the refetch radius from the fetch anchor — the cached
+    /// set was ranked around that anchor and no longer covers the area. False when there's no anchor
+    /// to measure from.
     func movedBeyondRefetchRadius(from anchor: LocationData?, to location: LocationData, config: GeofenceConfig) -> Bool {
-        guard syncMode == .fetchNearby, let anchor else { return false }
+        guard let anchor else { return false }
         return distance(from: anchor, to: location) >= config.remoteFetchRefreshTriggerRadius
     }
 
