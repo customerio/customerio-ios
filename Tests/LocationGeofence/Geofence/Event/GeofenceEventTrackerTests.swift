@@ -37,7 +37,8 @@ struct GeofenceEventTrackerTests {
         deliveryTracker: GeofenceDeliveryTracker,
         contextStore: BackgroundDeliveryContextStore,
         eventBus: EventBusHandlerMock = EventBusHandlerMock(),
-        dateUtil: DateUtil = DateUtilStub()
+        dateUtil: DateUtil = DateUtilStub(),
+        backgroundTaskRunner: BackgroundTaskRunner = NoBackgroundTaskRunner()
     ) -> GeofenceEventTracker {
         GeofenceEventTracker(
             storage: storage,
@@ -47,7 +48,8 @@ struct GeofenceEventTrackerTests {
             eventBusHandler: eventBus,
             dateUtil: dateUtil,
             logger: LoggerMock(),
-            cooldownInterval: cooldownInterval
+            cooldownInterval: cooldownInterval,
+            backgroundTaskRunner: backgroundTaskRunner
         )
     }
 
@@ -824,5 +826,106 @@ struct GeofenceEventTrackerTests {
         // The cooldown gates the physical transition, before fan-out: the second
         // enter produces zero additional deliveries, not a partial fan-out.
         #expect(delivery.trackMetricCallsCount == 2)
+    }
+
+    // MARK: - Background task assertion
+
+    @Test
+    func trackTransition_expectDeliveryRunsInsideBackgroundTask() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let pending = makePendingStore(directory: dir)
+        let runner = SpyBackgroundTaskRunner()
+        let delivery = GeofenceDeliveryTrackerMock()
+        delivery.trackMetricClosure = { _, _, onComplete in
+            runner.record("deliver")
+            onComplete(.success(()))
+        }
+        let tracker = makeTracker(
+            storage: makeStorage(directory: dir),
+            pendingStore: pending,
+            deliveryTracker: delivery,
+            contextStore: makeContextStore(userId: "user_42"),
+            backgroundTaskRunner: runner
+        )
+
+        await tracker.trackTransition(geofenceId: "geo_1", transition: .enter)
+
+        // Delivery is bracketed by the assertion so the OS keeps the app alive through the send.
+        #expect(runner.callCount.wrappedValue == 1)
+        #expect(runner.events.wrappedValue == ["begin", "deliver", "end"])
+    }
+
+    @Test
+    func flushPending_givenQueuedRow_expectReplayRunsInsideBackgroundTask() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let pending = makePendingStore(directory: dir)
+        _ = await pending.append([
+            PendingGeofenceMetric(
+                geofenceId: "geo_1",
+                transition: .enter,
+                timestamp: Date(timeIntervalSince1970: 1700000000),
+                userId: "user_42",
+                name: nil,
+                transitionId: "txn_1",
+                geosetId: nil
+            )
+        ])
+        let runner = SpyBackgroundTaskRunner()
+        let delivery = GeofenceDeliveryTrackerMock()
+        delivery.trackMetricClosure = { _, _, onComplete in
+            runner.record("deliver")
+            onComplete(.success(()))
+        }
+        let tracker = makeTracker(
+            storage: makeStorage(directory: dir),
+            pendingStore: pending,
+            deliveryTracker: delivery,
+            contextStore: makeContextStore(userId: "user_42"),
+            backgroundTaskRunner: runner
+        )
+
+        await tracker.flushPending()
+
+        #expect(runner.callCount.wrappedValue == 1)
+        #expect(runner.events.wrappedValue == ["begin", "deliver", "end"])
+    }
+
+    @Test
+    func flushPending_givenEmptyQueue_expectNoBackgroundTaskRequested() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let runner = SpyBackgroundTaskRunner()
+        let tracker = makeTracker(
+            storage: makeStorage(directory: dir),
+            pendingStore: makePendingStore(directory: dir),
+            deliveryTracker: GeofenceDeliveryTrackerMock(),
+            contextStore: makeContextStore(userId: "user_42"),
+            backgroundTaskRunner: runner
+        )
+
+        await tracker.flushPending()
+
+        // Nothing to replay → no background time requested.
+        #expect(runner.callCount.wrappedValue == 0)
+    }
+}
+
+/// Records begin/end around the work and lets the work append its own markers, so tests can assert
+/// delivery runs strictly inside the assertion window.
+private final class SpyBackgroundTaskRunner: BackgroundTaskRunner, @unchecked Sendable {
+    let callCount = Synchronized(0)
+    let events = Synchronized<[String]>([])
+
+    func record(_ event: String) {
+        events.mutating { $0.append(event) }
+    }
+
+    func withBackgroundTime(_ work: @Sendable () async -> Void) async {
+        callCount.mutating { $0 += 1 }
+        record("begin")
+        await work()
+        record("end")
     }
 }
