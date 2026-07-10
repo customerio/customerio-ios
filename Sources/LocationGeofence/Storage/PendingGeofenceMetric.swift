@@ -17,6 +17,9 @@ struct PendingGeofenceMetric: Codable, Equatable, Sendable, GeofenceMetric {
     /// One physical transition of a geofence in N geosets produces N rows, one per geoset.
     /// Optional so rows persisted by pre-geoset SDK versions still decode.
     let geosetId: String?
+    /// Snapshot of the geofence's metadata at transition, the fallback when `deliver` can't find
+    /// the geofence in cache. Optional so rows persisted before metadata still decode.
+    let metadata: [String: GeofenceMetadataValue]?
 
     /// Composite key over `(geofenceId, transition, timestamp_sec, geosetId)` used for
     /// storage-layer dedup. Matches Android's `PendingGeofenceDelivery.key`.
@@ -37,7 +40,8 @@ struct PendingGeofenceMetric: Codable, Equatable, Sendable, GeofenceMetric {
         userId: String?,
         name: String?,
         transitionId: String,
-        geosetId: String? = nil
+        geosetId: String? = nil,
+        metadata: [String: GeofenceMetadataValue]? = nil
     ) {
         self.geofenceId = geofenceId
         self.transition = transition
@@ -46,6 +50,7 @@ struct PendingGeofenceMetric: Codable, Equatable, Sendable, GeofenceMetric {
         self.name = name
         self.transitionId = transitionId
         self.geosetId = geosetId
+        self.metadata = metadata
     }
 
     enum CodingKeys: String, CodingKey {
@@ -56,5 +61,21 @@ struct PendingGeofenceMetric: Codable, Equatable, Sendable, GeofenceMetric {
         case name = "geofence_name"
         case transitionId = "transition_id"
         case geosetId = "geoset_id"
+        case metadata
+    }
+
+    /// Returns a copy with `name`/`metadata` replaced (used to prefer live cached values at send).
+    /// All other fields, including the dedup `key` inputs, are unchanged.
+    func withResolved(name: String?, metadata: [String: GeofenceMetadataValue]?) -> PendingGeofenceMetric {
+        PendingGeofenceMetric(
+            geofenceId: geofenceId,
+            transition: transition,
+            timestamp: timestamp,
+            userId: userId,
+            name: name,
+            transitionId: transitionId,
+            geosetId: geosetId,
+            metadata: metadata
+        )
     }
 }

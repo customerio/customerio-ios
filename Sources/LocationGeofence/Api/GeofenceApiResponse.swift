@@ -36,11 +36,15 @@ struct GeofenceApiRegion: Decodable {
     let lastUpdated: Double?
     /// IDs of the geosets this geofence belongs to; missing or empty means none.
     let geosetIds: [String]?
+    /// Workspace-defined metadata; missing or empty means none. Scalar values (string/number/bool)
+    /// keep their type; null/array/object values are dropped during decode rather than failing the
+    /// whole region.
+    let metadata: [String: GeofenceMetadataValue]?
 }
 
 extension GeofenceApiRegion {
     private enum CodingKeys: String, CodingKey {
-        case id, name, latitude, longitude, radius, externalId, transitionTypes, lastUpdated, geosetIds
+        case id, name, latitude, longitude, radius, externalId, transitionTypes, lastUpdated, geosetIds, metadata
     }
 
     /// `id` and `geoset_ids` are `int64` on the wire but strings in some mocked/legacy payloads;
@@ -57,6 +61,18 @@ extension GeofenceApiRegion {
         self.transitionTypes = try container.decodeIfPresent([String].self, forKey: .transitionTypes)
         self.lastUpdated = try container.decodeIfPresent(Double.self, forKey: .lastUpdated)
         self.geosetIds = try container.decodeStringOrIntArrayIfPresent(forKey: .geosetIds)
+        self.metadata = try container.decodeMetadataIfPresent(forKey: .metadata)
+    }
+}
+
+/// A metadata value that never throws on decode: a scalar (string/number/bool) keeps its type, and
+/// a null/array/object maps to `nil` so one bad entry doesn't fail the whole region. Used only at the
+/// API boundary.
+private struct LenientMetadataValue: Decodable {
+    let value: GeofenceMetadataValue?
+
+    init(from decoder: Decoder) throws {
+        self.value = try? GeofenceMetadataValue(from: decoder)
     }
 }
 
@@ -67,6 +83,16 @@ private extension KeyedDecodingContainer {
     func decodeStringOrInt(forKey key: Key) throws -> String {
         if let int = try? decode(Int64.self, forKey: key) { return String(int) }
         return try decode(String.self, forKey: key)
+    }
+
+    /// Metadata can never fail the region: a wrong-typed block (not an object) or absent/null/empty →
+    /// nil, and non-scalar (array/object/null) values inside are dropped so a single bad value is
+    /// skipped rather than failing decode; scalars keep their type.
+    func decodeMetadataIfPresent(forKey key: Key) throws -> [String: GeofenceMetadataValue]? {
+        guard contains(key), try !decodeNil(forKey: key) else { return nil }
+        guard let raw = try? decode([String: LenientMetadataValue].self, forKey: key) else { return nil }
+        let filtered = raw.compactMapValues(\.value)
+        return filtered.isEmpty ? nil : filtered
     }
 
     /// Absent or null → nil, so a not-yet-rolled-out field is treated as "no value" rather than throwing.
@@ -156,7 +182,8 @@ extension GeofenceApiRegion {
             name: name ?? "",
             transitionTypes: Self.resolveTransitionTypes(transitionTypes),
             lastUpdated: lastUpdated.map { Date(timeIntervalSince1970: $0 / 1000) } ?? Date(timeIntervalSince1970: 0),
-            geosetIds: geosetIds ?? []
+            geosetIds: geosetIds ?? [],
+            metadata: Self.cappedMetadata(metadata)
         )
     }
 
@@ -165,5 +192,33 @@ extension GeofenceApiRegion {
         guard let raw, !raw.isEmpty else { return defaults }
         let parsed = Set(raw.compactMap { GeofenceTransition(rawValue: $0.lowercased()) })
         return parsed.isEmpty ? defaults : parsed
+    }
+
+    /// Safety net so a runaway payload can't bloat a request in the short background wake: keeps
+    /// entries (sorted by key for determinism) until either the count cap or the total key+value byte
+    /// budget is hit. Per-value size is left to the server, which fully validates metadata.
+    private static func cappedMetadata(_ metadata: [String: GeofenceMetadataValue]?) -> [String: GeofenceMetadataValue] {
+        guard let metadata, !metadata.isEmpty else { return [:] }
+        var result: [String: GeofenceMetadataValue] = [:]
+        var totalBytes = 0
+        for (key, value) in metadata.sorted(by: { $0.key < $1.key }) {
+            guard result.count < GeofenceConstants.maxMetadataCount else { break }
+            totalBytes += key.utf8.count + value.byteCount
+            guard totalBytes <= GeofenceConstants.maxMetadataPayloadBytes else { break }
+            result[key] = value
+        }
+        return result
+    }
+}
+
+private extension GeofenceMetadataValue {
+    /// Serialized byte size for the payload budget: string UTF-8 length, or the numeric/bool text length.
+    var byteCount: Int {
+        switch self {
+        case .string(let value): return value.utf8.count
+        case .int(let value): return String(value).utf8.count
+        case .double(let value): return String(value).utf8.count
+        case .bool(let value): return value ? 4 : 5
+        }
     }
 }

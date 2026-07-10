@@ -174,6 +174,9 @@ public struct TrackGeofenceMetricEvent: EventRepresentable, GeofenceMetric {
     /// The geoset this event was fanned out for, or `nil` when the geofence is in no geoset.
     /// Optional with a decode fallback so events persisted by pre-geoset SDK versions replay.
     public let geosetId: String?
+    /// Workspace-defined geofence metadata, or `nil` when none. Optional so events persisted before
+    /// metadata still replay.
+    public let metadata: [String: GeofenceMetadataValue]?
 
     public init(
         storageId: String = UUID().uuidString,
@@ -183,6 +186,7 @@ public struct TrackGeofenceMetricEvent: EventRepresentable, GeofenceMetric {
         name: String?,
         transitionId: String,
         geosetId: String? = nil,
+        metadata: [String: GeofenceMetadataValue]? = nil,
         params: [String: String] = [:]
     ) {
         self.storageId = storageId
@@ -193,6 +197,7 @@ public struct TrackGeofenceMetricEvent: EventRepresentable, GeofenceMetric {
         self.name = name
         self.transitionId = transitionId
         self.geosetId = geosetId
+        self.metadata = metadata
     }
 }
 

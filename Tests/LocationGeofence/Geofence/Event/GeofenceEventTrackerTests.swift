@@ -635,6 +635,149 @@ struct GeofenceEventTrackerTests {
         #expect(await pending.loadAll().first?.name == nil)
     }
 
+    // MARK: - Metadata (snapshot + prefer-live)
+
+    private func seedGeofence(_ storage: GeofenceStorage, id: String, name: String, metadata: [String: GeofenceMetadataValue]) async {
+        await storage.setCachedGeofences([
+            Geofence(
+                id: id, latitude: 1, longitude: 2, radius: 100,
+                name: name, transitionTypes: [.enter], lastUpdated: Date(timeIntervalSince1970: 0),
+                metadata: metadata
+            )
+        ])
+    }
+
+    @Test
+    func trackTransition_givenCachedGeofenceWithMetadata_expectMetricCarriesSnapshot() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let storage = makeStorage(directory: dir)
+        await seedGeofence(storage, id: "geo_1", name: "HQ", metadata: ["category": .string("office")])
+        let pending = makePendingStore(directory: dir)
+        let delivery = GeofenceDeliveryTrackerMock()
+        // Fail so the row survives on disk for inspection.
+        delivery.trackMetricClosure = { _, _, onComplete in onComplete(.failure(.http(statusCode: 503))) }
+        let tracker = makeTracker(
+            storage: storage,
+            pendingStore: pending,
+            deliveryTracker: delivery,
+            contextStore: makeContextStore(userId: "user_42")
+        )
+
+        await tracker.trackTransition(geofenceId: "geo_1", transition: .enter)
+
+        #expect(await pending.loadAll().first?.metadata == ["category": .string("office")])
+    }
+
+    @Test
+    func deliver_givenMetadataChangedAfterCapture_expectFreshMetadataSent() async {
+        // Prefer-live: an metadata edit between capture and a later flush goes out current.
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let storage = makeStorage(directory: dir)
+        await seedGeofence(storage, id: "geo_1", name: "HQ", metadata: ["tier": .string("gold")])
+        let pending = makePendingStore(directory: dir)
+        let failing = GeofenceDeliveryTrackerMock()
+        failing.trackMetricClosure = { _, _, onComplete in onComplete(.failure(.transport)) }
+        let priorTracker = makeTracker(
+            storage: storage, pendingStore: pending, deliveryTracker: failing,
+            contextStore: makeContextStore(userId: "user_42")
+        )
+        await priorTracker.trackTransition(geofenceId: "geo_1", transition: .enter) // snapshot gold, persisted
+
+        // Server updated the tier; the cache now reflects it.
+        await seedGeofence(storage, id: "geo_1", name: "HQ", metadata: ["tier": .string("platinum")])
+        let delivery = GeofenceDeliveryTrackerMock()
+        delivery.trackMetricClosure = { _, _, onComplete in onComplete(.success(())) }
+        let tracker = makeTracker(
+            storage: storage, pendingStore: pending, deliveryTracker: delivery,
+            contextStore: makeContextStore(userId: "user_42")
+        )
+
+        await tracker.flushPending()
+
+        #expect(delivery.trackMetricReceivedArguments?.metric.metadata == ["tier": .string("platinum")])
+    }
+
+    @Test
+    func deliver_givenGeofenceEvictedAfterCapture_expectSnapshotMetadataSent() async {
+        // Fallback: the geofence left the cache (e.g. a refetch) → the row snapshot is used.
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let storage = makeStorage(directory: dir)
+        await seedGeofence(storage, id: "geo_1", name: "HQ", metadata: ["tier": .string("gold")])
+        let pending = makePendingStore(directory: dir)
+        let failing = GeofenceDeliveryTrackerMock()
+        failing.trackMetricClosure = { _, _, onComplete in onComplete(.failure(.transport)) }
+        let priorTracker = makeTracker(
+            storage: storage, pendingStore: pending, deliveryTracker: failing,
+            contextStore: makeContextStore(userId: "user_42")
+        )
+        await priorTracker.trackTransition(geofenceId: "geo_1", transition: .enter)
+
+        await storage.setCachedGeofences([]) // geofence evicted
+
+        let delivery = GeofenceDeliveryTrackerMock()
+        delivery.trackMetricClosure = { _, _, onComplete in onComplete(.success(())) }
+        let tracker = makeTracker(
+            storage: storage, pendingStore: pending, deliveryTracker: delivery,
+            contextStore: makeContextStore(userId: "user_42")
+        )
+
+        await tracker.flushPending()
+
+        #expect(delivery.trackMetricReceivedArguments?.metric.metadata == ["tier": .string("gold")])
+    }
+
+    @Test
+    func trackTransition_givenAnonymousAndCachedMetadata_expectEventBusEventCarriesMetadata() async {
+        // The EventBus (anonymous) path must carry metadata too, not just the HTTP path.
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let storage = makeStorage(directory: dir)
+        await seedGeofence(storage, id: "geo_1", name: "HQ", metadata: ["tier": .string("gold")])
+        let pending = makePendingStore(directory: dir)
+        let bus = EventBusHandlerMock()
+        let tracker = makeTracker(
+            storage: storage, pendingStore: pending,
+            deliveryTracker: GeofenceDeliveryTrackerMock(),
+            contextStore: makeContextStore(), eventBus: bus
+        )
+
+        await tracker.trackTransition(geofenceId: "geo_1", transition: .enter)
+
+        #expect(postedGeofenceEvents(from: bus).first?.metadata == ["tier": .string("gold")])
+    }
+
+    @Test
+    func deliver_givenNameChangedAfterCapture_expectFreshNameSent() async {
+        // Prefer-live applies to name too, not just metadata.
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let storage = makeStorage(directory: dir)
+        await seedGeofence(storage, id: "geo_1", name: "Old HQ", metadata: [:])
+        let pending = makePendingStore(directory: dir)
+        let failing = GeofenceDeliveryTrackerMock()
+        failing.trackMetricClosure = { _, _, onComplete in onComplete(.failure(.transport)) }
+        let priorTracker = makeTracker(
+            storage: storage, pendingStore: pending, deliveryTracker: failing,
+            contextStore: makeContextStore(userId: "user_42")
+        )
+        await priorTracker.trackTransition(geofenceId: "geo_1", transition: .enter)
+
+        await seedGeofence(storage, id: "geo_1", name: "New HQ", metadata: [:])
+        let delivery = GeofenceDeliveryTrackerMock()
+        delivery.trackMetricClosure = { _, _, onComplete in onComplete(.success(())) }
+        let tracker = makeTracker(
+            storage: storage, pendingStore: pending, deliveryTracker: delivery,
+            contextStore: makeContextStore(userId: "user_42")
+        )
+
+        await tracker.flushPending()
+
+        #expect(delivery.trackMetricReceivedArguments?.metric.name == "New HQ")
+    }
+
     // MARK: - Geoset fan-out
 
     private func seedGeofence(_ storage: GeofenceStorage, id: String, name: String, geosetIds: [String]) async {
