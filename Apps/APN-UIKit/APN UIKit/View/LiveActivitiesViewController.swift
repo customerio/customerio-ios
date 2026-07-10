@@ -335,7 +335,15 @@ class LiveActivitiesViewController: BaseViewController {
             )
             let content = ActivityContent(state: state, staleDate: nil)
             let activity = try Activity.request(attributes: attributes, content: content, pushType: nil)
-            adoptHandle = AppDelegate.liveActivities?.adopt(activity)
+            guard let liveActivities = AppDelegate.liveActivities else {
+                // SDK not initialized: don't leave the just-created system activity orphaned, and
+                // don't flip the UI to "End Adopted" when there's no handle to end it with.
+                appendLog("Adopt: SDK not initialized — ending orphaned activity")
+                showToast(withMessage: "SDK not initialized")
+                Task { await activity.end(nil, dismissalPolicy: .immediate) }
+                return
+            }
+            adoptHandle = liveActivities.adopt(activity)
             adoptButton?.setTitle("End Adopted", for: .normal)
             appendLog("Adopt: app-created activity adopted")
         } catch {
@@ -371,8 +379,15 @@ class LiveActivitiesViewController: BaseViewController {
     }
 
     private func triggerUnknownType() {
+        guard let liveActivities = AppDelegate.liveActivities else {
+            // Optional-chaining `try liveActivities?.start` would short-circuit on nil without
+            // throwing, so the catch below would never run and we'd log a false success.
+            appendLog("Unknown type: SDK not initialized")
+            showToast(withMessage: "SDK not initialized")
+            return
+        }
         do {
-            _ = try AppDelegate.liveActivities?.start(
+            _ = try liveActivities.start(
                 UnregisteredDemoAttributes(),
                 contentState: UnregisteredDemoAttributes.sampleState
             )

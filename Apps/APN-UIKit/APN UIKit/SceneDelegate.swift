@@ -15,6 +15,11 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
         window = UIWindow(windowScene: windowScene)
         setVisibleWindow()
+
+        // On a cold launch from a Live Activity tap, iOS delivers the `widgetURL` here in
+        // `connectionOptions.urlContexts` rather than via `scene(_:openURLContexts:)`. Route it
+        // through the same path so the deep link opens and the SDK reports the `opened` metric.
+        handle(urlContexts: connectionOptions.urlContexts)
     }
 
     func sceneDidDisconnect(_ scene: UIScene) {
@@ -63,7 +68,11 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
     // Opens one or more URLs, handles deep link for the apps
     func scene(_ scene: UIScene, openURLContexts URLContexts: Set<UIOpenURLContext>) {
-        for context in URLContexts {
+        handle(urlContexts: URLContexts)
+    }
+
+    private func handle(urlContexts: Set<UIOpenURLContext>) {
+        for context in urlContexts {
             let url = context.url
             if #available(iOS 17.2, *) {
                 // Live Activity tap: let the SDK report an `opened` metric (no-op for non-CIO URLs),
