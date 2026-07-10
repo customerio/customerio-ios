@@ -35,6 +35,7 @@ final class LiveActivityObserver: @unchecked Sendable {
     private let store: LiveActivityTokenStorage
     private let onUserDismissed: @Sendable (_ notificationType: String, _ cioInstanceId: String) -> Void
     private let onContentMetadata: @Sendable (_ notificationType: String, _ cioInstanceId: String, _ metadata: CIOLiveActivityMetadata) -> Void
+    private let onActivityEnded: @Sendable (_ cioInstanceId: String) -> Void
 
     /// Running root tasks keyed by notificationType.
     private let tasks = Synchronized<[String: Task<Void, Never>]>([:])
@@ -45,7 +46,8 @@ final class LiveActivityObserver: @unchecked Sendable {
         localEndTracker: LiveActivityLocalEndTracker,
         store: LiveActivityTokenStorage,
         onUserDismissed: @escaping @Sendable (_ notificationType: String, _ cioInstanceId: String) -> Void,
-        onContentMetadata: @escaping @Sendable (_ notificationType: String, _ cioInstanceId: String, _ metadata: CIOLiveActivityMetadata) -> Void
+        onContentMetadata: @escaping @Sendable (_ notificationType: String, _ cioInstanceId: String, _ metadata: CIOLiveActivityMetadata) -> Void,
+        onActivityEnded: @escaping @Sendable (_ cioInstanceId: String) -> Void
     ) {
         self.registrations = registrations
         self.registrar = registrar
@@ -53,6 +55,7 @@ final class LiveActivityObserver: @unchecked Sendable {
         self.store = store
         self.onUserDismissed = onUserDismissed
         self.onContentMetadata = onContentMetadata
+        self.onActivityEnded = onActivityEnded
     }
 
     func start() {
@@ -85,6 +88,7 @@ final class LiveActivityObserver: @unchecked Sendable {
         let store = self.store
         let onUserDismissed = self.onUserDismissed
         let onContentMetadata = self.onContentMetadata
+        let onActivityEnded = self.onActivityEnded
         let identifier = registration.activityIdentifier
         let attributesType = registration.attributesTypeName
 
@@ -97,6 +101,9 @@ final class LiveActivityObserver: @unchecked Sendable {
             },
             onActivityEnded: { instanceId in
                 registrar.handleActivityEnded(instanceUUID: instanceId)
+                // Notify the module so it can evict any per-instance state (e.g. deep-link
+                // metadata) — a terminated activity must not keep matching later opens.
+                onActivityEnded(instanceId)
             },
             onUserDismissed: { instanceId in
                 onUserDismissed(identifier, instanceId)

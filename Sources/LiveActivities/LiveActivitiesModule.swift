@@ -110,6 +110,11 @@ public final class LiveActivitiesModule {
                 // `delivered` receipt (deduped by delivery id) and remember the tap destination.
                 latestMetadata.mutating { $0[cioInstanceId] = metadata }
                 deliveryTracker.reportDelivered(metadata: metadata)
+            },
+            onActivityEnded: { [latestMetadata] cioInstanceId in
+                // Drop the tap destination once the activity terminates, so a later open of the same
+                // URL can't be misattributed to this (ended) delivery.
+                latestMetadata.mutating { $0[cioInstanceId] = nil }
             }
         )
     }
@@ -197,9 +202,13 @@ public final class LiveActivitiesModule {
     @discardableResult
     public func handleDeepLinkOpen(_ url: URL) -> Bool {
         let target = url.absoluteString
-        guard let metadata = latestMetadata.wrappedValue.values.first(where: { $0.deepLink == target }) else {
-            return false
+        let matched: CIOLiveActivityMetadata? = latestMetadata.mutating { map in
+            guard let key = map.first(where: { $0.value.deepLink == target })?.key else { return nil }
+            // Attribute the open exactly once: remove the entry so a repeated open of the same URL
+            // isn't reported again against an activity we've already credited.
+            return map.removeValue(forKey: key)
         }
+        guard let metadata = matched else { return false }
         deliveryTracker.reportOpened(metadata: metadata)
         return true
     }
@@ -211,6 +220,13 @@ public final class LiveActivitiesModule {
     }
 
     private func performInitialization() {
+        // Apply the optional module log-level override. The SDK exposes a single shared logger, so
+        // this raises/lowers the level used by Live Activities logging (and the shared logger with it);
+        // when `nil` the existing SDK-wide level is left untouched.
+        if let logLevel = config.logLevel {
+            sdk.logger.setLogLevel(logLevel)
+        }
+
         sdk.logger.debug("LiveActivities module initialized.", "LiveActivities")
 
         identity.deviceToken = sdk.registeredDeviceToken
