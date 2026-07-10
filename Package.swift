@@ -20,6 +20,7 @@ var products: [PackageDescription.Product] = [
     .library(name: "MessagingPushFCM", targets: ["CioMessagingPushFCM"]),
     .library(name: "MessagingInApp", targets: ["CioMessagingInApp"]),
     .library(name: "Location", targets: ["CioLocation"]),
+    .library(name: "LiveActivities", targets: ["CioLiveActivities"]),
     .library(name: "LiveActivities_Attributes", targets: ["CioLiveActivities_Attributes"])
 ]
 
@@ -175,5 +176,13 @@ let package = Package(
         .target(name: "CioLiveActivities_Attributes",
                 dependencies: [],
                 path: "Sources/LiveActivities_Attributes"),
+
+        // Live Activities — observation module.
+        .target(name: "CioLiveActivities",
+                dependencies: ["CioInternalCommon", "CioLiveActivities_Attributes"],
+                path: "Sources/LiveActivities"),
+        .testTarget(name: "LiveActivitiesTests",
+                    dependencies: ["CioLiveActivities", "CioInternalCommon"],
+                    path: "Tests/LiveActivities"),
     ]
 )
