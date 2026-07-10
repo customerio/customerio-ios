@@ -85,9 +85,10 @@ final class GeofenceEventTracker: @unchecked Sendable {
         let geofenceName = (cachedName?.isEmpty == false) ? cachedName : nil
         // One event per geoset (scalar geosetId + geofence id/name as metadata) so matching needs no
         // joins; no geosets (or the fence left the cache) → one event without a geosetId.
-        // Dedupe geoset ids so a fence listing the same one twice doesn't emit duplicate events.
+        // Dedupe geoset ids, and drop blanks, so a fence listing the same one twice — or an empty
+        // id — doesn't emit a duplicate or a stray empty-geoset event.
         var seenGeosetIds = Set<String>()
-        let memberGeosetIds = (cachedGeofence?.geosetIds ?? []).filter { seenGeosetIds.insert($0).inserted }
+        let memberGeosetIds = (cachedGeofence?.geosetIds ?? []).filter { !$0.isEmpty && seenGeosetIds.insert($0).inserted }
         let geosetIds: [String?] = memberGeosetIds.isEmpty ? [nil] : memberGeosetIds
         // One transitionId for the whole crossing so downstream correlates the fan-out as one
         // transition; geosetId distinguishes the rows.
