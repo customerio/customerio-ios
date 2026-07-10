@@ -65,12 +65,6 @@
 		6842752D2F3349A7006A4EF0 /* LocationTestViewController+Keyboard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6842752C2F3349A7006A4EF0 /* LocationTestViewController+Keyboard.swift */; };
 		6842752F2F3349A7006A4EF0 /* LocationTestViewController+CLLocationManagerDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6842752E2F3349A7006A4EF0 /* LocationTestViewController+CLLocationManagerDelegate.swift */; };
 		684275312F3349A7006A4EF0 /* LocationTestViewController+UITextFieldDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 684275302F3349A7006A4EF0 /* LocationTestViewController+UITextFieldDelegate.swift */; };
-		71806CD668414813AED2D51A /* chica_logo.png in Resources */ = {isa = PBXBuildFile; fileRef = C166C59B389F438F9654DB27 /* chica_logo.png */; };
-		A1B2C3D4E5F60718293A4B5C /* chica_thumb.png in Resources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4B5D /* chica_thumb.png */; };
-		A1B2C3D4E5F60718293A4C60 /* toronto_fc.png in Resources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4C61 /* toronto_fc.png */; };
-		A1B2C3D4E5F60718293A4C70 /* sj_quakes.png in Resources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4C71 /* sj_quakes.png */; };
-		A1B2C3D4E5F60718293A4C80 /* mls_logo.png in Resources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4C81 /* mls_logo.png */; };
-		B56E773EA3F2463EA185279A /* delivery_food.png in Resources */ = {isa = PBXBuildFile; fileRef = D7772EF56D3744359C15F17E /* delivery_food.png */; };
 		EEF4000A2FECEAC1003FFED7 /* LiveActivityExtensionExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = EEF4FFF92FECEAC0003FFED7 /* LiveActivityExtensionExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		EEF400112FECEB85003FFED7 /* LiveActivities_Attributes in Frameworks */ = {isa = PBXBuildFile; productRef = EEF400102FECEB85003FFED7 /* LiveActivities_Attributes */; };
 		EEF4FFF42FECE96B003FFED7 /* LiveActivitiesViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEF4FFF32FECE96B003FFED7 /* LiveActivitiesViewController.swift */; };
@@ -188,12 +182,6 @@
 		6842752E2F3349A7006A4EF0 /* LocationTestViewController+CLLocationManagerDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "LocationTestViewController+CLLocationManagerDelegate.swift"; sourceTree = "<group>"; };
 		684275302F3349A7006A4EF0 /* LocationTestViewController+UITextFieldDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "LocationTestViewController+UITextFieldDelegate.swift"; sourceTree = "<group>"; };
 		68829E4A2F7AAFC3008A8D96 /* NotificationServiceExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = NotificationServiceExtension.entitlements; sourceTree = "<group>"; };
-		A1B2C3D4E5F60718293A4B5D /* chica_thumb.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = chica_thumb.png; sourceTree = "<group>"; };
-		A1B2C3D4E5F60718293A4C61 /* toronto_fc.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = toronto_fc.png; sourceTree = "<group>"; };
-		A1B2C3D4E5F60718293A4C71 /* sj_quakes.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = sj_quakes.png; sourceTree = "<group>"; };
-		A1B2C3D4E5F60718293A4C81 /* mls_logo.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = mls_logo.png; sourceTree = "<group>"; };
-		C166C59B389F438F9654DB27 /* chica_logo.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = chica_logo.png; sourceTree = "<group>"; };
-		D7772EF56D3744359C15F17E /* delivery_food.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = delivery_food.png; sourceTree = "<group>"; };
 		EEF4FFF32FECE96B003FFED7 /* LiveActivitiesViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveActivitiesViewController.swift; sourceTree = "<group>"; };
 		DA11AC71000000000000A11A /* DeliveryActivityAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = DeliveryActivityAttributes.swift; path = LiveActivityExtension/DeliveryActivityAttributes.swift; sourceTree = SOURCE_ROOT; };
 		EEF4FFF92FECEAC0003FFED7 /* LiveActivityExtensionExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = LiveActivityExtensionExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -435,12 +423,6 @@
 				669B9F9F2D8B2D430087CC20 /* BuildEnvironment.swift */,
 				669B9FA02D8B2D430087CC20 /* DIGraphShared.swift */,
 				669B9FA12D8B2D430087CC20 /* GoogleService-Info.plist */,
-				C166C59B389F438F9654DB27 /* chica_logo.png */,
-				D7772EF56D3744359C15F17E /* delivery_food.png */,
-				A1B2C3D4E5F60718293A4B5D /* chica_thumb.png */,
-				A1B2C3D4E5F60718293A4C61 /* toronto_fc.png */,
-				A1B2C3D4E5F60718293A4C71 /* sj_quakes.png */,
-				A1B2C3D4E5F60718293A4C81 /* mls_logo.png */,
 				669B9FA22D8B2D430087CC20 /* Info.plist */,
 				669B9FA42D8B2D430087CC20 /* LaunchScreen.storyboard */,
 				669B9FA62D8B2D430087CC20 /* Main.storyboard */,
@@ -664,12 +646,6 @@
 			files = (
 				669B9FD02D8B2D430087CC20 /* Assets.xcassets in Resources */,
 				669B9FD12D8B2D430087CC20 /* GoogleService-Info.plist in Resources */,
-				71806CD668414813AED2D51A /* chica_logo.png in Resources */,
-				B56E773EA3F2463EA185279A /* delivery_food.png in Resources */,
-				A1B2C3D4E5F60718293A4B5C /* chica_thumb.png in Resources */,
-				A1B2C3D4E5F60718293A4C60 /* toronto_fc.png in Resources */,
-				A1B2C3D4E5F60718293A4C70 /* sj_quakes.png in Resources */,
-				A1B2C3D4E5F60718293A4C80 /* mls_logo.png in Resources */,
 				669B9FD32D8B2D430087CC20 /* LaunchScreen.storyboard in Resources */,
 				669B9FD42D8B2D430087CC20 /* Main.storyboard in Resources */,
 			);
