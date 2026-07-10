@@ -235,10 +235,10 @@ class LiveActivitiesViewController: BaseViewController {
         func future(_ seconds: TimeInterval) -> EpochSecondsDate {
             EpochSecondsDate(Date().addingTimeInterval(seconds))
         }
-        // Deep link back to this Live Activities screen. Set on the start content-state so the
-        // activity's tap target (`widgetURL`) routes here — used to exercise tap → open tracking.
-        // (Locally-started activities carry no delivery id, so no `opened` metric fires; a real
-        // Customer.io push carries the id in the same `cioMetadata`.)
+        // Deep link back to this Live Activities screen. Carried on EVERY content-state so the
+        // activity's tap target (`widgetURL`) keeps routing here across updates — not just the
+        // first. (Locally-started activities carry no delivery id, so no `opened` metric fires; a
+        // real Customer.io push carries the id in the same `cioMetadata`.)
         let laDeepLink = CIOLiveActivityMetadata(deepLink: LiveActivitiesViewController.deepLink)
 
         let delivery = LiveActivityDemoDriver<DeliveryActivityAttributes>(
@@ -247,10 +247,10 @@ class LiveActivitiesViewController: BaseViewController {
             attributes: DeliveryActivityAttributes(orderNumber: "Order #ABC-1234"),
             phases: [
                 .init(title: "Order placed", subtitle: "Arriving at 1:45 PM", progress: .init(current: 1, total: 4), estimatedArrival: future(1800), cioMetadata: laDeepLink),
-                .init(title: "Preparing your order…", subtitle: "Arriving at 1:45 PM", progress: .init(current: 2, total: 4), estimatedArrival: future(1500)),
-                .init(title: "Out for delivery", subtitle: "Arriving at 1:30 PM", progress: .init(current: 3, total: 4), estimatedArrival: future(600), statusColor: "#34C759")
+                .init(title: "Preparing your order…", subtitle: "Arriving at 1:45 PM", progress: .init(current: 2, total: 4), estimatedArrival: future(1500), cioMetadata: laDeepLink),
+                .init(title: "Out for delivery", subtitle: "Arriving at 1:30 PM", progress: .init(current: 3, total: 4), estimatedArrival: future(600), statusColor: "#34C759", cioMetadata: laDeepLink)
             ],
-            endState: .init(title: "Delivered", subtitle: "Arrived at 1:28 PM", progress: .init(current: 4, total: 4)),
+            endState: .init(title: "Delivered", subtitle: "Arrived at 1:28 PM", progress: .init(current: 4, total: 4), cioMetadata: laDeepLink),
             log: log
         )
 
