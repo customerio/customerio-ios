@@ -2,37 +2,28 @@
 import ActivityKit
 import Foundation
 
-/// Extends `ActivityAttributes` with an SDK-managed correlation id, enabling
-/// **push-to-start** for the conforming activity type.
+/// Conform your `ActivityAttributes` type to this protocol to let Customer.io **start Live
+/// Activities remotely** (push-to-start).
 ///
-/// Conform your `ActivityAttributes` type to this protocol only when you want the
-/// Customer.io backend to be able to *start* activities remotely. For that case the
-/// backend stamps `cioInstanceId` into the attributes it creates on-device, so the SDK
-/// can correlate the resulting activity with the server-side instance.
-///
-/// You never populate `cioInstanceId` yourself: declare it with a default (`= ""`) and
-/// omit it from your initializer. The SDK fills it in on local `start`, and the backend
-/// fills it in for push-to-start.
-///
-/// A plain `ActivityAttributes` type (not conforming to this protocol) is fully supported
-/// for local `start`/`adopt`, instance-token push updates, and relaunch recovery —
-/// everything except push-to-start.
+/// To adopt it, add a `cioInstanceId` property declared as a `var` with a default value and
+/// leave it out of your initializer — Customer.io manages that value for you, so never set or
+/// read it yourself:
 ///
 /// ```swift
 /// struct OrderAttributes: CIOActivityAttribute {
-///     var cioInstanceId: String = ""   // SDK/backend-managed; leave defaulted
+///     var cioInstanceId: String = ""   // managed by Customer.io — leave defaulted
 ///     var orderNumber: String
-///     struct ContentState: Codable, Hashable { … }
+///     struct ContentState: Codable, Hashable { /* ... */ }
 /// }
 /// ```
+///
+/// Conforming is only required for push-to-start. If you only start activities locally, a plain
+/// `ActivityAttributes` type works everywhere else — local `start`/`adopt`, push updates to a
+/// running activity, and relaunch recovery.
 @available(iOS 16.2, *)
 public protocol CIOActivityAttribute: ActivityAttributes {
-    /// SDK-managed correlation id for this activity instance.
-    ///
-    /// The SDK writes this on local `start` (minting a ULID) and the Customer.io backend writes
-    /// it for push-to-start; it is then matched server-side to route push updates to the correct
-    /// activity. It is `{ get set }` so the SDK can inject the id into your attributes on local
-    /// start — declare it as a `var` with a default value and never set it yourself.
+    /// Correlation id managed by Customer.io. Declare it as a `var` with a default value
+    /// (e.g. `= ""`) and don't set or read it yourself — Customer.io assigns it.
     var cioInstanceId: String { get set }
 }
 #endif

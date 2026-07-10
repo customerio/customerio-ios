@@ -308,12 +308,13 @@ public final class LiveActivitiesModule {
     }
 
     private func handleReset() async {
-        // NOTE: force-ending all activities on reset is under review (plan decision #2) —
-        // it may remove activities the user still wants and emits no `end` event.
+        // Reset is a logout: force-end every activity so one user's Live Activities never linger
+        // into the next session. No `end` event is reported for these — the user is being
+        // de-identified, so lifecycle events must not fire.
         //
-        // Clear the identified user *before* force-ending: reset is a logout, so no lifecycle
-        // event should fire, and gating the reporter off first ensures the terminal states these
-        // ends produce can't be misreported as user dismissals (the reporter drops when anonymous).
+        // Clear the identified user *before* force-ending: gating the reporter off first ensures the
+        // terminal states these ends produce can't be misreported as user dismissals (the reporter
+        // drops events while anonymous).
         identity.userId = nil
         localEndTracker.clearAll()
         latestMetadata.wrappedValue = [:]

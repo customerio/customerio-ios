@@ -1,26 +1,18 @@
 import Foundation
 
-/// Customer.io delivery + routing metadata carried inside a Live Activity's `ContentState`.
+/// Customer.io delivery metadata that a Customer.io push attaches to a Live Activity's
+/// `ContentState`.
 ///
-/// Because iOS delivers Live Activity pushes straight to ActivityKit (the app never sees the raw
-/// APNs payload or its headers), the Customer.io backend embeds the push's delivery identifiers
-/// and tap destination *inside* the encoded `content-state`. The SDK reads them off the decoded
-/// state to report `delivered`/`opened` metrics (the same pipeline normal push uses) and to set the
-/// activity's tap `widgetURL`.
-///
-/// This is the iOS carrier for the same values Android reads from the FCM data payload
-/// (`CIO-Delivery-ID` / `CIO-Delivery-Token` / deep link) — one logical contract, two transports.
-///
-/// Locally-started/updated activities leave this `nil`; there is no push to attribute, so no
-/// delivery metric is reported.
+/// You don't create or populate this — Customer.io sends it with a push, and the SDK reads it to
+/// report `delivered`/`opened` metrics and to set the activity's tap deep link. To let Customer.io
+/// attribute those for your activity, add a `cioMetadata` property to your `ContentState` by
+/// conforming it to ``CIOMetadataCarrying``. It is `nil` for content-states you set locally.
 public struct CIOLiveActivityMetadata: Codable, Hashable, Sendable {
-    /// The `CIO-Delivery-ID` of the push that produced this content-state. Present ⇒ the SDK
-    /// reports a `delivered` metric for it (deduped), and attributes an `opened` metric to it on tap.
+    /// Delivery id of the Customer.io push that produced this content-state.
     public var deliveryId: String?
-    /// The `CIO-Delivery-Token` of the push, sent alongside the metric.
+    /// Delivery token of the Customer.io push.
     public var deliveryToken: String?
-    /// Optional deep link opened when the user taps the activity (backend-driven, mirrors Android's
-    /// push deep link). Rendered as the activity's `widgetURL`.
+    /// Deep link opened when the user taps the activity.
     public var deepLink: String?
 
     public init(deliveryId: String? = nil, deliveryToken: String? = nil, deepLink: String? = nil) {
@@ -30,13 +22,10 @@ public struct CIOLiveActivityMetadata: Codable, Hashable, Sendable {
     }
 }
 
-/// Opt-in conformance for a template's `ContentState` that carries Customer.io delivery metadata.
-///
-/// Built-in Customer.io templates conform so remote pushes can be attributed. Custom
-/// `ActivityAttributes` types may conform to receive the same `delivered`/`opened`/deep-link
-/// handling; types that don't conform simply skip metric reporting.
+/// Conform your `ContentState` to this and add a `cioMetadata` property to opt your Live Activity
+/// into Customer.io `delivered`/`opened` metrics and tap deep links. Declare it as an optional you
+/// leave `nil` — Customer.io fills it in on the content-states it delivers via push.
 public protocol CIOMetadataCarrying {
-    /// Delivery + routing metadata for the push that produced the current content-state, or `nil`
-    /// for a locally-driven state.
+    /// Customer.io delivery metadata for the current content-state; `nil` for a state you set locally.
     var cioMetadata: CIOLiveActivityMetadata? { get }
 }

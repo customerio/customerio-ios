@@ -1,19 +1,14 @@
 import Foundation
 
-/// A `Date` wrapper that is `Codable` as an epoch-**second** number.
+/// Use this instead of a bare `Date` for any date field in your Live Activity `Attributes` or
+/// `ContentState` (e.g. an estimated arrival time).
 ///
-/// Live Activity content-state and attributes are decoded on-device by ActivityKit
-/// using its **own** `JSONDecoder` when a backend push arrives — the SDK cannot inject a
-/// `dateDecodingStrategy` there. To keep the wire format unambiguous across the local CDP
-/// event path (`LiveActivityReporter`) and the server push path (ActivityKit), every date
-/// field on a template's `Attributes`/`ContentState` is represented by this type instead of
-/// a bare `Date`.
+/// It encodes and decodes as a JSON number of **seconds** since 1970 (UTC), which is the format
+/// Customer.io sends and expects — so the value your widget shows matches what a Customer.io push
+/// delivers. Wrap your date at the call site (`EpochSecondsDate(someDate)`) and read it back via
+/// ``date`` (or ``value``).
 ///
-/// - Decodes from a JSON number interpreted as seconds since 1970 (UTC).
-/// - Encodes to a JSON number of seconds since 1970 (UTC).
-///
-/// Seconds is the Customer.io backend contract for content-state timestamps; the reporter's
-/// `payloadEncoder` produces the same representation, so a round trip is lossless to the second.
+/// > Note: A round trip is exact to the whole second; sub-second precision is not preserved.
 public struct EpochSecondsDate: Codable, Hashable, Sendable {
     /// The wrapped date value.
     public var date: Date
