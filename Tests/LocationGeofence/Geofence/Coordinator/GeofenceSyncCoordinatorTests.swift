@@ -251,7 +251,7 @@ struct GeofenceSyncCoordinatorTests {
             location: LocationData(latitude: 0, longitude: 0)
         )
         let api = GeofenceApiServiceMock()
-        api.fetchNearbyGeofencesClosure = { _, _, _, completion in
+        api.fetchNearbyGeofencesClosure = { _, _, completion in
             completion(.success(makeApiResponse(regions: [])))
         }
         let setup = makeCoordinator(api: api, storage: storage, dateUtil: dateUtil)
@@ -276,7 +276,7 @@ struct GeofenceSyncCoordinatorTests {
         )
         let api = GeofenceApiServiceMock()
         let region = makeRegion(id: "g1", latitude: 1.0, longitude: 2.0)
-        api.fetchNearbyGeofencesClosure = { _, _, _, completion in
+        api.fetchNearbyGeofencesClosure = { _, _, completion in
             completion(.success(makeApiResponse(regions: [region])))
         }
 
@@ -317,7 +317,7 @@ struct GeofenceSyncCoordinatorTests {
         // API is called regardless of cached-config state.
         let storage = makeStorage()
         let api = GeofenceApiServiceMock()
-        api.fetchNearbyGeofencesClosure = { _, _, _, completion in
+        api.fetchNearbyGeofencesClosure = { _, _, completion in
             completion(.success(makeApiResponse(regions: [])))
         }
         let setup = makeCoordinator(api: api, storage: storage)
@@ -348,7 +348,7 @@ struct GeofenceSyncCoordinatorTests {
     func refresh_givenApiTransportError_expectFailureAndNoCacheWritten() async {
         let storage = makeStorage()
         let api = GeofenceApiServiceMock()
-        api.fetchNearbyGeofencesClosure = { _, _, _, completion in
+        api.fetchNearbyGeofencesClosure = { _, _, completion in
             completion(.failure(.transport))
         }
 
@@ -376,7 +376,7 @@ struct GeofenceSyncCoordinatorTests {
         )
         await storage.setCachedConfig(priorConfig)
         let api = GeofenceApiServiceMock()
-        api.fetchNearbyGeofencesClosure = { _, _, _, completion in
+        api.fetchNearbyGeofencesClosure = { _, _, completion in
             completion(.success(makeApiResponse(regions: [])))
         }
 
@@ -399,7 +399,7 @@ struct GeofenceSyncCoordinatorTests {
             maxMonitoringDistance: GeofenceConstants.noMonitoringDistanceCap
         )
         let api = GeofenceApiServiceMock()
-        api.fetchNearbyGeofencesClosure = { _, _, _, completion in
+        api.fetchNearbyGeofencesClosure = { _, _, completion in
             completion(.success(makeApiResponse(regions: [], config: newConfig)))
         }
 
@@ -429,7 +429,7 @@ struct GeofenceSyncCoordinatorTests {
             makeRegion(id: "g\(i)", latitude: Double(i) * 0.1, longitude: 0)
         }
         let api = GeofenceApiServiceMock()
-        api.fetchNearbyGeofencesClosure = { _, _, _, completion in
+        api.fetchNearbyGeofencesClosure = { _, _, completion in
             completion(.success(makeApiResponse(regions: regions)))
         }
 
@@ -458,7 +458,7 @@ struct GeofenceSyncCoordinatorTests {
         await storage.setCachedConfig(config)
         let api = GeofenceApiServiceMock()
         let region = makeRegion(id: "g1", latitude: 37.7749, longitude: -122.4194)
-        api.fetchNearbyGeofencesClosure = { _, _, _, completion in
+        api.fetchNearbyGeofencesClosure = { _, _, completion in
             completion(.success(makeApiResponse(regions: [region])))
         }
 
@@ -478,7 +478,7 @@ struct GeofenceSyncCoordinatorTests {
     func refresh_givenEmptyBusinessRegions_expectNoMovementTriggerRegistered() async {
         let storage = makeStorage()
         let api = GeofenceApiServiceMock()
-        api.fetchNearbyGeofencesClosure = { _, _, _, completion in
+        api.fetchNearbyGeofencesClosure = { _, _, completion in
             completion(.success(makeApiResponse(regions: [])))
         }
 
@@ -494,7 +494,7 @@ struct GeofenceSyncCoordinatorTests {
         let storage = makeStorage()
         let api = GeofenceApiServiceMock()
         let region = makeRegion(id: "g1", latitude: 1.0, longitude: 2.0)
-        api.fetchNearbyGeofencesClosure = { _, _, _, completion in
+        api.fetchNearbyGeofencesClosure = { _, _, completion in
             completion(.success(makeApiResponse(regions: [region])))
         }
 
@@ -518,7 +518,7 @@ struct GeofenceSyncCoordinatorTests {
         let api = GeofenceApiServiceMock()
         let firstReachedApi = AsyncSignal()
         let allowFinish = AsyncSignal()
-        api.fetchNearbyGeofencesClosure = { _, _, _, completion in
+        api.fetchNearbyGeofencesClosure = { _, _, completion in
             Task {
                 await firstReachedApi.fire()
                 await allowFinish.wait()
@@ -560,7 +560,7 @@ struct GeofenceSyncCoordinatorTests {
             maxMonitoringDistance: GeofenceConstants.noMonitoringDistanceCap
         )
         let region = makeRegion(id: "g1", latitude: 1.0, longitude: 2.0)
-        api.fetchNearbyGeofencesClosure = { _, _, _, completion in
+        api.fetchNearbyGeofencesClosure = { _, _, completion in
             completion(.success(makeApiResponse(regions: [region], config: newConfig)))
         }
         let setup = makeCoordinator(api: api, storage: spy)
@@ -590,7 +590,7 @@ struct GeofenceSyncCoordinatorTests {
         // 3 regions; nearest 2 to the (0,0) fetch location are g0/g1.
         let regions = (0 ..< 3).map { i in makeRegion(id: "g\(i)", latitude: Double(i) * 0.1, longitude: 0) }
         let api = GeofenceApiServiceMock()
-        api.fetchNearbyGeofencesClosure = { _, _, _, completion in
+        api.fetchNearbyGeofencesClosure = { _, _, completion in
             completion(.success(makeApiResponse(regions: regions, config: config)))
         }
         let setup = makeCoordinator(api: api, storage: storage)
@@ -614,7 +614,7 @@ struct GeofenceSyncCoordinatorTests {
         )
         await storage.setCachedConfig(priorConfig)
         let api = GeofenceApiServiceMock()
-        api.fetchNearbyGeofencesClosure = { _, _, _, completion in
+        api.fetchNearbyGeofencesClosure = { _, _, completion in
             completion(.failure(.transport))
         }
         let setup = makeCoordinator(api: api, storage: storage)
@@ -829,7 +829,7 @@ struct GeofenceSyncCoordinatorTests {
         let api = GeofenceApiServiceMock()
         let firstReachedApi = AsyncSignal()
         let allowFinish = AsyncSignal()
-        api.fetchNearbyGeofencesClosure = { _, _, _, completion in
+        api.fetchNearbyGeofencesClosure = { _, _, completion in
             Task {
                 await firstReachedApi.fire()
                 await allowFinish.wait()
@@ -864,7 +864,7 @@ struct GeofenceSyncCoordinatorTests {
         let storage = makeStorage()
         let contextStore = makeContextStore(userId: nil)
         let api = GeofenceApiServiceMock()
-        api.fetchNearbyGeofencesClosure = { _, _, _, completion in
+        api.fetchNearbyGeofencesClosure = { _, _, completion in
             completion(.success(makeApiResponse(regions: [])))
         }
         let setup = makeCoordinator(api: api, storage: storage, contextStore: contextStore)
@@ -900,7 +900,7 @@ struct GeofenceSyncCoordinatorTests {
         // Matches Android's `anchor == null` branch.
         let storage = makeStorage()
         let api = GeofenceApiServiceMock()
-        api.fetchNearbyGeofencesClosure = { _, _, _, completion in
+        api.fetchNearbyGeofencesClosure = { _, _, completion in
             completion(.success(makeApiResponse(regions: [makeRegion(id: "g1", latitude: 0, longitude: 0)])))
         }
         let setup = makeCoordinator(api: api, storage: storage)
@@ -957,7 +957,7 @@ struct GeofenceSyncCoordinatorTests {
         await storage.setCachedConfig(config)
         await storage.recordSync(timestamp: Date(timeIntervalSince1970: 100), location: LocationData(latitude: 0, longitude: 0))
         let api = GeofenceApiServiceMock()
-        api.fetchNearbyGeofencesClosure = { _, _, _, completion in
+        api.fetchNearbyGeofencesClosure = { _, _, completion in
             completion(.success(makeApiResponse(regions: [makeRegion(id: "g1", latitude: 1, longitude: 1)])))
         }
         let setup = makeCoordinator(api: api, storage: storage)
@@ -967,54 +967,6 @@ struct GeofenceSyncCoordinatorTests {
 
         #expect(result.isSuccess)
         #expect(setup.api.fetchNearbyGeofencesCallsCount == 1)
-    }
-
-    @Test
-    func fetchNearby_givenCappedMonitoringDistance_expectRadiusIsMaxOfFetchDistanceAndCap() async {
-        // Search radius = max(remoteFetchRefreshTriggerRadius, maxMonitoringDistance) so the search
-        // covers everything within the monitoring cap we might register.
-        let storage = makeStorage()
-        await storage.setCachedConfig(GeofenceConfig(
-            localRefreshTriggerRadius: 1000,
-            remoteFetchRefreshTriggerRadius: 5000,
-            remoteFetchRefreshExpiry: 3600,
-            duplicateEventsExpiry: 3600,
-            maxBusinessGeofences: 10,
-            maxMonitoringDistance: 50000
-        ))
-        let api = GeofenceApiServiceMock()
-        api.fetchNearbyGeofencesClosure = { _, _, _, completion in
-            completion(.success(makeApiResponse(regions: [])))
-        }
-        let setup = makeCoordinator(api: api, storage: storage)
-
-        _ = await setup.coordinator.handleMovement(latitude: 1, longitude: 2)
-
-        #expect(setup.api.fetchNearbyGeofencesReceivedArguments?.radius == 50000)
-    }
-
-    @Test
-    func fetchNearby_givenUncappedMonitoringDistance_expectRadiusFallsBackToDefaultCeiling() async {
-        // An uncapped monitoring distance can't go on the wire, so it falls back to the default
-        // ceiling — which still wins over the smaller fetch distance.
-        let storage = makeStorage()
-        await storage.setCachedConfig(GeofenceConfig(
-            localRefreshTriggerRadius: 1000,
-            remoteFetchRefreshTriggerRadius: 5000,
-            remoteFetchRefreshExpiry: 3600,
-            duplicateEventsExpiry: 3600,
-            maxBusinessGeofences: 10,
-            maxMonitoringDistance: GeofenceConstants.noMonitoringDistanceCap
-        ))
-        let api = GeofenceApiServiceMock()
-        api.fetchNearbyGeofencesClosure = { _, _, _, completion in
-            completion(.success(makeApiResponse(regions: [])))
-        }
-        let setup = makeCoordinator(api: api, storage: storage)
-
-        _ = await setup.coordinator.handleMovement(latitude: 1, longitude: 2)
-
-        #expect(setup.api.fetchNearbyGeofencesReceivedArguments?.radius == GeofenceConstants.defaultMaxMonitoringDistance)
     }
 
     @Test
@@ -1036,7 +988,7 @@ struct GeofenceSyncCoordinatorTests {
         // Fetched recently (time-fresh) at (0, 0).
         await storage.recordSync(timestamp: dateUtil.givenNow.addingTimeInterval(-100), location: LocationData(latitude: 0, longitude: 0))
         let api = GeofenceApiServiceMock()
-        api.fetchNearbyGeofencesClosure = { _, _, _, completion in
+        api.fetchNearbyGeofencesClosure = { _, _, completion in
             completion(.success(makeApiResponse(regions: [makeRegion(id: "g1", latitude: 1, longitude: 1)])))
         }
         let setup = makeCoordinator(api: api, storage: storage, dateUtil: dateUtil)
@@ -1135,7 +1087,7 @@ struct GeofenceSyncCoordinatorTests {
         let api = GeofenceApiServiceMock()
         let suspendUntil = AsyncSignal()
         let arrived = AsyncSignal()
-        api.fetchNearbyGeofencesClosure = { _, _, _, completion in
+        api.fetchNearbyGeofencesClosure = { _, _, completion in
             Task {
                 await arrived.fire()
                 await suspendUntil.wait()
@@ -1204,7 +1156,7 @@ struct GeofenceSyncCoordinatorTests {
         let api = GeofenceApiServiceMock()
         let suspendUntil = AsyncSignal()
         let arrived = AsyncSignal()
-        api.fetchNearbyGeofencesClosure = { _, _, _, completion in
+        api.fetchNearbyGeofencesClosure = { _, _, completion in
             Task {
                 await arrived.fire()
                 await suspendUntil.wait()
@@ -1231,7 +1183,7 @@ struct GeofenceSyncCoordinatorTests {
         let api = GeofenceApiServiceMock()
         let suspendUntil = AsyncSignal()
         let arrived = AsyncSignal()
-        api.fetchNearbyGeofencesClosure = { _, _, _, completion in
+        api.fetchNearbyGeofencesClosure = { _, _, completion in
             Task {
                 await arrived.fire()
                 await suspendUntil.wait()
@@ -1263,7 +1215,7 @@ struct GeofenceSyncCoordinatorTests {
         let api = GeofenceApiServiceMock()
         let suspendUntil = AsyncSignal()
         let arrived = AsyncSignal()
-        api.fetchNearbyGeofencesClosure = { _, _, _, completion in
+        api.fetchNearbyGeofencesClosure = { _, _, completion in
             Task {
                 await arrived.fire()
                 await suspendUntil.wait()
@@ -1294,7 +1246,7 @@ struct GeofenceSyncCoordinatorTests {
         let api = GeofenceApiServiceMock()
         let suspendUntil = AsyncSignal()
         let arrived = AsyncSignal()
-        api.fetchNearbyGeofencesClosure = { _, _, _, completion in
+        api.fetchNearbyGeofencesClosure = { _, _, completion in
             Task {
                 await arrived.fire()
                 await suspendUntil.wait()

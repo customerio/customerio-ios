@@ -43,7 +43,7 @@ struct GeofenceApiServiceTests {
 
         await withCheckedContinuation { continuation in
             // The request carries no user identifier, so the exact coordinate is sent unmodified.
-            service.fetchNearbyGeofences(latitude: 37.7749295, longitude: -122.4194155, radius: 20000) { _ in continuation.resume() }
+            service.fetchNearbyGeofences(latitude: 37.7749295, longitude: -122.4194155) { _ in continuation.resume() }
         }
 
         let params = runner.requestReceivedArguments?.params
@@ -55,7 +55,8 @@ struct GeofenceApiServiceTests {
         let body = (try? JSONSerialization.jsonObject(with: params?.body ?? Data())) as? [String: Double]
         #expect(body?["latitude"] == 37.7749295)
         #expect(body?["longitude"] == -122.4194155)
-        #expect(body?["radius"] == 20000)
+        // radius is no longer sent — the request omits it (server treats it as optional).
+        #expect(body?["radius"] == nil)
     }
 
     @Test
@@ -66,7 +67,7 @@ struct GeofenceApiServiceTests {
         }
 
         await withCheckedContinuation { continuation in
-            service.fetchNearbyGeofences(latitude: 0, longitude: 0, radius: 0) { _ in continuation.resume() }
+            service.fetchNearbyGeofences(latitude: 0, longitude: 0) { _ in continuation.resume() }
         }
 
         let urlString = runner.requestReceivedArguments?.params.url.absoluteString
@@ -81,7 +82,7 @@ struct GeofenceApiServiceTests {
         let (service, _) = makeService(store: makeStore(host: nil))
 
         let result: Result<GeofenceApiResponse, GeofenceApiError> = await withCheckedContinuation { continuation in
-            service.fetchNearbyGeofences(latitude: 0, longitude: 0, radius: 0) { result in
+            service.fetchNearbyGeofences(latitude: 0, longitude: 0) { result in
                 continuation.resume(returning: result)
             }
         }
@@ -94,7 +95,7 @@ struct GeofenceApiServiceTests {
         let (service, _) = makeService(store: makeStore(cdpApiKey: nil))
 
         let result: Result<GeofenceApiResponse, GeofenceApiError> = await withCheckedContinuation { continuation in
-            service.fetchNearbyGeofences(latitude: 0, longitude: 0, radius: 0) { result in
+            service.fetchNearbyGeofences(latitude: 0, longitude: 0) { result in
                 continuation.resume(returning: result)
             }
         }
@@ -110,7 +111,7 @@ struct GeofenceApiServiceTests {
         runner.requestClosure = { _, _, onComplete in onComplete(nil, makeOkResponse(statusCode: 500), nil) }
 
         let result: Result<GeofenceApiResponse, GeofenceApiError> = await withCheckedContinuation { continuation in
-            service.fetchNearbyGeofences(latitude: 0, longitude: 0, radius: 0) { result in
+            service.fetchNearbyGeofences(latitude: 0, longitude: 0) { result in
                 continuation.resume(returning: result)
             }
         }
@@ -124,7 +125,7 @@ struct GeofenceApiServiceTests {
         runner.requestClosure = { _, _, onComplete in onComplete(nil, nil, URLError(.notConnectedToInternet)) }
 
         let result: Result<GeofenceApiResponse, GeofenceApiError> = await withCheckedContinuation { continuation in
-            service.fetchNearbyGeofences(latitude: 0, longitude: 0, radius: 0) { result in
+            service.fetchNearbyGeofences(latitude: 0, longitude: 0) { result in
                 continuation.resume(returning: result)
             }
         }
@@ -138,7 +139,7 @@ struct GeofenceApiServiceTests {
         runner.requestClosure = { _, _, onComplete in onComplete("not json".data(using: .utf8), makeOkResponse(), nil) }
 
         let result: Result<GeofenceApiResponse, GeofenceApiError> = await withCheckedContinuation { continuation in
-            service.fetchNearbyGeofences(latitude: 0, longitude: 0, radius: 0) { result in
+            service.fetchNearbyGeofences(latitude: 0, longitude: 0) { result in
                 continuation.resume(returning: result)
             }
         }
@@ -176,7 +177,7 @@ struct GeofenceApiServiceTests {
         runner.requestClosure = { _, _, onComplete in onComplete(json.data(using: .utf8), makeOkResponse(), nil) }
 
         let result: Result<GeofenceApiResponse, GeofenceApiError> = await withCheckedContinuation { continuation in
-            service.fetchNearbyGeofences(latitude: 0, longitude: 0, radius: 0) { result in
+            service.fetchNearbyGeofences(latitude: 0, longitude: 0) { result in
                 continuation.resume(returning: result)
             }
         }

@@ -15,11 +15,9 @@ enum GeofenceApiError: Error, Equatable {
 protocol GeofenceApiService: AutoMockable, Sendable {
     /// Returns the geofence set ranked around the device location. The request carries no user
     /// identifier (only the workspace API key), so the coordinate can't be attributed to a person.
-    /// `radius` bounds the search in metres (the caller's server-fetch distance).
     func fetchNearbyGeofences(
         latitude: Double,
         longitude: Double,
-        radius: Double,
         completion: @escaping (Result<GeofenceApiResponse, GeofenceApiError>) -> Void
     )
 }
@@ -52,12 +50,11 @@ final class GeofenceApiServiceImpl: GeofenceApiService, @unchecked Sendable {
     func fetchNearbyGeofences(
         latitude: Double,
         longitude: Double,
-        radius: Double,
         completion: @escaping (Result<GeofenceApiResponse, GeofenceApiError>) -> Void
     ) {
         let body: Data
         do {
-            body = try JSONEncoder().encode(NearestRequest(latitude: latitude, longitude: longitude, radius: radius))
+            body = try JSONEncoder().encode(NearestRequest(latitude: latitude, longitude: longitude))
         } catch {
             return completion(.failure(.invalidRequest))
         }
@@ -117,12 +114,10 @@ final class GeofenceApiServiceImpl: GeofenceApiService, @unchecked Sendable {
     }
 }
 
-/// Body of the nearby geofence fetch. `radius` bounds the search in metres; `limit` is optional
-/// server-side and omitted.
+/// Body of the nearby geofence fetch. `radius`/`limit` are optional server-side and omitted.
 private struct NearestRequest: Encodable {
     let latitude: Double
     let longitude: Double
-    let radius: Double
 }
 
 private extension JSONDecoder {

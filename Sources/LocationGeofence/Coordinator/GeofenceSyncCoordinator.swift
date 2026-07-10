@@ -240,10 +240,7 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
         longitude: Double,
         cachedConfig: GeofenceConfig?
     ) async -> Result<Void, GeofenceSyncError> {
-        // Radius is derived from the config known before the fetch (the response carries the fresh
-        // one). First fetch has no cache → `.fallback`.
-        let radius = (cachedConfig ?? .fallback).searchRadius
-        let fetchResult = await awaitApiFetch(latitude: latitude, longitude: longitude, radius: radius)
+        let fetchResult = await awaitApiFetch(latitude: latitude, longitude: longitude)
         let response: GeofenceApiResponse
         switch fetchResult {
         case .success(let value):
@@ -316,10 +313,10 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
 // MARK: - OS registration & fetch plumbing
 
 private extension GeofenceSyncCoordinatorImpl {
-    /// Bridges the completion-based nearby fetch to async. `radius` bounds the search in metres.
-    func awaitApiFetch(latitude: Double, longitude: Double, radius: Double) async -> Result<GeofenceApiResponse, GeofenceApiError> {
+    /// Bridges the completion-based nearby fetch to async.
+    func awaitApiFetch(latitude: Double, longitude: Double) async -> Result<GeofenceApiResponse, GeofenceApiError> {
         await withCheckedContinuation { continuation in
-            apiService.fetchNearbyGeofences(latitude: latitude, longitude: longitude, radius: radius) { continuation.resume(returning: $0) }
+            apiService.fetchNearbyGeofences(latitude: latitude, longitude: longitude) { continuation.resume(returning: $0) }
         }
     }
 
