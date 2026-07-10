@@ -7,6 +7,7 @@ public final class CioLiveActivities.CIOLiveActivity {
 public final class CioLiveActivities.LiveActivitiesModule {
 	public fun func initialize(_ config: LiveActivityConfig) -> LiveActivitiesModule;
 	public fun func start<Attributes: ActivityAttributes>(_ attributes: Attributes, contentState: Attributes.ContentState, staleDate: Date? = nil, relevanceScore: Double = 0) throws -> CIOLiveActivity<Attributes>;
+	public fun func start<Attributes: CIOActivityAttribute>(_ attributes: Attributes, contentState: Attributes.ContentState, staleDate: Date? = nil, relevanceScore: Double = 0) throws -> CIOLiveActivity<Attributes>;
 	public fun func adopt<Attributes: ActivityAttributes>(_ activity: Activity<Attributes>) -> CIOLiveActivity<Attributes>;
 	public fun func handleDeepLinkOpen(_ url: URL) -> Boolean;
 }

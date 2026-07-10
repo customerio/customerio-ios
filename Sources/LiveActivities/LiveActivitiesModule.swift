@@ -166,6 +166,51 @@ public final class LiveActivitiesModule {
         )
     }
 
+    /// Start a Live Activity locally for a `CIOActivityAttribute` type. Same as the generic
+    /// `start`, except the SDK mints the correlation id and **injects it into `cioInstanceId`** on
+    /// your attributes *before* requesting the activity — so the live activity itself, the reported
+    /// `start` event, and later token registrations all carry the identical id, matching the
+    /// push-to-start contract. Overload resolution prefers this over the generic `start` whenever
+    /// `Attributes` conforms to `CIOActivityAttribute`.
+    @available(iOS 16.2, *)
+    @discardableResult
+    public func start<Attributes: CIOActivityAttribute>(
+        _ attributes: Attributes,
+        contentState: Attributes.ContentState,
+        staleDate: Date? = nil,
+        relevanceScore: Double = 0
+    ) throws -> CIOLiveActivity<Attributes> {
+        guard let notificationType = notificationType(forTypeName: String(describing: Attributes.self)) else {
+            throw LiveActivityError.typeNotRegistered(String(describing: Attributes.self))
+        }
+        // Mint first and inject, so the activity carries the id (a plain ActivityAttributes type has
+        // no field to hold it). Persist the Activity.id → id mapping so the observer and relaunch
+        // recovery resolve the identical id even though the mint happened here.
+        let id = ULID.generate()
+        var attributes = attributes
+        attributes.cioInstanceId = id
+        let activity = try Activity.request(
+            attributes: attributes,
+            content: ActivityContent(state: contentState, staleDate: staleDate, relevanceScore: relevanceScore),
+            pushType: .token
+        )
+        _ = tokenStorage.resolveInstanceId(forActivityId: activity.id) { id }
+        reporter.reportStart(
+            instanceUUID: id,
+            notificationType: notificationType,
+            attributes: LiveActivityReporter.encode(attributes),
+            contentState: LiveActivityReporter.encode(contentState)
+        )
+        return CIOLiveActivity(
+            id: id,
+            activity: activity,
+            reporter: reporter,
+            notificationType: notificationType,
+            logger: sdk.logger,
+            markLocalEnd: { [localEndTracker] in localEndTracker.markEnded($0) }
+        )
+    }
+
     /// Wrap an activity your app created directly, so you can report `update`/`end` through the
     /// returned handle. Does not report a `start` event (use `start` for that). Token capture for
     /// registered types happens automatically via observation regardless of `adopt`. Works with any
