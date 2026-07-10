@@ -247,13 +247,14 @@ public final class LiveActivitiesModule {
     @discardableResult
     public func handleDeepLinkOpen(_ url: URL) -> Bool {
         let target = url.absoluteString
-        let matched: CIOLiveActivityMetadata? = latestMetadata.mutating { map in
-            guard let key = map.first(where: { $0.value.deepLink == target })?.key else { return nil }
-            // Attribute the open exactly once: remove the entry so a repeated open of the same URL
-            // isn't reported again against an activity we've already credited.
-            return map.removeValue(forKey: key)
-        }
-        guard let metadata = matched else { return false }
+        // Match without consuming: `opened` is intentionally NOT deduped — each tap is a distinct
+        // open (matching push). Staleness is handled by evicting metadata when the activity ends
+        // (see the observer's `onActivityEnded`), not here. Only a push-backed activity (non-empty
+        // deliveryId) yields an `opened` metric, so require one — otherwise return false rather than
+        // claim we handled an open we didn't report (e.g. a locally-started activity with no id).
+        guard let metadata = latestMetadata.wrappedValue.values.first(where: {
+            $0.deepLink == target && !($0.deliveryId ?? "").isEmpty
+        }) else { return false }
         deliveryTracker.reportOpened(metadata: metadata)
         return true
     }

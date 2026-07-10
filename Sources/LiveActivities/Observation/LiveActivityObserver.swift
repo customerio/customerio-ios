@@ -248,37 +248,41 @@ enum LiveActivityObservation {
                     }
                 }
             }
-            group.addTask {
-                // The first terminal state observed distinguishes a user's manual dismissal from an
-                // app/SDK/backend end:
-                //   • `.ended` first  → the app (`CIOLiveActivity.end`), a backend push, or the
-                //                       system ended it. Not a user swipe; clean up, report nothing
-                //                       (a local end already reported via the handle; a backend end
-                //                       must not be echoed).
-                //   • `.dismissed` first → the user swiped it away. Report `end` — unless it was a
-                //                       local `end(.immediate)` whose `.ended` the stream coalesced
-                //                       (caught by the local-end marker).
-                for await state in activity.activityStateUpdates {
-                    let firstTerminalIsDismissed: Bool
-                    switch state {
-                    case .ended: firstTerminalIsDismissed = false
-                    case .dismissed: firstTerminalIsDismissed = true
-                    default: continue // not terminal — keep observing
-                    }
-                    let action = liveActivityTerminalAction(
-                        firstTerminalIsDismissed: firstTerminalIsDismissed,
-                        // Consume the marker on any terminal so a local end never leaks a marker
-                        // and never double-reports.
-                        wasLocalEnd: sinks.consumeLocalEnd(instanceId)
-                    )
-                    if action == .reportUserDismiss {
-                        sinks.onUserDismissed(instanceId)
-                    }
-                    sinks.onActivityEnded(instanceId)
-                    sinks.clearInstanceIdMapping(activity.id)
-                    return
+            // Drive terminal detection here (not in a child task) so that on the first terminal we can
+            // cancel the sibling token/content tasks immediately — otherwise a late instance-token
+            // emission after teardown could re-register an instance the registrar just ended.
+            //
+            // The first terminal state observed distinguishes a user's manual dismissal from an
+            // app/SDK/backend end:
+            //   • `.ended` first  → the app (`CIOLiveActivity.end`), a backend push, or the system
+            //                       ended it. Not a user swipe; clean up, report nothing (a local end
+            //                       already reported via the handle; a backend end must not be echoed).
+            //   • `.dismissed` first → the user swiped it away. Report `end` — unless it was a local
+            //                       `end(.immediate)` whose `.ended` the stream coalesced (caught by
+            //                       the local-end marker).
+            for await state in activity.activityStateUpdates {
+                let firstTerminalIsDismissed: Bool
+                switch state {
+                case .ended: firstTerminalIsDismissed = false
+                case .dismissed: firstTerminalIsDismissed = true
+                default: continue // not terminal — keep observing
                 }
+                let action = liveActivityTerminalAction(
+                    firstTerminalIsDismissed: firstTerminalIsDismissed,
+                    // Consume the marker on any terminal so a local end never leaks a marker
+                    // and never double-reports.
+                    wasLocalEnd: sinks.consumeLocalEnd(instanceId)
+                )
+                if action == .reportUserDismiss {
+                    sinks.onUserDismissed(instanceId)
+                }
+                sinks.onActivityEnded(instanceId)
+                sinks.clearInstanceIdMapping(activity.id)
+                break
             }
+            // Terminal reached (or the state stream ended): stop observing tokens/content for this
+            // instance so nothing is routed to the registrar after teardown.
+            group.cancelAll()
         }
     }
     #endif
