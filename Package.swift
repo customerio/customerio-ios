@@ -1,4 +1,4 @@
-// swift-tools-version:5.5
+// swift-tools-version:5.10
 
 /**
  Manifest file for Swift Package Manager. This file defines our Swift Package for customers to install our SDK modules into their app. 
@@ -19,7 +19,8 @@ var products: [PackageDescription.Product] = [
     .library(name: "MessagingPushAPN", targets: ["CioMessagingPushAPN"]),
     .library(name: "MessagingPushFCM", targets: ["CioMessagingPushFCM"]),
     .library(name: "MessagingInApp", targets: ["CioMessagingInApp"]),
-    .library(name: "Location", targets: ["CioLocation"])
+    .library(name: "Location", targets: ["CioLocation"]),
+    .library(name: "LiveActivities_Attributes", targets: ["CioLiveActivities_Attributes"])
 ]
 
 // When we execute the automated test suite, we use tools to determine the code coverage of our tests. 
@@ -168,5 +169,11 @@ let package = Package(
         .testTarget(name: "LocationTests",
                     dependencies: ["CioLocation", "CioInternalCommon", "SharedTests", "CioInternalCommonMocks"],
                     path: "Tests/Location"),
+
+        // Live Activities — protocol only, no SDK dependency.
+        // Safe to import in any target (app, widget extension) that needs CIOActivityAttribute.
+        .target(name: "CioLiveActivities_Attributes",
+                dependencies: [],
+                path: "Sources/LiveActivities_Attributes"),
     ]
 )
