@@ -29,9 +29,10 @@ import Foundation
 public protocol CIOActivityAttribute: ActivityAttributes {
     /// SDK-managed correlation id for this activity instance.
     ///
-    /// Populated by the SDK (local start) or the Customer.io backend (push-to-start) and
-    /// matched server-side to route push updates to the correct activity. Declare it with a
-    /// default value and never set it yourself.
-    var cioInstanceId: String { get }
+    /// The SDK writes this on local `start` (minting a ULID) and the Customer.io backend writes
+    /// it for push-to-start; it is then matched server-side to route push updates to the correct
+    /// activity. It is `{ get set }` so the SDK can inject the id into your attributes on local
+    /// start — declare it as a `var` with a default value and never set it yourself.
+    var cioInstanceId: String { get set }
 }
 #endif
