@@ -157,4 +157,18 @@ struct LiveActivityDeliveredMarkerTests {
         store.clearAll()
         #expect(store.hasFreshDeliveredMarker("d1", ttl: ttl) == false)
     }
+
+    @Test func markDeliveredIfFresh_returnsTrueOnce_thenFalse() {
+        let (store, _) = makeStore()
+        // First claim wins (report); a fresh repeat is deduped.
+        #expect(store.markDeliveredIfFresh("d1", ttl: ttl, at: Date()) == true)
+        #expect(store.markDeliveredIfFresh("d1", ttl: ttl, at: Date()) == false)
+    }
+
+    @Test func markDeliveredIfFresh_reclaims_afterExpiry() {
+        let (store, _) = makeStore()
+        #expect(store.markDeliveredIfFresh("d1", ttl: ttl, at: Date(timeIntervalSinceNow: -(ttl + 60))) == true)
+        // The prior marker is expired, so the next delivery for the same id reports again.
+        #expect(store.markDeliveredIfFresh("d1", ttl: ttl, at: Date()) == true)
+    }
 }

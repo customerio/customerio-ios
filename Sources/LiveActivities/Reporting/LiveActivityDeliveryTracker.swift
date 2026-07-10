@@ -40,9 +40,10 @@ final class LiveActivityDeliveryTracker: @unchecked Sendable {
     /// `CIO-Delivery-ID`. No-op when the state carries no delivery id (e.g. a locally-driven state).
     func reportDelivered(metadata: CIOLiveActivityMetadata) {
         guard let deliveryId = metadata.deliveryId, !deliveryId.isEmpty else { return }
-        guard !store.hasFreshDeliveredMarker(deliveryId, ttl: Self.deliveredTTL) else { return }
+        // Atomic check-and-set: only the first caller to claim this delivery id reports, so
+        // concurrent content re-emissions / snapshot replay can't double-report `delivered`.
+        guard store.markDeliveredIfFresh(deliveryId, ttl: Self.deliveredTTL, at: Date()) else { return }
         postMetric(deliveryId, Metric.delivered.rawValue, metadata.deliveryToken ?? "")
-        store.setDeliveredMarker(deliveryId, at: Date())
         logger.debug("Reported Live Activity 'delivered' deliveryId=\(deliveryId)", "LiveActivities")
     }
 

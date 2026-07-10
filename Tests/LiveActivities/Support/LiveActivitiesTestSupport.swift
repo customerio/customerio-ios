@@ -144,6 +144,15 @@ final class FakeTokenStore: LiveActivityTokenStorage, @unchecked Sendable {
         lock.withLock { _delivered[deliveryId] = date }
     }
 
+    func markDeliveredIfFresh(_ deliveryId: String, ttl: TimeInterval, at date: Date) -> Bool {
+        lock.withLock {
+            _delivered = _delivered.filter { date.timeIntervalSince($0.value) <= ttl }
+            if let at = _delivered[deliveryId], date.timeIntervalSince(at) <= ttl { return false }
+            _delivered[deliveryId] = date
+            return true
+        }
+    }
+
     private var _instanceIds: [String: String] = [:]
 
     func resolveInstanceId(forActivityId activityId: String, orCreate: () -> String) -> String {

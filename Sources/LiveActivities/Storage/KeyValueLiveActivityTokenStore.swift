@@ -88,6 +88,23 @@ final class KeyValueLiveActivityTokenStore: LiveActivityTokenStorage {
         }
     }
 
+    func markDeliveredIfFresh(_ deliveryId: String, ttl: TimeInterval, at date: Date) -> Bool {
+        lock.withLock {
+            var map = loadDelivered()
+            let prunedChanged = pruneDeliveredIfNeeded(&map, ttl: ttl)
+            if let millis = map[deliveryId],
+               date.timeIntervalSince1970 - Double(millis) / 1000 <= ttl {
+                // A fresh marker already exists — skip. Persist only if pruning changed the map.
+                if prunedChanged { saveDelivered(map) }
+                return false
+            }
+            map[deliveryId] = Int64((date.timeIntervalSince1970 * 1000).rounded())
+            capDelivered(&map)
+            saveDelivered(map)
+            return true
+        }
+    }
+
     /// Drops markers older than `ttl`. Runs at most once per process (first delivered-marker
     /// access). Returns whether the map changed and therefore needs persisting.
     private func pruneDeliveredIfNeeded(_ map: inout [String: Int64], ttl: TimeInterval) -> Bool {

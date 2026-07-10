@@ -32,6 +32,11 @@ protocol LiveActivityTokenStorage {
     func hasFreshDeliveredMarker(_ deliveryId: String, ttl: TimeInterval) -> Bool
     /// Record a `delivered` dedup marker for `deliveryId`, timestamped `date` (enables TTL expiry).
     func setDeliveredMarker(_ deliveryId: String, at date: Date)
+    /// Atomically dedup a `delivered` receipt: if no fresh marker (within `ttl`) exists for
+    /// `deliveryId`, record one timestamped `date` and return `true` (the caller should report);
+    /// otherwise return `false`. The check-and-set runs under a single lock so concurrent pushes
+    /// carrying the same delivery id can't both pass the check and double-report.
+    func markDeliveredIfFresh(_ deliveryId: String, ttl: TimeInterval, at date: Date) -> Bool
 
     /// Returns the CIO instance id mapped to a system `Activity.id`, creating and persisting one
     /// via `orCreate` if none exists yet. Atomic: concurrent callers (a local `start` and the
