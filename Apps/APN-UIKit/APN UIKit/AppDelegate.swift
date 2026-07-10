@@ -1,5 +1,6 @@
 import CioDataPipelines
 import CioInternalCommon
+import CioLiveActivities
 import CioLocation
 import CioMessagingInApp
 import CioMessagingPush
@@ -12,6 +13,8 @@ class AppDelegateWithCioIntegration: CioAppDelegateWrapper<AppDelegate> {}
 class AppDelegate: UIResponder, UIApplicationDelegate {
     var storage = DIGraphShared.shared.storage
     var deepLinkHandler = DIGraphShared.shared.deepLinksHandlerUtil
+    /// Exposed so the Live Activities demo screen can drive start/update/end through the SDK.
+    private(set) static var liveActivities: LiveActivitiesModule?
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         // Override point for customization after application launch.
@@ -76,6 +79,21 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
                 region: settings.inApp.region.toCIORegion()
             ).build())
             .setEventListener(self)
+
+        if #available(iOS 17.2, *) {
+            initializeLiveActivities()
+        }
+    }
+
+    @available(iOS 17.2, *)
+    private func initializeLiveActivities() {
+        // Register the app's own activity type. `DeliveryActivityAttributes` is defined in the
+        // widget extension folder and shared with this target; the SDK matches it by type name.
+        Self.liveActivities = LiveActivitiesModule.initialize(
+            LiveActivityConfigBuilder()
+                .register(DeliveryActivityAttributes.self, identifier: DeliveryActivityAttributes.identifier)
+                .build()
+        )
     }
 
     // Handle Universal Link deep link from the Customer.io SDK. This function will get called if a push notification
