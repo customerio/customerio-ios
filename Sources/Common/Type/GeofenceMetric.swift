@@ -36,8 +36,7 @@ public extension GeofenceMetric {
             properties["geofenceName"] = name
         }
         if let geosetId {
-            // Numeric ids go out as a number (type-preserving) so scalar campaign matching is consistent.
-            properties["geosetId"] = Int64(geosetId) ?? geosetId
+            properties["geosetId"] = geosetId
         }
         return properties
     }

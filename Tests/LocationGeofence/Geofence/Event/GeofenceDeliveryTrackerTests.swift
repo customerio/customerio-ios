@@ -95,24 +95,7 @@ struct GeofenceDeliveryTrackerTests {
     }
 
     @Test
-    func trackMetric_givenNumericGeosetId_expectGeosetIdEmittedAsNumber() async {
-        let (tracker, httpClient) = makeTracker()
-        httpClient.sendTrackEventClosure = { _, completion in completion(.success(())) }
-
-        await withCheckedContinuation { continuation in
-            tracker.trackMetric(metric: makeMetric(geosetId: "42"), userId: "user_42") { _ in
-                continuation.resume()
-            }
-        }
-
-        let properties = httpClient.sendTrackEventReceivedArguments?.request.properties ?? [:]
-        // Type-preserving: a numeric geoset id goes out as a number, not a string.
-        #expect(properties["geosetId"] as? Int64 == 42)
-        #expect(properties["geosetId"] as? String == nil)
-    }
-
-    @Test
-    func trackMetric_givenNonNumericGeosetId_expectGeosetIdEmittedAsString() async {
+    func trackMetric_givenGeosetId_expectGeosetIdEmittedAsString() async {
         let (tracker, httpClient) = makeTracker()
         httpClient.sendTrackEventClosure = { _, completion in completion(.success(())) }
 
