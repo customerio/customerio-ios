@@ -130,9 +130,9 @@ public struct NotificationInboxView: View {
     /// the SDK default navigation only if the host did NOT handle it.
     ///
     /// Default navigation (item 12), mirroring web `handleInboxAction`:
-    ///  - `openUrl` / `openDeeplink` with a value → open it via `UIApplication.shared.open` (routes
-    ///    http(s) to the browser and a custom scheme to the registered/host app). `javascript:` is
-    ///    blocked, matching web's `isSafeUrl`.
+    ///  - `openUrl` with a value → open it externally via `UIApplication.shared.open`.
+    ///  - `openDeeplink` with a value → route through the SDK's shared deep-link handling
+    ///    (`deepLinkUtil.handleDeepLink`), identical to push-notification and in-app-message deep links.
     ///  - `performAction` / `unknown` → no SDK navigation; the host was already offered the action.
     ///  We never force-unwrap a value.
     private func handleNonDismissAction(messageId: String, resolution: InboxActionResolution) {

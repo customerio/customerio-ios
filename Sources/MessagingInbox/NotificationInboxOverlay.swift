@@ -60,6 +60,10 @@ public struct NotificationInboxOverlay: View {
             }
             .padding(16)
         }
+        // Fill the host so the branding `position` alignment resolves against the full available area
+        // rather than a stack sized to just the bell (the Color.clear anchor also expands, but make it
+        // explicit so placement is unambiguous regardless of where the host mounts the overlay).
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         // The overlay owns the shared model's lifecycle (the bell/sheet observe it but don't drive it).
         .onAppear { model.start() }
         .onDisappear { model.stop() }
