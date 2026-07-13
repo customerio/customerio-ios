@@ -247,6 +247,8 @@ final class VisualInboxProviderImpl: VisualInboxProvider, @unchecked Sendable {
             dividerColor: chrome.dividerColor ?? chrome.borderColor,
             badgeBackground: chrome.unreadIndicator?.background,
             cornerRadius: chrome.cornerRadius,
+            position: chrome.position,
+            showUnreadBadge: chrome.unreadIndicator?.showAlert,
             darkModePattern: branding.darkModePattern
         )
     }

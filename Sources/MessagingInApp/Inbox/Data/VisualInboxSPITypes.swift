@@ -85,6 +85,13 @@ public struct VisualInboxChrome: Equatable {
     public let badgeBackground: String?
     /// `patterns.inbox.cornerRadius` — the panel corner radius (points).
     public let cornerRadius: Double?
+    /// `patterns.inbox.position` — where the floating bell anchors (e.g. `bottom-right`, `bottom-left`,
+    /// `top-right`, `top-left`). nil/unrecognized falls back to the overlay's default (bottom-right).
+    /// Only positions the bell + badge; the slide-up panel always presents from the bottom edge.
+    public let position: String?
+    /// `patterns.inbox.unreadIndicator.showAlert` — whether the unread badge is shown at all. Web hides
+    /// the badge when this is false (regardless of count). nil → default to showing it.
+    public let showUnreadBadge: Bool?
     /// `patterns.modes.dark` raw overrides (OPTIONAL; nil in most workspaces). Resolved by the overlay
     /// only in dark mode, by digging the same keys nested under `dark.inbox`.
     public let darkModePattern: [String: Any]?
@@ -96,6 +103,8 @@ public struct VisualInboxChrome: Equatable {
         dividerColor: String?,
         badgeBackground: String?,
         cornerRadius: Double?,
+        position: String?,
+        showUnreadBadge: Bool?,
         darkModePattern: [String: Any]?
     ) {
         self.bellBackground = bellBackground
@@ -104,6 +113,8 @@ public struct VisualInboxChrome: Equatable {
         self.dividerColor = dividerColor
         self.badgeBackground = badgeBackground
         self.cornerRadius = cornerRadius
+        self.position = position
+        self.showUnreadBadge = showUnreadBadge
         self.darkModePattern = darkModePattern
     }
 
@@ -114,6 +125,8 @@ public struct VisualInboxChrome: Equatable {
             lhs.dividerColor == rhs.dividerColor &&
             lhs.badgeBackground == rhs.badgeBackground &&
             lhs.cornerRadius == rhs.cornerRadius &&
+            lhs.position == rhs.position &&
+            lhs.showUnreadBadge == rhs.showUnreadBadge &&
             NSDictionary(dictionary: lhs.darkModePattern ?? [:]).isEqual(to: rhs.darkModePattern ?? [:])
     }
 }

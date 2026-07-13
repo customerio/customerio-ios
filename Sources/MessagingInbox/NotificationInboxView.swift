@@ -36,19 +36,27 @@ public struct NotificationInboxView: View {
     /// panel open instead.
     private let marksOpenedOnAppear: Bool
 
+    /// Invoked after a navigation action (`openUrl`/`openDeeplink` with a destination) is handled, so
+    /// the presenter can dismiss (the overlay closes its sheet so the opened screen isn't left behind
+    /// it). nil for standalone embedding, where the host owns presentation.
+    private let onNavigate: (() -> Void)?
+
     /// Creates a standalone inbox list backed by the SDK's shared Visual Inbox data layer.
     public init() {
         _model = ObservedObject(wrappedValue: VisualInboxModel())
         self.ownsModelLifecycle = true
         self.marksOpenedOnAppear = true
+        self.onNavigate = nil
     }
 
     /// Creates a list observing a shared model (used by ``NotificationInboxOverlay`` so the bell,
-    /// panel, and overlay all observe the same state). The overlay drives lifecycle + mark-opened.
-    init(model: VisualInboxModel) {
+    /// panel, and overlay all observe the same state). The overlay drives lifecycle + mark-opened and
+    /// passes `onNavigate` to close its sheet after a navigation action.
+    init(model: VisualInboxModel, onNavigate: (() -> Void)? = nil) {
         _model = ObservedObject(wrappedValue: model)
         self.ownsModelLifecycle = false
         self.marksOpenedOnAppear = false
+        self.onNavigate = onNavigate
     }
 
     public var body: some View {
@@ -121,16 +129,18 @@ public struct NotificationInboxView: View {
     /// Tracks the click + offers the action to the host listener (via the model/data layer), then runs
     /// the SDK default navigation only if the host did NOT handle it.
     ///
-    /// Default navigation (item 12):
-    ///  - `openUrl` / `newTab` / a plain http(s) url → open the url via `UIApplication.shared.open`.
-    ///  - `deeplink` → handed to the host; if there's no host listener (or it deferred) we log, since
-    ///    the SDK can't know the host's in-app routing. We never force-unwrap a url.
+    /// Default navigation (item 12), mirroring web `handleInboxAction`:
+    ///  - `openUrl` / `openDeeplink` with a value → open it via `UIApplication.shared.open` (routes
+    ///    http(s) to the browser and a custom scheme to the registered/host app). `javascript:` is
+    ///    blocked, matching web's `isSafeUrl`.
+    ///  - `performAction` / `unknown` → no SDK navigation; the host was already offered the action.
+    ///  We never force-unwrap a value.
     private func handleNonDismissAction(messageId: String, resolution: InboxActionResolution) {
         Task {
             let outcome = await model.handleAction(
                 messageId: messageId,
                 actionName: resolution.actionName,
-                actionValue: resolution.url ?? ""
+                actionValue: resolution.actionValue ?? ""
             )
             switch outcome {
             case .handledByHost:
@@ -147,6 +157,16 @@ public struct NotificationInboxView: View {
             if resolution.dismiss {
                 model.dismiss(messageId: messageId)
             }
+            // Close the inbox after a DEEP-LINK action so the opened in-app screen isn't left sitting
+            // behind the inbox sheet. Only `openDeeplink` dismisses: it routes within/into the app, so
+            // the sheet would otherwise cover the destination. `openUrl` opens externally (browser) and
+            // leaves nothing behind the sheet; `performAction`/`dismiss` keep the inbox open. Fires
+            // whether the SDK opened it or the host handled it; skipped for a missing message or an
+            // empty destination.
+            let isDeeplinkNavigation = resolution.behavior == .openDeeplink
+            if isDeeplinkNavigation, outcome != .messageMissing, resolution.actionValue?.isEmpty == false {
+                await MainActor.run { onNavigate?() }
+            }
         }
     }
 
@@ -155,23 +175,28 @@ public struct NotificationInboxView: View {
     private func performDefaultNavigation(_ resolution: InboxActionResolution) {
         let logger = DIGraphShared.shared.logger
         switch resolution.behavior {
-        case .deeplink:
-            // Deep links require host routing; with no host handler we can only log.
-            logger.debug("[CIO-Inbox] deeplink action not handled by host: \(resolution.url ?? "<none>")")
-        case .openUrl, .newTab, .none:
-            guard let urlString = resolution.url, let url = URL(string: urlString) else {
-                logger.debug("[CIO-Inbox] action has no openable url (name=\(resolution.actionName))")
+        case .openUrl, .openDeeplink:
+            // Web parity: `openUrl` and `openDeeplink` both navigate to the action value. On iOS
+            // `UIApplication.open` routes http(s) to the browser and a custom scheme to the
+            // registered/host app — so the SDK opens both, and a host can still intercept upstream
+            // (by handling the action) to do its own in-app routing.
+            guard let value = resolution.actionValue, let url = URL(string: value) else {
+                logger.debug("[CIO-Inbox] \(resolution.behavior) action has no openable value (name=\(resolution.actionName))")
                 return
             }
-            guard url.scheme == "http" || url.scheme == "https" else {
-                // A non-web url with no explicit deeplink behavior — let the host decide; log only.
-                logger.debug("[CIO-Inbox] action url is not http(s) and was not host-handled: \(urlString)")
+            // Block unsafe schemes (mirrors web `isSafeUrl`, which rejects `javascript:`).
+            guard url.scheme?.lowercased() != "javascript" else {
+                logger.debug("[CIO-Inbox] blocked unsafe action url: \(value)")
                 return
             }
             // `performDefaultNavigation` runs inside an unstructured Task (after awaiting the
             // main-actor model), so hop back to the main actor: UIApplication.shared.open is a
             // UIKit/main-thread API.
             DispatchQueue.main.async { UIApplication.shared.open(url) }
+        case .performAction, .unknown:
+            // No SDK navigation — the host was already offered the action via `messageActionTaken`
+            // (web dispatches its `inboxMessageAction` event and does nothing else here).
+            logger.debug("[CIO-Inbox] \(resolution.behavior) action: no default navigation (name=\(resolution.actionName))")
         }
     }
 }

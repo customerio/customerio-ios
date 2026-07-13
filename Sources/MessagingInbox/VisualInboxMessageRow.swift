@@ -66,10 +66,11 @@ struct VisualInboxMessageRow: View {
     /// message (item 1). Any other action is resolved (item 12 nav + item 13 host listener) and
     /// forwarded via `onAction`.
     ///
-    /// The live inbox templates emit the action as `name == "messageAction"` with the message's
-    /// `properties.messageAction` carrying either `{ behavior: "dismiss" }` (dismiss) or a
-    /// `{ url, behavior }` for navigation. We also accept the Jist-demo dismiss sentinels
-    /// (`name == "dismiss"` or `data.url == "#dismiss"`) as a fallback.
+    /// The live inbox emits the action as `name == "messageAction"` with the message's
+    /// `properties.messageAction` carrying the web `InboxActionConfig`: `{ behavior, action, name,
+    /// dismiss }`. A `behavior == "dismiss"` (or the standalone `dismiss` flag with no other behavior)
+    /// removes the message; other behaviors resolve to an ``InboxActionResolution``. We also accept the
+    /// Jist-demo dismiss sentinels (`name == "dismiss"` or a `#dismiss` action/url) as a fallback.
     private func handleAction(_ event: JistActionEvent) {
         if Self.isDismiss(event) {
             onDismiss()
@@ -78,31 +79,37 @@ struct VisualInboxMessageRow: View {
         onAction(Self.resolve(event))
     }
 
-    /// Whether the event resolves to a dismiss (kept EXACTLY as the original matching: data behavior
-    /// `dismiss`, action name `dismiss`, or the `#dismiss` url sentinel).
+    /// Whether the event resolves to a standalone dismiss: `data.behavior == "dismiss"`, the action
+    /// name `dismiss`, or the `#dismiss` sentinel (in either `action` or the legacy `url`). A `dismiss`
+    /// *flag* chained onto another behavior (e.g. `{ behavior: openUrl, dismiss: true }`) is NOT a
+    /// standalone dismiss — that runs the action first, then removes (see `resolve`/`onAction`).
     static func isDismiss(_ event: JistActionEvent) -> Bool {
-        let behavior = event.data?.objectValue?["behavior"]?.stringValue
-        let url = event.data?.objectValue?["url"]?.stringValue
-        return behavior == "dismiss" || event.name == "dismiss" || url == "#dismiss"
+        let data = event.data?.objectValue
+        let behavior = data?["behavior"]?.stringValue
+        let action = data?["action"]?.stringValue ?? data?["url"]?.stringValue
+        return behavior == "dismiss" || event.name == "dismiss" || action == "#dismiss"
     }
 
-    /// Pure mapping from a non-dismiss Jist `onAction` event to an ``InboxActionResolution``. The
-    /// action's url + behavior live in `event.data` (the message's `properties[name]`). Robust to
+    /// Pure mapping from a non-dismiss Jist `onAction` event to an ``InboxActionResolution``, matching
+    /// the web `InboxActionConfig` shape (`{ behavior, action, name, dismiss }`). Robust to
     /// missing/malformed fields — every field is optional and never force-unwrapped.
     static func resolve(_ event: JistActionEvent) -> InboxActionResolution {
         let data = event.data?.objectValue
-        let url = data?["url"]?.stringValue
+        // Destination/value is `action`; fall back to the legacy `url` key for older payloads.
+        let actionValue = data?["action"]?.stringValue ?? data?["url"]?.stringValue
+        // Tracking name is `name`; fall back to the Jist node name.
+        let actionName = data?["name"]?.stringValue ?? event.name
         let behavior: InboxActionResolution.Behavior
         switch data?["behavior"]?.stringValue {
         case "openUrl": behavior = .openUrl
-        case "newTab": behavior = .newTab
-        case "deeplink": behavior = .deeplink
-        default: behavior = .none
+        case "openDeeplink": behavior = .openDeeplink
+        case "performAction": behavior = .performAction
+        default: behavior = .unknown
         }
-        // "Auto dismiss on click": a standalone `dismiss` flag (boolean true, or the string "true")
-        // alongside a non-dismiss behavior means "run the action AND remove the message".
+        // "Auto dismiss on click": a `dismiss` flag (boolean true, or the string "true") alongside a
+        // non-dismiss behavior means "run the action AND remove the message".
         let dismiss = data?["dismiss"]?.boolValue == true || data?["dismiss"]?.stringValue == "true"
-        return InboxActionResolution(actionName: event.name, url: url, behavior: behavior, dismiss: dismiss)
+        return InboxActionResolution(actionName: actionName, actionValue: actionValue, behavior: behavior, dismiss: dismiss)
     }
 
     // MARK: - Relative dates (item 3)

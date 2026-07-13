@@ -63,15 +63,19 @@ public struct NotificationInboxBell: View {
         let colors = ResolvedInboxColors.resolve(chrome: model.chrome, isDark: colorScheme == .dark)
         return Button(action: onTap, label: {
             ZStack(alignment: .topTrailing) {
-                // Default bundled SF Symbol bell (branding SVG bell is deferred).
-                Image(systemName: "bell.fill")
-                    .foregroundColor(colors.bellIcon)
+                // Bell glyph bundled as vector code from the branding floatingIcon SVG, tinted by
+                // branding. Even-odd fill matches the source SVG's `fill-rule="evenodd"` (outlined bell).
+                InboxBellIcon()
+                    .fill(colors.bellIcon, style: FillStyle(eoFill: true))
+                    .frame(width: 26, height: 26)
                     .frame(width: 56, height: 56)
                     .background(colors.bellBackground)
                     .clipShape(Circle())
                     .shadow(radius: 4)
 
-                if model.unopenedCount > 0 {
+                // Unread badge: shown only when there are unopened messages AND branding's
+                // `unreadIndicator.showAlert` allows it (nil → show, matching web parity).
+                if model.unopenedCount > 0, model.chrome?.showUnreadBadge ?? true {
                     Text("\(model.unopenedCount)")
                         .font(.caption)
                         .foregroundColor(.white)
