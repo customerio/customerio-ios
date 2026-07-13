@@ -3,142 +3,82 @@ import Foundation
 import CoreGraphics
 import SwiftUI
 
-/// The Customer.io notification-bell glyph, rendered as a resolution-independent SwiftUI `Shape`
-/// from the design's SVG path data (sourced from the branding `patterns.inbox.floatingIcon.svg`).
-/// Bundled as vector code — no image asset, no SVG runtime dependency — and tinted by the caller.
+/// Renders the notification-bell glyph from the raw SVG markup a workspace configures in branding
+/// (`patterns.inbox.floatingIcon.svg`), as a tint-able SwiftUI `Shape`.
 ///
-/// Fill with `FillStyle(eoFill: true)`: the glyph is authored with the even-odd rule (the bell body
-/// is an outlined ring), matching the source SVG's `fill-rule="evenodd"`.
+/// Path parsing is delegated to the vendored `SVGPath` (see `Vendor/SVGPath`), which robustly handles
+/// the full SVG path grammar. This type only extracts the `<path d="…">` elements + `viewBox` from the
+/// markup and fits the combined path into the target rect (centered, aspect-preserving).
+///
+/// Fill with `FillStyle(eoFill: true)`: CIO bell glyphs are authored with the even-odd rule (the bell
+/// body is an outlined ring), matching the source SVG's `fill-rule="evenodd"`.
 @available(iOS 13.0, *)
 struct InboxBellIcon: Shape {
-    /// The source SVG viewBox (`0 0 24 25`). Path coordinates are in this space and scaled to `rect`.
-    private static let viewBox = CGSize(width: 24, height: 25)
-
-    /// The even-odd subpaths of the bell glyph, copied verbatim from the branding floatingIcon SVG.
-    private static let pathData: [String] = [
-        // clapper
-        "M9.05889 19.1249V19.9686C9.05889 21.3666 10.1922 22.4998 11.5901 22.4998C12.9881 22.4998 14.1214 21.3666 14.1214 19.9686V19.1249H15.8088V19.9686C15.8088 22.2986 13.9201 24.1873 11.5901 24.1873C9.26019 24.1873 7.3714 22.2986 7.3714 19.9686V19.1249H9.05889Z",
-        // bell body (even-odd ring)
-        "M6.26459 6.41952C7.69491 5.17991 9.61205 4.49997 11.5901 4.49997C13.5682 4.49997 15.4853 5.17991 16.9157 6.41952C18.3498 7.66242 19.1838 9.37625 19.1838 11.1937C19.1838 14.4023 20.2353 16.4052 21.2364 17.5981C21.7423 18.201 22.2451 18.6082 22.6143 18.8616C22.7987 18.9881 22.9491 19.0757 23.0486 19.1296C23.0983 19.1565 23.1351 19.1749 23.157 19.1856L23.1784 19.1956L23.1773 19.1952C23.1772 19.1952 23.1763 19.1948 23.1748 19.1981L22.84 20.8124H0.340199L0.00547843 19.1981C0.0039515 19.1948 0.00387784 19.1948 0.00380461 19.1948L0.00166017 19.1958L0.000187376 19.1964C-0.000271145 19.1966 7.2075e-05 19.1965 0.00166017 19.1958L0.0232224 19.1856C0.0451327 19.1749 0.0819958 19.1565 0.131696 19.1296C0.231178 19.0757 0.381514 18.9881 0.56597 18.8616C0.935196 18.6082 1.43796 18.201 1.94386 17.5981C2.94491 16.4052 3.99642 14.4023 3.99642 11.1937C3.99642 9.37625 4.83047 7.66242 6.26459 6.41952ZM2.84048 19.1249H20.3398C20.2086 18.9878 20.0761 18.8406 19.9437 18.6829C18.6948 17.1946 17.4963 14.81 17.4963 11.1937C17.4963 9.90808 16.9081 8.64599 15.8105 7.69474C14.7091 6.74019 13.1924 6.18746 11.5901 6.18746C9.9878 6.18746 8.47118 6.74019 7.36978 7.69474C6.27218 8.64599 5.68391 9.90808 5.68391 11.1937C5.68391 14.81 4.48545 17.1946 3.23651 18.6829C3.10415 18.8406 2.97165 18.9878 2.84048 19.1249ZM23.1801 19.1964C23.1805 19.1966 23.1799 19.1964 23.1784 19.1956L23.1801 19.1964Z",
-        // top nub
-        "M11.5901 1.68749C10.5028 1.68749 9.62139 2.56892 9.62139 3.65623C9.62139 4.02656 9.72284 4.37062 9.89897 4.66499L10.3322 5.38903L8.88411 6.25546L8.4509 5.53142C8.12245 4.98249 7.9339 4.34009 7.9339 3.65623C7.9339 1.63695 9.57085 0 11.5901 0C13.6094 0 15.2464 1.63695 15.2464 3.65623C15.2464 4.34009 15.0578 4.98249 14.7294 5.53142L14.2961 6.25546L12.8481 5.38903L13.2813 4.66499C13.4574 4.37062 13.5589 4.02656 13.5589 3.65623C13.5589 2.56892 12.6774 1.68749 11.5901 1.68749Z"
-    ]
+    /// Raw SVG markup, e.g. `<svg viewBox="0 0 24 25"><path d="…"/>…</svg>`.
+    let svg: String
 
     func path(in rect: CGRect) -> Path {
-        var glyph = Path()
-        for data in Self.pathData {
-            SVGPathParser.append(pathData: data, to: &glyph)
-        }
-        // Fit the viewBox into rect preserving aspect ratio, centered (scale first, then translate).
-        let scale = min(rect.width / Self.viewBox.width, rect.height / Self.viewBox.height)
-        let scaledWidth = Self.viewBox.width * scale
-        let scaledHeight = Self.viewBox.height * scale
-        let translateX = rect.minX + (rect.width - scaledWidth) / 2
-        let translateY = rect.minY + (rect.height - scaledHeight) / 2
+        guard let parsed = Self.parse(svg) else { return Path() }
+        let box = parsed.viewBox
+        guard box.width > 0, box.height > 0 else { return Path() }
+        // Fit the viewBox into rect, centered, preserving aspect ratio (scale then translate).
+        let scale = min(rect.width / box.width, rect.height / box.height)
+        let scaledWidth = box.width * scale
+        let scaledHeight = box.height * scale
+        let translateX = rect.minX + (rect.width - scaledWidth) / 2 - box.minX * scale
+        let translateY = rect.minY + (rect.height - scaledHeight) / 2 - box.minY * scale
         let transform = CGAffineTransform(translationX: translateX, y: translateY)
             .scaledBy(x: scale, y: scale)
-        return glyph.applying(transform)
-    }
-}
-
-/// Minimal SVG path-data parser covering exactly the token forms in the bundled bell glyph: the
-/// absolute commands `M L H V C Z` and signed decimal numbers with an optional `e`/`E` exponent.
-/// Not a general SVG parser — relative commands, arcs, quadratics, and implicit command repeats are
-/// intentionally unsupported (the source glyph uses none of them).
-@available(iOS 13.0, *)
-enum SVGPathParser {
-    static func append(pathData: String, to path: inout Path) {
-        var scanner = Scanner(pathData)
-        var current = CGPoint.zero
-        var subpathStart = CGPoint.zero
-        while let command = scanner.nextCommand() {
-            switch command {
-            case "M":
-                current = CGPoint(x: scanner.number(), y: scanner.number())
-                subpathStart = current
-                path.move(to: current)
-            case "L":
-                current = CGPoint(x: scanner.number(), y: scanner.number())
-                path.addLine(to: current)
-            case "H":
-                current.x = scanner.number()
-                path.addLine(to: current)
-            case "V":
-                current.y = scanner.number()
-                path.addLine(to: current)
-            case "C":
-                let control1 = CGPoint(x: scanner.number(), y: scanner.number())
-                let control2 = CGPoint(x: scanner.number(), y: scanner.number())
-                let end = CGPoint(x: scanner.number(), y: scanner.number())
-                path.addCurve(to: end, control1: control1, control2: control2)
-                current = end
-            case "Z":
-                path.closeSubpath()
-                current = subpathStart
-            default:
-                break
-            }
-        }
+        return parsed.path.applying(transform)
     }
 
-    /// Character-level tokenizer for the supported subset.
-    private struct Scanner {
-        private let characters: [Character]
-        private var index = 0
+    /// Whether the markup yields at least one parseable path — lets the bell fall back to the bundled
+    /// default glyph when branding provides no (or unparseable) SVG.
+    static func canRender(_ svg: String) -> Bool {
+        parse(svg)?.path.isEmpty == false
+    }
 
-        init(_ string: String) {
-            self.characters = Array(string)
-        }
+    // MARK: - SVG extraction (path data + viewBox); parsing delegated to vendored SVGPath
 
-        /// Skips whitespace and comma separators between tokens.
-        private mutating func skipSeparators() {
-            while index < characters.count {
-                let character = characters[index]
-                if character.isWhitespace || character == "," {
-                    index += 1
-                } else {
-                    break
-                }
+    private static func parse(_ svg: String) -> (path: Path, viewBox: CGRect)? {
+        let pathData = pathData(from: svg)
+        guard !pathData.isEmpty else { return nil }
+        var combined = Path()
+        for data in pathData {
+            // Vendored SVGPath (`Path(svgPath:)`); skip any malformed subpath rather than fail whole.
+            if let subpath = try? Path(svgPath: data) {
+                combined.addPath(subpath)
             }
         }
+        guard !combined.isEmpty else { return nil }
+        // Prefer the declared viewBox; otherwise use the path's own bounds as the coordinate space.
+        return (combined, viewBox(from: svg) ?? combined.boundingRect)
+    }
 
-        /// Consumes and returns the next command letter (normalized to uppercase), or nil at input end.
-        mutating func nextCommand() -> Character? {
-            skipSeparators()
-            guard index < characters.count else { return nil }
-            let character = characters[index]
-            guard character.isLetter else { return nil }
-            index += 1
-            return Character(character.uppercased())
-        }
+    /// Extracts every `<path … d="…">` value from the markup.
+    private static func pathData(from svg: String) -> [String] {
+        matches(in: svg, pattern: #"<path[^>]*\bd\s*=\s*"([^"]*)""#)
+    }
 
-        /// Consumes and returns the next number (optional sign, decimal, optional `e`/`E` exponent).
-        mutating func number() -> CGFloat {
-            skipSeparators()
-            var text = ""
-            takeSign(into: &text)
-            while index < characters.count, characters[index].isNumber || characters[index] == "." {
-                text.append(characters[index])
-                index += 1
-            }
-            if index < characters.count, characters[index] == "e" || characters[index] == "E" {
-                text.append(characters[index])
-                index += 1
-                takeSign(into: &text)
-                while index < characters.count, characters[index].isNumber {
-                    text.append(characters[index])
-                    index += 1
-                }
-            }
-            return CGFloat(Double(text) ?? 0)
-        }
+    /// Parses a `viewBox="minX minY width height"` attribute, if present.
+    private static func viewBox(from svg: String) -> CGRect? {
+        guard let raw = matches(in: svg, pattern: #"\bviewBox\s*=\s*"([^"]*)""#).first else { return nil }
+        let parts = raw.split(whereSeparator: { $0 == " " || $0 == "," }).compactMap { Double($0) }
+        guard parts.count == 4 else { return nil }
+        return CGRect(x: parts[0], y: parts[1], width: parts[2], height: parts[3])
+    }
 
-        private mutating func takeSign(into text: inout String) {
-            if index < characters.count, characters[index] == "-" || characters[index] == "+" {
-                text.append(characters[index])
-                index += 1
+    /// Returns the first capture group of every match of `pattern` in `string`.
+    private static func matches(in string: String, pattern: String) -> [String] {
+        guard let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]) else { return [] }
+        let nsString = string as NSString
+        var results: [String] = []
+        regex.enumerateMatches(in: string, range: NSRange(location: 0, length: nsString.length)) { match, _, _ in
+            if let match = match, match.numberOfRanges > 1 {
+                results.append(nsString.substring(with: match.range(at: 1)))
             }
         }
+        return results
     }
 }
 #endif

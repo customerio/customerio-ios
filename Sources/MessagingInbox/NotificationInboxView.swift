@@ -175,24 +175,23 @@ public struct NotificationInboxView: View {
     private func performDefaultNavigation(_ resolution: InboxActionResolution) {
         let logger = DIGraphShared.shared.logger
         switch resolution.behavior {
-        case .openUrl, .openDeeplink:
-            // Web parity: `openUrl` and `openDeeplink` both navigate to the action value. On iOS
-            // `UIApplication.open` routes http(s) to the browser and a custom scheme to the
-            // registered/host app — so the SDK opens both, and a host can still intercept upstream
-            // (by handling the action) to do its own in-app routing.
+        case .openUrl:
+            // Web parity: `openUrl` navigates to the value (external). Mirror the in-app message page
+            // action and open via the system. Runs on the main actor (UIKit API) after the model await.
             guard let value = resolution.actionValue, let url = URL(string: value) else {
-                logger.debug("[CIO-Inbox] \(resolution.behavior) action has no openable value (name=\(resolution.actionName))")
+                logger.debug("[CIO-Inbox] openUrl action has no openable value (name=\(resolution.actionName))")
                 return
             }
-            // Block unsafe schemes (mirrors web `isSafeUrl`, which rejects `javascript:`).
-            guard url.scheme?.lowercased() != "javascript" else {
-                logger.debug("[CIO-Inbox] blocked unsafe action url: \(value)")
-                return
-            }
-            // `performDefaultNavigation` runs inside an unstructured Task (after awaiting the
-            // main-actor model), so hop back to the main actor: UIApplication.shared.open is a
-            // UIKit/main-thread API.
             DispatchQueue.main.async { UIApplication.shared.open(url) }
+        case .openDeeplink:
+            // Route through the SDK's shared deep-link handling — host `deepLinkCallback` → universal-
+            // link handoff → system open — identical to push-notification and in-app-message deep
+            // links, so inbox deep links behave consistently with the rest of the SDK.
+            guard let value = resolution.actionValue, let url = URL(string: value) else {
+                logger.debug("[CIO-Inbox] openDeeplink action has no openable value (name=\(resolution.actionName))")
+                return
+            }
+            DispatchQueue.main.async { DIGraphShared.shared.deepLinkUtil.handleDeepLink(url) }
         case .performAction, .unknown:
             // No SDK navigation — the host was already offered the action via `messageActionTaken`
             // (web dispatches its `inboxMessageAction` event and does nothing else here).

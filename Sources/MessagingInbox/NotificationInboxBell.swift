@@ -63,10 +63,7 @@ public struct NotificationInboxBell: View {
         let colors = ResolvedInboxColors.resolve(chrome: model.chrome, isDark: colorScheme == .dark)
         return Button(action: onTap, label: {
             ZStack(alignment: .topTrailing) {
-                // Bell glyph bundled as vector code from the branding floatingIcon SVG, tinted by
-                // branding. Even-odd fill matches the source SVG's `fill-rule="evenodd"` (outlined bell).
-                InboxBellIcon()
-                    .fill(colors.bellIcon, style: FillStyle(eoFill: true))
+                bellGlyph(colors: colors)
                     .frame(width: 26, height: 26)
                     .frame(width: 56, height: 56)
                     .background(colors.bellBackground)
@@ -88,6 +85,22 @@ public struct NotificationInboxBell: View {
         })
         // `.accessibility(label:)` is the iOS 13-safe form; `.accessibilityLabel` is iOS 14+.
         .accessibility(label: Text(model.unopenedCount > 0 ? "Notifications, \(model.unopenedCount) unread" : "Notifications"))
+    }
+
+    /// The bell glyph: the workspace's branding SVG (`floatingIcon.svg`) when present and parseable,
+    /// otherwise the bundled default bell asset. Both are tinted with the branding glyph color.
+    @ViewBuilder
+    private func bellGlyph(colors: ResolvedInboxColors) -> some View {
+        if let svg = model.chrome?.bellIconSvg, InboxBellIcon.canRender(svg) {
+            // Even-odd fill matches CIO bell SVGs' `fill-rule="evenodd"` (outlined bell).
+            InboxBellIcon(svg: svg).fill(colors.bellIcon, style: FillStyle(eoFill: true))
+        } else {
+            Image("cio-inbox-bell", bundle: .module)
+                .renderingMode(.template)
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .foregroundColor(colors.bellIcon)
+        }
     }
 }
 

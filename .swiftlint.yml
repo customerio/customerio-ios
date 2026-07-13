@@ -7,9 +7,10 @@ disabled_rules:
   - nesting # It can be easier to read code when a class has many nested classes inside of it (example: JSON Codable structs for deserializing JSON). 
   - identifier_name # Variable names that are short in length can sometimes make code hard to read which this rule tries to catch. However, sometimes variable names that are 2 characters long are OK. We can catch bad variable naming in pull requests. 
 
-excluded: # paths or files to ignore during linting. Takes precedence over `included`.  
+excluded: # paths or files to ignore during linting. Takes precedence over `included`.
   - .build
   - Package.swift
   - Apps/*/Pods
+  - Sources/MessagingInbox/Vendor # third-party code vendored verbatim (SVGPath, MIT)
 
 reporter: "emoji" # reporter type (xcode, json, csv, checkstyle, codeclimate, junit, html, emoji, sonarqube, markdown, github-actions-logging)

@@ -183,6 +183,7 @@ let package = Package(
                 path: "Sources/MessagingInbox",
                 resources: [
                     .process("Resources/PrivacyInfo.xcprivacy"),
+                    .process("Resources/CioInboxAssets.xcassets"),
                 ]),
         .testTarget(name: "MessagingInboxTests",
                     dependencies: ["CioMessagingInbox", "CioMessagingInApp", "SharedTests", "CioInternalCommonMocks"],

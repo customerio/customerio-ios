@@ -77,6 +77,9 @@ public struct VisualInboxChrome: Equatable {
     public let bellBackground: String?
     /// `patterns.inbox.floatingIcon.color` — the bell glyph tint.
     public let bellIconColor: String?
+    /// `patterns.inbox.floatingIcon.svg` — raw SVG markup for the bell glyph. The overlay renders it
+    /// (tinted by `bellIconColor`) and falls back to a bundled default bell when absent/unparseable.
+    public let bellIconSvg: String?
     /// `patterns.inbox.background` — the panel surface.
     public let panelBackground: String?
     /// `patterns.inbox.dividerColor` (falling back to `borderColor`) — the row divider.
@@ -99,6 +102,7 @@ public struct VisualInboxChrome: Equatable {
     public init(
         bellBackground: String?,
         bellIconColor: String?,
+        bellIconSvg: String?,
         panelBackground: String?,
         dividerColor: String?,
         badgeBackground: String?,
@@ -109,6 +113,7 @@ public struct VisualInboxChrome: Equatable {
     ) {
         self.bellBackground = bellBackground
         self.bellIconColor = bellIconColor
+        self.bellIconSvg = bellIconSvg
         self.panelBackground = panelBackground
         self.dividerColor = dividerColor
         self.badgeBackground = badgeBackground
@@ -121,6 +126,7 @@ public struct VisualInboxChrome: Equatable {
     public static func == (lhs: VisualInboxChrome, rhs: VisualInboxChrome) -> Bool {
         lhs.bellBackground == rhs.bellBackground &&
             lhs.bellIconColor == rhs.bellIconColor &&
+            lhs.bellIconSvg == rhs.bellIconSvg &&
             lhs.panelBackground == rhs.panelBackground &&
             lhs.dividerColor == rhs.dividerColor &&
             lhs.badgeBackground == rhs.badgeBackground &&
