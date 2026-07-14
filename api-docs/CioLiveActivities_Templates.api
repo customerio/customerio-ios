@@ -1,0 +1,36 @@
+public final class CioLiveActivities_Templates.CIOCountdownTimerAttributes {
+	public final val identifier: String;
+	public var cioInstanceId: String;
+	public var header: String;
+	public fun init(header: String);
+}
+public final class CioLiveActivities_Templates.CIOCountdownTimerBranding {
+	public var logo: Image?;
+	public var textColor: AnyShapeStyle;
+	public fun init(logo: Image? = nil, background: Color = Color.black.opacity(0.85), textColor: some ShapeStyle = Color.white);
+	public fun init(logo: Image? = nil, background: some ShapeStyle, textColor: some ShapeStyle = Color.white);
+}
+public final class CioLiveActivities_Templates.CIOCountdownTimerLiveActivity {
+	public var body: some WidgetConfiguration;
+	public fun init();
+	public fun init(branding: CIOCountdownTimerBranding);
+}
+public final class CioLiveActivities_Templates.CIOSegmentsAttributes {
+	public final val identifier: String;
+	public var cioInstanceId: String;
+	public var header: String;
+	public fun init(header: String);
+}
+public final class CioLiveActivities_Templates.CIOSegmentsBranding {
+	public var logo: Image?;
+	public var textColor: AnyShapeStyle;
+	public final val progressCompleteStyle: AnyShapeStyle;
+	public final val progressIncompleteStyle: AnyShapeStyle;
+	public fun init(logo: Image? = nil, background: Color = Color.black.opacity(0.85), textColor: some ShapeStyle = Color.white, progressCompleteStyle: some ShapeStyle = Color.white, progressIncompleteStyle: some ShapeStyle = Color(white: 0.4));
+	public fun init(logo: Image? = nil, background: some ShapeStyle, textColor: some ShapeStyle = Color.white, progressCompleteStyle: some ShapeStyle = Color.white, progressIncompleteStyle: some ShapeStyle = Color(white: 0.4));
+}
+public final class CioLiveActivities_Templates.CIOSegmentsLiveActivity {
+	public var body: some WidgetConfiguration;
+	public fun init();
+	public fun init(branding: CIOSegmentsBranding);
+}

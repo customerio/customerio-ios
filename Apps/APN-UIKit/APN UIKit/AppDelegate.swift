@@ -1,6 +1,7 @@
 import CioDataPipelines
 import CioInternalCommon
 import CioLiveActivities
+import CioLiveActivities_Templates
 import CioLocation
 import CioMessagingInApp
 import CioMessagingPush
@@ -91,6 +92,10 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         // widget extension folder and shared with this target; the SDK matches it by type name.
         Self.liveActivities = LiveActivitiesModule.initialize(
             LiveActivityConfigBuilder()
+                // Built-in templates carry their own identifier (CIOActivityTemplate) — no id needed.
+                .register(CIOSegmentsAttributes.self)
+                .register(CIOCountdownTimerAttributes.self)
+                // A custom (app-owned) type: pass the identifier the backend expects.
                 .register(DeliveryActivityAttributes.self, identifier: DeliveryActivityAttributes.identifier)
                 .build()
         )

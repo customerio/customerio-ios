@@ -17,6 +17,7 @@ public final class CioLiveActivities.LiveActivityConfig {
 public final class CioLiveActivities.LiveActivityConfigBuilder {
 	public fun init();
 	public fun func logLevel(_ level: CioLogLevel) -> Self;
+	public fun func register<T: CIOActivityTemplate>(_ type: T.Type) -> Self;
 	public fun func register<T: CIOActivityAttribute>(_ type: T.Type, identifier: String) -> Self;
 	public fun func register<T: ActivityAttributes>(_ type: T.Type, identifier: String) -> Self;
 	public fun func build() -> LiveActivityConfig;

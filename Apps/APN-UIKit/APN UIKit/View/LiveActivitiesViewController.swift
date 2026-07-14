@@ -1,6 +1,7 @@
 @unsafe @preconcurrency import ActivityKit
 import CioLiveActivities
 import CioLiveActivities_Attributes
+import CioLiveActivities_Templates
 import Foundation
 import UIKit
 
@@ -38,7 +39,7 @@ final class LiveActivityDemoDriver<A: ActivityAttributes>: LiveActivityDemoDrivi
     private let phases: [A.ContentState]
     private let endState: A.ContentState
     private let log: (String) -> Void
-    private let autoStepDelay: TimeInterval = 3
+    private let autoStepDelay: TimeInterval = 5
 
     private var handle: CIOLiveActivity<A>?
     private var phaseIndex = 0
@@ -126,6 +127,7 @@ final class LiveActivityDemoDriver<A: ActivityAttributes>: LiveActivityDemoDrivi
         let name = title
         let record = log
         let delay = autoStepDelay
+        autoTask?.cancel()
         autoTask = Task { @MainActor [weak self] in
             for index in 1 ..< total {
                 try? await Task.sleep(nanoseconds: UInt64(delay * 1000000000))
@@ -254,8 +256,39 @@ class LiveActivitiesViewController: BaseViewController {
             log: log
         )
 
+        // The SDK's built-in Segments template, styled with the "Chica" food-delivery branding
+        // (orange gradient + logo), compiled into the live widget via `SegmentsDemoBranding.active`.
+        let segments = LiveActivityDemoDriver<CIOSegmentsAttributes>(
+            title: "Segments (Chica)",
+            module: module,
+            attributes: CIOSegmentsAttributes(header: "Chica"),
+            phases: [
+                .init(status: "Order placed", substatus: "We got your order", segmentsTotal: 4, segmentsComplete: 1, trailingText: "1/4", cioMetadata: laDeepLink),
+                .init(status: "Preparing your order", substatus: "Your food is being cooked", segmentsTotal: 4, segmentsComplete: 2, trailingText: "2/4", cioMetadata: laDeepLink),
+                .init(status: "Out for delivery", substatus: "Arriving soon", segmentsTotal: 4, segmentsComplete: 3, trailingText: "5 min", cioMetadata: laDeepLink)
+            ],
+            endState: .init(status: "Delivered", substatus: "Enjoy your meal!", segmentsTotal: 4, segmentsComplete: 4, trailingText: "Done", cioMetadata: laDeepLink),
+            log: log
+        )
+
+        // The SDK's built-in Countdown Timer template (violet→magenta "sale" branding). The finished
+        // phase drops `endTime`, so the live timer disappears and the done message shows.
+        let countdown = LiveActivityDemoDriver<CIOCountdownTimerAttributes>(
+            title: "Countdown (Sale)",
+            module: module,
+            attributes: CIOCountdownTimerAttributes(header: "Summer Sale"),
+            phases: [
+                .init(title: "Flash sale ends in", statusMessage: "Up to 50% off sitewide", endTime: future(3600), cioMetadata: laDeepLink),
+                .init(title: "Almost gone!", statusMessage: "Final hour", endTime: future(600), cioMetadata: laDeepLink)
+            ],
+            endState: .init(title: "Sale ended", statusMessage: "Thanks for shopping", cioMetadata: laDeepLink),
+            log: log
+        )
+
         return [
-            (delivery, "Step progress + live ETA countdown; the out-for-delivery phase tints green (statusColor).")
+            (delivery, "Step progress + live ETA countdown; the out-for-delivery phase tints green (statusColor)."),
+            (segments, "SDK-provided Segments template with the Chica food-delivery branding (orange gradient + logo)."),
+            (countdown, "SDK-provided Countdown Timer template — a live countdown to endTime; ending the activity drops the timer and shows the finished message.")
         ]
     }
 

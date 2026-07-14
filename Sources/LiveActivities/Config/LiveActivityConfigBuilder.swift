@@ -47,6 +47,13 @@ public struct LiveActivityConfigBuilder {
     /// `start`/`adopt`, instance-token push updates, and relaunch recovery — everything except
     /// push-to-start. The correct behavior is selected automatically by which overload applies.
     #if os(iOS)
+    /// Registers a type that declares its own identifier (``CIOActivityTemplate``) — the built-in
+    /// Customer.io templates — so you don't repeat the id: `register(CIOSegmentsAttributes.self)`.
+    @available(iOS 16.2, *)
+    public func register<T: CIOActivityTemplate>(_ type: T.Type) -> Self {
+        register(type, identifier: T.identifier)
+    }
+
     @available(iOS 16.2, *)
     public func register<T: CIOActivityAttribute>(_ type: T.Type, identifier: String) -> Self {
         var copy = self

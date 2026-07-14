@@ -1,6 +1,9 @@
 public interface CioLiveActivities_Attributes.CIOActivityAttribute {
 	public var cioInstanceId: String;
 }
+public interface CioLiveActivities_Attributes.CIOActivityTemplate {
+	public var identifier: String;
+}
 public final class CioLiveActivities_Attributes.CIOLiveActivityMetadata {
 	public var deliveryId: String?;
 	public var deliveryToken: String?;
