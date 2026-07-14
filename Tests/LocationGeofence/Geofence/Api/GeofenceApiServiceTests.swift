@@ -55,7 +55,9 @@ struct GeofenceApiServiceTests {
         let body = (try? JSONSerialization.jsonObject(with: params?.body ?? Data())) as? [String: Double]
         #expect(body?["latitude"] == 37.7749295)
         #expect(body?["longitude"] == -122.4194155)
-        // radius is no longer sent — the request omits it (server treats it as optional).
+        // radius is no longer sent — the client omits it and the server applies its own coverage
+        // default, kept wider than remoteFetchRefreshTriggerRadius so the cached set always spans the
+        // refetch band. Documented so iOS/Android/CDP stay aligned if that contract changes.
         #expect(body?["radius"] == nil)
     }
 
