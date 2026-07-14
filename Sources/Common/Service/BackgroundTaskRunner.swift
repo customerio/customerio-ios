@@ -55,7 +55,8 @@ private final class BackgroundTaskAssertion {
     func begin(name: String) {
         id = UIApplication.shared.beginBackgroundTask(withName: name) { [weak self] in
             // OS is out of patience — end synchronously (this runs on the main thread) so the app
-            // isn't killed by the watchdog. In-flight work is abandoned; the caller owns any retry.
+            // isn't killed by the watchdog. Ending the assertion doesn't cancel the work; the app may
+            // be suspended before it finishes, and any persisted rows are retried on the next flush.
             self?.end()
         }
     }
