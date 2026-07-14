@@ -100,7 +100,7 @@ struct GeofenceEventTrackerTests {
     }
 
     @Test
-    func trackTransition_givenPersistFailsAndSendFails_expectCooldownReleasedForRetry() async {
+    func trackTransition_givenPersistFails_expectDeliverySkippedAndCooldownReleased() async {
         // Force the pending store onto an unwritable path: a regular file stands where its parent
         // directory should be, so createDirectory + write both fail and append() returns false.
         let blocker = makeTempDirectory()
@@ -113,7 +113,7 @@ struct GeofenceEventTrackerTests {
         let storage = makeStorage(directory: storageDir)
         let dateUtil = DateUtilStub()
         let delivery = GeofenceDeliveryTrackerMock()
-        delivery.trackMetricClosure = { _, _, onComplete in onComplete(.failure(.transport)) }
+        delivery.trackMetricClosure = { _, _, onComplete in onComplete(.success(())) }
         let tracker = makeTracker(
             storage: storage,
             pendingStore: makePendingStore(directory: unwritablePendingDir),
@@ -124,9 +124,11 @@ struct GeofenceEventTrackerTests {
 
         await tracker.trackTransition(geofenceId: "geo_1", transition: .enter)
 
-        // Nothing was queued (persist failed), and the cooldown claimed for this crossing was
-        // released — so the same transition can be re-acquired instead of staying suppressed against
-        // a metric that never reached the queue. A held cooldown would make this claim return false.
+        // Delivery is skipped for a row that never reached disk: sending it and then draining on
+        // success could remove a later same-second crossing's row (keys omit transitionId).
+        #expect(delivery.trackMetricCallsCount == 0)
+        // The cooldown claimed for this crossing was released, so the next crossing retries from a
+        // clean state instead of being suppressed. A held cooldown would make this claim return false.
         let canRetry = await storage.tryAcquireCooldown(key: "geo_1:enter", now: dateUtil.now, interval: cooldownInterval)
         #expect(canRetry)
     }

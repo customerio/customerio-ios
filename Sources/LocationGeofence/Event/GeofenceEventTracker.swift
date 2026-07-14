@@ -108,11 +108,13 @@ final class GeofenceEventTracker: @unchecked Sendable {
         // an app kill, and the cooldown is already spent so the lost ones would never retry.
         let persisted = await pendingStore.append(metrics)
         if !persisted {
-            // Persist-first failed (disk error): the cooldown is already spent, so release it to let
-            // the next crossing retry instead of being suppressed against rows that never reached the
-            // queue. Delivery below is still attempted best-effort for this crossing.
+            // Persist-first failed (disk error): release the just-claimed cooldown so the next
+            // crossing retries from a clean state instead of being suppressed. Skip delivery — a row
+            // that never reached disk has nothing to retry, and sending it anyway would let its
+            // success-path remove(key:) drop a later same-second crossing's row (keys omit transitionId).
             logger.geofencePendingPersistFailed(geofenceId: geofenceId, transition: transition)
             await storage.releaseCooldown(key: cooldownKey)
+            return
         }
 
         // Deliver concurrently so N geosets don't serialize N round-trips inside the OS's short
