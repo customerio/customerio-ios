@@ -63,22 +63,6 @@ actor PendingGeofenceMetricStore {
         return saveToDisk(items)
     }
 
-    /// Removes entries whose keys are in `keys` in one read-modify-write.
-    /// Returns `true` when the file was updated, `false` when none of the keys were present.
-    func removeAll(keys: Set<String>) -> Bool {
-        guard !keys.isEmpty else { return true }
-        var items = loadFromDisk()
-        let originalCount = items.count
-        items.removeAll { keys.contains($0.key) }
-        guard items.count != originalCount else { return false }
-        return saveToDisk(items)
-    }
-
-    /// Wipes the queue. Used on sign-out to avoid sending one user's queued events with the next user's identifier.
-    func clearAll() {
-        _ = saveToDisk([])
-    }
-
     // MARK: - Private (file persistence)
 
     private func loadFromDisk() -> [PendingGeofenceMetric] {

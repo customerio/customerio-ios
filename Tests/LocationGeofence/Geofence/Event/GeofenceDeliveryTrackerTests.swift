@@ -27,7 +27,7 @@ struct GeofenceDeliveryTrackerTests {
             geofenceId: geofenceId,
             transition: transition,
             timestamp: timestamp,
-            userId: nil,
+            userId: "user_1",
             name: name,
             transitionId: transitionId,
             geosetId: geosetId,

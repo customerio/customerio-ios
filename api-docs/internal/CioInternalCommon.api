@@ -618,9 +618,10 @@ public final class CioInternalCommon.TrackGeofenceMetricEvent {
 	public final val timestamp: Date;
 	public final val name: String?;
 	public final val transitionId: String;
+	public final val userId: String;
 	public final val geosetId: String?;
 	public final val metadata: List<String : GeofenceMetadataValue>?;
-	public fun init(storageId: String = UUID().uuidString, geofenceId: String, transition: GeofenceTransition, timestamp: Date = Date(), name: String?, transitionId: String, geosetId: String? = nil, metadata: List<String: GeofenceMetadataValue>? = nil, params: List<String: String> = List<:>);
+	public fun init(storageId: String = UUID().uuidString, geofenceId: String, transition: GeofenceTransition, timestamp: Date = Date(), name: String?, transitionId: String, userId: String, geosetId: String? = nil, metadata: List<String: GeofenceMetadataValue>? = nil, params: List<String: String> = List<:>);
 }
 public final class CioInternalCommon.TrackInAppMetricEvent {
 	public final val storageId: String;
