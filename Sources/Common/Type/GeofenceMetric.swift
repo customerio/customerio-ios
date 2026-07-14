@@ -12,6 +12,10 @@ public protocol GeofenceMetric {
     var name: String? { get }
     /// Uniquely identifies this transition; stable across delivery retries.
     var transitionId: String { get }
+    /// The geoset this event was emitted for, or `nil` when the geofence is in
+    /// no geoset. A geofence in N geosets produces N metrics per transition,
+    /// each carrying one geoset ID, so every event stands alone.
+    var geosetId: String? { get }
 }
 
 public extension GeofenceMetric {
@@ -19,7 +23,7 @@ public extension GeofenceMetric {
     /// `transition` property.
     var trackEventName: String { "Geofence Transition" }
 
-    /// `/track` event properties. `geofenceName` is included only when a name is available.
+    /// `/track` event properties. `geofenceName` and `geosetId` are included only when available.
     /// `transitionId` uniquely identifies the transition and stays stable across delivery retries.
     /// `timestamp` is not a property — it is set on the event envelope by each path.
     var trackEventProperties: [String: Any] {
@@ -30,6 +34,9 @@ public extension GeofenceMetric {
         ]
         if let name {
             properties["geofenceName"] = name
+        }
+        if let geosetId {
+            properties["geosetId"] = geosetId
         }
         return properties
     }

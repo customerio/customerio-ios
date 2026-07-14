@@ -1,4 +1,5 @@
 import CioInternalCommon
+import Foundation
 
 /// Mock of the EventBusHandler class, designed to mimic AutoMockable
 /// Once the class is generated using AutoMockable, it should seamlessly replace the current implementation without any issues
@@ -46,8 +47,13 @@ public class EventBusHandlerMock: EventBusHandler, Mock {
     public var postEventCalled: Bool { postEventCallsCount > 0 }
     public private(set) var postEventArguments: (any EventRepresentable)?
     public private(set) var postEventReceivedInvocations: [any EventRepresentable] = []
+    // Production `postEvent` is safe to call concurrently (it hops onto an actor), so record
+    // invocations under a lock to match — otherwise concurrent callers race this state.
+    private let postEventLock = NSLock()
 
     public func postEvent<E: EventRepresentable>(_ event: E) {
+        postEventLock.lock()
+        defer { postEventLock.unlock() }
         mockCalled = true
         postEventCallsCount += 1
         postEventArguments = event
@@ -55,6 +61,8 @@ public class EventBusHandlerMock: EventBusHandler, Mock {
     }
 
     public func postEventAndWait<E>(_ event: E) async where E: EventRepresentable {
+        postEventLock.lock()
+        defer { postEventLock.unlock() }
         mockCalled = true
         postEventCallsCount += 1
         postEventArguments = event

@@ -100,6 +100,40 @@ struct GeofenceEventTrackerTests {
     }
 
     @Test
+    func trackTransition_givenPersistFails_expectDeliverySkippedAndCooldownReleased() async {
+        // Force the pending store onto an unwritable path: a regular file stands where its parent
+        // directory should be, so createDirectory + write both fail and append() returns false.
+        let blocker = makeTempDirectory()
+        FileManager.default.createFile(atPath: blocker.path, contents: Data())
+        defer { try? FileManager.default.removeItem(at: blocker) }
+        let unwritablePendingDir = blocker.appendingPathComponent("nested")
+
+        let storageDir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: storageDir) }
+        let storage = makeStorage(directory: storageDir)
+        let dateUtil = DateUtilStub()
+        let delivery = GeofenceDeliveryTrackerMock()
+        delivery.trackMetricClosure = { _, _, onComplete in onComplete(.success(())) }
+        let tracker = makeTracker(
+            storage: storage,
+            pendingStore: makePendingStore(directory: unwritablePendingDir),
+            deliveryTracker: delivery,
+            contextStore: makeContextStore(userId: "user_42"),
+            dateUtil: dateUtil
+        )
+
+        await tracker.trackTransition(geofenceId: "geo_1", transition: .enter)
+
+        // Delivery is skipped for a row that never reached disk: sending it and then draining on
+        // success could remove a later same-second crossing's row (keys omit transitionId).
+        #expect(delivery.trackMetricCallsCount == 0)
+        // The cooldown claimed for this crossing was released, so the next crossing retries from a
+        // clean state instead of being suppressed. A held cooldown would make this claim return false.
+        let canRetry = await storage.tryAcquireCooldown(key: "geo_1:enter", now: dateUtil.now, interval: cooldownInterval)
+        #expect(canRetry)
+    }
+
+    @Test
     func trackTransition_givenDeliveryFailsThenFlush_expectSameTransitionIdReused() async {
         let dir = makeTempDirectory()
         defer { try? FileManager.default.removeItem(at: dir) }
@@ -440,13 +474,13 @@ struct GeofenceEventTrackerTests {
         defer { try? FileManager.default.removeItem(at: dir) }
         let pending = makePendingStore(directory: dir)
         // Row was captured under user_A; current user is now user_B (after sign-out + new sign-in).
-        _ = await pending.append(PendingGeofenceMetric(
+        _ = await pending.append([PendingGeofenceMetric(
             geofenceId: "geo_1", transition: .enter,
             timestamp: Date(timeIntervalSince1970: 1),
             userId: "user_A",
             name: nil,
             transitionId: "txn_a"
-        ))
+        )])
         let delivery = GeofenceDeliveryTrackerMock()
         delivery.trackMetricClosure = { _, _, onComplete in onComplete(.success(())) }
         let tracker = makeTracker(
@@ -467,13 +501,13 @@ struct GeofenceEventTrackerTests {
         let dir = makeTempDirectory()
         defer { try? FileManager.default.removeItem(at: dir) }
         let pending = makePendingStore(directory: dir)
-        _ = await pending.append(PendingGeofenceMetric(
+        _ = await pending.append([PendingGeofenceMetric(
             geofenceId: "geo_1", transition: .enter,
             timestamp: Date(timeIntervalSince1970: 1),
             userId: "user_A",
             name: nil,
             transitionId: "txn_a"
-        ))
+        )])
         let delivery = GeofenceDeliveryTrackerMock()
         delivery.trackMetricClosure = { _, _, onComplete in onComplete(.success(())) }
         let tracker = makeTracker(
@@ -495,13 +529,13 @@ struct GeofenceEventTrackerTests {
         let pending = makePendingStore(directory: dir)
         // Row with no stamped userId (anonymous capture or legacy pre-upgrade).
         let capturedAt = Date(timeIntervalSince1970: 1700000000)
-        _ = await pending.append(PendingGeofenceMetric(
+        _ = await pending.append([PendingGeofenceMetric(
             geofenceId: "geo_1", transition: .enter,
             timestamp: capturedAt,
             userId: nil,
             name: nil,
             transitionId: "txn_a"
-        ))
+        )])
         let delivery = GeofenceDeliveryTrackerMock()
         let bus = EventBusHandlerMock()
         let tracker = makeTracker(
@@ -597,5 +631,198 @@ struct GeofenceEventTrackerTests {
         await tracker.trackTransition(geofenceId: "geo_1", transition: .enter)
 
         #expect(await pending.loadAll().first?.name == nil)
+    }
+
+    // MARK: - Geoset fan-out
+
+    private func seedGeofence(_ storage: GeofenceStorage, id: String, name: String, geosetIds: [String]) async {
+        await storage.setCachedGeofences([
+            Geofence(
+                id: id, latitude: 1, longitude: 2, radius: 100,
+                name: name, transitionTypes: [.enter], lastUpdated: Date(timeIntervalSince1970: 0),
+                geosetIds: geosetIds
+            )
+        ])
+    }
+
+    @Test
+    func trackTransition_givenGeofenceInTwoGeosets_expectOneStandaloneMetricPerGeoset() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let storage = makeStorage(directory: dir)
+        await seedGeofence(storage, id: "geo_1", name: "HQ", geosetIds: ["set_y", "set_z"])
+        let pending = makePendingStore(directory: dir)
+        let delivery = GeofenceDeliveryTrackerMock()
+        delivery.trackMetricClosure = { _, _, onComplete in onComplete(.success(())) }
+        let tracker = makeTracker(
+            storage: storage,
+            pendingStore: pending,
+            deliveryTracker: delivery,
+            contextStore: makeContextStore(userId: "user_42")
+        )
+
+        await tracker.trackTransition(geofenceId: "geo_1", transition: .enter)
+
+        // One delivery per geoset, each a standalone event with a scalar geosetId
+        // plus full geofence metadata.
+        let metrics = delivery.trackMetricReceivedInvocations.map(\.metric)
+        #expect(metrics.count == 2)
+        #expect(Set(metrics.compactMap(\.geosetId)) == ["set_y", "set_z"]) // delivery order is not guaranteed (concurrent)
+        #expect(metrics.allSatisfy { $0.geofenceId == "geo_1" })
+        #expect(metrics.allSatisfy { $0.name == "HQ" })
+        #expect(metrics.allSatisfy { $0.transition == .enter })
+        // All fan-out rows share one transitionId (same physical crossing); geosetId distinguishes them.
+        #expect(Set(metrics.map(\.transitionId)).count == 1)
+        #expect(await pending.loadAll().isEmpty)
+    }
+
+    @Test
+    func trackTransition_givenGeofenceInNoGeoset_expectSingleMetricWithoutGeosetId() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let storage = makeStorage(directory: dir)
+        await seedGeofence(storage, id: "geo_1", name: "HQ", geosetIds: [])
+        let pending = makePendingStore(directory: dir)
+        let delivery = GeofenceDeliveryTrackerMock()
+        delivery.trackMetricClosure = { _, _, onComplete in onComplete(.success(())) }
+        let tracker = makeTracker(
+            storage: storage,
+            pendingStore: pending,
+            deliveryTracker: delivery,
+            contextStore: makeContextStore(userId: "user_42")
+        )
+
+        await tracker.trackTransition(geofenceId: "geo_1", transition: .enter)
+
+        let metrics = delivery.trackMetricReceivedInvocations.map(\.metric)
+        #expect(metrics.count == 1)
+        #expect(metrics.first?.geosetId == nil)
+    }
+
+    @Test
+    func trackTransition_givenBlankGeosetIds_expectSingleMetricWithoutGeosetId() async {
+        // Blank ids are dropped, so an all-empty membership behaves like no geoset — one event
+        // without a geosetId, not a stray event carrying an empty string.
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let storage = makeStorage(directory: dir)
+        await seedGeofence(storage, id: "geo_1", name: "HQ", geosetIds: ["", ""])
+        let pending = makePendingStore(directory: dir)
+        let delivery = GeofenceDeliveryTrackerMock()
+        delivery.trackMetricClosure = { _, _, onComplete in onComplete(.success(())) }
+        let tracker = makeTracker(
+            storage: storage,
+            pendingStore: pending,
+            deliveryTracker: delivery,
+            contextStore: makeContextStore(userId: "user_42")
+        )
+
+        await tracker.trackTransition(geofenceId: "geo_1", transition: .enter)
+
+        let metrics = delivery.trackMetricReceivedInvocations.map(\.metric)
+        #expect(metrics.count == 1)
+        #expect(metrics.first?.geosetId == nil)
+    }
+
+    @Test
+    func trackTransition_givenDuplicateGeosetIds_expectOneEventPerDistinctGeoset() async {
+        // A fence that lists the same geoset twice must fan out once per distinct geoset — not
+        // deliver the duplicate twice (the rows would share a pending key but the deliver loop
+        // would still send each).
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let storage = makeStorage(directory: dir)
+        await seedGeofence(storage, id: "geo_1", name: "HQ", geosetIds: ["set_y", "set_y", "set_z"])
+        let pending = makePendingStore(directory: dir)
+        let delivery = GeofenceDeliveryTrackerMock()
+        delivery.trackMetricClosure = { _, _, onComplete in onComplete(.success(())) }
+        let tracker = makeTracker(
+            storage: storage,
+            pendingStore: pending,
+            deliveryTracker: delivery,
+            contextStore: makeContextStore(userId: "user_42")
+        )
+
+        await tracker.trackTransition(geofenceId: "geo_1", transition: .enter)
+
+        let metrics = delivery.trackMetricReceivedInvocations.map(\.metric)
+        #expect(metrics.count == 2)
+        #expect(Set(metrics.compactMap(\.geosetId)) == ["set_y", "set_z"]) // duplicate dropped (delivery order not guaranteed)
+    }
+
+    @Test
+    func trackTransition_givenTwoGeosetsAndDeliveryFailure_expectBothRowsRetained() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let storage = makeStorage(directory: dir)
+        await seedGeofence(storage, id: "geo_1", name: "HQ", geosetIds: ["set_y", "set_z"])
+        let pending = makePendingStore(directory: dir)
+        let delivery = GeofenceDeliveryTrackerMock()
+        delivery.trackMetricClosure = { _, _, onComplete in onComplete(.failure(.http(statusCode: 503))) }
+        let tracker = makeTracker(
+            storage: storage,
+            pendingStore: pending,
+            deliveryTracker: delivery,
+            contextStore: makeContextStore(userId: "user_42")
+        )
+
+        await tracker.trackTransition(geofenceId: "geo_1", transition: .enter)
+
+        // Both fan-out rows persist independently; the pending-store key includes the
+        // geosetId so the rows of one transition cannot collide with each other.
+        let persisted = await pending.loadAll()
+        #expect(persisted.count == 2)
+        #expect(Set(persisted.compactMap(\.geosetId)) == ["set_y", "set_z"])
+    }
+
+    @Test
+    func trackTransition_givenTwoGeosetsAnonymous_expectOneEventBusEventPerGeoset() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let storage = makeStorage(directory: dir)
+        await seedGeofence(storage, id: "geo_1", name: "HQ", geosetIds: ["set_y", "set_z"])
+        let pending = makePendingStore(directory: dir)
+        let delivery = GeofenceDeliveryTrackerMock()
+        let bus = EventBusHandlerMock()
+        let tracker = makeTracker(
+            storage: storage,
+            pendingStore: pending,
+            deliveryTracker: delivery,
+            contextStore: makeContextStore(),
+            eventBus: bus
+        )
+
+        await tracker.trackTransition(geofenceId: "geo_1", transition: .enter)
+
+        #expect(delivery.trackMetricCallsCount == 0)
+        #expect(await pending.loadAll().isEmpty)
+        let posted = postedGeofenceEvents(from: bus)
+        #expect(posted.count == 2)
+        #expect(Set(posted.compactMap(\.geosetId)) == ["set_y", "set_z"]) // delivery order is not guaranteed (concurrent)
+        #expect(posted.allSatisfy { $0.geofenceId == "geo_1" })
+    }
+
+    @Test
+    func trackTransition_givenTwoGeosetsWithinCooldown_expectSecondTransitionFullySuppressed() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let storage = makeStorage(directory: dir)
+        await seedGeofence(storage, id: "geo_1", name: "HQ", geosetIds: ["set_y", "set_z"])
+        let pending = makePendingStore(directory: dir)
+        let delivery = GeofenceDeliveryTrackerMock()
+        delivery.trackMetricClosure = { _, _, onComplete in onComplete(.success(())) }
+        let tracker = makeTracker(
+            storage: storage,
+            pendingStore: pending,
+            deliveryTracker: delivery,
+            contextStore: makeContextStore(userId: "user_42")
+        )
+
+        await tracker.trackTransition(geofenceId: "geo_1", transition: .enter)
+        await tracker.trackTransition(geofenceId: "geo_1", transition: .enter)
+
+        // The cooldown gates the physical transition, before fan-out: the second
+        // enter produces zero additional deliveries, not a partial fan-out.
+        #expect(delivery.trackMetricCallsCount == 2)
     }
 }

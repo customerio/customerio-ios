@@ -19,7 +19,8 @@ struct GeofenceDeliveryTrackerTests {
         transition: GeofenceTransition = .enter,
         timestamp: Date = Date(timeIntervalSince1970: 1700000000),
         name: String? = nil,
-        transitionId: String = "txn_abc"
+        transitionId: String = "txn_abc",
+        geosetId: String? = nil
     ) -> PendingGeofenceMetric {
         PendingGeofenceMetric(
             geofenceId: geofenceId,
@@ -27,7 +28,8 @@ struct GeofenceDeliveryTrackerTests {
             timestamp: timestamp,
             userId: nil,
             name: name,
-            transitionId: transitionId
+            transitionId: transitionId,
+            geosetId: geosetId
         )
     }
 
@@ -90,6 +92,40 @@ struct GeofenceDeliveryTrackerTests {
         let args = httpClient.sendTrackEventReceivedArguments
         #expect(args?.request.eventName == "Geofence Transition")
         #expect(args?.request.properties["transition"] as? String == "exit")
+    }
+
+    @Test
+    func trackMetric_givenGeosetId_expectGeosetIdEmittedAsString() async {
+        let (tracker, httpClient) = makeTracker()
+        httpClient.sendTrackEventClosure = { _, completion in completion(.success(())) }
+
+        await withCheckedContinuation { continuation in
+            tracker.trackMetric(metric: makeMetric(geosetId: "set_alpha"), userId: "user_42") { _ in
+                continuation.resume()
+            }
+        }
+
+        let properties = httpClient.sendTrackEventReceivedArguments?.request.properties ?? [:]
+        #expect(properties["geosetId"] as? String == "set_alpha")
+    }
+
+    @Test
+    func trackMetric_givenNumericGeosetId_expectEmittedAsStringNotNumber() async {
+        // A numeric-looking geoset must serialize as a JSON string, not a number, to stay aligned
+        // with Android (which also emits it as a string). Guards against re-introducing numeric
+        // coercion in trackEventProperties.
+        let (tracker, httpClient) = makeTracker()
+        httpClient.sendTrackEventClosure = { _, completion in completion(.success(())) }
+
+        await withCheckedContinuation { continuation in
+            tracker.trackMetric(metric: makeMetric(geosetId: "123"), userId: "user_42") { _ in
+                continuation.resume()
+            }
+        }
+
+        let properties = httpClient.sendTrackEventReceivedArguments?.request.properties ?? [:]
+        #expect(properties["geosetId"] as? String == "123")
+        #expect(properties["geosetId"] as? Int == nil)
     }
 
     // MARK: - Guard clauses

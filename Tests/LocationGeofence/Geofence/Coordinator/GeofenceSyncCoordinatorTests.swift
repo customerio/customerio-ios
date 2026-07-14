@@ -84,7 +84,8 @@ struct GeofenceSyncCoordinatorTests {
                 radius: region.radius,
                 externalId: nil,
                 transitionTypes: region.transitionTypes.map(\.rawValue),
-                lastUpdated: region.lastUpdated.timeIntervalSince1970
+                lastUpdated: region.lastUpdated.timeIntervalSince1970,
+                geosetIds: region.geosetIds.isEmpty ? nil : region.geosetIds
             )
         }
         let apiConfig = config.map { config in
@@ -1013,7 +1014,7 @@ struct GeofenceSyncCoordinatorTests {
         await storage.setCachedConfig(config)
         await storage.recordSync(timestamp: Date(timeIntervalSince1970: 100), location: LocationData(latitude: 0, longitude: 0))
         let api = GeofenceApiServiceMock()
-        api.fetchNearbyGeofencesClosure = { _, _, completion in
+        api.fetchNearbyGeofencesClosure = { _, _, _, completion in
             completion(.success(makeApiResponse(regions: [makeRegion(id: "g1", latitude: 1, longitude: 1)])))
         }
         let setup = makeCoordinator(api: api, storage: storage, syncMode: .fetchNearby)
@@ -1032,7 +1033,7 @@ struct GeofenceSyncCoordinatorTests {
         // fetchNearbyGeofences (not fetchAll).
         let storage = makeStorage()
         let api = GeofenceApiServiceMock()
-        api.fetchNearbyGeofencesClosure = { _, _, completion in
+        api.fetchNearbyGeofencesClosure = { _, _, _, completion in
             completion(.success(makeApiResponse(regions: [makeRegion(id: "g1", latitude: 1, longitude: 2)])))
         }
         let setup = makeCoordinator(api: api, storage: storage, syncMode: .fetchNearby)
@@ -1042,6 +1043,54 @@ struct GeofenceSyncCoordinatorTests {
         #expect(result.isSuccess)
         #expect(setup.api.fetchNearbyGeofencesCallsCount == 1)
         #expect(setup.api.fetchAllGeofencesCallsCount == 0)
+    }
+
+    @Test
+    func fetchNearby_givenCappedMonitoringDistance_expectRadiusIsMaxOfFetchDistanceAndCap() async {
+        // Search radius = max(remoteFetchRefreshTriggerRadius, maxMonitoringDistance) so the search
+        // covers everything within the monitoring cap we might register.
+        let storage = makeStorage()
+        await storage.setCachedConfig(GeofenceConfig(
+            localRefreshTriggerRadius: 1000,
+            remoteFetchRefreshTriggerRadius: 5000,
+            remoteFetchRefreshExpiry: 3600,
+            duplicateEventsExpiry: 3600,
+            maxBusinessGeofences: 10,
+            maxMonitoringDistance: 50000
+        ))
+        let api = GeofenceApiServiceMock()
+        api.fetchNearbyGeofencesClosure = { _, _, _, completion in
+            completion(.success(makeApiResponse(regions: [])))
+        }
+        let setup = makeCoordinator(api: api, storage: storage, syncMode: .fetchNearby)
+
+        _ = await setup.coordinator.handleMovement(latitude: 1, longitude: 2)
+
+        #expect(setup.api.fetchNearbyGeofencesReceivedArguments?.radius == 50000)
+    }
+
+    @Test
+    func fetchNearby_givenUncappedMonitoringDistance_expectRadiusFallsBackToDefaultCeiling() async {
+        // An uncapped monitoring distance can't go on the wire, so it falls back to the default
+        // ceiling — which still wins over the smaller fetch distance.
+        let storage = makeStorage()
+        await storage.setCachedConfig(GeofenceConfig(
+            localRefreshTriggerRadius: 1000,
+            remoteFetchRefreshTriggerRadius: 5000,
+            remoteFetchRefreshExpiry: 3600,
+            duplicateEventsExpiry: 3600,
+            maxBusinessGeofences: 10,
+            maxMonitoringDistance: GeofenceConstants.noMonitoringDistanceCap
+        ))
+        let api = GeofenceApiServiceMock()
+        api.fetchNearbyGeofencesClosure = { _, _, _, completion in
+            completion(.success(makeApiResponse(regions: [])))
+        }
+        let setup = makeCoordinator(api: api, storage: storage, syncMode: .fetchNearby)
+
+        _ = await setup.coordinator.handleMovement(latitude: 1, longitude: 2)
+
+        #expect(setup.api.fetchNearbyGeofencesReceivedArguments?.radius == GeofenceConstants.defaultMaxMonitoringDistance)
     }
 
     @Test
@@ -1088,7 +1137,7 @@ struct GeofenceSyncCoordinatorTests {
         // Fetched recently (time-fresh) at (0, 0).
         await storage.recordSync(timestamp: dateUtil.givenNow.addingTimeInterval(-100), location: LocationData(latitude: 0, longitude: 0))
         let api = GeofenceApiServiceMock()
-        api.fetchNearbyGeofencesClosure = { _, _, completion in
+        api.fetchNearbyGeofencesClosure = { _, _, _, completion in
             completion(.success(makeApiResponse(regions: [makeRegion(id: "g1", latitude: 1, longitude: 1)])))
         }
         let setup = makeCoordinator(api: api, storage: storage, dateUtil: dateUtil, syncMode: .fetchNearby)

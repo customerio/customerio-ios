@@ -34,23 +34,21 @@ struct GeofenceApiRegion: Decodable {
     let transitionTypes: [String]?
     /// Wire format is milliseconds since epoch.
     let lastUpdated: Double?
+    /// IDs of the geosets this geofence belongs to; missing or empty means none.
+    let geosetIds: [String]?
 }
 
 extension GeofenceApiRegion {
     private enum CodingKeys: String, CodingKey {
-        case id, name, latitude, longitude, radius, externalId, transitionTypes, lastUpdated
+        case id, name, latitude, longitude, radius, externalId, transitionTypes, lastUpdated, geosetIds
     }
 
-    /// The backend sends `id` as a JSON number; mocked/legacy payloads used strings. Accept either
-    /// and normalize to `String` — the value is used verbatim as the OS region identifier, which is
-    /// string-typed. Declared in an extension so the memberwise init stays available to tests.
+    /// `id` and `geoset_ids` are `int64` on the wire but strings in some mocked/legacy payloads;
+    /// both normalize to `String`. Declared in an extension so the memberwise init stays available
+    /// to tests.
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        if let stringId = try? container.decode(String.self, forKey: .id) {
-            self.id = stringId
-        } else {
-            self.id = try String(container.decode(Int.self, forKey: .id))
-        }
+        self.id = try container.decodeStringOrInt(forKey: .id)
         self.name = try container.decodeIfPresent(String.self, forKey: .name)
         self.latitude = try container.decode(Double.self, forKey: .latitude)
         self.longitude = try container.decode(Double.self, forKey: .longitude)
@@ -58,6 +56,24 @@ extension GeofenceApiRegion {
         self.externalId = try container.decodeIfPresent(String.self, forKey: .externalId)
         self.transitionTypes = try container.decodeIfPresent([String].self, forKey: .transitionTypes)
         self.lastUpdated = try container.decodeIfPresent(Double.self, forKey: .lastUpdated)
+        self.geosetIds = try container.decodeStringOrIntArrayIfPresent(forKey: .geosetIds)
+    }
+}
+
+/// Decodes ids that arrive as JSON numbers or strings, normalized to `String`. `int64` is the wire
+/// type so it's tried first, with `String` as the legacy/mocked fallback; `Int64` (not `Double`)
+/// keeps large ids exact.
+private extension KeyedDecodingContainer {
+    func decodeStringOrInt(forKey key: Key) throws -> String {
+        if let int = try? decode(Int64.self, forKey: key) { return String(int) }
+        return try decode(String.self, forKey: key)
+    }
+
+    /// Absent or null → nil, so a not-yet-rolled-out field is treated as "no value" rather than throwing.
+    func decodeStringOrIntArrayIfPresent(forKey key: Key) throws -> [String]? {
+        guard contains(key), try !decodeNil(forKey: key) else { return nil }
+        if let ints = try? decode([Int64].self, forKey: key) { return ints.map(String.init) }
+        return try decode([String].self, forKey: key)
     }
 }
 
@@ -139,7 +155,8 @@ extension GeofenceApiRegion {
             radius: radius,
             name: name ?? "",
             transitionTypes: Self.resolveTransitionTypes(transitionTypes),
-            lastUpdated: lastUpdated.map { Date(timeIntervalSince1970: $0 / 1000) } ?? Date(timeIntervalSince1970: 0)
+            lastUpdated: lastUpdated.map { Date(timeIntervalSince1970: $0 / 1000) } ?? Date(timeIntervalSince1970: 0),
+            geosetIds: geosetIds ?? []
         )
     }
 

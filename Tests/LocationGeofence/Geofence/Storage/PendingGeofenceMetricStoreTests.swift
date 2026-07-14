@@ -49,7 +49,7 @@ struct PendingGeofenceMetricStoreTests {
         let store = makeStore(directory: dir)
         let metric = makeMetric()
 
-        let appended = await store.append(metric)
+        let appended = await store.append([metric])
         let items = await store.loadAll()
 
         #expect(appended == true)
@@ -65,8 +65,8 @@ struct PendingGeofenceMetricStoreTests {
         let first = makeMetric(geofenceId: "geo_1")
         let second = makeMetric(geofenceId: "geo_2")
 
-        _ = await store.append(first)
-        _ = await store.append(second)
+        _ = await store.append([first])
+        _ = await store.append([second])
         let items = await store.loadAll()
 
         #expect(items.count == 2)
@@ -84,7 +84,7 @@ struct PendingGeofenceMetricStoreTests {
 
         // Append 105 metrics; cap is 100. First 5 should be dropped.
         for i in 0 ..< 105 {
-            _ = await store.append(makeMetric(geofenceId: "geo_\(i)"))
+            _ = await store.append([makeMetric(geofenceId: "geo_\(i)")])
         }
         let items = await store.loadAll()
 
@@ -101,13 +101,29 @@ struct PendingGeofenceMetricStoreTests {
 
         // Append exactly 100 (the cap); guards against an off-by-one in the `>` check.
         for i in 0 ..< 100 {
-            _ = await store.append(makeMetric(geofenceId: "geo_\(i)"))
+            _ = await store.append([makeMetric(geofenceId: "geo_\(i)")])
         }
         let items = await store.loadAll()
 
         #expect(items.count == 100)
         #expect(items.first?.geofenceId == "geo_0")
         #expect(items.last?.geofenceId == "geo_99")
+    }
+
+    @Test
+    func append_givenBatchOverCapacity_expectOldestDropped() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let store = makeStore(directory: dir)
+
+        // A single batch larger than the cap must trim to the newest 100 in that one write.
+        let batch = (0 ..< 105).map { makeMetric(geofenceId: "geo_\($0)") }
+        _ = await store.append(batch)
+        let items = await store.loadAll()
+
+        #expect(items.count == 100)
+        #expect(items.first?.geofenceId == "geo_5")
+        #expect(items.last?.geofenceId == "geo_104")
     }
 
     // MARK: - Remove
@@ -119,8 +135,8 @@ struct PendingGeofenceMetricStoreTests {
         let store = makeStore(directory: dir)
         let toKeep = makeMetric(geofenceId: "keep")
         let toRemove = makeMetric(geofenceId: "remove")
-        _ = await store.append(toKeep)
-        _ = await store.append(toRemove)
+        _ = await store.append([toKeep])
+        _ = await store.append([toRemove])
 
         let removed = await store.remove(key: toRemove.key)
         let items = await store.loadAll()
@@ -136,7 +152,7 @@ struct PendingGeofenceMetricStoreTests {
         defer { try? FileManager.default.removeItem(at: dir) }
         let store = makeStore(directory: dir)
         let metric = makeMetric()
-        _ = await store.append(metric)
+        _ = await store.append([metric])
 
         let removed = await store.remove(key: "nonexistent_key")
         let items = await store.loadAll()
@@ -154,8 +170,8 @@ struct PendingGeofenceMetricStoreTests {
         let store = makeStore(directory: dir)
         let first = makeMetric(geofenceId: "geo_1")
         let second = makeMetric(geofenceId: "geo_2")
-        _ = await store.append(first)
-        _ = await store.append(second)
+        _ = await store.append([first])
+        _ = await store.append([second])
 
         let success = await store.removeAll(keys: [first.key, second.key])
         let items = await store.loadAll()
@@ -171,8 +187,8 @@ struct PendingGeofenceMetricStoreTests {
         let store = makeStore(directory: dir)
         let toKeep = makeMetric(geofenceId: "keep")
         let toRemove = makeMetric(geofenceId: "remove")
-        _ = await store.append(toKeep)
-        _ = await store.append(toRemove)
+        _ = await store.append([toKeep])
+        _ = await store.append([toRemove])
 
         let success = await store.removeAll(keys: [toRemove.key, "nonexistent_key"])
         let items = await store.loadAll()
@@ -186,7 +202,7 @@ struct PendingGeofenceMetricStoreTests {
         let dir = makeTempDirectory()
         defer { try? FileManager.default.removeItem(at: dir) }
         let store = makeStore(directory: dir)
-        _ = await store.append(makeMetric())
+        _ = await store.append([makeMetric()])
 
         let success = await store.removeAll(keys: [])
         let items = await store.loadAll()
@@ -195,24 +211,80 @@ struct PendingGeofenceMetricStoreTests {
         #expect(items.count == 1)
     }
 
-    // MARK: - Duplicate-key dedup at append
+    // MARK: - Append dedup + atomic fan-out
 
     @Test
-    func append_givenDuplicateKey_expectNoOpReturnTrue() async {
+    func append_givenDuplicateKeysInBatchAndOnDisk_expectDeduped() async {
         let dir = makeTempDirectory()
         defer { try? FileManager.default.removeItem(at: dir) }
         let store = makeStore(directory: dir)
-        let metric = makeMetric()
-        _ = await store.append(metric)
+        let existing = makeMetric(geofenceId: "geo_1") // key already on disk
+        _ = await store.append([existing])
 
-        // Same geofenceId + transition + timestamp produces the same composite key.
-        // Storage layer rejects the duplicate so a cooldown-slip can't produce two rows.
-        let duplicate = makeMetric()
-        let appended = await store.append(duplicate)
+        // Batch repeats the on-disk key and an in-batch duplicate; both must be skipped so a
+        // cooldown-slip or re-fan-out can't produce duplicate rows.
+        let batch = [existing, makeMetric(geofenceId: "geo_2"), makeMetric(geofenceId: "geo_2")]
+        let appended = await store.append(batch)
+        let items = await store.loadAll()
+
+        #expect(appended == true)
+        #expect(items.count == 2)
+        #expect(Set(items.map(\.geofenceId)) == ["geo_1", "geo_2"])
+    }
+
+    @Test
+    func append_givenSameTransitionDifferentGeosets_expectBothRowsKeptInOneWrite() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let store = makeStore(directory: dir)
+        let timestamp = Date(timeIntervalSince1970: 1700000000)
+        // One physical transition fanned out to two geosets: identical
+        // (geofenceId, transition, timestamp), distinct geosetId suffixes. Persisted atomically.
+        let rowY = PendingGeofenceMetric(
+            geofenceId: "geo_1", transition: .enter, timestamp: timestamp,
+            userId: nil, name: nil, transitionId: "txn", geosetId: "set_y"
+        )
+        let rowZ = PendingGeofenceMetric(
+            geofenceId: "geo_1", transition: .enter, timestamp: timestamp,
+            userId: nil, name: nil, transitionId: "txn", geosetId: "set_z"
+        )
+
+        let appended = await store.append([rowY, rowZ])
+        let items = await store.loadAll()
+
+        #expect(appended == true)
+        #expect(rowY.key != rowZ.key) // geoset suffix keeps fan-out rows distinct
+        #expect(items.count == 2)
+        #expect(Set(items.compactMap(\.geosetId)) == ["set_y", "set_z"])
+    }
+
+    @Test
+    func append_givenEmpty_expectNoOpReturnTrue() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let store = makeStore(directory: dir)
+        _ = await store.append([makeMetric()])
+
+        let appended = await store.append([])
         let items = await store.loadAll()
 
         #expect(appended == true)
         #expect(items.count == 1)
+    }
+
+    @Test
+    func decode_givenLegacyRowWithoutGeosetId_expectNilGeosetId() throws {
+        // Rows persisted by pre-geoset SDK versions have no `geoset_id` field and
+        // must keep decoding after an upgrade.
+        let legacyJson = """
+        {"geofence_id":"geo_1","transition":"enter","timestamp":1700000000,"transition_id":"txn_legacy"}
+        """
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .secondsSince1970
+        let metric = try decoder.decode(PendingGeofenceMetric.self, from: Data(legacyJson.utf8))
+
+        #expect(metric.geosetId == nil)
+        #expect(metric.key == "geo_1_enter_1700000000")
     }
 
     // MARK: - Clear
@@ -222,8 +294,8 @@ struct PendingGeofenceMetricStoreTests {
         let dir = makeTempDirectory()
         defer { try? FileManager.default.removeItem(at: dir) }
         let store = makeStore(directory: dir)
-        _ = await store.append(makeMetric(geofenceId: "geo_1"))
-        _ = await store.append(makeMetric(geofenceId: "geo_2"))
+        _ = await store.append([makeMetric(geofenceId: "geo_1")])
+        _ = await store.append([makeMetric(geofenceId: "geo_2")])
 
         await store.clearAll()
         let items = await store.loadAll()
@@ -240,7 +312,7 @@ struct PendingGeofenceMetricStoreTests {
         let metric = makeMetric()
 
         let firstStore = makeStore(directory: dir)
-        _ = await firstStore.append(metric)
+        _ = await firstStore.append([metric])
 
         let secondStore = makeStore(directory: dir)
         let items = await secondStore.loadAll()
@@ -262,14 +334,14 @@ struct PendingGeofenceMetricStoreTests {
                     for j in 0 ..< 10 {
                         switch (i + j) % 3 {
                         case 0:
-                            _ = await store.append(PendingGeofenceMetric(
+                            _ = await store.append([PendingGeofenceMetric(
                                 geofenceId: "geo_\(i)_\(j)",
                                 transition: .enter,
                                 timestamp: Date(),
                                 userId: nil,
                                 name: nil,
                                 transitionId: "txn_\(i)_\(j)"
-                            ))
+                            )])
                         case 1:
                             _ = await store.loadAll()
                         case 2:

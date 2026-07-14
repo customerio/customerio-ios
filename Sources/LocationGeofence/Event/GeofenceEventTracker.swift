@@ -52,8 +52,11 @@ final class GeofenceEventTracker: @unchecked Sendable {
         self.cooldownInterval = cooldownInterval
     }
 
-    /// Tracks a geofence transition event, suppressing duplicates within the cooldown window.
-    /// Persists the metric, then hands it to `deliver`.
+    /// Tracks a geofence transition, suppressing duplicates within the cooldown window.
+    /// Fans the transition out to one metric per geoset the geofence belongs to (a single
+    /// metric without a geosetId when it belongs to none), persists every row, then hands
+    /// each to `deliver`. The cooldown is evaluated once per geofence, before fan-out, so
+    /// all rows of one transition are suppressed or emitted together.
     func trackTransition(
         geofenceId: String,
         transition: GeofenceTransition
@@ -74,21 +77,54 @@ final class GeofenceEventTracker: @unchecked Sendable {
         // is identified at capture time; `deliver` routes nil-stamped rows to EventBus.
         let liveUserId = contextStore.currentUserId
         let stampedUserId: String? = (liveUserId?.isEmpty == false) ? liveUserId : nil
-        // Resolve the geofence name now and carry it on the metric; nil when unavailable so the
-        // event omits `geofence_name` rather than sending an empty value.
-        let cachedName = await storage.getCachedGeofences().first { $0.id == geofenceId }?.name
+        // Resolve the geofence name and geoset membership now and carry them on the metric;
+        // name is nil when unavailable so the event omits `geofenceName` rather than sending
+        // an empty value.
+        let cachedGeofence = await storage.getCachedGeofences().first { $0.id == geofenceId }
+        let cachedName = cachedGeofence?.name
         let geofenceName = (cachedName?.isEmpty == false) ? cachedName : nil
-        let metric = PendingGeofenceMetric(
-            geofenceId: geofenceId,
-            transition: transition,
-            timestamp: now,
-            userId: stampedUserId,
-            name: geofenceName,
-            transitionId: UUID().uuidString
-        )
-        _ = await pendingStore.append(metric)
+        // One event per geoset (scalar geosetId + geofence id/name as metadata) so matching needs no
+        // joins; no geosets (or the fence left the cache) → one event without a geosetId.
+        // Dedupe geoset ids, and drop blanks, so a fence listing the same one twice — or an empty
+        // id — doesn't emit a duplicate or a stray empty-geoset event.
+        var seenGeosetIds = Set<String>()
+        let memberGeosetIds = (cachedGeofence?.geosetIds ?? []).filter { !$0.isEmpty && seenGeosetIds.insert($0).inserted }
+        let geosetIds: [String?] = memberGeosetIds.isEmpty ? [nil] : memberGeosetIds
+        // One transitionId for the whole crossing so downstream correlates the fan-out as one
+        // transition; geosetId distinguishes the rows.
+        let transitionId = UUID().uuidString
+        let metrics = geosetIds.map { geosetId in
+            PendingGeofenceMetric(
+                geofenceId: geofenceId,
+                transition: transition,
+                timestamp: now,
+                userId: stampedUserId,
+                name: geofenceName,
+                transitionId: transitionId,
+                geosetId: geosetId
+            )
+        }
+        // Persist all rows in one atomic write: a per-row loop could save some and lose the rest on
+        // an app kill, and the cooldown is already spent so the lost ones would never retry.
+        let persisted = await pendingStore.append(metrics)
+        if !persisted {
+            // Persist-first failed (disk error): release the just-claimed cooldown so the next
+            // crossing retries from a clean state instead of being suppressed. Skip delivery — a row
+            // that never reached disk has nothing to retry, and sending it anyway would let its
+            // success-path remove(key:) drop a later same-second crossing's row (keys omit transitionId).
+            logger.geofencePendingPersistFailed(geofenceId: geofenceId, transition: transition)
+            await storage.releaseCooldown(key: cooldownKey)
+            return
+        }
 
-        await deliver(metric: metric)
+        // Deliver concurrently so N geosets don't serialize N round-trips inside the OS's short
+        // background wake window. Safe: distinct keys (no dedup-claim collision), and rows are
+        // already persisted so any that don't finish are retried by flushPending.
+        await withTaskGroup(of: Void.self) { group in
+            for metric in metrics {
+                group.addTask { await self.deliver(metric: metric) }
+            }
+        }
         await storage.purgeExpiredCooldowns(now: now, interval: interval)
     }
 
@@ -147,7 +183,8 @@ final class GeofenceEventTracker: @unchecked Sendable {
             transition: metric.transition,
             timestamp: metric.timestamp,
             name: metric.name,
-            transitionId: metric.transitionId
+            transitionId: metric.transitionId,
+            geosetId: metric.geosetId
         ))
         logger.geofenceEventTracked(geofenceId: metric.geofenceId, transition: metric.transition)
     }

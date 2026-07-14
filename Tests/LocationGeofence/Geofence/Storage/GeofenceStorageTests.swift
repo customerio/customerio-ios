@@ -216,6 +216,35 @@ struct GeofenceStorageTests {
     }
 
     @Test
+    func setCachedGeofences_givenGeosetIds_expectRoundTrip() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let storage = makeStorage(directory: dir)
+        let geofence = Geofence(
+            id: "g1", latitude: 1.0, longitude: 2.0, radius: 100, name: "g1",
+            transitionTypes: [.enter], lastUpdated: Date(timeIntervalSince1970: 1700000000),
+            geosetIds: ["set_y", "set_z"]
+        )
+        await storage.setCachedGeofences([geofence])
+        let cached = await storage.getCachedGeofences()
+        #expect(cached.first?.geosetIds == ["set_y", "set_z"])
+    }
+
+    @Test
+    func decode_givenGeofenceCachedByPreGeosetVersion_expectEmptyGeosetIds() throws {
+        // Geofences cached to disk before the `geosetIds` field existed must keep
+        // decoding after an upgrade; a missing key means no geoset membership.
+        let legacyJson = """
+        {"id":"g1","latitude":1,"longitude":2,"radius":100,"name":"g1","transitionTypes":["enter"],"lastUpdated":1700000000}
+        """
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .secondsSince1970
+        let geofence = try decoder.decode(Geofence.self, from: Data(legacyJson.utf8))
+
+        #expect(geofence.geosetIds == [])
+    }
+
+    @Test
     func setCachedGeofences_givenSecondCall_expectOverwrites() async {
         let dir = makeTempDirectory()
         defer { try? FileManager.default.removeItem(at: dir) }
