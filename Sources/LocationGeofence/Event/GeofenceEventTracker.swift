@@ -30,6 +30,7 @@ final class GeofenceEventTracker: @unchecked Sendable {
     private let dateUtil: DateUtil
     private let logger: Logger
     private let cooldownInterval: TimeInterval
+    private let backgroundTaskRunner: BackgroundTaskRunner
     private let activeDeliveryKeys: Synchronized<Set<String>> = Synchronized([])
 
     init(
@@ -40,7 +41,8 @@ final class GeofenceEventTracker: @unchecked Sendable {
         eventBusHandler: EventBusHandler,
         dateUtil: DateUtil,
         logger: Logger,
-        cooldownInterval: TimeInterval = GeofenceConstants.eventCooldownInterval
+        cooldownInterval: TimeInterval = GeofenceConstants.eventCooldownInterval,
+        backgroundTaskRunner: BackgroundTaskRunner = NoBackgroundTaskRunner()
     ) {
         self.storage = storage
         self.pendingStore = pendingStore
@@ -50,6 +52,7 @@ final class GeofenceEventTracker: @unchecked Sendable {
         self.dateUtil = dateUtil
         self.logger = logger
         self.cooldownInterval = cooldownInterval
+        self.backgroundTaskRunner = backgroundTaskRunner
     }
 
     /// Tracks a geofence transition, suppressing duplicates within the cooldown window.
@@ -105,7 +108,8 @@ final class GeofenceEventTracker: @unchecked Sendable {
             )
         }
         // Persist all rows in one atomic write: a per-row loop could save some and lose the rest on
-        // an app kill, and the cooldown is already spent so the lost ones would never retry.
+        // an app kill, and the cooldown is already spent so the lost ones would never retry. Done
+        // before requesting background time so durability never depends on the assertion.
         let persisted = await pendingStore.append(metrics)
         if !persisted {
             // Persist-first failed (disk error): release the just-claimed cooldown so the next
@@ -117,22 +121,29 @@ final class GeofenceEventTracker: @unchecked Sendable {
             return
         }
 
-        // Deliver concurrently so N geosets don't serialize N round-trips inside the OS's short
-        // background wake window. Safe: distinct keys (no dedup-claim collision), and rows are
-        // already persisted so any that don't finish are retried by flushPending.
-        await withTaskGroup(of: Void.self) { group in
-            for metric in metrics {
-                group.addTask { await self.deliver(metric: metric) }
+        // Hold a background-task assertion across delivery so the OS doesn't suspend us mid-send when
+        // it woke us only briefly for the transition. Deliver concurrently so N geosets don't
+        // serialize N round-trips inside that window. Safe: distinct keys (no dedup-claim collision),
+        // and rows are already persisted so any that don't finish are retried by flushPending.
+        await backgroundTaskRunner.withBackgroundTime { [self] in
+            await withTaskGroup(of: Void.self) { group in
+                for metric in metrics {
+                    group.addTask { await self.deliver(metric: metric) }
+                }
             }
         }
         await storage.purgeExpiredCooldowns(now: now, interval: interval)
     }
 
-    /// Replays every queued metric through `deliver`.
+    /// Replays every queued metric through `deliver`. Runs on module init and cold-wake bootstrap,
+    /// so it holds a background-task assertion too — the backlog can be replaying in a short wake.
     func flushPending() async {
         let pending = await pendingStore.loadAll()
-        for metric in pending {
-            await deliver(metric: metric)
+        guard !pending.isEmpty else { return }
+        await backgroundTaskRunner.withBackgroundTime { [self] in
+            for metric in pending {
+                await deliver(metric: metric)
+            }
         }
     }
 
@@ -201,6 +212,15 @@ extension DIGraphShared {
 extension GeofenceEventTracker {
     private static let sharedHolder = Synchronized<GeofenceEventTracker?>(nil)
 
+    /// Real background-task assertion in the app; no-op where `UIApplication` is unavailable.
+    private static var defaultBackgroundTaskRunner: BackgroundTaskRunner {
+        #if canImport(UIKit)
+        UIKitBackgroundTaskRunner(name: "io.customer.geofence.delivery")
+        #else
+        NoBackgroundTaskRunner()
+        #endif
+    }
+
     /// Lazily constructs and caches a process-wide singleton. Both `LocationModule.initialize`
     /// (foreground) and `LocationModule.bootstrapForBackgroundDelivery` (cold-wake) resolve
     /// through this DI accessor so they share the same tracker — same active-delivery dedup
@@ -219,7 +239,8 @@ extension GeofenceEventTracker {
                 contextStore: di.backgroundDeliveryContextStore,
                 eventBusHandler: di.eventBusHandler,
                 dateUtil: di.dateUtil,
-                logger: di.logger
+                logger: di.logger,
+                backgroundTaskRunner: Self.defaultBackgroundTaskRunner
             )
             current = tracker
             return tracker

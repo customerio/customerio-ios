@@ -58,10 +58,13 @@ public interface CioInternalCommon.BackgroundDeliveryHttpClient {
 	public fun func sendTrackEvent(_ request: BackgroundTrackRequest, completion: @escaping (Result<Unit, BackgroundDeliveryHttpError>) -> Unit);
 }
 public final class CioInternalCommon.BackgroundDeliveryHttpClientImpl {
-	public fun convenience init(contextStore: BackgroundDeliveryContextStore, requestRunner: HttpRequestRunner, logger: Logger, requestTimeout: TimeInterval = 8, resourceTimeout: TimeInterval = 8);
+	public fun convenience init(contextStore: BackgroundDeliveryContextStore, requestRunner: HttpRequestRunner, logger: Logger, requestTimeout: TimeInterval = 15, resourceTimeout: TimeInterval = 20);
 	public fun func sendTrackEvent(_ request: BackgroundTrackRequest, completion: @escaping (Result<Unit, BackgroundDeliveryHttpError>) -> Unit);
 }
 public enum CioInternalCommon.BackgroundDeliveryHttpError {
+}
+public interface CioInternalCommon.BackgroundTaskRunner {
+	public fun func withBackgroundTime(_ work: @Sendable () async -> Unit) async;
 }
 public final class CioInternalCommon.BackgroundTrackRequest {
 	public final val eventName: String;
@@ -410,6 +413,10 @@ public final class CioInternalCommon.NewSubscriptionEvent {
 	public final val subscribedEventType: String;
 	public final val timestamp: Date;
 }
+public final class CioInternalCommon.NoBackgroundTaskRunner {
+	public fun init();
+	public fun func withBackgroundTime(_ work: @Sendable () async -> Unit) async;
+}
 public final class CioInternalCommon.PendingPushDeliveryMetric {
 	public final val id: UUID;
 	public final val deliveryId: String;
@@ -624,6 +631,10 @@ public final class CioInternalCommon.TrackMetricEvent {
 	public final val deviceToken: String;
 	public final val timestamp: Date;
 	public fun init(storageId: String = UUID().uuidString, deliveryID: String, event: String, deviceToken: String, timestamp: Date = Date(), params: List<String: String> = List<:>);
+}
+public final class CioInternalCommon.UIKitBackgroundTaskRunner {
+	public fun init(name: String);
+	public fun func withBackgroundTime(_ work: @Sendable () async -> Unit) async;
 }
 public interface CioInternalCommon.UIKitWrapper {
 	public fun func open(url: URL);

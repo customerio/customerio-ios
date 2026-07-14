@@ -59,17 +59,17 @@ public final class BackgroundDeliveryHttpClientImpl: BackgroundDeliveryHttpClien
     private let logger: Logger
 
     /// - Parameters:
-    ///   - requestTimeout: Per-request timeout. Defaults to 8s to fit a cold-wake background window
-    ///     (e.g. region monitoring), where a slow send should fail fast and be retried by the caller
-    ///     rather than be suspended mid-flight. Callers with a roomier window (e.g. a Notification
-    ///     Service Extension) can pass a larger value.
-    ///   - resourceTimeout: Whole-resource timeout, including waiting for connectivity. Defaults to 8s.
+    ///   - requestTimeout: Per-request timeout. Defaults to 15s. Callers deliver while holding a
+    ///     background-task assertion (~25–30s of runtime), so this sits under that floor to give a
+    ///     slow send on flaky cellular a realistic first-attempt while leaving headroom for the rest
+    ///     of the flush and cleanup. A send that still times out is retried by the caller.
+    ///   - resourceTimeout: Whole-resource timeout, including waiting for connectivity. Defaults to 20s.
     public convenience init(
         contextStore: BackgroundDeliveryContextStore,
         requestRunner: HttpRequestRunner,
         logger: Logger,
-        requestTimeout: TimeInterval = 8,
-        resourceTimeout: TimeInterval = 8
+        requestTimeout: TimeInterval = 15,
+        resourceTimeout: TimeInterval = 20
     ) {
         let configuration = URLSessionConfiguration.ephemeral
         configuration.allowsCellularAccess = true
