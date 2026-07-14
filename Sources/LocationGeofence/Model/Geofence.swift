@@ -8,7 +8,8 @@ struct Geofence: Codable, Equatable, Sendable {
     let longitude: Double
     /// Radius in meters.
     let radius: Double
-    let name: String
+    /// Geofence name, or `nil` when the server didn't provide one.
+    let name: String?
     let transitionTypes: Set<GeofenceTransition>
     let lastUpdated: Date
     /// IDs of the geosets this geofence belongs to. Empty when the geofence is
@@ -23,7 +24,7 @@ struct Geofence: Codable, Equatable, Sendable {
         latitude: Double,
         longitude: Double,
         radius: Double,
-        name: String,
+        name: String?,
         transitionTypes: Set<GeofenceTransition>,
         lastUpdated: Date,
         geosetIds: [String] = [],
@@ -49,7 +50,7 @@ struct Geofence: Codable, Equatable, Sendable {
         self.latitude = try container.decode(Double.self, forKey: .latitude)
         self.longitude = try container.decode(Double.self, forKey: .longitude)
         self.radius = try container.decode(Double.self, forKey: .radius)
-        self.name = try container.decode(String.self, forKey: .name)
+        self.name = try container.decodeIfPresent(String.self, forKey: .name)
         self.transitionTypes = try container.decode(Set<GeofenceTransition>.self, forKey: .transitionTypes)
         self.lastUpdated = try container.decode(Date.self, forKey: .lastUpdated)
         self.geosetIds = try container.decodeIfPresent([String].self, forKey: .geosetIds) ?? []

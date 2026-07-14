@@ -562,7 +562,7 @@ struct GeofenceEventTrackerTests {
 
     // MARK: - Geofence name resolution
 
-    private func seedGeofence(_ storage: GeofenceStorage, id: String, name: String) async {
+    private func seedGeofence(_ storage: GeofenceStorage, id: String, name: String?) async {
         await storage.setCachedGeofences([
             Geofence(
                 id: id, latitude: 1, longitude: 2, radius: 100,
@@ -613,13 +613,12 @@ struct GeofenceEventTrackerTests {
     }
 
     @Test
-    func trackTransition_givenCachedGeofenceWithEmptyName_expectNilName() async {
-        // The API maps an absent name to "". Empty must resolve to nil so the event omits
-        // `geofenceName` rather than sending an empty string.
+    func trackTransition_givenCachedGeofenceWithNoName_expectNilName() async {
+        // A geofence with no name (nil) must omit `geofenceName` rather than sending an empty value.
         let dir = makeTempDirectory()
         defer { try? FileManager.default.removeItem(at: dir) }
         let storage = makeStorage(directory: dir)
-        await seedGeofence(storage, id: "geo_1", name: "")
+        await seedGeofence(storage, id: "geo_1", name: nil)
         let pending = makePendingStore(directory: dir)
         let delivery = GeofenceDeliveryTrackerMock()
         delivery.trackMetricClosure = { _, _, onComplete in onComplete(.failure(.http(statusCode: 503))) }

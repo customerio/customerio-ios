@@ -81,11 +81,9 @@ final class GeofenceEventTracker: @unchecked Sendable {
         let liveUserId = contextStore.currentUserId
         let stampedUserId: String? = (liveUserId?.isEmpty == false) ? liveUserId : nil
         // Resolve the geofence name and geoset membership now and carry them on the metric;
-        // name is nil when unavailable so the event omits `geofenceName` rather than sending
-        // an empty value.
+        // name is nil when the geofence has none so the event omits `geofenceName`.
         let cachedGeofence = await storage.getCachedGeofences().first { $0.id == geofenceId }
-        let cachedName = cachedGeofence?.name
-        let geofenceName = (cachedName?.isEmpty == false) ? cachedName : nil
+        let geofenceName = cachedGeofence?.name
         // One event per geoset (scalar geosetId + geofence id/name as metadata) so matching needs no
         // joins; no geosets (or the fence left the cache) → one event without a geosetId.
         // Dedupe geoset ids, and drop blanks, so a fence listing the same one twice — or an empty
@@ -195,9 +193,8 @@ final class GeofenceEventTracker: @unchecked Sendable {
         guard let live = await storage.getCachedGeofences().first(where: { $0.id == metric.geofenceId }) else {
             return metric
         }
-        // Keep the snapshot name when the cached one is empty — don't regress a name we once had to blank.
-        let liveName = live.name.isEmpty ? metric.name : live.name
-        return metric.withResolved(name: liveName, metadata: live.metadata)
+        // Re-resolve name and metadata from the live cache; name is nil when the geofence has none.
+        return metric.withResolved(name: live.name, metadata: live.metadata)
     }
 
     /// Anonymous-attribution fallback used when a row carries no stamped userId.

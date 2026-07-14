@@ -195,7 +195,7 @@ struct GeofenceApiResponseTests {
         let region = response.toDomainRegions().first
 
         #expect(region?.id == "g1")
-        #expect(region?.name == "")
+        #expect(region?.name == nil)
         #expect(region?.transitionTypes == [.enter, .exit])
         #expect(region?.lastUpdated == Date(timeIntervalSince1970: 0))
     }

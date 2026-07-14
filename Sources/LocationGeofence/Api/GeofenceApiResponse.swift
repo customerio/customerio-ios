@@ -172,14 +172,15 @@ private extension Comparable {
 extension GeofenceApiRegion {
     /// Empty / nil / all-unknown `transition_types` fall back to `[.enter, .exit]`; a mix of
     /// valid + unknown keeps just the valid subset. `lastUpdated` defaults to epoch when
-    /// missing so callers can compare without unwrapping; `name` defaults to the empty string.
+    /// missing so callers can compare without unwrapping. `name` is `nil` when the server omits it
+    /// (or sends an empty string), so the domain value is always either `nil` or non-empty.
     func toDomain() -> Geofence {
         Geofence(
             id: id,
             latitude: latitude,
             longitude: longitude,
             radius: radius,
-            name: name ?? "",
+            name: name.flatMap { $0.isEmpty ? nil : $0 },
             transitionTypes: Self.resolveTransitionTypes(transitionTypes),
             lastUpdated: lastUpdated.map { Date(timeIntervalSince1970: $0 / 1000) } ?? Date(timeIntervalSince1970: 0),
             geosetIds: geosetIds ?? [],
