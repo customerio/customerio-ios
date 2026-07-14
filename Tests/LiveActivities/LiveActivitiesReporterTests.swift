@@ -116,33 +116,20 @@ struct LiveActivityReporterShapeTests {
     }
 }
 
-// MARK: - Date wire format (epoch seconds round-trip)
+// MARK: - Date wire format through the reporter (epoch seconds)
 
-struct EpochSecondsDateTests {
-    /// The reporter's `payloadEncoder` must emit epoch-second numbers for date fields,
-    /// and `EpochSecondsDate` must decode those same numbers back to the original instant —
-    /// this is the contract ActivityKit relies on when it decodes a server push.
-    @Test func encodesToEpochSecondsNumber() throws {
+//
+// Pure `EpochSecondsDate` Codable behavior is covered in `EpochSecondsDateTests`; these assert the
+// reporter's own encoder/`encode(_:)` helper emit the same epoch-second wire format.
+
+struct ReporterDateEncodingTests {
+    /// The reporter's `payloadEncoder` must emit an epoch-second number for a date field, matching
+    /// what ActivityKit decodes on a server push.
+    @Test func payloadEncoder_encodesEpochSecondsNumber() throws {
         // 2021-01-01T00:00:00Z == 1_609_459_200 s
-        let date = Date(timeIntervalSince1970: 1609459200)
-        let wrapper = EpochSecondsDate(date)
+        let wrapper = EpochSecondsDate(Date(timeIntervalSince1970: 1609459200))
         let data = try LiveActivityReporter.payloadEncoder.encode(wrapper)
         #expect(String(decoding: data, as: UTF8.self) == "1609459200")
-    }
-
-    @Test func roundTripsThroughJSON_toTheSecond() throws {
-        let original = EpochSecondsDate(Date(timeIntervalSince1970: 1700000000.4))
-        let data = try LiveActivityReporter.payloadEncoder.encode(original)
-        let decoded = try JSONDecoder().decode(EpochSecondsDate.self, from: data)
-        // Encoded as whole seconds (rounded), so the round-trip is exact to the second.
-        let expectedSeconds = original.date.timeIntervalSince1970.rounded()
-        #expect(decoded.date.timeIntervalSince1970.rounded() == expectedSeconds)
-    }
-
-    @Test func decodesFromEpochSecondsNumber() throws {
-        let json = Data("1609459200".utf8)
-        let decoded = try JSONDecoder().decode(EpochSecondsDate.self, from: json)
-        #expect(decoded.date == Date(timeIntervalSince1970: 1609459200))
     }
 
     /// Encoding a content-state that contains an `EpochSecondsDate` through the reporter's
