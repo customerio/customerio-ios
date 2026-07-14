@@ -101,7 +101,8 @@ struct VisualInboxMessageRow: View {
         let actionName = data?["name"]?.stringValue ?? event.name
         let behavior: InboxActionResolution.Behavior
         switch data?["behavior"]?.stringValue {
-        case "openUrl": behavior = .openUrl
+        // `newTab` is the web "open in new tab" variant; on mobile it is a plain external browser open.
+        case "openUrl", "newTab": behavior = .openUrl
         case "openDeeplink": behavior = .openDeeplink
         case "performAction": behavior = .performAction
         default: behavior = .unknown

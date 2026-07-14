@@ -181,6 +181,14 @@ final class VisualInboxModelTests: XCTestCase {
         XCTAssertEqual(resolution, InboxActionResolution(actionName: "messageAction", actionValue: "https://customer.io", behavior: .openUrl, dismiss: false))
     }
 
+    func test_resolve_whenNewTabBehavior_thenMapsToOpenUrl() {
+        // `newTab` (web "open in new tab") behaves like `openUrl` on mobile — a plain browser open.
+        let event = makeActionEvent(name: "messageAction", fields: ["action": "https://customer.io", "behavior": "newTab"])
+        let resolution = VisualInboxMessageRow.resolve(event)
+        XCTAssertEqual(resolution.behavior, .openUrl)
+        XCTAssertEqual(resolution.actionValue, "https://customer.io")
+    }
+
     func test_resolve_whenOpenDeeplinkBehavior_thenMapsActionBehaviorAndName() {
         let event = makeActionEvent(name: "messageAction", fields: ["action": "https://www.google.com/", "behavior": "openDeeplink", "name": "test-track-name"])
         let resolution = VisualInboxMessageRow.resolve(event)

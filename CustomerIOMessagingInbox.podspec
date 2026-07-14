@@ -20,7 +20,8 @@ Pod::Spec.new do |spec|
   path_to_source_for_module = "Sources/MessagingInbox"
   spec.source_files = "#{path_to_source_for_module}/**/*{.swift}"
   spec.resource_bundle = {
-    "#{spec.module_name}_Privacy" => "#{path_to_source_for_module}/Resources/PrivacyInfo.xcprivacy"
+    "#{spec.module_name}_Privacy" => "#{path_to_source_for_module}/Resources/PrivacyInfo.xcprivacy",
+    "#{spec.module_name}_InboxAssets" => "#{path_to_source_for_module}/Resources/CioInboxAssets.xcassets"
   }
 
   spec.module_name = "CioMessagingInbox"  # the `import X` name when using SDK in Swift files
