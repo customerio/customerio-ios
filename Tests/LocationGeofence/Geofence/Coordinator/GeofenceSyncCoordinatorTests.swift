@@ -36,8 +36,7 @@ struct GeofenceSyncCoordinatorTests {
         storage: GeofenceSyncStorage,
         monitor: MockGeofenceRegionMonitor? = nil,
         contextStore: BackgroundDeliveryContextStore? = nil,
-        dateUtil: DateUtilStub = DateUtilStub(),
-        syncMode: GeofenceSyncMode = .fetchAll
+        dateUtil: DateUtilStub = DateUtilStub()
     ) -> Setup {
         let resolvedContextStore = contextStore ?? makeContextStore()
         let resolvedMonitor = monitor ?? MockGeofenceRegionMonitor()
@@ -47,8 +46,7 @@ struct GeofenceSyncCoordinatorTests {
             monitor: resolvedMonitor,
             contextStore: resolvedContextStore,
             dateUtil: dateUtil,
-            logger: LoggerMock(),
-            syncMode: syncMode
+            logger: LoggerMock()
         )
         return Setup(
             coordinator: coordinator,
@@ -113,7 +111,7 @@ struct GeofenceSyncCoordinatorTests {
         let result = await setup.coordinator.refresh(latitude: 1.0, longitude: 2.0)
 
         #expect(result.errorOrNil == .noIdentifiedUser)
-        #expect(setup.api.fetchAllGeofencesCallsCount == 0)
+        #expect(setup.api.fetchNearbyGeofencesCallsCount == 0)
         #expect(setup.monitor.startedRegions.isEmpty)
     }
 
@@ -141,37 +139,7 @@ struct GeofenceSyncCoordinatorTests {
         let result = await setup.coordinator.refresh(latitude: 0, longitude: 0)
 
         #expect(result.isSuccess)
-        #expect(setup.api.fetchAllGeofencesCallsCount == 0)
-        #expect(setup.monitor.startedRegions.isEmpty)
-    }
-
-    @Test
-    func refresh_givenFetchAllTimeFreshAndFarFromFetchAnchor_expectSkipNoApiCall() async {
-        // Outrunning the fetch anchor does NOT force a re-fetch (the cached set is complete), and
-        // with no ranking staleness it skips.
-        let storage = makeStorage()
-        let dateUtil = DateUtilStub()
-        let oneHour: TimeInterval = 60 * 60
-        await storage.setCachedConfig(GeofenceConfig(
-            localRefreshTriggerRadius: 1000,
-            remoteFetchRefreshTriggerRadius: 3000,
-            remoteFetchRefreshExpiry: oneHour,
-            duplicateEventsExpiry: 60,
-            maxBusinessGeofences: 10,
-            maxMonitoringDistance: GeofenceConstants.noMonitoringDistanceCap
-        ))
-        // Fetch anchor is far (~248km), but the registration anchor is at the refresh location, so
-        // ranking is fresh — confirming fetchAll ignores fetch-anchor distance. Registered IDs
-        // non-empty → not an unregistered-cache case.
-        await storage.recordSync(timestamp: dateUtil.givenNow.addingTimeInterval(-100), location: LocationData(latitude: 0, longitude: 0))
-        await storage.recordRegistration(center: LocationData(latitude: 1.0, longitude: 2.0), businessIds: ["a"])
-        let setup = makeCoordinator(storage: storage, dateUtil: dateUtil, syncMode: .fetchAll)
-
-        let result = await setup.coordinator.refresh(latitude: 1.0, longitude: 2.0)
-
-        #expect(result.isSuccess)
-        #expect(setup.api.fetchAllGeofencesCallsCount == 0)
-        // Genuinely skipped (not a local re-rank): no regions registered this call.
+        #expect(setup.api.fetchNearbyGeofencesCallsCount == 0)
         #expect(setup.monitor.startedRegions.isEmpty)
     }
 
@@ -193,13 +161,14 @@ struct GeofenceSyncCoordinatorTests {
         await storage.recordSync(timestamp: dateUtil.givenNow.addingTimeInterval(-100), location: LocationData(latitude: 0, longitude: 0))
         await storage.recordRegistration(center: LocationData(latitude: 0, longitude: 0), businessIds: ["old"])
         await storage.setCachedGeofences([makeRegion(id: "near", latitude: 1, longitude: 2)])
-        let setup = makeCoordinator(storage: storage, dateUtil: dateUtil, syncMode: .fetchAll)
+        let setup = makeCoordinator(storage: storage, dateUtil: dateUtil)
 
-        // ~248km from the registration center — well beyond the 1km ranking radius.
-        let result = await setup.coordinator.refresh(latitude: 1.0, longitude: 2.0)
+        // ~2.2km from the anchor: beyond the 1km trigger radius (ranking stale) but within the 3km
+        // refetch radius (no remote fetch).
+        let result = await setup.coordinator.refresh(latitude: 0.02, longitude: 0)
 
         #expect(result.isSuccess)
-        #expect(setup.api.fetchAllGeofencesCallsCount == 0)
+        #expect(setup.api.fetchNearbyGeofencesCallsCount == 0)
         #expect(setup.monitor.startedRegions.contains { $0.identifier == "near" })
     }
 
@@ -222,13 +191,13 @@ struct GeofenceSyncCoordinatorTests {
         await storage.recordSync(timestamp: dateUtil.givenNow.addingTimeInterval(-100), location: LocationData(latitude: 0, longitude: 0))
         // No recordRegistration → no registration center → genuinely "nothing registered".
         await storage.setCachedGeofences([makeRegion(id: "cached", latitude: 0, longitude: 0)])
-        let setup = makeCoordinator(storage: storage, dateUtil: dateUtil, syncMode: .fetchAll)
+        let setup = makeCoordinator(storage: storage, dateUtil: dateUtil)
 
         // Same location as anchor → time-fresh + ranking-fresh, but nothing is registered.
         let result = await setup.coordinator.refresh(latitude: 0, longitude: 0)
 
         #expect(result.isSuccess)
-        #expect(setup.api.fetchAllGeofencesCallsCount == 0)
+        #expect(setup.api.fetchNearbyGeofencesCallsCount == 0)
         #expect(setup.monitor.startedRegions.contains { $0.identifier == "cached" })
     }
 
@@ -252,12 +221,12 @@ struct GeofenceSyncCoordinatorTests {
         // Prior capped-out registration: trigger registered (center set), no business IDs.
         await storage.recordRegistration(center: LocationData(latitude: 0, longitude: 0), businessIds: [])
         await storage.setCachedGeofences([makeRegion(id: "far", latitude: 1, longitude: 2)]) // ~248 km, beyond the 5 km cap
-        let setup = makeCoordinator(storage: storage, dateUtil: dateUtil, syncMode: .fetchAll)
+        let setup = makeCoordinator(storage: storage, dateUtil: dateUtil)
 
         let result = await setup.coordinator.refresh(latitude: 0, longitude: 0)
 
         #expect(result.isSuccess)
-        #expect(setup.api.fetchAllGeofencesCallsCount == 0)
+        #expect(setup.api.fetchNearbyGeofencesCallsCount == 0)
         // Genuinely skipped: no re-rank, so no stop/start churn this call.
         #expect(setup.monitor.startedRegions.isEmpty)
         #expect(setup.monitor.stopAllCallCount == 0)
@@ -282,7 +251,7 @@ struct GeofenceSyncCoordinatorTests {
             location: LocationData(latitude: 0, longitude: 0)
         )
         let api = GeofenceApiServiceMock()
-        api.fetchAllGeofencesClosure = { completion in
+        api.fetchNearbyGeofencesClosure = { _, _, completion in
             completion(.success(makeApiResponse(regions: [])))
         }
         let setup = makeCoordinator(api: api, storage: storage, dateUtil: dateUtil)
@@ -290,7 +259,7 @@ struct GeofenceSyncCoordinatorTests {
         let result = await setup.coordinator.refresh(latitude: 0, longitude: 0)
 
         #expect(result.isSuccess)
-        #expect(api.fetchAllGeofencesCallsCount == 1)
+        #expect(api.fetchNearbyGeofencesCallsCount == 1)
     }
 
     @Test
@@ -307,7 +276,7 @@ struct GeofenceSyncCoordinatorTests {
         )
         let api = GeofenceApiServiceMock()
         let region = makeRegion(id: "g1", latitude: 1.0, longitude: 2.0)
-        api.fetchAllGeofencesClosure = { completion in
+        api.fetchNearbyGeofencesClosure = { _, _, completion in
             completion(.success(makeApiResponse(regions: [region])))
         }
 
@@ -315,7 +284,7 @@ struct GeofenceSyncCoordinatorTests {
         let result = await setup.coordinator.refresh(latitude: 1.0, longitude: 2.0)
 
         #expect(result.isSuccess)
-        #expect(api.fetchAllGeofencesCallsCount == 1)
+        #expect(api.fetchNearbyGeofencesCallsCount == 1)
         let cached = await storage.getCachedGeofences()
         #expect(cached.map(\.id) == ["g1"])
         let lastSync = await storage.getLastSync()
@@ -339,7 +308,7 @@ struct GeofenceSyncCoordinatorTests {
         let result = await setup.coordinator.refresh(latitude: 0, longitude: 0)
 
         #expect(result.isSuccess)
-        #expect(setup.api.fetchAllGeofencesCallsCount == 0)
+        #expect(setup.api.fetchNearbyGeofencesCallsCount == 0)
     }
 
     @Test
@@ -348,7 +317,7 @@ struct GeofenceSyncCoordinatorTests {
         // API is called regardless of cached-config state.
         let storage = makeStorage()
         let api = GeofenceApiServiceMock()
-        api.fetchAllGeofencesClosure = { completion in
+        api.fetchNearbyGeofencesClosure = { _, _, completion in
             completion(.success(makeApiResponse(regions: [])))
         }
         let setup = makeCoordinator(api: api, storage: storage)
@@ -356,7 +325,7 @@ struct GeofenceSyncCoordinatorTests {
         let result = await setup.coordinator.refresh(latitude: 1.0, longitude: 2.0)
 
         #expect(result.isSuccess)
-        #expect(api.fetchAllGeofencesCallsCount == 1)
+        #expect(api.fetchNearbyGeofencesCallsCount == 1)
         #expect(await storage.getLastSync() != nil)
     }
 
@@ -370,7 +339,7 @@ struct GeofenceSyncCoordinatorTests {
         let result = await setup.coordinator.refresh(latitude: 1.0, longitude: 2.0)
 
         #expect(result.errorOrNil == .noIdentifiedUser)
-        #expect(setup.api.fetchAllGeofencesCallsCount == 0)
+        #expect(setup.api.fetchNearbyGeofencesCallsCount == 0)
     }
 
     // MARK: - Fetch outcomes
@@ -379,7 +348,7 @@ struct GeofenceSyncCoordinatorTests {
     func refresh_givenApiTransportError_expectFailureAndNoCacheWritten() async {
         let storage = makeStorage()
         let api = GeofenceApiServiceMock()
-        api.fetchAllGeofencesClosure = { completion in
+        api.fetchNearbyGeofencesClosure = { _, _, completion in
             completion(.failure(.transport))
         }
 
@@ -407,7 +376,7 @@ struct GeofenceSyncCoordinatorTests {
         )
         await storage.setCachedConfig(priorConfig)
         let api = GeofenceApiServiceMock()
-        api.fetchAllGeofencesClosure = { completion in
+        api.fetchNearbyGeofencesClosure = { _, _, completion in
             completion(.success(makeApiResponse(regions: [])))
         }
 
@@ -430,7 +399,7 @@ struct GeofenceSyncCoordinatorTests {
             maxMonitoringDistance: GeofenceConstants.noMonitoringDistanceCap
         )
         let api = GeofenceApiServiceMock()
-        api.fetchAllGeofencesClosure = { completion in
+        api.fetchNearbyGeofencesClosure = { _, _, completion in
             completion(.success(makeApiResponse(regions: [], config: newConfig)))
         }
 
@@ -460,7 +429,7 @@ struct GeofenceSyncCoordinatorTests {
             makeRegion(id: "g\(i)", latitude: Double(i) * 0.1, longitude: 0)
         }
         let api = GeofenceApiServiceMock()
-        api.fetchAllGeofencesClosure = { completion in
+        api.fetchNearbyGeofencesClosure = { _, _, completion in
             completion(.success(makeApiResponse(regions: regions)))
         }
 
@@ -489,7 +458,7 @@ struct GeofenceSyncCoordinatorTests {
         await storage.setCachedConfig(config)
         let api = GeofenceApiServiceMock()
         let region = makeRegion(id: "g1", latitude: 37.7749, longitude: -122.4194)
-        api.fetchAllGeofencesClosure = { completion in
+        api.fetchNearbyGeofencesClosure = { _, _, completion in
             completion(.success(makeApiResponse(regions: [region])))
         }
 
@@ -509,7 +478,7 @@ struct GeofenceSyncCoordinatorTests {
     func refresh_givenEmptyBusinessRegions_expectNoMovementTriggerRegistered() async {
         let storage = makeStorage()
         let api = GeofenceApiServiceMock()
-        api.fetchAllGeofencesClosure = { completion in
+        api.fetchNearbyGeofencesClosure = { _, _, completion in
             completion(.success(makeApiResponse(regions: [])))
         }
 
@@ -525,7 +494,7 @@ struct GeofenceSyncCoordinatorTests {
         let storage = makeStorage()
         let api = GeofenceApiServiceMock()
         let region = makeRegion(id: "g1", latitude: 1.0, longitude: 2.0)
-        api.fetchAllGeofencesClosure = { completion in
+        api.fetchNearbyGeofencesClosure = { _, _, completion in
             completion(.success(makeApiResponse(regions: [region])))
         }
 
@@ -549,7 +518,7 @@ struct GeofenceSyncCoordinatorTests {
         let api = GeofenceApiServiceMock()
         let firstReachedApi = AsyncSignal()
         let allowFinish = AsyncSignal()
-        api.fetchAllGeofencesClosure = { completion in
+        api.fetchNearbyGeofencesClosure = { _, _, completion in
             Task {
                 await firstReachedApi.fire()
                 await allowFinish.wait()
@@ -568,7 +537,7 @@ struct GeofenceSyncCoordinatorTests {
 
         #expect(second.errorOrNil == .alreadyInProgress)
         #expect(firstResult.isSuccess)
-        #expect(api.fetchAllGeofencesCallsCount == 1)
+        #expect(api.fetchNearbyGeofencesCallsCount == 1)
     }
 
     // MARK: - Storage invariants
@@ -591,7 +560,7 @@ struct GeofenceSyncCoordinatorTests {
             maxMonitoringDistance: GeofenceConstants.noMonitoringDistanceCap
         )
         let region = makeRegion(id: "g1", latitude: 1.0, longitude: 2.0)
-        api.fetchAllGeofencesClosure = { completion in
+        api.fetchNearbyGeofencesClosure = { _, _, completion in
             completion(.success(makeApiResponse(regions: [region], config: newConfig)))
         }
         let setup = makeCoordinator(api: api, storage: spy)
@@ -621,7 +590,7 @@ struct GeofenceSyncCoordinatorTests {
         // 3 regions; nearest 2 to the (0,0) fetch location are g0/g1.
         let regions = (0 ..< 3).map { i in makeRegion(id: "g\(i)", latitude: Double(i) * 0.1, longitude: 0) }
         let api = GeofenceApiServiceMock()
-        api.fetchAllGeofencesClosure = { completion in
+        api.fetchNearbyGeofencesClosure = { _, _, completion in
             completion(.success(makeApiResponse(regions: regions, config: config)))
         }
         let setup = makeCoordinator(api: api, storage: storage)
@@ -645,7 +614,7 @@ struct GeofenceSyncCoordinatorTests {
         )
         await storage.setCachedConfig(priorConfig)
         let api = GeofenceApiServiceMock()
-        api.fetchAllGeofencesClosure = { completion in
+        api.fetchNearbyGeofencesClosure = { _, _, completion in
             completion(.failure(.transport))
         }
         let setup = makeCoordinator(api: api, storage: storage)
@@ -860,7 +829,7 @@ struct GeofenceSyncCoordinatorTests {
         let api = GeofenceApiServiceMock()
         let firstReachedApi = AsyncSignal()
         let allowFinish = AsyncSignal()
-        api.fetchAllGeofencesClosure = { completion in
+        api.fetchNearbyGeofencesClosure = { _, _, completion in
             Task {
                 await firstReachedApi.fire()
                 await allowFinish.wait()
@@ -895,7 +864,7 @@ struct GeofenceSyncCoordinatorTests {
         let storage = makeStorage()
         let contextStore = makeContextStore(userId: nil)
         let api = GeofenceApiServiceMock()
-        api.fetchAllGeofencesClosure = { completion in
+        api.fetchNearbyGeofencesClosure = { _, _, completion in
             completion(.success(makeApiResponse(regions: [])))
         }
         let setup = makeCoordinator(api: api, storage: storage, contextStore: contextStore)
@@ -908,7 +877,7 @@ struct GeofenceSyncCoordinatorTests {
         let second = await setup.coordinator.refresh(latitude: 1.0, longitude: 2.0)
 
         #expect(second.isSuccess)
-        #expect(api.fetchAllGeofencesCallsCount == 1)
+        #expect(api.fetchNearbyGeofencesCallsCount == 1)
     }
 
     // MARK: - handleMovement
@@ -921,7 +890,7 @@ struct GeofenceSyncCoordinatorTests {
         let result = await setup.coordinator.handleMovement(latitude: 1.0, longitude: 2.0)
 
         #expect(result.errorOrNil == .noIdentifiedUser)
-        #expect(setup.api.fetchAllGeofencesCallsCount == 0)
+        #expect(setup.api.fetchNearbyGeofencesCallsCount == 0)
         #expect(setup.monitor.startedRegions.isEmpty)
     }
 
@@ -931,7 +900,7 @@ struct GeofenceSyncCoordinatorTests {
         // Matches Android's `anchor == null` branch.
         let storage = makeStorage()
         let api = GeofenceApiServiceMock()
-        api.fetchAllGeofencesClosure = { completion in
+        api.fetchNearbyGeofencesClosure = { _, _, completion in
             completion(.success(makeApiResponse(regions: [makeRegion(id: "g1", latitude: 0, longitude: 0)])))
         }
         let setup = makeCoordinator(api: api, storage: storage)
@@ -939,7 +908,7 @@ struct GeofenceSyncCoordinatorTests {
         let result = await setup.coordinator.handleMovement(latitude: 1.0, longitude: 2.0)
 
         #expect(result.isSuccess)
-        #expect(setup.api.fetchAllGeofencesCallsCount == 1)
+        #expect(setup.api.fetchNearbyGeofencesCallsCount == 1)
     }
 
     @Test
@@ -967,41 +936,15 @@ struct GeofenceSyncCoordinatorTests {
         let result = await setup.coordinator.handleMovement(latitude: 0, longitude: 0.001)
 
         #expect(result.isSuccess)
-        #expect(setup.api.fetchAllGeofencesCallsCount == 0)
+        #expect(setup.api.fetchNearbyGeofencesCallsCount == 0)
         let businessRegistered = setup.monitor.startedRegions.filter { $0.identifier != GeofenceConstants.movementTriggerIdentifier }
         #expect(businessRegistered.map(\.identifier) == ["near", "far"])
     }
 
     @Test
-    func handleMovement_givenFetchAllMovementBeyondThreshold_expectLocalRerankNoApiCall() async {
-        // fetchAll holds the complete set, so even a large move never re-fetches — it re-ranks the
-        // cached regions on-device. No code path sends location off-device.
-        let storage = makeStorage()
-        let config = GeofenceConfig(
-            localRefreshTriggerRadius: 1000,
-            remoteFetchRefreshTriggerRadius: 5000,
-            remoteFetchRefreshExpiry: 3600,
-            duplicateEventsExpiry: 3600,
-            maxBusinessGeofences: 10,
-            maxMonitoringDistance: GeofenceConstants.noMonitoringDistanceCap
-        )
-        await storage.setCachedConfig(config)
-        await storage.recordSync(timestamp: Date(timeIntervalSince1970: 100), location: LocationData(latitude: 0, longitude: 0))
-        await storage.setCachedGeofences([makeRegion(id: "cached", latitude: 1, longitude: 1)])
-        let setup = makeCoordinator(storage: storage, syncMode: .fetchAll)
-
-        // ~157 km from anchor — a large move that still re-ranks locally, never re-fetches.
-        let result = await setup.coordinator.handleMovement(latitude: 1.0, longitude: 1.0)
-
-        #expect(result.isSuccess)
-        #expect(setup.api.fetchAllGeofencesCallsCount == 0)
-        #expect(setup.monitor.startedRegions.contains { $0.identifier == "cached" })
-    }
-
-    @Test
-    func handleMovement_givenFetchNearbyMovementBeyondThreshold_expectRemoteFetch() async {
-        // fetchNearby only holds the set around the last fetch anchor, so a move beyond the refetch
-        // radius refetches a fresh nearby set (unlike fetchAll, which re-ranks).
+    func handleMovement_givenMovementBeyondThreshold_expectRemoteFetch() async {
+        // A move beyond the refetch radius from the last fetch anchor leaves the cached nearby set no
+        // longer covering the area, so it refetches a fresh nearby set.
         let storage = makeStorage()
         let config = GeofenceConfig(
             localRefreshTriggerRadius: 1000,
@@ -1014,114 +957,22 @@ struct GeofenceSyncCoordinatorTests {
         await storage.setCachedConfig(config)
         await storage.recordSync(timestamp: Date(timeIntervalSince1970: 100), location: LocationData(latitude: 0, longitude: 0))
         let api = GeofenceApiServiceMock()
-        api.fetchNearbyGeofencesClosure = { _, _, _, completion in
+        api.fetchNearbyGeofencesClosure = { _, _, completion in
             completion(.success(makeApiResponse(regions: [makeRegion(id: "g1", latitude: 1, longitude: 1)])))
         }
-        let setup = makeCoordinator(api: api, storage: storage, syncMode: .fetchNearby)
+        let setup = makeCoordinator(api: api, storage: storage)
 
         // ~157 km from anchor — beyond the 5 km refetch radius.
         let result = await setup.coordinator.handleMovement(latitude: 1.0, longitude: 1.0)
 
         #expect(result.isSuccess)
         #expect(setup.api.fetchNearbyGeofencesCallsCount == 1)
-        #expect(setup.api.fetchAllGeofencesCallsCount == 0)
     }
 
     @Test
-    func handleMovement_givenFetchNearbyNoAnchor_expectRemoteFetchViaNearby() async {
-        // No prior sync → no anchor → bootstrap remote, and in fetchNearby that goes through
-        // fetchNearbyGeofences (not fetchAll).
-        let storage = makeStorage()
-        let api = GeofenceApiServiceMock()
-        api.fetchNearbyGeofencesClosure = { _, _, _, completion in
-            completion(.success(makeApiResponse(regions: [makeRegion(id: "g1", latitude: 1, longitude: 2)])))
-        }
-        let setup = makeCoordinator(api: api, storage: storage, syncMode: .fetchNearby)
-
-        let result = await setup.coordinator.handleMovement(latitude: 1.0, longitude: 2.0)
-
-        #expect(result.isSuccess)
-        #expect(setup.api.fetchNearbyGeofencesCallsCount == 1)
-        #expect(setup.api.fetchAllGeofencesCallsCount == 0)
-    }
-
-    @Test
-    func fetchNearby_givenCappedMonitoringDistance_expectRadiusIsMaxOfFetchDistanceAndCap() async {
-        // Search radius = max(remoteFetchRefreshTriggerRadius, maxMonitoringDistance) so the search
-        // covers everything within the monitoring cap we might register.
-        let storage = makeStorage()
-        await storage.setCachedConfig(GeofenceConfig(
-            localRefreshTriggerRadius: 1000,
-            remoteFetchRefreshTriggerRadius: 5000,
-            remoteFetchRefreshExpiry: 3600,
-            duplicateEventsExpiry: 3600,
-            maxBusinessGeofences: 10,
-            maxMonitoringDistance: 50000
-        ))
-        let api = GeofenceApiServiceMock()
-        api.fetchNearbyGeofencesClosure = { _, _, _, completion in
-            completion(.success(makeApiResponse(regions: [])))
-        }
-        let setup = makeCoordinator(api: api, storage: storage, syncMode: .fetchNearby)
-
-        _ = await setup.coordinator.handleMovement(latitude: 1, longitude: 2)
-
-        #expect(setup.api.fetchNearbyGeofencesReceivedArguments?.radius == 50000)
-    }
-
-    @Test
-    func fetchNearby_givenUncappedMonitoringDistance_expectRadiusFallsBackToDefaultCeiling() async {
-        // An uncapped monitoring distance can't go on the wire, so it falls back to the default
-        // ceiling — which still wins over the smaller fetch distance.
-        let storage = makeStorage()
-        await storage.setCachedConfig(GeofenceConfig(
-            localRefreshTriggerRadius: 1000,
-            remoteFetchRefreshTriggerRadius: 5000,
-            remoteFetchRefreshExpiry: 3600,
-            duplicateEventsExpiry: 3600,
-            maxBusinessGeofences: 10,
-            maxMonitoringDistance: GeofenceConstants.noMonitoringDistanceCap
-        ))
-        let api = GeofenceApiServiceMock()
-        api.fetchNearbyGeofencesClosure = { _, _, _, completion in
-            completion(.success(makeApiResponse(regions: [])))
-        }
-        let setup = makeCoordinator(api: api, storage: storage, syncMode: .fetchNearby)
-
-        _ = await setup.coordinator.handleMovement(latitude: 1, longitude: 2)
-
-        #expect(setup.api.fetchNearbyGeofencesReceivedArguments?.radius == GeofenceConstants.defaultMaxMonitoringDistance)
-    }
-
-    @Test
-    func handleMovement_givenFetchNearbyMovementWithinThreshold_expectLocalRerankNoFetch() async {
-        let storage = makeStorage()
-        let config = GeofenceConfig(
-            localRefreshTriggerRadius: 1000,
-            remoteFetchRefreshTriggerRadius: 5000,
-            remoteFetchRefreshExpiry: 3600,
-            duplicateEventsExpiry: 3600,
-            maxBusinessGeofences: 10,
-            maxMonitoringDistance: GeofenceConstants.noMonitoringDistanceCap
-        )
-        await storage.setCachedConfig(config)
-        await storage.recordSync(timestamp: Date(timeIntervalSince1970: 100), location: LocationData(latitude: 0, longitude: 0))
-        await storage.setCachedGeofences([makeRegion(id: "cached", latitude: 0, longitude: 0.0005)])
-        let setup = makeCoordinator(storage: storage, syncMode: .fetchNearby)
-
-        // ~111 m from anchor — within the 5 km refetch radius, so re-rank locally.
-        let result = await setup.coordinator.handleMovement(latitude: 0, longitude: 0.001)
-
-        #expect(result.isSuccess)
-        #expect(setup.api.fetchNearbyGeofencesCallsCount == 0)
-        #expect(setup.api.fetchAllGeofencesCallsCount == 0)
-        #expect(setup.monitor.startedRegions.contains { $0.identifier == "cached" })
-    }
-
-    @Test
-    func refresh_givenFetchNearbyMovedBeyondRefetchRadius_expectRemoteFetchNotFetchAll() async {
-        // Time-fresh, but the device moved beyond the refetch radius from the last fetch anchor:
-        // fetchNearby must refetch, and via fetchNearbyGeofences (not fetchAll).
+    func refresh_givenMovedBeyondRefetchRadius_expectRemoteFetch() async {
+        // Time-fresh, but the device moved beyond the refetch radius from the last fetch anchor, so
+        // the cached nearby set no longer covers the area and it refetches.
         let storage = makeStorage()
         let dateUtil = DateUtilStub()
         dateUtil.givenNow = Date(timeIntervalSince1970: 1000)
@@ -1137,17 +988,16 @@ struct GeofenceSyncCoordinatorTests {
         // Fetched recently (time-fresh) at (0, 0).
         await storage.recordSync(timestamp: dateUtil.givenNow.addingTimeInterval(-100), location: LocationData(latitude: 0, longitude: 0))
         let api = GeofenceApiServiceMock()
-        api.fetchNearbyGeofencesClosure = { _, _, _, completion in
+        api.fetchNearbyGeofencesClosure = { _, _, completion in
             completion(.success(makeApiResponse(regions: [makeRegion(id: "g1", latitude: 1, longitude: 1)])))
         }
-        let setup = makeCoordinator(api: api, storage: storage, dateUtil: dateUtil, syncMode: .fetchNearby)
+        let setup = makeCoordinator(api: api, storage: storage, dateUtil: dateUtil)
 
         // ~157 km from the fetch anchor — beyond the 5 km refetch radius.
         let result = await setup.coordinator.refresh(latitude: 1.0, longitude: 1.0)
 
         #expect(result.isSuccess)
         #expect(setup.api.fetchNearbyGeofencesCallsCount == 1)
-        #expect(setup.api.fetchAllGeofencesCallsCount == 0)
     }
 
     @Test
@@ -1237,7 +1087,7 @@ struct GeofenceSyncCoordinatorTests {
         let api = GeofenceApiServiceMock()
         let suspendUntil = AsyncSignal()
         let arrived = AsyncSignal()
-        api.fetchAllGeofencesClosure = { completion in
+        api.fetchNearbyGeofencesClosure = { _, _, completion in
             Task {
                 await arrived.fire()
                 await suspendUntil.wait()
@@ -1306,7 +1156,7 @@ struct GeofenceSyncCoordinatorTests {
         let api = GeofenceApiServiceMock()
         let suspendUntil = AsyncSignal()
         let arrived = AsyncSignal()
-        api.fetchAllGeofencesClosure = { completion in
+        api.fetchNearbyGeofencesClosure = { _, _, completion in
             Task {
                 await arrived.fire()
                 await suspendUntil.wait()
@@ -1333,7 +1183,7 @@ struct GeofenceSyncCoordinatorTests {
         let api = GeofenceApiServiceMock()
         let suspendUntil = AsyncSignal()
         let arrived = AsyncSignal()
-        api.fetchAllGeofencesClosure = { completion in
+        api.fetchNearbyGeofencesClosure = { _, _, completion in
             Task {
                 await arrived.fire()
                 await suspendUntil.wait()
@@ -1365,7 +1215,7 @@ struct GeofenceSyncCoordinatorTests {
         let api = GeofenceApiServiceMock()
         let suspendUntil = AsyncSignal()
         let arrived = AsyncSignal()
-        api.fetchAllGeofencesClosure = { completion in
+        api.fetchNearbyGeofencesClosure = { _, _, completion in
             Task {
                 await arrived.fire()
                 await suspendUntil.wait()
@@ -1396,7 +1246,7 @@ struct GeofenceSyncCoordinatorTests {
         let api = GeofenceApiServiceMock()
         let suspendUntil = AsyncSignal()
         let arrived = AsyncSignal()
-        api.fetchAllGeofencesClosure = { completion in
+        api.fetchNearbyGeofencesClosure = { _, _, completion in
             Task {
                 await arrived.fire()
                 await suspendUntil.wait()

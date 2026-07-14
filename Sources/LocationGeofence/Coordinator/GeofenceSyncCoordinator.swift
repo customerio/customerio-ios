@@ -11,7 +11,7 @@ enum GeofenceSyncError: Error, Equatable {
 
 /// Which branch `handleMovement` took for the current EXIT.
 enum HandleMovementTier: String, Sendable {
-    /// Re-rank cached regions for the new location; no API call. The only `fetchAll` movement path.
+    /// Re-rank cached regions for the new location; no API call.
     case localRerank
     /// Refetch from the server — when no anchor exists yet (first EXIT after install / clearAll /
     /// sign-out).
@@ -59,8 +59,6 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
     // all are immutable injected deps.
     let storage: GeofenceSyncStorage
     let dateUtil: DateUtil
-    /// Defaults to `GeofenceSyncMode.active` (the shipped mode); injectable so tests can pin a mode.
-    let syncMode: GeofenceSyncMode
     private let refreshInProgress = Synchronized<Bool>(false)
 
     init(
@@ -70,8 +68,7 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
         contextStore: BackgroundDeliveryContextStore,
         distanceFilter: GeofenceDistanceFilter = GeofenceDistanceFilter(),
         dateUtil: DateUtil,
-        logger: Logger,
-        syncMode: GeofenceSyncMode = .active
+        logger: Logger
     ) {
         self.apiService = apiService
         self.storage = storage
@@ -80,7 +77,6 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
         self.distanceFilter = distanceFilter
         self.dateUtil = dateUtil
         self.logger = logger
-        self.syncMode = syncMode
     }
 
     func refresh(latitude: Double, longitude: Double) async -> Result<Void, GeofenceSyncError> {
@@ -138,7 +134,7 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
         let movement = LocationData(latitude: latitude, longitude: longitude)
 
         // No anchor (first EXIT after install / clearAll / sign-out) bootstraps from the server;
-        // otherwise refetch only when fetchNearby has moved beyond its set. fetchAll always re-ranks.
+        // otherwise refetch only once the device has moved beyond the cached nearby set.
         if anchor == nil || movedBeyondRefetchRadius(from: anchor, to: movement, config: effectiveConfig) {
             logger.geofenceMovementTrigger(tier: .remoteRefresh)
             return await performRemoteRefresh(
@@ -244,10 +240,7 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
         longitude: Double,
         cachedConfig: GeofenceConfig?
     ) async -> Result<Void, GeofenceSyncError> {
-        // Radius is derived from the config known before the fetch (the response carries the fresh
-        // one). First fetch has no cache → `.fallback`.
-        let radius = (cachedConfig ?? .fallback).searchRadius
-        let fetchResult = await awaitApiFetch(latitude: latitude, longitude: longitude, radius: radius)
+        let fetchResult = await awaitApiFetch(latitude: latitude, longitude: longitude)
         let response: GeofenceApiResponse
         switch fetchResult {
         case .success(let value):
@@ -320,16 +313,10 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
 // MARK: - OS registration & fetch plumbing
 
 private extension GeofenceSyncCoordinatorImpl {
-    /// Dispatches the fetch per `syncMode`. `fetchAll` sends no location; `fetchNearby` sends the
-    /// device coordinate + search `radius` (the request carries no user identifier). See `GeofenceSyncMode`.
-    func awaitApiFetch(latitude: Double, longitude: Double, radius: Double) async -> Result<GeofenceApiResponse, GeofenceApiError> {
+    /// Bridges the completion-based nearby fetch to async.
+    func awaitApiFetch(latitude: Double, longitude: Double) async -> Result<GeofenceApiResponse, GeofenceApiError> {
         await withCheckedContinuation { continuation in
-            switch syncMode {
-            case .fetchAll:
-                apiService.fetchAllGeofences { continuation.resume(returning: $0) }
-            case .fetchNearby:
-                apiService.fetchNearbyGeofences(latitude: latitude, longitude: longitude, radius: radius) { continuation.resume(returning: $0) }
-            }
+            apiService.fetchNearbyGeofences(latitude: latitude, longitude: longitude) { continuation.resume(returning: $0) }
         }
     }
 
