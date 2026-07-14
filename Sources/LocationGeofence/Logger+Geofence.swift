@@ -58,6 +58,14 @@ extension Logger {
         )
     }
 
+    func geofencePendingPersistFailed(geofenceId: String, transition: GeofenceTransition) {
+        error(
+            "Failed to persist \(transition.rawValue) event for geofence \(geofenceId) before send; cooldown released so the next crossing can retry",
+            geofenceTag,
+            nil
+        )
+    }
+
     // MARK: - Sync
 
     func geofenceSyncSkipped(reason: String) {

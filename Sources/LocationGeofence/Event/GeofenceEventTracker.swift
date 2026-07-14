@@ -106,7 +106,14 @@ final class GeofenceEventTracker: @unchecked Sendable {
         }
         // Persist all rows in one atomic write: a per-row loop could save some and lose the rest on
         // an app kill, and the cooldown is already spent so the lost ones would never retry.
-        _ = await pendingStore.append(metrics)
+        let persisted = await pendingStore.append(metrics)
+        if !persisted {
+            // Persist-first failed (disk error): the cooldown is already spent, so release it to let
+            // the next crossing retry instead of being suppressed against rows that never reached the
+            // queue. Delivery below is still attempted best-effort for this crossing.
+            logger.geofencePendingPersistFailed(geofenceId: geofenceId, transition: transition)
+            await storage.releaseCooldown(key: cooldownKey)
+        }
 
         // Deliver concurrently so N geosets don't serialize N round-trips inside the OS's short
         // background wake window. Safe: distinct keys (no dedup-claim collision), and rows are

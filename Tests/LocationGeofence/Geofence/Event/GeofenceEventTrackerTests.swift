@@ -100,6 +100,38 @@ struct GeofenceEventTrackerTests {
     }
 
     @Test
+    func trackTransition_givenPersistFailsAndSendFails_expectCooldownReleasedForRetry() async {
+        // Force the pending store onto an unwritable path: a regular file stands where its parent
+        // directory should be, so createDirectory + write both fail and append() returns false.
+        let blocker = makeTempDirectory()
+        FileManager.default.createFile(atPath: blocker.path, contents: Data())
+        defer { try? FileManager.default.removeItem(at: blocker) }
+        let unwritablePendingDir = blocker.appendingPathComponent("nested")
+
+        let storageDir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: storageDir) }
+        let storage = makeStorage(directory: storageDir)
+        let dateUtil = DateUtilStub()
+        let delivery = GeofenceDeliveryTrackerMock()
+        delivery.trackMetricClosure = { _, _, onComplete in onComplete(.failure(.transport)) }
+        let tracker = makeTracker(
+            storage: storage,
+            pendingStore: makePendingStore(directory: unwritablePendingDir),
+            deliveryTracker: delivery,
+            contextStore: makeContextStore(userId: "user_42"),
+            dateUtil: dateUtil
+        )
+
+        await tracker.trackTransition(geofenceId: "geo_1", transition: .enter)
+
+        // Nothing was queued (persist failed), and the cooldown claimed for this crossing was
+        // released — so the same transition can be re-acquired instead of staying suppressed against
+        // a metric that never reached the queue. A held cooldown would make this claim return false.
+        let canRetry = await storage.tryAcquireCooldown(key: "geo_1:enter", now: dateUtil.now, interval: cooldownInterval)
+        #expect(canRetry)
+    }
+
+    @Test
     func trackTransition_givenDeliveryFailsThenFlush_expectSameTransitionIdReused() async {
         let dir = makeTempDirectory()
         defer { try? FileManager.default.removeItem(at: dir) }

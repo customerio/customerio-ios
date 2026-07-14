@@ -77,6 +77,16 @@ actor GeofenceStorage {
         saveToDisk(state)
     }
 
+    /// Removes the cooldown entry for `key`, if present. Called when persist-first fails after the
+    /// cooldown was already claimed, so the next transition of this type isn't suppressed against a
+    /// metric that never reached the pending queue.
+    func releaseCooldown(key: String) {
+        var state = loadFromDisk() ?? GeofenceState()
+        guard var cooldowns = state.eventCooldowns, cooldowns.removeValue(forKey: key) != nil else { return }
+        state.eventCooldowns = cooldowns
+        saveToDisk(state)
+    }
+
     func clearEventCooldowns() {
         var state = loadFromDisk() ?? GeofenceState()
         state.eventCooldowns = nil

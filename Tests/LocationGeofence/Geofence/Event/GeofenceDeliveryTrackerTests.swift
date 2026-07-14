@@ -109,6 +109,25 @@ struct GeofenceDeliveryTrackerTests {
         #expect(properties["geosetId"] as? String == "set_alpha")
     }
 
+    @Test
+    func trackMetric_givenNumericGeosetId_expectEmittedAsStringNotNumber() async {
+        // A numeric-looking geoset must serialize as a JSON string, not a number, to stay aligned
+        // with Android (which also emits it as a string). Guards against re-introducing numeric
+        // coercion in trackEventProperties.
+        let (tracker, httpClient) = makeTracker()
+        httpClient.sendTrackEventClosure = { _, completion in completion(.success(())) }
+
+        await withCheckedContinuation { continuation in
+            tracker.trackMetric(metric: makeMetric(geosetId: "123"), userId: "user_42") { _ in
+                continuation.resume()
+            }
+        }
+
+        let properties = httpClient.sendTrackEventReceivedArguments?.request.properties ?? [:]
+        #expect(properties["geosetId"] as? String == "123")
+        #expect(properties["geosetId"] as? Int == nil)
+    }
+
     // MARK: - Guard clauses
 
     @Test
