@@ -195,7 +195,7 @@ struct GeofenceApiResponseTests {
         let region = response.toDomainRegions().first
 
         #expect(region?.id == "g1")
-        #expect(region?.name == "")
+        #expect(region?.name == nil)
         #expect(region?.transitionTypes == [.enter, .exit])
         #expect(region?.lastUpdated == Date(timeIntervalSince1970: 0))
     }
@@ -295,5 +295,95 @@ struct GeofenceApiResponseTests {
         """
         let response = try decode(json)
         #expect(response.toDomainRegions().first?.geosetIds == [])
+    }
+
+    // MARK: - Metadata (server field `metadata`, type-preserved)
+
+    @Test
+    func toDomainRegions_givenScalarMetadata_expectTypesPreserved() throws {
+        let json = """
+        {"geofences":[{"id":"g1","latitude":1,"longitude":2,"radius":100,
+          "metadata":{"category":"office","priority":3,"score":1.5,"vip":true}}]}
+        """
+        let metadata = try #require(try decode(json).toDomainRegions().first?.metadata)
+        #expect(metadata["category"] == .string("office"))
+        #expect(metadata["priority"] == .int(3))
+        #expect(metadata["score"] == .double(1.5))
+        #expect(metadata["vip"] == .bool(true))
+    }
+
+    @Test
+    func toDomainRegions_givenMissingMetadata_expectEmpty() throws {
+        let json = """
+        {"geofences":[{"id":"g1","latitude":1,"longitude":2,"radius":100}]}
+        """
+        #expect(try decode(json).toDomainRegions().first?.metadata == [:])
+    }
+
+    @Test
+    func toDomainRegions_givenEmptyMetadata_expectEmpty() throws {
+        let json = """
+        {"geofences":[{"id":"g1","latitude":1,"longitude":2,"radius":100,"metadata":{}}]}
+        """
+        #expect(try decode(json).toDomainRegions().first?.metadata == [:])
+    }
+
+    @Test
+    func toDomainRegions_givenNullOrNonScalarMetadataValues_expectDroppedNotFailed() throws {
+        // A null, nested object, or array value must drop that single entry, not fail the region.
+        let json = """
+        {"geofences":[{"id":"g1","latitude":1,"longitude":2,"radius":100,
+          "metadata":{"good":"ok","bad":null,"nested":{"a":1},"list":[1,2]}}]}
+        """
+        #expect(try decode(json).toDomainRegions().first?.metadata == ["good": .string("ok")])
+    }
+
+    @Test
+    func toDomainRegions_givenMalformedMetadataType_expectEmptyMetadataAndRegionStillParses() throws {
+        // `metadata` sent as a non-object (here a string) must not fail the region/response decode —
+        // it degrades to empty metadata while every other field parses normally.
+        let json = """
+        {"geofences":[{"id":"g1","latitude":1.5,"longitude":2.5,"radius":100,"metadata":"oops"}]}
+        """
+        let region = try #require(try decode(json).toDomainRegions().first)
+        #expect(region.id == "g1")
+        #expect(region.latitude == 1.5)
+        #expect(region.metadata == [:])
+    }
+
+    @Test
+    func toDomainRegions_givenMetadataBeyondCountCap_expectCappedByKeyOrder() throws {
+        let entries = (0 ..< (GeofenceConstants.maxMetadataCount + 5))
+            .map { "\"k\(String(format: "%03d", $0))\":\"v\($0)\"" }
+            .joined(separator: ",")
+        let json = """
+        {"geofences":[{"id":"g1","latitude":1,"longitude":2,"radius":100,"metadata":{\(entries)}}]}
+        """
+        let metadata = try #require(try decode(json).toDomainRegions().first?.metadata)
+        #expect(metadata.count == GeofenceConstants.maxMetadataCount)
+        // Kept set is deterministic (sorted by key): k000 in, the overflow tail out.
+        #expect(metadata["k000"] == .string("v0"))
+        #expect(metadata["k\(String(format: "%03d", GeofenceConstants.maxMetadataCount + 2))"] == nil)
+    }
+
+    @Test
+    func toDomainRegions_givenTotalPayloadBeyondByteCap_expectStoppedAtByteBudget() throws {
+        // Umbrella guard: values are bounded by the total byte budget, independent of the count cap.
+        // Each value is ~1/4 of the budget, so 8 of them overrun it and only a few are kept.
+        let bigValue = String(repeating: "a", count: GeofenceConstants.maxMetadataPayloadBytes / 4)
+        let generated = 8
+        let entries = (0 ..< generated)
+            .map { "\"k\($0)\":\"\(bigValue)\"" }
+            .joined(separator: ",")
+        let json = """
+        {"geofences":[{"id":"g1","latitude":1,"longitude":2,"radius":100,"metadata":{\(entries)}}]}
+        """
+        let metadata = try #require(try decode(json).toDomainRegions().first?.metadata)
+        let totalBytes = metadata.reduce(0) { sum, entry in
+            guard case .string(let value) = entry.value else { return sum }
+            return sum + entry.key.utf8.count + value.utf8.count
+        }
+        #expect(totalBytes <= GeofenceConstants.maxMetadataPayloadBytes)
+        #expect(metadata.count < generated) // byte budget dropped some
     }
 }

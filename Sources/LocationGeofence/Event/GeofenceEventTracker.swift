@@ -81,11 +81,9 @@ final class GeofenceEventTracker: @unchecked Sendable {
         let liveUserId = contextStore.currentUserId
         let stampedUserId: String? = (liveUserId?.isEmpty == false) ? liveUserId : nil
         // Resolve the geofence name and geoset membership now and carry them on the metric;
-        // name is nil when unavailable so the event omits `geofenceName` rather than sending
-        // an empty value.
+        // name is nil when the geofence has none so the event omits `geofenceName`.
         let cachedGeofence = await storage.getCachedGeofences().first { $0.id == geofenceId }
-        let cachedName = cachedGeofence?.name
-        let geofenceName = (cachedName?.isEmpty == false) ? cachedName : nil
+        let geofenceName = cachedGeofence?.name
         // One event per geoset (scalar geosetId + geofence id/name as metadata) so matching needs no
         // joins; no geosets (or the fence left the cache) → one event without a geosetId.
         // Dedupe geoset ids, and drop blanks, so a fence listing the same one twice — or an empty
@@ -104,7 +102,9 @@ final class GeofenceEventTracker: @unchecked Sendable {
                 userId: stampedUserId,
                 name: geofenceName,
                 transitionId: transitionId,
-                geosetId: geosetId
+                geosetId: geosetId,
+                // Snapshot as the fallback for an evicted geofence; `deliver` prefers the live cache.
+                metadata: cachedGeofence?.metadata
             )
         }
         // Persist all rows in one atomic write: a per-row loop could save some and lose the rest on
@@ -157,17 +157,19 @@ final class GeofenceEventTracker: @unchecked Sendable {
         guard activeDeliveryKeys.mutating({ $0.insert(metric.key).inserted }) else { return }
         defer { activeDeliveryKeys.mutating { _ = $0.remove(metric.key) } }
 
+        let effective = await resolvingLiveValues(metric)
+
         // Rows without a stamped userId (anonymous capture or legacy pre-stamping)
         // route through EventBus instead — DataPipeline tracks anonymously under
         // whatever identity is current at consume time.
-        guard let stampedUserId = metric.userId, !stampedUserId.isEmpty else {
-            postEventBus(metric: metric)
+        guard let stampedUserId = effective.userId, !stampedUserId.isEmpty else {
+            postEventBus(metric: effective)
             _ = await pendingStore.remove(key: metric.key)
             return
         }
 
         let success = await withCheckedContinuation { (continuation: CheckedContinuation<Bool, Never>) in
-            deliveryTracker.trackMetric(metric: metric, userId: stampedUserId) { result in
+            deliveryTracker.trackMetric(metric: effective, userId: stampedUserId) { result in
                 switch result {
                 case .success:
                     continuation.resume(returning: true)
@@ -179,9 +181,20 @@ final class GeofenceEventTracker: @unchecked Sendable {
 
         if success {
             _ = await pendingStore.remove(key: metric.key)
-            logger.geofenceEventTracked(geofenceId: metric.geofenceId, transition: metric.transition)
+            logger.geofenceEventTracked(geofenceId: effective.geofenceId, transition: effective.transition)
         }
         // HTTP failure: row stays for next flush.
+    }
+
+    /// Prefers the freshest cached `name`/`metadata` at send, falling back to the row snapshot when
+    /// the geofence has left the cache. All other fields — including the dedup key inputs — are
+    /// unchanged, so the returned copy addresses the same persisted row.
+    private func resolvingLiveValues(_ metric: PendingGeofenceMetric) async -> PendingGeofenceMetric {
+        guard let live = await storage.getCachedGeofences().first(where: { $0.id == metric.geofenceId }) else {
+            return metric
+        }
+        // Re-resolve name and metadata from the live cache; name is nil when the geofence has none.
+        return metric.withResolved(name: live.name, metadata: live.metadata)
     }
 
     /// Anonymous-attribution fallback used when a row carries no stamped userId.
@@ -195,7 +208,8 @@ final class GeofenceEventTracker: @unchecked Sendable {
             timestamp: metric.timestamp,
             name: metric.name,
             transitionId: metric.transitionId,
-            geosetId: metric.geosetId
+            geosetId: metric.geosetId,
+            metadata: metric.metadata
         ))
         logger.geofenceEventTracked(geofenceId: metric.geofenceId, transition: metric.transition)
     }

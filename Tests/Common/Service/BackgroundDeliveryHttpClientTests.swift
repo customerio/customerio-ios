@@ -65,6 +65,41 @@ struct BackgroundDeliveryHttpClientTests {
     }
 
     @Test
+    func sendTrackEvent_givenTypedNumericProperties_expectSerializedWithTypesPreserved() async {
+        let (client, runner) = makeClient(store: makeStore())
+        runner.requestClosure = { _, _, onComplete in onComplete(Data(), makeOkResponse(), nil) }
+
+        // Mirrors GeofenceMetric.trackEventProperties: typed metadata surfaces as Int64/Double/Bool/
+        // String via `anyValue`. Int64 in particular must survive JSONSerialization on the real send
+        // path — the geofence delivery-tracker tests mock this client, so only this exercises the
+        // actual encode.
+        let metadata: [String: Any] = [
+            "priority": GeofenceMetadataValue.int(3).anyValue,
+            "score": GeofenceMetadataValue.double(1.5).anyValue,
+            "vip": GeofenceMetadataValue.bool(true).anyValue,
+            "brand": GeofenceMetadataValue.string("acme").anyValue
+        ]
+
+        let result: Result<Void, BackgroundDeliveryHttpError> = await withCheckedContinuation { continuation in
+            client.sendTrackEvent(
+                BackgroundTrackRequest(eventName: "Geofence Transition", userId: "user_42", properties: ["metadata": metadata])
+            ) { continuation.resume(returning: $0) }
+        }
+
+        // Encoding succeeded (not .invalidRequest) and the request was actually sent.
+        #expect(runner.requestCalled)
+        if case .failure(let error) = result { Issue.record("expected success, got \(error)") }
+
+        let body = runner.requestReceivedArguments?.params.body
+            .flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: Any] }
+        let sentMetadata = (body?["properties"] as? [String: Any])?["metadata"] as? [String: Any]
+        #expect(sentMetadata?["priority"] as? Int64 == 3)
+        #expect(sentMetadata?["score"] as? Double == 1.5)
+        #expect(sentMetadata?["vip"] as? Bool == true)
+        #expect(sentMetadata?["brand"] as? String == "acme")
+    }
+
+    @Test
     func sendTrackEvent_givenNilTimestamp_expectTimestampOmittedFromBody() async {
         let (client, runner) = makeClient(store: makeStore())
         runner.requestClosure = { _, _, onComplete in onComplete(Data(), makeOkResponse(), nil) }

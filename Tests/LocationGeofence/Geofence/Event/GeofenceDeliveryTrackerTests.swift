@@ -20,7 +20,8 @@ struct GeofenceDeliveryTrackerTests {
         timestamp: Date = Date(timeIntervalSince1970: 1700000000),
         name: String? = nil,
         transitionId: String = "txn_abc",
-        geosetId: String? = nil
+        geosetId: String? = nil,
+        metadata: [String: GeofenceMetadataValue]? = nil
     ) -> PendingGeofenceMetric {
         PendingGeofenceMetric(
             geofenceId: geofenceId,
@@ -29,7 +30,8 @@ struct GeofenceDeliveryTrackerTests {
             userId: nil,
             name: name,
             transitionId: transitionId,
-            geosetId: geosetId
+            geosetId: geosetId,
+            metadata: metadata
         )
     }
 
@@ -126,6 +128,43 @@ struct GeofenceDeliveryTrackerTests {
         let properties = httpClient.sendTrackEventReceivedArguments?.request.properties ?? [:]
         #expect(properties["geosetId"] as? String == "123")
         #expect(properties["geosetId"] as? Int == nil)
+    }
+
+    @Test
+    func trackMetric_givenMetadata_expectNestedMetadataObjectWithPreservedTypes() async {
+        let (tracker, httpClient) = makeTracker()
+        httpClient.sendTrackEventClosure = { _, completion in completion(.success(())) }
+        let metadata: [String: GeofenceMetadataValue] = [
+            "category": .string("office"), "priority": .int(3), "vip": .bool(true)
+        ]
+
+        await withCheckedContinuation { continuation in
+            tracker.trackMetric(metric: makeMetric(metadata: metadata), userId: "user_42") { _ in
+                continuation.resume()
+            }
+        }
+
+        let properties = httpClient.sendTrackEventReceivedArguments?.request.properties ?? [:]
+        let nested = properties["metadata"] as? [String: Any]
+        #expect(nested?["category"] as? String == "office")
+        #expect(nested?["priority"] as? Int64 == 3)
+        #expect(nested?["vip"] as? Bool == true)
+    }
+
+    @Test
+    func trackMetric_givenNoMetadata_expectEmptyMetadataObject() async {
+        let (tracker, httpClient) = makeTracker()
+        httpClient.sendTrackEventClosure = { _, completion in completion(.success(())) }
+
+        await withCheckedContinuation { continuation in
+            tracker.trackMetric(metric: makeMetric(), userId: "user_42") { _ in
+                continuation.resume()
+            }
+        }
+
+        // Always present as an (empty) object rather than omitted/nil.
+        let properties = httpClient.sendTrackEventReceivedArguments?.request.properties ?? [:]
+        #expect((properties["metadata"] as? [String: Any])?.isEmpty == true)
     }
 
     // MARK: - Guard clauses

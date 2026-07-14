@@ -58,6 +58,34 @@ struct PendingGeofenceMetricStoreTests {
     }
 
     @Test
+    func appendLoad_givenMetadata_expectRoundTripPreserved() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let store = makeStore(directory: dir)
+        let metric = PendingGeofenceMetric(
+            geofenceId: "geo_1", transition: .enter,
+            timestamp: Date(timeIntervalSince1970: 1700000000),
+            userId: "user_42", name: "HQ", transitionId: "txn_1",
+            metadata: ["category": .string("office"), "priority": .int(3)]
+        )
+
+        _ = await store.append([metric])
+
+        #expect(await store.loadAll().first?.metadata == ["category": .string("office"), "priority": .int(3)])
+    }
+
+    @Test
+    func decode_givenLegacyRowWithoutMetadata_expectNilMetadata() throws {
+        // A row persisted before metadata existed must still decode (missing key → nil).
+        let legacy = """
+        {"geofence_id":"geo_1","transition":"enter","timestamp":1,"transition_id":"txn_1"}
+        """
+        let metric = try JSONDecoder().decode(PendingGeofenceMetric.self, from: Data(legacy.utf8))
+        #expect(metric.metadata == nil)
+        #expect(metric.geofenceId == "geo_1")
+    }
+
+    @Test
     func append_givenMultiple_expectAllPersistedInOrder() async {
         let dir = makeTempDirectory()
         defer { try? FileManager.default.removeItem(at: dir) }

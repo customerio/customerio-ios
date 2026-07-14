@@ -44,4 +44,11 @@ enum GeofenceConstants {
     static let maxRemoteFetchRefreshExpiry: TimeInterval = 7 * 24 * 60 * 60 // 7 days
     static let minDuplicateEventsExpiry: TimeInterval = 60 // 1 minute
     static let maxDuplicateEventsExpiry: TimeInterval = 24 * 60 * 60 // 24 hours
+
+    // Safety net on workspace-defined `metadata`: the server already validates them (they arrive
+    // pre-validated in the nearby response), so these only stop a runaway payload from bloating a
+    // background request. Set generously ahead of the server so a future increase can't make the SDK
+    // drop valid data; per-value size is left to the server.
+    static let maxMetadataCount = 100
+    static let maxMetadataPayloadBytes = 100 * 1024 // ~20× the server's 5 KB total
 }

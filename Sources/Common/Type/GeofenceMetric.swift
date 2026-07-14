@@ -16,6 +16,9 @@ public protocol GeofenceMetric {
     /// no geoset. A geofence in N geosets produces N metrics per transition,
     /// each carrying one geoset ID, so every event stands alone.
     var geosetId: String? { get }
+    /// Workspace-defined metadata, or `nil` when none carried. Emitted as a nested `metadata`
+    /// object on the event (empty when absent).
+    var metadata: [String: GeofenceMetadataValue]? { get }
 }
 
 public extension GeofenceMetric {
@@ -23,14 +26,15 @@ public extension GeofenceMetric {
     /// `transition` property.
     var trackEventName: String { "Geofence Transition" }
 
-    /// `/track` event properties. `geofenceName` and `geosetId` are included only when available.
-    /// `transitionId` uniquely identifies the transition and stays stable across delivery retries.
-    /// `timestamp` is not a property — it is set on the event envelope by each path.
+    /// `/track` event properties. `geofenceName` and `geosetId` are included only when available;
+    /// `metadata` is always present (empty object when none). `timestamp` is not a property — it is
+    /// set on the event envelope by each path.
     var trackEventProperties: [String: Any] {
         var properties: [String: Any] = [
             "transition": transition.rawValue,
             "geofenceId": geofenceId,
-            "transitionId": transitionId
+            "transitionId": transitionId,
+            "metadata": (metadata ?? [:]).mapValues(\.anyValue)
         ]
         if let name {
             properties["geofenceName"] = name

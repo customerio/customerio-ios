@@ -297,6 +297,11 @@ public interface CioInternalCommon.FileStorage {
 }
 public enum CioInternalCommon.FileType {
 }
+public enum CioInternalCommon.GeofenceMetadataValue {
+	public var anyValue: Any;
+	public fun init(from decoder: Decoder) throws;
+	public fun func encode(to encoder: Encoder) throws;
+}
 public interface CioInternalCommon.GeofenceMetric {
 	public var geofenceId: String;
 	public var transition: GeofenceTransition;
@@ -304,6 +309,7 @@ public interface CioInternalCommon.GeofenceMetric {
 	public var name: String?;
 	public var transitionId: String;
 	public var geosetId: String?;
+	public var metadata: List<String : GeofenceMetadataValue>?;
 }
 public enum CioInternalCommon.GeofenceTransition {
 }
@@ -613,7 +619,8 @@ public final class CioInternalCommon.TrackGeofenceMetricEvent {
 	public final val name: String?;
 	public final val transitionId: String;
 	public final val geosetId: String?;
-	public fun init(storageId: String = UUID().uuidString, geofenceId: String, transition: GeofenceTransition, timestamp: Date = Date(), name: String?, transitionId: String, geosetId: String? = nil, params: List<String: String> = List<:>);
+	public final val metadata: List<String : GeofenceMetadataValue>?;
+	public fun init(storageId: String = UUID().uuidString, geofenceId: String, transition: GeofenceTransition, timestamp: Date = Date(), name: String?, transitionId: String, geosetId: String? = nil, metadata: List<String: GeofenceMetadataValue>? = nil, params: List<String: String> = List<:>);
 }
 public final class CioInternalCommon.TrackInAppMetricEvent {
 	public final val storageId: String;
