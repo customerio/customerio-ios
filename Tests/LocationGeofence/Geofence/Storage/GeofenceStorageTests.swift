@@ -551,4 +551,132 @@ struct GeofenceStorageTests {
         }
         _ = await storage.getEventCooldowns()
     }
+
+    // MARK: - Monitor region records (CLMonitor dedup + delivery filter)
+
+    @Test
+    func recordMonitorEvent_givenNoRegistration_expectBaselineEstablishedNoDelivery() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let storage = makeStorage(directory: dir)
+        // A condition with no registration record: first observation is baseline, not a crossing.
+        let outcome = await storage.recordMonitorEvent(.exit, forIdentifier: "geo_1")
+        #expect(outcome == .suppressedNoBaseline)
+        // The same state replayed is now a no-change suppression.
+        #expect(await storage.recordMonitorEvent(.exit, forIdentifier: "geo_1") == .suppressedNoChange)
+    }
+
+    @Test
+    func recordMonitorRegistration_givenRegisteredInside_expectNoSpuriousEnter() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let storage = makeStorage(directory: dir)
+        // Registered while the device is INSIDE the region → baseline seeded to the actual state
+        // (.enter). CLMonitor re-evaluating that same state is suppressed — the register-while-inside
+        // parity fix: no spurious enter at registration (classic is silent too).
+        await storage.recordMonitorRegistration(identifier: "geo_1", transitionTypes: [.enter, .exit], initialState: .enter, resetBaseline: true)
+        #expect(await storage.recordMonitorEvent(.enter, forIdentifier: "geo_1") == .suppressedNoChange)
+        // The subsequent genuine exit delivers.
+        #expect(await storage.recordMonitorEvent(.exit, forIdentifier: "geo_1") == .deliver)
+    }
+
+    @Test
+    func recordMonitorEvent_givenRegisteredOutsideThenEnter_expectDeliver() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let storage = makeStorage(directory: dir)
+        // Registered outside (baseline .exit). CLMonitor emits no initial event (assumption matched);
+        // the first REAL crossing (walk in) must still deliver — the baseline isn't blank.
+        await storage.recordMonitorRegistration(identifier: "geo_1", transitionTypes: [.enter, .exit], initialState: .exit, resetBaseline: true)
+        #expect(await storage.recordMonitorEvent(.enter, forIdentifier: "geo_1") == .deliver)
+    }
+
+    @Test
+    func recordMonitorEvent_givenReplayedInitialState_expectNoChange() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let storage = makeStorage(directory: dir)
+        await storage.recordMonitorRegistration(identifier: "geo_1", transitionTypes: [.enter, .exit], initialState: .exit, resetBaseline: true)
+        // CLMonitor re-emitting the state we seeded at registration (relaunch/unlock replay).
+        #expect(await storage.recordMonitorEvent(.exit, forIdentifier: "geo_1") == .suppressedNoChange)
+    }
+
+    @Test
+    func recordMonitorEvent_givenDeliveredThenReplayed_expectNoChange() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let storage = makeStorage(directory: dir)
+        await storage.recordMonitorRegistration(identifier: "geo_1", transitionTypes: [.enter, .exit], initialState: .exit, resetBaseline: true)
+        #expect(await storage.recordMonitorEvent(.enter, forIdentifier: "geo_1") == .deliver)
+        #expect(await storage.recordMonitorEvent(.enter, forIdentifier: "geo_1") == .suppressedNoChange)
+    }
+
+    @Test
+    func recordMonitorRegistration_givenUnchangedReRegistration_expectBaselinePreserved() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let storage = makeStorage(directory: dir)
+        await storage.recordMonitorRegistration(identifier: "geo_1", transitionTypes: [.enter, .exit], initialState: .exit, resetBaseline: true)
+        #expect(await storage.recordMonitorEvent(.enter, forIdentifier: "geo_1") == .deliver) // walked in
+        // Sync re-registration (stop-all + start-all) with UNCHANGED geometry preserves the baseline
+        // (resetBaseline:false), so CLMonitor re-evaluating the still-inside state is suppressed.
+        await storage.recordMonitorRegistration(identifier: "geo_1", transitionTypes: [.enter, .exit], initialState: .exit, resetBaseline: false)
+        #expect(await storage.recordMonitorEvent(.enter, forIdentifier: "geo_1") == .suppressedNoChange)
+    }
+
+    @Test
+    func recordMonitorRegistration_givenChangedGeometry_expectBaselineReseededToActual() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let storage = makeStorage(directory: dir)
+        // Inside the old circle → baseline .enter.
+        await storage.recordMonitorRegistration(identifier: "geo_1", transitionTypes: [.enter, .exit], initialState: .enter, resetBaseline: true)
+        // Backend moves the geofence (same id, new center/radius). The device is now OUTSIDE the new
+        // circle, so the fresh registration reseeds the baseline to .exit (resetBaseline:true) instead
+        // of carrying the stale .enter — CLMonitor re-evaluating "outside" is then suppressed, not
+        // fired as a spurious exit.
+        await storage.recordMonitorRegistration(identifier: "geo_1", transitionTypes: [.enter, .exit], initialState: .exit, resetBaseline: true)
+        #expect(await storage.recordMonitorEvent(.exit, forIdentifier: "geo_1") == .suppressedNoChange)
+        // A real crossing into the new circle still delivers.
+        #expect(await storage.recordMonitorEvent(.enter, forIdentifier: "geo_1") == .deliver)
+    }
+
+    @Test
+    func recordMonitorEvent_givenUnregisteredTransitionType_expectRecordedNotDelivered() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let storage = makeStorage(directory: dir)
+        // Exit-only region, registered outside (baseline .exit).
+        await storage.recordMonitorRegistration(identifier: "geo_1", transitionTypes: [.exit], initialState: .exit, resetBaseline: true)
+        // The enter advances the baseline but is not delivered...
+        #expect(await storage.recordMonitorEvent(.enter, forIdentifier: "geo_1") == .suppressedFilteredType)
+        // ...so the following exit is recognized as a change and delivered.
+        #expect(await storage.recordMonitorEvent(.exit, forIdentifier: "geo_1") == .deliver)
+    }
+
+    @Test
+    func recordMonitorEvent_givenSeparateIdentifiers_expectIndependentBaselines() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let storage = makeStorage(directory: dir)
+        await storage.recordMonitorRegistration(identifier: "geo_1", transitionTypes: [.enter, .exit], initialState: .exit, resetBaseline: true)
+        await storage.recordMonitorRegistration(identifier: "geo_2", transitionTypes: [.enter, .exit], initialState: .exit, resetBaseline: true)
+        #expect(await storage.recordMonitorEvent(.enter, forIdentifier: "geo_1") == .deliver)
+        // geo_2 has its own baseline, untouched by geo_1's events.
+        #expect(await storage.recordMonitorEvent(.exit, forIdentifier: "geo_2") == .suppressedNoChange)
+    }
+
+    @Test
+    func recordMonitorEvent_givenPersistedBaseline_expectSurvivesColdStart() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let first = makeStorage(directory: dir)
+        await first.recordMonitorRegistration(identifier: "geo_1", transitionTypes: [.enter, .exit], initialState: .exit, resetBaseline: true)
+        #expect(await first.recordMonitorEvent(.enter, forIdentifier: "geo_1") == .deliver) // walked in
+        // Cold-wake: a fresh storage instance compares CLMonitor's replay against the pre-kill state
+        // (inside). No re-registration happened, so the baseline is intact.
+        let afterRelaunch = makeStorage(directory: dir)
+        #expect(await afterRelaunch.recordMonitorEvent(.enter, forIdentifier: "geo_1") == .suppressedNoChange)
+        #expect(await afterRelaunch.recordMonitorEvent(.exit, forIdentifier: "geo_1") == .deliver)
+    }
 }

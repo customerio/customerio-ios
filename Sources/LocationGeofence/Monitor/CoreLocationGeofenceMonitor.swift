@@ -190,7 +190,16 @@ extension DIGraphShared {
         // the protocol — without it, Swift infers `T` as the concrete `CoreLocationGeofenceMonitor`
         // from the `??` right-hand side and the override lookup misses by key.
         let overridden: GeofenceRegionMonitoring? = getOverriddenInstance()
-        return overridden ?? CoreLocationGeofenceMonitor.shared
+        if let overridden { return overridden }
+        // iOS 18+ uses the CLMonitor-backed monitor: only there does `CLServiceSession` provide a
+        // documented way to keep background event delivery alive. iOS 13–17 keep the classic
+        // CLLocationManager monitor — the region APIs are deprecated on 17 but still deliver
+        // reliably in the background (OS relaunch), whereas iOS 17 CLMonitor has no session and
+        // no dependable background story. Revisit lowering this to 17 only if it proves reliable.
+        if #available(iOS 18.0, *) {
+            return CLMonitorGeofenceMonitor.shared
+        }
+        return CoreLocationGeofenceMonitor.shared
     }
 }
 

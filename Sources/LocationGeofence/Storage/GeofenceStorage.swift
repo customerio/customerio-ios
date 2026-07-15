@@ -93,6 +93,54 @@ actor GeofenceStorage {
         saveToDisk(state)
     }
 
+    // MARK: - Monitor Region Records (CLMonitor path)
+
+    /// Records that the CLMonitor path (re)registered a condition: stores the delivery filter and
+    /// sets the dedup baseline. `initialState` is the device's ACTUAL state relative to the circle at
+    /// registration (computed by the monitor from the current location), so the baseline already
+    /// matches reality — no spurious registration event, no missed first crossing. `resetBaseline:
+    /// true` sets the baseline to `initialState` for a fresh circle (a new condition or changed
+    /// geometry); `false` preserves an existing baseline (an unchanged-geometry re-registration —
+    /// stop-all + start-all runs on every sync) so CLMonitor's re-evaluation of the same state isn't
+    /// delivered as a duplicate. A brand-new identifier uses `initialState` either way.
+    func recordMonitorRegistration(
+        identifier: String,
+        transitionTypes: Set<GeofenceTransition>,
+        initialState: GeofenceTransition,
+        resetBaseline: Bool
+    ) {
+        var state = loadFromDisk() ?? GeofenceState()
+        var records = state.monitorRegionRecords ?? [:]
+        let lastState = resetBaseline ? initialState : (records[identifier]?.lastState ?? initialState)
+        records[identifier] = MonitorRegionRecord(lastState: lastState, transitionTypes: transitionTypes)
+        state.monitorRegionRecords = records
+        saveToDisk(state)
+    }
+
+    /// Records a state observed off `CLMonitor.events` and returns what to do with it. The whole
+    /// compare-and-store runs inside the actor with no `await` between steps, so concurrent events
+    /// cannot both observe a stale baseline and both deliver. The baseline advances on every state
+    /// change — including transitions filtered from delivery — so an exit-only region still tracks
+    /// that the device entered, and the following exit is recognized as a change.
+    func recordMonitorEvent(_ transition: GeofenceTransition, forIdentifier identifier: String) -> GeofenceMonitorEventOutcome {
+        var state = loadFromDisk() ?? GeofenceState()
+        var records = state.monitorRegionRecords ?? [:]
+        guard var record = records[identifier] else {
+            // No registration record (condition predates this bookkeeping). Establish the baseline
+            // without delivering — mirrors classic registration, which is silent about the initial state.
+            records[identifier] = MonitorRegionRecord(lastState: transition, transitionTypes: [.enter, .exit])
+            state.monitorRegionRecords = records
+            saveToDisk(state)
+            return .suppressedNoBaseline
+        }
+        guard record.lastState != transition else { return .suppressedNoChange }
+        record.lastState = transition
+        records[identifier] = record
+        state.monitorRegionRecords = records
+        saveToDisk(state)
+        return record.transitionTypes.contains(transition) ? .deliver : .suppressedFilteredType
+    }
+
     /// Clears the cooldown map and the last-sync record (timestamp + location) but
     /// preserves the cached geofences and config. Called on sign-out: the workspace cache
     /// is shared across users, while cooldowns belong to the signed-out user and the
@@ -250,6 +298,19 @@ actor GeofenceStorage {
         decoder.dateDecodingStrategy = .secondsSince1970
         return decoder
     }
+}
+
+/// Disposition of a state observed off `CLMonitor.events`, decided by
+/// `GeofenceStorage.recordMonitorEvent(_:forIdentifier:)`.
+enum GeofenceMonitorEventOutcome: Equatable, Sendable {
+    /// Genuine state change of a registered transition type — deliver it.
+    case deliver
+    /// Same state as the baseline — a CLMonitor re-emission (relaunch/unlock/foreground), not a crossing.
+    case suppressedNoChange
+    /// Genuine state change, but the region wasn't registered for this transition type.
+    case suppressedFilteredType
+    /// First observation for a condition with no registration record — baseline established, nothing delivered.
+    case suppressedNoBaseline
 }
 
 // MARK: - DI

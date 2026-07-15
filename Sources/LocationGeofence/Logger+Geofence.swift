@@ -21,6 +21,14 @@ extension Logger {
         )
     }
 
+    func geofenceMonitorEventStreamFailed(error: Error) {
+        self.error(
+            "Geofence monitor event stream ended with an error; background transitions may stop until the app is relaunched",
+            geofenceTag,
+            error
+        )
+    }
+
     func geofencePermissionUnavailable(currentStatus: CLAuthorizationStatus) {
         info(
             "Geofence registration skipped: location permission not granted (current status: \(currentStatus.rawValue)). The host app controls when and which permission to request.",
