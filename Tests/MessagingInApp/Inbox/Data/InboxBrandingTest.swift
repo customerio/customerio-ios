@@ -16,7 +16,8 @@ class InboxBrandingTest: XCTestCase {
         "inbox": {
           "floatingIcon": {
             "background": "#000000",
-            "color": "#ffffff"
+            "color": "#ffffff",
+            "svg": "<svg viewBox='0 0 24 25'><path d='M0 0Z'/></svg>"
           },
           "background": "#ffffff",
           "cornerRadius": 8,
@@ -43,10 +44,11 @@ class InboxBrandingTest: XCTestCase {
         let branding = parse(brandingJSON)
         XCTAssertNotNil(branding)
 
-        // Only the bell container/glyph colors are kept; the raw SVG markup is no longer carried.
+        // Bell container/glyph colors + the raw SVG markup (rendered dynamically by the overlay).
         let icon = branding?.chrome.floatingIcon
         XCTAssertEqual(icon?.background, "#000000")
         XCTAssertEqual(icon?.color, "#ffffff")
+        XCTAssertEqual(icon?.svg, "<svg viewBox='0 0 24 25'><path d='M0 0Z'/></svg>")
     }
 
     func test_from_whenRepresentativeFixture_expectThemeParsed() {
@@ -100,6 +102,7 @@ class InboxBrandingTest: XCTestCase {
         let branding = parse(#"{ "patterns": { "inbox": {} } }"#)
         XCTAssertNotNil(branding)
         XCTAssertNil(branding?.chrome.floatingIcon.background)
+        XCTAssertNil(branding?.chrome.floatingIcon.svg)
         XCTAssertNil(branding?.chrome.background)
         XCTAssertNil(branding?.chrome.shadow)
         XCTAssertNil(branding?.chrome.unreadIndicator)

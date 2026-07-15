@@ -12,11 +12,12 @@ struct InboxActionResolution: Equatable {
     /// The action `behavior` from the message's `properties[actionName]`. Matches the web enum
     /// `InboxActionBehavior` (minus `dismiss`, which is resolved before this type is built).
     enum Behavior: Equatable {
-        /// Open `actionValue` as a URL.
+        /// Open `actionValue` externally as a URL via `UIApplication.open` (system browser).
         case openUrl
-        /// Open `actionValue` as a deep link. Web treats this identically to `openUrl`; on iOS both
-        /// go through `UIApplication.open`, which routes http(s) to the browser and a custom scheme
-        /// to the registered/host app.
+        /// Route `actionValue` through the SDK's shared deep-link handling
+        /// (`deepLinkUtil.handleDeepLink`: host `deepLinkCallback` → universal-link handoff → system
+        /// open) — identical to push-notification and in-app-message deep links, so inbox deep links
+        /// behave consistently with the rest of the SDK (distinct from `openUrl`'s plain external open).
         case openDeeplink
         /// A host-custom action: the SDK performs no navigation, it only offers the action to the host
         /// listener (web dispatches its `inboxMessageAction` event and does nothing else).

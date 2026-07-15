@@ -181,12 +181,19 @@ final class VisualInboxModelTests: XCTestCase {
         XCTAssertEqual(resolution, InboxActionResolution(actionName: "messageAction", actionValue: "https://customer.io", behavior: .openUrl, dismiss: false))
     }
 
-    func test_resolve_whenNewTabBehavior_thenMapsToOpenUrl() {
-        // `newTab` (web "open in new tab") behaves like `openUrl` on mobile — a plain browser open.
-        let event = makeActionEvent(name: "messageAction", fields: ["action": "https://customer.io", "behavior": "newTab"])
+    func test_resolve_whenNewTabFlagOnOpenUrl_thenOpenUrlFlagIgnored() {
+        // Web emits `newTab` as a BOOLEAN flag alongside `behavior: "openUrl"`, not a behavior. The
+        // flag is ignored on mobile (no "new tab"); the action still resolves to openUrl.
+        let event = makeActionEvent(name: "messageAction", fields: ["action": "https://customer.io", "behavior": "openUrl", "newTab": "true"])
         let resolution = VisualInboxMessageRow.resolve(event)
         XCTAssertEqual(resolution.behavior, .openUrl)
         XCTAssertEqual(resolution.actionValue, "https://customer.io")
+    }
+
+    func test_resolve_whenNewTabUsedAsBehavior_thenUnknown() {
+        // `behavior: "newTab"` is not a real web behavior, so it must not resolve to a navigation.
+        let event = makeActionEvent(name: "messageAction", fields: ["action": "https://customer.io", "behavior": "newTab"])
+        XCTAssertEqual(VisualInboxMessageRow.resolve(event).behavior, .unknown)
     }
 
     func test_resolve_whenOpenDeeplinkBehavior_thenMapsActionBehaviorAndName() {

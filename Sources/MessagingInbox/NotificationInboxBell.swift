@@ -61,6 +61,11 @@ public struct NotificationInboxBell: View {
         // Branding-first chrome colors (bell fill / glyph / badge), with a contrast-aware glyph
         // fallback so a light branded bell never renders a white glyph on a white circle.
         let colors = ResolvedInboxColors.resolve(chrome: model.chrome, isDark: colorScheme == .dark)
+        // The unread count is surfaced (badge + VoiceOver) only when there ARE unopened messages AND
+        // branding's `unreadIndicator.showAlert` allows it (nil → show, matching web parity). Both the
+        // visible badge and the accessibility label key off this, so VoiceOver never announces a count
+        // the workspace chose to hide.
+        let showsUnreadCount = model.unopenedCount > 0 && (model.chrome?.showUnreadBadge ?? true)
         return Button(action: onTap, label: {
             ZStack(alignment: .topTrailing) {
                 bellGlyph(colors: colors)
@@ -70,9 +75,7 @@ public struct NotificationInboxBell: View {
                     .clipShape(Circle())
                     .shadow(radius: 4)
 
-                // Unread badge: shown only when there are unopened messages AND branding's
-                // `unreadIndicator.showAlert` allows it (nil → show, matching web parity).
-                if model.unopenedCount > 0, model.chrome?.showUnreadBadge ?? true {
+                if showsUnreadCount {
                     Text("\(model.unopenedCount)")
                         .font(.caption)
                         .foregroundColor(.white)
@@ -84,7 +87,7 @@ public struct NotificationInboxBell: View {
             }
         })
         // `.accessibility(label:)` is the iOS 13-safe form; `.accessibilityLabel` is iOS 14+.
-        .accessibility(label: Text(model.unopenedCount > 0 ? "Notifications, \(model.unopenedCount) unread" : "Notifications"))
+        .accessibility(label: Text(showsUnreadCount ? "Notifications, \(model.unopenedCount) unread" : "Notifications"))
     }
 
     /// The bell glyph: the workspace's branding SVG (`floatingIcon.svg`) when present and parseable,
@@ -95,7 +98,7 @@ public struct NotificationInboxBell: View {
             // Even-odd fill matches CIO bell SVGs' `fill-rule="evenodd"` (outlined bell).
             InboxBellIcon(svg: svg).fill(colors.bellIcon, style: FillStyle(eoFill: true))
         } else {
-            Image("cio-inbox-bell", bundle: .module)
+            Image("cio-inbox-bell", bundle: .cioInboxResources)
                 .renderingMode(.template)
                 .resizable()
                 .aspectRatio(contentMode: .fit)

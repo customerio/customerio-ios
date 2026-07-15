@@ -40,7 +40,26 @@ struct InboxBellIcon: Shape {
 
     // MARK: - SVG extraction (path data + viewBox); parsing delegated to vendored SVGPath
 
+    /// Boxes an optional parse result so `NSCache` (which can't store `nil`) can memoize failures too.
+    private final class ParseCacheEntry {
+        let parsed: (path: Path, viewBox: CGRect)?
+        init(_ parsed: (path: Path, viewBox: CGRect)?) { self.parsed = parsed }
+    }
+
+    /// Memoizes parse results per SVG string. Parsing (regex extraction + SVGPath) is deterministic and
+    /// otherwise re-runs on every `path(in:)` (each layout) and every `canRender` (each body eval),
+    /// which for a static glyph is pure waste. `NSCache` is thread-safe.
+    private static let parseCache = NSCache<NSString, ParseCacheEntry>()
+
     private static func parse(_ svg: String) -> (path: Path, viewBox: CGRect)? {
+        let key = svg as NSString
+        if let entry = parseCache.object(forKey: key) { return entry.parsed }
+        let parsed = parseUncached(svg)
+        parseCache.setObject(ParseCacheEntry(parsed), forKey: key)
+        return parsed
+    }
+
+    private static func parseUncached(_ svg: String) -> (path: Path, viewBox: CGRect)? {
         let pathData = pathData(from: svg)
         guard !pathData.isEmpty else { return nil }
         var combined = Path()

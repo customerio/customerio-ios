@@ -147,6 +147,16 @@ public struct NotificationInboxView: View {
                 actionName: resolution.actionName,
                 actionValue: resolution.actionValue ?? ""
             )
+            // A navigating action (`openUrl` / `openDeeplink`) with a value routes away from the inbox —
+            // whether the SDK performs it OR the host intercepted it — so close the sheet so the
+            // destination isn't left behind it. `performAction` / `unknown` / auto-`dismiss`, a missing
+            // message, or an empty value keep the inbox open. Dismiss FIRST, before the SDK enqueues
+            // navigation below, so the sheet is already closing when the deep link is handled.
+            let isNavigation = (resolution.behavior == .openUrl || resolution.behavior == .openDeeplink)
+                && resolution.actionValue?.isEmpty == false
+            if isNavigation, outcome != .messageMissing {
+                await MainActor.run { onNavigate?() }
+            }
             switch outcome {
             case .handledByHost:
                 // Host intercepted the action — suppress the SDK default navigation.
@@ -161,16 +171,6 @@ public struct NotificationInboxView: View {
             // action, regardless of host handling / navigation.
             if resolution.dismiss {
                 model.dismiss(messageId: messageId)
-            }
-            // Close the inbox after a DEEP-LINK action so the opened in-app screen isn't left sitting
-            // behind the inbox sheet. Only `openDeeplink` dismisses: it routes within/into the app, so
-            // the sheet would otherwise cover the destination. `openUrl` opens externally (browser) and
-            // leaves nothing behind the sheet; `performAction`/`dismiss` keep the inbox open. Fires
-            // whether the SDK opened it or the host handled it; skipped for a missing message or an
-            // empty destination.
-            let isDeeplinkNavigation = resolution.behavior == .openDeeplink
-            if isDeeplinkNavigation, outcome != .messageMissing, resolution.actionValue?.isEmpty == false {
-                await MainActor.run { onNavigate?() }
             }
         }
     }

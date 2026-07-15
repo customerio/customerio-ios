@@ -101,8 +101,10 @@ struct VisualInboxMessageRow: View {
         let actionName = data?["name"]?.stringValue ?? event.name
         let behavior: InboxActionResolution.Behavior
         switch data?["behavior"]?.stringValue {
-        // `newTab` is the web "open in new tab" variant; on mobile it is a plain external browser open.
-        case "openUrl", "newTab": behavior = .openUrl
+        // Web emits `newTab` as a BOOLEAN flag alongside `behavior: "openUrl"`, not a behavior of its
+        // own; on mobile there is no "new tab", so the flag is ignored (openUrl already opens
+        // externally) and any non-openUrl/openDeeplink/performAction behavior falls through to unknown.
+        case "openUrl": behavior = .openUrl
         case "openDeeplink": behavior = .openDeeplink
         case "performAction": behavior = .performAction
         default: behavior = .unknown

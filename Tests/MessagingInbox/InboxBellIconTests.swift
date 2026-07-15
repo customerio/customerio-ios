@@ -18,13 +18,13 @@ final class InboxBellIconTests: XCTestCase {
 
         XCTAssertFalse(path.isEmpty)
         let bounds = path.boundingRect
-        // Scaled-to-fit + centered: stays within the target rect.
-        XCTAssertGreaterThanOrEqual(bounds.minX, rect.minX - 0.5)
-        XCTAssertGreaterThanOrEqual(bounds.minY, rect.minY - 0.5)
-        XCTAssertLessThanOrEqual(bounds.maxX, rect.maxX + 0.5)
-        XCTAssertLessThanOrEqual(bounds.maxY, rect.maxY + 0.5)
-        // Aspect preserved: viewBox is taller than wide, so height >= width in a square rect.
-        XCTAssertGreaterThanOrEqual(bounds.height, bounds.width - 0.5)
+        // Exact fitted bounds (not just "within rect", which a wrong stretch would also satisfy).
+        // 24×25 into 100×100 → scale = min(100/24, 100/25) = 4; scaled = 96×100, centered → x offset
+        // = (100-96)/2 = 2, y offset = 0. Asserting these catches an incorrect non-uniform stretch.
+        XCTAssertEqual(bounds.minX, 2, accuracy: 0.5)
+        XCTAssertEqual(bounds.minY, 0, accuracy: 0.5)
+        XCTAssertEqual(bounds.width, 96, accuracy: 0.5)
+        XCTAssertEqual(bounds.height, 100, accuracy: 0.5)
     }
 
     func test_bellIcon_givenMultiplePaths_thenParsesAll() {
