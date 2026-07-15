@@ -167,9 +167,10 @@ final class GeofenceEventTracker: @unchecked Sendable {
         // HTTP failure: row stays for next flush.
     }
 
-    /// Replay via EventBus → DataPipeline. Awaits the durable handoff (observer invoked, or the
-    /// event persisted to the EventBus cache when none exists yet) before removing our copy, so a
-    /// crash in between re-delivers on the next flush (deduped by transitionId) rather than dropping.
+    /// Replay via EventBus → DataPipeline, which then owns delivery and retry. We drop our copy once
+    /// the handoff resolves (observer invoked, or written to the EventBus cache when none exists yet).
+    /// That is not a durable-persistence ack — the strongest signal EventBus exposes today — so a
+    /// crash before DataPipeline persists re-delivers on the next flush (deduped by transitionId).
     private func deliverViaEventBus(metric: PendingGeofenceMetric) async {
         guard activeDeliveryKeys.mutating({ $0.insert(metric.key).inserted }) else { return }
         defer { activeDeliveryKeys.mutating { _ = $0.remove(metric.key) } }
@@ -192,8 +193,8 @@ final class GeofenceEventTracker: @unchecked Sendable {
 
     /// Hands a row to DataPipeline via EventBus, carrying the snapshot userId + timestamp so a
     /// delayed replay attributes to the right person and time, not the current identity/send time.
-    /// `postEventAndWait` (not `postEvent`) so the caller can drain the row only once the handoff is
-    /// durable — `postEvent` returns before its detached delivery/persist task runs.
+    /// `postEventAndWait` (not `postEvent`) so the caller drains the row only once the handoff has
+    /// resolved — `postEvent` returns before its detached delivery/persist task even runs.
     private func postEventBus(metric: PendingGeofenceMetric) async {
         await eventBusHandler.postEventAndWait(TrackGeofenceMetricEvent(
             geofenceId: metric.geofenceId,
