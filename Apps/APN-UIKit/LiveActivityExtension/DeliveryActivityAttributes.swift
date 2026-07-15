@@ -22,7 +22,7 @@ import Foundation
 @available(iOS 16.2, *)
 struct DeliveryActivityAttributes: CIOActivityAttribute {
     /// Reverse-DNS identifier registered with the SDK and matched server-side to route pushes.
-    static let identifier = "io.customer.liveactivities.deliverytracking"
+    static let identifier = "io.customer.livenotifications.deliverytracking"
 
     /// SDK/backend-managed correlation id. Declared with a default and never set by you — the SDK
     /// fills it in on local `start`, the backend fills it in for push-to-start.

@@ -21,7 +21,7 @@ public enum LiveActivityError: Error {
 /// CustomerIO.initialize(withConfig: config)
 /// let liveActivities = LiveActivitiesModule.initialize(
 ///     LiveActivityConfigBuilder()
-///         .register(OrderAttributes.self, identifier: "io.customer.liveactivities.order")
+///         .register(OrderAttributes.self, identifier: "io.customer.livenotifications.order")
 ///         .build()
 /// )
 /// // Start an activity locally — the SDK mints its id and reports a `start` event:

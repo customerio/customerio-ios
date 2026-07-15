@@ -11,7 +11,7 @@ import ActivityKit
 /// ```swift
 /// LiveActivityConfigBuilder()
 ///     .logLevel(.debug)
-///     .register(OrderAttributes.self, identifier: "io.customer.liveactivities.order")
+///     .register(OrderAttributes.self, identifier: "io.customer.livenotifications.order")
 ///     .build()
 /// ```
 public struct LiveActivityConfigBuilder {
@@ -39,7 +39,7 @@ public struct LiveActivityConfigBuilder {
     /// - Parameters:
     ///   - type: The `ActivityAttributes` conformance to observe.
     ///   - identifier: A stable reverse-DNS identifier for this activity type,
-    ///     e.g. `"io.customer.liveactivities.scoreboard"`. Sent as `notificationType` and matched
+    ///     e.g. `"io.customer.livenotifications.scoreboard"`. Sent as `notificationType` and matched
     ///     server-side to route pushes. Must be consistent between the app and the backend.
     ///
     /// Conform `T` to `CIOActivityAttribute` (adding a `cioInstanceId` field) to also enable
