@@ -3,24 +3,18 @@ import Foundation
 
 // sourcery: InjectRegisterShared = "GeofenceEventTracker"
 // sourcery: InjectCustomShared
-/// Sends geofence transition events through a three-layer delivery flow:
-/// 1. Cooldown-based deduplication (keyed by "geofenceId:transitionType")
-/// 2. Persist to `PendingGeofenceMetricStore` before any send attempt, stamping
-///    the currently-identified userId so A's transitions always attribute to A
-/// 3. Dispatch in `deliver`:
-///    - Stamped userId → direct-HTTP path with that userId; success drains the
-///      row, failure retains it for the next flush
-///    - No stamped userId → post to EventBus and drain; DataPipeline records
-///      the transition under its current identity (anonymous tracking when no
-///      one is identified). The captured timestamp flows through the event so
-///      both paths attribute the transition to when it happened
+/// Delivers geofence transition events. Anonymous crossings are dropped (geofencing is
+/// identified-only); survivors are deduped by a cooldown, fanned out per geoset, and persisted
+/// before any send. Two delivery channels drain the row, deduped server-side by the shared
+/// transitionId:
+/// - Fresh transition → direct HTTP (`deliverFresh`): works before DataPipeline is up (cold-wake);
+///   failure retains the row for the next flush.
+/// - Replay (`flushPending` → `deliverViaEventBus`) → EventBus → DataPipeline's durable queue.
 ///
-/// `flushPending()` replays queued rows on module init and on every `ProfileIdentifiedEvent`.
-/// Concurrent deliveries for the same row are deduplicated in-process via the active-delivery
-/// ID set; on app kill the row stays on disk and is retried in the next process.
+/// `flushPending()` runs on module init, cold-wake bootstrap, and `ProfileIdentifiedEvent`.
+/// Concurrent deliveries of the same row are deduped via the in-memory active-delivery set.
 ///
-/// `@unchecked Sendable`: all stored properties are `let`; mutable state is wrapped in
-/// `Synchronized`. Required for the weak capture in the `@Sendable` transition handler.
+/// `@unchecked Sendable`: all stored properties are `let`; mutable state is wrapped in `Synchronized`.
 final class GeofenceEventTracker: @unchecked Sendable {
     private let storage: GeofenceStorage
     private let pendingStore: PendingGeofenceMetricStore
@@ -57,13 +51,20 @@ final class GeofenceEventTracker: @unchecked Sendable {
 
     /// Tracks a geofence transition, suppressing duplicates within the cooldown window.
     /// Fans the transition out to one metric per geoset the geofence belongs to (a single
-    /// metric without a geosetId when it belongs to none), persists every row, then hands
-    /// each to `deliver`. The cooldown is evaluated once per geofence, before fan-out, so
-    /// all rows of one transition are suppressed or emitted together.
+    /// metric without a geosetId when it belongs to none), persists every row, then delivers.
+    /// The cooldown is evaluated once per geofence, before fan-out, so all rows of one
+    /// transition are suppressed or emitted together.
     func trackTransition(
         geofenceId: String,
         transition: GeofenceTransition
     ) async {
+        // Identified-only: the backend rejects anonymous geofence tracks, so drop before cooldown or
+        // persist. Snapshot the userId so a later sign-out/sign-in can't reattribute the row.
+        guard let stampedUserId = contextStore.currentUserId, !stampedUserId.isEmpty else {
+            logger.geofenceTransitionDroppedAnonymous(geofenceId: geofenceId, transition: transition)
+            return
+        }
+
         let cooldownKey = "\(geofenceId):\(transition.rawValue)"
         let now = dateUtil.now
         // Cached config wins when present so a workspace can tune the dedup window without
@@ -74,12 +75,6 @@ final class GeofenceEventTracker: @unchecked Sendable {
             logger.geofenceEventSuppressed(geofenceId: geofenceId, transition: transition)
             return
         }
-
-        // Stamp the current userId so a row captured under user A always delivers
-        // as A — even if B signs in before the flush replays it. Nil when no user
-        // is identified at capture time; `deliver` routes nil-stamped rows to EventBus.
-        let liveUserId = contextStore.currentUserId
-        let stampedUserId: String? = (liveUserId?.isEmpty == false) ? liveUserId : nil
         // Resolve the geofence name and geoset membership now and carry them on the metric;
         // name is nil when the geofence has none so the event omits `geofenceName`.
         let cachedGeofence = await storage.getCachedGeofences().first { $0.id == geofenceId }
@@ -103,7 +98,7 @@ final class GeofenceEventTracker: @unchecked Sendable {
                 name: geofenceName,
                 transitionId: transitionId,
                 geosetId: geosetId,
-                // Snapshot as the fallback for an evicted geofence; `deliver` prefers the live cache.
+                // Snapshot as the fallback for an evicted geofence; delivery prefers the live cache.
                 metadata: cachedGeofence?.metadata
             )
         }
@@ -128,48 +123,34 @@ final class GeofenceEventTracker: @unchecked Sendable {
         await backgroundTaskRunner.withBackgroundTime { [self] in
             await withTaskGroup(of: Void.self) { group in
                 for metric in metrics {
-                    group.addTask { await self.deliver(metric: metric) }
+                    group.addTask { await self.deliverFresh(metric: metric) }
                 }
             }
         }
         await storage.purgeExpiredCooldowns(now: now, interval: interval)
     }
 
-    /// Replays every queued metric through `deliver`. Runs on module init and cold-wake bootstrap,
-    /// so it holds a background-task assertion too — the backlog can be replaying in a short wake.
+    /// Replays every queued row via EventBus → DataPipeline, which owns delivery and its own
+    /// background handling from there — so no background-task assertion is needed (unlike the fresh
+    /// HTTP send). A row not handed off stays queued and retries on the next flush.
     func flushPending() async {
-        let pending = await pendingStore.loadAll()
-        guard !pending.isEmpty else { return }
-        await backgroundTaskRunner.withBackgroundTime { [self] in
-            for metric in pending {
-                await deliver(metric: metric)
-            }
+        for metric in await pendingStore.loadAll() {
+            await deliverViaEventBus(metric: metric)
         }
     }
 
     // MARK: - Private
 
-    private func deliver(metric: PendingGeofenceMetric) async {
-        // Claim before delivering so two concurrent callers (e.g. trackTransition and a
-        // ProfileIdentifiedEvent-triggered flush, or two flushes) can't both send the
-        // same row. The claim set is in-memory only — on app kill the row stays on
-        // disk and is retried by flushPending in the next process.
+    /// Fresh-transition delivery via direct HTTP. Failure leaves the row for `flushPending`.
+    private func deliverFresh(metric: PendingGeofenceMetric) async {
+        // Claim so a concurrent flush of the same row can't also send it.
         guard activeDeliveryKeys.mutating({ $0.insert(metric.key).inserted }) else { return }
         defer { activeDeliveryKeys.mutating { _ = $0.remove(metric.key) } }
 
         let effective = await resolvingLiveValues(metric)
 
-        // Rows without a stamped userId (anonymous capture or legacy pre-stamping)
-        // route through EventBus instead — DataPipeline tracks anonymously under
-        // whatever identity is current at consume time.
-        guard let stampedUserId = effective.userId, !stampedUserId.isEmpty else {
-            postEventBus(metric: effective)
-            _ = await pendingStore.remove(key: metric.key)
-            return
-        }
-
         let success = await withCheckedContinuation { (continuation: CheckedContinuation<Bool, Never>) in
-            deliveryTracker.trackMetric(metric: effective, userId: stampedUserId) { result in
+            deliveryTracker.trackMetric(metric: effective, userId: effective.userId) { result in
                 switch result {
                 case .success:
                     continuation.resume(returning: true)
@@ -186,6 +167,19 @@ final class GeofenceEventTracker: @unchecked Sendable {
         // HTTP failure: row stays for next flush.
     }
 
+    /// Replay via EventBus → DataPipeline, which then owns delivery and retry. We drop our copy once
+    /// the handoff resolves (observer invoked, or written to the EventBus cache when none exists yet).
+    /// That is not a durable-persistence ack — the strongest signal EventBus exposes today — so a
+    /// crash before DataPipeline persists re-delivers on the next flush (deduped by transitionId).
+    private func deliverViaEventBus(metric: PendingGeofenceMetric) async {
+        guard activeDeliveryKeys.mutating({ $0.insert(metric.key).inserted }) else { return }
+        defer { activeDeliveryKeys.mutating { _ = $0.remove(metric.key) } }
+
+        let effective = await resolvingLiveValues(metric)
+        await postEventBus(metric: effective)
+        _ = await pendingStore.remove(key: metric.key)
+    }
+
     /// Prefers the freshest cached `name`/`metadata` at send, falling back to the row snapshot when
     /// the geofence has left the cache. All other fields — including the dedup key inputs — are
     /// unchanged, so the returned copy addresses the same persisted row.
@@ -197,17 +191,18 @@ final class GeofenceEventTracker: @unchecked Sendable {
         return metric.withResolved(name: live.name, metadata: live.metadata)
     }
 
-    /// Anonymous-attribution fallback used when a row carries no stamped userId.
-    /// The captured `timestamp` flows through the event so DataPipeline can record
-    /// the transition under the moment it actually happened, not the moment the
-    /// flush ran.
-    private func postEventBus(metric: PendingGeofenceMetric) {
-        eventBusHandler.postEvent(TrackGeofenceMetricEvent(
+    /// Hands a row to DataPipeline via EventBus, carrying the snapshot userId + timestamp so a
+    /// delayed replay attributes to the right person and time, not the current identity/send time.
+    /// `postEventAndWait` (not `postEvent`) so the caller drains the row only once the handoff has
+    /// resolved — `postEvent` returns before its detached delivery/persist task even runs.
+    private func postEventBus(metric: PendingGeofenceMetric) async {
+        await eventBusHandler.postEventAndWait(TrackGeofenceMetricEvent(
             geofenceId: metric.geofenceId,
             transition: metric.transition,
             timestamp: metric.timestamp,
             name: metric.name,
             transitionId: metric.transitionId,
+            userId: metric.userId,
             geosetId: metric.geosetId,
             metadata: metric.metadata
         ))

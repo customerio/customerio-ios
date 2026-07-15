@@ -1,14 +1,15 @@
 import CioInternalCommon
 import Foundation
 
-/// A geofence transition queued for delivery (direct-HTTP when stamped with a
-/// userId, EventBus → DataPipeline anonymous when not).
+/// A geofence transition queued for delivery — fresh over direct HTTP, or replayed via
+/// EventBus → DataPipeline. Always carries the userId identified at capture; geofencing is
+/// identified-only, so anonymous crossings are dropped before a row is ever created.
 struct PendingGeofenceMetric: Codable, Equatable, Sendable, GeofenceMetric {
     let geofenceId: String
     let transition: GeofenceTransition
     let timestamp: Date
-    /// The userId identified at capture time, or `nil` if none was identified.
-    let userId: String?
+    /// The userId identified at capture time.
+    let userId: String
     /// The geofence's name, resolved at capture time, or `nil` when unavailable. Travels with the
     /// metric so a delayed flush still has it even after the geofence leaves the cache.
     let name: String?
@@ -17,8 +18,8 @@ struct PendingGeofenceMetric: Codable, Equatable, Sendable, GeofenceMetric {
     /// One physical transition of a geofence in N geosets produces N rows, one per geoset.
     /// Optional so rows persisted by pre-geoset SDK versions still decode.
     let geosetId: String?
-    /// Snapshot of the geofence's metadata at transition, the fallback when `deliver` can't find
-    /// the geofence in cache. Optional so rows persisted before metadata still decode.
+    /// Snapshot of the geofence's metadata at transition, the fallback when the geofence isn't in
+    /// cache at send. Optional so rows persisted before metadata still decode.
     let metadata: [String: GeofenceMetadataValue]?
 
     /// Composite key over `(geofenceId, transition, timestamp_sec, geosetId)` used for
@@ -37,7 +38,7 @@ struct PendingGeofenceMetric: Codable, Equatable, Sendable, GeofenceMetric {
         geofenceId: String,
         transition: GeofenceTransition,
         timestamp: Date,
-        userId: String?,
+        userId: String,
         name: String?,
         transitionId: String,
         geosetId: String? = nil,

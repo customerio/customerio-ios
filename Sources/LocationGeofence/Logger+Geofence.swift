@@ -58,6 +58,13 @@ extension Logger {
         )
     }
 
+    func geofenceTransitionDroppedAnonymous(geofenceId: String, transition: GeofenceTransition) {
+        debug(
+            "Dropped \(transition.rawValue) event for geofence \(geofenceId): no identified user at transition time (geofencing is identified-only)",
+            geofenceTag
+        )
+    }
+
     func geofencePendingPersistFailed(geofenceId: String, transition: GeofenceTransition) {
         error(
             "Failed to persist \(transition.rawValue) event for geofence \(geofenceId) before send; cooldown released so the next crossing can retry",

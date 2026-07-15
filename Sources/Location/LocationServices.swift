@@ -44,8 +44,9 @@ public protocol LocationServices: AnyObject {
     func requestLocationUpdate()
 
     /// Acquires a one-shot location fix for internal consumers (e.g. geofencing) with no analytics
-    /// side effects: no `CIO Location Update` track event, and the fix is **not** cached or persisted,
-    /// so it never reaches identify context enrichment and is not observable via `getLastKnownLocation`.
+    /// side effects: no `CIO Location Update` track event, and the fix is **not** persisted or used for
+    /// identify context enrichment. It does update the in-memory last-known fix, so it is observable via
+    /// `getLastKnownLocation` — geofencing anchors its refresh on that value.
     /// It posts `LocationAcquiredEvent` and runs regardless of `LocationConfig.mode` (geofencing needs
     /// a location even when location tracking is `.off`).
     /// Not part of the customer-facing API — other SDK modules call it via `@_spi(Geofence)`.

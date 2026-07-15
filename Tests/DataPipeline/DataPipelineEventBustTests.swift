@@ -70,7 +70,8 @@ class DataPipelineEventBustTests: IntegrationTest {
                 transition: .enter,
                 timestamp: capturedAt,
                 name: "HQ",
-                transitionId: "txn_enter_1"
+                transitionId: "txn_enter_1",
+                userId: "user_1"
             )
         )
 
@@ -104,7 +105,8 @@ class DataPipelineEventBustTests: IntegrationTest {
                 transition: .exit,
                 timestamp: capturedAt,
                 name: nil,
-                transitionId: "txn_exit_1"
+                transitionId: "txn_exit_1",
+                userId: "user_1"
             )
         )
 
@@ -124,6 +126,29 @@ class DataPipelineEventBustTests: IntegrationTest {
         XCTAssertNil(properties["latitude"])
         XCTAssertNil(properties["longitude"])
         XCTAssertEqual(trackEvent.timestamp, capturedAt.string(format: .iso8601WithMilliseconds))
+    }
+
+    func testSubscribeToJourneyEvents_DataPipelineHandlesTrackGeofenceMetricEvent_pinsSnapshotUserId() async {
+        // The transition was captured under user_A; a different user is identified now. The event's
+        // snapshot userId must pin the track to user_A, not the current identity.
+        customerIO.identify(userId: "user_current")
+
+        await eventBusHandler.postEventAndWait(
+            TrackGeofenceMetricEvent(
+                geofenceId: String.random,
+                transition: .enter,
+                timestamp: Date(timeIntervalSince1970: 1700000000),
+                name: "HQ",
+                transitionId: "txn_pin_1",
+                userId: "user_A"
+            )
+        )
+
+        guard let trackEvent = outputReader.lastEvent as? TrackEvent else {
+            XCTFail("recorded event is not an instance of TrackEvent")
+            return
+        }
+        XCTAssertEqual(trackEvent.userId, "user_A")
     }
 
     func testSubscribeToJourneyEvents_DataPipelineHandlesRegisterDeviceEvent() async {

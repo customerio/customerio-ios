@@ -163,6 +163,9 @@ public struct TrackInAppMetricEvent: EventRepresentable {
     }
 }
 
+/// A geofence transition to be tracked by DataPipeline. Geofencing is identified-only, so `userId`
+/// is always present; DataPipeline pins the track to the identity captured when the transition fired,
+/// not the current one.
 public struct TrackGeofenceMetricEvent: EventRepresentable, GeofenceMetric {
     public let storageId: String
     public let params: [String: String]
@@ -171,11 +174,10 @@ public struct TrackGeofenceMetricEvent: EventRepresentable, GeofenceMetric {
     public let timestamp: Date
     public let name: String?
     public let transitionId: String
-    /// The geoset this event was fanned out for, or `nil` when the geofence is in no geoset.
-    /// Optional with a decode fallback so events persisted by pre-geoset SDK versions replay.
+    public let userId: String
+    /// The geoset this event was fanned out for; `nil` when the geofence is in no geoset.
     public let geosetId: String?
-    /// Workspace-defined geofence metadata, or `nil` when none. Optional so events persisted before
-    /// metadata still replay.
+    /// Workspace-defined geofence metadata; `nil` when none.
     public let metadata: [String: GeofenceMetadataValue]?
 
     public init(
@@ -185,6 +187,7 @@ public struct TrackGeofenceMetricEvent: EventRepresentable, GeofenceMetric {
         timestamp: Date = Date(),
         name: String?,
         transitionId: String,
+        userId: String,
         geosetId: String? = nil,
         metadata: [String: GeofenceMetadataValue]? = nil,
         params: [String: String] = [:]
@@ -196,6 +199,7 @@ public struct TrackGeofenceMetricEvent: EventRepresentable, GeofenceMetric {
         self.timestamp = timestamp
         self.name = name
         self.transitionId = transitionId
+        self.userId = userId
         self.geosetId = geosetId
         self.metadata = metadata
     }
