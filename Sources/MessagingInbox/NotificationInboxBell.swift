@@ -90,13 +90,14 @@ public struct NotificationInboxBell: View {
         .accessibility(label: Text(showsUnreadCount ? "Notifications, \(model.unopenedCount) unread" : "Notifications"))
     }
 
-    /// The bell glyph: the workspace's branding SVG (`floatingIcon.svg`) when present and parseable,
-    /// otherwise the bundled default bell asset. Both are tinted with the branding glyph color.
+    /// The bell glyph: the workspace's branding SVG (`floatingIcon.svg`) when present and parseable
+    /// (pre-built once by the model), otherwise the bundled default bell asset. Both are tinted with
+    /// the branding glyph color.
     @ViewBuilder
     private func bellGlyph(colors: ResolvedInboxColors) -> some View {
-        if let svg = model.chrome?.bellIconSvg, InboxBellIcon.canRender(svg) {
+        if let glyph = model.bellGlyph {
             // Even-odd fill matches CIO bell SVGs' `fill-rule="evenodd"` (outlined bell).
-            InboxBellIcon(svg: svg).fill(colors.bellIcon, style: FillStyle(eoFill: true))
+            InboxBellIcon(glyph: glyph).fill(colors.bellIcon, style: FillStyle(eoFill: true))
         } else {
             Image("cio-inbox-bell", bundle: .cioInboxResources)
                 .renderingMode(.template)

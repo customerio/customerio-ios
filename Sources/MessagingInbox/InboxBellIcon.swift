@@ -3,65 +3,25 @@ import Foundation
 import CoreGraphics
 import SwiftUI
 
-/// Renders the notification-bell glyph from the raw SVG markup a workspace configures in branding
-/// (`patterns.inbox.floatingIcon.svg`), as a tint-able SwiftUI `Shape`.
+/// A pre-built bell glyph: the combined even-odd `Path` extracted from a branding SVG plus the source
+/// `viewBox` it should be fitted into.
+///
+/// Built ONCE via ``build(fromSVG:)`` when branding resolves (held on `VisualInboxModel`), rather than
+/// re-parsed on every render pass — and released together with the model when the inbox UI is torn
+/// down, so the parsed glyph isn't retained process-wide after the inbox is gone.
 ///
 /// Path parsing is delegated to the vendored `SVGPath` (see `Vendor/SVGPath`), which robustly handles
 /// the full SVG path grammar. This type only extracts the `<path d="…">` elements + `viewBox` from the
-/// markup and fits the combined path into the target rect (centered, aspect-preserving).
-///
-/// Fill with `FillStyle(eoFill: true)`: CIO bell glyphs are authored with the even-odd rule (the bell
-/// body is an outlined ring), matching the source SVG's `fill-rule="evenodd"`.
+/// markup and combines the paths.
 @available(iOS 13.0, *)
-struct InboxBellIcon: Shape {
-    /// Raw SVG markup, e.g. `<svg viewBox="0 0 24 25"><path d="…"/>…</svg>`.
-    let svg: String
+struct InboxBellGlyph {
+    let path: Path
+    let viewBox: CGRect
 
-    func path(in rect: CGRect) -> Path {
-        guard let parsed = Self.parse(svg) else { return Path() }
-        let box = parsed.viewBox
-        guard box.width > 0, box.height > 0 else { return Path() }
-        // Fit the viewBox into rect, centered, preserving aspect ratio (scale then translate).
-        let scale = min(rect.width / box.width, rect.height / box.height)
-        let scaledWidth = box.width * scale
-        let scaledHeight = box.height * scale
-        let translateX = rect.minX + (rect.width - scaledWidth) / 2 - box.minX * scale
-        let translateY = rect.minY + (rect.height - scaledHeight) / 2 - box.minY * scale
-        let transform = CGAffineTransform(translationX: translateX, y: translateY)
-            .scaledBy(x: scale, y: scale)
-        return parsed.path.applying(transform)
-    }
-
-    /// Whether the markup yields at least one parseable path — lets the bell fall back to the bundled
-    /// default glyph when branding provides no (or unparseable) SVG.
-    static func canRender(_ svg: String) -> Bool {
-        parse(svg)?.path.isEmpty == false
-    }
-
-    // MARK: - SVG extraction (path data + viewBox); parsing delegated to vendored SVGPath
-
-    /// Boxes an optional parse result so `NSCache` (which can't store `nil`) can memoize failures too.
-    private final class ParseCacheEntry {
-        let parsed: (path: Path, viewBox: CGRect)?
-        init(_ parsed: (path: Path, viewBox: CGRect)?) {
-            self.parsed = parsed
-        }
-    }
-
-    /// Memoizes parse results per SVG string. Parsing (regex extraction + SVGPath) is deterministic and
-    /// otherwise re-runs on every `path(in:)` (each layout) and every `canRender` (each body eval),
-    /// which for a static glyph is pure waste. `NSCache` is thread-safe.
-    private static let parseCache = NSCache<NSString, ParseCacheEntry>()
-
-    private static func parse(_ svg: String) -> (path: Path, viewBox: CGRect)? {
-        let key = svg as NSString
-        if let entry = parseCache.object(forKey: key) { return entry.parsed }
-        let parsed = parseUncached(svg)
-        parseCache.setObject(ParseCacheEntry(parsed), forKey: key)
-        return parsed
-    }
-
-    private static func parseUncached(_ svg: String) -> (path: Path, viewBox: CGRect)? {
+    /// Builds a glyph from raw SVG markup (e.g. `<svg viewBox="0 0 24 25"><path d="…"/>…</svg>`), or
+    /// nil when there is nothing renderable (no parseable `<path d>`) — the bell then falls back to
+    /// the bundled default glyph. Malformed subpaths are skipped rather than failing the whole glyph.
+    static func build(fromSVG svg: String) -> InboxBellGlyph? {
         let pathData = pathData(from: svg)
         guard !pathData.isEmpty else { return nil }
         var combined = Path()
@@ -73,17 +33,20 @@ struct InboxBellIcon: Shape {
         }
         guard !combined.isEmpty else { return nil }
         // Prefer the declared viewBox; otherwise use the path's own bounds as the coordinate space.
-        return (combined, viewBox(from: svg) ?? combined.boundingRect)
+        return InboxBellGlyph(path: combined, viewBox: viewBox(from: svg) ?? combined.boundingRect)
     }
 
-    /// Extracts every `<path … d="…">` value from the markup.
+    // MARK: - SVG extraction (path data + viewBox); parsing delegated to vendored SVGPath
+
+    /// Extracts every `<path … d="…">` value from the markup. Accepts single- OR double-quoted
+    /// attributes — branding markup (and captured fixtures) use single quotes.
     private static func pathData(from svg: String) -> [String] {
-        matches(in: svg, pattern: #"<path[^>]*\bd\s*=\s*"([^"]*)""#)
+        matches(in: svg, pattern: #"<path[^>]*\bd\s*=\s*["']([^"']*)["']"#)
     }
 
-    /// Parses a `viewBox="minX minY width height"` attribute, if present.
+    /// Parses a `viewBox="minX minY width height"` attribute (single- or double-quoted), if present.
     private static func viewBox(from svg: String) -> CGRect? {
-        guard let raw = matches(in: svg, pattern: #"\bviewBox\s*=\s*"([^"]*)""#).first else { return nil }
+        guard let raw = matches(in: svg, pattern: #"\bviewBox\s*=\s*["']([^"']*)["']"#).first else { return nil }
         let parts = raw.split(whereSeparator: { $0 == " " || $0 == "," }).compactMap { Double($0) }
         guard parts.count == 4 else { return nil }
         return CGRect(x: parts[0], y: parts[1], width: parts[2], height: parts[3])
@@ -100,6 +63,32 @@ struct InboxBellIcon: Shape {
             }
         }
         return results
+    }
+}
+
+/// Renders a pre-built ``InboxBellGlyph`` as a tint-able SwiftUI `Shape`, fitting it into the target
+/// rect (centered, aspect-preserving). Parsing already happened in ``InboxBellGlyph/build(fromSVG:)``;
+/// `path(in:)` only applies the fit transform, so it stays cheap on every layout pass.
+///
+/// Fill with `FillStyle(eoFill: true)`: CIO bell glyphs are authored with the even-odd rule (the bell
+/// body is an outlined ring), matching the source SVG's `fill-rule="evenodd"`.
+@available(iOS 13.0, *)
+struct InboxBellIcon: Shape {
+    /// The pre-built glyph to render.
+    let glyph: InboxBellGlyph
+
+    func path(in rect: CGRect) -> Path {
+        let box = glyph.viewBox
+        guard box.width > 0, box.height > 0 else { return Path() }
+        // Fit the viewBox into rect, centered, preserving aspect ratio (scale then translate).
+        let scale = min(rect.width / box.width, rect.height / box.height)
+        let scaledWidth = box.width * scale
+        let scaledHeight = box.height * scale
+        let translateX = rect.minX + (rect.width - scaledWidth) / 2 - box.minX * scale
+        let translateY = rect.minY + (rect.height - scaledHeight) / 2 - box.minY * scale
+        let transform = CGAffineTransform(translationX: translateX, y: translateY)
+            .scaledBy(x: scale, y: scale)
+        return glyph.path.applying(transform)
     }
 }
 #endif
