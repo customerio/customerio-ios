@@ -50,16 +50,16 @@ protocol GeofenceSyncCoordinator: AutoMockable, AnyObject, Sendable {
 /// not declared `: Sendable`. Both are `let` references injected once and never mutated;
 /// the only mutable state is the `Synchronized<Bool>` dedup gate.
 final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sendable {
-    private let apiService: GeofenceApiService
-    private let monitor: GeofenceRegionMonitoring
-    private let contextStore: BackgroundDeliveryContextStore
     private let distanceFilter: GeofenceDistanceFilter
     private let logger: Logger
-    // Internal (not private) so the `+RefreshDecision` / `+InitialEnter` extensions in their own
-    // files can read them; all are immutable injected deps.
+    // Internal (not private) so the `+RefreshDecision` / `+InitialEnter` / `+OsRegistration`
+    // extensions in their own files can read them; all are immutable injected deps.
+    let apiService: GeofenceApiService
+    let monitor: GeofenceRegionMonitoring
     let storage: GeofenceSyncStorage
     let dateUtil: DateUtil
     let transitionEmitter: GeofenceTransitionEmitting
+    let contextStore: BackgroundDeliveryContextStore
     private let refreshInProgress = Synchronized<Bool>(false)
 
     init(
@@ -108,6 +108,7 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
         case .local:
             let cachedRegions = await storage.getCachedGeofences()
             return await performLocalRefresh(
+                expectedUserId: userId,
                 latitude: latitude,
                 longitude: longitude,
                 config: effectiveConfig,
@@ -150,6 +151,7 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
             logger.geofenceMovementTrigger(tier: .localRerank)
             let cachedRegions = await storage.getCachedGeofences()
             return await performLocalRefresh(
+                expectedUserId: userId,
                 latitude: latitude,
                 longitude: longitude,
                 config: effectiveConfig,
@@ -267,7 +269,7 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
         let nearest = distanceFilter.nearest(regions, to: anchor, limit: effectiveConfig.maxBusinessGeofences, maxDistance: effectiveConfig.maxMonitoringDistance)
         // Read before `recordRegistration` overwrites it — the diff decides which registrations are new.
         let previouslyRegisteredIds = await storage.getRegisteredBusinessIds()
-        await MainActor.run {
+        let registeredIds = await MainActor.run {
             registerWithOsSync(
                 businessRegions: nearest,
                 movementTriggerLocation: anchor,
@@ -284,7 +286,13 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
         }
         await storage.recordSync(timestamp: dateUtil.now, location: anchor)
         await storage.recordRegistration(center: anchor, businessIds: Set(nearest.map(\.id)))
-        emitInitialEnters(registered: nearest, previouslyRegisteredIds: previouslyRegisteredIds, anchor: anchor)
+        emitInitialEnters(
+            candidates: nearest,
+            registeredIds: registeredIds,
+            previouslyRegisteredIds: previouslyRegisteredIds,
+            expectedUserId: expectedUserId,
+            anchor: anchor
+        )
         logger.geofenceSyncCompleted(registeredCount: nearest.count)
         return .success(())
     }
@@ -294,6 +302,7 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
     /// leaving it intact preserves the next threshold. Records the registration anchor so the
     /// ranking-staleness reference follows the device after a local re-rank.
     private func performLocalRefresh(
+        expectedUserId: String,
         latitude: Double,
         longitude: Double,
         config: GeofenceConfig,
@@ -303,7 +312,7 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
         let nearest = distanceFilter.nearest(cachedRegions, to: anchor, limit: config.maxBusinessGeofences, maxDistance: config.maxMonitoringDistance)
         // Read before `recordRegistration` overwrites it — the diff decides which registrations are new.
         let previouslyRegisteredIds = await storage.getRegisteredBusinessIds()
-        await MainActor.run {
+        let registeredIds = await MainActor.run {
             registerWithOsSync(
                 businessRegions: nearest,
                 movementTriggerLocation: anchor,
@@ -312,54 +321,15 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
             )
         }
         await storage.recordRegistration(center: anchor, businessIds: Set(nearest.map(\.id)))
-        emitInitialEnters(registered: nearest, previouslyRegisteredIds: previouslyRegisteredIds, anchor: anchor)
+        emitInitialEnters(
+            candidates: nearest,
+            registeredIds: registeredIds,
+            previouslyRegisteredIds: previouslyRegisteredIds,
+            expectedUserId: expectedUserId,
+            anchor: anchor
+        )
         logger.geofenceSyncCompleted(registeredCount: nearest.count)
         return .success(())
-    }
-}
-
-// MARK: - OS registration & fetch plumbing
-
-private extension GeofenceSyncCoordinatorImpl {
-    /// Bridges the completion-based nearby fetch to async.
-    func awaitApiFetch(latitude: Double, longitude: Double) async -> Result<GeofenceApiResponse, GeofenceApiError> {
-        await withCheckedContinuation { continuation in
-            apiService.fetchNearbyGeofences(latitude: latitude, longitude: longitude) { continuation.resume(returning: $0) }
-        }
-    }
-
-    /// Stops all monitored regions, then starts the new business set + movement trigger.
-    /// `@MainActor`-isolated so a same-actor caller (e.g. `applyCachedRegistration`)
-    /// can register without yielding — see the protocol doc for why that matters.
-    @MainActor
-    func registerWithOsSync(
-        businessRegions: [Geofence],
-        movementTriggerLocation: LocationData,
-        movementTriggerRadius: Double,
-        registerMovementTrigger: Bool
-    ) {
-        monitor.stopMonitoringAll()
-        // Register the movement trigger FIRST so it isn't starved when business regions fill the
-        // shared 20-region OS budget (e.g. a host app that also monitors regions): losing it freezes
-        // the set, since exiting the trigger is what re-ranks toward now-closer geofences. Kept even
-        // when the distance cap left the business set empty; skipped only when there's nothing to
-        // register toward (no geofences, or registration kill-switched).
-        if registerMovementTrigger {
-            monitor.startMonitoring(
-                identifier: GeofenceConstants.movementTriggerIdentifier,
-                center: movementTriggerLocation,
-                radius: movementTriggerRadius,
-                transitionTypes: [.exit]
-            )
-        }
-        for region in businessRegions {
-            monitor.startMonitoring(
-                identifier: region.id,
-                center: LocationData(latitude: region.latitude, longitude: region.longitude),
-                radius: region.radius,
-                transitionTypes: region.transitionTypes
-            )
-        }
     }
 }
 

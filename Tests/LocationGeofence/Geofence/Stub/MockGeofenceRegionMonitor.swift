@@ -34,6 +34,10 @@ final class MockGeofenceRegionMonitor: GeofenceRegionMonitoring {
     /// Seedable OS-persisted set — tests set this to model regions the OS still monitors on a
     /// fresh process (where `activeIdentifiers`, the in-memory ownership filter, starts empty).
     var osMonitoredRegions: Set<String> = []
+
+    /// Identifiers `startMonitoring` should silently drop — models the real monitor's early return
+    /// on blocked permission / invalid coordinates, where the region never enters the owned set.
+    var rejectedIdentifiers: Set<String> = []
     private(set) var adoptExistingRegionsCallsCount = 0
     private(set) var adoptedIdentifiers: Set<String> = []
     private(set) var reportPermissionTierCallsCount = 0
@@ -73,6 +77,8 @@ final class MockGeofenceRegionMonitor: GeofenceRegionMonitoring {
     }
 
     func startMonitoring(identifier: String, center: LocationData, radius: Double, transitionTypes: Set<GeofenceTransition>) {
+        // Mirror the real monitor's early return: a rejected id is neither recorded nor owned.
+        guard !rejectedIdentifiers.contains(identifier) else { return }
         startedRegions.append(MonitoredRegionRecord(
             identifier: identifier,
             center: center,

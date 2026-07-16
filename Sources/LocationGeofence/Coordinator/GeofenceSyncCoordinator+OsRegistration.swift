@@ -1,0 +1,52 @@
+import CioInternalCommon
+import Foundation
+
+/// OS registration + fetch plumbing, split out to keep the coordinator's core flow readable.
+/// Methods are `internal` (not `private`) only because they live in a separate file from their
+/// callers; they remain coordinator implementation detail.
+extension GeofenceSyncCoordinatorImpl {
+    /// Bridges the completion-based nearby fetch to async.
+    func awaitApiFetch(latitude: Double, longitude: Double) async -> Result<GeofenceApiResponse, GeofenceApiError> {
+        await withCheckedContinuation { continuation in
+            apiService.fetchNearbyGeofences(latitude: latitude, longitude: longitude) { continuation.resume(returning: $0) }
+        }
+    }
+
+    /// Stops all monitored regions, then starts the new business set + movement trigger. Returns the
+    /// OS-accepted identifiers — a region the monitor dropped (blocked permission / invalid
+    /// coordinates) is absent, so `emitInitialEnters` won't fire an unbalanced synthetic enter for it.
+    /// `@MainActor`-isolated so a same-actor caller (e.g. `applyCachedRegistration`)
+    /// can register without yielding — see the protocol doc for why that matters.
+    @MainActor
+    @discardableResult
+    func registerWithOsSync(
+        businessRegions: [Geofence],
+        movementTriggerLocation: LocationData,
+        movementTriggerRadius: Double,
+        registerMovementTrigger: Bool
+    ) -> Set<String> {
+        monitor.stopMonitoringAll()
+        // Register the movement trigger FIRST so it isn't starved when business regions fill the
+        // shared 20-region OS budget (e.g. a host app that also monitors regions): losing it freezes
+        // the set, since exiting the trigger is what re-ranks toward now-closer geofences. Kept even
+        // when the distance cap left the business set empty; skipped only when there's nothing to
+        // register toward (no geofences, or registration kill-switched).
+        if registerMovementTrigger {
+            monitor.startMonitoring(
+                identifier: GeofenceConstants.movementTriggerIdentifier,
+                center: movementTriggerLocation,
+                radius: movementTriggerRadius,
+                transitionTypes: [.exit]
+            )
+        }
+        for region in businessRegions {
+            monitor.startMonitoring(
+                identifier: region.id,
+                center: LocationData(latitude: region.latitude, longitude: region.longitude),
+                radius: region.radius,
+                transitionTypes: region.transitionTypes
+            )
+        }
+        return monitor.monitoredRegionIdentifiers
+    }
+}

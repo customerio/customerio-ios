@@ -1350,6 +1350,31 @@ struct GeofenceSyncCoordinatorTests {
         #expect(setup.api.fetchNearbyGeofencesCallsCount == 0) // local path — no fetch
         #expect(setup.emitter.calls.wrappedValue.map(\.geofenceId) == ["g1"])
     }
+
+    @Test
+    func refresh_givenNewGeofenceInsideButRegistrationRejected_expectNoInitialEnter() async {
+        // The device is inside a genuinely-new fence, but the monitor drops it (blocked permission /
+        // invalid coordinates), so it isn't monitored — no synthetic enter it could never balance.
+        let anchor = LocationData(latitude: 1.0, longitude: 2.0)
+        let storage = makeStorage()
+        let dateUtil = DateUtilStub()
+        await storage.recordSync(timestamp: dateUtil.givenNow.addingTimeInterval(-25 * 60 * 60), location: LocationData(latitude: 0, longitude: 0))
+        let api = GeofenceApiServiceMock()
+        api.fetchNearbyGeofencesClosure = { _, _, completion in
+            completion(.success(makeApiResponse(regions: [makeRegion(id: "g1", latitude: 1.0, longitude: 2.0)])))
+        }
+        let monitor = MockGeofenceRegionMonitor()
+        monitor.rejectedIdentifiers = ["g1"]
+        let setup = makeCoordinator(api: api, storage: storage, monitor: monitor, dateUtil: dateUtil)
+
+        _ = await setup.coordinator.refresh(latitude: anchor.latitude, longitude: anchor.longitude)
+
+        // No count to await — assert nothing emitted after yielding the fire-and-forget window. The
+        // sibling "device inside" test proves this same setup DOES emit without the rejection, so
+        // this is non-vacuous.
+        await awaitEmits(setup.emitter, count: 0)
+        #expect(setup.emitter.calls.wrappedValue.isEmpty)
+    }
 }
 
 // MARK: - Result matchers
