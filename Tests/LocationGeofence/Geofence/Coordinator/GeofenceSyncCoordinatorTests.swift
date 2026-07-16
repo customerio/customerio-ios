@@ -29,6 +29,7 @@ struct GeofenceSyncCoordinatorTests {
         let monitor: MockGeofenceRegionMonitor
         let contextStore: BackgroundDeliveryContextStore
         let dateUtil: DateUtilStub
+        let emitter: TransitionEmitterSpy
     }
 
     private func makeCoordinator(
@@ -36,6 +37,7 @@ struct GeofenceSyncCoordinatorTests {
         storage: GeofenceSyncStorage,
         monitor: MockGeofenceRegionMonitor? = nil,
         contextStore: BackgroundDeliveryContextStore? = nil,
+        emitter: TransitionEmitterSpy = TransitionEmitterSpy(),
         dateUtil: DateUtilStub = DateUtilStub()
     ) -> Setup {
         let resolvedContextStore = contextStore ?? makeContextStore()
@@ -45,6 +47,7 @@ struct GeofenceSyncCoordinatorTests {
             storage: storage,
             monitor: resolvedMonitor,
             contextStore: resolvedContextStore,
+            transitionEmitter: emitter,
             dateUtil: dateUtil,
             logger: LoggerMock()
         )
@@ -53,7 +56,8 @@ struct GeofenceSyncCoordinatorTests {
             api: api,
             monitor: resolvedMonitor,
             contextStore: resolvedContextStore,
-            dateUtil: dateUtil
+            dateUtil: dateUtil,
+            emitter: emitter
         )
     }
 
@@ -1264,6 +1268,88 @@ struct GeofenceSyncCoordinatorTests {
 
         #expect(refreshResult.errorOrNil == .alreadyInProgress)
     }
+
+    // MARK: - Initial enter-when-inside (diff-based, both monitor paths)
+
+    /// Drives a remote refresh that fetches `regions`, anchored at `anchor`, with `previousIds`
+    /// already recorded as registered. The emit is fire-and-forget, so callers poll via `awaitEmits`.
+    private func runRemoteRefresh(regions: [Geofence], anchor: LocationData, previousIds: Set<String>) async -> TransitionEmitterSpy {
+        let storage = makeStorage()
+        // Stale sync so the freshness gate routes to a remote fetch.
+        let dateUtil = DateUtilStub()
+        await storage.recordSync(timestamp: dateUtil.givenNow.addingTimeInterval(-25 * 60 * 60), location: LocationData(latitude: 0, longitude: 0))
+        if !previousIds.isEmpty {
+            await storage.recordRegistration(center: anchor, businessIds: previousIds)
+        }
+        let api = GeofenceApiServiceMock()
+        api.fetchNearbyGeofencesClosure = { _, _, completion in completion(.success(makeApiResponse(regions: regions))) }
+        let setup = makeCoordinator(api: api, storage: storage, dateUtil: dateUtil)
+        _ = await setup.coordinator.refresh(latitude: anchor.latitude, longitude: anchor.longitude)
+        return setup.emitter
+    }
+
+    /// Polls the fire-and-forget emit Task until it has recorded `count` calls, then yields a few more
+    /// times so any unwanted extra emit would surface before the caller asserts an exact set.
+    private func awaitEmits(_ emitter: TransitionEmitterSpy, count: Int) async {
+        for _ in 0 ..< 100 where emitter.calls.wrappedValue.count < count {
+            await Task.yield()
+        }
+        for _ in 0 ..< 5 {
+            await Task.yield()
+        }
+    }
+
+    @Test
+    func refresh_givenNewGeofenceDeviceInside_expectInitialEnterEmitted() async {
+        let anchor = LocationData(latitude: 1.0, longitude: 2.0)
+        // Region centered on the anchor → device is inside; no prior registration → genuinely new.
+        let emitter = await runRemoteRefresh(regions: [makeRegion(id: "g1", latitude: 1.0, longitude: 2.0)], anchor: anchor, previousIds: [])
+        await awaitEmits(emitter, count: 1)
+        #expect(emitter.calls.wrappedValue.map(\.geofenceId) == ["g1"])
+        #expect(emitter.calls.wrappedValue.first?.transition == .enter)
+    }
+
+    @Test
+    func refresh_givenMixOfNewGeofences_expectOnlyContainingEnterTypeEmitted() async {
+        let anchor = LocationData(latitude: 1.0, longitude: 2.0)
+        // inside+enter g1 → emitted; ~222m-away g2 → registered but outside; inside exit-only g3.
+        // Awaiting g1 proves the emit loop ran, so g2/g3 are conclusively excluded (non-vacuous).
+        let g2 = makeRegion(id: "g2", latitude: 1.002, longitude: 2.0)
+        let g3 = Geofence(id: "g3", latitude: 1.0, longitude: 2.0, radius: 100, name: "g3", transitionTypes: [.exit], lastUpdated: Date(timeIntervalSince1970: 1700000000))
+        let emitter = await runRemoteRefresh(regions: [makeRegion(id: "g1", latitude: 1.0, longitude: 2.0), g2, g3], anchor: anchor, previousIds: [])
+        await awaitEmits(emitter, count: 1)
+        #expect(emitter.calls.wrappedValue.map(\.geofenceId) == ["g1"])
+    }
+
+    @Test
+    func refresh_givenNewAndAlreadyRegisteredInside_expectOnlyNewEmitted() async {
+        let anchor = LocationData(latitude: 1.0, longitude: 2.0)
+        // Both inside; gOld is already registered (a wholesale re-registration) → excluded by the diff;
+        // gNew is genuinely new → emitted. Emitting only gNew proves the diff, non-vacuously.
+        let regions = [makeRegion(id: "gOld", latitude: 1.0, longitude: 2.0), makeRegion(id: "gNew", latitude: 1.0, longitude: 2.0)]
+        let emitter = await runRemoteRefresh(regions: regions, anchor: anchor, previousIds: ["gOld"])
+        await awaitEmits(emitter, count: 1)
+        #expect(emitter.calls.wrappedValue.map(\.geofenceId) == ["gNew"])
+    }
+
+    @Test
+    func localRefresh_givenNewGeofenceInside_expectInitialEnterEmitted() async {
+        // Cover the LOCAL refresh call site: recent sync (not time-stale) + cached region but no
+        // recorded registration → refreshAction routes to a local re-rank, not a fetch.
+        let anchor = LocationData(latitude: 1.0, longitude: 2.0)
+        let storage = makeStorage()
+        let dateUtil = DateUtilStub()
+        await storage.setCachedGeofences([makeRegion(id: "g1", latitude: 1.0, longitude: 2.0)])
+        await storage.setCachedConfig(.fallback)
+        await storage.recordSync(timestamp: dateUtil.givenNow.addingTimeInterval(-60), location: anchor)
+        let setup = makeCoordinator(storage: storage, dateUtil: dateUtil)
+
+        _ = await setup.coordinator.refresh(latitude: anchor.latitude, longitude: anchor.longitude)
+
+        await awaitEmits(setup.emitter, count: 1)
+        #expect(setup.api.fetchNearbyGeofencesCallsCount == 0) // local path — no fetch
+        #expect(setup.emitter.calls.wrappedValue.map(\.geofenceId) == ["g1"])
+    }
 }
 
 // MARK: - Result matchers
@@ -1351,6 +1437,17 @@ private actor SpyGeofenceSyncStorage: GeofenceSyncStorage {
     func clearUserScopedState() async {
         operations.append(.clearUserScopedState)
         await underlying.clearUserScopedState()
+    }
+}
+
+// MARK: - Transition emitter spy
+
+/// Records the synthetic transitions the coordinator fires for initial enter-when-inside.
+private final class TransitionEmitterSpy: GeofenceTransitionEmitting, @unchecked Sendable {
+    let calls = Synchronized<[(geofenceId: String, transition: GeofenceTransition)]>([])
+
+    func trackTransition(geofenceId: String, transition: GeofenceTransition) async {
+        calls.mutating { $0.append((geofenceId, transition)) }
     }
 }
 

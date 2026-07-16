@@ -55,10 +55,11 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
     private let contextStore: BackgroundDeliveryContextStore
     private let distanceFilter: GeofenceDistanceFilter
     private let logger: Logger
-    // Internal (not private) so the `+RefreshDecision` extension in its own file can read them;
-    // all are immutable injected deps.
+    // Internal (not private) so the `+RefreshDecision` / `+InitialEnter` extensions in their own
+    // files can read them; all are immutable injected deps.
     let storage: GeofenceSyncStorage
     let dateUtil: DateUtil
+    let transitionEmitter: GeofenceTransitionEmitting
     private let refreshInProgress = Synchronized<Bool>(false)
 
     init(
@@ -66,6 +67,7 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
         storage: GeofenceSyncStorage,
         monitor: GeofenceRegionMonitoring,
         contextStore: BackgroundDeliveryContextStore,
+        transitionEmitter: GeofenceTransitionEmitting,
         distanceFilter: GeofenceDistanceFilter = GeofenceDistanceFilter(),
         dateUtil: DateUtil,
         logger: Logger
@@ -74,6 +76,7 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
         self.storage = storage
         self.monitor = monitor
         self.contextStore = contextStore
+        self.transitionEmitter = transitionEmitter
         self.distanceFilter = distanceFilter
         self.dateUtil = dateUtil
         self.logger = logger
@@ -212,9 +215,8 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
             registerMovementTrigger: effectiveConfig.maxBusinessGeofences > 0 && !cachedRegions.isEmpty
         )
         logger.geofenceSyncCompleted(registeredCount: nearest.count)
-        // Return the registration so the caller persists it (async, after the no-await window) as
-        // the ranking-staleness reference — otherwise a later fresh refresh measures from a stale
-        // anchor and may skip while the OS holds the wrong nearest-set.
+        // No initial-enter here: a cold-wake restore of the pre-kill set (not new registrations) off a
+        // possibly-stale anchor. Genuinely-new fences come from a refresh fetch, which emits there.
         return GeofenceRegistration(center: anchor, businessIds: Set(nearest.map(\.id)))
     }
 
@@ -263,6 +265,8 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
         let effectiveConfig = parsedConfig ?? cachedConfig ?? .fallback
         let anchor = LocationData(latitude: latitude, longitude: longitude)
         let nearest = distanceFilter.nearest(regions, to: anchor, limit: effectiveConfig.maxBusinessGeofences, maxDistance: effectiveConfig.maxMonitoringDistance)
+        // Read before `recordRegistration` overwrites it — the diff decides which registrations are new.
+        let previouslyRegisteredIds = await storage.getRegisteredBusinessIds()
         await MainActor.run {
             registerWithOsSync(
                 businessRegions: nearest,
@@ -280,6 +284,7 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
         }
         await storage.recordSync(timestamp: dateUtil.now, location: anchor)
         await storage.recordRegistration(center: anchor, businessIds: Set(nearest.map(\.id)))
+        emitInitialEnters(registered: nearest, previouslyRegisteredIds: previouslyRegisteredIds, anchor: anchor)
         logger.geofenceSyncCompleted(registeredCount: nearest.count)
         return .success(())
     }
@@ -296,6 +301,8 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
     ) async -> Result<Void, GeofenceSyncError> {
         let anchor = LocationData(latitude: latitude, longitude: longitude)
         let nearest = distanceFilter.nearest(cachedRegions, to: anchor, limit: config.maxBusinessGeofences, maxDistance: config.maxMonitoringDistance)
+        // Read before `recordRegistration` overwrites it — the diff decides which registrations are new.
+        let previouslyRegisteredIds = await storage.getRegisteredBusinessIds()
         await MainActor.run {
             registerWithOsSync(
                 businessRegions: nearest,
@@ -305,6 +312,7 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
             )
         }
         await storage.recordRegistration(center: anchor, businessIds: Set(nearest.map(\.id)))
+        emitInitialEnters(registered: nearest, previouslyRegisteredIds: previouslyRegisteredIds, anchor: anchor)
         logger.geofenceSyncCompleted(registeredCount: nearest.count)
         return .success(())
     }
@@ -378,6 +386,7 @@ extension GeofenceSyncCoordinatorImpl {
         storage: DIGraphShared.shared.geofenceStorage,
         monitor: DIGraphShared.shared.geofenceMonitor,
         contextStore: DIGraphShared.shared.backgroundDeliveryContextStore,
+        transitionEmitter: DIGraphShared.shared.geofenceEventTracker,
         dateUtil: DIGraphShared.shared.dateUtil,
         logger: DIGraphShared.shared.logger
     )

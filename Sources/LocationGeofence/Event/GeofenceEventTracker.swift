@@ -210,6 +210,18 @@ final class GeofenceEventTracker: @unchecked Sendable {
     }
 }
 
+// MARK: - Transition emitter seam
+
+/// Delivers a transition through the tracked path (cooldown dedup, per-geoset fan-out, persistence).
+/// Lets a caller such as `GeofenceSyncCoordinator` fire a synthetic initial ENTER for a newly
+/// registered geofence the device is already inside, without depending on the concrete tracker.
+protocol GeofenceTransitionEmitting: Sendable {
+    /// See `GeofenceEventTracker.trackTransition(geofenceId:transition:)`.
+    func trackTransition(geofenceId: String, transition: GeofenceTransition) async
+}
+
+extension GeofenceEventTracker: GeofenceTransitionEmitting {}
+
 // MARK: - DI
 
 extension DIGraphShared {
