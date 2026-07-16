@@ -21,8 +21,10 @@ enum MockMonitorOperation: Sendable, Equatable {
 final class MockGeofenceRegionMonitor: GeofenceRegionMonitoring {
     private var onTransition: GeofenceTransitionHandler?
     private(set) var onAuthorizationChanged: GeofenceAuthorizationChangedHandler?
+    private(set) var onReconciled: GeofenceReconciledHandler?
     private(set) var setOnTransitionCallsCount = 0
     private(set) var setOnAuthorizationChangedCallsCount = 0
+    private(set) var setOnReconciledCallsCount = 0
     private(set) var startedRegions: [MonitoredRegionRecord] = []
     private(set) var stoppedIdentifiers: [String] = []
     private(set) var stopAllCallCount = 0
@@ -63,6 +65,11 @@ final class MockGeofenceRegionMonitor: GeofenceRegionMonitoring {
     func setOnAuthorizationChanged(_ handler: GeofenceAuthorizationChangedHandler?) {
         onAuthorizationChanged = handler
         setOnAuthorizationChangedCallsCount += 1
+    }
+
+    func setOnReconciled(_ handler: GeofenceReconciledHandler?) {
+        onReconciled = handler
+        setOnReconciledCallsCount += 1
     }
 
     func startMonitoring(identifier: String, center: LocationData, radius: Double, transitionTypes: Set<GeofenceTransition>) {

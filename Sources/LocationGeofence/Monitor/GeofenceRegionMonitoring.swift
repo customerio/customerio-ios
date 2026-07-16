@@ -15,6 +15,10 @@ typealias GeofenceTransitionHandler = @Sendable (String, GeofenceTransition, Loc
 /// Invoked on the main actor — same isolation domain as `CLLocationManagerDelegate`.
 typealias GeofenceAuthorizationChangedHandler = @MainActor () -> Void
 
+/// Callback once the monitor has reconciled its owned set against the OS's live truth.
+/// Invoked on the main actor.
+typealias GeofenceReconciledHandler = @MainActor () -> Void
+
 /// Abstracts CLLocationManager's region monitoring.
 ///
 /// The monitor owns a CLLocationManager and handles the delegate callbacks for region events.
@@ -33,6 +37,12 @@ protocol GeofenceRegionMonitoring: AnyObject, Sendable {
     /// re-attempt registration when permission improves mid-process (e.g. host's permission
     /// prompt resolved, or the user toggled the setting in Settings).
     func setOnAuthorizationChanged(_ handler: GeofenceAuthorizationChangedHandler?)
+
+    /// Sets the handler called once the monitor reconciles its owned set against the OS's live truth.
+    /// Only the CLMonitor path needs it: its live identifiers are async, so the fast synchronous
+    /// adopt/re-register decision runs off a cached mirror, and a drift correction must re-trigger
+    /// that decision. The classic monitor reads `monitoredRegions` synchronously — default no-op.
+    func setOnReconciled(_ handler: GeofenceReconciledHandler?)
 
     /// Starts monitoring a circular geofence region.
     /// - Parameters:
@@ -64,4 +74,9 @@ protocol GeofenceRegionMonitoring: AnyObject, Sendable {
     /// Logs the current authorization tier (background delivery / foreground only / blocked),
     /// deduped so it emits only when the tier changes since the last report.
     func reportPermissionTier()
+}
+
+extension GeofenceRegionMonitoring {
+    /// Default no-op: only the CLMonitor path reconciles asynchronously against live OS truth.
+    func setOnReconciled(_ handler: GeofenceReconciledHandler?) {}
 }

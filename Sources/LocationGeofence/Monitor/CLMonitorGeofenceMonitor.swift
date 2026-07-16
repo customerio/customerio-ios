@@ -45,8 +45,12 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preco
     private let userDefaults: UserDefaults
     /// Only for auth status/changes + current-location reads; region monitoring is on `CLMonitor`.
     private let authManager: CLLocationManager
+    /// Gates `CLMonitor` creation on protected-data availability (its conditions live in the app
+    /// container, unreadable before first unlock on a reboot cold-wake).
+    private let protectedData: ProtectedDataAvailability
     private var onTransition: GeofenceTransitionHandler?
     private var onAuthorizationChanged: GeofenceAuthorizationChangedHandler?
+    private var onReconciled: GeofenceReconciledHandler?
     private var lastLoggedPermissionTier: CoreLocationGeofenceMonitor.PermissionTier?
 
     /// In-memory ownership filter, mirrors `ownedRegionIdentifiers` in the classic monitor.
@@ -68,10 +72,16 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preco
     /// availability. Non-nil only while Always authorization is granted.
     private var serviceSession: AnyObject?
 
-    init(logger: Logger, storage: GeofenceStorage, userDefaults: UserDefaults = .standard) {
+    init(
+        logger: Logger,
+        storage: GeofenceStorage,
+        userDefaults: UserDefaults = .standard,
+        protectedData: ProtectedDataAvailability
+    ) {
         self.logger = logger
         self.storage = storage
         self.userDefaults = userDefaults
+        self.protectedData = protectedData
         self.authManager = CLLocationManager()
         super.init()
         let mirrored = Set(userDefaults.stringArray(forKey: Self.conditionMirrorKey) ?? [])
@@ -94,7 +104,12 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preco
     private func monitorInstance() -> Task<CLMonitor, Never> {
         if let monitorTask { return monitorTask }
         let name = Self.monitorName
-        let task = Task { await CLMonitor(name) }
+        let protectedData = self.protectedData
+        let task = Task { @MainActor in
+            // Defer until protected data is readable (reboot cold-wake): CLMonitor's persisted conditions live in the app container.
+            await protectedData.waitUntilAvailable()
+            return await CLMonitor(name)
+        }
         monitorTask = task
         return task
     }
@@ -115,21 +130,37 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preco
     /// truth. Safe to assign wholesale because no add/remove can have run yet (FIFO).
     private func reconcileKnownConditions(with monitor: CLMonitor) async {
         let persisted = Set(await monitor.identifiers)
+        // The mirror seeded at init drove bootstrap's synchronous adopt/re-register decision; if the
+        // OS's live set differs it may be wrong (adopted a dropped condition, or skipped re-registering
+        // a missing one). Notify so bootstrap re-evaluates against live truth, not at the next sync.
+        let drifted = persisted != knownConditionIdentifiers
         knownConditionIdentifiers = persisted
         ownedRegionIdentifiers.formUnion(persisted)
         persistConditionMirror()
+        if drifted { onReconciled?() }
     }
 
     private func startConsuming() {
         consumeTask = Task { [weak self] in
             guard let self else { return }
             let monitor = await self.monitorInstance().value
-            do {
-                for try await event in await monitor.events {
-                    await self.handle(event: event)
+            // Re-subscribe with bounded backoff if the sequence throws or ends. A single failure
+            // otherwise ends the only subscription for the process's lifetime, silently stopping all
+            // delivery. Re-subscription is sequential (the prior loop has ended), so there is never a
+            // second concurrent consumer stealing events.
+            var backoffNanos: UInt64 = 1000000000
+            let maxBackoffNanos: UInt64 = 30000000000
+            while !Task.isCancelled {
+                do {
+                    for try await event in await monitor.events {
+                        await self.handle(event: event)
+                        backoffNanos = 1000000000
+                    }
+                } catch {
+                    self.logger.geofenceMonitorEventStreamFailed(error: error)
                 }
-            } catch {
-                self.logger.geofenceMonitorEventStreamFailed(error: error)
+                try? await Task.sleep(nanoseconds: backoffNanos)
+                backoffNanos = min(backoffNanos * 2, maxBackoffNanos)
             }
         }
     }
@@ -188,6 +219,10 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preco
 
     func setOnAuthorizationChanged(_ handler: GeofenceAuthorizationChangedHandler?) {
         onAuthorizationChanged = handler
+    }
+
+    func setOnReconciled(_ handler: GeofenceReconciledHandler?) {
+        onReconciled = handler
     }
 
     func startMonitoring(identifier: String, center: LocationData, radius: Double, transitionTypes: Set<GeofenceTransition>) {
@@ -263,15 +298,16 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preco
     }
 
     func stopMonitoringAll() {
-        let identifiers = ownedRegionIdentifiers
         ownedRegionIdentifiers.removeAll()
-        guard !identifiers.isEmpty else { return }
+        // Clear against CLMonitor's LIVE identifiers, not the owned/mirror snapshot. Every condition
+        // under our private monitor is SDK-owned, so an empty owned set or a mirror that lost an entry
+        // must still not leave a stale condition holding an OS slot when re-registration re-adds.
         enqueueMonitorOperation { [weak self] monitor in
             guard let self else { return }
-            for identifier in identifiers {
+            for identifier in await monitor.identifiers {
                 await monitor.remove(identifier)
-                self.knownConditionIdentifiers.remove(identifier)
             }
+            self.knownConditionIdentifiers.removeAll()
             self.persistConditionMirror()
         }
     }
@@ -358,6 +394,7 @@ extension CLMonitorGeofenceMonitor {
     @MainActor
     static let shared = CLMonitorGeofenceMonitor(
         logger: DIGraphShared.shared.logger,
-        storage: DIGraphShared.shared.geofenceStorage
+        storage: DIGraphShared.shared.geofenceStorage,
+        protectedData: UIApplicationProtectedDataAvailability()
     )
 }

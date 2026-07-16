@@ -37,6 +37,21 @@ enum GeofenceBootstrap {
         let coordinator = di.geofenceSyncCoordinator
         GeofenceMonitorBinder.bind(monitor: monitor, tracker: tracker, coordinator: coordinator)
 
+        // Register both re-run handlers BEFORE the adopt/re-register decision (and any await) so the
+        // CLMonitor path's first live reconciliation — which can fire right after this synchronous
+        // phase yields — finds the handler installed. Both re-run this same idempotent setup, which
+        // replaces any prior handlers (no stacking when foreground init and cold-wake bootstrap share
+        // a process):
+        // - authorization changes → re-attempt registration when permission improves mid-process.
+        // - reconciliation → re-decide adopt-vs-re-register once live OS truth is known, correcting a
+        //   choice made off the pre-reconcile mirror (CLMonitor path only; no-op on classic, whose
+        //   osMonitoredRegionIdentifiers is already live).
+        let rewire: @MainActor () -> Void = {
+            Task { @MainActor in await GeofenceBootstrap.wireMonitor(di: di) }
+        }
+        monitor.setOnAuthorizationChanged(rewire)
+        monitor.setOnReconciled(rewire)
+
         // iOS persists `monitoredRegions` across process launch and device reboot. Adopt only when the
         // OS still holds the COMPLETE set we registered last session — re-claim it instead of
         // re-registering from `restoreAnchor`, which ranks from a possibly-stale anchor and would
@@ -70,15 +85,6 @@ enum GeofenceBootstrap {
         // The adopt path above skips `startMonitoring` (the other tier-log site), so without this
         // a relaunch that re-claims OS-persisted regions would report nothing about delivery readiness.
         monitor.reportPermissionTier()
-
-        // Self-heal mid-process permission changes (Settings toggle, late prompt response).
-        // The handler replaces any prior one — no stacking when both foreground init and
-        // cold-wake bootstrap run in the same process.
-        monitor.setOnAuthorizationChanged {
-            Task { @MainActor in
-                await GeofenceBootstrap.wireMonitor(di: di)
-            }
-        }
     }
 
     /// Logs a one-line note when cold-wake real-time delivery is unavailable for this
