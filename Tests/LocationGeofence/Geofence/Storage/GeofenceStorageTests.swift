@@ -508,6 +508,7 @@ struct GeofenceStorageTests {
         await storage.setCachedConfig(.fallback)
         await storage.recordSync(timestamp: Date(timeIntervalSince1970: 100), location: LocationData(latitude: 1, longitude: 2))
         await storage.recordRegistration(center: LocationData(latitude: 1, longitude: 2), businessIds: ["g1"])
+        await storage.recordMonitorRegistration(identifier: "g1", transitionTypes: [.enter, .exit], initialState: .enter, resetBaseline: true)
 
         await storage.clearUserScopedState()
 
@@ -520,6 +521,9 @@ struct GeofenceStorageTests {
         // Registration is user-scoped — cleared so the next user re-registers from their own refresh.
         #expect(await storage.getLastRegistrationCenter() == nil)
         #expect(await storage.getRegisteredBusinessIds().isEmpty)
+        // Monitor baseline is dropped: a post-clear event for the same id finds no record (no stale
+        // baseline inherited), so it re-establishes silently instead of comparing to the old state.
+        #expect(await storage.recordMonitorEvent(.enter, forIdentifier: "g1") == .suppressedNoBaseline)
         // Workspace cache is shared across users — preserved.
         #expect(regions.map(\.id) == ["g1"])
         #expect(config != nil)

@@ -141,11 +141,12 @@ actor GeofenceStorage {
         return record.transitionTypes.contains(transition) ? .deliver : .suppressedFilteredType
     }
 
-    /// Clears the cooldown map and the last-sync record (timestamp + location) but
-    /// preserves the cached geofences and config. Called on sign-out: the workspace cache
-    /// is shared across users, while cooldowns belong to the signed-out user and the
-    /// last-sync anchor would otherwise let the freshness gate skip the first sync for
-    /// the next signed-in user against stale state.
+    /// Clears the cooldown map, last-sync record, registration set, and monitor baselines but
+    /// preserves the cached geofences and config. Called on sign-out: the workspace cache is shared
+    /// across users, while cooldowns belong to the signed-out user and the last-sync anchor would
+    /// otherwise let the freshness gate skip the first sync for the next signed-in user against stale
+    /// state. `monitorRegionRecords` is dropped so the next session can't inherit a stale per-region
+    /// baseline; re-registration reseeds it anyway.
     func clearUserScopedState() {
         var state = loadFromDisk() ?? GeofenceState()
         state.eventCooldowns = nil
@@ -153,6 +154,7 @@ actor GeofenceStorage {
         state.lastServerSyncLocation = nil
         state.movementTriggerCenter = nil
         state.monitoredGeofenceIds = nil
+        state.monitorRegionRecords = nil
         saveToDisk(state)
     }
 
