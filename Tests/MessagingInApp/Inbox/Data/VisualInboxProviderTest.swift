@@ -83,6 +83,57 @@ final class VisualInboxProviderTest: XCTestCase {
         XCTAssertEqual(snapshot.messages.count, 3)
     }
 
+    /// `brandingChrome()` must carry the branding `floatingIcon.svg`, `position`, and
+    /// `unreadIndicator.showAlert` through into the SPI `VisualInboxChrome` (the fields the overlay's
+    /// bell glyph, placement, and badge visibility read). Guards the provider-level mapping that the
+    /// transport-level `InboxBrandingTest` doesn't cover.
+    func test_brandingChrome_mapsSvgPositionAndShowAlert() async {
+        let brandingWithChrome = #"""
+        {
+          "theme": {},
+          "patterns": {
+            "inbox": {
+              "floatingIcon": {
+                "svg": "<svg viewBox='0 0 24 25'><path d='M0 0Z'/></svg>",
+                "background": "#000000",
+                "color": "#ffffff"
+              },
+              "background": "#ffffff",
+              "cornerRadius": 8,
+              "position": "top-left",
+              "unreadIndicator": { "showAlert": false, "background": "#e00000" }
+            }
+          }
+        }
+        """#
+        inAppMessageManagerMock.underlyingState = InAppMessageState().copy(userId: "user-1", inboxMessages: [])
+        let repo = makeRepository()
+        await repo.setInboxEnabled(true)
+        networkStub.handler = { endpoint, _ in
+            endpoint == .getTemplates
+                ? InboxNetworkClientStub.response(json: "{}")
+                : InboxNetworkClientStub.response(json: brandingWithChrome)
+        }
+        await repo.enableAndLoad()
+
+        let provider = VisualInboxProviderImpl(
+            repository: repo,
+            inbox: NoOpNotificationInboxFake(),
+            inAppMessageManager: inAppMessageManagerMock
+        )
+
+        let chrome = await provider.brandingChrome()
+        XCTAssertNotNil(chrome)
+        // The three fields flagged as untested in review.
+        XCTAssertEqual(chrome?.bellIconSvg, "<svg viewBox='0 0 24 25'><path d='M0 0Z'/></svg>")
+        XCTAssertEqual(chrome?.position, "top-left")
+        XCTAssertEqual(chrome?.showUnreadBadge, false)
+        // Sanity on the surrounding mapping so a field-order/name regression is also caught.
+        XCTAssertEqual(chrome?.bellBackground, "#000000")
+        XCTAssertEqual(chrome?.bellIconColor, "#ffffff")
+        XCTAssertEqual(chrome?.cornerRadius, 8)
+    }
+
     /// Reads only the first emission from the provider's `observe()` stream.
     private func firstSnapshot(from provider: VisualInboxProviderImpl) async -> VisualInboxSnapshot {
         for await snapshot in provider.observe() {

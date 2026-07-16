@@ -41,22 +41,28 @@ public struct NotificationInboxView: View {
     /// it). nil for standalone embedding, where the host owns presentation.
     private let onNavigate: (() -> Void)?
 
+    /// Performs the SDK default navigation for an un-intercepted action. Injected (constructor DI)
+    /// rather than reaching into `DIGraphShared.shared` inline, so navigation is testable.
+    private let navigator: InboxActionNavigating
+
     /// Creates a standalone inbox list backed by the SDK's shared Visual Inbox data layer.
     public init() {
         _model = ObservedObject(wrappedValue: VisualInboxModel())
         self.ownsModelLifecycle = true
         self.marksOpenedOnAppear = true
         self.onNavigate = nil
+        self.navigator = DefaultInboxActionNavigator()
     }
 
     /// Creates a list observing a shared model (used by ``NotificationInboxOverlay`` so the bell,
     /// panel, and overlay all observe the same state). The overlay drives lifecycle + mark-opened and
     /// passes `onNavigate` to close its sheet after a navigation action.
-    init(model: VisualInboxModel, onNavigate: (() -> Void)? = nil) {
+    init(model: VisualInboxModel, onNavigate: (() -> Void)? = nil, navigator: InboxActionNavigating = DefaultInboxActionNavigator()) {
         _model = ObservedObject(wrappedValue: model)
         self.ownsModelLifecycle = false
         self.marksOpenedOnAppear = false
         self.onNavigate = onNavigate
+        self.navigator = navigator
     }
 
     public var body: some View {
@@ -89,9 +95,11 @@ public struct NotificationInboxView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if model.messages.isEmpty {
             // idle/loading (pre-first-snapshot or fetch in progress) → spinner, not the empty copy.
+            // `InboxLoadingSpinner` (UIKit) instead of SwiftUI `ProgressView`, which is iOS 14+ while
+            // this view is public on iOS 13.
             VStack {
                 Spacer()
-                ProgressView()
+                InboxLoadingSpinner()
                 Spacer()
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -147,14 +155,17 @@ public struct NotificationInboxView: View {
                 actionName: resolution.actionName,
                 actionValue: resolution.actionValue ?? ""
             )
-            // A navigating action (`openUrl` / `openDeeplink`) with a value routes away from the inbox —
-            // whether the SDK performs it OR the host intercepted it — so close the sheet so the
-            // destination isn't left behind it. `performAction` / `unknown` / auto-`dismiss`, a missing
-            // message, or an empty value keep the inbox open. Dismiss FIRST, before the SDK enqueues
-            // navigation below, so the sheet is already closing when the deep link is handled.
-            let isNavigation = (resolution.behavior == .openUrl || resolution.behavior == .openDeeplink)
-                && resolution.actionValue?.isEmpty == false
-            if isNavigation, outcome != .messageMissing {
+            // Resolve the navigating destination ONCE, up front: only `openUrl`/`openDeeplink` with a
+            // value that actually parses to a `URL` navigates. Both the sheet dismiss AND the SDK
+            // navigation gate on this, so a non-empty-but-unparseable value neither dismisses the inbox
+            // nor drops it into a closed-but-unnavigated state.
+            let navigationURL = navigationURL(for: resolution)
+            // A navigating action routes away from the inbox — whether the SDK performs it OR the host
+            // intercepted it — so close the sheet so the destination isn't left behind it.
+            // `performAction` / `unknown` / auto-`dismiss`, a missing message, or an empty/invalid value
+            // keep the inbox open. Dismiss FIRST, before the SDK enqueues navigation below, so the
+            // sheet is already closing when the deep link is handled.
+            if navigationURL != nil, outcome != .messageMissing {
                 await MainActor.run { onNavigate?() }
             }
             switch outcome {
@@ -165,7 +176,7 @@ public struct NotificationInboxView: View {
                 // Message gone from the store (tapped after removal): nothing tracked, don't navigate.
                 DIGraphShared.shared.logger.debug("[CIO-Inbox] action on missing message \(messageId): skipping default navigation")
             case .notHandled:
-                performDefaultNavigation(resolution)
+                performDefaultNavigation(behavior: resolution.behavior, url: navigationURL, actionName: resolution.actionName)
             }
             // "Auto dismiss on click" (data.dismiss == true): remove the message after running its
             // action, regardless of host handling / navigation.
@@ -175,33 +186,53 @@ public struct NotificationInboxView: View {
         }
     }
 
-    /// The SDK's default navigation for an un-intercepted, non-dismiss action. Robust to a missing or
-    /// malformed url — no force-unwrap, no crash.
-    private func performDefaultNavigation(_ resolution: InboxActionResolution) {
+    /// The parsed navigation destination for a navigating action: `openUrl`/`openDeeplink` whose value
+    /// is non-empty AND forms a `URL`. nil for every other behavior, or an empty/unparseable value.
+    private func navigationURL(for resolution: InboxActionResolution) -> URL? {
+        guard resolution.behavior == .openUrl || resolution.behavior == .openDeeplink,
+              let value = resolution.actionValue, !value.isEmpty else { return nil }
+        return URL(string: value)
+    }
+
+    /// The SDK's default navigation for an un-intercepted, non-dismiss action, using the URL resolved
+    /// up front by ``navigationURL(for:)``. Robust to a missing/malformed url — no force-unwrap.
+    private func performDefaultNavigation(behavior: InboxActionResolution.Behavior, url: URL?, actionName: String) {
         let logger = DIGraphShared.shared.logger
-        switch resolution.behavior {
+        switch behavior {
         case .openUrl:
-            // Web parity: `openUrl` navigates to the value (external). Mirror the in-app message page
-            // action and open via the system. Runs on the main actor (UIKit API) after the model await.
-            guard let value = resolution.actionValue, let url = URL(string: value) else {
-                logger.debug("[CIO-Inbox] openUrl action has no openable value (name=\(resolution.actionName))")
+            // Web parity: `openUrl` navigates to the value (external), via the injected navigator.
+            guard let url else {
+                logger.debug("[CIO-Inbox] openUrl action has no openable value (name=\(actionName))")
                 return
             }
-            DispatchQueue.main.async { UIApplication.shared.open(url) }
+            navigator.openExternalURL(url)
         case .openDeeplink:
             // Route through the SDK's shared deep-link handling — host `deepLinkCallback` → universal-
             // link handoff → system open — identical to push-notification and in-app-message deep
             // links, so inbox deep links behave consistently with the rest of the SDK.
-            guard let value = resolution.actionValue, let url = URL(string: value) else {
-                logger.debug("[CIO-Inbox] openDeeplink action has no openable value (name=\(resolution.actionName))")
+            guard let url else {
+                logger.debug("[CIO-Inbox] openDeeplink action has no openable value (name=\(actionName))")
                 return
             }
-            DispatchQueue.main.async { DIGraphShared.shared.deepLinkUtil.handleDeepLink(url) }
+            navigator.handleDeepLink(url)
         case .performAction, .unknown:
             // No SDK navigation — the host was already offered the action via `messageActionTaken`
             // (web dispatches its `inboxMessageAction` event and does nothing else here).
-            logger.debug("[CIO-Inbox] \(resolution.behavior) action: no default navigation (name=\(resolution.actionName))")
+            logger.debug("[CIO-Inbox] \(behavior) action: no default navigation (name=\(actionName))")
         }
     }
+}
+
+/// iOS 13-compatible loading spinner. SwiftUI's `ProgressView` is iOS 14+, but ``NotificationInboxView``
+/// is public on iOS 13, so the loading state wraps UIKit's `UIActivityIndicatorView` instead.
+@available(iOS 13.0, *)
+private struct InboxLoadingSpinner: UIViewRepresentable {
+    func makeUIView(context: Context) -> UIActivityIndicatorView {
+        let indicator = UIActivityIndicatorView(style: .medium)
+        indicator.startAnimating()
+        return indicator
+    }
+
+    func updateUIView(_ uiView: UIActivityIndicatorView, context: Context) {}
 }
 #endif

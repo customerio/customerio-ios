@@ -30,6 +30,9 @@ public struct NotificationInboxOverlay: View {
     /// True while the inbox sheet is presented.
     @State private var isInboxPresented = false
 
+    /// Drives dark-mode branding resolution for the sheet's panel background.
+    @Environment(\.colorScheme) private var colorScheme
+
     /// Creates an inbox overlay backed by the SDK's shared Visual Inbox data layer.
     public init() {
         _model = StateObject(wrappedValue: VisualInboxModel())
@@ -79,11 +82,36 @@ public struct NotificationInboxOverlay: View {
         // System sheet with medium/large detents + grabber — no header (matches web parity). The list
         // shares this overlay's model, so bell and sheet observe the same state.
         .sheet(isPresented: $isInboxPresented) {
+            // Branded panel surface (web/Android parity): the system provides the detents/grabber, the
+            // workspace's `patterns.inbox.background` + `cornerRadius` drive the panel color + corner.
+            let colors = ResolvedInboxColors.resolve(chrome: model.chrome, isDark: colorScheme == .dark)
             // Dismiss the sheet after a navigation action so the opened screen (deep link / URL) isn't
             // left behind the inbox.
             NotificationInboxView(model: model, onNavigate: { isInboxPresented = false })
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
+                .modifier(BrandedInboxSheetStyle(background: colors.panelBackground, cornerRadius: colors.cornerRadius))
+        }
+    }
+}
+
+/// Applies the workspace's branded panel background + corner radius to the inbox sheet. Uses the
+/// dedicated presentation APIs on iOS 16.4+; on iOS 16.0–16.3 (where neither API exists) it paints the
+/// content background so the panel still honors the branded color — the system supplies the corners.
+@available(iOS 16.0, *)
+private struct BrandedInboxSheetStyle: ViewModifier {
+    let background: Color
+    let cornerRadius: CGFloat
+
+    func body(content: Content) -> some View {
+        if #available(iOS 16.4, *) {
+            content
+                .presentationCornerRadius(cornerRadius)
+                .presentationBackground(background)
+        } else {
+            content
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(background)
         }
     }
 }
