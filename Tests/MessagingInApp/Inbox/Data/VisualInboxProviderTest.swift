@@ -27,6 +27,9 @@ final class VisualInboxProviderTest: XCTestCase {
         networkStub = InboxNetworkClientStub()
         inAppMessageManagerMock = InAppMessageManagerMock()
         inAppMessageManagerMock.subscribeReturnValue = Task {}
+        // `observe()` unsubscribes during stream teardown; stub the return value so the mock's
+        // implicitly-unwrapped `unsubscribeReturnValue` isn't nil (avoids a teardown-race crash).
+        inAppMessageManagerMock.unsubscribeReturnValue = Task {}
         keyValueStore = InMemorySharedKeyValueStorage()
         sleeperMock = SleeperMock()
         sleeperMock.sleepClosure = { _ in }
@@ -101,7 +104,11 @@ final class VisualInboxProviderTest: XCTestCase {
               "background": "#ffffff",
               "cornerRadius": 8,
               "position": "top-left",
-              "unreadIndicator": { "showAlert": false, "background": "#e00000" }
+              "unreadIndicator": {
+                "showAlert": false,
+                "background": "#e00000",
+                "text": { "color": "#00ff00", "fontSize": 11 }
+              }
             }
           }
         }
@@ -128,6 +135,9 @@ final class VisualInboxProviderTest: XCTestCase {
         XCTAssertEqual(chrome?.bellIconSvg, "<svg viewBox='0 0 24 25'><path d='M0 0Z'/></svg>")
         XCTAssertEqual(chrome?.position, "top-left")
         XCTAssertEqual(chrome?.showUnreadBadge, false)
+        // Badge count text color + size mapped from `unreadIndicator.text` (MBL-2126).
+        XCTAssertEqual(chrome?.badgeTextColor, "#00ff00")
+        XCTAssertEqual(chrome?.badgeTextSize, 11)
         // Sanity on the surrounding mapping so a field-order/name regression is also caught.
         XCTAssertEqual(chrome?.bellBackground, "#000000")
         XCTAssertEqual(chrome?.bellIconColor, "#ffffff")

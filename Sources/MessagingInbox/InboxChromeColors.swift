@@ -20,6 +20,11 @@ struct ResolvedInboxColors {
     let panelBackground: Color
     let divider: Color
     let badge: Color
+    /// Unread badge count text color (branding `unreadIndicator.text.color`, else white).
+    let badgeText: Color
+    /// Unread badge count text size in points (branding `unreadIndicator.text.fontSize`), or nil to
+    /// fall back to the caption font.
+    let badgeTextSize: CGFloat?
     let cornerRadius: CGFloat
 
     /// Resolves the chrome colors from the SPI `chrome` payload for the current color scheme.
@@ -54,6 +59,14 @@ struct ResolvedInboxColors {
         let badgeHex = darkInbox.childString("unreadIndicator", "background") ?? chrome?.badgeBackground
         let badge = InboxColorParser.color(from: badgeHex) ?? .red
 
+        // Badge count text color/size from branding `unreadIndicator.text` (MBL-2126). The dark
+        // override (when present) nests as `unreadIndicator.text.{color,fontSize}`; each falls back
+        // to the light chrome value, then to white / caption.
+        let badgeTextHex = darkInbox.grandchildString("unreadIndicator", "text", "color") ?? chrome?.badgeTextColor
+        let badgeText = InboxColorParser.color(from: badgeTextHex) ?? .white
+        let badgeTextSize = (darkInbox.grandchildDouble("unreadIndicator", "text", "fontSize") ?? chrome?.badgeTextSize)
+            .map { CGFloat($0) }
+
         let cornerRadius = CGFloat(chrome?.cornerRadius ?? 12)
 
         return ResolvedInboxColors(
@@ -62,6 +75,8 @@ struct ResolvedInboxColors {
             panelBackground: panelBackground,
             divider: divider,
             badge: badge,
+            badgeText: badgeText,
+            badgeTextSize: badgeTextSize,
             cornerRadius: cornerRadius
         )
     }
@@ -127,6 +142,20 @@ private extension Optional where Wrapped == [String: Any] {
     /// A String from a nested child object (e.g. `floatingIcon.background`), or nil.
     func childString(_ child: String, _ key: String) -> String? {
         (self?[child] as? [String: Any])?[key] as? String
+    }
+
+    /// A String from a doubly-nested object (e.g. `unreadIndicator.text.color`), or nil.
+    func grandchildString(_ child: String, _ grandchild: String, _ key: String) -> String? {
+        ((self?[child] as? [String: Any])?[grandchild] as? [String: Any])?[key] as? String
+    }
+
+    /// A Double from a doubly-nested object (e.g. `unreadIndicator.text.fontSize`), or nil.
+    /// Accepts an NSNumber (the usual JSON case) or a numeric String.
+    func grandchildDouble(_ child: String, _ grandchild: String, _ key: String) -> Double? {
+        let value = ((self?[child] as? [String: Any])?[grandchild] as? [String: Any])?[key]
+        if let number = value as? NSNumber { return number.doubleValue }
+        if let string = value as? String { return Double(string) }
+        return nil
     }
 }
 #endif

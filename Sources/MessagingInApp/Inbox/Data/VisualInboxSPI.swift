@@ -240,6 +240,9 @@ final class VisualInboxProviderImpl: VisualInboxProvider, @unchecked Sendable {
     func brandingChrome() async -> VisualInboxChrome? {
         guard let branding = await repository.branding() else { return nil }
         let chrome = branding.chrome
+        // `unreadIndicator.text` is a raw token dictionary (`{ color, fontSize }`); pull out the badge
+        // count text color + size so the overlay can style the badge from branding (MBL-2126).
+        let badgeText = chrome.unreadIndicator?.text
         return VisualInboxChrome(
             bellBackground: chrome.floatingIcon.background,
             bellIconColor: chrome.floatingIcon.color,
@@ -247,6 +250,8 @@ final class VisualInboxProviderImpl: VisualInboxProvider, @unchecked Sendable {
             panelBackground: chrome.background,
             dividerColor: chrome.dividerColor ?? chrome.borderColor,
             badgeBackground: chrome.unreadIndicator?.background,
+            badgeTextColor: badgeText?["color"] as? String,
+            badgeTextSize: (badgeText?["fontSize"] as? NSNumber)?.doubleValue,
             cornerRadius: chrome.cornerRadius,
             position: chrome.position,
             showUnreadBadge: chrome.unreadIndicator?.showAlert,
@@ -295,8 +300,9 @@ final class VisualInboxProviderImpl: VisualInboxProvider, @unchecked Sendable {
         }
         // Track a "clicked" metric for the non-dismiss action via the existing headless
         // trackMessageClicked plumbing (dispatches the .trackClicked action). Always tracked,
-        // independent of whether the host intercepts the action below.
-        inbox.trackMessageClicked(message: message, actionName: actionName)
+        // independent of whether the host intercepts the action below. The action value is carried
+        // through so the `Report Delivery Event` (metric: clicked) includes it, matching web (MBL-2125).
+        inbox.trackMessageClicked(message: message, actionName: actionName, actionValue: actionValue)
         // Forward to the host listener on the main actor: this runs from an async Task off the main
         // thread, but the tap originated on the UI and hosts expect a main-thread callback. If it
         // handles the action, the overlay suppresses default navigation.

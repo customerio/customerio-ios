@@ -310,13 +310,46 @@ class NotificationInboxTest: UnitTest {
             XCTFail("Expected inboxAction, got different action")
             return
         }
-        guard case .trackClicked(let receivedMessage, let actionName) = inboxAction else {
+        guard case .trackClicked(let receivedMessage, let actionName, let actionValue) = inboxAction else {
             XCTFail("Expected trackClicked action")
             return
         }
         XCTAssertEqual(receivedMessage.queueId, message.queueId)
         XCTAssertEqual(receivedMessage.deliveryId, message.deliveryId)
         XCTAssertEqual(actionName, "view_details")
+        XCTAssertNil(actionValue)
+    }
+
+    func test_trackMessageClicked_withActionValue_expectDispatchesTrackClickedActionWithValue() {
+        // Setup mock to return empty task
+        inAppMessageManagerMock.dispatchReturnValue = Task {}
+
+        let message = InboxMessage(
+            queueId: "queue-1",
+            deliveryId: "delivery-1",
+            expiry: nil,
+            sentAt: Date(),
+            topics: [],
+            type: "",
+            opened: false,
+            priority: nil,
+            properties: [:]
+        )
+
+        notificationInbox.trackMessageClicked(message: message, actionName: "view_details", actionValue: "https://example.com")
+
+        XCTAssertEqual(inAppMessageManagerMock.dispatchCallsCount, 1)
+        guard case .inboxAction(let inboxAction) = inAppMessageManagerMock.dispatchReceivedArguments?.action else {
+            XCTFail("Expected inboxAction, got different action")
+            return
+        }
+        guard case .trackClicked(let receivedMessage, let actionName, let actionValue) = inboxAction else {
+            XCTFail("Expected trackClicked action")
+            return
+        }
+        XCTAssertEqual(receivedMessage.queueId, message.queueId)
+        XCTAssertEqual(actionName, "view_details")
+        XCTAssertEqual(actionValue, "https://example.com")
     }
 
     func test_trackMessageClicked_withoutActionName_expectDispatchesTrackClickedAction() {
@@ -342,7 +375,7 @@ class NotificationInboxTest: UnitTest {
             XCTFail("Expected inboxAction, got different action")
             return
         }
-        guard case .trackClicked(let receivedMessage, let actionName) = inboxAction else {
+        guard case .trackClicked(let receivedMessage, let actionName, _) = inboxAction else {
             XCTFail("Expected trackClicked action")
             return
         }

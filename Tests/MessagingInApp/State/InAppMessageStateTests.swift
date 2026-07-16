@@ -1777,7 +1777,7 @@ class InAppMessageStateTests: IntegrationTest {
         let initialState = state
 
         // Track clicked
-        await inAppMessageManager.dispatchAsync(action: .inboxAction(action: .trackClicked(message: message, actionName: "view_details")))
+        await inAppMessageManager.dispatchAsync(action: .inboxAction(action: .trackClicked(message: message, actionName: "view_details", actionValue: nil)))
 
         state = await inAppMessageManager.state
         // State should remain unchanged
@@ -1808,7 +1808,7 @@ class InAppMessageStateTests: IntegrationTest {
         let initialState = state
 
         // Track clicked without actionName
-        await inAppMessageManager.dispatchAsync(action: .inboxAction(action: .trackClicked(message: message, actionName: nil)))
+        await inAppMessageManager.dispatchAsync(action: .inboxAction(action: .trackClicked(message: message, actionName: nil, actionValue: nil)))
 
         state = await inAppMessageManager.state
         // State should remain unchanged
@@ -1836,7 +1836,7 @@ class InAppMessageStateTests: IntegrationTest {
         XCTAssertTrue(state.inboxMessages.isEmpty)
 
         // Try to track click for non-existent message
-        await inAppMessageManager.dispatchAsync(action: .inboxAction(action: .trackClicked(message: nonExistentMessage, actionName: "test")))
+        await inAppMessageManager.dispatchAsync(action: .inboxAction(action: .trackClicked(message: nonExistentMessage, actionName: "test", actionValue: nil)))
 
         // State should remain empty
         let finalState = await inAppMessageManager.state

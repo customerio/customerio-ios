@@ -168,7 +168,11 @@ class DefaultNotificationInbox: NotificationInbox, @unchecked Sendable {
     }
 
     func trackMessageClicked(message: InboxMessage, actionName: String?) {
-        inAppMessageManager.dispatch(action: .inboxAction(action: .trackClicked(message: message, actionName: actionName)))
+        trackMessageClicked(message: message, actionName: actionName, actionValue: nil)
+    }
+
+    func trackMessageClicked(message: InboxMessage, actionName: String?, actionValue: String?) {
+        inAppMessageManager.dispatch(action: .inboxAction(action: .trackClicked(message: message, actionName: actionName, actionValue: actionValue)))
     }
 
     func setInboxEventListener(_ listener: InboxEventListener?) {

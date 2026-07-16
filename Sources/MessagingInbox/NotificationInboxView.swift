@@ -108,6 +108,10 @@ public struct NotificationInboxView: View {
         }
     }
 
+    /// Top inset above the first message row so it doesn't hug the sheet grabber (MBL-2122), matching
+    /// the comfortable top margin of the web inbox. Single, easily-tunable value.
+    private static let listTopInset: CGFloat = 16
+
     private var messageList: some View {
         // Branding-first row divider (falls back to the system separator color).
         let colors = ResolvedInboxColors.resolve(chrome: model.chrome, isDark: colorScheme == .dark)
@@ -134,6 +138,7 @@ public struct NotificationInboxView: View {
                     colors.divider.frame(height: 1)
                 }
             }
+            .padding(.top, Self.listTopInset)
         }
     }
 

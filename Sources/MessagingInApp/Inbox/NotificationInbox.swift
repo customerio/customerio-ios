@@ -64,6 +64,19 @@ public protocol NotificationInbox: Sendable {
     ///   - actionName: Optional name of the action clicked (e.g., "view_details", "dismiss")
     func trackMessageClicked(message: InboxMessage, actionName: String?)
 
+    /// Tracks a click event for an inbox message, carrying the action's value in addition to its name.
+    /// Both are included in the `Report Delivery Event` (metric: clicked) so they reach CDP, matching
+    /// web (which sends `actionName` + `actionValue`) — MBL-2125.
+    ///
+    /// A default implementation forwards to ``trackMessageClicked(message:actionName:)`` (dropping the
+    /// value), so existing conformers need not implement it.
+    ///
+    /// - Parameters:
+    ///   - message: The inbox message that was clicked
+    ///   - actionName: Optional name of the action clicked (e.g., "view_details", "dismiss")
+    ///   - actionValue: Optional value of the action clicked (e.g., the deep link / URL)
+    func trackMessageClicked(message: InboxMessage, actionName: String?, actionValue: String?)
+
     /// Registers (or clears, with `nil`) the host listener notified of inbox message actions.
     /// Used by `MessagingInApp.setInboxEventListener(_:)`; not intended for direct host use.
     func setInboxEventListener(_ listener: InboxEventListener?)
@@ -124,6 +137,12 @@ public extension NotificationInbox {
     /// - Parameter message: The inbox message that was clicked
     func trackMessageClicked(message: InboxMessage) {
         trackMessageClicked(message: message, actionName: nil)
+    }
+
+    /// Default implementation: forwards to ``trackMessageClicked(message:actionName:)``, dropping the
+    /// action value. Concrete conformers (e.g. the SDK's inbox) override to carry the value through.
+    func trackMessageClicked(message: InboxMessage, actionName: String?, actionValue: String?) {
+        trackMessageClicked(message: message, actionName: actionName)
     }
 
     /// Observes all inbox changes without topic filter.
