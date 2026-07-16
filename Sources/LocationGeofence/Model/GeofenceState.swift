@@ -40,4 +40,11 @@ struct MonitorRegionRecord: Codable, Equatable, Sendable {
     var lastState: GeofenceTransition
     /// Transition types the region was registered for; events of other types are recorded but not delivered.
     var transitionTypes: Set<GeofenceTransition>
+    /// Registered circle center. Lets `recordMonitorRegistration` tell an unchanged re-registration
+    /// (preserve the baseline) from a new/changed circle (reseed) — the live `CLMonitor` record can't,
+    /// since the wholesale stop-all removes it before every re-add. Optional so records persisted before
+    /// this field decode; a nil-geometry record is treated as changed and reseeded once.
+    var center: LocationData?
+    /// Registered radius in meters; paired with `center` for the unchanged-geometry check.
+    var radius: Double?
 }

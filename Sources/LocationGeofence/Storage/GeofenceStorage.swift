@@ -95,24 +95,35 @@ actor GeofenceStorage {
 
     // MARK: - Monitor Region Records (CLMonitor path)
 
-    /// Records that the CLMonitor path (re)registered a condition: stores the delivery filter and
-    /// sets the dedup baseline. `initialState` is the device's ACTUAL state relative to the circle at
-    /// registration (computed by the monitor from the current location), so the baseline already
-    /// matches reality — no spurious registration event, no missed first crossing. `resetBaseline:
-    /// true` sets the baseline to `initialState` for a fresh circle (a new condition or changed
-    /// geometry); `false` preserves an existing baseline (an unchanged-geometry re-registration —
-    /// stop-all + start-all runs on every sync) so CLMonitor's re-evaluation of the same state isn't
-    /// delivered as a duplicate. A brand-new identifier uses `initialState` either way.
+    /// Records that the CLMonitor path (re)registered a condition: stores the delivery filter, the
+    /// circle geometry, and the dedup baseline. `initialState` is the device's ACTUAL state relative to
+    /// the circle at registration (computed by the monitor from the current location), so a fresh
+    /// baseline already matches reality — no spurious registration event, no missed first crossing.
+    ///
+    /// The baseline is **preserved** when the identifier is re-registered with unchanged geometry
+    /// (stop-all + start-all runs on every sync), so CLMonitor re-evaluating the same state isn't
+    /// delivered as a duplicate; it is **reseeded** to `initialState` for a brand-new identifier or a
+    /// changed circle. The unchanged-vs-changed decision is keyed on the persisted `center`/`radius`
+    /// (which survive stop-all) rather than CLMonitor's live record (which stop-all removes before the
+    /// re-add, so it can never report "unchanged").
     func recordMonitorRegistration(
         identifier: String,
         transitionTypes: Set<GeofenceTransition>,
         initialState: GeofenceTransition,
-        resetBaseline: Bool
+        center: LocationData,
+        radius: Double
     ) {
         var state = loadFromDisk() ?? GeofenceState()
         var records = state.monitorRegionRecords ?? [:]
-        let lastState = resetBaseline ? initialState : (records[identifier]?.lastState ?? initialState)
-        records[identifier] = MonitorRegionRecord(lastState: lastState, transitionTypes: transitionTypes)
+        let existing = records[identifier]
+        let unchangedGeometry = existing?.center == center && existing?.radius == radius
+        let lastState = unchangedGeometry ? (existing?.lastState ?? initialState) : initialState
+        records[identifier] = MonitorRegionRecord(
+            lastState: lastState,
+            transitionTypes: transitionTypes,
+            center: center,
+            radius: radius
+        )
         state.monitorRegionRecords = records
         saveToDisk(state)
     }

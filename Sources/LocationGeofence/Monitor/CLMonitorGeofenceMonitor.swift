@@ -254,29 +254,16 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preco
 
         enqueueMonitorOperation { [weak self] monitor in
             guard let self else { return }
-            // Unchanged geometry → leave the condition in place and PRESERVE the baseline. Re-adding
-            // resets CLMonitor's own state tracking and provokes a re-evaluation event for nothing.
-            if let existing = await monitor.record(for: identifier)?.condition as? CLMonitor.CircularGeographicCondition,
-               existing.center.latitude == coordinate.latitude,
-               existing.center.longitude == coordinate.longitude,
-               existing.radius == clampedRadius {
-                self.knownConditionIdentifiers.insert(identifier)
-                await self.storage.recordMonitorRegistration(
-                    identifier: identifier,
-                    transitionTypes: transitionTypes,
-                    initialState: initialTransition,
-                    resetBaseline: false
-                )
-                return
-            }
-            // Fresh circle (new condition or changed geometry): reset the baseline to the device's
-            // actual state for this circle BEFORE the OS add, so a changed geofence doesn't carry the
-            // stale baseline from its old geometry.
+            // Persist before the OS add: storage keys off the recorded geometry to preserve the
+            // baseline for an unchanged-geometry re-register and reseed for a new/changed circle. This
+            // runs after the wholesale stop-all, so CLMonitor's own record is already gone — hence the
+            // decision lives in storage (which survives stop-all), not in a live-record check here.
             await self.storage.recordMonitorRegistration(
                 identifier: identifier,
                 transitionTypes: transitionTypes,
                 initialState: initialTransition,
-                resetBaseline: true
+                center: LocationData(latitude: coordinate.latitude, longitude: coordinate.longitude),
+                radius: clampedRadius
             )
             let condition = CLMonitor.CircularGeographicCondition(center: coordinate, radius: clampedRadius)
             await monitor.add(condition, identifier: identifier, assuming: assumedState)
