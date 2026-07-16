@@ -10,9 +10,9 @@ import Foundation
 /// Behavioral contract: match the classic monitor — deliver only genuine boundary crossings, only
 /// for the registered transition types. `CLMonitor` differs from classic in ways this type has to
 /// compensate for:
-/// - It re-emits a condition's CURRENT state on process start and system re-evaluation
-///   (unlock/foreground), not just on crossings → per-condition dedup baseline, persisted in
-///   `GeofenceStorage` so a cold-wake compares against the pre-kill state.
+/// - It re-emits a condition's CURRENT state on process start and system re-evaluation, not just on
+///   crossings (iOS 18: relaunch re-emits every condition, an unlock ~14×) → per-condition dedup
+///   baseline, persisted in `GeofenceStorage` so a cold-wake compares against the pre-kill state.
 /// - It has no `notifyOnEntry`/`notifyOnExit` equivalent → the delivery filter is stored per
 ///   condition and applied here.
 /// - Its API is async (an actor + `events` sequence) while the protocol is synchronous → mutations
