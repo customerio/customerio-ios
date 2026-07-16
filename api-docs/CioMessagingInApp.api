@@ -206,12 +206,15 @@ public enum CioMessagingInApp.VisualInboxActionOutcome {
 public final class CioMessagingInApp.VisualInboxChrome {
 	public final val bellBackground: String?;
 	public final val bellIconColor: String?;
+	public final val bellIconSvg: String?;
 	public final val panelBackground: String?;
 	public final val dividerColor: String?;
 	public final val badgeBackground: String?;
 	public final val cornerRadius: Double?;
+	public final val position: String?;
+	public final val showUnreadBadge: Boolean?;
 	public final val darkModePattern: Map<String, Any>?;
-	public fun init(bellBackground: String?, bellIconColor: String?, panelBackground: String?, dividerColor: String?, badgeBackground: String?, cornerRadius: Double?, darkModePattern: List<String: Any>?);
+	public fun init(bellBackground: String?, bellIconColor: String?, bellIconSvg: String?, panelBackground: String?, dividerColor: String?, badgeBackground: String?, cornerRadius: Double?, position: String?, showUnreadBadge: Boolean?, darkModePattern: List<String: Any>?);
 	public fun func == (lhs: VisualInboxChrome, rhs: VisualInboxChrome) -> Boolean;
 }
 public final class CioMessagingInApp.VisualInboxMessageSnapshot {

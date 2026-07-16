@@ -7,147 +7,111 @@ import SwiftUI
 /// A SwiftUI overlay that renders the Visual Notification Inbox on top of your app.
 ///
 /// Mount it anywhere in your hierarchy (typically pinned to a corner via a `ZStack`). It renders a
-/// floating bell button with an unread-count badge plus a slide-out panel that lists inbox messages,
-/// each rendered natively via **Jist** from the server-provided templates + branding theme.
+/// floating bell button with an unread-count badge; tapping the bell presents the inbox message list
+/// (each message rendered natively via **Jist** from the server templates + branding theme) in a
+/// native bottom **sheet** with system detents (medium / large) and a drag indicator.
 ///
-/// This is the convenience all-in-one: it composes ``NotificationInboxBell`` (the bell) and
-/// ``NotificationInboxView`` (the message list) over a shared data model, adding the floating
-/// placement, slide-out animation, and tap-to-dismiss scrim. For custom placement, use those two
-/// views directly.
+/// This is the convenience all-in-one: it composes ``NotificationInboxBell`` (the bell) with a
+/// system sheet hosting ``NotificationInboxView`` (the message list) over a shared data model, adding
+/// the floating placement (per branding `patterns.inbox.position`). For custom placement or your own
+/// presentation, use those two views directly.
+///
+/// Because it relies on SwiftUI's `presentationDetents`, the overlay requires **iOS 16+**. For iOS 15
+/// hosts, compose ``NotificationInboxBell`` + present ``NotificationInboxView`` yourself.
 ///
 /// ## Usage
 /// ```swift
 /// ZStack { MyDashboard(); NotificationInboxOverlay() }
 /// ```
-@available(iOS 13.0, *)
+@available(iOS 16.0, *)
 public struct NotificationInboxOverlay: View {
     @StateObject private var model: VisualInboxModel
 
-    /// Drives dark-mode branding resolution for the panel chrome.
+    /// True while the inbox sheet is presented.
+    @State private var isInboxPresented = false
+
+    /// Drives dark-mode branding resolution for the sheet's panel background.
     @Environment(\.colorScheme) private var colorScheme
 
-    /// True when the slide-out panel is visible.
-    @State private var isPanelOpen: Bool = false
-
-    /// Vertical inset that keeps the slide-out panel clear of the floating button.
-    private let panelBottomInset: CGFloat = 88
-
-    /// Called whenever the slide-out panel opens (`true`) or closes (`false`). Hosts that mount the
-    /// overlay in a passthrough window use this to capture touches full-screen while the panel is
-    /// open (so the scrim blocks click-through) and pass through when it's closed.
-    private let onPanelPresentationChange: ((Bool) -> Void)?
-
     /// Creates an inbox overlay backed by the SDK's shared Visual Inbox data layer.
-    /// - Parameter onPanelPresentationChange: optional callback invoked when the panel opens/closes.
-    public init(onPanelPresentationChange: ((Bool) -> Void)? = nil) {
+    public init() {
         _model = StateObject(wrappedValue: VisualInboxModel())
-        self.onPanelPresentationChange = onPanelPresentationChange
     }
 
     /// Creates an inbox overlay backed by the supplied model. Used by tests/previews to inject a fake.
-    init(model: VisualInboxModel, onPanelPresentationChange: ((Bool) -> Void)? = nil) {
+    init(model: VisualInboxModel) {
         _model = StateObject(wrappedValue: model)
-        self.onPanelPresentationChange = onPanelPresentationChange
     }
 
     public var body: some View {
-        ZStack(alignment: .bottomTrailing) {
-            // Scrim (item 10): captures touches behind the panel so taps don't pass through to the
-            // host app. Tapping the scrim closes the panel. Only present while open AND chrome is
-            // shown — a hidden inbox hides all chrome, including an open panel/scrim.
-            if isPanelOpen, model.showsChrome {
-                // Scrim opacity 0.32 for cross-platform parity (Android uses the same value).
-                Color.black.opacity(0.32)
-                    .ignoresSafeAreaCompat()
-                    .contentShape(Rectangle())
-                    .onTapGesture { setPanel(open: false) }
-                    .transition(.opacity)
+        // Bell anchor is branding-driven (`patterns.inbox.position`); defaults to bottom-right.
+        let bellPosition = InboxBellPosition.resolve(model.chrome?.position)
+        // Bell is shown unless the inbox is hidden (the bell view hides itself based on chrome state);
+        // tapping it presents the inbox list in a native sheet with system detents.
+        //
+        // The bell + lifecycle live in a ZStack anchored by a stable, non-interactive `Color.clear`.
+        // This matters: when the inbox goes hidden the bell renders nothing, and if `onDisappear` were
+        // attached to the bell it would fire and `model.stop()` would cancel the data subscription
+        // permanently — so a later message could never re-show the bell. The always-present clear
+        // anchor keeps the overlay mounted (subscription alive) while the bell is hidden, and
+        // `allowsHitTesting(false)` preserves touch passthrough to the content behind the overlay.
+        return ZStack(alignment: bellPosition.alignment) {
+            Color.clear
+                .allowsHitTesting(false)
+            NotificationInboxBell(model: model) {
+                isInboxPresented = true
             }
-
-            // The slide-out panel sits above the scrim but behind the floating button.
-            if isPanelOpen, model.showsChrome {
-                panel
-                    .transition(.move(edge: .trailing).combined(with: .opacity))
-            }
-
-            // Bell is shown unless the inbox is hidden (item 11: hidden → no chrome). The bell view
-            // hides itself based on chrome state; it observes the SAME model as the panel.
-            NotificationInboxBell(model: model) { setPanel(open: !isPanelOpen) }
-                .padding(16)
+            .padding(16)
         }
-        // Fill the host so bottom-trailing alignment pins the button to the bottom-right corner.
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
-        // The overlay owns the shared model's lifecycle (the bell/panel observe it but don't drive it).
+        // Fill the host so the branding `position` alignment resolves against the full available area
+        // rather than a stack sized to just the bell (the Color.clear anchor also expands, but make it
+        // explicit so placement is unambiguous regardless of where the host mounts the overlay).
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        // The overlay owns the shared model's lifecycle (the bell/sheet observe it but don't drive it).
         .onAppear { model.start() }
         .onDisappear { model.stop() }
-        // If the inbox transitions to hidden while the panel is open, close it so it doesn't linger
-        // (and doesn't silently reappear if the inbox becomes visible again).
+        // If the inbox transitions to hidden while the sheet is open, dismiss it so it doesn't linger.
         .onChange(of: model.showsChrome) { visible in
-            if !visible, isPanelOpen { isPanelOpen = false }
-            // Re-notify when chrome visibility flips: if the inbox goes hidden while the panel flag is
-            // still settling, the host must stop full-screen capture so touches aren't swallowed with
-            // nothing on screen.
-            notifyPanelPresentation()
+            if !visible { isInboxPresented = false }
         }
-        // Notify the host of panel presentation so a passthrough-window mount can toggle full-screen
-        // touch capture (presented → scrim blocks click-through; not → pass through).
-        .onChange(of: isPanelOpen) { _ in
-            notifyPanelPresentation()
+        // Auto-mark-opened (item 8): when the sheet is presented, mark the visible messages opened
+        // (deduped inside the model so a message is never marked twice).
+        .onChange(of: isInboxPresented) { presented in
+            if presented { model.markVisibleMessagesOpened() }
         }
-    }
-
-    /// The panel is "presented" (host should capture full-screen touches) only when it is open AND the
-    /// inbox chrome is shown. Keying the host callback off BOTH prevents leaving touch capture on after
-    /// the inbox goes hidden while `isPanelOpen` is still true.
-    private func notifyPanelPresentation() {
-        onPanelPresentationChange?(isPanelOpen && model.showsChrome)
-    }
-
-    private func setPanel(open: Bool) {
-        // Slide the panel with a spring — iOS's natural idiom for fluid, interruptible UI motion
-        // (the same feel as sheets and navigation). No fixed duration; lightly damped so the panel
-        // settles quickly and smoothly without overshoot.
-        withAnimation(.spring(response: 0.4, dampingFraction: 0.9)) {
-            isPanelOpen = open
+        // System sheet with medium/large detents + grabber — no header (matches web parity). The list
+        // shares this overlay's model, so bell and sheet observe the same state.
+        .sheet(isPresented: $isInboxPresented) {
+            // Branded panel surface (web/Android parity): the system provides the detents/grabber, the
+            // workspace's `patterns.inbox.background` + `cornerRadius` drive the panel color + corner.
+            let colors = ResolvedInboxColors.resolve(chrome: model.chrome, isDark: colorScheme == .dark)
+            // Dismiss the sheet after a navigation action so the opened screen (deep link / URL) isn't
+            // left behind the inbox.
+            NotificationInboxView(model: model, onNavigate: { isInboxPresented = false })
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+                .modifier(BrandedInboxSheetStyle(background: colors.panelBackground, cornerRadius: colors.cornerRadius))
         }
-        // Auto-mark-opened (item 8): when the panel becomes visible, mark the visible messages
-        // opened (deduped inside the model so a message is never marked twice).
-        if open {
-            model.markVisibleMessagesOpened()
-        }
-    }
-
-    // MARK: - Slide-out panel (items 6, 7, 11)
-
-    private var panel: some View {
-        // Branding-first panel surface + corner radius (falls back to the system background / 12pt).
-        let colors = ResolvedInboxColors.resolve(chrome: model.chrome, isDark: colorScheme == .dark)
-        // No header (title / close button) — matches web. The panel closes via the scrim tap or by
-        // tapping the bell again. The panel CONTENT is the embeddable `NotificationInboxView`, sharing
-        // this overlay's model (so bell, panel, and overlay all observe the same state).
-        return VStack(alignment: .leading, spacing: 0) {
-            NotificationInboxView(model: model)
-        }
-        .frame(maxWidth: 480, maxHeight: .infinity, alignment: .top)
-        .background(colors.panelBackground)
-        .cornerRadius(colors.cornerRadius)
-        .shadow(radius: 8)
-        .padding(.horizontal, 16)
-        .padding(.top, 16)
-        .padding(.bottom, panelBottomInset)
     }
 }
 
-/// Cross-version `ignoresSafeArea` helper (the modern modifier is iOS 14+; `edgesIgnoringSafeArea`
-/// covers iOS 13).
-@available(iOS 13.0, *)
-extension View {
-    @ViewBuilder
-    func ignoresSafeAreaCompat() -> some View {
-        if #available(iOS 14.0, *) {
-            ignoresSafeArea()
+/// Applies the workspace's branded panel background + corner radius to the inbox sheet. Uses the
+/// dedicated presentation APIs on iOS 16.4+; on iOS 16.0–16.3 (where neither API exists) it paints the
+/// content background so the panel still honors the branded color — the system supplies the corners.
+@available(iOS 16.0, *)
+private struct BrandedInboxSheetStyle: ViewModifier {
+    let background: Color
+    let cornerRadius: CGFloat
+
+    func body(content: Content) -> some View {
+        if #available(iOS 16.4, *) {
+            content
+                .presentationCornerRadius(cornerRadius)
+                .presentationBackground(background)
         } else {
-            edgesIgnoringSafeArea(.all)
+            content
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(background)
         }
     }
 }

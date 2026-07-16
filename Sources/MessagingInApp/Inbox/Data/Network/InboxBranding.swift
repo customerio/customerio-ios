@@ -1,16 +1,18 @@
 import Foundation
 
 /// The floating notification-bell icon for the inbox, parsed from
-/// `patterns.inbox.floatingIcon { background, color }`.
+/// `patterns.inbox.floatingIcon { background, color, svg }`.
 ///
-/// `background`/`color` are the container fill and glyph tint (hex strings). Any field may be
-/// absent in a given branding response, so all are optional. The bell glyph itself is provided by
-/// the renderer, so the raw SVG markup is intentionally not carried here.
+/// `background`/`color` are the container fill and glyph tint (hex strings); `svg` is the raw bell
+/// glyph markup the workspace configured. Any field may be absent in a given branding response, so
+/// all are optional — the overlay renders `svg` when present and falls back to a bundled default bell.
 struct InboxFloatingIcon: Equatable {
     /// Container background color (hex string), e.g. `#000000`.
     let background: String?
     /// Glyph tint color (hex string), e.g. `#ffffff`.
     let color: String?
+    /// Raw SVG markup for the bell glyph, e.g. `<svg …><path …/></svg>`. Rendered by the overlay.
+    let svg: String?
 }
 
 /// Drop-shadow tokens for the inbox panel (`patterns.inbox.shadow`).
@@ -104,7 +106,8 @@ struct InboxBranding: Equatable {
         let iconObject = inbox["floatingIcon"] as? [String: Any] ?? [:]
         let floatingIcon = InboxFloatingIcon(
             background: iconObject["background"] as? String,
-            color: iconObject["color"] as? String
+            color: iconObject["color"] as? String,
+            svg: iconObject["svg"] as? String
         )
 
         let shadow = (inbox["shadow"] as? [String: Any]).map { shadowObject in

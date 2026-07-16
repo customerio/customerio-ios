@@ -243,10 +243,13 @@ final class VisualInboxProviderImpl: VisualInboxProvider, @unchecked Sendable {
         return VisualInboxChrome(
             bellBackground: chrome.floatingIcon.background,
             bellIconColor: chrome.floatingIcon.color,
+            bellIconSvg: chrome.floatingIcon.svg,
             panelBackground: chrome.background,
             dividerColor: chrome.dividerColor ?? chrome.borderColor,
             badgeBackground: chrome.unreadIndicator?.background,
             cornerRadius: chrome.cornerRadius,
+            position: chrome.position,
+            showUnreadBadge: chrome.unreadIndicator?.showAlert,
             darkModePattern: branding.darkModePattern
         )
     }

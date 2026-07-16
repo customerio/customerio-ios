@@ -40,6 +40,12 @@ final class VisualInboxModel: ObservableObject {
     /// Branding is stable per session, so it's fetched on `refresh()` (not per `observe()` emission).
     @Published private(set) var chrome: VisualInboxChrome?
 
+    /// The branding bell glyph (`patterns.inbox.floatingIcon.svg`), parsed ONCE when `chrome` resolves
+    /// rather than re-parsed on every bell render. nil when branding supplies no (or unparseable) SVG,
+    /// in which case the bell falls back to the bundled default. Released with the model when the
+    /// inbox UI is torn down, so the parsed glyph isn't retained after the inbox is gone.
+    @Published private(set) var bellGlyph: InboxBellGlyph?
+
     /// Each message's `properties` decoded into Jist render data, keyed by message id. Decoded ONCE
     /// per `messages` refresh (here, not per render) so the row body just reads the prepared value
     /// instead of re-decoding `[String: Any]` on every recompose.
@@ -208,7 +214,11 @@ final class VisualInboxModel: ObservableObject {
             guard let self else { return }
             let resolved = await self.provider.brandingChrome()
             if Task.isCancelled { return }
-            if let resolved { self.chrome = resolved }
+            if let resolved {
+                self.chrome = resolved
+                // Build the bell glyph once here (not per render). nil svg / unparseable → nil → bundled bell.
+                self.bellGlyph = resolved.bellIconSvg.flatMap(InboxBellGlyph.build(fromSVG:))
+            }
         }
     }
 

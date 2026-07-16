@@ -61,17 +61,21 @@ public struct NotificationInboxBell: View {
         // Branding-first chrome colors (bell fill / glyph / badge), with a contrast-aware glyph
         // fallback so a light branded bell never renders a white glyph on a white circle.
         let colors = ResolvedInboxColors.resolve(chrome: model.chrome, isDark: colorScheme == .dark)
+        // The unread count is surfaced (badge + VoiceOver) only when there ARE unopened messages AND
+        // branding's `unreadIndicator.showAlert` allows it (nil → show, matching web parity). Both the
+        // visible badge and the accessibility label key off this, so VoiceOver never announces a count
+        // the workspace chose to hide.
+        let showsUnreadCount = model.unopenedCount > 0 && (model.chrome?.showUnreadBadge ?? true)
         return Button(action: onTap, label: {
             ZStack(alignment: .topTrailing) {
-                // Default bundled SF Symbol bell (branding SVG bell is deferred).
-                Image(systemName: "bell.fill")
-                    .foregroundColor(colors.bellIcon)
+                bellGlyph(colors: colors)
+                    .frame(width: 26, height: 26)
                     .frame(width: 56, height: 56)
                     .background(colors.bellBackground)
                     .clipShape(Circle())
                     .shadow(radius: 4)
 
-                if model.unopenedCount > 0 {
+                if showsUnreadCount {
                     Text("\(model.unopenedCount)")
                         .font(.caption)
                         .foregroundColor(.white)
@@ -83,7 +87,24 @@ public struct NotificationInboxBell: View {
             }
         })
         // `.accessibility(label:)` is the iOS 13-safe form; `.accessibilityLabel` is iOS 14+.
-        .accessibility(label: Text(model.unopenedCount > 0 ? "Notifications, \(model.unopenedCount) unread" : "Notifications"))
+        .accessibility(label: Text(showsUnreadCount ? "Notifications, \(model.unopenedCount) unread" : "Notifications"))
+    }
+
+    /// The bell glyph: the workspace's branding SVG (`floatingIcon.svg`) when present and parseable
+    /// (pre-built once by the model), otherwise the bundled default bell asset. Both are tinted with
+    /// the branding glyph color.
+    @ViewBuilder
+    private func bellGlyph(colors: ResolvedInboxColors) -> some View {
+        if let glyph = model.bellGlyph {
+            // Even-odd fill matches CIO bell SVGs' `fill-rule="evenodd"` (outlined bell).
+            InboxBellIcon(glyph: glyph).fill(colors.bellIcon, style: FillStyle(eoFill: true))
+        } else {
+            Image("cio-inbox-bell", bundle: .cioInboxResources)
+                .renderingMode(.template)
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .foregroundColor(colors.bellIcon)
+        }
     }
 }
 

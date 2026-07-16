@@ -163,20 +163,55 @@ final class VisualInboxModelTests: XCTestCase {
         XCTAssertTrue(VisualInboxMessageRow.isDismiss(event))
     }
 
-    func test_isDismiss_whenNameDismissOrSentinelUrl_thenTrue() {
+    func test_isDismiss_whenNameDismissOrSentinel_thenTrue() {
         XCTAssertTrue(VisualInboxMessageRow.isDismiss(makeActionEvent(name: "dismiss", fields: [:])))
+        XCTAssertTrue(VisualInboxMessageRow.isDismiss(makeActionEvent(name: "messageAction", fields: ["action": "#dismiss"])))
+        // Legacy `url` sentinel still accepted.
         XCTAssertTrue(VisualInboxMessageRow.isDismiss(makeActionEvent(name: "messageAction", fields: ["url": "#dismiss"])))
     }
 
-    func test_isDismiss_whenRealUrlAction_thenFalse() {
-        let event = makeActionEvent(name: "messageAction", fields: ["url": "https://customer.io", "behavior": "openUrl"])
+    func test_isDismiss_whenRealAction_thenFalse() {
+        let event = makeActionEvent(name: "messageAction", fields: ["action": "https://customer.io", "behavior": "openUrl"])
         XCTAssertFalse(VisualInboxMessageRow.isDismiss(event))
     }
 
-    func test_resolve_whenOpenUrlBehavior_thenMapsUrlAndBehavior() {
-        let event = makeActionEvent(name: "messageAction", fields: ["url": "https://customer.io", "behavior": "openUrl"])
+    func test_resolve_whenOpenUrlBehavior_thenMapsActionAndBehavior() {
+        let event = makeActionEvent(name: "messageAction", fields: ["action": "https://customer.io", "behavior": "openUrl"])
         let resolution = VisualInboxMessageRow.resolve(event)
-        XCTAssertEqual(resolution, InboxActionResolution(actionName: "messageAction", url: "https://customer.io", behavior: .openUrl, dismiss: false))
+        XCTAssertEqual(resolution, InboxActionResolution(actionName: "messageAction", actionValue: "https://customer.io", behavior: .openUrl, dismiss: false))
+    }
+
+    func test_resolve_whenNewTabFlagOnOpenUrl_thenOpenUrlFlagIgnored() {
+        // Web emits `newTab` as a BOOLEAN flag alongside `behavior: "openUrl"`, not a behavior. The
+        // flag is ignored on mobile (no "new tab"); the action still resolves to openUrl.
+        let event = makeActionEvent(name: "messageAction", fields: ["action": "https://customer.io", "behavior": "openUrl", "newTab": "true"])
+        let resolution = VisualInboxMessageRow.resolve(event)
+        XCTAssertEqual(resolution.behavior, .openUrl)
+        XCTAssertEqual(resolution.actionValue, "https://customer.io")
+    }
+
+    func test_resolve_whenNewTabUsedAsBehavior_thenUnknown() {
+        // `behavior: "newTab"` is not a real web behavior, so it must not resolve to a navigation.
+        let event = makeActionEvent(name: "messageAction", fields: ["action": "https://customer.io", "behavior": "newTab"])
+        XCTAssertEqual(VisualInboxMessageRow.resolve(event).behavior, .unknown)
+    }
+
+    func test_resolve_whenOpenDeeplinkBehavior_thenMapsActionBehaviorAndName() {
+        let event = makeActionEvent(name: "messageAction", fields: ["action": "https://www.google.com/", "behavior": "openDeeplink", "name": "test-track-name"])
+        let resolution = VisualInboxMessageRow.resolve(event)
+        XCTAssertEqual(resolution.behavior, .openDeeplink)
+        XCTAssertEqual(resolution.actionValue, "https://www.google.com/")
+        // The `name` field becomes the action name handed to the host listener, not the Jist node name.
+        XCTAssertEqual(resolution.actionName, "test-track-name")
+    }
+
+    func test_resolve_whenPerformAction_thenMapsPerformActionValueAndDismiss() {
+        let event = makeActionEvent(name: "messageAction", fields: ["action": "custom-action", "name": "custom-name", "behavior": "performAction", "dismiss": "true"])
+        let resolution = VisualInboxMessageRow.resolve(event)
+        XCTAssertEqual(resolution.behavior, .performAction)
+        XCTAssertEqual(resolution.actionValue, "custom-action")
+        XCTAssertEqual(resolution.actionName, "custom-name")
+        XCTAssertTrue(resolution.dismiss)
     }
 
     func test_resolve_whenDismissFlagTrue_thenResolutionDismisses() {
@@ -185,29 +220,28 @@ final class VisualInboxModelTests: XCTestCase {
     }
 
     func test_resolve_whenNoDismissFlag_thenResolutionDoesNotDismiss() {
-        let event = makeActionEvent(name: "messageAction", fields: ["url": "https://customer.io", "behavior": "openUrl"])
+        let event = makeActionEvent(name: "messageAction", fields: ["action": "https://customer.io", "behavior": "openUrl"])
         XCTAssertFalse(VisualInboxMessageRow.resolve(event).dismiss)
     }
 
-    func test_resolve_whenDeeplinkBehavior_thenMapsDeeplink() {
-        let event = makeActionEvent(name: "messageAction", fields: ["url": "myapp://home", "behavior": "deeplink"])
-        let resolution = VisualInboxMessageRow.resolve(event)
-        XCTAssertEqual(resolution.behavior, .deeplink)
-        XCTAssertEqual(resolution.url, "myapp://home")
+    func test_resolve_whenLegacyUrlKey_thenFallsBackToUrl() {
+        // Older payloads carried the destination under `url`; resolve falls back to it.
+        let event = makeActionEvent(name: "messageAction", fields: ["url": "https://customer.io", "behavior": "openUrl"])
+        XCTAssertEqual(VisualInboxMessageRow.resolve(event).actionValue, "https://customer.io")
     }
 
-    func test_resolve_whenNoBehavior_thenBehaviorNoneUrlPreserved() {
-        let event = makeActionEvent(name: "messageAction", fields: ["url": "https://customer.io"])
+    func test_resolve_whenUnknownBehavior_thenBehaviorUnknownValuePreserved() {
+        let event = makeActionEvent(name: "messageAction", fields: ["action": "https://customer.io"])
         let resolution = VisualInboxMessageRow.resolve(event)
-        XCTAssertEqual(resolution.behavior, .none)
-        XCTAssertEqual(resolution.url, "https://customer.io")
+        XCTAssertEqual(resolution.behavior, .unknown)
+        XCTAssertEqual(resolution.actionValue, "https://customer.io")
     }
 
-    func test_resolve_whenNoData_thenNilUrlNoneBehavior() {
+    func test_resolve_whenNoData_thenNilValueUnknownBehavior() {
         let event = JistActionEvent(component: "c", name: "messageAction", data: nil, meta: nil)
         let resolution = VisualInboxMessageRow.resolve(event)
-        XCTAssertNil(resolution.url)
-        XCTAssertEqual(resolution.behavior, .none)
+        XCTAssertNil(resolution.actionValue)
+        XCTAssertEqual(resolution.behavior, .unknown)
         XCTAssertEqual(resolution.actionName, "messageAction")
     }
 
