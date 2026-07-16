@@ -43,7 +43,9 @@ struct InboxBellIcon: Shape {
     /// Boxes an optional parse result so `NSCache` (which can't store `nil`) can memoize failures too.
     private final class ParseCacheEntry {
         let parsed: (path: Path, viewBox: CGRect)?
-        init(_ parsed: (path: Path, viewBox: CGRect)?) { self.parsed = parsed }
+        init(_ parsed: (path: Path, viewBox: CGRect)?) {
+            self.parsed = parsed
+        }
     }
 
     /// Memoizes parse results per SVG string. Parsing (regex extraction + SVGPath) is deterministic and
