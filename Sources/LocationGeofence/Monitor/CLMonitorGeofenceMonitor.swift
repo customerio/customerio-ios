@@ -10,9 +10,9 @@ import Foundation
 /// Behavioral contract: match the classic monitor — deliver only genuine boundary crossings, only
 /// for the registered transition types. `CLMonitor` differs from classic in ways this type has to
 /// compensate for:
-/// - It re-emits a condition's CURRENT state on process start and system re-evaluation, not just on
-///   crossings (iOS 18: relaunch re-emits every condition, an unlock ~14×) → per-condition dedup
-///   baseline, persisted in `GeofenceStorage` so a cold-wake compares against the pre-kill state.
+/// - It re-emits a condition's CURRENT state on process start and system re-evaluation
+///   (relaunch, unlock), not just on crossings → per-condition dedup baseline, persisted in
+///   `GeofenceStorage` so a cold-wake compares against the pre-kill state.
 /// - It has no `notifyOnEntry`/`notifyOnExit` equivalent → the delivery filter is stored per
 ///   condition and applied here.
 /// - Its API is async (an actor + `events` sequence) while the protocol is synchronous → mutations
@@ -23,11 +23,8 @@ import Foundation
 /// - Its conditions persist in the app container under our private monitor name, so everything in
 ///   it is SDK-owned by construction (classic `monitoredRegions` is shared app-wide).
 ///
-/// Not unit-tested directly: it adapts a real `CLMonitor` actor (keyed by a process-global name),
-/// a real `CLLocationManager`, and an async event stream — none substitutable, and constructing one
-/// persists to the app container. Its decision logic (dedup baseline, delivery filter) lives in
-/// `GeofenceStorage` and the shared permission-tier function, both unit-tested; the adapter is
-/// validated on-device (background delivery, cold-wake, reboot).
+/// Not unit-tested directly — it adapts real, non-substitutable CoreLocation objects. The decision
+/// logic lives in `GeofenceStorage` (unit-tested); the adapter is validated on-device.
 @available(iOS 17.0, *)
 @MainActor
 final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preconcurrency CLLocationManagerDelegate {
@@ -99,15 +96,11 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preco
     private func monitorInstance() -> Task<CLMonitor, Never> {
         if let monitorTask { return monitorTask }
         let name = Self.monitorName
-        // Created unconditionally and immediately. Do NOT gate this on
-        // `UIApplication.isProtectedDataAvailable`: that flag is false for the whole wake window
-        // when a crossing launches the app while the device is locked (the primary delivery
-        // scenario), and it can read false during prewarmed launches with no
-        // `protectedDataDidBecomeAvailable` notification ever following — either way the events
-        // consumer would never attach and delivery dies for the process (field-verified). The
-        // reboot-before-first-unlock read the gate defended against is unreachable (iOS doesn't
-        // background-launch apps for location events before first unlock), and if conditions were
-        // ever read as empty, reconcile + `onReconciled` re-register from cache.
+        // Created immediately and unconditionally. Despite the CLMonitor header's note, do NOT defer
+        // creation on protected-data availability: the flag is false while the device is locked —
+        // the normal state for a background crossing wake — and can read false on prewarmed launches
+        // with no notification following; either way the events consumer would never attach. An
+        // empty pre-first-unlock conditions read self-heals via reconcile.
         let task = Task { await CLMonitor(name) }
         monitorTask = task
         return task

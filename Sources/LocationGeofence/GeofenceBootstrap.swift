@@ -8,16 +8,12 @@ import Foundation
 @MainActor
 enum GeofenceBootstrap {
     static func wireMonitor(di: DIGraphShared) async {
-        // iOS 18+ (CLMonitor): construct the monitor NOW, before the async reads below.
-        // CLMonitor delivers events only while its `events` sequence is being iterated — the
-        // OS does not queue a crossing for a late consumer the way classic region monitoring
-        // queues for a late delegate. On a cold-wake launch the background execution window is
-        // short, so the consumer must attach as early as possible; deferring construction until
-        // after these reads can miss the relaunch's re-emitted state. Safe to construct ahead of
-        // the reads because CLMonitor seeds its ownership filter synchronously from the persisted
-        // condition mirror in `init`, so a crossing arriving meanwhile still matches. Classic
-        // (iOS ≤17) deliberately stays constructed in phase 2 below: its delegate goes live on
-        // construction and an `await` before the owned-set is populated drops a queued crossing.
+        // iOS 18+ (CLMonitor): construct the monitor NOW. CLMonitor delivers events only while its
+        // `events` sequence is iterated — the OS does not queue a crossing for a late consumer — and
+        // the cold-wake execution window is short, so the consumer must attach before the reads below.
+        // Safe this early: ownership is seeded synchronously from the persisted mirror in `init`.
+        // Classic (≤17) stays in phase 2: its delegate goes live on construction, and an `await`
+        // before the owned-set is populated drops a queued crossing.
         if #available(iOS 18.0, *) {
             _ = di.geofenceMonitor
         }
@@ -51,15 +47,12 @@ enum GeofenceBootstrap {
         let coordinator = di.geofenceSyncCoordinator
         GeofenceMonitorBinder.bind(monitor: monitor, tracker: tracker, coordinator: coordinator)
 
-        // Register both re-run handlers BEFORE the adopt/re-register decision (and any await) so the
-        // CLMonitor path's first live reconciliation — which can fire right after this synchronous
-        // phase yields — finds the handler installed. Both re-run this same idempotent setup, which
-        // replaces any prior handlers (no stacking when foreground init and cold-wake bootstrap share
-        // a process):
-        // - authorization changes → re-attempt registration when permission improves mid-process.
-        // - reconciliation → re-decide adopt-vs-re-register once live OS truth is known, correcting a
-        //   choice made off the pre-reconcile mirror (CLMonitor path only; no-op on classic, whose
-        //   osMonitoredRegionIdentifiers is already live).
+        // Install both re-run handlers BEFORE the adopt/re-register decision so the CLMonitor path's
+        // first reconciliation — which can fire right after this synchronous phase yields — finds a
+        // handler. Each re-runs this idempotent setup, replacing prior handlers (no stacking):
+        // authorization changes re-attempt registration when permission improves; reconciliation
+        // re-decides adopt-vs-re-register off live OS truth instead of the pre-reconcile mirror
+        // (no-op on classic, whose osMonitoredRegionIdentifiers is already live).
         let rewire: @MainActor () -> Void = {
             Task { @MainActor in await GeofenceBootstrap.wireMonitor(di: di) }
         }
