@@ -1,6 +1,13 @@
 import CioInternalCommon
 import Foundation
 
+/// What the OS accepted for a registration sync: the identifiers actually monitored and the radius
+/// cap the OS clamps every region to. Both feed the initial-enter decision.
+struct GeofenceOsRegistration {
+    let registeredIds: Set<String>
+    let maxMonitoringRadius: Double
+}
+
 /// OS registration + fetch plumbing, split out to keep the coordinator's core flow readable.
 /// Methods are `internal` (not `private`) only because they live in a separate file from their
 /// callers; they remain coordinator implementation detail.
@@ -13,8 +20,9 @@ extension GeofenceSyncCoordinatorImpl {
     }
 
     /// Stops all monitored regions, then starts the new business set + movement trigger. Returns the
-    /// OS-accepted identifiers — a region the monitor dropped (blocked permission / invalid
-    /// coordinates) is absent, so `emitInitialEnters` won't fire an unbalanced synthetic enter for it.
+    /// OS-accepted identifiers (a region the monitor dropped for blocked permission / invalid
+    /// coordinates is absent) plus the radius cap, so `emitInitialEnters` won't fire an unbalanced
+    /// synthetic enter or one for a device outside the actually-monitored (clamped) circle.
     /// `@MainActor`-isolated so a same-actor caller (e.g. `applyCachedRegistration`)
     /// can register without yielding — see the protocol doc for why that matters.
     @MainActor
@@ -24,7 +32,7 @@ extension GeofenceSyncCoordinatorImpl {
         movementTriggerLocation: LocationData,
         movementTriggerRadius: Double,
         registerMovementTrigger: Bool
-    ) -> Set<String> {
+    ) -> GeofenceOsRegistration {
         monitor.stopMonitoringAll()
         // Register the movement trigger FIRST so it isn't starved when business regions fill the
         // shared 20-region OS budget (e.g. a host app that also monitors regions): losing it freezes
@@ -47,6 +55,9 @@ extension GeofenceSyncCoordinatorImpl {
                 transitionTypes: region.transitionTypes
             )
         }
-        return monitor.monitoredRegionIdentifiers
+        return GeofenceOsRegistration(
+            registeredIds: monitor.monitoredRegionIdentifiers,
+            maxMonitoringRadius: monitor.maximumMonitoringRadius
+        )
     }
 }

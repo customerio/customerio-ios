@@ -202,6 +202,10 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preco
         ownedRegionIdentifiers
     }
 
+    var maximumMonitoringRadius: Double {
+        authManager.maximumRegionMonitoringDistance
+    }
+
     var osMonitoredRegionIdentifiers: Set<String> {
         knownConditionIdentifiers
     }

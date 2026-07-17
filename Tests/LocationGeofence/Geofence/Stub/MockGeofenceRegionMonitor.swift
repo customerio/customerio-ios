@@ -46,6 +46,10 @@ final class MockGeofenceRegionMonitor: GeofenceRegionMonitoring {
         activeIdentifiers
     }
 
+    /// Defaults to no clamp so existing tests register the configured radius unchanged; tests that
+    /// exercise the OS cap set it explicitly.
+    var maximumMonitoringRadius: Double = .greatestFiniteMagnitude
+
     var osMonitoredRegionIdentifiers: Set<String> {
         osMonitoredRegions
     }

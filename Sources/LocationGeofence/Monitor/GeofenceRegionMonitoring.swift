@@ -61,6 +61,12 @@ protocol GeofenceRegionMonitoring: AnyObject, Sendable {
     /// Returns the set of region identifiers currently being monitored by this monitor.
     var monitoredRegionIdentifiers: Set<String> { get }
 
+    /// The largest radius the OS actually monitors; every registered region's radius is clamped to
+    /// this (`CLLocationManager.maximumRegionMonitoringDistance`). Apple defines no floor for it, so
+    /// a fence radius can exceed it — callers deciding whether the device is inside a registered
+    /// circle must clamp to it too, or they'd treat a device outside the monitored circle as inside.
+    var maximumMonitoringRadius: Double { get }
+
     /// Region identifiers the OS still actively monitors app-wide (`CLLocationManager.monitoredRegions`).
     /// These persist across process launch and device reboot, so on a fresh process this is populated
     /// even though `monitoredRegionIdentifiers` (the in-memory ownership filter) starts empty.

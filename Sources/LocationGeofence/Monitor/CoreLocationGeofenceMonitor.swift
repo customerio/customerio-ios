@@ -42,6 +42,10 @@ final class CoreLocationGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @pr
         ownedRegionIdentifiers
     }
 
+    var maximumMonitoringRadius: Double {
+        manager.maximumRegionMonitoringDistance
+    }
+
     var osMonitoredRegionIdentifiers: Set<String> {
         Set(manager.monitoredRegions.map(\.identifier))
     }

@@ -269,7 +269,7 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
         let nearest = distanceFilter.nearest(regions, to: anchor, limit: effectiveConfig.maxBusinessGeofences, maxDistance: effectiveConfig.maxMonitoringDistance)
         // Read before `recordRegistration` overwrites it — the diff decides which registrations are new.
         let previouslyRegisteredIds = await storage.getRegisteredBusinessIds()
-        let registeredIds = await MainActor.run {
+        let osRegistration = await MainActor.run {
             registerWithOsSync(
                 businessRegions: nearest,
                 movementTriggerLocation: anchor,
@@ -286,9 +286,12 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
         }
         await storage.recordSync(timestamp: dateUtil.now, location: anchor)
         await storage.recordRegistration(center: anchor, businessIds: Set(nearest.map(\.id)))
+        // The post-fetch check above only covers the fetch window; a sign-out/switch can still land
+        // during the register + persist awaits, and reset() can't run while we hold the gate. Undo.
+        if await cleanupIfUserChanged(expectedUserId: expectedUserId) { return .success(()) }
         emitInitialEnters(
             candidates: nearest,
-            registeredIds: registeredIds,
+            osRegistration: osRegistration,
             previouslyRegisteredIds: previouslyRegisteredIds,
             expectedUserId: expectedUserId,
             anchor: anchor
@@ -312,7 +315,7 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
         let nearest = distanceFilter.nearest(cachedRegions, to: anchor, limit: config.maxBusinessGeofences, maxDistance: config.maxMonitoringDistance)
         // Read before `recordRegistration` overwrites it — the diff decides which registrations are new.
         let previouslyRegisteredIds = await storage.getRegisteredBusinessIds()
-        let registeredIds = await MainActor.run {
+        let osRegistration = await MainActor.run {
             registerWithOsSync(
                 businessRegions: nearest,
                 movementTriggerLocation: anchor,
@@ -321,15 +324,30 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
             )
         }
         await storage.recordRegistration(center: anchor, businessIds: Set(nearest.map(\.id)))
+        // Local re-rank has no post-fetch user check, so guard the register/persist window here too.
+        if await cleanupIfUserChanged(expectedUserId: expectedUserId) { return .success(()) }
         emitInitialEnters(
             candidates: nearest,
-            registeredIds: registeredIds,
+            osRegistration: osRegistration,
             previouslyRegisteredIds: previouslyRegisteredIds,
             expectedUserId: expectedUserId,
             anchor: anchor
         )
         logger.geofenceSyncCompleted(registeredCount: nearest.count)
         return .success(())
+    }
+
+    /// A sign-out/switch can land during a refresh's register + persist awaits, after (or without) a
+    /// post-fetch user check — and `reset()` can't run while this refresh holds the dedup gate, so it
+    /// returns `.alreadyInProgress` and is dropped. Detect the change here (still holding the gate) and
+    /// undo the just-registered state, rather than leaving geofences + sync state for the wrong user.
+    /// Returns true when it cleaned up, so the caller stops before emitting initial enters.
+    private func cleanupIfUserChanged(expectedUserId: String) async -> Bool {
+        guard contextStore.currentUserId != expectedUserId else { return false }
+        await MainActor.run { monitor.stopMonitoringAll() }
+        await storage.clearUserScopedState()
+        logger.geofenceSyncSupersededByUserChange()
+        return true
     }
 }
 
