@@ -45,9 +45,6 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preco
     private let userDefaults: UserDefaults
     /// Only for auth status/changes + current-location reads; region monitoring is on `CLMonitor`.
     private let authManager: CLLocationManager
-    /// Gates `CLMonitor` creation on protected-data availability (its conditions live in the app
-    /// container, unreadable before first unlock on a reboot cold-wake).
-    private let protectedData: ProtectedDataAvailability
     private var onTransition: GeofenceTransitionHandler?
     private var onAuthorizationChanged: GeofenceAuthorizationChangedHandler?
     private var onReconciled: GeofenceReconciledHandler?
@@ -75,13 +72,11 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preco
     init(
         logger: Logger,
         storage: GeofenceStorage,
-        userDefaults: UserDefaults = .standard,
-        protectedData: ProtectedDataAvailability
+        userDefaults: UserDefaults = .standard
     ) {
         self.logger = logger
         self.storage = storage
         self.userDefaults = userDefaults
-        self.protectedData = protectedData
         self.authManager = CLLocationManager()
         super.init()
         let mirrored = Set(userDefaults.stringArray(forKey: Self.conditionMirrorKey) ?? [])
@@ -104,12 +99,16 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preco
     private func monitorInstance() -> Task<CLMonitor, Never> {
         if let monitorTask { return monitorTask }
         let name = Self.monitorName
-        let protectedData = self.protectedData
-        let task = Task { @MainActor in
-            // Defer until protected data is readable (reboot cold-wake): CLMonitor's persisted conditions live in the app container.
-            await protectedData.waitUntilAvailable()
-            return await CLMonitor(name)
-        }
+        // Created unconditionally and immediately. Do NOT gate this on
+        // `UIApplication.isProtectedDataAvailable`: that flag is false for the whole wake window
+        // when a crossing launches the app while the device is locked (the primary delivery
+        // scenario), and it can read false during prewarmed launches with no
+        // `protectedDataDidBecomeAvailable` notification ever following — either way the events
+        // consumer would never attach and delivery dies for the process (field-verified). The
+        // reboot-before-first-unlock read the gate defended against is unreachable (iOS doesn't
+        // background-launch apps for location events before first unlock), and if conditions were
+        // ever read as empty, reconcile + `onReconciled` re-register from cache.
+        let task = Task { await CLMonitor(name) }
         monitorTask = task
         return task
     }
@@ -385,7 +384,6 @@ extension CLMonitorGeofenceMonitor {
     @MainActor
     static let shared = CLMonitorGeofenceMonitor(
         logger: DIGraphShared.shared.logger,
-        storage: DIGraphShared.shared.geofenceStorage,
-        protectedData: UIApplicationProtectedDataAvailability()
+        storage: DIGraphShared.shared.geofenceStorage
     )
 }
