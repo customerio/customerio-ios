@@ -8,7 +8,7 @@ struct Settings: Codable {
     var messaging: MessagingPushAPNSettings
     var inApp: MessagingInAppSettings
     /// Optional so existing serialized installs (which predate this field) still decode.
-    /// Callers fall back to `.onAppStart` to match the hardcoded behavior this replaced.
+    /// Callers fall back to `.manual`, the SDK's default mode.
     var location: LocationSettings?
     var internalSettings: InternalSettings
 }
