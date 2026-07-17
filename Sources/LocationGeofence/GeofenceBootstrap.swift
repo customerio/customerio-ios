@@ -7,7 +7,22 @@ import Foundation
 /// same setup against the same DI-resolved singletons.
 @MainActor
 enum GeofenceBootstrap {
+    /// Tail of the run chain. The authorization-changed and reconciled handlers re-trigger setup
+    /// while a prior run may be mid-await; chaining serializes runs so they can't interleave
+    /// adopt/re-register work or race the post-register persistence.
+    private static var lastRun: Task<Void, Never>?
+
     static func wireMonitor(di: DIGraphShared) async {
+        let previous = lastRun
+        let run = Task { @MainActor in
+            await previous?.value
+            await performWireMonitor(di: di)
+        }
+        lastRun = run
+        await run.value
+    }
+
+    private static func performWireMonitor(di: DIGraphShared) async {
         // iOS 18+ (CLMonitor): construct the monitor NOW. CLMonitor delivers events only while its
         // `events` sequence is iterated — the OS does not queue a crossing for a late consumer — and
         // the cold-wake execution window is short, so the consumer must attach before the reads below.

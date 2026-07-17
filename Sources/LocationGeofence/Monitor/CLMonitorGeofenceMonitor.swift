@@ -2,26 +2,23 @@ import CioInternalCommon
 import CoreLocation
 import Foundation
 
-/// `CLMonitor`-backed implementation of `GeofenceRegionMonitoring`, where the classic
-/// `CLLocationManager` region-monitoring APIs are deprecated. Available at iOS 17, but the DI
-/// accessor only routes to it on iOS 18+ (13–17 keep the classic monitor) — iOS 18 is the floor
-/// because only there does `CLServiceSession` keep background delivery alive (see the accessor).
+/// `CLMonitor`-backed implementation of `GeofenceRegionMonitoring`. Available at iOS 17, but the DI
+/// accessor routes to it on iOS 18+ only — the floor where `CLServiceSession` keeps background
+/// delivery alive (see the accessor); 13–17 keep the classic monitor.
 ///
 /// Behavioral contract: match the classic monitor — deliver only genuine boundary crossings, only
-/// for the registered transition types. `CLMonitor` differs from classic in ways this type has to
-/// compensate for:
-/// - It re-emits a condition's CURRENT state on process start and system re-evaluation
-///   (relaunch, unlock), not just on crossings → per-condition dedup baseline, persisted in
-///   `GeofenceStorage` so a cold-wake compares against the pre-kill state.
-/// - It has no `notifyOnEntry`/`notifyOnExit` equivalent → the delivery filter is stored per
-///   condition and applied here.
-/// - Its API is async (an actor + `events` sequence) while the protocol is synchronous → mutations
-///   run on a serialized FIFO pipeline so a re-registration's removes can never overtake its adds.
-/// - On iOS 18+, `events` yields nothing in the background unless a `CLServiceSession` asserts the
-///   app's continued interest → hold one for the monitor's lifetime, created only when Always is
-///   already granted so the SDK never triggers a permission prompt (the host owns permission).
-/// - Its conditions persist in the app container under our private monitor name, so everything in
-///   it is SDK-owned by construction (classic `monitoredRegions` is shared app-wide).
+/// for the registered transition types. `CLMonitor` differences this type compensates for:
+/// - Re-emits a condition's CURRENT state on process start and re-evaluation (relaunch, unlock),
+///   not just on crossings → per-condition dedup baseline persisted in `GeofenceStorage`, so a
+///   cold-wake compares against the pre-kill state.
+/// - No `notifyOnEntry`/`notifyOnExit` equivalent → per-condition delivery filter applied here.
+/// - Async API (actor + `events` sequence) behind a synchronous protocol → mutations run on a
+///   serialized FIFO pipeline so a re-registration's removes can never overtake its adds.
+/// - On iOS 18+, `events` yields nothing in the background without a `CLServiceSession` → hold one
+///   for the monitor's lifetime, created only when Always is already granted (never prompts —
+///   permission is the host's decision).
+/// - Conditions persist in the app container under our private monitor name → everything in it is
+///   SDK-owned by construction (classic `monitoredRegions` is shared app-wide).
 ///
 /// Not unit-tested directly — it adapts real, non-substitutable CoreLocation objects. The decision
 /// logic lives in `GeofenceStorage` (unit-tested); the adapter is validated on-device.
@@ -30,10 +27,9 @@ import Foundation
 final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preconcurrency CLLocationManagerDelegate {
     // CLMonitor names must be alphanumeric — dots/special chars throw "Monitor name is not valid".
     private static let monitorName = "CustomerIOGeofenceMonitor"
-    /// UserDefaults key mirroring the monitor's condition identifiers. `CLMonitor` only exposes
-    /// them async, but the bootstrap decides adopt-vs-re-register from a synchronous read right
-    /// after construction — without the mirror that read is empty on every cold launch and the
-    /// adopt path is unreachable.
+    /// UserDefaults mirror of the monitor's condition identifiers. `CLMonitor` only exposes them
+    /// async, but the bootstrap's adopt-vs-re-register decision needs a synchronous read right
+    /// after construction — without the mirror that read is empty on every cold launch.
     private static let conditionMirrorKey = "io.customer.sdk.geofence.clmonitor.conditionIdentifiers"
 
     private let logger: Logger
@@ -49,9 +45,8 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preco
 
     /// In-memory ownership filter, mirrors `ownedRegionIdentifiers` in the classic monitor.
     private var ownedRegionIdentifiers: Set<String> = []
-    /// Synchronous view of the monitor's condition identifiers: seeded from the UserDefaults mirror
-    /// at init, reconciled against `CLMonitor.identifiers` by the pipeline's first operation, then
-    /// maintained by every add/remove.
+    /// Synchronous view of the monitor's condition identifiers: seeded from the mirror at init,
+    /// reconciled against `CLMonitor.identifiers` by the pipeline's first operation, then maintained.
     private var knownConditionIdentifiers: Set<String> = []
 
     /// Memoized `CLMonitor` creation so every caller shares one instance — creating a second
@@ -62,6 +57,10 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preco
     private var consumeTask: Task<Void, Never>?
     /// Tail of the FIFO mutation pipeline; each enqueued operation awaits the previous one.
     private var lastQueuedOperation: Task<Void, Never>?
+    /// Events received before the bootstrap bound `onTransition` (see `handle(event:)`).
+    private var pendingEvents: [CLMonitor.Event] = []
+    private var isDrainingPendingEvents = false
+    private static let maxPendingEvents = 64
     /// Held `CLServiceSession` (iOS 18+), stored untyped because stored properties can't carry
     /// availability. Non-nil only while Always authorization is granted.
     private var serviceSession: AnyObject?
@@ -122,9 +121,8 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preco
     /// truth. Safe to assign wholesale because no add/remove can have run yet (FIFO).
     private func reconcileKnownConditions(with monitor: CLMonitor) async {
         let persisted = Set(await monitor.identifiers)
-        // The mirror seeded at init drove bootstrap's synchronous adopt/re-register decision; if the
-        // OS's live set differs it may be wrong (adopted a dropped condition, or skipped re-registering
-        // a missing one). Notify so bootstrap re-evaluates against live truth, not at the next sync.
+        // A drifted mirror means bootstrap's synchronous adopt/re-register decision may have been
+        // wrong — notify so it re-evaluates against live truth, not at the next sync.
         let drifted = persisted != knownConditionIdentifiers
         knownConditionIdentifiers = persisted
         ownedRegionIdentifiers.formUnion(persisted)
@@ -136,10 +134,9 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preco
         consumeTask = Task { [weak self] in
             guard let self else { return }
             let monitor = await self.monitorInstance().value
-            // Re-subscribe with bounded backoff if the sequence throws or ends. A single failure
-            // otherwise ends the only subscription for the process's lifetime, silently stopping all
-            // delivery. Re-subscription is sequential (the prior loop has ended), so there is never a
-            // second concurrent consumer stealing events.
+            // Re-subscribe with bounded backoff if the sequence throws or ends — otherwise all
+            // delivery silently stops for the process. Sequential (the prior loop has ended), so
+            // there is never a second concurrent consumer stealing events.
             var backoffNanos: UInt64 = 1000000000
             let maxBackoffNanos: UInt64 = 30000000000
             while !Task.isCancelled {
@@ -158,6 +155,34 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preco
     }
 
     private func handle(event: CLMonitor.Event) async {
+        // Hold events until the bootstrap binds `onTransition`: processing earlier would advance the
+        // persisted dedup baseline and then drop the delivery on the nil handler, suppressing the
+        // later re-emission of the same state. New arrivals queue behind any backlog so
+        // per-condition order holds. Capped against a process that never binds — dropping oldest is
+        // safe because CLMonitor re-emits current state.
+        if onTransition == nil || !pendingEvents.isEmpty {
+            pendingEvents.append(event)
+            if pendingEvents.count > Self.maxPendingEvents { pendingEvents.removeFirst() }
+            drainPendingEventsIfReady()
+            return
+        }
+        await process(event: event)
+    }
+
+    private func drainPendingEventsIfReady() {
+        guard onTransition != nil, !isDrainingPendingEvents, !pendingEvents.isEmpty else { return }
+        isDrainingPendingEvents = true
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            while self.onTransition != nil, !self.pendingEvents.isEmpty {
+                let next = self.pendingEvents.removeFirst()
+                await self.process(event: next)
+            }
+            self.isDrainingPendingEvents = false
+        }
+    }
+
+    private func process(event: CLMonitor.Event) async {
         let identifier = event.identifier
         guard ownedRegionIdentifiers.contains(identifier) else { return }
         let transition: GeofenceTransition
@@ -169,11 +194,9 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preco
         case .unknown:
             return
         case .unmonitored:
-            // CLMonitor gave up on the condition (e.g. the ~20-condition budget was exceeded).
-            // Mirror the classic monitoringDidFail handling: drop ownership so later events for a
-            // half-alive condition aren't delivered; the next sync re-registers a fresh set. Also
-            // drop it from the condition mirror so `osMonitoredRegionIdentifiers` doesn't keep
-            // claiming a condition the OS no longer holds.
+            // CLMonitor gave up on the condition (e.g. condition budget exceeded). As with classic
+            // monitoringDidFail: drop ownership and the mirror entry so nothing claims a condition
+            // the OS no longer holds; the next sync re-registers a fresh set.
             ownedRegionIdentifiers.remove(identifier)
             knownConditionIdentifiers.remove(identifier)
             persistConditionMirror()
@@ -211,6 +234,7 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preco
 
     func setOnTransition(_ handler: GeofenceTransitionHandler?) {
         onTransition = handler
+        drainPendingEventsIfReady()
     }
 
     func setOnAuthorizationChanged(_ handler: GeofenceAuthorizationChangedHandler?) {
@@ -234,15 +258,14 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preco
         // Populate the ownership filter synchronously so a fast-arriving event isn't dropped.
         ownedRegionIdentifiers.insert(identifier)
 
-        // Parity with the classic monitor, which clamps to the same cap. `maximumRegionMonitoringDistance`
-        // lives on the (deprecated) CLLocationManager, but it's a harmless property read and there is no
-        // CLMonitor equivalent, so use it to keep both paths registering identical geometry.
+        // Parity with the classic monitor's clamp; `maximumRegionMonitoringDistance` is a deprecated
+        // but harmless read with no CLMonitor equivalent — both paths register identical geometry.
         let clampedRadius = min(radius, authManager.maximumRegionMonitoringDistance)
 
-        // The device's ACTUAL state relative to the circle seeds both CLMonitor's `assuming:` hint and
-        // the stored baseline (see `recordMonitorRegistration` for why that keeps registration silent
-        // yet the first real crossing delivers). Fall back to the geometric expectation when there's no
-        // fix: the movement trigger is centered on the device (inside); business geofences are outside.
+        // The device's ACTUAL state seeds both CLMonitor's `assuming:` hint and the stored baseline
+        // (see `recordMonitorRegistration`: registration stays silent, the first real crossing
+        // delivers). No fix → geometric expectation: trigger is device-centered (inside),
+        // business geofences outside.
         let isMovementTrigger = identifier == GeofenceConstants.movementTriggerIdentifier
         let isInside = isDeviceInside(center: coordinate, radius: clampedRadius) ?? isMovementTrigger
         let initialTransition: GeofenceTransition = isInside ? .enter : .exit
@@ -250,10 +273,9 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preco
 
         enqueueMonitorOperation { [weak self] monitor in
             guard let self else { return }
-            // Persist before the OS add: storage keys off the recorded geometry to preserve the
-            // baseline for an unchanged-geometry re-register and reseed for a new/changed circle. This
-            // runs after the wholesale stop-all, so CLMonitor's own record is already gone — hence the
-            // decision lives in storage (which survives stop-all), not in a live-record check here.
+            // Persist before the OS add: storage keys off recorded geometry to preserve the baseline
+            // on an unchanged re-register and reseed on a new/changed circle. The decision lives in
+            // storage because this runs after stop-all, when CLMonitor's own record is already gone.
             await self.storage.recordMonitorRegistration(
                 identifier: identifier,
                 transitionTypes: transitionTypes,
@@ -282,9 +304,8 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preco
 
     func stopMonitoringAll() {
         ownedRegionIdentifiers.removeAll()
-        // Clear against CLMonitor's LIVE identifiers, not the owned/mirror snapshot. Every condition
-        // under our private monitor is SDK-owned, so an empty owned set or a mirror that lost an entry
-        // must still not leave a stale condition holding an OS slot when re-registration re-adds.
+        // Clear against CLMonitor's LIVE identifiers, not the owned/mirror snapshot: an empty owned
+        // set or a lossy mirror must not leave a stale SDK condition holding an OS slot.
         enqueueMonitorOperation { [weak self] monitor in
             guard let self else { return }
             for identifier in await monitor.identifiers {
@@ -323,10 +344,9 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preco
     // MARK: - Service session (iOS 18+)
 
     /// On iOS 18+, `CLMonitor.events` stops yielding in the background unless a `CLServiceSession`
-    /// asserts the app's continued interest — Always authorization alone no longer suffices. Hold
-    /// one for the monitor's lifetime, but only while Always is ALREADY granted: creating a session
-    /// above the granted tier can put up a permission prompt, and prompting is the host's decision,
-    /// never the SDK's. iOS 17 has no sessions and delivers background events without one.
+    /// asserts continued interest — Always authorization alone no longer suffices. Held for the
+    /// monitor's lifetime, but only while Always is ALREADY granted: a session above the granted
+    /// tier can put up a permission prompt, and prompting is the host's decision, never the SDK's.
     private func updateServiceSession() {
         guard #available(iOS 18.0, *) else { return }
         let isAlwaysAuthorized = authManager.authorizationStatus == .authorizedAlways
@@ -354,10 +374,8 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preco
         return LocationData(latitude: location.coordinate.latitude, longitude: location.coordinate.longitude)
     }
 
-    /// Whether the device is currently inside the circle, from the last known location — used to seed
-    /// a registration's baseline to reality. `nil` when there's no usable fix, so the caller falls
-    /// back to the geometric expectation. Compares against `radius` directly (no accuracy padding):
-    /// a wrong guess only costs one corrective event, which the baseline absorbs on the next crossing.
+    /// Whether the device is inside the circle per the last known location; `nil` without a usable
+    /// fix. No accuracy padding: a wrong guess costs one corrective event, absorbed by the baseline.
     private func isDeviceInside(center: CLLocationCoordinate2D, radius: CLLocationDistance) -> Bool? {
         guard let location = authManager.location,
               CLLocationCoordinate2DIsValid(location.coordinate)
