@@ -1538,6 +1538,44 @@ struct GeofenceSyncCoordinatorTests {
         #expect(refreshResult.errorOrNil == .fetchFailed(.transport))
         #expect(setup.monitor.stopAllCallCount == 1)
         #expect(await storage.getRegisteredBusinessIds().isEmpty)
+        // Signed out (nobody current) → no self-heal retry, so no second fetch.
+        #expect(setup.api.fetchNearbyGeofencesCallsCount == 1)
+    }
+
+    @Test
+    func refresh_givenUserSwitchMidFetch_expectSelfHealRegistersNewUser() async {
+        // A signs out and B signs in while A's refresh is in flight: B's own refresh would be
+        // dropped on the held gate, and the exit cleanup stops everything — leaving the device
+        // unmonitored. The self-heal retry must re-run for B so the switch converges to a
+        // registered state instead of an outage until the next launch.
+        let contextStore = makeContextStore(userId: "user-1")
+        let storage = makeStorage()
+        let api = GeofenceApiServiceMock()
+        let fetchCount = Synchronized<Int>(0)
+        api.fetchNearbyGeofencesClosure = { _, _, completion in
+            let call = fetchCount.mutating { count -> Int in
+                count += 1
+                return count
+            }
+            // First fetch belongs to user-1; flip to user-2 mid-flight so the post-fetch check
+            // supersedes it and the exit cleanup + retry run.
+            if call == 1 { contextStore.setUserId("user-2") }
+            completion(.success(makeApiResponse(regions: [makeRegion(id: "g1", latitude: 0, longitude: 0)])))
+        }
+        let setup = makeCoordinator(api: api, storage: storage, contextStore: contextStore)
+
+        let result = await setup.coordinator.refresh(latitude: 0, longitude: 0)
+        #expect(result.isSuccess)
+
+        // The retry is fire-and-forget; wait for its registration to land.
+        for _ in 0 ..< 1000 {
+            let registered = await storage.getRegisteredBusinessIds()
+            if !registered.isEmpty { break }
+            await Task.yield()
+        }
+        #expect(fetchCount.wrappedValue == 2)
+        #expect(await storage.getRegisteredBusinessIds() == ["g1"])
+        #expect(setup.monitor.startedRegions.contains { $0.identifier == "g1" })
     }
 }
 

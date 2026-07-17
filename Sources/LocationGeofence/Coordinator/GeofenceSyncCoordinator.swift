@@ -50,10 +50,10 @@ protocol GeofenceSyncCoordinator: AutoMockable, AnyObject, Sendable {
 /// not declared `: Sendable`. Both are `let` references injected once and never mutated;
 /// the only mutable state is the `Synchronized<Bool>` dedup gate.
 final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sendable {
-    private let distanceFilter: GeofenceDistanceFilter
-    private let logger: Logger
-    // Internal (not private) so the `+RefreshDecision` / `+InitialEnter` / `+OsRegistration`
-    // extensions in their own files can read them; all are immutable injected deps.
+    // Internal (not private) so the `+RefreshDecision` / `+Refresh` / `+InitialEnter` /
+    // `+OsRegistration` extensions in their own files can read them; all are immutable injected deps.
+    let distanceFilter: GeofenceDistanceFilter
+    let logger: Logger
     let apiService: GeofenceApiService
     let monitor: GeofenceRegionMonitoring
     let storage: GeofenceSyncStorage
@@ -87,10 +87,13 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
             logger.geofenceSyncSkipped(reason: "refresh already in progress")
             return .failure(.alreadyInProgress)
         }
-        defer { releaseGate() }
         let expectedUserId = identifiedUserId
         let result = await performRefresh(expectedUserId: expectedUserId, latitude: latitude, longitude: longitude)
-        await cleanupIfUserChanged(expectedUserId: expectedUserId)
+        let cleaned = await cleanupIfUserChanged(expectedUserId: expectedUserId)
+        // Explicit release (not defer): the self-heal retry below must find the gate free, or it
+        // would be dropped exactly like the refresh it compensates for.
+        releaseGate()
+        if cleaned { retryForCurrentUser(latitude: latitude, longitude: longitude) }
         return result
     }
 
@@ -134,10 +137,11 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
             logger.geofenceSyncSkipped(reason: "refresh already in progress")
             return .failure(.alreadyInProgress)
         }
-        defer { releaseGate() }
         let expectedUserId = identifiedUserId
         let result = await performMovement(expectedUserId: expectedUserId, latitude: latitude, longitude: longitude)
-        await cleanupIfUserChanged(expectedUserId: expectedUserId)
+        let cleaned = await cleanupIfUserChanged(expectedUserId: expectedUserId)
+        releaseGate()
+        if cleaned { retryForCurrentUser(latitude: latitude, longitude: longitude) }
         return result
     }
 
@@ -244,6 +248,18 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
         return userId
     }
 
+    /// After a cleanup for an identity change, the device monitors nothing — and the new user's own
+    /// refresh may already have been dropped on the gate this operation held. Re-run for whoever is
+    /// signed in now, with this operation's seconds-old coordinates, so a user switch converges to a
+    /// registered state instead of an outage lasting until the next launch. Loop-safe: a retry only
+    /// re-fires if the identity changes yet again during the retry itself.
+    private func retryForCurrentUser(latitude: Double, longitude: Double) {
+        guard identifiedUserId != nil else { return }
+        Task { [weak self] in
+            _ = await self?.refresh(latitude: latitude, longitude: longitude)
+        }
+    }
+
     /// Returns false when another call already holds the gate; the caller short-circuits.
     private func acquireGate() -> Bool {
         refreshInProgress.mutating { inProgress in
@@ -255,118 +271,6 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
 
     private func releaseGate() {
         refreshInProgress.wrappedValue = false
-    }
-}
-
-// MARK: - Refresh tiers + exit cleanup
-
-private extension GeofenceSyncCoordinatorImpl {
-    /// Fetch + filter + register + persist. Caller owns the dedup gate and user-id check;
-    /// `expectedUserId` is the value captured before the API call so this helper can
-    /// re-check that the identified user hasn't changed during the (potentially long) fetch.
-    func performRemoteRefresh(
-        expectedUserId: String,
-        latitude: Double,
-        longitude: Double,
-        cachedConfig: GeofenceConfig?
-    ) async -> Result<Void, GeofenceSyncError> {
-        let fetchResult = await awaitApiFetch(latitude: latitude, longitude: longitude)
-        let response: GeofenceApiResponse
-        switch fetchResult {
-        case .success(let value):
-            response = value
-        case .failure(let error):
-            logger.geofenceSyncFetchFailed(error: error)
-            return .failure(.fetchFailed(error))
-        }
-
-        // If the user signed out / changed during the API call, drop the result —
-        // registering and persisting for a stale user would attribute geofences and
-        // events to whoever signs in next.
-        if contextStore.currentUserId != expectedUserId {
-            logger.geofenceSyncSupersededByUserChange()
-            return .success(())
-        }
-
-        let parsedConfig = response.toDomainConfig()
-        let regions = response.toDomainRegions()
-        let effectiveConfig = parsedConfig ?? cachedConfig ?? .fallback
-        let anchor = LocationData(latitude: latitude, longitude: longitude)
-        let nearest = distanceFilter.nearest(regions, to: anchor, limit: effectiveConfig.maxBusinessGeofences, maxDistance: effectiveConfig.maxMonitoringDistance)
-        // Read before `recordRegistration` overwrites it — the diff decides which registrations are new.
-        let previouslyRegisteredIds = await storage.getRegisteredBusinessIds()
-        let osRegistration = await MainActor.run {
-            registerWithOsSync(
-                businessRegions: nearest,
-                movementTriggerLocation: anchor,
-                movementTriggerRadius: effectiveConfig.localRefreshTriggerRadius,
-                registerMovementTrigger: effectiveConfig.maxBusinessGeofences > 0 && !regions.isEmpty
-            )
-        }
-
-        await storage.setCachedGeofences(regions)
-        // Skip overwriting when the response did not ship a config — a previously cached
-        // value must not be clobbered by a null parse from a partial-rollout backend.
-        if let parsedConfig {
-            await storage.setCachedConfig(parsedConfig)
-        }
-        await storage.recordSync(timestamp: dateUtil.now, location: anchor)
-        await storage.recordRegistration(center: anchor, businessIds: Set(nearest.map(\.id)))
-        emitInitialEnters(
-            candidates: nearest,
-            osRegistration: osRegistration,
-            previouslyRegisteredIds: previouslyRegisteredIds,
-            expectedUserId: expectedUserId,
-            anchor: anchor
-        )
-        logger.geofenceSyncCompleted(registeredCount: nearest.count)
-        return .success(())
-    }
-
-    /// Re-rank cached regions for the new location and re-register with the OS. No API call and no
-    /// `lastSync` write — the API-fetch anchor is what the re-fetch decision compares against, so
-    /// leaving it intact preserves the next threshold. Records the registration anchor so the
-    /// ranking-staleness reference follows the device after a local re-rank.
-    func performLocalRefresh(
-        expectedUserId: String,
-        latitude: Double,
-        longitude: Double,
-        config: GeofenceConfig,
-        cachedRegions: [Geofence]
-    ) async -> Result<Void, GeofenceSyncError> {
-        let anchor = LocationData(latitude: latitude, longitude: longitude)
-        let nearest = distanceFilter.nearest(cachedRegions, to: anchor, limit: config.maxBusinessGeofences, maxDistance: config.maxMonitoringDistance)
-        // Read before `recordRegistration` overwrites it — the diff decides which registrations are new.
-        let previouslyRegisteredIds = await storage.getRegisteredBusinessIds()
-        let osRegistration = await MainActor.run {
-            registerWithOsSync(
-                businessRegions: nearest,
-                movementTriggerLocation: anchor,
-                movementTriggerRadius: config.localRefreshTriggerRadius,
-                registerMovementTrigger: config.maxBusinessGeofences > 0 && !cachedRegions.isEmpty
-            )
-        }
-        await storage.recordRegistration(center: anchor, businessIds: Set(nearest.map(\.id)))
-        emitInitialEnters(
-            candidates: nearest,
-            osRegistration: osRegistration,
-            previouslyRegisteredIds: previouslyRegisteredIds,
-            expectedUserId: expectedUserId,
-            anchor: anchor
-        )
-        logger.geofenceSyncCompleted(registeredCount: nearest.count)
-        return .success(())
-    }
-
-    /// A sign-out/switch can land anywhere inside a gated operation, and the `reset()` it triggers
-    /// can't run while the gate is held — it returns `.alreadyInProgress` and is dropped. Runs at
-    /// each gated method's single exit (gate still held) to undo the stale user's state, whichever
-    /// path the body took. Initial-enter delivery re-checks the user per iteration on its own.
-    func cleanupIfUserChanged(expectedUserId: String?) async {
-        guard let expectedUserId, contextStore.currentUserId != expectedUserId else { return }
-        await MainActor.run { monitor.stopMonitoringAll() }
-        await storage.clearUserScopedState()
-        logger.geofenceSyncSupersededByUserChange()
     }
 }
 
