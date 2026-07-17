@@ -8,6 +8,20 @@ import Foundation
 @MainActor
 enum GeofenceBootstrap {
     static func wireMonitor(di: DIGraphShared) async {
+        // iOS 18+ (CLMonitor): construct the monitor NOW, before the async reads below.
+        // CLMonitor delivers events only while its `events` sequence is being iterated — the
+        // OS does not queue a crossing for a late consumer the way classic region monitoring
+        // queues for a late delegate. On a cold-wake launch the background execution window is
+        // short, so the consumer must attach as early as possible; deferring construction until
+        // after these reads can miss the relaunch's re-emitted state. Safe to construct ahead of
+        // the reads because CLMonitor seeds its ownership filter synchronously from the persisted
+        // condition mirror in `init`, so a crossing arriving meanwhile still matches. Classic
+        // (iOS ≤17) deliberately stays constructed in phase 2 below: its delegate goes live on
+        // construction and an `await` before the owned-set is populated drops a queued crossing.
+        if #available(iOS 18.0, *) {
+            _ = di.geofenceMonitor
+        }
+
         // Phase 1: all async reads BEFORE constructing the monitor. The
         // `CLLocationManager` delegate goes live the moment the monitor exists, so any
         // `await` after that point lets the OS deliver queued cold-wake transitions into
