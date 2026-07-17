@@ -1456,6 +1456,96 @@ struct GeofenceSyncCoordinatorTests {
         #expect(await backing.getLastSync() == nil)
         #expect(setup.emitter.calls.wrappedValue.isEmpty)
     }
+
+    @Test
+    func refresh_givenSignOutBeforeFetchFailure_expectStaleStateUndone() async {
+        // Sign-out lands during the fetch and the fetch then fails — an early exit that used to
+        // return before any cleanup, leaving the previous user's registrations and sync anchors
+        // behind (their reset() was dropped on the held gate).
+        let contextStore = makeContextStore(userId: "user-1")
+        let storage = makeStorage()
+        await storage.recordSync(timestamp: Date(timeIntervalSince1970: 1), location: LocationData(latitude: 0, longitude: 0))
+        await storage.recordRegistration(center: LocationData(latitude: 0, longitude: 0), businessIds: ["g1"])
+        let api = GeofenceApiServiceMock()
+        api.fetchNearbyGeofencesClosure = { _, _, completion in
+            contextStore.setUserId(nil)
+            completion(.failure(.transport))
+        }
+        let setup = makeCoordinator(api: api, storage: storage, contextStore: contextStore)
+
+        let result = await setup.coordinator.refresh(latitude: 0, longitude: 0)
+
+        #expect(result.errorOrNil == .fetchFailed(.transport))
+        // The exit cleanup ran: monitoring stopped and the stale user-scoped state cleared.
+        #expect(setup.monitor.stopAllCallCount == 1)
+        #expect(await storage.getRegisteredBusinessIds().isEmpty)
+        #expect(await storage.getLastSync() == nil)
+    }
+
+    @Test
+    func refresh_givenSignOutDuringFreshnessSkip_expectStaleStateUndone() async {
+        // Sign-out lands while a refresh is deciding it has fresh data ("skip") — the shortest
+        // gated path, with no register/persist at all. The dropped reset()'s cleanup must still
+        // run before the gate is released.
+        let contextStore = makeContextStore(userId: "user-1")
+        let backing = makeStorage()
+        let dateUtil = DateUtilStub()
+        await backing.recordSync(timestamp: dateUtil.givenNow.addingTimeInterval(-100), location: LocationData(latitude: 0, longitude: 0))
+        await backing.recordRegistration(center: LocationData(latitude: 0, longitude: 0), businessIds: ["g1"])
+        let spy = SpyGeofenceSyncStorage(underlying: backing, onGetLastSync: { contextStore.setUserId(nil) })
+        let setup = makeCoordinator(storage: spy, contextStore: contextStore, dateUtil: dateUtil)
+
+        let result = await setup.coordinator.refresh(latitude: 0, longitude: 0)
+
+        #expect(result.isSuccess)
+        #expect(setup.api.fetchNearbyGeofencesCallsCount == 0)
+        #expect(setup.monitor.stopAllCallCount == 1)
+        #expect(await backing.getRegisteredBusinessIds().isEmpty)
+        #expect(await backing.getLastSync() == nil)
+    }
+
+    @Test
+    func reset_givenDroppedDuringInFlightRefresh_expectCleanupBeforeGateRelease() async {
+        // The reviewer's end-to-end scenario: reset() fires while a refresh holds the gate and is
+        // dropped as .alreadyInProgress; the refresh (here failing its fetch) must run the
+        // sign-out's cleanup before releasing the gate.
+        let contextStore = makeContextStore(userId: "user-1")
+        let storage = makeStorage()
+        await storage.recordRegistration(center: LocationData(latitude: 0, longitude: 0), businessIds: ["g1"])
+        let api = GeofenceApiServiceMock()
+        let heldCompletion = CompletionBox()
+        let (fetchStarted, fetchStartedContinuation) = AsyncStream<Void>.makeStream()
+        api.fetchNearbyGeofencesClosure = { _, _, completion in
+            heldCompletion.completion = completion
+            fetchStartedContinuation.yield()
+        }
+        let setup = makeCoordinator(api: api, storage: storage, contextStore: contextStore)
+
+        let refreshTask = Task { await setup.coordinator.refresh(latitude: 0, longitude: 0) }
+        for await _ in fetchStarted {
+            break
+        }
+        // Refresh is suspended in the fetch, holding the gate. Sign out and fire the reset.
+        contextStore.setUserId(nil)
+        let resetResult = await setup.coordinator.reset()
+        #expect(resetResult.errorOrNil == .alreadyInProgress)
+        // Reset was dropped — nothing cleaned yet.
+        #expect(setup.monitor.stopAllCallCount == 0)
+
+        heldCompletion.completion?(.failure(.transport))
+        let refreshResult = await refreshTask.value
+
+        #expect(refreshResult.errorOrNil == .fetchFailed(.transport))
+        #expect(setup.monitor.stopAllCallCount == 1)
+        #expect(await storage.getRegisteredBusinessIds().isEmpty)
+    }
+}
+
+/// Holds a fetch completion across concurrency domains so a test can resolve it after
+/// choreographing concurrent calls. `@unchecked Sendable`: writes and reads are sequenced by the
+/// fetch-started signal.
+private final class CompletionBox: @unchecked Sendable {
+    var completion: ((Result<GeofenceApiResponse, GeofenceApiError>) -> Void)?
 }
 
 // MARK: - Result matchers
@@ -1493,10 +1583,18 @@ private actor SpyGeofenceSyncStorage: GeofenceSyncStorage {
     /// Runs at the start of `setCachedGeofences` — the first storage write after the post-fetch user
     /// check — so a test can flip the identified user inside the register/persist window.
     private let onSetCachedGeofences: (@Sendable () -> Void)?
+    /// Runs at the start of `getLastSync` — inside the freshness decision — so a test can flip the
+    /// identified user on a refresh that will exit via the skip path.
+    private let onGetLastSync: (@Sendable () -> Void)?
 
-    init(underlying: GeofenceStorage, onSetCachedGeofences: (@Sendable () -> Void)? = nil) {
+    init(
+        underlying: GeofenceStorage,
+        onSetCachedGeofences: (@Sendable () -> Void)? = nil,
+        onGetLastSync: (@Sendable () -> Void)? = nil
+    ) {
         self.underlying = underlying
         self.onSetCachedGeofences = onSetCachedGeofences
+        self.onGetLastSync = onGetLastSync
     }
 
     func getCachedConfig() async -> GeofenceConfig? {
@@ -1510,6 +1608,7 @@ private actor SpyGeofenceSyncStorage: GeofenceSyncStorage {
     }
 
     func getLastSync() async -> LastSyncRecord? {
+        onGetLastSync?()
         operations.append(.getLastSync)
         return await underlying.getLastSync()
     }

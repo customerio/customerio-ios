@@ -88,8 +88,17 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
             return .failure(.alreadyInProgress)
         }
         defer { releaseGate() }
+        let expectedUserId = identifiedUserId
+        let result = await performRefresh(expectedUserId: expectedUserId, latitude: latitude, longitude: longitude)
+        await cleanupIfUserChanged(expectedUserId: expectedUserId)
+        return result
+    }
 
-        guard let userId = contextStore.currentUserId, !userId.isEmpty else {
+    /// The refresh body, extracted so `refresh` has a single exit at which `cleanupIfUserChanged`
+    /// runs while the gate is still held — covering every path (freshness-skip, fetch failure,
+    /// post-fetch supersede, success alike).
+    private func performRefresh(expectedUserId: String?, latitude: Double, longitude: Double) async -> Result<Void, GeofenceSyncError> {
+        guard let userId = expectedUserId else {
             logger.geofenceSyncSkipped(reason: "no identified user")
             return .failure(.noIdentifiedUser)
         }
@@ -126,8 +135,15 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
             return .failure(.alreadyInProgress)
         }
         defer { releaseGate() }
+        let expectedUserId = identifiedUserId
+        let result = await performMovement(expectedUserId: expectedUserId, latitude: latitude, longitude: longitude)
+        await cleanupIfUserChanged(expectedUserId: expectedUserId)
+        return result
+    }
 
-        guard let userId = contextStore.currentUserId, !userId.isEmpty else {
+    /// The movement body, extracted for a single gated exit — same rationale as `performRefresh`.
+    private func performMovement(expectedUserId: String?, latitude: Double, longitude: Double) async -> Result<Void, GeofenceSyncError> {
+        guard let userId = expectedUserId else {
             logger.geofenceSyncSkipped(reason: "no identified user")
             return .failure(.noIdentifiedUser)
         }
@@ -222,6 +238,12 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
         return GeofenceRegistration(center: anchor, businessIds: Set(nearest.map(\.id)))
     }
 
+    /// The identified user a gated operation runs for (`nil` when signed out); the exit cleanup compares against it.
+    private var identifiedUserId: String? {
+        guard let userId = contextStore.currentUserId, !userId.isEmpty else { return nil }
+        return userId
+    }
+
     /// Returns false when another call already holds the gate; the caller short-circuits.
     private func acquireGate() -> Bool {
         refreshInProgress.mutating { inProgress in
@@ -234,11 +256,15 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
     private func releaseGate() {
         refreshInProgress.wrappedValue = false
     }
+}
 
+// MARK: - Refresh tiers + exit cleanup
+
+private extension GeofenceSyncCoordinatorImpl {
     /// Fetch + filter + register + persist. Caller owns the dedup gate and user-id check;
     /// `expectedUserId` is the value captured before the API call so this helper can
     /// re-check that the identified user hasn't changed during the (potentially long) fetch.
-    private func performRemoteRefresh(
+    func performRemoteRefresh(
         expectedUserId: String,
         latitude: Double,
         longitude: Double,
@@ -286,9 +312,6 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
         }
         await storage.recordSync(timestamp: dateUtil.now, location: anchor)
         await storage.recordRegistration(center: anchor, businessIds: Set(nearest.map(\.id)))
-        // The post-fetch check above only covers the fetch window; a sign-out/switch can still land
-        // during the register + persist awaits, and reset() can't run while we hold the gate. Undo.
-        if await cleanupIfUserChanged(expectedUserId: expectedUserId) { return .success(()) }
         emitInitialEnters(
             candidates: nearest,
             osRegistration: osRegistration,
@@ -304,7 +327,7 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
     /// `lastSync` write — the API-fetch anchor is what the re-fetch decision compares against, so
     /// leaving it intact preserves the next threshold. Records the registration anchor so the
     /// ranking-staleness reference follows the device after a local re-rank.
-    private func performLocalRefresh(
+    func performLocalRefresh(
         expectedUserId: String,
         latitude: Double,
         longitude: Double,
@@ -324,8 +347,6 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
             )
         }
         await storage.recordRegistration(center: anchor, businessIds: Set(nearest.map(\.id)))
-        // Local re-rank has no post-fetch user check, so guard the register/persist window here too.
-        if await cleanupIfUserChanged(expectedUserId: expectedUserId) { return .success(()) }
         emitInitialEnters(
             candidates: nearest,
             osRegistration: osRegistration,
@@ -337,17 +358,15 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
         return .success(())
     }
 
-    /// A sign-out/switch can land during a refresh's register + persist awaits, after (or without) a
-    /// post-fetch user check — and `reset()` can't run while this refresh holds the dedup gate, so it
-    /// returns `.alreadyInProgress` and is dropped. Detect the change here (still holding the gate) and
-    /// undo the just-registered state, rather than leaving geofences + sync state for the wrong user.
-    /// Returns true when it cleaned up, so the caller stops before emitting initial enters.
-    private func cleanupIfUserChanged(expectedUserId: String) async -> Bool {
-        guard contextStore.currentUserId != expectedUserId else { return false }
+    /// A sign-out/switch can land anywhere inside a gated operation, and the `reset()` it triggers
+    /// can't run while the gate is held — it returns `.alreadyInProgress` and is dropped. Runs at
+    /// each gated method's single exit (gate still held) to undo the stale user's state, whichever
+    /// path the body took. Initial-enter delivery re-checks the user per iteration on its own.
+    func cleanupIfUserChanged(expectedUserId: String?) async {
+        guard let expectedUserId, contextStore.currentUserId != expectedUserId else { return }
         await MainActor.run { monitor.stopMonitoringAll() }
         await storage.clearUserScopedState()
         logger.geofenceSyncSupersededByUserChange()
-        return true
     }
 }
 
