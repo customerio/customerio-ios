@@ -34,7 +34,8 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preco
 
     private let logger: Logger
     /// Persists the per-condition dedup baseline + delivery filter (see `MonitorRegionRecord`).
-    private let storage: GeofenceStorage
+    /// Internal (not private) so the `+Rearm` extension can read it; immutable injected dependency.
+    let storage: GeofenceStorage
     private let userDefaults: UserDefaults
     /// Only for auth status/changes + current-location reads; region monitoring is on `CLMonitor`.
     private let authManager: CLLocationManager
@@ -107,8 +108,8 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preco
 
     /// Runs `operation` after every previously enqueued operation has finished. All monitor
     /// mutations go through here so caller-side ordering (stop-all, then re-register) is preserved
-    /// across the async hops to the `CLMonitor` actor.
-    private func enqueueMonitorOperation(_ operation: @escaping @MainActor (CLMonitor) async -> Void) {
+    /// across the async hops to the `CLMonitor` actor. Internal (not private) for `+Rearm`.
+    func enqueueMonitorOperation(_ operation: @escaping @MainActor (CLMonitor) async -> Void) {
         let previous = lastQueuedOperation
         let monitorTask = monitorInstance()
         lastQueuedOperation = Task { @MainActor in
@@ -229,6 +230,7 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preco
         let adopted = identifiers.intersection(knownConditionIdentifiers)
         guard !adopted.isEmpty else { return }
         ownedRegionIdentifiers.formUnion(adopted)
+        rearmConditions(adopted)
         logger.geofenceRegionsAdopted(count: adopted.count)
     }
 
@@ -385,16 +387,4 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preco
         let centerLocation = CLLocation(latitude: center.latitude, longitude: center.longitude)
         return location.distance(from: centerLocation) <= radius
     }
-}
-
-// MARK: - DI
-
-@available(iOS 17.0, *)
-extension CLMonitorGeofenceMonitor {
-    /// Process-wide singleton, same lifetime rationale as `CoreLocationGeofenceMonitor.shared`.
-    @MainActor
-    static let shared = CLMonitorGeofenceMonitor(
-        logger: DIGraphShared.shared.logger,
-        storage: DIGraphShared.shared.geofenceStorage
-    )
 }

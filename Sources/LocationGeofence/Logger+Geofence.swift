@@ -120,6 +120,6 @@ extension Logger {
     }
 
     func geofenceRegionsAdopted(count: Int) {
-        debug("Adopted \(count) OS-persisted region(s) on launch; skipping re-registration", geofenceTag)
+        debug("Adopted \(count) OS-persisted region(s) on launch; re-armed in place", geofenceTag)
     }
 }

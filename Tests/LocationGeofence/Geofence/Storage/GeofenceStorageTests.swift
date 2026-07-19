@@ -683,4 +683,21 @@ struct GeofenceStorageTests {
         #expect(await afterRelaunch.recordMonitorEvent(.enter, forIdentifier: "geo_1") == .suppressedNoChange)
         #expect(await afterRelaunch.recordMonitorEvent(.exit, forIdentifier: "geo_1") == .deliver)
     }
+
+    @Test
+    func getMonitorRegionRecords_givenRegistrationsAndEvents_expectGeometryAndBaselinesReturned() async {
+        // The adopt-time re-arm rebuilds CLMonitor conditions from this snapshot, so it must carry
+        // the registered geometry and the CURRENT baseline (not the registration-time state).
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let storage = makeStorage(directory: dir)
+        await storage.recordMonitorRegistration(identifier: "geo_1", transitionTypes: [.enter, .exit], initialState: .exit, center: LocationData(latitude: 10, longitude: 20), radius: 100)
+        _ = await storage.recordMonitorEvent(.enter, forIdentifier: "geo_1") // baseline advances
+
+        let records = await storage.getMonitorRegionRecords()
+
+        #expect(records["geo_1"]?.center == LocationData(latitude: 10, longitude: 20))
+        #expect(records["geo_1"]?.radius == 100)
+        #expect(records["geo_1"]?.lastState == .enter)
+    }
 }

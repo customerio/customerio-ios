@@ -152,6 +152,12 @@ actor GeofenceStorage {
         return record.transitionTypes.contains(transition) ? .deliver : .suppressedFilteredType
     }
 
+    /// Snapshot of every per-condition monitor record — the adopt-time re-arm rebuilds conditions
+    /// from the geometry and baselines stored here.
+    func getMonitorRegionRecords() -> [String: MonitorRegionRecord] {
+        loadFromDisk()?.monitorRegionRecords ?? [:]
+    }
+
     /// Clears the cooldown map, last-sync record, registration set, and monitor baselines but
     /// preserves the cached geofences and config. Called on sign-out: the workspace cache is shared
     /// across users, while cooldowns belong to the signed-out user and the last-sync anchor would
