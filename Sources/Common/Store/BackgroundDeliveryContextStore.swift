@@ -83,6 +83,13 @@ public final class BackgroundDeliveryContextStore: @unchecked Sendable {
         return cache.using { $0.cdpApiKey }
     }
 
+    /// Whether a registered provider is currently supplying a key — i.e. DataPipeline has
+    /// initialized in this process. Lets callers distinguish "SDK is up, hand work to it" from
+    /// "cold-wake, deliver directly off the persisted context".
+    public var hasLiveCdpApiKeyProvider: Bool {
+        providerRef.using { $0.provider?.cdpApiKey?.isEmpty == false }
+    }
+
     /// Registers a live source for `cdpApiKey`. Held weakly so the provider's lifecycle
     /// drives availability — when the provider is deallocated (or never registered, as on
     /// cold-wake), `currentCdpApiKey` falls back to the persisted value.
