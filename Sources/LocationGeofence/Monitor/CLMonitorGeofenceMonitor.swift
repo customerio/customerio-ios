@@ -158,10 +158,11 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preco
     private func handle(event: CLMonitor.Event) async {
         // Hold events until the bootstrap binds `onTransition`: processing earlier would advance the
         // persisted dedup baseline and then drop the delivery on the nil handler, suppressing the
-        // later re-emission of the same state. New arrivals queue behind any backlog so
-        // per-condition order holds. Capped against a process that never binds — dropping oldest is
-        // safe because CLMonitor re-emits current state.
-        if onTransition == nil || !pendingEvents.isEmpty {
+        // later re-emission of the same state. New arrivals queue behind any backlog — including
+        // while the drain has popped its last event but is still awaiting `process`, where the queue
+        // reads empty — so per-condition order holds. Capped against a process that never binds —
+        // dropping oldest is safe because CLMonitor re-emits current state.
+        if onTransition == nil || !pendingEvents.isEmpty || isDrainingPendingEvents {
             pendingEvents.append(event)
             if pendingEvents.count > Self.maxPendingEvents { pendingEvents.removeFirst() }
             drainPendingEventsIfReady()
