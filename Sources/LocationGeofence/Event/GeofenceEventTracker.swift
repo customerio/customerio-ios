@@ -84,7 +84,9 @@ final class GeofenceEventTracker: @unchecked Sendable {
             return []
         }
 
-        let cooldownKey = "\(geofenceId):\(transition.rawValue)"
+        // Cooldown is scoped per user: a re-login must not be suppressed by the previous user's
+        // recent transition, even when a fast re-login skips the async sign-out cleanup.
+        let cooldownKey = "\(stampedUserId):\(geofenceId):\(transition.rawValue)"
         let now = dateUtil.now
         // Cached config wins when present so a workspace can tune the dedup window without
         // an SDK release; constructor default applies otherwise.
