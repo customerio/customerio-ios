@@ -86,6 +86,12 @@ public struct VisualInboxChrome: Equatable {
     public let dividerColor: String?
     /// `patterns.inbox.unreadIndicator.background` — the unread badge fill.
     public let badgeBackground: String?
+    /// `patterns.inbox.unreadIndicator.text.color` — the unread badge count text color (hex string).
+    /// nil when not configured; the overlay falls back to white.
+    public let badgeTextColor: String?
+    /// `patterns.inbox.unreadIndicator.text.fontSize` — the unread badge count text size (points).
+    /// nil when not configured; the overlay falls back to its caption size.
+    public let badgeTextSize: Double?
     /// `patterns.inbox.cornerRadius` — the panel corner radius (points).
     public let cornerRadius: Double?
     /// `patterns.inbox.position` — where the floating bell anchors (e.g. `bottom-right`, `bottom-left`,
@@ -106,6 +112,8 @@ public struct VisualInboxChrome: Equatable {
         panelBackground: String?,
         dividerColor: String?,
         badgeBackground: String?,
+        badgeTextColor: String?,
+        badgeTextSize: Double?,
         cornerRadius: Double?,
         position: String?,
         showUnreadBadge: Bool?,
@@ -117,6 +125,8 @@ public struct VisualInboxChrome: Equatable {
         self.panelBackground = panelBackground
         self.dividerColor = dividerColor
         self.badgeBackground = badgeBackground
+        self.badgeTextColor = badgeTextColor
+        self.badgeTextSize = badgeTextSize
         self.cornerRadius = cornerRadius
         self.position = position
         self.showUnreadBadge = showUnreadBadge
@@ -130,6 +140,8 @@ public struct VisualInboxChrome: Equatable {
             lhs.panelBackground == rhs.panelBackground &&
             lhs.dividerColor == rhs.dividerColor &&
             lhs.badgeBackground == rhs.badgeBackground &&
+            lhs.badgeTextColor == rhs.badgeTextColor &&
+            lhs.badgeTextSize == rhs.badgeTextSize &&
             lhs.cornerRadius == rhs.cornerRadius &&
             lhs.position == rhs.position &&
             lhs.showUnreadBadge == rhs.showUnreadBadge &&

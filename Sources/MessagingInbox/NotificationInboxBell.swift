@@ -76,9 +76,11 @@ public struct NotificationInboxBell: View {
                     .shadow(radius: 4)
 
                 if showsUnreadCount {
+                    // Badge count text color + size come from branding (`unreadIndicator.text`,
+                    // MBL-2126), falling back to white / the caption size when unset.
                     Text("\(model.unopenedCount)")
-                        .font(.caption)
-                        .foregroundColor(.white)
+                        .font(colors.badgeTextSize.map { Font.system(size: $0) } ?? .caption)
+                        .foregroundColor(colors.badgeText)
                         .padding(5)
                         .background(colors.badge)
                         .clipShape(Circle())
@@ -96,8 +98,15 @@ public struct NotificationInboxBell: View {
     @ViewBuilder
     private func bellGlyph(colors: ResolvedInboxColors) -> some View {
         if let glyph = model.bellGlyph {
-            // Even-odd fill matches CIO bell SVGs' `fill-rule="evenodd"` (outlined bell).
-            InboxBellIcon(glyph: glyph).fill(colors.bellIcon, style: FillStyle(eoFill: true))
+            // Fill each <path> INDEPENDENTLY (like the browser) with its OWN declared fill rule so
+            // overlapping paths don't flip each other's winding parity (MBL-2123). Uniform tint → the
+            // stack reads as one glyph.
+            ZStack {
+                ForEach(Array(glyph.subpaths.enumerated()), id: \.offset) { _, subpath in
+                    InboxBellIcon(subpath: subpath.path, viewBox: glyph.viewBox)
+                        .fill(colors.bellIcon, style: FillStyle(eoFill: subpath.usesEvenOddFill))
+                }
+            }
         } else {
             Image("cio-inbox-bell", bundle: .cioInboxResources)
                 .renderingMode(.template)

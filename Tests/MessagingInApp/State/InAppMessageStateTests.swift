@@ -1359,6 +1359,70 @@ class InAppMessageStateTests: IntegrationTest {
         XCTAssertTrue(state.inboxMessages.contains(message1))
     }
 
+    // MARK: - Inbox click metric: `.trackClicked` -> `TrackInAppMetricEvent` middleware mapping
+
+    /// Builds a store manager wired to [eventBusHandler] so a test can inspect the metric events the
+    /// inbox middleware posts. Mirrors the `setUp` wiring but with an injectable event bus.
+    private func makeManager(eventBusHandler: EventBusHandler) -> InAppMessageManager {
+        InAppMessageStoreManager(
+            logger: diGraphShared.logger,
+            threadUtil: diGraphShared.threadUtil,
+            logManager: diGraphShared.logManager,
+            gistDelegate: diGraphShared.gistDelegate,
+            anonymousMessageManager: diGraphShared.anonymousMessageManager,
+            eventBusHandler: eventBusHandler
+        )
+    }
+
+    private func inboxMessage(queueId: String, deliveryId: String?) -> InboxMessage {
+        InboxMessage(queueId: queueId, deliveryId: deliveryId, expiry: nil, sentAt: Date(), topics: [], type: "", opened: false, priority: 5, properties: [:])
+    }
+
+    /// Dispatching `.trackClicked` for a message in state maps to a single clicked
+    /// `TrackInAppMetricEvent` carrying the message's delivery id and BOTH actionName + actionValue.
+    /// Covers the middleware mapping between the action dispatch and the posted metric event (the API
+    /// dispatch and DataPipeline serialization are covered separately elsewhere).
+    func test_trackClickedMiddleware_givenActionNameAndValue_expectClickedMetricWithBoth() async {
+        let eventBus = EventBusHandlerMock()
+        let manager = makeManager(eventBusHandler: eventBus)
+        let message = inboxMessage(queueId: "queue-1", deliveryId: "delivery-1")
+
+        await manager.dispatchAsync(action: .setUserIdentifier(user: "test-user"))
+        await manager.dispatchAsync(action: .processInboxMessages(messages: [message]))
+        eventBus.resetMock() // ignore any events emitted while seeding state
+
+        await manager.dispatchAsync(action: .inboxAction(action: .trackClicked(message: message, actionName: "view_details", actionValue: "https://example.com")))
+
+        let metrics = eventBus.postEventReceivedInvocations.compactMap { $0 as? TrackInAppMetricEvent }
+        XCTAssertEqual(metrics.count, 1, "Expected exactly one clicked metric event")
+        let event = metrics.first
+        XCTAssertEqual(event?.deliveryID, "delivery-1")
+        XCTAssertEqual(event?.event, InAppMetric.clicked.rawValue)
+        XCTAssertEqual(event?.params["actionName"], "view_details")
+        XCTAssertEqual(event?.params["actionValue"], "https://example.com")
+    }
+
+    /// Empty actionName/actionValue are omitted from the metric params entirely (web parity — no
+    /// `actionValue: ""`), while the clicked event + delivery id are still reported.
+    func test_trackClickedMiddleware_givenEmptyActionNameAndValue_expectOmittedFromParams() async {
+        let eventBus = EventBusHandlerMock()
+        let manager = makeManager(eventBusHandler: eventBus)
+        let message = inboxMessage(queueId: "queue-1", deliveryId: "delivery-1")
+
+        await manager.dispatchAsync(action: .setUserIdentifier(user: "test-user"))
+        await manager.dispatchAsync(action: .processInboxMessages(messages: [message]))
+        eventBus.resetMock()
+
+        await manager.dispatchAsync(action: .inboxAction(action: .trackClicked(message: message, actionName: "", actionValue: "")))
+
+        let metrics = eventBus.postEventReceivedInvocations.compactMap { $0 as? TrackInAppMetricEvent }
+        XCTAssertEqual(metrics.count, 1)
+        let event = metrics.first
+        XCTAssertEqual(event?.deliveryID, "delivery-1")
+        XCTAssertEqual(event?.event, InAppMetric.clicked.rawValue)
+        XCTAssertTrue(event?.params.isEmpty ?? false, "Empty actionName/actionValue must be omitted from params")
+    }
+
     func test_inboxMessages_whenMessagePropertyChanges_expectStateChangeDetected() async {
         // Set user ID first to bypass auth middleware
         await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: "test-user"))
@@ -1777,7 +1841,7 @@ class InAppMessageStateTests: IntegrationTest {
         let initialState = state
 
         // Track clicked
-        await inAppMessageManager.dispatchAsync(action: .inboxAction(action: .trackClicked(message: message, actionName: "view_details")))
+        await inAppMessageManager.dispatchAsync(action: .inboxAction(action: .trackClicked(message: message, actionName: "view_details", actionValue: nil)))
 
         state = await inAppMessageManager.state
         // State should remain unchanged
@@ -1808,7 +1872,7 @@ class InAppMessageStateTests: IntegrationTest {
         let initialState = state
 
         // Track clicked without actionName
-        await inAppMessageManager.dispatchAsync(action: .inboxAction(action: .trackClicked(message: message, actionName: nil)))
+        await inAppMessageManager.dispatchAsync(action: .inboxAction(action: .trackClicked(message: message, actionName: nil, actionValue: nil)))
 
         state = await inAppMessageManager.state
         // State should remain unchanged
@@ -1836,7 +1900,7 @@ class InAppMessageStateTests: IntegrationTest {
         XCTAssertTrue(state.inboxMessages.isEmpty)
 
         // Try to track click for non-existent message
-        await inAppMessageManager.dispatchAsync(action: .inboxAction(action: .trackClicked(message: nonExistentMessage, actionName: "test")))
+        await inAppMessageManager.dispatchAsync(action: .inboxAction(action: .trackClicked(message: nonExistentMessage, actionName: "test", actionValue: nil)))
 
         // State should remain empty
         let finalState = await inAppMessageManager.state

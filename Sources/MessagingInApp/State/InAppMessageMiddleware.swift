@@ -285,6 +285,9 @@ private func handleUpdateOpened(
     if opened {
         logger.logWithModuleTag("Inbox message opened: \(message.describeForLogs)", level: .debug)
         if let deliveryId = message.deliveryId {
+            // Report the opened metric via the generic `Report Delivery Event` (metric: opened) —
+            // this matches web, where the CDP backend renders it as "Opened Inbox Message" for an
+            // inbox delivery. The server open-state PATCH above is separate and still fires.
             eventBusHandler.postEvent(TrackInAppMetricEvent(deliveryID: deliveryId, event: InAppMetric.opened.rawValue))
         }
     }
@@ -301,10 +304,17 @@ private func handleDeleteMessage(message: InboxMessage, state: InAppMessageState
     }
 }
 
-private func handleTrackClicked(message: InboxMessage, actionName: String?, logger: Logger, eventBusHandler: EventBusHandler) {
+private func handleTrackClicked(message: InboxMessage, actionName: String?, actionValue: String?, logger: Logger, eventBusHandler: EventBusHandler) {
     logger.logWithModuleTag("Inbox message clicked: \(message.describeForLogs)", level: .debug)
     if let deliveryId = message.deliveryId {
-        let params = actionName.map { ["actionName": $0] } ?? [:]
+        // Report the clicked metric via the generic `Report Delivery Event` (metric: clicked),
+        // carrying the action name AND value — matching web (the CDP backend renders it as
+        // "Clicked Inbox Message" for an inbox delivery) and mobile in-app clicks.
+        // Omit empty name/value so a value-less action doesn't emit `actionValue: ""` — web omits
+        // the field entirely when there is no value.
+        var params: [String: String] = [:]
+        if let actionName = actionName, !actionName.isEmpty { params["actionName"] = actionName }
+        if let actionValue = actionValue, !actionValue.isEmpty { params["actionValue"] = actionValue }
         eventBusHandler.postEvent(TrackInAppMetricEvent(deliveryID: deliveryId, event: InAppMetric.clicked.rawValue, params: params))
     }
 }
@@ -337,8 +347,8 @@ func inboxMessageMiddleware(logger: Logger, logManager: LogManager, eventBusHand
                     )
                 case .deleteMessage:
                     handleDeleteMessage(message: currentMessage, state: state, logger: logger, logManager: logManager)
-                case .trackClicked(_, let actionName):
-                    handleTrackClicked(message: currentMessage, actionName: actionName, logger: logger, eventBusHandler: eventBusHandler)
+                case .trackClicked(_, let actionName, let actionValue):
+                    handleTrackClicked(message: currentMessage, actionName: actionName, actionValue: actionValue, logger: logger, eventBusHandler: eventBusHandler)
                 }
             } else {
                 logger.logWithModuleTag("Skipping inbox action for \(inboxAction.message.describeForLogs) - message not found in state", level: .debug)

@@ -74,6 +74,8 @@ class InboxBrandingTest: XCTestCase {
         XCTAssertEqual(chrome?.unreadIndicator?.showAlert, true)
         XCTAssertEqual(chrome?.unreadIndicator?.background, "#e00000")
         XCTAssertEqual(chrome?.unreadIndicator?.text?["fontSize"] as? Int, 8)
+        // Badge count text color travels in the same `unreadIndicator.text` token dict (MBL-2126).
+        XCTAssertEqual(chrome?.unreadIndicator?.text?["color"] as? String, "#ffffff")
     }
 
     func test_from_whenDarkModeAbsent_expectNilDarkModePattern() {
