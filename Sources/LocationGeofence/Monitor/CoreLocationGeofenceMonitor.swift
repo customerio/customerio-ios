@@ -131,12 +131,14 @@ final class CoreLocationGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @pr
     private func handleRegionEvent(_ region: CLRegion, transition: GeofenceTransition) {
         guard region is CLCircularRegion else { return }
         if onTransition == nil || !pendingEvents.isEmpty || isDrainingPendingEvents {
+            logger.geofenceDebug("Classic: BUFFERED pre-bind \(transition.rawValue) for '\(region.identifier)' (queue=\(pendingEvents.count + 1))") // TESTING-ONLY
             pendingEvents.append(PendingRegionEvent(identifier: region.identifier, transition: transition, location: currentLocationData()))
             if pendingEvents.count > Self.maxPendingEvents { pendingEvents.removeFirst() }
             drainPendingEventsIfReady()
             return
         }
         guard ownedRegionIdentifiers.contains(region.identifier) else { return }
+        logger.geofenceDebug("Classic: direct \(transition.rawValue) for '\(region.identifier)'") // TESTING-ONLY
         onTransition?(region.identifier, transition, currentLocationData())
     }
 
@@ -147,7 +149,11 @@ final class CoreLocationGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @pr
             guard let self else { return }
             while self.onTransition != nil, !self.pendingEvents.isEmpty {
                 let next = self.pendingEvents.removeFirst()
-                guard self.ownedRegionIdentifiers.contains(next.identifier) else { continue }
+                guard self.ownedRegionIdentifiers.contains(next.identifier) else {
+                    self.logger.geofenceDebug("Classic: DRAINED-DROPPED unowned '\(next.identifier)'") // TESTING-ONLY
+                    continue
+                }
+                self.logger.geofenceDebug("Classic: DRAINED \(next.transition.rawValue) for '\(next.identifier)' → delivering") // TESTING-ONLY
                 self.onTransition?(next.identifier, next.transition, next.location)
             }
             self.isDrainingPendingEvents = false

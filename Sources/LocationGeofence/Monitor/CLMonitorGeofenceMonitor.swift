@@ -210,6 +210,9 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preco
         // No ownership re-check after the await: the baseline already advanced, so dropping here
         // loses the transition permanently — a sync's stop-all + re-add swap would eat a genuine
         // crossing that raced it. A region truly removed in that window delivers one last gated event.
+        if !ownedRegionIdentifiers.contains(identifier) {
+            logger.geofenceDebug("CLMonitor: SWAP-RACE delivery for '\(identifier)' \(transition.rawValue) (ownership changed mid-record; pre-fix this was lost)") // TESTING-ONLY
+        }
         onTransition?(identifier, transition, currentLocationData())
     }
 
