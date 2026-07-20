@@ -46,7 +46,7 @@ extension MainSettingsViewController {
     }
 
     func setLocationInitialValues() {
-        let active = settingsViewModel.settings.location?.trackingMode ?? .onAppStart
+        let active = settingsViewModel.settings.location?.trackingMode ?? .manual
         for button in locationTrackingModeButtons {
             let mode = LocationTrackingModeSetting.allCases[button.tag]
             button.isSelected = mode == active

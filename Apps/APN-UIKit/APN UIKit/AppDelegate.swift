@@ -59,7 +59,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         if settings.internalSettings.testMode {
             config.flushAt(1)
         }
-        let locationMode = settings.location?.trackingMode.toCIOMode() ?? .onAppStart
+        let locationMode = settings.location?.trackingMode.toCIOMode() ?? .manual
         config.addModule(LocationModule(config: LocationConfig(mode: locationMode)))
         config.addModule(GeofenceModule())
         CustomerIO.initialize(withConfig: config.build())
