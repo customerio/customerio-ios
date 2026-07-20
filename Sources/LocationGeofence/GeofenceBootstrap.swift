@@ -85,6 +85,11 @@ enum GeofenceBootstrap {
         if !expectedOwnedRegions.isEmpty, expectedOwnedRegions.isSubset(of: monitor.osMonitoredRegionIdentifiers) {
             di.logger.geofenceDebug("Bootstrap: adopting \(expectedOwnedRegions.count) OS-persisted region(s)") // TESTING-ONLY
             monitor.adoptExistingRegions(matching: expectedOwnedRegions)
+        } else if di.backgroundDeliveryContextStore.currentUserId != userId {
+            // Identity changed during the reads above: registering now could resurrect regions a
+            // sign-out reset just tore down, with no later reset to stop them. The next
+            // identify-driven refresh registers instead.
+            di.logger.geofenceSyncSkipped(reason: "identified user changed during bootstrap")
         } else {
             di.logger.geofenceDebug("Bootstrap: re-registering from cache (anchor=\(restoreAnchor != nil))") // TESTING-ONLY
             // First launch after install, the OS dropped our regions (e.g. permission revoked then
