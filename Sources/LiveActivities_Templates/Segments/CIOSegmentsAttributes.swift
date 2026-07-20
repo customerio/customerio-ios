@@ -69,11 +69,22 @@ public struct CIOSegmentsAttributes: CIOActivityTemplate {
             self.cioMetadata = cioMetadata
         }
 
-        /// `segmentsComplete` clamped into `0...segmentsTotal` so a malformed push can never draw an
+        /// `segmentsTotal` clamped into `0...maxSegments`. A push payload is untrusted; without an
+        /// upper bound a very large value would allocate that many segment views and can exhaust the
+        /// widget extension's tight memory budget. Shared with Android and services.
+        var clampedTotal: Int {
+            min(max(segmentsTotal, 0), CIOSegmentsAttributes.maxSegments)
+        }
+
+        /// `segmentsComplete` clamped into `0...clampedTotal` so a malformed push can never draw an
         /// out-of-range or negative number of filled segments.
         var clampedComplete: Int {
-            min(max(segmentsComplete, 0), max(segmentsTotal, 0))
+            min(max(segmentsComplete, 0), clampedTotal)
         }
     }
+
+    /// Maximum number of progress segments rendered; values beyond this are capped. Kept in sync
+    /// with the Android SDK and services. Internal: this is a render-safety bound, not public API.
+    static let maxSegments = 20
 }
 #endif

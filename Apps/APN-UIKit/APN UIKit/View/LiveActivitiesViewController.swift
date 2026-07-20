@@ -439,10 +439,15 @@ class LiveActivitiesViewController: BaseViewController {
         let entry = "\(formatter.string(from: Date()))  \(line)\n"
         logView.text = entry + logView.text
     }
+}
 
-    // MARK: - View builders
+// MARK: - View builders
 
-    private func makeCard(title: String, description: String, buttons: [ThemeButton], extraViews: [UIView] = []) -> UIView {
+// Extracted into an extension so the main type body stays under SwiftLint's
+// type_body_length limit (sample-only UI scaffolding).
+@available(iOS 17.2, *)
+private extension LiveActivitiesViewController {
+    func makeCard(title: String, description: String, buttons: [ThemeButton], extraViews: [UIView] = []) -> UIView {
         let card = UIView()
         card.backgroundColor = UIColor(white: 0.97, alpha: 1.0)
         card.layer.cornerRadius = 10
@@ -483,7 +488,7 @@ class LiveActivitiesViewController: BaseViewController {
         return card
     }
 
-    private func makeButton(_ title: String) -> ThemeButton {
+    func makeButton(_ title: String) -> ThemeButton {
         let button = ThemeButton()
         button.setTitle(title, for: .normal)
         button.heightAnchor.constraint(equalToConstant: 50).isActive = true

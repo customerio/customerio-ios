@@ -113,13 +113,13 @@ private struct SegmentedBar: View {
 
     var body: some View {
         HStack(spacing: 6) {
-            ForEach(0 ..< max(state.segmentsTotal, 0), id: \.self) { index in
+            ForEach(0 ..< state.clampedTotal, id: \.self) { index in
                 Capsule()
                     .fill(index < state.clampedComplete ? branding.progressCompleteStyle : branding.progressIncompleteStyle)
                     .frame(height: 4)
             }
         }
-        .accessibilityLabel("Step \(state.clampedComplete) of \(state.segmentsTotal)")
+        .accessibilityLabel("Step \(state.clampedComplete) of \(state.clampedTotal)")
     }
 }
 #endif
