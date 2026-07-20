@@ -30,6 +30,16 @@ final class CoreLocationGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @pr
     private var onAuthorizationChanged: GeofenceAuthorizationChangedHandler?
     private var lastLoggedPermissionTier: PermissionTier?
     private var ownedRegionIdentifiers: Set<String> = []
+    private struct PendingRegionEvent {
+        let identifier: String
+        let transition: GeofenceTransition
+        let location: LocationData?
+    }
+
+    /// Region events received before the bootstrap bound `onTransition` (see `handleRegionEvent`).
+    private var pendingEvents: [PendingRegionEvent] = []
+    private var isDrainingPendingEvents = false
+    private static let maxPendingEvents = 64
 
     init(logger: Logger) {
         self.manager = CLLocationManager()
@@ -59,6 +69,7 @@ final class CoreLocationGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @pr
 
     func setOnTransition(_ handler: GeofenceTransitionHandler?) {
         onTransition = handler
+        drainPendingEventsIfReady()
     }
 
     func setOnAuthorizationChanged(_ handler: GeofenceAuthorizationChangedHandler?) {
@@ -104,17 +115,43 @@ final class CoreLocationGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @pr
     // MARK: - CLLocationManagerDelegate
 
     func locationManager(_ manager: CLLocationManager, didEnterRegion region: CLRegion) {
-        guard let circularRegion = region as? CLCircularRegion,
-              ownedRegionIdentifiers.contains(circularRegion.identifier)
-        else { return }
-        onTransition?(circularRegion.identifier, .enter, currentLocationData())
+        handleRegionEvent(region, transition: .enter)
     }
 
     func locationManager(_ manager: CLLocationManager, didExitRegion region: CLRegion) {
-        guard let circularRegion = region as? CLCircularRegion,
-              ownedRegionIdentifiers.contains(circularRegion.identifier)
-        else { return }
-        onTransition?(circularRegion.identifier, .exit, currentLocationData())
+        handleRegionEvent(region, transition: .exit)
+    }
+
+    /// Delivers a region event, holding it until the bootstrap binds `onTransition`: on a cold wake
+    /// the delegate can go live before bind/adopt run (any DI path constructing the monitor), and a
+    /// crossing delivered then would be dropped with no re-emission. Ownership is checked at drain —
+    /// after adopt populated it — which still filters buffered host-app events. New arrivals queue
+    /// behind any backlog and behind an in-flight drain, so per-region order holds. Capped against a
+    /// process that never binds.
+    private func handleRegionEvent(_ region: CLRegion, transition: GeofenceTransition) {
+        guard region is CLCircularRegion else { return }
+        if onTransition == nil || !pendingEvents.isEmpty || isDrainingPendingEvents {
+            pendingEvents.append(PendingRegionEvent(identifier: region.identifier, transition: transition, location: currentLocationData()))
+            if pendingEvents.count > Self.maxPendingEvents { pendingEvents.removeFirst() }
+            drainPendingEventsIfReady()
+            return
+        }
+        guard ownedRegionIdentifiers.contains(region.identifier) else { return }
+        onTransition?(region.identifier, transition, currentLocationData())
+    }
+
+    private func drainPendingEventsIfReady() {
+        guard onTransition != nil, !isDrainingPendingEvents, !pendingEvents.isEmpty else { return }
+        isDrainingPendingEvents = true
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            while self.onTransition != nil, !self.pendingEvents.isEmpty {
+                let next = self.pendingEvents.removeFirst()
+                guard self.ownedRegionIdentifiers.contains(next.identifier) else { continue }
+                self.onTransition?(next.identifier, next.transition, next.location)
+            }
+            self.isDrainingPendingEvents = false
+        }
     }
 
     func locationManager(_ manager: CLLocationManager, monitoringDidFailFor region: CLRegion?, withError error: Error) {
