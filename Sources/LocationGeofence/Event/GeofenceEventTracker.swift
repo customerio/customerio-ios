@@ -9,9 +9,11 @@ import Foundation
 /// transitionId:
 /// - Fresh transition → direct HTTP (`deliverFresh`): works before DataPipeline is up (cold-wake);
 ///   failure retains the row for the next flush.
-/// - Replay (`flushPending` → `deliverViaEventBus`) → EventBus → DataPipeline's durable queue.
+/// - Replay (`flushPending`) → EventBus when DataPipeline is live, else direct HTTP off the
+///   persisted context; routing rationale on the method.
 ///
-/// `flushPending()` runs on module init, cold-wake bootstrap, and `ProfileIdentifiedEvent`.
+/// `flushPending()` runs on module init, cold-wake bootstrap, `ProfileIdentifiedEvent`, and at the
+/// start of every tracked transition — so a backlog retries whenever a crossing wakes the device.
 /// Concurrent deliveries of the same row are deduped via the in-memory active-delivery set.
 ///
 /// `@unchecked Sendable`: all stored properties are `let`; mutable state is wrapped in `Synchronized`.
@@ -58,6 +60,10 @@ final class GeofenceEventTracker: @unchecked Sendable {
         geofenceId: String,
         transition: GeofenceTransition
     ) async {
+        // Retry any backlog first: a crossing proves the device is awake, and queued rows are
+        // self-contained (stamped userId) — this crossing's identity/cooldown gates don't apply.
+        await flushPending()
+
         // Identified-only: the backend rejects anonymous geofence tracks, so drop before cooldown or
         // persist. Snapshot the userId so a later sign-out/sign-in can't reattribute the row.
         guard let stampedUserId = contextStore.currentUserId, !stampedUserId.isEmpty else {
@@ -130,12 +136,28 @@ final class GeofenceEventTracker: @unchecked Sendable {
         await storage.purgeExpiredCooldowns(now: now, interval: interval)
     }
 
-    /// Replays every queued row via EventBus → DataPipeline, which owns delivery and its own
-    /// background handling from there — so no background-task assertion is needed (unlike the fresh
-    /// HTTP send). A row not handed off stays queued and retries on the next flush.
+    /// Replays every queued row, routed by who owns delivery best right now:
+    /// - DataPipeline live → EventBus: its durable queue retries on its own cadence and batches the rows.
+    /// - Else persisted key → direct HTTP: an uninitialized cold-wake (wrapper before JS/Dart init)
+    ///   ships the backlog in the wake window; failed rows stay queued for the next trigger.
+    /// - Neither → EventBus persists to disk; DataPipeline replays at next init.
     func flushPending() async {
-        for metric in await pendingStore.loadAll() {
-            await deliverViaEventBus(metric: metric)
+        let metrics = await pendingStore.loadAll()
+        guard !metrics.isEmpty else { return }
+        let persistedKey = contextStore.currentCdpApiKey
+        if !contextStore.hasLiveCdpApiKeyProvider, let persistedKey, !persistedKey.isEmpty {
+            // Same assertion + concurrent fan-out rationale as the fresh send in `trackTransition`.
+            await backgroundTaskRunner.withBackgroundTime { [self] in
+                await withTaskGroup(of: Void.self) { group in
+                    for metric in metrics {
+                        group.addTask { await self.deliverFresh(metric: metric) }
+                    }
+                }
+            }
+        } else {
+            for metric in metrics {
+                await deliverViaEventBus(metric: metric)
+            }
         }
     }
 
@@ -167,10 +189,11 @@ final class GeofenceEventTracker: @unchecked Sendable {
         // HTTP failure: row stays for next flush.
     }
 
-    /// Replay via EventBus → DataPipeline, which then owns delivery and retry. We drop our copy once
-    /// the handoff resolves (observer invoked, or written to the EventBus cache when none exists yet).
-    /// That is not a durable-persistence ack — the strongest signal EventBus exposes today — so a
-    /// crash before DataPipeline persists re-delivers on the next flush (deduped by transitionId).
+    /// Replay via EventBus → DataPipeline, which then owns delivery and retry. We drop our copy
+    /// once the handoff resolves (observer invoked, or written to the EventBus cache when none
+    /// exists yet). That is not a durable-persistence ack — the strongest signal EventBus exposes
+    /// today — so a crash before DataPipeline persists re-delivers on the next flush (deduped by
+    /// transitionId).
     private func deliverViaEventBus(metric: PendingGeofenceMetric) async {
         guard activeDeliveryKeys.mutating({ $0.insert(metric.key).inserted }) else { return }
         defer { activeDeliveryKeys.mutating { _ = $0.remove(metric.key) } }
