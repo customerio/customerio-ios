@@ -529,6 +529,57 @@ struct GeofenceEventTrackerTests {
     }
 
     @Test
+    func trackTransition_givenSlowBacklogReplay_expectFreshRowDurableBeforeBacklogCompletes() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let pending = makePendingStore(directory: dir)
+        _ = await pending.append([PendingGeofenceMetric(
+            geofenceId: "geo_old", transition: .exit,
+            timestamp: Date(timeIntervalSince1970: 1),
+            userId: "user_42", name: nil, transitionId: "txn_old"
+        )])
+        let delivery = GeofenceDeliveryTrackerMock()
+        // Backlog row: signal when its send starts, then hold completion so the replay stays in
+        // flight. Fresh row: fail, so its persisted row must survive on disk.
+        let backlogStarted = AsyncStream.makeStream(of: Void.self)
+        let backlogRelease = AsyncStream.makeStream(of: Void.self)
+        delivery.trackMetricClosure = { metric, _, onComplete in
+            if metric.geofenceId == "geo_old" {
+                backlogStarted.continuation.yield()
+                Task {
+                    for await _ in backlogRelease.stream {
+                        break
+                    }
+                    onComplete(.success(()))
+                }
+            } else {
+                onComplete(.failure(.transport))
+            }
+        }
+        // Cold-wake HTTP route: persisted key, no live provider.
+        let tracker = makeTracker(
+            storage: makeStorage(directory: dir),
+            pendingStore: pending,
+            deliveryTracker: delivery,
+            contextStore: makeContextStore(userId: "user_42", cdpApiKey: "key_123")
+        )
+
+        let tracking = Task { await tracker.trackTransition(geofenceId: "geo_new", transition: .enter) }
+        for await _ in backlogStarted.stream {
+            break
+        }
+        // The replay is mid-flight; a suspension here must not lose the crossing — it is on disk.
+        #expect(await pending.loadAll().map(\.geofenceId).contains("geo_new"))
+        backlogRelease.continuation.yield()
+        await tracking.value
+
+        // Backlog delivered and removed; the failed fresh row stays for the next trigger, attempted
+        // exactly once — the flush excluded it instead of re-sending on the same network.
+        #expect(await pending.loadAll().map(\.geofenceId) == ["geo_new"])
+        #expect(delivery.trackMetricReceivedInvocations.filter { $0.metric.geofenceId == "geo_new" }.count == 1)
+    }
+
+    @Test
     func trackTransition_givenBacklogFromEarlierFailure_expectBacklogReplayedOnCrossing() async {
         let dir = makeTempDirectory()
         defer { try? FileManager.default.removeItem(at: dir) }

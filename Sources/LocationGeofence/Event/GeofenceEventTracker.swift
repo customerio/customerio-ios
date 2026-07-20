@@ -12,8 +12,9 @@ import Foundation
 /// - Replay (`flushPending`) → EventBus when DataPipeline is live, else direct HTTP off the
 ///   persisted context; routing rationale on the method.
 ///
-/// `flushPending()` runs on module init, cold-wake bootstrap, `ProfileIdentifiedEvent`, and at the
-/// start of every tracked transition — so a backlog retries whenever a crossing wakes the device.
+/// `flushPending()` runs on module init, cold-wake bootstrap, `ProfileIdentifiedEvent`, and after
+/// every tracked transition (once its own rows are persisted and sent) — so a backlog retries
+/// whenever a crossing wakes the device, without the fresh crossing's durability waiting on it.
 /// Concurrent deliveries of the same row are deduped via the in-memory active-delivery set.
 ///
 /// `@unchecked Sendable`: all stored properties are `let`; mutable state is wrapped in `Synchronized`.
@@ -60,15 +61,27 @@ final class GeofenceEventTracker: @unchecked Sendable {
         geofenceId: String,
         transition: GeofenceTransition
     ) async {
-        // Retry any backlog first: a crossing proves the device is awake, and queued rows are
-        // self-contained (stamped userId) — this crossing's identity/cooldown gates don't apply.
-        await flushPending()
+        // Persist and send the current crossing before any backlog work: the monitor's dedup
+        // baseline has already advanced, so a crossing suspended away un-persisted can never
+        // re-emit — its durability must not wait on a slow replay.
+        let freshKeys = await deliverCurrentCrossing(geofenceId: geofenceId, transition: transition)
+        // Then retry the backlog: queued rows are self-contained (stamped userId), so this
+        // crossing's gates don't apply. Excluding the rows just written keeps a failed fresh
+        // send on disk for the next trigger instead of re-attempting it on the same network.
+        await flushPending(excluding: freshKeys)
+    }
 
+    /// Gates, fans out, persists, and sends the crossing's rows over direct HTTP; returns the
+    /// persisted keys (empty when gated) so the caller can exclude them from the backlog flush.
+    private func deliverCurrentCrossing(
+        geofenceId: String,
+        transition: GeofenceTransition
+    ) async -> Set<String> {
         // Identified-only: the backend rejects anonymous geofence tracks, so drop before cooldown or
         // persist. Snapshot the userId so a later sign-out/sign-in can't reattribute the row.
         guard let stampedUserId = contextStore.currentUserId, !stampedUserId.isEmpty else {
             logger.geofenceTransitionDroppedAnonymous(geofenceId: geofenceId, transition: transition)
-            return
+            return []
         }
 
         let cooldownKey = "\(geofenceId):\(transition.rawValue)"
@@ -79,7 +92,7 @@ final class GeofenceEventTracker: @unchecked Sendable {
 
         guard await storage.tryAcquireCooldown(key: cooldownKey, now: now, interval: interval) else {
             logger.geofenceEventSuppressed(geofenceId: geofenceId, transition: transition)
-            return
+            return []
         }
         // Resolve the geofence name and geoset membership now and carry them on the metric;
         // name is nil when the geofence has none so the event omits `geofenceName`.
@@ -119,7 +132,7 @@ final class GeofenceEventTracker: @unchecked Sendable {
             // success-path remove(key:) drop a later same-second crossing's row (keys omit transitionId).
             logger.geofencePendingPersistFailed(geofenceId: geofenceId, transition: transition)
             await storage.releaseCooldown(key: cooldownKey)
-            return
+            return []
         }
 
         // Hold a background-task assertion across delivery so the OS doesn't suspend us mid-send when
@@ -134,6 +147,7 @@ final class GeofenceEventTracker: @unchecked Sendable {
             }
         }
         await storage.purgeExpiredCooldowns(now: now, interval: interval)
+        return Set(metrics.map(\.key))
     }
 
     /// Replays every queued row, routed by who owns delivery best right now:
@@ -141,8 +155,10 @@ final class GeofenceEventTracker: @unchecked Sendable {
     /// - Else persisted key → direct HTTP: an uninitialized cold-wake (wrapper before JS/Dart init)
     ///   ships the backlog in the wake window; failed rows stay queued for the next trigger.
     /// - Neither → EventBus persists to disk; DataPipeline replays at next init.
-    func flushPending() async {
-        let metrics = await pendingStore.loadAll()
+    ///
+    /// `excluding` skips rows the caller just persisted and already attempted itself.
+    func flushPending(excluding excludedKeys: Set<String> = []) async {
+        let metrics = await pendingStore.loadAll().filter { !excludedKeys.contains($0.key) }
         guard !metrics.isEmpty else { return }
         let persistedKey = contextStore.currentCdpApiKey
         if !contextStore.hasLiveCdpApiKeyProvider, let persistedKey, !persistedKey.isEmpty {
