@@ -340,6 +340,28 @@ struct GeofenceBootstrapTests {
     }
 
     @Test
+    func wireMonitor_givenReconciliationFires_expectRerunAgainstLiveOsSet() async {
+        let di = DIGraphShared.shared
+        let monitor = MockGeofenceRegionMonitor()
+        di.override(value: monitor as GeofenceRegionMonitoring, forType: GeofenceRegionMonitoring.self)
+        let coordinator = GeofenceSyncCoordinatorMock()
+        di.override(value: coordinator as GeofenceSyncCoordinator, forType: GeofenceSyncCoordinator.self)
+        defer { di.reset() }
+
+        await GeofenceBootstrap.wireMonitor(di: di)
+        #expect(monitor.setOnReconciledCallsCount == 1)
+        #expect(coordinator.applyCachedRegistrationCallsCount == 1)
+
+        // The CLMonitor path calls this once it has reconciled the mirror against the OS's live set.
+        // It must re-run wireMonitor so the adopt/re-register decision is re-made against live truth;
+        // the sleep gives the spawned Task time to complete.
+        monitor.onReconciled?()
+        try? await Task.sleep(nanoseconds: 100000000)
+
+        #expect(coordinator.applyCachedRegistrationCallsCount == 2)
+    }
+
+    @Test
     func emitDiscoverabilityLog_givenProviderReturnsKey_expectNoLog() {
         let di = DIGraphShared.shared
         let store = BackgroundDeliveryContextStore(

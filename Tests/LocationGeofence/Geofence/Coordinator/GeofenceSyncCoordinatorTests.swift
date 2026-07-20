@@ -29,6 +29,7 @@ struct GeofenceSyncCoordinatorTests {
         let monitor: MockGeofenceRegionMonitor
         let contextStore: BackgroundDeliveryContextStore
         let dateUtil: DateUtilStub
+        let emitter: TransitionEmitterSpy
     }
 
     private func makeCoordinator(
@@ -36,6 +37,7 @@ struct GeofenceSyncCoordinatorTests {
         storage: GeofenceSyncStorage,
         monitor: MockGeofenceRegionMonitor? = nil,
         contextStore: BackgroundDeliveryContextStore? = nil,
+        emitter: TransitionEmitterSpy = TransitionEmitterSpy(),
         dateUtil: DateUtilStub = DateUtilStub()
     ) -> Setup {
         let resolvedContextStore = contextStore ?? makeContextStore()
@@ -45,6 +47,7 @@ struct GeofenceSyncCoordinatorTests {
             storage: storage,
             monitor: resolvedMonitor,
             contextStore: resolvedContextStore,
+            transitionEmitter: emitter,
             dateUtil: dateUtil,
             logger: LoggerMock()
         )
@@ -53,7 +56,8 @@ struct GeofenceSyncCoordinatorTests {
             api: api,
             monitor: resolvedMonitor,
             contextStore: resolvedContextStore,
-            dateUtil: dateUtil
+            dateUtil: dateUtil,
+            emitter: emitter
         )
     }
 
@@ -1264,6 +1268,322 @@ struct GeofenceSyncCoordinatorTests {
 
         #expect(refreshResult.errorOrNil == .alreadyInProgress)
     }
+
+    // MARK: - Initial enter-when-inside (diff-based, both monitor paths)
+
+    /// Drives a remote refresh that fetches `regions`, anchored at `anchor`, with `previousIds`
+    /// already recorded as registered. The emit is fire-and-forget, so callers poll via `awaitEmits`.
+    private func runRemoteRefresh(regions: [Geofence], anchor: LocationData, previousIds: Set<String>) async -> TransitionEmitterSpy {
+        let storage = makeStorage()
+        // Stale sync so the freshness gate routes to a remote fetch.
+        let dateUtil = DateUtilStub()
+        await storage.recordSync(timestamp: dateUtil.givenNow.addingTimeInterval(-25 * 60 * 60), location: LocationData(latitude: 0, longitude: 0))
+        if !previousIds.isEmpty {
+            await storage.recordRegistration(center: anchor, businessIds: previousIds)
+        }
+        let api = GeofenceApiServiceMock()
+        api.fetchNearbyGeofencesClosure = { _, _, completion in completion(.success(makeApiResponse(regions: regions))) }
+        let setup = makeCoordinator(api: api, storage: storage, dateUtil: dateUtil)
+        _ = await setup.coordinator.refresh(latitude: anchor.latitude, longitude: anchor.longitude)
+        return setup.emitter
+    }
+
+    /// Polls the fire-and-forget emit Task until it has recorded `count` calls, then yields a few more
+    /// times so any unwanted extra emit would surface before the caller asserts an exact set.
+    private func awaitEmits(_ emitter: TransitionEmitterSpy, count: Int) async {
+        for _ in 0 ..< 100 where emitter.calls.wrappedValue.count < count {
+            await Task.yield()
+        }
+        for _ in 0 ..< 5 {
+            await Task.yield()
+        }
+    }
+
+    @Test
+    func refresh_givenNewGeofenceDeviceInside_expectInitialEnterEmitted() async {
+        let anchor = LocationData(latitude: 1.0, longitude: 2.0)
+        // Region centered on the anchor → device is inside; no prior registration → genuinely new.
+        let emitter = await runRemoteRefresh(regions: [makeRegion(id: "g1", latitude: 1.0, longitude: 2.0)], anchor: anchor, previousIds: [])
+        await awaitEmits(emitter, count: 1)
+        #expect(emitter.calls.wrappedValue.map(\.geofenceId) == ["g1"])
+        #expect(emitter.calls.wrappedValue.first?.transition == .enter)
+    }
+
+    @Test
+    func refresh_givenMixOfNewGeofences_expectOnlyContainingEnterTypeEmitted() async {
+        let anchor = LocationData(latitude: 1.0, longitude: 2.0)
+        // inside+enter g1 → emitted; ~222m-away g2 → registered but outside; inside exit-only g3.
+        // Awaiting g1 proves the emit loop ran, so g2/g3 are conclusively excluded (non-vacuous).
+        let g2 = makeRegion(id: "g2", latitude: 1.002, longitude: 2.0)
+        let g3 = Geofence(id: "g3", latitude: 1.0, longitude: 2.0, radius: 100, name: "g3", transitionTypes: [.exit], lastUpdated: Date(timeIntervalSince1970: 1700000000))
+        let emitter = await runRemoteRefresh(regions: [makeRegion(id: "g1", latitude: 1.0, longitude: 2.0), g2, g3], anchor: anchor, previousIds: [])
+        await awaitEmits(emitter, count: 1)
+        #expect(emitter.calls.wrappedValue.map(\.geofenceId) == ["g1"])
+    }
+
+    @Test
+    func refresh_givenNewAndAlreadyRegisteredInside_expectOnlyNewEmitted() async {
+        let anchor = LocationData(latitude: 1.0, longitude: 2.0)
+        // Both inside; gOld is already registered (a wholesale re-registration) → excluded by the diff;
+        // gNew is genuinely new → emitted. Emitting only gNew proves the diff, non-vacuously.
+        let regions = [makeRegion(id: "gOld", latitude: 1.0, longitude: 2.0), makeRegion(id: "gNew", latitude: 1.0, longitude: 2.0)]
+        let emitter = await runRemoteRefresh(regions: regions, anchor: anchor, previousIds: ["gOld"])
+        await awaitEmits(emitter, count: 1)
+        #expect(emitter.calls.wrappedValue.map(\.geofenceId) == ["gNew"])
+    }
+
+    @Test
+    func localRefresh_givenNewGeofenceInside_expectInitialEnterEmitted() async {
+        // Cover the LOCAL refresh call site: recent sync (not time-stale) + cached region but no
+        // recorded registration → refreshAction routes to a local re-rank, not a fetch.
+        let anchor = LocationData(latitude: 1.0, longitude: 2.0)
+        let storage = makeStorage()
+        let dateUtil = DateUtilStub()
+        await storage.setCachedGeofences([makeRegion(id: "g1", latitude: 1.0, longitude: 2.0)])
+        await storage.setCachedConfig(.fallback)
+        await storage.recordSync(timestamp: dateUtil.givenNow.addingTimeInterval(-60), location: anchor)
+        let setup = makeCoordinator(storage: storage, dateUtil: dateUtil)
+
+        _ = await setup.coordinator.refresh(latitude: anchor.latitude, longitude: anchor.longitude)
+
+        await awaitEmits(setup.emitter, count: 1)
+        #expect(setup.api.fetchNearbyGeofencesCallsCount == 0) // local path — no fetch
+        #expect(setup.emitter.calls.wrappedValue.map(\.geofenceId) == ["g1"])
+    }
+
+    @Test
+    func refresh_givenNewGeofenceInsideButRegistrationRejected_expectNoInitialEnter() async {
+        // The device is inside a genuinely-new fence, but the monitor drops it (blocked permission /
+        // invalid coordinates), so it isn't monitored — no synthetic enter it could never balance.
+        let anchor = LocationData(latitude: 1.0, longitude: 2.0)
+        let storage = makeStorage()
+        let dateUtil = DateUtilStub()
+        await storage.recordSync(timestamp: dateUtil.givenNow.addingTimeInterval(-25 * 60 * 60), location: LocationData(latitude: 0, longitude: 0))
+        let api = GeofenceApiServiceMock()
+        api.fetchNearbyGeofencesClosure = { _, _, completion in
+            completion(.success(makeApiResponse(regions: [makeRegion(id: "g1", latitude: 1.0, longitude: 2.0)])))
+        }
+        let monitor = MockGeofenceRegionMonitor()
+        monitor.rejectedIdentifiers = ["g1"]
+        let setup = makeCoordinator(api: api, storage: storage, monitor: monitor, dateUtil: dateUtil)
+
+        _ = await setup.coordinator.refresh(latitude: anchor.latitude, longitude: anchor.longitude)
+
+        // No count to await — assert nothing emitted after yielding the fire-and-forget window. The
+        // sibling "device inside" test proves this same setup DOES emit without the rejection, so
+        // this is non-vacuous.
+        await awaitEmits(setup.emitter, count: 0)
+        #expect(setup.emitter.calls.wrappedValue.isEmpty)
+    }
+
+    @Test
+    func refresh_givenDeviceInsideConfiguredRadiusButOutsideOsCap_expectNoInitialEnter() async {
+        // The fence's configured radius exceeds the OS cap, so the monitor registers a smaller clamped
+        // circle. The device is inside the configured radius but outside the clamped one, so the inside
+        // check (which clamps to the same cap) must not emit a synthetic enter.
+        let anchor = LocationData(latitude: 1.0, longitude: 2.0)
+        let storage = makeStorage()
+        let dateUtil = DateUtilStub()
+        await storage.recordSync(timestamp: dateUtil.givenNow.addingTimeInterval(-25 * 60 * 60), location: LocationData(latitude: 0, longitude: 0))
+        let api = GeofenceApiServiceMock()
+        // Center ~5 km from the anchor with a 100 km configured radius (device inside configured
+        // circle); the monitor clamps monitoring to 200 m, which the device is well outside.
+        let region = makeRegion(id: "g1", latitude: 1.045, longitude: 2.0, radius: 100000)
+        api.fetchNearbyGeofencesClosure = { _, _, completion in
+            completion(.success(makeApiResponse(regions: [region])))
+        }
+        let monitor = MockGeofenceRegionMonitor()
+        monitor.maximumMonitoringRadius = 200
+        let setup = makeCoordinator(api: api, storage: storage, monitor: monitor, dateUtil: dateUtil)
+
+        _ = await setup.coordinator.refresh(latitude: anchor.latitude, longitude: anchor.longitude)
+
+        await awaitEmits(setup.emitter, count: 0)
+        #expect(setup.emitter.calls.wrappedValue.isEmpty)
+    }
+
+    @Test
+    func refresh_givenUserChangesMidInitialEnterBatch_expectRemainingSuppressed() async {
+        // Two new-inside fences. The identity changes while the first enter is being delivered; the
+        // per-iteration guard must stop the batch so the second isn't stamped to the new user.
+        let anchor = LocationData(latitude: 1.0, longitude: 2.0)
+        let storage = makeStorage()
+        let dateUtil = DateUtilStub()
+        await storage.recordSync(timestamp: dateUtil.givenNow.addingTimeInterval(-25 * 60 * 60), location: LocationData(latitude: 0, longitude: 0))
+        let api = GeofenceApiServiceMock()
+        api.fetchNearbyGeofencesClosure = { _, _, completion in
+            completion(.success(makeApiResponse(regions: [
+                makeRegion(id: "g1", latitude: 1.0, longitude: 2.0),
+                makeRegion(id: "g2", latitude: 1.0, longitude: 2.0)
+            ])))
+        }
+        let contextStore = makeContextStore(userId: "user-1")
+        let emitter = TransitionEmitterSpy()
+        emitter.onEmit = { index in if index == 0 { contextStore.setUserId("user-2") } }
+        let setup = makeCoordinator(api: api, storage: storage, contextStore: contextStore, emitter: emitter, dateUtil: dateUtil)
+
+        _ = await setup.coordinator.refresh(latitude: anchor.latitude, longitude: anchor.longitude)
+
+        // Exactly one delivered: the guard stopped the batch after the first send changed identity.
+        // Without the per-iteration recheck, both would fire (count == 2).
+        await awaitEmits(emitter, count: 1)
+        #expect(emitter.calls.wrappedValue.count == 1)
+    }
+
+    @Test
+    func refresh_givenSignOutDuringRegisterPersist_expectStaleStateUndone() async {
+        // Sign-out lands AFTER the post-fetch user check, during the register/persist window — where
+        // reset() would be dropped on the held gate. The refresh must undo its own stale-user state.
+        let contextStore = makeContextStore(userId: "user-1")
+        let backing = makeStorage()
+        let dateUtil = DateUtilStub()
+        await backing.recordSync(timestamp: dateUtil.givenNow.addingTimeInterval(-25 * 60 * 60), location: LocationData(latitude: 0, longitude: 0))
+        // Flip to signed-out on the first storage write after the post-fetch check.
+        let spy = SpyGeofenceSyncStorage(underlying: backing, onSetCachedGeofences: { contextStore.setUserId(nil) })
+        let api = GeofenceApiServiceMock()
+        api.fetchNearbyGeofencesClosure = { _, _, completion in
+            completion(.success(makeApiResponse(regions: [makeRegion(id: "g1", latitude: 0, longitude: 0)])))
+        }
+        let setup = makeCoordinator(api: api, storage: spy, contextStore: contextStore, dateUtil: dateUtil)
+
+        let result = await setup.coordinator.refresh(latitude: 0, longitude: 0)
+
+        #expect(result.isSuccess)
+        // Cleanup ran: monitoring stopped again (register + cleanup = 2), user-scoped state cleared,
+        // and no initial enters for the signed-out user.
+        #expect(setup.monitor.stopAllCallCount == 2)
+        #expect(await backing.getRegisteredBusinessIds().isEmpty)
+        #expect(await backing.getLastSync() == nil)
+        #expect(setup.emitter.calls.wrappedValue.isEmpty)
+    }
+
+    @Test
+    func refresh_givenSignOutBeforeFetchFailure_expectStaleStateUndone() async {
+        // Sign-out lands during the fetch and the fetch then fails — an early exit that used to
+        // return before any cleanup, leaving the previous user's registrations and sync anchors
+        // behind (their reset() was dropped on the held gate).
+        let contextStore = makeContextStore(userId: "user-1")
+        let storage = makeStorage()
+        await storage.recordSync(timestamp: Date(timeIntervalSince1970: 1), location: LocationData(latitude: 0, longitude: 0))
+        await storage.recordRegistration(center: LocationData(latitude: 0, longitude: 0), businessIds: ["g1"])
+        let api = GeofenceApiServiceMock()
+        api.fetchNearbyGeofencesClosure = { _, _, completion in
+            contextStore.setUserId(nil)
+            completion(.failure(.transport))
+        }
+        let setup = makeCoordinator(api: api, storage: storage, contextStore: contextStore)
+
+        let result = await setup.coordinator.refresh(latitude: 0, longitude: 0)
+
+        #expect(result.errorOrNil == .fetchFailed(.transport))
+        // The exit cleanup ran: monitoring stopped and the stale user-scoped state cleared.
+        #expect(setup.monitor.stopAllCallCount == 1)
+        #expect(await storage.getRegisteredBusinessIds().isEmpty)
+        #expect(await storage.getLastSync() == nil)
+    }
+
+    @Test
+    func refresh_givenSignOutDuringFreshnessSkip_expectStaleStateUndone() async {
+        // Sign-out lands while a refresh is deciding it has fresh data ("skip") — the shortest
+        // gated path, with no register/persist at all. The dropped reset()'s cleanup must still
+        // run before the gate is released.
+        let contextStore = makeContextStore(userId: "user-1")
+        let backing = makeStorage()
+        let dateUtil = DateUtilStub()
+        await backing.recordSync(timestamp: dateUtil.givenNow.addingTimeInterval(-100), location: LocationData(latitude: 0, longitude: 0))
+        await backing.recordRegistration(center: LocationData(latitude: 0, longitude: 0), businessIds: ["g1"])
+        let spy = SpyGeofenceSyncStorage(underlying: backing, onGetLastSync: { contextStore.setUserId(nil) })
+        let setup = makeCoordinator(storage: spy, contextStore: contextStore, dateUtil: dateUtil)
+
+        let result = await setup.coordinator.refresh(latitude: 0, longitude: 0)
+
+        #expect(result.isSuccess)
+        #expect(setup.api.fetchNearbyGeofencesCallsCount == 0)
+        #expect(setup.monitor.stopAllCallCount == 1)
+        #expect(await backing.getRegisteredBusinessIds().isEmpty)
+        #expect(await backing.getLastSync() == nil)
+    }
+
+    @Test
+    func reset_givenDroppedDuringInFlightRefresh_expectCleanupBeforeGateRelease() async {
+        // The reviewer's end-to-end scenario: reset() fires while a refresh holds the gate and is
+        // dropped as .alreadyInProgress; the refresh (here failing its fetch) must run the
+        // sign-out's cleanup before releasing the gate.
+        let contextStore = makeContextStore(userId: "user-1")
+        let storage = makeStorage()
+        await storage.recordRegistration(center: LocationData(latitude: 0, longitude: 0), businessIds: ["g1"])
+        let api = GeofenceApiServiceMock()
+        let heldCompletion = CompletionBox()
+        let (fetchStarted, fetchStartedContinuation) = AsyncStream<Void>.makeStream()
+        api.fetchNearbyGeofencesClosure = { _, _, completion in
+            heldCompletion.completion = completion
+            fetchStartedContinuation.yield()
+        }
+        let setup = makeCoordinator(api: api, storage: storage, contextStore: contextStore)
+
+        let refreshTask = Task { await setup.coordinator.refresh(latitude: 0, longitude: 0) }
+        for await _ in fetchStarted {
+            break
+        }
+        // Refresh is suspended in the fetch, holding the gate. Sign out and fire the reset.
+        contextStore.setUserId(nil)
+        let resetResult = await setup.coordinator.reset()
+        #expect(resetResult.errorOrNil == .alreadyInProgress)
+        // Reset was dropped — nothing cleaned yet.
+        #expect(setup.monitor.stopAllCallCount == 0)
+
+        heldCompletion.completion?(.failure(.transport))
+        let refreshResult = await refreshTask.value
+
+        #expect(refreshResult.errorOrNil == .fetchFailed(.transport))
+        #expect(setup.monitor.stopAllCallCount == 1)
+        #expect(await storage.getRegisteredBusinessIds().isEmpty)
+        // Signed out (nobody current) → no self-heal retry, so no second fetch.
+        #expect(setup.api.fetchNearbyGeofencesCallsCount == 1)
+    }
+
+    @Test
+    func refresh_givenUserSwitchMidFetch_expectSelfHealRegistersNewUser() async {
+        // A signs out and B signs in while A's refresh is in flight: B's own refresh would be
+        // dropped on the held gate, and the exit cleanup stops everything — leaving the device
+        // unmonitored. The self-heal retry must re-run for B so the switch converges to a
+        // registered state instead of an outage until the next launch.
+        let contextStore = makeContextStore(userId: "user-1")
+        let storage = makeStorage()
+        let api = GeofenceApiServiceMock()
+        let fetchCount = Synchronized<Int>(0)
+        api.fetchNearbyGeofencesClosure = { _, _, completion in
+            let call = fetchCount.mutating { count -> Int in
+                count += 1
+                return count
+            }
+            // First fetch belongs to user-1; flip to user-2 mid-flight so the post-fetch check
+            // supersedes it and the exit cleanup + retry run.
+            if call == 1 { contextStore.setUserId("user-2") }
+            completion(.success(makeApiResponse(regions: [makeRegion(id: "g1", latitude: 0, longitude: 0)])))
+        }
+        let setup = makeCoordinator(api: api, storage: storage, contextStore: contextStore)
+
+        let result = await setup.coordinator.refresh(latitude: 0, longitude: 0)
+        #expect(result.isSuccess)
+
+        // The retry is fire-and-forget; wait for its registration to land.
+        for _ in 0 ..< 1000 {
+            let registered = await storage.getRegisteredBusinessIds()
+            if !registered.isEmpty { break }
+            await Task.yield()
+        }
+        #expect(fetchCount.wrappedValue == 2)
+        #expect(await storage.getRegisteredBusinessIds() == ["g1"])
+        #expect(setup.monitor.startedRegions.contains { $0.identifier == "g1" })
+    }
+}
+
+/// Holds a fetch completion across concurrency domains so a test can resolve it after
+/// choreographing concurrent calls. `@unchecked Sendable`: writes and reads are sequenced by the
+/// fetch-started signal.
+private final class CompletionBox: @unchecked Sendable {
+    var completion: ((Result<GeofenceApiResponse, GeofenceApiError>) -> Void)?
 }
 
 // MARK: - Result matchers
@@ -1298,9 +1618,21 @@ private actor SpyGeofenceSyncStorage: GeofenceSyncStorage {
 
     private let underlying: GeofenceStorage
     private(set) var operations: [Operation] = []
+    /// Runs at the start of `setCachedGeofences` — the first storage write after the post-fetch user
+    /// check — so a test can flip the identified user inside the register/persist window.
+    private let onSetCachedGeofences: (@Sendable () -> Void)?
+    /// Runs at the start of `getLastSync` — inside the freshness decision — so a test can flip the
+    /// identified user on a refresh that will exit via the skip path.
+    private let onGetLastSync: (@Sendable () -> Void)?
 
-    init(underlying: GeofenceStorage) {
+    init(
+        underlying: GeofenceStorage,
+        onSetCachedGeofences: (@Sendable () -> Void)? = nil,
+        onGetLastSync: (@Sendable () -> Void)? = nil
+    ) {
         self.underlying = underlying
+        self.onSetCachedGeofences = onSetCachedGeofences
+        self.onGetLastSync = onGetLastSync
     }
 
     func getCachedConfig() async -> GeofenceConfig? {
@@ -1314,6 +1646,7 @@ private actor SpyGeofenceSyncStorage: GeofenceSyncStorage {
     }
 
     func getLastSync() async -> LastSyncRecord? {
+        onGetLastSync?()
         operations.append(.getLastSync)
         return await underlying.getLastSync()
     }
@@ -1329,6 +1662,7 @@ private actor SpyGeofenceSyncStorage: GeofenceSyncStorage {
     }
 
     func setCachedGeofences(_ regions: [Geofence]) async {
+        onSetCachedGeofences?()
         operations.append(.setCachedGeofences)
         await underlying.setCachedGeofences(regions)
     }
@@ -1351,6 +1685,24 @@ private actor SpyGeofenceSyncStorage: GeofenceSyncStorage {
     func clearUserScopedState() async {
         operations.append(.clearUserScopedState)
         await underlying.clearUserScopedState()
+    }
+}
+
+// MARK: - Transition emitter spy
+
+/// Records the synthetic transitions the coordinator fires for initial enter-when-inside.
+private final class TransitionEmitterSpy: GeofenceTransitionEmitting, @unchecked Sendable {
+    let calls = Synchronized<[(geofenceId: String, transition: GeofenceTransition)]>([])
+    /// Invoked after each recorded emit with its 0-based index — lets a test mutate state mid-batch
+    /// (e.g. change the identified user) to exercise the per-iteration guard.
+    var onEmit: (@Sendable (Int) -> Void)?
+
+    func trackTransition(geofenceId: String, transition: GeofenceTransition) async {
+        let index = calls.mutating { calls -> Int in
+            calls.append((geofenceId, transition))
+            return calls.count - 1
+        }
+        onEmit?(index)
     }
 }
 

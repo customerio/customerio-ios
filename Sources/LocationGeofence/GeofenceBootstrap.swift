@@ -7,7 +7,32 @@ import Foundation
 /// same setup against the same DI-resolved singletons.
 @MainActor
 enum GeofenceBootstrap {
+    /// Tail of the run chain. The authorization-changed and reconciled handlers re-trigger setup
+    /// while a prior run may be mid-await; chaining serializes runs so they can't interleave
+    /// adopt/re-register work or race the post-register persistence.
+    private static var lastRun: Task<Void, Never>?
+
     static func wireMonitor(di: DIGraphShared) async {
+        let previous = lastRun
+        let run = Task { @MainActor in
+            await previous?.value
+            await performWireMonitor(di: di)
+        }
+        lastRun = run
+        await run.value
+    }
+
+    private static func performWireMonitor(di: DIGraphShared) async {
+        // iOS 18+ (CLMonitor): construct the monitor NOW. CLMonitor delivers events only while its
+        // `events` sequence is iterated — the OS does not queue a crossing for a late consumer — and
+        // the cold-wake execution window is short, so the consumer must attach before the reads below.
+        // Safe this early: ownership is seeded synchronously from the persisted mirror in `init`.
+        // Classic (≤17) stays in phase 2: its delegate goes live on construction, and an `await`
+        // before the owned-set is populated drops a queued crossing.
+        if #available(iOS 18.0, *) {
+            _ = di.geofenceMonitor
+        }
+
         // Phase 1: all async reads BEFORE constructing the monitor. The
         // `CLLocationManager` delegate goes live the moment the monitor exists, so any
         // `await` after that point lets the OS deliver queued cold-wake transitions into
@@ -36,6 +61,18 @@ enum GeofenceBootstrap {
         let tracker = di.geofenceEventTracker
         let coordinator = di.geofenceSyncCoordinator
         GeofenceMonitorBinder.bind(monitor: monitor, tracker: tracker, coordinator: coordinator)
+
+        // Install both re-run handlers BEFORE the adopt/re-register decision so the CLMonitor path's
+        // first reconciliation — which can fire right after this synchronous phase yields — finds a
+        // handler. Each re-runs this idempotent setup, replacing prior handlers (no stacking):
+        // authorization changes re-attempt registration when permission improves; reconciliation
+        // re-decides adopt-vs-re-register off live OS truth instead of the pre-reconcile mirror
+        // (no-op on classic, whose osMonitoredRegionIdentifiers is already live).
+        let rewire: @MainActor () -> Void = {
+            Task { @MainActor in await GeofenceBootstrap.wireMonitor(di: di) }
+        }
+        monitor.setOnAuthorizationChanged(rewire)
+        monitor.setOnReconciled(rewire)
 
         // iOS persists `monitoredRegions` across process launch and device reboot. Adopt only when the
         // OS still holds the COMPLETE set we registered last session — re-claim it instead of
@@ -70,15 +107,6 @@ enum GeofenceBootstrap {
         // The adopt path above skips `startMonitoring` (the other tier-log site), so without this
         // a relaunch that re-claims OS-persisted regions would report nothing about delivery readiness.
         monitor.reportPermissionTier()
-
-        // Self-heal mid-process permission changes (Settings toggle, late prompt response).
-        // The handler replaces any prior one — no stacking when both foreground init and
-        // cold-wake bootstrap run in the same process.
-        monitor.setOnAuthorizationChanged {
-            Task { @MainActor in
-                await GeofenceBootstrap.wireMonitor(di: di)
-            }
-        }
     }
 
     /// Logs a one-line note when cold-wake real-time delivery is unavailable for this

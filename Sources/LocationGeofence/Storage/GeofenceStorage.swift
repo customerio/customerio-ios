@@ -93,11 +93,77 @@ actor GeofenceStorage {
         saveToDisk(state)
     }
 
-    /// Clears the cooldown map and the last-sync record (timestamp + location) but
-    /// preserves the cached geofences and config. Called on sign-out: the workspace cache
-    /// is shared across users, while cooldowns belong to the signed-out user and the
-    /// last-sync anchor would otherwise let the freshness gate skip the first sync for
-    /// the next signed-in user against stale state.
+    // MARK: - Monitor Region Records (CLMonitor path)
+
+    /// Records that the CLMonitor path (re)registered a condition: stores the delivery filter, the
+    /// circle geometry, and the dedup baseline. `initialState` is the device's ACTUAL state relative to
+    /// the circle at registration (computed by the monitor from the current location), so a fresh
+    /// baseline already matches reality — no spurious registration event, no missed first crossing.
+    ///
+    /// The baseline is **preserved** when the identifier is re-registered with unchanged geometry
+    /// (stop-all + start-all runs on every sync), so CLMonitor re-evaluating the same state isn't
+    /// delivered as a duplicate; it is **reseeded** to `initialState` for a brand-new identifier or a
+    /// changed circle. The unchanged-vs-changed decision is keyed on the persisted `center`/`radius`
+    /// (which survive stop-all) rather than CLMonitor's live record (which stop-all removes before the
+    /// re-add, so it can never report "unchanged").
+    func recordMonitorRegistration(
+        identifier: String,
+        transitionTypes: Set<GeofenceTransition>,
+        initialState: GeofenceTransition,
+        center: LocationData,
+        radius: Double
+    ) {
+        var state = loadFromDisk() ?? GeofenceState()
+        var records = state.monitorRegionRecords ?? [:]
+        let existing = records[identifier]
+        let unchangedGeometry = existing?.center == center && existing?.radius == radius
+        let lastState = unchangedGeometry ? (existing?.lastState ?? initialState) : initialState
+        records[identifier] = MonitorRegionRecord(
+            lastState: lastState,
+            transitionTypes: transitionTypes,
+            center: center,
+            radius: radius
+        )
+        state.monitorRegionRecords = records
+        saveToDisk(state)
+    }
+
+    /// Records a state observed off `CLMonitor.events` and returns what to do with it. The whole
+    /// compare-and-store runs inside the actor with no `await` between steps, so concurrent events
+    /// cannot both observe a stale baseline and both deliver. The baseline advances on every state
+    /// change — including transitions filtered from delivery — so an exit-only region still tracks
+    /// that the device entered, and the following exit is recognized as a change.
+    func recordMonitorEvent(_ transition: GeofenceTransition, forIdentifier identifier: String) -> GeofenceMonitorEventOutcome {
+        var state = loadFromDisk() ?? GeofenceState()
+        var records = state.monitorRegionRecords ?? [:]
+        guard var record = records[identifier] else {
+            // No registration record (condition predates this bookkeeping). Establish the baseline
+            // without delivering — mirrors classic registration, which is silent about the initial state.
+            records[identifier] = MonitorRegionRecord(lastState: transition, transitionTypes: [.enter, .exit])
+            state.monitorRegionRecords = records
+            saveToDisk(state)
+            return .suppressedNoBaseline
+        }
+        guard record.lastState != transition else { return .suppressedNoChange }
+        record.lastState = transition
+        records[identifier] = record
+        state.monitorRegionRecords = records
+        saveToDisk(state)
+        return record.transitionTypes.contains(transition) ? .deliver : .suppressedFilteredType
+    }
+
+    /// Snapshot of every per-condition monitor record — the adopt-time re-arm rebuilds conditions
+    /// from the geometry and baselines stored here.
+    func getMonitorRegionRecords() -> [String: MonitorRegionRecord] {
+        loadFromDisk()?.monitorRegionRecords ?? [:]
+    }
+
+    /// Clears the cooldown map, last-sync record, registration set, and monitor baselines but
+    /// preserves the cached geofences and config. Called on sign-out: the workspace cache is shared
+    /// across users, while cooldowns belong to the signed-out user and the last-sync anchor would
+    /// otherwise let the freshness gate skip the first sync for the next signed-in user against stale
+    /// state. `monitorRegionRecords` is dropped so the next session can't inherit a stale per-region
+    /// baseline; re-registration reseeds it anyway.
     func clearUserScopedState() {
         var state = loadFromDisk() ?? GeofenceState()
         state.eventCooldowns = nil
@@ -105,6 +171,7 @@ actor GeofenceStorage {
         state.lastServerSyncLocation = nil
         state.movementTriggerCenter = nil
         state.monitoredGeofenceIds = nil
+        state.monitorRegionRecords = nil
         saveToDisk(state)
     }
 
@@ -250,6 +317,19 @@ actor GeofenceStorage {
         decoder.dateDecodingStrategy = .secondsSince1970
         return decoder
     }
+}
+
+/// Disposition of a state observed off `CLMonitor.events`, decided by
+/// `GeofenceStorage.recordMonitorEvent(_:forIdentifier:)`.
+enum GeofenceMonitorEventOutcome: Equatable, Sendable {
+    /// Genuine state change of a registered transition type — deliver it.
+    case deliver
+    /// Same state as the baseline — a CLMonitor re-emission (relaunch/unlock/foreground), not a crossing.
+    case suppressedNoChange
+    /// Genuine state change, but the region wasn't registered for this transition type.
+    case suppressedFilteredType
+    /// First observation for a condition with no registration record — baseline established, nothing delivered.
+    case suppressedNoBaseline
 }
 
 // MARK: - DI

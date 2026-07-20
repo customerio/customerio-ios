@@ -50,15 +50,16 @@ protocol GeofenceSyncCoordinator: AutoMockable, AnyObject, Sendable {
 /// not declared `: Sendable`. Both are `let` references injected once and never mutated;
 /// the only mutable state is the `Synchronized<Bool>` dedup gate.
 final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sendable {
-    private let apiService: GeofenceApiService
-    private let monitor: GeofenceRegionMonitoring
-    private let contextStore: BackgroundDeliveryContextStore
-    private let distanceFilter: GeofenceDistanceFilter
-    private let logger: Logger
-    // Internal (not private) so the `+RefreshDecision` extension in its own file can read them;
-    // all are immutable injected deps.
+    // Internal (not private) so the `+RefreshDecision` / `+Refresh` / `+InitialEnter` /
+    // `+OsRegistration` extensions in their own files can read them; all are immutable injected deps.
+    let distanceFilter: GeofenceDistanceFilter
+    let logger: Logger
+    let apiService: GeofenceApiService
+    let monitor: GeofenceRegionMonitoring
     let storage: GeofenceSyncStorage
     let dateUtil: DateUtil
+    let transitionEmitter: GeofenceTransitionEmitting
+    let contextStore: BackgroundDeliveryContextStore
     private let refreshInProgress = Synchronized<Bool>(false)
 
     init(
@@ -66,6 +67,7 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
         storage: GeofenceSyncStorage,
         monitor: GeofenceRegionMonitoring,
         contextStore: BackgroundDeliveryContextStore,
+        transitionEmitter: GeofenceTransitionEmitting,
         distanceFilter: GeofenceDistanceFilter = GeofenceDistanceFilter(),
         dateUtil: DateUtil,
         logger: Logger
@@ -74,6 +76,7 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
         self.storage = storage
         self.monitor = monitor
         self.contextStore = contextStore
+        self.transitionEmitter = transitionEmitter
         self.distanceFilter = distanceFilter
         self.dateUtil = dateUtil
         self.logger = logger
@@ -84,9 +87,21 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
             logger.geofenceSyncSkipped(reason: "refresh already in progress")
             return .failure(.alreadyInProgress)
         }
-        defer { releaseGate() }
+        let expectedUserId = identifiedUserId
+        let result = await performRefresh(expectedUserId: expectedUserId, latitude: latitude, longitude: longitude)
+        let cleaned = await cleanupIfUserChanged(expectedUserId: expectedUserId)
+        // Explicit release (not defer): the self-heal retry below must find the gate free, or it
+        // would be dropped exactly like the refresh it compensates for.
+        releaseGate()
+        if cleaned { retryForCurrentUser(latitude: latitude, longitude: longitude) }
+        return result
+    }
 
-        guard let userId = contextStore.currentUserId, !userId.isEmpty else {
+    /// The refresh body, extracted so `refresh` has a single exit at which `cleanupIfUserChanged`
+    /// runs while the gate is still held — covering every path (freshness-skip, fetch failure,
+    /// post-fetch supersede, success alike).
+    private func performRefresh(expectedUserId: String?, latitude: Double, longitude: Double) async -> Result<Void, GeofenceSyncError> {
+        guard let userId = expectedUserId else {
             logger.geofenceSyncSkipped(reason: "no identified user")
             return .failure(.noIdentifiedUser)
         }
@@ -105,6 +120,7 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
         case .local:
             let cachedRegions = await storage.getCachedGeofences()
             return await performLocalRefresh(
+                expectedUserId: userId,
                 latitude: latitude,
                 longitude: longitude,
                 config: effectiveConfig,
@@ -121,9 +137,17 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
             logger.geofenceSyncSkipped(reason: "refresh already in progress")
             return .failure(.alreadyInProgress)
         }
-        defer { releaseGate() }
+        let expectedUserId = identifiedUserId
+        let result = await performMovement(expectedUserId: expectedUserId, latitude: latitude, longitude: longitude)
+        let cleaned = await cleanupIfUserChanged(expectedUserId: expectedUserId)
+        releaseGate()
+        if cleaned { retryForCurrentUser(latitude: latitude, longitude: longitude) }
+        return result
+    }
 
-        guard let userId = contextStore.currentUserId, !userId.isEmpty else {
+    /// The movement body, extracted for a single gated exit — same rationale as `performRefresh`.
+    private func performMovement(expectedUserId: String?, latitude: Double, longitude: Double) async -> Result<Void, GeofenceSyncError> {
+        guard let userId = expectedUserId else {
             logger.geofenceSyncSkipped(reason: "no identified user")
             return .failure(.noIdentifiedUser)
         }
@@ -147,6 +171,7 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
             logger.geofenceMovementTrigger(tier: .localRerank)
             let cachedRegions = await storage.getCachedGeofences()
             return await performLocalRefresh(
+                expectedUserId: userId,
                 latitude: latitude,
                 longitude: longitude,
                 config: effectiveConfig,
@@ -212,10 +237,27 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
             registerMovementTrigger: effectiveConfig.maxBusinessGeofences > 0 && !cachedRegions.isEmpty
         )
         logger.geofenceSyncCompleted(registeredCount: nearest.count)
-        // Return the registration so the caller persists it (async, after the no-await window) as
-        // the ranking-staleness reference — otherwise a later fresh refresh measures from a stale
-        // anchor and may skip while the OS holds the wrong nearest-set.
+        // No initial-enter here: a cold-wake restore of the pre-kill set (not new registrations) off a
+        // possibly-stale anchor. Genuinely-new fences come from a refresh fetch, which emits there.
         return GeofenceRegistration(center: anchor, businessIds: Set(nearest.map(\.id)))
+    }
+
+    /// The identified user a gated operation runs for (`nil` when signed out); the exit cleanup compares against it.
+    private var identifiedUserId: String? {
+        guard let userId = contextStore.currentUserId, !userId.isEmpty else { return nil }
+        return userId
+    }
+
+    /// After a cleanup for an identity change, the device monitors nothing — and the new user's own
+    /// refresh may already have been dropped on the gate this operation held. Re-run for whoever is
+    /// signed in now, with this operation's seconds-old coordinates, so a user switch converges to a
+    /// registered state instead of an outage lasting until the next launch. Loop-safe: a retry only
+    /// re-fires if the identity changes yet again during the retry itself.
+    private func retryForCurrentUser(latitude: Double, longitude: Double) {
+        guard identifiedUserId != nil else { return }
+        Task { [weak self] in
+            _ = await self?.refresh(latitude: latitude, longitude: longitude)
+        }
     }
 
     /// Returns false when another call already holds the gate; the caller short-circuits.
@@ -229,129 +271,6 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
 
     private func releaseGate() {
         refreshInProgress.wrappedValue = false
-    }
-
-    /// Fetch + filter + register + persist. Caller owns the dedup gate and user-id check;
-    /// `expectedUserId` is the value captured before the API call so this helper can
-    /// re-check that the identified user hasn't changed during the (potentially long) fetch.
-    private func performRemoteRefresh(
-        expectedUserId: String,
-        latitude: Double,
-        longitude: Double,
-        cachedConfig: GeofenceConfig?
-    ) async -> Result<Void, GeofenceSyncError> {
-        let fetchResult = await awaitApiFetch(latitude: latitude, longitude: longitude)
-        let response: GeofenceApiResponse
-        switch fetchResult {
-        case .success(let value):
-            response = value
-        case .failure(let error):
-            logger.geofenceSyncFetchFailed(error: error)
-            return .failure(.fetchFailed(error))
-        }
-
-        // If the user signed out / changed during the API call, drop the result —
-        // registering and persisting for a stale user would attribute geofences and
-        // events to whoever signs in next.
-        if contextStore.currentUserId != expectedUserId {
-            logger.geofenceSyncSupersededByUserChange()
-            return .success(())
-        }
-
-        let parsedConfig = response.toDomainConfig()
-        let regions = response.toDomainRegions()
-        let effectiveConfig = parsedConfig ?? cachedConfig ?? .fallback
-        let anchor = LocationData(latitude: latitude, longitude: longitude)
-        let nearest = distanceFilter.nearest(regions, to: anchor, limit: effectiveConfig.maxBusinessGeofences, maxDistance: effectiveConfig.maxMonitoringDistance)
-        await MainActor.run {
-            registerWithOsSync(
-                businessRegions: nearest,
-                movementTriggerLocation: anchor,
-                movementTriggerRadius: effectiveConfig.localRefreshTriggerRadius,
-                registerMovementTrigger: effectiveConfig.maxBusinessGeofences > 0 && !regions.isEmpty
-            )
-        }
-
-        await storage.setCachedGeofences(regions)
-        // Skip overwriting when the response did not ship a config — a previously cached
-        // value must not be clobbered by a null parse from a partial-rollout backend.
-        if let parsedConfig {
-            await storage.setCachedConfig(parsedConfig)
-        }
-        await storage.recordSync(timestamp: dateUtil.now, location: anchor)
-        await storage.recordRegistration(center: anchor, businessIds: Set(nearest.map(\.id)))
-        logger.geofenceSyncCompleted(registeredCount: nearest.count)
-        return .success(())
-    }
-
-    /// Re-rank cached regions for the new location and re-register with the OS. No API call and no
-    /// `lastSync` write — the API-fetch anchor is what the re-fetch decision compares against, so
-    /// leaving it intact preserves the next threshold. Records the registration anchor so the
-    /// ranking-staleness reference follows the device after a local re-rank.
-    private func performLocalRefresh(
-        latitude: Double,
-        longitude: Double,
-        config: GeofenceConfig,
-        cachedRegions: [Geofence]
-    ) async -> Result<Void, GeofenceSyncError> {
-        let anchor = LocationData(latitude: latitude, longitude: longitude)
-        let nearest = distanceFilter.nearest(cachedRegions, to: anchor, limit: config.maxBusinessGeofences, maxDistance: config.maxMonitoringDistance)
-        await MainActor.run {
-            registerWithOsSync(
-                businessRegions: nearest,
-                movementTriggerLocation: anchor,
-                movementTriggerRadius: config.localRefreshTriggerRadius,
-                registerMovementTrigger: config.maxBusinessGeofences > 0 && !cachedRegions.isEmpty
-            )
-        }
-        await storage.recordRegistration(center: anchor, businessIds: Set(nearest.map(\.id)))
-        logger.geofenceSyncCompleted(registeredCount: nearest.count)
-        return .success(())
-    }
-}
-
-// MARK: - OS registration & fetch plumbing
-
-private extension GeofenceSyncCoordinatorImpl {
-    /// Bridges the completion-based nearby fetch to async.
-    func awaitApiFetch(latitude: Double, longitude: Double) async -> Result<GeofenceApiResponse, GeofenceApiError> {
-        await withCheckedContinuation { continuation in
-            apiService.fetchNearbyGeofences(latitude: latitude, longitude: longitude) { continuation.resume(returning: $0) }
-        }
-    }
-
-    /// Stops all monitored regions, then starts the new business set + movement trigger.
-    /// `@MainActor`-isolated so a same-actor caller (e.g. `applyCachedRegistration`)
-    /// can register without yielding — see the protocol doc for why that matters.
-    @MainActor
-    func registerWithOsSync(
-        businessRegions: [Geofence],
-        movementTriggerLocation: LocationData,
-        movementTriggerRadius: Double,
-        registerMovementTrigger: Bool
-    ) {
-        monitor.stopMonitoringAll()
-        // Register the movement trigger FIRST so it isn't starved when business regions fill the
-        // shared 20-region OS budget (e.g. a host app that also monitors regions): losing it freezes
-        // the set, since exiting the trigger is what re-ranks toward now-closer geofences. Kept even
-        // when the distance cap left the business set empty; skipped only when there's nothing to
-        // register toward (no geofences, or registration kill-switched).
-        if registerMovementTrigger {
-            monitor.startMonitoring(
-                identifier: GeofenceConstants.movementTriggerIdentifier,
-                center: movementTriggerLocation,
-                radius: movementTriggerRadius,
-                transitionTypes: [.exit]
-            )
-        }
-        for region in businessRegions {
-            monitor.startMonitoring(
-                identifier: region.id,
-                center: LocationData(latitude: region.latitude, longitude: region.longitude),
-                radius: region.radius,
-                transitionTypes: region.transitionTypes
-            )
-        }
     }
 }
 
@@ -378,6 +297,7 @@ extension GeofenceSyncCoordinatorImpl {
         storage: DIGraphShared.shared.geofenceStorage,
         monitor: DIGraphShared.shared.geofenceMonitor,
         contextStore: DIGraphShared.shared.backgroundDeliveryContextStore,
+        transitionEmitter: DIGraphShared.shared.geofenceEventTracker,
         dateUtil: DIGraphShared.shared.dateUtil,
         logger: DIGraphShared.shared.logger
     )

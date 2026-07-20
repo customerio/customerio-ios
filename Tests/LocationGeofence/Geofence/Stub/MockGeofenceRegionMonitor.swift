@@ -21,8 +21,10 @@ enum MockMonitorOperation: Sendable, Equatable {
 final class MockGeofenceRegionMonitor: GeofenceRegionMonitoring {
     private var onTransition: GeofenceTransitionHandler?
     private(set) var onAuthorizationChanged: GeofenceAuthorizationChangedHandler?
+    private(set) var onReconciled: GeofenceReconciledHandler?
     private(set) var setOnTransitionCallsCount = 0
     private(set) var setOnAuthorizationChangedCallsCount = 0
+    private(set) var setOnReconciledCallsCount = 0
     private(set) var startedRegions: [MonitoredRegionRecord] = []
     private(set) var stoppedIdentifiers: [String] = []
     private(set) var stopAllCallCount = 0
@@ -32,6 +34,10 @@ final class MockGeofenceRegionMonitor: GeofenceRegionMonitoring {
     /// Seedable OS-persisted set — tests set this to model regions the OS still monitors on a
     /// fresh process (where `activeIdentifiers`, the in-memory ownership filter, starts empty).
     var osMonitoredRegions: Set<String> = []
+
+    /// Identifiers `startMonitoring` should silently drop — models the real monitor's early return
+    /// on blocked permission / invalid coordinates, where the region never enters the owned set.
+    var rejectedIdentifiers: Set<String> = []
     private(set) var adoptExistingRegionsCallsCount = 0
     private(set) var adoptedIdentifiers: Set<String> = []
     private(set) var reportPermissionTierCallsCount = 0
@@ -39,6 +45,10 @@ final class MockGeofenceRegionMonitor: GeofenceRegionMonitoring {
     var monitoredRegionIdentifiers: Set<String> {
         activeIdentifiers
     }
+
+    /// Defaults to no clamp so existing tests register the configured radius unchanged; tests that
+    /// exercise the OS cap set it explicitly.
+    var maximumMonitoringRadius: Double = .greatestFiniteMagnitude
 
     var osMonitoredRegionIdentifiers: Set<String> {
         osMonitoredRegions
@@ -65,7 +75,14 @@ final class MockGeofenceRegionMonitor: GeofenceRegionMonitoring {
         setOnAuthorizationChangedCallsCount += 1
     }
 
+    func setOnReconciled(_ handler: GeofenceReconciledHandler?) {
+        onReconciled = handler
+        setOnReconciledCallsCount += 1
+    }
+
     func startMonitoring(identifier: String, center: LocationData, radius: Double, transitionTypes: Set<GeofenceTransition>) {
+        // Mirror the real monitor's early return: a rejected id is neither recorded nor owned.
+        guard !rejectedIdentifiers.contains(identifier) else { return }
         startedRegions.append(MonitoredRegionRecord(
             identifier: identifier,
             center: center,

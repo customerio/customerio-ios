@@ -20,4 +20,31 @@ struct GeofenceState: Codable, Equatable, Sendable {
     /// landed a `config` block yet — consumers fall back to `GeofenceConfig.fallback` or
     /// their component defaults.
     var cachedConfig: GeofenceConfig?
+    /// Per-condition bookkeeping for the CLMonitor (iOS 17+) monitor, keyed by region identifier.
+    /// `nil` on the classic CLLocationManager path, which needs neither: its delegate fires only on
+    /// real crossings (no dedup needed) and filters transition types at the OS level.
+    var monitorRegionRecords: [String: MonitorRegionRecord]?
+}
+
+/// Bookkeeping the CLMonitor (iOS 17+) monitor keeps per registered condition.
+///
+/// `CLMonitor` re-emits a condition's CURRENT state on process start and system re-evaluation
+/// (unlock/foreground), not just on boundary crossings, and always reports both enter and exit —
+/// there is no `notifyOnEntry`/`notifyOnExit` equivalent. `lastState` suppresses the re-emissions
+/// (persisted so a cold-wake compares against the pre-kill state); `transitionTypes` restores the
+/// per-region delivery filter the classic path gets from the OS.
+struct MonitorRegionRecord: Codable, Equatable, Sendable {
+    /// Last state observed for the condition — the dedup baseline. Seeded at registration (see
+    /// `GeofenceStorage.recordMonitorRegistration`) and updated on every observed event thereafter,
+    /// including ones filtered from delivery.
+    var lastState: GeofenceTransition
+    /// Transition types the region was registered for; events of other types are recorded but not delivered.
+    var transitionTypes: Set<GeofenceTransition>
+    /// Registered circle center. Lets `recordMonitorRegistration` tell an unchanged re-registration
+    /// (preserve the baseline) from a new/changed circle (reseed) — the live `CLMonitor` record can't,
+    /// since the wholesale stop-all removes it before every re-add. Optional so records persisted before
+    /// this field decode; a nil-geometry record is treated as changed and reseeded once.
+    var center: LocationData?
+    /// Registered radius in meters; paired with `center` for the unchanged-geometry check.
+    var radius: Double?
 }

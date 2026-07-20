@@ -15,6 +15,10 @@ typealias GeofenceTransitionHandler = @Sendable (String, GeofenceTransition, Loc
 /// Invoked on the main actor — same isolation domain as `CLLocationManagerDelegate`.
 typealias GeofenceAuthorizationChangedHandler = @MainActor () -> Void
 
+/// Callback once the monitor has reconciled its owned set against the OS's live truth.
+/// Invoked on the main actor.
+typealias GeofenceReconciledHandler = @MainActor () -> Void
+
 /// Abstracts CLLocationManager's region monitoring.
 ///
 /// The monitor owns a CLLocationManager and handles the delegate callbacks for region events.
@@ -34,6 +38,12 @@ protocol GeofenceRegionMonitoring: AnyObject, Sendable {
     /// prompt resolved, or the user toggled the setting in Settings).
     func setOnAuthorizationChanged(_ handler: GeofenceAuthorizationChangedHandler?)
 
+    /// Sets the handler called once the monitor reconciles its owned set against the OS's live truth.
+    /// Only the CLMonitor path needs it: its live identifiers are async, so the fast synchronous
+    /// adopt/re-register decision runs off a cached mirror, and a drift correction must re-trigger
+    /// that decision. The classic monitor reads `monitoredRegions` synchronously — default no-op.
+    func setOnReconciled(_ handler: GeofenceReconciledHandler?)
+
     /// Starts monitoring a circular geofence region.
     /// - Parameters:
     ///   - identifier: Unique identifier for the region.
@@ -51,17 +61,30 @@ protocol GeofenceRegionMonitoring: AnyObject, Sendable {
     /// Returns the set of region identifiers currently being monitored by this monitor.
     var monitoredRegionIdentifiers: Set<String> { get }
 
+    /// The largest radius the OS actually monitors; every registered region's radius is clamped to
+    /// this (`CLLocationManager.maximumRegionMonitoringDistance`). Apple defines no floor for it, so
+    /// a fence radius can exceed it — callers deciding whether the device is inside a registered
+    /// circle must clamp to it too, or they'd treat a device outside the monitored circle as inside.
+    var maximumMonitoringRadius: Double { get }
+
     /// Region identifiers the OS still actively monitors app-wide (`CLLocationManager.monitoredRegions`).
     /// These persist across process launch and device reboot, so on a fresh process this is populated
     /// even though `monitoredRegionIdentifiers` (the in-memory ownership filter) starts empty.
     var osMonitoredRegionIdentifiers: Set<String> { get }
 
     /// Re-claims the OS-persisted regions whose identifiers are in `identifiers` as owned by this
-    /// monitor, without re-registering them. Restores transition recognition on a fresh process
-    /// where the OS kept monitoring but the in-memory ownership set was lost.
+    /// monitor, restoring transition recognition on a fresh process where the OS kept monitoring
+    /// but the in-memory ownership set was lost. Adoption must not emit events for unchanged
+    /// regions; the OS-side mechanism is implementation-specific (the classic monitor adopts in
+    /// place, the CLMonitor path re-arms each condition — see `rearmConditions`).
     func adoptExistingRegions(matching identifiers: Set<String>)
 
     /// Logs the current authorization tier (background delivery / foreground only / blocked),
     /// deduped so it emits only when the tier changes since the last report.
     func reportPermissionTier()
+}
+
+extension GeofenceRegionMonitoring {
+    /// Default no-op: only the CLMonitor path reconciles asynchronously against live OS truth.
+    func setOnReconciled(_ handler: GeofenceReconciledHandler?) {}
 }
