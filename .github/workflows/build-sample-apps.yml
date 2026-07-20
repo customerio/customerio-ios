@@ -3,7 +3,7 @@ name: Build sample apps
 on:
   pull_request: # build sample apps for every commit pushed to an open pull request (including drafts)
   push:
-    branches: [ main, feature/* ]
+    branches: [ main, feature/*, geofence-testing ] # geofence-testing: TESTING-ONLY — build release apps on push (distributes to all-builds)
   workflow_dispatch: # allow manual run     
     inputs:
       use_latest_sdk_version:

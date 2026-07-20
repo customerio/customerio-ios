@@ -20,6 +20,7 @@ enum GeofenceMonitorBinder {
             // CLLocationManager delivers on main; both handlers below are async with their
             // own serialization (tracker active-delivery dedup, coordinator refresh gate),
             // so fire-and-forget Tasks are safe.
+            DIGraphShared.shared.logger.geofenceDebug("Monitor callback: '\(identifier)' \(transition.rawValue)") // TESTING-ONLY
             if identifier == GeofenceConstants.movementTriggerIdentifier {
                 // EXIT is the only registered transition for the movement trigger; the
                 // guard defends against an unexpected ENTER reaching this dispatch.

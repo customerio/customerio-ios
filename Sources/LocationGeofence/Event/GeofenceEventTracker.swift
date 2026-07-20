@@ -92,8 +92,10 @@ final class GeofenceEventTracker: @unchecked Sendable {
 
         guard await storage.tryAcquireCooldown(key: cooldownKey, now: now, interval: interval) else {
             logger.geofenceEventSuppressed(geofenceId: geofenceId, transition: transition)
+            logger.geofenceDebug("Transition '\(geofenceId)' \(transition.rawValue): SUPPRESSED (cooldown)") // TESTING-ONLY
             return []
         }
+        logger.geofenceDebug("Transition '\(geofenceId)' \(transition.rawValue): PASSED cooldown → delivering") // TESTING-ONLY
         // Resolve the geofence name and geoset membership now and carry them on the metric;
         // name is nil when the geofence has none so the event omits `geofenceName`.
         let cachedGeofence = await storage.getCachedGeofences().first { $0.id == geofenceId }

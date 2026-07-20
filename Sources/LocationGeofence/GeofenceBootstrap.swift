@@ -23,6 +23,7 @@ enum GeofenceBootstrap {
     }
 
     private static func performWireMonitor(di: DIGraphShared) async {
+        di.logger.geofenceDebug("Bootstrap: wireMonitor ENTER") // TESTING-ONLY
         // iOS 18+ (CLMonitor): construct the monitor NOW. CLMonitor delivers events only while its
         // `events` sequence is iterated — the OS does not queue a crossing for a late consumer — and
         // the cold-wake execution window is short, so the consumer must attach before the reads below.
@@ -82,8 +83,10 @@ enum GeofenceBootstrap {
         // re-register so the missing business geofences come back rather than staying unmonitored
         // until the next refresh.
         if !expectedOwnedRegions.isEmpty, expectedOwnedRegions.isSubset(of: monitor.osMonitoredRegionIdentifiers) {
+            di.logger.geofenceDebug("Bootstrap: adopting \(expectedOwnedRegions.count) OS-persisted region(s)") // TESTING-ONLY
             monitor.adoptExistingRegions(matching: expectedOwnedRegions)
         } else {
+            di.logger.geofenceDebug("Bootstrap: re-registering from cache (anchor=\(restoreAnchor != nil))") // TESTING-ONLY
             // First launch after install, the OS dropped our regions (e.g. permission revoked then
             // re-granted, which clears `monitoredRegions`), or a partial drop. Register fresh from cache.
             let registration = coordinator.applyCachedRegistration(

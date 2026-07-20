@@ -122,4 +122,12 @@ extension Logger {
     func geofenceRegionsAdopted(count: Int) {
         debug("Adopted \(count) OS-persisted region(s) on launch; re-armed in place", geofenceTag)
     }
+
+    // TESTING-ONLY (geofence-testing branch): one geofence-tagged debug helper so diagnostics can be
+    // logged inline at each call site without a dedicated named method per log. Also fans the line
+    // out to `GeofenceTestHooks` so the sample app can surface it as an on-device notification.
+    func geofenceDebug(_ message: String) {
+        debug(message, geofenceTag)
+        GeofenceTestHooks.onDebug?(message)
+    }
 }
