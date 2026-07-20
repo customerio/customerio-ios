@@ -127,8 +127,12 @@ private struct CountdownText: View {
     let endTime: EpochSecondsDate?
 
     var body: some View {
-        if let date = endTime?.date, date > Date() {
-            Text(timerInterval: Date() ... date, countsDown: true, showsHours: false)
+        // Capture `now` once: using it for both the guard and the range's lower bound
+        // avoids an invalid `now ... date` interval if `endTime` elapses between the
+        // two reads (Text(timerInterval:) requires lowerBound <= upperBound).
+        let now = Date()
+        if let date = endTime?.date, date > now {
+            Text(timerInterval: now ... date, countsDown: true, showsHours: false)
                 .multilineTextAlignment(.trailing)
         }
     }
