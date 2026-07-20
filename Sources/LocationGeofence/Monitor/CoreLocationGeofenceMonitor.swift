@@ -243,11 +243,9 @@ extension DIGraphShared {
         // CLLocationManager monitor — the region APIs are deprecated on 17 but still deliver
         // reliably in the background (OS relaunch), whereas iOS 17 CLMonitor has no session and
         // no dependable background story. Revisit lowering this to 17 only if it proves reliable.
-        // === TESTING-ONLY (local, uncommitted) === forced classic path for the cold-wake buffer
-        // field test on an iOS 26 device. Revert after verification.
-        // if #available(iOS 18.0, *) {
-        //     return CLMonitorGeofenceMonitor.shared
-        // }
+        if #available(iOS 18.0, *) {
+            return CLMonitorGeofenceMonitor.shared
+        }
         return CoreLocationGeofenceMonitor.shared
     }
 }
