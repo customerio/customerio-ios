@@ -81,7 +81,12 @@ enum GeofenceBootstrap {
         // regions dropped, e.g. a monitoring failure or only the trigger surviving) falls through to
         // re-register so the missing business geofences come back rather than staying unmonitored
         // until the next refresh.
-        if !expectedOwnedRegions.isEmpty, expectedOwnedRegions.isSubset(of: monitor.osMonitoredRegionIdentifiers) {
+        if di.backgroundDeliveryContextStore.currentUserId != userId {
+            // Identity changed during the reads above: adopting or registering now could resurrect
+            // regions a sign-out reset just tore down (adopt's FIFO'd re-adds land after the
+            // reset's queued removes). The next identify-driven refresh registers instead.
+            di.logger.geofenceSyncSkipped(reason: "identified user changed during bootstrap")
+        } else if !expectedOwnedRegions.isEmpty, expectedOwnedRegions.isSubset(of: monitor.osMonitoredRegionIdentifiers) {
             monitor.adoptExistingRegions(matching: expectedOwnedRegions)
         } else {
             // First launch after install, the OS dropped our regions (e.g. permission revoked then

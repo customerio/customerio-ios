@@ -136,7 +136,7 @@ struct GeofenceEventTrackerTests {
         #expect(delivery.trackMetricCallsCount == 0)
         // The cooldown claimed for this crossing was released, so the next crossing retries from a
         // clean state instead of being suppressed. A held cooldown would make this claim return false.
-        let canRetry = await storage.tryAcquireCooldown(key: "geo_1:enter", now: dateUtil.now, interval: cooldownInterval)
+        let canRetry = await storage.tryAcquireCooldown(key: "user_42:geo_1:enter", now: dateUtil.now, interval: cooldownInterval)
         #expect(canRetry)
     }
 
@@ -221,6 +221,50 @@ struct GeofenceEventTrackerTests {
         dateUtil.givenNow = baseTime.addingTimeInterval(cooldownInterval)
         await tracker.trackTransition(geofenceId: "geo_1", transition: .enter)
 
+        #expect(delivery.trackMetricCallsCount == 2)
+    }
+
+    @Test
+    func trackTransition_givenDifferentUserWithinCooldown_expectNotSuppressed() async {
+        // After A triggers a geofence, B (a fast re-login whose skipped sign-out cleanup left A's
+        // cooldown state in shared storage) crossing the same geofence within the window must
+        // not be suppressed.
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let storage = makeStorage(directory: dir)
+        let pending = makePendingStore(directory: dir)
+        let delivery = GeofenceDeliveryTrackerMock()
+        delivery.trackMetricClosure = { _, _, onComplete in onComplete(.success(())) }
+        let dateUtil = DateUtilStub()
+        let baseTime = Date(timeIntervalSince1970: 1700000000)
+        dateUtil.givenNow = baseTime
+
+        let trackerA = makeTracker(
+            storage: storage,
+            pendingStore: pending,
+            deliveryTracker: delivery,
+            contextStore: makeContextStore(userId: "user_A"),
+            dateUtil: dateUtil
+        )
+        await trackerA.trackTransition(geofenceId: "geo_1", transition: .enter)
+        #expect(delivery.trackMetricCallsCount == 1)
+
+        // Same geofence, halfway through the cooldown window, but user B now.
+        dateUtil.givenNow = baseTime.addingTimeInterval(cooldownInterval / 2)
+        let trackerB = makeTracker(
+            storage: storage,
+            pendingStore: pending,
+            deliveryTracker: delivery,
+            contextStore: makeContextStore(userId: "user_B"),
+            dateUtil: dateUtil
+        )
+        await trackerB.trackTransition(geofenceId: "geo_1", transition: .enter)
+
+        #expect(delivery.trackMetricCallsCount == 2)
+        #expect(delivery.trackMetricReceivedArguments?.userId == "user_B")
+
+        // And the same user within the window stays suppressed.
+        await trackerA.trackTransition(geofenceId: "geo_1", transition: .enter)
         #expect(delivery.trackMetricCallsCount == 2)
     }
 

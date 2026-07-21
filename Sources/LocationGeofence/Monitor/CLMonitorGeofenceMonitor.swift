@@ -207,9 +207,9 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preco
             return
         }
         guard case .deliver = await storage.recordMonitorEvent(transition, forIdentifier: identifier) else { return }
-        // The await hopped off the main actor; re-check ownership so a region removed during that
-        // window isn't delivered (parity with the classic delegate's synchronous ownership check).
-        guard ownedRegionIdentifiers.contains(identifier) else { return }
+        // No ownership re-check after the await: the baseline already advanced, so dropping here
+        // loses the transition permanently — a sync's stop-all + re-add swap would eat a genuine
+        // crossing that raced it. A region truly removed in that window delivers one last gated event.
         onTransition?(identifier, transition, currentLocationData())
     }
 
