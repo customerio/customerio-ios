@@ -29,7 +29,7 @@ final class TrackCapture: @unchecked Sendable {
     func makeReporter() -> LiveActivityReporter {
         LiveActivityReporter(
             track: { name, props in self.record(name, props) },
-            currentUserId: { self.userId },
+            isUserIdentified: { self.userId != nil },
             deviceToken: { self.deviceToken },
             logger: NoopLogger()
         )

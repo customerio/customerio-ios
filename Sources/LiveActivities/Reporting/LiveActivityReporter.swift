@@ -14,18 +14,18 @@ import Foundation
 /// is not duplicated into `properties`.
 final class LiveActivityReporter: @unchecked Sendable {
     private let track: (String, [String: Any]) -> Void
-    private let currentUserId: () -> String?
+    private let isUserIdentified: () -> Bool
     private let deviceToken: () -> String?
     private let logger: Logger
 
     init(
         track: @escaping (String, [String: Any]) -> Void,
-        currentUserId: @escaping () -> String?,
+        isUserIdentified: @escaping () -> Bool,
         deviceToken: @escaping () -> String?,
         logger: Logger
     ) {
         self.track = track
-        self.currentUserId = currentUserId
+        self.isUserIdentified = isUserIdentified
         self.deviceToken = deviceToken
         self.logger = logger
     }
@@ -127,7 +127,9 @@ final class LiveActivityReporter: @unchecked Sendable {
     /// Returns the device token when an identified user and a non-empty device token both
     /// exist; otherwise logs the reason and returns `nil` so the caller drops the event.
     private func gatedDeviceId(for what: String) -> String? {
-        guard currentUserId() != nil else {
+        // isUserIdentified is updated synchronously on identify(), so an identify() immediately
+        // followed by startLiveActivity() is reported rather than dropped by a stale flag.
+        guard isUserIdentified() else {
             logger.debug("Live Notifications require an identified user; dropping \(what).", "LiveActivities")
             return nil
         }

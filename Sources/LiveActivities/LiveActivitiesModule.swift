@@ -77,7 +77,10 @@ public final class LiveActivitiesModule {
         let identity = self.identity
         let reporter = LiveActivityReporter(
             track: { name, properties in sdk.track(name: name, properties: properties) },
-            currentUserId: { identity.userId },
+            // Gate on the SDK's synchronous identified flag (backed by DataPipelineTracking),
+            // not the async event-bus-fed identity cache, so a start() right after identify()
+            // isn't dropped. Token registration still uses `identity` via the registrar.
+            isUserIdentified: { sdk.isUserIdentified },
             deviceToken: { identity.deviceToken },
             logger: sdk.logger
         )
