@@ -78,12 +78,17 @@ public struct NotificationInboxBell: View {
                 if showsUnreadCount {
                     // Badge count text color + size come from branding (`unreadIndicator.text`,
                     // MBL-2126), falling back to white / the caption size when unset.
+                    // Geometry mirrors web (`#gist-inbox-badge`): a 20pt-tall stadium (Capsule,
+                    // radius = height/2) with min-width 20 and 6pt horizontal padding, so a single
+                    // digit is a circle and multi-digit counts grow horizontally rather than forcing
+                    // a full circle (MBL-2127). Offset (4, -4) matches web's top:-4/right:-4.
                     Text("\(model.unopenedCount)")
                         .font(colors.badgeTextSize.map { Font.system(size: $0) } ?? .caption)
                         .foregroundColor(colors.badgeText)
-                        .padding(5)
+                        .padding(.horizontal, 6)
+                        .frame(minWidth: 20, minHeight: 20)
                         .background(colors.badge)
-                        .clipShape(Circle())
+                        .clipShape(Capsule())
                         .offset(x: 4, y: -4)
                 }
             }

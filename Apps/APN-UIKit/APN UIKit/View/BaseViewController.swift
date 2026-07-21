@@ -7,7 +7,7 @@ class BaseViewController: UIViewController {
         super.viewDidLoad()
 
         dismissKeyboardOnTap()
-        overrideUserInterfaceStyle = .light
+        overrideUserInterfaceStyle = .unspecified
     }
 
     func getMetaData() -> String {
