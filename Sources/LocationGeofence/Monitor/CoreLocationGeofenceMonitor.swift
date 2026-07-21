@@ -127,7 +127,8 @@ final class CoreLocationGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @pr
     /// crossing delivered then would be dropped with no re-emission. Ownership is checked at drain —
     /// after adopt populated it — which still filters buffered host-app events. New arrivals queue
     /// behind any backlog and behind an in-flight drain, so per-region order holds. Capped against a
-    /// process that never binds.
+    /// process that never binds; unlike CLMonitor there is no re-emission, but overflowing the cap
+    /// requires bind to never run, and then every buffered event is undeliverable anyway.
     private func handleRegionEvent(_ region: CLRegion, transition: GeofenceTransition) {
         guard region is CLCircularRegion else { return }
         if onTransition == nil || !pendingEvents.isEmpty || isDrainingPendingEvents {

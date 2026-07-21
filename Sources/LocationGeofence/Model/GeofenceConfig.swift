@@ -19,7 +19,7 @@ struct GeofenceConfig: Codable, Equatable, Sendable {
     /// Freshness window for cached sync. A successful sync within this interval suppresses
     /// redundant API calls from identify / app-launch triggers.
     let remoteFetchRefreshExpiry: TimeInterval
-    /// Duplicate-transition suppression window keyed by "geofenceId:transitionType".
+    /// Duplicate-transition suppression window keyed by "userId:geofenceId:transitionType".
     let duplicateEventsExpiry: TimeInterval
     /// Maximum number of business geofences to monitor. Always 0…19 on iOS (movement
     /// trigger consumes the 20th OS slot).
