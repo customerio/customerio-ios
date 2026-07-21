@@ -325,7 +325,11 @@ public final class LiveActivitiesModule {
         // account switch — clearIdentify() then identify(B) — puts B into the synchronous identity
         // store before this async reset runs, so A's forced ends would otherwise be reported under B.
         identity.userId = nil
-        localEndTracker.clearAll()
+        // Do NOT clear existing local-end markers here: an activity the app ended via
+        // CIOLiveActivity.end() just before logout is already gone from Activity.activities, so the
+        // force-end loop below won't re-mark it. Dropping its marker would let its late `.dismissed`
+        // terminal be misreported as a user swipe (under the next user). Markers are in-memory,
+        // one-shot, and ULID-keyed, so keeping them is inert for any other activity.
         latestMetadata.wrappedValue = [:]
         for registration in config.registrations {
             await registration.endAllActivities { [tokenStorage, localEndTracker] activityId, attributesInstanceId in

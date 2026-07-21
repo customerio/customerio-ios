@@ -66,6 +66,31 @@ struct LiveActivitiesResetTests {
         #expect(tracker.consume("inst-1") == true)
     }
 
+    /// Regression: an activity the app ended via `CIOLiveActivity.end()` just before logout is
+    /// already marked local but no longer in `Activity.activities`, so the reset loop won't re-mark
+    /// it. Reset must NOT drop that marker — otherwise its late `.dismissed` terminal would be
+    /// reported as a user dismissal under the next user.
+    @Test func reset_preservesInFlightLocalEndMarks() async {
+        let tracker = LiveActivityLocalEndTracker()
+        tracker.markEnded("in-flight-1") // an app-initiated end already in flight at logout
+        let store = FakeTokenStore()
+        var config = LiveActivityConfig()
+        config.registrations = [
+            ActivityTypeRegistration(
+                activityIdentifier: "io.customer.livenotifications.segments",
+                attributesTypeName: "CIOSegmentsAttributes",
+                startObserving: { _ in Task {} },
+                endAllActivities: { _ in } // nothing currently listed to force-end
+            )
+        ]
+        let sdk = FakeLiveActivitiesSDK(isUserIdentified: true)
+        let module = LiveActivitiesModule(config: config, sdk: sdk, tokenStorage: store, localEndTracker: tracker)
+
+        await module.handleReset()
+
+        #expect(tracker.consume("in-flight-1") == true)
+    }
+
     /// Sanity: when the type carries no attributes instance id, reset still marks a (minted) local
     /// end for the activity, keyed by the token store's resolved id.
     @Test func reset_marksLocalEnd_whenNoAttributesInstanceId() async {
