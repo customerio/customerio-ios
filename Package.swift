@@ -60,9 +60,9 @@ let package = Package(
         .package(url: "https://github.com/LaunchDarkly/swift-eventsource.git", .upToNextMajor(from: "3.3.0")),
 
         // Jist SwiftUI renderer used by the Visual Inbox overlay (`CioMessagingInbox`).
-        // Consumed from the published Jist repo on `main` (its root Package.swift exposes the `Jist` product).
-        // TODO: pin to a tagged release once Jist cuts one.
-        .package(url: "https://github.com/customerio/jist.git", branch: "main")
+        // Published release from the Jist monorepo (its root Package.swift exposes the `Jist` product;
+        // the SwiftPM release is the `vX.Y.Z` git tag).
+        .package(url: "https://github.com/customerio/jist.git", from: "0.1.0")
     ],
     targets: [ 
         // Common - Code used by multiple modules in the SDK project.

@@ -28,7 +28,6 @@ Pod::Spec.new do |spec|
 
   spec.dependency "CustomerIOMessagingInApp", "= #{spec.version.to_s}"
   spec.dependency "CustomerIOCommon", "= #{spec.version.to_s}"
-  # TODO: switch to published Jist once available. The overlay renders messages via the Jist
-  # SwiftUI package; add it here (e.g. spec.dependency "Jist", "~> x.y.z") when it is published to
-  # CocoaPods. The SPM build consumes it as a local path dependency in the meantime.
+  # The overlay renders messages via the published Jist SwiftUI package (CocoaPods trunk).
+  spec.dependency "Jist", "~> 0.1.0"
  end
