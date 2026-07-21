@@ -21,7 +21,8 @@ var products: [PackageDescription.Product] = [
     .library(name: "MessagingInApp", targets: ["CioMessagingInApp"]),
     .library(name: "Location", targets: ["CioLocation"]),
     .library(name: "LiveActivities", targets: ["CioLiveActivities"]),
-    .library(name: "LiveActivities_Attributes", targets: ["CioLiveActivities_Attributes"])
+    .library(name: "LiveActivities_Attributes", targets: ["CioLiveActivities_Attributes"]),
+    .library(name: "LiveActivities_Templates", targets: ["CioLiveActivities_Templates"])
 ]
 
 // When we execute the automated test suite, we use tools to determine the code coverage of our tests. 
@@ -176,6 +177,12 @@ let package = Package(
         .target(name: "CioLiveActivities_Attributes",
                 dependencies: [],
                 path: "Sources/LiveActivities_Attributes"),
+
+        // Live Activities — bundled UI templates (SwiftUI/WidgetKit).
+        // Import in both the app target and the widget extension when using a built-in template.
+        .target(name: "CioLiveActivities_Templates",
+                dependencies: ["CioLiveActivities_Attributes"],
+                path: "Sources/LiveActivities_Templates"),
 
         // Live Activities — observation module.
         .target(name: "CioLiveActivities",

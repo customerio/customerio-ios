@@ -9,7 +9,7 @@ import Foundation
 /// CustomerIO.initialize(withConfig: config)
 /// LiveActivitiesModule.initialize(
 ///     LiveActivityConfigBuilder()
-///         .register(OrderAttributes.self, identifier: "io.customer.liveactivities.order")
+///         .register(OrderAttributes.self, identifier: "io.customer.livenotifications.order")
 ///         .build()
 /// )
 /// ```
