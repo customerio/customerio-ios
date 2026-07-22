@@ -62,7 +62,9 @@ let package = Package(
         // Jist SwiftUI renderer used by the Visual Inbox overlay (`CioMessagingInbox`).
         // Published release from the Jist monorepo (its root Package.swift exposes the `Jist` product;
         // the SwiftPM release is the `vX.Y.Z` git tag).
-        .package(url: "https://github.com/customerio/jist.git", from: "0.1.0")
+        // upToNextMinor (>=0.1.0, <0.2.0) mirrors the CocoaPods `~> 0.1.0` range so both package
+        // managers resolve the same Jist for a given SDK version (Jist is 0.x — minor bumps may break).
+        .package(url: "https://github.com/customerio/jist.git", .upToNextMinor(from: "0.1.0"))
     ],
     targets: [ 
         // Common - Code used by multiple modules in the SDK project.
