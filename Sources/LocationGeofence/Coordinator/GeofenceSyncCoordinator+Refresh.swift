@@ -33,7 +33,7 @@ extension GeofenceSyncCoordinatorImpl {
         }
 
         let parsedConfig = response.toDomainConfig()
-        let regions = response.toDomainRegions()
+        let regions = response.toDomainRegions(onInvalidRegion: { logger.geofenceInvalidRegionDropped($0) })
         let effectiveConfig = parsedConfig ?? cachedConfig ?? .fallback
         let anchor = LocationData(latitude: latitude, longitude: longitude)
         let nearest = distanceFilter.nearest(regions, to: anchor, limit: effectiveConfig.maxBusinessGeofences, maxDistance: effectiveConfig.maxMonitoringDistance)
