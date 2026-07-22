@@ -74,14 +74,6 @@ struct LiveActivityReporterShapeTests {
         #expect(contentState?["away"] as? Int == 2)
     }
 
-    @Test func reportUpdate_sendsContentStateOnly() {
-        let cap = identifiedCapture()
-        cap.makeReporter().reportUpdate(instanceUUID: "i1", notificationType: "type.a", contentState: ["home": 3])
-        #expect(cap.string(0, "eventType") == "update")
-        #expect(cap.events[0].properties["attributes"] == nil)
-        #expect(cap.events[0].properties["contentState"] != nil)
-    }
-
     @Test func reportEnd_withFinalContentState_sendsIt() {
         let cap = identifiedCapture()
         cap.makeReporter().reportEnd(instanceUUID: "i1", notificationType: "type.a", contentState: ["home": 5])

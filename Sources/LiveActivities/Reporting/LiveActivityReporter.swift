@@ -44,17 +44,6 @@ final class LiveActivityReporter: @unchecked Sendable {
         )
     }
 
-    /// Reports an `update`: sends the dynamic `contentState` object.
-    func reportUpdate(instanceUUID: String, notificationType: String, contentState: [String: Any]?) {
-        reportLifecycle(
-            eventType: LiveActivityContract.EventType.update,
-            instanceUUID: instanceUUID,
-            notificationType: notificationType,
-            attributes: nil,
-            contentState: contentState
-        )
-    }
-
     /// Reports an `end`: optionally sends a final `contentState` object (nil-omitted).
     func reportEnd(instanceUUID: String, notificationType: String, contentState: [String: Any]? = nil) {
         reportLifecycle(
