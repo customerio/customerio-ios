@@ -2,9 +2,9 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <key>CFBundleDisplayName</key>
-    <string>Native iOS</string>
-    <key>CFBundleURLTypes</key>
+	<key>CFBundleDisplayName</key>
+	<string>Native iOS</string>
+	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
 			<key>CFBundleTypeRole</key>
@@ -16,6 +16,16 @@
 				<string>apn-uikit</string>
 			</array>
 		</dict>
+	</array>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>This app uses your location to test the Customer.io Location module.</string>
+	<key>UIAppFonts</key>
+	<array>
+		<string>AbrilFatface-Regular.ttf</string>
+		<string>DMSans-Regular.ttf</string>
+		<string>DMSans-Medium.ttf</string>
+		<string>DMSans-SemiBold.ttf</string>
+		<string>DMSans-Bold.ttf</string>
 	</array>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
@@ -40,7 +50,5 @@
 	<array>
 		<string>remote-notification</string>
 	</array>
-	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>This app uses your location to test the Customer.io Location module.</string>
 </dict>
 </plist>

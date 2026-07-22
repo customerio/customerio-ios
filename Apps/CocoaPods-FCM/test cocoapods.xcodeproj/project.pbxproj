@@ -7,8 +7,12 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		4EE580F894EDB861A2290AE3 /* AbrilFatface-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BBA86DAE296801933AD533C6 /* AbrilFatface-Regular.ttf */; };
 		6E5FCDF6F87C41885D0664D9 /* Pods_Rich_Push_Notification_Service_Extension.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1CB2D1A1084EF646C1783B01 /* Pods_Rich_Push_Notification_Service_Extension.framework */; };
+		9A5F3EF6C18BB6051455CB08 /* DMSans-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 0A1D13DA34D6A97267DAFE8B /* DMSans-SemiBold.ttf */; };
+		A1B3DAC47C4D2D32F920810B /* DMSans-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = F7A83CEE96E851A199C0D557 /* DMSans-Regular.ttf */; };
 		AA388902D5AB80FE19615675 /* Pods_test_cocoapods.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0B494FDD88150CEB34735859 /* Pods_test_cocoapods.framework */; };
+		DFBC92F38DBB8F248627B6F8 /* DMSans-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 51D33228A5430A20C4B02AD8 /* DMSans-Bold.ttf */; };
 		F7029EBE29F2B00500411BCC /* ColorButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7029EBD29F2B00500411BCC /* ColorButton.swift */; };
 		F7029EC329F2B12900411BCC /* ViewExtensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7029EC229F2B12900411BCC /* ViewExtensions.swift */; };
 		F7029EC629F2B3B100411BCC /* EnvironmentUtil.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7029EC529F2B3B100411BCC /* EnvironmentUtil.swift */; };
@@ -42,6 +46,7 @@
 		F7F4B9C02A0AACC300557900 /* BuildEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7F4B9BE2A0AACC300557900 /* BuildEnvironment.swift */; };
 		F7FA3D892A44DA00008AC1A7 /* OneLineText.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7FA3D882A44DA00008AC1A7 /* OneLineText.swift */; };
 		F7FA3D8B2A44DF42008AC1A7 /* BackButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7FA3D8A2A44DF42008AC1A7 /* BackButton.swift */; };
+		FBF24726D527903E0AECF583 /* DMSans-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 38CC6EE54BD2CACF24A05640 /* DMSans-Medium.ttf */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -70,11 +75,15 @@
 
 /* Begin PBXFileReference section */
 		0637AF7B2C92E6ED8D14848E /* Pods-Rich Push Notification Service Extension.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Rich Push Notification Service Extension.debug.xcconfig"; path = "Target Support Files/Pods-Rich Push Notification Service Extension/Pods-Rich Push Notification Service Extension.debug.xcconfig"; sourceTree = "<group>"; };
+		0A1D13DA34D6A97267DAFE8B /* DMSans-SemiBold.ttf */ = {isa = PBXFileReference; includeInIndex = 1; name = "DMSans-SemiBold.ttf"; path = "src/Fonts/DMSans-SemiBold.ttf"; sourceTree = "<group>"; };
 		0B494FDD88150CEB34735859 /* Pods_test_cocoapods.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_test_cocoapods.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		1CB2D1A1084EF646C1783B01 /* Pods_Rich_Push_Notification_Service_Extension.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Rich_Push_Notification_Service_Extension.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		38CC6EE54BD2CACF24A05640 /* DMSans-Medium.ttf */ = {isa = PBXFileReference; includeInIndex = 1; name = "DMSans-Medium.ttf"; path = "src/Fonts/DMSans-Medium.ttf"; sourceTree = "<group>"; };
 		3E55F28DF1346F20A524E5D0 /* Pods-Rich Push Notification Service Extension.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Rich Push Notification Service Extension.release.xcconfig"; path = "Target Support Files/Pods-Rich Push Notification Service Extension/Pods-Rich Push Notification Service Extension.release.xcconfig"; sourceTree = "<group>"; };
+		51D33228A5430A20C4B02AD8 /* DMSans-Bold.ttf */ = {isa = PBXFileReference; includeInIndex = 1; name = "DMSans-Bold.ttf"; path = "src/Fonts/DMSans-Bold.ttf"; sourceTree = "<group>"; };
 		AA69CC5FB416661AB57028E7 /* Pods-test cocoapods.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-test cocoapods.release.xcconfig"; path = "Target Support Files/Pods-test cocoapods/Pods-test cocoapods.release.xcconfig"; sourceTree = "<group>"; };
 		AA990F45FDF67883F5BB0254 /* Pods-test cocoapods.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-test cocoapods.debug.xcconfig"; path = "Target Support Files/Pods-test cocoapods/Pods-test cocoapods.debug.xcconfig"; sourceTree = "<group>"; };
+		BBA86DAE296801933AD533C6 /* AbrilFatface-Regular.ttf */ = {isa = PBXFileReference; includeInIndex = 1; name = "AbrilFatface-Regular.ttf"; path = "src/Fonts/AbrilFatface-Regular.ttf"; sourceTree = "<group>"; };
 		F7029EBD29F2B00500411BCC /* ColorButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ColorButton.swift; sourceTree = "<group>"; };
 		F7029EC229F2B12900411BCC /* ViewExtensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewExtensions.swift; sourceTree = "<group>"; };
 		F7029EC529F2B3B100411BCC /* EnvironmentUtil.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnvironmentUtil.swift; sourceTree = "<group>"; };
@@ -104,6 +113,7 @@
 		F78B1ED52C2B399400D0C80A /* AnotherPushEventHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnotherPushEventHandler.swift; sourceTree = "<group>"; };
 		F78E3D762A05588E00641391 /* ColorExtensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ColorExtensions.swift; sourceTree = "<group>"; };
 		F78E3D782A058B5000641391 /* SettingsButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsButton.swift; sourceTree = "<group>"; };
+		F7A83CEE96E851A199C0D557 /* DMSans-Regular.ttf */ = {isa = PBXFileReference; includeInIndex = 1; name = "DMSans-Regular.ttf"; path = "src/Fonts/DMSans-Regular.ttf"; sourceTree = "<group>"; };
 		F7BAFCB92919586400DFAC6E /* CioMessagingPushFCM.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = CioMessagingPushFCM.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		F7BAFCC029195AB700DFAC6E /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		F7BAFCC229195CB900DFAC6E /* CioMessagingPushFCM.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = CioMessagingPushFCM.framework; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -235,6 +245,11 @@
 				F73134612919570600CD43D9 /* Products */,
 				8911619CFBBAB3980FD5A1B5 /* Pods */,
 				715CE3C48BF069905F784336 /* Frameworks */,
+				BBA86DAE296801933AD533C6 /* AbrilFatface-Regular.ttf */,
+				51D33228A5430A20C4B02AD8 /* DMSans-Bold.ttf */,
+				38CC6EE54BD2CACF24A05640 /* DMSans-Medium.ttf */,
+				F7A83CEE96E851A199C0D557 /* DMSans-Regular.ttf */,
+				0A1D13DA34D6A97267DAFE8B /* DMSans-SemiBold.ttf */,
 			);
 			sourceTree = "<group>";
 		};
@@ -369,6 +384,11 @@
 				F731346B2919570700CD43D9 /* Preview Assets.xcassets in Resources */,
 				F73134682919570700CD43D9 /* Assets.xcassets in Resources */,
 				F7BAFCC629195D2600DFAC6E /* GoogleService-Info.plist in Resources */,
+				4EE580F894EDB861A2290AE3 /* AbrilFatface-Regular.ttf in Resources */,
+				DFBC92F38DBB8F248627B6F8 /* DMSans-Bold.ttf in Resources */,
+				FBF24726D527903E0AECF583 /* DMSans-Medium.ttf in Resources */,
+				A1B3DAC47C4D2D32F920810B /* DMSans-Regular.ttf in Resources */,
+				9A5F3EF6C18BB6051455CB08 /* DMSans-SemiBold.ttf in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
