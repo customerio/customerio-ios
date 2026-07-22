@@ -37,7 +37,7 @@ public final class LiveActivitiesModule {
     private let tokenStorage: LiveActivityTokenStorage
 
     private let identity = LiveActivityIdentity()
-    private let localEndTracker = LiveActivityLocalEndTracker()
+    private let localEndTracker: LiveActivityLocalEndTracker
     private let reporter: LiveActivityReporter
     private let registrar: LiveActivityRegistrar
     private let deliveryTracker: LiveActivityDeliveryTracker
@@ -68,16 +68,21 @@ public final class LiveActivitiesModule {
     init(
         config: LiveActivityConfig,
         sdk: CIOLiveActivitiesSDKProviding,
-        tokenStorage: LiveActivityTokenStorage
+        tokenStorage: LiveActivityTokenStorage,
+        localEndTracker: LiveActivityLocalEndTracker = LiveActivityLocalEndTracker()
     ) {
         self.config = config
         self.sdk = sdk
         self.tokenStorage = tokenStorage
+        self.localEndTracker = localEndTracker
 
         let identity = self.identity
         let reporter = LiveActivityReporter(
             track: { name, properties in sdk.track(name: name, properties: properties) },
-            currentUserId: { identity.userId },
+            // Gate on the SDK's synchronous identified flag (backed by DataPipelineTracking),
+            // not the async event-bus-fed identity cache, so a start() right after identify()
+            // isn't dropped. Token registration still uses `identity` via the registrar.
+            isUserIdentified: { sdk.isUserIdentified },
             deviceToken: { identity.deviceToken },
             logger: sdk.logger
         )
@@ -307,19 +312,33 @@ public final class LiveActivitiesModule {
         }
     }
 
-    private func handleReset() async {
+    // Internal (not private) so the reset-suppression behavior can be driven directly in tests
+    // without routing through the async event bus.
+    func handleReset() async {
         // Reset is a logout: force-end every activity so one user's Live Activities never linger
         // into the next session. No `end` event is reported for these — the user is being
         // de-identified, so lifecycle events must not fire.
         //
-        // Clear the identified user *before* force-ending: gating the reporter off first ensures the
-        // terminal states these ends produce can't be misreported as user dismissals (the reporter
-        // drops events while anonymous).
+        // Each activity is marked as an SDK-initiated (local) end just before it is force-ended, so
+        // the `.dismissed` terminal its immediate dismissal produces is consumed by the observer and
+        // not reported as a user swipe. Identity-based gating can't suppress this on its own: an
+        // account switch — clearIdentify() then identify(B) — puts B into the synchronous identity
+        // store before this async reset runs, so A's forced ends would otherwise be reported under B.
         identity.userId = nil
-        localEndTracker.clearAll()
+        // Do NOT clear existing local-end markers here: an activity the app ended via
+        // CIOLiveActivity.end() just before logout is already gone from Activity.activities, so the
+        // force-end loop below won't re-mark it. Dropping its marker would let its late `.dismissed`
+        // terminal be misreported as a user swipe (under the next user). Markers are in-memory,
+        // one-shot, and ULID-keyed, so keeping them is inert for any other activity.
         latestMetadata.wrappedValue = [:]
         for registration in config.registrations {
-            await registration.endAllActivities()
+            await registration.endAllActivities { [tokenStorage, localEndTracker] activityId, attributesInstanceId in
+                let instanceId = tokenStorage.resolveInstanceId(forActivityId: activityId) {
+                    if let attributesInstanceId, !attributesInstanceId.isEmpty { return attributesInstanceId }
+                    return ULID.generate()
+                }
+                localEndTracker.markEnded(instanceId)
+            }
         }
         registrar.handleReset()
         observer.restart()

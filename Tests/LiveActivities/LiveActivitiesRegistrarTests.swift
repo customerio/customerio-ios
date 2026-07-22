@@ -17,7 +17,7 @@ struct LiveActivityRegistrarTests {
         let identity = LiveActivityIdentity()
         let reporter = LiveActivityReporter(
             track: { name, props in cap.record(name, props) },
-            currentUserId: { identity.userId },
+            isUserIdentified: { identity.userId != nil },
             deviceToken: { identity.deviceToken },
             logger: NoopLogger()
         )
@@ -149,7 +149,7 @@ struct LiveActivityRegistrarTests {
             identity.deviceToken = "dev"
             let reporter = LiveActivityReporter(
                 track: { name, props in cap.record(name, props) },
-                currentUserId: { identity.userId },
+                isUserIdentified: { identity.userId != nil },
                 deviceToken: { identity.deviceToken },
                 logger: NoopLogger()
             )
@@ -208,7 +208,7 @@ struct LiveActivityRegistrarTests {
         identity.deviceToken = "dev"
         let reporter = LiveActivityReporter(
             track: { name, props in cap.record(name, props) },
-            currentUserId: { identity.userId },
+            isUserIdentified: { identity.userId != nil },
             deviceToken: { identity.deviceToken },
             logger: NoopLogger()
         )
@@ -230,7 +230,7 @@ struct LiveActivityRegistrarTests {
         identity.deviceToken = "dev" // anonymous at launch
         let reporter = LiveActivityReporter(
             track: { name, props in cap.record(name, props) },
-            currentUserId: { identity.userId },
+            isUserIdentified: { identity.userId != nil },
             deviceToken: { identity.deviceToken },
             logger: NoopLogger()
         )

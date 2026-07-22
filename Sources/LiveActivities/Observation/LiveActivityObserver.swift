@@ -215,8 +215,12 @@ enum LiveActivityObservation {
                     }
                 }
             },
-            endAllActivities: {
+            endAllActivities: { prepareLocalEnd in
                 for activity in Activity<T>.activities {
+                    // Mark as an SDK-initiated end first: the `.immediate` dismissal below surfaces
+                    // as a `.dismissed` terminal, which the observer would otherwise report as a user
+                    // swipe. On reset no `end` may fire (the user is being de-identified).
+                    prepareLocalEnd(activity.id, attributesInstanceId(activity))
                     await activity.end(nil, dismissalPolicy: .immediate)
                 }
             }

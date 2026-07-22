@@ -56,6 +56,10 @@ struct ActivityTypeRegistration: Sendable {
     /// cancelling it stops all observation for this type.
     let startObserving: @Sendable (_ sinks: LiveActivityObservationSinks) -> Task<Void, Never>
 
-    /// Ends all currently-running activities of this type immediately (used on reset).
-    let endAllActivities: @Sendable () async -> Void
+    /// Ends all currently-running activities of this type immediately (used on reset). Each running
+    /// activity is passed to `prepareLocalEnd` (its system `activityId` + attributes instance id, if
+    /// the type carries one) *before* it is ended, so the caller can mark it as an SDK-initiated end.
+    /// The `.immediate` dismissal surfaces as a `.dismissed` terminal, which must not be reported as
+    /// a user swipe.
+    let endAllActivities: @Sendable (_ prepareLocalEnd: @Sendable (_ activityId: String, _ attributesInstanceId: String?) -> Void) async -> Void
 }
