@@ -1,0 +1,25 @@
+Pod::Spec.new do |spec|
+  spec.name         = "CustomerIOLiveActivitiesTemplates"
+  spec.version      = "4.6.0" # Don't modify this line - it's automatically updated
+  spec.summary      = "Official Customer.io SDK for iOS."
+  spec.homepage     = "https://github.com/customerio/customerio-ios"
+  spec.documentation_url = 'https://customer.io/docs/sdk/ios/'
+  spec.changelog    = "https://github.com/customerio/customerio-ios/blob/#{spec.version.to_s}/CHANGELOG.md"
+  spec.license      = { :type => "MIT", :file => "LICENSE" }
+  spec.author       = { "CustomerIO Team" => "win@customer.io" }
+  spec.source       = { :git => 'https://github.com/customerio/customerio-ios.git', :tag => spec.version.to_s }
+
+  spec.swift_version = '5.9'
+  spec.cocoapods_version = '>= 1.11.0'
+
+  spec.platform = :ios
+  spec.ios.deployment_target = "13.0"
+
+  # Bundled SwiftUI/WidgetKit templates (Segments, Countdown Timer). Import in both the app
+  # target and the widget extension when using a built-in template.
+  path_to_source_for_module = "Sources/LiveActivities_Templates"
+  spec.source_files = "#{path_to_source_for_module}/**/*{.swift}"
+  spec.module_name = "CioLiveActivities_Templates" # the `import X` name when using SDK in Swift files
+
+  spec.dependency "CustomerIOLiveActivitiesAttributes", "= #{spec.version.to_s}"
+end
