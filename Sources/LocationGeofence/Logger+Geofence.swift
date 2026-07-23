@@ -5,6 +5,14 @@ import Foundation
 private let geofenceTag = "Geofence"
 
 extension Logger {
+    func geofenceInvalidRegionDropped(_ identifier: String) {
+        error(
+            "Geofence '\(identifier)' dropped — invalid coordinates or radius, not registerable with the OS",
+            geofenceTag,
+            nil
+        )
+    }
+
     func geofenceInvalidCoordinatesForRegion(_ identifier: String) {
         error(
             "Invalid coordinates for region \(identifier), skipping",

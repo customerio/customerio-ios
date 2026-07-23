@@ -228,6 +228,59 @@ struct GeofenceApiResponseTests {
     }
 
     @Test
+    func toDomainRegions_givenNonPositiveRadius_expectDropped() throws {
+        let json = """
+        {"geofences":[
+          {"id":"g0","latitude":1,"longitude":2,"radius":0},
+          {"id":"g-neg","latitude":1,"longitude":2,"radius":-50}
+        ]}
+        """
+        let response = try decode(json)
+        #expect(response.toDomainRegions().isEmpty)
+    }
+
+    @Test
+    func toDomainRegions_givenOutOfRangeCoordinates_expectDropped() throws {
+        let json = """
+        {"geofences":[
+          {"id":"lat-high","latitude":90.1,"longitude":2,"radius":100},
+          {"id":"lat-low","latitude":-90.1,"longitude":2,"radius":100},
+          {"id":"lon-high","latitude":1,"longitude":180.1,"radius":100},
+          {"id":"lon-low","latitude":1,"longitude":-180.1,"radius":100}
+        ]}
+        """
+        let response = try decode(json)
+        #expect(response.toDomainRegions().isEmpty)
+    }
+
+    @Test
+    func toDomainRegions_givenMixedValidAndInvalidRegions_expectValidKeptAndInvalidReported() throws {
+        // One bad server region must cost itself, not the rest of the sync.
+        let json = """
+        {"geofences":[
+          {"id":"good","latitude":1,"longitude":2,"radius":100},
+          {"id":"bad","latitude":91,"longitude":2,"radius":100}
+        ]}
+        """
+        let response = try decode(json)
+        var droppedIds: [String] = []
+        let regions = response.toDomainRegions(onInvalidRegion: { droppedIds.append($0) })
+
+        #expect(regions.map(\.id) == ["good"])
+        #expect(droppedIds == ["bad"])
+    }
+
+    @Test
+    func toDomainRegions_givenBoundaryCoordinates_expectKept() throws {
+        // The exact poles/antimeridian are valid registerable coordinates.
+        let json = """
+        {"geofences":[{"id":"edge","latitude":90,"longitude":-180,"radius":100}]}
+        """
+        let response = try decode(json)
+        #expect(response.toDomainRegions().first?.id == "edge")
+    }
+
+    @Test
     func toDomainRegions_givenLastUpdatedMillis_expectConvertedToSeconds() throws {
         // Wire value is epoch milliseconds; the domain `Date` is seconds.
         let json = """

@@ -1,4 +1,5 @@
 import CioInternalCommon
+import CoreLocation
 import Foundation
 
 /// Wire shape of the nearby geofence fetch response. Every field on `config` and per-region
@@ -112,8 +113,16 @@ extension GeofenceApiResponse {
         config?.toDomain()
     }
 
-    func toDomainRegions() -> [Geofence] {
-        geofences.map { $0.toDomain() }
+    /// Regions the OS would reject (non-positive radius, out-of-range coordinates) are dropped
+    /// here so one bad server region costs itself, not a nearest-selection slot or the whole sync.
+    func toDomainRegions(onInvalidRegion: (String) -> Void = { _ in }) -> [Geofence] {
+        geofences.compactMap { region in
+            guard let domain = region.toDomain() else {
+                onInvalidRegion(region.id)
+                return nil
+            }
+            return domain
+        }
     }
 }
 
@@ -170,12 +179,17 @@ private extension Comparable {
 }
 
 extension GeofenceApiRegion {
-    /// Empty / nil / all-unknown `transition_types` fall back to `[.enter, .exit]`; a mix of
-    /// valid + unknown keeps just the valid subset. `lastUpdated` defaults to epoch when
-    /// missing so callers can compare without unwrapping. `name` is `nil` when the server omits it
-    /// (or sends an empty string), so the domain value is always either `nil` or non-empty.
-    func toDomain() -> Geofence {
-        Geofence(
+    /// `nil` when the region violates the monitors' registration preconditions (radius must be
+    /// positive, coordinates in range). Empty / nil / all-unknown `transition_types` fall back to
+    /// `[.enter, .exit]`; a mix of valid + unknown keeps just the valid subset. `lastUpdated`
+    /// defaults to epoch when missing so callers can compare without unwrapping. `name` is `nil`
+    /// when the server omits it (or sends an empty string), so the domain value is always either
+    /// `nil` or non-empty.
+    func toDomain() -> Geofence? {
+        guard radius > 0,
+              CLLocationCoordinate2DIsValid(CLLocationCoordinate2D(latitude: latitude, longitude: longitude))
+        else { return nil }
+        return Geofence(
             id: id,
             latitude: latitude,
             longitude: longitude,
