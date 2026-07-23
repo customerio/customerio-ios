@@ -9,10 +9,7 @@
 	<key>NSPrivacyCollectedDataTypes</key>
 	<array>
 		<!-- The nearby-geofence fetch sends the device's exact coordinates so the server can
-		     return the fences around it. The request carries no user identifier, but the
-		     coordinates currently persist in server request logs, so the ephemeral
-		     real-time-servicing exemption does not apply. Drop this entry once the
-		     endpoint's logs redact coordinates. -->
+		     return the fences around it. The request carries no user identifier. -->
 		<dict>
 			<key>NSPrivacyCollectedDataType</key>
 			<string>NSPrivacyCollectedDataTypePreciseLocation</string>
