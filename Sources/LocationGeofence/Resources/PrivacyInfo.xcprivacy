@@ -9,9 +9,7 @@
 	<key>NSPrivacyCollectedDataTypes</key>
 	<array>
 		<!-- The nearby-geofence fetch sends the device's exact coordinates so the server can
-		     return the fences around it. The request carries no user identifier, so the
-		     location is not attributable to a person. Transition events themselves carry
-		     geofence ids, never coordinates. -->
+		     return the fences around it. The request carries no user identifier. -->
 		<dict>
 			<key>NSPrivacyCollectedDataType</key>
 			<string>NSPrivacyCollectedDataTypePreciseLocation</string>
@@ -24,11 +22,13 @@
 				<string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
 			</array>
 		</dict>
+		<!-- Retained Geofence Transition events identify a geographic region (by id and
+		     name, never coordinates) and are associated with the identified user. -->
 		<dict>
 			<key>NSPrivacyCollectedDataType</key>
-			<string>NSPrivacyCollectedDataTypeProductInteraction</string>
+			<string>NSPrivacyCollectedDataTypeCoarseLocation</string>
 			<key>NSPrivacyCollectedDataTypeLinked</key>
-			<false/> <!-- anonymous profiles make person-linkage optional -->
+			<true/>
 			<key>NSPrivacyCollectedDataTypeTracking</key>
 			<false/>
 			<key>NSPrivacyCollectedDataTypePurposes</key>
@@ -38,11 +38,12 @@
 				<string>NSPrivacyCollectedDataTypePurposeProductPersonalization</string>
 			</array>
 		</dict>
+		<!-- Geofence delivery is identified-only; every event carries the user id. -->
 		<dict>
 			<key>NSPrivacyCollectedDataType</key>
 			<string>NSPrivacyCollectedDataTypeUserID</string>
 			<key>NSPrivacyCollectedDataTypeLinked</key>
-			<false/>
+			<true/>
 			<key>NSPrivacyCollectedDataTypeTracking</key>
 			<false/>
 			<key>NSPrivacyCollectedDataTypePurposes</key>
