@@ -62,4 +62,36 @@ class MessageTest: XCTestCase {
         let result = message.doesPageRuleMatch(route: "home")
         XCTAssertFalse(result)
     }
+
+    // MARK: - doesPageRuleMatch with escaped regex metacharacters
+
+    // A route target containing "." is delivered as a regex with the dots escaped
+    // (e.g. "\." for a literal dot). cleanPageRule must pass the regex through
+    // untouched so these escapes survive; corrupting "\" would make any dotted
+    // route impossible to match.
+    func test_doesPageRuleMatch_givenContainsRuleWithEscapedDots_expectMatchDottedRoute() {
+        // `#"\."#` in a raw string is a backslash followed by a dot, exactly as the
+        // route rule arrives over the wire for a "contains dashboard.account.settings" rule.
+        let message = Message(pageRule: #"^(.*dashboard\.account\.settings.*)$"#)
+        XCTAssertTrue(message.doesPageRuleMatch(route: "dashboard.account.settings"))
+    }
+
+    func test_doesPageRuleMatch_givenEqualsRuleWithEscapedDots_expectMatchExactDottedRoute() {
+        let message = Message(pageRule: #"^(dashboard\.account\.settings)$"#)
+        XCTAssertTrue(message.doesPageRuleMatch(route: "dashboard.account.settings"))
+    }
+
+    // MARK: - cleanPageRule preserves escaped metacharacters
+
+    func test_cleanPageRule_givenEscapedDots_expectDotsNotCorruptedToSlash() {
+        let message = Message(pageRule: #"^(.*dashboard\.account\.settings.*)$"#)
+        XCTAssertEqual(message.cleanPageRule, #"^(.*dashboard\.account\.settings.*)$"#)
+    }
+
+    // Some rules arrive with the backslash itself escaped (two backslashes before
+    // each dot). cleanPageRule must still leave every backslash intact.
+    func test_cleanPageRule_givenDoubleEscapedDots_expectBackslashesNotCorruptedToSlash() {
+        let message = Message(pageRule: #"^(.*dashboard\\.account\\.settings.*)$"#)
+        XCTAssertEqual(message.cleanPageRule, #"^(.*dashboard\\.account\\.settings.*)$"#)
+    }
 }
