@@ -98,6 +98,10 @@ actor LocationServicesImplementation: LocationServices {
     private let lifecycleNotifying: AppLifecycleNotifying
     private let applicationStateProvider: ApplicationStateProvider
     private var currentTask: Task<Void, Never>?
+    /// Set when a tracked request arrives while another request is in flight, so the tracked
+    /// intent survives the single-request gate (the lifecycle's tracked request and geofence's
+    /// silent auto-acquire race at first identified launch).
+    private var pendingTrackUpgrade = false
     /// Owned by this implementation; calls requestLocationUpdate/stopLocationUpdates when lifecycle events fire. Set in setUpLifecycleObserver() (after init so we can capture self).
     private var locationLifecycleObserver: LocationLifecycleObserver?
 
@@ -199,7 +203,13 @@ actor LocationServicesImplementation: LocationServices {
     }
 
     private func startRequestIfNeeded(track: Bool, respectMode: Bool) async {
-        guard currentTask == nil else { return }
+        guard currentTask == nil else {
+            // A dropped tracked request never retries this process (the lifecycle gate is
+            // one-shot), so latch the intent instead; the `.off` gate is re-applied when
+            // the in-flight request consumes it.
+            if track { pendingTrackUpgrade = true }
+            return
+        }
 
         var task: Task<Void, Never>!
         task = Task { [weak self] in
@@ -219,6 +229,9 @@ actor LocationServicesImplementation: LocationServices {
     ///   - respectMode: when true, honors the `.off` tracking mode (public path); geofence-initiated
     ///     fixes pass false so a location can be acquired even when location tracking is off.
     private func runLocationRequest(track: Bool, respectMode: Bool) async {
+        // A latched upgrade that found no fix is dropped, matching what the tracked request
+        // would have done itself (same provider, same failure; the gate retries neither).
+        defer { pendingTrackUpgrade = false }
         if respectMode {
             guard config.mode != .off else {
                 logger.trackingDisabledIgnoringRequestLocationUpdate()
@@ -228,7 +241,10 @@ actor LocationServicesImplementation: LocationServices {
         if let result = await locationProvider.requestLocationOnce() {
             switch result {
             case .success(let snapshot):
-                await postLocation(snapshot, track: track)
+                // The upgrade must not emit a track the public request itself would have
+                // refused under `.off` (silent requests run regardless of mode).
+                let upgraded = pendingTrackUpgrade && config.mode != .off
+                await postLocation(snapshot, track: track || upgraded)
             case .failure(.cancelled):
                 logger.locationRequestCancelled()
             case .failure(let error):
