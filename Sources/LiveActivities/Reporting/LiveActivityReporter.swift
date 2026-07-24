@@ -3,7 +3,7 @@ import Foundation
 
 /// Maps Live Activities lifecycle and token registration to Customer.io CDP track events.
 ///
-/// Emits two events — `Live Notification Event` (start/update/end) and
+/// Emits two events — `Live Notification Event` (start/end) and
 /// `Live Notification Token` (push_to_start/instance) — carrying the contract fields under
 /// the event's `properties`. The data pipeline owns batching, retry and flush, so this type
 /// is a thin mapper.

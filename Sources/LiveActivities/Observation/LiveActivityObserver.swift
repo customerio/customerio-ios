@@ -26,8 +26,8 @@ func liveActivityTerminalAction(firstTerminalIsDismissed: Bool, wasLocalEnd: Boo
 /// Starts one root task per registration, can `restart` after a reset, and cancels everything
 /// on `stop`/`deinit`. Observation only *captures tokens* (routed to the registrar) and surfaces
 /// appeared/ended signals — it never emits lifecycle events. Those come exclusively from the
-/// `start`/`update`/`end` API via `LiveActivityReporter`, so backend-initiated (push) changes
-/// are never echoed back.
+/// `start`/`end` API via `LiveActivityReporter` (a local `update` applies content but is not
+/// reported), so backend-initiated (push) changes are never echoed back.
 final class LiveActivityObserver: @unchecked Sendable {
     private let registrations: [ActivityTypeRegistration]
     private let registrar: LiveActivityRegistrar
