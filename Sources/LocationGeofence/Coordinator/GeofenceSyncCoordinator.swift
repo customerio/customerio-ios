@@ -212,10 +212,8 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
             logger.geofenceSyncSkipped(reason: "no identified user")
             return nil
         }
-        guard !cachedRegions.isEmpty else {
-            logger.geofenceSyncSkipped(reason: "no cached regions to restore")
-            return nil
-        }
+        // No early return on an empty cache: an empty nearby response clears it while the movement
+        // trigger stays armed, so this is what re-arms the trigger if the OS dropped our regions.
         // Need an anchor to distance-filter and to center the movement trigger. Skipping
         // when absent is safer than re-using an arbitrary location.
         guard let anchor else {
@@ -230,13 +228,14 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
 
         let effectiveConfig = config ?? .fallback
         let nearest = distanceFilter.nearest(cachedRegions, to: anchor, limit: effectiveConfig.maxBusinessGeofences, maxDistance: effectiveConfig.maxMonitoringDistance)
+        let registerMovementTrigger = effectiveConfig.maxBusinessGeofences > 0
         registerWithOsSync(
             businessRegions: nearest,
             movementTriggerLocation: anchor,
             movementTriggerRadius: effectiveConfig.localRefreshTriggerRadius,
-            registerMovementTrigger: effectiveConfig.maxBusinessGeofences > 0 && !cachedRegions.isEmpty
+            registerMovementTrigger: registerMovementTrigger
         )
-        logger.geofenceSyncCompleted(registeredCount: nearest.count)
+        logger.geofenceSyncCompleted(registeredCount: nearest.count, movementTriggerRegistered: registerMovementTrigger)
         // No initial-enter here: a cold-wake restore of the pre-kill set (not new registrations) off a
         // possibly-stale anchor. Genuinely-new fences come from a refresh fetch, which emits there.
         return GeofenceRegistration(center: anchor, businessIds: Set(nearest.map(\.id)))

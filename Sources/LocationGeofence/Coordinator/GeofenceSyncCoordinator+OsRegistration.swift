@@ -37,8 +37,8 @@ extension GeofenceSyncCoordinatorImpl {
         // Register the movement trigger FIRST so it isn't starved when business regions fill the
         // shared 20-region OS budget (e.g. a host app that also monitors regions): losing it freezes
         // the set, since exiting the trigger is what re-ranks toward now-closer geofences. Kept even
-        // when the distance cap left the business set empty; skipped only when there's nothing to
-        // register toward (no geofences, or registration kill-switched).
+        // when the nearby set is empty (distance cap or an empty fetch) so the device keeps re-fetching
+        // as it moves back toward geofences; skipped only when kill-switched (`maxBusinessGeofences == 0`).
         if registerMovementTrigger {
             monitor.startMonitoring(
                 identifier: GeofenceConstants.movementTriggerIdentifier,

@@ -47,12 +47,15 @@ enum GeofenceBootstrap {
         let userId = di.backgroundDeliveryContextStore.currentUserId
 
         // The set we expect to still own: the business geofences registered last session plus the
-        // movement trigger registered alongside them. Empty on first launch or after the OS cleared
-        // everything. Compared against the OS-retained set below to decide adopt vs re-register.
+        // movement trigger registered alongside them. The trigger counts even when the business set
+        // is empty — a geofence-free area still arms it, and an unadopted trigger drops the EXIT
+        // that is the only path back to a re-rank or re-fetch. It is excluded under the kill switch
+        // for the same reason registration excludes it, leaving the set empty and monitoring off.
+        // Compared against the OS-retained set below to decide adopt vs re-register.
         let lastRegisteredBusinessIds = await di.geofenceStorage.getRegisteredBusinessIds()
-        let expectedOwnedRegions = lastRegisteredBusinessIds.isEmpty
-            ? Set<String>()
-            : lastRegisteredBusinessIds.union([GeofenceConstants.movementTriggerIdentifier])
+        let expectedOwnedRegions = (cachedConfig ?? .fallback).maxBusinessGeofences > 0
+            ? lastRegisteredBusinessIds.union([GeofenceConstants.movementTriggerIdentifier])
+            : lastRegisteredBusinessIds
 
         // Phase 2: synchronous on the main actor. No `await` between handler-bind and
         // `adoptExistingRegions` / `startMonitoring`, so `ownedRegionIdentifiers` is populated

@@ -480,7 +480,7 @@ struct GeofenceSyncCoordinatorTests {
     }
 
     @Test
-    func refresh_givenEmptyBusinessRegions_expectNoMovementTriggerRegistered() async {
+    func refresh_givenEmptyServerResponse_expectMovementTriggerStillRegistered() async {
         let storage = makeStorage()
         let api = GeofenceApiServiceMock()
         api.fetchNearbyGeofencesClosure = { _, _, completion in
@@ -490,7 +490,34 @@ struct GeofenceSyncCoordinatorTests {
         let setup = makeCoordinator(api: api, storage: storage)
         _ = await setup.coordinator.refresh(latitude: 37.7749, longitude: -122.4194)
 
-        // No business regions ⇒ no movement trigger either; refetch-on-move would just hit the same empty result.
+        // Empty nearby response is a geofence-free area, not a stop signal: keep the movement trigger
+        // armed so a later EXIT re-fetches as the device moves back toward geofences. The trigger is
+        // the only region registered (no business geofences to add).
+        #expect(setup.monitor.startedRegions.map(\.identifier) == [GeofenceConstants.movementTriggerIdentifier])
+    }
+
+    @Test
+    func refresh_givenEmptyServerResponseButKillSwitch_expectNothingRegistered() async {
+        // maxBusinessGeofences == 0 is the runtime off switch: even with the "keep monitoring
+        // through empty areas" behavior, a kill-switched account registers nothing at all.
+        let storage = makeStorage()
+        let config = GeofenceConfig(
+            localRefreshTriggerRadius: 750,
+            remoteFetchRefreshTriggerRadius: 3000,
+            remoteFetchRefreshExpiry: 86400,
+            duplicateEventsExpiry: 60,
+            maxBusinessGeofences: 0,
+            maxMonitoringDistance: GeofenceConstants.noMonitoringDistanceCap
+        )
+        await storage.setCachedConfig(config)
+        let api = GeofenceApiServiceMock()
+        api.fetchNearbyGeofencesClosure = { _, _, completion in
+            completion(.success(makeApiResponse(regions: [], config: config)))
+        }
+
+        let setup = makeCoordinator(api: api, storage: storage)
+        _ = await setup.coordinator.refresh(latitude: 37.7749, longitude: -122.4194)
+
         #expect(setup.monitor.startedRegions.isEmpty)
     }
 
@@ -650,13 +677,40 @@ struct GeofenceSyncCoordinatorTests {
     }
 
     @Test
-    func applyCachedRegistration_givenEmptyRegions_expectNoRegistration() {
+    func applyCachedRegistration_givenEmptyRegions_expectMovementTriggerRegistered() {
+        // An empty nearby response clears the cache but leaves the trigger armed. If the OS then
+        // drops our regions, this is the only path that re-arms it — the refresh decision skips on
+        // a cache that is fresh and empty.
+        let setup = makeCoordinator(storage: makeStorage())
+
+        let registration = setup.coordinator.applyCachedRegistration(
+            cachedRegions: [],
+            anchor: LocationData(latitude: 0, longitude: 0),
+            config: .fallback,
+            userId: "user-1"
+        )
+
+        #expect(setup.monitor.startedRegions.map(\.identifier) == [GeofenceConstants.movementTriggerIdentifier])
+        #expect(registration?.businessIds.isEmpty == true)
+    }
+
+    @Test
+    func applyCachedRegistration_givenEmptyRegionsAndKillSwitch_expectNothingRegistered() {
+        // The kill switch still wins over the empty-cache restore above.
+        let config = GeofenceConfig(
+            localRefreshTriggerRadius: 750,
+            remoteFetchRefreshTriggerRadius: 3000,
+            remoteFetchRefreshExpiry: 86400,
+            duplicateEventsExpiry: 60,
+            maxBusinessGeofences: 0,
+            maxMonitoringDistance: GeofenceConstants.noMonitoringDistanceCap
+        )
         let setup = makeCoordinator(storage: makeStorage())
 
         _ = setup.coordinator.applyCachedRegistration(
             cachedRegions: [],
             anchor: LocationData(latitude: 0, longitude: 0),
-            config: .fallback,
+            config: config,
             userId: "user-1"
         )
 
@@ -944,6 +998,35 @@ struct GeofenceSyncCoordinatorTests {
         #expect(setup.api.fetchNearbyGeofencesCallsCount == 0)
         let businessRegistered = setup.monitor.startedRegions.filter { $0.identifier != GeofenceConstants.movementTriggerIdentifier }
         #expect(businessRegistered.map(\.identifier) == ["near", "far"])
+    }
+
+    @Test
+    func handleMovement_givenLocalRerankWithEmptyCache_expectMovementTriggerStillRegistered() async {
+        // After an empty nearby response wiped the cache, a within-threshold EXIT re-ranks an empty
+        // set. The movement trigger must stay armed (re-centered at the new location) so the device
+        // keeps moving toward the next refetch instead of going dark in a geofence-free area.
+        let storage = makeStorage()
+        let config = GeofenceConfig(
+            localRefreshTriggerRadius: 1000,
+            remoteFetchRefreshTriggerRadius: 5000,
+            remoteFetchRefreshExpiry: 3600,
+            duplicateEventsExpiry: 3600,
+            maxBusinessGeofences: 10,
+            maxMonitoringDistance: GeofenceConstants.noMonitoringDistanceCap
+        )
+        await storage.setCachedConfig(config)
+        await storage.recordSync(timestamp: Date(timeIntervalSince1970: 100), location: LocationData(latitude: 0, longitude: 0))
+        await storage.setCachedGeofences([]) // wiped by a prior empty response
+        let api = GeofenceApiServiceMock()
+        let setup = makeCoordinator(api: api, storage: storage)
+
+        // ~111 m from anchor — within the refetch radius, so it re-ranks locally, no fetch.
+        let result = await setup.coordinator.handleMovement(latitude: 0, longitude: 0.001)
+
+        #expect(result.isSuccess)
+        #expect(setup.api.fetchNearbyGeofencesCallsCount == 0)
+        let trigger = setup.monitor.startedRegions.first { $0.identifier == GeofenceConstants.movementTriggerIdentifier }
+        #expect(trigger?.center == LocationData(latitude: 0, longitude: 0.001))
     }
 
     @Test
