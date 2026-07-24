@@ -103,8 +103,11 @@ extension Logger {
         self.error("Sync fetch failed: \(error)", geofenceTag, nil)
     }
 
-    func geofenceSyncCompleted(registeredCount: Int) {
-        info("Sync completed: registered \(registeredCount) business geofences + 1 movement trigger", geofenceTag)
+    func geofenceSyncCompleted(registeredCount: Int, movementTriggerRegistered: Bool) {
+        let trigger = movementTriggerRegistered
+            ? " + 1 movement trigger"
+            : "; monitoring disabled (max business geofences is 0)"
+        info("Sync completed: registered \(registeredCount) business geofences\(trigger)", geofenceTag)
     }
 
     func geofenceMovementTrigger(tier: HandleMovementTier) {

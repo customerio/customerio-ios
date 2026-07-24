@@ -37,6 +37,7 @@ extension GeofenceSyncCoordinatorImpl {
         let effectiveConfig = parsedConfig ?? cachedConfig ?? .fallback
         let anchor = LocationData(latitude: latitude, longitude: longitude)
         let nearest = distanceFilter.nearest(regions, to: anchor, limit: effectiveConfig.maxBusinessGeofences, maxDistance: effectiveConfig.maxMonitoringDistance)
+        let registerMovementTrigger = effectiveConfig.maxBusinessGeofences > 0
         // Read before `recordRegistration` overwrites it — the diff decides which registrations are new.
         let previouslyRegisteredIds = await storage.getRegisteredBusinessIds()
         let osRegistration = await MainActor.run {
@@ -44,7 +45,7 @@ extension GeofenceSyncCoordinatorImpl {
                 businessRegions: nearest,
                 movementTriggerLocation: anchor,
                 movementTriggerRadius: effectiveConfig.localRefreshTriggerRadius,
-                registerMovementTrigger: effectiveConfig.maxBusinessGeofences > 0 && !regions.isEmpty
+                registerMovementTrigger: registerMovementTrigger
             )
         }
 
@@ -63,7 +64,7 @@ extension GeofenceSyncCoordinatorImpl {
             expectedUserId: expectedUserId,
             anchor: anchor
         )
-        logger.geofenceSyncCompleted(registeredCount: nearest.count)
+        logger.geofenceSyncCompleted(registeredCount: nearest.count, movementTriggerRegistered: registerMovementTrigger)
         return .success(())
     }
 
@@ -80,6 +81,7 @@ extension GeofenceSyncCoordinatorImpl {
     ) async -> Result<Void, GeofenceSyncError> {
         let anchor = LocationData(latitude: latitude, longitude: longitude)
         let nearest = distanceFilter.nearest(cachedRegions, to: anchor, limit: config.maxBusinessGeofences, maxDistance: config.maxMonitoringDistance)
+        let registerMovementTrigger = config.maxBusinessGeofences > 0
         // Read before `recordRegistration` overwrites it — the diff decides which registrations are new.
         let previouslyRegisteredIds = await storage.getRegisteredBusinessIds()
         let osRegistration = await MainActor.run {
@@ -87,7 +89,7 @@ extension GeofenceSyncCoordinatorImpl {
                 businessRegions: nearest,
                 movementTriggerLocation: anchor,
                 movementTriggerRadius: config.localRefreshTriggerRadius,
-                registerMovementTrigger: config.maxBusinessGeofences > 0 && !cachedRegions.isEmpty
+                registerMovementTrigger: registerMovementTrigger
             )
         }
         await storage.recordRegistration(center: anchor, businessIds: Set(nearest.map(\.id)))
@@ -98,7 +100,7 @@ extension GeofenceSyncCoordinatorImpl {
             expectedUserId: expectedUserId,
             anchor: anchor
         )
-        logger.geofenceSyncCompleted(registeredCount: nearest.count)
+        logger.geofenceSyncCompleted(registeredCount: nearest.count, movementTriggerRegistered: registerMovementTrigger)
         return .success(())
     }
 

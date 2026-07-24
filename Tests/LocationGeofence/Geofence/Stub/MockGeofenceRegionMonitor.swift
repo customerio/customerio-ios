@@ -101,6 +101,9 @@ final class MockGeofenceRegionMonitor: GeofenceRegionMonitoring {
 
     func stopMonitoringAll() {
         stopAllCallCount += 1
+        // Mirror the real monitor: only owned regions are handed to the OS for removal, so anything
+        // the OS still holds that this process never adopted survives the call.
+        osMonitoredRegions.subtract(activeIdentifiers)
         activeIdentifiers.removeAll()
         operationLog.append(.stopAll)
     }
