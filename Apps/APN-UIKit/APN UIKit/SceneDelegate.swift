@@ -80,10 +80,10 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
                 // none). Non-CIO URLs are returned unchanged.
                 guard let destination = liveActivities.handleWidgetUrl(url) else { continue }
                 url = destination
-            }
-            if url.host == LiveActivitiesViewController.deepLinkHost {
-                routeToLiveActivities()
-                continue
+                if url.host == LiveActivitiesViewController.deepLinkHost {
+                    routeToLiveActivities()
+                    continue
+                }
             }
             _ = deepLinkHandler.handleAppSchemeDeepLink(url)
         }
