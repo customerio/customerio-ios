@@ -36,7 +36,7 @@ public struct CIOSegmentsLiveActivity: Widget {
         ActivityConfiguration(for: CIOSegmentsAttributes.self) { context in
             SegmentsLockScreenView(attributes: context.attributes, state: context.state, branding: branding)
                 .modifier(TemplateBackgroundModifier(background: branding.background))
-                .widgetURL(context.state.cioMetadata?.deepLink.flatMap(URL.init(string:)))
+                .cioWidgetUrl(context.state.cioMetadata)
         } dynamicIsland: { context in
             dynamicIsland(for: context)
         }
@@ -68,7 +68,7 @@ public struct CIOSegmentsLiveActivity: Widget {
         } minimal: {
             BrandLogo(logo: branding.logo, size: 20)
         }
-        .widgetURL(context.state.cioMetadata?.deepLink.flatMap(URL.init(string:)))
+        .cioWidgetUrl(context.state.cioMetadata)
     }
 }
 

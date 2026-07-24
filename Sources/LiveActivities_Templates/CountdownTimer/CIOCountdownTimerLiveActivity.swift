@@ -37,7 +37,7 @@ public struct CIOCountdownTimerLiveActivity: Widget {
         ActivityConfiguration(for: CIOCountdownTimerAttributes.self) { context in
             CountdownLockScreenView(attributes: context.attributes, state: context.state, branding: branding)
                 .modifier(TemplateBackgroundModifier(background: branding.background))
-                .widgetURL(context.state.cioMetadata?.deepLink.flatMap(URL.init(string:)))
+                .cioWidgetUrl(context.state.cioMetadata)
         } dynamicIsland: { context in
             dynamicIsland(for: context)
         }
@@ -72,7 +72,7 @@ public struct CIOCountdownTimerLiveActivity: Widget {
         } minimal: {
             BrandLogo(logo: branding.logo, size: 20)
         }
-        .widgetURL(context.state.cioMetadata?.deepLink.flatMap(URL.init(string:)))
+        .cioWidgetUrl(context.state.cioMetadata)
     }
 }
 
