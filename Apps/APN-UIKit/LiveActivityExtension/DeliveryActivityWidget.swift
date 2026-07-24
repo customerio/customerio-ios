@@ -1,5 +1,6 @@
 #if os(iOS)
 import ActivityKit
+import AppIntents
 import CioLiveActivities
 import CioLiveActivities_Attributes
 import SwiftUI
