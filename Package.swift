@@ -36,14 +36,7 @@ if (ProcessInfo.processInfo.environment["CI"] != nil) { // true if running on a 
 let package = Package(
     name: "Customer.io",
     platforms: [
-        // NOTE (Visual Inbox / Jist): SwiftPM enforces a platform floor package-wide, and the
-        // Jist product currently declares a minimum of iOS 15. Because the Visual Inbox overlay
-        // (`CioMessagingInbox`) links Jist, the package floor is raised to iOS 15 here.
-        // This is a TEMPORARY consequence of the Jist dependency — the documented Milestone-0
-        // item is to lower Jist's iOS floor to 13, after which this should revert to `.iOS(.v13)`.
-        // All SDK *source* remains iOS 13-compatible (Jist usage is `@available(iOS 15, *)`-gated).
-        // TODO: revert to `.iOS(.v13)` once Jist's iOS deployment target is lowered to 13.
-        .iOS(.v15)
+        .iOS(.v13)
     ],
     products: products,
     dependencies: [

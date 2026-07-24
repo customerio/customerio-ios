@@ -7,8 +7,8 @@ import SwiftUI
 
 /// A single inbox message rendered via Jist (item 7).
 ///
-/// Jist (`JistView`) requires iOS 15+. On iOS 13/14 we fall back to a minimal text row so the panel
-/// stays usable below the Jist floor.
+/// Jist (`JistView`) is available at the iOS 13 floor: the renderer handles its iOS-15-only needs
+/// internally via runtime backports (AsyncImage / AttributedString), so no host-side gating is needed.
 @available(iOS 13.0, *)
 struct VisualInboxMessageRow: View {
     let message: VisualInboxMessageSnapshot
@@ -24,40 +24,22 @@ struct VisualInboxMessageRow: View {
     let onAction: (InboxActionResolution) -> Void
 
     var body: some View {
-        Group {
-            if #available(iOS 15.0, *) {
-                JistView(
-                    name: message.type,
-                    templates: templates,
-                    data: data,
-                    theme: theme,
-                    // Dark-mode parity (item 5): `.auto` follows the system color scheme.
-                    mode: .auto,
-                    // Relative dates (item 3): Jist passes an ISO-8601 string; we return web-aligned
-                    // relative time ("just now", "2h ago", "3d ago").
-                    formatDate: { iso, _ in Self.relativeDate(from: iso) },
-                    onAction: handleAction
-                )
-            } else {
-                fallbackRow
-            }
-        }
+        JistView(
+            name: message.type,
+            templates: templates,
+            data: data,
+            theme: theme,
+            // Dark-mode parity (item 5): `.auto` follows the system color scheme.
+            mode: .auto,
+            // Relative dates (item 3): Jist passes an ISO-8601 string; we return web-aligned
+            // relative time ("just now", "2h ago", "3d ago").
+            formatDate: { iso, _ in Self.relativeDate(from: iso) },
+            onAction: handleAction
+        )
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
         .contentShape(Rectangle())
-    }
-
-    /// Minimal pre-iOS-15 row (below the Jist floor).
-    private var fallbackRow: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(message.type)
-                .font(.subheadline)
-                .fontWeight(message.opened ? .regular : .semibold)
-            Text(message.id)
-                .font(.caption)
-                .foregroundColor(.secondary)
-        }
     }
 
     // MARK: - Jist action handling (items 1, 12, 13)
