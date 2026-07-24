@@ -69,7 +69,6 @@
 		DA11AC71000000000000B11B /* DeliveryActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA11AC71000000000000A11A /* DeliveryActivityAttributes.swift */; };
 		EEF4000A2FECEAC1003FFED7 /* LiveActivityExtensionExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = EEF4FFF92FECEAC0003FFED7 /* LiveActivityExtensionExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		EEF400112FECEB85003FFED7 /* LiveActivities_Attributes in Frameworks */ = {isa = PBXBuildFile; productRef = EEF400102FECEB85003FFED7 /* LiveActivities_Attributes */; };
-		CE9A5E9017C11A7E00000021 /* LiveActivities in Frameworks */ = {isa = PBXBuildFile; productRef = CE9A5E9017C11A7E00000020 /* LiveActivities */; };
 		EEF4FFF42FECE96B003FFED7 /* LiveActivitiesViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEF4FFF32FECE96B003FFED7 /* LiveActivitiesViewController.swift */; };
 		EEF4FFFB2FECEAC0003FFED7 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = EEF4FFFA2FECEAC0003FFED7 /* WidgetKit.framework */; };
 		EEF4FFFD2FECEAC0003FFED7 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = EEF4FFFC2FECEAC0003FFED7 /* SwiftUI.framework */; };
@@ -242,7 +241,6 @@
 			files = (
 				EEF400112FECEB85003FFED7 /* LiveActivities_Attributes in Frameworks */,
 				CE9A5E9017C11A7E00000011 /* LiveActivities_Templates in Frameworks */,
-				CE9A5E9017C11A7E00000021 /* LiveActivities in Frameworks */,
 				EEF4FFFD2FECEAC0003FFED7 /* SwiftUI.framework in Frameworks */,
 				EEF4FFFB2FECEAC0003FFED7 /* WidgetKit.framework in Frameworks */,
 			);
@@ -586,7 +584,6 @@
 			packageProductDependencies = (
 				EEF400102FECEB85003FFED7 /* LiveActivities_Attributes */,
 				CE9A5E9017C11A7E00000010 /* LiveActivities_Templates */,
-				CE9A5E9017C11A7E00000020 /* LiveActivities */,
 			);
 			productName = LiveActivityExtensionExtension;
 			productReference = EEF4FFF92FECEAC0003FFED7 /* LiveActivityExtensionExtension.appex */;
@@ -1323,10 +1320,6 @@
 		EEF400102FECEB85003FFED7 /* LiveActivities_Attributes */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = LiveActivities_Attributes;
-		};
-		CE9A5E9017C11A7E00000020 /* LiveActivities */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = LiveActivities;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

@@ -1,7 +1,5 @@
 #if os(iOS)
 import ActivityKit
-import AppIntents
-import CioLiveActivities
 import CioLiveActivities_Attributes
 import SwiftUI
 import WidgetKit
@@ -17,7 +15,10 @@ import WidgetKit
 struct DeliveryActivityWidget: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: DeliveryActivityAttributes.self) { context in
-            lockScreen(context)
+            DeliveryLockScreenView(attributes: context.attributes, state: context.state)
+                .activityBackgroundTint(Color.black.opacity(0.85))
+                .activitySystemActionForegroundColor(.white)
+                .cioWidgetUrl(context.state.cioMetadata)
         } dynamicIsland: { context in
             DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
@@ -44,28 +45,7 @@ struct DeliveryActivityWidget: Widget {
                 Image(systemName: "shippingbox.fill")
                     .foregroundStyle(context.state.accentColor)
             }
-            .widgetURL(context.state.cioMetadata?.deepLink.flatMap(URL.init(string:)))
-        }
-    }
-
-    /// Lock Screen presentation. On iOS 17+ the whole surface is an `App Intent` tap target that
-    /// reports the Customer.io `opened` for the exact delivery on screen (no deep link needed);
-    /// on iOS 16.x it falls back to the `widgetURL` deep-link path.
-    @ViewBuilder
-    private func lockScreen(_ context: ActivityViewContext<DeliveryActivityAttributes>) -> some View {
-        let content = DeliveryLockScreenView(attributes: context.attributes, state: context.state)
-            .activityBackgroundTint(Color.black.opacity(0.85))
-            .activitySystemActionForegroundColor(.white)
-        if #available(iOS 17.0, *) {
-            Button(intent: CioLiveActivityOpenIntent(
-                deliveryId: context.state.cioMetadata?.deliveryId ?? "",
-                deliveryToken: context.state.cioMetadata?.deliveryToken ?? ""
-            )) {
-                content
-            }
-            .buttonStyle(.plain)
-        } else {
-            content.widgetURL(context.state.cioMetadata?.deepLink.flatMap(URL.init(string:)))
+            .cioWidgetUrl(context.state.cioMetadata)
         }
     }
 

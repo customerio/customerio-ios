@@ -264,6 +264,26 @@ public final class LiveActivitiesModule {
         return true
     }
 
+    /// Report an `opened` for a Customer.io Live Activity tracking URL (the one the `cioWidgetUrl(_:)`
+    /// widget modifier builds), and return the customer's deep link to navigate to.
+    ///
+    /// Call this from your `UISceneDelegate.scene(_:openURLContexts:)` /
+    /// `UIApplicationDelegate.application(_:open:options:)` for each opened URL:
+    /// - If `url` is a Customer.io tracking URL, the SDK reports an `opened` for the **exact delivery**
+    ///   the user tapped — the identity is carried in the URL, so it needs no observer lookup and works
+    ///   even from a cold launch — and returns its `redirect` deep link (`nil` if none) for you to route.
+    /// - Otherwise `url` is returned unchanged, so your existing routing handles non-CIO URLs.
+    @discardableResult
+    public func handleWidgetUrl(_ url: URL) -> URL? {
+        guard let parsed = CioLiveActivityWidgetUrl.parse(url) else { return url }
+        if let deliveryId = parsed.deliveryId, !deliveryId.isEmpty {
+            deliveryTracker.reportOpened(
+                metadata: CIOLiveActivityMetadata(deliveryId: deliveryId, deliveryToken: parsed.deliveryToken)
+            )
+        }
+        return parsed.redirect
+    }
+
     // MARK: - Private
 
     private func notificationType(forTypeName name: String) -> String? {
