@@ -22,15 +22,27 @@ public enum CioLiveActivityWidgetUrl {
         static let redirect = "cio_redirect"
     }
 
-    /// Builds the tracking URL from a content-state's Customer.io metadata. Returns `nil` when there
-    /// is nothing to track and nowhere to redirect (so the activity has no tap target).
+    /// Builds the tracking URL from a content-state's Customer.io metadata. Returns `nil` unless there
+    /// is something to track (a `deliveryId`) or somewhere to redirect (a `deepLink`) — a
+    /// `deliveryToken` alone is not sufficient: it can neither report an open nor navigate, so it
+    /// never justifies a tap target on its own.
     public static func trackingURL(for metadata: CIOLiveActivityMetadata?) -> URL? {
         guard let metadata else { return nil }
+        let deliveryId = metadata.deliveryId.flatMap { $0.isEmpty ? nil : $0 }
+        let deepLink = metadata.deepLink.flatMap { $0.isEmpty ? nil : $0 }
+        guard deliveryId != nil || deepLink != nil else { return nil }
+
         var items: [URLQueryItem] = []
-        if let id = metadata.deliveryId, !id.isEmpty { items.append(URLQueryItem(name: Key.deliveryId, value: id)) }
-        if let token = metadata.deliveryToken, !token.isEmpty { items.append(URLQueryItem(name: Key.deliveryToken, value: token)) }
-        if let deepLink = metadata.deepLink, !deepLink.isEmpty { items.append(URLQueryItem(name: Key.redirect, value: deepLink)) }
-        guard !items.isEmpty else { return nil }
+        if let deliveryId {
+            items.append(URLQueryItem(name: Key.deliveryId, value: deliveryId))
+            // The token is the open's recipient — it only rides along with a deliveryId.
+            if let token = metadata.deliveryToken, !token.isEmpty {
+                items.append(URLQueryItem(name: Key.deliveryToken, value: token))
+            }
+        }
+        if let deepLink {
+            items.append(URLQueryItem(name: Key.redirect, value: deepLink))
+        }
         var components = URLComponents()
         components.scheme = scheme
         components.host = host
