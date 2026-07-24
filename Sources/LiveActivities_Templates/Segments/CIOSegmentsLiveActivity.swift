@@ -8,7 +8,8 @@ import WidgetKit
 ///
 /// Add this to your widget extension's `WidgetBundle`, passing your app's ``CIOSegmentsBranding``.
 /// It renders ``CIOSegmentsAttributes`` on the Lock Screen and in the Dynamic Island, and wires the
-/// tap deep link from the Customer.io push metadata:
+/// tap via `cioWidgetUrl` — reporting an `opened` metric and opening the deep link from the
+/// Customer.io push metadata:
 ///
 /// ```swift
 /// @main

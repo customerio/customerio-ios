@@ -13,6 +13,10 @@ public final class CioLiveActivities_Attributes.CIOLiveActivityMetadata {
 public interface CioLiveActivities_Attributes.CIOMetadataCarrying {
 	public var cioMetadata: CIOLiveActivityMetadata?;
 }
+public enum CioLiveActivities_Attributes.CioLiveActivityWidgetUrl {
+	public fun func trackingURL(for metadata: CIOLiveActivityMetadata?) -> URL?;
+	public fun func parse(_ url: URL) -> Parsed?;
+}
 public final class CioLiveActivities_Attributes.EpochSecondsDate {
 	public var date: Date;
 	public fun init(_ date: Date);

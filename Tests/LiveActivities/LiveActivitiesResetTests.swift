@@ -15,16 +15,35 @@ final class NoopEventBusHandler: EventBusHandler, @unchecked Sendable {
     func removeFromStorage<E: EventRepresentable>(_ event: E) async {}
 }
 
+/// Records posted events so tests can assert what the SDK emitted onto the event bus.
+final class CapturingEventBusHandler: EventBusHandler, @unchecked Sendable {
+    private(set) var posted: [Any] = []
+    func loadEventsFromStorage() async {}
+    func addObserver<E: EventRepresentable>(_ eventType: E.Type, action: @escaping (E) -> Void) {}
+    func removeObserver<E: EventRepresentable>(for eventType: E.Type) {}
+    func postEvent<E: EventRepresentable>(_ event: E) {
+        posted.append(event)
+    }
+
+    func postEventAndWait<E: EventRepresentable>(_ event: E) async {}
+    func removeFromStorage<E: EventRepresentable>(_ event: E) async {}
+}
+
 final class FakeLiveActivitiesSDK: CIOLiveActivitiesSDKProviding, @unchecked Sendable {
     let registeredDeviceToken: String?
     let isUserIdentified: Bool
-    let eventBusHandler: EventBusHandler = NoopEventBusHandler()
+    let eventBusHandler: EventBusHandler
     let logger: Logger = NoopLogger()
     let sharedKeyValueStorage: SharedKeyValueStorage = InMemoryKeyValueStorage()
 
-    init(registeredDeviceToken: String? = "device-token", isUserIdentified: Bool) {
+    init(
+        registeredDeviceToken: String? = "device-token",
+        isUserIdentified: Bool,
+        eventBusHandler: EventBusHandler = NoopEventBusHandler()
+    ) {
         self.registeredDeviceToken = registeredDeviceToken
         self.isUserIdentified = isUserIdentified
+        self.eventBusHandler = eventBusHandler
     }
 
     func track(name: String, properties: [String: Any]?) {}
