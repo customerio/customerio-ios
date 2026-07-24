@@ -139,6 +139,7 @@ public final class CioInternalCommon.DIGraphShared {
 	public fun func getOverriddenInstance<T: Any>() -> T?;
 	public fun func getOptional<T: Any>(_ type: T.Type = T.self) -> T?;
 	public fun func register<T: Any>(_ value: T, forType type: T.Type);
+	public fun func getOrCreate<T>(of type: T.Type = T.self, matching predicate: ((T) -> Boolean)? = nil, with factory: () -> T?) -> T?;
 	public fun func getSingletonOrCreate<T>(of type: T.Type = T.self, with factory: () -> T) -> T;
 	public fun func reset();
 }
@@ -151,6 +152,9 @@ public enum CioInternalCommon.DateFormat {
 }
 public interface CioInternalCommon.DateUtil {
 	public var now: Date;
+}
+public interface CioInternalCommon.DbKeyProvider {
+	public fun func getOrCreateDbKey(account: String) throws -> String;
 }
 public interface CioInternalCommon.DeepLinkUtil {
 	public fun @_spi(Internal) func setDeepLinkCallback(_ callback: @escaping DeepLinkCallback);
@@ -294,6 +298,10 @@ public final class CioInternalCommon.JsonAdapter {
 	public fun func toJsonString<T: Encodable>(_ obj: T, nilIfEmpty: Boolean = true) -> String?;
 }
 public enum CioInternalCommon.KeyValueStorageKey {
+}
+public final class CioInternalCommon.KeychainDbKeyProvider {
+	public fun init();
+	public fun func getOrCreateDbKey(account: String) throws -> String;
 }
 public final class CioInternalCommon.LocationData {
 	public final val latitude: Double;
@@ -500,6 +508,14 @@ public interface CioInternalCommon.SharedKeyValueStorage {
 	public fun func data(_ key: KeyValueStorageKey) -> Data?;
 	public fun func setData(_ value: Data?, forKey key: KeyValueStorageKey);
 	public fun func deleteAll();
+}
+public final class CioInternalCommon.StorageManager {
+	public final val db: Database;
+	public final val cdpApiKey: String;
+	public fun init(db: Database, cdpApiKey: String);
+	public fun func runMigrations(extra: List<any Migration> = []) throws;
+	public fun func getMetaValue(_ key: String) throws -> String?;
+	public fun func setMetaValue(_ value: String?, for key: String) throws;
 }
 public final class CioInternalCommon.StringAnyEncodable {
 	public fun init(logger: Logger, _ data: List<String: Any>);
