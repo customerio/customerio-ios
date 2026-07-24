@@ -134,7 +134,8 @@ public final class LiveActivitiesModule {
     /// Works with any `ActivityAttributes` type — conforming to `CIOActivityAttribute` is only
     /// required for push-to-start.
     ///
-    /// - Returns: A handle whose `update`/`end` report the corresponding events.
+    /// - Returns: A handle whose `end` reports an `end` event; `update` applies the new
+    ///   content-state locally and is intentionally not reported.
     /// - Throws: `LiveActivityError.typeNotRegistered` if `Attributes` was not registered.
     @available(iOS 16.2, *)
     @discardableResult
@@ -216,8 +217,9 @@ public final class LiveActivitiesModule {
         )
     }
 
-    /// Wrap an activity your app created directly, so you can report `update`/`end` through the
-    /// returned handle. Does not report a `start` event (use `start` for that). Token capture for
+    /// Wrap an activity your app created directly, so you can drive `update`/`end` through the
+    /// returned handle — only `end` is reported; `update` applies locally and is not reported. Does
+    /// not report a `start` event (use `start` for that). Token capture for
     /// registered types happens automatically via observation regardless of `adopt`. Works with any
     /// `ActivityAttributes` type.
     @available(iOS 16.2, *)

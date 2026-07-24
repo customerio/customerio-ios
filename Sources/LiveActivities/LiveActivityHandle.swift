@@ -7,12 +7,14 @@ import ActivityKit
 
 /// A handle to a Live Activity the SDK is managing locally.
 ///
-/// Returned by `LiveActivitiesModule.start(...)` and `adopt(_:)`. Driving the activity through
-/// this handle's `update`/`end` is what emits the local `Live Notification Event`s — a backend
-/// push that changes or ends the activity is applied by the OS and is never reported.
+/// Returned by `LiveActivitiesModule.start(...)` and `adopt(_:)`. Starting and ending the activity
+/// through this handle is what emits the local `start`/`end` `Live Notification Event`s. A local
+/// `update` is applied to the activity but is intentionally not reported — only `start`/`end` emit a
+/// CDP event. A backend push that changes or ends the activity is applied by the OS and is never
+/// reported either.
 ///
-/// > Important: Ending or updating the underlying `activity` directly (bypassing this handle)
-/// > performs the ActivityKit operation but emits no Customer.io event.
+/// > Important: Ending the underlying `activity` directly (bypassing this handle) performs the
+/// > ActivityKit operation but emits no Customer.io event.
 @available(iOS 16.2, *)
 public struct CIOLiveActivity<Attributes: ActivityAttributes> {
     /// The stable correlation id (minted by the SDK for local starts, or carried in the
@@ -46,18 +48,16 @@ public struct CIOLiveActivity<Attributes: ActivityAttributes> {
         self.markLocalEnd = markLocalEnd
     }
 
-    /// Apply a local content-state update and report an `update` event.
+    /// Apply a local content-state update to the activity.
+    ///
+    /// The new content-state is applied locally via ActivityKit. This is intentionally **not**
+    /// reported to Customer.io — only `start` and `end` emit a `Live Notification Event`.
     public func update(
         _ contentState: Attributes.ContentState,
         staleDate: Date? = nil,
         alert: AlertConfiguration? = nil
     ) async {
         await activity.update(ActivityContent(state: contentState, staleDate: staleDate), alertConfiguration: alert)
-        reporter.reportUpdate(
-            instanceUUID: id,
-            notificationType: notificationType,
-            contentState: LiveActivityReporter.encode(contentState)
-        )
     }
 
     /// End the activity locally and report an `end` event with an optional final content-state.

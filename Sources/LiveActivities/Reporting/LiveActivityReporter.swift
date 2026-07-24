@@ -3,7 +3,7 @@ import Foundation
 
 /// Maps Live Activities lifecycle and token registration to Customer.io CDP track events.
 ///
-/// Emits two events — `Live Notification Event` (start/update/end) and
+/// Emits two events — `Live Notification Event` (start/end) and
 /// `Live Notification Token` (push_to_start/instance) — carrying the contract fields under
 /// the event's `properties`. The data pipeline owns batching, retry and flush, so this type
 /// is a thin mapper.
@@ -40,17 +40,6 @@ final class LiveActivityReporter: @unchecked Sendable {
             instanceUUID: instanceUUID,
             notificationType: notificationType,
             attributes: attributes,
-            contentState: contentState
-        )
-    }
-
-    /// Reports an `update`: sends the dynamic `contentState` object.
-    func reportUpdate(instanceUUID: String, notificationType: String, contentState: [String: Any]?) {
-        reportLifecycle(
-            eventType: LiveActivityContract.EventType.update,
-            instanceUUID: instanceUUID,
-            notificationType: notificationType,
-            attributes: nil,
             contentState: contentState
         )
     }

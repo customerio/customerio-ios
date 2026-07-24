@@ -8,7 +8,7 @@ import Foundation
 enum LiveActivityContract {
     /// Track event names.
     enum Event {
-        /// Lifecycle event: start / update / end.
+        /// Lifecycle event: start / end.
         static let lifecycle = "Live Notification Event"
         /// Token registration event: push_to_start / instance.
         static let token = "Live Notification Token"
@@ -24,18 +24,18 @@ enum LiveActivityContract {
         static let notificationType = "notificationType"
         /// Static attributes object (encoded `Attributes`). Sent on `start` only.
         static let attributes = "attributes"
-        /// Dynamic content-state object (encoded `ContentState`). Sent on `start`/`update`,
-        /// and optionally on `end`.
+        /// Dynamic content-state object (encoded `ContentState`). Sent on `start`, and
+        /// optionally on `end`. Local updates are not reported.
         static let contentState = "contentState"
         static let pushToStartToken = "pushToStartToken"
         static let attributesType = "attributesType"
         static let instanceToken = "instanceToken"
     }
 
-    /// `eventType` values for the lifecycle event.
+    /// `eventType` values for the lifecycle event. Local updates are not reported, so only
+    /// `start`/`end` are emitted.
     enum EventType {
         static let start = "start"
-        static let update = "update"
         static let end = "end"
     }
 
