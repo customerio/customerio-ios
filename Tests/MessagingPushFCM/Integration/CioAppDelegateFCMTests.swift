@@ -8,6 +8,26 @@ import UIKit
 import UserNotifications
 import XCTest
 
+@objc(CioTestFCMAppLifecycleProvider)
+private protocol TestFCMAppLifecycleProvider: NSObjectProtocol {
+    func addApplicationLifeCycleDelegate(_ delegate: NSObject)
+}
+
+private final class FlutterLikeAppDelegate: NSObject, UIApplicationDelegate, TestFCMAppLifecycleProvider {
+    weak static var latestInstance: FlutterLikeAppDelegate?
+
+    var addedLifecycleDelegate: NSObject?
+
+    override init() {
+        super.init()
+        Self.latestInstance = self
+    }
+
+    func addApplicationLifeCycleDelegate(_ delegate: NSObject) {
+        addedLifecycleDelegate = delegate
+    }
+}
+
 class CioAppDelegateFCMTests: XCTestCase {
     var appDelegateFCM: CioAppDelegate!
 
@@ -95,6 +115,20 @@ class CioAppDelegateFCMTests: XCTestCase {
         XCTAssertTrue(mockLogger.debugReceivedInvocations.contains {
             $0.message.contains("CIO: Registering for remote notifications")
         })
+    }
+
+    func testWrapperConforms_whenWrappedDelegateConforms_thenObjectiveCInvocationIsForwarded() throws {
+        let wrapper = CioAppDelegateWrapper<FlutterLikeAppDelegate>()
+        let lifecycleDelegate = NSObject()
+        let lifecycleProviderProtocol = try XCTUnwrap(NSProtocolFromString("CioTestFCMAppLifecycleProvider"))
+        let addLifecycleDelegateSelector = #selector(TestFCMAppLifecycleProvider.addApplicationLifeCycleDelegate(_:))
+
+        XCTAssertTrue(wrapper.conforms(to: lifecycleProviderProtocol))
+        XCTAssertTrue(wrapper.responds(to: addLifecycleDelegateSelector))
+
+        wrapper.perform(addLifecycleDelegateSelector, with: lifecycleDelegate)
+
+        XCTAssertTrue(FlutterLikeAppDelegate.latestInstance?.addedLifecycleDelegate === lifecycleDelegate)
     }
 
     func testDidFinishLaunching_whenCalled_thenFirebaseServiceDelegateIsSet() {

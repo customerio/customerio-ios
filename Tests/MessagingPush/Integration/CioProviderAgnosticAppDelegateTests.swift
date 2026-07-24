@@ -7,6 +7,20 @@ import UIKit
 import UserNotifications
 import XCTest
 
+/// Test-only equivalent of framework lifecycle-provider protocols that are discovered at runtime.
+@objc(CioTestAppLifecycleProvider)
+private protocol TestAppLifecycleProvider: NSObjectProtocol {
+    func addApplicationLifeCycleDelegate(_ delegate: NSObject)
+}
+
+private final class LifecycleProviderAppDelegate: NSObject, UIApplicationDelegate, TestAppLifecycleProvider {
+    var addedLifecycleDelegate: NSObject?
+
+    func addApplicationLifeCycleDelegate(_ delegate: NSObject) {
+        addedLifecycleDelegate = delegate
+    }
+}
+
 class CioProviderAgnosticAppDelegateTests: XCTestCase {
     // Mock Classes
     var mockMessagingPush: MessagingPushInstanceMock!
@@ -137,6 +151,52 @@ class CioProviderAgnosticAppDelegateTests: XCTestCase {
     }
 
     // MARK: - Tests for method forwarding
+
+    func testConforms_whenWrappedDelegateConformsToProtocol_thenObjectiveCInvocationIsForwarded() throws {
+        let wrappedDelegate = LifecycleProviderAppDelegate()
+        appDelegate = CioProviderAgnosticAppDelegate(
+            messagingPush: mockMessagingPush,
+            appDelegate: wrappedDelegate,
+            config: { self.createMockConfig() },
+            logger: mockLogger
+        )
+        let lifecycleDelegate = NSObject()
+        let lifecycleProviderProtocol = try XCTUnwrap(NSProtocolFromString("CioTestAppLifecycleProvider"))
+        let addLifecycleDelegateSelector = #selector(TestAppLifecycleProvider.addApplicationLifeCycleDelegate(_:))
+
+        XCTAssertTrue(appDelegate.conforms(to: lifecycleProviderProtocol))
+        XCTAssertTrue(appDelegate.responds(to: addLifecycleDelegateSelector))
+        let forwardingTarget = appDelegate.forwardingTarget(for: addLifecycleDelegateSelector) as AnyObject?
+        XCTAssertTrue(forwardingTarget === wrappedDelegate)
+
+        appDelegate.perform(addLifecycleDelegateSelector, with: lifecycleDelegate)
+
+        XCTAssertTrue(wrappedDelegate.addedLifecycleDelegate === lifecycleDelegate)
+    }
+
+    func testConforms_whenProtocolIsImplementedByWrapperSuperclass_thenReturnsTrue() throws {
+        let applicationDelegateProtocol = try XCTUnwrap(NSProtocolFromString("UIApplicationDelegate"))
+
+        XCTAssertTrue(appDelegate.conforms(to: applicationDelegateProtocol))
+    }
+
+    func testConforms_whenWrappedDelegateIsNil_thenForeignProtocolReturnsFalse() throws {
+        appDelegate = CioProviderAgnosticAppDelegate(
+            messagingPush: mockMessagingPush,
+            appDelegate: nil,
+            config: { self.createMockConfig() },
+            logger: mockLogger
+        )
+        let tableViewDelegateProtocol = try XCTUnwrap(NSProtocolFromString("UITableViewDelegate"))
+
+        XCTAssertFalse(appDelegate.conforms(to: tableViewDelegateProtocol))
+    }
+
+    func testConforms_whenNeitherWrapperNorWrappedDelegateConforms_thenReturnsFalse() throws {
+        let tableViewDelegateProtocol = try XCTUnwrap(NSProtocolFromString("UITableViewDelegate"))
+
+        XCTAssertFalse(appDelegate.conforms(to: tableViewDelegateProtocol))
+    }
 
     func testResponds_whenSelectorIsProvided_thenItShouldCorrectlyDetectResponse() {
         // Test all implemented optional methods
