@@ -93,4 +93,16 @@ public extension View {
         widgetURL(CioLiveActivityWidgetUrl.trackingURL(for: metadata))
     }
 }
+
+#if os(iOS)
+@available(iOS 16.1, *)
+public extension DynamicIsland {
+    /// Dynamic Island counterpart of ``SwiftUI/View/cioWidgetUrl(_:)``. WidgetKit exposes `widgetURL`
+    /// on `DynamicIsland` (not `View`), so the Dynamic Island needs its own overload; apply it the
+    /// same way, passing `context.state.cioMetadata`.
+    func cioWidgetUrl(_ metadata: CIOLiveActivityMetadata?) -> DynamicIsland {
+        widgetURL(CioLiveActivityWidgetUrl.trackingURL(for: metadata))
+    }
+}
+#endif
 #endif
