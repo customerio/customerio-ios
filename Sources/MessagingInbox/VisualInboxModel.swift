@@ -63,11 +63,9 @@ final class VisualInboxModel: ObservableObject {
     /// Messages that have a matching decoded template and are therefore renderable via Jist.
     ///
     /// No-template fallback (item 4): a message whose `type` is not in the decoded templates registry
-    /// is skipped (not rendered as a blank row) and logged once as a [CIO-Inbox] error. We can't skip
-    /// in pre-iOS-15 fallback rows (no templates there), so the skip only applies when Jist renders.
+    /// is skipped (not rendered as a blank row) and logged once as a [CIO-Inbox] error.
     var renderableMessages: [VisualInboxMessageSnapshot] {
-        guard #available(iOS 15.0, *) else { return messages }
-        return messages.filter { templates[$0.type] != nil }
+        messages.filter { templates[$0.type] != nil }
     }
 
     /// Whether any inbox chrome (bell/panel) should be shown. Hidden state shows nothing.
@@ -226,7 +224,6 @@ final class VisualInboxModel: ObservableObject {
     /// template (item 4). These messages are skipped by `renderableMessages` so they never render as
     /// a blank row. Logged once per id to avoid per-refresh spam.
     private func logMissingTemplates() {
-        guard #available(iOS 15.0, *) else { return }
         for message in messages where templates[message.type] == nil && !loggedMissingTemplateIds.contains(message.id) {
             loggedMissingTemplateIds.insert(message.id)
             logger.error("[CIO-Inbox] skipping message \(message.id): no template for type \"\(message.type)\" in registry")

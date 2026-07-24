@@ -7,10 +7,13 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		14A90D80EAFFB3FFC0A20D37 /* DMSans-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 41BF079617E97D419E8E4B20 /* DMSans-Medium.ttf */; };
+		167BDDB2954ABC2B5B7E417B /* AbrilFatface-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 75EC3F68C36E40E2B00DD826 /* AbrilFatface-Regular.ttf */; };
 		30DB021B873DE5D52C01151C /* InboxViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6271087BB2D1D2EED90C6A75 /* InboxViewController.swift */; };
 		30F117082D63531A00DB1E11 /* SampleAppsCommon in Frameworks */ = {isa = PBXBuildFile; productRef = 30F117072D63531A00DB1E11 /* SampleAppsCommon */; };
 		30F1170A2D6356BA00DB1E11 /* SampleAppsCommon in Frameworks */ = {isa = PBXBuildFile; productRef = 30F117092D6356BA00DB1E11 /* SampleAppsCommon */; };
 		4650330629F68FEB001B6552 /* NotificationServiceExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 465032FF29F68FEB001B6552 /* NotificationServiceExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		5C75965B010A435A3AAB0210 /* DMSans-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 848B7817C2E58241424CE8FA /* DMSans-SemiBold.ttf */; };
 		669B9FA92D8B2D430087CC20 /* AutoDependencyInjection.generated.swift in Sources */ = {isa = PBXBuildFile; fileRef = 669B9F6E2D8B2D430087CC20 /* AutoDependencyInjection.generated.swift */; };
 		669B9FAB2D8B2D430087CC20 /* AutoMockable.generated.swift in Sources */ = {isa = PBXBuildFile; fileRef = 669B9F702D8B2D430087CC20 /* AutoMockable.generated.swift */; };
 		669B9FAC2D8B2D430087CC20 /* DIDependencies.swift in Sources */ = {isa = PBXBuildFile; fileRef = 669B9F712D8B2D430087CC20 /* DIDependencies.swift */; };
@@ -65,6 +68,8 @@
 		6842752D2F3349A7006A4EF0 /* LocationTestViewController+Keyboard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6842752C2F3349A7006A4EF0 /* LocationTestViewController+Keyboard.swift */; };
 		6842752F2F3349A7006A4EF0 /* LocationTestViewController+CLLocationManagerDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6842752E2F3349A7006A4EF0 /* LocationTestViewController+CLLocationManagerDelegate.swift */; };
 		684275312F3349A7006A4EF0 /* LocationTestViewController+UITextFieldDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 684275302F3349A7006A4EF0 /* LocationTestViewController+UITextFieldDelegate.swift */; };
+		C4CFCD061909B8E2790DEB4C /* DMSans-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 8D6B1FF6572103F27640CCAB /* DMSans-Regular.ttf */; };
+		D6084F4F8E30755DE4EBEA59 /* DMSans-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = F05F9BD3E50444AD44796B66 /* DMSans-Bold.ttf */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -106,6 +111,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		41BF079617E97D419E8E4B20 /* DMSans-Medium.ttf */ = {isa = PBXFileReference; includeInIndex = 1; name = "DMSans-Medium.ttf"; path = "APN UIKit/Fonts/DMSans-Medium.ttf"; sourceTree = "<group>"; };
 		465032FF29F68FEB001B6552 /* NotificationServiceExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = NotificationServiceExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		46D5D97D29E459D600EAF40B /* APN UIKit.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "APN UIKit.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		46D5D99329E459D800EAF40B /* APN UIKitTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "APN UIKitTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -168,6 +174,10 @@
 		6842752E2F3349A7006A4EF0 /* LocationTestViewController+CLLocationManagerDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "LocationTestViewController+CLLocationManagerDelegate.swift"; sourceTree = "<group>"; };
 		684275302F3349A7006A4EF0 /* LocationTestViewController+UITextFieldDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "LocationTestViewController+UITextFieldDelegate.swift"; sourceTree = "<group>"; };
 		68829E4A2F7AAFC3008A8D96 /* NotificationServiceExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = NotificationServiceExtension.entitlements; sourceTree = "<group>"; };
+		75EC3F68C36E40E2B00DD826 /* AbrilFatface-Regular.ttf */ = {isa = PBXFileReference; includeInIndex = 1; name = "AbrilFatface-Regular.ttf"; path = "APN UIKit/Fonts/AbrilFatface-Regular.ttf"; sourceTree = "<group>"; };
+		848B7817C2E58241424CE8FA /* DMSans-SemiBold.ttf */ = {isa = PBXFileReference; includeInIndex = 1; name = "DMSans-SemiBold.ttf"; path = "APN UIKit/Fonts/DMSans-SemiBold.ttf"; sourceTree = "<group>"; };
+		8D6B1FF6572103F27640CCAB /* DMSans-Regular.ttf */ = {isa = PBXFileReference; includeInIndex = 1; name = "DMSans-Regular.ttf"; path = "APN UIKit/Fonts/DMSans-Regular.ttf"; sourceTree = "<group>"; };
+		F05F9BD3E50444AD44796B66 /* DMSans-Bold.ttf */ = {isa = PBXFileReference; includeInIndex = 1; name = "DMSans-Bold.ttf"; path = "APN UIKit/Fonts/DMSans-Bold.ttf"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -214,6 +224,11 @@
 				669B9FE02D8B2D500087CC20 /* NotificationServiceExtension */,
 				46D5D97E29E459D600EAF40B /* Products */,
 				46EE275329E9E2960068F9A3 /* Frameworks */,
+				75EC3F68C36E40E2B00DD826 /* AbrilFatface-Regular.ttf */,
+				F05F9BD3E50444AD44796B66 /* DMSans-Bold.ttf */,
+				41BF079617E97D419E8E4B20 /* DMSans-Medium.ttf */,
+				8D6B1FF6572103F27640CCAB /* DMSans-Regular.ttf */,
+				848B7817C2E58241424CE8FA /* DMSans-SemiBold.ttf */,
 			);
 			sourceTree = "<group>";
 		};
@@ -541,7 +556,7 @@
 			);
 			mainGroup = 46D5D97429E459D600EAF40B;
 			packageReferences = (
-				30F117062D63531A00DB1E11 /* XCLocalSwiftPackageReference "../Common" */,
+				30F117062D63531A00DB1E11 /* XCLocalSwiftPackageReference "Common" */,
 			);
 			productRefGroup = 46D5D97E29E459D600EAF40B /* Products */;
 			projectDirPath = "";
@@ -571,6 +586,11 @@
 				669B9FD12D8B2D430087CC20 /* GoogleService-Info.plist in Resources */,
 				669B9FD32D8B2D430087CC20 /* LaunchScreen.storyboard in Resources */,
 				669B9FD42D8B2D430087CC20 /* Main.storyboard in Resources */,
+				167BDDB2954ABC2B5B7E417B /* AbrilFatface-Regular.ttf in Resources */,
+				D6084F4F8E30755DE4EBEA59 /* DMSans-Bold.ttf in Resources */,
+				14A90D80EAFFB3FFC0A20D37 /* DMSans-Medium.ttf in Resources */,
+				C4CFCD061909B8E2790DEB4C /* DMSans-Regular.ttf in Resources */,
+				5C75965B010A435A3AAB0210 /* DMSans-SemiBold.ttf in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1083,7 +1103,7 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
-		30F117062D63531A00DB1E11 /* XCLocalSwiftPackageReference "../Common" */ = {
+		30F117062D63531A00DB1E11 /* XCLocalSwiftPackageReference "Common" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = ../Common;
 		};
@@ -1096,7 +1116,7 @@
 		};
 		30F117092D6356BA00DB1E11 /* SampleAppsCommon */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 30F117062D63531A00DB1E11 /* XCLocalSwiftPackageReference "../Common" */;
+			package = 30F117062D63531A00DB1E11 /* XCLocalSwiftPackageReference "Common" */;
 			productName = SampleAppsCommon;
 		};
 /* End XCSwiftPackageProductDependency section */

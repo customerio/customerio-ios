@@ -340,12 +340,9 @@ final class VisualInboxModelTests: XCTestCase {
         let model = VisualInboxModel(provider: provider)
         await model.refresh()
 
-        if #available(iOS 15.0, *) {
-            XCTAssertEqual(model.renderableMessages.map(\.id), ["a"])
-        } else {
-            // Below the Jist floor the fallback row renders every message (no template lookup).
-            XCTAssertEqual(model.renderableMessages.map(\.id), ["a", "b"])
-        }
+        // Jist renders at the iOS 13 floor, so the no-template skip applies on every version:
+        // "b" has no matching template and is filtered out.
+        XCTAssertEqual(model.renderableMessages.map(\.id), ["a"])
     }
 
     // MARK: - reactive observe() subscription (the bug fix)

@@ -36,14 +36,7 @@ if (ProcessInfo.processInfo.environment["CI"] != nil) { // true if running on a 
 let package = Package(
     name: "Customer.io",
     platforms: [
-        // NOTE (Visual Inbox / Jist): SwiftPM enforces a platform floor package-wide, and the
-        // Jist product currently declares a minimum of iOS 15. Because the Visual Inbox overlay
-        // (`CioMessagingInbox`) links Jist, the package floor is raised to iOS 15 here.
-        // This is a TEMPORARY consequence of the Jist dependency — the documented Milestone-0
-        // item is to lower Jist's iOS floor to 13, after which this should revert to `.iOS(.v13)`.
-        // All SDK *source* remains iOS 13-compatible (Jist usage is `@available(iOS 15, *)`-gated).
-        // TODO: revert to `.iOS(.v13)` once Jist's iOS deployment target is lowered to 13.
-        .iOS(.v15)
+        .iOS(.v13)
     ],
     products: products,
     dependencies: [
@@ -60,9 +53,11 @@ let package = Package(
         .package(url: "https://github.com/LaunchDarkly/swift-eventsource.git", .upToNextMajor(from: "3.3.0")),
 
         // Jist SwiftUI renderer used by the Visual Inbox overlay (`CioMessagingInbox`).
-        // Consumed from the published Jist repo on `main` (its root Package.swift exposes the `Jist` product).
-        // TODO: pin to a tagged release once Jist cuts one.
-        .package(url: "https://github.com/customerio/jist.git", branch: "main")
+        // Published release from the Jist monorepo (its root Package.swift exposes the `Jist` product;
+        // the SwiftPM release is the `vX.Y.Z` git tag).
+        // upToNextMinor (>=0.1.0, <0.2.0) mirrors the CocoaPods `~> 0.1.0` range so both package
+        // managers resolve the same Jist for a given SDK version (Jist is 0.x — minor bumps may break).
+        .package(url: "https://github.com/customerio/jist.git", .upToNextMinor(from: "0.1.0"))
     ],
     targets: [ 
         // Common - Code used by multiple modules in the SDK project.
