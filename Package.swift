@@ -1,4 +1,4 @@
-// swift-tools-version:5.5
+// swift-tools-version:5.10
 
 /**
  Manifest file for Swift Package Manager. This file defines our Swift Package for customers to install our SDK modules into their app. 
@@ -49,12 +49,14 @@ let package = Package(
         .package(name: "CioAnalytics", url: "https://github.com/customerio/cdp-analytics-swift.git", .exact("1.7.3+cio.1")),
         
         // SSE (Server-Sent Events) client for real-time in-app messaging
-        .package(url: "https://github.com/LaunchDarkly/swift-eventsource.git", .upToNextMajor(from: "3.3.0"))
+        .package(url: "https://github.com/LaunchDarkly/swift-eventsource.git", .upToNextMajor(from: "3.3.0")),
+        .package(url: "https://github.com/customerio/SyncSqlCipher.git", exact: "1.1.0")
     ],
     targets: [ 
         // Common - Code used by multiple modules in the SDK project.
-        // this module is *not* exposed to the public. It's used internally. 
+        // this module is *not* exposed to the public. It's used internally.
         .target(name: "CioInternalCommon",
+                dependencies: [.product(name: "SyncSqlCipher", package: "SyncSqlCipher")],
                 path: "Sources/Common"),
         .testTarget(name: "CommonTests",
                     dependencies: ["CioInternalCommon", "SharedTests", "CioInternalCommonMocks"],
