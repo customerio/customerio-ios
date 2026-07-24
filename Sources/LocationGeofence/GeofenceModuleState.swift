@@ -27,6 +27,13 @@ final class GeofenceModuleState {
     private let lock = NSLock()
     private var didSetup = false
 
+    /// True once `setup` has been told the host disabled geofencing. Set synchronously before the
+    /// teardown it schedules, so callers reached from a bootstrap earlier in the same launch stop
+    /// acting on the state that teardown is about to clear.
+    var isGeofencingDisabled: Bool {
+        locationMode.wrappedValue == .off
+    }
+
     /// Internal init lets tests build instances independent of `.shared`.
     init(
         locationServicesProvider: @escaping () -> LocationServices = { CustomerIO.location }
@@ -42,6 +49,22 @@ final class GeofenceModuleState {
         guard !didSetup else { return }
         didSetup = true
         self.locationMode.wrappedValue = locationMode
+
+        // `.off` disables geofencing locally. A prior session's OS registrations survive app updates
+        // and fire independently of these subscriptions, so tear them down rather than just skip
+        // wiring: stop OS monitoring and clear user-scoped state (registration ids, cooldowns,
+        // last-sync). Cached workspace regions/config are kept so re-enabling re-syncs without a
+        // fetch. Init-time only — a mode change takes effect at the next launch's initialize.
+        guard locationMode != .off else {
+            di.logger.geofenceModuleDisabled()
+            // Real crossings captured while the module was enabled, and the teardown below clears
+            // registration state but never the delivery queue — nothing else would drain them.
+            Task { await di.geofenceEventTracker.flushPending() }
+            Task { @MainActor in
+                await GeofenceBootstrap.tearDownMonitoring(di: di)
+            }
+            return
+        }
 
         registerEventSubscriptions(di: di)
         // Run the refresh decision once at app launch (SDK/module init) so time-staleness and any
@@ -78,9 +101,13 @@ final class GeofenceModuleState {
 
     /// Arms a host-initiated refresh so the next acquired fix drives a sync even without a prior
     /// no-location skip. Paired with `LocationServices.requestLocationUpdateSilently()` by the
-    /// `CustomerIO.geofence.refreshFromCurrentLocation()` facade.
-    func onRefreshRequested() {
+    /// `CustomerIO.geofence.refreshFromCurrentLocation()` facade. Returns `false` (without arming)
+    /// when geofencing is disabled (`.off`), so the facade can skip requesting a fix too.
+    @discardableResult
+    func onRefreshRequested() -> Bool {
+        guard locationMode.wrappedValue != .off else { return false }
         explicitRefreshRequested.wrappedValue = true
+        return true
     }
 
     /// Invoked at app launch and on identify. Picks the anchor to refresh from, arming the

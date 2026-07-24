@@ -22,6 +22,35 @@ enum GeofenceBootstrap {
         await run.value
     }
 
+    /// Tears down monitoring for `GeofenceLocationMode.off`. Chained on the same run tail as
+    /// `wireMonitor` so a bootstrap running in the same launch (e.g. the host calls
+    /// `bootstrapForBackgroundDelivery` alongside an `.off` initialize) can't interleave: an
+    /// unserialized teardown could land between wireMonitor's state reads and its registration,
+    /// which would then re-register from the pre-teardown snapshot. Chained, either order
+    /// converges to off — teardown-last stops everything; teardown-first leaves wireMonitor
+    /// nothing to restore (no registered ids, no anchor).
+    static func tearDownMonitoring(di: DIGraphShared) async {
+        let previous = lastRun
+        let run = Task { @MainActor in
+            await previous?.value
+            // Read before constructing the monitor, per the no-await-after-construction rule below.
+            let businessIds = await di.geofenceStorage.getRegisteredBusinessIds()
+            let monitor = di.geofenceMonitor
+            // `stopMonitoringAll` reaches only the regions the monitor owns, and the classic monitor
+            // starts each process owning nothing — `.off` never runs `wireMonitor`, so without
+            // reclaiming first the stop is a no-op and last session's regions monitor forever. The
+            // CLMonitor path seeds ownership at init, where re-adopting would re-arm conditions we
+            // are about to remove.
+            if monitor.monitoredRegionIdentifiers.isEmpty {
+                monitor.adoptExistingRegions(matching: businessIds.union([GeofenceConstants.movementTriggerIdentifier]))
+            }
+            monitor.stopMonitoringAll()
+            await di.geofenceStorage.clearUserScopedState()
+        }
+        lastRun = run
+        await run.value
+    }
+
     private static func performWireMonitor(di: DIGraphShared) async {
         // iOS 18+ (CLMonitor): construct the monitor NOW. CLMonitor delivers events only while its
         // `events` sequence is iterated — the OS does not queue a crossing for a late consumer — and

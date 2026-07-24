@@ -71,6 +71,27 @@ struct GeofenceMonitorBinderTests {
         #expect(coordinator.handleMovementReceivedArguments?.longitude == -122.0)
     }
 
+    /// A bootstrap earlier in the same launch binds this and registers regions before `initialize`
+    /// reports `.off`, and the teardown that follows is asynchronous. Crossings arriving in between
+    /// must not deliver, and a movement EXIT must not re-register off the cache being cleared.
+    @Test
+    func bind_givenGeofencingDisabled_expectNeitherDispatchPathFires() async {
+        let monitor = MockGeofenceRegionMonitor()
+        let coordinator = makeCoordinatorMock()
+        let tracker = makeTracker(deliveryTracker: makeDeliveryMock())
+
+        GeofenceMonitorBinder.bind(monitor: monitor, tracker: tracker, coordinator: coordinator, isDisabled: { true })
+        monitor.simulateTransition(
+            identifier: GeofenceConstants.movementTriggerIdentifier,
+            transition: .exit,
+            location: LocationData(latitude: 37.0, longitude: -122.0)
+        )
+        monitor.simulateTransition(identifier: "biz-1", transition: .enter, location: nil)
+        await awaitDispatch(coordinator.handleMovementCallsCount > 0)
+
+        #expect(coordinator.handleMovementCallsCount == 0)
+    }
+
     /// We only register the movement trigger for `.exit`; an unexpected `.enter` on the
     /// reserved identifier must NOT fall through to either the tracker or the coordinator.
     @Test

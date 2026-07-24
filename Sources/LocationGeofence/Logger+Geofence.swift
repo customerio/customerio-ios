@@ -37,6 +37,13 @@ extension Logger {
         )
     }
 
+    func geofenceModuleDisabled() {
+        info(
+            "Geofence module disabled (GeofenceLocationMode.off); no geofences will be monitored. Configure .automatic or .manual to enable.",
+            geofenceTag
+        )
+    }
+
     func geofencePermissionUnavailable(currentStatus: CLAuthorizationStatus) {
         info(
             "Geofence registration skipped: location permission not granted (current status: \(currentStatus.rawValue)). The host app controls when and which permission to request.",

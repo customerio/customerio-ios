@@ -14,7 +14,8 @@ public protocol GeofenceServices {
     /// on its own and this is only needed to force an immediate refresh.
     ///
     /// In `.manual`, call this once a user has been identified — a refresh requested before any
-    /// identify is not retried automatically.
+    /// identify is not retried automatically. No-op when the module is configured with
+    /// `GeofenceLocationMode.off`.
     func refreshFromCurrentLocation()
 }
 
@@ -32,7 +33,7 @@ struct GeofenceServicesImplementation: GeofenceServices {
         // Arm first so the returning fix drives a sync even without a prior no-location skip,
         // then request a silent (no-analytics) fix. Safe when the Location module isn't
         // registered — `CustomerIO.location` returns a no-op that only logs.
-        GeofenceModuleState.shared.onRefreshRequested()
+        guard GeofenceModuleState.shared.onRefreshRequested() else { return }
         CustomerIO.location.requestLocationUpdateSilently()
     }
 }

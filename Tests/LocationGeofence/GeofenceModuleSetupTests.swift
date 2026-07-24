@@ -1,4 +1,5 @@
 @testable import CioInternalCommon
+@testable import CioInternalCommonMocks
 @_spi(Geofence) import CioLocation
 @testable import CioLocationGeofence
 @testable import CioLocationGeofenceMocks
@@ -80,6 +81,111 @@ struct GeofenceModuleSetupTests {
         #expect(f.bus.observers[ResetEvent.key] != nil, "ResetEvent observer must be registered")
         #expect(f.bus.observers[ProfileIdentifiedEvent.key] != nil, "ProfileIdentifiedEvent observer must be registered")
         #expect(f.bus.observers[LocationAcquiredEvent.key] != nil, "LocationAcquiredEvent observer must be registered")
+    }
+
+    @Test
+    @MainActor
+    func setup_givenOffMode_expectNoWiringAndNoRefreshOrAcquire() throws {
+        // `.off` is the local kill switch: no event observers, no launch refresh, no self-acquire.
+        // The off path spawns only the teardown task, which touches none of the state asserted
+        // here, so asserting right after `wire()` is deterministic.
+        let f = Fixture(cachedLocation: LocationData(latitude: 1, longitude: 2), locationMode: .off)
+        defer { f.cleanup() }
+
+        f.spyCoordinator.refreshClosure = { _, _ in .success(()) }
+
+        f.wire()
+
+        #expect(f.bus.observers[ResetEvent.key] == nil)
+        #expect(f.bus.observers[ProfileIdentifiedEvent.key] == nil)
+        #expect(f.bus.observers[LocationAcquiredEvent.key] == nil)
+        #expect(f.spyCoordinator.refreshCallsCount == 0)
+        #expect(f.stub.requestSilentlyCount.wrappedValue == 0)
+    }
+
+    @Test
+    @MainActor
+    func setup_givenOffMode_expectPriorMonitoringTornDown() async throws {
+        // A prior session's OS registrations survive independently of setup, so `.off` must tear them
+        // down — not just skip wiring: stop OS monitoring and clear user-scoped state. (cached
+        // regions/config are kept; that's covered by GeofenceStorage.clearUserScopedState tests.)
+        // `.off` never runs wireMonitor, so the monitor owns nothing at this point: teardown has to
+        // reclaim ownership from the persisted set first, or the stop reaches none of these regions.
+        let f = Fixture(locationMode: .off)
+        defer { f.cleanup() }
+
+        f.mockMonitor.osMonitoredRegions = ["g1", GeofenceConstants.movementTriggerIdentifier]
+        await f.di.geofenceStorage.recordRegistration(center: LocationData(latitude: 1, longitude: 2), businessIds: ["g1"])
+        await f.di.geofenceStorage.recordSync(timestamp: Date(timeIntervalSince1970: 100), location: LocationData(latitude: 1, longitude: 2))
+
+        f.wire()
+
+        // Teardown is a fire-and-forget Task; wait for it to land before asserting.
+        await waitUntil {
+            let registered = await f.di.geofenceStorage.getRegisteredBusinessIds()
+            return f.mockMonitor.osMonitoredRegions.isEmpty && registered.isEmpty
+        }
+
+        #expect(f.mockMonitor.osMonitoredRegions.isEmpty)
+        #expect(await f.di.geofenceStorage.getRegisteredBusinessIds().isEmpty)
+        #expect(await f.di.geofenceStorage.getLastSync() == nil)
+    }
+
+    @Test
+    @MainActor
+    func setup_givenOffModeAfterEmptyArea_expectMovementTriggerTornDown() async throws {
+        // Switched off while parked in a geofence-free area: no business geofences were registered,
+        // but the movement trigger was. Reclaiming only the persisted business ids would leave it
+        // running with the OS forever, waking the app for a module that is meant to be inert.
+        let f = Fixture(locationMode: .off)
+        defer { f.cleanup() }
+
+        f.mockMonitor.osMonitoredRegions = [GeofenceConstants.movementTriggerIdentifier]
+        await f.di.geofenceStorage.recordRegistration(center: LocationData(latitude: 1, longitude: 2), businessIds: [])
+
+        f.wire()
+
+        await waitUntil { f.mockMonitor.osMonitoredRegions.isEmpty }
+
+        #expect(f.mockMonitor.osMonitoredRegions.isEmpty)
+    }
+
+    @Test
+    @MainActor
+    func setup_givenOffMode_expectQueuedDeliveriesStillFlushed() async throws {
+        // Transitions captured while the module was enabled are real crossings the SDK already
+        // accepted. `.off` stops future ones; it must not strand the backlog, which no other reader
+        // in a native app would ever drain.
+        let f = Fixture(locationMode: .off)
+        defer { f.cleanup() }
+
+        _ = await f.pendingStore.append([
+            PendingGeofenceMetric(
+                geofenceId: "geo_1", transition: .enter,
+                timestamp: Date(timeIntervalSince1970: 1),
+                userId: "test-user", name: nil, transitionId: "txn_1"
+            )
+        ])
+
+        f.wire()
+
+        await waitUntil { await f.pendingStore.loadAll().isEmpty }
+
+        #expect(await f.pendingStore.loadAll().isEmpty)
+    }
+
+    @Test
+    @MainActor
+    func setup_givenOffMode_refreshFromCurrentLocationDoesNotArmOrAcquire() throws {
+        // The `refreshFromCurrentLocation()` facade must be inert in `.off`: arming returns false so
+        // the facade skips the location request.
+        let f = Fixture(locationMode: .off)
+        defer { f.cleanup() }
+
+        f.wire()
+
+        #expect(f.state.onRefreshRequested() == false)
+        #expect(f.stub.requestSilentlyCount.wrappedValue == 0)
     }
 
     @Test
@@ -291,6 +397,16 @@ struct GeofenceModuleSetupTests {
     }
 }
 
+/// Waits for a fire-and-forget `Task` to land. Bounded, so a genuine failure still ends the test
+/// with the assertion that follows rather than hanging.
+@MainActor
+private func waitUntil(_ condition: @MainActor () async -> Bool) async {
+    for _ in 0 ..< 200 {
+        if await condition() { return }
+        try? await Task.sleep(nanoseconds: 5000000)
+    }
+}
+
 /// Per-test setup: overrides the DI shared singleton with capturing/mocking deps and builds
 /// a fresh `GeofenceModuleState` with a stub `LocationServices`.
 @MainActor
@@ -303,6 +419,7 @@ private struct Fixture {
     let state: GeofenceModuleState
     let stub: StubLocationServices
     let locationMode: GeofenceLocationMode
+    let pendingStore: PendingGeofenceMetricStore
 
     init(cachedLocation: LocationData? = nil, locationMode: GeofenceLocationMode = .automatic, identifiedUserId: String? = "test-user") {
         self.locationMode = locationMode
@@ -325,6 +442,22 @@ private struct Fixture {
 
         let testStorage = GeofenceStorage(fileManager: .default, directoryURL: tempDir)
         di.override(value: testStorage, forType: GeofenceStorage.self)
+
+        // The real tracker is a process-wide singleton, so it must be overridden (not just its
+        // collaborators) to keep queued deliveries inside this fixture's temp directory.
+        let pending = PendingGeofenceMetricStore(fileManager: .default, directoryURL: tempDir)
+        self.pendingStore = pending
+        di.override(value: GeofenceEventTracker(
+            storage: testStorage,
+            pendingStore: pending,
+            deliveryTracker: GeofenceDeliveryTrackerMock(),
+            contextStore: contextStore,
+            eventBusHandler: bus,
+            dateUtil: DateUtilStub(),
+            logger: LoggerMock(),
+            cooldownInterval: 3600,
+            backgroundTaskRunner: NoBackgroundTaskRunner()
+        ), forType: GeofenceEventTracker.self)
 
         let stubServices = StubLocationServices(cachedLocation: cachedLocation)
         self.stub = stubServices

@@ -14,9 +14,15 @@ enum GeofenceMonitorBinder {
     static func bind(
         monitor: GeofenceRegionMonitoring,
         tracker: GeofenceEventTracker,
-        coordinator: GeofenceSyncCoordinator
+        coordinator: GeofenceSyncCoordinator,
+        isDisabled: @escaping @Sendable () -> Bool = { GeofenceModuleState.shared.isGeofencingDisabled }
     ) {
         monitor.setOnTransition { [weak tracker, weak coordinator] identifier, transition, location in
+            // A host that calls `bootstrapForBackgroundDelivery` from its AppDelegate has this bound
+            // and its regions registered before `initialize` reports `.off`, and the teardown that
+            // follows is asynchronous. Without this the crossings in between would deliver, and a
+            // movement EXIT would re-register everything off a cleared cache.
+            guard !isDisabled() else { return }
             // CLLocationManager delivers on main; both handlers below are async with their
             // own serialization (tracker active-delivery dedup, coordinator refresh gate),
             // so fire-and-forget Tasks are safe.
