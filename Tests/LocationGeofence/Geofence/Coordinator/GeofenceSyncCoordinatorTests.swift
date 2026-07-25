@@ -1166,6 +1166,71 @@ struct GeofenceSyncCoordinatorTests {
         #expect(movementTrigger?.radius == config.localRefreshTriggerRadius)
     }
 
+    @Test
+    func handleMovement_givenRemoteFetchFails_expectMovementTriggerRearmedAtCurrentFix() async {
+        // A failed pass leaves the trigger on the circle the device just exited, so no further EXIT
+        // can fire and re-ranking stops until the next launch. Re-rank from cache to re-arm it.
+        let storage = makeStorage()
+        let config = GeofenceConfig(
+            localRefreshTriggerRadius: 1000,
+            remoteFetchRefreshTriggerRadius: 5000,
+            remoteFetchRefreshExpiry: 3600,
+            duplicateEventsExpiry: 3600,
+            maxBusinessGeofences: 10,
+            maxMonitoringDistance: GeofenceConstants.noMonitoringDistanceCap
+        )
+        await storage.setCachedConfig(config)
+        let fetchAnchor = LocationData(latitude: 0, longitude: 0)
+        await storage.recordSync(timestamp: Date(timeIntervalSince1970: 100), location: fetchAnchor)
+        let api = GeofenceApiServiceMock()
+        api.fetchNearbyGeofencesClosure = { _, _, completion in
+            completion(.failure(.transport))
+        }
+        let setup = makeCoordinator(api: api, storage: storage)
+
+        // ~157 km from the anchor — beyond the 5 km refetch radius, so this takes the remote tier.
+        let newLocation = LocationData(latitude: 1.0, longitude: 1.0)
+        let result = await setup.coordinator.handleMovement(latitude: newLocation.latitude, longitude: newLocation.longitude)
+
+        // The fetch failure is still what the caller sees.
+        #expect(result.errorOrNil == .fetchFailed(.transport))
+        #expect(setup.api.fetchNearbyGeofencesCallsCount == 1)
+        // ...but the trigger now sits on the device's current fix, so movement can fire again.
+        let movementTrigger = setup.monitor.startedRegions.last { $0.identifier == GeofenceConstants.movementTriggerIdentifier }
+        #expect(movementTrigger?.center == newLocation)
+        #expect(movementTrigger?.radius == config.localRefreshTriggerRadius)
+        // The fetch anchor stays put, so the next EXIT retries remotely instead of treating the
+        // re-arm as a successful sync.
+        #expect(await storage.getLastSync()?.location == fetchAnchor)
+    }
+
+    @Test
+    func handleMovement_givenRemoteFetchFailsUnderKillSwitch_expectTeardownNotRearm() async {
+        // The re-arm fallback must not resurrect the trigger the kill switch just tore down.
+        let storage = makeStorage()
+        let config = GeofenceConfig(
+            localRefreshTriggerRadius: 1000,
+            remoteFetchRefreshTriggerRadius: 5000,
+            remoteFetchRefreshExpiry: 3600,
+            duplicateEventsExpiry: 3600,
+            maxBusinessGeofences: 0,
+            maxMonitoringDistance: GeofenceConstants.noMonitoringDistanceCap
+        )
+        await storage.setCachedConfig(config)
+        await storage.recordSync(timestamp: Date(timeIntervalSince1970: 100), location: LocationData(latitude: 0, longitude: 0))
+        let api = GeofenceApiServiceMock()
+        api.fetchNearbyGeofencesClosure = { _, _, completion in
+            completion(.failure(.transport))
+        }
+        let setup = makeCoordinator(api: api, storage: storage)
+
+        let result = await setup.coordinator.handleMovement(latitude: 1.0, longitude: 1.0)
+
+        #expect(result.errorOrNil == .fetchFailed(.transport))
+        #expect(setup.monitor.monitoredRegionIdentifiers.isEmpty)
+        #expect(!setup.monitor.startedRegions.contains { $0.identifier == GeofenceConstants.movementTriggerIdentifier })
+    }
+
     // MARK: unchanged-set fast path (crossing absorption)
 
     /// Shared arrangement for the fast-path tests: an initial remote refresh registers `regions`

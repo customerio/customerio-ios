@@ -118,6 +118,10 @@ extension Logger {
         debug("Movement trigger EXIT: \(tier.rawValue)", geofenceTag)
     }
 
+    func geofenceMovementRearmedAfterFailedRefresh() {
+        debug("Movement refresh failed; re-ranking from cache to re-arm the movement trigger", geofenceTag)
+    }
+
     func geofenceSyncSupersededByUserChange() {
         info("Sync result discarded: identified user changed during fetch", geofenceTag)
     }

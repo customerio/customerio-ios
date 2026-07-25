@@ -161,12 +161,25 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
         // otherwise refetch only once the device has moved beyond the cached nearby set.
         if anchor == nil || movedBeyondRefetchRadius(from: anchor, to: movement, config: effectiveConfig) {
             logger.geofenceMovementTrigger(tier: .remoteRefresh)
-            return await performRemoteRefresh(
+            let remote = await performRemoteRefresh(
                 expectedUserId: userId,
                 latitude: latitude,
                 longitude: longitude,
                 cachedConfig: cachedConfig
             )
+            if case .failure = remote {
+                // A failed pass never re-centers the trigger, leaving it on the circle the device
+                // just exited where no further EXIT can fire. Re-rank from cache to re-arm it.
+                logger.geofenceMovementRearmedAfterFailedRefresh()
+                _ = await performLocalRefresh(
+                    expectedUserId: userId,
+                    latitude: latitude,
+                    longitude: longitude,
+                    config: effectiveConfig,
+                    cachedRegions: await storage.getCachedGeofences()
+                )
+            }
+            return remote
         } else {
             logger.geofenceMovementTrigger(tier: .localRerank)
             let cachedRegions = await storage.getCachedGeofences()
