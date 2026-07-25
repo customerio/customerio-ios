@@ -4,13 +4,16 @@ public final class CioLiveActivities.CIOLiveActivity {
 	public fun func update(_ contentState: Attributes.ContentState, staleDate: Date? = nil, alert: AlertConfiguration? = nil) async;
 	public fun func end(_ finalContentState: Attributes.ContentState? = nil, dismissalPolicy: ActivityUIDismissalPolicy = .default) async;
 }
-public final class CioLiveActivities.LiveActivitiesModule {
-	public fun func initialize(_ config: LiveActivityConfig) -> LiveActivitiesModule;
-	public fun func start<Attributes: ActivityAttributes>(_ attributes: Attributes, contentState: Attributes.ContentState, staleDate: Date? = nil, relevanceScore: Double = 0) throws -> CIOLiveActivity<Attributes>;
-	public fun func start<Attributes: CIOActivityAttribute>(_ attributes: Attributes, contentState: Attributes.ContentState, staleDate: Date? = nil, relevanceScore: Double = 0) throws -> CIOLiveActivity<Attributes>;
-	public fun func adopt<Attributes: ActivityAttributes>(_ activity: Activity<Attributes>) -> CIOLiveActivity<Attributes>;
-	public fun func handleDeepLinkOpen(_ url: URL) -> Boolean;
+public interface CioLiveActivities.LiveActivitiesInstance {
+	public fun func start<Attributes: ActivityAttributes>(_ attributes: Attributes, contentState: Attributes.ContentState, staleDate: Date?, relevanceScore: Double) throws -> CIOLiveActivity<Attributes>?;
+	public fun func start<Attributes: CIOActivityAttribute>(_ attributes: Attributes, contentState: Attributes.ContentState, staleDate: Date?, relevanceScore: Double) throws -> CIOLiveActivity<Attributes>?;
+	public fun func adopt<Attributes: ActivityAttributes>(_ activity: Activity<Attributes>) -> CIOLiveActivity<Attributes>?;
 	public fun func handleWidgetUrl(_ url: URL) -> URL?;
+}
+public final class CioLiveActivities.LiveActivitiesModule {
+	public final val moduleName: String;
+	public fun init(config: LiveActivityConfig);
+	public fun func initialize();
 }
 public final class CioLiveActivities.LiveActivityConfig {
 	public var logLevel: CioLogLevel?;
@@ -22,6 +25,4 @@ public final class CioLiveActivities.LiveActivityConfigBuilder {
 	public fun func register<T: CIOActivityAttribute>(_ type: T.Type, identifier: String) -> Self;
 	public fun func register<T: ActivityAttributes>(_ type: T.Type, identifier: String) -> Self;
 	public fun func build() -> LiveActivityConfig;
-}
-public enum CioLiveActivities.LiveActivityError {
 }

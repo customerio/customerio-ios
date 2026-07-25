@@ -6,9 +6,9 @@ import Testing
 @testable import CioLiveActivities
 
 struct LiveActivityHandleWidgetUrlTests {
-    private func makeModule(_ bus: CapturingEventBusHandler) -> LiveActivitiesModule {
+    private func makeModule(_ bus: CapturingEventBusHandler) -> LiveActivitiesModuleImplementation {
         let sdk = FakeLiveActivitiesSDK(isUserIdentified: true, eventBusHandler: bus)
-        return LiveActivitiesModule(config: LiveActivityConfig(), sdk: sdk, tokenStorage: FakeTokenStore())
+        return LiveActivitiesModuleImplementation(config: LiveActivityConfig(), sdk: sdk, tokenStorage: FakeTokenStore())
     }
 
     private func openedEvents(_ bus: CapturingEventBusHandler) -> [TrackMetricEvent] {

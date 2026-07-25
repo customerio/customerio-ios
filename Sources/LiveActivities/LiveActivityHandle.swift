@@ -7,11 +7,11 @@ import ActivityKit
 
 /// A handle to a Live Activity the SDK is managing locally.
 ///
-/// Returned by `LiveActivitiesModule.start(...)` and `adopt(_:)`. Starting and ending the activity
-/// through this handle is what emits the local `start`/`end` `Live Notification Event`s. A local
-/// `update` is applied to the activity but is intentionally not reported — only `start`/`end` emit a
-/// CDP event. A backend push that changes or ends the activity is applied by the OS and is never
-/// reported either.
+/// Returned by `CustomerIO.liveActivities.start(...)` and `adopt(_:)`. Starting and ending the
+/// activity through this handle is what emits the local `start`/`end` `Live Notification Event`s. A
+/// local `update` is applied to the activity but is intentionally not reported — only `start`/`end`
+/// emit a CDP event. A backend push that changes or ends the activity is applied by the OS and is
+/// never reported either.
 ///
 /// > Important: Ending the underlying `activity` directly (bypassing this handle) performs the
 /// > ActivityKit operation but emits no Customer.io event.
