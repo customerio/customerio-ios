@@ -1,3 +1,4 @@
+import CioAnalytics
 @testable import CioDataPipelines
 @testable import CioInternalCommon
 import Foundation
@@ -57,6 +58,25 @@ class BackgroundDeliveryContextWriteTests: IntegrationTest {
         XCTAssertEqual(testStore.currentUserId, "user_b")
     }
 
+    /// `ProfileIdentifiedEvent` is published by `DataPipelinePublishedEvents`, a `.before` plugin,
+    /// so subscribers can observe it while `analytics.identify` is still running. They resolve the
+    /// user from this store, so the id must already be written by the time the plugin timeline
+    /// runs — writing it afterwards let a subscriber read nil and silently skip its work for the
+    /// whole session (geofencing never registered).
+    ///
+    /// Snapshots the store from inside a `.before` plugin rather than from an EventBus observer:
+    /// the bus delivers asynchronously, so an observer always runs after `identify` returns and
+    /// would pass either way. This reads it at the instant the real publisher does.
+    func test_identify_expectStorePopulatedByTheTimeBeforePluginsRun() {
+        let givenIdentifier = String.random
+        let snapshotPlugin = StoreSnapshotPlugin(store: testStore)
+        analytics.add(plugin: snapshotPlugin)
+
+        customerIO.identify(userId: givenIdentifier)
+
+        XCTAssertEqual(snapshotPlugin.userIdDuringIdentify.wrappedValue, givenIdentifier)
+    }
+
     // MARK: - clearIdentify
 
     func test_clearIdentify_givenIdentifiedProfile_expectUserIdClearedFromStore() {
@@ -113,5 +133,24 @@ class BackgroundDeliveryContextWriteTests: IntegrationTest {
         // delivery still works — `currentCdpApiKey` returns the in-memory key.
         XCTAssertNil(reloadDiskState().currentCdpApiKey)
         XCTAssertEqual(testStore.currentCdpApiKey, dataPipelineConfigOptions.cdpApiKey)
+    }
+}
+
+/// Records what `BackgroundDeliveryContextStore` held at the moment the `.before` plugin timeline
+/// ran — the same point `DataPipelinePublishedEvents` publishes `ProfileIdentifiedEvent` from.
+private final class StoreSnapshotPlugin: EventPlugin {
+    var type: PluginType = .before
+    var analytics: Analytics?
+
+    let userIdDuringIdentify = Synchronized<String?>(nil)
+    private let store: BackgroundDeliveryContextStore
+
+    init(store: BackgroundDeliveryContextStore) {
+        self.store = store
+    }
+
+    func identify(event: IdentifyEvent) -> IdentifyEvent? {
+        userIdDuringIdentify.wrappedValue = store.currentUserId
+        return event
     }
 }
