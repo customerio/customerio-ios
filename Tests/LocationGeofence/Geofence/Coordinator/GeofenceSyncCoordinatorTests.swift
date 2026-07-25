@@ -1220,6 +1220,32 @@ struct GeofenceSyncCoordinatorTests {
     }
 
     @Test
+    func handleMovement_givenEmptyAreaThenKillSwitch_expectTeardownNotTriggerRecenter() async {
+        // The one state where the ids match but skipping would be wrong: a geofence-free area leaves
+        // the trigger armed with no business regions, so a later kill-switched config re-ranks onto
+        // the same (empty) set while the trigger is still owned. Skipping there would re-center a
+        // trigger the kill switch is supposed to remove.
+        let storage = makeStorage()
+        let setup = await makeRegisteredSetup(regions: [], config: fastPathConfig, storage: storage)
+        #expect(setup.monitor.monitoredRegionIdentifiers == [GeofenceConstants.movementTriggerIdentifier])
+
+        await storage.setCachedConfig(GeofenceConfig(
+            localRefreshTriggerRadius: 1000,
+            remoteFetchRefreshTriggerRadius: 5000,
+            remoteFetchRefreshExpiry: 3600,
+            duplicateEventsExpiry: 3600,
+            maxBusinessGeofences: 0,
+            maxMonitoringDistance: GeofenceConstants.noMonitoringDistanceCap
+        ))
+
+        let result = await setup.coordinator.handleMovement(latitude: 0, longitude: 0.001)
+
+        #expect(result.isSuccess)
+        #expect(setup.monitor.stopAllCallCount == 2) // wholesale teardown ran, not the fast path
+        #expect(setup.monitor.monitoredRegionIdentifiers.isEmpty)
+    }
+
+    @Test
     func handleMovement_givenRerankChangesNearestSet_expectFullReregistration() async {
         // Membership actually changed (budget of 1, a closer fence took the slot) — the wholesale
         // path must run so the OS set matches the new ranking.

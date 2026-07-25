@@ -21,9 +21,10 @@ extension GeofenceSyncCoordinatorImpl {
 
     /// True when re-registering would be a no-op: same ids as recorded, all owned by this process
     /// and still held by the OS. Re-adding re-seeds each region's assumed state from the live fix,
-    /// absorbing any crossing the OS hasn't delivered yet — a recurring loss window at driving
-    /// speed, since re-ranks fire once per trigger radius. Any doubt falls through to the wholesale
-    /// path (re-establishes ownership, heals dropped regions, tears down under the kill switch).
+    /// absorbing any crossing the OS hasn't delivered yet — once per trigger radius at driving
+    /// speed. Any doubt falls through to the wholesale path, which re-establishes ownership, heals
+    /// dropped regions, and tears down under the kill switch (a geofence-free area leaves the
+    /// trigger owned with no business ids, so the ids alone would otherwise match).
     @MainActor
     func canSkipReregistration(
         nearestIds: Set<String>,
@@ -36,8 +37,9 @@ extension GeofenceSyncCoordinatorImpl {
             && expected.isSubset(of: monitor.osMonitoredRegionIdentifiers)
     }
 
-    /// Moves only the trigger. Explicit stop-then-start (both monitors serialize the pair); no
-    /// pending event to lose — the EXIT that brought us here was already consumed.
+    /// Moves only the trigger. Explicit stop-then-start, which both monitors serialize. Nothing is
+    /// lost by re-seeding this one region: it is being re-centered precisely because the device
+    /// left the old circle.
     @MainActor
     func recenterMovementTrigger(at location: LocationData, radius: Double) {
         monitor.stopMonitoring(identifier: GeofenceConstants.movementTriggerIdentifier)
