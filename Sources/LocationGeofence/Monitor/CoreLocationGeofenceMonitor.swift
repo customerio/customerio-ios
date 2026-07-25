@@ -112,6 +112,51 @@ final class CoreLocationGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @pr
         }
     }
 
+    @discardableResult
+    func setMonitoredRegions(_ regions: [GeofenceRegionRequest]) -> GeofenceRegionDiff {
+        let desiredIdentifiers = Set(regions.map(\.identifier))
+        var removed: Set<String> = []
+        for identifier in ownedRegionIdentifiers.subtracting(desiredIdentifiers) {
+            stopMonitoring(identifier: identifier)
+            removed.insert(identifier)
+        }
+        var added: Set<String> = []
+        for region in regions where !isRegisteredUnchanged(region) {
+            // Explicit stop before start (no-op when unowned): `startMonitoring(for:)` replaces by
+            // identifier, but the pair keeps the OS-side sequence identical on both monitors.
+            stopMonitoring(identifier: region.identifier)
+            startMonitoring(
+                identifier: region.identifier,
+                center: region.center,
+                radius: region.radius,
+                transitionTypes: region.transitionTypes
+            )
+            // Blocked permission / invalid coordinates make `startMonitoring` a no-op; the caller's
+            // initial-enter decision must not count a region the OS never took.
+            if ownedRegionIdentifiers.contains(region.identifier) { added.insert(region.identifier) }
+        }
+        return GeofenceRegionDiff(added: added, removed: removed)
+    }
+
+    /// True when this monitor owns the region and the OS holds an identical circle, so re-registering
+    /// would only risk absorbing an undelivered crossing. Geometry comes from the live
+    /// `CLCircularRegion` rather than our own bookkeeping, so a region the OS reshaped or dropped
+    /// re-registers rather than being trusted.
+    private func isRegisteredUnchanged(_ region: GeofenceRegionRequest) -> Bool {
+        guard ownedRegionIdentifiers.contains(region.identifier),
+              let existing = manager.monitoredRegions.first(where: { $0.identifier == region.identifier }) as? CLCircularRegion
+        else { return false }
+        var registeredTypes: Set<GeofenceTransition> = []
+        if existing.notifyOnEntry { registeredTypes.insert(.enter) }
+        if existing.notifyOnExit { registeredTypes.insert(.exit) }
+        return region.matchesRegistered(
+            center: LocationData(latitude: existing.center.latitude, longitude: existing.center.longitude),
+            radius: existing.radius,
+            transitionTypes: registeredTypes,
+            clampedTo: manager.maximumRegionMonitoringDistance
+        )
+    }
+
     // MARK: - CLLocationManagerDelegate
 
     func locationManager(_ manager: CLLocationManager, didEnterRegion region: CLRegion) {

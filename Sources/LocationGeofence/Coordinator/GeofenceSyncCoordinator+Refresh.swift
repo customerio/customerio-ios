@@ -41,9 +41,6 @@ extension GeofenceSyncCoordinatorImpl {
         // Read before `recordRegistration` overwrites it — the diff decides which registrations are new.
         let previouslyRegisteredIds = await storage.getRegisteredBusinessIds()
         let nearestIds = Set(nearest.map(\.id))
-        if await appliedUnchangedRemoteSync(regions: regions, nearestIds: nearestIds, parsedConfig: parsedConfig, effectiveConfig: effectiveConfig, anchor: anchor) {
-            return .success(())
-        }
         let osRegistration = await MainActor.run {
             registerWithOsSync(
                 businessRegions: nearest,
@@ -89,17 +86,6 @@ extension GeofenceSyncCoordinatorImpl {
         // Read before `recordRegistration` overwrites it — the diff decides which registrations are new.
         let previouslyRegisteredIds = await storage.getRegisteredBusinessIds()
         let nearestIds = Set(nearest.map(\.id))
-        // Adjacent trigger EXITs usually re-rank onto the same nearest set — leave the OS
-        // registrations alone (see `canSkipReregistration`; geometry can't differ on matching
-        // ids here, ranking re-reads the same cache) and walk only the trigger + anchor.
-        if await canSkipReregistration(
-            nearestIds: nearestIds,
-            previouslyRegisteredIds: previouslyRegisteredIds,
-            registerMovementTrigger: registerMovementTrigger
-        ) {
-            await applyUnchangedRegistration(anchor: anchor, nearestIds: nearestIds, triggerRadius: config.localRefreshTriggerRadius)
-            return .success(())
-        }
         let osRegistration = await MainActor.run {
             registerWithOsSync(
                 businessRegions: nearest,
@@ -118,45 +104,6 @@ extension GeofenceSyncCoordinatorImpl {
         )
         logger.geofenceSyncCompleted(registeredCount: nearest.count, movementTriggerRegistered: registerMovementTrigger)
         return .success(())
-    }
-
-    /// Order-insensitive: server ordering isn't contractual, and `lastUpdated` in `Equatable`
-    /// makes any server-side edit force the wholesale path that applies it.
-    func regionsUnchanged(_ fetched: [Geofence], _ cached: [Geofence]) -> Bool {
-        fetched.sorted { $0.id < $1.id } == cached.sorted { $0.id < $1.id }
-    }
-
-    /// The unchanged-set fast path's shared effects: re-center the trigger and walk the
-    /// ranking-staleness anchor forward, leaving business regions untouched.
-    func applyUnchangedRegistration(anchor: LocationData, nearestIds: Set<String>, triggerRadius: Double) async {
-        await recenterMovementTrigger(at: anchor, radius: triggerRadius)
-        await storage.recordRegistration(center: anchor, businessIds: nearestIds)
-        logger.geofenceRerankUnchanged(keptCount: nearestIds.count)
-    }
-
-    /// Remote fast path: identical payload + unchanged registration (see `canSkipReregistration`)
-    /// ⇒ apply config, advance the refetch anchor, walk the trigger, and return true.
-    /// False = register wholesale.
-    func appliedUnchangedRemoteSync(
-        regions: [Geofence],
-        nearestIds: Set<String>,
-        parsedConfig: GeofenceConfig?,
-        effectiveConfig: GeofenceConfig,
-        anchor: LocationData
-    ) async -> Bool {
-        guard regionsUnchanged(regions, await storage.getCachedGeofences()),
-              await canSkipReregistration(
-                  nearestIds: nearestIds,
-                  previouslyRegisteredIds: storage.getRegisteredBusinessIds(),
-                  registerMovementTrigger: effectiveConfig.maxBusinessGeofences > 0
-              )
-        else { return false }
-        if let parsedConfig {
-            await storage.setCachedConfig(parsedConfig)
-        }
-        await storage.recordSync(timestamp: dateUtil.now, location: anchor)
-        await applyUnchangedRegistration(anchor: anchor, nearestIds: nearestIds, triggerRadius: effectiveConfig.localRefreshTriggerRadius)
-        return true
     }
 
     /// A sign-out/switch can land anywhere inside a gated operation, and the `reset()` it triggers

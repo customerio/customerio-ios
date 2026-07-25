@@ -32,23 +32,41 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preco
     /// after construction — without the mirror that read is empty on every cold launch.
     private static let conditionMirrorKey = "io.customer.sdk.geofence.clmonitor.conditionIdentifiers"
 
-    private let logger: Logger
+    /// Internal for the `+Registration` extension.
+    let logger: Logger
     /// Persists the per-condition dedup baseline + delivery filter (see `MonitorRegionRecord`).
     /// Internal (not private) so the `+Rearm` extension can read it; immutable injected dependency.
     let storage: GeofenceStorage
     private let userDefaults: UserDefaults
     /// Only for auth status/changes + current-location reads; region monitoring is on `CLMonitor`.
-    private let authManager: CLLocationManager
+    /// Internal for the `+Registration` extension.
+    let authManager: CLLocationManager
     private var onTransition: GeofenceTransitionHandler?
     private var onAuthorizationChanged: GeofenceAuthorizationChangedHandler?
     private var onReconciled: GeofenceReconciledHandler?
     private var lastLoggedPermissionTier: CoreLocationGeofenceMonitor.PermissionTier?
 
     /// In-memory ownership filter, mirrors `ownedRegionIdentifiers` in the classic monitor.
-    private var ownedRegionIdentifiers: Set<String> = []
+    /// The three below are internal for the `+Registration` extension.
+    var ownedRegionIdentifiers: Set<String> = []
     /// Synchronous view of the monitor's condition identifiers: seeded from the mirror at init,
     /// reconciled against `CLMonitor.identifiers` by the pipeline's first operation, then maintained.
-    private var knownConditionIdentifiers: Set<String> = []
+    var knownConditionIdentifiers: Set<String> = []
+    /// Geometry each condition was added with, post-clamp. `CLMonitor` exposes no way to read a
+    /// condition back, so this is the only record `setMonitoredRegions` can diff against.
+    ///
+    /// Deliberately NOT seeded from the mirror at init. A condition inherited from a previous
+    /// process may be a reboot zombie — still listed, no longer monitored (see `rearmConditions`) —
+    /// and only re-adding revives it. Leaving it absent here makes the first pass re-register it;
+    /// `rearmConditions` fills it in when the bootstrap adopts instead.
+    var registeredConditions: [String: RegisteredCondition] = [:]
+
+    /// The circle a condition was added with.
+    struct RegisteredCondition: Equatable {
+        let center: LocationData
+        let radius: Double
+        let transitionTypes: Set<GeofenceTransition>
+    }
 
     /// Memoized `CLMonitor` creation so every caller shares one instance — creating a second
     /// monitor with the same name throws "Monitor named ... is already in use".
@@ -127,6 +145,7 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preco
         let drifted = persisted != knownConditionIdentifiers
         knownConditionIdentifiers = persisted
         ownedRegionIdentifiers.formUnion(persisted)
+        registeredConditions = registeredConditions.filter { persisted.contains($0.key) }
         persistConditionMirror()
         if drifted { onReconciled?() }
     }
@@ -201,6 +220,7 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preco
             // the OS no longer holds; the next sync re-registers a fresh set.
             ownedRegionIdentifiers.remove(identifier)
             knownConditionIdentifiers.remove(identifier)
+            registeredConditions.removeValue(forKey: identifier)
             persistConditionMirror()
             return
         @unknown default:
@@ -227,14 +247,6 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preco
         knownConditionIdentifiers
     }
 
-    func adoptExistingRegions(matching identifiers: Set<String>) {
-        let adopted = identifiers.intersection(knownConditionIdentifiers)
-        guard !adopted.isEmpty else { return }
-        ownedRegionIdentifiers.formUnion(adopted)
-        rearmConditions(adopted)
-        logger.geofenceRegionsAdopted(count: adopted.count)
-    }
-
     func setOnTransition(_ handler: GeofenceTransitionHandler?) {
         onTransition = handler
         drainPendingEventsIfReady()
@@ -246,77 +258,6 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preco
 
     func setOnReconciled(_ handler: GeofenceReconciledHandler?) {
         onReconciled = handler
-    }
-
-    func startMonitoring(identifier: String, center: LocationData, radius: Double, transitionTypes: Set<GeofenceTransition>) {
-        reportPermissionTier()
-        guard CoreLocationGeofenceMonitor.permissionTier(for: authManager.authorizationStatus) != .blocked else { return }
-
-        let coordinate = CLLocationCoordinate2D(latitude: center.latitude, longitude: center.longitude)
-        guard CLLocationCoordinate2DIsValid(coordinate) else {
-            logger.geofenceInvalidCoordinatesForRegion(identifier)
-            return
-        }
-
-        // Populate the ownership filter synchronously so a fast-arriving event isn't dropped.
-        ownedRegionIdentifiers.insert(identifier)
-
-        // Parity with the classic monitor's clamp; `maximumRegionMonitoringDistance` is a deprecated
-        // but harmless read with no CLMonitor equivalent — both paths register identical geometry.
-        let clampedRadius = min(radius, authManager.maximumRegionMonitoringDistance)
-
-        // The device's ACTUAL state seeds both CLMonitor's `assuming:` hint and the stored baseline
-        // (see `recordMonitorRegistration`: registration stays silent, the first real crossing
-        // delivers). No fix → geometric expectation: trigger is device-centered (inside),
-        // business geofences outside.
-        let isMovementTrigger = identifier == GeofenceConstants.movementTriggerIdentifier
-        let isInside = isDeviceInside(center: coordinate, radius: clampedRadius) ?? isMovementTrigger
-        let initialTransition: GeofenceTransition = isInside ? .enter : .exit
-        let assumedState: CLMonitor.Event.State = isInside ? .satisfied : .unsatisfied
-
-        enqueueMonitorOperation { [weak self] monitor in
-            guard let self else { return }
-            // Persist before the OS add: storage keys off recorded geometry to preserve the baseline
-            // on an unchanged re-register and reseed on a new/changed circle. The decision lives in
-            // storage because this runs after stop-all, when CLMonitor's own record is already gone.
-            await self.storage.recordMonitorRegistration(
-                identifier: identifier,
-                transitionTypes: transitionTypes,
-                initialState: initialTransition,
-                center: LocationData(latitude: coordinate.latitude, longitude: coordinate.longitude),
-                radius: clampedRadius
-            )
-            let condition = CLMonitor.CircularGeographicCondition(center: coordinate, radius: clampedRadius)
-            await monitor.add(condition, identifier: identifier, assuming: assumedState)
-            self.knownConditionIdentifiers.insert(identifier)
-            self.persistConditionMirror()
-        }
-    }
-
-    func stopMonitoring(identifier: String) {
-        guard ownedRegionIdentifiers.remove(identifier) != nil else { return }
-        // The storage record intentionally survives removal: a stop-all + re-register cycle relies
-        // on the persisted baseline to suppress CLMonitor's re-evaluation of an unchanged state.
-        enqueueMonitorOperation { [weak self] monitor in
-            guard let self else { return }
-            await monitor.remove(identifier)
-            self.knownConditionIdentifiers.remove(identifier)
-            self.persistConditionMirror()
-        }
-    }
-
-    func stopMonitoringAll() {
-        ownedRegionIdentifiers.removeAll()
-        // Clear against CLMonitor's LIVE identifiers, not the owned/mirror snapshot: an empty owned
-        // set or a lossy mirror must not leave a stale SDK condition holding an OS slot.
-        enqueueMonitorOperation { [weak self] monitor in
-            guard let self else { return }
-            for identifier in await monitor.identifiers {
-                await monitor.remove(identifier)
-            }
-            self.knownConditionIdentifiers.removeAll()
-            self.persistConditionMirror()
-        }
     }
 
     func reportPermissionTier() {
@@ -364,7 +305,7 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preco
 
     // MARK: - Private
 
-    private func persistConditionMirror() {
+    func persistConditionMirror() {
         userDefaults.set(knownConditionIdentifiers.sorted(), forKey: Self.conditionMirrorKey)
     }
 
@@ -379,7 +320,7 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preco
 
     /// Whether the device is inside the circle per the last known location; `nil` without a usable
     /// fix. No accuracy padding: a wrong guess costs one corrective event, absorbed by the baseline.
-    private func isDeviceInside(center: CLLocationCoordinate2D, radius: CLLocationDistance) -> Bool? {
+    func isDeviceInside(center: CLLocationCoordinate2D, radius: CLLocationDistance) -> Bool? {
         guard let location = authManager.location,
               CLLocationCoordinate2DIsValid(location.coordinate)
         else {

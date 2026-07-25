@@ -25,6 +25,14 @@ extension CLMonitorGeofenceMonitor {
                     radius: radius
                 )
                 await monitor.add(condition, identifier: identifier, assuming: record.lastState == .enter ? .satisfied : .unsatisfied)
+                // This process now knows what the condition holds, so `setMonitoredRegions` can
+                // leave it alone instead of re-adding it on the next sync.
+                self.noteRegisteredCondition(
+                    identifier: identifier,
+                    center: center,
+                    radius: radius,
+                    transitionTypes: record.transitionTypes
+                )
             }
         }
     }
