@@ -221,7 +221,12 @@ actor LocationServicesImplementation: LocationServices {
     }
 
     private func clearTaskIfCurrent(_ task: Task<Void, Never>) async {
-        if currentTask == task { currentTask = nil }
+        guard currentTask == task else { return }
+        currentTask = nil
+        // A tracked request can arrive after `runLocationRequest`'s `defer` cleared the latch but
+        // while `currentTask` still looks busy. It is dropped either way; clearing here stops its
+        // intent from being consumed by an unrelated later fix.
+        pendingTrackUpgrade = false
     }
 
     /// - Parameters:
