@@ -224,14 +224,17 @@ class DataPipelineImplementation: DataPipelineInstance, DataPipelineTracking, Ba
             deleteDeviceToken()
         }
 
+        // Mirror for cold-wake direct-HTTP callers. Must precede `analytics.identify`, which
+        // publishes `ProfileIdentifiedEvent` from a `.before` plugin — subscribers resolve the
+        // user from this store, and would otherwise read nil.
+        backgroundDeliveryContextStore.setUserId(userId)
+
         if let attributes = attributesCodable {
             analytics.identify(userId: userId, traits: attributes)
         } else {
             analytics.identify(userId: userId, traits: attributesDict)
         }
 
-        // Mirror to the background-delivery store for cold-wake direct-HTTP callers.
-        backgroundDeliveryContextStore.setUserId(userId)
         // Update session tracker so subsequent no-traits same-userId calls
         // within this session can dedup. Identify-with-traits passes through
         // but still refreshes the session tracker.
