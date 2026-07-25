@@ -19,6 +19,36 @@ extension GeofenceSyncCoordinatorImpl {
         }
     }
 
+    /// True when re-registering would be a no-op: same ids as recorded, all owned by this process
+    /// and still held by the OS. Re-adding re-seeds each region's assumed state from the live fix,
+    /// absorbing any crossing the OS hasn't delivered yet — a recurring loss window at driving
+    /// speed, since re-ranks fire once per trigger radius. Any doubt falls through to the wholesale
+    /// path (re-establishes ownership, heals dropped regions, tears down under the kill switch).
+    @MainActor
+    func canSkipReregistration(
+        nearestIds: Set<String>,
+        previouslyRegisteredIds: Set<String>,
+        registerMovementTrigger: Bool
+    ) -> Bool {
+        guard registerMovementTrigger, nearestIds == previouslyRegisteredIds else { return false }
+        let expected = nearestIds.union([GeofenceConstants.movementTriggerIdentifier])
+        return expected.isSubset(of: monitor.monitoredRegionIdentifiers)
+            && expected.isSubset(of: monitor.osMonitoredRegionIdentifiers)
+    }
+
+    /// Moves only the trigger. Explicit stop-then-start (both monitors serialize the pair); no
+    /// pending event to lose — the EXIT that brought us here was already consumed.
+    @MainActor
+    func recenterMovementTrigger(at location: LocationData, radius: Double) {
+        monitor.stopMonitoring(identifier: GeofenceConstants.movementTriggerIdentifier)
+        monitor.startMonitoring(
+            identifier: GeofenceConstants.movementTriggerIdentifier,
+            center: location,
+            radius: radius,
+            transitionTypes: [.exit]
+        )
+    }
+
     /// Stops all monitored regions, then starts the new business set + movement trigger. Returns the
     /// OS-accepted identifiers (a region the monitor dropped for blocked permission / invalid
     /// coordinates is absent) plus the radius cap, so `emitInitialEnters` won't fire an unbalanced

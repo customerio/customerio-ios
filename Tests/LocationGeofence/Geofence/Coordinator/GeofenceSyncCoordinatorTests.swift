@@ -1166,6 +1166,182 @@ struct GeofenceSyncCoordinatorTests {
         #expect(movementTrigger?.radius == config.localRefreshTriggerRadius)
     }
 
+    // MARK: unchanged-set fast path (crossing absorption)
+
+    /// Shared arrangement for the fast-path tests: an initial remote refresh registers `regions`
+    /// (wholesale, stopAll #1), so the monitor owns them and the OS holds them — the steady state
+    /// every subsequent re-rank runs against.
+    private func makeRegisteredSetup(
+        regions: [Geofence],
+        config: GeofenceConfig,
+        storage: GeofenceStorage
+    ) async -> Setup {
+        let api = GeofenceApiServiceMock()
+        api.fetchNearbyGeofencesClosure = { _, _, completion in
+            completion(.success(makeApiResponse(regions: regions, config: config)))
+        }
+        let setup = makeCoordinator(api: api, storage: storage)
+        _ = await setup.coordinator.refresh(latitude: 0, longitude: 0)
+        return setup
+    }
+
+    private var fastPathConfig: GeofenceConfig {
+        GeofenceConfig(
+            localRefreshTriggerRadius: 1000,
+            remoteFetchRefreshTriggerRadius: 5000,
+            remoteFetchRefreshExpiry: 3600,
+            duplicateEventsExpiry: 3600,
+            maxBusinessGeofences: 10,
+            maxMonitoringDistance: GeofenceConstants.noMonitoringDistanceCap
+        )
+    }
+
+    @Test
+    func handleMovement_givenRerankLandsOnSameNearestSet_expectBusinessRegionsUntouched() async {
+        // Steady-state drive: adjacent trigger EXITs mostly re-rank onto the identical nearest set.
+        // Re-registering re-seeds the OS's assumed state and absorbs an undelivered crossing, so the
+        // business regions must be left alone — only the trigger re-centers and the ranking anchor walks.
+        let region = makeRegion(id: "g1", latitude: 0.5, longitude: 0.5)
+        let storage = makeStorage()
+        let setup = await makeRegisteredSetup(regions: [region], config: fastPathConfig, storage: storage)
+
+        // ~111 m: within the refetch radius → local re-rank, same nearest set.
+        let newLocation = LocationData(latitude: 0, longitude: 0.001)
+        let result = await setup.coordinator.handleMovement(latitude: newLocation.latitude, longitude: newLocation.longitude)
+
+        #expect(result.isSuccess)
+        #expect(setup.monitor.stopAllCallCount == 1) // the initial registration only
+        #expect(setup.monitor.startedRegions.filter { $0.identifier == "g1" }.count == 1) // never re-added
+        #expect(setup.monitor.stoppedIdentifiers == [GeofenceConstants.movementTriggerIdentifier])
+        let triggerStarts = setup.monitor.startedRegions.filter { $0.identifier == GeofenceConstants.movementTriggerIdentifier }
+        #expect(triggerStarts.count == 2)
+        #expect(triggerStarts.last?.center == newLocation)
+        #expect(await storage.getLastRegistrationCenter() == newLocation)
+    }
+
+    @Test
+    func handleMovement_givenRerankChangesNearestSet_expectFullReregistration() async {
+        // Membership actually changed (budget of 1, a closer fence took the slot) — the wholesale
+        // path must run so the OS set matches the new ranking.
+        let config = GeofenceConfig(
+            localRefreshTriggerRadius: 1000,
+            remoteFetchRefreshTriggerRadius: 5000,
+            remoteFetchRefreshExpiry: 3600,
+            duplicateEventsExpiry: 3600,
+            maxBusinessGeofences: 1,
+            maxMonitoringDistance: GeofenceConstants.noMonitoringDistanceCap
+        )
+        let nearStart = makeRegion(id: "near-start", latitude: 0, longitude: 0.001)
+        let nearEnd = makeRegion(id: "near-end", latitude: 0, longitude: 0.021)
+        let setup = await makeRegisteredSetup(regions: [nearStart, nearEnd], config: config, storage: makeStorage())
+
+        // ~2.2 km: still a local re-rank, but the single budget slot now belongs to near-end.
+        let result = await setup.coordinator.handleMovement(latitude: 0, longitude: 0.02)
+
+        #expect(result.isSuccess)
+        #expect(setup.monitor.stopAllCallCount == 2)
+        #expect(setup.monitor.startedRegions.contains { $0.identifier == "near-end" })
+    }
+
+    @Test
+    func handleMovement_givenUnchangedSetButOsDroppedRegion_expectFullReregistration() async {
+        // The set compare alone would skip, but the OS silently dropped a region (monitoring
+        // failure). Wholesale re-registration is what heals that — the fast path must step aside.
+        let region = makeRegion(id: "g1", latitude: 0.5, longitude: 0.5)
+        let setup = await makeRegisteredSetup(regions: [region], config: fastPathConfig, storage: makeStorage())
+        setup.monitor.osMonitoredRegions.remove("g1")
+
+        let result = await setup.coordinator.handleMovement(latitude: 0, longitude: 0.001)
+
+        #expect(result.isSuccess)
+        #expect(setup.monitor.stopAllCallCount == 2)
+        #expect(setup.monitor.startedRegions.filter { $0.identifier == "g1" }.count == 2)
+    }
+
+    @Test
+    func refresh_givenFreshProcessWithMatchingStorage_expectFullReregistration() async {
+        // Fresh process: storage says the same set is registered and the OS still holds it, but this
+        // process owns nothing yet (bootstrap hasn't adopted). Skipping would leave OS events with no
+        // owner — the wholesale path must run to re-establish in-process ownership.
+        let storage = makeStorage()
+        let dateUtil = DateUtilStub()
+        await storage.setCachedConfig(fastPathConfig)
+        await storage.recordSync(timestamp: dateUtil.givenNow.addingTimeInterval(-100), location: LocationData(latitude: 0, longitude: 0))
+        await storage.recordRegistration(center: LocationData(latitude: 0, longitude: 0), businessIds: ["g1"])
+        await storage.setCachedGeofences([makeRegion(id: "g1", latitude: 0.5, longitude: 0.5)])
+        let setup = makeCoordinator(storage: storage, dateUtil: dateUtil)
+        setup.monitor.osMonitoredRegions = ["g1", GeofenceConstants.movementTriggerIdentifier]
+
+        // ~2.2 km from the registration center → ranking stale → local re-rank, same nearest set.
+        let result = await setup.coordinator.refresh(latitude: 0.02, longitude: 0)
+
+        #expect(result.isSuccess)
+        #expect(setup.monitor.stopAllCallCount == 1)
+        #expect(setup.monitor.startedRegions.contains { $0.identifier == "g1" })
+    }
+
+    @Test
+    func handleMovement_givenRemoteRefreshReturnsIdenticalPayload_expectBusinessRegionsUntouched() async {
+        // The 5 km refetch fired but the server returned byte-identical data and the ranking didn't
+        // change — same absorption risk as the local case. The trigger and both anchors must still
+        // walk forward so the next refetch threshold measures from here.
+        let region = makeRegion(id: "g1", latitude: 0.5, longitude: 0.5)
+        let storage = makeStorage()
+        let setup = await makeRegisteredSetup(regions: [region], config: fastPathConfig, storage: storage)
+
+        // ~5.5 km from the fetch anchor → remote tier.
+        let newLocation = LocationData(latitude: 0, longitude: 0.05)
+        let result = await setup.coordinator.handleMovement(latitude: newLocation.latitude, longitude: newLocation.longitude)
+
+        #expect(result.isSuccess)
+        #expect(setup.api.fetchNearbyGeofencesCallsCount == 2)
+        #expect(setup.monitor.stopAllCallCount == 1)
+        #expect(setup.monitor.startedRegions.filter { $0.identifier == "g1" }.count == 1)
+        let triggerStarts = setup.monitor.startedRegions.filter { $0.identifier == GeofenceConstants.movementTriggerIdentifier }
+        #expect(triggerStarts.last?.center == newLocation)
+        #expect(await storage.getLastSync()?.location == newLocation)
+        #expect(await storage.getLastRegistrationCenter() == newLocation)
+    }
+
+    @Test
+    func handleMovement_givenRemoteRefreshChangesGeometry_expectFullReregistration() async {
+        // Same ids, but the server edited the fence (radius change bumps `lastUpdated`/geometry) —
+        // wholesale re-registration is what applies the new circle to the OS.
+        let original = makeRegion(id: "g1", latitude: 0.5, longitude: 0.5, radius: 100)
+        let resized = makeRegion(id: "g1", latitude: 0.5, longitude: 0.5, radius: 250)
+        let config = fastPathConfig
+        let api = GeofenceApiServiceMock()
+        var responses = [[original], [resized]]
+        api.fetchNearbyGeofencesClosure = { _, _, completion in
+            completion(.success(makeApiResponse(regions: responses.removeFirst(), config: config)))
+        }
+        let setup = makeCoordinator(api: api, storage: makeStorage())
+        _ = await setup.coordinator.refresh(latitude: 0, longitude: 0)
+
+        let result = await setup.coordinator.handleMovement(latitude: 0, longitude: 0.05)
+
+        #expect(result.isSuccess)
+        #expect(setup.monitor.stopAllCallCount == 2)
+        #expect(setup.monitor.startedRegions.last { $0.identifier == "g1" }?.radius == 250)
+    }
+
+    @Test
+    func handleMovement_givenEmptyAreaLoop_expectTriggerWalksWithoutChurn() async {
+        // The geofence-free corridor: empty response, empty cache, trigger armed. Every 5 km refetch
+        // comes back empty again — the trigger must keep walking forward without a stop-all cycle.
+        let setup = await makeRegisteredSetup(regions: [], config: fastPathConfig, storage: makeStorage())
+
+        let newLocation = LocationData(latitude: 0, longitude: 0.05)
+        let result = await setup.coordinator.handleMovement(latitude: newLocation.latitude, longitude: newLocation.longitude)
+
+        #expect(result.isSuccess)
+        #expect(setup.api.fetchNearbyGeofencesCallsCount == 2)
+        #expect(setup.monitor.stopAllCallCount == 1)
+        let triggerStarts = setup.monitor.startedRegions.filter { $0.identifier == GeofenceConstants.movementTriggerIdentifier }
+        #expect(triggerStarts.count == 2)
+        #expect(triggerStarts.last?.center == newLocation)
+    }
+
     @Test
     func handleMovement_givenInFlightRefresh_expectAlreadyInProgress() async {
         // Shared `refreshInProgress` gate — a refresh holding it must short-circuit

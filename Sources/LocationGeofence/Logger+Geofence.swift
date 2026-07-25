@@ -110,6 +110,10 @@ extension Logger {
         info("Sync completed: registered \(registeredCount) business geofences\(trigger)", geofenceTag)
     }
 
+    func geofenceRerankUnchanged(keptCount: Int) {
+        debug("Re-rank: nearest set unchanged, kept \(keptCount) business geofences monitored; movement trigger re-centered", geofenceTag)
+    }
+
     func geofenceMovementTrigger(tier: HandleMovementTier) {
         debug("Movement trigger EXIT: \(tier.rawValue)", geofenceTag)
     }
