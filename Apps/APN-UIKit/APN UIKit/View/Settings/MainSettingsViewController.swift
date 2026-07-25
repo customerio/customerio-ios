@@ -60,6 +60,11 @@ class MainSettingsViewController: BaseViewController {
 
     @IBOutlet var screenNameLabel: UILabel!
 
+    /// Parent stackview of the Settings screen. The Location section is appended programmatically
+    /// to avoid storyboard surgery for what is otherwise a tracking-mode picker.
+    @IBOutlet var settingsStackView: UIStackView!
+    var locationTrackingModeButtons: [UIButton] = []
+
     override func viewDidLoad() {
         super.viewDidLoad()
 
@@ -69,6 +74,7 @@ class MainSettingsViewController: BaseViewController {
         screenNameLabel.text = screenName
 
         configureButtonActions()
+        setupLocationSection()
         setInitialValues()
     }
 
@@ -83,6 +89,7 @@ class MainSettingsViewController: BaseViewController {
         setDataPipelineInitialValues()
         setMessagingPushAPNInitialValues()
         setMessagingInAppInitialValues()
+        setLocationInitialValues()
     }
 
     private func setDataPipelineInitialValues() {

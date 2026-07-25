@@ -27,6 +27,17 @@ class CombinedCacheEventBusHandlerTest: UnitTest {
         XCTAssertEqual(mockEventStorage.storeCallsCount, 1)
     }
 
+    func test_postEventAndWait_givenNoObserversAndTransientEvent_expectEventNotStored() async {
+        let handler = makeHandler()
+
+        // LocationAcquiredEvent is transient (isPersistent == false).
+        await handler.postEventAndWait(LocationAcquiredEvent(location: LocationData(latitude: 0, longitude: 0)))
+
+        // Even with no observers it must not be written to disk, so location-only apps
+        // don't accumulate undrained event files.
+        XCTAssertEqual(mockEventStorage.storeCallsCount, 0)
+    }
+
     func test_postEventAndWait_givenNoObservers_expectNoStoreErrorPropagated() async {
         mockEventStorage.storeThrowableError = NSError(domain: "test", code: 1)
         let handler = makeHandler()

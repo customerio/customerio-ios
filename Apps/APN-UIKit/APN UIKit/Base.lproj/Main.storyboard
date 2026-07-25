@@ -1090,6 +1090,7 @@
                         <outlet property="screenNameLabel" destination="eB7-NK-Zkf" id="tNt-8s-HgI"/>
                         <outlet property="screenViewUseAllButton" destination="poz-pg-0GG" id="7AT-pC-G0p"/>
                         <outlet property="screenViewUseInAppButton" destination="KNI-sA-zNj" id="POr-vT-ChH"/>
+                        <outlet property="settingsStackView" destination="oLg-Ow-Mda" id="locsv-mbl-1752"/>
                         <outlet property="showPushAppInForegroundFalseButton" destination="9xp-jF-SLg" id="0h4-bq-saU"/>
                         <outlet property="showPushAppInForegroundTrueButton" destination="VPt-vy-qBG" id="PbR-px-CQ3"/>
                         <outlet property="siteIdTextField" destination="ZFn-ux-MwY" id="vrO-bK-65o"/>

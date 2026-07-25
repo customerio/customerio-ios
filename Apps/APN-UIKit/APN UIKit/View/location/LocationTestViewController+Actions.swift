@@ -1,8 +1,13 @@
+import CioInternalCommon
 import UIKit
 
 // MARK: - Click Handlers
 
 extension LocationTestViewController {
+    @objc func grantBackgroundLocationTapped() {
+        handleGrantBackgroundLocationTap()
+    }
+
     @objc func presetButtonTapped(_ sender: UIButton) {
         let index = sender.tag
         guard index >= 0, index < presetLocations.count else { return }

@@ -1,6 +1,6 @@
 @testable import CioInternalCommon
 @testable import CioInternalCommonMocks
-@testable import CioLocation
+@_spi(Geofence) @testable import CioLocation
 import CoreLocation
 import SharedTests
 import Testing
@@ -16,7 +16,8 @@ struct LocationServicesImplementationTests {
             filter: filter,
             dataPipeline: dataPipeline,
             dateUtil: dateUtil,
-            logger: LoggerMock()
+            logger: LoggerMock(),
+            eventBusHandler: EventBusHandlerMock()
         )
     }
 
@@ -177,6 +178,137 @@ struct LocationServicesImplementationTests {
         #expect(pipelineMock.trackCallsCount == 0)
         let requestCount = await mockProvider.requestLocationCallCount
         #expect(requestCount == 0)
+    }
+
+    @Test
+    func requestLocationUpdateSilently_givenTrackingDisabled_expectProviderCalledButNoTrack() async {
+        let mockProvider = MockLocationProvider()
+        await mockProvider.setResult(.success(LocationSnapshot(
+            latitude: 37.7749,
+            longitude: -122.4194,
+            timestamp: Date(),
+            horizontalAccuracy: 100,
+            altitude: nil
+        )))
+        let pipelineMock = DataPipelineTrackingMock()
+        let service = makeImplementation(
+            mode: .off,
+            dataPipeline: pipelineMock,
+            logger: LoggerMock(),
+            locationProvider: mockProvider
+        )
+
+        service.requestLocationUpdateSilently()
+        await yieldForLocationTask()
+
+        // Silent acquisition ignores the .off tracking mode (geofencing needs a fix even when
+        // tracking is off) but must never emit analytics. The fix is readable as last-known.
+        let requestCount = await mockProvider.requestLocationCallCount
+        #expect(requestCount == 1)
+        #expect(pipelineMock.trackCallsCount == 0)
+        #expect(await service.getLastKnownLocation()?.latitude == 37.7749)
+    }
+
+    // MARK: - In-flight request upgrade
+
+    /// Yields until the provider has an in-flight request (bounded), so a second request in the
+    /// test reliably arrives while the first one is actually running.
+    private func waitUntilRequestInFlight(_ provider: MockLocationProvider) async {
+        for _ in 0 ..< 200 {
+            if await provider.requestLocationCallCount >= 1 { return }
+            await Task.yield()
+        }
+    }
+
+    private var validSnapshot: LocationSnapshot {
+        LocationSnapshot(latitude: 37.7749, longitude: -122.4194, timestamp: Date(), horizontalAccuracy: 100, altitude: nil)
+    }
+
+    @Test
+    func requestLocationUpdate_givenSilentRequestInFlight_expectTrackedIntentUpgradesIt() async {
+        let mockProvider = MockLocationProvider()
+        await mockProvider.setResult(.success(validSnapshot))
+        await mockProvider.holdNextRequest()
+        let pipelineMock = DataPipelineTrackingMock()
+        let service = makeImplementation(mode: .manual, dataPipeline: pipelineMock, locationProvider: mockProvider)
+
+        service.requestLocationUpdateSilently()
+        await waitUntilRequestInFlight(mockProvider)
+        service.requestLocationUpdate()
+        await yieldForLocationTask()
+        await mockProvider.releaseHeldRequest()
+        await yieldForLocationTask()
+
+        // One acquisition serves both callers: the silent fix is promoted to a tracked one
+        // instead of the tracked request being dropped by the single-request gate.
+        #expect(await mockProvider.requestLocationCallCount == 1)
+        #expect(pipelineMock.trackCallsCount == 1)
+        #expect(pipelineMock.trackInvocations.first?.name == "CIO Location Update")
+    }
+
+    @Test
+    func requestLocationUpdateSilently_givenTrackedRequestInFlight_expectSingleTrackedResult() async {
+        let mockProvider = MockLocationProvider()
+        await mockProvider.setResult(.success(validSnapshot))
+        await mockProvider.holdNextRequest()
+        let pipelineMock = DataPipelineTrackingMock()
+        let service = makeImplementation(mode: .manual, dataPipeline: pipelineMock, locationProvider: mockProvider)
+
+        service.requestLocationUpdate()
+        await waitUntilRequestInFlight(mockProvider)
+        service.requestLocationUpdateSilently()
+        await yieldForLocationTask()
+        await mockProvider.releaseHeldRequest()
+        await yieldForLocationTask()
+
+        // The reverse overlap needs no upgrade: the tracked result feeds silent consumers too.
+        #expect(await mockProvider.requestLocationCallCount == 1)
+        #expect(pipelineMock.trackCallsCount == 1)
+    }
+
+    @Test
+    func requestLocationUpdate_givenSilentInFlightAndTrackingDisabled_expectNoTrackUpgrade() async {
+        let mockProvider = MockLocationProvider()
+        await mockProvider.setResult(.success(validSnapshot))
+        await mockProvider.holdNextRequest()
+        let pipelineMock = DataPipelineTrackingMock()
+        let service = makeImplementation(mode: .off, dataPipeline: pipelineMock, locationProvider: mockProvider)
+
+        service.requestLocationUpdateSilently()
+        await waitUntilRequestInFlight(mockProvider)
+        service.requestLocationUpdate()
+        await yieldForLocationTask()
+        await mockProvider.releaseHeldRequest()
+        await yieldForLocationTask()
+
+        // Under `.off` the tracked request would have been refused outright, so the latched
+        // intent must not smuggle a track through the silent request either.
+        #expect(pipelineMock.trackCallsCount == 0)
+    }
+
+    @Test
+    func requestLocationUpdate_givenSilentInFlightFails_expectUpgradeDroppedNotCarriedToNextRequest() async {
+        let mockProvider = MockLocationProvider()
+        await mockProvider.setResult(.failure(.permissionDenied))
+        await mockProvider.holdNextRequest()
+        let pipelineMock = DataPipelineTrackingMock()
+        let service = makeImplementation(mode: .manual, dataPipeline: pipelineMock, locationProvider: mockProvider)
+
+        service.requestLocationUpdateSilently()
+        await waitUntilRequestInFlight(mockProvider)
+        service.requestLocationUpdate()
+        await yieldForLocationTask()
+        await mockProvider.releaseHeldRequest()
+        await yieldForLocationTask()
+
+        // A later silent request must start from a clean slate: the failed request dropped the
+        // latched intent (the tracked request would have failed identically).
+        await mockProvider.setResult(.success(validSnapshot))
+        service.requestLocationUpdateSilently()
+        await yieldForLocationTask()
+
+        #expect(await mockProvider.requestLocationCallCount == 2)
+        #expect(pipelineMock.trackCallsCount == 0)
     }
 
     @Test

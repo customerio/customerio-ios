@@ -26,6 +26,12 @@ class LocationTestViewController: BaseViewController {
     var setManualLocationButton: ThemeButton!
     var useCurrentLocationButton: ThemeButton!
     var requestSdkLocationOnceButton: ThemeButton!
+    var grantBackgroundLocationButton: ThemeButton!
+    var grantBackgroundStatusLabel: UILabel!
+
+    /// Tracks if we're mid-Always-upgrade so the auth-change callback knows to skip
+    /// the WhenInUse-only flows (which both also live on this delegate).
+    var userRequestedAlwaysUpgrade = false
 
     /// Tracks if we're in the "user tapped Use Current Location and we're waiting for permission" flow.
     /// Used to avoid auto-starting a location fetch when the screen opens and auth is already granted.
@@ -52,6 +58,7 @@ class LocationTestViewController: BaseViewController {
         // Start with empty manual entry fields once when the screen loads
         latitudeTextField?.text = ""
         longitudeTextField?.text = ""
+        refreshGrantBackgroundLocationUI()
     }
 
     override func viewWillAppear(_ animated: Bool) {
@@ -120,6 +127,13 @@ class LocationTestViewController: BaseViewController {
     }
 
     private func addOptionSections(to stackView: UIStackView) {
+        stackView.addArrangedSubview(createOptionSection(
+            title: "BACKGROUND LOCATION",
+            description: "Geofence background delivery requires 'Always' location authorization. Grant 'When In Use' first; iOS allows the in-app upgrade prompt once before falling back to the Settings app.",
+            content: createGrantBackgroundLocationButton()
+        ))
+        stackView.addArrangedSubview(createOrSeparator())
+
         stackView.addArrangedSubview(createOptionSection(
             title: "OPTION 1: QUICK PRESETS",
             description: "Tap a city to set its coordinates",

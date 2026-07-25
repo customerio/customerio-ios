@@ -95,6 +95,7 @@ jobs:
           sd "pod 'CustomerIOMessagingPushAPN', :path =>.*" "pod 'CustomerIOMessagingPushAPN', '$TAG'" "Apps/CocoaPods-FCM/Podfile"
           sd "pod 'CustomerIOMessagingInApp', :path =>.*" "pod 'CustomerIOMessagingInApp', '$TAG'" "Apps/CocoaPods-FCM/Podfile"
           sd "pod 'CustomerIOLocation', :path =>.*" "pod 'CustomerIOLocation', '$TAG'" "Apps/CocoaPods-FCM/Podfile"
+          sd "pod 'CustomerIOLocationGeofence', :path =>.*" "pod 'CustomerIOLocationGeofence', '$TAG'" "Apps/CocoaPods-FCM/Podfile"
           # If you have other modules: repeat
 
           # 2) SwiftPM package in `Apps/Common/Package.swift`

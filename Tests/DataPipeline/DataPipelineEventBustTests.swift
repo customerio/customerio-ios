@@ -60,6 +60,97 @@ class DataPipelineEventBustTests: IntegrationTest {
         )
     }
 
+    func testSubscribeToJourneyEvents_DataPipelineHandlesTrackGeofenceMetricEvent_enter() async {
+        let givenGeofenceId = String.random
+        let capturedAt = Date(timeIntervalSince1970: 1700000000)
+
+        await eventBusHandler.postEventAndWait(
+            TrackGeofenceMetricEvent(
+                geofenceId: givenGeofenceId,
+                transition: .enter,
+                timestamp: capturedAt,
+                name: "HQ",
+                transitionId: "txn_enter_1",
+                userId: "user_1"
+            )
+        )
+
+        guard let trackEvent = outputReader.lastEvent as? TrackEvent else {
+            XCTFail("recorded event is not an instance of TrackEvent")
+            return
+        }
+
+        XCTAssertEqual(trackEvent.type, "track")
+        XCTAssertEqual(trackEvent.event, "Geofence Transition")
+        let properties = trackEvent.properties?.dictionaryValue ?? [:]
+        XCTAssertEqual(properties["geofenceId"] as? String, givenGeofenceId)
+        XCTAssertEqual(properties["transition"] as? String, "enter")
+        XCTAssertEqual(properties["geofenceName"] as? String, "HQ")
+        // timestamp lives on the event envelope, not in properties.
+        XCTAssertNil(properties["timestamp"])
+        XCTAssertNil(properties["latitude"])
+        XCTAssertNil(properties["longitude"])
+        XCTAssertEqual(trackEvent.timestamp, capturedAt.string(format: .iso8601WithMilliseconds))
+        // EventBus path carries the transitionId through to the analytics payload.
+        XCTAssertEqual(properties["transitionId"] as? String, "txn_enter_1")
+    }
+
+    func testSubscribeToJourneyEvents_DataPipelineHandlesTrackGeofenceMetricEvent_exit() async {
+        let givenGeofenceId = String.random
+        let capturedAt = Date(timeIntervalSince1970: 1700000000)
+
+        await eventBusHandler.postEventAndWait(
+            TrackGeofenceMetricEvent(
+                geofenceId: givenGeofenceId,
+                transition: .exit,
+                timestamp: capturedAt,
+                name: nil,
+                transitionId: "txn_exit_1",
+                userId: "user_1"
+            )
+        )
+
+        guard let trackEvent = outputReader.lastEvent as? TrackEvent else {
+            XCTFail("recorded event is not an instance of TrackEvent")
+            return
+        }
+
+        XCTAssertEqual(trackEvent.event, "Geofence Transition")
+        let properties = trackEvent.properties?.dictionaryValue ?? [:]
+        XCTAssertEqual(properties["geofenceId"] as? String, givenGeofenceId)
+        XCTAssertEqual(properties["transition"] as? String, "exit")
+        // No name on the event → property omitted entirely.
+        XCTAssertNil(properties["geofenceName"])
+        // timestamp lives on the event envelope, not in properties.
+        XCTAssertNil(properties["timestamp"])
+        XCTAssertNil(properties["latitude"])
+        XCTAssertNil(properties["longitude"])
+        XCTAssertEqual(trackEvent.timestamp, capturedAt.string(format: .iso8601WithMilliseconds))
+    }
+
+    func testSubscribeToJourneyEvents_DataPipelineHandlesTrackGeofenceMetricEvent_pinsSnapshotUserId() async {
+        // The transition was captured under user_A; a different user is identified now. The event's
+        // snapshot userId must pin the track to user_A, not the current identity.
+        customerIO.identify(userId: "user_current")
+
+        await eventBusHandler.postEventAndWait(
+            TrackGeofenceMetricEvent(
+                geofenceId: String.random,
+                transition: .enter,
+                timestamp: Date(timeIntervalSince1970: 1700000000),
+                name: "HQ",
+                transitionId: "txn_pin_1",
+                userId: "user_A"
+            )
+        )
+
+        guard let trackEvent = outputReader.lastEvent as? TrackEvent else {
+            XCTFail("recorded event is not an instance of TrackEvent")
+            return
+        }
+        XCTAssertEqual(trackEvent.userId, "user_A")
+    }
+
     func testSubscribeToJourneyEvents_DataPipelineHandlesRegisterDeviceEvent() async {
         let givenToken = String.random
 
