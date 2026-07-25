@@ -98,6 +98,11 @@ open class CioProviderAgnosticAppDelegate: CioAppDelegateType {
     // MARK: - method forwarding
 
     @objc
+    override public func conforms(to aProtocol: Protocol) -> Bool {
+        super.conforms(to: aProtocol) || wrappedAppDelegate?.conforms(to: aProtocol) == true
+    }
+
+    @objc
     override public func responds(to aSelector: Selector!) -> Bool {
         if implementedOptionalMethods.contains(aSelector), super.responds(to: aSelector) {
             return true
