@@ -19,6 +19,38 @@ extension GeofenceSyncCoordinatorImpl {
         }
     }
 
+    /// True when re-registering would be a no-op: same ids as recorded, all owned by this process
+    /// and still held by the OS. Re-adding re-seeds each region's assumed state from the live fix,
+    /// absorbing any crossing the OS hasn't delivered yet — once per trigger radius at driving
+    /// speed. Any doubt falls through to the wholesale path, which re-establishes ownership, heals
+    /// dropped regions, and tears down under the kill switch (a geofence-free area leaves the
+    /// trigger owned with no business ids, so the ids alone would otherwise match).
+    @MainActor
+    func canSkipReregistration(
+        nearestIds: Set<String>,
+        previouslyRegisteredIds: Set<String>,
+        registerMovementTrigger: Bool
+    ) -> Bool {
+        guard registerMovementTrigger, nearestIds == previouslyRegisteredIds else { return false }
+        let expected = nearestIds.union([GeofenceConstants.movementTriggerIdentifier])
+        return expected.isSubset(of: monitor.monitoredRegionIdentifiers)
+            && expected.isSubset(of: monitor.osMonitoredRegionIdentifiers)
+    }
+
+    /// Moves only the trigger. Explicit stop-then-start, which both monitors serialize. Nothing is
+    /// lost by re-seeding this one region: it is being re-centered precisely because the device
+    /// left the old circle.
+    @MainActor
+    func recenterMovementTrigger(at location: LocationData, radius: Double) {
+        monitor.stopMonitoring(identifier: GeofenceConstants.movementTriggerIdentifier)
+        monitor.startMonitoring(
+            identifier: GeofenceConstants.movementTriggerIdentifier,
+            center: location,
+            radius: radius,
+            transitionTypes: [.exit]
+        )
+    }
+
     /// Stops all monitored regions, then starts the new business set + movement trigger. Returns the
     /// OS-accepted identifiers (a region the monitor dropped for blocked permission / invalid
     /// coordinates is absent) plus the radius cap, so `emitInitialEnters` won't fire an unbalanced
@@ -37,8 +69,8 @@ extension GeofenceSyncCoordinatorImpl {
         // Register the movement trigger FIRST so it isn't starved when business regions fill the
         // shared 20-region OS budget (e.g. a host app that also monitors regions): losing it freezes
         // the set, since exiting the trigger is what re-ranks toward now-closer geofences. Kept even
-        // when the distance cap left the business set empty; skipped only when there's nothing to
-        // register toward (no geofences, or registration kill-switched).
+        // when the nearby set is empty (distance cap or an empty fetch) so the device keeps re-fetching
+        // as it moves back toward geofences; skipped only when kill-switched (`maxBusinessGeofences == 0`).
         if registerMovementTrigger {
             monitor.startMonitoring(
                 identifier: GeofenceConstants.movementTriggerIdentifier,

@@ -22,7 +22,8 @@ struct GeofenceConfig: Codable, Equatable, Sendable {
     /// Duplicate-transition suppression window keyed by "userId:geofenceId:transitionType".
     let duplicateEventsExpiry: TimeInterval
     /// Maximum number of business geofences to monitor. Always 0…19 on iOS (movement
-    /// trigger consumes the 20th OS slot).
+    /// trigger consumes the 20th OS slot). `0` is the server-driven kill switch: nothing
+    /// registers, not even the movement trigger.
     let maxBusinessGeofences: Int
     /// Maximum distance in meters from the device at which a geofence is registered with the OS.
     /// Geofences beyond it are skipped and re-added by a later re-rank as the device moves closer;

@@ -90,17 +90,24 @@ final class MockGeofenceRegionMonitor: GeofenceRegionMonitoring {
             transitionTypes: transitionTypes
         ))
         activeIdentifiers.insert(identifier)
+        // Mirror the real monitors: a successful add is reflected in the OS-persisted set too
+        // (classic's `monitoredRegions`, CLMonitor's condition mirror).
+        osMonitoredRegions.insert(identifier)
         operationLog.append(.start(identifier: identifier))
     }
 
     func stopMonitoring(identifier: String) {
         stoppedIdentifiers.append(identifier)
         activeIdentifiers.remove(identifier)
+        osMonitoredRegions.remove(identifier)
         operationLog.append(.stop(identifier: identifier))
     }
 
     func stopMonitoringAll() {
         stopAllCallCount += 1
+        // Mirror the real monitor: only owned regions are handed to the OS for removal, so anything
+        // the OS still holds that this process never adopted survives the call.
+        osMonitoredRegions.subtract(activeIdentifiers)
         activeIdentifiers.removeAll()
         operationLog.append(.stopAll)
     }

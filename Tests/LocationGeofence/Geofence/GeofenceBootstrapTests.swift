@@ -85,6 +85,9 @@ struct GeofenceBootstrapTests {
 
         #expect(monitor.setOnTransitionCallsCount == 1)
         #expect(coordinator.applyCachedRegistrationCallsCount == 1)
+        // First launch: the expected-owned set is never empty (it always names the movement
+        // trigger), so the adopt branch has to be ruled out by the OS holding nothing.
+        #expect(monitor.adoptExistingRegionsCallsCount == 0)
         #expect(monitor.setOnAuthorizationChangedCallsCount == 1)
         #expect(monitor.onAuthorizationChanged != nil)
         #expect(monitor.reportPermissionTierCallsCount == 1)
@@ -283,6 +286,61 @@ struct GeofenceBootstrapTests {
 
         #expect(monitor.adoptedIdentifiers == ["g1", GeofenceConstants.movementTriggerIdentifier])
         #expect(coordinator.applyCachedRegistrationCallsCount == 0)
+    }
+
+    @Test
+    func wireMonitor_givenOnlyMovementTriggerRegistered_expectTriggerAdopted() async {
+        // Relaunch after an empty nearby response: the cache and the business set are empty, but the
+        // trigger stayed armed and the OS still holds it. Without adopting it the process owns
+        // nothing, so its EXIT is dropped at the ownership filter — and the refresh decision skips
+        // (fresh cache, no movement), leaving the device dark until the cache ages out.
+        let di = DIGraphShared.shared
+        let storage = GeofenceStorage(
+            directoryURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        )
+        await storage.recordRegistration(center: LocationData(latitude: 10, longitude: 20), businessIds: [])
+        di.override(value: storage, forType: GeofenceStorage.self)
+        let monitor = MockGeofenceRegionMonitor()
+        monitor.osMonitoredRegions = [GeofenceConstants.movementTriggerIdentifier]
+        di.override(value: monitor as GeofenceRegionMonitoring, forType: GeofenceRegionMonitoring.self)
+        let coordinator = GeofenceSyncCoordinatorMock()
+        di.override(value: coordinator as GeofenceSyncCoordinator, forType: GeofenceSyncCoordinator.self)
+        defer { di.reset() }
+
+        await GeofenceBootstrap.wireMonitor(di: di)
+
+        #expect(monitor.adoptedIdentifiers == [GeofenceConstants.movementTriggerIdentifier])
+        #expect(coordinator.applyCachedRegistrationCallsCount == 0)
+    }
+
+    @Test
+    func wireMonitor_givenKillSwitchedConfig_expectTriggerNotAdopted() async {
+        // Under the kill switch the trigger is not something we would register, so it is not
+        // something to reclaim either — expected-owned mirrors the register condition.
+        let di = DIGraphShared.shared
+        let storage = GeofenceStorage(
+            directoryURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        )
+        await storage.setCachedConfig(GeofenceConfig(
+            localRefreshTriggerRadius: 750,
+            remoteFetchRefreshTriggerRadius: 3000,
+            remoteFetchRefreshExpiry: 86400,
+            duplicateEventsExpiry: 60,
+            maxBusinessGeofences: 0,
+            maxMonitoringDistance: GeofenceConstants.noMonitoringDistanceCap
+        ))
+        await storage.recordRegistration(center: LocationData(latitude: 10, longitude: 20), businessIds: [])
+        di.override(value: storage, forType: GeofenceStorage.self)
+        let monitor = MockGeofenceRegionMonitor()
+        monitor.osMonitoredRegions = [GeofenceConstants.movementTriggerIdentifier]
+        di.override(value: monitor as GeofenceRegionMonitoring, forType: GeofenceRegionMonitoring.self)
+        let coordinator = GeofenceSyncCoordinatorMock()
+        di.override(value: coordinator as GeofenceSyncCoordinator, forType: GeofenceSyncCoordinator.self)
+        defer { di.reset() }
+
+        await GeofenceBootstrap.wireMonitor(di: di)
+
+        #expect(monitor.adoptExistingRegionsCallsCount == 0)
     }
 
     @Test
