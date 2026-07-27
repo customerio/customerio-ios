@@ -98,6 +98,10 @@ actor VisualInboxRepositoryImpl: VisualInboxRepository {
     /// (DI singleton) and on logout — i.e. a new session revalidates exactly once.
     var didRevalidateThisSession = false
 
+    /// Bumped every time a session reset reopens the gate. A revalidation that spans a bump belongs
+    /// to the old session and must not close the gate behind the new one.
+    var sessionGeneration = 0
+
     /// Strong reference to the weakly-held in-app store subscriber (the store holds it weakly).
     /// One subscriber covers both `inboxMessages` and `userId`. See `subscribeToStoreChanges`.
     var storeSubscriber: InAppMessageStoreSubscriber?
@@ -218,6 +222,8 @@ actor VisualInboxRepositoryImpl: VisualInboxRepository {
     private func performRevalidation(staleTemplates: InboxTemplatesRegistry?, staleBranding: InboxBranding?) async {
         logger.logWithModuleTag("[CIO-Inbox] revalidation triggered (once-per-session): fetching templates + branding", level: .info)
         currentLoadState = .loading
+        // Session this cycle belongs to; re-checked before closing the gate below.
+        let generationAtStart = sessionGeneration
         let retrier = InboxFetchRetrier(sleeper: sleeper, logger: logger)
         let (fetchedTemplates, fetchedBranding) = await fetchTemplatesAndBranding(state: inAppMessageManager.state, retrier: retrier)
 
@@ -233,8 +239,12 @@ actor VisualInboxRepositoryImpl: VisualInboxRepository {
 
         // Mark the session gate regardless of outcome: this session has now revalidated once.
         // A failed revalidation served stale; we do not re-hit the network again this session
-        // (until a process restart reopens the gate).
-        didRevalidateThisSession = true
+        // (until a process restart reopens the gate). Skipped when a logout reset the session
+        // mid-flight: that reopened the gate, and closing it here would let the next session serve
+        // assets it never revalidated.
+        if sessionGeneration == generationAtStart {
+            didRevalidateThisSession = true
+        }
 
         // Re-read the enablement flag: the inbox may have been DISABLED by a later poll while this
         // revalidation was in flight (enabled=false + loadState=.hidden). Without this guard, a stale

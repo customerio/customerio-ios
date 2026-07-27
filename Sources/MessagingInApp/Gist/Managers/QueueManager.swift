@@ -70,6 +70,9 @@ class QueueManager {
                     case 204:
                         // An authoritative empty queue, not a failure: parsing the empty body would
                         // throw, stranding stale rows on screen and skipping the inbox pipeline.
+                        // The cached 200 body goes too, so a later 304 cannot re-parse it and
+                        // republish the rows this response just cleared.
+                        self.clearCachedUserQueue()
                         self.publishInboxMessages([], inboxEnabledHeader: inboxEnabledHeader)
                         completionHandler(.success([]))
                     default:

@@ -256,6 +256,40 @@ class VisualInboxRepositoryTest: XCTestCase {
         XCTAssertGreaterThan(networkStub.calls.count, callsAfterFirstLoad)
     }
 
+    func test_logout_whenLoggedOutWhileRevalidationInFlight_expectGateStaysOpen() async {
+        // A logout landing while the fetch is parked reopens the gate. The completing fetch belongs
+        // to the old user, so it must not close it — otherwise the next session serves assets it
+        // never revalidated.
+        setUser("user-1")
+        let gatedStub = GatedInboxNetworkClientStub(templatesJSON: templatesJSON, brandingJSON: brandingJSON)
+        let repo = VisualInboxRepositoryImpl(
+            networkClient: gatedStub,
+            inAppMessageManager: inAppMessageManagerMock,
+            keyValueStore: keyValueStore,
+            sleeper: sleeperMock,
+            dateUtil: dateUtilStub,
+            logger: logger
+        )
+        await repo.setInboxEnabled(true)
+
+        async let load: Void = repo.enableAndLoad()
+        await gatedStub.waitUntilFirstCallStarted()
+
+        // Identify then log out, both WHILE the fetch is still parked.
+        await notifyUserSubscriber(state: InAppMessageState().copy(userId: "user-1"))
+        await notifyUserSubscriber(state: InAppMessageState())
+
+        gatedStub.release()
+        await load
+
+        let callsBeforeNextSession = gatedStub.callCount(for: .getTemplates)
+        setUser("user-2")
+        await repo.setInboxEnabled(true)
+        await repo.enableAndLoad()
+
+        XCTAssertGreaterThan(gatedStub.callCount(for: .getTemplates), callsBeforeNextSession)
+    }
+
     func test_logout_whenUserWasNeverIdentified_expectAssetsRetained() async {
         // A cold launch starts with a nil userId before identify runs; that must not wipe the cache.
         setUser("user-1")

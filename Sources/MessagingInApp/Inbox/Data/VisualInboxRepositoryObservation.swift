@@ -49,6 +49,7 @@ extension VisualInboxRepositoryImpl {
         lastKnownUserId = nil
         assetsCache.clear()
         didRevalidateThisSession = false
+        sessionGeneration += 1
         currentLoadState = .hidden(reason: "inbox disabled")
         logger.logWithModuleTag("[CIO-Inbox] logout: cleared persisted render assets and reopened revalidation", level: .debug)
         return true

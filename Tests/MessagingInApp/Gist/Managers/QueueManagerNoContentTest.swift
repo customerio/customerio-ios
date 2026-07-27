@@ -26,11 +26,16 @@ class QueueManagerNoContentTest: UnitTest {
         inAppMessageManagerMock.underlyingState = InAppMessageState()
         repositoryFake = VisualInboxRepositoryFake()
 
+        // The 200 path runs the anonymous-message merge; the mock's return value is implicitly
+        // unwrapped, so it has to be stubbed or that path traps.
+        let anonymousMessageManagerMock = AnonymousMessageManagerMock()
+        anonymousMessageManagerMock.getEligibleMessagesReturnValue = []
+
         queueManager = QueueManager(
             keyValueStore: keyValueStore,
             gistQueueNetwork: gistQueueNetworkMock,
             inAppMessageManager: inAppMessageManagerMock,
-            anonymousMessageManager: AnonymousMessageManagerMock(),
+            anonymousMessageManager: anonymousMessageManagerMock,
             inboxMessageCache: InboxMessageCacheManager(keyValueStore: keyValueStore, logger: log),
             visualInboxRepository: repositoryFake,
             logger: log
@@ -69,7 +74,43 @@ class QueueManagerNoContentTest: UnitTest {
         await waitUntil { await self.repositoryFake.setEnabledValues == [true] }
     }
 
+    // A 204 also drops the cached 200 body: otherwise a later 304 re-parses it and republishes the
+    // very rows the 204 just cleared.
+    func test_fetchUserQueue_whenNoContentThenNotModified_expectNoStaleRepublish() async {
+        let body = #"{"inAppMessages":[],"inboxMessages":[{"queueId":"q1","sentAt":"2026-01-01T00:00:00.000Z","topics":["cio_inbox"]}]}"#.data(using: .utf8)!
+
+        // A 200 populates the queue cache with one inbox row.
+        stubResponse(statusCode: 200, body: body)
+        _ = await fetchUserQueue()
+        XCTAssertEqual(dispatchedInboxMessageCounts, [1])
+
+        // The 204 clears the inbox and the cached body with it.
+        stubResponse(statusCode: 204, body: Data())
+        _ = await fetchUserQueue()
+        XCTAssertEqual(dispatchedInboxMessageCounts, [1, 0])
+
+        // The later 304 has nothing cached to serve, so the cleared row cannot come back.
+        stubResponse(statusCode: 304, body: Data())
+        let result = await fetchUserQueue()
+
+        switch result {
+        case .success(let messages):
+            XCTAssertNil(messages)
+        case .failure(let error):
+            XCTFail("expected success for a 304 with no cached body, got \(error)")
+        }
+        XCTAssertEqual(dispatchedInboxMessageCounts, [1, 0])
+    }
+
     // MARK: - Helpers
+
+    /// Message counts of every `processInboxMessages` dispatched so far, in order.
+    private var dispatchedInboxMessageCounts: [Int] {
+        inAppMessageManagerMock.dispatchReceivedInvocations.compactMap { invocation in
+            if case .processInboxMessages(let messages) = invocation.action { return messages.count }
+            return nil
+        }
+    }
 
     private func stubResponse(statusCode: Int, body: Data, headers: [String: String] = [:]) {
         gistQueueNetworkMock.requestClosure = { _, _, completion in
