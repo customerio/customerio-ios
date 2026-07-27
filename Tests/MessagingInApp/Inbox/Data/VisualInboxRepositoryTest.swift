@@ -180,7 +180,7 @@ class VisualInboxRepositoryTest: XCTestCase {
 
     // MARK: - Fix B: inbox-message changes (SSE path) recompute loadState without a fetch
 
-    func test_messageChange_whenMessagesBecomeEmpty_expectRecomputesToHiddenWithoutFetch() async {
+    func test_messageChange_whenMessagesBecomeEmpty_expectRecomputesToEmptyWithoutFetch() async {
         // Under SSE, messages arrive via processInboxMessages (a store update) without running the
         // queue HTTP pipeline. The repository subscribes to inboxMessages and re-resolves loadState on
         // change — reusing cached templates/branding, never issuing a network fetch.
@@ -200,14 +200,15 @@ class VisualInboxRepositoryTest: XCTestCase {
         inAppMessageManagerMock.underlyingState = InAppMessageState().copy(userId: "user-1", inboxMessages: [])
         await notifyMessageSubscriber()
 
-        // loadState recomputed to hidden (no messages) — purely from the store change, no new fetch.
+        // loadState recomputed to visible-and-empty — purely from the store change, no new fetch. It
+        // stays visible because the inbox is still renderable; the list shows its empty state.
         let recomputed = await repo.loadState
-        XCTAssertEqual(recomputed, .hidden(reason: "no selected messages"))
+        XCTAssertEqual(recomputed, .visible(messageCount: 0))
         XCTAssertEqual(networkStub.calls.count, callsAfterLoad)
     }
 
     func test_messageChange_whenMessagesReappear_expectRecomputesToVisibleWithoutFetch() async {
-        // The reverse transition: an SSE update that adds a message flips hidden→visible with no fetch.
+        // The reverse transition: an SSE update that adds a message takes the count 0 → 1 with no fetch.
         setUser("user-1", withMessages: [])
         let repo = makeRepository()
         await repo.setInboxEnabled(true)
@@ -215,7 +216,7 @@ class VisualInboxRepositoryTest: XCTestCase {
 
         await repo.enableAndLoad()
         let loaded = await repo.loadState
-        XCTAssertEqual(loaded, .hidden(reason: "no selected messages"))
+        XCTAssertEqual(loaded, .visible(messageCount: 0))
         let callsAfterLoad = networkStub.calls.count
 
         inAppMessageManagerMock.underlyingState = InAppMessageState().copy(userId: "user-1", inboxMessages: [sampleVisualMessage()])
@@ -498,8 +499,10 @@ class VisualInboxRepositoryTest: XCTestCase {
         XCTAssertEqual(networkStub.callCount(for: .getBranding), 3)
     }
 
-    func test_enableAndLoad_whenNoMessages_expectHidden() async {
-        // No selectable messages -> hidden even though templates + branding succeed.
+    func test_enableAndLoad_whenNoMessages_expectVisibleAndEmpty() async {
+        // Templates + branding succeed, so the inbox is renderable and therefore visible with zero
+        // messages ("You're all caught up") rather than hidden. The message count does not gate
+        // visibility; overlay chrome gates itself on having renderable messages.
         setUser("user-1", withMessages: [])
         let repo = makeRepository()
         await repo.setInboxEnabled(true)
@@ -508,7 +511,23 @@ class VisualInboxRepositoryTest: XCTestCase {
         await repo.enableAndLoad()
 
         let state = await repo.loadState
-        XCTAssertEqual(state, .hidden(reason: "no selected messages"))
+        XCTAssertEqual(state, .visible(messageCount: 0))
+    }
+
+    func test_enableAndLoad_whenRevalidationFailsWithNoCache_expectGateStaysOpen() async {
+        // Nothing fetched and nothing cached means nothing to serve, so the gate must stay open and
+        // let the next poll retry. Closing it would strand the inbox hidden for the whole process,
+        // since later store updates would keep reading the same empty cache.
+        setUser("user-1")
+        let repo = makeRepository()
+        await repo.setInboxEnabled(true)
+        networkStub.handler = { _, _ in throw InboxNetworkError.noResponse }
+
+        await repo.enableAndLoad()
+        let callsAfterFirstLoad = networkStub.calls.count
+        await repo.enableAndLoad()
+
+        XCTAssertGreaterThan(networkStub.calls.count, callsAfterFirstLoad)
     }
 
     // MARK: - Serve-stale (templates/branding) keeps the inbox visible

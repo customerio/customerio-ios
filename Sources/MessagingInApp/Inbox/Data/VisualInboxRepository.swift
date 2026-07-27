@@ -38,6 +38,10 @@ protocol VisualInboxRepository: AnyObject, Sendable {
     /// Visual-inbox messages adapted to Jist types (typed/nested properties preserved).
     func jistMessages() async -> [JistInboxMessage]
 
+    /// `loadState` and the Jist message list resolved in ONE call, so a queue/SSE update landing
+    /// between two separate reads cannot pair a state with a message list from a different version.
+    func loadStateAndJistMessages() async -> (state: VisualInboxLoadState, messages: [JistInboxMessage])
+
     /// Raw templates registry handed to the inbox module (un-decoded JSON), or nil if unavailable.
     func templatesRegistry() async -> InboxTemplatesRegistry?
 
@@ -117,7 +121,7 @@ actor VisualInboxRepositoryImpl: VisualInboxRepository {
     private var parsedBranding: (raw: Data, value: InboxBranding)?
 
     /// Current time, sourced from the injectable `DateUtil` so tests can control it.
-    private func currentDate() -> Date {
+    func currentDate() -> Date {
         dateUtil.now
     }
 
@@ -247,10 +251,16 @@ actor VisualInboxRepositoryImpl: VisualInboxRepository {
             return
         }
 
-        // Mark the session gate regardless of outcome: this session has now revalidated once.
-        // A failed revalidation served stale; we do not re-hit the network again this session
-        // (until a process restart reopens the gate).
-        didRevalidateThisSession = true
+        // Close the gate only once there is something to serve. A revalidation that failed with an
+        // empty cache has nothing to fall back on, so closing here would strand the inbox hidden for
+        // the rest of the process — later store updates would keep reading the same empty cache.
+        // Leaving it open lets the next poll retry; a fetch that resolved (fresh OR stale) still
+        // closes it, so a failing server cannot cause a per-poll retry loop.
+        if resolvedTemplates != nil, resolvedBranding != nil {
+            didRevalidateThisSession = true
+        } else {
+            logger.logWithModuleTag("[CIO-Inbox] revalidation produced nothing servable → gate stays open for the next poll", level: .debug)
+        }
 
         // Re-read the enablement flag: the inbox may have been DISABLED by a later poll while this
         // revalidation was in flight (enabled=false + loadState=.hidden). Without this guard, a stale
@@ -276,21 +286,22 @@ actor VisualInboxRepositoryImpl: VisualInboxRepository {
 
     /// The single terminal-behavior decision point — **hidden vs visible**.
     ///
-    /// The inbox is VISIBLE iff ALL three are available:
-    ///   - messages: >=1 selected message (live from the headless store), AND
+    /// The inbox is VISIBLE iff BOTH render assets are available:
     ///   - templates: a fresh/stale cached or just-fetched registry, AND
     ///   - branding: a fresh/stale cached or just-fetched branding (branding is required to render).
-    /// If ANY is missing → `.hidden` with a reason. There is NO error UI outcome here.
+    /// If either is missing → `.hidden` with a reason. There is NO error UI outcome here.
+    ///
+    /// The message count does NOT gate visibility: a renderable inbox with zero selected messages is
+    /// visible-and-empty ("You're all caught up"), not hidden.
     private func computeLoadState(
         messages: [InboxMessage],
         templates: InboxTemplatesRegistry?,
         branding: InboxBranding?
     ) -> VisualInboxLoadState {
-        // Reason composition mirrors Android exactly: an empty selection short-circuits on its own,
-        // and only the templates/branding pair ever combines into one reason.
-        if messages.isEmpty {
-            return .hidden(reason: "no selected messages")
-        }
+        // Reason composition mirrors Android exactly: only the templates/branding pair ever combines
+        // into one reason. An empty selection is NOT hidden — a renderable inbox with nothing in it is
+        // "You're all caught up", which the standalone inbox view renders. Overlay chrome is gated
+        // separately on having renderable messages, so no bell appears over an empty panel.
         var reasons: [String] = []
         if templates == nil { reasons.append("templates unavailable") }
         if branding == nil { reasons.append("branding unavailable") }
@@ -346,33 +357,6 @@ actor VisualInboxRepositoryImpl: VisualInboxRepository {
             logger.logWithModuleTag("[CIO-Inbox] branding fetch exhausted retries: \(error)", level: .error)
             return nil
         }
-    }
-
-    // MARK: - Exposure
-
-    func selectedMessages() async -> [InboxMessage] {
-        // Read messages live from the headless source and apply visual-inbox selection on read.
-        // Serve-stale is provided by the headless layer (a failed poll keeps the last-known-good set).
-        let state = await inAppMessageManager.state
-        let selected = VisualInboxSelector.select(messages: state.inboxMessages, now: currentDate())
-        logger.logWithModuleTag(
-            "[CIO-Inbox] selection: \(state.inboxMessages.count) state message(s) → \(selected.count) selected (cio_inbox prefix / priority / expiry)",
-            level: .debug
-        )
-        return selected
-    }
-
-    func jistMessages() async -> [JistInboxMessage] {
-        let selected = await selectedMessages()
-        return InboxMessageJistAdapter.toJist(selected)
-    }
-
-    func templatesRegistry() async -> InboxTemplatesRegistry? {
-        cachedTemplates()
-    }
-
-    func branding() async -> InboxBranding? {
-        cachedBranding()
     }
 
     // MARK: - Helpers

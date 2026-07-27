@@ -4,7 +4,7 @@ import Foundation
 // sourcery: InjectRegisterShared = "NotificationInbox"
 // sourcery: InjectSingleton
 // Thread safety: @MainActor isolation on mutable state. @unchecked Sendable for manual synchronization.
-class DefaultNotificationInbox: NotificationInbox, @unchecked Sendable {
+class DefaultNotificationInbox: NotificationInbox, VisualInboxEventDispatching, @unchecked Sendable {
     private let logger: Logger
     private let inAppMessageManager: InAppMessageManager
 

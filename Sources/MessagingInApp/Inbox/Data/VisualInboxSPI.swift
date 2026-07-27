@@ -102,6 +102,10 @@ final class VisualInboxProviderImpl: VisualInboxProvider, @unchecked Sendable {
     private let inbox: NotificationInbox
     private let inAppMessageManager: InAppMessageManager
 
+    /// Visual-inbox-only listener dispatch, absent on conformers that don't provide it (the no-op
+    /// inbox), in which case open/dismiss simply fire no callbacks.
+    private var eventDispatcher: VisualInboxEventDispatching? { inbox as? VisualInboxEventDispatching }
+
     init(
         repository: VisualInboxRepository,
         inbox: NotificationInbox,
@@ -180,17 +184,16 @@ final class VisualInboxProviderImpl: VisualInboxProvider, @unchecked Sendable {
 
     /// Reads the current cached overlay state into one coalesced snapshot. Cache-only (no network).
     ///
-    /// The message list is read ONCE (a single `repository.jistMessages()` read) and both the
-    /// snapshot messages and `unopenedCount` are derived from that same array. Reading the list and
-    /// the count via separate reads could observe a store change in between and produce a badge that
-    /// disagrees with the list it's shown next to; deriving both from one read keeps them consistent.
+    /// The load state and the message list come from ONE `repository` read, and the snapshot messages
+    /// plus `unopenedCount` are all derived from that same array. Reading them separately could
+    /// observe a queue/SSE update in between and pair a state with a message list from a different
+    /// version — or a badge that disagrees with the list beside it.
     func snapshot() async -> VisualInboxSnapshot {
-        async let state = self.state()
-        async let jistMessages = repository.jistMessages()
+        async let stateAndMessages = repository.loadStateAndJistMessages()
         async let templates = templatesJSON()
         async let theme = themeJSON()
 
-        let resolvedMessages = await jistMessages
+        let (loadState, resolvedMessages) = await stateAndMessages
         let snapshotMessages = resolvedMessages.map {
             VisualInboxMessageSnapshot(
                 id: $0.queueId,
@@ -203,7 +206,7 @@ final class VisualInboxProviderImpl: VisualInboxProvider, @unchecked Sendable {
         let unopened = resolvedMessages.filter { !$0.opened }.count
 
         return await VisualInboxSnapshot(
-            state: state,
+            state: loadState.asSPIState,
             messages: snapshotMessages,
             unopenedCount: unopened,
             templatesJSON: templates,
@@ -272,7 +275,7 @@ final class VisualInboxProviderImpl: VisualInboxProvider, @unchecked Sendable {
             return false
         }
         inbox.markMessageOpened(message: message)
-        inbox.notifyMessageOpened(message: message)
+        eventDispatcher?.notifyMessageOpened(message: message)
         return true
     }
 
@@ -289,7 +292,7 @@ final class VisualInboxProviderImpl: VisualInboxProvider, @unchecked Sendable {
             return false
         }
         inbox.markMessageDeleted(message: message)
-        inbox.notifyMessageDismissed(message: message)
+        eventDispatcher?.notifyMessageDismissed(message: message)
         return true
     }
 

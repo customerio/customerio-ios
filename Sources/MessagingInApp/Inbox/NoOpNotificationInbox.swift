@@ -58,12 +58,4 @@ class NoOpNotificationInbox: NotificationInbox {
     func notifyMessageShown(message: InboxMessage) {
         // No-op
     }
-
-    func notifyMessageOpened(message: InboxMessage) {
-        // No-op
-    }
-
-    func notifyMessageDismissed(message: InboxMessage) {
-        // No-op
-    }
 }

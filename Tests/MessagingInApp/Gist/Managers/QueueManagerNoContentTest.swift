@@ -164,6 +164,10 @@ private actor VisualInboxRepositoryFake: VisualInboxRepository {
         []
     }
 
+    func loadStateAndJistMessages() async -> (state: VisualInboxLoadState, messages: [JistInboxMessage]) {
+        (.idle, [])
+    }
+
     func templatesRegistry() async -> InboxTemplatesRegistry? {
         nil
     }

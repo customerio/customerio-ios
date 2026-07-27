@@ -93,17 +93,6 @@ public protocol NotificationInbox: Sendable {
     /// to call on every render. No-op if no listener is set.
     func notifyMessageShown(message: InboxMessage)
 
-    /// Notifies the registered ``InboxEventListener`` that a message was opened in the visual inbox.
-    /// Deduped by the SDK so it fires at most once per message per app session. Separate from
-    /// ``markMessageOpened(message:)`` so the callback stays scoped to the visual inbox rather than
-    /// firing for every headless caller. No-op if no listener is set.
-    func notifyMessageOpened(message: InboxMessage)
-
-    /// Notifies the registered ``InboxEventListener`` that a message was dismissed in the visual
-    /// inbox. Separate from ``markMessageDeleted(message:)`` for the same reason as
-    /// ``notifyMessageOpened(message:)``. No-op if no listener is set.
-    func notifyMessageDismissed(message: InboxMessage)
-
     /// Modern Swift Concurrency API for observing inbox changes.
     ///
     /// Returns an async stream that emits inbox messages whenever they change.
@@ -164,4 +153,21 @@ public extension NotificationInbox {
     func messages() -> AsyncStream<[InboxMessage]> {
         messages(topic: nil)
     }
+}
+
+/// Listener dispatch that belongs to the visual inbox alone, kept off ``NotificationInbox`` so it is
+/// neither part of the public surface nor a requirement host conformers have to satisfy.
+///
+/// Open and dismiss are visual-inbox events: they report what the rendered inbox did, unlike
+/// ``NotificationInbox/markMessageOpened(message:)`` and
+/// ``NotificationInbox/markMessageDeleted(message:)``, which every headless caller also reaches. The
+/// visual-inbox SPI dispatches through a conditional cast, so a conformer without this (the no-op
+/// inbox) simply does not fire callbacks.
+protocol VisualInboxEventDispatching: Sendable {
+    /// Notifies the registered `InboxEventListener` that a message was opened in the visual inbox.
+    /// Deduped by the SDK so it fires at most once per message per app session.
+    func notifyMessageOpened(message: InboxMessage)
+
+    /// Notifies the registered `InboxEventListener` that a message was dismissed in the visual inbox.
+    func notifyMessageDismissed(message: InboxMessage)
 }
