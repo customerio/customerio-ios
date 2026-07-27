@@ -7,20 +7,14 @@ import Foundation
 extension VisualInboxRepositoryImpl {
     /// Subscribes to the two store fields the visual inbox reacts to, through a SINGLE subscriber.
     ///
-    /// `inboxMessages`: under SSE, messages arrive via `processInboxMessages` (a store update)
-    /// without running the queue HTTP pipeline, so `runInboxPipeline` never recomputes `loadState`.
-    /// `userId`: a logout must drop the workspace-scoped render assets before the next user.
+    /// `inboxMessages` covers the SSE path, where messages arrive via `processInboxMessages`
+    /// without running the queue HTTP pipeline; `userId` covers logout.
     ///
-    /// Deliberately one subscription rather than one per field: the repository is a DI singleton, so
-    /// every extra subscriber adds a notification and an actor hop to every store mutation for the
-    /// life of the process.
-    ///
-    /// Network-free: the recompute reuses the CURRENTLY-CACHED templates/branding + the enabled flag
-    /// and the live message selection. It NEVER calls `performRevalidation`, and it respects the
-    /// once-per-session gate (`didRevalidateThisSession`) so it cannot trigger a fetch.
+    /// One subscription rather than one per field: the repository is a DI singleton, so every extra
+    /// subscriber adds a notification and an actor hop to every store mutation for the life of the
+    /// process.
     func subscribeToStoreChanges() {
         let subscriber = InAppMessageStoreSubscriber { [weak self] state in
-            // Hop back onto the actor; the handlers read cached assets + the current enabled flag only.
             Task { [weak self] in
                 await self?.handleStoreChange(state: state)
             }

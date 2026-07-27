@@ -68,9 +68,8 @@ class QueueManager {
                             completionHandler(.failure(error))
                         }
                     case 204:
-                        // A no-content poll is an authoritative empty queue, not a failure. Parsing
-                        // the empty body would throw and leave the inbox showing stale rows while
-                        // skipping the visual-inbox pipeline entirely.
+                        // An authoritative empty queue, not a failure: parsing the empty body would
+                        // throw, stranding stale rows on screen and skipping the inbox pipeline.
                         self.publishInboxMessages([], inboxEnabledHeader: inboxEnabledHeader)
                         completionHandler(.success([]))
                     default:
@@ -169,15 +168,13 @@ class QueueManager {
             inboxMessagesMapped = inboxMessages.map { InboxMessageFactory.fromResponse($0) }
         }
         publishInboxMessages(inboxMessagesMapped, inboxEnabledHeader: inboxEnabledHeader)
-
-        // Return in-app messages for existing flow
         return inAppMessages
     }
 
-    /// Publishes the poll's inbox messages to the store and runs the visual-inbox pipeline.
+    /// Publishes the poll's inbox messages to the store, then runs the visual-inbox pipeline.
     ///
-    /// The two steps run in ONE ordered task so they cannot race: the pipeline reads messages live
-    /// from the in-app store, so it must observe the just-applied set rather than a stale one.
+    /// Ordered within one task: the pipeline reads messages live from the store, so it has to
+    /// observe the just-applied set rather than a stale one.
     private func publishInboxMessages(_ messages: [InboxMessage], inboxEnabledHeader: Bool?) {
         let processTask = inAppMessageManager.dispatch(action: .processInboxMessages(messages: messages))
         let repository = visualInboxRepository
@@ -221,10 +218,9 @@ class QueueManager {
         }
     }
 
-    /// Reads the `x-cio-inbox-enabled` enablement flag from the queue response.
+    /// Reads the `x-cio-inbox-enabled` flag, or `nil` when absent (leaving the cached value).
     ///
-    /// Returns `nil` when the header is absent (cached value left unchanged). Read via
-    /// `value(forHTTPHeaderField:)` because it matches case-insensitively, unlike an
+    /// Uses `value(forHTTPHeaderField:)` because it matches case-insensitively, unlike an
     /// `allHeaderFields` subscript.
     private func readInboxEnabledHeader(response: HTTPURLResponse) -> Bool? {
         guard let inboxHeaderValue = response.value(forHTTPHeaderField: "x-cio-inbox-enabled") else {

@@ -106,6 +106,12 @@ actor VisualInboxRepositoryImpl: VisualInboxRepository {
     /// launch starts with (clearing on the latter would defeat the persisted cache entirely).
     var lastKnownUserId: String?
 
+    /// Parsed render assets memoized against their raw payload. Both are read several times per
+    /// store change (visibility, snapshot, chrome) while the payload changes at most once a session,
+    /// so without this every tick re-runs `JSONSerialization` over the full templates registry.
+    private var parsedTemplates: (raw: Data, value: InboxTemplatesRegistry)?
+    private var parsedBranding: (raw: Data, value: InboxBranding)?
+
     /// Current time, sourced from the injectable `DateUtil` so tests can control it.
     private func currentDate() -> Date {
         dateUtil.now
@@ -358,12 +364,18 @@ actor VisualInboxRepositoryImpl: VisualInboxRepository {
     /// The last-known templates registry from the persistent store (no expiry), or nil if none.
     func cachedTemplates() -> InboxTemplatesRegistry? {
         guard let data = assetsCache.data(forKey: .inboxTemplatesCache) else { return nil }
-        return InboxTemplatesRegistry.from(jsonData: data)
+        if let parsedTemplates, parsedTemplates.raw == data { return parsedTemplates.value }
+        guard let registry = InboxTemplatesRegistry.from(jsonData: data) else { return nil }
+        parsedTemplates = (raw: data, value: registry)
+        return registry
     }
 
     /// The last-known branding from the persistent store (no expiry), or nil if none.
     func cachedBranding() -> InboxBranding? {
         guard let data = assetsCache.data(forKey: .inboxBrandingCache) else { return nil }
-        return InboxBranding.from(jsonData: data)
+        if let parsedBranding, parsedBranding.raw == data { return parsedBranding.value }
+        guard let branding = InboxBranding.from(jsonData: data) else { return nil }
+        parsedBranding = (raw: data, value: branding)
+        return branding
     }
 }

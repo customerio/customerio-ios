@@ -48,8 +48,8 @@ struct InboxRenderAssetsCache {
 
     /// Drops every persisted render asset and the enablement flag.
     ///
-    /// Called on logout: these entries are workspace-scoped rather than per-user, so leaving them
-    /// behind would serve one user's templates, branding, and enablement to the next.
+    /// Called on logout: these are workspace-scoped rather than per-user, so leaving them behind
+    /// would serve one user's inbox to the next.
     func clear() {
         keyValueStore.setData(nil, forKey: .inboxTemplatesCache)
         keyValueStore.setData(nil, forKey: .inboxBrandingCache)

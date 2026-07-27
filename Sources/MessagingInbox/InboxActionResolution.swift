@@ -12,7 +12,7 @@ struct InboxActionResolution: Equatable {
     /// The action `behavior` from the message's `properties[actionName]`. Matches the web enum
     /// `InboxActionBehavior` (minus `dismiss`, which is resolved before this type is built).
     enum Behavior: Equatable {
-        /// Open `actionValue` externally as a URL via `UIApplication.open` (system browser).
+        /// Open `actionValue` externally via `UIApplication.open`, as the platform resolves it.
         case openUrl
         /// Route `actionValue` through the SDK's shared deep-link handling
         /// (`deepLinkUtil.handleDeepLink`: host `deepLinkCallback` → universal-link handoff → system
