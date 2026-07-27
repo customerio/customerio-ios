@@ -75,16 +75,15 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     private func handle(urlContexts: Set<UIOpenURLContext>) {
         for context in urlContexts {
             var url = context.url
-            if #available(iOS 17.2, *) {
-                // A tap on a Customer.io Live Activity arrives as a CIO tracking URL: report the
-                // `opened` for the exact delivery shown and unwrap the customer's deep link (nil if
-                // none). Non-CIO URLs are returned unchanged.
-                guard let destination = CustomerIO.liveActivities.handleWidgetUrl(url) else { continue }
-                url = destination
-                if url.host == LiveActivitiesViewController.deepLinkHost {
-                    routeToLiveActivities()
-                    continue
-                }
+            // A tap on a Customer.io Live Activity arrives as a CIO tracking URL: report the
+            // `opened` for the exact delivery shown and unwrap the customer's deep link (nil if
+            // none). Non-CIO URLs are returned unchanged. Activities render from iOS 16.2, so this
+            // must not be gated any higher — only the in-app routing below needs 17.2.
+            guard let destination = CustomerIO.liveActivities.handleWidgetUrl(url) else { continue }
+            url = destination
+            if #available(iOS 17.2, *), url.host == LiveActivitiesViewController.deepLinkHost {
+                routeToLiveActivities()
+                continue
             }
             _ = deepLinkHandler.handleAppSchemeDeepLink(url)
         }
