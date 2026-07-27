@@ -1,4 +1,5 @@
 import CioInternalCommon
+import CioLiveActivities_Attributes
 import Foundation
 import Testing
 
@@ -21,8 +22,35 @@ struct LiveActivitiesModuleAccessorTests {
     @Test func uninitializedStub_handleWidgetUrl_returnsUrlUnchanged() {
         let stub = UninitializedLiveActivities(logger: NoopLogger())
         let url = URL(string: "myapp://settings")!
-        // No opened metric is reported (module isn't initialized), but routing still proceeds.
+        // Not a Customer.io URL: handed back untouched so the host's existing routing is unaffected.
         #expect(stub.handleWidgetUrl(url) == url)
+    }
+
+    /// A Customer.io tracking URL must never be handed back to the host to navigate: it is an
+    /// internal `cio-live-activity://` link. Parsing needs no module state, so even the stub can
+    /// recover the customer's deep link — only the `opened` metric is lost.
+    @Test func uninitializedStub_handleWidgetUrl_returnsRedirect_notTheTrackingUrl() throws {
+        let stub = UninitializedLiveActivities(logger: NoopLogger())
+        let deepLink = "myapp://order/42"
+        let trackingUrl = try #require(CioLiveActivityWidgetUrl.trackingURL(
+            for: CIOLiveActivityMetadata(deliveryId: "d-1", deliveryToken: "t-1", deepLink: deepLink)
+        ))
+
+        let routed = stub.handleWidgetUrl(trackingUrl)
+
+        #expect(routed == URL(string: deepLink))
+        #expect(routed != trackingUrl)
+    }
+
+    /// A tracked activity that carries no deep link has nowhere to route, so the host must be told
+    /// "nothing to open" rather than being handed the tracking URL.
+    @Test func uninitializedStub_handleWidgetUrl_withoutRedirect_returnsNil() throws {
+        let stub = UninitializedLiveActivities(logger: NoopLogger())
+        let trackingUrl = try #require(CioLiveActivityWidgetUrl.trackingURL(
+            for: CIOLiveActivityMetadata(deliveryId: "d-1")
+        ))
+
+        #expect(stub.handleWidgetUrl(trackingUrl) == nil)
     }
 
     #if os(iOS)
