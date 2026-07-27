@@ -282,6 +282,13 @@ class VisualInboxRepositoryTest: XCTestCase {
         gatedStub.release()
         await load
 
+        // The fetch helpers write to the cache as they succeed, undoing the logout's clear; the
+        // completing cycle must drop those payloads again rather than leave them for the next user.
+        let templatesAfterLogout = await repo.templatesRegistry()
+        let brandingAfterLogout = await repo.branding()
+        XCTAssertNil(templatesAfterLogout)
+        XCTAssertNil(brandingAfterLogout)
+
         let callsBeforeNextSession = gatedStub.callCount(for: .getTemplates)
         setUser("user-2")
         await repo.setInboxEnabled(true)

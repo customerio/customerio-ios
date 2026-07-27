@@ -237,14 +237,20 @@ actor VisualInboxRepositoryImpl: VisualInboxRepository {
             logger.logWithModuleTag("[CIO-Inbox] serve-stale used: branding (fetch failed, last-known-good retained)", level: .info)
         }
 
+        // A logout ended this cycle's session while it was in flight. The payloads above were
+        // already written to the cache by the fetch helpers, undoing the logout's clear, so drop
+        // them again and leave the gate open for the next session to revalidate from scratch.
+        guard sessionGeneration == generationAtStart else {
+            logger.logWithModuleTag("[CIO-Inbox] revalidation finished after a logout → discarding its assets", level: .debug)
+            assetsCache.clearRenderAssets()
+            currentLoadState = .hidden(reason: "inbox disabled")
+            return
+        }
+
         // Mark the session gate regardless of outcome: this session has now revalidated once.
         // A failed revalidation served stale; we do not re-hit the network again this session
-        // (until a process restart reopens the gate). Skipped when a logout reset the session
-        // mid-flight: that reopened the gate, and closing it here would let the next session serve
-        // assets it never revalidated.
-        if sessionGeneration == generationAtStart {
-            didRevalidateThisSession = true
-        }
+        // (until a process restart reopens the gate).
+        didRevalidateThisSession = true
 
         // Re-read the enablement flag: the inbox may have been DISABLED by a later poll while this
         // revalidation was in flight (enabled=false + loadState=.hidden). Without this guard, a stale

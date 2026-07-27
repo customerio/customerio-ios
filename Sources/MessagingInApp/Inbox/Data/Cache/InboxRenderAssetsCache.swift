@@ -51,8 +51,17 @@ struct InboxRenderAssetsCache {
     /// Called on logout: these are workspace-scoped rather than per-user, so leaving them behind
     /// would serve one user's inbox to the next.
     func clear() {
+        clearRenderAssets()
+        keyValueStore.setInt(nil, forKey: .inboxEnabledFlag)
+    }
+
+    /// Drops the templates/branding payloads but keeps the enablement flag.
+    ///
+    /// Used when a revalidation completes after the session it belonged to ended: its payloads must
+    /// not survive, but the current session's enablement — possibly already re-established by a
+    /// later poll — must.
+    func clearRenderAssets() {
         keyValueStore.setData(nil, forKey: .inboxTemplatesCache)
         keyValueStore.setData(nil, forKey: .inboxBrandingCache)
-        keyValueStore.setInt(nil, forKey: .inboxEnabledFlag)
     }
 }
