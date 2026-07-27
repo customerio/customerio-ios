@@ -312,6 +312,9 @@ class VisualInboxRepositoryTest: XCTestCase {
         findSubscriber { $0.copy(inboxMessages: [sampleVisualMessage()]) }
     }
 
+    /// The repository registers ONE subscriber covering both `inboxMessages` and `userId`, so the
+    /// user-change probe resolves to the same registration as the message probe.
+
     /// Picks one of the repository's subscriptions by which state change it reacts to.
     ///
     /// The mock records a keyPath subscription only as its derived comparator, so the keyPath itself

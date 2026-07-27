@@ -98,13 +98,9 @@ actor VisualInboxRepositoryImpl: VisualInboxRepository {
     /// (DI singleton) and on logout — i.e. a new session revalidates exactly once.
     var didRevalidateThisSession = false
 
-    /// Strong reference to the weakly-held in-app store subscriber for inbox-message changes, so
-    /// messages arriving via the SSE path (`processInboxMessages`, which skips the queue HTTP
-    /// pipeline) still trigger a `loadState` recompute. See `subscribeToInboxMessageChanges`.
-    var messagesSubscriber: InAppMessageStoreSubscriber?
-
-    /// Strong reference to the weakly-held subscriber watching for logout. See `subscribeToLogout`.
-    var userSubscriber: InAppMessageStoreSubscriber?
+    /// Strong reference to the weakly-held in-app store subscriber (the store holds it weakly).
+    /// One subscriber covers both `inboxMessages` and `userId`. See `subscribeToStoreChanges`.
+    var storeSubscriber: InAppMessageStoreSubscriber?
 
     /// Last non-nil `userId` observed, so logout can be told apart from the nil `userId` every cold
     /// launch starts with (clearing on the latter would defeat the persisted cache entirely).
@@ -129,8 +125,7 @@ actor VisualInboxRepositoryImpl: VisualInboxRepository {
         self.dateUtil = dateUtil
         self.logger = logger
         self.assetsCache = InboxRenderAssetsCache(keyValueStore: keyValueStore)
-        Task { await subscribeToInboxMessageChanges() }
-        Task { await subscribeToLogout() }
+        Task { await subscribeToStoreChanges() }
     }
 
     // MARK: - Enablement gate
