@@ -18,7 +18,7 @@ struct DeliveryActivityWidget: Widget {
             DeliveryLockScreenView(attributes: context.attributes, state: context.state)
                 .activityBackgroundTint(Color.black.opacity(0.85))
                 .activitySystemActionForegroundColor(.white)
-                .widgetURL(context.state.cioMetadata?.deepLink.flatMap(URL.init(string:)))
+                .cioWidgetUrl(context.state.cioMetadata)
         } dynamicIsland: { context in
             DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
@@ -45,7 +45,7 @@ struct DeliveryActivityWidget: Widget {
                 Image(systemName: "shippingbox.fill")
                     .foregroundStyle(context.state.accentColor)
             }
-            .widgetURL(context.state.cioMetadata?.deepLink.flatMap(URL.init(string:)))
+            .cioWidgetUrl(context.state.cioMetadata)
         }
     }
 

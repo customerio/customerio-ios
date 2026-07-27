@@ -8,7 +8,8 @@ import WidgetKit
 ///
 /// Add this to your widget extension's `WidgetBundle`, passing your app's ``CIOSegmentsBranding``.
 /// It renders ``CIOSegmentsAttributes`` on the Lock Screen and in the Dynamic Island, and wires the
-/// tap deep link from the Customer.io push metadata:
+/// tap via `cioWidgetUrl` — reporting an `opened` metric and opening the deep link from the
+/// Customer.io push metadata:
 ///
 /// ```swift
 /// @main
@@ -36,7 +37,7 @@ public struct CIOSegmentsLiveActivity: Widget {
         ActivityConfiguration(for: CIOSegmentsAttributes.self) { context in
             SegmentsLockScreenView(attributes: context.attributes, state: context.state, branding: branding)
                 .modifier(TemplateBackgroundModifier(background: branding.background))
-                .widgetURL(context.state.cioMetadata?.deepLink.flatMap(URL.init(string:)))
+                .cioWidgetUrl(context.state.cioMetadata)
         } dynamicIsland: { context in
             dynamicIsland(for: context)
         }
@@ -68,7 +69,7 @@ public struct CIOSegmentsLiveActivity: Widget {
         } minimal: {
             BrandLogo(logo: branding.logo, size: 20)
         }
-        .widgetURL(context.state.cioMetadata?.deepLink.flatMap(URL.init(string:)))
+        .cioWidgetUrl(context.state.cioMetadata)
     }
 }
 

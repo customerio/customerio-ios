@@ -73,11 +73,13 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
     private func handle(urlContexts: Set<UIOpenURLContext>) {
         for context in urlContexts {
-            let url = context.url
-            if #available(iOS 17.2, *) {
-                // Live Activity tap: let the SDK report an `opened` metric (no-op for non-CIO URLs),
-                // then route to the Live Activities screen. Mirrors how push taps are forwarded.
-                AppDelegate.liveActivities?.handleDeepLinkOpen(url)
+            var url = context.url
+            if #available(iOS 17.2, *), let liveActivities = AppDelegate.liveActivities {
+                // A tap on a Customer.io Live Activity arrives as a CIO tracking URL: report the
+                // `opened` for the exact delivery shown and unwrap the customer's deep link (nil if
+                // none). Non-CIO URLs are returned unchanged.
+                guard let destination = liveActivities.handleWidgetUrl(url) else { continue }
+                url = destination
                 if url.host == LiveActivitiesViewController.deepLinkHost {
                     routeToLiveActivities()
                     continue
