@@ -432,26 +432,52 @@ class NotificationInboxTest: UnitTest {
 
     // MARK: - observe-only listener callbacks (shown / opened / dismissed)
 
-    func test_markMessageOpened_whenListenerSet_expectInboxMessageOpenedFired() {
+    func test_notifyMessageOpened_whenListenerSet_expectInboxMessageOpenedFired() {
+        inAppMessageManagerMock.dispatchReturnValue = Task {}
+        let listener = InboxEventListenerMock()
+        notificationInbox.setInboxEventListener(listener)
+
+        notificationInbox.notifyMessageOpened(message: makeInboxMessage(queueId: "q-1"))
+
+        XCTAssertEqual(listener.messageOpenedCallsCount, 1)
+        XCTAssertEqual(listener.messageOpenedReceivedArguments?.queueId, "q-1")
+        XCTAssertEqual(listener.messageOpenedReceivedArguments?.opened, true)
+    }
+
+    func test_notifyMessageOpened_whenCalledTwiceForSameId_expectFiredOnce() {
+        inAppMessageManagerMock.dispatchReturnValue = Task {}
+        let listener = InboxEventListenerMock()
+        notificationInbox.setInboxEventListener(listener)
+
+        notificationInbox.notifyMessageOpened(message: makeInboxMessage(queueId: "q-1"))
+        notificationInbox.notifyMessageOpened(message: makeInboxMessage(queueId: "q-1"))
+
+        XCTAssertEqual(listener.messageOpenedCallsCount, 1)
+    }
+
+    func test_notifyMessageDismissed_whenListenerSet_expectInboxMessageDismissedFired() {
+        inAppMessageManagerMock.dispatchReturnValue = Task {}
+        let listener = InboxEventListenerMock()
+        notificationInbox.setInboxEventListener(listener)
+
+        notificationInbox.notifyMessageDismissed(message: makeInboxMessage(queueId: "q-1"))
+
+        XCTAssertEqual(listener.messageDismissedCallsCount, 1)
+        XCTAssertEqual(listener.messageDismissedReceivedArguments?.queueId, "q-1")
+    }
+
+    // The headless mutation API must NOT fire the visual-inbox listener: a host with no overlay
+    // mounted should never receive these callbacks (matches Android).
+    func test_markMessageOpenedAndDeleted_whenListenerSet_expectNoCallbacks() {
         inAppMessageManagerMock.dispatchReturnValue = Task {}
         let listener = InboxEventListenerMock()
         notificationInbox.setInboxEventListener(listener)
 
         notificationInbox.markMessageOpened(message: makeInboxMessage(queueId: "q-1"))
-
-        XCTAssertEqual(listener.messageOpenedCallsCount, 1)
-        XCTAssertEqual(listener.messageOpenedReceivedArguments?.queueId, "q-1")
-    }
-
-    func test_markMessageDeleted_whenListenerSet_expectInboxMessageDismissedFired() {
-        inAppMessageManagerMock.dispatchReturnValue = Task {}
-        let listener = InboxEventListenerMock()
-        notificationInbox.setInboxEventListener(listener)
-
         notificationInbox.markMessageDeleted(message: makeInboxMessage(queueId: "q-1"))
 
-        XCTAssertEqual(listener.messageDismissedCallsCount, 1)
-        XCTAssertEqual(listener.messageDismissedReceivedArguments?.queueId, "q-1")
+        XCTAssertEqual(listener.messageOpenedCallsCount, 0)
+        XCTAssertEqual(listener.messageDismissedCallsCount, 0)
     }
 
     func test_notifyMessageShown_whenCalledTwiceForSameId_expectFiredOnce() {

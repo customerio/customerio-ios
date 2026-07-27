@@ -270,6 +270,7 @@ final class VisualInboxProviderImpl: VisualInboxProvider, @unchecked Sendable {
             return false
         }
         inbox.markMessageOpened(message: message)
+        inbox.notifyMessageOpened(message: message)
         return true
     }
 
@@ -286,6 +287,7 @@ final class VisualInboxProviderImpl: VisualInboxProvider, @unchecked Sendable {
             return false
         }
         inbox.markMessageDeleted(message: message)
+        inbox.notifyMessageDismissed(message: message)
         return true
     }
 

@@ -51,7 +51,7 @@ class QueueManager {
                 case .success(let (data, response)):
                     self.updatePollingInterval(headers: response.allHeaderFields)
                     self.updateSseFlag(headers: response.allHeaderFields)
-                    let inboxEnabledHeader = self.readInboxEnabledHeader(headers: response.allHeaderFields)
+                    let inboxEnabledHeader = self.readInboxEnabledHeader(response: response)
                     self.logger.logWithModuleTag("Gist queue fetch response: \(response.statusCode)", level: .debug)
                     switch response.statusCode {
                     case 304:
@@ -67,6 +67,12 @@ class QueueManager {
                         } catch {
                             completionHandler(.failure(error))
                         }
+                    case 204:
+                        // A no-content poll is an authoritative empty queue, not a failure. Parsing
+                        // the empty body would throw and leave the inbox showing stale rows while
+                        // skipping the visual-inbox pipeline entirely.
+                        self.publishInboxMessages([], inboxEnabledHeader: inboxEnabledHeader)
+                        completionHandler(.success([]))
                     default:
                         do {
                             let userQueue = try self.parseResponseBody(data, fromCache: false, inboxEnabledHeader: inboxEnabledHeader)
@@ -162,23 +168,23 @@ class QueueManager {
             // Fresh response: Use server data
             inboxMessagesMapped = inboxMessages.map { InboxMessageFactory.fromResponse($0) }
         }
-        // Dispatch inbox messages to update state. Capture the returned task so the pipeline can
-        // await the store update before reading `state.inboxMessages`.
-        let processTask = inAppMessageManager.dispatch(action: .processInboxMessages(messages: inboxMessagesMapped))
+        publishInboxMessages(inboxMessagesMapped, inboxEnabledHeader: inboxEnabledHeader)
 
-        // Run the visual-inbox data pipeline off the main thread, in ONE ordered task so the steps
-        // can't race: (0) wait for the messages-store update to be applied, (1) persist the
-        // enablement flag, (2) trigger the templates/branding load when enabled. Messages are read
-        // live from the in-app store (updated above via processInboxMessages), so awaiting the
-        // dispatch first ensures the pipeline observes the just-applied messages, not stale ones.
+        // Return in-app messages for existing flow
+        return inAppMessages
+    }
+
+    /// Publishes the poll's inbox messages to the store and runs the visual-inbox pipeline.
+    ///
+    /// The two steps run in ONE ordered task so they cannot race: the pipeline reads messages live
+    /// from the in-app store, so it must observe the just-applied set rather than a stale one.
+    private func publishInboxMessages(_ messages: [InboxMessage], inboxEnabledHeader: Bool?) {
+        let processTask = inAppMessageManager.dispatch(action: .processInboxMessages(messages: messages))
         let repository = visualInboxRepository
         Task { [weak self] in
             await processTask.value
             await self?.runInboxPipeline(repository: repository, enabledHeader: inboxEnabledHeader)
         }
-
-        // Return in-app messages for existing flow
-        return inAppMessages
     }
 
     private func updatePollingInterval(headers: [AnyHashable: Any]) {
@@ -215,10 +221,13 @@ class QueueManager {
         }
     }
 
-    /// Reads the `x-cio-inbox-enabled` enablement flag from the queue response headers.
-    /// Mirrors `updateSseFlag`. Returns `nil` when the header is absent (cached value left unchanged).
-    private func readInboxEnabledHeader(headers: [AnyHashable: Any]) -> Bool? {
-        guard let inboxHeaderValue = headers["x-cio-inbox-enabled"] as? String else {
+    /// Reads the `x-cio-inbox-enabled` enablement flag from the queue response.
+    ///
+    /// Returns `nil` when the header is absent (cached value left unchanged). Read via
+    /// `value(forHTTPHeaderField:)` because it matches case-insensitively, unlike an
+    /// `allHeaderFields` subscript.
+    private func readInboxEnabledHeader(response: HTTPURLResponse) -> Bool? {
+        guard let inboxHeaderValue = response.value(forHTTPHeaderField: "x-cio-inbox-enabled") else {
             logger.logWithModuleTag("[CIO-Inbox] x-cio-inbox-enabled header not present in response", level: .debug)
             return nil
         }

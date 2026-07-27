@@ -93,6 +93,17 @@ public protocol NotificationInbox: Sendable {
     /// to call on every render. No-op if no listener is set.
     func notifyMessageShown(message: InboxMessage)
 
+    /// Notifies the registered ``InboxEventListener`` that a message was opened in the visual inbox.
+    /// Deduped by the SDK so it fires at most once per message per app session. Separate from
+    /// ``markMessageOpened(message:)`` so the callback stays scoped to the visual inbox rather than
+    /// firing for every headless caller. No-op if no listener is set.
+    func notifyMessageOpened(message: InboxMessage)
+
+    /// Notifies the registered ``InboxEventListener`` that a message was dismissed in the visual
+    /// inbox. Separate from ``markMessageDeleted(message:)`` for the same reason as
+    /// ``notifyMessageOpened(message:)``. No-op if no listener is set.
+    func notifyMessageDismissed(message: InboxMessage)
+
     /// Modern Swift Concurrency API for observing inbox changes.
     ///
     /// Returns an async stream that emits inbox messages whenever they change.
