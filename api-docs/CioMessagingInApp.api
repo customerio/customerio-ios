@@ -189,6 +189,8 @@ public interface CioMessagingInApp.NotificationInbox {
 	public fun func setInboxEventListener(_ listener: InboxEventListener?);
 	public fun func notifyMessageActionTaken(message: InboxMessage, actionValue: String, actionName: String) -> Boolean;
 	public fun func notifyMessageShown(message: InboxMessage);
+	public fun func notifyMessageOpened(message: InboxMessage);
+	public fun func notifyMessageDismissed(message: InboxMessage);
 	public fun func messages(topic: String?) -> AsyncStream<List<InboxMessage>>;
 }
 public interface CioMessagingInApp.NotificationInboxChangeListener {
