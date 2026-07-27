@@ -14,8 +14,6 @@ class AppDelegateWithCioIntegration: CioAppDelegateWrapper<AppDelegate> {}
 class AppDelegate: UIResponder, UIApplicationDelegate {
     var storage = DIGraphShared.shared.storage
     var deepLinkHandler = DIGraphShared.shared.deepLinksHandlerUtil
-    /// Exposed so the Live Activities demo screen can drive start/update/end through the SDK.
-    private(set) static var liveActivities: LiveActivitiesModule?
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         // Override point for customization after application launch.
@@ -63,6 +61,22 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             config.flushAt(1)
         }
         config.addModule(LocationModule(config: LocationConfig(mode: .onAppStart)))
+        // Register Live Activities as an SDK-managed module. It initializes during
+        // CustomerIO.initialize(withConfig:) and is reached via `CustomerIO.liveActivities`.
+        // `DeliveryActivityAttributes` is defined in the widget extension folder and shared with
+        // this target; the SDK matches it by type name.
+        if #available(iOS 16.2, *) {
+            config.addModule(LiveActivitiesModule(
+                config:
+                LiveActivityConfigBuilder()
+                    // Built-in templates carry their own identifier (CIOActivityTemplate) — no id needed.
+                    .register(CIOSegmentsAttributes.self)
+                    .register(CIOCountdownTimerAttributes.self)
+                    // A custom (app-owned) type: pass the identifier the backend expects.
+                    .register(DeliveryActivityAttributes.self, identifier: DeliveryActivityAttributes.identifier)
+                    .build()
+            ))
+        }
         CustomerIO.initialize(withConfig: config.build())
 
         // Initialize messaging features after initializing Customer.io SDK
@@ -80,25 +94,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
                 region: settings.inApp.region.toCIORegion()
             ).build())
             .setEventListener(self)
-
-        if #available(iOS 17.2, *) {
-            initializeLiveActivities()
-        }
-    }
-
-    @available(iOS 17.2, *)
-    private func initializeLiveActivities() {
-        // Register the app's own activity type. `DeliveryActivityAttributes` is defined in the
-        // widget extension folder and shared with this target; the SDK matches it by type name.
-        Self.liveActivities = LiveActivitiesModule.initialize(
-            LiveActivityConfigBuilder()
-                // Built-in templates carry their own identifier (CIOActivityTemplate) — no id needed.
-                .register(CIOSegmentsAttributes.self)
-                .register(CIOCountdownTimerAttributes.self)
-                // A custom (app-owned) type: pass the identifier the backend expects.
-                .register(DeliveryActivityAttributes.self, identifier: DeliveryActivityAttributes.identifier)
-                .build()
-        )
     }
 
     // Handle Universal Link deep link from the Customer.io SDK. This function will get called if a push notification

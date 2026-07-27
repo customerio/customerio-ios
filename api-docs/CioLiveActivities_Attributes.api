@@ -4,6 +4,10 @@ public interface CioLiveActivities_Attributes.CIOActivityAttribute {
 public interface CioLiveActivities_Attributes.CIOActivityTemplate {
 	public var identifier: String;
 }
+public final class CioLiveActivities_Attributes.CIOCustomAttributes {
+	public var cioInstanceId: String;
+	public fun init();
+}
 public final class CioLiveActivities_Attributes.CIOLiveActivityMetadata {
 	public var deliveryId: String?;
 	public var deliveryToken: String?;

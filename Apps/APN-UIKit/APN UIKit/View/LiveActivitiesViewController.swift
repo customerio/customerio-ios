@@ -1,4 +1,5 @@
 @unsafe @preconcurrency import ActivityKit
+import CioDataPipelines
 import CioLiveActivities
 import CioLiveActivities_Attributes
 import CioLiveActivities_Templates
@@ -34,7 +35,7 @@ protocol LiveActivityDemoDriving: AnyObject {
 @MainActor
 final class LiveActivityDemoDriver<A: ActivityAttributes>: LiveActivityDemoDriving where A.ContentState: Sendable {
     let title: String
-    private let module: () -> LiveActivitiesModule?
+    private let module: () -> LiveActivitiesInstance
     private let attributes: A
     private let phases: [A.ContentState]
     private let endState: A.ContentState
@@ -50,7 +51,7 @@ final class LiveActivityDemoDriver<A: ActivityAttributes>: LiveActivityDemoDrivi
 
     init(
         title: String,
-        module: @escaping () -> LiveActivitiesModule?,
+        module: @escaping () -> LiveActivitiesInstance,
         attributes: A,
         phases: [A.ContentState],
         endState: A.ContentState,
@@ -69,12 +70,14 @@ final class LiveActivityDemoDriver<A: ActivityAttributes>: LiveActivityDemoDrivi
     }
 
     private func start() {
-        guard let module = module() else {
-            log("\(title): SDK not initialized")
-            return
-        }
         do {
-            handle = try module.start(attributes, contentState: phases[0])
+            guard let started = try module().start(attributes, contentState: phases[0]) else {
+                // nil = module not initialized or this type wasn't registered (both are logged by
+                // the SDK). A genuine ActivityKit failure would throw and land in `catch` below.
+                log("\(title): not started (module not initialized or type not registered)")
+                return
+            }
+            handle = started
             phaseIndex = 0
             log("\(title): start — phase 1/\(phases.count)")
             onChange?()
@@ -232,7 +235,7 @@ class LiveActivitiesViewController: BaseViewController {
     // Builds the delivery-tracking driver with a realistic multi-phase sequence: order placed →
     // preparing → out for delivery (green tint) → delivered, each phase sending an `update`.
     private func makeDrivers() -> [(any LiveActivityDemoDriving, String)] {
-        let module: () -> LiveActivitiesModule? = { AppDelegate.liveActivities }
+        let module: () -> LiveActivitiesInstance = { CustomerIO.liveActivities }
         let log: (String) -> Void = { [weak self] line in self?.appendLog(line) }
         func future(_ seconds: TimeInterval) -> EpochSecondsDate {
             EpochSecondsDate(Date().addingTimeInterval(seconds))
@@ -325,7 +328,7 @@ class LiveActivitiesViewController: BaseViewController {
     }
 
     private func makeDebugCard() -> UIView {
-        let unknownButton = makeButton("Start unregistered type (error)")
+        let unknownButton = makeButton("Start unregistered type (returns nil)")
         unknownButton.addAction(UIAction { [weak self] _ in self?.triggerUnknownType() }, for: .touchUpInside)
 
         let clearButton = makeButton("Clear log")
@@ -340,7 +343,7 @@ class LiveActivitiesViewController: BaseViewController {
 
         return makeCard(
             title: "Errors & Debug",
-            description: "Trigger the typeNotRegistered error path + local start/update/end. (Push tokens aren't publicly readable — they go to Customer.io / os_log.)",
+            description: "Trigger the unregistered-type path (start returns nil) + local start/update/end. (Push tokens aren't publicly readable — they go to Customer.io / os_log.)",
             buttons: [unknownButton, clearButton],
             extraViews: [logView]
         )
@@ -368,15 +371,15 @@ class LiveActivitiesViewController: BaseViewController {
             )
             let content = ActivityContent(state: state, staleDate: nil)
             let activity = try Activity.request(attributes: attributes, content: content, pushType: nil)
-            guard let liveActivities = AppDelegate.liveActivities else {
-                // SDK not initialized: don't leave the just-created system activity orphaned, and
-                // don't flip the UI to "End Adopted" when there's no handle to end it with.
+            guard let adopted = CustomerIO.liveActivities.adopt(activity) else {
+                // adopt returned nil = module not initialized: don't leave the just-created system
+                // activity orphaned, and don't flip the UI to "End Adopted" with no handle to end.
                 appendLog("Adopt: SDK not initialized — ending orphaned activity")
                 showToast(withMessage: "SDK not initialized")
                 Task { await activity.end(nil, dismissalPolicy: .immediate) }
                 return
             }
-            adoptHandle = liveActivities.adopt(activity)
+            adoptHandle = adopted
             adoptButton?.setTitle("End Adopted", for: .normal)
             appendLog("Adopt: app-created activity adopted")
         } catch {
@@ -399,10 +402,9 @@ class LiveActivitiesViewController: BaseViewController {
     // MARK: - Error path
 
     /// A plain `ActivityAttributes` type (no `CIOActivityAttribute` conformance) that is never
-    /// passed to `LiveActivityConfigBuilder.register`, so `start` throws
-    /// `LiveActivityError.typeNotRegistered` before requesting anything — the iOS analog of
-    /// Android's "unknown template" path. Also demonstrates that custom rendering needs no CIO
-    /// protocol on the attributes.
+    /// passed to `LiveActivityConfigBuilder.register`, so `start` returns `nil` (logging the
+    /// unregistered type) before requesting anything — the iOS analog of Android's "unknown
+    /// template" path. Also demonstrates that custom rendering needs no CIO protocol on the attributes.
     @available(iOS 17.2, *)
     private struct UnregisteredDemoAttributes: ActivityAttributes {
         struct ContentState: Codable, Hashable, Sendable {}
@@ -412,22 +414,22 @@ class LiveActivitiesViewController: BaseViewController {
     }
 
     private func triggerUnknownType() {
-        guard let liveActivities = AppDelegate.liveActivities else {
-            // Optional-chaining `try liveActivities?.start` would short-circuit on nil without
-            // throwing, so the catch below would never run and we'd log a false success.
-            appendLog("Unknown type: SDK not initialized")
-            showToast(withMessage: "SDK not initialized")
-            return
-        }
         do {
-            _ = try liveActivities.start(
+            if try CustomerIO.liveActivities.start(
                 UnregisteredDemoAttributes(),
                 contentState: UnregisteredDemoAttributes.sampleState
-            )
-            appendLog("Unknown type: unexpectedly started (no error thrown)")
+            ) != nil {
+                appendLog("Unknown type: unexpectedly started")
+            } else {
+                // Expected: an unregistered type returns nil (the SDK logs the reason) rather than
+                // starting or throwing. A nil here also covers the "module not initialized" case.
+                appendLog("Unknown type: not started — returned nil (expected)")
+                showToast(withMessage: "Expected: unregistered type not started")
+            }
         } catch {
-            appendLog("Unknown type: threw (expected) — \(error)")
-            showToast(withMessage: "Expected error: \(error)")
+            // Only a genuine ActivityKit failure throws here; the unregistered case returns nil above.
+            appendLog("Unknown type: threw — \(error)")
+            showToast(withMessage: "Unexpected error: \(error)")
         }
     }
 

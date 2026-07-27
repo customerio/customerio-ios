@@ -76,7 +76,7 @@ struct LiveActivitiesResetTests {
         // isUserIdentified == true simulates the account switch: B is already identified in the
         // synchronous store when this async reset runs.
         let sdk = FakeLiveActivitiesSDK(isUserIdentified: true)
-        let module = LiveActivitiesModule(config: config, sdk: sdk, tokenStorage: store, localEndTracker: tracker)
+        let module = LiveActivitiesModuleImplementation(config: config, sdk: sdk, tokenStorage: store, localEndTracker: tracker)
 
         await module.handleReset()
 
@@ -103,7 +103,7 @@ struct LiveActivitiesResetTests {
             )
         ]
         let sdk = FakeLiveActivitiesSDK(isUserIdentified: true)
-        let module = LiveActivitiesModule(config: config, sdk: sdk, tokenStorage: store, localEndTracker: tracker)
+        let module = LiveActivitiesModuleImplementation(config: config, sdk: sdk, tokenStorage: store, localEndTracker: tracker)
 
         await module.handleReset()
 
@@ -125,7 +125,7 @@ struct LiveActivitiesResetTests {
             )
         ]
         let sdk = FakeLiveActivitiesSDK(isUserIdentified: true)
-        let module = LiveActivitiesModule(config: config, sdk: sdk, tokenStorage: store, localEndTracker: tracker)
+        let module = LiveActivitiesModuleImplementation(config: config, sdk: sdk, tokenStorage: store, localEndTracker: tracker)
 
         await module.handleReset()
 
