@@ -187,13 +187,19 @@ final class LiveActivitiesModuleImplementation: LiveActivitiesInstance {
     /// Wrap an activity your app created directly, so you can drive `update`/`end` through the
     /// returned handle — only `end` is reported; `update` applies locally and is not reported.
     /// Does not report a `start` event (use `start` for that). Token capture for
-    /// registered types happens automatically via observation regardless of `adopt`. Works with any
-    /// `ActivityAttributes` type.
+    /// registered types happens automatically via observation regardless of `adopt`.
+    ///
+    /// `Attributes` must have been registered via `LiveActivityConfigBuilder.register`; an
+    /// unregistered type returns `nil` (logged, not thrown), matching `start`. Reporting an `end`
+    /// for an unregistered type would have to invent a `notificationType` the backend cannot match,
+    /// so there is nothing meaningful to hand back.
     @available(iOS 16.2, *)
     @discardableResult
     func adopt<Attributes: ActivityAttributes>(_ activity: Activity<Attributes>) -> CIOLiveActivity<Attributes>? {
-        let notificationType = notificationType(forTypeName: String(describing: Attributes.self))
-            ?? String(describing: Attributes.self)
+        guard let notificationType = notificationType(forTypeName: String(describing: Attributes.self)) else {
+            sdk.logger.liveActivityTypeNotRegistered(String(describing: Attributes.self))
+            return nil
+        }
         let id = tokenStorage.resolveInstanceId(forActivityId: activity.id) { ULID.generate() }
         return CIOLiveActivity(
             id: id,

@@ -73,8 +73,13 @@ public protocol LiveActivitiesInstance: AnyObject {
     /// returned handle — only `end` is reported; `update` applies locally and is not reported.
     /// Does not report a `start` event (use `start` for that).
     ///
-    /// - Returns: A handle, or `nil` when the module isn't initialized (logged, never thrown) — so
-    ///   the caller can end the just-created activity rather than leaking it.
+    /// `Attributes` must have been registered via `LiveActivityConfigBuilder.register`. An
+    /// unregistered type has no identifier the backend can match, so there is no meaningful `end`
+    /// to report and `nil` is returned.
+    ///
+    /// - Returns: A handle, or `nil` when the module isn't initialized or `Attributes` wasn't
+    ///   registered (both logged, never thrown) — so the caller can end the just-created activity
+    ///   rather than leaking it.
     @available(iOS 16.2, *)
     @discardableResult
     func adopt<Attributes: ActivityAttributes>(_ activity: Activity<Attributes>) -> CIOLiveActivity<Attributes>?
