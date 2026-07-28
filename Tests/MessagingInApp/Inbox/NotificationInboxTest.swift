@@ -432,38 +432,90 @@ class NotificationInboxTest: UnitTest {
 
     // MARK: - observe-only listener callbacks (shown / opened / dismissed)
 
-    func test_notifyMessageOpened_whenListenerSet_expectInboxMessageOpenedFired() {
+    func test_markOpenedAndNotify_whenListenerSet_expectInboxMessageOpenedFired() async {
         inAppMessageManagerMock.dispatchReturnValue = Task {}
         let listener = InboxEventListenerMock()
         notificationInbox.setInboxEventListener(listener)
 
-        notificationInbox.notifyMessageOpened(message: makeInboxMessage(queueId: "q-1"))
+        await notificationInbox.markOpenedAndNotify(message: makeInboxMessage(queueId: "q-1"))
+        await flushMainQueue()
 
         XCTAssertEqual(listener.messageOpenedCallsCount, 1)
         XCTAssertEqual(listener.messageOpenedReceivedArguments?.queueId, "q-1")
         XCTAssertEqual(listener.messageOpenedReceivedArguments?.opened, true)
     }
 
-    func test_notifyMessageOpened_whenCalledTwiceForSameId_expectFiredOnce() {
+    func test_markOpenedAndNotify_whenCalledTwiceForSameId_expectFiredOnce() async {
         inAppMessageManagerMock.dispatchReturnValue = Task {}
         let listener = InboxEventListenerMock()
         notificationInbox.setInboxEventListener(listener)
 
-        notificationInbox.notifyMessageOpened(message: makeInboxMessage(queueId: "q-1"))
-        notificationInbox.notifyMessageOpened(message: makeInboxMessage(queueId: "q-1"))
+        await notificationInbox.markOpenedAndNotify(message: makeInboxMessage(queueId: "q-1"))
+        await notificationInbox.markOpenedAndNotify(message: makeInboxMessage(queueId: "q-1"))
+        await flushMainQueue()
 
         XCTAssertEqual(listener.messageOpenedCallsCount, 1)
     }
 
-    func test_notifyMessageDismissed_whenListenerSet_expectInboxMessageDismissedFired() {
+    // The store mutation must COMPLETE before the host callback, so a host reading the inbox inside
+    // messageOpened/messageDismissed never observes the pre-mutation state. Asserting only that a
+    // dispatch happened would not catch a regression — the callback hops to main either way, so it
+    // always lands after. Gating the dispatch is what makes this discriminating: while the store
+    // work is parked, the listener must not have fired.
+    func test_markOpenedAndNotify_expectListenerWaitsForStoreMutation() async {
+        let gate = AsyncGate()
+        inAppMessageManagerMock.dispatchReturnValue = Task { await gate.wait() }
+        let listener = InboxEventListenerMock()
+        notificationInbox.setInboxEventListener(listener)
+
+        let call = Task { [notificationInbox, message = makeInboxMessage(queueId: "q-1")] in
+            await notificationInbox!.markOpenedAndNotify(message: message)
+        }
+
+        // Wait until the store call is parked on the gate. Without this the assertion below could
+        // pass simply because the task had not started yet, rather than because of ordering.
+        await waitUntil({ self.inAppMessageManagerMock.dispatchCallsCount == 1 }, "the store mark was dispatched")
+        await flushMainQueue()
+        XCTAssertEqual(listener.messageOpenedCallsCount, 0, "listener fired before the store applied the mark")
+
+        gate.open()
+        await call.value
+        await flushMainQueue()
+        XCTAssertEqual(listener.messageOpenedCallsCount, 1)
+    }
+
+    func test_markDismissedAndNotify_whenListenerSet_expectInboxMessageDismissedFired() async {
         inAppMessageManagerMock.dispatchReturnValue = Task {}
         let listener = InboxEventListenerMock()
         notificationInbox.setInboxEventListener(listener)
 
-        notificationInbox.notifyMessageDismissed(message: makeInboxMessage(queueId: "q-1"))
+        await notificationInbox.markDismissedAndNotify(message: makeInboxMessage(queueId: "q-1"))
+        await flushMainQueue()
 
         XCTAssertEqual(listener.messageDismissedCallsCount, 1)
         XCTAssertEqual(listener.messageDismissedReceivedArguments?.queueId, "q-1")
+    }
+
+    func test_markDismissedAndNotify_expectListenerWaitsForStoreMutation() async {
+        let gate = AsyncGate()
+        inAppMessageManagerMock.dispatchReturnValue = Task { await gate.wait() }
+        let listener = InboxEventListenerMock()
+        notificationInbox.setInboxEventListener(listener)
+
+        let call = Task { [notificationInbox, message = makeInboxMessage(queueId: "q-1")] in
+            await notificationInbox!.markDismissedAndNotify(message: message)
+        }
+
+        // Wait until the store call is parked on the gate. Without this the assertion below could
+        // pass simply because the task had not started yet, rather than because of ordering.
+        await waitUntil({ self.inAppMessageManagerMock.dispatchCallsCount == 1 }, "the store delete was dispatched")
+        await flushMainQueue()
+        XCTAssertEqual(listener.messageDismissedCallsCount, 0, "listener fired before the store applied the delete")
+
+        gate.open()
+        await call.value
+        await flushMainQueue()
+        XCTAssertEqual(listener.messageDismissedCallsCount, 1)
     }
 
     // The headless mutation API must NOT fire the visual-inbox listener: a host with no overlay
@@ -500,6 +552,32 @@ class NotificationInboxTest: UnitTest {
         notificationInbox.notifyMessageShown(message: makeInboxMessage(queueId: "q-2"))
 
         XCTAssertEqual(listener.messageShownCallsCount, 2)
+    }
+
+    /// Drains the main queue so a listener callback the SDK enqueued via `deliverOnMain` has run
+    /// before we assert on it.
+    ///
+    /// `deliverOnMain` only runs inline when already on the main thread; an `async` test body is not,
+    /// so the callback is enqueued instead. Hopping to the main actor lands FIFO behind it, which
+    /// makes this deterministic rather than a sleep.
+    private func flushMainQueue() async {
+        await MainActor.run {}
+    }
+
+    /// Polls `condition` until it holds, so a test can wait for work to reach a known point instead of
+    /// sleeping for a guessed duration. Fails rather than hanging if it never becomes true.
+    private func waitUntil(
+        _ condition: () -> Bool,
+        _ message: String,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) async {
+        for _ in 0 ..< 500 {
+            if condition() { return }
+            await Task.yield()
+            try? await Task.sleep(nanoseconds: 1000000) // 1ms
+        }
+        XCTFail("timed out waiting until \(message)", file: file, line: line)
     }
 
     private func makeInboxMessage(queueId: String) -> InboxMessage {
@@ -1088,5 +1166,25 @@ private class TestNotificationInboxChangeListener: NotificationInboxChangeListen
 
     func onMessagesChanged(messages: [InboxMessage]) {
         onMessagesChangedClosure?(messages)
+    }
+}
+
+/// Lets a test hold an awaited operation open, so it can assert on the state of the world while that
+/// operation is still in flight. Mirrors `GatedInboxNetworkClientStub`'s approach.
+private final class AsyncGate: @unchecked Sendable {
+    private let semaphore = DispatchSemaphore(value: 0)
+
+    func open() {
+        semaphore.signal()
+    }
+
+    /// Suspends (without blocking the caller's thread) until `open()` is called.
+    func wait() async {
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            DispatchQueue.global().async { [semaphore] in
+                semaphore.wait()
+                continuation.resume()
+            }
+        }
     }
 }

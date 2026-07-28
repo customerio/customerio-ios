@@ -164,10 +164,15 @@ public extension NotificationInbox {
 /// visual-inbox SPI dispatches through a conditional cast, so a conformer without this (the no-op
 /// inbox) simply does not fire callbacks.
 protocol VisualInboxEventDispatching: Sendable {
-    /// Notifies the registered `InboxEventListener` that a message was opened in the visual inbox.
-    /// Deduped by the SDK so it fires at most once per message per app session.
-    func notifyMessageOpened(message: InboxMessage)
+    /// Marks the message opened, waits for the store to apply it, then notifies the registered
+    /// `InboxEventListener`. Deduped by the SDK so the callback fires at most once per message per
+    /// app session.
+    ///
+    /// The wait is the point: the mark is dispatched asynchronously, so notifying straight after it
+    /// would let a host that reads the inbox inside the callback still see the message unopened.
+    func markOpenedAndNotify(message: InboxMessage) async
 
-    /// Notifies the registered `InboxEventListener` that a message was dismissed in the visual inbox.
-    func notifyMessageDismissed(message: InboxMessage)
+    /// Marks the message deleted, waits for the store to apply it, then notifies the registered
+    /// `InboxEventListener`. Ordered for the same reason as ``markOpenedAndNotify(message:)``.
+    func markDismissedAndNotify(message: InboxMessage) async
 }

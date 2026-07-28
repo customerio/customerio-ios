@@ -275,8 +275,12 @@ final class VisualInboxProviderImpl: VisualInboxProvider, @unchecked Sendable {
             // permanently dedupe a mark that never applied.
             return false
         }
-        inbox.markMessageOpened(message: message)
-        eventDispatcher?.notifyMessageOpened(message: message)
+        if let eventDispatcher {
+            // Marks and notifies in order, so a host reading the inbox in the callback sees it opened.
+            await eventDispatcher.markOpenedAndNotify(message: message)
+        } else {
+            inbox.markMessageOpened(message: message)
+        }
         return true
     }
 
@@ -292,8 +296,12 @@ final class VisualInboxProviderImpl: VisualInboxProvider, @unchecked Sendable {
             // permanently dedupe a dismiss that never applied.
             return false
         }
-        inbox.markMessageDeleted(message: message)
-        eventDispatcher?.notifyMessageDismissed(message: message)
+        if let eventDispatcher {
+            // Marks and notifies in order, so a host reading the inbox in the callback sees it gone.
+            await eventDispatcher.markDismissedAndNotify(message: message)
+        } else {
+            inbox.markMessageDeleted(message: message)
+        }
         return true
     }
 

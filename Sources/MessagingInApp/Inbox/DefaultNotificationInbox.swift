@@ -31,6 +31,14 @@ class DefaultNotificationInbox: NotificationInbox, VisualInboxEventDispatching, 
     private var openedMessageIds: Set<String> = []
     private let openedMessageIdsLock = NSLock()
 
+    /// Last non-nil `userId` seen from the store, used to detect logout so the "once per session"
+    /// dedupe above does not leak across profiles. Guarded by `lastKnownUserIdLock`.
+    ///
+    /// Without this, a user who logs out and back in gets the same queue ids again and the host
+    /// silently stops receiving `messageShown` / `messageOpened` for them.
+    private var lastKnownUserId: String?
+    private let lastKnownUserIdLock = NSLock()
+
     /// Subscription task for inbox messages state changes
     private var subscriptionTask: Task<Void, Never>?
 
@@ -184,17 +192,28 @@ class DefaultNotificationInbox: NotificationInbox, VisualInboxEventDispatching, 
         deliverOnMain { listener?.messageShown(message: message) }
     }
 
-    func notifyMessageOpened(message: InboxMessage) {
+    func markOpenedAndNotify(message: InboxMessage) async {
+        // Dedupe BEFORE the store round-trip so two concurrent opens of the same message can't both
+        // pass the check while the first is still awaiting.
         openedMessageIdsLock.lock()
         let alreadyOpened = openedMessageIds.contains(message.queueId)
         if !alreadyOpened { openedMessageIds.insert(message.queueId) }
         openedMessageIdsLock.unlock()
+
+        await inAppMessageManager.dispatch(
+            action: .inboxAction(action: .updateOpened(message: message, opened: true))
+        ).value
+
         guard !alreadyOpened else { return }
         let listener = currentInboxEventListener()
         deliverOnMain { listener?.messageOpened(message: message.copy(opened: true)) }
     }
 
-    func notifyMessageDismissed(message: InboxMessage) {
+    func markDismissedAndNotify(message: InboxMessage) async {
+        await inAppMessageManager.dispatch(
+            action: .inboxAction(action: .deleteMessage(message: message))
+        ).value
+
         let listener = currentInboxEventListener()
         deliverOnMain { listener?.messageDismissed(message: message) }
     }
@@ -240,6 +259,8 @@ class DefaultNotificationInbox: NotificationInbox, VisualInboxEventDispatching, 
         let subscriber = InAppMessageStoreSubscriber { [weak self] state in
             guard let self = self else { return }
 
+            self.handleUserChange(userId: state.userId)
+
             let messages = Array(state.inboxMessages)
             // Ensure all listener access happens on MainActor
             Task { @MainActor in
@@ -250,11 +271,40 @@ class DefaultNotificationInbox: NotificationInbox, VisualInboxEventDispatching, 
         // Keep strong reference to subscriber so store's weak reference remains valid
         storeSubscriber = subscriber
 
-        // Subscribe to inbox messages - Array equality detects all property changes
+        // One subscriber covering both fields rather than one per field: this is a long-lived
+        // singleton, so every extra subscriber adds a notification to every store mutation for the
+        // life of the process. `inboxMessages` drives listener delivery (array equality detects all
+        // property changes); `userId` catches logout, which a reset with no messages in the store
+        // would otherwise not surface.
         subscriptionTask = inAppMessageManager.subscribe(
-            keyPath: \.inboxMessages,
+            comparator: { old, new in
+                old.inboxMessages == new.inboxMessages && old.userId == new.userId
+            },
             subscriber: subscriber
         )
+    }
+
+    /// Drops the per-session `messageShown` / `messageOpened` dedupe when a known user logs out.
+    ///
+    /// Only a transition away from a previously-known user clears: every cold launch starts with a
+    /// nil `userId` before identify runs, and clearing on that would be a no-op at best.
+    private func handleUserChange(userId: String?) {
+        lastKnownUserIdLock.lock()
+        let previous = lastKnownUserId
+        lastKnownUserId = userId
+        lastKnownUserIdLock.unlock()
+
+        guard userId == nil, previous != nil else { return }
+
+        shownMessageIdsLock.lock()
+        shownMessageIds.removeAll()
+        shownMessageIdsLock.unlock()
+
+        openedMessageIdsLock.lock()
+        openedMessageIds.removeAll()
+        openedMessageIdsLock.unlock()
+
+        logger.logWithModuleTag("[CIO-Inbox] logout: cleared shown/opened listener dedupe", level: .debug)
     }
 
     /// Notify all registered listeners with filtered messages
