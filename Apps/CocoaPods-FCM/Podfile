@@ -14,6 +14,7 @@ target 'test cocoapods' do
   # Visual Notification Inbox overlay. Its podspec depends on the published `Jist` pod (~> 0.1.0),
   # which CocoaPods resolves from the trunk.
   pod 'CustomerIOMessagingInbox', :path => sdk_local_path
+  pod 'CustomerIOLocationGeofence', :path => sdk_local_path
 
   # Adding APN for internal testing, only. Code from this pod is not used at runtime. 
   # We need to confirm that cocoapods customers can compile their apps with this pod installed. 

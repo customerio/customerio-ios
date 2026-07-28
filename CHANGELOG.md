@@ -1,3 +1,9 @@
+## [4.6.1](https://github.com/customerio/customerio-ios/compare/4.6.0...4.6.1) (2026-07-24)
+
+### Bug Fixes
+
+* preserve wrapped app delegate protocol conformance ([#1163](https://github.com/customerio/customerio-ios/issues/1163)) ([3852901](https://github.com/customerio/customerio-ios/commit/3852901921abaa3529f6a5bd07a901f150e6c87f))
+
 ## [4.6.0](https://github.com/customerio/customerio-ios/compare/4.5.3...4.6.0) (2026-07-06)
 
 ### Features

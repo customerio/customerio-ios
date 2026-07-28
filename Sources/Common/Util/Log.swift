@@ -114,8 +114,9 @@ public class LoggerImpl: Logger {
     private func printMessage(_ message: String, _ level: CioLogLevel, _ tag: String?, _ error: Error?) {
         if !logLevel.shouldLog(level) { return }
 
+        // Tag prefix and error suffix prepended once so dispatcher and systemLogger see the same final message.
         let formattedMessage = formatMessage(message, tag, error)
-        logDispatcher?(level, message) ?? systemLogger.log(formattedMessage, level)
+        logDispatcher?(level, formattedMessage) ?? systemLogger.log(formattedMessage, level)
     }
 
     private func formatMessage(_ message: String, _ tag: String? = nil, _ error: Error? = nil) -> String {

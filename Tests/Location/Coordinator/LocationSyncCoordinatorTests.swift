@@ -10,7 +10,8 @@ struct LocationSyncCoordinatorTests {
     private func makeCoordinator(
         dataPipeline: DataPipelineTrackingMock? = DataPipelineTrackingMock(),
         storage: LastLocationStorageImpl? = nil,
-        dateUtil: DateUtilStub? = nil
+        dateUtil: DateUtilStub? = nil,
+        eventBusHandler: EventBusHandler = EventBusHandlerMock()
     ) -> (LocationSyncCoordinator, LastLocationStorageImpl) {
         let store = storage ?? LastLocationStorageImpl(stateStore: InMemoryLastLocationStateStore())
         let util = dateUtil ?? DateUtilStub()
@@ -20,19 +21,39 @@ struct LocationSyncCoordinatorTests {
             filter: filter,
             dataPipeline: dataPipeline,
             dateUtil: util,
-            logger: LoggerMock()
+            logger: LoggerMock(),
+            eventBusHandler: eventBusHandler
         )
         return (coordinator, store)
     }
 
     @Test
-    func processLocationUpdate_alwaysUpdatesCache() async {
+    func processLocationUpdate_whenTracking_updatesCache() async {
         let (coordinator, storage) = makeCoordinator()
         let location = LocationData(latitude: 37.7749, longitude: -122.4194)
         await coordinator.processLocationUpdate(location)
         let cached = storage.getCachedLocation()
         #expect(cached?.latitude == 37.7749)
         #expect(cached?.longitude == -122.4194)
+    }
+
+    @Test
+    func processLocationUpdate_whenSilent_recordsLastKnownButDoesNotPersistOrTrack() async {
+        let pipelineMock = DataPipelineTrackingMock()
+        let bus = EventBusHandlerMock()
+        let (coordinator, storage) = makeCoordinator(dataPipeline: pipelineMock, eventBusHandler: bus)
+        let location = LocationData(latitude: 37.7749, longitude: -122.4194)
+
+        await coordinator.processLocationUpdate(location, track: false)
+
+        // Silent fix is readable as last-known and drives geofencing via the event, but must not
+        // persist (identify enrichment reads the persisted cache) or emit analytics.
+        let postedLocations = bus.postEventReceivedInvocations.compactMap { ($0 as? LocationAcquiredEvent)?.location }
+        #expect(postedLocations == [location])
+        #expect(await coordinator.getLastKnownLocation()?.latitude == 37.7749)
+        #expect(storage.getCachedLocation() == nil)
+        #expect(pipelineMock.trackCallsCount == 0)
+        #expect(storage.getLastSynced() == nil)
     }
 
     @Test
@@ -126,6 +147,16 @@ struct LocationSyncCoordinatorTests {
         await coordinator.processLocationUpdate(LocationData(latitude: 37.7749, longitude: -122.4194))
         #expect(pipelineMock.trackCallsCount == 0)
         #expect(storage.getLastSynced() == nil)
+    }
+
+    @Test
+    func processLocationUpdate_expectLocationAcquiredEventPosted() async {
+        let bus = EventBusHandlerMock()
+        let (coordinator, _) = makeCoordinator(eventBusHandler: bus)
+        let location = LocationData(latitude: 37, longitude: -122)
+        await coordinator.processLocationUpdate(location)
+        let postedLocations = bus.postEventReceivedInvocations.compactMap { ($0 as? LocationAcquiredEvent)?.location }
+        #expect(postedLocations == [location])
     }
 
     @Test

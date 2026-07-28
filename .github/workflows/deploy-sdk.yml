@@ -227,7 +227,7 @@ jobs:
           tiers=(
             "CustomerIOCommon.podspec"
             "CustomerIOTrackingMigration.podspec CustomerIOMessagingPush.podspec CustomerIOMessagingInApp.podspec CustomerIOLocation.podspec"
-            "CustomerIODataPipelines.podspec CustomerIOMessagingPushAPN.podspec CustomerIOMessagingPushFCM.podspec CustomerIOMessagingInbox.podspec"
+            "CustomerIODataPipelines.podspec CustomerIOMessagingPushAPN.podspec CustomerIOMessagingPushFCM.podspec CustomerIOMessagingInbox.podspec CustomerIOLocationGeofence.podspec"
             "CustomerIO.podspec"
           )
 
