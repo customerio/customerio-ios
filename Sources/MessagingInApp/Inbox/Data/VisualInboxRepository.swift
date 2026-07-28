@@ -38,8 +38,9 @@ protocol VisualInboxRepository: AnyObject, Sendable {
     /// Visual-inbox messages adapted to Jist types (typed/nested properties preserved).
     func jistMessages() async -> [JistInboxMessage]
 
-    /// `loadState` and the Jist message list resolved in ONE call, so a queue/SSE update landing
-    /// between two separate reads cannot pair a state with a message list from a different version.
+    /// `loadState` and the Jist message list resolved in ONE call, rather than two reads a queue/SSE
+    /// update can land between. The message list is internally consistent; the state is best-effort
+    /// (see the implementation for the residual window).
     func loadStateAndJistMessages() async -> (state: VisualInboxLoadState, messages: [JistInboxMessage])
 
     /// Raw templates registry handed to the inbox module (un-decoded JSON), or nil if unavailable.

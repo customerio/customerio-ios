@@ -174,8 +174,6 @@ private final class NoOpNotificationInboxFake: NotificationInbox, @unchecked Sen
     }
 
     func notifyMessageShown(message: InboxMessage) {}
-    func notifyMessageOpened(message: InboxMessage) {}
-    func notifyMessageDismissed(message: InboxMessage) {}
 
     func messages(topic: String?) -> AsyncStream<[InboxMessage]> {
         AsyncStream { $0.finish() }

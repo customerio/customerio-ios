@@ -184,10 +184,11 @@ final class VisualInboxProviderImpl: VisualInboxProvider, @unchecked Sendable {
 
     /// Reads the current cached overlay state into one coalesced snapshot. Cache-only (no network).
     ///
-    /// The load state and the message list come from ONE `repository` read, and the snapshot messages
-    /// plus `unopenedCount` are all derived from that same array. Reading them separately could
-    /// observe a queue/SSE update in between and pair a state with a message list from a different
-    /// version — or a badge that disagrees with the list beside it.
+    /// The snapshot messages and `unopenedCount` are derived from the SAME array, so the badge can
+    /// never disagree with the list beside it. The load state comes from the same `repository` call
+    /// rather than a second read, which narrows but does not eliminate the chance of it being a
+    /// version ahead of that array — it is a visibility hint, and any disagreement resolves on the
+    /// next emission.
     func snapshot() async -> VisualInboxSnapshot {
         async let stateAndMessages = repository.loadStateAndJistMessages()
         async let templates = templatesJSON()

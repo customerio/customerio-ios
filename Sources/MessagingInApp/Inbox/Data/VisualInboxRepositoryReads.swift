@@ -24,8 +24,12 @@ extension VisualInboxRepositoryImpl {
 
     func loadStateAndJistMessages() async -> (state: VisualInboxLoadState, messages: [JistInboxMessage]) {
         let messages = await jistMessages()
-        // Read the state AFTER the messages, in the same actor call: whatever store change the
-        // message read observed is already reflected here, so the pair can never straddle versions.
+        // One call instead of two narrows the window in which the pair can disagree, but does not
+        // close it: `jistMessages()` awaits the store, and the store subscriber can recompute
+        // `currentLoadState` from a newer update while this actor is suspended there. The returned
+        // messages are internally consistent (one array, one selection); the state is best-effort and
+        // may be a version ahead. The UI treats it as a visibility hint, so a transient disagreement
+        // resolves on the next emission.
         return (currentLoadState, messages)
     }
 
