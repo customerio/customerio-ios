@@ -28,7 +28,7 @@ struct LiveActivitiesModuleAccessorTests {
 
     /// A Customer.io tracking URL must never be handed back to the host to navigate: it is an
     /// internal `cio-live-activity://` link. Parsing needs no module state, so even the stub can
-    /// recover the customer's deep link — only the `opened` metric is lost.
+    /// recover the customer's deep link.
     @Test func uninitializedStub_handleWidgetUrl_returnsRedirect_notTheTrackingUrl() throws {
         let stub = UninitializedLiveActivities(logger: NoopLogger())
         let deepLink = "myapp://order/42"
@@ -51,6 +51,43 @@ struct LiveActivitiesModuleAccessorTests {
         ))
 
         #expect(stub.handleWidgetUrl(trackingUrl) == nil)
+    }
+
+    @Test func uninitializedStub_handleWidgetUrl_buffersOpenAndStillReturnsRedirect() throws {
+        var buffered: [CIOLiveActivityMetadata] = []
+        let stub = UninitializedLiveActivities(logger: NoopLogger()) { buffered.append($0) }
+        let deepLink = "myapp://order/42"
+        let trackingUrl = try #require(CioLiveActivityWidgetUrl.trackingURL(
+            for: CIOLiveActivityMetadata(deliveryId: "d-1", deliveryToken: "t-1", deepLink: deepLink)
+        ))
+
+        let routed = stub.handleWidgetUrl(trackingUrl)
+
+        #expect(routed == URL(string: deepLink))
+        #expect(buffered.count == 1)
+        #expect(buffered.first?.deliveryId == "d-1")
+        #expect(buffered.first?.deliveryToken == "t-1")
+    }
+
+    @Test func uninitializedStub_handleWidgetUrl_nonCioUrl_doesNotBuffer() {
+        var buffered: [CIOLiveActivityMetadata] = []
+        let stub = UninitializedLiveActivities(logger: NoopLogger()) { buffered.append($0) }
+
+        _ = stub.handleWidgetUrl(URL(string: "myapp://settings")!)
+
+        #expect(buffered.isEmpty)
+    }
+
+    @Test func uninitializedStub_handleWidgetUrl_withoutDeliveryId_doesNotBuffer() throws {
+        var buffered: [CIOLiveActivityMetadata] = []
+        let stub = UninitializedLiveActivities(logger: NoopLogger()) { buffered.append($0) }
+        let trackingUrl = try #require(CioLiveActivityWidgetUrl.trackingURL(
+            for: CIOLiveActivityMetadata(deepLink: "myapp://order/42")
+        ))
+
+        _ = stub.handleWidgetUrl(trackingUrl)
+
+        #expect(buffered.isEmpty)
     }
 
     #if os(iOS)

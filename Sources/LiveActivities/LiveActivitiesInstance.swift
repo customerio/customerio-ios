@@ -128,9 +128,11 @@ public extension LiveActivitiesInstance {
 /// `CustomerIO.initialize(withConfig:)` finishes can't surface an error to a production host app.
 final class UninitializedLiveActivities: LiveActivitiesInstance {
     private let logger: Logger
+    private let bufferOpen: (CIOLiveActivityMetadata) -> Void
 
-    init(logger: Logger) {
+    init(logger: Logger, bufferOpen: @escaping (CIOLiveActivityMetadata) -> Void = { _ in }) {
         self.logger = logger
+        self.bufferOpen = bufferOpen
     }
 
     #if os(iOS)
@@ -173,18 +175,17 @@ final class UninitializedLiveActivities: LiveActivitiesInstance {
         // Customer.io could have reported, so a log would only be noise on an app's normal deep links.
         guard let parsed = CioLiveActivityWidgetUrl.parse(url) else { return url }
 
-        // A Customer.io URL did arrive but no module is live, so the `opened` metric is lost. Say why
-        // accurately: below iOS 16.2 the module never initializes by design, and telling the developer
-        // to register it would send them after a fix that cannot exist on that OS.
         if #available(iOS 16.2, *) {
-            logger.moduleNotInitialized()
+            if let deliveryId = parsed.deliveryId, !deliveryId.isEmpty {
+                bufferOpen(CIOLiveActivityMetadata(deliveryId: deliveryId, deliveryToken: parsed.deliveryToken))
+            }
         } else {
             logger.liveActivitiesUnsupportedOS()
         }
 
         // Parsing is pure, so the customer's deep link is still recoverable. Returning it keeps
-        // routing identical to the initialized path — only the metric is missing. Returning the raw
-        // tracking URL instead would hand the host an internal cio-live-activity:// link to navigate.
+        // routing identical to the initialized path. Returning the raw tracking URL instead would
+        // hand the host an internal cio-live-activity:// link to navigate.
         return parsed.redirect
     }
 }

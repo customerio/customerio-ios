@@ -234,6 +234,10 @@ final class LiveActivitiesModuleImplementation: LiveActivitiesInstance {
         return parsed.redirect
     }
 
+    func reportBufferedOpen(metadata: CIOLiveActivityMetadata) {
+        deliveryTracker.reportOpened(metadata: metadata)
+    }
+
     // MARK: - Private
 
     private func notificationType(forTypeName name: String) -> String? {

@@ -1,4 +1,4 @@
-// swift-tools-version:5.10
+// swift-tools-version:5.5
 
 /**
  Manifest file for Swift Package Manager. This file defines our Swift Package for customers to install our SDK modules into their app. 

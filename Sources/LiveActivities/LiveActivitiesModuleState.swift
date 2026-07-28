@@ -9,12 +9,19 @@ import Foundation
 final class LiveActivitiesModuleState {
     static let shared = LiveActivitiesModuleState()
 
-    private var instance: LiveActivitiesInstance = UninitializedLiveActivities(logger: DIGraphShared.shared.logger)
+    private var instance: LiveActivitiesInstance
     /// One-shot latch so only the first caller builds the implementation, guarded by `lock`.
     private var didInitialize = false
     private let lock = NSLock()
 
-    private init() {}
+    private let pendingOpens = LiveActivityPendingOpens()
+
+    private init() {
+        self.instance = UninitializedLiveActivities(
+            logger: DIGraphShared.shared.logger,
+            bufferOpen: pendingOpens.append
+        )
+    }
 
     /// Performs one-time setup of the Live Activities module (push-to-start seed + observation).
     /// Called from `LiveActivitiesModule.initialize()` during `CustomerIO.initialize(withConfig:)`.
@@ -56,6 +63,10 @@ final class LiveActivitiesModuleState {
         lock.lock()
         instance = implementation
         lock.unlock()
+
+        for metadata in pendingOpens.drain() {
+            implementation.reportBufferedOpen(metadata: metadata)
+        }
     }
 
     /// The current Live Activities instance. Before initialization, returns a stub that logs an error when used.
