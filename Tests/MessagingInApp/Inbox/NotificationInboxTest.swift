@@ -554,6 +554,121 @@ class NotificationInboxTest: UnitTest {
         XCTAssertEqual(listener.messageShownCallsCount, 2)
     }
 
+    // MARK: - profile change dedupe reset
+
+    /// Delivers a store state through the subscription the inbox already owns, standing in for what
+    /// the reducer produces after an identify, a logout, or a reset.
+    ///
+    /// Builds the state with the initialiser rather than `copy`, because `copy` coalesces with
+    /// `??` and so cannot express clearing an identity back to nil — which is the case under test.
+    private func deliverStoreState(userId: String?, anonymousId: String? = nil) async {
+        await waitUntil({ self.inAppMessageManagerMock.subscribeReceivedArguments != nil },
+            "the inbox subscribed to the store"
+        )
+        inAppMessageManagerMock.subscribeReceivedArguments?.subscriber.newState(
+            state: InAppMessageState(userId: userId, anonymousId: anonymousId)
+        )
+    }
+
+    func test_profileChange_whenUserLogsOut_expectShownDedupeCleared() async {
+        let listener = InboxEventListenerMock()
+        notificationInbox.setInboxEventListener(listener)
+        let message = makeInboxMessage(queueId: "q-1")
+
+        await deliverStoreState(userId: "user-a")
+        notificationInbox.notifyMessageShown(message: message)
+        await flushMainQueue()
+        XCTAssertEqual(listener.messageShownCallsCount, 1)
+
+        await deliverStoreState(userId: nil)
+        notificationInbox.notifyMessageShown(message: message)
+        await flushMainQueue()
+
+        XCTAssertEqual(listener.messageShownCallsCount, 2, "logout did not clear the shown dedupe")
+    }
+
+    func test_profileChange_whenUserLogsOut_expectOpenedDedupeCleared() async {
+        inAppMessageManagerMock.dispatchReturnValue = Task {}
+        let listener = InboxEventListenerMock()
+        notificationInbox.setInboxEventListener(listener)
+        let message = makeInboxMessage(queueId: "q-1")
+
+        await deliverStoreState(userId: "user-a")
+        await notificationInbox.markOpenedAndNotify(message: message)
+        await flushMainQueue()
+        XCTAssertEqual(listener.messageOpenedCallsCount, 1)
+
+        await deliverStoreState(userId: nil)
+        await notificationInbox.markOpenedAndNotify(message: message)
+        await flushMainQueue()
+
+        XCTAssertEqual(listener.messageOpenedCallsCount, 2, "logout did not clear the opened dedupe")
+    }
+
+    // `identify()` switches A → B directly, with no reset on the path, so the switch itself has to
+    // clear. Otherwise A → B → A hands A back its own queue ids while they are still deduped and the
+    // host silently stops seeing them.
+    func test_profileChange_whenProfileSwitchesDirectlyAndBack_expectDedupeClearedEachTime() async {
+        let listener = InboxEventListenerMock()
+        notificationInbox.setInboxEventListener(listener)
+        let message = makeInboxMessage(queueId: "q-1")
+
+        await deliverStoreState(userId: "user-a")
+        notificationInbox.notifyMessageShown(message: message)
+        await flushMainQueue()
+        XCTAssertEqual(listener.messageShownCallsCount, 1)
+
+        // Direct identify A → B, no logout in between.
+        await deliverStoreState(userId: "user-b")
+        notificationInbox.notifyMessageShown(message: message)
+        await flushMainQueue()
+        XCTAssertEqual(listener.messageShownCallsCount, 2, "a direct profile switch did not clear the dedupe")
+
+        // ...and back to A, whose ids were last seen two states ago.
+        await deliverStoreState(userId: "user-a")
+        notificationInbox.notifyMessageShown(message: message)
+        await flushMainQueue()
+        XCTAssertEqual(listener.messageShownCallsCount, 3, "switching back to a previous profile did not clear the dedupe")
+    }
+
+    // An anonymous session never sets `userId`, yet still receives messages (the queue fetch accepts
+    // either identity). Its reset is therefore only visible through `anonymousId`.
+    func test_profileChange_whenAnonymousSessionResets_expectDedupeCleared() async {
+        let listener = InboxEventListenerMock()
+        notificationInbox.setInboxEventListener(listener)
+        let message = makeInboxMessage(queueId: "q-1")
+
+        await deliverStoreState(userId: nil, anonymousId: "anon-a")
+        notificationInbox.notifyMessageShown(message: message)
+        await flushMainQueue()
+        XCTAssertEqual(listener.messageShownCallsCount, 1)
+
+        await deliverStoreState(userId: nil, anonymousId: nil)
+        notificationInbox.notifyMessageShown(message: message)
+        await flushMainQueue()
+
+        XCTAssertEqual(listener.messageShownCallsCount, 2, "an anonymous reset did not clear the shown dedupe")
+    }
+
+    // The counterpart to the tests above: arriving at a FIRST identity is not a profile change. Every
+    // cold launch starts with no identity before identify runs, so clearing there would erase a
+    // dedupe that is still valid — and would make the tests above pass for the wrong reason.
+    func test_profileChange_whenFirstIdentityArrives_expectDedupeRetained() async {
+        let listener = InboxEventListenerMock()
+        notificationInbox.setInboxEventListener(listener)
+        let message = makeInboxMessage(queueId: "q-1")
+
+        notificationInbox.notifyMessageShown(message: message)
+        await flushMainQueue()
+        XCTAssertEqual(listener.messageShownCallsCount, 1)
+
+        await deliverStoreState(userId: "user-a")
+        notificationInbox.notifyMessageShown(message: message)
+        await flushMainQueue()
+
+        XCTAssertEqual(listener.messageShownCallsCount, 1, "the first identify cleared a still-valid dedupe")
+    }
+
     /// Drains the main queue so a listener callback the SDK enqueued via `deliverOnMain` has run
     /// before we assert on it.
     ///
