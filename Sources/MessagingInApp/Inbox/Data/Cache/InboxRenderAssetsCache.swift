@@ -1,13 +1,18 @@
 import CioInternalCommon
 import Foundation
 
-/// Workspace-scoped persistent store for the visual-inbox render assets (templates JSON, branding
-/// JSON, and the enablement flag).
+/// Persistent store for the visual-inbox render assets (templates JSON, branding JSON, and the
+/// enablement flag).
 ///
 /// Backed by the same `SharedKeyValueStorage` the headless inbox uses to persist its queue response
 /// body, so render assets survive process restarts and reuse the existing storage mechanism rather
-/// than a bespoke in-memory store. Entries are workspace-scoped (the underlying UserDefaults file is
-/// keyed by site id), not per-user.
+/// than a bespoke in-memory store.
+///
+/// Scope: entries are **app-wide**, not per-user and not per-workspace. `SharedKeyValueStorage`
+/// resolves to a single shared UserDefaults suite with no site id in its name, unlike the
+/// site-scoped storage used elsewhere in the SDK. Cross-user carryover is handled by clearing on
+/// logout (see `clear()`); re-initializing the SDK with a different site id in one process would
+/// still read the previous workspace's assets until the next revalidation overwrites them.
 ///
 /// There is **no wall-clock TTL/expiry**: freshness is decided by once-per-session server
 /// revalidation in `VisualInboxRepository`, matching Android's model. This store's sole job is to

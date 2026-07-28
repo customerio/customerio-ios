@@ -31,6 +31,17 @@ class DefaultNotificationInbox: NotificationInbox, VisualInboxEventDispatching, 
     private var openedMessageIds: Set<String> = []
     private let openedMessageIdsLock = NSLock()
 
+    /// Last identity seen from the store — `userId` when identified, `anonymousId` otherwise — used
+    /// to detect a profile change so the "once per session" dedupe above does not leak across
+    /// profiles. Guarded by `lastKnownIdentityLock`.
+    ///
+    /// Without this, a profile that comes back gets the same queue ids again and the host silently
+    /// stops receiving `messageShown` / `messageOpened` for them. `anonymousId` is part of the
+    /// identity because an anonymous session keeps `userId` nil while still receiving messages (the
+    /// queue fetch accepts either), so its reset would otherwise look like no change at all.
+    private var lastKnownIdentity: String?
+    private let lastKnownIdentityLock = NSLock()
+
     /// Subscription task for inbox messages state changes
     private var subscriptionTask: Task<Void, Never>?
 
@@ -184,17 +195,28 @@ class DefaultNotificationInbox: NotificationInbox, VisualInboxEventDispatching, 
         deliverOnMain { listener?.messageShown(message: message) }
     }
 
-    func notifyMessageOpened(message: InboxMessage) {
+    func markOpenedAndNotify(message: InboxMessage) async {
+        // Dedupe BEFORE the store round-trip so two concurrent opens of the same message can't both
+        // pass the check while the first is still awaiting.
         openedMessageIdsLock.lock()
         let alreadyOpened = openedMessageIds.contains(message.queueId)
         if !alreadyOpened { openedMessageIds.insert(message.queueId) }
         openedMessageIdsLock.unlock()
+
+        await inAppMessageManager.dispatch(
+            action: .inboxAction(action: .updateOpened(message: message, opened: true))
+        ).value
+
         guard !alreadyOpened else { return }
         let listener = currentInboxEventListener()
         deliverOnMain { listener?.messageOpened(message: message.copy(opened: true)) }
     }
 
-    func notifyMessageDismissed(message: InboxMessage) {
+    func markDismissedAndNotify(message: InboxMessage) async {
+        await inAppMessageManager.dispatch(
+            action: .inboxAction(action: .deleteMessage(message: message))
+        ).value
+
         let listener = currentInboxEventListener()
         deliverOnMain { listener?.messageDismissed(message: message) }
     }
@@ -240,6 +262,8 @@ class DefaultNotificationInbox: NotificationInbox, VisualInboxEventDispatching, 
         let subscriber = InAppMessageStoreSubscriber { [weak self] state in
             guard let self = self else { return }
 
+            self.handleIdentityChange(userId: state.userId, anonymousId: state.anonymousId)
+
             let messages = Array(state.inboxMessages)
             // Ensure all listener access happens on MainActor
             Task { @MainActor in
@@ -250,11 +274,49 @@ class DefaultNotificationInbox: NotificationInbox, VisualInboxEventDispatching, 
         // Keep strong reference to subscriber so store's weak reference remains valid
         storeSubscriber = subscriber
 
-        // Subscribe to inbox messages - Array equality detects all property changes
+        // Deliberately keyed on `inboxMessages` ALONE (array equality detects all property changes).
+        // Adding the identity fields to a comparator here wakes this long-lived singleton on every
+        // identify and logout, spawning a MainActor notify hop each time — measurably enough extra
+        // work on those mutations to destabilise unrelated timing tests. A profile change is read
+        // from the state this subscription already delivers instead.
+        //
+        // Residual gap, accepted: a profile change while the store holds no messages does not fire,
+        // so the dedupe survives it. That can only strand ids whose messages were already dismissed,
+        // and a dismissed message does not come back.
         subscriptionTask = inAppMessageManager.subscribe(
             keyPath: \.inboxMessages,
             subscriber: subscriber
         )
+    }
+
+    /// Drops the per-session `messageShown` / `messageOpened` dedupe when the profile changes.
+    ///
+    /// Keyed on the identity that actually serves the queue — `userId` when identified,
+    /// `anonymousId` otherwise — and fires on ANY move away from a known identity, not just on
+    /// logout: `identify()` switches A → B directly without a reset, so A → B → A would otherwise
+    /// hand A back its own queue ids while they are still deduped.
+    ///
+    /// A first identity (`previous == nil`) never clears: every cold launch starts with no identity
+    /// before identify runs, and clearing on that would be a no-op at best.
+    private func handleIdentityChange(userId: String?, anonymousId: String?) {
+        let identity = userId ?? anonymousId
+
+        lastKnownIdentityLock.lock()
+        let previous = lastKnownIdentity
+        lastKnownIdentity = identity
+        lastKnownIdentityLock.unlock()
+
+        guard let previous, previous != identity else { return }
+
+        shownMessageIdsLock.lock()
+        shownMessageIds.removeAll()
+        shownMessageIdsLock.unlock()
+
+        openedMessageIdsLock.lock()
+        openedMessageIds.removeAll()
+        openedMessageIdsLock.unlock()
+
+        logger.logWithModuleTag("[CIO-Inbox] profile changed: cleared shown/opened listener dedupe", level: .debug)
     }
 
     /// Notify all registered listeners with filtered messages
