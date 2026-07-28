@@ -271,15 +271,17 @@ class DefaultNotificationInbox: NotificationInbox, VisualInboxEventDispatching, 
         // Keep strong reference to subscriber so store's weak reference remains valid
         storeSubscriber = subscriber
 
-        // One subscriber covering both fields rather than one per field: this is a long-lived
-        // singleton, so every extra subscriber adds a notification to every store mutation for the
-        // life of the process. `inboxMessages` drives listener delivery (array equality detects all
-        // property changes); `userId` catches logout, which a reset with no messages in the store
-        // would otherwise not surface.
+        // Deliberately keyed on `inboxMessages` ALONE (array equality detects all property changes).
+        // Adding `userId` to a comparator here wakes this long-lived singleton on every identify and
+        // logout, spawning a MainActor notify hop each time — measurably enough extra work on userId
+        // mutations to destabilise unrelated timing tests. Logout is detected from the state this
+        // subscription already delivers instead.
+        //
+        // Residual gap, accepted: a reset while the store holds no messages does not fire, so the
+        // dedupe survives it. That can only strand ids whose messages were already dismissed, and a
+        // dismissed message does not come back.
         subscriptionTask = inAppMessageManager.subscribe(
-            comparator: { old, new in
-                old.inboxMessages == new.inboxMessages && old.userId == new.userId
-            },
+            keyPath: \.inboxMessages,
             subscriber: subscriber
         )
     }
