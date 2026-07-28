@@ -24,6 +24,13 @@ public protocol VisualInboxProvider: Sendable {
     /// store subscription). Emissions are de-duped, and reading a snapshot only reads cached state —
     /// it never triggers a network fetch.
     func observe() -> AsyncStream<VisualInboxSnapshot>
+
+    /// One coalesced read of everything the overlay renders from. Cache-only (never fetches).
+    /// Prefer this to reading `state`/`messages`/`templatesJSON`/`themeJSON` separately: those are
+    /// four hops onto the repository actor and a store change between them yields a snapshot whose
+    /// parts disagree.
+    func snapshot() async -> VisualInboxSnapshot
+
     /// Ensures the data layer has fetched templates + branding (idempotent / fetch-if-missing),
     /// transitioning `state` through `.loading` to a terminal `.visible`/`.hidden`.
     func load() async
@@ -95,10 +102,9 @@ final class VisualInboxProviderImpl: VisualInboxProvider, @unchecked Sendable {
     private let inbox: NotificationInbox
     private let inAppMessageManager: InAppMessageManager
 
-    /// De-dupe guard for `observe()` emissions. Guarded by `lastSnapshotLock` because the two merge
-    /// child tasks can recompute concurrently.
-    private var lastEmittedSnapshot: VisualInboxSnapshot?
-    private let lastSnapshotLock = NSLock()
+    /// Visual-inbox-only listener dispatch, absent on conformers that don't provide it (the no-op
+    /// inbox), in which case open/dismiss simply fire no callbacks.
+    private var eventDispatcher: VisualInboxEventDispatching? { inbox as? VisualInboxEventDispatching }
 
     init(
         repository: VisualInboxRepository,
@@ -115,7 +121,10 @@ final class VisualInboxProviderImpl: VisualInboxProvider, @unchecked Sendable {
     }
 
     func observe() -> AsyncStream<VisualInboxSnapshot> {
-        AsyncStream { continuation in
+        // De-dupe state is per stream, not per provider: two concurrent observers must not suppress
+        // each other's emissions.
+        let lastEmitted = EmittedSnapshotBox()
+        return AsyncStream { continuation in
             // Merge two trigger sources — repository.loadStateChanges() (enablement/visibility flips)
             // and the in-app store's inboxMessages (message-set / opened-state changes) — each
             // re-reading the current cached state to emit a coalesced, de-duped snapshot. No fetch.
@@ -138,12 +147,12 @@ final class VisualInboxProviderImpl: VisualInboxProvider, @unchecked Sendable {
                 await withTaskGroup(of: Void.self) { group in
                     group.addTask {
                         for await _ in loadStateChanges {
-                            await self?.emitSnapshot(into: continuation)
+                            await self?.emitSnapshot(into: continuation, lastEmitted: lastEmitted)
                         }
                     }
                     group.addTask {
                         for await _ in storeTicks {
-                            await self?.emitSnapshot(into: continuation)
+                            await self?.emitSnapshot(into: continuation, lastEmitted: lastEmitted)
                         }
                     }
                     await group.waitForAll()
@@ -164,31 +173,28 @@ final class VisualInboxProviderImpl: VisualInboxProvider, @unchecked Sendable {
         }
     }
 
-    /// Last emitted snapshot, used to de-dupe. Accessed only from the single `observe()` driver
-    /// task's child tasks; serialized by the `lastSnapshotLock` since those run concurrently.
-    private func emitSnapshot(into continuation: AsyncStream<VisualInboxSnapshot>.Continuation) async {
-        let snapshot = await currentSnapshot()
-        lastSnapshotLock.lock()
-        let changed = lastEmittedSnapshot == nil || lastEmittedSnapshot != snapshot
-        if changed { lastEmittedSnapshot = snapshot }
-        lastSnapshotLock.unlock()
-        guard changed else { return }
+    private func emitSnapshot(
+        into continuation: AsyncStream<VisualInboxSnapshot>.Continuation,
+        lastEmitted: EmittedSnapshotBox
+    ) async {
+        let snapshot = await snapshot()
+        guard lastEmitted.accept(snapshot) else { return }
         continuation.yield(snapshot)
     }
 
     /// Reads the current cached overlay state into one coalesced snapshot. Cache-only (no network).
     ///
-    /// The message list is read ONCE (a single `repository.jistMessages()` read) and both the
-    /// snapshot messages and `unopenedCount` are derived from that same array. Reading the list and
-    /// the count via separate reads could observe a store change in between and produce a badge that
-    /// disagrees with the list it's shown next to; deriving both from one read keeps them consistent.
-    private func currentSnapshot() async -> VisualInboxSnapshot {
-        async let state = self.state()
-        async let jistMessages = repository.jistMessages()
+    /// The snapshot messages and `unopenedCount` are derived from the SAME array, so the badge can
+    /// never disagree with the list beside it. The load state comes from the same `repository` call
+    /// rather than a second read, which narrows but does not eliminate the chance of it being a
+    /// version ahead of that array — it is a visibility hint, and any disagreement resolves on the
+    /// next emission.
+    func snapshot() async -> VisualInboxSnapshot {
+        async let stateAndMessages = repository.loadStateAndJistMessages()
         async let templates = templatesJSON()
         async let theme = themeJSON()
 
-        let resolvedMessages = await jistMessages
+        let (loadState, resolvedMessages) = await stateAndMessages
         let snapshotMessages = resolvedMessages.map {
             VisualInboxMessageSnapshot(
                 id: $0.queueId,
@@ -201,7 +207,7 @@ final class VisualInboxProviderImpl: VisualInboxProvider, @unchecked Sendable {
         let unopened = resolvedMessages.filter { !$0.opened }.count
 
         return await VisualInboxSnapshot(
-            state: state,
+            state: loadState.asSPIState,
             messages: snapshotMessages,
             unopenedCount: unopened,
             templatesJSON: templates,
@@ -270,6 +276,7 @@ final class VisualInboxProviderImpl: VisualInboxProvider, @unchecked Sendable {
             return false
         }
         inbox.markMessageOpened(message: message)
+        eventDispatcher?.notifyMessageOpened(message: message)
         return true
     }
 
@@ -286,6 +293,7 @@ final class VisualInboxProviderImpl: VisualInboxProvider, @unchecked Sendable {
             return false
         }
         inbox.markMessageDeleted(message: message)
+        eventDispatcher?.notifyMessageDismissed(message: message)
         return true
     }
 
@@ -335,6 +343,22 @@ private extension VisualInboxLoadState {
         case .visible(let count): return .visible(messageCount: count)
         case .hidden(let reason): return .hidden(reason: reason)
         }
+    }
+}
+
+/// Holds the last snapshot an `observe()` stream forwarded, so repeated recomputes that produce an
+/// identical snapshot are dropped. Locked because the two merge child tasks recompute concurrently.
+private final class EmittedSnapshotBox: @unchecked Sendable {
+    private var value: VisualInboxSnapshot?
+    private let lock = NSLock()
+
+    /// Records `snapshot` and returns whether it differs from the last accepted one.
+    func accept(_ snapshot: VisualInboxSnapshot) -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        guard value != snapshot else { return false }
+        value = snapshot
+        return true
     }
 }
 

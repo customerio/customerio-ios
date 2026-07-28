@@ -180,7 +180,7 @@ class VisualInboxRepositoryTest: XCTestCase {
 
     // MARK: - Fix B: inbox-message changes (SSE path) recompute loadState without a fetch
 
-    func test_messageChange_whenMessagesBecomeEmpty_expectRecomputesToHiddenWithoutFetch() async {
+    func test_messageChange_whenMessagesBecomeEmpty_expectRecomputesToEmptyWithoutFetch() async {
         // Under SSE, messages arrive via processInboxMessages (a store update) without running the
         // queue HTTP pipeline. The repository subscribes to inboxMessages and re-resolves loadState on
         // change — reusing cached templates/branding, never issuing a network fetch.
@@ -200,14 +200,15 @@ class VisualInboxRepositoryTest: XCTestCase {
         inAppMessageManagerMock.underlyingState = InAppMessageState().copy(userId: "user-1", inboxMessages: [])
         await notifyMessageSubscriber()
 
-        // loadState recomputed to hidden (no messages) — purely from the store change, no new fetch.
+        // loadState recomputed to visible-and-empty — purely from the store change, no new fetch. It
+        // stays visible because the inbox is still renderable; the list shows its empty state.
         let recomputed = await repo.loadState
-        XCTAssertEqual(recomputed, .hidden(reason: "no selected messages"))
+        XCTAssertEqual(recomputed, .visible(messageCount: 0))
         XCTAssertEqual(networkStub.calls.count, callsAfterLoad)
     }
 
     func test_messageChange_whenMessagesReappear_expectRecomputesToVisibleWithoutFetch() async {
-        // The reverse transition: an SSE update that adds a message flips hidden→visible with no fetch.
+        // The reverse transition: an SSE update that adds a message takes the count 0 → 1 with no fetch.
         setUser("user-1", withMessages: [])
         let repo = makeRepository()
         await repo.setInboxEnabled(true)
@@ -215,7 +216,7 @@ class VisualInboxRepositoryTest: XCTestCase {
 
         await repo.enableAndLoad()
         let loaded = await repo.loadState
-        XCTAssertEqual(loaded, .hidden(reason: "no selected messages"))
+        XCTAssertEqual(loaded, .visible(messageCount: 0))
         let callsAfterLoad = networkStub.calls.count
 
         inAppMessageManagerMock.underlyingState = InAppMessageState().copy(userId: "user-1", inboxMessages: [sampleVisualMessage()])
@@ -224,6 +225,93 @@ class VisualInboxRepositoryTest: XCTestCase {
         let recomputed = await repo.loadState
         XCTAssertEqual(recomputed, .visible(messageCount: 1))
         XCTAssertEqual(networkStub.calls.count, callsAfterLoad)
+    }
+
+    func test_logout_whenUserBecomesNil_expectAssetsClearedAndRevalidationReopened() async {
+        setUser("user-1")
+        let repo = makeRepository()
+        await repo.setInboxEnabled(true)
+        stubSuccess()
+
+        await repo.enableAndLoad()
+        let loaded = await repo.loadState
+        XCTAssertEqual(loaded, .visible(messageCount: 1))
+        let callsAfterFirstLoad = networkStub.calls.count
+
+        // Identify then log out: only a transition away from a known user clears.
+        await notifyUserSubscriber(state: InAppMessageState().copy(userId: "user-1"))
+        await notifyUserSubscriber(state: InAppMessageState())
+
+        // Workspace-scoped assets and the enablement flag are gone, so nothing carries to user 2.
+        let enabledAfterLogout = await repo.isInboxEnabled
+        let templatesAfterLogout = await repo.templatesRegistry()
+        let brandingAfterLogout = await repo.branding()
+        XCTAssertFalse(enabledAfterLogout)
+        XCTAssertNil(templatesAfterLogout)
+        XCTAssertNil(brandingAfterLogout)
+
+        // The gate reopened, so the next enabled load hits the network again.
+        setUser("user-2")
+        await repo.setInboxEnabled(true)
+        await repo.enableAndLoad()
+        XCTAssertGreaterThan(networkStub.calls.count, callsAfterFirstLoad)
+    }
+
+    func test_logout_whenLoggedOutWhileRevalidationInFlight_expectGateStaysOpen() async {
+        // A logout landing while the fetch is parked reopens the gate. The completing fetch belongs
+        // to the old user, so it must not close it — otherwise the next session serves assets it
+        // never revalidated.
+        setUser("user-1")
+        let gatedStub = GatedInboxNetworkClientStub(templatesJSON: templatesJSON, brandingJSON: brandingJSON)
+        let repo = VisualInboxRepositoryImpl(
+            networkClient: gatedStub,
+            inAppMessageManager: inAppMessageManagerMock,
+            keyValueStore: keyValueStore,
+            sleeper: sleeperMock,
+            dateUtil: dateUtilStub,
+            logger: logger
+        )
+        await repo.setInboxEnabled(true)
+
+        async let load: Void = repo.enableAndLoad()
+        await gatedStub.waitUntilFirstCallStarted()
+
+        // Identify then log out, both WHILE the fetch is still parked.
+        await notifyUserSubscriber(state: InAppMessageState().copy(userId: "user-1"))
+        await notifyUserSubscriber(state: InAppMessageState())
+
+        gatedStub.release()
+        await load
+
+        // The fetch helpers write to the cache as they succeed, undoing the logout's clear; the
+        // completing cycle must drop those payloads again rather than leave them for the next user.
+        let templatesAfterLogout = await repo.templatesRegistry()
+        let brandingAfterLogout = await repo.branding()
+        XCTAssertNil(templatesAfterLogout)
+        XCTAssertNil(brandingAfterLogout)
+
+        let callsBeforeNextSession = gatedStub.callCount(for: .getTemplates)
+        setUser("user-2")
+        await repo.setInboxEnabled(true)
+        await repo.enableAndLoad()
+
+        XCTAssertGreaterThan(gatedStub.callCount(for: .getTemplates), callsBeforeNextSession)
+    }
+
+    func test_logout_whenUserWasNeverIdentified_expectAssetsRetained() async {
+        // A cold launch starts with a nil userId before identify runs; that must not wipe the cache.
+        setUser("user-1")
+        let repo = makeRepository()
+        await repo.setInboxEnabled(true)
+        stubSuccess()
+        await repo.enableAndLoad()
+
+        await notifyUserSubscriber(state: InAppMessageState())
+
+        let stillEnabled = await repo.isInboxEnabled
+        let retainedTemplates = await repo.templatesRegistry()
+        XCTAssertTrue(stillEnabled)
+        XCTAssertNotNil(retainedTemplates)
     }
 
     func test_messageChange_whenSessionNotYetRevalidated_expectNoRecomputeAndNoFetch() async {
@@ -246,17 +334,57 @@ class VisualInboxRepositoryTest: XCTestCase {
     /// Invokes the `inboxMessages` subscriber the repository registered in its initializer, simulating
     /// a store update (the SSE path). Yields first so the repo's init `Task` has registered.
     private func notifyMessageSubscriber() async {
-        // Let the repository's init-time subscribe Task run and capture the subscriber.
-        for _ in 0 ..< 200 where inAppMessageManagerMock.subscribeReceivedArguments == nil {
+        var subscriber: InAppMessageStoreSubscriber?
+        for _ in 0 ..< 200 where subscriber == nil {
+            subscriber = findMessagesSubscriber()
+            if subscriber != nil { break }
             await Task.yield()
             try? await Task.sleep(nanoseconds: 1000000) // 1ms
         }
-        guard let subscriber = inAppMessageManagerMock.subscribeReceivedArguments?.subscriber else {
+        guard let subscriber else {
             XCTFail("repository did not subscribe to inboxMessages")
             return
         }
         subscriber.newState(state: inAppMessageManagerMock.underlyingState)
         // Let the subscriber's recompute Task hop back onto the actor and finish.
+        try? await Task.sleep(nanoseconds: 30000000) // 30ms
+    }
+
+    private func findMessagesSubscriber() -> InAppMessageStoreSubscriber? {
+        findSubscriber { $0.copy(inboxMessages: [sampleVisualMessage()]) }
+    }
+
+    /// The repository registers ONE subscriber covering both `inboxMessages` and `userId`, so the
+    /// user-change probe resolves to the same registration as the message probe.
+
+    /// Picks one of the repository's subscriptions by which state change it reacts to.
+    ///
+    /// The mock records a keyPath subscription only as its derived comparator, so the keyPath itself
+    /// is not recoverable. Instead, probe each comparator with a pair of states that differ ONLY in
+    /// the field of interest: the comparator reporting them as different is that subscription.
+    private func findSubscriber(differingOn change: (InAppMessageState) -> InAppMessageState) -> InAppMessageStoreSubscriber? {
+        let base = InAppMessageState()
+        let changed = change(base)
+        return inAppMessageManagerMock.subscribeReceivedInvocations
+            .first { !$0.comparator(base, changed) }?
+            .subscriber
+    }
+
+    /// Drives the repository's `userId` subscription with `state`, simulating an identify or logout.
+    private func notifyUserSubscriber(state: InAppMessageState) async {
+        var subscriber: InAppMessageStoreSubscriber?
+        for _ in 0 ..< 200 where subscriber == nil {
+            subscriber = findSubscriber { $0.copy(userId: "probe-user") }
+            if subscriber != nil { break }
+            await Task.yield()
+            try? await Task.sleep(nanoseconds: 1000000) // 1ms
+        }
+        guard let subscriber else {
+            XCTFail("repository did not subscribe to userId")
+            return
+        }
+        inAppMessageManagerMock.underlyingState = state
+        subscriber.newState(state: state)
         try? await Task.sleep(nanoseconds: 30000000) // 30ms
     }
 
@@ -371,8 +499,10 @@ class VisualInboxRepositoryTest: XCTestCase {
         XCTAssertEqual(networkStub.callCount(for: .getBranding), 3)
     }
 
-    func test_enableAndLoad_whenNoMessages_expectHidden() async {
-        // No selectable messages -> hidden even though templates + branding succeed.
+    func test_enableAndLoad_whenNoMessages_expectVisibleAndEmpty() async {
+        // Templates + branding succeed, so the inbox is renderable and therefore visible with zero
+        // messages ("You're all caught up") rather than hidden. The message count does not gate
+        // visibility; overlay chrome gates itself on having renderable messages.
         setUser("user-1", withMessages: [])
         let repo = makeRepository()
         await repo.setInboxEnabled(true)
@@ -381,7 +511,23 @@ class VisualInboxRepositoryTest: XCTestCase {
         await repo.enableAndLoad()
 
         let state = await repo.loadState
-        XCTAssertEqual(state, .hidden(reason: "no selected messages"))
+        XCTAssertEqual(state, .visible(messageCount: 0))
+    }
+
+    func test_enableAndLoad_whenRevalidationFailsWithNoCache_expectGateStaysOpen() async {
+        // Nothing fetched and nothing cached means nothing to serve, so the gate must stay open and
+        // let the next poll retry. Closing it would strand the inbox hidden for the whole process,
+        // since later store updates would keep reading the same empty cache.
+        setUser("user-1")
+        let repo = makeRepository()
+        await repo.setInboxEnabled(true)
+        networkStub.handler = { _, _ in throw InboxNetworkError.noResponse }
+
+        await repo.enableAndLoad()
+        let callsAfterFirstLoad = networkStub.calls.count
+        await repo.enableAndLoad()
+
+        XCTAssertGreaterThan(networkStub.calls.count, callsAfterFirstLoad)
     }
 
     // MARK: - Serve-stale (templates/branding) keeps the inbox visible

@@ -7,8 +7,9 @@ import Foundation
 /// via `MessagingInApp.shared.setInboxEventListener(_:)` to be notified when the user taps a message
 /// action and, optionally, to intercept that action so the SDK does NOT run its default behavior.
 ///
-/// "Default behavior" is the SDK opening the action's url itself (`http(s)`/`openUrl`/`newTab`) or
-/// logging an unhandled `deeplink`. Returning `true` from ``messageActionTaken(message:actionName:actionValue:)``
+/// "Default behavior" is the SDK acting on the action itself: an `openUrl` opens externally, an
+/// `openDeeplink` routes through the app's deep-link handling. Returning `true` from
+/// ``messageActionTaken(message:actionName:actionValue:)``
 /// tells the SDK the host fully handled the action (e.g. it navigated in-app), so the SDK suppresses
 /// its default. Returning `false` (or not setting a listener) lets the SDK run the default.
 ///

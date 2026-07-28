@@ -4,7 +4,7 @@ import Foundation
 // sourcery: InjectRegisterShared = "NotificationInbox"
 // sourcery: InjectSingleton
 // Thread safety: @MainActor isolation on mutable state. @unchecked Sendable for manual synchronization.
-class DefaultNotificationInbox: NotificationInbox, @unchecked Sendable {
+class DefaultNotificationInbox: NotificationInbox, VisualInboxEventDispatching, @unchecked Sendable {
     private let logger: Logger
     private let inAppMessageManager: InAppMessageManager
 
@@ -144,16 +144,6 @@ class DefaultNotificationInbox: NotificationInbox, @unchecked Sendable {
 
     func markMessageOpened(message: InboxMessage) {
         inAppMessageManager.dispatch(action: .inboxAction(action: .updateOpened(message: message, opened: true)))
-        // Observe-only host callback: a message was opened. Dedupe per session (mirrors
-        // notifyMessageShown) so repeated marks — incl. via the public API — fire it at most once.
-        openedMessageIdsLock.lock()
-        let alreadyOpened = openedMessageIds.contains(message.queueId)
-        if !alreadyOpened { openedMessageIds.insert(message.queueId) }
-        openedMessageIdsLock.unlock()
-        guard !alreadyOpened else { return }
-        // Reflect the just-applied opened state: the resolved `message` predates the dispatch above.
-        let listener = currentInboxEventListener()
-        deliverOnMain { listener?.messageOpened(message: message.copy(opened: true)) }
     }
 
     func markMessageUnopened(message: InboxMessage) {
@@ -162,9 +152,6 @@ class DefaultNotificationInbox: NotificationInbox, @unchecked Sendable {
 
     func markMessageDeleted(message: InboxMessage) {
         inAppMessageManager.dispatch(action: .inboxAction(action: .deleteMessage(message: message)))
-        // Observe-only host callback: a message was dismissed/removed.
-        let listener = currentInboxEventListener()
-        deliverOnMain { listener?.messageDismissed(message: message) }
     }
 
     func trackMessageClicked(message: InboxMessage, actionName: String?) {
@@ -195,6 +182,21 @@ class DefaultNotificationInbox: NotificationInbox, @unchecked Sendable {
         guard !alreadyShown else { return }
         let listener = currentInboxEventListener()
         deliverOnMain { listener?.messageShown(message: message) }
+    }
+
+    func notifyMessageOpened(message: InboxMessage) {
+        openedMessageIdsLock.lock()
+        let alreadyOpened = openedMessageIds.contains(message.queueId)
+        if !alreadyOpened { openedMessageIds.insert(message.queueId) }
+        openedMessageIdsLock.unlock()
+        guard !alreadyOpened else { return }
+        let listener = currentInboxEventListener()
+        deliverOnMain { listener?.messageOpened(message: message.copy(opened: true)) }
+    }
+
+    func notifyMessageDismissed(message: InboxMessage) {
+        let listener = currentInboxEventListener()
+        deliverOnMain { listener?.messageDismissed(message: message) }
     }
 
     /// Delivers a host `InboxEventListener` callback on the main thread. Inbox mutations can be

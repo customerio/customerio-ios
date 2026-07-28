@@ -38,6 +38,11 @@ protocol VisualInboxRepository: AnyObject, Sendable {
     /// Visual-inbox messages adapted to Jist types (typed/nested properties preserved).
     func jistMessages() async -> [JistInboxMessage]
 
+    /// `loadState` and the Jist message list resolved in ONE call, rather than two reads a queue/SSE
+    /// update can land between. The message list is internally consistent; the state is best-effort
+    /// (see the implementation for the residual window).
+    func loadStateAndJistMessages() async -> (state: VisualInboxLoadState, messages: [JistInboxMessage])
+
     /// Raw templates registry handed to the inbox module (un-decoded JSON), or nil if unavailable.
     func templatesRegistry() async -> InboxTemplatesRegistry?
 
@@ -64,23 +69,24 @@ protocol VisualInboxRepository: AnyObject, Sendable {
 /// Freshness model (matches Android): templates/branding are revalidated against the server
 /// **once per session** (first `enableAndLoad()` of the process, via `GistQueueNetwork`); later
 /// same-session loads serve the stored payload with no network call. No wall-clock TTL — the
-/// in-memory gate resets only on process restart (DI singleton); logout clears persisted assets.
+/// gate reopens on process restart (DI singleton) and on logout, which also clears the persisted
+/// assets so they are never served to the next user.
 ///
 /// Serve-stale: a failed poll never dispatches new inbox messages, so the store retains its
 /// last-known-good set (persisted via the headless 304 cache); templates/branding fall back to the
 /// last stored payload on failed revalidation.
 actor VisualInboxRepositoryImpl: VisualInboxRepository {
     private let networkClient: InboxNetworkClient
-    private let inAppMessageManager: InAppMessageManager
+    let inAppMessageManager: InAppMessageManager
     private let sleeper: Sleeper
     private let dateUtil: DateUtil
-    private let logger: Logger
+    let logger: Logger
 
     /// Workspace-scoped persistent store for render assets + enablement flag (no expiry; serve-stale
     /// source and same-session payload source).
-    private let assetsCache: InboxRenderAssetsCache
+    let assetsCache: InboxRenderAssetsCache
 
-    private var currentLoadState: VisualInboxLoadState = .idle {
+    var currentLoadState: VisualInboxLoadState = .idle {
         didSet { loadStateObservers.notify() }
     }
 
@@ -93,17 +99,30 @@ actor VisualInboxRepositoryImpl: VisualInboxRepository {
     private var isFetchInFlight = false
 
     /// Session-scoped revalidation gate: false until this session's first revalidation, then
-    /// same-session loads serve the stored payload with no network call. Resets ONLY on process
-    /// restart (DI singleton) — i.e. a new session revalidates exactly once.
-    private var didRevalidateThisSession = false
+    /// same-session loads serve the stored payload with no network call. Reopens on process restart
+    /// (DI singleton) and on logout — i.e. a new session revalidates exactly once.
+    var didRevalidateThisSession = false
 
-    /// Strong reference to the weakly-held in-app store subscriber for inbox-message changes, so
-    /// messages arriving via the SSE path (`processInboxMessages`, which skips the queue HTTP
-    /// pipeline) still trigger a `loadState` recompute. See `subscribeToInboxMessageChanges`.
-    private var messagesSubscriber: InAppMessageStoreSubscriber?
+    /// Bumped every time a session reset reopens the gate. A revalidation that spans a bump belongs
+    /// to the old session and must not close the gate behind the new one.
+    var sessionGeneration = 0
+
+    /// Strong reference to the weakly-held in-app store subscriber (the store holds it weakly).
+    /// One subscriber covers both `inboxMessages` and `userId`. See `subscribeToStoreChanges`.
+    var storeSubscriber: InAppMessageStoreSubscriber?
+
+    /// Last non-nil `userId` observed, so logout can be told apart from the nil `userId` every cold
+    /// launch starts with (clearing on the latter would defeat the persisted cache entirely).
+    var lastKnownUserId: String?
+
+    /// Parsed render assets memoized against their raw payload. Both are read several times per
+    /// store change (visibility, snapshot, chrome) while the payload changes at most once a session,
+    /// so without this every tick re-runs `JSONSerialization` over the full templates registry.
+    private var parsedTemplates: (raw: Data, value: InboxTemplatesRegistry)?
+    private var parsedBranding: (raw: Data, value: InboxBranding)?
 
     /// Current time, sourced from the injectable `DateUtil` so tests can control it.
-    private func currentDate() -> Date {
+    func currentDate() -> Date {
         dateUtil.now
     }
 
@@ -121,45 +140,7 @@ actor VisualInboxRepositoryImpl: VisualInboxRepository {
         self.dateUtil = dateUtil
         self.logger = logger
         self.assetsCache = InboxRenderAssetsCache(keyValueStore: keyValueStore)
-        Task { await subscribeToInboxMessageChanges() }
-    }
-
-    // MARK: - Message-change observation
-
-    /// Subscribes to the in-app store's `inboxMessages` so the visual inbox stays in sync under the
-    /// SSE path. Under SSE, messages arrive via `processInboxMessages` (a store update) without
-    /// running the queue HTTP pipeline, so `runInboxPipeline` never recomputes `loadState`. We mirror
-    /// `DefaultNotificationInbox`'s subscription and re-resolve `loadState` on each message change.
-    ///
-    /// Network-free: the recompute reuses the CURRENTLY-CACHED templates/branding + the enabled flag
-    /// and the live message selection. It NEVER calls `performRevalidation`, and it respects the
-    /// once-per-session gate (`didRevalidateThisSession`) so it cannot trigger a fetch.
-    private func subscribeToInboxMessageChanges() {
-        let subscriber = InAppMessageStoreSubscriber { [weak self] _ in
-            // Hop back onto the actor; recompute reads cached assets + the current enabled flag only.
-            Task { [weak self] in
-                await self?.recomputeLoadStateFromCurrentMessages()
-            }
-        }
-        messagesSubscriber = subscriber
-        inAppMessageManager.subscribe(keyPath: \.inboxMessages, subscriber: subscriber)
-    }
-
-    /// Lightweight, network-free `loadState` recompute triggered by an inbox-message change.
-    ///
-    /// Gated so it can never trigger a fetch and never overrides a disabled inbox:
-    ///  - if the inbox is disabled → `.hidden`;
-    ///  - if this session has not yet revalidated → no-op (the pending `enableAndLoad` owns the first
-    ///    resolution; recomputing here with possibly-empty cache would be premature);
-    ///  - otherwise re-resolve from the currently-cached templates/branding + live messages.
-    private func recomputeLoadStateFromCurrentMessages() async {
-        guard assetsCache.enabledFlag() ?? false else {
-            currentLoadState = .hidden(reason: "inbox disabled")
-            return
-        }
-        guard didRevalidateThisSession else { return }
-        logger.logWithModuleTag("[CIO-Inbox] inbox messages changed → recomputing loadState (no fetch)", level: .debug)
-        await resolveLoadState(templates: cachedTemplates(), branding: cachedBranding())
+        Task { await subscribeToStoreChanges() }
     }
 
     // MARK: - Enablement gate
@@ -246,6 +227,8 @@ actor VisualInboxRepositoryImpl: VisualInboxRepository {
     private func performRevalidation(staleTemplates: InboxTemplatesRegistry?, staleBranding: InboxBranding?) async {
         logger.logWithModuleTag("[CIO-Inbox] revalidation triggered (once-per-session): fetching templates + branding", level: .info)
         currentLoadState = .loading
+        // Session this cycle belongs to; re-checked before closing the gate below.
+        let generationAtStart = sessionGeneration
         let retrier = InboxFetchRetrier(sleeper: sleeper, logger: logger)
         let (fetchedTemplates, fetchedBranding) = await fetchTemplatesAndBranding(state: inAppMessageManager.state, retrier: retrier)
 
@@ -259,10 +242,26 @@ actor VisualInboxRepositoryImpl: VisualInboxRepository {
             logger.logWithModuleTag("[CIO-Inbox] serve-stale used: branding (fetch failed, last-known-good retained)", level: .info)
         }
 
-        // Mark the session gate regardless of outcome: this session has now revalidated once.
-        // A failed revalidation served stale; we do not re-hit the network again this session
-        // (until a process restart reopens the gate).
-        didRevalidateThisSession = true
+        // A logout ended this cycle's session while it was in flight. The payloads above were
+        // already written to the cache by the fetch helpers, undoing the logout's clear, so drop
+        // them again and leave the gate open for the next session to revalidate from scratch.
+        guard sessionGeneration == generationAtStart else {
+            logger.logWithModuleTag("[CIO-Inbox] revalidation finished after a logout → discarding its assets", level: .debug)
+            assetsCache.clearRenderAssets()
+            currentLoadState = .hidden(reason: "inbox disabled")
+            return
+        }
+
+        // Close the gate only once there is something to serve. A revalidation that failed with an
+        // empty cache has nothing to fall back on, so closing here would strand the inbox hidden for
+        // the rest of the process — later store updates would keep reading the same empty cache.
+        // Leaving it open lets the next poll retry; a fetch that resolved (fresh OR stale) still
+        // closes it, so a failing server cannot cause a per-poll retry loop.
+        if resolvedTemplates != nil, resolvedBranding != nil {
+            didRevalidateThisSession = true
+        } else {
+            logger.logWithModuleTag("[CIO-Inbox] revalidation produced nothing servable → gate stays open for the next poll", level: .debug)
+        }
 
         // Re-read the enablement flag: the inbox may have been DISABLED by a later poll while this
         // revalidation was in flight (enabled=false + loadState=.hidden). Without this guard, a stale
@@ -280,7 +279,7 @@ actor VisualInboxRepositoryImpl: VisualInboxRepository {
 
     /// Sets the terminal load state from the resolved render assets + live message selection, and
     /// logs the final visibility decision.
-    private func resolveLoadState(templates: InboxTemplatesRegistry?, branding: InboxBranding?) async {
+    func resolveLoadState(templates: InboxTemplatesRegistry?, branding: InboxBranding?) async {
         let messages = await selectedMessages()
         currentLoadState = computeLoadState(messages: messages, templates: templates, branding: branding)
         logger.logVisualInboxVisibility(currentLoadState)
@@ -288,25 +287,29 @@ actor VisualInboxRepositoryImpl: VisualInboxRepository {
 
     /// The single terminal-behavior decision point — **hidden vs visible**.
     ///
-    /// The inbox is VISIBLE iff ALL three are available:
-    ///   - messages: >=1 selected message (live from the headless store), AND
+    /// The inbox is VISIBLE iff BOTH render assets are available:
     ///   - templates: a fresh/stale cached or just-fetched registry, AND
     ///   - branding: a fresh/stale cached or just-fetched branding (branding is required to render).
-    /// If ANY is missing → `.hidden` with a reason. There is NO error UI outcome here.
+    /// If either is missing → `.hidden` with a reason. There is NO error UI outcome here.
+    ///
+    /// The message count does NOT gate visibility: a renderable inbox with zero selected messages is
+    /// visible-and-empty ("You're all caught up"), not hidden.
     private func computeLoadState(
         messages: [InboxMessage],
         templates: InboxTemplatesRegistry?,
         branding: InboxBranding?
     ) -> VisualInboxLoadState {
-        if !messages.isEmpty, templates != nil, branding != nil {
-            return .visible(messageCount: messages.count)
-        }
-        // Build a precise reason from the missing input(s) — parity with Android's Hidden(reason).
+        // Reason composition mirrors Android exactly: only the templates/branding pair ever combines
+        // into one reason. An empty selection is NOT hidden — a renderable inbox with nothing in it is
+        // "You're all caught up", which the standalone inbox view renders. Overlay chrome is gated
+        // separately on having renderable messages, so no bell appears over an empty panel.
         var reasons: [String] = []
-        if messages.isEmpty { reasons.append("no selected messages") }
         if templates == nil { reasons.append("templates unavailable") }
         if branding == nil { reasons.append("branding unavailable") }
-        return .hidden(reason: reasons.joined(separator: ", "))
+        guard reasons.isEmpty else {
+            return .hidden(reason: reasons.joined(separator: ", "))
+        }
+        return .visible(messageCount: messages.count)
     }
 
     /// Runs the templates + branding fetches concurrently and returns both results. The `async let`
@@ -357,44 +360,23 @@ actor VisualInboxRepositoryImpl: VisualInboxRepository {
         }
     }
 
-    // MARK: - Exposure
-
-    func selectedMessages() async -> [InboxMessage] {
-        // Read messages live from the headless source and apply visual-inbox selection on read.
-        // Serve-stale is provided by the headless layer (a failed poll keeps the last-known-good set).
-        let state = await inAppMessageManager.state
-        let selected = VisualInboxSelector.select(messages: state.inboxMessages, now: currentDate())
-        logger.logWithModuleTag(
-            "[CIO-Inbox] selection: \(state.inboxMessages.count) state message(s) → \(selected.count) selected (cio_inbox prefix / priority / expiry)",
-            level: .debug
-        )
-        return selected
-    }
-
-    func jistMessages() async -> [JistInboxMessage] {
-        let selected = await selectedMessages()
-        return InboxMessageJistAdapter.toJist(selected)
-    }
-
-    func templatesRegistry() async -> InboxTemplatesRegistry? {
-        cachedTemplates()
-    }
-
-    func branding() async -> InboxBranding? {
-        cachedBranding()
-    }
-
     // MARK: - Helpers
 
     /// The last-known templates registry from the persistent store (no expiry), or nil if none.
-    private func cachedTemplates() -> InboxTemplatesRegistry? {
+    func cachedTemplates() -> InboxTemplatesRegistry? {
         guard let data = assetsCache.data(forKey: .inboxTemplatesCache) else { return nil }
-        return InboxTemplatesRegistry.from(jsonData: data)
+        if let parsedTemplates, parsedTemplates.raw == data { return parsedTemplates.value }
+        guard let registry = InboxTemplatesRegistry.from(jsonData: data) else { return nil }
+        parsedTemplates = (raw: data, value: registry)
+        return registry
     }
 
     /// The last-known branding from the persistent store (no expiry), or nil if none.
-    private func cachedBranding() -> InboxBranding? {
+    func cachedBranding() -> InboxBranding? {
         guard let data = assetsCache.data(forKey: .inboxBrandingCache) else { return nil }
-        return InboxBranding.from(jsonData: data)
+        if let parsedBranding, parsedBranding.raw == data { return parsedBranding.value }
+        guard let branding = InboxBranding.from(jsonData: data) else { return nil }
+        parsedBranding = (raw: data, value: branding)
+        return branding
     }
 }

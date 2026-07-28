@@ -154,3 +154,20 @@ public extension NotificationInbox {
         messages(topic: nil)
     }
 }
+
+/// Listener dispatch that belongs to the visual inbox alone, kept off ``NotificationInbox`` so it is
+/// neither part of the public surface nor a requirement host conformers have to satisfy.
+///
+/// Open and dismiss are visual-inbox events: they report what the rendered inbox did, unlike
+/// ``NotificationInbox/markMessageOpened(message:)`` and
+/// ``NotificationInbox/markMessageDeleted(message:)``, which every headless caller also reaches. The
+/// visual-inbox SPI dispatches through a conditional cast, so a conformer without this (the no-op
+/// inbox) simply does not fire callbacks.
+protocol VisualInboxEventDispatching: Sendable {
+    /// Notifies the registered `InboxEventListener` that a message was opened in the visual inbox.
+    /// Deduped by the SDK so it fires at most once per message per app session.
+    func notifyMessageOpened(message: InboxMessage)
+
+    /// Notifies the registered `InboxEventListener` that a message was dismissed in the visual inbox.
+    func notifyMessageDismissed(message: InboxMessage)
+}

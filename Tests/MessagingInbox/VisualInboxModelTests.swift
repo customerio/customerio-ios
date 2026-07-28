@@ -466,6 +466,20 @@ private final class FakeVisualInboxProvider: VisualInboxProvider, @unchecked Sen
 
     func load() async {}
 
+    /// Built from the same stub fields the stream writes through `applyToStubs`, so a one-shot read
+    /// and the stream never disagree — mirroring the production single source of truth.
+    func snapshot() async -> VisualInboxSnapshot {
+        lock.lock()
+        defer { lock.unlock() }
+        return VisualInboxSnapshot(
+            state: stubState,
+            messages: stubMessages,
+            unopenedCount: stubMessages.filter { !$0.opened }.count,
+            templatesJSON: stubTemplates,
+            themeJSON: stubTheme
+        )
+    }
+
     func observe() -> AsyncStream<VisualInboxSnapshot> {
         AsyncStream { continuation in
             observeLock.lock()

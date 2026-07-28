@@ -165,24 +165,11 @@ final class VisualInboxModel: ObservableObject {
     /// Retained for the one-shot path (initial paint / after mark-opened); continuous updates come
     /// through `apply(snapshot:)` via the `observe()` subscription.
     func refresh() async {
-        let newState = await provider.state()
-        let newMessages = await provider.messages()
-        // Derive the badge from the same messages array (rather than a separate provider read) so the
-        // count can never disagree with the list if the store changes mid-refresh.
-        let newUnopened = newMessages.filter { !$0.opened }.count
-        let newTemplates = VisualInboxJistDecoder.decodeTemplates(await provider.templatesJSON())
-        let newTheme = VisualInboxJistDecoder.decodeTheme(await provider.themeJSON())
+        // One coalesced read rather than four separate awaits onto the repository actor: a store
+        // change between them could otherwise publish a `state` that disagrees with `messages`.
+        let snapshot = await provider.snapshot()
         if Task.isCancelled { return }
-        state = newState
-        messages = newMessages
-        unopenedCount = newUnopened
-        templates = newTemplates
-        theme = newTheme
-        decodedData = Self.decodeData(for: newMessages)
-        logMissingTemplates()
-        // Chrome is loaded off this synchronous state-publish path (a chrome await here would widen a
-        // window where a late resume overwrites newer observe() state, e.g. unopenedCount).
-        reloadChrome()
+        apply(snapshot: snapshot)
     }
 
     /// Publishes a coalesced snapshot from the `observe()` stream. Runs on the main actor (the model

@@ -29,5 +29,5 @@ Pod::Spec.new do |spec|
   spec.dependency "CustomerIOMessagingInApp", "= #{spec.version.to_s}"
   spec.dependency "CustomerIOCommon", "= #{spec.version.to_s}"
   # The overlay renders messages via the published Jist SwiftUI package (CocoaPods trunk).
-  spec.dependency "Jist", "~> 0.1.0"
+  spec.dependency "Jist", "0.1.0"
  end
