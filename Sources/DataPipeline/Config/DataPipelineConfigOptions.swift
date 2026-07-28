@@ -31,6 +31,10 @@ public struct DataPipelineConfigOptions {
     /// Determines how SDK should handle screen view events
     public let screenViewUse: ScreenView
 
+    /// Whether the SDK is allowed to persist `cdpApiKey` for background-delivery features.
+    /// See `SDKConfigBuilder.allowBackgroundDelivery(_:)` for the customer-facing semantics.
+    public let allowBackgroundDelivery: Bool
+
     /// Plugins identified based on configuration provided by the user
     let autoConfiguredPlugins: [Plugin]
 }

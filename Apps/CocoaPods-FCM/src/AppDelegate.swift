@@ -2,6 +2,7 @@ import CioDataPipelines
 import CioFirebaseWrapper
 import CioInternalCommon
 import CioLocation
+import CioLocationGeofence
 import CioMessagingInApp
 import CioMessagingPush
 import CioMessagingPushFCM
@@ -52,7 +53,8 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         if let cdnHost = appSetSettings?.cdnHost, !cdnHost.isEmpty {
             config.cdnHost(cdnHost)
         }
-        config.addModule(LocationModule(config: LocationConfig(mode: .onAppStart)))
+        config.addModule(LocationModule(config: LocationConfig(mode: .manual)))
+        config.addModule(GeofenceModule())
         CustomerIO.initialize(withConfig: config.build())
 
         // Initialize messaging features after initializing Customer.io SDK

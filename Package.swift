@@ -20,6 +20,7 @@ var products: [PackageDescription.Product] = [
     .library(name: "MessagingPushFCM", targets: ["CioMessagingPushFCM"]),
     .library(name: "MessagingInApp", targets: ["CioMessagingInApp"]),
     .library(name: "Location", targets: ["CioLocation"]),
+    .library(name: "LocationGeofence", targets: ["CioLocationGeofence"]),
     .library(name: "LiveActivities", targets: ["CioLiveActivities"]),
     .library(name: "LiveActivities_Attributes", targets: ["CioLiveActivities_Attributes"]),
     .library(name: "LiveActivities_Templates", targets: ["CioLiveActivities_Templates"])
@@ -106,6 +107,9 @@ let package = Package(
         .target(name: "CioMessagingInAppMocks",
                 dependencies: ["CioMessagingInApp", "CioInternalCommon"],
                 path: "Tests/Mocks/MessagingInApp"),
+        .target(name: "CioLocationGeofenceMocks",
+                dependencies: ["CioLocationGeofence", "CioLocation", "CioInternalCommon"],
+                path: "Tests/Mocks/LocationGeofence"),
 
         // Messaging Push 
         .target(name: "CioMessagingPush",
@@ -171,6 +175,17 @@ let package = Package(
         .testTarget(name: "LocationTests",
                     dependencies: ["CioLocation", "CioInternalCommon", "SharedTests", "CioInternalCommonMocks"],
                     path: "Tests/Location"),
+
+        // Location Geofence - opt-in geofence module that depends on Location.
+        .target(name: "CioLocationGeofence",
+                dependencies: ["CioLocation", "CioInternalCommon"],
+                path: "Sources/LocationGeofence",
+                resources: [
+                    .process("Resources/PrivacyInfo.xcprivacy"),
+                ]),
+        .testTarget(name: "LocationGeofenceTests",
+                    dependencies: ["CioLocationGeofence", "CioLocation", "CioInternalCommon", "SharedTests", "CioInternalCommonMocks", "CioLocationGeofenceMocks"],
+                    path: "Tests/LocationGeofence"),
 
         // Live Activities — protocol only, no SDK dependency.
         // Safe to import in any target (app, widget extension) that needs CIOActivityAttribute.

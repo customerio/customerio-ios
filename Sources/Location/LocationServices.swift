@@ -42,6 +42,23 @@ public protocol LocationServices: AnyObject {
     /// The SDK does not request location permission. The host app must prompt for authorization
     /// (e.g. via `CLLocationManager.requestWhenInUseAuthorization()`) and only call this when permission is granted.
     func requestLocationUpdate()
+
+    /// Acquires a one-shot location fix for internal consumers (e.g. geofencing) with no analytics
+    /// side effects: no `CIO Location Update` track event, and the fix is **not** persisted or used for
+    /// identify context enrichment. It does update the in-memory last-known fix, so it is observable via
+    /// `getLastKnownLocation` — geofencing anchors its refresh on that value.
+    /// It posts `LocationAcquiredEvent` and runs regardless of `LocationConfig.mode` (geofencing needs
+    /// a location even when location tracking is `.off`).
+    /// Not part of the customer-facing API — other SDK modules call it via `@_spi(Geofence)`.
+    @_spi(Geofence)
+    func requestLocationUpdateSilently()
+
+    /// Returns the most recent location the SDK has cached, or `nil` if none is known yet.
+    ///
+    /// The value comes from `setLastKnownLocation`, a `requestLocationUpdate` result, or a
+    /// previous session (the cache is persisted), so a location can be available before any
+    /// fix has been received in the current session.
+    func getLastKnownLocation() async -> LocationData?
 }
 
 // MARK: - UninitializedLocationServices
@@ -60,6 +77,15 @@ final class UninitializedLocationServices: LocationServices {
     func requestLocationUpdate() {
         logger.moduleNotInitialized()
     }
+
+    func requestLocationUpdateSilently() {
+        logger.moduleNotInitialized()
+    }
+
+    func getLastKnownLocation() async -> LocationData? {
+        logger.moduleNotInitialized()
+        return nil
+    }
 }
 
 // MARK: - LocationServicesImplementation (internal, real implementation)
@@ -72,6 +98,10 @@ actor LocationServicesImplementation: LocationServices {
     private let lifecycleNotifying: AppLifecycleNotifying
     private let applicationStateProvider: ApplicationStateProvider
     private var currentTask: Task<Void, Never>?
+    /// Set when a tracked request arrives while another request is in flight, so the tracked
+    /// intent survives the single-request gate (the lifecycle's tracked request and geofence's
+    /// silent auto-acquire race at first identified launch).
+    private var pendingTrackUpgrade = false
     /// Owned by this implementation; calls requestLocationUpdate/stopLocationUpdates when lifecycle events fire. Set in setUpLifecycleObserver() (after init so we can capture self).
     private var locationLifecycleObserver: LocationLifecycleObserver?
 
@@ -121,7 +151,17 @@ actor LocationServicesImplementation: LocationServices {
     }
 
     nonisolated func requestLocationUpdate() {
-        Task { await self.startRequestIfNeeded() }
+        Task { await self.startRequestIfNeeded(track: true, respectMode: true) }
+    }
+
+    nonisolated func requestLocationUpdateSilently() {
+        // Internal consumers (geofencing) need a fix regardless of the tracking mode, and it must
+        // not emit a track event or be cached.
+        Task { await self.startRequestIfNeeded(track: false, respectMode: false) }
+    }
+
+    nonisolated func getLastKnownLocation() async -> LocationData? {
+        await locationSyncCoordinator.getLastKnownLocation()
     }
 
     /// Cancels any in-flight location request. No-op if nothing in progress. Called automatically when the app enters background; not exposed on the public LocationServices protocol.
@@ -162,31 +202,54 @@ actor LocationServicesImplementation: LocationServices {
         await locationSyncCoordinator.processLocationUpdate(locationData)
     }
 
-    private func startRequestIfNeeded() async {
-        guard currentTask == nil else { return }
+    private func startRequestIfNeeded(track: Bool, respectMode: Bool) async {
+        guard currentTask == nil else {
+            // A dropped tracked request never retries this process (the lifecycle gate is
+            // one-shot), so latch the intent instead; the `.off` gate is re-applied when
+            // the in-flight request consumes it.
+            if track { pendingTrackUpgrade = true }
+            return
+        }
 
         var task: Task<Void, Never>!
         task = Task { [weak self] in
             guard let self else { return }
-            await self.runLocationRequest()
+            await self.runLocationRequest(track: track, respectMode: respectMode)
             await self.clearTaskIfCurrent(task)
         }
         currentTask = task
     }
 
     private func clearTaskIfCurrent(_ task: Task<Void, Never>) async {
-        if currentTask == task { currentTask = nil }
+        guard currentTask == task else { return }
+        currentTask = nil
+        // A tracked request can arrive after `runLocationRequest`'s `defer` cleared the latch but
+        // while `currentTask` still looks busy. It is dropped either way; clearing here stops its
+        // intent from being consumed by an unrelated later fix.
+        pendingTrackUpgrade = false
     }
 
-    private func runLocationRequest() async {
-        guard config.mode != .off else {
-            logger.trackingDisabledIgnoringRequestLocationUpdate()
-            return
+    /// - Parameters:
+    ///   - track: whether a successful fix emits a `CIO Location Update` analytics event.
+    ///   - respectMode: when true, honors the `.off` tracking mode (public path); geofence-initiated
+    ///     fixes pass false so a location can be acquired even when location tracking is off.
+    private func runLocationRequest(track: Bool, respectMode: Bool) async {
+        // A latched upgrade that found no fix is dropped, matching what the tracked request
+        // would have done itself (same provider, same failure; the gate retries neither).
+        defer { pendingTrackUpgrade = false }
+        if respectMode {
+            guard config.mode != .off else {
+                logger.trackingDisabledIgnoringRequestLocationUpdate()
+                return
+            }
         }
         if let result = await locationProvider.requestLocationOnce() {
             switch result {
             case .success(let snapshot):
-                await postLocation(snapshot)
+                // The upgrade must not emit a track the public request itself would have
+                // refused under `.off` (silent requests run regardless of mode).
+                let upgraded = pendingTrackUpgrade && config.mode != .off
+                await postLocation(snapshot, track: track || upgraded)
             case .failure(.cancelled):
                 logger.locationRequestCancelled()
             case .failure(let error):
@@ -195,9 +258,9 @@ actor LocationServicesImplementation: LocationServices {
         }
     }
 
-    private func postLocation(_ snapshot: LocationSnapshot) async {
+    private func postLocation(_ snapshot: LocationSnapshot, track: Bool) async {
         logger.trackingLocation(latitude: snapshot.latitude, longitude: snapshot.longitude)
         let locationData = LocationData(latitude: snapshot.latitude, longitude: snapshot.longitude)
-        await locationSyncCoordinator.processLocationUpdate(locationData)
+        await locationSyncCoordinator.processLocationUpdate(locationData, track: track)
     }
 }

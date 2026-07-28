@@ -50,6 +50,11 @@ class EventTypesRegistryTests: UnitTest {
         XCTAssertEqual(eventType.key, NewSubscriptionEvent.key)
     }
 
+    func test_getEventType_whenKeyIsLocationAcquiredEvent_expectReturnsLocationAcquiredEventType() throws {
+        let eventType = try EventTypesRegistry.getEventType(for: LocationAcquiredEvent.key)
+        XCTAssertEqual(eventType.key, LocationAcquiredEvent.key)
+    }
+
     // MARK: - getEventType(for:) - Unknown key
 
     func test_getEventType_whenKeyIsUnknown_expectThrowsInvalidEventType() {

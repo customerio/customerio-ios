@@ -5,7 +5,7 @@
 
 Pod::Spec.new do |spec|
   spec.name         = "CustomerIO"
-  spec.version      = "4.6.0" # Don't modify this line - it's automatically updated
+  spec.version      = "4.6.1" # Don't modify this line - it's automatically updated
   spec.summary      = "Official Customer.io SDK for iOS."  
   spec.homepage     = "https://github.com/customerio/customerio-ios"
   spec.documentation_url = 'https://customer.io/docs/sdk/ios/'
@@ -53,6 +53,10 @@ Pod::Spec.new do |spec|
 
   spec.subspec "Location" do |ss|
     ss.dependency "CustomerIOLocation", "= #{spec.version.to_s}"
+  end
+
+  spec.subspec "LocationGeofence" do |ss|
+    ss.dependency "CustomerIOLocationGeofence", "= #{spec.version.to_s}"
   end
 
   spec.subspec "LiveActivities" do |ss|

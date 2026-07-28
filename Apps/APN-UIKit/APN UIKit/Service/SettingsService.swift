@@ -32,6 +32,7 @@ class SettingsService {
                 siteId: BuildEnvironment.CustomerIO.siteId,
                 region: .US
             ),
+            location: LocationSettings(trackingMode: .manual),
             internalSettings: InternalSettings(
                 cdnHost: "cdp.customer.io/v1",
                 apiHost: "cdp.customer.io/v1",
