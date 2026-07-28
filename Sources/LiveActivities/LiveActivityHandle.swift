@@ -68,16 +68,21 @@ public struct CIOLiveActivity<Attributes: ActivityAttributes> {
         // Mark before ending so the marker is set before ActivityKit emits any terminal state to
         // the observer, avoiding a race where `.dismissed` arrives first.
         markLocalEnd(id)
-        if let finalContentState {
-            await activity.end(ActivityContent(state: finalContentState, staleDate: nil), dismissalPolicy: dismissalPolicy)
-        } else {
-            await activity.end(nil, dismissalPolicy: dismissalPolicy)
-        }
+        // Report before awaiting ActivityKit. Reporting is identity-gated, so a logout landing
+        // during the await below would drop the `end` outright — and the observer stays silent
+        // too, because it suppresses its own report once the local-end marker is consumed.
+        // Reporting is decoupled from the local render by design (the app asked for the end, so
+        // Customer.io must record it), so ordering it first costs nothing.
         reporter.reportEnd(
             instanceUUID: id,
             notificationType: notificationType,
             contentState: finalContentState.flatMap(LiveActivityReporter.encode)
         )
+        if let finalContentState {
+            await activity.end(ActivityContent(state: finalContentState, staleDate: nil), dismissalPolicy: dismissalPolicy)
+        } else {
+            await activity.end(nil, dismissalPolicy: dismissalPolicy)
+        }
     }
 }
 #endif

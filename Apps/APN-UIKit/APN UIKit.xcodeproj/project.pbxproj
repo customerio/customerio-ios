@@ -632,7 +632,7 @@
 			mainGroup = 46D5D97429E459D600EAF40B;
 			packageReferences = (
 				30F117062D63531A00DB1E11 /* XCLocalSwiftPackageReference "../Common" */,
-				EEF4000F2FECEB85003FFED7 /* XCLocalSwiftPackageReference "../../../customerio-ios" */,
+				EEF4000F2FECEB85003FFED7 /* XCLocalSwiftPackageReference "../../" */,
 			);
 			productRefGroup = 46D5D97E29E459D600EAF40B /* Products */;
 			projectDirPath = "";
@@ -1301,9 +1301,9 @@
 			isa = XCLocalSwiftPackageReference;
 			relativePath = ../Common;
 		};
-		EEF4000F2FECEB85003FFED7 /* XCLocalSwiftPackageReference "../../../customerio-ios" */ = {
+		EEF4000F2FECEB85003FFED7 /* XCLocalSwiftPackageReference "../../" */ = {
 			isa = XCLocalSwiftPackageReference;
-			relativePath = "../../../customerio-ios";
+			relativePath = "../../";
 		};
 /* End XCLocalSwiftPackageReference section */
 
