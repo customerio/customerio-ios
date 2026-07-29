@@ -76,6 +76,8 @@ def get_all_cio_pods(is_app_extension, push_service)
   if !is_app_extension
     # Gist SDK is not setup to work with App Extensions. Therefore, only install it if we are not in an App extension.
     pods_for_all_targets.push('CustomerIOMessagingInApp')
+    # Visual Notification Inbox UI. Host-app only: it renders SwiftUI and depends on MessagingInApp above.
+    pods_for_all_targets.push('CustomerIOMessagingInbox')
     # Geofencing is a host-app feature (region monitoring + launch-time background delivery), not usable in an App Extension.
     pods_for_all_targets.push('CustomerIOLocationGeofence')
   end

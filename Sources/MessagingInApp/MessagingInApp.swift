@@ -16,6 +16,13 @@ public protocol MessagingInAppInstance: AutoMockable {
     func setColorScheme(_ colorScheme: ColorScheme)
 }
 
+public extension MessagingInAppInstance {
+    /// Default no-op so adding inbox listener support to this protocol stays source-compatible for
+    /// existing external conformers and test doubles. `MessagingInApp` itself forwards to the
+    /// implementation; only conformers that predate the inbox fall back to this.
+    func setInboxEventListener(_: InboxEventListener?) {}
+}
+
 public class MessagingInApp: ModuleTopLevelObject<MessagingInAppInstance>, MessagingInAppInstance {
     @Atomic public internal(set) static var shared = MessagingInApp()
     private static let moduleName = "MessagingInApp"

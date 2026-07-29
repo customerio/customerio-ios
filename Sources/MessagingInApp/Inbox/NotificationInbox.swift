@@ -110,6 +110,28 @@ public protocol NotificationInbox: Sendable {
 // MARK: - Protocol Extension for Default Parameters
 
 public extension NotificationInbox {
+    // MARK: - Listener plumbing defaults (source compatibility)
+
+    // The three members below are SDK-internal plumbing: hosts register listeners through
+    // `MessagingInApp.setInboxEventListener(_:)`, and the SDK's own `DefaultNotificationInbox`
+    // implements all of them. They are declared on the protocol so mocks and the SDK can call them,
+    // but they ship with defaults: without these, adding them would make every existing external
+    // conformer and test double fail to compile, turning an additive feature into a breaking change.
+
+    /// Default no-op. See the note above — the SDK's own inbox overrides this.
+    func setInboxEventListener(_: InboxEventListener?) {}
+
+    /// Default no-op that never intercepts, so the SDK's own navigation always runs for conformers
+    /// that do not implement listener forwarding.
+    ///
+    /// - Returns: `false`, meaning "not handled by a host listener".
+    func notifyMessageActionTaken(message _: InboxMessage, actionValue _: String, actionName _: String) -> Bool {
+        false
+    }
+
+    /// Default no-op. See the note above — the SDK's own inbox overrides this.
+    func notifyMessageShown(message _: InboxMessage) {}
+
     /// Retrieves all inbox messages without topic filter.
     ///
     /// - Returns: List of all inbox messages for the current user, sorted by sentAt (newest first)

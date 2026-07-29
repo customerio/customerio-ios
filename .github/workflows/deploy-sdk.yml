@@ -363,6 +363,7 @@ jobs:
             CustomerIOMessagingPushAPN
             CustomerIOMessagingPushFCM
             CustomerIOMessagingInApp
+            CustomerIOMessagingInbox
             CustomerIOLocation
             CustomerIO
           )
