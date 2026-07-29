@@ -7,8 +7,18 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		26317E779E9438D2927CE0C7 /* LiveActivityExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 826C5AB918750A557EB48BB6 /* LiveActivityExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		32B59A0593A7A62259371066 /* DeliveryActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8902B5B9C66B7405946B12B7 /* DeliveryActivityAttributes.swift */; };
+		369848FAE41E8C80B3AEA135 /* LiveActivityExtensionBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E27319F62E944076C623F40 /* LiveActivityExtensionBundle.swift */; };
+		3F4CF2825F21699646CA840F /* DeliveryActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8902B5B9C66B7405946B12B7 /* DeliveryActivityAttributes.swift */; };
+		58095D2C9CD89A574AF59441 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 497F442580950A3525C99B68 /* Foundation.framework */; };
 		6E5FCDF6F87C41885D0664D9 /* Pods_Rich_Push_Notification_Service_Extension.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1CB2D1A1084EF646C1783B01 /* Pods_Rich_Push_Notification_Service_Extension.framework */; };
+		71EE005E74AC5452C2D515A2 /* Pods_LiveActivityExtension.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FDEC7CBFA710AB11143878EB /* Pods_LiveActivityExtension.framework */; };
+		9E31E64017FCCA62EA34A203 /* DeliveryActivityWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AB9FDAF6FE5A17FD002694C /* DeliveryActivityWidget.swift */; };
 		AA388902D5AB80FE19615675 /* Pods_test_cocoapods.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0B494FDD88150CEB34735859 /* Pods_test_cocoapods.framework */; };
+		B456BAFFFFC064EEAD9236EA /* SegmentsDemo.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6EBA053F80087D43876B5023 /* SegmentsDemo.swift */; };
+		E175CBA566E68FCEE791ED1E /* CountdownDemo.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EA44FEA5257AD0F905071D9 /* CountdownDemo.swift */; };
+		E851B0E5DB4EDCC2436FFD03 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = BFC20A48F05487D94F3E66A4 /* Assets.xcassets */; };
 		F7029EBE29F2B00500411BCC /* ColorButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7029EBD29F2B00500411BCC /* ColorButton.swift */; };
 		F7029EC329F2B12900411BCC /* ViewExtensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7029EC229F2B12900411BCC /* ViewExtensions.swift */; };
 		F7029EC629F2B3B100411BCC /* EnvironmentUtil.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7029EC529F2B3B100411BCC /* EnvironmentUtil.swift */; };
@@ -45,6 +55,13 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
+		239E01D6E601B342221CBB7C /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = F73134582919570600CD43D9 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 032CB523D16E3D4BFB043824;
+			remoteInfo = LiveActivityExtension;
+		};
 		F7382936291D5C27008ED8CB /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = F73134582919570600CD43D9 /* Project object */;
@@ -62,6 +79,7 @@
 			dstSubfolderSpec = 13;
 			files = (
 				F7382938291D5C27008ED8CB /* Rich Push Notification Service Extension.appex in Embed Foundation Extensions */,
+				26317E779E9438D2927CE0C7 /* LiveActivityExtension.appex in Embed Foundation Extensions */,
 			);
 			name = "Embed Foundation Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -69,12 +87,23 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		04F82AAE40D8265D9064F54F /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		0637AF7B2C92E6ED8D14848E /* Pods-Rich Push Notification Service Extension.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Rich Push Notification Service Extension.debug.xcconfig"; path = "Target Support Files/Pods-Rich Push Notification Service Extension/Pods-Rich Push Notification Service Extension.debug.xcconfig"; sourceTree = "<group>"; };
 		0B494FDD88150CEB34735859 /* Pods_test_cocoapods.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_test_cocoapods.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		1CB2D1A1084EF646C1783B01 /* Pods_Rich_Push_Notification_Service_Extension.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Rich_Push_Notification_Service_Extension.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		3E55F28DF1346F20A524E5D0 /* Pods-Rich Push Notification Service Extension.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Rich Push Notification Service Extension.release.xcconfig"; path = "Target Support Files/Pods-Rich Push Notification Service Extension/Pods-Rich Push Notification Service Extension.release.xcconfig"; sourceTree = "<group>"; };
+		497F442580950A3525C99B68 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
+		6EBA053F80087D43876B5023 /* SegmentsDemo.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SegmentsDemo.swift; sourceTree = "<group>"; };
+		7EA44FEA5257AD0F905071D9 /* CountdownDemo.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CountdownDemo.swift; sourceTree = "<group>"; };
+		826C5AB918750A557EB48BB6 /* LiveActivityExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = LiveActivityExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		8902B5B9C66B7405946B12B7 /* DeliveryActivityAttributes.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DeliveryActivityAttributes.swift; sourceTree = "<group>"; };
+		8E27319F62E944076C623F40 /* LiveActivityExtensionBundle.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = LiveActivityExtensionBundle.swift; sourceTree = "<group>"; };
+		9AB9FDAF6FE5A17FD002694C /* DeliveryActivityWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DeliveryActivityWidget.swift; sourceTree = "<group>"; };
 		AA69CC5FB416661AB57028E7 /* Pods-test cocoapods.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-test cocoapods.release.xcconfig"; path = "Target Support Files/Pods-test cocoapods/Pods-test cocoapods.release.xcconfig"; sourceTree = "<group>"; };
 		AA990F45FDF67883F5BB0254 /* Pods-test cocoapods.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-test cocoapods.debug.xcconfig"; path = "Target Support Files/Pods-test cocoapods/Pods-test cocoapods.debug.xcconfig"; sourceTree = "<group>"; };
+		BFC20A48F05487D94F3E66A4 /* Assets.xcassets */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		C4D6D107F9F4D97385648094 /* Pods-LiveActivityExtension.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-LiveActivityExtension.debug.xcconfig"; path = "Target Support Files/Pods-LiveActivityExtension/Pods-LiveActivityExtension.debug.xcconfig"; sourceTree = "<group>"; };
+		DCACC140A83E44B828E0E5B6 /* Pods-LiveActivityExtension.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-LiveActivityExtension.release.xcconfig"; path = "Target Support Files/Pods-LiveActivityExtension/Pods-LiveActivityExtension.release.xcconfig"; sourceTree = "<group>"; };
 		F7029EBD29F2B00500411BCC /* ColorButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ColorButton.swift; sourceTree = "<group>"; };
 		F7029EC229F2B12900411BCC /* ViewExtensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewExtensions.swift; sourceTree = "<group>"; };
 		F7029EC529F2B3B100411BCC /* EnvironmentUtil.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnvironmentUtil.swift; sourceTree = "<group>"; };
@@ -112,9 +141,19 @@
 		F7F4B9BE2A0AACC300557900 /* BuildEnvironment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BuildEnvironment.swift; sourceTree = "<group>"; };
 		F7FA3D882A44DA00008AC1A7 /* OneLineText.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OneLineText.swift; sourceTree = "<group>"; };
 		F7FA3D8A2A44DF42008AC1A7 /* BackButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackButton.swift; sourceTree = "<group>"; };
+		FDEC7CBFA710AB11143878EB /* Pods_LiveActivityExtension.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_LiveActivityExtension.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		E830517A3C9CBF782435145E /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				58095D2C9CD89A574AF59441 /* Foundation.framework in Frameworks */,
+				71EE005E74AC5452C2D515A2 /* Pods_LiveActivityExtension.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		F731345D2919570600CD43D9 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -146,6 +185,8 @@
 				F7BAFCB92919586400DFAC6E /* CioMessagingPushFCM.framework */,
 				0B494FDD88150CEB34735859 /* Pods_test_cocoapods.framework */,
 				1CB2D1A1084EF646C1783B01 /* Pods_Rich_Push_Notification_Service_Extension.framework */,
+				D9CDD2D595EA70A07AC1876C /* iOS */,
+				FDEC7CBFA710AB11143878EB /* Pods_LiveActivityExtension.framework */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -157,8 +198,33 @@
 				AA69CC5FB416661AB57028E7 /* Pods-test cocoapods.release.xcconfig */,
 				0637AF7B2C92E6ED8D14848E /* Pods-Rich Push Notification Service Extension.debug.xcconfig */,
 				3E55F28DF1346F20A524E5D0 /* Pods-Rich Push Notification Service Extension.release.xcconfig */,
+				DCACC140A83E44B828E0E5B6 /* Pods-LiveActivityExtension.release.xcconfig */,
+				C4D6D107F9F4D97385648094 /* Pods-LiveActivityExtension.debug.xcconfig */,
 			);
 			path = Pods;
+			sourceTree = "<group>";
+		};
+		AB96FDA22BE15EA615AF3D2B /* LiveActivityExtension */ = {
+			isa = PBXGroup;
+			children = (
+				8E27319F62E944076C623F40 /* LiveActivityExtensionBundle.swift */,
+				6EBA053F80087D43876B5023 /* SegmentsDemo.swift */,
+				7EA44FEA5257AD0F905071D9 /* CountdownDemo.swift */,
+				8902B5B9C66B7405946B12B7 /* DeliveryActivityAttributes.swift */,
+				9AB9FDAF6FE5A17FD002694C /* DeliveryActivityWidget.swift */,
+				04F82AAE40D8265D9064F54F /* Info.plist */,
+				BFC20A48F05487D94F3E66A4 /* Assets.xcassets */,
+			);
+			name = LiveActivityExtension;
+			path = LiveActivityExtension;
+			sourceTree = "<group>";
+		};
+		D9CDD2D595EA70A07AC1876C /* iOS */ = {
+			isa = PBXGroup;
+			children = (
+				497F442580950A3525C99B68 /* Foundation.framework */,
+			);
+			name = iOS;
 			sourceTree = "<group>";
 		};
 		F7029EBB29F2AFDA00411BCC /* View */ = {
@@ -235,6 +301,7 @@
 				F73134612919570600CD43D9 /* Products */,
 				8911619CFBBAB3980FD5A1B5 /* Pods */,
 				715CE3C48BF069905F784336 /* Frameworks */,
+				AB96FDA22BE15EA615AF3D2B /* LiveActivityExtension */,
 			);
 			sourceTree = "<group>";
 		};
@@ -243,6 +310,7 @@
 			children = (
 				F73134602919570600CD43D9 /* test cocoapods.app */,
 				F7382931291D5C27008ED8CB /* Rich Push Notification Service Extension.appex */,
+				826C5AB918750A557EB48BB6 /* LiveActivityExtension.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -285,6 +353,24 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		032CB523D16E3D4BFB043824 /* LiveActivityExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 8636FC1435901506A8892844 /* Build configuration list for PBXNativeTarget "LiveActivityExtension" */;
+			buildPhases = (
+				E1473924E430B17E4A0B8FFF /* [CP] Check Pods Manifest.lock */,
+				9E59329BC8B49F8089B440A8 /* Sources */,
+				E830517A3C9CBF782435145E /* Frameworks */,
+				4717938A3E939803498F5509 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = LiveActivityExtension;
+			productName = LiveActivityExtension;
+			productReference = 826C5AB918750A557EB48BB6 /* LiveActivityExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 		F731345F2919570600CD43D9 /* test cocoapods */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = F731346F2919570700CD43D9 /* Build configuration list for PBXNativeTarget "test cocoapods" */;
@@ -300,6 +386,7 @@
 			);
 			dependencies = (
 				F7382937291D5C27008ED8CB /* PBXTargetDependency */,
+				F12721194B4A25D340FA1832 /* PBXTargetDependency */,
 			);
 			name = "test cocoapods";
 			productName = "test cocoapods";
@@ -357,11 +444,20 @@
 			targets = (
 				F731345F2919570600CD43D9 /* test cocoapods */,
 				F7382930291D5C27008ED8CB /* Rich Push Notification Service Extension */,
+				032CB523D16E3D4BFB043824 /* LiveActivityExtension */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		4717938A3E939803498F5509 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E851B0E5DB4EDCC2436FFD03 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		F731345E2919570600CD43D9 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -443,9 +539,43 @@
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-test cocoapods/Pods-test cocoapods-frameworks.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
+		E1473924E430B17E4A0B8FFF /* [CP] Check Pods Manifest.lock */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"${PODS_PODFILE_DIR_PATH}/Podfile.lock",
+				"${PODS_ROOT}/Manifest.lock",
+			);
+			name = "[CP] Check Pods Manifest.lock";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(DERIVED_FILE_DIR)/Pods-LiveActivityExtension-checkManifestLockResult.txt",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
+			showEnvVarsInLog = 0;
+		};
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		9E59329BC8B49F8089B440A8 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				369848FAE41E8C80B3AEA135 /* LiveActivityExtensionBundle.swift in Sources */,
+				B456BAFFFFC064EEAD9236EA /* SegmentsDemo.swift in Sources */,
+				E175CBA566E68FCEE791ED1E /* CountdownDemo.swift in Sources */,
+				32B59A0593A7A62259371066 /* DeliveryActivityAttributes.swift in Sources */,
+				9E31E64017FCCA62EA34A203 /* DeliveryActivityWidget.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		F731345C2919570600CD43D9 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -474,6 +604,7 @@
 				F7029EBE29F2B00500411BCC /* ColorButton.swift in Sources */,
 				F7714AAB2A5C8C1F00C5C952 /* Toast.swift in Sources */,
 				F7C1C58E29F2D39300067998 /* SettingsView.swift in Sources */,
+				3F4CF2825F21699646CA840F /* DeliveryActivityAttributes.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -489,6 +620,12 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		F12721194B4A25D340FA1832 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = LiveActivityExtension;
+			target = 032CB523D16E3D4BFB043824 /* LiveActivityExtension */;
+			targetProxy = 239E01D6E601B342221CBB7C /* PBXContainerItemProxy */;
+		};
 		F7382937291D5C27008ED8CB /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = F7382930291D5C27008ED8CB /* Rich Push Notification Service Extension */;
@@ -497,6 +634,77 @@
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
+		04BE1235950F35F1B2199BE1 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = DCACC140A83E44B828E0E5B6 /* Pods-LiveActivityExtension.release.xcconfig */;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
+				CODE_SIGN_STYLE = Manual;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = 2YC97BQN3N;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = LiveActivityExtension/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = LiveActivityExtension;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.2;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "io.customer.ios-sample.cocoapods-fcm.LiveActivityExtension";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				"PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*]" = "match Development io.customer.ios-sample.cocoapods-fcm.LiveActivityExtension";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		80E8958D97D578CA54FB7291 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = C4D6D107F9F4D97385648094 /* Pods-LiveActivityExtension.debug.xcconfig */;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
+				CODE_SIGN_STYLE = Manual;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = 2YC97BQN3N;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = LiveActivityExtension/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = LiveActivityExtension;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.2;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "io.customer.ios-sample.cocoapods-fcm.LiveActivityExtension";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				"PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*]" = "match Development io.customer.ios-sample.cocoapods-fcm.LiveActivityExtension";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
 		F731346D2919570700CD43D9 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -762,6 +970,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		8636FC1435901506A8892844 /* Build configuration list for PBXNativeTarget "LiveActivityExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				04BE1235950F35F1B2199BE1 /* Release */,
+				80E8958D97D578CA54FB7291 /* Debug */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		F731345B2919570600CD43D9 /* Build configuration list for PBXProject "test cocoapods" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (

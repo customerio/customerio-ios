@@ -129,7 +129,13 @@ struct SettingsView: View {
             return false
         }
 
-        guard let _ = URL(string: enteredUrl) else {
+        // Hosts are configured without a scheme (e.g. "cdp.customer.io/v1"); the SDK prepends "https://" itself.
+        if enteredUrl.contains("://") {
+            alertMessage = "\(hostType), \(enteredUrl), should not include a scheme. Enter the host only, e.g. cdp.customer.io/v1."
+            return false
+        }
+
+        guard URL(string: "https://\(enteredUrl)") != nil else {
             alertMessage = "\(hostType), \(enteredUrl), is not a valid URL. Therefore, I cannot save the settings."
             return false
         }

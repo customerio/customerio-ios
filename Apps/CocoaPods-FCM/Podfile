@@ -30,6 +30,18 @@ target 'test cocoapods' do
   # https://guides.cocoapods.org/syntax/podfile.html#pod
 
   pod 'SampleAppsCommon', :path => File.join(File.dirname(__FILE__), '../Common')
+
+  # Live Activities: runtime module (app target only) + shared attribute types + bundled templates.
+  pod 'CustomerIOLiveActivities', :path => sdk_local_path
+  pod 'CustomerIOLiveActivitiesAttributes', :path => sdk_local_path
+  pod 'CustomerIOLiveActivitiesTemplates', :path => sdk_local_path
+end
+
+target 'LiveActivityExtension' do
+  # The widget extension only renders activities; it needs the attribute types and templates,
+  # not the CustomerIOLiveActivities runtime.
+  pod 'CustomerIOLiveActivitiesAttributes', :path => sdk_local_path
+  pod 'CustomerIOLiveActivitiesTemplates', :path => sdk_local_path
 end
 
 target 'Rich Push Notification Service Extension' do 
