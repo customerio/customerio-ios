@@ -10,14 +10,19 @@ protocol SseConnectionManagerProtocol: AutoMockable {
     /// Stops the current SSE connection.
     func stopConnection() async
 
-    /// Registers the hook invoked when the server confirms the connection (its `connected` event),
-    /// which is the only transition into `.connected`.
+    /// Registers the hook invoked when the SERVER confirms the connection with its `connected`
+    /// event — not on the transport-level `.connectionOpen`, which arrives first.
     ///
     /// Exists so the owner can sync state SSE will not deliver: the stream only carries messages
     /// that arrive AFTER the connection is established, so whatever already exists for the user has
-    /// to be fetched over HTTP. Driving that from here rather than alongside `startConnection()`
-    /// means the fetch cannot race an SSE update that lands first (mirrors gist-web, which fetches
-    /// from its `connected` listener).
+    /// to be fetched over HTTP. Waiting for confirmation rather than firing alongside
+    /// `startConnection()` means the fetch starts against a live stream, and is skipped entirely when
+    /// a connection never establishes (mirrors gist-web, which fetches from its `connected` listener).
+    ///
+    /// NOTE: this does not fully order the HTTP response against SSE. An `inbox_messages` event that
+    /// arrives while the fetch is in flight can still be overwritten by the older HTTP snapshot,
+    /// because both publish a full-state write. Closing that needs the two writes versioned or
+    /// merged; tracked separately.
     func setOnConnectionConfirmed(_ handler: @escaping @Sendable () -> Void) async
 }
 
@@ -74,7 +79,7 @@ actor SseConnectionManager: SseConnectionManagerProtocol {
 
     private var connectionState: SseConnectionState = .disconnected
 
-    /// Hook invoked from `setupSuccessfulConnection`. See `setOnConnectionConfirmed`.
+    /// Hook invoked from the server `connected` event branch only. See `setOnConnectionConfirmed`.
     private var onConnectionConfirmed: (@Sendable () -> Void)?
     private var streamTask: Task<Void, Never>?
     private var retryTask: Task<Void, Never>?
@@ -164,16 +169,16 @@ actor SseConnectionManager: SseConnectionManagerProtocol {
         streamTask = newTask
     }
 
+    func setOnConnectionConfirmed(_ handler: @escaping @Sendable () -> Void) {
+        onConnectionConfirmed = handler
+    }
+
     /// Stops the active SSE connection.
     /// This method is idempotent - calling it multiple times is safe.
     ///
     /// The cleanup operations include the connection generation, so they only affect
     /// the connection that was active when stopConnection() was called. If a new connection
     /// starts during the await points, it won't be affected by this cleanup.
-    func setOnConnectionConfirmed(_ handler: @escaping @Sendable () -> Void) {
-        onConnectionConfirmed = handler
-    }
-
     func stopConnection() async {
         // Capture the generation we're stopping BEFORE any state changes
         let stoppingGeneration = activeConnectionGeneration
@@ -357,6 +362,11 @@ actor SseConnectionManager: SseConnectionManagerProtocol {
         case .connected:
             logger.logWithModuleTag("SSE Manager: ✓ Server acknowledged connection", level: .info)
             await setupSuccessfulConnection(generation: generation)
+            // Only here, not in setupSuccessfulConnection: that also runs for the transport
+            // `.connectionOpen` event, which fires first and before the server has confirmed
+            // anything — so hooking it there would both double-invoke and start the backfill at the
+            // same point as the pre-connect fetch this replaced.
+            onConnectionConfirmed?()
 
         case .heartbeat:
             await handleHeartbeatEvent(event, generation: generation)
@@ -561,8 +571,6 @@ actor SseConnectionManager: SseConnectionManagerProtocol {
 
         // Start heartbeat timer with initial timeout (default + buffer)
         await heartbeatTimer.startTimer(timeoutSeconds: HeartbeatTimer.initialTimeoutSeconds, generation: generation)
-
-        onConnectionConfirmed?()
     }
 
     // MARK: - State Management

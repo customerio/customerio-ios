@@ -115,10 +115,13 @@ actor CioSseLifecycleManager: SseLifecycleManager {
     ///
     /// SSE only delivers events that arrive AFTER the connection is established, so a fresh login
     /// would otherwise show an empty inbox until the next foreground. Keyed off the server's
-    /// `connected` event rather than the transition that decides to connect, because the fetch is
-    /// fire-and-forget: issued alongside `startConnection()` its response could land after an SSE
-    /// update and overwrite the newer list with an older snapshot. Waiting for confirmation also
-    /// means nothing is fetched when a connection never establishes.
+    /// `connected` event rather than the transition that decides to connect, so the fetch starts
+    /// against a stream that is already live and is skipped when a connection never establishes.
+    ///
+    /// This narrows the overwrite window but does not close it: the fetch is fire-and-forget, so an
+    /// `inbox_messages` event arriving while it is in flight can still be overwritten by the older
+    /// HTTP snapshot, since both publish a full-state write. Ordering them properly needs the two
+    /// writes versioned or merged; tracked separately.
     private func backfillOnConnectionConfirmed() async {
         let state = await inAppMessageManager.state
         logger.logWithModuleTag(
