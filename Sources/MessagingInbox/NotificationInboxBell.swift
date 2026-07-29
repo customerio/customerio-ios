@@ -19,6 +19,28 @@ import SwiftUI
 /// ```
 @available(iOS 13.0, *)
 public struct NotificationInboxBell: View {
+    /// Owns the model for standalone use. `@State` rather than `@ObservedObject` so SwiftUI keeps the
+    /// instance across view reconstruction; `@StateObject` is iOS 14+ and this view is public on
+    /// iOS 13. See ``NotificationInboxView`` for the full rationale.
+    @State private var model = VisualInboxModel()
+
+    private let onTap: () -> Void
+
+    /// Creates a standalone inbox bell backed by the SDK's shared Visual Inbox data layer.
+    /// - Parameter onTap: invoked when the user taps the bell.
+    public init(onTap: @escaping () -> Void) {
+        self.onTap = onTap
+    }
+
+    public var body: some View {
+        InboxBellView(model: model, ownsModelLifecycle: true, onTap: onTap)
+    }
+}
+
+/// Renders the bell for a model it does not own. Always constructed with an explicit model — either
+/// the shared one from ``NotificationInboxOverlay`` or the one ``NotificationInboxBell`` owns.
+@available(iOS 13.0, *)
+struct InboxBellView: View {
     @ObservedObject private var model: VisualInboxModel
 
     /// Drives dark-mode branding resolution for the bell chrome.
@@ -31,20 +53,12 @@ public struct NotificationInboxBell: View {
     /// Called when the user taps the bell.
     private let onTap: () -> Void
 
-    /// Creates a standalone inbox bell backed by the SDK's shared Visual Inbox data layer.
-    /// - Parameter onTap: invoked when the user taps the bell.
-    public init(onTap: @escaping () -> Void) {
-        _model = ObservedObject(wrappedValue: VisualInboxModel())
-        self.ownsModelLifecycle = true
-        self.onTap = onTap
-    }
-
     /// Creates a bell observing a shared model (used by ``NotificationInboxOverlay`` so the bell,
     /// panel, and overlay all observe the same state). The shared model's lifecycle is driven by the
     /// owner, so this view does not start/stop it.
-    init(model: VisualInboxModel, onTap: @escaping () -> Void) {
+    init(model: VisualInboxModel, ownsModelLifecycle: Bool = false, onTap: @escaping () -> Void) {
         _model = ObservedObject(wrappedValue: model)
-        self.ownsModelLifecycle = false
+        self.ownsModelLifecycle = ownsModelLifecycle
         self.onTap = onTap
     }
 

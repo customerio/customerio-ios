@@ -1,0 +1,12 @@
+public final class CioMessagingInbox.NotificationInboxBell {
+	public var body: some View;
+	public fun init(onTap: @escaping () -> Unit);
+}
+public final class CioMessagingInbox.NotificationInboxOverlay {
+	public var body: some View;
+	public fun init();
+}
+public final class CioMessagingInbox.NotificationInboxView {
+	public var body: some View;
+	public fun init();
+}

@@ -58,7 +58,7 @@ public struct NotificationInboxOverlay: View {
         return ZStack(alignment: bellPosition.alignment) {
             Color.clear
                 .allowsHitTesting(false)
-            NotificationInboxBell(model: model) {
+            InboxBellView(model: model) {
                 isInboxPresented = true
             }
             .padding(16)
@@ -87,7 +87,7 @@ public struct NotificationInboxOverlay: View {
             let colors = ResolvedInboxColors.resolve(chrome: model.chrome, isDark: colorScheme == .dark)
             // Dismiss the sheet after a navigation action so the opened screen (deep link / URL) isn't
             // left behind the inbox.
-            NotificationInboxView(model: model, onNavigate: { isInboxPresented = false })
+            InboxListView(model: model, onNavigate: { isInboxPresented = false })
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
                 .modifier(BrandedInboxSheetStyle(background: colors.panelBackground, cornerRadius: colors.cornerRadius))
