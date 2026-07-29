@@ -122,6 +122,9 @@ actor CioSseLifecycleManager: SseLifecycleManager {
     /// `inbox_messages` event arriving while it is in flight can still be overwritten by the older
     /// HTTP snapshot, since both publish a full-state write. Ordering them properly needs the two
     /// writes versioned or merged; tracked separately.
+    ///
+    /// Not the only backfill trigger: `Gist.handleUserIdentificationChange` also fetches, because a
+    /// `userId` change while SSE is already connected produces no `connected` event to hook.
     private func backfillOnConnectionConfirmed() async {
         let state = await inAppMessageManager.state
         logger.logWithModuleTag(
