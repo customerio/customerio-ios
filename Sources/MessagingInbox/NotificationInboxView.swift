@@ -22,6 +22,27 @@ import UIKit
 /// ```
 @available(iOS 13.0, *)
 public struct NotificationInboxView: View {
+    /// Owns the model for standalone embedding.
+    ///
+    /// `@State` rather than `@ObservedObject`: `@ObservedObject` does not own its value, so a parent
+    /// update could hand the view a brand-new model after the original had already started its
+    /// lifecycle — losing load state, dedupe guards, and in-flight work. `@StateObject` would be the
+    /// natural owner but is iOS 14+, and this view is public on iOS 13. `VisualInboxModel.init` has no
+    /// side effects (work begins in `start()`), so the instances SwiftUI discards are inert.
+    @State private var model = VisualInboxModel()
+
+    /// Creates a standalone inbox list backed by the SDK's shared Visual Inbox data layer.
+    public init() {}
+
+    public var body: some View {
+        InboxListView(model: model, ownsModelLifecycle: true, marksOpenedOnAppear: true)
+    }
+}
+
+/// Renders the inbox list for a model it does not own. Always constructed with an explicit model —
+/// either the shared one from ``NotificationInboxOverlay`` or the one ``NotificationInboxView`` owns.
+@available(iOS 13.0, *)
+struct InboxListView: View {
     @ObservedObject private var model: VisualInboxModel
 
     /// Drives dark-mode branding resolution for the row divider.
@@ -45,22 +66,19 @@ public struct NotificationInboxView: View {
     /// rather than reaching into `DIGraphShared.shared` inline, so navigation is testable.
     private let navigator: InboxActionNavigating
 
-    /// Creates a standalone inbox list backed by the SDK's shared Visual Inbox data layer.
-    public init() {
-        _model = ObservedObject(wrappedValue: VisualInboxModel())
-        self.ownsModelLifecycle = true
-        self.marksOpenedOnAppear = true
-        self.onNavigate = nil
-        self.navigator = DefaultInboxActionNavigator()
-    }
-
     /// Creates a list observing a shared model (used by ``NotificationInboxOverlay`` so the bell,
     /// panel, and overlay all observe the same state). The overlay drives lifecycle + mark-opened and
     /// passes `onNavigate` to close its sheet after a navigation action.
-    init(model: VisualInboxModel, onNavigate: (() -> Void)? = nil, navigator: InboxActionNavigating = DefaultInboxActionNavigator()) {
+    init(
+        model: VisualInboxModel,
+        ownsModelLifecycle: Bool = false,
+        marksOpenedOnAppear: Bool = false,
+        onNavigate: (() -> Void)? = nil,
+        navigator: InboxActionNavigating = DefaultInboxActionNavigator()
+    ) {
         _model = ObservedObject(wrappedValue: model)
-        self.ownsModelLifecycle = false
-        self.marksOpenedOnAppear = false
+        self.ownsModelLifecycle = ownsModelLifecycle
+        self.marksOpenedOnAppear = marksOpenedOnAppear
         self.onNavigate = onNavigate
         self.navigator = navigator
     }

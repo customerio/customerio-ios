@@ -14,7 +14,8 @@ class SseLifecycleManagerTest: XCTestCase {
     private var applicationStateProviderMock: ApplicationStateProviderMock!
 
     private var sut: CioSseLifecycleManager!
-    private var foregroundFetchCallsCount = 0
+    private var queueFetchCallsCount = 0
+    private var connectionConfirmedHandler: (() -> Void)?
 
     override func setUp() {
         super.setUp()
@@ -22,7 +23,8 @@ class SseLifecycleManagerTest: XCTestCase {
         inAppMessageManagerMock = InAppMessageManagerMock()
         sseConnectionManagerMock = SseConnectionManagerProtocolMock()
         applicationStateProviderMock = ApplicationStateProviderMock()
-        foregroundFetchCallsCount = 0
+        queueFetchCallsCount = 0
+        connectionConfirmedHandler = nil
 
         // Default to foreground state for most tests (explicit control)
         applicationStateProviderMock.underlyingApplicationState = .active
@@ -49,9 +51,23 @@ class SseLifecycleManagerTest: XCTestCase {
     }
 
     private func startLifecycleManager(_ manager: CioSseLifecycleManager) async {
-        await manager.start { [weak self] _ in
-            self?.foregroundFetchCallsCount += 1
+        await manager.start(queueFetchHandler: { [weak self] _ in
+            self?.queueFetchCallsCount += 1
+        })
+        // Captured here rather than read from the mock later: several tests call resetMock(), which
+        // clears its recorded arguments, and the hook is only registered once at start.
+        connectionConfirmedHandler = sseConnectionManagerMock.setOnConnectionConfirmedReceivedArguments
+    }
+
+    /// Invokes the backfill hook the manager registered, standing in for the server's `connected`
+    /// event. The fetch is keyed off that event, not off the transition that opens the connection.
+    private func simulateConnectionConfirmed() async {
+        guard let handler = connectionConfirmedHandler else {
+            XCTFail("lifecycle manager never registered a connection-confirmed hook")
+            return
         }
+        handler()
+        try? await Task.sleep(nanoseconds: 100000000)
     }
 
     /// Sets up the default state for the InAppMessageManager mock
@@ -194,7 +210,7 @@ class SseLifecycleManagerTest: XCTestCase {
         await startLifecycleManager(sut)
 
         sseConnectionManagerMock.resetMock()
-        foregroundFetchCallsCount = 0
+        queueFetchCallsCount = 0
 
         NotificationCenter.default.post(name: UIApplication.didEnterBackgroundNotification, object: nil)
         try? await Task.sleep(nanoseconds: 100000000)
@@ -205,7 +221,11 @@ class SseLifecycleManagerTest: XCTestCase {
 
         XCTAssertTrue(sseConnectionManagerMock.startConnectionCalled)
         XCTAssertEqual(sseConnectionManagerMock.startConnectionCallsCount, 1)
-        XCTAssertEqual(foregroundFetchCallsCount, 1)
+        // Foregrounding opens the connection; the backfill waits for the server to confirm it.
+        XCTAssertEqual(queueFetchCallsCount, 0)
+
+        await simulateConnectionConfirmed()
+        XCTAssertEqual(queueFetchCallsCount, 1)
     }
 
     func test_foregroundNotification_givenSseDisabled_expectNoConnection() async {
@@ -216,13 +236,13 @@ class SseLifecycleManagerTest: XCTestCase {
         NotificationCenter.default.post(name: UIApplication.didEnterBackgroundNotification, object: nil)
         try? await Task.sleep(nanoseconds: 100000000)
         sseConnectionManagerMock.resetMock()
-        foregroundFetchCallsCount = 0
+        queueFetchCallsCount = 0
 
         NotificationCenter.default.post(name: UIApplication.willEnterForegroundNotification, object: nil)
         try? await Task.sleep(nanoseconds: 100000000)
 
         XCTAssertFalse(sseConnectionManagerMock.startConnectionCalled)
-        XCTAssertEqual(foregroundFetchCallsCount, 0)
+        XCTAssertEqual(queueFetchCallsCount, 0)
     }
 
     func test_foregroundNotification_givenAlreadyForegrounded_expectSkipped() async {
@@ -385,7 +405,7 @@ class SseLifecycleManagerTest: XCTestCase {
 
         XCTAssertEqual(sseConnectionManagerMock.startConnectionCallsCount, 1)
         XCTAssertEqual(sseConnectionManagerMock.stopConnectionCallsCount, 0)
-        XCTAssertEqual(foregroundFetchCallsCount, 0)
+        XCTAssertEqual(queueFetchCallsCount, 0)
 
         NotificationCenter.default.post(name: UIApplication.didEnterBackgroundNotification, object: nil)
         try? await Task.sleep(nanoseconds: 100000000)
@@ -398,7 +418,11 @@ class SseLifecycleManagerTest: XCTestCase {
 
         XCTAssertEqual(sseConnectionManagerMock.startConnectionCallsCount, 2)
         XCTAssertEqual(sseConnectionManagerMock.stopConnectionCallsCount, 1)
-        XCTAssertEqual(foregroundFetchCallsCount, 1)
+        // Reconnecting opens the connection; the backfill waits for the server to confirm it.
+        XCTAssertEqual(queueFetchCallsCount, 0)
+
+        await simulateConnectionConfirmed()
+        XCTAssertEqual(queueFetchCallsCount, 1)
     }
 
     // MARK: - Anonymous User Tests (SSE requires identified user)
@@ -426,13 +450,13 @@ class SseLifecycleManagerTest: XCTestCase {
         NotificationCenter.default.post(name: UIApplication.didEnterBackgroundNotification, object: nil)
         try? await Task.sleep(nanoseconds: 100000000)
         sseConnectionManagerMock.resetMock()
-        foregroundFetchCallsCount = 0
+        queueFetchCallsCount = 0
 
         NotificationCenter.default.post(name: UIApplication.willEnterForegroundNotification, object: nil)
         try? await Task.sleep(nanoseconds: 100000000)
 
         XCTAssertFalse(sseConnectionManagerMock.startConnectionCalled)
-        XCTAssertEqual(foregroundFetchCallsCount, 0)
+        XCTAssertEqual(queueFetchCallsCount, 0)
     }
 
     func test_sseFlagChangedToTrue_givenAnonymousUser_expectNoConnection() async {

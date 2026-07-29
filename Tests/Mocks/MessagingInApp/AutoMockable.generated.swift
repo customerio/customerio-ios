@@ -2352,6 +2352,11 @@ class SseConnectionManagerProtocolMock: @unchecked Sendable, SseConnectionManage
         _stopConnectionCallsCount.wrappedValue = 0
 
         mockCalled = false // do last as resetting properties above can make this true
+        _setOnConnectionConfirmedCallsCount.wrappedValue = 0
+        _setOnConnectionConfirmedReceivedArguments.wrappedValue = nil
+        _setOnConnectionConfirmedReceivedInvocations.wrappedValue = []
+
+        mockCalled = false // do last as resetting properties above can make this true
     }
 
     // MARK: - startConnection
@@ -2402,6 +2407,45 @@ class SseConnectionManagerProtocolMock: @unchecked Sendable, SseConnectionManage
         mockCalled = true
         _stopConnectionCallsCount += 1
         stopConnectionClosure?()
+    }
+
+    // MARK: - setOnConnectionConfirmed
+
+    /// Number of times the function was called.
+    private let _setOnConnectionConfirmedCallsCount: CioInternalCommon.Synchronized<Int> = .init(0)
+    var setOnConnectionConfirmedCallsCount: Int {
+        _setOnConnectionConfirmedCallsCount.wrappedValue
+    }
+
+    /// `true` if the function was ever called.
+    var setOnConnectionConfirmedCalled: Bool {
+        setOnConnectionConfirmedCallsCount > 0
+    }
+
+    /// The arguments from the *last* time the function was called.
+    private let _setOnConnectionConfirmedReceivedArguments: CioInternalCommon.Synchronized<(() -> Void)?> = .init(nil)
+    var setOnConnectionConfirmedReceivedArguments: (() -> Void)? {
+        _setOnConnectionConfirmedReceivedArguments.wrappedValue
+    }
+
+    /// Arguments from *all* of the times that the function was called.
+    private let _setOnConnectionConfirmedReceivedInvocations: CioInternalCommon.Synchronized<[() -> Void]> = .init([])
+    var setOnConnectionConfirmedReceivedInvocations: [() -> Void] {
+        _setOnConnectionConfirmedReceivedInvocations.wrappedValue
+    }
+
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     */
+    var setOnConnectionConfirmedClosure: ((@escaping () -> Void) -> Void)?
+
+    /// Mocked function for `setOnConnectionConfirmed(_ handler: @Sendable @escaping () -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
+    func setOnConnectionConfirmed(_ handler: @Sendable @escaping () -> Void) {
+        mockCalled = true
+        _setOnConnectionConfirmedCallsCount += 1
+        _setOnConnectionConfirmedReceivedArguments.wrappedValue = handler
+        _setOnConnectionConfirmedReceivedInvocations.append(handler)
+        setOnConnectionConfirmedClosure?(handler)
     }
 }
 
@@ -2460,13 +2504,13 @@ class SseLifecycleManagerMock: @unchecked Sendable, SseLifecycleManager, Mock {
      */
     var startClosure: ((@escaping (InAppMessageState) -> Void) -> Void)?
 
-    /// Mocked function for `start(foregroundFetchHandler: @escaping (InAppMessageState) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
-    func start(foregroundFetchHandler: @escaping (InAppMessageState) -> Void) {
+    /// Mocked function for `start(queueFetchHandler: @escaping (InAppMessageState) -> Void)`. Your opportunity to return a mocked value and check result of mock in test code.
+    func start(queueFetchHandler: @escaping (InAppMessageState) -> Void) {
         mockCalled = true
         _startCallsCount += 1
-        _startReceivedArguments.wrappedValue = foregroundFetchHandler
-        _startReceivedInvocations.append(foregroundFetchHandler)
-        startClosure?(foregroundFetchHandler)
+        _startReceivedArguments.wrappedValue = queueFetchHandler
+        _startReceivedInvocations.append(queueFetchHandler)
+        startClosure?(queueFetchHandler)
     }
 }
 

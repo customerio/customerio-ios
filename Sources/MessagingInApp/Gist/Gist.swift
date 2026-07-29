@@ -51,9 +51,9 @@ class Gist: GistProvider {
 
         // Start the SSE lifecycle manager to observe app foreground/background events
         Task {
-            await sseLifecycleManager.start { [weak self] state in
+            await sseLifecycleManager.start(queueFetchHandler: { [weak self] state in
                 self?.fetchUserQueue(state: state)
-            }
+            })
         }
     }
 
@@ -126,11 +126,9 @@ class Gist: GistProvider {
             // SSE is now active - stop polling
             logger.logWithModuleTag("Gist: SSE enabled for identified user - stopping polling timer", level: .info)
             invalidateTimer()
-            // SSE does not deliver pending messages on connect. Backfill any messages that already
-            // exist for the user (mirrors SseLifecycleManager's foreground fetch); otherwise a fresh
-            // login shows an empty inbox until the next foreground. Calls fetchUserQueue directly
-            // because fetchUserMessages() no-ops when shouldUseSse is true.
-            fetchUserQueue(state: state)
+            // The backfill for messages that predate the stream is driven by the server's `connected`
+            // event in SseLifecycleManager, not from here: issued at this point it would race the
+            // connection and could overwrite a newer SSE update with an older snapshot.
         } else if !state.useSse {
             // SSE disabled - start polling
             logger.logWithModuleTag("Gist: SSE disabled - starting polling with interval: \(state.pollInterval)s", level: .info)
@@ -154,11 +152,9 @@ class Gist: GistProvider {
             // User became identified and SSE is enabled - stop polling (SSE will take over)
             logger.logWithModuleTag("Gist: User identified with SSE enabled - stopping polling (SSE will handle messages)", level: .info)
             invalidateTimer()
-            // SSE does not deliver pending messages on connect. Backfill the messages that already
-            // exist for the now-identified user (mirrors SseLifecycleManager's foreground fetch);
-            // otherwise a fresh login shows an empty inbox until the next foreground. Calls
-            // fetchUserQueue directly because fetchUserMessages() no-ops when shouldUseSse is true.
-            fetchUserQueue(state: state)
+            // The backfill for messages that predate the stream is driven by the server's `connected`
+            // event in SseLifecycleManager, not from here: issued at this point it would race the
+            // connection and could overwrite a newer SSE update with an older snapshot.
         } else if !state.isUserIdentified, state.useSse {
             // User became anonymous but SSE flag is still enabled - start polling
             // (SSE won't be used for anonymous users)

@@ -9,6 +9,16 @@ protocol SseConnectionManagerProtocol: AutoMockable {
 
     /// Stops the current SSE connection.
     func stopConnection() async
+
+    /// Registers the hook invoked when the server confirms the connection (its `connected` event),
+    /// which is the only transition into `.connected`.
+    ///
+    /// Exists so the owner can sync state SSE will not deliver: the stream only carries messages
+    /// that arrive AFTER the connection is established, so whatever already exists for the user has
+    /// to be fetched over HTTP. Driving that from here rather than alongside `startConnection()`
+    /// means the fetch cannot race an SSE update that lands first (mirrors gist-web, which fetches
+    /// from its `connected` listener).
+    func setOnConnectionConfirmed(_ handler: @escaping @Sendable () -> Void) async
 }
 
 // sourcery: InjectRegisterShared = "SseConnectionManagerProtocol"
@@ -63,6 +73,9 @@ actor SseConnectionManager: SseConnectionManagerProtocol {
     private var activeConnectionGeneration: UInt64 = 0
 
     private var connectionState: SseConnectionState = .disconnected
+
+    /// Hook invoked from `setupSuccessfulConnection`. See `setOnConnectionConfirmed`.
+    private var onConnectionConfirmed: (@Sendable () -> Void)?
     private var streamTask: Task<Void, Never>?
     private var retryTask: Task<Void, Never>?
 
@@ -157,6 +170,10 @@ actor SseConnectionManager: SseConnectionManagerProtocol {
     /// The cleanup operations include the connection generation, so they only affect
     /// the connection that was active when stopConnection() was called. If a new connection
     /// starts during the await points, it won't be affected by this cleanup.
+    func setOnConnectionConfirmed(_ handler: @escaping @Sendable () -> Void) {
+        onConnectionConfirmed = handler
+    }
+
     func stopConnection() async {
         // Capture the generation we're stopping BEFORE any state changes
         let stoppingGeneration = activeConnectionGeneration
@@ -544,6 +561,8 @@ actor SseConnectionManager: SseConnectionManagerProtocol {
 
         // Start heartbeat timer with initial timeout (default + buffer)
         await heartbeatTimer.startTimer(timeoutSeconds: HeartbeatTimer.initialTimeoutSeconds, generation: generation)
+
+        onConnectionConfirmed?()
     }
 
     // MARK: - State Management
