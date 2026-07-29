@@ -1,3 +1,5 @@
+import CioDataPipelines
+import CioLiveActivities
 import CioMessagingPushFCM
 import SwiftUI
 
@@ -30,7 +32,12 @@ struct MainApp: App {
                         .environmentObject(userManager)
                 }
             }.accentColor(Color("AccentColor")) // sets Color.accentColor for all children
-                .onOpenURL { deepLink in // This function is how to implement deep links in a Swift UI app.
+                .onOpenURL { incomingURL in // This function is how to implement deep links in a Swift UI app.
+                    // A tap on a Customer.io Live Activity arrives as a CIO tracking URL. Hand it to
+                    // the SDK first: it reports the `opened` metric for the exact delivery that was on
+                    // screen and returns the customer's deep link to navigate to (nil if there is
+                    // none). Any non-Customer.io URL is returned unchanged.
+                    guard let deepLink = CustomerIO.liveActivities.handleWidgetUrl(incomingURL) else { return }
                     // This app opens deep links using Universal Links and app scheme deep links.
                     //
                     // Universal Links: Any URL that begins with `https://ciosample.page.link`...

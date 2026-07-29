@@ -7,8 +7,11 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		41B0BE7007894429994B78A0 /* Pods_LiveActivityWidget.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 683973B2804D053B6F2A46A0 /* Pods_LiveActivityWidget.framework */; };
 		6E5FCDF6F87C41885D0664D9 /* Pods_Rich_Push_Notification_Service_Extension.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1CB2D1A1084EF646C1783B01 /* Pods_Rich_Push_Notification_Service_Extension.framework */; };
+		783F365E0715DA468A240F08 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = DF4D7C950FB6DDE24501646C /* Foundation.framework */; };
 		AA388902D5AB80FE19615675 /* Pods_test_cocoapods.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0B494FDD88150CEB34735859 /* Pods_test_cocoapods.framework */; };
+		C081EEEC0A9D14252AF57D9C /* LiveActivityWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0B5B9C53A7B4B5020BC9ECD /* LiveActivityWidgetBundle.swift */; };
 		F7029EBE29F2B00500411BCC /* ColorButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7029EBD29F2B00500411BCC /* ColorButton.swift */; };
 		F7029EC329F2B12900411BCC /* ViewExtensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7029EC229F2B12900411BCC /* ViewExtensions.swift */; };
 		F7029EC629F2B3B100411BCC /* EnvironmentUtil.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7029EC529F2B3B100411BCC /* EnvironmentUtil.swift */; };
@@ -18,6 +21,7 @@
 		F7029ED429F2C82D00411BCC /* UserManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7029ED329F2C82D00411BCC /* UserManager.swift */; };
 		F70F4CDD2A3B91DA00037B91 /* Appium.swift in Sources */ = {isa = PBXBuildFile; fileRef = F70F4CDC2A3B91DA00037B91 /* Appium.swift */; };
 		F70F4CDF2A3CA57500037B91 /* DateExtensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = F70F4CDE2A3CA57500037B91 /* DateExtensions.swift */; };
+		F71D2ED6C268BA55EE22E2DF /* LiveActivityWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = A92E8F4EDC2A0C651B1447E5 /* LiveActivityWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		F72212152A422D72003AE5A1 /* CustomEventView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F72212142A422D72003AE5A1 /* CustomEventView.swift */; };
 		F73134642919570600CD43D9 /* App.swift in Sources */ = {isa = PBXBuildFile; fileRef = F73134632919570600CD43D9 /* App.swift */; };
 		F73134662919570600CD43D9 /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F73134652919570600CD43D9 /* DashboardView.swift */; };
@@ -45,6 +49,13 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
+		D124CE55022749F3A4FE66B9 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = F73134582919570600CD43D9 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = D7990355ED0E486B3E35412A;
+			remoteInfo = LiveActivityWidget;
+		};
 		F7382936291D5C27008ED8CB /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = F73134582919570600CD43D9 /* Project object */;
@@ -62,6 +73,7 @@
 			dstSubfolderSpec = 13;
 			files = (
 				F7382938291D5C27008ED8CB /* Rich Push Notification Service Extension.appex in Embed Foundation Extensions */,
+				F71D2ED6C268BA55EE22E2DF /* LiveActivityWidget.appex in Embed Foundation Extensions */,
 			);
 			name = "Embed Foundation Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -71,10 +83,16 @@
 /* Begin PBXFileReference section */
 		0637AF7B2C92E6ED8D14848E /* Pods-Rich Push Notification Service Extension.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Rich Push Notification Service Extension.debug.xcconfig"; path = "Target Support Files/Pods-Rich Push Notification Service Extension/Pods-Rich Push Notification Service Extension.debug.xcconfig"; sourceTree = "<group>"; };
 		0B494FDD88150CEB34735859 /* Pods_test_cocoapods.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_test_cocoapods.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		159CD64019F5BB797C3C3081 /* Pods-LiveActivityWidget.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-LiveActivityWidget.release.xcconfig"; path = "Target Support Files/Pods-LiveActivityWidget/Pods-LiveActivityWidget.release.xcconfig"; sourceTree = "<group>"; };
 		1CB2D1A1084EF646C1783B01 /* Pods_Rich_Push_Notification_Service_Extension.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Rich_Push_Notification_Service_Extension.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		3E55F28DF1346F20A524E5D0 /* Pods-Rich Push Notification Service Extension.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Rich Push Notification Service Extension.release.xcconfig"; path = "Target Support Files/Pods-Rich Push Notification Service Extension/Pods-Rich Push Notification Service Extension.release.xcconfig"; sourceTree = "<group>"; };
+		647B5E37060E6BD32B049005 /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		683973B2804D053B6F2A46A0 /* Pods_LiveActivityWidget.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_LiveActivityWidget.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		A0B5B9C53A7B4B5020BC9ECD /* LiveActivityWidgetBundle.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = LiveActivityWidgetBundle.swift; sourceTree = "<group>"; };
+		A92E8F4EDC2A0C651B1447E5 /* LiveActivityWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = LiveActivityWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		AA69CC5FB416661AB57028E7 /* Pods-test cocoapods.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-test cocoapods.release.xcconfig"; path = "Target Support Files/Pods-test cocoapods/Pods-test cocoapods.release.xcconfig"; sourceTree = "<group>"; };
 		AA990F45FDF67883F5BB0254 /* Pods-test cocoapods.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-test cocoapods.debug.xcconfig"; path = "Target Support Files/Pods-test cocoapods/Pods-test cocoapods.debug.xcconfig"; sourceTree = "<group>"; };
+		DF4D7C950FB6DDE24501646C /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
 		F7029EBD29F2B00500411BCC /* ColorButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ColorButton.swift; sourceTree = "<group>"; };
 		F7029EC229F2B12900411BCC /* ViewExtensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewExtensions.swift; sourceTree = "<group>"; };
 		F7029EC529F2B3B100411BCC /* EnvironmentUtil.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnvironmentUtil.swift; sourceTree = "<group>"; };
@@ -112,9 +130,19 @@
 		F7F4B9BE2A0AACC300557900 /* BuildEnvironment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BuildEnvironment.swift; sourceTree = "<group>"; };
 		F7FA3D882A44DA00008AC1A7 /* OneLineText.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OneLineText.swift; sourceTree = "<group>"; };
 		F7FA3D8A2A44DF42008AC1A7 /* BackButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackButton.swift; sourceTree = "<group>"; };
+		FFFE3557225F554CB17D591C /* Pods-LiveActivityWidget.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-LiveActivityWidget.debug.xcconfig"; path = "Target Support Files/Pods-LiveActivityWidget/Pods-LiveActivityWidget.debug.xcconfig"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		DF088A94B6247C6EC43DDFF1 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				783F365E0715DA468A240F08 /* Foundation.framework in Frameworks */,
+				41B0BE7007894429994B78A0 /* Pods_LiveActivityWidget.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		F731345D2919570600CD43D9 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -137,6 +165,15 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		61E8FDC36F4A0BE434E9DDCA /* LiveActivityWidget */ = {
+			isa = PBXGroup;
+			children = (
+				A0B5B9C53A7B4B5020BC9ECD /* LiveActivityWidgetBundle.swift */,
+				647B5E37060E6BD32B049005 /* Info.plist */,
+			);
+			path = LiveActivityWidget;
+			sourceTree = "<group>";
+		};
 		715CE3C48BF069905F784336 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
@@ -146,6 +183,8 @@
 				F7BAFCB92919586400DFAC6E /* CioMessagingPushFCM.framework */,
 				0B494FDD88150CEB34735859 /* Pods_test_cocoapods.framework */,
 				1CB2D1A1084EF646C1783B01 /* Pods_Rich_Push_Notification_Service_Extension.framework */,
+				F09EEE7E5B8C3D7DBB3C9BDE /* iOS */,
+				683973B2804D053B6F2A46A0 /* Pods_LiveActivityWidget.framework */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -157,8 +196,18 @@
 				AA69CC5FB416661AB57028E7 /* Pods-test cocoapods.release.xcconfig */,
 				0637AF7B2C92E6ED8D14848E /* Pods-Rich Push Notification Service Extension.debug.xcconfig */,
 				3E55F28DF1346F20A524E5D0 /* Pods-Rich Push Notification Service Extension.release.xcconfig */,
+				159CD64019F5BB797C3C3081 /* Pods-LiveActivityWidget.release.xcconfig */,
+				FFFE3557225F554CB17D591C /* Pods-LiveActivityWidget.debug.xcconfig */,
 			);
 			path = Pods;
+			sourceTree = "<group>";
+		};
+		F09EEE7E5B8C3D7DBB3C9BDE /* iOS */ = {
+			isa = PBXGroup;
+			children = (
+				DF4D7C950FB6DDE24501646C /* Foundation.framework */,
+			);
+			name = iOS;
 			sourceTree = "<group>";
 		};
 		F7029EBB29F2AFDA00411BCC /* View */ = {
@@ -235,6 +284,7 @@
 				F73134612919570600CD43D9 /* Products */,
 				8911619CFBBAB3980FD5A1B5 /* Pods */,
 				715CE3C48BF069905F784336 /* Frameworks */,
+				61E8FDC36F4A0BE434E9DDCA /* LiveActivityWidget */,
 			);
 			sourceTree = "<group>";
 		};
@@ -243,6 +293,7 @@
 			children = (
 				F73134602919570600CD43D9 /* test cocoapods.app */,
 				F7382931291D5C27008ED8CB /* Rich Push Notification Service Extension.appex */,
+				A92E8F4EDC2A0C651B1447E5 /* LiveActivityWidget.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -285,6 +336,24 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		D7990355ED0E486B3E35412A /* LiveActivityWidget */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 6BE7FF21D467A2779BA885E1 /* Build configuration list for PBXNativeTarget "LiveActivityWidget" */;
+			buildPhases = (
+				379D696CFFB118276B570530 /* [CP] Check Pods Manifest.lock */,
+				D2C38F44F12F809DA8AF5D66 /* Sources */,
+				DF088A94B6247C6EC43DDFF1 /* Frameworks */,
+				E8BEA4FB79C5833432479A86 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = LiveActivityWidget;
+			productName = LiveActivityWidget;
+			productReference = A92E8F4EDC2A0C651B1447E5 /* LiveActivityWidget.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 		F731345F2919570600CD43D9 /* test cocoapods */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = F731346F2919570700CD43D9 /* Build configuration list for PBXNativeTarget "test cocoapods" */;
@@ -300,6 +369,7 @@
 			);
 			dependencies = (
 				F7382937291D5C27008ED8CB /* PBXTargetDependency */,
+				A661C3AF206CF3EF86BD7B00 /* PBXTargetDependency */,
 			);
 			name = "test cocoapods";
 			productName = "test cocoapods";
@@ -357,11 +427,19 @@
 			targets = (
 				F731345F2919570600CD43D9 /* test cocoapods */,
 				F7382930291D5C27008ED8CB /* Rich Push Notification Service Extension */,
+				D7990355ED0E486B3E35412A /* LiveActivityWidget */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		E8BEA4FB79C5833432479A86 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		F731345E2919570600CD43D9 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -404,6 +482,28 @@
 			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
 			showEnvVarsInLog = 0;
 		};
+		379D696CFFB118276B570530 /* [CP] Check Pods Manifest.lock */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"${PODS_PODFILE_DIR_PATH}/Podfile.lock",
+				"${PODS_ROOT}/Manifest.lock",
+			);
+			name = "[CP] Check Pods Manifest.lock";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(DERIVED_FILE_DIR)/Pods-LiveActivityWidget-checkManifestLockResult.txt",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
+			showEnvVarsInLog = 0;
+		};
 		89E3C465041A9417E1C267D4 /* [CP] Check Pods Manifest.lock */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
@@ -434,9 +534,13 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-test cocoapods/Pods-test cocoapods-frameworks-${CONFIGURATION}-input-files.xcfilelist",
 			);
+			inputPaths = (
+			);
 			name = "[CP] Embed Pods Frameworks";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-test cocoapods/Pods-test cocoapods-frameworks-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -446,6 +550,14 @@
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		D2C38F44F12F809DA8AF5D66 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C081EEEC0A9D14252AF57D9C /* LiveActivityWidgetBundle.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		F731345C2919570600CD43D9 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -489,6 +601,12 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		A661C3AF206CF3EF86BD7B00 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = LiveActivityWidget;
+			target = D7990355ED0E486B3E35412A /* LiveActivityWidget */;
+			targetProxy = D124CE55022749F3A4FE66B9 /* PBXContainerItemProxy */;
+		};
 		F7382937291D5C27008ED8CB /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = F7382930291D5C27008ED8CB /* Rich Push Notification Service Extension */;
@@ -497,6 +615,57 @@
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
+		236FB8F1DE031898D5A406A8 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 159CD64019F5BB797C3C3081 /* Pods-LiveActivityWidget.release.xcconfig */;
+			buildSettings = {
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
+				CODE_SIGN_STYLE = Manual;
+				CURRENT_PROJECT_VERSION = 1;
+				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = 2YC97BQN3N;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = LiveActivityWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = LiveActivityWidget;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.2;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "io.customer.ios-sample.cocoapods-fcm.LiveActivityWidget";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				"PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*]" = "match Development io.customer.ios-sample.cocoapods-fcm.LiveActivityWidget";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		64D7685C05B972DFEC37207B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = FFFE3557225F554CB17D591C /* Pods-LiveActivityWidget.debug.xcconfig */;
+			buildSettings = {
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
+				CODE_SIGN_STYLE = Manual;
+				CURRENT_PROJECT_VERSION = 1;
+				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = 2YC97BQN3N;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = LiveActivityWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = LiveActivityWidget;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.2;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "io.customer.ios-sample.cocoapods-fcm.LiveActivityWidget";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				"PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*]" = "match Development io.customer.ios-sample.cocoapods-fcm.LiveActivityWidget";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
 		F731346D2919570700CD43D9 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -631,6 +800,7 @@
 				INFOPLIST_FILE = "test-cocoapods-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "iOS FCM SwiftUI Ami app";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -672,6 +842,7 @@
 				INFOPLIST_FILE = "test-cocoapods-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "iOS FCM SwiftUI Ami app";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -762,6 +933,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		6BE7FF21D467A2779BA885E1 /* Build configuration list for PBXNativeTarget "LiveActivityWidget" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				236FB8F1DE031898D5A406A8 /* Release */,
+				64D7685C05B972DFEC37207B /* Debug */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		F731345B2919570600CD43D9 /* Build configuration list for PBXProject "test cocoapods" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
