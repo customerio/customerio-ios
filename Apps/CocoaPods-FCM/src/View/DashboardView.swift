@@ -1,5 +1,9 @@
+import ActivityKit
 import CioDataPipelines
 import CioInternalCommon
+import CioLiveActivities
+import CioLiveActivities_Attributes
+import CioLiveActivities_Templates
 import SwiftUI
 import UserNotifications
 
@@ -127,6 +131,15 @@ struct DashboardView: View {
                             })
                         }
 
+                    if #available(iOS 16.2, *) {
+                        ColorButton("Start Live Activity") {
+                            startSegmentsLiveActivity()
+                        }.setAppiumId("Start Live Activity Button")
+                        ColorButton("End Live Activity") {
+                            endSegmentsLiveActivity()
+                        }.setAppiumId("End Live Activity Button")
+                    }
+
                     ColorButton("Show Push Prompt") {
                         requestSettings()
                     }.setAppiumId("Show Push Prompt Button")
@@ -170,6 +183,51 @@ struct DashboardView: View {
             // Automatic screen view tracking in the Customer.io SDK does not work with SwiftUI apps (only UIKit apps).
             // Therefore, this is how we can perform manual screen view tracking.
             CustomerIO.shared.screen(title: "Dashboard")
+        }
+    }
+}
+
+// MARK: - Live Activities
+
+@available(iOS 16.2, *)
+private extension DashboardView {
+    /// Starts the SDK's Segments template. Rendering comes from the `LiveActivityWidget` extension,
+    /// which links only the Attributes + Templates pods — this app writes no widget UI of its own.
+    func startSegmentsLiveActivity() {
+        do {
+            try CustomerIO.liveActivities.start(
+                CIOSegmentsAttributes(header: "CocoaPods FCM"),
+                contentState: .init(
+                    status: "Order placed",
+                    substatus: "We got your order",
+                    segmentsTotal: 4,
+                    segmentsComplete: 1,
+                    trailingText: "1/4",
+                    cioMetadata: CIOLiveActivityMetadata(deepLink: "cocoapods-fcm://dashboard")
+                )
+            )
+        } catch {
+            print("Live Activity start failed: \(error)")
+        }
+    }
+
+    /// Ends whichever Segments activity is running. Looks it up through ActivityKit and `adopt`s it
+    /// rather than holding a handle — what a real app does after a relaunch.
+    func endSegmentsLiveActivity() {
+        Task {
+            for activity in Activity<CIOSegmentsAttributes>.activities {
+                guard let handle = CustomerIO.liveActivities.adopt(activity) else {
+                    print("Live Activity adopt returned nil for \(activity.id)")
+                    continue
+                }
+                await handle.end(.init(
+                    status: "Delivered",
+                    substatus: "Enjoy!",
+                    segmentsTotal: 4,
+                    segmentsComplete: 4,
+                    trailingText: "4/4"
+                ))
+            }
         }
     }
 }

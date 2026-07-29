@@ -1,6 +1,9 @@
 import CioDataPipelines
 import CioFirebaseWrapper
 import CioInternalCommon
+import CioLiveActivities
+import CioLiveActivities_Attributes
+import CioLiveActivities_Templates
 import CioLocation
 import CioLocationGeofence
 import CioMessagingInApp
@@ -55,6 +58,16 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         }
         config.addModule(LocationModule(config: LocationConfig(mode: .manual)))
         config.addModule(GeofenceModule())
+        // Register Live Activities as an SDK-managed module. Both types are SDK-provided templates
+        // rendered by the LiveActivityWidget extension; reach the API via `CustomerIO.liveActivities`.
+        if #available(iOS 16.2, *) {
+            config.addModule(LiveActivitiesModule(
+                config: LiveActivityConfigBuilder()
+                    .register(CIOSegmentsAttributes.self)
+                    .register(CIOCountdownTimerAttributes.self)
+                    .build()
+            ))
+        }
         CustomerIO.initialize(withConfig: config.build())
 
         // Initialize messaging features after initializing Customer.io SDK
