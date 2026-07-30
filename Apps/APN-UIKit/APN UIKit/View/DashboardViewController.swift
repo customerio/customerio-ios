@@ -105,7 +105,7 @@ class DashboardViewController: BaseViewController {
         setAccessibilityId(sendDeviceAttributesButton, to: "Device Attribute Button")
         setAccessibilityId(sendProfileAttributesButton, to: "Profile Attribute Button")
         setAccessibilityId(showPushPromptButton, to: "Show Push Prompt Button")
-        setAccessibilityId(inboxButton, to: "View Inbox Button")
+        setAccessibilityId(inboxButton, to: "inbox_messages_button")
         setAccessibilityId(logoutButton, to: "Log Out Button")
     }
 

@@ -55,6 +55,7 @@ private class InboxMessageCell: UITableViewCell {
         queueIdLabel.translatesAutoresizingMaskIntoConstraints = false
         queueIdLabel.font = .systemFont(ofSize: 14, weight: .medium)
         queueIdLabel.numberOfLines = 1
+        queueIdLabel.accessibilityIdentifier = "inbox_queue_id"
         containerView.addSubview(queueIdLabel)
 
         dateLabel.translatesAutoresizingMaskIntoConstraints = false
@@ -66,6 +67,7 @@ private class InboxMessageCell: UITableViewCell {
         propertiesLabel.font = .systemFont(ofSize: 12)
         propertiesLabel.textColor = .secondaryLabel
         propertiesLabel.numberOfLines = 2
+        propertiesLabel.accessibilityIdentifier = "inbox_properties"
         containerView.addSubview(propertiesLabel)
     }
 
@@ -76,7 +78,11 @@ private class InboxMessageCell: UITableViewCell {
         buttonsStack.distribution = .fillEqually
 
         readButton.addTarget(self, action: #selector(readButtonTapped), for: .touchUpInside)
+        trackButton.accessibilityIdentifier = "track_click_button"
+        trackButton.accessibilityLabel = "Track Click"
         trackButton.addTarget(self, action: #selector(trackButtonTapped), for: .touchUpInside)
+        deleteButton.accessibilityIdentifier = "delete_button"
+        deleteButton.accessibilityLabel = "Delete"
         deleteButton.tintColor = .systemRed
         deleteButton.addTarget(self, action: #selector(deleteButtonTapped), for: .touchUpInside)
 
@@ -123,6 +129,8 @@ private class InboxMessageCell: UITableViewCell {
 
         // Update button images
         let readImageName = message.opened ? "inbox-unread" : "inbox-read"
+        readButton.accessibilityIdentifier = message.opened ? "mark_unread_button" : "mark_read_button"
+        readButton.accessibilityLabel = message.opened ? "Mark as Unread" : "Mark as Read"
         readButton.setImage(UIImage(named: readImageName)?.withRenderingMode(.alwaysTemplate), for: .normal)
         readButton.tintColor = .darkGray
 
@@ -206,6 +214,7 @@ class InboxViewController: BaseViewController, UITableViewDelegate, UITableViewD
         }
         tableView.delegate = self
         tableView.dataSource = self
+        tableView.accessibilityIdentifier = "inbox_messages_list"
         tableView.register(InboxMessageCell.self, forCellReuseIdentifier: InboxMessageCell.reuseIdentifier)
         tableView.estimatedRowHeight = 120
         tableView.rowHeight = UITableView.automaticDimension

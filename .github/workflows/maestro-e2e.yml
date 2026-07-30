@@ -1,0 +1,99 @@
+name: Maestro SDK E2E
+
+on:
+  workflow_dispatch:
+    inputs:
+      suite:
+        description: E2E suite to run
+        type: choice
+        options:
+          - smoke
+          - geofence
+          - message-inbox
+          - live-activities
+          - live-activities-remote
+        default: smoke
+      harness_ref:
+        description: customerio/mobile-e2e branch, tag, or commit
+        type: string
+        default: main
+  schedule:
+    - cron: "41 6 * * 1-5"
+
+concurrency:
+  group: maestro-ios-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e:
+    name: iOS ${{ inputs.suite || 'smoke' }}
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - name: Check out iOS SDK
+        uses: actions/checkout@v4
+
+      - name: Check out shared E2E harness
+        uses: actions/checkout@v4
+        with:
+          repository: customerio/mobile-e2e
+          ref: ${{ inputs.harness_ref || 'main' }}
+          path: .e2e-harness
+          token: ${{ secrets.MOBILE_E2E_REPO_TOKEN || github.token }}
+
+      - name: Install Maestro and evidence dependencies
+        run: |
+          curl -Ls https://get.maestro.mobile.dev | bash
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+          brew install ffmpeg
+          python3 -m venv "$RUNNER_TEMP/mobile-e2e-venv"
+          "$RUNNER_TEMP/mobile-e2e-venv/bin/pip" install Pillow
+          echo "$RUNNER_TEMP/mobile-e2e-venv/bin" >> "$GITHUB_PATH"
+
+      - name: Configure sample workspace
+        env:
+          CDP_API_KEY: ${{ secrets.CUSTOMERIO_APN_WORKSPACE_CDP_API_KEY }}
+          SITE_ID: ${{ secrets.CUSTOMERIO_APN_WORKSPACE_SITE_ID }}
+        run: |
+          cp "Apps/APN-UIKit/BuildEnvironment.sample.swift" \
+             "Apps/APN-UIKit/BuildEnvironment.swift"
+          ruby -pi -e '
+            gsub("CUSTOMERIO_WORKSPACE_CDP_API_KEY", ENV.fetch("CDP_API_KEY"))
+            gsub("CUSTOMERIO_WORKSPACE_SITE_ID", ENV.fetch("SITE_ID"))
+            gsub("CUSTOMERIO_WORKSPACE_NAME", "Mobile E2E")
+          ' "Apps/APN-UIKit/BuildEnvironment.swift"
+
+      - name: Run SDK to backend E2E
+        env:
+          MAESTRO_EXT_API_KEY: ${{ secrets.MOBILE_E2E_EXT_API_KEY }}
+          MAESTRO_APP_API_KEY: ${{ secrets.MOBILE_E2E_APP_API_KEY }}
+          INBOX_TRANSACTIONAL_MESSAGE_ID: ${{ vars.MOBILE_E2E_INBOX_TRANSACTIONAL_MESSAGE_ID }}
+          LIVE_ACTIVITY_APP_IDENTIFIER: ${{ secrets.MOBILE_E2E_LIVE_ACTIVITY_APP_IDENTIFIER }}
+        run: |
+          ./.e2e-harness/e2e run \
+            --platform ios \
+            --sdk-repo "$GITHUB_WORKSPACE" \
+            --suite "${{ inputs.suite || 'smoke' }}" \
+            --headless
+
+      - name: Sanitize E2E evidence
+        id: sanitize
+        if: always()
+        env:
+          MAESTRO_EXT_API_KEY: ${{ secrets.MOBILE_E2E_EXT_API_KEY }}
+          MAESTRO_APP_API_KEY: ${{ secrets.MOBILE_E2E_APP_API_KEY }}
+          LIVE_ACTIVITY_APP_IDENTIFIER: ${{ secrets.MOBILE_E2E_LIVE_ACTIVITY_APP_IDENTIFIER }}
+        run: |
+          if [[ -d artifacts/e2e ]]; then
+            python3 .e2e-harness/scripts/redact_artifacts.py artifacts/e2e
+            python3 .e2e-harness/scripts/redact_artifacts.py --check artifacts/e2e
+          fi
+
+      - name: Upload E2E evidence
+        if: ${{ always() && steps.sanitize.outcome == 'success' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: maestro-ios-${{ inputs.suite || 'smoke' }}
+          path: artifacts/e2e/
+          if-no-files-found: warn
+          retention-days: 14

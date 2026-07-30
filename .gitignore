@@ -100,6 +100,9 @@ fastlane/Preview.html
 fastlane/screenshots/**/*.png
 fastlane/test_output
 
+# Local/CI Maestro evidence
+artifacts/
+
 # Code Injection
 #
 # After new code Injection tools there's a generated folder /iOSInjectionProject
