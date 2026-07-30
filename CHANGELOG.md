@@ -1,3 +1,9 @@
+## [4.7.0](https://github.com/customerio/customerio-ios/compare/4.6.1...4.7.0) (2026-07-30)
+
+### Features
+
+* Visual Notification Inbox overlay (integration / build distribution) ([#1141](https://github.com/customerio/customerio-ios/issues/1141)) ([74217fd](https://github.com/customerio/customerio-ios/commit/74217fdacdc5fee035c869acf2af2b8b933fb8ae))
+
 ## [4.6.1](https://github.com/customerio/customerio-ios/compare/4.6.0...4.6.1) (2026-07-24)
 
 ### Bug Fixes
