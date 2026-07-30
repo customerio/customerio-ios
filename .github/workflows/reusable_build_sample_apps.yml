@@ -97,6 +97,10 @@ jobs:
           sd "pod 'CustomerIOLocation', :path =>.*" "pod 'CustomerIOLocation', '$TAG'" "Apps/CocoaPods-FCM/Podfile"
           sd "pod 'CustomerIOMessagingInbox', :path =>.*" "pod 'CustomerIOMessagingInbox', '$TAG'" "Apps/CocoaPods-FCM/Podfile"
           sd "pod 'CustomerIOLocationGeofence', :path =>.*" "pod 'CustomerIOLocationGeofence', '$TAG'" "Apps/CocoaPods-FCM/Podfile"
+          sd "pod 'CustomerIOLiveActivities', :path =>.*" "pod 'CustomerIOLiveActivities', '$TAG'" "Apps/CocoaPods-FCM/Podfile"
+          sd "pod 'CustomerIOLiveActivitiesAttributes', :path =>.*" "pod 'CustomerIOLiveActivitiesAttributes', '$TAG'" "Apps/CocoaPods-FCM/Podfile"
+          # Declared in both the app and the widget extension targets; sd rewrites every occurrence.
+          sd "pod 'CustomerIOLiveActivitiesTemplates', :path =>.*" "pod 'CustomerIOLiveActivitiesTemplates', '$TAG'" "Apps/CocoaPods-FCM/Podfile"
           # If you have other modules: repeat
 
           # 2) SwiftPM package in `Apps/Common/Package.swift`

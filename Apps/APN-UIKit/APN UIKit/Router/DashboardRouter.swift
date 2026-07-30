@@ -10,6 +10,7 @@ protocol DashboardRouting {
     func routeToInlineUikitExamplesScreen()
     func routeToInbox()
     func routeToLocationTest()
+    func routeToLiveActivities()
 }
 
 class DashboardRouter: DashboardRouting {
@@ -53,6 +54,12 @@ class DashboardRouter: DashboardRouting {
 
     func routeToLocationTest() {
         let viewController = LocationTestViewController.newInstance()
+        dashboardViewController?.navigationController?.pushViewController(viewController, animated: true)
+    }
+
+    func routeToLiveActivities() {
+        guard #available(iOS 17.2, *) else { return }
+        let viewController = LiveActivitiesViewController()
         dashboardViewController?.navigationController?.pushViewController(viewController, animated: true)
     }
 }

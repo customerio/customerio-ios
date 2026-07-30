@@ -17,4 +17,6 @@ public enum KeyValueStorageKey: String {
     case inboxTemplatesCache = "inbox_templates_cache"
     case inboxBrandingCache = "inbox_branding_cache"
     case inboxEnabledFlag = "inbox_enabled_flag"
+    case liveActivityRegistrations = "live_activity_registrations"
+    case liveActivityDeliveries = "live_activity_deliveries"
 }

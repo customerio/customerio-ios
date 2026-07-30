@@ -225,8 +225,8 @@ jobs:
           # CustomerIOMessagingInbox depends on CustomerIOMessagingInApp (tier 2), so
           # it pushes in tier 3.
           tiers=(
-            "CustomerIOCommon.podspec"
-            "CustomerIOTrackingMigration.podspec CustomerIOMessagingPush.podspec CustomerIOMessagingInApp.podspec CustomerIOLocation.podspec"
+            "CustomerIOCommon.podspec CustomerIOLiveActivitiesAttributes.podspec"
+            "CustomerIOTrackingMigration.podspec CustomerIOMessagingPush.podspec CustomerIOMessagingInApp.podspec CustomerIOLocation.podspec CustomerIOLiveActivities.podspec CustomerIOLiveActivitiesTemplates.podspec"
             "CustomerIODataPipelines.podspec CustomerIOMessagingPushAPN.podspec CustomerIOMessagingPushFCM.podspec CustomerIOMessagingInbox.podspec CustomerIOLocationGeofence.podspec"
             "CustomerIO.podspec"
           )
@@ -365,6 +365,9 @@ jobs:
             CustomerIOMessagingInApp
             CustomerIOMessagingInbox
             CustomerIOLocation
+            CustomerIOLiveActivitiesAttributes
+            CustomerIOLiveActivities
+            CustomerIOLiveActivitiesTemplates
             CustomerIO
           )
 

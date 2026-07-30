@@ -26,7 +26,10 @@ let package = Package(
                 // Visual Notification Inbox overlay (`CioMessagingInbox`) so sample apps can mount it.
                 .product(name: "MessagingInbox", package: "customerio-ios"),
                 .product(name: "Location", package: "customerio-ios"),
-                .product(name: "LocationGeofence", package: "customerio-ios")
+                .product(name: "LocationGeofence", package: "customerio-ios"),
+                .product(name: "LiveActivities", package: "customerio-ios"),
+                .product(name: "LiveActivities_Attributes", package: "customerio-ios"),
+                .product(name: "LiveActivities_Templates", package: "customerio-ios")
             ],
             path: "Source"
         )

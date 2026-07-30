@@ -21,7 +21,10 @@ var products: [PackageDescription.Product] = [
     .library(name: "MessagingInApp", targets: ["CioMessagingInApp"]),
     .library(name: "MessagingInbox", targets: ["CioMessagingInbox"]),
     .library(name: "Location", targets: ["CioLocation"]),
-    .library(name: "LocationGeofence", targets: ["CioLocationGeofence"])
+    .library(name: "LocationGeofence", targets: ["CioLocationGeofence"]),
+    .library(name: "LiveActivities", targets: ["CioLiveActivities"]),
+    .library(name: "LiveActivities_Attributes", targets: ["CioLiveActivities_Attributes"]),
+    .library(name: "LiveActivities_Templates", targets: ["CioLiveActivities_Templates"])
 ]
 
 // When we execute the automated test suite, we use tools to determine the code coverage of our tests. 
@@ -209,5 +212,25 @@ let package = Package(
         .testTarget(name: "LocationGeofenceTests",
                     dependencies: ["CioLocationGeofence", "CioLocation", "CioInternalCommon", "SharedTests", "CioInternalCommonMocks", "CioLocationGeofenceMocks"],
                     path: "Tests/LocationGeofence"),
+
+        // Live Activities — protocol only, no SDK dependency.
+        // Safe to import in any target (app, widget extension) that needs CIOActivityAttribute.
+        .target(name: "CioLiveActivities_Attributes",
+                dependencies: [],
+                path: "Sources/LiveActivities_Attributes"),
+
+        // Live Activities — bundled UI templates (SwiftUI/WidgetKit).
+        // Import in both the app target and the widget extension when using a built-in template.
+        .target(name: "CioLiveActivities_Templates",
+                dependencies: ["CioLiveActivities_Attributes"],
+                path: "Sources/LiveActivities_Templates"),
+
+        // Live Activities — observation module.
+        .target(name: "CioLiveActivities",
+                dependencies: ["CioInternalCommon", "CioLiveActivities_Attributes"],
+                path: "Sources/LiveActivities"),
+        .testTarget(name: "LiveActivitiesTests",
+                    dependencies: ["CioLiveActivities", "CioInternalCommon"],
+                    path: "Tests/LiveActivities"),
     ]
 )

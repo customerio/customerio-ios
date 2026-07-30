@@ -16,6 +16,11 @@ target 'test cocoapods' do
   pod 'CustomerIOMessagingInbox', :path => sdk_local_path
   pod 'CustomerIOLocationGeofence', :path => sdk_local_path
 
+  # Live Activities: the app-side module (starts/reports activities, handles widget-URL taps).
+  # The widget extension target below installs the Attributes + Templates pods it renders from.
+  pod 'CustomerIOLiveActivities', :path => sdk_local_path
+  pod 'CustomerIOLiveActivitiesTemplates', :path => sdk_local_path
+
   # Adding APN for internal testing, only. Code from this pod is not used at runtime. 
   # We need to confirm that cocoapods customers can compile their apps with this pod installed. 
   pod 'CustomerIOMessagingPushAPN', :path => sdk_local_path
@@ -35,7 +40,14 @@ target 'test cocoapods' do
   pod 'SampleAppsCommon', :path => File.join(File.dirname(__FILE__), '../Common')
 end
 
-target 'Rich Push Notification Service Extension' do 
+target 'LiveActivityWidget' do
+  # A widget extension renders from the lightweight Attributes + Templates pods only — it must NOT
+  # link the full SDK. This also verifies those two pods stand alone under CocoaPods.
+  pod 'CustomerIOLiveActivitiesAttributes', :path => sdk_local_path
+  pod 'CustomerIOLiveActivitiesTemplates', :path => sdk_local_path
+end
+
+target 'Rich Push Notification Service Extension' do
   pod 'CustomerIOCommon', :path => sdk_local_path
   pod 'CustomerIODataPipelines', :path => sdk_local_path
   pod 'CustomerIOMessagingPush', :path => sdk_local_path

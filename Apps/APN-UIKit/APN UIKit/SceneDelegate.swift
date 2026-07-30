@@ -1,3 +1,5 @@
+import CioDataPipelines
+import CioLiveActivities
 import UIKit
 
 class SceneDelegate: UIResponder, UIWindowSceneDelegate {
@@ -17,6 +19,11 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         // The Visual Notification Inbox is placed directly in the Dashboard screen via the
         // public `NotificationInboxBell` / `NotificationInboxView` views (see DashboardViewController)
         // — the recommended integration — rather than a separate passthrough overlay window.
+
+        // On a cold launch from a Live Activity tap, iOS delivers the `widgetURL` here in
+        // `connectionOptions.urlContexts` rather than via `scene(_:openURLContexts:)`. Route it
+        // through the same path so the deep link opens and the SDK reports the `opened` metric.
+        handle(urlContexts: connectionOptions.urlContexts)
     }
 
     func sceneDidDisconnect(_ scene: UIScene) {
@@ -65,10 +72,31 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
     // Opens one or more URLs, handles deep link for the apps
     func scene(_ scene: UIScene, openURLContexts URLContexts: Set<UIOpenURLContext>) {
-        for context in URLContexts {
-            let url = context.url
+        handle(urlContexts: URLContexts)
+    }
+
+    private func handle(urlContexts: Set<UIOpenURLContext>) {
+        for context in urlContexts {
+            var url = context.url
+            // A tap on a Customer.io Live Activity arrives as a CIO tracking URL: report the
+            // `opened` for the exact delivery shown and unwrap the customer's deep link (nil if
+            // none). Non-CIO URLs are returned unchanged. Activities render from iOS 16.2, so this
+            // must not be gated any higher — only the in-app routing below needs 17.2.
+            guard let destination = CustomerIO.liveActivities.handleWidgetUrl(url) else { continue }
+            url = destination
+            if #available(iOS 17.2, *), url.host == LiveActivitiesViewController.deepLinkHost {
+                routeToLiveActivities()
+                continue
+            }
             _ = deepLinkHandler.handleAppSchemeDeepLink(url)
         }
+    }
+
+    @available(iOS 17.2, *)
+    private func routeToLiveActivities() {
+        guard let nav = window?.rootViewController as? UINavigationController else { return }
+        if nav.topViewController is LiveActivitiesViewController { return }
+        nav.pushViewController(LiveActivitiesViewController(), animated: true)
     }
 
     // Universal Links - handling universal links that come into the mobile app, not from the Customer.io SDK.

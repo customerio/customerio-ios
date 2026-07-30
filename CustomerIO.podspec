@@ -62,4 +62,16 @@ Pod::Spec.new do |spec|
   spec.subspec "LocationGeofence" do |ss|
     ss.dependency "CustomerIOLocationGeofence", "= #{spec.version.to_s}"
   end
+
+  spec.subspec "LiveActivities" do |ss|
+    ss.dependency "CustomerIOLiveActivities", "= #{spec.version.to_s}"
+  end
+
+  spec.subspec "LiveActivitiesAttributes" do |ss|
+    ss.dependency "CustomerIOLiveActivitiesAttributes", "= #{spec.version.to_s}"
+  end
+
+  spec.subspec "LiveActivitiesTemplates" do |ss|
+    ss.dependency "CustomerIOLiveActivitiesTemplates", "= #{spec.version.to_s}"
+  end
 end

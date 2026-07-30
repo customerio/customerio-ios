@@ -1,5 +1,7 @@
 import CioDataPipelines
 import CioInternalCommon
+import CioLiveActivities
+import CioLiveActivities_Templates
 import CioLocation
 import CioLocationGeofence
 import CioMessagingInApp
@@ -64,6 +66,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         let locationMode = settings.location?.trackingMode.toCIOMode() ?? .manual
         config.addModule(LocationModule(config: LocationConfig(mode: locationMode)))
         config.addModule(GeofenceModule())
+        addLiveActivitiesModule(to: config)
         CustomerIO.initialize(withConfig: config.build())
 
         // Initialize messaging features after initializing Customer.io SDK
@@ -86,6 +89,24 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         // returns `false` so the SDK runs its default action handling). A host that wants to
         // intercept an action returns `true` from `messageActionTaken`.
         MessagingInApp.shared.setInboxEventListener(inboxEventListener)
+    }
+
+    // Register Live Activities as an SDK-managed module. It initializes during
+    // CustomerIO.initialize(withConfig:) and is reached via `CustomerIO.liveActivities`.
+    // `DeliveryActivityAttributes` is defined in the widget extension folder and shared with
+    // this target; the SDK matches it by type name.
+    private func addLiveActivitiesModule(to config: SDKConfigBuilder) {
+        guard #available(iOS 16.2, *) else { return }
+        config.addModule(LiveActivitiesModule(
+            config:
+            LiveActivityConfigBuilder()
+                // Built-in templates carry their own identifier (CIOActivityTemplate) — no id needed.
+                .register(CIOSegmentsAttributes.self)
+                .register(CIOCountdownTimerAttributes.self)
+                // A custom (app-owned) type: pass the identifier the backend expects.
+                .register(DeliveryActivityAttributes.self, identifier: DeliveryActivityAttributes.identifier)
+                .build()
+        ))
     }
 
     // Handle Universal Link deep link from the Customer.io SDK. This function will get called if a push notification
