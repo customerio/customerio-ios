@@ -108,6 +108,22 @@ final class VisualInboxModelTests: XCTestCase {
         XCTAssertTrue(provider.markedOpenedIds.isEmpty)
     }
 
+    func test_autoMarkVisibleMessagesOpened_whenMessageLoadsAfterPresentation_thenMarksMessage() async {
+        let provider = FakeVisualInboxProvider()
+        let model = VisualInboxModel(provider: provider)
+
+        // The standalone view commonly appears before its first server-backed snapshot arrives.
+        model.setAutoMarkVisibleMessagesOpened(true)
+        provider.stubState = .visible(messageCount: 1)
+        provider.stubMessages = [makeSnapshot(id: "late", opened: false)]
+        provider.stubTemplates = ["test": [["version": "1", "root": ["type": "placeholder"]]]]
+
+        await model.refresh()
+        await provider.waitForMarks(expected: 1)
+
+        XCTAssertEqual(provider.markedOpenedIds, ["late"])
+    }
+
     // MARK: - dismiss (web parity: tap → dismiss)
 
     func test_dismiss_whenCalled_thenProviderDismissesMessage() async {

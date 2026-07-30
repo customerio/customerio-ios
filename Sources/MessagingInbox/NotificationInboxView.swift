@@ -87,7 +87,12 @@ struct InboxListView: View {
         content
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .modifier(LifecycleModifier(model: model, enabled: ownsModelLifecycle))
-            .onAppear { if marksOpenedOnAppear { model.markVisibleMessagesOpened() } }
+            .onAppear {
+                if marksOpenedOnAppear { model.setAutoMarkVisibleMessagesOpened(true) }
+            }
+            .onDisappear {
+                if marksOpenedOnAppear { model.setAutoMarkVisibleMessagesOpened(false) }
+            }
     }
 
     /// Panel body driven by load state: nothing when the inbox is hidden, spinner while loading,

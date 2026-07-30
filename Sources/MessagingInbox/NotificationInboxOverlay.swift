@@ -69,7 +69,10 @@ public struct NotificationInboxOverlay: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         // The overlay owns the shared model's lifecycle (the bell/sheet observe it but don't drive it).
         .onAppear { model.start() }
-        .onDisappear { model.stop() }
+        .onDisappear {
+            model.setAutoMarkVisibleMessagesOpened(false)
+            model.stop()
+        }
         // If the inbox transitions to hidden while the sheet is open, dismiss it so it doesn't linger.
         .onChange(of: model.showsChrome) { visible in
             if !visible { isInboxPresented = false }
@@ -77,7 +80,7 @@ public struct NotificationInboxOverlay: View {
         // Auto-mark-opened (item 8): when the sheet is presented, mark the visible messages opened
         // (deduped inside the model so a message is never marked twice).
         .onChange(of: isInboxPresented) { presented in
-            if presented { model.markVisibleMessagesOpened() }
+            model.setAutoMarkVisibleMessagesOpened(presented)
         }
         // System sheet with medium/large detents + grabber — no header (matches web parity). The list
         // shares this overlay's model, so bell and sheet observe the same state.

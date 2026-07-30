@@ -197,20 +197,37 @@ class InboxViewController: BaseViewController, UITableViewDelegate, UITableViewD
         navigationController?.pushViewController(host, animated: true)
     }
 
+    /// Pushes the visual message list as a dedicated screen, without the floating bell or sheet.
+    @objc private func presentVisualInboxDemo() {
+        guard #available(iOS 13.0, *) else { return }
+        let host = UIHostingController(rootView: VisualInboxScreen())
+        host.title = "Visual Inbox"
+        navigationController?.pushViewController(host, animated: true)
+    }
+
     deinit {
         inbox.removeChangeListener(self)
     }
 
     private func setupUI() {
         title = "Inbox Messages"
-        // Entry to the SwiftUI drop-in overlay demo (bell that presents its own sheet). iOS 16+.
+        let visualButton = UIBarButtonItem(
+            title: "Visual",
+            style: .plain,
+            target: self,
+            action: #selector(presentVisualInboxDemo)
+        )
+        navigationItem.rightBarButtonItem = visualButton
+
+        // Keep the drop-in overlay demo alongside the dedicated visual Inbox screen on iOS 16+.
         if #available(iOS 16.0, *) {
-            navigationItem.rightBarButtonItem = UIBarButtonItem(
+            let overlayButton = UIBarButtonItem(
                 title: "Overlay",
                 style: .plain,
                 target: self,
                 action: #selector(presentOverlayDemo)
             )
+            navigationItem.rightBarButtonItems = [overlayButton, visualButton]
         }
         tableView.delegate = self
         tableView.dataSource = self
@@ -388,6 +405,18 @@ private extension InboxViewController {
 }
 
 // MARK: - VisualInboxOverlayScreen
+
+/// Dedicated-screen integration of the visual Inbox message list.
+@available(iOS 13.0, *)
+private struct VisualInboxScreen: View {
+    var body: some View {
+        ZStack {
+            Color(.systemGroupedBackground).ignoresSafeArea()
+            NotificationInboxView()
+        }
+        .accessibilityIdentifier("visual_inbox_screen")
+    }
+}
 
 /// SwiftUI screen hosting the drop-in `NotificationInboxOverlay` in a `ZStack` — the intended usage.
 /// SwiftUI handles bell taps + passthrough; the overlay presents the inbox in its own native sheet.
