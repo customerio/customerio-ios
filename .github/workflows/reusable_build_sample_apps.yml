@@ -110,6 +110,24 @@ jobs:
              ".package(name: \"customerio-ios\", url: \"https://github.com/customerio/customerio-ios.git\", .upToNextMajor(from: \"${TAG}\"))" \
              "Apps/Common/Package.swift"
 
+          # 3) SwiftPM reference to the SDK repo root inside `Apps/APN-UIKit`
+          # The LiveActivityExtension target links `LiveActivities_Attributes` / `LiveActivities_Templates`
+          # straight from the SDK, so the project holds its own local reference to `../../` on top of the
+          # one in `Apps/Common/Package.swift` above. Leaving it local while Common points at the remote
+          # makes SwiftPM see two packages with the identity `customerio-ios` and refuse to resolve:
+          #   Conflicting identity for customerio-ios: dependency 'github.com/customerio/customerio-ios'
+          #   and dependency '/path/to/checkout' both point to the same package identity 'customerio-ios'.
+          # So pin this reference to the same published version. The reference keeps its UUID, which is
+          # what `packageReferences` and the target's product dependencies key off of.
+          PBXPROJ="Apps/APN-UIKit/APN UIKit.xcodeproj/project.pbxproj"
+          # Keep the human-readable comments (block header + `packageReferences` entry) in sync.
+          sd 'XCLocalSwiftPackageReference "\.\./\.\./"' 'XCRemoteSwiftPackageReference "customerio-ios"' "$PBXPROJ"
+          # Swap the reference body itself. Matching `isa` together with the `../../` path leaves the
+          # sibling `../Common` local reference alone, which has to stay local.
+          sd 'isa = XCLocalSwiftPackageReference;\n(\s*)relativePath = "\.\./\.\./";' \
+             "isa = XCRemoteSwiftPackageReference;\n\${1}repositoryURL = \"https://github.com/customerio/customerio-ios.git\";\n\${1}requirement = {\n\${1}\tkind = upToNextMajorVersion;\n\${1}\tminimumVersion = \"${TAG}\";\n\${1}};" \
+             "$PBXPROJ"
+
           echo "Finished updating references. Now we have pinned SDK version $TAG."
 
       - name: Set Default Firebase Distribution Groups
