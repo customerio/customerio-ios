@@ -1,4 +1,4 @@
---exclude Pods, Package.swift, Apps/*/Pods, Apps/*/spm_packages
+--exclude Pods, Package.swift, Apps/*/Pods, Apps/*/spm_packages, Sources/MessagingInbox/Vendor
 
 --binarygrouping none 
 --decimalgrouping none 

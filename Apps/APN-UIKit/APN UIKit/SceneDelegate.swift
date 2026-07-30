@@ -16,6 +16,9 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
         window = UIWindow(windowScene: windowScene)
         setVisibleWindow()
+        // The Visual Notification Inbox is placed directly in the Dashboard screen via the
+        // public `NotificationInboxBell` / `NotificationInboxView` views (see DashboardViewController)
+        // — the recommended integration — rather than a separate passthrough overlay window.
 
         // On a cold launch from a Live Activity tap, iOS delivers the `widgetURL` here in
         // `connectionOptions.urlContexts` rather than via `scene(_:openURLContexts:)`. Route it

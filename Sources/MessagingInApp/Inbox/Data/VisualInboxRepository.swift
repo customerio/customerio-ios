@@ -1,0 +1,382 @@
+import CioInternalCommon
+import Foundation
+
+/// Read-facing API the visual-inbox overlay consumes from the data layer.
+///
+/// The visual inbox is a thin layer over the headless inbox: messages are read live from the
+/// headless message source (the in-app store) and selected/sorted on read; only the render assets
+/// (templates registry + branding) and the enablement flag are cached here, reusing the same
+/// key-value persistence the headless inbox uses for its network responses.
+///
+/// Exposes:
+///  - `isInboxEnabled`: enablement gate the UI can gate/observe on.
+///  - `loadState`: drives loading/visible/hidden UI (single decision point; see `VisualInboxLoadState`).
+///  - `isInboxVisible`: convenience visibility signal derived from `loadState`.
+///  - selected/sorted/typed inbox messages (`selectedMessages` / `jistMessages`).
+///  - raw templates registry (`templatesRegistry`) and `branding`.
+///
+/// Mutations (markOpened/markDeleted/trackClicked) are intentionally **not** re-implemented here;
+/// callers reuse the existing `NotificationInbox` plumbing.
+protocol VisualInboxRepository: AnyObject, Sendable {
+    /// Whether the inbox feature is enabled for the current workspace (from `x-cio-inbox-enabled`, cached).
+    var isInboxEnabled: Bool { get async }
+
+    /// Current load state for the visual inbox (idle/loading/visible/hidden).
+    var loadState: VisualInboxLoadState { get async }
+
+    /// Whether the inbox should be shown by the overlay UI (derived from `loadState`).
+    var isInboxVisible: Bool { get async }
+
+    /// Loads the visual inbox. Revalidates templates + branding (in parallel) against the server
+    /// **once per session**, persists the result, and updates `loadState`.
+    /// Subsequent same-session loads serve the stored payload without a network call. Idempotent.
+    func enableAndLoad() async
+
+    /// Visual-inbox messages: prefix-filtered, expiry-dropped, priority asc → sentAt desc.
+    func selectedMessages() async -> [InboxMessage]
+
+    /// Visual-inbox messages adapted to Jist types (typed/nested properties preserved).
+    func jistMessages() async -> [JistInboxMessage]
+
+    /// `loadState` and the Jist message list resolved in ONE call, rather than two reads a queue/SSE
+    /// update can land between. The message list is internally consistent; the state is best-effort
+    /// (see the implementation for the residual window).
+    func loadStateAndJistMessages() async -> (state: VisualInboxLoadState, messages: [JistInboxMessage])
+
+    /// Raw templates registry handed to the inbox module (un-decoded JSON), or nil if unavailable.
+    func templatesRegistry() async -> InboxTemplatesRegistry?
+
+    /// Branding (theme + patterns), or nil if unavailable.
+    func branding() async -> InboxBranding?
+
+    /// Records the enablement flag read from the queue response headers (persisted, no expiry).
+    /// - Returns: the previously-stored enablement value (defaulting to `false` when unset),
+    ///   so callers can detect a `false → true` transition.
+    @discardableResult
+    func setInboxEnabled(_ enabled: Bool) async -> Bool
+
+    /// Emits once every time `loadState` is (re)computed. The overlay subscribes to react to
+    /// enablement/visibility changes without polling; emissions are signals only (the subscriber
+    /// reads current cached state) and never trigger a network fetch.
+    func loadStateChanges() async -> AsyncStream<Void>
+}
+
+// sourcery: InjectRegisterShared = "VisualInboxRepository"
+// sourcery: InjectSingleton
+/// Default actor-isolated implementation of the visual-inbox data layer. Implemented as an `actor`
+/// so all cache reads/writes and load-state transitions are serialized without manual locking.
+///
+/// Freshness model (matches Android): templates/branding are revalidated against the server
+/// **once per session** (first `enableAndLoad()` of the process, via `GistQueueNetwork`); later
+/// same-session loads serve the stored payload with no network call. No wall-clock TTL — the
+/// gate reopens on process restart (DI singleton) and on logout, which also clears the persisted
+/// assets so they are never served to the next user.
+///
+/// Serve-stale: a failed poll never dispatches new inbox messages, so the store retains its
+/// last-known-good set (persisted via the headless 304 cache); templates/branding fall back to the
+/// last stored payload on failed revalidation.
+actor VisualInboxRepositoryImpl: VisualInboxRepository {
+    private let networkClient: InboxNetworkClient
+    let inAppMessageManager: InAppMessageManager
+    private let sleeper: Sleeper
+    private let dateUtil: DateUtil
+    let logger: Logger
+
+    /// Workspace-scoped persistent store for render assets + enablement flag (no expiry; serve-stale
+    /// source and same-session payload source).
+    let assetsCache: InboxRenderAssetsCache
+
+    var currentLoadState: VisualInboxLoadState = .idle {
+        didSet { loadStateObservers.notify() }
+    }
+
+    /// Live observers of `loadState` changes (see `loadStateChanges()`); actor isolation serializes
+    /// add/remove/notify, so no manual locking.
+    private var loadStateObservers = VisualInboxLoadStateObservers()
+
+    /// In-flight guard: true while a templates+branding revalidation runs, so overlapping polls
+    /// don't launch duplicate fetches (actor isolation makes check+set atomic).
+    private var isFetchInFlight = false
+
+    /// Session-scoped revalidation gate: false until this session's first revalidation, then
+    /// same-session loads serve the stored payload with no network call. Reopens on process restart
+    /// (DI singleton) and on logout — i.e. a new session revalidates exactly once.
+    var didRevalidateThisSession = false
+
+    /// Bumped every time a session reset reopens the gate. A revalidation that spans a bump belongs
+    /// to the old session and must not close the gate behind the new one.
+    var sessionGeneration = 0
+
+    /// Strong reference to the weakly-held in-app store subscriber (the store holds it weakly).
+    /// One subscriber covers both `inboxMessages` and `userId`. See `subscribeToStoreChanges`.
+    var storeSubscriber: InAppMessageStoreSubscriber?
+
+    /// Last non-nil `userId` observed, so logout can be told apart from the nil `userId` every cold
+    /// launch starts with (clearing on the latter would defeat the persisted cache entirely).
+    var lastKnownUserId: String?
+
+    /// Parsed render assets memoized against their raw payload. Both are read several times per
+    /// store change (visibility, snapshot, chrome) while the payload changes at most once a session,
+    /// so without this every tick re-runs `JSONSerialization` over the full templates registry.
+    private var parsedTemplates: (raw: Data, value: InboxTemplatesRegistry)?
+    private var parsedBranding: (raw: Data, value: InboxBranding)?
+
+    /// Current time, sourced from the injectable `DateUtil` so tests can control it.
+    func currentDate() -> Date {
+        dateUtil.now
+    }
+
+    init(
+        networkClient: InboxNetworkClient,
+        inAppMessageManager: InAppMessageManager,
+        keyValueStore: SharedKeyValueStorage,
+        sleeper: Sleeper,
+        dateUtil: DateUtil,
+        logger: Logger
+    ) {
+        self.networkClient = networkClient
+        self.inAppMessageManager = inAppMessageManager
+        self.sleeper = sleeper
+        self.dateUtil = dateUtil
+        self.logger = logger
+        self.assetsCache = InboxRenderAssetsCache(keyValueStore: keyValueStore)
+        Task { await subscribeToStoreChanges() }
+    }
+
+    // MARK: - Enablement gate
+
+    var isInboxEnabled: Bool {
+        get async { assetsCache.enabledFlag() ?? false }
+    }
+
+    @discardableResult
+    func setInboxEnabled(_ enabled: Bool) async -> Bool {
+        let previous = assetsCache.enabledFlag() ?? false
+        assetsCache.setEnabled(enabled)
+        return previous
+    }
+
+    // MARK: - Load state
+
+    var loadState: VisualInboxLoadState {
+        get async { currentLoadState }
+    }
+
+    var isInboxVisible: Bool {
+        get async { currentLoadState.isInboxVisible }
+    }
+
+    // MARK: - Reactive observation
+
+    func loadStateChanges() async -> AsyncStream<Void> {
+        AsyncStream { continuation in
+            let id = UUID()
+            // Stream builder runs synchronously on the caller; defer register/unregister onto the actor.
+            Task { await self.addLoadStateObserver(id: id, continuation: continuation) }
+            continuation.onTermination = { @Sendable _ in
+                Task { await self.removeLoadStateObserver(id: id) }
+            }
+        }
+    }
+
+    private func addLoadStateObserver(id: UUID, continuation: AsyncStream<Void>.Continuation) {
+        loadStateObservers.add(id: id, continuation: continuation)
+    }
+
+    private func removeLoadStateObserver(id: UUID) {
+        loadStateObservers.remove(id: id)
+    }
+
+    // MARK: - Loading
+
+    func enableAndLoad() async {
+        // Gate: if disabled, the inbox is hidden (not an error).
+        guard assetsCache.enabledFlag() ?? false else {
+            logger.logWithModuleTag("[CIO-Inbox] enableAndLoad skipped: inbox disabled for current workspace → hidden", level: .debug)
+            currentLoadState = .hidden(reason: "inbox disabled")
+            return
+        }
+
+        // Stored last-known payloads (serve-stale source and same-session payload source).
+        let storedTemplates = cachedTemplates()
+        let storedBranding = cachedBranding()
+
+        // Once-per-session gate: after this session has already revalidated, serve the stored
+        // payload without a network call (server-decided freshness; no wall-clock TTL).
+        if didRevalidateThisSession {
+            logger.logWithModuleTag("[CIO-Inbox] enableAndLoad served from stored payload (already revalidated this session)", level: .debug)
+            await resolveLoadState(templates: storedTemplates, branding: storedBranding)
+            return
+        }
+
+        // In-flight guard: if a revalidation is already running, don't launch a duplicate one. The
+        // state will be resolved by the revalidation already in progress.
+        guard !isFetchInFlight else {
+            logger.logWithModuleTag("[CIO-Inbox] enableAndLoad revalidation skipped: one is already in flight", level: .debug)
+            return
+        }
+        isFetchInFlight = true
+        defer { isFetchInFlight = false }
+        await performRevalidation(staleTemplates: storedTemplates, staleBranding: storedBranding)
+    }
+
+    /// Runs the once-per-session network revalidation (templates + branding in parallel), persists
+    /// successes, applies the serve-stale preference, marks the session gate, and resolves the
+    /// terminal load state. The gate is set regardless of fetch outcome so a failing server does not
+    /// cause a tight per-poll retry loop within the same session (failure → serve stale).
+    private func performRevalidation(staleTemplates: InboxTemplatesRegistry?, staleBranding: InboxBranding?) async {
+        logger.logWithModuleTag("[CIO-Inbox] revalidation triggered (once-per-session): fetching templates + branding", level: .info)
+        currentLoadState = .loading
+        // Session this cycle belongs to; re-checked before closing the gate below.
+        let generationAtStart = sessionGeneration
+        let retrier = InboxFetchRetrier(sleeper: sleeper, logger: logger)
+        let (fetchedTemplates, fetchedBranding) = await fetchTemplatesAndBranding(state: inAppMessageManager.state, retrier: retrier)
+
+        // Serve-stale preference: prefer a just-fetched value; otherwise retain the last cached one.
+        let resolvedTemplates = fetchedTemplates ?? staleTemplates
+        let resolvedBranding = fetchedBranding ?? staleBranding
+        if fetchedTemplates == nil, resolvedTemplates != nil {
+            logger.logWithModuleTag("[CIO-Inbox] serve-stale used: templates (fetch failed, last-known-good retained)", level: .info)
+        }
+        if fetchedBranding == nil, resolvedBranding != nil {
+            logger.logWithModuleTag("[CIO-Inbox] serve-stale used: branding (fetch failed, last-known-good retained)", level: .info)
+        }
+
+        // A logout ended this cycle's session while it was in flight. The payloads above were
+        // already written to the cache by the fetch helpers, undoing the logout's clear, so drop
+        // them again and leave the gate open for the next session to revalidate from scratch.
+        guard sessionGeneration == generationAtStart else {
+            logger.logWithModuleTag("[CIO-Inbox] revalidation finished after a logout → discarding its assets", level: .debug)
+            assetsCache.clearRenderAssets()
+            currentLoadState = .hidden(reason: "inbox disabled")
+            return
+        }
+
+        // Close the gate only once there is something to serve. A revalidation that failed with an
+        // empty cache has nothing to fall back on, so closing here would strand the inbox hidden for
+        // the rest of the process — later store updates would keep reading the same empty cache.
+        // Leaving it open lets the next poll retry; a fetch that resolved (fresh OR stale) still
+        // closes it, so a failing server cannot cause a per-poll retry loop.
+        if resolvedTemplates != nil, resolvedBranding != nil {
+            didRevalidateThisSession = true
+        } else {
+            logger.logWithModuleTag("[CIO-Inbox] revalidation produced nothing servable → gate stays open for the next poll", level: .debug)
+        }
+
+        // Re-read the enablement flag: the inbox may have been DISABLED by a later poll while this
+        // revalidation was in flight (enabled=false + loadState=.hidden). Without this guard, a stale
+        // in-flight fetch would resolve back to .visible and flip a freshly-hidden inbox visible. The
+        // fetched payloads are still persisted above (only the loadState resolution is gated on
+        // still-enabled); we simply do not resolve to visible.
+        guard assetsCache.enabledFlag() ?? false else {
+            logger.logWithModuleTag("[CIO-Inbox] revalidation completed but inbox was disabled mid-flight → staying hidden", level: .debug)
+            currentLoadState = .hidden(reason: "inbox disabled")
+            return
+        }
+
+        await resolveLoadState(templates: resolvedTemplates, branding: resolvedBranding)
+    }
+
+    /// Sets the terminal load state from the resolved render assets + live message selection, and
+    /// logs the final visibility decision.
+    func resolveLoadState(templates: InboxTemplatesRegistry?, branding: InboxBranding?) async {
+        let messages = await selectedMessages()
+        currentLoadState = computeLoadState(messages: messages, templates: templates, branding: branding)
+        logger.logVisualInboxVisibility(currentLoadState)
+    }
+
+    /// The single terminal-behavior decision point — **hidden vs visible**.
+    ///
+    /// The inbox is VISIBLE iff BOTH render assets are available:
+    ///   - templates: a fresh/stale cached or just-fetched registry, AND
+    ///   - branding: a fresh/stale cached or just-fetched branding (branding is required to render).
+    /// If either is missing → `.hidden` with a reason. There is NO error UI outcome here.
+    ///
+    /// The message count does NOT gate visibility: a renderable inbox with zero selected messages is
+    /// visible-and-empty ("You're all caught up"), not hidden.
+    private func computeLoadState(
+        messages: [InboxMessage],
+        templates: InboxTemplatesRegistry?,
+        branding: InboxBranding?
+    ) -> VisualInboxLoadState {
+        // Reason composition mirrors Android exactly: only the templates/branding pair ever combines
+        // into one reason. An empty selection is NOT hidden — a renderable inbox with nothing in it is
+        // "You're all caught up", which the standalone inbox view renders. Overlay chrome is gated
+        // separately on having renderable messages, so no bell appears over an empty panel.
+        var reasons: [String] = []
+        if templates == nil { reasons.append("templates unavailable") }
+        if branding == nil { reasons.append("branding unavailable") }
+        guard reasons.isEmpty else {
+            return .hidden(reason: reasons.joined(separator: ", "))
+        }
+        return .visible(messageCount: messages.count)
+    }
+
+    /// Runs the templates + branding fetches concurrently and returns both results. The `async let`
+    /// pair is confined to this method so the child tasks are created and torn down in a clean LIFO
+    /// scope.
+    private func fetchTemplatesAndBranding(
+        state: InAppMessageState,
+        retrier: InboxFetchRetrier
+    ) async -> (templates: InboxTemplatesRegistry?, branding: InboxBranding?) {
+        async let templatesResult: InboxTemplatesRegistry? = fetchTemplates(state: state, retrier: retrier)
+        async let brandingResult: InboxBranding? = fetchBranding(state: state, retrier: retrier)
+        return await(templatesResult, brandingResult)
+    }
+
+    private func fetchTemplates(state: InAppMessageState, retrier: InboxFetchRetrier) async -> InboxTemplatesRegistry? {
+        do {
+            let (registry, data) = try await retrier.run(label: "templates") { [networkClient] in
+                let (data, _) = try await networkClient.get(endpoint: .getTemplates, state: state)
+                guard let registry = InboxTemplatesRegistry.from(jsonData: data) else {
+                    throw InboxNetworkError.noResponse
+                }
+                return (registry, data)
+            }
+            assetsCache.setData(data, forKey: .inboxTemplatesCache)
+            logger.logWithModuleTag("[CIO-Inbox] templates fetch OK: \(registry.templateNames.count) template name(s)", level: .info)
+            return registry
+        } catch {
+            logger.logWithModuleTag("[CIO-Inbox] templates fetch exhausted retries: \(error)", level: .error)
+            return nil
+        }
+    }
+
+    private func fetchBranding(state: InAppMessageState, retrier: InboxFetchRetrier) async -> InboxBranding? {
+        do {
+            let (branding, data) = try await retrier.run(label: "branding") { [networkClient] in
+                let (data, _) = try await networkClient.get(endpoint: .getBranding, state: state)
+                guard let branding = InboxBranding.from(jsonData: data) else {
+                    throw InboxNetworkError.noResponse
+                }
+                return (branding, data)
+            }
+            assetsCache.setData(data, forKey: .inboxBrandingCache)
+            logger.logWithModuleTag("[CIO-Inbox] branding fetch OK: parsed branding payload", level: .info)
+            return branding
+        } catch {
+            logger.logWithModuleTag("[CIO-Inbox] branding fetch exhausted retries: \(error)", level: .error)
+            return nil
+        }
+    }
+
+    // MARK: - Helpers
+
+    /// The last-known templates registry from the persistent store (no expiry), or nil if none.
+    func cachedTemplates() -> InboxTemplatesRegistry? {
+        guard let data = assetsCache.data(forKey: .inboxTemplatesCache) else { return nil }
+        if let parsedTemplates, parsedTemplates.raw == data { return parsedTemplates.value }
+        guard let registry = InboxTemplatesRegistry.from(jsonData: data) else { return nil }
+        parsedTemplates = (raw: data, value: registry)
+        return registry
+    }
+
+    /// The last-known branding from the persistent store (no expiry), or nil if none.
+    func cachedBranding() -> InboxBranding? {
+        guard let data = assetsCache.data(forKey: .inboxBrandingCache) else { return nil }
+        if let parsedBranding, parsedBranding.raw == data { return parsedBranding.value }
+        guard let branding = InboxBranding.from(jsonData: data) else { return nil }
+        parsedBranding = (raw: data, value: branding)
+        return branding
+    }
+}

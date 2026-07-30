@@ -19,8 +19,9 @@ import UIKit
 /// Corresponds to Android's `SseLifecycleManager` class.
 protocol SseLifecycleManager: AutoMockable {
     /// Starts the lifecycle manager. Must be called after initialization.
-    /// - Parameter foregroundFetchHandler: Called to fetch missed messages when app returns to foreground while SSE is active.
-    func start(foregroundFetchHandler: @escaping (InAppMessageState) -> Void) async
+    /// - Parameter queueFetchHandler: Called to fetch the messages SSE will not deliver — those that
+    ///   already existed before the stream opened. Invoked once per confirmed SSE connection.
+    func start(queueFetchHandler: @escaping (InAppMessageState) -> Void) async
 }
 
 // sourcery: InjectRegisterShared = "SseLifecycleManager"
@@ -36,7 +37,7 @@ actor CioSseLifecycleManager: SseLifecycleManager {
     private var userIdSubscriber: InAppMessageStoreSubscriber?
 
     private var isForegrounded: Bool = false
-    private var foregroundFetchHandler: ((InAppMessageState) -> Void)?
+    private var queueFetchHandler: ((InAppMessageState) -> Void)?
 
     init(
         logger: Logger,
@@ -50,9 +51,14 @@ actor CioSseLifecycleManager: SseLifecycleManager {
         self.applicationStateProvider = applicationStateProvider
     }
 
-    func start(foregroundFetchHandler: @escaping (InAppMessageState) -> Void) async {
-        self.foregroundFetchHandler = foregroundFetchHandler
+    func start(queueFetchHandler: @escaping (InAppMessageState) -> Void) async {
+        self.queueFetchHandler = queueFetchHandler
         logger.logWithModuleTag("SseLifecycleManager: Starting lifecycle manager", level: .debug)
+
+        // Backfill once the server confirms a connection, rather than alongside startConnection().
+        await sseConnectionManager.setOnConnectionConfirmed { [weak self] in
+            Task { await self?.backfillOnConnectionConfirmed() }
+        }
 
         // Register observers FIRST to ensure no state transitions are missed
         await setupNotificationObservers()
@@ -102,6 +108,30 @@ actor CioSseLifecycleManager: SseLifecycleManager {
         } else {
             logger.logWithModuleTag("SseLifecycleManager: App backgrounded at init - SSE will start when foregrounded", level: .debug)
         }
+    }
+
+    /// Fetches the messages that already existed before the stream opened, once the server has
+    /// confirmed the connection.
+    ///
+    /// SSE only delivers events that arrive AFTER the connection is established, so a fresh login
+    /// would otherwise show an empty inbox until the next foreground. Keyed off the server's
+    /// `connected` event rather than the transition that decides to connect, so the fetch starts
+    /// against a stream that is already live and is skipped when a connection never establishes.
+    ///
+    /// This narrows the overwrite window but does not close it: the fetch is fire-and-forget, so an
+    /// `inbox_messages` event arriving while it is in flight can still be overwritten by the older
+    /// HTTP snapshot, since both publish a full-state write. Ordering them properly needs the two
+    /// writes versioned or merged; tracked separately.
+    ///
+    /// Not the only backfill trigger: `Gist.handleUserIdentificationChange` also fetches, because a
+    /// `userId` change while SSE is already connected produces no `connected` event to hook.
+    private func backfillOnConnectionConfirmed() async {
+        let state = await inAppMessageManager.state
+        logger.logWithModuleTag(
+            "SseLifecycleManager: Connection confirmed - backfilling messages that predate the stream",
+            level: .info
+        )
+        queueFetchHandler?(state)
     }
 
     // MARK: - SSE Eligibility
@@ -208,9 +238,12 @@ actor CioSseLifecycleManager: SseLifecycleManager {
 
         // Check all 3 conditions: foregrounded + SSE enabled + user identified
         if state.shouldUseSse {
-            // SSE only delivers new events after reconnecting, so perform a one-time
-            // HTTP fetch to retrieve any messages sent while the app was backgrounded.
-            foregroundFetchHandler?(state)
+            // The catch-up HTTP fetch is NOT issued here. SSE only delivers events that arrive after
+            // the connection is established, so the messages that already exist still have to be
+            // fetched — but that now happens from the server's `connected` event (see
+            // `backfillOnConnectionConfirmed`). Issuing it here as well would both double-fetch and
+            // race: the fetch is fire-and-forget, so its response could land after an SSE update and
+            // overwrite the newer list with an older snapshot.
             await sseConnectionManager.startConnection()
         } else {
             logger.logWithModuleTag(

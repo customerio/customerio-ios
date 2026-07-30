@@ -7,6 +7,7 @@ import CioLocationGeofence
 import CioMessagingInApp
 import CioMessagingPush
 import CioMessagingPushAPN
+import os
 import UIKit
 
 @main
@@ -15,6 +16,7 @@ class AppDelegateWithCioIntegration: CioAppDelegateWrapper<AppDelegate> {}
 class AppDelegate: UIResponder, UIApplicationDelegate {
     var storage = DIGraphShared.shared.storage
     var deepLinkHandler = DIGraphShared.shared.deepLinksHandlerUtil
+    private let inboxEventListener = SampleInboxEventListener()
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         // Override point for customization after application launch.
@@ -82,6 +84,11 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
                 region: settings.inApp.region.toCIORegion()
             ).build())
             .setEventListener(self)
+
+        // Visual Notification Inbox action listener. Observational here (logs each callback and
+        // returns `false` so the SDK runs its default action handling). A host that wants to
+        // intercept an action returns `true` from `messageActionTaken`.
+        MessagingInApp.shared.setInboxEventListener(inboxEventListener)
     }
 
     // Register Live Activities as an SDK-managed module. It initializes during
@@ -194,5 +201,37 @@ extension AppDelegate: InAppEventListener {
             "action-value": actionValue,
             "action-name": actionName
         ])
+    }
+}
+
+/// Sample listener for Visual Notification Inbox events. Observational: it logs each callback and
+/// returns `false` from `messageActionTaken` so the SDK still applies its default action
+/// handling (e.g. opening an http(s) url). Return `true` instead to fully handle the action and
+/// suppress the SDK's default behavior.
+class SampleInboxEventListener: InboxEventListener {
+    private static let log = OSLog(subsystem: "io.customer.ios-sample.apn-uikit", category: "CIO-Inbox")
+
+    func messageActionTaken(message: InboxMessage, actionName: String, actionValue: String) -> Bool {
+        os_log(
+            "[CIO-Inbox] sample listener: actionTaken queueId=%{public}@ name=%{public}@ value=%{public}@",
+            log: Self.log,
+            type: .info,
+            message.queueId,
+            actionName,
+            actionValue
+        )
+        return false
+    }
+
+    func messageShown(message: InboxMessage) {
+        os_log("[CIO-Inbox] sample listener: shown queueId=%{public}@", log: Self.log, type: .info, message.queueId)
+    }
+
+    func messageOpened(message: InboxMessage) {
+        os_log("[CIO-Inbox] sample listener: opened queueId=%{public}@", log: Self.log, type: .info, message.queueId)
+    }
+
+    func messageDismissed(message: InboxMessage) {
+        os_log("[CIO-Inbox] sample listener: dismissed queueId=%{public}@", log: Self.log, type: .info, message.queueId)
     }
 }

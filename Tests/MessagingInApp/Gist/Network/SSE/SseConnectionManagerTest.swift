@@ -2,6 +2,7 @@
 @testable import CioInternalCommonMocks
 @testable import CioMessagingInAppMocks
 @testable import CioMessagingInApp
+import Foundation
 import SharedTests
 import XCTest
 
@@ -168,6 +169,41 @@ class SseConnectionManagerTest: XCTestCase {
 
         // Assert
         XCTAssertTrue(heartbeatTimerMock.startTimerCalled)
+    }
+
+    // The hook must fire on the SERVER's `connected` event only. setupSuccessfulConnection also runs
+    // for the transport `.connectionOpen`, which arrives first, so hooking it there would fire twice
+    // and start the first backfill before the server had confirmed anything.
+    func test_openThenConnected_expectConnectionConfirmedExactlyOnce() async {
+        let (stream, continuation) = AsyncStreamBackport.makeStream(of: SseEvent.self)
+        sseServiceMock.connectReturnValue = stream
+
+        let counter = ConfirmationCounter()
+        await sut.setOnConnectionConfirmed { counter.increment() }
+
+        await sut.startConnection()
+        continuation.yield(.connectionOpen)
+        continuation.yield(.serverEvent(ServerEvent(id: nil, type: "connected", data: "")))
+        try? await Task.sleep(nanoseconds: 200000000) // 0.2 seconds
+        continuation.finish()
+
+        XCTAssertEqual(counter.value, 1)
+    }
+
+    func test_transportOpenOnly_expectNoConnectionConfirmed() async {
+        let (stream, continuation) = AsyncStreamBackport.makeStream(of: SseEvent.self)
+        sseServiceMock.connectReturnValue = stream
+
+        let counter = ConfirmationCounter()
+        await sut.setOnConnectionConfirmed { counter.increment() }
+
+        await sut.startConnection()
+        continuation.yield(.connectionOpen)
+        try? await Task.sleep(nanoseconds: 200000000) // 0.2 seconds
+        continuation.finish()
+
+        // Transport open alone is not confirmation: nothing should be backfilled yet.
+        XCTAssertEqual(counter.value, 0)
     }
 
     func test_connectionOpen_expectRetryStateReset() async {
@@ -391,5 +427,23 @@ class SseConnectionManagerTest: XCTestCase {
             return false
         }
         XCTAssertEqual(sseDisabledActions.count, 1)
+    }
+}
+
+/// Counts hook invocations from a `@Sendable` closure. A plain captured `var` is not usable there.
+private final class ConfirmationCounter: @unchecked Sendable {
+    private let lock = NSLock()
+    private var count = 0
+
+    var value: Int {
+        lock.lock()
+        defer { lock.unlock() }
+        return count
+    }
+
+    func increment() {
+        lock.lock()
+        defer { lock.unlock() }
+        count += 1
     }
 }

@@ -19,6 +19,7 @@ var products: [PackageDescription.Product] = [
     .library(name: "MessagingPushAPN", targets: ["CioMessagingPushAPN"]),
     .library(name: "MessagingPushFCM", targets: ["CioMessagingPushFCM"]),
     .library(name: "MessagingInApp", targets: ["CioMessagingInApp"]),
+    .library(name: "MessagingInbox", targets: ["CioMessagingInbox"]),
     .library(name: "Location", targets: ["CioLocation"]),
     .library(name: "LocationGeofence", targets: ["CioLocationGeofence"]),
     .library(name: "LiveActivities", targets: ["CioLiveActivities"]),
@@ -53,7 +54,14 @@ let package = Package(
         .package(name: "CioAnalytics", url: "https://github.com/customerio/cdp-analytics-swift.git", .exact("1.7.3+cio.1")),
         
         // SSE (Server-Sent Events) client for real-time in-app messaging
-        .package(url: "https://github.com/LaunchDarkly/swift-eventsource.git", .upToNextMajor(from: "3.3.0"))
+        .package(url: "https://github.com/LaunchDarkly/swift-eventsource.git", .upToNextMajor(from: "3.3.0")),
+
+        // Jist SwiftUI renderer used by the Visual Inbox overlay (`CioMessagingInbox`).
+        // Published release from the Jist monorepo (its root Package.swift exposes the `Jist` product;
+        // the SwiftPM release is the `vX.Y.Z` git tag).
+        // Pinned exactly, matching the podspec and the Android Gradle pin, so one SDK version always
+        // resolves one Jist across every package manager (Jist is 0.x — minor bumps may break).
+        .package(url: "https://github.com/customerio/jist.git", .exact("0.1.0"))
     ],
     targets: [ 
         // Common - Code used by multiple modules in the SDK project.
@@ -164,6 +172,24 @@ let package = Package(
         .testTarget(name: "MessagingInAppTests",
                     dependencies: ["CioMessagingInApp", "SharedTests", "CioInternalCommonMocks", "CioMessagingInAppMocks"],
                     path: "Tests/MessagingInApp"),
+
+        // Messaging Inbox (Visual Inbox overlay UI)
+        // SwiftUI overlay that renders the visual inbox via Jist. Wraps the headless data layer
+        // exposed by CioMessagingInApp through the @_spi(VisualInbox) facade.
+        .target(name: "CioMessagingInbox",
+                dependencies: [
+                    "CioMessagingInApp",
+                    "CioInternalCommon",
+                    .product(name: "Jist", package: "jist")
+                ],
+                path: "Sources/MessagingInbox",
+                resources: [
+                    .process("Resources/PrivacyInfo.xcprivacy"),
+                    .process("Resources/CioInboxAssets.xcassets"),
+                ]),
+        .testTarget(name: "MessagingInboxTests",
+                    dependencies: ["CioMessagingInbox", "CioMessagingInApp", "SharedTests", "CioInternalCommonMocks"],
+                    path: "Tests/MessagingInbox"),
 
         // Location
         .target(name: "CioLocation",

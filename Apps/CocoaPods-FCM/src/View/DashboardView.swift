@@ -4,6 +4,7 @@ import CioInternalCommon
 import CioLiveActivities
 import CioLiveActivities_Attributes
 import CioLiveActivities_Templates
+import CioMessagingInbox
 import SwiftUI
 import UserNotifications
 
@@ -153,6 +154,13 @@ struct DashboardView: View {
                 EnvironmentText()
             }
             .padding()
+
+            // Drop-in Visual Notification Inbox overlay: floating bell (shown only when the data
+            // layer reports the inbox visible) that opens the Jist-rendered list in a bottom sheet.
+            // Mounted last so it overlays the dashboard. iOS 16+ (the overlay uses system detents).
+            if #available(iOS 16, *) {
+                NotificationInboxOverlay()
+            }
         }
         // Can only use 1 alert() in a View so we combine the different types of Alerts into 1 function.
         .alert(item: $blockingAlert) { alert in

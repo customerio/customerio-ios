@@ -91,4 +91,4 @@ update_cocoapods_dependencies:
 # How to use: 
 # make install_cocoapods_dependencies app=CocoaPods-FCM
 install_cocoapods_dependencies:
-	pod install --project-directory=Apps/$(app) || true 
+	pod install --project-directory=Apps/$(app)

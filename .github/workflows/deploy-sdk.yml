@@ -222,10 +222,12 @@ jobs:
           # Pods within a tier do not depend on each other, so they push in parallel.
           # Tiers push in order because `pod trunk push` lints each podspec and the
           # dependency versions pushed by the previous tier must already exist.
+          # CustomerIOMessagingInbox depends on CustomerIOMessagingInApp (tier 2), so
+          # it pushes in tier 3.
           tiers=(
             "CustomerIOCommon.podspec CustomerIOLiveActivitiesAttributes.podspec"
             "CustomerIOTrackingMigration.podspec CustomerIOMessagingPush.podspec CustomerIOMessagingInApp.podspec CustomerIOLocation.podspec CustomerIOLiveActivities.podspec CustomerIOLiveActivitiesTemplates.podspec"
-            "CustomerIODataPipelines.podspec CustomerIOMessagingPushAPN.podspec CustomerIOMessagingPushFCM.podspec CustomerIOLocationGeofence.podspec"
+            "CustomerIODataPipelines.podspec CustomerIOMessagingPushAPN.podspec CustomerIOMessagingPushFCM.podspec CustomerIOMessagingInbox.podspec CustomerIOLocationGeofence.podspec"
             "CustomerIO.podspec"
           )
 
@@ -361,6 +363,7 @@ jobs:
             CustomerIOMessagingPushAPN
             CustomerIOMessagingPushFCM
             CustomerIOMessagingInApp
+            CustomerIOMessagingInbox
             CustomerIOLocation
             CustomerIOLiveActivitiesAttributes
             CustomerIOLiveActivities

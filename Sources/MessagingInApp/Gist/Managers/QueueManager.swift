@@ -9,6 +9,7 @@ class QueueManager {
     private let inAppMessageManager: InAppMessageManager
     private let anonymousMessageManager: AnonymousMessageManager
     private let inboxMessageCache: InboxMessageCacheManager
+    private let visualInboxRepository: VisualInboxRepository
     private let logger: Logger
 
     private var cachedFetchUserQueueResponse: Data? {
@@ -26,6 +27,7 @@ class QueueManager {
         inAppMessageManager: InAppMessageManager,
         anonymousMessageManager: AnonymousMessageManager,
         inboxMessageCache: InboxMessageCacheManager,
+        visualInboxRepository: VisualInboxRepository,
         logger: Logger
     ) {
         self.keyValueStore = keyValueStore
@@ -33,6 +35,7 @@ class QueueManager {
         self.inAppMessageManager = inAppMessageManager
         self.anonymousMessageManager = anonymousMessageManager
         self.inboxMessageCache = inboxMessageCache
+        self.visualInboxRepository = visualInboxRepository
         self.logger = logger
     }
 
@@ -48,6 +51,7 @@ class QueueManager {
                 case .success(let (data, response)):
                     self.updatePollingInterval(headers: response.allHeaderFields)
                     self.updateSseFlag(headers: response.allHeaderFields)
+                    let inboxEnabledHeader = self.readInboxEnabledHeader(response: response)
                     self.logger.logWithModuleTag("Gist queue fetch response: \(response.statusCode)", level: .debug)
                     switch response.statusCode {
                     case 304:
@@ -56,16 +60,24 @@ class QueueManager {
                         }
 
                         do {
-                            let userQueue = try self.parseResponseBody(lastCachedResponse, fromCache: true)
+                            let userQueue = try self.parseResponseBody(lastCachedResponse, fromCache: true, inboxEnabledHeader: inboxEnabledHeader)
                             let processedQueue = self.processAnonymousMessages(userQueue)
 
                             completionHandler(.success(processedQueue))
                         } catch {
                             completionHandler(.failure(error))
                         }
+                    case 204:
+                        // An authoritative empty queue, not a failure: parsing the empty body would
+                        // throw, stranding stale rows on screen and skipping the inbox pipeline.
+                        // The cached 200 body goes too, so a later 304 cannot re-parse it and
+                        // republish the rows this response just cleared.
+                        self.clearCachedUserQueue()
+                        self.publishInboxMessages([], inboxEnabledHeader: inboxEnabledHeader)
+                        completionHandler(.success([]))
                     default:
                         do {
-                            let userQueue = try self.parseResponseBody(data, fromCache: false)
+                            let userQueue = try self.parseResponseBody(data, fromCache: false, inboxEnabledHeader: inboxEnabledHeader)
 
                             // Clear cache only on successful 200 response after successful parsing
                             if response.statusCode == 200 {
@@ -128,7 +140,7 @@ class QueueManager {
         return combinedMessages
     }
 
-    private func parseResponseBody(_ responseBody: Data, fromCache: Bool) throws -> [InAppMessageResponse] {
+    private func parseResponseBody(_ responseBody: Data, fromCache: Bool, inboxEnabledHeader: Bool?) throws -> [InAppMessageResponse] {
         guard let responseObject = try JSONSerialization.jsonObject(
             with: responseBody,
             options: .allowFragments
@@ -158,11 +170,21 @@ class QueueManager {
             // Fresh response: Use server data
             inboxMessagesMapped = inboxMessages.map { InboxMessageFactory.fromResponse($0) }
         }
-        // Dispatch inbox messages to update state
-        inAppMessageManager.dispatch(action: .processInboxMessages(messages: inboxMessagesMapped))
-
-        // Return in-app messages for existing flow
+        publishInboxMessages(inboxMessagesMapped, inboxEnabledHeader: inboxEnabledHeader)
         return inAppMessages
+    }
+
+    /// Publishes the poll's inbox messages to the store, then runs the visual-inbox pipeline.
+    ///
+    /// Ordered within one task: the pipeline reads messages live from the store, so it has to
+    /// observe the just-applied set rather than a stale one.
+    private func publishInboxMessages(_ messages: [InboxMessage], inboxEnabledHeader: Bool?) {
+        let processTask = inAppMessageManager.dispatch(action: .processInboxMessages(messages: messages))
+        let repository = visualInboxRepository
+        Task { [weak self] in
+            await processTask.value
+            await self?.runInboxPipeline(repository: repository, enabledHeader: inboxEnabledHeader)
+        }
     }
 
     private func updatePollingInterval(headers: [AnyHashable: Any]) {
@@ -197,5 +219,58 @@ class QueueManager {
         } else {
             logger.logWithModuleTag("X-CIO-Use-SSE header not present in response", level: .debug)
         }
+    }
+
+    /// Reads the `x-cio-inbox-enabled` flag, or `nil` when absent (leaving the cached value).
+    ///
+    /// Uses `value(forHTTPHeaderField:)` because it matches case-insensitively, unlike an
+    /// `allHeaderFields` subscript.
+    private func readInboxEnabledHeader(response: HTTPURLResponse) -> Bool? {
+        guard let inboxHeaderValue = response.value(forHTTPHeaderField: "x-cio-inbox-enabled") else {
+            logger.logWithModuleTag("[CIO-Inbox] x-cio-inbox-enabled header not present in response", level: .debug)
+            return nil
+        }
+
+        let enabled = inboxHeaderValue.lowercased() == "true"
+        logger.logWithModuleTag("[CIO-Inbox] x-cio-inbox-enabled header read: '\(inboxHeaderValue)' -> \(enabled)", level: .info)
+        return enabled
+    }
+
+    /// Ordered visual-inbox data pipeline run after a poll is parsed.
+    ///
+    /// Steps run sequentially so they cannot race:
+    ///  1. Persist the enablement flag (when the header was present) and detect a `false → true`
+    ///     transition for logging.
+    ///  2. Always run `enableAndLoad()` so `loadState` is recomputed every poll. `enableAndLoad()`
+    ///     self-gates: when the inbox is disabled it sets `loadState = .hidden` and returns without
+    ///     fetching; when enabled it performs the initial load (on a transition) or short-circuits on
+    ///     a fresh templates/branding cache (later polls), with an in-flight guard preventing
+    ///     duplicate concurrent fetches. Calling it unconditionally ensures a workspace that DISABLES
+    ///     the inbox flips `loadState` to hidden instead of being left stale at `.visible`. Messages
+    ///     are read live from the in-app store at that point, so there is no separate cache here.
+    private func runInboxPipeline(
+        repository: VisualInboxRepository,
+        enabledHeader: Bool?
+    ) async {
+        // 1) Persist enablement (only when the header was present this poll).
+        var previouslyEnabled: Bool?
+        if let enabledHeader = enabledHeader {
+            previouslyEnabled = await repository.setInboxEnabled(enabledHeader)
+            if enabledHeader != previouslyEnabled {
+                logger.logWithModuleTag("[CIO-Inbox] enablement transition: \(previouslyEnabled.map(String.init) ?? "unset") -> \(enabledHeader)", level: .info)
+            }
+        }
+
+        // 2) Always recompute via enableAndLoad(). It self-gates on the disabled case (sets
+        //    loadState = .hidden and returns). Only log a fetch when the inbox is actually enabled.
+        let enabledNow = await repository.isInboxEnabled
+        if enabledNow {
+            if previouslyEnabled == false {
+                logger.logWithModuleTag("[CIO-Inbox] fetch triggered (enablement false→true transition)", level: .info)
+            } else {
+                logger.logWithModuleTag("[CIO-Inbox] fetch triggered (enabled poll; fetch-if-missing)", level: .debug)
+            }
+        }
+        await repository.enableAndLoad()
     }
 }

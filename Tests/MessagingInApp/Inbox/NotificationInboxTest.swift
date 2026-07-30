@@ -310,13 +310,46 @@ class NotificationInboxTest: UnitTest {
             XCTFail("Expected inboxAction, got different action")
             return
         }
-        guard case .trackClicked(let receivedMessage, let actionName) = inboxAction else {
+        guard case .trackClicked(let receivedMessage, let actionName, let actionValue) = inboxAction else {
             XCTFail("Expected trackClicked action")
             return
         }
         XCTAssertEqual(receivedMessage.queueId, message.queueId)
         XCTAssertEqual(receivedMessage.deliveryId, message.deliveryId)
         XCTAssertEqual(actionName, "view_details")
+        XCTAssertNil(actionValue)
+    }
+
+    func test_trackMessageClicked_withActionValue_expectDispatchesTrackClickedActionWithValue() {
+        // Setup mock to return empty task
+        inAppMessageManagerMock.dispatchReturnValue = Task {}
+
+        let message = InboxMessage(
+            queueId: "queue-1",
+            deliveryId: "delivery-1",
+            expiry: nil,
+            sentAt: Date(),
+            topics: [],
+            type: "",
+            opened: false,
+            priority: nil,
+            properties: [:]
+        )
+
+        notificationInbox.trackMessageClicked(message: message, actionName: "view_details", actionValue: "https://example.com")
+
+        XCTAssertEqual(inAppMessageManagerMock.dispatchCallsCount, 1)
+        guard case .inboxAction(let inboxAction) = inAppMessageManagerMock.dispatchReceivedArguments?.action else {
+            XCTFail("Expected inboxAction, got different action")
+            return
+        }
+        guard case .trackClicked(let receivedMessage, let actionName, let actionValue) = inboxAction else {
+            XCTFail("Expected trackClicked action")
+            return
+        }
+        XCTAssertEqual(receivedMessage.queueId, message.queueId)
+        XCTAssertEqual(actionName, "view_details")
+        XCTAssertEqual(actionValue, "https://example.com")
     }
 
     func test_trackMessageClicked_withoutActionName_expectDispatchesTrackClickedAction() {
@@ -342,13 +375,328 @@ class NotificationInboxTest: UnitTest {
             XCTFail("Expected inboxAction, got different action")
             return
         }
-        guard case .trackClicked(let receivedMessage, let actionName) = inboxAction else {
+        guard case .trackClicked(let receivedMessage, let actionName, _) = inboxAction else {
             XCTFail("Expected trackClicked action")
             return
         }
         XCTAssertEqual(receivedMessage.queueId, message.queueId)
         XCTAssertEqual(receivedMessage.deliveryId, message.deliveryId)
         XCTAssertNil(actionName)
+    }
+
+    // MARK: - inbox event listener tests (item 13)
+
+    func test_notifyMessageActionTaken_whenNoListener_expectFalse() {
+        let message = makeInboxMessage(queueId: "q-1")
+        let handled = notificationInbox.notifyMessageActionTaken(message: message, actionValue: "https://customer.io", actionName: "messageAction")
+        XCTAssertFalse(handled)
+    }
+
+    func test_notifyMessageActionTaken_whenListenerHandles_expectTrueAndForwardsFields() {
+        let listener = InboxEventListenerMock()
+        listener.messageActionTakenReturnValue = true
+        notificationInbox.setInboxEventListener(listener)
+
+        let message = makeInboxMessage(queueId: "q-1")
+        let handled = notificationInbox.notifyMessageActionTaken(message: message, actionValue: "https://customer.io", actionName: "messageAction")
+
+        XCTAssertTrue(handled)
+        XCTAssertEqual(listener.messageActionTakenCallsCount, 1)
+        XCTAssertEqual(listener.messageActionTakenReceivedArguments?.message.queueId, "q-1")
+        XCTAssertEqual(listener.messageActionTakenReceivedArguments?.actionValue, "https://customer.io")
+        XCTAssertEqual(listener.messageActionTakenReceivedArguments?.actionName, "messageAction")
+    }
+
+    func test_notifyMessageActionTaken_whenListenerDefers_expectFalse() {
+        let listener = InboxEventListenerMock()
+        listener.messageActionTakenReturnValue = false
+        notificationInbox.setInboxEventListener(listener)
+
+        let handled = notificationInbox.notifyMessageActionTaken(message: makeInboxMessage(queueId: "q-1"), actionValue: "", actionName: "messageAction")
+
+        XCTAssertFalse(handled)
+        XCTAssertEqual(listener.messageActionTakenCallsCount, 1)
+    }
+
+    func test_setInboxEventListener_whenClearedWithNil_expectNoLongerNotified() {
+        let listener = InboxEventListenerMock()
+        listener.messageActionTakenReturnValue = true
+        notificationInbox.setInboxEventListener(listener)
+        notificationInbox.setInboxEventListener(nil)
+
+        let handled = notificationInbox.notifyMessageActionTaken(message: makeInboxMessage(queueId: "q-1"), actionValue: "", actionName: "messageAction")
+
+        XCTAssertFalse(handled)
+        XCTAssertEqual(listener.messageActionTakenCallsCount, 0)
+    }
+
+    // MARK: - observe-only listener callbacks (shown / opened / dismissed)
+
+    func test_markOpenedAndNotify_whenListenerSet_expectInboxMessageOpenedFired() async {
+        inAppMessageManagerMock.dispatchReturnValue = Task {}
+        let listener = InboxEventListenerMock()
+        notificationInbox.setInboxEventListener(listener)
+
+        await notificationInbox.markOpenedAndNotify(message: makeInboxMessage(queueId: "q-1"))
+        await flushMainQueue()
+
+        XCTAssertEqual(listener.messageOpenedCallsCount, 1)
+        XCTAssertEqual(listener.messageOpenedReceivedArguments?.queueId, "q-1")
+        XCTAssertEqual(listener.messageOpenedReceivedArguments?.opened, true)
+    }
+
+    func test_markOpenedAndNotify_whenCalledTwiceForSameId_expectFiredOnce() async {
+        inAppMessageManagerMock.dispatchReturnValue = Task {}
+        let listener = InboxEventListenerMock()
+        notificationInbox.setInboxEventListener(listener)
+
+        await notificationInbox.markOpenedAndNotify(message: makeInboxMessage(queueId: "q-1"))
+        await notificationInbox.markOpenedAndNotify(message: makeInboxMessage(queueId: "q-1"))
+        await flushMainQueue()
+
+        XCTAssertEqual(listener.messageOpenedCallsCount, 1)
+    }
+
+    // The store mutation must COMPLETE before the host callback, so a host reading the inbox inside
+    // messageOpened/messageDismissed never observes the pre-mutation state. Asserting only that a
+    // dispatch happened would not catch a regression — the callback hops to main either way, so it
+    // always lands after. Gating the dispatch is what makes this discriminating: while the store
+    // work is parked, the listener must not have fired.
+    func test_markOpenedAndNotify_expectListenerWaitsForStoreMutation() async {
+        let gate = AsyncGate()
+        inAppMessageManagerMock.dispatchReturnValue = Task { await gate.wait() }
+        let listener = InboxEventListenerMock()
+        notificationInbox.setInboxEventListener(listener)
+
+        let call = Task { [notificationInbox, message = makeInboxMessage(queueId: "q-1")] in
+            await notificationInbox!.markOpenedAndNotify(message: message)
+        }
+
+        // Wait until the store call is parked on the gate. Without this the assertion below could
+        // pass simply because the task had not started yet, rather than because of ordering.
+        await waitUntil({ self.inAppMessageManagerMock.dispatchCallsCount == 1 }, "the store mark was dispatched")
+        await flushMainQueue()
+        XCTAssertEqual(listener.messageOpenedCallsCount, 0, "listener fired before the store applied the mark")
+
+        gate.open()
+        await call.value
+        await flushMainQueue()
+        XCTAssertEqual(listener.messageOpenedCallsCount, 1)
+    }
+
+    func test_markDismissedAndNotify_whenListenerSet_expectInboxMessageDismissedFired() async {
+        inAppMessageManagerMock.dispatchReturnValue = Task {}
+        let listener = InboxEventListenerMock()
+        notificationInbox.setInboxEventListener(listener)
+
+        await notificationInbox.markDismissedAndNotify(message: makeInboxMessage(queueId: "q-1"))
+        await flushMainQueue()
+
+        XCTAssertEqual(listener.messageDismissedCallsCount, 1)
+        XCTAssertEqual(listener.messageDismissedReceivedArguments?.queueId, "q-1")
+    }
+
+    func test_markDismissedAndNotify_expectListenerWaitsForStoreMutation() async {
+        let gate = AsyncGate()
+        inAppMessageManagerMock.dispatchReturnValue = Task { await gate.wait() }
+        let listener = InboxEventListenerMock()
+        notificationInbox.setInboxEventListener(listener)
+
+        let call = Task { [notificationInbox, message = makeInboxMessage(queueId: "q-1")] in
+            await notificationInbox!.markDismissedAndNotify(message: message)
+        }
+
+        // Wait until the store call is parked on the gate. Without this the assertion below could
+        // pass simply because the task had not started yet, rather than because of ordering.
+        await waitUntil({ self.inAppMessageManagerMock.dispatchCallsCount == 1 }, "the store delete was dispatched")
+        await flushMainQueue()
+        XCTAssertEqual(listener.messageDismissedCallsCount, 0, "listener fired before the store applied the delete")
+
+        gate.open()
+        await call.value
+        await flushMainQueue()
+        XCTAssertEqual(listener.messageDismissedCallsCount, 1)
+    }
+
+    // The headless mutation API must NOT fire the visual-inbox listener: a host with no overlay
+    // mounted should never receive these callbacks (matches Android).
+    func test_markMessageOpenedAndDeleted_whenListenerSet_expectNoCallbacks() {
+        inAppMessageManagerMock.dispatchReturnValue = Task {}
+        let listener = InboxEventListenerMock()
+        notificationInbox.setInboxEventListener(listener)
+
+        notificationInbox.markMessageOpened(message: makeInboxMessage(queueId: "q-1"))
+        notificationInbox.markMessageDeleted(message: makeInboxMessage(queueId: "q-1"))
+
+        XCTAssertEqual(listener.messageOpenedCallsCount, 0)
+        XCTAssertEqual(listener.messageDismissedCallsCount, 0)
+    }
+
+    func test_notifyMessageShown_whenCalledTwiceForSameId_expectFiredOnce() {
+        let listener = InboxEventListenerMock()
+        notificationInbox.setInboxEventListener(listener)
+        let message = makeInboxMessage(queueId: "q-1")
+
+        notificationInbox.notifyMessageShown(message: message)
+        notificationInbox.notifyMessageShown(message: message)
+
+        XCTAssertEqual(listener.messageShownCallsCount, 1)
+        XCTAssertEqual(listener.messageShownReceivedArguments?.queueId, "q-1")
+    }
+
+    func test_notifyMessageShown_whenDifferentIds_expectFiredForEach() {
+        let listener = InboxEventListenerMock()
+        notificationInbox.setInboxEventListener(listener)
+
+        notificationInbox.notifyMessageShown(message: makeInboxMessage(queueId: "q-1"))
+        notificationInbox.notifyMessageShown(message: makeInboxMessage(queueId: "q-2"))
+
+        XCTAssertEqual(listener.messageShownCallsCount, 2)
+    }
+
+    // MARK: - profile change dedupe reset
+
+    /// Delivers a store state through the subscription the inbox already owns, standing in for what
+    /// the reducer produces after an identify, a logout, or a reset.
+    ///
+    /// Builds the state with the initialiser rather than `copy`, because `copy` coalesces with
+    /// `??` and so cannot express clearing an identity back to nil — which is the case under test.
+    private func deliverStoreState(userId: String?, anonymousId: String? = nil) async {
+        await waitUntil({ self.inAppMessageManagerMock.subscribeReceivedArguments != nil },
+            "the inbox subscribed to the store"
+        )
+        inAppMessageManagerMock.subscribeReceivedArguments?.subscriber.newState(
+            state: InAppMessageState(userId: userId, anonymousId: anonymousId)
+        )
+    }
+
+    func test_profileChange_whenUserLogsOut_expectShownDedupeCleared() async {
+        let listener = InboxEventListenerMock()
+        notificationInbox.setInboxEventListener(listener)
+        let message = makeInboxMessage(queueId: "q-1")
+
+        await deliverStoreState(userId: "user-a")
+        notificationInbox.notifyMessageShown(message: message)
+        await flushMainQueue()
+        XCTAssertEqual(listener.messageShownCallsCount, 1)
+
+        await deliverStoreState(userId: nil)
+        notificationInbox.notifyMessageShown(message: message)
+        await flushMainQueue()
+
+        XCTAssertEqual(listener.messageShownCallsCount, 2, "logout did not clear the shown dedupe")
+    }
+
+    func test_profileChange_whenUserLogsOut_expectOpenedDedupeCleared() async {
+        inAppMessageManagerMock.dispatchReturnValue = Task {}
+        let listener = InboxEventListenerMock()
+        notificationInbox.setInboxEventListener(listener)
+        let message = makeInboxMessage(queueId: "q-1")
+
+        await deliverStoreState(userId: "user-a")
+        await notificationInbox.markOpenedAndNotify(message: message)
+        await flushMainQueue()
+        XCTAssertEqual(listener.messageOpenedCallsCount, 1)
+
+        await deliverStoreState(userId: nil)
+        await notificationInbox.markOpenedAndNotify(message: message)
+        await flushMainQueue()
+
+        XCTAssertEqual(listener.messageOpenedCallsCount, 2, "logout did not clear the opened dedupe")
+    }
+
+    // `identify()` switches A → B directly, with no reset on the path, so the switch itself has to
+    // clear. Otherwise A → B → A hands A back its own queue ids while they are still deduped and the
+    // host silently stops seeing them.
+    func test_profileChange_whenProfileSwitchesDirectlyAndBack_expectDedupeClearedEachTime() async {
+        let listener = InboxEventListenerMock()
+        notificationInbox.setInboxEventListener(listener)
+        let message = makeInboxMessage(queueId: "q-1")
+
+        await deliverStoreState(userId: "user-a")
+        notificationInbox.notifyMessageShown(message: message)
+        await flushMainQueue()
+        XCTAssertEqual(listener.messageShownCallsCount, 1)
+
+        // Direct identify A → B, no logout in between.
+        await deliverStoreState(userId: "user-b")
+        notificationInbox.notifyMessageShown(message: message)
+        await flushMainQueue()
+        XCTAssertEqual(listener.messageShownCallsCount, 2, "a direct profile switch did not clear the dedupe")
+
+        // ...and back to A, whose ids were last seen two states ago.
+        await deliverStoreState(userId: "user-a")
+        notificationInbox.notifyMessageShown(message: message)
+        await flushMainQueue()
+        XCTAssertEqual(listener.messageShownCallsCount, 3, "switching back to a previous profile did not clear the dedupe")
+    }
+
+    // An anonymous session never sets `userId`, yet still receives messages (the queue fetch accepts
+    // either identity). Its reset is therefore only visible through `anonymousId`.
+    func test_profileChange_whenAnonymousSessionResets_expectDedupeCleared() async {
+        let listener = InboxEventListenerMock()
+        notificationInbox.setInboxEventListener(listener)
+        let message = makeInboxMessage(queueId: "q-1")
+
+        await deliverStoreState(userId: nil, anonymousId: "anon-a")
+        notificationInbox.notifyMessageShown(message: message)
+        await flushMainQueue()
+        XCTAssertEqual(listener.messageShownCallsCount, 1)
+
+        await deliverStoreState(userId: nil, anonymousId: nil)
+        notificationInbox.notifyMessageShown(message: message)
+        await flushMainQueue()
+
+        XCTAssertEqual(listener.messageShownCallsCount, 2, "an anonymous reset did not clear the shown dedupe")
+    }
+
+    // The counterpart to the tests above: arriving at a FIRST identity is not a profile change. Every
+    // cold launch starts with no identity before identify runs, so clearing there would erase a
+    // dedupe that is still valid — and would make the tests above pass for the wrong reason.
+    func test_profileChange_whenFirstIdentityArrives_expectDedupeRetained() async {
+        let listener = InboxEventListenerMock()
+        notificationInbox.setInboxEventListener(listener)
+        let message = makeInboxMessage(queueId: "q-1")
+
+        notificationInbox.notifyMessageShown(message: message)
+        await flushMainQueue()
+        XCTAssertEqual(listener.messageShownCallsCount, 1)
+
+        await deliverStoreState(userId: "user-a")
+        notificationInbox.notifyMessageShown(message: message)
+        await flushMainQueue()
+
+        XCTAssertEqual(listener.messageShownCallsCount, 1, "the first identify cleared a still-valid dedupe")
+    }
+
+    /// Drains the main queue so a listener callback the SDK enqueued via `deliverOnMain` has run
+    /// before we assert on it.
+    ///
+    /// `deliverOnMain` only runs inline when already on the main thread; an `async` test body is not,
+    /// so the callback is enqueued instead. Hopping to the main actor lands FIFO behind it, which
+    /// makes this deterministic rather than a sleep.
+    private func flushMainQueue() async {
+        await MainActor.run {}
+    }
+
+    /// Polls `condition` until it holds, so a test can wait for work to reach a known point instead of
+    /// sleeping for a guessed duration. Fails rather than hanging if it never becomes true.
+    private func waitUntil(
+        _ condition: () -> Bool,
+        _ message: String,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) async {
+        for _ in 0 ..< 500 {
+            if condition() { return }
+            await Task.yield()
+            try? await Task.sleep(nanoseconds: 1000000) // 1ms
+        }
+        XCTFail("timed out waiting until \(message)", file: file, line: line)
+    }
+
+    private func makeInboxMessage(queueId: String) -> InboxMessage {
+        InboxMessage(queueId: queueId, deliveryId: "d-\(queueId)", expiry: nil, sentAt: Date(), topics: [], type: "", opened: false, priority: nil, properties: [:])
     }
 
     // MARK: - addChangeListener tests
@@ -933,5 +1281,25 @@ private class TestNotificationInboxChangeListener: NotificationInboxChangeListen
 
     func onMessagesChanged(messages: [InboxMessage]) {
         onMessagesChangedClosure?(messages)
+    }
+}
+
+/// Lets a test hold an awaited operation open, so it can assert on the state of the world while that
+/// operation is still in flight. Mirrors `GatedInboxNetworkClientStub`'s approach.
+private final class AsyncGate: @unchecked Sendable {
+    private let semaphore = DispatchSemaphore(value: 0)
+
+    func open() {
+        semaphore.signal()
+    }
+
+    /// Suspends (without blocking the caller's thread) until `open()` is called.
+    func wait() async {
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            DispatchQueue.global().async { [semaphore] in
+                semaphore.wait()
+                continuation.resume()
+            }
+        }
     }
 }

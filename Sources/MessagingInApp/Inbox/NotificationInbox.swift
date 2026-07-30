@@ -64,6 +64,35 @@ public protocol NotificationInbox: Sendable {
     ///   - actionName: Optional name of the action clicked (e.g., "view_details", "dismiss")
     func trackMessageClicked(message: InboxMessage, actionName: String?)
 
+    /// Tracks a click event for an inbox message, carrying the action's value in addition to its name.
+    /// Both are included in the `Report Delivery Event` (metric: clicked) so they reach CDP, matching
+    /// web (which sends `actionName` + `actionValue`) — MBL-2125.
+    ///
+    /// A default implementation forwards to ``trackMessageClicked(message:actionName:)`` (dropping the
+    /// value), so existing conformers need not implement it.
+    ///
+    /// - Parameters:
+    ///   - message: The inbox message that was clicked
+    ///   - actionName: Optional name of the action clicked (e.g., "view_details", "dismiss")
+    ///   - actionValue: Optional value of the action clicked (e.g., the deep link / URL)
+    func trackMessageClicked(message: InboxMessage, actionName: String?, actionValue: String?)
+
+    /// Registers (or clears, with `nil`) the host listener notified of inbox message actions.
+    /// Used by `MessagingInApp.setInboxEventListener(_:)`; not intended for direct host use.
+    func setInboxEventListener(_ listener: InboxEventListener?)
+
+    /// Forwards a non-dismiss inbox action to the registered ``InboxEventListener``, if any.
+    ///
+    /// - Returns: `true` if a listener is set AND it reported it handled the action (so the SDK
+    ///   should suppress its default navigation); `false` otherwise (no listener, or the listener
+    ///   deferred to the SDK default).
+    func notifyMessageActionTaken(message: InboxMessage, actionValue: String, actionName: String) -> Bool
+
+    /// Notifies the registered ``InboxEventListener`` that a message was first shown (rendered in the
+    /// visible inbox). Deduped by the SDK so it fires at most once per message per app session — safe
+    /// to call on every render. No-op if no listener is set.
+    func notifyMessageShown(message: InboxMessage)
+
     /// Modern Swift Concurrency API for observing inbox changes.
     ///
     /// Returns an async stream that emits inbox messages whenever they change.
@@ -81,6 +110,28 @@ public protocol NotificationInbox: Sendable {
 // MARK: - Protocol Extension for Default Parameters
 
 public extension NotificationInbox {
+    // MARK: - Listener plumbing defaults (source compatibility)
+
+    // The three members below are SDK-internal plumbing: hosts register listeners through
+    // `MessagingInApp.setInboxEventListener(_:)`, and the SDK's own `DefaultNotificationInbox`
+    // implements all of them. They are declared on the protocol so mocks and the SDK can call them,
+    // but they ship with defaults: without these, adding them would make every existing external
+    // conformer and test double fail to compile, turning an additive feature into a breaking change.
+
+    /// Default no-op. See the note above — the SDK's own inbox overrides this.
+    func setInboxEventListener(_: InboxEventListener?) {}
+
+    /// Default no-op that never intercepts, so the SDK's own navigation always runs for conformers
+    /// that do not implement listener forwarding.
+    ///
+    /// - Returns: `false`, meaning "not handled by a host listener".
+    func notifyMessageActionTaken(message _: InboxMessage, actionValue _: String, actionName _: String) -> Bool {
+        false
+    }
+
+    /// Default no-op. See the note above — the SDK's own inbox overrides this.
+    func notifyMessageShown(message _: InboxMessage) {}
+
     /// Retrieves all inbox messages without topic filter.
     ///
     /// - Returns: List of all inbox messages for the current user, sorted by sentAt (newest first)
@@ -110,6 +161,12 @@ public extension NotificationInbox {
         trackMessageClicked(message: message, actionName: nil)
     }
 
+    /// Default implementation: forwards to ``trackMessageClicked(message:actionName:)``, dropping the
+    /// action value. Concrete conformers (e.g. the SDK's inbox) override to carry the value through.
+    func trackMessageClicked(message: InboxMessage, actionName: String?, actionValue: String?) {
+        trackMessageClicked(message: message, actionName: actionName)
+    }
+
     /// Observes all inbox changes without topic filter.
     ///
     /// Returns an async stream that emits all inbox messages whenever they change.
@@ -118,4 +175,26 @@ public extension NotificationInbox {
     func messages() -> AsyncStream<[InboxMessage]> {
         messages(topic: nil)
     }
+}
+
+/// Listener dispatch that belongs to the visual inbox alone, kept off ``NotificationInbox`` so it is
+/// neither part of the public surface nor a requirement host conformers have to satisfy.
+///
+/// Open and dismiss are visual-inbox events: they report what the rendered inbox did, unlike
+/// ``NotificationInbox/markMessageOpened(message:)`` and
+/// ``NotificationInbox/markMessageDeleted(message:)``, which every headless caller also reaches. The
+/// visual-inbox SPI dispatches through a conditional cast, so a conformer without this (the no-op
+/// inbox) simply does not fire callbacks.
+protocol VisualInboxEventDispatching: Sendable {
+    /// Marks the message opened, waits for the store to apply it, then notifies the registered
+    /// `InboxEventListener`. Deduped by the SDK so the callback fires at most once per message per
+    /// app session.
+    ///
+    /// The wait is the point: the mark is dispatched asynchronously, so notifying straight after it
+    /// would let a host that reads the inbox inside the callback still see the message unopened.
+    func markOpenedAndNotify(message: InboxMessage) async
+
+    /// Marks the message deleted, waits for the store to apply it, then notifies the registered
+    /// `InboxEventListener`. Ordered for the same reason as ``markOpenedAndNotify(message:)``.
+    func markDismissedAndNotify(message: InboxMessage) async
 }

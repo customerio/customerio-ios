@@ -77,6 +77,12 @@ public final class CioMessagingInApp.InAppMessage {
 	public final val deliveryId: String?;
 	public final val elementId: String?;
 }
+public interface CioMessagingInApp.InboxEventListener {
+	public fun func messageActionTaken(message: InboxMessage, actionName: String, actionValue: String) -> Boolean;
+	public fun func messageShown(message: InboxMessage);
+	public fun func messageOpened(message: InboxMessage);
+	public fun func messageDismissed(message: InboxMessage);
+}
 public final class CioMessagingInApp.InboxMessage {
 	public final val queueId: String;
 	public final val deliveryId: String?;
@@ -143,6 +149,7 @@ public final class CioMessagingInApp.MessagingInApp {
 	public var inbox: any NotificationInbox;
 	public fun func initialize(withConfig config: MessagingInAppConfigOptions) -> MessagingInAppInstance;
 	public fun func setEventListener(_ eventListener: InAppEventListener?);
+	public fun func setInboxEventListener(_ inboxEventListener: InboxEventListener?);
 	public fun func dismissMessage();
 	public fun func setColorScheme(_ colorScheme: ColorScheme);
 }
@@ -161,6 +168,7 @@ public final class CioMessagingInApp.MessagingInAppConfigOptions {
 public interface CioMessagingInApp.MessagingInAppInstance {
 	public var inbox: any NotificationInbox;
 	public fun func setEventListener(_ eventListener: InAppEventListener?);
+	public fun func setInboxEventListener(_ inboxEventListener: InboxEventListener?);
 	public fun func dismissMessage();
 	public fun func setColorScheme(_ colorScheme: ColorScheme);
 }
@@ -177,6 +185,10 @@ public interface CioMessagingInApp.NotificationInbox {
 	public fun func markMessageUnopened(message: InboxMessage);
 	public fun func markMessageDeleted(message: InboxMessage);
 	public fun func trackMessageClicked(message: InboxMessage, actionName: String?);
+	public fun func trackMessageClicked(message: InboxMessage, actionName: String?, actionValue: String?);
+	public fun func setInboxEventListener(_ listener: InboxEventListener?);
+	public fun func notifyMessageActionTaken(message: InboxMessage, actionValue: String, actionName: String) -> Boolean;
+	public fun func notifyMessageShown(message: InboxMessage);
 	public fun func messages(topic: String?) -> AsyncStream<List<InboxMessage>>;
 }
 public interface CioMessagingInApp.NotificationInboxChangeListener {
@@ -189,4 +201,57 @@ public final class CioMessagingInApp.Subscription {
 	public var observer: ((State?, State) -> ())?;
 	public fun init(sink: @escaping (@escaping (State?, State) -> Unit) -> Unit);
 	public fun func skipRepeats(_ isRepeat: @escaping (_ oldState: State, _ newState: State) -> Boolean) -> Subscription<State>;
+}
+public enum CioMessagingInApp.VisualInboxActionOutcome {
+}
+public final class CioMessagingInApp.VisualInboxChrome {
+	public final val bellBackground: String?;
+	public final val bellIconColor: String?;
+	public final val bellIconSvg: String?;
+	public final val panelBackground: String?;
+	public final val dividerColor: String?;
+	public final val badgeBackground: String?;
+	public final val badgeTextColor: String?;
+	public final val badgeTextSize: Double?;
+	public final val cornerRadius: Double?;
+	public final val position: String?;
+	public final val showUnreadBadge: Boolean?;
+	public final val darkModePattern: Map<String, Any>?;
+	public fun init(bellBackground: String?, bellIconColor: String?, bellIconSvg: String?, panelBackground: String?, dividerColor: String?, badgeBackground: String?, badgeTextColor: String?, badgeTextSize: Double?, cornerRadius: Double?, position: String?, showUnreadBadge: Boolean?, darkModePattern: List<String: Any>?);
+	public fun func == (lhs: VisualInboxChrome, rhs: VisualInboxChrome) -> Boolean;
+}
+public final class CioMessagingInApp.VisualInboxMessageSnapshot {
+	public final val id: String;
+	public final val type: String;
+	public final val properties: Map<String, Any>;
+	public final val opened: Boolean;
+	public final val sentAt: Date;
+	public fun init(id: String, type: String, properties: List<String: Any>, opened: Boolean, sentAt: Date);
+}
+public interface CioMessagingInApp.VisualInboxProvider {
+	public fun func observe() -> AsyncStream<VisualInboxSnapshot>;
+	public fun func snapshot() async -> VisualInboxSnapshot;
+	public fun func load() async;
+	public fun func state() async -> VisualInboxState;
+	public fun func messages() async -> List<VisualInboxMessageSnapshot>;
+	public fun func unopenedCount() async -> Int;
+	public fun func templatesJSON() async -> List<String: Any>?;
+	public fun func themeJSON() async -> List<String: Any>?;
+	public fun func brandingChrome() async -> VisualInboxChrome?;
+	public fun func markOpened(messageId: String) async -> Boolean;
+	public fun func dismiss(messageId: String) async -> Boolean;
+	public fun func handleMessageAction(messageId: String, actionName: String, actionValue: String) async -> VisualInboxActionOutcome;
+	public fun func notifyMessageShown(messageId: String) async -> Boolean;
+}
+public final class CioMessagingInApp.VisualInboxSnapshot {
+	public final val state: VisualInboxState;
+	public final val messages: List<VisualInboxMessageSnapshot>;
+	public final val unopenedCount: Int;
+	public final val templatesJSON: Map<String, Any>?;
+	public final val themeJSON: Map<String, Any>?;
+	public fun init(state: VisualInboxState, messages: List<VisualInboxMessageSnapshot>, unopenedCount: Int, templatesJSON: List<String: Any>?, themeJSON: List<String: Any>?);
+	public fun func == (lhs: VisualInboxSnapshot, rhs: VisualInboxSnapshot) -> Boolean;
+}
+public enum CioMessagingInApp.VisualInboxState {
+	public var isVisible: Boolean;
 }

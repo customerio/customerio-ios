@@ -11,6 +11,9 @@ target 'test cocoapods' do
   pod 'CustomerIOMessagingInApp', :path => sdk_local_path
   pod 'CustomerIOMessagingPushFCM', :path => sdk_local_path
   pod 'CustomerIOLocation', :path => sdk_local_path
+  # Visual Notification Inbox overlay. Its podspec depends on the published `Jist` pod (~> 0.1.0),
+  # which CocoaPods resolves from the trunk.
+  pod 'CustomerIOMessagingInbox', :path => sdk_local_path
   pod 'CustomerIOLocationGeofence', :path => sdk_local_path
 
   # Live Activities: the app-side module (starts/reports activities, handles widget-URL taps).

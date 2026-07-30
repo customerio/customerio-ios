@@ -1,4 +1,6 @@
 import CioMessagingInApp
+import CioMessagingInbox
+import SwiftUI
 import UIKit
 
 // MARK: - InboxMessageCell
@@ -177,12 +179,31 @@ class InboxViewController: BaseViewController, UITableViewDelegate, UITableViewD
         setupObserver()
     }
 
+    /// Pushes a SwiftUI screen that mounts the drop-in `NotificationInboxOverlay` — the bell we expose,
+    /// which presents the inbox in its own native sheet. The sample writes no sheet code of its own.
+    /// (This headless screen above shows the data API via `addChangeListener`.) iOS 16+ (system detents).
+    @objc private func presentOverlayDemo() {
+        guard #available(iOS 16.0, *) else { return }
+        let host = UIHostingController(rootView: VisualInboxOverlayScreen())
+        host.title = "Overlay (SwiftUI)"
+        navigationController?.pushViewController(host, animated: true)
+    }
+
     deinit {
         inbox.removeChangeListener(self)
     }
 
     private func setupUI() {
         title = "Inbox Messages"
+        // Entry to the SwiftUI drop-in overlay demo (bell that presents its own sheet). iOS 16+.
+        if #available(iOS 16.0, *) {
+            navigationItem.rightBarButtonItem = UIBarButtonItem(
+                title: "Overlay",
+                style: .plain,
+                target: self,
+                action: #selector(presentOverlayDemo)
+            )
+        }
         tableView.delegate = self
         tableView.dataSource = self
         tableView.register(InboxMessageCell.self, forCellReuseIdentifier: InboxMessageCell.reuseIdentifier)
@@ -354,5 +375,20 @@ private extension InboxViewController {
         alert.addAction(cancelAction)
 
         present(alert, animated: true)
+    }
+}
+
+// MARK: - VisualInboxOverlayScreen
+
+/// SwiftUI screen hosting the drop-in `NotificationInboxOverlay` in a `ZStack` — the intended usage.
+/// SwiftUI handles bell taps + passthrough; the overlay presents the inbox in its own native sheet.
+@available(iOS 16.0, *)
+private struct VisualInboxOverlayScreen: View {
+    var body: some View {
+        ZStack {
+            Color(.systemGroupedBackground).ignoresSafeArea()
+            Text("Your App Content").font(.title2).bold().foregroundColor(.secondary)
+            NotificationInboxOverlay()
+        }
     }
 }
