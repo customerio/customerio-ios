@@ -88,19 +88,28 @@ jobs:
           echo "Switching local references to published version: $TAG"
 
           # 1) CocoaPods Podfile in `Apps/CocoaPods-FCM/Podfile`
-          # Example lines to replace:
+          # Example line to replace:
           #   pod 'CustomerIODataPipelines', :path => ...
           #   =>  pod 'CustomerIODataPipelines', '1.2.3'
-          sd "pod 'CustomerIODataPipelines', :path =>.*" "pod 'CustomerIODataPipelines', '$TAG'" "Apps/CocoaPods-FCM/Podfile"
-          sd "pod 'CustomerIOMessagingPushAPN', :path =>.*" "pod 'CustomerIOMessagingPushAPN', '$TAG'" "Apps/CocoaPods-FCM/Podfile"
-          sd "pod 'CustomerIOMessagingInApp', :path =>.*" "pod 'CustomerIOMessagingInApp', '$TAG'" "Apps/CocoaPods-FCM/Podfile"
-          sd "pod 'CustomerIOLocation', :path =>.*" "pod 'CustomerIOLocation', '$TAG'" "Apps/CocoaPods-FCM/Podfile"
-          sd "pod 'CustomerIOLocationGeofence', :path =>.*" "pod 'CustomerIOLocationGeofence', '$TAG'" "Apps/CocoaPods-FCM/Podfile"
-          sd "pod 'CustomerIOLiveActivities', :path =>.*" "pod 'CustomerIOLiveActivities', '$TAG'" "Apps/CocoaPods-FCM/Podfile"
-          sd "pod 'CustomerIOLiveActivitiesAttributes', :path =>.*" "pod 'CustomerIOLiveActivitiesAttributes', '$TAG'" "Apps/CocoaPods-FCM/Podfile"
-          # Declared in both the app and the widget extension targets; sd rewrites every occurrence.
-          sd "pod 'CustomerIOLiveActivitiesTemplates', :path =>.*" "pod 'CustomerIOLiveActivitiesTemplates', '$TAG'" "Apps/CocoaPods-FCM/Podfile"
-          # If you have other modules: repeat
+          #
+          # The pod list is derived FROM the Podfile rather than hardcoded here. A hardcoded
+          # list silently drifts: a pod left off it keeps building from local source, so the
+          # post-release smoke test never installs its published pod and cannot catch a broken
+          # one. Deriving the list means adding a module to the Podfile is enough.
+          PODFILE="Apps/CocoaPods-FCM/Podfile"
+          cio_pods=$(grep -oE "pod '(CustomerIO[A-Za-z]*)', :path" "$PODFILE" | sed -E "s/pod '([^']*)', :path/\1/" | sort -u)
+          if [[ -z "$cio_pods" ]]; then
+            echo "::error::Found no Customer.io pods on a local path in $PODFILE. Has its format changed?"
+            exit 1
+          fi
+          echo "Pinning these pods to $TAG:"
+          echo "$cio_pods" | sed 's/^/  /'
+          for pod in $cio_pods; do
+            # Anchored on `', :path` so e.g. CustomerIOMessagingPush does not also rewrite
+            # CustomerIOMessagingPushAPN. Pods declared in more than one target (the Live
+            # Activities widget shares two) are rewritten in every occurrence by sd.
+            sd "pod '$pod', :path =>.*" "pod '$pod', '$TAG'" "$PODFILE"
+          done
 
           # 2) SwiftPM package in `Apps/Common/Package.swift`
           # Original: .package(path: "../../")

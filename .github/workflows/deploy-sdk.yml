@@ -362,6 +362,7 @@ jobs:
             CustomerIOMessagingPushFCM
             CustomerIOMessagingInApp
             CustomerIOLocation
+            CustomerIOLocationGeofence
             CustomerIOLiveActivitiesAttributes
             CustomerIOLiveActivities
             CustomerIOLiveActivitiesTemplates

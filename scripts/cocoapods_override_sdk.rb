@@ -57,8 +57,16 @@ def get_all_cio_pods(is_app_extension, push_service)
   pods_for_all_targets = [
     'CustomerIOCommon',
     'CustomerIODataPipelines',
+    # A dependency of CustomerIODataPipelines. It has to be overridden too: leaving it out
+    # resolves it from the trunk while everything around it comes from local/branch source,
+    # which is the mixed install this helper exists to avoid.
+    'CustomerIOTrackingMigration',
     'CustomerIOLocation',
-    'CustomerIOMessagingPush'
+    'CustomerIOMessagingPush',
+    # Live Activities attributes + templates. Both are App Extension compatible by design —
+    # a widget extension is what renders them.
+    'CustomerIOLiveActivitiesAttributes',
+    'CustomerIOLiveActivitiesTemplates'
   ]
 
   if push_service == "apn" 
@@ -78,6 +86,9 @@ def get_all_cio_pods(is_app_extension, push_service)
     pods_for_all_targets.push('CustomerIOMessagingInApp')
     # Geofencing is a host-app feature (region monitoring + launch-time background delivery), not usable in an App Extension.
     pods_for_all_targets.push('CustomerIOLocationGeofence')
+    # The app-side Live Activities module (starts/updates activities, handles widget-URL taps).
+    # Host app only; the widget extension renders from the Attributes + Templates pods above.
+    pods_for_all_targets.push('CustomerIOLiveActivities')
   end
 
   return pods_for_all_targets
