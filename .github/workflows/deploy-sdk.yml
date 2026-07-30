@@ -216,6 +216,14 @@ jobs:
         # Pinned so a new cocoapods release cannot break deployments. Bump deliberately.
         run: gem install cocoapods -v 1.16.2
 
+      - name: Warm up CocoaPods spec repo
+        run: |
+          if [[ -d "$HOME/.cocoapods/repos/cocoapods" ]]; then
+            pod repo update cocoapods
+          else
+            pod repo add cocoapods https://github.com/CocoaPods/Specs.git
+          fi
+
       - name: Push all podspecs to CocoaPods
         run: |
           # Podspecs are grouped into tiers by their dependencies on each other.
