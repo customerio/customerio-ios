@@ -223,8 +223,8 @@ jobs:
           # Tiers push in order because `pod trunk push` lints each podspec and the
           # dependency versions pushed by the previous tier must already exist.
           tiers=(
-            "CustomerIOCommon.podspec"
-            "CustomerIOTrackingMigration.podspec CustomerIOMessagingPush.podspec CustomerIOMessagingInApp.podspec CustomerIOLocation.podspec"
+            "CustomerIOCommon.podspec CustomerIOLiveActivitiesAttributes.podspec"
+            "CustomerIOTrackingMigration.podspec CustomerIOMessagingPush.podspec CustomerIOMessagingInApp.podspec CustomerIOLocation.podspec CustomerIOLiveActivities.podspec CustomerIOLiveActivitiesTemplates.podspec"
             "CustomerIODataPipelines.podspec CustomerIOMessagingPushAPN.podspec CustomerIOMessagingPushFCM.podspec CustomerIOLocationGeofence.podspec"
             "CustomerIO.podspec"
           )
@@ -362,6 +362,9 @@ jobs:
             CustomerIOMessagingPushFCM
             CustomerIOMessagingInApp
             CustomerIOLocation
+            CustomerIOLiveActivitiesAttributes
+            CustomerIOLiveActivities
+            CustomerIOLiveActivitiesTemplates
             CustomerIO
           )
 

@@ -27,6 +27,9 @@ declare -a PUBLIC_MODULES=(
     "MessagingInApp:CioMessagingInApp"
     "Location:CioLocation"
     "LocationGeofence:CioLocationGeofence"
+    "LiveActivities:CioLiveActivities"
+    "LiveActivities_Attributes:CioLiveActivities_Attributes"
+    "LiveActivities_Templates:CioLiveActivities_Templates"
 )
 
 # Internal modules (only available when CI environment variable is set)

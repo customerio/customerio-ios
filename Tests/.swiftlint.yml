@@ -9,7 +9,7 @@ disabled_rules:
   # let foo = try? ...
   # XCTAssertNotNil(foo)
   # XCTAssertEqual(foo?.bar, "")
-  # - force_try
+  - force_try
 
   # `as!` in a test can result in tests being halted and not finish executing. Instead, we would rather have a test fail and continue executing the suite. 
   # Instead of `as!` use: 
