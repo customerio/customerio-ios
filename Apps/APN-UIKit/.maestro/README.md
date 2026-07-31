@@ -44,7 +44,10 @@ combined summary. Nothing needs to be started manually.
 `./.maestro/run.sh <flow.yaml>` remains available when an app is already
 installed and a single low-level flow is being debugged.
 
-Outputs land in `artifacts/e2e/ios/<flow>/` (gitignored):
+The latest focused artifacts land in `artifacts/e2e/ios/<flow>/`. Profile runs
+also archive immutable snapshots beneath
+`.maestro/harness/artifacts/e2e/profile-<timestamp>/ios/<flow>/`; the printed
+summary links to those snapshots. Both locations are gitignored.
 
 | File | What it is |
 |---|---|
@@ -94,3 +97,11 @@ controllers (see `LoginViewController.swift`, `DashboardViewController.swift`,
   so `run.sh` falls back to a 5 fps `simctl screenshot` poll assembled
   with `ffmpeg` (see `harness/scripts/capture_frames.sh`).
 - No cleanup of created customers; test-prod workspace is fine for now.
+
+## CI rollout
+
+The workflow is wired for PR smoke, weekday standard, focused manual runs, and
+the explicit remote lane. PR/scheduled jobs require `MOBILE_E2E_ENABLED=true`,
+the two `MOBILE_E2E_*_API_KEY` secrets, and the Inbox message-ID variable. Leave
+the flag unset until the shared harness is merged and one manual dispatch has
+passed.

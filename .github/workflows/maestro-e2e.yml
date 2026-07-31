@@ -69,11 +69,15 @@ jobs:
     name: iOS ${{ matrix.suite }}
     needs: prepare
     if: >-
+      (vars.MOBILE_E2E_ENABLED == 'true' || github.event_name == 'workflow_dispatch') &&
       github.actor != 'dependabot[bot]' &&
       (github.event_name != 'pull_request' ||
       github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: macos-15
     timeout-minutes: 60
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.3.app/Contents/Developer
+      IOS_SIMULATOR_NAME: iPhone 17 Pro
     strategy:
       fail-fast: false
       matrix:
@@ -88,7 +92,6 @@ jobs:
           repository: customerio/mobile-e2e
           ref: ${{ inputs.harness_ref || 'main' }}
           path: .e2e-harness
-          token: ${{ secrets.MOBILE_E2E_REPO_TOKEN || github.token }}
 
       - name: Install Maestro and evidence dependencies
         run: |
@@ -111,6 +114,26 @@ jobs:
             gsub("CUSTOMERIO_WORKSPACE_SITE_ID", ENV.fetch("SITE_ID"))
             gsub("CUSTOMERIO_WORKSPACE_NAME", "Mobile E2E")
           ' "Apps/APN-UIKit/BuildEnvironment.swift"
+
+      - name: Validate E2E backend configuration
+        env:
+          SUITE: ${{ matrix.suite }}
+          MAESTRO_EXT_API_KEY: ${{ secrets.MOBILE_E2E_EXT_API_KEY }}
+          MAESTRO_APP_API_KEY: ${{ secrets.MOBILE_E2E_APP_API_KEY }}
+          INBOX_TRANSACTIONAL_MESSAGE_ID: ${{ vars.MOBILE_E2E_INBOX_TRANSACTIONAL_MESSAGE_ID }}
+        run: |
+          required=(MAESTRO_EXT_API_KEY)
+          if [[ "$SUITE" == "message-inbox" ]]; then
+            required+=(MAESTRO_APP_API_KEY INBOX_TRANSACTIONAL_MESSAGE_ID)
+          elif [[ "$SUITE" == "live-activities-remote" ]]; then
+            required+=(MAESTRO_APP_API_KEY)
+          fi
+          for name in "${required[@]}"; do
+            if [[ -z "${!name}" ]]; then
+              echo "::error::$name is not configured for Maestro E2E"
+              exit 1
+            fi
+          done
 
       - name: Run SDK to backend E2E
         env:
