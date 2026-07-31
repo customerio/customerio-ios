@@ -16,6 +16,7 @@ class DashboardViewController: BaseViewController {
     @IBOutlet var customEventButton: ThemeButton!
     @IBOutlet var randomEventButton: ThemeButton!
     @IBOutlet var inboxButton: ThemeButton!
+    @IBOutlet var locationTestButton: ThemeButton!
     @IBOutlet var versionsLabel: UILabel!
     @IBOutlet var settings: UIImageView!
     var dashboardRouter: DashboardRouting?
@@ -105,6 +106,7 @@ class DashboardViewController: BaseViewController {
         setAccessibilityId(sendDeviceAttributesButton, to: "Device Attribute Button")
         setAccessibilityId(sendProfileAttributesButton, to: "Profile Attribute Button")
         setAccessibilityId(showPushPromptButton, to: "Show Push Prompt Button")
+        setAccessibilityId(locationTestButton, to: "location_test_button")
         setAccessibilityId(inboxButton, to: "inbox_messages_button")
         setAccessibilityId(logoutButton, to: "Log Out Button")
     }
@@ -120,17 +122,18 @@ class DashboardViewController: BaseViewController {
 
     func addLiveActivityButtonIfSupported() {
         // The dashboard buttons live in a vertical, fill-equally UIStackView. Insert as an
-        // *arranged* subview so the stack reflows (pushes Logout down) and sizes/styles it like
-        // its siblings — adding it as a plain subview overlaps the next button.
+        // *arranged* subview so the stack reflows and sizes/styles it like its siblings. Keep
+        // this feature driver first so it remains reachable when long build metadata reduces
+        // the height available to the scroll view.
         guard #available(iOS 17.2, *),
               let stack = inboxButton.superview as? UIStackView else { return }
 
         let button = ThemeButton()
         button.setTitle("Live Activities", for: .normal)
+        setAccessibilityId(button, to: "live_activities_button")
         button.addTarget(self, action: #selector(openLiveActivities), for: .touchUpInside)
 
-        let insertIndex = (stack.arrangedSubviews.firstIndex(of: inboxButton) ?? (stack.arrangedSubviews.count - 1)) + 1
-        stack.insertArrangedSubview(button, at: insertIndex)
+        stack.insertArrangedSubview(button, at: min(1, stack.arrangedSubviews.count))
     }
 
     @objc func openLiveActivities() {
