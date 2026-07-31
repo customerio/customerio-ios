@@ -247,6 +247,18 @@ actor GeofenceStorage {
         var state = loadFromDisk() ?? GeofenceState()
         state.movementTriggerCenter = center
         state.monitoredGeofenceIds = businessIds
+        // Drop per-condition baselines for regions this registration no longer covers. A record
+        // survives `stopMonitoring` on purpose, so an unchanged re-register keeps its baseline and
+        // CLMonitor's re-evaluation stays silent — but a region *evicted* from the set is a
+        // different case. It goes unmonitored, so no EXIT ever balances a `.enter` baseline, and a
+        // later re-registration with the same circle keeps that stale value instead of the state
+        // the device is actually in. The next genuine arrival then reads as no change and is
+        // dropped. Retaining exactly the registered set bounds the records the same way
+        // `monitoredGeofenceIds` is bounded, and clears anything a previous version stranded.
+        if let records = state.monitorRegionRecords {
+            let retained = businessIds.union([GeofenceConstants.movementTriggerIdentifier])
+            state.monitorRegionRecords = records.filter { retained.contains($0.key) }
+        }
         saveToDisk(state)
     }
 
