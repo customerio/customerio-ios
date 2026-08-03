@@ -26,7 +26,7 @@ on:
       harness_ref:
         description: customerio/mobile-e2e branch, tag, or commit
         type: string
-        default: main
+        default: 755d9771aed3766b8bc02ecda1e5890066eeb2d2
   schedule:
     - cron: "41 6 * * 1-5"
 
@@ -90,7 +90,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: customerio/mobile-e2e
-          ref: ${{ inputs.harness_ref || 'main' }}
+          ref: ${{ inputs.harness_ref || '755d9771aed3766b8bc02ecda1e5890066eeb2d2' }}
           path: .e2e-harness
 
       - name: Install Maestro and evidence dependencies
@@ -107,6 +107,12 @@ jobs:
           CDP_API_KEY: ${{ secrets.CUSTOMERIO_APN_WORKSPACE_CDP_API_KEY }}
           SITE_ID: ${{ secrets.CUSTOMERIO_APN_WORKSPACE_SITE_ID }}
         run: |
+          for name in CDP_API_KEY SITE_ID; do
+            if [[ -z "${!name}" ]]; then
+              echo "::error::$name is not configured for Maestro E2E"
+              exit 1
+            fi
+          done
           cp "Apps/APN-UIKit/BuildEnvironment.sample.swift" \
              "Apps/APN-UIKit/BuildEnvironment.swift"
           ruby -pi -e '
@@ -137,6 +143,7 @@ jobs:
 
       - name: Run SDK to backend E2E
         env:
+          SUITE: ${{ matrix.suite }}
           MAESTRO_EXT_API_KEY: ${{ secrets.MOBILE_E2E_EXT_API_KEY }}
           MAESTRO_APP_API_KEY: ${{ secrets.MOBILE_E2E_APP_API_KEY }}
           INBOX_TRANSACTIONAL_MESSAGE_ID: ${{ vars.MOBILE_E2E_INBOX_TRANSACTIONAL_MESSAGE_ID }}
@@ -145,7 +152,7 @@ jobs:
           ./.e2e-harness/e2e run \
             --platform ios \
             --sdk-repo "$GITHUB_WORKSPACE" \
-            --suite "${{ matrix.suite }}" \
+            --suite "$SUITE" \
             --headless
 
       - name: Sanitize E2E evidence
@@ -155,6 +162,8 @@ jobs:
           MAESTRO_EXT_API_KEY: ${{ secrets.MOBILE_E2E_EXT_API_KEY }}
           MAESTRO_APP_API_KEY: ${{ secrets.MOBILE_E2E_APP_API_KEY }}
           LIVE_ACTIVITY_APP_IDENTIFIER: ${{ secrets.MOBILE_E2E_LIVE_ACTIVITY_APP_IDENTIFIER }}
+          IOS_CDP_API_KEY: ${{ secrets.CUSTOMERIO_APN_WORKSPACE_CDP_API_KEY }}
+          IOS_SITE_ID: ${{ secrets.CUSTOMERIO_APN_WORKSPACE_SITE_ID }}
         run: |
           if [[ -d artifacts/e2e ]]; then
             python3 .e2e-harness/scripts/redact_artifacts.py artifacts/e2e

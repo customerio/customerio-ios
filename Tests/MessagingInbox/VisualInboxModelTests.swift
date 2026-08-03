@@ -124,6 +124,24 @@ final class VisualInboxModelTests: XCTestCase {
         XCTAssertEqual(provider.markedOpenedIds, ["late"])
     }
 
+    func test_autoMarkVisibleMessagesOpened_whenPresentationEndsBeforeMessageLoads_thenDoesNotMarkMessage() async {
+        let provider = FakeVisualInboxProvider()
+        let model = VisualInboxModel(provider: provider)
+
+        model.setAutoMarkVisibleMessagesOpened(true)
+        model.setAutoMarkVisibleMessagesOpened(false)
+        provider.stubState = .visible(messageCount: 1)
+        provider.stubMessages = [makeSnapshot(id: "late", opened: false)]
+        provider.stubTemplates = ["test": [["version": "1", "root": ["type": "placeholder"]]]]
+
+        await model.refresh()
+        // Exercise the same 200 ms async budget as the positive companion test;
+        // a fixed 20 ms sleep could miss a regression on a loaded CI runner.
+        await provider.waitForAttempts(expected: 1)
+
+        XCTAssertTrue(provider.markedOpenedIds.isEmpty)
+    }
+
     // MARK: - dismiss (web parity: tap → dismiss)
 
     func test_dismiss_whenCalled_thenProviderDismissesMessage() async {

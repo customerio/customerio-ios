@@ -17,8 +17,11 @@ fi
 
 if [[ -z "${E2E_HARNESS_DIR:-}" ]]; then
   if [[ ! -d "$HARNESS_DIR/.git" ]]; then
-    echo ">> cloning shared E2E harness"
-    git clone --depth 1 --branch "$HARNESS_REF" "$HARNESS_REPO" "$HARNESS_DIR"
+    echo ">> fetching shared E2E harness"
+    git init -q "$HARNESS_DIR"
+    git -C "$HARNESS_DIR" remote add origin "$HARNESS_REPO"
+    git -C "$HARNESS_DIR" fetch --depth 1 origin "$HARNESS_REF" >/dev/null
+    git -C "$HARNESS_DIR" checkout --detach FETCH_HEAD >/dev/null
   else
     git -C "$HARNESS_DIR" fetch --depth 1 origin "$HARNESS_REF" >/dev/null
     git -C "$HARNESS_DIR" checkout --detach FETCH_HEAD >/dev/null

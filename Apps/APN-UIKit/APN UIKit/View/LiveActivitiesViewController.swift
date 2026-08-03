@@ -518,7 +518,7 @@ private extension LiveActivitiesViewController {
     func endAllActivities() {
         Task { @MainActor [weak self] in
             guard let self else { return }
-            var managedActivityIds = Set(drivers.compactMap { $0.activityId })
+            var managedActivityIds = Set(drivers.compactMap(\.activityId))
             if let adoptActivityId = adoptHandle?.activity.id {
                 managedActivityIds.insert(adoptActivityId)
             }
@@ -550,12 +550,9 @@ private extension LiveActivitiesViewController {
     }
 
     func endOrphanedActivity<Attributes: ActivityAttributes>(_ activity: Activity<Attributes>) async {
-        if let handle = CustomerIO.liveActivities.adopt(activity) {
-            await handle.end(nil, dismissalPolicy: .immediate)
-        } else {
-            // The module is unavailable, so no SDK observer can misclassify this cleanup.
-            await activity.end(nil, dismissalPolicy: .immediate)
-        }
+        // Cleanup must not adopt the stale activity: ending an adopted handle emits a Customer.io
+        // `end` event and would attribute a previous run's activity to the fresh E2E profile.
+        await activity.end(nil, dismissalPolicy: .immediate)
     }
 
     func refreshActivityStatus() {
