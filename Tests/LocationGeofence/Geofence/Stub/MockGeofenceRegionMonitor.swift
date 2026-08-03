@@ -214,8 +214,10 @@ final class MockGeofenceRegionMonitor: GeofenceRegionMonitoring {
     }
 
     private func isRegisteredUnchanged(_ region: GeofenceRegionRequest) -> Bool {
-        // Owned AND still held by the OS: both real monitors check the OS side too, so a region the
-        // OS dropped re-registers instead of being trusted.
+        // Owned AND still held by the OS. The OS-side check models the classic monitor's live
+        // `monitoredRegions` read; the CLMonitor path instead trusts its staged record, whose add
+        // is queued FIFO — in this synchronous mock staged and drained coincide, so one check
+        // matches both.
         guard activeIdentifiers.contains(region.identifier),
               osMonitoredRegions.contains(region.identifier),
               let existing = registeredGeometry[region.identifier]

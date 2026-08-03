@@ -176,9 +176,16 @@ extension CLMonitorGeofenceMonitor {
 
     /// True when this monitor owns the condition and registered it with the same circle, so
     /// re-adding would only risk absorbing an undelivered crossing.
+    ///
+    /// Ownership plus the recorded circle is sufficient: every path that records geometry also
+    /// queues the matching OS add on the FIFO, and every path that invalidates the OS side clears
+    /// ownership or the record synchronously. `knownConditionIdentifiers` must NOT be consulted —
+    /// it is only updated when queued operations drain, so requiring it re-registers regions whose
+    /// add is still in flight (a sync landing before an earlier one's ops drained) and regions
+    /// revived by `rearmConditions` (which never inserts into it) — each an absorbing remove + add
+    /// for a circle the OS already holds or is about to.
     private func isRegisteredUnchanged(_ region: GeofenceRegionRequest) -> Bool {
         guard ownedRegionIdentifiers.contains(region.identifier),
-              knownConditionIdentifiers.contains(region.identifier),
               let existing = registeredConditions[region.identifier]
         else { return false }
         return region.matchesRegistered(
