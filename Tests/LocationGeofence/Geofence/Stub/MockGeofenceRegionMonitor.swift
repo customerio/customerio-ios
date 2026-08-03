@@ -102,8 +102,16 @@ final class MockGeofenceRegionMonitor: GeofenceRegionMonitoring {
     }
 
     func startMonitoring(identifier: String, center: LocationData, radius: Double, transitionTypes: Set<GeofenceTransition>) {
-        // Mirror the real monitor's early return: a rejected id is neither recorded nor owned.
-        guard !rejectedIdentifiers.contains(identifier) else { return }
+        // Mirror the real monitors: a rejected id is neither recorded nor owned, and any circle the
+        // OS was already holding for it is cleared rather than left live.
+        guard !rejectedIdentifiers.contains(identifier) else {
+            if osMonitoredRegions.remove(identifier) != nil {
+                registeredGeometry.removeValue(forKey: identifier)
+                stoppedIdentifiers.append(identifier)
+                operationLog.append(.stop(identifier: identifier))
+            }
+            return
+        }
         // `startedRegions` keeps what the caller asked for; `registeredGeometry` keeps what the OS
         // would hold, which is what the unchanged check compares against.
         startedRegions.append(MonitoredRegionRecord(
@@ -112,18 +120,20 @@ final class MockGeofenceRegionMonitor: GeofenceRegionMonitoring {
             radius: radius,
             transitionTypes: transitionTypes
         ))
-        // Models CLMonitor, the stricter of the two real monitors: an add over an identifier the OS
-        // already holds is silently ignored and the original circle survives (verified on-device).
-        // The classic monitor replaces instead, so a caller correct against this mock is correct
-        // against both.
-        if !osMonitoredRegions.contains(identifier) {
-            registeredGeometry[identifier] = MonitoredRegionRecord(
-                identifier: identifier,
-                center: center,
-                radius: min(radius, maximumMonitoringRadius),
-                transitionTypes: transitionTypes
-            )
+        // Models the real CLMonitor path: an add over an identifier the OS already holds is silently
+        // ignored and the original circle survives (verified on-device), so the monitor clears the
+        // identifier at the OS first. Modelled as the same remove-then-add pair. The classic monitor
+        // replaces by identifier, so a caller correct against this mock is correct against both.
+        if osMonitoredRegions.remove(identifier) != nil {
+            stoppedIdentifiers.append(identifier)
+            operationLog.append(.stop(identifier: identifier))
         }
+        registeredGeometry[identifier] = MonitoredRegionRecord(
+            identifier: identifier,
+            center: center,
+            radius: min(radius, maximumMonitoringRadius),
+            transitionTypes: transitionTypes
+        )
         activeIdentifiers.insert(identifier)
         // Mirror the real monitors: a successful add is reflected in the OS-persisted set too
         // (classic's `monitoredRegions`, CLMonitor's condition mirror).
@@ -161,18 +171,21 @@ final class MockGeofenceRegionMonitor: GeofenceRegionMonitoring {
             stopMonitoring(identifier: identifier)
             removed.insert(identifier)
         }
+        // Mirror the CLMonitor path's sweep against live OS state, so a lossy mirror can't strand a
+        // condition on an OS slot. The classic monitor can't sweep — `CLLocationManager` shares
+        // `monitoredRegions` app-wide, so it would tear down the host app's regions.
+        for identifier in osMonitoredRegions.subtracting(desiredIdentifiers) {
+            osMonitoredRegions.remove(identifier)
+            registeredGeometry.removeValue(forKey: identifier)
+            stoppedIdentifiers.append(identifier)
+            operationLog.append(.stop(identifier: identifier))
+        }
         var added: Set<String> = []
         for region in regions where !isRegisteredUnchanged(region) {
-            // Same split as the real CLMonitor path: an unowned condition the OS still holds must
-            // be removed explicitly, or the add is ignored and the old circle survives.
-            if activeIdentifiers.contains(region.identifier) {
-                stopMonitoring(identifier: region.identifier)
-            } else if osMonitoredRegions.contains(region.identifier) {
-                osMonitoredRegions.remove(region.identifier)
-                registeredGeometry.removeValue(forKey: region.identifier)
-                stoppedIdentifiers.append(region.identifier)
-                operationLog.append(.stop(identifier: region.identifier))
-            }
+            // Mirror the real monitors: the previous claim is released before the re-registration,
+            // so one the monitor rejects stops counting as registered. Ownership only — what the OS
+            // holds (`osMonitoredRegions` / `registeredGeometry`) changes when the OS is told to.
+            activeIdentifiers.remove(region.identifier)
             startMonitoring(
                 identifier: region.identifier,
                 center: region.center,

@@ -145,7 +145,9 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preco
         let drifted = persisted != knownConditionIdentifiers
         knownConditionIdentifiers = persisted
         ownedRegionIdentifiers.formUnion(persisted)
-        registeredConditions = registeredConditions.filter { persisted.contains($0.key) }
+        // `registeredConditions` is deliberately not filtered against `persisted`. It starts empty
+        // each process, so its only entries are ones staged while CLMonitor was still loading,
+        // whose adds are queued behind this operation — exactly the identifiers `persisted` lacks.
         persistConditionMirror()
         if drifted { onReconciled?() }
     }
@@ -217,11 +219,22 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preco
         case .unmonitored:
             // CLMonitor gave up on the condition (e.g. condition budget exceeded). As with classic
             // monitoringDidFail: drop ownership and the mirror entry so nothing claims a condition
-            // the OS no longer holds; the next sync re-registers a fresh set.
+            // the OS no longer holds; the next sync re-registers a fresh set. The stored baseline
+            // goes too — the region stays in the desired set, so nothing else prunes it, and the
+            // device can cross while it is unmonitored.
             ownedRegionIdentifiers.remove(identifier)
             knownConditionIdentifiers.remove(identifier)
             registeredConditions.removeValue(forKey: identifier)
             persistConditionMirror()
+            // On the pipeline, and skipped if a registration has re-added the identifier since the
+            // line above cleared it: that add wrote a baseline from the device's real position, which
+            // must not then be deleted. Keyed on this monitor's own record of completed adds rather
+            // than on `CLMonitor.identifiers`, because whether a condition the OS gave up on stays
+            // listed is unmeasured — reading it could make this clear permanently inert.
+            enqueueMonitorOperation { [weak self] _ in
+                guard let self, !self.knownConditionIdentifiers.contains(identifier) else { return }
+                await self.storage.clearMonitorRegionRecord(identifier: identifier)
+            }
             return
         @unknown default:
             return

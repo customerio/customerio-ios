@@ -17,11 +17,19 @@ extension CLMonitorGeofenceMonitor {
 
     func startMonitoring(identifier: String, center: LocationData, radius: Double, transitionTypes: Set<GeofenceTransition>) {
         reportPermissionTier()
-        guard CoreLocationGeofenceMonitor.permissionTier(for: authManager.authorizationStatus) != .blocked else { return }
+        // A rejected registration still clears the identifier at the OS. Re-registration releases
+        // ownership before calling in, so without this a reshaped region that is refused would leave
+        // its previous circle live and holding one of the 20 OS slots — with nothing owning it, no
+        // later pass repairs it while the region stays in the desired set.
+        guard CoreLocationGeofenceMonitor.permissionTier(for: authManager.authorizationStatus) != .blocked else {
+            enqueueConditionRemoval(identifier)
+            return
+        }
 
         let coordinate = CLLocationCoordinate2D(latitude: center.latitude, longitude: center.longitude)
         guard CLLocationCoordinate2DIsValid(coordinate) else {
             logger.geofenceInvalidCoordinatesForRegion(identifier)
+            enqueueConditionRemoval(identifier)
             return
         }
 
@@ -60,6 +68,11 @@ extension CLMonitorGeofenceMonitor {
                 center: LocationData(latitude: coordinate.latitude, longitude: coordinate.longitude),
                 radius: clampedRadius
             )
+            // CLMonitor SILENTLY IGNORES an add over a live identifier, keeping the original circle
+            // and reporting no error, so the identifier is cleared first. Keyed on the OS rather
+            // than on this process's bookkeeping, which can be missing an identifier the OS still
+            // holds. Removing one the OS does not hold is a no-op.
+            await monitor.remove(identifier)
             let condition = CLMonitor.CircularGeographicCondition(center: coordinate, radius: clampedRadius)
             await monitor.add(condition, identifier: identifier, assuming: assumedState)
             self.knownConditionIdentifiers.insert(identifier)
@@ -68,13 +81,18 @@ extension CLMonitorGeofenceMonitor {
     }
 
     func stopMonitoring(identifier: String) {
-        guard ownedRegionIdentifiers.remove(identifier) != nil else { return }
-        registeredConditions.removeValue(forKey: identifier)
+        guard ownedRegionIdentifiers.contains(identifier) else { return }
+        releaseOwnership(identifier)
         enqueueConditionRemoval(identifier)
     }
 
-    /// Drops the condition at the OS. Split from `stopMonitoring` because re-registration must be
-    /// able to clear a condition this process has not adopted — see `setMonitoredRegions`.
+    /// Drops this process's claim on a condition without touching the OS.
+    private func releaseOwnership(_ identifier: String) {
+        ownedRegionIdentifiers.remove(identifier)
+        registeredConditions.removeValue(forKey: identifier)
+    }
+
+    /// Drops the condition at the OS.
     ///
     /// The storage record intentionally survives removal: a remove + re-register cycle relies on
     /// the persisted baseline to suppress CLMonitor's re-evaluation of an unchanged state.
@@ -123,17 +141,11 @@ extension CLMonitorGeofenceMonitor {
         }
         var added: Set<String> = []
         for region in regions where !isRegisteredUnchanged(region) {
-            // CLMonitor SILENTLY IGNORES an add over a live identifier — it keeps the original
-            // circle and reports no error — so a reshaped region must be removed first; the
-            // pipeline is FIFO, so the remove lands before the add. `stopMonitoring` only reaches
-            // regions this process owns, and a condition the OS holds that adoption missed would
-            // otherwise keep its old circle forever: the add is dropped, but the new geometry is
-            // still recorded here, so every later pass reads "unchanged" and never repairs it.
-            if ownedRegionIdentifiers.contains(region.identifier) {
-                stopMonitoring(identifier: region.identifier)
-            } else if knownConditionIdentifiers.contains(region.identifier) {
-                enqueueConditionRemoval(region.identifier)
-            }
+            // Release ownership first so a region `startMonitoring` rejects (blocked permission,
+            // invalid coordinates) stops counting as registered instead of keeping the claim it
+            // held before the change. `startMonitoring` re-takes it in the same turn on success,
+            // and clears the identifier at the OS from inside its queued add.
+            releaseOwnership(region.identifier)
             startMonitoring(
                 identifier: region.identifier,
                 center: region.center,

@@ -1403,6 +1403,30 @@ struct GeofenceSyncCoordinatorTests {
     }
 
     @Test
+    func refresh_givenOsHoldsUnownedRegionNoLongerNearest_expectSweptFromOs() async {
+        // A condition the OS still holds from a previous launch that this process never adopted and
+        // the server no longer returns. Ownership-based teardown can't see it, so only the sweep
+        // against live OS state removes it — otherwise it keeps one of the 20 slots indefinitely.
+        let storage = makeStorage()
+        let dateUtil = DateUtilStub()
+        await storage.setCachedConfig(diffConfig)
+        await storage.recordSync(timestamp: dateUtil.givenNow.addingTimeInterval(-100), location: LocationData(latitude: 0, longitude: 0))
+        await storage.setCachedGeofences([makeRegion(id: "g1", latitude: 0.001, longitude: 0, radius: 500)])
+        let setup = makeCoordinator(storage: storage, dateUtil: dateUtil)
+        setup.monitor.seedOsHeldRegion(
+            identifier: "stranded",
+            center: LocationData(latitude: 5, longitude: 5),
+            radius: 300,
+            transitionTypes: [.enter, .exit]
+        )
+
+        _ = await setup.coordinator.refresh(latitude: 0, longitude: 0)
+
+        #expect(!setup.monitor.osMonitoredRegions.contains("stranded"))
+        #expect(setup.monitor.osMonitoredRegions.contains("g1"))
+    }
+
+    @Test
     func refresh_givenFreshProcessAndReshapedRegionOsStillHolds_expectOsGeometryUpdated() async {
         // Fresh process owning nothing, OS still holding `g1` from the previous launch on its old
         // circle, and the server has since reshaped it. CLMonitor silently ignores an add over a
@@ -1806,6 +1830,34 @@ struct GeofenceSyncCoordinatorTests {
         // this is non-vacuous.
         await awaitEmits(setup.emitter, count: 0)
         #expect(setup.emitter.calls.wrappedValue.isEmpty)
+    }
+
+    @Test
+    func handleMovement_givenRegisteredRegionReshapedThenRejected_expectNoLongerReportedRegistered() async {
+        // A region already registered gets reshaped, and the monitor now rejects it (permission
+        // revoked, or the backend moved it to invalid coordinates). The stale claim must go with
+        // the failed re-registration — otherwise it keeps counting toward the registered set and
+        // `emitInitialEnters` can fire an enter for a region the OS is not monitoring.
+        let storage = makeStorage()
+        let dateUtil = DateUtilStub()
+        await storage.setCachedConfig(diffConfig)
+        await storage.recordSync(timestamp: dateUtil.givenNow.addingTimeInterval(-100), location: LocationData(latitude: 0, longitude: 0))
+        await storage.setCachedGeofences([makeRegion(id: "g1", latitude: 0.001, longitude: 0, radius: 500)])
+        let setup = makeCoordinator(storage: storage, dateUtil: dateUtil)
+
+        _ = await setup.coordinator.refresh(latitude: 0, longitude: 0)
+        #expect(setup.monitor.monitoredRegionIdentifiers.contains("g1"))
+
+        // Same id, different circle, and the monitor now refuses it.
+        await storage.setCachedGeofences([makeRegion(id: "g1", latitude: 0.001, longitude: 0, radius: 900)])
+        setup.monitor.rejectedIdentifiers = ["g1"]
+        _ = await setup.coordinator.handleMovement(latitude: 0, longitude: 0.001)
+
+        #expect(!setup.monitor.monitoredRegionIdentifiers.contains("g1"))
+        // And the circle it held before the refused reshape is gone from the OS, not left occupying
+        // one of the 20 slots with nothing owning it and no later pass repairing it.
+        #expect(!setup.monitor.osMonitoredRegions.contains("g1"))
+        #expect(setup.monitor.osGeometry(for: "g1") == nil)
     }
 
     @Test
