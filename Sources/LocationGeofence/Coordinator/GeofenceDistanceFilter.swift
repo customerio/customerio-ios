@@ -6,7 +6,13 @@ import Foundation
 /// monitored regions; one slot is reserved for the movement-trigger geofence).
 struct GeofenceDistanceFilter: Sendable {
     /// Ranks and caps by distance to each region's *boundary* (`edgeDistanceTo`), so a region the
-    /// device is inside always ranks first and survives both the limit and the distance cap.
+    /// device is inside ranks first among the candidates and survives both the limit and the
+    /// distance cap.
+    ///
+    /// Only among the candidates: the backend applies its own limit first, ordered by distance to
+    /// each region's center, so in a dense workspace a large region containing the device can be
+    /// cut before it ever reaches this sort. Aligning that server-side ordering with boundary
+    /// distance is a separate change.
     ///
     /// Ties broken by ascending `id` for deterministic ordering. Distances are rounded to whole
     /// meters before comparison: `CLLocation.distance` can return sub-meter-varying values for
