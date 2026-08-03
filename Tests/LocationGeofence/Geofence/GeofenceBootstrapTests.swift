@@ -255,6 +255,51 @@ struct GeofenceBootstrapTests {
     }
 
     @Test
+    func wireMonitor_givenAdoptPath_expectPersistedMonitorRecordsHandedToAdopt() async {
+        // The CLMonitor path seeds its geometry bookkeeping from these records synchronously at
+        // adopt, so a sync landing before the queued re-arm drains reads carried-over regions as
+        // unchanged instead of re-registering them all.
+        let di = DIGraphShared.shared
+        let storage = GeofenceStorage(
+            directoryURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        )
+        await storage.setCachedGeofences([
+            Geofence(
+                id: "g1",
+                latitude: 1,
+                longitude: 2,
+                radius: 100,
+                name: "g1",
+                transitionTypes: [.enter],
+                lastUpdated: Date(timeIntervalSince1970: 0)
+            )
+        ])
+        await storage.recordRegistration(center: LocationData(latitude: 10, longitude: 20), businessIds: ["g1"])
+        await storage.recordMonitorRegistration(
+            identifier: "g1",
+            transitionTypes: [.enter],
+            initialState: .exit,
+            center: LocationData(latitude: 1, longitude: 2),
+            radius: 100
+        )
+        di.override(value: storage, forType: GeofenceStorage.self)
+        let monitor = MockGeofenceRegionMonitor()
+        monitor.osMonitoredRegions = ["g1", GeofenceConstants.movementTriggerIdentifier]
+        di.override(value: monitor as GeofenceRegionMonitoring, forType: GeofenceRegionMonitoring.self)
+        let coordinator = GeofenceSyncCoordinatorMock()
+        di.override(value: coordinator as GeofenceSyncCoordinator, forType: GeofenceSyncCoordinator.self)
+        defer { di.reset() }
+
+        await GeofenceBootstrap.wireMonitor(di: di)
+
+        #expect(monitor.adoptExistingRegionsCallsCount == 1)
+        let record = monitor.adoptedRecords["g1"]
+        #expect(record?.center == LocationData(latitude: 1, longitude: 2))
+        #expect(record?.radius == 100)
+        #expect(record?.lastState == .exit)
+    }
+
+    @Test
     func wireMonitor_givenOsAlsoMonitorsHostAppRegions_expectOnlyOwnRegionsAdopted() async {
         // CLLocationManager.monitoredRegions is app-wide. Adoption must claim only the SDK's own
         // regions (cached geofences + movement trigger), never the host app's.

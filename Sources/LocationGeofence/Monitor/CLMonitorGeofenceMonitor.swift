@@ -55,10 +55,11 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preco
     /// Geometry each condition was added with, post-clamp. `CLMonitor` exposes no way to read a
     /// condition back, so this is the only record `setMonitoredRegions` can diff against.
     ///
-    /// Deliberately NOT seeded from the mirror at init. A condition inherited from a previous
-    /// process may be a reboot zombie — still listed, no longer monitored (see `rearmConditions`) —
-    /// and only re-adding revives it. Leaving it absent here makes the first pass re-register it;
-    /// `rearmConditions` fills it in when the bootstrap adopts instead.
+    /// Deliberately NOT seeded from the mirror at init (which has no geometry anyway). A condition
+    /// inherited from a previous process may be a reboot zombie — still listed, no longer monitored
+    /// (see `rearmConditions`) — and only re-adding revives it. Leaving it absent here makes the
+    /// first pass re-register it; when the bootstrap adopts instead, `adoptExistingRegions` seeds it
+    /// from the persisted records the re-arm then imposes at the OS.
     var registeredConditions: [String: RegisteredCondition] = [:]
 
     /// The circle a condition was added with.

@@ -121,10 +121,14 @@ protocol GeofenceRegionMonitoring: AnyObject, Sendable {
 
     /// Re-claims the OS-persisted regions whose identifiers are in `identifiers` as owned by this
     /// monitor, restoring transition recognition on a fresh process where the OS kept monitoring
-    /// but the in-memory ownership set was lost. Adoption must not emit events for unchanged
-    /// regions; the OS-side mechanism is implementation-specific (the classic monitor adopts in
-    /// place, the CLMonitor path re-arms each condition — see `rearmConditions`).
-    func adoptExistingRegions(matching identifiers: Set<String>)
+    /// but the in-memory ownership set was lost. `records` is the persisted per-condition
+    /// bookkeeping (`GeofenceStorage.getMonitorRegionRecords`); the CLMonitor path seeds its
+    /// geometry map from it synchronously, so a sync arriving before the queued re-arm drains
+    /// reads adopted regions as unchanged instead of re-registering them all. Adoption must not
+    /// emit events for unchanged regions; the OS-side mechanism is implementation-specific (the
+    /// classic monitor adopts in place and ignores `records`, the CLMonitor path re-arms each
+    /// condition — see `rearmConditions`).
+    func adoptExistingRegions(matching identifiers: Set<String>, records: [String: MonitorRegionRecord])
 
     /// Logs the current authorization tier (background delivery / foreground only / blocked),
     /// deduped so it emits only when the tier changes since the last report.

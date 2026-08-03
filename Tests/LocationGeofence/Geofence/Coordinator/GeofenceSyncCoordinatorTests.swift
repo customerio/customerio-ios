@@ -1427,6 +1427,38 @@ struct GeofenceSyncCoordinatorTests {
     }
 
     @Test
+    func refresh_givenAdoptedRegionsWithPersistedGeometry_expectUnchangedRegionLeftUntouched() async {
+        // Cold launch on the CLMonitor path: the OS still holds last session's condition and the
+        // persisted record carries its geometry, which adoption seeds synchronously. A sync landing
+        // before the queued re-arm drains must read the unchanged region as unchanged — re-adding
+        // it would absorb a crossing the OS has detected but not yet delivered.
+        let storage = makeStorage()
+        let dateUtil = DateUtilStub()
+        await storage.setCachedConfig(diffConfig)
+        await storage.recordSync(timestamp: dateUtil.givenNow.addingTimeInterval(-100), location: LocationData(latitude: 0, longitude: 0))
+        await storage.setCachedGeofences([makeRegion(id: "g1", latitude: 0.001, longitude: 0, radius: 500)])
+        let setup = makeCoordinator(storage: storage, dateUtil: dateUtil)
+        setup.monitor.osMonitoredRegions = ["g1"]
+        setup.monitor.adoptExistingRegions(
+            matching: ["g1"],
+            records: [
+                "g1": MonitorRegionRecord(
+                    lastState: .enter,
+                    transitionTypes: [.enter, .exit],
+                    center: LocationData(latitude: 0.001, longitude: 0),
+                    radius: 500
+                )
+            ]
+        )
+
+        _ = await setup.coordinator.refresh(latitude: 0, longitude: 0)
+
+        #expect(!setup.monitor.stoppedIdentifiers.contains("g1"))
+        #expect(setup.monitor.startedRegions.filter { $0.identifier == "g1" }.isEmpty)
+        #expect(setup.monitor.monitoredRegionIdentifiers.contains("g1"))
+    }
+
+    @Test
     func refresh_givenFreshProcessAndReshapedRegionOsStillHolds_expectOsGeometryUpdated() async {
         // Fresh process owning nothing, OS still holding `g1` from the previous launch on its old
         // circle, and the server has since reshaped it. CLMonitor silently ignores an add over a

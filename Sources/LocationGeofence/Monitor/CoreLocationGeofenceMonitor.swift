@@ -60,7 +60,7 @@ final class CoreLocationGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @pr
         Set(manager.monitoredRegions.map(\.identifier))
     }
 
-    func adoptExistingRegions(matching identifiers: Set<String>) {
+    func adoptExistingRegions(matching identifiers: Set<String>, records _: [String: MonitorRegionRecord]) {
         let adopted = identifiers.intersection(osMonitoredRegionIdentifiers)
         guard !adopted.isEmpty else { return }
         ownedRegionIdentifiers.formUnion(adopted)

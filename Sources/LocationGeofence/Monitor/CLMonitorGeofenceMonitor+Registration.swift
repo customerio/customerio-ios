@@ -7,11 +7,26 @@ import Foundation
 /// file from their state; they remain monitor implementation detail.
 @available(iOS 17.0, *)
 extension CLMonitorGeofenceMonitor {
-    func adoptExistingRegions(matching identifiers: Set<String>) {
+    func adoptExistingRegions(matching identifiers: Set<String>, records: [String: MonitorRegionRecord]) {
         let adopted = identifiers.intersection(knownConditionIdentifiers)
         guard !adopted.isEmpty else { return }
         ownedRegionIdentifiers.formUnion(adopted)
-        rearmConditions(adopted)
+        // Seed the geometry map synchronously, before the queued re-arm drains: a sync landing in
+        // that window would otherwise read every adopted region as changed (no recorded circle)
+        // and remove + re-add them all — absorbing any crossing the OS has detected but not yet
+        // delivered. Seeded from the same records the re-arm imposes at the OS, so the diff
+        // compares against what the OS will hold once it drains. A record without geometry stays
+        // unseeded and the next sync re-registers it, matching `rearmConditions`.
+        for identifier in adopted {
+            guard let record = records[identifier], let center = record.center, let radius = record.radius else { continue }
+            noteRegisteredCondition(
+                identifier: identifier,
+                center: center,
+                radius: radius,
+                transitionTypes: record.transitionTypes
+            )
+        }
+        rearmConditions(adopted, records: records)
         logger.geofenceRegionsAdopted(count: adopted.count)
     }
 
@@ -174,9 +189,8 @@ extension CLMonitorGeofenceMonitor {
         )
     }
 
-    /// Records the circle a condition now holds. Internal for the `+Rearm` extension, which re-adds
-    /// conditions from persisted records.
-    func noteRegisteredCondition(identifier: String, center: LocationData, radius: Double, transitionTypes: Set<GeofenceTransition>) {
+    /// Records the circle a condition now holds.
+    private func noteRegisteredCondition(identifier: String, center: LocationData, radius: Double, transitionTypes: Set<GeofenceTransition>) {
         registeredConditions[identifier] = RegisteredCondition(
             center: center,
             radius: radius,

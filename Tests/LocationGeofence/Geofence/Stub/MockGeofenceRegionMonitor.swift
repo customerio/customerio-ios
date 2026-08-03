@@ -43,6 +43,7 @@ final class MockGeofenceRegionMonitor: GeofenceRegionMonitoring {
     var rejectedIdentifiers: Set<String> = []
     private(set) var adoptExistingRegionsCallsCount = 0
     private(set) var adoptedIdentifiers: Set<String> = []
+    private(set) var adoptedRecords: [String: MonitorRegionRecord] = [:]
     private(set) var reportPermissionTierCallsCount = 0
 
     var monitoredRegionIdentifiers: Set<String> {
@@ -57,11 +58,26 @@ final class MockGeofenceRegionMonitor: GeofenceRegionMonitoring {
         osMonitoredRegions
     }
 
-    func adoptExistingRegions(matching identifiers: Set<String>) {
+    func adoptExistingRegions(matching identifiers: Set<String>, records: [String: MonitorRegionRecord]) {
         adoptExistingRegionsCallsCount += 1
+        adoptedRecords = records
         let adopted = identifiers.intersection(osMonitoredRegions)
         adoptedIdentifiers.formUnion(adopted)
         activeIdentifiers.formUnion(adopted)
+        // Mirror the CLMonitor path: adoption seeds the geometry bookkeeping from the persisted
+        // records (stored post-clamp, used as-is), which the re-arm then imposes at the OS — so a
+        // sync right after adopt reads an unchanged region as unchanged instead of re-adding it.
+        for identifier in adopted {
+            guard let record = records[identifier],
+                  let center = record.center, let radius = record.radius
+            else { continue }
+            registeredGeometry[identifier] = MonitoredRegionRecord(
+                identifier: identifier,
+                center: center,
+                radius: radius,
+                transitionTypes: record.transitionTypes
+            )
+        }
     }
 
     /// Models a condition the OS already holds that this process has NOT adopted — the state a

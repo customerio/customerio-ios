@@ -10,10 +10,12 @@ extension CLMonitorGeofenceMonitor {
     /// fresh add re-arms it. Event-silent when nothing changed: `assuming:` seeds the stored
     /// baseline, so CLMonitor emits only transitions that happened while unmonitored — genuine
     /// catch-up, which the baseline comparison then delivers.
-    func rearmConditions(_ identifiers: Set<String>) {
-        enqueueMonitorOperation { [weak self] monitor in
-            guard let self else { return }
-            let records = await self.storage.getMonitorRegionRecords()
+    ///
+    /// `records` comes from the caller (`adoptExistingRegions`), which has already seeded the
+    /// geometry bookkeeping from it synchronously — noting it again at drain time would clobber
+    /// a newer circle a sync staged while this operation was still queued.
+    func rearmConditions(_ identifiers: Set<String>, records: [String: MonitorRegionRecord]) {
+        enqueueMonitorOperation { monitor in
             for identifier in identifiers {
                 // A record without geometry can't be rebuilt; the next sync re-registers it.
                 guard let record = records[identifier],
@@ -25,14 +27,6 @@ extension CLMonitorGeofenceMonitor {
                     radius: radius
                 )
                 await monitor.add(condition, identifier: identifier, assuming: record.lastState == .enter ? .satisfied : .unsatisfied)
-                // This process now knows what the condition holds, so `setMonitoredRegions` can
-                // leave it alone instead of re-adding it on the next sync.
-                self.noteRegisteredCondition(
-                    identifier: identifier,
-                    center: center,
-                    radius: radius,
-                    transitionTypes: record.transitionTypes
-                )
             }
         }
     }
