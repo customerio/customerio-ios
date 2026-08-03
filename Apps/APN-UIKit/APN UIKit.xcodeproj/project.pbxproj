@@ -10,6 +10,7 @@
 		14A90D80EAFFB3FFC0A20D37 /* DMSans-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 41BF079617E97D419E8E4B20 /* DMSans-Medium.ttf */; };
 		167BDDB2954ABC2B5B7E417B /* AbrilFatface-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 75EC3F68C36E40E2B00DD826 /* AbrilFatface-Regular.ttf */; };
 		30DB021B873DE5D52C01151C /* InboxViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6271087BB2D1D2EED90C6A75 /* InboxViewController.swift */; };
+		A1B2C3D4E5F60718293A4B5D /* InboxMessageCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4B5C /* InboxMessageCell.swift */; };
 		30F117082D63531A00DB1E11 /* SampleAppsCommon in Frameworks */ = {isa = PBXBuildFile; productRef = 30F117072D63531A00DB1E11 /* SampleAppsCommon */; };
 		30F1170A2D6356BA00DB1E11 /* SampleAppsCommon in Frameworks */ = {isa = PBXBuildFile; productRef = 30F117092D6356BA00DB1E11 /* SampleAppsCommon */; };
 		4650330629F68FEB001B6552 /* NotificationServiceExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 465032FF29F68FEB001B6552 /* NotificationServiceExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
@@ -133,6 +134,7 @@
 		46D5D99329E459D800EAF40B /* APN UIKitTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "APN UIKitTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 		46D5D99D29E459D800EAF40B /* APN UIKitUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "APN UIKitUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 		6271087BB2D1D2EED90C6A75 /* InboxViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InboxViewController.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F60718293A4B5C /* InboxMessageCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InboxMessageCell.swift; sourceTree = "<group>"; };
 		669B9F6E2D8B2D430087CC20 /* AutoDependencyInjection.generated.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutoDependencyInjection.generated.swift; sourceTree = "<group>"; };
 		669B9F702D8B2D430087CC20 /* AutoMockable.generated.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutoMockable.generated.swift; sourceTree = "<group>"; };
 		669B9F712D8B2D430087CC20 /* DIDependencies.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DIDependencies.swift; sourceTree = "<group>"; };
@@ -423,6 +425,7 @@
 				669B9F982D8B2D430087CC20 /* DeepLinkViewController.swift */,
 				669B9F992D8B2D430087CC20 /* InlineInAppMessageUikitViewController.swift */,
 				6271087BB2D1D2EED90C6A75 /* InboxViewController.swift */,
+				A1B2C3D4E5F60718293A4B5C /* InboxMessageCell.swift */,
 				669B9F9A2D8B2D430087CC20 /* LoginViewController.swift */,
 			);
 			path = View;
@@ -767,6 +770,7 @@
 				669B9FC92D8B2D430087CC20 /* DeepLinkViewController.swift in Sources */,
 				669B9FCA2D8B2D430087CC20 /* InlineInAppMessageUikitViewController.swift in Sources */,
 				30DB021B873DE5D52C01151C /* InboxViewController.swift in Sources */,
+				A1B2C3D4E5F60718293A4B5D /* InboxMessageCell.swift in Sources */,
 				669B9FCB2D8B2D430087CC20 /* LoginViewController.swift in Sources */,
 				669B9FCC2D8B2D430087CC20 /* AppDelegate.swift in Sources */,
 				669B9FCD2D8B2D430087CC20 /* BuildEnvironment.swift in Sources */,
