@@ -14,8 +14,15 @@ extension CLMonitorGeofenceMonitor {
     /// `records` comes from the caller (`adoptExistingRegions`), which has already seeded the
     /// geometry bookkeeping from it synchronously — noting it again at drain time would clobber
     /// a newer circle a sync staged while this operation was still queued.
+    ///
+    /// Each successful add is recorded in `knownConditionIdentifiers` and the mirror persisted, the
+    /// same bookkeeping `startMonitoring` does. Without it the mirror under-reports a condition this
+    /// re-add revived, and the next process seeds ownership from that mirror — so a cold-wake event
+    /// for the revived condition would be dropped by the ownership gate.
     func rearmConditions(_ identifiers: Set<String>, records: [String: MonitorRegionRecord]) {
-        enqueueMonitorOperation { monitor in
+        enqueueMonitorOperation { [weak self] monitor in
+            guard let self else { return }
+            var revived = false
             for identifier in identifiers {
                 // A record without geometry can't be rebuilt; the next sync re-registers it.
                 guard let record = records[identifier],
@@ -27,7 +34,14 @@ extension CLMonitorGeofenceMonitor {
                     radius: radius
                 )
                 await monitor.add(condition, identifier: identifier, assuming: record.lastState == .enter ? .satisfied : .unsatisfied)
+                // Recorded per identifier rather than in one pass at the end: an `.unmonitored` for
+                // one of these can land between two iterations, and it must be able to take the
+                // identifier back out.
+                self.knownConditionIdentifiers.insert(identifier)
+                revived = true
             }
+            guard revived else { return }
+            self.persistConditionMirror()
         }
     }
 }
