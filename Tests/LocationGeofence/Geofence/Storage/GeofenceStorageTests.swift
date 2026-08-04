@@ -700,4 +700,78 @@ struct GeofenceStorageTests {
         #expect(records["geo_1"]?.radius == 100)
         #expect(records["geo_1"]?.lastState == .enter)
     }
+
+    // MARK: - Monitor baseline pruning
+
+    @Test
+    func recordRegistration_givenEvictedRegion_expectItsBaselineDropped() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let storage = makeStorage(directory: dir)
+        let centre = LocationData(latitude: 10, longitude: 20)
+        await storage.recordMonitorRegistration(identifier: "evicted", transitionTypes: [.enter, .exit], initialState: .enter, center: centre, radius: 500)
+        await storage.recordMonitorRegistration(identifier: "kept", transitionTypes: [.enter, .exit], initialState: .exit, center: centre, radius: 500)
+
+        await storage.recordRegistration(center: centre, businessIds: ["kept"])
+
+        let records = await storage.getMonitorRegionRecords()
+        #expect(records["evicted"] == nil)
+        #expect(records["kept"] != nil)
+    }
+
+    @Test
+    func recordRegistration_givenMovementTrigger_expectItsBaselineRetained() async {
+        // The trigger is never in `businessIds` but is always registered; pruning it would discard
+        // the baseline that makes its EXIT deliverable.
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let storage = makeStorage(directory: dir)
+        let centre = LocationData(latitude: 10, longitude: 20)
+        await storage.recordMonitorRegistration(identifier: GeofenceConstants.movementTriggerIdentifier, transitionTypes: [.exit], initialState: .enter, center: centre, radius: 1000)
+
+        await storage.recordRegistration(center: centre, businessIds: ["g1"])
+
+        #expect(await storage.getMonitorRegionRecords()[GeofenceConstants.movementTriggerIdentifier] != nil)
+    }
+
+    @Test
+    func revisit_givenRegionEvictedWhileInside_expectGenuineEnterStillDelivered() async {
+        // The regression. A region evicted while the device is inside keeps a `.enter` baseline that
+        // no EXIT ever balances, because it is no longer monitored. Re-registering the same circle
+        // later preserves that baseline, so the arrival on a genuine revisit reads as no change and
+        // is dropped. Pruning on eviction is what keeps the revisit deliverable.
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let storage = makeStorage(directory: dir)
+        let centre = LocationData(latitude: 10, longitude: 20)
+        let radius: Double = 500
+
+        await storage.recordMonitorRegistration(identifier: "F", transitionTypes: [.enter, .exit], initialState: .exit, center: centre, radius: radius)
+        #expect(await storage.recordMonitorEvent(.enter, forIdentifier: "F") == .deliver)
+
+        // Evicted while still inside — F is absent from the new registration snapshot.
+        await storage.recordRegistration(center: centre, businessIds: [])
+
+        // Much later: re-registered with an identical circle, device now outside.
+        await storage.recordMonitorRegistration(identifier: "F", transitionTypes: [.enter, .exit], initialState: .exit, center: centre, radius: radius)
+
+        #expect(await storage.recordMonitorEvent(.enter, forIdentifier: "F") == .deliver)
+    }
+
+    @Test
+    func recordRegistration_givenRetainedRegion_expectBaselinePreserved() async {
+        // Pruning must not touch a region that is still registered: its baseline is what keeps an
+        // unchanged re-register silent instead of re-delivering the state the device is already in.
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let storage = makeStorage(directory: dir)
+        let centre = LocationData(latitude: 10, longitude: 20)
+        await storage.recordMonitorRegistration(identifier: "g1", transitionTypes: [.enter, .exit], initialState: .exit, center: centre, radius: 500)
+        #expect(await storage.recordMonitorEvent(.enter, forIdentifier: "g1") == .deliver)
+
+        await storage.recordRegistration(center: centre, businessIds: ["g1"])
+        await storage.recordMonitorRegistration(identifier: "g1", transitionTypes: [.enter, .exit], initialState: .exit, center: centre, radius: 500)
+
+        #expect(await storage.recordMonitorEvent(.enter, forIdentifier: "g1") == .suppressedNoChange)
+    }
 }
