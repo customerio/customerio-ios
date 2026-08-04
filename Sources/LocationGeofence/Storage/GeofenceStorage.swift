@@ -106,18 +106,24 @@ actor GeofenceStorage {
     /// changed circle. The unchanged-vs-changed decision is keyed on the persisted `center`/`radius`
     /// (which survive stop-all) rather than CLMonitor's live record (which stop-all removes before the
     /// re-add, so it can never report "unchanged").
+    ///
+    /// `forceReseed` overrides that preservation. The caller sets it when the OS stopped monitoring
+    /// the condition since the last registration: the device can cross while unmonitored, so the
+    /// persisted state is no longer known to match reality and keeping it would suppress the next
+    /// genuine crossing.
     func recordMonitorRegistration(
         identifier: String,
         transitionTypes: Set<GeofenceTransition>,
         initialState: GeofenceTransition,
         center: LocationData,
-        radius: Double
+        radius: Double,
+        forceReseed: Bool = false
     ) {
         var state = loadFromDisk() ?? GeofenceState()
         var records = state.monitorRegionRecords ?? [:]
         let existing = records[identifier]
         let unchangedGeometry = existing?.center == center && existing?.radius == radius
-        let lastState = unchangedGeometry ? (existing?.lastState ?? initialState) : initialState
+        let lastState = unchangedGeometry && !forceReseed ? (existing?.lastState ?? initialState) : initialState
         records[identifier] = MonitorRegionRecord(
             lastState: lastState,
             transitionTypes: transitionTypes,

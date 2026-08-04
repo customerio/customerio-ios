@@ -662,6 +662,35 @@ struct GeofenceStorageTests {
     }
 
     @Test
+    func recordMonitorRegistration_givenForceReseedOnUnchangedGeometry_expectBaselineReset() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let storage = makeStorage(directory: dir)
+        let center = LocationData(latitude: 10, longitude: 20)
+        await storage.recordMonitorRegistration(identifier: "geo_1", transitionTypes: [.enter, .exit], initialState: .exit, center: center, radius: 100)
+        #expect(await storage.recordMonitorEvent(.enter, forIdentifier: "geo_1") == .deliver)
+        // The OS gave up on the condition and a registration with the SAME circle drained before the
+        // deferred record clear could run. Preserving `.enter` here would suppress the next arrival,
+        // because the device can have left while the region was unmonitored.
+        await storage.recordMonitorRegistration(identifier: "geo_1", transitionTypes: [.enter, .exit], initialState: .exit, center: center, radius: 100, forceReseed: true)
+        #expect(await storage.recordMonitorEvent(.enter, forIdentifier: "geo_1") == .deliver)
+    }
+
+    @Test
+    func recordMonitorRegistration_givenUnchangedGeometryWithoutForceReseed_expectBaselinePreserved() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let storage = makeStorage(directory: dir)
+        let center = LocationData(latitude: 10, longitude: 20)
+        await storage.recordMonitorRegistration(identifier: "geo_1", transitionTypes: [.enter, .exit], initialState: .exit, center: center, radius: 100)
+        #expect(await storage.recordMonitorEvent(.enter, forIdentifier: "geo_1") == .deliver)
+        // Ordinary re-registration still preserves the baseline, so CLMonitor re-evaluating the same
+        // state is not delivered twice.
+        await storage.recordMonitorRegistration(identifier: "geo_1", transitionTypes: [.enter, .exit], initialState: .exit, center: center, radius: 100)
+        #expect(await storage.recordMonitorEvent(.enter, forIdentifier: "geo_1") == .suppressedNoChange)
+    }
+
+    @Test
     func clearMonitorRegionRecord_givenOtherRegions_expectOnlyTargetDropped() async {
         let dir = makeTempDirectory()
         defer { try? FileManager.default.removeItem(at: dir) }
