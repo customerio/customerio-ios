@@ -26,7 +26,7 @@ on:
       harness_ref:
         description: customerio/mobile-e2e branch, tag, or commit
         type: string
-        default: a70446def847935b20158c804c513ec81b0f2a6b
+        default: main
   schedule:
     - cron: "41 6 * * 1-5"
 
@@ -90,7 +90,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: customerio/mobile-e2e
-          ref: ${{ inputs.harness_ref || 'a70446def847935b20158c804c513ec81b0f2a6b' }}
+          ref: ${{ inputs.harness_ref || 'main' }}
           path: .e2e-harness
 
       - name: Install Maestro and evidence dependencies
