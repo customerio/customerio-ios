@@ -239,8 +239,8 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preco
             // On the pipeline, and skipped if a registration has re-added the identifier since the
             // line above cleared it — deleting a baseline that add just wrote would cost the next
             // crossing. Keyed on this monitor's own record of completed adds rather than on
-            // `CLMonitor.identifiers`, because whether a condition the OS gave up on stays listed is
-            // unmeasured — reading it could make this clear permanently inert.
+            // `CLMonitor.identifiers`: a condition the OS gave up on stays listed there (measured),
+            // so reading that would make this clear permanently inert.
             enqueueMonitorOperation { [weak self] _ in
                 guard let self, !self.knownConditionIdentifiers.contains(identifier) else { return }
                 await self.storage.clearMonitorRegionRecord(identifier: identifier)
