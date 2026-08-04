@@ -158,6 +158,16 @@ actor GeofenceStorage {
         loadFromDisk()?.monitorRegionRecords ?? [:]
     }
 
+    /// Drops the baseline for a condition the OS stopped monitoring, so the next registration
+    /// reseeds from the device's real position rather than carrying a state it may have left while
+    /// unmonitored — an unchanged-geometry re-register would preserve that stale value.
+    func clearMonitorRegionRecord(identifier: String) {
+        var state = loadFromDisk() ?? GeofenceState()
+        guard var records = state.monitorRegionRecords, records.removeValue(forKey: identifier) != nil else { return }
+        state.monitorRegionRecords = records
+        saveToDisk(state)
+    }
+
     /// Clears the cooldown map, last-sync record, registration set, and monitor baselines but
     /// preserves the cached geofences and config. Called on sign-out: the workspace cache is shared
     /// across users, while cooldowns belong to the signed-out user and the last-sync anchor would

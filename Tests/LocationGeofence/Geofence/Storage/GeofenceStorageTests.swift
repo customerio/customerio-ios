@@ -646,6 +646,37 @@ struct GeofenceStorageTests {
     }
 
     @Test
+    func clearMonitorRegionRecord_givenOsStoppedMonitoring_expectNextArrivalDelivered() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let storage = makeStorage(directory: dir)
+        let center = LocationData(latitude: 10, longitude: 20)
+        await storage.recordMonitorRegistration(identifier: "geo_1", transitionTypes: [.enter, .exit], initialState: .exit, center: center, radius: 100)
+        #expect(await storage.recordMonitorEvent(.enter, forIdentifier: "geo_1") == .deliver)
+        // CLMonitor reports .unmonitored. The region is still in the desired set, so the registration
+        // prune keeps its record; without this clear, the device can leave while unmonitored and the
+        // unchanged-geometry re-register carries the stale .enter, dropping the next real arrival.
+        await storage.clearMonitorRegionRecord(identifier: "geo_1")
+        await storage.recordMonitorRegistration(identifier: "geo_1", transitionTypes: [.enter, .exit], initialState: .exit, center: center, radius: 100)
+        #expect(await storage.recordMonitorEvent(.enter, forIdentifier: "geo_1") == .deliver)
+    }
+
+    @Test
+    func clearMonitorRegionRecord_givenOtherRegions_expectOnlyTargetDropped() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let storage = makeStorage(directory: dir)
+        let center = LocationData(latitude: 10, longitude: 20)
+        await storage.recordMonitorRegistration(identifier: "geo_1", transitionTypes: [.enter], initialState: .exit, center: center, radius: 100)
+        await storage.recordMonitorRegistration(identifier: "geo_2", transitionTypes: [.enter], initialState: .exit, center: center, radius: 100)
+        await storage.clearMonitorRegionRecord(identifier: "geo_1")
+        #expect(await storage.getMonitorRegionRecords().keys.sorted() == ["geo_2"])
+        // Clearing an identifier with no record must not disturb what is stored.
+        await storage.clearMonitorRegionRecord(identifier: "absent")
+        #expect(await storage.getMonitorRegionRecords().keys.sorted() == ["geo_2"])
+    }
+
+    @Test
     func recordMonitorEvent_givenUnregisteredTransitionType_expectRecordedNotDelivered() async {
         let dir = makeTempDirectory()
         defer { try? FileManager.default.removeItem(at: dir) }
