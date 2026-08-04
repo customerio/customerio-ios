@@ -226,6 +226,7 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preco
             // the OS no longer holds; the next sync re-registers a fresh set. The stored baseline
             // goes too — the region stays in the desired set, so nothing else prunes it, and the
             // device can cross while it is unmonitored.
+            logger.geofenceMonitorStoppedMonitoringRegion(identifier)
             ownedRegionIdentifiers.remove(identifier)
             knownConditionIdentifiers.remove(identifier)
             registeredConditions.removeValue(forKey: identifier)
