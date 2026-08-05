@@ -3,13 +3,12 @@
 scheme("Customer.io-Package")
 
 # -destination for xcodebuild
-# Device *and* OS are pinned deliberately: an unpinned or nonexistent destination makes
-# fastlane log "couldn't find matching simulator" and quietly fall back to some other
-# simulator, so the OS under test becomes an accident of the runner image. A missing
-# runtime should fail loudly instead.
-# iOS 26.2 is bundled on both macos-15 and macos-26, so this destination is valid before
-# and after the runner migration. See § Installed Simulators in
-# https://github.com/actions/runner-images/blob/main/images/macos/macos-26-arm64-Readme.md
+# Device and OS are both pinned: when a destination does not resolve, fastlane logs
+# "couldn't find matching simulator" and quietly falls back to another one, making the tested
+# OS an accident of the runner image. iOS 26.2 ships on both macos-15 and macos-26, so this
+# survives the runner migration — but it only resolves because CI selects Xcode 26.x. An
+# older image-default Xcode cannot drive a 26.x runtime, so this destination depends on the
+# xcode-version pin in mobile-ci-tools' ios-test.yml. Change one, check the other.
 devices([
   "iPhone 17 (26.2)"
 ])
