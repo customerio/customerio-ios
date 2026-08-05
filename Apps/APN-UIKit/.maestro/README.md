@@ -12,45 +12,42 @@ config, and smoke/inline flows that exercise iOS-specific surfaces.
 
 ## Prereqs
 
-1. `maestro` CLI (tested with 2.0.9).
-2. Xcode + a booted iOS Simulator (tested on iPhone 17, iOS 26.4).
-3. `ffmpeg`, Python 3 with Pillow (`pip3 install pillow`).
-4. An Ext API bearer token for the test-prod Customer.io workspace.
+1. `maestro` CLI.
+2. Full Xcode with an iOS runtime. The runner boots the Simulator.
+3. `ffmpeg` and Python 3. Pillow is optional but enables annotated MP4s.
+4. An App API key for the test-prod Customer.io workspace.
 5. `cdpApiKey` and `siteId` set in
    [`Apps/APN-UIKit/BuildEnvironment.swift`](../BuildEnvironment.swift)
-   matching the workspace the Ext API key queries (currently
-   `cdpApiKey = "45468ceeed7b7057c583"`, `siteId = "38eda114ab3f4593e11f"`).
+   matching the workspace the App API key targets.
 
 ## Setup
 
 ```bash
 cp .maestro/.env.example .maestro/.env
-# paste MAESTRO_EXT_API_KEY into .maestro/.env
-
-# Build + install onto the booted simulator (re-run when BuildEnvironment.swift changes):
-xcodebuild \
-  -project "APN UIKit.xcodeproj" \
-  -scheme "APN UIKit" \
-  -destination "platform=iOS Simulator,name=iPhone 17" \
-  -configuration Debug -derivedDataPath /tmp/apn-uikit-build build
-xcrun simctl install booted "/tmp/apn-uikit-build/Build/Products/Debug-iphonesimulator/APN UIKit.app"
+# Fill MAESTRO_APP_API_KEY; message Inbox uses fixture ID 21.
+make e2e-setup
 ```
 
 ## Run
 
 ```bash
-./.maestro/run.sh                             # default: campaign_141 (shared)
-./.maestro/run.sh smoke_login_event.yaml      # also shared (in harness)
-./.maestro/run.sh inline_messages.yaml        # also shared (in harness)
+make e2e          # smoke + geofence + Inbox + local Live Activities; one build
+make e2e-quick    # smoke only
+make e2e-inbox    # message Inbox only
+make e2e-remote   # explicit backend/APNs Live Activities lane
 ```
 
-All three flows live in [customerio/mobile-e2e/flows/](https://github.com/customerio/mobile-e2e/tree/main/flows) — the `run.sh` wrapper resolves them from `.maestro/harness/flows/` automatically.
+`make e2e` clones/updates the shared harness, provisions the Simulator, builds
+and installs the sample, runs the deterministic iOS profile, and prints one
+combined summary. Nothing needs to be started manually.
 
-`run.sh` auto-detects the booted simulator, clones/pulls the shared harness
-into `.maestro/harness/`, starts the sink + screenshot capture loop, runs
-Maestro, and renders the outputs.
+`./.maestro/run.sh <flow.yaml>` remains available when an app is already
+installed and a single low-level flow is being debugged.
 
-Outputs land in `artifacts/<flow>/` (gitignored):
+The latest focused artifacts land in `artifacts/e2e/ios/<flow>/`. Profile runs
+also archive immutable snapshots beneath
+`.maestro/harness/artifacts/e2e/profile-<timestamp>/ios/<flow>/`; the printed
+summary links to those snapshots. Both locations are gitignored.
 
 | File | What it is |
 |---|---|
@@ -64,9 +61,10 @@ Outputs land in `artifacts/<flow>/` (gitignored):
 
 | File | Purpose |
 |---|---|
+| `e2e.sh` | One-command setup/profile wrapper around the shared top-level runner |
 | `run.sh` | Starts sink + simulator capture, runs Maestro, renders HTML + annotated video |
-| `.env.example` | Template — copy to `.env` and fill in `MAESTRO_EXT_API_KEY` |
-| `.env` | Your `MAESTRO_EXT_API_KEY` (gitignored) |
+| `.env.example` | Template — copy to `.env` and fill in `MAESTRO_APP_API_KEY` |
+| `.env` | Your `MAESTRO_APP_API_KEY` (gitignored) |
 | `harness/` | Shared scripts + flows auto-cloned from [`customerio/mobile-e2e`](https://github.com/customerio/mobile-e2e) (gitignored) |
 
 ## Selector strategy
@@ -92,12 +90,18 @@ controllers (see `LoginViewController.swift`, `DashboardViewController.swift`,
 
 ## Known limitations
 
-- Real APNs delivery to the simulator isn't wired up yet, so Campaign 141's
-  push-shade + push-tap assertions fire only when the workspace has a
-  working APNs cert for this bundle id. The shared flow wraps them in
-  `runFlow: when: visible: Maestro Push` so they skip cleanly when push
-  doesn't materialize.
+- Remote Live Activities require a supported host, APNs sandbox credentials,
+  the Live Notifications workspace entitlement/actions, and the explicit
+  `remote` profile. They are not part of the default local or PR gate.
 - `simctl io recordVideo` collides with Maestro's live simulator session,
   so `run.sh` falls back to a 5 fps `simctl screenshot` poll assembled
   with `ffmpeg` (see `harness/scripts/capture_frames.sh`).
 - No cleanup of created customers; test-prod workspace is fine for now.
+
+## CI rollout
+
+The workflow is wired for PR smoke, weekday standard, focused manual runs, and
+the explicit remote lane. PR/scheduled jobs require `MOBILE_E2E_ENABLED=true`,
+the `MOBILE_E2E_APP_API_KEY` secret, and the Inbox message-ID variable. Leave
+the flag unset until the shared harness is merged and one manual dispatch has
+passed.

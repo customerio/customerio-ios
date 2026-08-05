@@ -369,6 +369,7 @@
                         <outlet property="customEventButton" destination="rAK-3p-434" id="kBp-ZR-3sD"/>
                         <outlet property="deviceTokenLabel" destination="yFy-VR-Ca5" id="wln-Bl-lHM"/>
                         <outlet property="inboxButton" destination="h3d-K2-KRi" id="Pmq-9B-Wjf"/>
+                        <outlet property="locationTestButton" destination="xTi-Sa-CVq" id="mae-str-oGe"/>
                         <outlet property="logoutButton" destination="gSy-pH-Zuu" id="iyO-Cl-BCD"/>
                         <outlet property="randomEventButton" destination="yOE-0O-ICW" id="qjU-Ds-0cf"/>
                         <outlet property="sendDeviceAttributesButton" destination="nOP-Lf-TEx" id="JhJ-OT-hM1"/>

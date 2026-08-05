@@ -1,0 +1,175 @@
+name: Maestro SDK E2E
+
+on:
+  pull_request: {}
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: Suite profile
+        type: choice
+        options:
+          - standard
+          - quick
+          - single
+          - remote
+        default: standard
+      suite:
+        description: Suite to run when profile is single
+        type: choice
+        options:
+          - smoke
+          - geofence
+          - message-inbox
+          - live-activities
+          - live-activities-remote
+        default: smoke
+      harness_ref:
+        description: customerio/mobile-e2e branch, tag, or commit
+        type: string
+        default: main
+  schedule:
+    - cron: "41 6 * * 1-5"
+
+concurrency:
+  group: maestro-ios-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  prepare:
+    name: Select iOS suites
+    runs-on: ubuntu-latest
+    outputs:
+      suites: ${{ steps.select.outputs.suites }}
+    steps:
+      - name: Select suite matrix
+        id: select
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REQUESTED_PROFILE: ${{ inputs.profile }}
+          REQUESTED_SUITE: ${{ inputs.suite }}
+        run: |
+          if [[ "$EVENT_NAME" == "pull_request" ]]; then
+            profile=quick
+          elif [[ "$EVENT_NAME" == "schedule" ]]; then
+            profile=standard
+          else
+            profile="${REQUESTED_PROFILE:-standard}"
+          fi
+
+          case "$profile" in
+            quick) suites='["smoke"]' ;;
+            standard) suites='["smoke","geofence","message-inbox","live-activities"]' ;;
+            single) suites="[\"${REQUESTED_SUITE:-smoke}\"]" ;;
+            remote) suites='["live-activities-remote"]' ;;
+            *) echo "Unknown profile: $profile" >&2; exit 2 ;;
+          esac
+          echo "suites=$suites" >> "$GITHUB_OUTPUT"
+
+  e2e:
+    name: iOS ${{ matrix.suite }}
+    needs: prepare
+    if: >-
+      (vars.MOBILE_E2E_ENABLED == 'true' || github.event_name == 'workflow_dispatch') &&
+      github.actor != 'dependabot[bot]' &&
+      (github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: macos-15
+    timeout-minutes: 60
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.3.app/Contents/Developer
+      IOS_SIMULATOR_NAME: iPhone 17 Pro
+    strategy:
+      fail-fast: false
+      matrix:
+        suite: ${{ fromJSON(needs.prepare.outputs.suites) }}
+    steps:
+      - name: Check out iOS SDK
+        uses: actions/checkout@v4
+
+      - name: Check out shared E2E harness
+        uses: actions/checkout@v4
+        with:
+          repository: customerio/mobile-e2e
+          ref: ${{ inputs.harness_ref || 'main' }}
+          path: .e2e-harness
+
+      - name: Install Maestro and evidence dependencies
+        run: |
+          curl -Ls https://get.maestro.mobile.dev | bash
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+          brew install ffmpeg
+          python3 -m venv "$RUNNER_TEMP/mobile-e2e-venv"
+          "$RUNNER_TEMP/mobile-e2e-venv/bin/pip" install Pillow
+          echo "$RUNNER_TEMP/mobile-e2e-venv/bin" >> "$GITHUB_PATH"
+
+      - name: Configure sample workspace
+        env:
+          CDP_API_KEY: ${{ secrets.CUSTOMERIO_APN_WORKSPACE_CDP_API_KEY }}
+          SITE_ID: ${{ secrets.CUSTOMERIO_APN_WORKSPACE_SITE_ID }}
+        run: |
+          for name in CDP_API_KEY SITE_ID; do
+            if [[ -z "${!name}" ]]; then
+              echo "::error::$name is not configured for Maestro E2E"
+              exit 1
+            fi
+          done
+          cp "Apps/APN-UIKit/BuildEnvironment.sample.swift" \
+             "Apps/APN-UIKit/BuildEnvironment.swift"
+          ruby -pi -e '
+            gsub("CUSTOMERIO_WORKSPACE_CDP_API_KEY", ENV.fetch("CDP_API_KEY"))
+            gsub("CUSTOMERIO_WORKSPACE_SITE_ID", ENV.fetch("SITE_ID"))
+            gsub("CUSTOMERIO_WORKSPACE_NAME", "Mobile E2E")
+          ' "Apps/APN-UIKit/BuildEnvironment.swift"
+
+      - name: Validate E2E backend configuration
+        env:
+          SUITE: ${{ matrix.suite }}
+          MAESTRO_APP_API_KEY: ${{ secrets.MOBILE_E2E_APP_API_KEY }}
+          INBOX_TRANSACTIONAL_MESSAGE_ID: ${{ vars.MOBILE_E2E_INBOX_TRANSACTIONAL_MESSAGE_ID }}
+        run: |
+          required=(MAESTRO_APP_API_KEY)
+          if [[ "$SUITE" == "message-inbox" ]]; then
+            required+=(INBOX_TRANSACTIONAL_MESSAGE_ID)
+          fi
+          for name in "${required[@]}"; do
+            if [[ -z "${!name}" ]]; then
+              echo "::error::$name is not configured for Maestro E2E"
+              exit 1
+            fi
+          done
+
+      - name: Run SDK to backend E2E
+        env:
+          SUITE: ${{ matrix.suite }}
+          MAESTRO_APP_API_KEY: ${{ secrets.MOBILE_E2E_APP_API_KEY }}
+          INBOX_TRANSACTIONAL_MESSAGE_ID: ${{ vars.MOBILE_E2E_INBOX_TRANSACTIONAL_MESSAGE_ID }}
+          LIVE_ACTIVITY_APP_IDENTIFIER: ${{ secrets.MOBILE_E2E_LIVE_ACTIVITY_APP_IDENTIFIER }}
+        run: |
+          ./.e2e-harness/e2e run \
+            --platform ios \
+            --sdk-repo "$GITHUB_WORKSPACE" \
+            --suite "$SUITE" \
+            --headless
+
+      - name: Sanitize E2E evidence
+        id: sanitize
+        if: always()
+        env:
+          MAESTRO_APP_API_KEY: ${{ secrets.MOBILE_E2E_APP_API_KEY }}
+          LIVE_ACTIVITY_APP_IDENTIFIER: ${{ secrets.MOBILE_E2E_LIVE_ACTIVITY_APP_IDENTIFIER }}
+          IOS_CDP_API_KEY: ${{ secrets.CUSTOMERIO_APN_WORKSPACE_CDP_API_KEY }}
+          IOS_SITE_ID: ${{ secrets.CUSTOMERIO_APN_WORKSPACE_SITE_ID }}
+        run: |
+          if [[ -d artifacts/e2e ]]; then
+            python3 .e2e-harness/scripts/redact_artifacts.py artifacts/e2e
+            python3 .e2e-harness/scripts/redact_artifacts.py --check artifacts/e2e
+          fi
+
+      - name: Upload E2E evidence
+        if: ${{ always() && steps.sanitize.outcome == 'success' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: maestro-ios-${{ matrix.suite }}
+          path: artifacts/e2e/
+          if-no-files-found: warn
+          retention-days: 14
