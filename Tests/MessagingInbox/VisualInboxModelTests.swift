@@ -48,6 +48,38 @@ final class VisualInboxModelTests: XCTestCase {
 
     // MARK: - auto mark-opened dedupe (item 8)
 
+    func test_shouldAutoMarkVisibleMessagesOpened_requiresPresentedOnScreenAndActive() {
+        XCTAssertTrue(
+            VisualInboxModel.shouldAutoMarkVisibleMessagesOpened(
+                isPresented: true,
+                isOnScreen: true,
+                isApplicationActive: true
+            )
+        )
+
+        XCTAssertFalse(
+            VisualInboxModel.shouldAutoMarkVisibleMessagesOpened(
+                isPresented: false,
+                isOnScreen: true,
+                isApplicationActive: true
+            )
+        )
+        XCTAssertFalse(
+            VisualInboxModel.shouldAutoMarkVisibleMessagesOpened(
+                isPresented: true,
+                isOnScreen: false,
+                isApplicationActive: true
+            )
+        )
+        XCTAssertFalse(
+            VisualInboxModel.shouldAutoMarkVisibleMessagesOpened(
+                isPresented: true,
+                isOnScreen: true,
+                isApplicationActive: false
+            )
+        )
+    }
+
     func test_markVisibleMessagesOpened_whenCalledTwice_thenEachMessageMarkedOnce() async {
         let provider = FakeVisualInboxProvider()
         provider.stubMessages = [
@@ -139,6 +171,24 @@ final class VisualInboxModelTests: XCTestCase {
         // a fixed 20 ms sleep could miss a regression on a loaded CI runner.
         await provider.waitForAttempts(expected: 1)
 
+        XCTAssertEqual(model.messages.map(\.id), ["late"])
+        XCTAssertTrue(provider.markedOpenedIds.isEmpty)
+    }
+
+    func test_autoMarkVisibleMessagesOpened_whenModelStopsBeforeMessageLoads_thenDoesNotMarkMessage() async {
+        let provider = FakeVisualInboxProvider()
+        let model = VisualInboxModel(provider: provider)
+
+        model.setAutoMarkVisibleMessagesOpened(true)
+        model.stop()
+        provider.stubState = .visible(messageCount: 1)
+        provider.stubMessages = [makeSnapshot(id: "late", opened: false)]
+        provider.stubTemplates = ["test": [["version": "1", "root": ["type": "placeholder"]]]]
+
+        await model.refresh()
+        await provider.waitForAttempts(expected: 1)
+
+        XCTAssertEqual(model.messages.map(\.id), ["late"])
         XCTAssertTrue(provider.markedOpenedIds.isEmpty)
     }
 

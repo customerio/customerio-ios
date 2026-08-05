@@ -3,6 +3,7 @@ import CioInternalCommon
 import Foundation
 #if canImport(SwiftUI)
 import SwiftUI
+import UIKit
 
 /// A SwiftUI overlay that renders the Visual Notification Inbox on top of your app.
 ///
@@ -29,6 +30,11 @@ public struct NotificationInboxOverlay: View {
 
     /// True while the inbox sheet is presented.
     @State private var isInboxPresented = false
+
+    /// SwiftUI views can remain mounted while off-screen (for example, in an inactive tab). Keep
+    /// presentation state separate from actual on-screen state so foregrounding cannot re-arm a
+    /// stopped model from a stale sheet value.
+    @State private var isOnScreen = false
 
     /// Drives dark-mode branding resolution for the sheet's panel background.
     @Environment(\.colorScheme) private var colorScheme
@@ -68,19 +74,30 @@ public struct NotificationInboxOverlay: View {
         // explicit so placement is unambiguous regardless of where the host mounts the overlay).
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         // The overlay owns the shared model's lifecycle (the bell/sheet observe it but don't drive it).
-        .onAppear { model.start() }
+        .onAppear {
+            isOnScreen = true
+            model.start()
+            updateAutoMarkState()
+        }
         .onDisappear {
-            model.setAutoMarkVisibleMessagesOpened(false)
+            isOnScreen = false
             model.stop()
         }
         // If the inbox transitions to hidden while the sheet is open, dismiss it so it doesn't linger.
         .onChange(of: model.showsChrome) { visible in
             if !visible { isInboxPresented = false }
         }
-        // Auto-mark-opened (item 8): when the sheet is presented, mark the visible messages opened
-        // (deduped inside the model so a message is never marked twice).
-        .onChange(of: isInboxPresented) { presented in
-            model.setAutoMarkVisibleMessagesOpened(presented)
+        // Auto-mark-opened (item 8): keep marking later snapshots only while the sheet is presented
+        // AND the app is active. SwiftUI does not call `onDisappear` merely because the app moves to
+        // the background, so lifecycle notifications close that gap.
+        .onChange(of: isInboxPresented) { _ in
+            updateAutoMarkState()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.willResignActiveNotification)) { _ in
+            model.setAutoMarkVisibleMessagesOpened(false)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
+            updateAutoMarkState()
         }
         // System sheet with medium/large detents + grabber — no header (matches web parity). The list
         // shares this overlay's model, so bell and sheet observe the same state.
@@ -95,6 +112,18 @@ public struct NotificationInboxOverlay: View {
                 .presentationDragIndicator(.visible)
                 .modifier(BrandedInboxSheetStyle(background: colors.panelBackground, cornerRadius: colors.cornerRadius))
         }
+    }
+
+    /// Reconciles sheet presentation, actual on-screen state, and application activity. Keeping the
+    /// truth table in the model makes this lifecycle-sensitive decision directly unit-testable.
+    private func updateAutoMarkState() {
+        model.setAutoMarkVisibleMessagesOpened(
+            VisualInboxModel.shouldAutoMarkVisibleMessagesOpened(
+                isPresented: isInboxPresented,
+                isOnScreen: isOnScreen,
+                isApplicationActive: UIApplication.shared.applicationState == .active
+            )
+        )
     }
 }
 

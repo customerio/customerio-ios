@@ -45,6 +45,10 @@ public struct NotificationInboxView: View {
 struct InboxListView: View {
     @ObservedObject private var model: VisualInboxModel
 
+    /// A view may stay mounted while hidden under another tab or navigation destination, so
+    /// notification subscription lifetime alone cannot establish visual presence.
+    @State private var isOnScreen = false
+
     /// Drives dark-mode branding resolution for the row divider.
     @Environment(\.colorScheme) private var colorScheme
 
@@ -88,11 +92,34 @@ struct InboxListView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .modifier(LifecycleModifier(model: model, enabled: ownsModelLifecycle))
             .onAppear {
-                if marksOpenedOnAppear { model.setAutoMarkVisibleMessagesOpened(true) }
+                isOnScreen = true
+                updateAutoMarkState()
             }
             .onDisappear {
+                isOnScreen = false
                 if marksOpenedOnAppear { model.setAutoMarkVisibleMessagesOpened(false) }
             }
+            // A mounted SwiftUI view does not disappear when its app backgrounds. Explicitly gate
+            // auto-marking on application activity so background snapshots never become "opened".
+            .onReceive(NotificationCenter.default.publisher(for: UIApplication.willResignActiveNotification)) { _ in
+                if marksOpenedOnAppear { model.setAutoMarkVisibleMessagesOpened(false) }
+            }
+            .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
+                updateAutoMarkState()
+            }
+    }
+
+    /// Reconciles standalone auto-mark behavior with actual visual and application activity.
+    private func updateAutoMarkState() {
+        // The overlay drives this state itself; its shared list must never override the owner.
+        guard marksOpenedOnAppear else { return }
+        model.setAutoMarkVisibleMessagesOpened(
+            VisualInboxModel.shouldAutoMarkVisibleMessagesOpened(
+                isPresented: true,
+                isOnScreen: isOnScreen,
+                isApplicationActive: UIApplication.shared.applicationState == .active
+            )
+        )
     }
 
     /// Panel body driven by load state: nothing when the inbox is hidden, spinner while loading,
