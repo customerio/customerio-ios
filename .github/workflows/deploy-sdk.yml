@@ -19,7 +19,7 @@ jobs:
   # Therefore, generating SDK reports is a separate job that runs before deployment.
   generate-sdk-size-report:
     name: Generate SDK size report to attach to the release 
-    runs-on: macos-15
+    runs-on: macos-26
     # In order to pass data from 1 action to another, you use outputs. 
     # These are the generated reports that the deployment action depends on. 
     outputs:
@@ -185,7 +185,7 @@ jobs:
     if: ${{ needs.deploy-git-tag.outputs.new_release_published == 'true' || github.event_name == 'workflow_dispatch' }}
     env:
       COCOAPODS_TRUNK_TOKEN: ${{ secrets.COCOAPODS_TRUNK_TOKEN }}
-    runs-on: macos-15
+    runs-on: macos-26
     outputs:
       version: ${{ steps.get-version.outputs.version }}
     steps:
@@ -210,7 +210,7 @@ jobs:
             echo "version=${{ inputs.existing-git-tag }}" >> $GITHUB_OUTPUT
           fi
 
-      - uses: customerio/mobile-ci-tools/github-actions/ios/setup-ios/v1@MacOS-15+iOS-26
+      - uses: customerio/mobile-ci-tools/github-actions/ios/setup-ios/v1@macos-26
 
       - name: Install cocoapods
         # Pinned so a new cocoapods release cannot break deployments. Bump deliberately.
