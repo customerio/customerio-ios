@@ -308,8 +308,10 @@ class Gist: GistProvider {
             return
         }
 
-        threadUtil.runBackground {
-            self.queueManager.fetchUserQueue(state: state) { [weak self] response in
+        threadUtil.runUtility { [weak self] in
+            guard let self else { return }
+
+            queueManager.fetchUserQueue(state: state) { [weak self] response in
                 guard let self else { return }
 
                 switch response {

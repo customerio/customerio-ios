@@ -3,6 +3,7 @@ import Foundation
 // allows us to more easily have automated tests with threading
 public protocol ThreadUtil {
     func runBackground(_ block: @escaping () -> Void)
+    func runUtility(_ block: @escaping () -> Void)
     func runMain(_ block: @escaping () -> Void)
 }
 
@@ -14,5 +15,9 @@ public class CioThreadUtil: ThreadUtil {
 
     public func runBackground(_ block: @escaping () -> Void) {
         DispatchQueue.global(qos: .background).async(execute: block)
+    }
+
+    public func runUtility(_ block: @escaping () -> Void) {
+        DispatchQueue.global(qos: .utility).async(execute: block)
     }
 }

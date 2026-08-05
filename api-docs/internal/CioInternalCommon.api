@@ -113,6 +113,7 @@ public final class CioInternalCommon.CioSharedDataStore {
 public final class CioInternalCommon.CioThreadUtil {
 	public fun func runMain(_ block: @escaping () -> Unit);
 	public fun func runBackground(_ block: @escaping () -> Unit);
+	public fun func runUtility(_ block: @escaping () -> Unit);
 }
 public final class CioInternalCommon.CombinedCacheEventBusHandler {
 	public fun init(eventStorage: EventStorage, logger: Logger);
@@ -602,6 +603,7 @@ public final class CioInternalCommon.TaskDetail {
 }
 public interface CioInternalCommon.ThreadUtil {
 	public fun func runBackground(_ block: @escaping () -> Unit);
+	public fun func runUtility(_ block: @escaping () -> Unit);
 	public fun func runMain(_ block: @escaping () -> Unit);
 }
 public final class CioInternalCommon.TrackDeliveryEventRequestBody {

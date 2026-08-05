@@ -4,6 +4,8 @@ import Foundation
 public class ThreadUtilStub: ThreadUtil {
     public var runMainCalled = false
     public var runBackgroundCalled = false
+    public var runUtilityCalled = false
+    public var runUtilityClosure: (() -> Void)?
 
     public init() {
         // Public initializer
@@ -19,8 +21,16 @@ public class ThreadUtilStub: ThreadUtil {
         block()
     }
 
+    public func runUtility(_ block: @escaping () -> Void) {
+        runUtilityCalled = true
+        runUtilityClosure?()
+        block()
+    }
+
     public func reset() {
         runMainCalled = false
         runBackgroundCalled = false
+        runUtilityCalled = false
+        runUtilityClosure = nil
     }
 }
