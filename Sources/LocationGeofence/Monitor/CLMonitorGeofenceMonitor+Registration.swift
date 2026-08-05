@@ -76,12 +76,16 @@ extension CLMonitorGeofenceMonitor {
             // Persist before the OS add: storage keys off recorded geometry to preserve the baseline
             // on an unchanged re-register and reseed on a new/changed circle. The decision lives in
             // storage because this runs after stop-all, when CLMonitor's own record is already gone.
+            // Consumed here rather than at staging time: an add already queued when `.unmonitored`
+            // arrived still drains after it, so it is the one that must reseed.
+            let forceReseed = self.conditionsNeedingBaselineReseed.remove(identifier) != nil
             await self.storage.recordMonitorRegistration(
                 identifier: identifier,
                 transitionTypes: transitionTypes,
                 initialState: initialTransition,
                 center: LocationData(latitude: coordinate.latitude, longitude: coordinate.longitude),
-                radius: clampedRadius
+                radius: clampedRadius,
+                forceReseed: forceReseed
             )
             // CLMonitor SILENTLY IGNORES an add over a live identifier, keeping the original circle
             // and reporting no error, so the identifier is cleared first. Keyed on the OS rather
@@ -123,6 +127,8 @@ extension CLMonitorGeofenceMonitor {
     func stopMonitoringAll() {
         ownedRegionIdentifiers.removeAll()
         registeredConditions.removeAll()
+        // Teardown clears the stored records too (sign-out), so nothing is left to reseed.
+        conditionsNeedingBaselineReseed.removeAll()
         // Clear against CLMonitor's LIVE identifiers, not the owned/mirror snapshot: an empty owned
         // set or a lossy mirror must not leave a stale SDK condition holding an OS slot.
         enqueueMonitorOperation { [weak self] monitor in

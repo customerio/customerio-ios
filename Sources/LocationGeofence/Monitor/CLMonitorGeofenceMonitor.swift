@@ -61,6 +61,9 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preco
     /// first pass re-register it; when the bootstrap adopts instead, `adoptExistingRegions` seeds it
     /// from the persisted records the re-arm then imposes at the OS.
     var registeredConditions: [String: RegisteredCondition] = [:]
+    /// Conditions the OS stopped monitoring since their last registration. The next registration
+    /// reseeds their stored baseline instead of preserving it — see `recordMonitorRegistration`.
+    var conditionsNeedingBaselineReseed: Set<String> = []
 
     /// The circle a condition was added with.
     struct RegisteredCondition: Equatable {
@@ -223,15 +226,21 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preco
             // the OS no longer holds; the next sync re-registers a fresh set. The stored baseline
             // goes too — the region stays in the desired set, so nothing else prunes it, and the
             // device can cross while it is unmonitored.
+            logger.geofenceMonitorStoppedMonitoringRegion(identifier)
             ownedRegionIdentifiers.remove(identifier)
             knownConditionIdentifiers.remove(identifier)
             registeredConditions.removeValue(forKey: identifier)
+            // Whichever registration comes next must reseed the baseline rather than preserve it.
+            // The clear below only covers the case where none comes: a re-registration with the same
+            // circle preserves the stored state by design, and after the OS gave up that state is no
+            // longer known to match reality.
+            conditionsNeedingBaselineReseed.insert(identifier)
             persistConditionMirror()
             // On the pipeline, and skipped if a registration has re-added the identifier since the
-            // line above cleared it: that add wrote a baseline from the device's real position, which
-            // must not then be deleted. Keyed on this monitor's own record of completed adds rather
-            // than on `CLMonitor.identifiers`, because whether a condition the OS gave up on stays
-            // listed is unmeasured — reading it could make this clear permanently inert.
+            // line above cleared it — deleting a baseline that add just wrote would cost the next
+            // crossing. Keyed on this monitor's own record of completed adds rather than on
+            // `CLMonitor.identifiers`: a condition the OS gave up on stays listed there (measured),
+            // so reading that would make this clear permanently inert.
             enqueueMonitorOperation { [weak self] _ in
                 guard let self, !self.knownConditionIdentifiers.contains(identifier) else { return }
                 await self.storage.clearMonitorRegionRecord(identifier: identifier)
