@@ -41,6 +41,24 @@ lint:
 format:
 	./binny swiftformat . --swiftversion 5.3 && ./binny swiftlint lint --fix
 
+.PHONY: e2e e2e-setup e2e-quick e2e-inbox e2e-remote
+
+# One-command deterministic iOS SDK → backend → SDK validation.
+e2e:
+	./Apps/APN-UIKit/.maestro/e2e.sh
+
+e2e-setup:
+	./Apps/APN-UIKit/.maestro/e2e.sh setup
+
+e2e-quick:
+	./Apps/APN-UIKit/.maestro/e2e.sh --profile quick
+
+e2e-inbox:
+	./Apps/APN-UIKit/.maestro/e2e.sh --suite message-inbox
+
+e2e-remote:
+	./Apps/APN-UIKit/.maestro/e2e.sh --profile remote
+
 # Check what code has not yet had documentation written for it. 
 
 # Generate API documentation for all modules using sourcekitten and format with Ruby script

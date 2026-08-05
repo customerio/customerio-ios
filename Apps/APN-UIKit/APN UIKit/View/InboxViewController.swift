@@ -3,148 +3,6 @@ import CioMessagingInbox
 import SwiftUI
 import UIKit
 
-// MARK: - InboxMessageCell
-
-private class InboxMessageCell: UITableViewCell {
-    static let reuseIdentifier = "InboxMessageCell"
-
-    private let containerView = UIView()
-    private let queueIdLabel = UILabel()
-    private let dateLabel = UILabel()
-    private let propertiesLabel = UILabel()
-    private let buttonsStack = UIStackView()
-    private let readButton = UIButton(type: .system)
-    private let trackButton = UIButton(type: .system)
-    private let deleteButton = UIButton(type: .system)
-
-    var onReadTapped: (() -> Void)?
-    var onTrackTapped: (() -> Void)?
-    var onDeleteTapped: (() -> Void)?
-
-    override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
-        super.init(style: style, reuseIdentifier: reuseIdentifier)
-        setupViews()
-    }
-
-    required init?(coder: NSCoder) {
-        super.init(coder: coder)
-        setupViews()
-    }
-
-    private func setupViews() {
-        selectionStyle = .none
-        backgroundColor = .clear
-        setupContainerView()
-        setupLabels()
-        setupButtons()
-        setupConstraints()
-    }
-
-    private func setupContainerView() {
-        containerView.translatesAutoresizingMaskIntoConstraints = false
-        containerView.layer.cornerRadius = 8
-        containerView.layer.shadowColor = UIColor.black.cgColor
-        containerView.layer.shadowOffset = CGSize(width: 0, height: 2)
-        containerView.layer.shadowOpacity = 0.1
-        containerView.layer.shadowRadius = 4
-        containerView.layer.masksToBounds = false
-        contentView.addSubview(containerView)
-    }
-
-    private func setupLabels() {
-        queueIdLabel.translatesAutoresizingMaskIntoConstraints = false
-        queueIdLabel.font = .systemFont(ofSize: 14, weight: .medium)
-        queueIdLabel.numberOfLines = 1
-        containerView.addSubview(queueIdLabel)
-
-        dateLabel.translatesAutoresizingMaskIntoConstraints = false
-        dateLabel.font = .systemFont(ofSize: 12)
-        dateLabel.textColor = .secondaryLabel
-        containerView.addSubview(dateLabel)
-
-        propertiesLabel.translatesAutoresizingMaskIntoConstraints = false
-        propertiesLabel.font = .systemFont(ofSize: 12)
-        propertiesLabel.textColor = .secondaryLabel
-        propertiesLabel.numberOfLines = 2
-        containerView.addSubview(propertiesLabel)
-    }
-
-    private func setupButtons() {
-        buttonsStack.translatesAutoresizingMaskIntoConstraints = false
-        buttonsStack.axis = .horizontal
-        buttonsStack.spacing = 8
-        buttonsStack.distribution = .fillEqually
-
-        readButton.addTarget(self, action: #selector(readButtonTapped), for: .touchUpInside)
-        trackButton.addTarget(self, action: #selector(trackButtonTapped), for: .touchUpInside)
-        deleteButton.tintColor = .systemRed
-        deleteButton.addTarget(self, action: #selector(deleteButtonTapped), for: .touchUpInside)
-
-        buttonsStack.addArrangedSubview(readButton)
-        buttonsStack.addArrangedSubview(trackButton)
-        buttonsStack.addArrangedSubview(deleteButton)
-        containerView.addSubview(buttonsStack)
-    }
-
-    private func setupConstraints() {
-        NSLayoutConstraint.activate([
-            containerView.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 8),
-            containerView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 12),
-            containerView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -12),
-            containerView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -8),
-
-            queueIdLabel.topAnchor.constraint(equalTo: containerView.topAnchor, constant: 12),
-            queueIdLabel.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 12),
-            queueIdLabel.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -12),
-
-            dateLabel.topAnchor.constraint(equalTo: queueIdLabel.bottomAnchor, constant: 4),
-            dateLabel.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 12),
-            dateLabel.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -12),
-
-            propertiesLabel.topAnchor.constraint(equalTo: dateLabel.bottomAnchor, constant: 4),
-            propertiesLabel.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 12),
-            propertiesLabel.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -12),
-
-            buttonsStack.topAnchor.constraint(equalTo: propertiesLabel.bottomAnchor, constant: 8),
-            buttonsStack.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -12),
-            buttonsStack.bottomAnchor.constraint(equalTo: containerView.bottomAnchor, constant: -12),
-            buttonsStack.widthAnchor.constraint(equalToConstant: 120)
-        ])
-    }
-
-    func configure(with message: InboxMessage, dateFormatter: DateFormatter) {
-        // Update background based on read/unread state
-        containerView.backgroundColor = message.opened ? .systemBackground : .secondarySystemBackground
-
-        // Update labels
-        queueIdLabel.text = message.queueId
-        dateLabel.text = dateFormatter.string(from: message.sentAt)
-        propertiesLabel.text = message.properties.isEmpty ? "No properties" : "\(message.properties)"
-
-        // Update button images
-        let readImageName = message.opened ? "inbox-unread" : "inbox-read"
-        readButton.setImage(UIImage(named: readImageName)?.withRenderingMode(.alwaysTemplate), for: .normal)
-        readButton.tintColor = .darkGray
-
-        trackButton.setImage(UIImage(named: "inbox-track")?.withRenderingMode(.alwaysTemplate), for: .normal)
-        trackButton.tintColor = .darkGray
-
-        deleteButton.setImage(UIImage(named: "inbox-delete")?.withRenderingMode(.alwaysTemplate), for: .normal)
-    }
-
-    @objc private func readButtonTapped() {
-        onReadTapped?()
-    }
-
-    @objc private func trackButtonTapped() {
-        onTrackTapped?()
-    }
-
-    @objc private func deleteButtonTapped() {
-        onDeleteTapped?()
-    }
-}
-
 // MARK: - InboxViewController
 
 class InboxViewController: BaseViewController, UITableViewDelegate, UITableViewDataSource, NotificationInboxChangeListener {
@@ -189,23 +47,41 @@ class InboxViewController: BaseViewController, UITableViewDelegate, UITableViewD
         navigationController?.pushViewController(host, animated: true)
     }
 
+    /// Pushes the visual message list as a dedicated screen, without the floating bell or sheet.
+    @objc private func presentVisualInboxDemo() {
+        guard #available(iOS 13.0, *) else { return }
+        let host = UIHostingController(rootView: VisualInboxScreen())
+        host.title = "Visual Inbox"
+        navigationController?.pushViewController(host, animated: true)
+    }
+
     deinit {
         inbox.removeChangeListener(self)
     }
 
     private func setupUI() {
         title = "Inbox Messages"
-        // Entry to the SwiftUI drop-in overlay demo (bell that presents its own sheet). iOS 16+.
+        let visualButton = UIBarButtonItem(
+            title: "Visual",
+            style: .plain,
+            target: self,
+            action: #selector(presentVisualInboxDemo)
+        )
+        navigationItem.rightBarButtonItem = visualButton
+
+        // Keep the drop-in overlay demo alongside the dedicated visual Inbox screen on iOS 16+.
         if #available(iOS 16.0, *) {
-            navigationItem.rightBarButtonItem = UIBarButtonItem(
+            let overlayButton = UIBarButtonItem(
                 title: "Overlay",
                 style: .plain,
                 target: self,
                 action: #selector(presentOverlayDemo)
             )
+            navigationItem.rightBarButtonItems = [overlayButton, visualButton]
         }
         tableView.delegate = self
         tableView.dataSource = self
+        tableView.accessibilityIdentifier = "inbox_messages_list"
         tableView.register(InboxMessageCell.self, forCellReuseIdentifier: InboxMessageCell.reuseIdentifier)
         tableView.estimatedRowHeight = 120
         tableView.rowHeight = UITableView.automaticDimension
@@ -379,6 +255,18 @@ private extension InboxViewController {
 }
 
 // MARK: - VisualInboxOverlayScreen
+
+/// Dedicated-screen integration of the visual Inbox message list.
+@available(iOS 13.0, *)
+private struct VisualInboxScreen: View {
+    var body: some View {
+        ZStack {
+            Color(.systemGroupedBackground).ignoresSafeArea()
+            NotificationInboxView()
+        }
+        .accessibilityIdentifier("visual_inbox_screen")
+    }
+}
 
 /// SwiftUI screen hosting the drop-in `NotificationInboxOverlay` in a `ZStack` — the intended usage.
 /// SwiftUI handles bell taps + passthrough; the overlay presents the inbox in its own native sheet.

@@ -99,6 +99,11 @@ final class VisualInboxModel: ObservableObject {
     /// either been marked or is being marked, so it is never marked twice.
     private var markedOpenedIds: Set<String> = []
 
+    /// True while a list or panel that auto-opens renderable messages is presented in an active app.
+    /// Keeping this lifecycle state in the model lets a message that arrives after the SwiftUI
+    /// `onAppear` callback receive the same opened treatment as one already loaded at presentation.
+    private var autoMarksVisibleMessagesOpened = false
+
     /// In-flight guard for dismiss (web parity: tap → dismiss). A message id present here has a
     /// dismiss in flight, so a rapid double-tap / re-entrant `onAction` can't double-fire the delete.
     private var dismissingIds: Set<String> = []
@@ -153,6 +158,9 @@ final class VisualInboxModel: ObservableObject {
 
     /// Cancels the load/refresh cycle and the continuous subscription.
     func stop() {
+        // A stopped model cannot have visible inbox content. Reset this explicitly because SwiftUI
+        // lifecycle callbacks can arrive in different orders, and the model may later be restarted.
+        autoMarksVisibleMessagesOpened = false
         refreshTask?.cancel()
         refreshTask = nil
         observeTask?.cancel()
@@ -183,6 +191,9 @@ final class VisualInboxModel: ObservableObject {
         decodedData = Self.decodeData(for: snapshot.messages)
         logMissingTemplates()
         reloadChrome()
+        if autoMarksVisibleMessagesOpened {
+            markVisibleMessagesOpened()
+        }
     }
 
     /// (Re)loads the branding chrome off the synchronous state-publish path.
@@ -228,9 +239,31 @@ final class VisualInboxModel: ObservableObject {
 
     // MARK: - Auto mark-opened (item 8)
 
-    /// Marks every currently-visible message opened, exactly once each. Called when the panel opens
-    /// (and re-callable as new messages scroll into view). The `markedOpenedIds` guard dedupes so a
-    /// message is never marked repeatedly across panel open/close cycles or refreshes.
+    /// Returns whether automatic opened-state updates are allowed for the current UI/app lifecycle.
+    /// All three conditions are required because a SwiftUI view can remain mounted while off-screen,
+    /// and `onDisappear` is not called merely because the application becomes inactive.
+    static func shouldAutoMarkVisibleMessagesOpened(
+        isPresented: Bool,
+        isOnScreen: Bool,
+        isApplicationActive: Bool
+    ) -> Bool {
+        isPresented && isOnScreen && isApplicationActive
+    }
+
+    /// Enables or disables automatic opened-state updates while the visual Inbox is presented in an
+    /// active app. Enabling marks the current renderable messages immediately; later snapshots are
+    /// handled by `apply(snapshot:)`, covering a server fetch that completes after `onAppear`.
+    func setAutoMarkVisibleMessagesOpened(_ enabled: Bool) {
+        autoMarksVisibleMessagesOpened = enabled
+        if enabled {
+            markVisibleMessagesOpened()
+        }
+    }
+
+    /// Marks every currently renderable inbox message opened, exactly once each. This is
+    /// presentation-level visibility, not per-row scroll-viewport tracking: it runs when the inbox
+    /// becomes active and for later snapshots while it remains active. `markedOpenedIds` prevents
+    /// repeated marks across presentation and refresh cycles.
     func markVisibleMessagesOpened() {
         // Only mark messages the user can actually see: `renderableMessages` (those with a template).
         // Messages skipped for a missing template are never shown in the list, so they must not be

@@ -101,6 +101,7 @@ extension LocationTestViewController {
 
         requestSdkLocationOnceButton = ThemeButton()
         requestSdkLocationOnceButton.setTitle("Request location once (SDK)", for: .normal)
+        requestSdkLocationOnceButton.accessibilityIdentifier = "request_sdk_location_once"
         requestSdkLocationOnceButton.heightAnchor.constraint(equalToConstant: 50).isActive = true
         requestSdkLocationOnceButton.addTarget(self, action: #selector(requestSdkLocationOnceTapped), for: .touchUpInside)
         stackView.addArrangedSubview(requestSdkLocationOnceButton)

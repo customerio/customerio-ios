@@ -18,7 +18,9 @@ import UIKit
 @MainActor
 protocol LiveActivityDemoDriving: AnyObject {
     var title: String { get }
+    var testIdentifier: String { get }
     var isActive: Bool { get }
+    var activityId: String? { get }
     var onChange: (() -> Void)? { get set }
     /// Start if idle, end (with the final content state) if active.
     func toggle()
@@ -26,6 +28,8 @@ protocol LiveActivityDemoDriving: AnyObject {
     func advance()
     /// Start, step through every phase on a timer, then end — hands-free.
     func autoRun()
+    /// End an active driver through the SDK and wait for ActivityKit cleanup.
+    func endForCleanup() async
 }
 
 /// Drives one template through an ordered list of realistic phases via the SDK's local API.
@@ -33,8 +37,9 @@ protocol LiveActivityDemoDriving: AnyObject {
 /// final content sent on `end`. This mirrors the Android demo's step arrays.
 @available(iOS 17.2, *)
 @MainActor
-final class LiveActivityDemoDriver<A: ActivityAttributes>: LiveActivityDemoDriving where A.ContentState: Sendable {
+final class LiveActivityDemoDriver<A: CIOActivityAttribute>: LiveActivityDemoDriving where A.ContentState: Sendable {
     let title: String
+    let testIdentifier: String
     private let module: () -> LiveActivitiesInstance
     private let attributes: A
     private let phases: [A.ContentState]
@@ -48,9 +53,11 @@ final class LiveActivityDemoDriver<A: ActivityAttributes>: LiveActivityDemoDrivi
 
     var onChange: (() -> Void)?
     var isActive: Bool { handle != nil }
+    var activityId: String? { handle?.activity.id }
 
     init(
         title: String,
+        testIdentifier: String,
         module: @escaping () -> LiveActivitiesInstance,
         attributes: A,
         phases: [A.ContentState],
@@ -58,6 +65,7 @@ final class LiveActivityDemoDriver<A: ActivityAttributes>: LiveActivityDemoDrivi
         log: @escaping (String) -> Void
     ) {
         self.title = title
+        self.testIdentifier = testIdentifier
         self.module = module
         self.attributes = attributes
         self.phases = phases
@@ -79,7 +87,7 @@ final class LiveActivityDemoDriver<A: ActivityAttributes>: LiveActivityDemoDrivi
             }
             handle = started
             phaseIndex = 0
-            log("\(title): start — phase 1/\(phases.count)")
+            log("\(title): start — phase 1/\(phases.count) — id=\(started.id)")
             onChange?()
         } catch {
             log("\(title): start failed — \(error)")
@@ -100,23 +108,41 @@ final class LiveActivityDemoDriver<A: ActivityAttributes>: LiveActivityDemoDrivi
         let step = phaseIndex + 1
         let total = phases.count
         let name = title
+        let id = handle.id
         let record = log
         Task { @MainActor in
             await handle.update(state)
-            record("\(name): update — phase \(step)/\(total)")
+            record("\(name): update — phase \(step)/\(total) — id=\(id)")
         }
     }
 
     private func end() {
+        guard let handle = prepareForEnd() else { return }
+        let id = handle.id
+        let name = title
+        let record = log
+        Task { @MainActor in
+            await handle.end(endState)
+            record("\(name): end — id=\(id)")
+        }
+    }
+
+    func endForCleanup() async {
+        guard let handle = prepareForEnd() else { return }
+        let id = handle.id
+        await handle.end(endState, dismissalPolicy: .immediate)
+        log("\(title): cleanup end — id=\(id)")
+    }
+
+    private func prepareForEnd() -> CIOLiveActivity<A>? {
         autoTask?.cancel()
         autoTask = nil
-        guard let handle else { return }
+        guard let handle else { return nil }
         // Reset state up front so a second tap is a no-op (the button flips back to "Start").
         self.handle = nil
         phaseIndex = 0
-        handle.endDetached(endState) // fire-and-forget via the async helper below
-        log("\(title): end")
         onChange?()
+        return handle
     }
 
     func autoRun() {
@@ -146,15 +172,6 @@ final class LiveActivityDemoDriver<A: ActivityAttributes>: LiveActivityDemoDrivi
     }
 }
 
-@available(iOS 17.2, *)
-private extension CIOLiveActivity where Attributes.ContentState: Sendable {
-    /// Fire-and-forget end used by the driver's synchronous `end()`.
-    @MainActor
-    func endDetached(_ finalContentState: Attributes.ContentState) {
-        Task { @MainActor in await self.end(finalContentState) }
-    }
-}
-
 // MARK: - View controller
 
 @available(iOS 17.2, *)
@@ -171,7 +188,9 @@ class LiveActivitiesViewController: BaseViewController {
     private var adoptHandle: CIOLiveActivity<DeliveryActivityAttributes>?
     private weak var adoptButton: ThemeButton?
 
+    private let activityStatusLabel = UILabel()
     private let logView = UITextView()
+    private var statusRefreshTask: Task<Void, Never>?
 
     // MARK: - Lifecycle
 
@@ -185,6 +204,17 @@ class LiveActivitiesViewController: BaseViewController {
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         navigationController?.isNavigationBarHidden = false
+        startStatusRefresh()
+    }
+
+    override func viewDidDisappear(_ animated: Bool) {
+        super.viewDidDisappear(animated)
+        statusRefreshTask?.cancel()
+        statusRefreshTask = nil
+    }
+
+    deinit {
+        statusRefreshTask?.cancel()
     }
 
     // MARK: - UI
@@ -223,6 +253,7 @@ class LiveActivitiesViewController: BaseViewController {
             stack.bottomAnchor.constraint(equalTo: content.bottomAnchor, constant: -20)
         ])
 
+        stack.addArrangedSubview(makeActivityStatusCard())
         for (driver, description) in makeDrivers() {
             drivers.append(driver)
             stack.addArrangedSubview(makeDriverCard(driver, description: description))
@@ -248,6 +279,7 @@ class LiveActivitiesViewController: BaseViewController {
 
         let delivery = LiveActivityDemoDriver<DeliveryActivityAttributes>(
             title: "Delivery Tracking",
+            testIdentifier: "delivery",
             module: module,
             attributes: DeliveryActivityAttributes(orderNumber: "Order #ABC-1234"),
             phases: [
@@ -263,6 +295,7 @@ class LiveActivitiesViewController: BaseViewController {
         // (orange gradient + logo), compiled into the live widget via `SegmentsDemoBranding.active`.
         let segments = LiveActivityDemoDriver<CIOSegmentsAttributes>(
             title: "Segments (Chica)",
+            testIdentifier: "segments",
             module: module,
             attributes: CIOSegmentsAttributes(header: "Chica"),
             phases: [
@@ -278,6 +311,7 @@ class LiveActivitiesViewController: BaseViewController {
         // phase drops `endTime`, so the live timer disappears and the done message shows.
         let countdown = LiveActivityDemoDriver<CIOCountdownTimerAttributes>(
             title: "Countdown (Sale)",
+            testIdentifier: "countdown",
             module: module,
             attributes: CIOCountdownTimerAttributes(header: "Summer Sale"),
             phases: [
@@ -297,6 +331,7 @@ class LiveActivitiesViewController: BaseViewController {
 
     private func makeDriverCard(_ driver: any LiveActivityDemoDriving, description: String) -> UIView {
         let startButton = makeButton("Start \(driver.title)")
+        startButton.accessibilityIdentifier = "live_activity_\(driver.testIdentifier)_toggle"
         startButton.addAction(UIAction { [weak driver] _ in driver?.toggle() }, for: .touchUpInside)
         driver.onChange = { [weak driver, weak startButton] in
             guard let driver else { return }
@@ -304,9 +339,11 @@ class LiveActivitiesViewController: BaseViewController {
         }
 
         let updateButton = makeButton("Update (next phase)")
+        updateButton.accessibilityIdentifier = "live_activity_\(driver.testIdentifier)_update"
         updateButton.addAction(UIAction { [weak driver] _ in driver?.advance() }, for: .touchUpInside)
 
         let autoButton = makeButton("Auto-run all phases")
+        autoButton.accessibilityIdentifier = "live_activity_\(driver.testIdentifier)_autorun"
         autoButton.addAction(UIAction { [weak driver] _ in driver?.autoRun() }, for: .touchUpInside)
 
         return makeCard(title: driver.title, description: description, buttons: [startButton, updateButton, autoButton])
@@ -314,10 +351,12 @@ class LiveActivitiesViewController: BaseViewController {
 
     private func makeAdoptCard() -> UIView {
         let startButton = makeButton("Start (app-created) & Adopt")
+        startButton.accessibilityIdentifier = "live_activity_adopt_toggle"
         adoptButton = startButton
         startButton.addAction(UIAction { [weak self] _ in self?.toggleAdopt() }, for: .touchUpInside)
 
         let updateButton = makeButton("Update Adopted")
+        updateButton.accessibilityIdentifier = "live_activity_adopt_update"
         updateButton.addAction(UIAction { [weak self] _ in self?.updateAdopt() }, for: .touchUpInside)
 
         return makeCard(
@@ -329,11 +368,14 @@ class LiveActivitiesViewController: BaseViewController {
 
     private func makeDebugCard() -> UIView {
         let unknownButton = makeButton("Start unregistered type (returns nil)")
+        unknownButton.accessibilityIdentifier = "live_activity_unregistered_start"
         unknownButton.addAction(UIAction { [weak self] _ in self?.triggerUnknownType() }, for: .touchUpInside)
 
         let clearButton = makeButton("Clear log")
+        clearButton.accessibilityIdentifier = "live_activity_clear_log"
         clearButton.addAction(UIAction { [weak self] _ in self?.logView.text = "" }, for: .touchUpInside)
 
+        logView.accessibilityIdentifier = "live_activity_log"
         logView.isEditable = false
         logView.font = .monospacedSystemFont(ofSize: 11, weight: .regular)
         logView.backgroundColor = UIColor(white: 0.06, alpha: 1.0)
@@ -381,7 +423,7 @@ class LiveActivitiesViewController: BaseViewController {
             }
             adoptHandle = adopted
             adoptButton?.setTitle("End Adopted", for: .normal)
-            appendLog("Adopt: app-created activity adopted")
+            appendLog("Adopt: app-created activity adopted — id=\(adopted.id) activityId=\(activity.id)")
         } catch {
             appendLog("Adopt: failed — \(error)")
             showToast(withMessage: "Adopt failed: \(error.localizedDescription)")
@@ -395,7 +437,7 @@ class LiveActivitiesViewController: BaseViewController {
         }
         Task { @MainActor in
             await handle.update(.init(title: "Out for delivery", subtitle: "Adopted — updated", progress: .init(current: 3, total: 4), estimatedArrival: EpochSecondsDate(Date().addingTimeInterval(600))))
-            self.appendLog("Adopt: updated")
+            self.appendLog("Adopt: updated — id=\(handle.id) activityId=\(handle.activity.id)")
         }
     }
 
@@ -440,6 +482,7 @@ class LiveActivitiesViewController: BaseViewController {
         formatter.dateFormat = "HH:mm:ss"
         let entry = "\(formatter.string(from: Date()))  \(line)\n"
         logView.text = entry + logView.text
+        refreshActivityStatus()
     }
 }
 
@@ -449,6 +492,104 @@ class LiveActivitiesViewController: BaseViewController {
 // type_body_length limit (sample-only UI scaffolding).
 @available(iOS 17.2, *)
 private extension LiveActivitiesViewController {
+    func makeActivityStatusCard() -> UIView {
+        let refreshButton = makeButton("Refresh ActivityKit state")
+        refreshButton.accessibilityIdentifier = "live_activity_refresh_status"
+        refreshButton.addAction(UIAction { [weak self] _ in self?.refreshActivityStatus() }, for: .touchUpInside)
+
+        let endAllButton = makeButton("End all activities")
+        endAllButton.accessibilityIdentifier = "live_activity_end_all"
+        endAllButton.addAction(UIAction { [weak self] _ in self?.endAllActivities() }, for: .touchUpInside)
+
+        activityStatusLabel.accessibilityIdentifier = "live_activity_system_status"
+        activityStatusLabel.font = .monospacedSystemFont(ofSize: 12, weight: .regular)
+        activityStatusLabel.numberOfLines = 0
+        activityStatusLabel.textColor = .secondaryLabel
+        refreshActivityStatus()
+
+        return makeCard(
+            title: "ActivityKit state",
+            description: "A deterministic probe of the activities currently known to ActivityKit. E2E tests use this to prove start, update, and end reached the system.",
+            buttons: [refreshButton, endAllButton],
+            extraViews: [activityStatusLabel]
+        )
+    }
+
+    func endAllActivities() {
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            var managedActivityIds = Set(drivers.compactMap(\.activityId))
+            if let adoptActivityId = adoptHandle?.activity.id {
+                managedActivityIds.insert(adoptActivityId)
+            }
+
+            for driver in drivers {
+                await driver.endForCleanup()
+            }
+
+            if let handle = adoptHandle {
+                adoptHandle = nil
+                adoptButton?.setTitle("Start (app-created) & Adopt", for: .normal)
+                await handle.end(
+                    .init(title: "Delivered", subtitle: "Adopted — cleanup", progress: .init(current: 4, total: 4)),
+                    dismissalPolicy: .immediate
+                )
+            }
+
+            for activity in Activity<CIOSegmentsAttributes>.activities where !managedActivityIds.contains(activity.id) {
+                await endOrphanedActivity(activity)
+            }
+            for activity in Activity<CIOCountdownTimerAttributes>.activities where !managedActivityIds.contains(activity.id) {
+                await endOrphanedActivity(activity)
+            }
+            for activity in Activity<DeliveryActivityAttributes>.activities where !managedActivityIds.contains(activity.id) {
+                await endOrphanedActivity(activity)
+            }
+            appendLog("ActivityKit: ended all activities for a clean test state")
+        }
+    }
+
+    func endOrphanedActivity<Attributes: ActivityAttributes>(_ activity: Activity<Attributes>) async {
+        // Cleanup must not adopt the stale activity: ending an adopted handle emits a Customer.io
+        // `end` event and would attribute a previous run's activity to the fresh E2E profile.
+        await activity.end(nil, dismissalPolicy: .immediate)
+    }
+
+    func refreshActivityStatus() {
+        let segments = Activity<CIOSegmentsAttributes>.activities.map { activity in
+            let content = activity.content.state
+            return "segments state=\(activity.activityState) status=\(content.status) activityId=\(activity.id) id=\(activity.attributes.cioInstanceId)"
+        }.sorted()
+        let countdowns = Activity<CIOCountdownTimerAttributes>.activities.map { activity in
+            let content = activity.content.state
+            return "countdown state=\(activity.activityState) title=\(content.title) activityId=\(activity.id) id=\(activity.attributes.cioInstanceId)"
+        }.sorted()
+        let deliveries = Activity<DeliveryActivityAttributes>.activities.map { activity in
+            let content = activity.content.state
+            let adoptedInstanceId = adoptHandle.flatMap {
+                $0.activity.id == activity.id ? $0.id : nil
+            }
+            let instanceId = adoptedInstanceId ?? activity.attributes.cioInstanceId
+            return "delivery state=\(activity.activityState) title=\(content.title) activityId=\(activity.id) id=\(instanceId)"
+        }.sorted()
+        let readiness = CustomerIO.shared.registeredDeviceToken?.isEmpty == false
+            ? "sdkDeviceToken=present"
+            : "sdkDeviceToken=missing"
+        let lines = segments + countdowns + deliveries
+        activityStatusLabel.text = ([readiness] + (lines.isEmpty ? ["no activities"] : lines))
+            .joined(separator: "\n")
+    }
+
+    func startStatusRefresh() {
+        statusRefreshTask?.cancel()
+        statusRefreshTask = Task { @MainActor [weak self] in
+            while !Task.isCancelled {
+                self?.refreshActivityStatus()
+                try? await Task.sleep(nanoseconds: 1000000000)
+            }
+        }
+    }
+
     func makeCard(title: String, description: String, buttons: [ThemeButton], extraViews: [UIView] = []) -> UIView {
         let card = UIView()
         card.backgroundColor = UIColor(white: 0.97, alpha: 1.0)
