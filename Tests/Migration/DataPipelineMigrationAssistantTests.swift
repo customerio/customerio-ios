@@ -71,6 +71,8 @@ class DataPipelineMigrationAssistantTests: UnitTest {
 
         XCTAssertNotNil(migrationAssistant.handleQueueBacklog(siteId: testSiteId))
         XCTAssertEqual(backgroundQueueMock.deleteProcessedTaskCallsCount, counter)
+        XCTAssertTrue(threadUtilStub.runBackgroundCalled)
+        XCTAssertFalse(threadUtilStub.runUtilityCalled)
     }
 
     func test_givenBacklog_expectTaskRunButNotProcessedDeleted() {

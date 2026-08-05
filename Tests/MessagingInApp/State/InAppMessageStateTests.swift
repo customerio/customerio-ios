@@ -524,6 +524,33 @@ class InAppMessageStateTests: IntegrationTest {
 
     // MARK: fetch user messages from backend services
 
+    func test_fetchUserMessages_expectUtilityThread() async {
+        await inAppMessageManager.dispatchAsync(action: .initialize(siteId: .random, dataCenter: .random, environment: .production))
+        await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: .random))
+        setupHttpResponse(code: 304, body: Data())
+
+        let threadUtil = ThreadUtilStub()
+        let sseLifecycleManager = SseLifecycleManagerMock()
+        mockCollection.add(mock: sseLifecycleManager)
+        let utilityExpectation = expectation(description: "Queue fetch dispatched at utility priority")
+        threadUtil.runUtilityClosure = { utilityExpectation.fulfill() }
+        let gistUnderTest = Gist(
+            logger: diGraphShared.logger,
+            gistDelegate: diGraphShared.gistDelegate,
+            inAppMessageManager: inAppMessageManager,
+            queueManager: queueManager,
+            threadUtil: threadUtil,
+            sseLifecycleManager: sseLifecycleManager
+        )
+
+        await MainActor.run { gistUnderTest.fetchUserMessages() }
+
+        await fulfillment(of: [utilityExpectation], timeout: 1)
+        XCTAssertTrue(threadUtil.runUtilityCalled)
+        XCTAssertFalse(threadUtil.runBackgroundCalled)
+        gistUnderTest.resetState()
+    }
+
     var sampleFetchResponseBody: String {
         readSampleDataFile(subdirectory: "InAppUserQueue", fileName: "fetch_response.json")
     }
