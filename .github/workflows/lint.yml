@@ -4,4 +4,4 @@ on: [pull_request]
 
 jobs:
   lint:
-    uses: customerio/mobile-ci-tools/.github/workflows/ios-lint.yml@main
+    uses: customerio/mobile-ci-tools/.github/workflows/ios-lint.yml@ci/macos-26

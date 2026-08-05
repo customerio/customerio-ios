@@ -11,7 +11,7 @@ concurrency: # cancel previous workflow run if one exists.
 
 jobs:
   test:
-    uses: customerio/mobile-ci-tools/.github/workflows/ios-test.yml@main
+    uses: customerio/mobile-ci-tools/.github/workflows/ios-test.yml@ci/macos-26
     with:
       scheme: 'Customer.io-Package'
       xcresult-name: 'Customer.io-Package.xcresult'
