@@ -153,10 +153,11 @@ extension Message {
     }
 
     var cleanPageRule: String? {
-        guard let routeRule = gistProperties.routeRule else {
-            return nil
-        }
-        return routeRule.replacingOccurrences(of: "\\", with: "/")
+        // The route rule arrives from the backend as a ready-to-use regex with any
+        // metacharacters already escaped (e.g. "\." for a literal dot). Return it
+        // unmodified. A previous "\" -> "/" replacement here corrupted those escapes
+        // (turning "\." into "/."), so any route containing a "." could never match.
+        gistProperties.routeRule
     }
 
     /*
