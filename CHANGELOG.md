@@ -1,3 +1,9 @@
+## [4.7.1](https://github.com/customerio/customerio-ios/compare/4.7.0...4.7.1) (2026-08-05)
+
+### Bug Fixes
+
+* **in-app:** stop corrupting escaped regex in page route rules ([#1174](https://github.com/customerio/customerio-ios/issues/1174)) ([00e81bb](https://github.com/customerio/customerio-ios/commit/00e81bb522ab1257d2cddee4300bc1e04c6cc2ca))
+
 ## [4.7.0](https://github.com/customerio/customerio-ios/compare/4.6.1...4.7.0) (2026-07-30)
 
 ### Features
