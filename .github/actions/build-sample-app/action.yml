@@ -72,7 +72,7 @@ outputs:
 runs:
   using: "composite"
   steps:
-    - uses: customerio/mobile-ci-tools/github-actions/ios/setup-ios/v1@macos-26
+    - uses: customerio/mobile-ci-tools/github-actions/ios/setup-ios/v1@main
       with:
         xcode-version: ${{ inputs.xcode-version }}
 
