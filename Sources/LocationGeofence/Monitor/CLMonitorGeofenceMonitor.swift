@@ -221,13 +221,19 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preco
         case .unknown:
             return
         case .unmonitored:
-            // CLMonitor gave up on the condition (e.g. condition budget exceeded). As with classic
-            // monitoringDidFail: drop ownership and the mirror entry so nothing claims a condition
-            // the OS no longer holds; the next sync re-registers a fresh set. The stored baseline
+            // CLMonitor gave up on the condition (e.g. condition budget exceeded). Drop the mirror
+            // entry and the recorded circle so the next sync re-registers it. The stored baseline
             // goes too — the region stays in the desired set, so nothing else prunes it, and the
             // device can cross while it is unmonitored.
+            //
+            // Ownership is deliberately KEPT. It only gates which events this process accepts, and
+            // the OS sends events solely for conditions it monitors, so keeping it can't admit a
+            // spurious one. Dropping it strands the region instead: an add already queued here
+            // revives the condition without restoring ownership, and a condition the OS gave up on
+            // stays listed and revives on its own once budget frees (measured). Worst case is the
+            // movement trigger — its events are what drive the next sync, so dropping its ownership
+            // removes the only thing that would restore it before the process restarts.
             logger.geofenceMonitorStoppedMonitoringRegion(identifier)
-            ownedRegionIdentifiers.remove(identifier)
             knownConditionIdentifiers.remove(identifier)
             registeredConditions.removeValue(forKey: identifier)
             // Whichever registration comes next must reseed the baseline rather than preserve it.
