@@ -37,6 +37,16 @@ extension Logger {
         )
     }
 
+    // Logged at error level deliberately: `info`/`debug` are not persisted to the log store for
+    // third-party subsystems, so a field report would not carry them.
+    func geofenceMonitorStoppedMonitoringRegion(_ identifier: String) {
+        error(
+            "CoreLocation stopped monitoring region \(identifier); its transitions are not delivered until the next sync re-registers it",
+            geofenceTag,
+            nil
+        )
+    }
+
     func geofencePermissionUnavailable(currentStatus: CLAuthorizationStatus) {
         info(
             "Geofence registration skipped: location permission not granted (current status: \(currentStatus.rawValue)). The host app controls when and which permission to request.",
@@ -110,8 +120,8 @@ extension Logger {
         info("Sync completed: registered \(registeredCount) business geofences\(trigger)", geofenceTag)
     }
 
-    func geofenceRerankUnchanged(keptCount: Int) {
-        debug("Re-rank: nearest set unchanged, kept \(keptCount) business geofences monitored; movement trigger re-centered", geofenceTag)
+    func geofenceRegistrationDiff(added: Int, removed: Int, unchanged: Int) {
+        debug("OS registration diff: +\(added) / -\(removed); \(unchanged) left registered untouched", geofenceTag)
     }
 
     func geofenceMovementTrigger(tier: HandleMovementTier) {

@@ -106,18 +106,24 @@ actor GeofenceStorage {
     /// changed circle. The unchanged-vs-changed decision is keyed on the persisted `center`/`radius`
     /// (which survive stop-all) rather than CLMonitor's live record (which stop-all removes before the
     /// re-add, so it can never report "unchanged").
+    ///
+    /// `forceReseed` overrides that preservation. The caller sets it when the OS stopped monitoring
+    /// the condition since the last registration: the device can cross while unmonitored, so the
+    /// persisted state is no longer known to match reality and keeping it would suppress the next
+    /// genuine crossing.
     func recordMonitorRegistration(
         identifier: String,
         transitionTypes: Set<GeofenceTransition>,
         initialState: GeofenceTransition,
         center: LocationData,
-        radius: Double
+        radius: Double,
+        forceReseed: Bool = false
     ) {
         var state = loadFromDisk() ?? GeofenceState()
         var records = state.monitorRegionRecords ?? [:]
         let existing = records[identifier]
         let unchangedGeometry = existing?.center == center && existing?.radius == radius
-        let lastState = unchangedGeometry ? (existing?.lastState ?? initialState) : initialState
+        let lastState = unchangedGeometry && !forceReseed ? (existing?.lastState ?? initialState) : initialState
         records[identifier] = MonitorRegionRecord(
             lastState: lastState,
             transitionTypes: transitionTypes,
@@ -156,6 +162,16 @@ actor GeofenceStorage {
     /// from the geometry and baselines stored here.
     func getMonitorRegionRecords() -> [String: MonitorRegionRecord] {
         loadFromDisk()?.monitorRegionRecords ?? [:]
+    }
+
+    /// Drops the baseline for a condition the OS stopped monitoring, so the next registration
+    /// reseeds from the device's real position rather than carrying a state it may have left while
+    /// unmonitored — an unchanged-geometry re-register would preserve that stale value.
+    func clearMonitorRegionRecord(identifier: String) {
+        var state = loadFromDisk() ?? GeofenceState()
+        guard var records = state.monitorRegionRecords, records.removeValue(forKey: identifier) != nil else { return }
+        state.monitorRegionRecords = records
+        saveToDisk(state)
     }
 
     /// Clears the cooldown map, last-sync record, registration set, and monitor baselines but
@@ -247,6 +263,18 @@ actor GeofenceStorage {
         var state = loadFromDisk() ?? GeofenceState()
         state.movementTriggerCenter = center
         state.monitoredGeofenceIds = businessIds
+        // Drop per-condition baselines for regions this registration no longer covers. A record
+        // survives `stopMonitoring` on purpose, so an unchanged re-register keeps its baseline and
+        // CLMonitor's re-evaluation stays silent — but a region *evicted* from the set is a
+        // different case. It goes unmonitored, so no EXIT ever balances a `.enter` baseline, and a
+        // later re-registration with the same circle keeps that stale value instead of the state
+        // the device is actually in. The next genuine arrival then reads as no change and is
+        // dropped. Retaining exactly the registered set bounds the records the same way
+        // `monitoredGeofenceIds` is bounded, and clears anything a previous version stranded.
+        if let records = state.monitorRegionRecords {
+            let retained = businessIds.union([GeofenceConstants.movementTriggerIdentifier])
+            state.monitorRegionRecords = records.filter { retained.contains($0.key) }
+        }
         saveToDisk(state)
     }
 
