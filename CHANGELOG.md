@@ -1,3 +1,9 @@
+## [4.7.2](https://github.com/customerio/customerio-ios/compare/4.7.1...4.7.2) (2026-08-06)
+
+### Bug Fixes
+
+* **geofence:** correct region registration, eviction and baseline handling ([#1192](https://github.com/customerio/customerio-ios/issues/1192)) ([1a020e0](https://github.com/customerio/customerio-ios/commit/1a020e002dd6b1f1f52513074d625d0a78636a38))
+
 ## [4.7.1](https://github.com/customerio/customerio-ios/compare/4.7.0...4.7.1) (2026-08-05)
 
 ### Bug Fixes
