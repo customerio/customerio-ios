@@ -54,6 +54,8 @@ enum GeofenceBootstrap {
         let expectedOwnedRegions = (cachedConfig ?? .fallback).maxBusinessGeofences > 0
             ? lastRegisteredBusinessIds.union([GeofenceConstants.movementTriggerIdentifier])
             : []
+        // Adopt-time seed for the CLMonitor path's geometry bookkeeping (empty on classic).
+        let monitorRecords = await di.geofenceStorage.getMonitorRegionRecords()
 
         // Phase 2: synchronous on the main actor. No `await` between handler-bind and
         // `adoptExistingRegions` / `startMonitoring`, so `ownedRegionIdentifiers` is populated
@@ -88,7 +90,7 @@ enum GeofenceBootstrap {
             // reset's queued removes). The next identify-driven refresh registers instead.
             di.logger.geofenceSyncSkipped(reason: "identified user changed during bootstrap")
         } else if !expectedOwnedRegions.isEmpty, expectedOwnedRegions.isSubset(of: monitor.osMonitoredRegionIdentifiers) {
-            monitor.adoptExistingRegions(matching: expectedOwnedRegions)
+            monitor.adoptExistingRegions(matching: expectedOwnedRegions, records: monitorRecords)
         } else {
             // First launch after install, the OS dropped our regions (e.g. permission revoked then
             // re-granted, which clears `monitoredRegions`), or a partial drop. Register fresh from cache.

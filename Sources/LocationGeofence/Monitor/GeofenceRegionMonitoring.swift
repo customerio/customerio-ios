@@ -19,6 +19,43 @@ typealias GeofenceAuthorizationChangedHandler = @MainActor () -> Void
 /// Invoked on the main actor.
 typealias GeofenceReconciledHandler = @MainActor () -> Void
 
+/// A circular region the caller wants monitored, as handed to `setMonitoredRegions`.
+struct GeofenceRegionRequest: Equatable, Sendable {
+    let identifier: String
+    let center: LocationData
+    let radius: Double
+    let transitionTypes: Set<GeofenceTransition>
+}
+
+extension GeofenceRegionRequest {
+    /// Latitude/longitude slack, ~1cm. Absorbs float round-tripping through CoreLocation and JSON.
+    private static let coordinateTolerance = 1e-7
+    /// Radius slack in meters.
+    private static let radiusTolerance = 0.5
+
+    /// Whether an already-registered circle matches this request closely enough to leave alone.
+    /// Compares against the radius the OS would actually hold, so a fence larger than the cap
+    /// doesn't read as "changed" on every pass and churn forever.
+    func matchesRegistered(
+        center: LocationData,
+        radius: Double,
+        transitionTypes: Set<GeofenceTransition>,
+        clampedTo maximumRadius: Double
+    ) -> Bool {
+        abs(center.latitude - self.center.latitude) < Self.coordinateTolerance
+            && abs(center.longitude - self.center.longitude) < Self.coordinateTolerance
+            && abs(radius - min(self.radius, maximumRadius)) < Self.radiusTolerance
+            && transitionTypes == self.transitionTypes
+    }
+}
+
+/// What `setMonitoredRegions` changed. Everything in the desired set that isn't listed here was
+/// already registered with the same circle and was left untouched — the point of the call.
+struct GeofenceRegionDiff: Equatable, Sendable {
+    let added: Set<String>
+    let removed: Set<String>
+}
+
 /// Abstracts CLLocationManager's region monitoring.
 ///
 /// The monitor owns a CLLocationManager and handles the delegate callbacks for region events.
@@ -55,6 +92,16 @@ protocol GeofenceRegionMonitoring: AnyObject, Sendable {
     /// Stops monitoring the region with the given identifier.
     func stopMonitoring(identifier: String)
 
+    /// Reconciles the monitored set to exactly `regions`: stops what is no longer wanted, starts
+    /// what is new or whose circle changed, and leaves everything else registered as-is.
+    ///
+    /// Leaving unchanged regions untouched is part of the contract, not an optimization: stopping
+    /// and re-adding a region discards any boundary crossing the OS has detected but not yet
+    /// delivered, and neither monitor replays it. Implementations must not re-register a region
+    /// whose circle is unchanged.
+    @discardableResult
+    func setMonitoredRegions(_ regions: [GeofenceRegionRequest]) -> GeofenceRegionDiff
+
     /// Stops monitoring all regions managed by this monitor.
     func stopMonitoringAll()
 
@@ -74,10 +121,14 @@ protocol GeofenceRegionMonitoring: AnyObject, Sendable {
 
     /// Re-claims the OS-persisted regions whose identifiers are in `identifiers` as owned by this
     /// monitor, restoring transition recognition on a fresh process where the OS kept monitoring
-    /// but the in-memory ownership set was lost. Adoption must not emit events for unchanged
-    /// regions; the OS-side mechanism is implementation-specific (the classic monitor adopts in
-    /// place, the CLMonitor path re-arms each condition — see `rearmConditions`).
-    func adoptExistingRegions(matching identifiers: Set<String>)
+    /// but the in-memory ownership set was lost. `records` is the persisted per-condition
+    /// bookkeeping (`GeofenceStorage.getMonitorRegionRecords`); the CLMonitor path seeds its
+    /// geometry map from it synchronously, so a sync arriving before the queued re-arm drains
+    /// reads adopted regions as unchanged instead of re-registering them all. Adoption must not
+    /// emit events for unchanged regions; the OS-side mechanism is implementation-specific (the
+    /// classic monitor adopts in place and ignores `records`, the CLMonitor path re-arms each
+    /// condition — see `rearmConditions`).
+    func adoptExistingRegions(matching identifiers: Set<String>, records: [String: MonitorRegionRecord])
 
     /// Logs the current authorization tier (background delivery / foreground only / blocked),
     /// deduped so it emits only when the tier changes since the last report.

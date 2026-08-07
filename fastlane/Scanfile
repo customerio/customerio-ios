@@ -3,9 +3,14 @@
 scheme("Customer.io-Package")
 
 # -destination for xcodebuild
-# chosen to be a simulator that *all* xcode versions include. Help: https://github.com/actions/virtual-environments/blob/main/images/macos/macos-11-Readme.md#installed-simulators
+# Device and OS are both pinned: when a destination does not resolve, fastlane logs
+# "couldn't find matching simulator" and quietly falls back to another one, making the tested
+# OS an accident of the runner image. iOS 26.2 ships on both macos-15 and macos-26, so this
+# survives the runner migration — but it only resolves because CI selects Xcode 26.x. An
+# older image-default Xcode cannot drive a 26.x runtime, so this destination depends on the
+# xcode-version pin in mobile-ci-tools' ios-test.yml. Change one, check the other.
 devices([
-  "iPhone 16"
+  "iPhone 17 (26.2)"
 ])
 
 output_types("html,junit")

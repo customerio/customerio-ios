@@ -8,11 +8,11 @@ concurrency: # cancel previous workflow run if one exists
   
 jobs:
   check-api-breaking-changes:
-    runs-on: macos-15
+    runs-on: macos-26
     steps:
       - uses: actions/checkout@v4
       
-      - uses: customerio/mobile-ci-tools/github-actions/ios/setup-ios/v1@MacOS-15+iOS-26
+      - uses: customerio/mobile-ci-tools/github-actions/ios/setup-ios/v1@main
       
       - name: Install sourcekitten
         run: brew install sourcekitten

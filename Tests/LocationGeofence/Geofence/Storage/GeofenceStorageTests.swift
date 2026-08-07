@@ -646,6 +646,66 @@ struct GeofenceStorageTests {
     }
 
     @Test
+    func clearMonitorRegionRecord_givenOsStoppedMonitoring_expectNextArrivalDelivered() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let storage = makeStorage(directory: dir)
+        let center = LocationData(latitude: 10, longitude: 20)
+        await storage.recordMonitorRegistration(identifier: "geo_1", transitionTypes: [.enter, .exit], initialState: .exit, center: center, radius: 100)
+        #expect(await storage.recordMonitorEvent(.enter, forIdentifier: "geo_1") == .deliver)
+        // CLMonitor reports .unmonitored. The region is still in the desired set, so the registration
+        // prune keeps its record; without this clear, the device can leave while unmonitored and the
+        // unchanged-geometry re-register carries the stale .enter, dropping the next real arrival.
+        await storage.clearMonitorRegionRecord(identifier: "geo_1")
+        await storage.recordMonitorRegistration(identifier: "geo_1", transitionTypes: [.enter, .exit], initialState: .exit, center: center, radius: 100)
+        #expect(await storage.recordMonitorEvent(.enter, forIdentifier: "geo_1") == .deliver)
+    }
+
+    @Test
+    func recordMonitorRegistration_givenForceReseedOnUnchangedGeometry_expectBaselineReset() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let storage = makeStorage(directory: dir)
+        let center = LocationData(latitude: 10, longitude: 20)
+        await storage.recordMonitorRegistration(identifier: "geo_1", transitionTypes: [.enter, .exit], initialState: .exit, center: center, radius: 100)
+        #expect(await storage.recordMonitorEvent(.enter, forIdentifier: "geo_1") == .deliver)
+        // The OS gave up on the condition and a registration with the SAME circle drained before the
+        // deferred record clear could run. Preserving `.enter` here would suppress the next arrival,
+        // because the device can have left while the region was unmonitored.
+        await storage.recordMonitorRegistration(identifier: "geo_1", transitionTypes: [.enter, .exit], initialState: .exit, center: center, radius: 100, forceReseed: true)
+        #expect(await storage.recordMonitorEvent(.enter, forIdentifier: "geo_1") == .deliver)
+    }
+
+    @Test
+    func recordMonitorRegistration_givenUnchangedGeometryWithoutForceReseed_expectBaselinePreserved() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let storage = makeStorage(directory: dir)
+        let center = LocationData(latitude: 10, longitude: 20)
+        await storage.recordMonitorRegistration(identifier: "geo_1", transitionTypes: [.enter, .exit], initialState: .exit, center: center, radius: 100)
+        #expect(await storage.recordMonitorEvent(.enter, forIdentifier: "geo_1") == .deliver)
+        // Ordinary re-registration still preserves the baseline, so CLMonitor re-evaluating the same
+        // state is not delivered twice.
+        await storage.recordMonitorRegistration(identifier: "geo_1", transitionTypes: [.enter, .exit], initialState: .exit, center: center, radius: 100)
+        #expect(await storage.recordMonitorEvent(.enter, forIdentifier: "geo_1") == .suppressedNoChange)
+    }
+
+    @Test
+    func clearMonitorRegionRecord_givenOtherRegions_expectOnlyTargetDropped() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let storage = makeStorage(directory: dir)
+        let center = LocationData(latitude: 10, longitude: 20)
+        await storage.recordMonitorRegistration(identifier: "geo_1", transitionTypes: [.enter], initialState: .exit, center: center, radius: 100)
+        await storage.recordMonitorRegistration(identifier: "geo_2", transitionTypes: [.enter], initialState: .exit, center: center, radius: 100)
+        await storage.clearMonitorRegionRecord(identifier: "geo_1")
+        #expect(await storage.getMonitorRegionRecords().keys.sorted() == ["geo_2"])
+        // Clearing an identifier with no record must not disturb what is stored.
+        await storage.clearMonitorRegionRecord(identifier: "absent")
+        #expect(await storage.getMonitorRegionRecords().keys.sorted() == ["geo_2"])
+    }
+
+    @Test
     func recordMonitorEvent_givenUnregisteredTransitionType_expectRecordedNotDelivered() async {
         let dir = makeTempDirectory()
         defer { try? FileManager.default.removeItem(at: dir) }
@@ -699,5 +759,79 @@ struct GeofenceStorageTests {
         #expect(records["geo_1"]?.center == LocationData(latitude: 10, longitude: 20))
         #expect(records["geo_1"]?.radius == 100)
         #expect(records["geo_1"]?.lastState == .enter)
+    }
+
+    // MARK: - Monitor baseline pruning
+
+    @Test
+    func recordRegistration_givenEvictedRegion_expectItsBaselineDropped() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let storage = makeStorage(directory: dir)
+        let centre = LocationData(latitude: 10, longitude: 20)
+        await storage.recordMonitorRegistration(identifier: "evicted", transitionTypes: [.enter, .exit], initialState: .enter, center: centre, radius: 500)
+        await storage.recordMonitorRegistration(identifier: "kept", transitionTypes: [.enter, .exit], initialState: .exit, center: centre, radius: 500)
+
+        await storage.recordRegistration(center: centre, businessIds: ["kept"])
+
+        let records = await storage.getMonitorRegionRecords()
+        #expect(records["evicted"] == nil)
+        #expect(records["kept"] != nil)
+    }
+
+    @Test
+    func recordRegistration_givenMovementTrigger_expectItsBaselineRetained() async {
+        // The trigger is never in `businessIds` but is always registered; pruning it would discard
+        // the baseline that makes its EXIT deliverable.
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let storage = makeStorage(directory: dir)
+        let centre = LocationData(latitude: 10, longitude: 20)
+        await storage.recordMonitorRegistration(identifier: GeofenceConstants.movementTriggerIdentifier, transitionTypes: [.exit], initialState: .enter, center: centre, radius: 1000)
+
+        await storage.recordRegistration(center: centre, businessIds: ["g1"])
+
+        #expect(await storage.getMonitorRegionRecords()[GeofenceConstants.movementTriggerIdentifier] != nil)
+    }
+
+    @Test
+    func revisit_givenRegionEvictedWhileInside_expectGenuineEnterStillDelivered() async {
+        // The regression. A region evicted while the device is inside keeps a `.enter` baseline that
+        // no EXIT ever balances, because it is no longer monitored. Re-registering the same circle
+        // later preserves that baseline, so the arrival on a genuine revisit reads as no change and
+        // is dropped. Pruning on eviction is what keeps the revisit deliverable.
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let storage = makeStorage(directory: dir)
+        let centre = LocationData(latitude: 10, longitude: 20)
+        let radius: Double = 500
+
+        await storage.recordMonitorRegistration(identifier: "F", transitionTypes: [.enter, .exit], initialState: .exit, center: centre, radius: radius)
+        #expect(await storage.recordMonitorEvent(.enter, forIdentifier: "F") == .deliver)
+
+        // Evicted while still inside — F is absent from the new registration snapshot.
+        await storage.recordRegistration(center: centre, businessIds: [])
+
+        // Much later: re-registered with an identical circle, device now outside.
+        await storage.recordMonitorRegistration(identifier: "F", transitionTypes: [.enter, .exit], initialState: .exit, center: centre, radius: radius)
+
+        #expect(await storage.recordMonitorEvent(.enter, forIdentifier: "F") == .deliver)
+    }
+
+    @Test
+    func recordRegistration_givenRetainedRegion_expectBaselinePreserved() async {
+        // Pruning must not touch a region that is still registered: its baseline is what keeps an
+        // unchanged re-register silent instead of re-delivering the state the device is already in.
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let storage = makeStorage(directory: dir)
+        let centre = LocationData(latitude: 10, longitude: 20)
+        await storage.recordMonitorRegistration(identifier: "g1", transitionTypes: [.enter, .exit], initialState: .exit, center: centre, radius: 500)
+        #expect(await storage.recordMonitorEvent(.enter, forIdentifier: "g1") == .deliver)
+
+        await storage.recordRegistration(center: centre, businessIds: ["g1"])
+        await storage.recordMonitorRegistration(identifier: "g1", transitionTypes: [.enter, .exit], initialState: .exit, center: centre, radius: 500)
+
+        #expect(await storage.recordMonitorEvent(.enter, forIdentifier: "g1") == .suppressedNoChange)
     }
 }

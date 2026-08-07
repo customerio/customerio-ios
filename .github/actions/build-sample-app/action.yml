@@ -52,10 +52,10 @@ inputs:
     required: false
     default: ''
   xcode-version:
-    description: 'Xcode version to use for the build (e.g. "26.2"). When set, the build uses this version so size diffs compare the same toolchain. Omit to use the setup-ios action default.'
+    description: 'Xcode version to use for the build (e.g. "26.6"). Pinned rather than left empty: an empty value makes setup-ios skip Xcode selection entirely, so the build would silently follow whatever the runner image defaults to.'
     type: string
     required: false
-    default: ''
+    default: '26.6'
   SLACK_WEBHOOK_URL:
     description: "Slack Webhook URL for sample app notifications"
     required: false
@@ -72,7 +72,7 @@ outputs:
 runs:
   using: "composite"
   steps:
-    - uses: customerio/mobile-ci-tools/github-actions/ios/setup-ios/v1@MacOS-15+iOS-26
+    - uses: customerio/mobile-ci-tools/github-actions/ios/setup-ios/v1@main
       with:
         xcode-version: ${{ inputs.xcode-version }}
 
