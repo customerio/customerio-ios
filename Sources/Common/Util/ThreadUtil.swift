@@ -2,8 +2,13 @@ import Foundation
 
 // allows us to more easily have automated tests with threading
 public protocol ThreadUtil {
+    /// Schedules deferrable bulk work that should not compete with user-visible operations.
     func runBackground(_ block: @escaping () -> Void)
+
+    /// Schedules non-deferrable, user-visible work, such as network requests needed to populate UI.
     func runUtility(_ block: @escaping () -> Void)
+
+    /// Schedules work that must execute on the main thread.
     func runMain(_ block: @escaping () -> Void)
 }
 

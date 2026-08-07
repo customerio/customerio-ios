@@ -532,22 +532,28 @@ class InAppMessageStateTests: IntegrationTest {
         let threadUtil = ThreadUtilStub()
         let sseLifecycleManager = SseLifecycleManagerMock()
         mockCollection.add(mock: sseLifecycleManager)
+        let gistUnderTest = await MainActor.run {
+            Gist(
+                logger: diGraphShared.logger,
+                gistDelegate: diGraphShared.gistDelegate,
+                inAppMessageManager: inAppMessageManager,
+                queueManager: queueManager,
+                threadUtil: threadUtil,
+                sseLifecycleManager: sseLifecycleManager
+            )
+        }
+
+        threadUtil.reset()
+        gistQueueNetworkMock.resetMock()
         let utilityExpectation = expectation(description: "Queue fetch dispatched at utility priority")
         threadUtil.runUtilityClosure = { utilityExpectation.fulfill() }
-        let gistUnderTest = Gist(
-            logger: diGraphShared.logger,
-            gistDelegate: diGraphShared.gistDelegate,
-            inAppMessageManager: inAppMessageManager,
-            queueManager: queueManager,
-            threadUtil: threadUtil,
-            sseLifecycleManager: sseLifecycleManager
-        )
 
         await MainActor.run { gistUnderTest.fetchUserMessages() }
 
         await fulfillment(of: [utilityExpectation], timeout: 1)
         XCTAssertTrue(threadUtil.runUtilityCalled)
         XCTAssertFalse(threadUtil.runBackgroundCalled)
+        XCTAssertEqual(gistQueueNetworkMock.requestCallsCount, 1)
         gistUnderTest.resetState()
     }
 
