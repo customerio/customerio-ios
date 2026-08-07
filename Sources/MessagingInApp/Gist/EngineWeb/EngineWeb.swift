@@ -130,7 +130,7 @@ public class EngineWeb: NSObject, EngineWebInstance {
     @objc
     func forcedTimeout() {
         logger.logWithModuleTag("Timeout triggered, triggering message error.", level: .info)
-        inAppMessageManager.dispatch(action: .engineAction(action: .messageLoadingFailed(message: currentMessage)))
+        inAppMessageManager.dispatch(action: .engineAction(action: .messageLoadingFailed(message: currentMessage, suppressRetry: false)))
         delegate?.error()
     }
 }

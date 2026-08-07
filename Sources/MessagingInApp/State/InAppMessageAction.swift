@@ -26,7 +26,11 @@ enum InAppMessageAction: Equatable {
     /// It only contains actions that are related to Gist engine view.
     enum EngineAction: Equatable {
         case tap(message: Message, route: String, name: String, action: String)
-        case messageLoadingFailed(message: Message)
+        /// - Parameter suppressRetry: when true, the message is marked as shown so it is not
+        ///   fetched and displayed again. Use it only when the failure is a property of the
+        ///   message itself and retrying can never succeed; a transient load failure should
+        ///   stay retryable.
+        case messageLoadingFailed(message: Message, suppressRetry: Bool)
     }
 
     /// Represents an action that can be dispatched to InAppMessage store.
@@ -127,6 +131,11 @@ extension InAppMessageAction {
         case .dismissMessage(let message, let shouldLog, let viaCloseAction):
             // Mark the message as shown if it's persistent and should be logged and dismissed via close action only
             return message.gistProperties.persistent == true && shouldLog && viaCloseAction
+
+        case .engineAction(action: .messageLoadingFailed(_, let suppressRetry)):
+            // Persistent messages are not marked as shown when displayed, so a failure that can
+            // never succeed has to mark them here or the message is fetched and shown again forever.
+            return suppressRetry
 
         default:
             return false

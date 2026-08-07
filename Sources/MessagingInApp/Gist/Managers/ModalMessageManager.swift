@@ -7,10 +7,11 @@ public class ModalMessageManager: BaseMessageManager {
     var inAppMessageStoreSubscriber: InAppMessageStoreSubscriber?
     private var colorSchemeSubscriber: InAppMessageStoreSubscriber?
 
-    let sizePolicy = ModalSizePolicy()
-    private var hasArmedSizePolicy = false
+    /// Injectable so tests can drive the guard's clock instead of sleeping.
+    let sizePolicy: ModalSizePolicy
 
-    override init(state: InAppMessageState, message: Message) {
+    init(state: InAppMessageState, message: Message, sizePolicy: ModalSizePolicy = ModalSizePolicy()) {
+        self.sizePolicy = sizePolicy
         super.init(state: state, message: message)
         subscribeToInAppMessageState()
         subscribeToColorSchemeChanges()
@@ -62,12 +63,12 @@ public class ModalMessageManager: BaseMessageManager {
             level: .debug
         )
 
-        // Only start judging reported heights once the message is on screen. While it loads the
-        // WebView is still detached and legitimately measures zero.
-        if !hasArmedSizePolicy {
-            hasArmedSizePolicy = true
-            sizePolicy.arm()
-        }
+        // Start judging reported heights from the point the message is handed over for display.
+        // Heights measured before this belong to a WebView that may not be laid out yet, and the
+        // policy additionally requires the collapsed reports to span real time so the ones that
+        // arrive while the modal is still being laid out cannot fail a healthy message.
+        // arm() is idempotent, so repeat display emissions do not discard progress.
+        sizePolicy.arm()
 
         // Set lifecycle delegate to handle removeFromSuperview event correctly for modal context
         gistView.lifecycleDelegate = self
@@ -90,8 +91,9 @@ public class ModalMessageManager: BaseMessageManager {
         case .degenerate:
             failCollapsedMessage()
 
-        case .viewportDependent(_, let delta):
+        case .viewportDependent(let delta):
             logViewportDependentHeight(delta: delta)
+            sizePolicy.onViewportDependentHandled()
             super.handleSizeChanged(width: width, height: height)
 
         case .apply:
@@ -104,14 +106,21 @@ public class ModalMessageManager: BaseMessageManager {
     private func failCollapsedMessage() {
         logger.logWithModuleTag(
             "In-app message \(currentMessage.messageId) reported a collapsed height " +
-                "(<= \(Int(ModalSizePolicy.degenerateMaxPoints))pt) for \(ModalSizePolicy.sampleCount) " +
-                "consecutive updates, so it can never become visible while still blocking the " +
-                "screen. Dismissing it. \(Self.viewportHeightHint)",
+                "(<= \(Int(sizePolicy.degenerateMaxPoints))pt) for \(sizePolicy.sampleCount) " +
+                "consecutive updates over \(sizePolicy.degenerateMinElapsed)s, so it can never " +
+                "become visible while still blocking the screen. Dismissing it and not retrying " +
+                "it. \(Self.viewportHeightHint)",
             level: .error
         )
+        // suppressRetry is required: a message whose CSS cannot resolve collapses again every time,
+        // and persistent messages are never marked as shown when displayed, so without it the
+        // message would be fetched and shown again indefinitely.
         inAppMessageManager.dispatch(
-            action: .engineAction(action: .messageLoadingFailed(message: currentMessage))
+            action: .engineAction(
+                action: .messageLoadingFailed(message: currentMessage, suppressRetry: true)
+            )
         )
+        sizePolicy.onDegenerateHandled()
     }
 
     private func logViewportDependentHeight(delta: CGFloat) {

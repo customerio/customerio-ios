@@ -281,7 +281,7 @@ extension BaseMessageManager: EngineWebDelegate {
         logger.logWithModuleTag("Error loading message with route: \(route)", level: .error)
         inAppMessageManager.dispatch(
             action: .engineAction(
-                action: .messageLoadingFailed(message: currentMessage)
+                action: .messageLoadingFailed(message: currentMessage, suppressRetry: false)
             )
         )
     }
@@ -290,7 +290,7 @@ extension BaseMessageManager: EngineWebDelegate {
         logger.logWithModuleTag("Error loading message with id: \(currentMessage.describeForLogs)", level: .error)
         inAppMessageManager.dispatch(
             action: .engineAction(
-                action: .messageLoadingFailed(message: currentMessage)
+                action: .messageLoadingFailed(message: currentMessage, suppressRetry: false)
             )
         )
     }
