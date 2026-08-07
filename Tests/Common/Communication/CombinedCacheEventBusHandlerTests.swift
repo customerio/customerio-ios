@@ -68,10 +68,22 @@ class CombinedCacheEventBusHandlerTest: UnitTest {
         await handler.postEventAndWait(ProfileIdentifiedEvent(identifier: "user-1"))
 
         let replayed = XCTestExpectation(description: "event replayed")
+        let removed = XCTestExpectation(description: "event removed from persistent storage")
+        mockEventStorage.removeClosure = { _, _ in removed.fulfill() }
         handler.addObserver(ProfileIdentifiedEvent.self) { _ in replayed.fulfill() }
-        await fulfillment(of: [replayed], timeout: 5.0)
+        await fulfillment(of: [replayed, removed], timeout: 5.0)
 
         XCTAssertEqual(mockEventStorage.removeCallsCount, 1)
+    }
+
+    func test_addObserver_givenPostImmediatelyAfterRegistration_expectDirectDelivery() async {
+        let handler = makeHandler()
+        let received = Synchronized(false)
+
+        handler.addObserver(ProfileIdentifiedEvent.self) { _ in received.wrappedValue = true }
+        await handler.postEventAndWait(ProfileIdentifiedEvent(identifier: "after-add"))
+
+        XCTAssertTrue(received.wrappedValue, "registration requested before the post must be applied first")
     }
 
     func test_addObserver_givenMultipleObserversRegisteredAfterPost_expectBothGetHistory() async {
@@ -100,19 +112,19 @@ class CombinedCacheEventBusHandlerTest: UnitTest {
 
         await handler.postEventAndWait(event)
 
-        var deliveryCount = 0
+        let deliveryCount = Synchronized(0)
         let delivered = XCTestExpectation(description: "delivered")
         delivered.assertForOverFulfill = true
 
         handler.addObserver(ProfileIdentifiedEvent.self) { received in
             if received.identifier == event.identifier {
-                deliveryCount += 1
+                deliveryCount.mutating { $0 += 1 }
                 delivered.fulfill()
             }
         }
 
         await fulfillment(of: [delivered], timeout: 5.0)
-        XCTAssertEqual(deliveryCount, 1, "event must be delivered exactly once")
+        XCTAssertEqual(deliveryCount.wrappedValue, 1, "event must be delivered exactly once")
     }
 
     func test_noDuplicateDelivery_givenConcurrentPostAndObserverRegistration_expectSingleDelivery() async {
@@ -176,20 +188,30 @@ class CombinedCacheEventBusHandlerTest: UnitTest {
 
     func test_removeObserver_givenObserverRemoved_expectNoDeliveryAfterRemoval() async {
         let handler = makeHandler()
-        var received = false
+        let received = Synchronized(false)
 
         // Register and then immediately remove.
-        handler.addObserver(ProfileIdentifiedEvent.self) { _ in received = true }
+        handler.addObserver(ProfileIdentifiedEvent.self) { _ in received.wrappedValue = true }
         handler.removeObserver(for: ProfileIdentifiedEvent.self)
 
-        // postEventAndWait goes through the actor. The remove Task ran earlier and
-        // will have completed its actor call before the post call in most runs.
-        // Use a short sleep to give both Tasks time to schedule their actor calls.
-        try? await Task.sleep(nanoseconds: 100000000)
-
+        // No sleep needed: postEventAndWait applies the add/remove requested above in call
+        // order before it reads the observer set, and it invokes every observer it finds
+        // before returning. So if the removal were lost, `received` would be true here.
         await handler.postEventAndWait(ProfileIdentifiedEvent(identifier: "after-remove"))
 
-        try? await Task.sleep(nanoseconds: 100000000)
-        XCTAssertFalse(received, "removed observer must not receive events")
+        XCTAssertFalse(received.wrappedValue, "removed observer must not receive events")
+    }
+
+    func test_removeObserver_givenObserverAlreadyApplied_expectRemovalOrderedBeforeNextPost() async {
+        let handler = makeHandler()
+        let deliveryCount = Synchronized(0)
+
+        handler.addObserver(ProfileIdentifiedEvent.self) { _ in deliveryCount.mutating { $0 += 1 } }
+        await handler.postEventAndWait(ProfileIdentifiedEvent(identifier: "before-remove"))
+
+        handler.removeObserver(for: ProfileIdentifiedEvent.self)
+        await handler.postEventAndWait(ProfileIdentifiedEvent(identifier: "after-remove"))
+
+        XCTAssertEqual(deliveryCount.wrappedValue, 1, "removal requested before the second post must be applied first")
     }
 }
