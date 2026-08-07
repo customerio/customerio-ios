@@ -524,37 +524,82 @@ class InAppMessageStateTests: IntegrationTest {
 
     // MARK: fetch user messages from backend services
 
-    func test_fetchUserMessages_expectUtilityThread() async {
-        await inAppMessageManager.dispatchAsync(action: .initialize(siteId: .random, dataCenter: .random, environment: .production))
-        await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: .random))
-        setupHttpResponse(code: 304, body: Data())
+    /// A queue fetch is user-visible work, so it must be scheduled at utility priority, never at
+    /// background priority where the OS is free to defer it indefinitely.
+    ///
+    /// Every collaborator capable of replaying state or scheduling observable work on this path is
+    /// isolated in this test. Building a `Gist` on the class-wide `InAppMessageStoreManager` is not
+    /// viable here: `init` subscribes to the store, ReSwift replays the current state to a new
+    /// subscriber, and that replay drives a fetch of its own. It arrives on a store task at an
+    /// unpredictable moment, is indistinguishable from the fetch under test, and — because the store
+    /// keeps the subscription alive — can still arrive after this test has finished.
+    /// `InAppMessageManagerMock` gives the Gist no store to subscribe to and hands it state
+    /// synchronously, so the only fetch that can occur is the one asked for below, and it completes
+    /// before the call returns. The controlled 304 response also returns before the shared visual
+    /// inbox repository can be reached.
+    func test_fetchUserMessages_givenIdentifiedUser_expectSingleQueueFetchScheduledAtUtilityPriority() async throws {
+        let applicationState = await MainActor.run { UIApplication.shared.applicationState }
+        try XCTSkipIf(applicationState == .background, "A backgrounded XCTest host bypasses this foreground path.")
+
+        let state = InAppMessageState(siteId: .random, dataCenter: .random, userId: .random)
+
+        let inAppMessageManagerMock = InAppMessageManagerMock()
+        // Inert subscriptions: no state replay, so nothing in `init` can schedule a fetch.
+        inAppMessageManagerMock.subscribeClosure = { _, _ in Task {} }
+        inAppMessageManagerMock.unsubscribeClosure = { _ in Task {} }
+        inAppMessageManagerMock.dispatchClosure = { _, completion in
+            completion?()
+            return Task {}
+        }
+        inAppMessageManagerMock.fetchStateClosure = { completion in
+            completion(state)
+            return Task { state }
+        }
+
+        let queueNetworkMock = GistQueueNetworkMock()
+        // 304 with no cached response is the shortest path through `QueueManager` that still proves a
+        // request was made, and it finishes inline.
+        queueNetworkMock.requestClosure = { _, _, completionHandler in
+            let response = HTTPURLResponse(
+                url: URL(string: "https://test.com")!, statusCode: 304, httpVersion: nil, headerFields: nil
+            )!
+
+            completionHandler(.success((Data(), response)))
+        }
+
+        let queueManagerUnderTest = QueueManager(
+            keyValueStore: InMemorySharedKeyValueStorage(),
+            gistQueueNetwork: queueNetworkMock,
+            inAppMessageManager: inAppMessageManagerMock,
+            anonymousMessageManager: AnonymousMessageManagerMock(),
+            inboxMessageCache: InboxMessageCacheManager(
+                keyValueStore: InMemorySharedKeyValueStorage(),
+                logger: diGraphShared.logger
+            ),
+            visualInboxRepository: diGraphShared.visualInboxRepository,
+            logger: diGraphShared.logger
+        )
 
         let threadUtil = ThreadUtilStub()
-        let sseLifecycleManager = SseLifecycleManagerMock()
-        mockCollection.add(mock: sseLifecycleManager)
         let gistUnderTest = await MainActor.run {
             Gist(
                 logger: diGraphShared.logger,
                 gistDelegate: diGraphShared.gistDelegate,
-                inAppMessageManager: inAppMessageManager,
-                queueManager: queueManager,
+                inAppMessageManager: inAppMessageManagerMock,
+                queueManager: queueManagerUnderTest,
                 threadUtil: threadUtil,
-                sseLifecycleManager: sseLifecycleManager
+                sseLifecycleManager: SseLifecycleManagerMock()
             )
         }
 
-        threadUtil.reset()
-        gistQueueNetworkMock.resetMock()
-        let utilityExpectation = expectation(description: "Queue fetch dispatched at utility priority")
-        threadUtil.runUtilityClosure = { utilityExpectation.fulfill() }
-
+        // `fetchUserMessages` reads `UIApplication.applicationState`, so it must be called on main.
         await MainActor.run { gistUnderTest.fetchUserMessages() }
 
-        await fulfillment(of: [utilityExpectation], timeout: 1)
-        XCTAssertTrue(threadUtil.runUtilityCalled)
-        XCTAssertFalse(threadUtil.runBackgroundCalled)
-        XCTAssertEqual(gistQueueNetworkMock.requestCallsCount, 1)
-        gistUnderTest.resetState()
+        // Both counts are exact. The whole path ran inline on this thread, so anything beyond one
+        // utility dispatch or one request would be a second fetch this test never asked for.
+        XCTAssertEqual(threadUtil.runUtilityCallsCount, 1)
+        XCTAssertEqual(threadUtil.runBackgroundCallsCount, 0)
+        XCTAssertEqual(queueNetworkMock.requestCallsCount, 1)
     }
 
     var sampleFetchResponseBody: String {
