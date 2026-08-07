@@ -365,7 +365,7 @@ class InAppMessageStateTests: IntegrationTest {
         let message = Message(queueId: "1")
 
         await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: .random))
-        await inAppMessageManager.dispatchAsync(action: .engineAction(action: .messageLoadingFailed(message: message)))
+        await inAppMessageManager.dispatchAsync(action: .engineAction(action: .messageLoadingFailed(message: message, suppressRetry: false)))
 
         let state = await inAppMessageManager.state
         XCTAssertEqual(state.modalMessageState, .dismissed(message: message))
@@ -501,7 +501,7 @@ class InAppMessageStateTests: IntegrationTest {
         let message = Message(queueId: "1")
 
         await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: .random))
-        await inAppMessageManager.dispatchAsync(action: .engineAction(action: .messageLoadingFailed(message: message)))
+        await inAppMessageManager.dispatchAsync(action: .engineAction(action: .messageLoadingFailed(message: message, suppressRetry: false)))
 
         XCTAssertTrue(globalEventListener.errorWithMessageCalled)
         XCTAssertEqual(globalEventListener.errorWithMessageReceivedArguments?.deliveryId, message.gistProperties.campaignId)

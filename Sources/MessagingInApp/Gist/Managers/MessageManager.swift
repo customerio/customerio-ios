@@ -125,6 +125,18 @@ open class BaseMessageManager {
         engine.delegate = nil
     }
 
+    // MARK: - Size Reporting
+
+    /// Applies a size reported by the message renderer.
+    ///
+    /// Declared on the class body rather than on the `EngineWebDelegate` extension below because
+    /// methods defined in a class extension are statically dispatched and cannot be overridden.
+    /// Subclasses override this when they need to inspect reported sizes.
+    func handleSizeChanged(width: CGFloat, height: CGFloat) {
+        gistView.delegate?.sizeChanged(message: currentMessage, width: width, height: height)
+        logger.logWithModuleTag("Message size changed Width: \(width) - Height: \(height)", level: .debug)
+    }
+
     // MARK: - Helpers
 
     public func showNewMessage(url: URL) {
@@ -262,15 +274,14 @@ extension BaseMessageManager: EngineWebDelegate {
     }
 
     public func sizeChanged(width: CGFloat, height: CGFloat) {
-        gistView.delegate?.sizeChanged(message: currentMessage, width: width, height: height)
-        logger.logWithModuleTag("Message size changed Width: \(width) - Height: \(height)", level: .debug)
+        handleSizeChanged(width: width, height: height)
     }
 
     public func routeError(route: String) {
         logger.logWithModuleTag("Error loading message with route: \(route)", level: .error)
         inAppMessageManager.dispatch(
             action: .engineAction(
-                action: .messageLoadingFailed(message: currentMessage)
+                action: .messageLoadingFailed(message: currentMessage, suppressRetry: false)
             )
         )
     }
@@ -279,7 +290,7 @@ extension BaseMessageManager: EngineWebDelegate {
         logger.logWithModuleTag("Error loading message with id: \(currentMessage.describeForLogs)", level: .error)
         inAppMessageManager.dispatch(
             action: .engineAction(
-                action: .messageLoadingFailed(message: currentMessage)
+                action: .messageLoadingFailed(message: currentMessage, suppressRetry: false)
             )
         )
     }

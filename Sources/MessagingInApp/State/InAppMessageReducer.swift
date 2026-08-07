@@ -137,8 +137,15 @@ private func reducer(action: InAppMessageAction, state: InAppMessageState) -> In
         switch engineAction {
         case .tap:
             return state
-        case .messageLoadingFailed(let message):
-            return state.copy(modalMessageState: .dismissed(message: message))
+        case .messageLoadingFailed(let message, _):
+            let shownMessageQueueIds = action.shouldMarkMessageAsShown && message.queueId != nil
+                ? state.shownMessageQueueIds.union([message.queueId!])
+                : state.shownMessageQueueIds
+
+            return state.copy(
+                modalMessageState: .dismissed(message: message),
+                shownMessageQueueIds: shownMessageQueueIds
+            )
         }
 
     case .inboxAction(let inboxAction):
