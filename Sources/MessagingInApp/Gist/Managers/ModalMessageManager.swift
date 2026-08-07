@@ -7,6 +7,9 @@ public class ModalMessageManager: BaseMessageManager {
     var inAppMessageStoreSubscriber: InAppMessageStoreSubscriber?
     private var colorSchemeSubscriber: InAppMessageStoreSubscriber?
 
+    let sizePolicy = ModalSizePolicy()
+    private var hasArmedSizePolicy = false
+
     override init(state: InAppMessageState, message: Message) {
         super.init(state: state, message: message)
         subscribeToInAppMessageState()
@@ -59,6 +62,13 @@ public class ModalMessageManager: BaseMessageManager {
             level: .debug
         )
 
+        // Only start judging reported heights once the message is on screen. While it loads the
+        // WebView is still detached and legitimately measures zero.
+        if !hasArmedSizePolicy {
+            hasArmedSizePolicy = true
+            sizePolicy.arm()
+        }
+
         // Set lifecycle delegate to handle removeFromSuperview event correctly for modal context
         gistView.lifecycleDelegate = self
 
@@ -74,6 +84,51 @@ public class ModalMessageManager: BaseMessageManager {
             self?.elapsedTimer.end()
         }
     }
+
+    override func handleSizeChanged(width: CGFloat, height: CGFloat) {
+        switch sizePolicy.onHeightReported(height) {
+        case .degenerate:
+            failCollapsedMessage()
+
+        case .viewportDependent(_, let delta):
+            logViewportDependentHeight(delta: delta)
+            super.handleSizeChanged(width: width, height: height)
+
+        case .apply:
+            super.handleSizeChanged(width: width, height: height)
+        }
+    }
+
+    /// The message is displayed but collapsed, so it covers the screen and swallows touches without
+    /// ever showing anything. Failing it dismisses the overlay and tells the host app why.
+    private func failCollapsedMessage() {
+        logger.logWithModuleTag(
+            "In-app message \(currentMessage.messageId) reported a collapsed height " +
+                "(<= \(Int(ModalSizePolicy.degenerateMaxPoints))pt) for \(ModalSizePolicy.sampleCount) " +
+                "consecutive updates, so it can never become visible while still blocking the " +
+                "screen. Dismissing it. \(Self.viewportHeightHint)",
+            level: .error
+        )
+        inAppMessageManager.dispatch(
+            action: .engineAction(action: .messageLoadingFailed(message: currentMessage))
+        )
+    }
+
+    private func logViewportDependentHeight(delta: CGFloat) {
+        logger.logWithModuleTag(
+            "In-app message \(currentMessage.messageId) keeps growing by \(delta)pt per update, so " +
+                "its height tracks the WebView height instead of its content. It will be clamped " +
+                "to the screen and its content may not be positioned as designed. " +
+                Self.viewportHeightHint,
+            level: .error
+        )
+    }
+
+    private static let viewportHeightHint =
+        "This usually means the message HTML derives its own height from the viewport " +
+        "(height: 100vh or height: 100% on html/body). The SDK sizes the WebView to the height " +
+        "the message reports, so a viewport based height can never resolve; give the message a " +
+        "content driven height instead."
 
     // Called when the message is dismissed (or reset).
     // Because onMessageDismissed(...) is internal in BaseMessageManager,
