@@ -13,10 +13,10 @@ inputs:
     type: string
     required: true
   xcode-version:
-    description: 'Xcode version used for the main build (e.g. "26.2"). When set, the main build and cache key use this version so size diffs compare the same toolchain.'
+    description: 'Xcode version used for the main build (e.g. "26.6"). The main build and cache key use this version so size diffs compare the same toolchain.'
     type: string
     required: false
-    default: ''
+    default: '26.6'
 
 outputs:
   apn-app-xcarchive-path:
