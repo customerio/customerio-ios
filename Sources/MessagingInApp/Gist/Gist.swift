@@ -308,8 +308,11 @@ class Gist: GistProvider {
             return
         }
 
-        threadUtil.runBackground {
-            self.queueManager.fetchUserQueue(state: state) { [weak self] response in
+        threadUtil.runUtility { [weak self] in
+            guard let self else { return }
+
+            logger.logWithModuleTag("Gist: Starting queue fetch at utility priority", level: .debug)
+            queueManager.fetchUserQueue(state: state) { [weak self] response in
                 guard let self else { return }
 
                 switch response {
