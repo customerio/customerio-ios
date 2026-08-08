@@ -142,6 +142,10 @@ extension Logger {
         info("Cached fix is \(age); requesting a fresh fix for the movement pass", geofenceTag)
     }
 
+    func geofenceBaselineHealed(identifier: String, transition: GeofenceTransition) {
+        info("Synthesized \(transition.rawValue) for region \(identifier): fresh fix contradicts stored baseline (OS never delivered the crossing)", geofenceTag)
+    }
+
     func geofenceMovementFixRequestFailed(fallingBackToCached: Bool) {
         let outcome = fallingBackToCached ? "falling back to the stale cached fix" : "no cached fix to fall back to"
         info("Fresh-fix request failed or timed out; \(outcome)", geofenceTag)
