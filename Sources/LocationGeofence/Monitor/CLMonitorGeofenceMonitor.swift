@@ -41,6 +41,8 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preco
     /// Only for auth status/changes + current-location reads; region monitoring is on `CLMonitor`.
     /// Internal for the `+Registration` extension.
     let authManager: CLLocationManager
+    /// Freshens the fix behind movement-trigger EXIT dispatches (see `MovementFixResolver`).
+    private let movementFixResolver: MovementFixResolver
     private var onTransition: GeofenceTransitionHandler?
     private var onAuthorizationChanged: GeofenceAuthorizationChangedHandler?
     private var onReconciled: GeofenceReconciledHandler?
@@ -97,6 +99,7 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preco
         self.storage = storage
         self.userDefaults = userDefaults
         self.authManager = CLLocationManager()
+        self.movementFixResolver = MovementFixResolver(logger: logger)
         super.init()
         let mirrored = Set(userDefaults.stringArray(forKey: Self.conditionMirrorKey) ?? [])
         self.knownConditionIdentifiers = mirrored
@@ -259,6 +262,15 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preco
         // No ownership re-check after the await: the baseline already advanced, so dropping here
         // loses the transition permanently — a sync's stop-all + re-add swap would eat a genuine
         // crossing that raced it. A region truly removed in that window delivers one last gated event.
+        if identifier == GeofenceConstants.movementTriggerIdentifier, transition == .exit {
+            // The movement pass re-centers the trigger and measures displacement at these coords, so
+            // a frozen cached fix pins the whole pipeline to a stale point — freshen it first.
+            // Fire-and-forget so a slow fix can't stall the pending-event drain behind it.
+            movementFixResolver.resolve(cached: bestKnownFix()) { [weak self] location in
+                self?.onTransition?(identifier, transition, location)
+            }
+            return
+        }
         onTransition?(identifier, transition, currentLocationData())
     }
 
@@ -338,23 +350,25 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preco
         userDefaults.set(knownConditionIdentifiers.sorted(), forKey: Self.conditionMirrorKey)
     }
 
+    /// Newest usable fix across the auth manager's cache and the resolver's requested fixes.
+    /// The manager's cache can freeze at process start on a long-suspended process, so a fresher
+    /// resolver fix must win wherever cached position is read.
+    private func bestKnownFix() -> CLLocation? {
+        let cached = authManager.location.flatMap { CLLocationCoordinate2DIsValid($0.coordinate) ? $0 : nil }
+        guard let resolved = movementFixResolver.latestFix else { return cached }
+        guard let cached else { return resolved }
+        return resolved.timestamp > cached.timestamp ? resolved : cached
+    }
+
     private func currentLocationData() -> LocationData? {
-        guard let location = authManager.location,
-              CLLocationCoordinate2DIsValid(location.coordinate)
-        else {
-            return nil
-        }
+        guard let location = bestKnownFix() else { return nil }
         return LocationData(latitude: location.coordinate.latitude, longitude: location.coordinate.longitude)
     }
 
     /// Whether the device is inside the circle per the last known location; `nil` without a usable
     /// fix. No accuracy padding: a wrong guess costs one corrective event, absorbed by the baseline.
     func isDeviceInside(center: CLLocationCoordinate2D, radius: CLLocationDistance) -> Bool? {
-        guard let location = authManager.location,
-              CLLocationCoordinate2DIsValid(location.coordinate)
-        else {
-            return nil
-        }
+        guard let location = bestKnownFix() else { return nil }
         let centerLocation = CLLocation(latitude: center.latitude, longitude: center.longitude)
         return location.distance(from: centerLocation) <= radius
     }
