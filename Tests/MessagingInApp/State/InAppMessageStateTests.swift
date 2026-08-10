@@ -640,7 +640,7 @@ class InAppMessageStateTests: IntegrationTest {
         harness.gist.fetchUserMessagesFromRemoteQueue()
 
         await waitUntil {
-            harness.threadUtil.runMainActorExecutionsCount >= 2
+            harness.threadUtil.runMainActorExecutionsCount >= 1
         }
 
         XCTAssertEqual(harness.threadUtil.runUtilityCallsCount, 1)
@@ -651,6 +651,27 @@ class InAppMessageStateTests: IntegrationTest {
         harness.gist.resetState()
         await waitUntil {
             harness.threadUtil.runMainActorExecutionsCount > executionsBeforeReset
+        }
+    }
+
+    func test_fetchUserMessagesFromRemoteQueue_givenActiveTimer_expectGistCanDeallocateAndCleanUp() async {
+        var harness: FetchHarness? = await makeFetchHarness(applicationState: .active)
+        weak let weakGist = harness?.gist
+        guard let threadUtil = harness?.threadUtil else {
+            XCTFail("Expected the fetch harness to provide a thread utility")
+            return
+        }
+
+        harness?.gist.fetchUserMessagesFromRemoteQueue()
+        await waitUntil {
+            threadUtil.runMainActorExecutionsCount >= 1
+        }
+
+        let executionsBeforeDeinit = threadUtil.runMainActorExecutionsCount
+        harness = nil
+
+        await waitUntil {
+            weakGist == nil && threadUtil.runMainActorExecutionsCount > executionsBeforeDeinit
         }
     }
 

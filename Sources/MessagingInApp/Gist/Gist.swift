@@ -76,10 +76,9 @@ class Gist: GistProvider {
         sseEnabledSubscriber = nil
         userIdSubscriber = nil
 
-        // Do not weakly capture `self` from deinit. Capture the timer itself so the queued cleanup
-        // still runs after this instance has finished deallocating.
+        // The timer callback holds Gist weakly, so deinit can run while the timer is scheduled.
+        // Capture the timer itself so queued cleanup does not depend on a deallocating `self`.
         let timer = queueTimer
-        queueTimer = nil
         threadUtil.runMainActor {
             timer?.invalidate()
         }
@@ -182,7 +181,8 @@ class Gist: GistProvider {
     }
 
     private func invalidateTimer() {
-        // Timer state is only read or modified from the main actor.
+        // All live-instance timer mutations are serialized on the main actor. Deinit only captures
+        // the final timer reference so it can schedule cleanup after this instance is released.
         threadUtil.runMainActor { [weak self] in
             guard let self else { return }
 
@@ -260,20 +260,20 @@ class Gist: GistProvider {
 
     private func setupPollingAndFetch(skipMessageFetch: Bool, pollingInterval: Double) {
         logger.logWithModuleTag("Gist: Setting up polling timer - interval: \(pollingInterval)s, skipInitialFetch: \(skipMessageFetch)", level: .info)
-        invalidateTimer()
 
-        // Invalidation above, timer setup, and the optional initial fetch use the same main-actor
-        // scheduler, preserving FIFO ordering while keeping the complete path observable in tests.
+        // Replace the timer in one main-actor operation. Keeping invalidation and creation together
+        // prevents concurrent setup callers from interleaving and leaving an orphaned timer behind.
         threadUtil.runMainActor { [weak self] in
             guard let self else { return }
 
-            queueTimer = Timer.scheduledTimer(
-                timeInterval: pollingInterval,
-                target: self,
-                selector: #selector(fetchUserMessages),
-                userInfo: nil,
-                repeats: true
-            )
+            let timerWasActive = queueTimer != nil
+            logger.logWithModuleTag("Gist: Replacing polling timer (wasActive: \(timerWasActive))", level: .debug)
+            queueTimer?.invalidate()
+            queueTimer = Timer.scheduledTimer(withTimeInterval: pollingInterval, repeats: true) { [weak self] _ in
+                MainActor.assumeIsolated {
+                    self?.fetchUserMessages()
+                }
+            }
             logger.logWithModuleTag("Gist: Polling timer started with interval: \(pollingInterval)s", level: .debug)
 
             if !skipMessageFetch {
@@ -283,9 +283,8 @@ class Gist: GistProvider {
     }
 
     /// Fetches the user messages from the remote service and dispatches actions to the `InAppMessageManager`.
-    /// The method must be marked with `@objc` and public to be used as a selector in the `Timer` scheduled.
-    /// Also, the method must be called on main thread since it checks the application state.
-    @MainActor @objc
+    /// The method runs on the main actor because it checks the application state.
+    @MainActor
     func fetchUserMessages() {
         guard applicationStateProvider.applicationState != .background else {
             logger.logWithModuleTag("Gist: Application in background, skipping queue check", level: .debug)

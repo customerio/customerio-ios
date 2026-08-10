@@ -21,20 +21,11 @@ public extension ThreadUtil {
         runBackground(block)
     }
 
-    /// Preserves source compatibility while honoring the existing `runMain` contract.
+    /// Preserves source compatibility with the same asynchronous semantics as the production implementation.
     func runMainActor(_ block: @MainActor @escaping () -> Void) {
-        runMain {
-            if Thread.isMainThread {
-                MainActor.assumeIsolated {
-                    block()
-                }
-            } else {
-                // Be defensive for legacy/test conformers that execute `runMain` inline.
-                DispatchQueue.main.async {
-                    MainActor.assumeIsolated {
-                        block()
-                    }
-                }
+        DispatchQueue.main.async {
+            MainActor.assumeIsolated {
+                block()
             }
         }
     }
