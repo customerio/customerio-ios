@@ -295,6 +295,11 @@ class Gist: GistProvider {
             return
         }
 
+        fetchUserQueueIfPollingActive()
+    }
+
+    /// Keep the store callback nonisolated because the manager invokes it from its own task.
+    private func fetchUserQueueIfPollingActive() {
         inAppMessageManager.fetchState { [weak self] state in
             guard let self else { return }
 
