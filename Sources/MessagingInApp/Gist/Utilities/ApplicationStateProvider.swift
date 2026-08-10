@@ -8,6 +8,7 @@ import UIKit
 protocol ApplicationStateProvider: AutoMockable {
     /// Returns the current application state.
     /// Must be called from the main thread.
+    @MainActor
     var applicationState: UIApplication.State { get }
 }
 
@@ -15,6 +16,7 @@ protocol ApplicationStateProvider: AutoMockable {
 /// Production implementation that wraps UIApplication.shared.
 /// Returns the actual application state from the system.
 struct RealApplicationStateProvider: ApplicationStateProvider {
+    @MainActor
     var applicationState: UIApplication.State {
         UIApplication.shared.applicationState
     }

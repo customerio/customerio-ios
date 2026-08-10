@@ -40,7 +40,7 @@ class Gist: GistProvider {
         queueManager: QueueManager,
         threadUtil: ThreadUtil,
         sseLifecycleManager: SseLifecycleManager,
-        applicationStateProvider: ApplicationStateProvider = RealApplicationStateProvider()
+        applicationStateProvider: ApplicationStateProvider
     ) {
         self.logger = logger
         self.gistDelegate = gistDelegate
@@ -267,8 +267,10 @@ class Gist: GistProvider {
         }
 
         if !skipMessageFetch {
-            threadUtil.runMain {
-                self.fetchUserMessages()
+            threadUtil.runMain { [weak self] in
+                Task { @MainActor [weak self] in
+                    self?.fetchUserMessages()
+                }
             }
         }
     }
@@ -276,7 +278,7 @@ class Gist: GistProvider {
     /// Fetches the user messages from the remote service and dispatches actions to the `InAppMessageManager`.
     /// The method must be marked with `@objc` and public to be used as a selector in the `Timer` scheduled.
     /// Also, the method must be called on main thread since it checks the application state.
-    @objc
+    @MainActor @objc
     func fetchUserMessages() {
         guard applicationStateProvider.applicationState != .background else {
             logger.logWithModuleTag("Gist: Application in background, skipping queue check", level: .debug)

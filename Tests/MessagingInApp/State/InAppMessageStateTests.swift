@@ -58,7 +58,8 @@ class InAppMessageStateTests: IntegrationTest {
             inAppMessageManager: inAppMessageManager,
             queueManager: queueManager,
             threadUtil: diGraphShared.threadUtil,
-            sseLifecycleManager: diGraphShared.sseLifecycleManager
+            sseLifecycleManager: diGraphShared.sseLifecycleManager,
+            applicationStateProvider: diGraphShared.applicationStateProvider
         )
     }
 
@@ -524,8 +525,8 @@ class InAppMessageStateTests: IntegrationTest {
 
     // MARK: fetch user messages from backend services
 
-    /// A queue fetch is user-visible work, so it must be scheduled at utility priority instead of
-    /// the lower-priority background queue used for deferrable bulk work.
+    /// A queue fetch should run above deferrable background processing, but does not need the
+    /// interactive priority reserved for UI work.
     ///
     /// Every collaborator capable of replaying state or scheduling observable work on this path is
     /// isolated in this test. Building a `Gist` on the class-wide `InAppMessageStoreManager` is not
