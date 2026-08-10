@@ -28,7 +28,8 @@ public class CombinedCacheEventBusHandler: EventBusHandler {
     /// Tails of best-effort persistent cleanup work, grouped by event key.
     ///
     /// Cleanup is retained and serialized separately from registry work so disk operations
-    /// never delay observer registration, replay delivery, or a later post.
+    /// do not delay observer registration or replay delivery. Cleanup can still contend with
+    /// later persistence work performed by the same `EventStorage` actor.
     private let pendingCleanupWork = Synchronized<[String: Task<Void, Never>]>([:])
 
     public init(eventStorage: EventStorage, logger: Logger) {
@@ -42,13 +43,14 @@ public class CombinedCacheEventBusHandler: EventBusHandler {
 
     deinit {
         pendingRegistryWork.using { $0.values.forEach { $0.cancel() } }
-        pendingCleanupWork.using { $0.values.forEach { $0.cancel() } }
     }
 
     /// Appends a registry operation to the chain for `key`.
     ///
     /// Reading the previous tail and installing the new one happen in one synchronized
     /// mutation, so concurrent callers still produce a single well-defined order per key.
+    /// This is internal only as a deterministic concurrency-test seam; production callers
+    /// should use the public observer APIs.
     func chainRegistryWork(forKey key: String, operation: @escaping () async -> Void) {
         pendingRegistryWork.mutating { workByKey in
             let previous = workByKey[key]
@@ -76,7 +78,6 @@ public class CombinedCacheEventBusHandler: EventBusHandler {
             workByKey[key] = Task {
                 await previous?.value
                 for event in events {
-                    guard !Task.isCancelled else { return }
                     await storage.remove(
                         ofType: event.key,
                         withStorageId: event.storageId
@@ -135,8 +136,8 @@ public class CombinedCacheEventBusHandler: EventBusHandler {
                 action(event)
             }
             // Removal is idempotent and runs on a separately retained chain so slow file I/O
-            // never stalls delivery. A process terminated before cleanup finishes can replay
-            // the event again on its next launch.
+            // never stalls replay delivery or registry ordering. A process terminated before
+            // cleanup finishes can replay the event again on its next launch.
             enqueueCleanup(for: eventsToReplay, key: E.key)
         }
     }

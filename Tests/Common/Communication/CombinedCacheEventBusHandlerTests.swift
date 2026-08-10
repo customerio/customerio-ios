@@ -102,6 +102,8 @@ class CombinedCacheEventBusHandlerTest: UnitTest {
         handler.addObserver(ProfileIdentifiedEvent.self) { _ in }
         await storage.waitForRemovalToStart()
 
+        // This fake suspends outside the storage actor, isolating the handler's cleanup-chain
+        // behavior. Real file I/O can still contend with later persistence on EventStorage.
         let completedBeforeTimeout = await withTaskGroup(of: Bool.self, returning: Bool.self) { group in
             group.addTask {
                 await handler.postEventAndWait(ProfileIdentifiedEvent(identifier: "after-replay"))
@@ -126,6 +128,33 @@ class CombinedCacheEventBusHandlerTest: UnitTest {
         }
 
         XCTAssertTrue(completedBeforeTimeout, "persistent cleanup must not block event delivery")
+    }
+
+    func test_addObserver_givenHandlerDeinitializedDuringReplayCleanup_expectCleanupFinishes() async {
+        let handlerDeinitialized = XCTestExpectation(description: "handler deinitialized")
+        let allEventsRemoved = XCTestExpectation(description: "all replayed events removed")
+        allEventsRemoved.expectedFulfillmentCount = 2
+        let storage = SuspendedRemovalEventStorage {
+            allEventsRemoved.fulfill()
+        }
+        var handler: DeinitObservableEventBusHandler? = DeinitObservableEventBusHandler(
+            eventStorage: storage,
+            logger: log,
+            onDeinit: { handlerDeinitialized.fulfill() }
+        )
+
+        await handler?.postEventAndWait(ProfileIdentifiedEvent(identifier: "first"))
+        await handler?.postEventAndWait(ProfileIdentifiedEvent(identifier: "second"))
+        handler?.addObserver(ProfileIdentifiedEvent.self) { _ in }
+        await storage.waitForRemovalToStart()
+
+        weak var weakHandler = handler
+        handler = nil
+        await fulfillment(of: [handlerDeinitialized], timeout: 5.0)
+        XCTAssertNil(weakHandler)
+
+        await storage.releaseRemoval()
+        await fulfillment(of: [allEventsRemoved], timeout: 5.0)
     }
 
     func test_addObserver_givenPostImmediatelyAfterRegistration_expectDirectDelivery() async {
@@ -365,6 +394,12 @@ private actor AsyncGate {
 
 private actor SuspendedRemovalEventStorage: EventStorage {
     private let removalGate = AsyncGate()
+    private let onRemove: () -> Void
+    private var shouldSuspendRemoval = true
+
+    init(onRemove: @escaping () -> Void = {}) {
+        self.onRemove = onRemove
+    }
 
     func store(event: AnyEventRepresentable) async throws {}
 
@@ -377,7 +412,11 @@ private actor SuspendedRemovalEventStorage: EventStorage {
     }
 
     func remove(ofType eventType: String, withStorageId storageId: String) async {
-        await removalGate.wait()
+        if shouldSuspendRemoval {
+            shouldSuspendRemoval = false
+            await removalGate.wait()
+        }
+        onRemove()
     }
 
     func removeAll() async {}
@@ -388,5 +427,18 @@ private actor SuspendedRemovalEventStorage: EventStorage {
 
     func releaseRemoval() async {
         await removalGate.release()
+    }
+}
+
+private final class DeinitObservableEventBusHandler: CombinedCacheEventBusHandler {
+    private let onDeinit: () -> Void
+
+    init(eventStorage: EventStorage, logger: Logger, onDeinit: @escaping () -> Void) {
+        self.onDeinit = onDeinit
+        super.init(eventStorage: eventStorage, logger: logger)
+    }
+
+    deinit {
+        onDeinit()
     }
 }
