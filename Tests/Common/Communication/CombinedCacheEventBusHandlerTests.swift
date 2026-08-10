@@ -46,6 +46,24 @@ class CombinedCacheEventBusHandlerTest: UnitTest {
         await handler.postEventAndWait(ProfileIdentifiedEvent(identifier: "user-1"))
     }
 
+    func test_postEvent_givenObserverAddedThenRemoved_expectEventStoredWithoutDelivery() async {
+        let handler = makeHandler()
+        let event = ProfileIdentifiedEvent(identifier: "after-remove")
+        let received = Synchronized(false)
+        let stored = XCTestExpectation(description: "unobserved event stored")
+        mockEventStorage.storeClosure = { storedEvent in
+            guard storedEvent.storageId == event.storageId else { return }
+            stored.fulfill()
+        }
+
+        handler.addObserver(ProfileIdentifiedEvent.self) { _ in received.wrappedValue = true }
+        handler.removeObserver(for: ProfileIdentifiedEvent.self)
+        handler.postEvent(event)
+
+        await fulfillment(of: [stored], timeout: 5.0)
+        XCTAssertFalse(received.wrappedValue)
+    }
+
     // MARK: - addObserver replay
 
     func test_addObserver_givenEventCachedBeforeRegistration_expectEventReplayed() async {
@@ -76,6 +94,40 @@ class CombinedCacheEventBusHandlerTest: UnitTest {
         XCTAssertEqual(mockEventStorage.removeCallsCount, 1)
     }
 
+    func test_postEventAndWait_givenReplayCleanupSuspended_expectSameKeyPostNotBlocked() async {
+        let storage = SuspendedRemovalEventStorage()
+        let handler = CombinedCacheEventBusHandler(eventStorage: storage, logger: log)
+        await handler.postEventAndWait(ProfileIdentifiedEvent(identifier: "historic"))
+
+        handler.addObserver(ProfileIdentifiedEvent.self) { _ in }
+        await storage.waitForRemovalToStart()
+
+        let completedBeforeTimeout = await withTaskGroup(of: Bool.self, returning: Bool.self) { group in
+            group.addTask {
+                await handler.postEventAndWait(ProfileIdentifiedEvent(identifier: "after-replay"))
+                return true
+            }
+            group.addTask {
+                do {
+                    try await Task.sleep(nanoseconds: 2000000000)
+                } catch {
+                    return true
+                }
+                await storage.releaseRemoval()
+                return false
+            }
+
+            let firstResult = await group.next() ?? false
+            if firstResult {
+                await storage.releaseRemoval()
+            }
+            group.cancelAll()
+            return firstResult
+        }
+
+        XCTAssertTrue(completedBeforeTimeout, "persistent cleanup must not block event delivery")
+    }
+
     func test_addObserver_givenPostImmediatelyAfterRegistration_expectDirectDelivery() async {
         let handler = makeHandler()
         let received = Synchronized(false)
@@ -84,6 +136,46 @@ class CombinedCacheEventBusHandlerTest: UnitTest {
         await handler.postEventAndWait(ProfileIdentifiedEvent(identifier: "after-add"))
 
         XCTAssertTrue(received.wrappedValue, "registration requested before the post must be applied first")
+    }
+
+    func test_postEventAndWait_givenUnrelatedRegistryWorkSuspended_expectPostNotBlocked() async {
+        let handler = makeHandler()
+        let registryGate = AsyncGate()
+        handler.chainRegistryWork(forKey: ProfileIdentifiedEvent.key) {
+            await registryGate.wait()
+        }
+        await registryGate.waitUntilStarted()
+
+        let watchdogReleasedRegistry = Synchronized(false)
+        let completedBeforeTimeout = await withTaskGroup(of: Bool.self, returning: Bool.self) { group in
+            group.addTask {
+                await handler.postEventAndWait(ResetEvent())
+                return true
+            }
+            group.addTask {
+                do {
+                    try await Task.sleep(nanoseconds: 2000000000)
+                } catch {
+                    return true
+                }
+                watchdogReleasedRegistry.wrappedValue = true
+                await registryGate.release()
+                return false
+            }
+
+            let firstResult = await group.next() ?? false
+            if firstResult {
+                await registryGate.release()
+            }
+            group.cancelAll()
+            return firstResult
+        }
+
+        XCTAssertTrue(completedBeforeTimeout)
+        XCTAssertFalse(watchdogReleasedRegistry.wrappedValue)
+
+        // Drain the Profile chain so the suspended operation cannot outlive the test.
+        await handler.postEventAndWait(ProfileIdentifiedEvent(identifier: "after-registry-work"))
     }
 
     func test_addObserver_givenMultipleObserversRegisteredAfterPost_expectBothGetHistory() async {
@@ -151,6 +243,36 @@ class CombinedCacheEventBusHandlerTest: UnitTest {
         }
     }
 
+    func test_registryOrdering_givenConcurrentDifferentEventKeys_expectEachRemovalApplied() async {
+        // Stress the synchronized per-key tail map from concurrent callers while preserving
+        // a deterministic add-then-remove order within each event type.
+        for iteration in 0 ..< 50 {
+            let handler = makeHandler()
+            let deliveryCount = Synchronized(0)
+
+            await withTaskGroup(of: Void.self) { group in
+                group.addTask {
+                    handler.addObserver(ProfileIdentifiedEvent.self) { _ in
+                        deliveryCount.mutating { $0 += 1 }
+                    }
+                    handler.removeObserver(for: ProfileIdentifiedEvent.self)
+                    await handler.postEventAndWait(
+                        ProfileIdentifiedEvent(identifier: "profile-\(iteration)")
+                    )
+                }
+                group.addTask {
+                    handler.addObserver(ResetEvent.self) { _ in
+                        deliveryCount.mutating { $0 += 1 }
+                    }
+                    handler.removeObserver(for: ResetEvent.self)
+                    await handler.postEventAndWait(ResetEvent())
+                }
+            }
+
+            XCTAssertEqual(deliveryCount.wrappedValue, 0)
+        }
+    }
+
     // MARK: - loadEventsFromStorage
 
     func test_loadEventsFromStorage_expectEventsSeededAndReplayed() async {
@@ -213,5 +335,58 @@ class CombinedCacheEventBusHandlerTest: UnitTest {
         await handler.postEventAndWait(ProfileIdentifiedEvent(identifier: "after-remove"))
 
         XCTAssertEqual(deliveryCount.wrappedValue, 1, "removal requested before the second post must be applied first")
+    }
+}
+
+private actor AsyncGate {
+    private var started = false
+    private var startedWaiters: [CheckedContinuation<Void, Never>] = []
+    private var waiters: [CheckedContinuation<Void, Never>] = []
+
+    func wait() async {
+        started = true
+        let currentStartedWaiters = startedWaiters
+        startedWaiters.removeAll()
+        currentStartedWaiters.forEach { $0.resume() }
+        await withCheckedContinuation { waiters.append($0) }
+    }
+
+    func waitUntilStarted() async {
+        guard !started else { return }
+        await withCheckedContinuation { startedWaiters.append($0) }
+    }
+
+    func release() {
+        let currentWaiters = waiters
+        waiters.removeAll()
+        currentWaiters.forEach { $0.resume() }
+    }
+}
+
+private actor SuspendedRemovalEventStorage: EventStorage {
+    private let removalGate = AsyncGate()
+
+    func store(event: AnyEventRepresentable) async throws {}
+
+    func retrieve(eventType: String, storageId: String) async throws -> AnyEventRepresentable? {
+        nil
+    }
+
+    func loadEvents(ofType type: String) async throws -> [AnyEventRepresentable] {
+        []
+    }
+
+    func remove(ofType eventType: String, withStorageId storageId: String) async {
+        await removalGate.wait()
+    }
+
+    func removeAll() async {}
+
+    func waitForRemovalToStart() async {
+        await removalGate.waitUntilStarted()
+    }
+
+    func releaseRemoval() async {
+        await removalGate.release()
     }
 }
