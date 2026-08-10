@@ -373,6 +373,7 @@ jobs:
             CustomerIOMessagingInApp
             CustomerIOMessagingInbox
             CustomerIOLocation
+            CustomerIOLocationGeofence
             CustomerIOLiveActivitiesAttributes
             CustomerIOLiveActivities
             CustomerIOLiveActivitiesTemplates
