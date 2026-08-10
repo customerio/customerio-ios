@@ -11,6 +11,12 @@ extension InAppMessageManager {
 }
 
 class InAppMessageStateTests: IntegrationTest {
+    private struct FetchHarness {
+        let gist: Gist
+        let threadUtil: ThreadUtilStub
+        let queueNetwork: GistQueueNetworkMock
+    }
+
     var inAppMessageManager: InAppMessageManager!
     private let engineWebMock = EngineWebInstanceMock()
     private var engineWebProvider: EngineWebProvider {
@@ -18,15 +24,18 @@ class InAppMessageStateTests: IntegrationTest {
     }
 
     private let globalEventListener = InAppEventListenerMock()
+    private var applicationStateProviderMock: ApplicationStateProviderMock!
     var gist: Gist!
     var queueManager: QueueManager!
 
     override func setUp() {
         super.setUp()
         engineWebMock.underlyingView = UIView()
+        applicationStateProviderMock = ApplicationStateProviderMock()
+        applicationStateProviderMock.underlyingApplicationState = .active
         MessagingInApp.shared.setEventListener(globalEventListener)
 
-        mockCollection.add(mocks: [engineWebMock, globalEventListener])
+        mockCollection.add(mocks: [engineWebMock, globalEventListener, applicationStateProviderMock])
 
         diGraphShared.override(value: CioThreadUtil(), forType: ThreadUtil.self)
         diGraphShared.override(value: engineWebProvider, forType: EngineWebProvider.self)
@@ -58,7 +67,8 @@ class InAppMessageStateTests: IntegrationTest {
             inAppMessageManager: inAppMessageManager,
             queueManager: queueManager,
             threadUtil: diGraphShared.threadUtil,
-            sseLifecycleManager: diGraphShared.sseLifecycleManager
+            sseLifecycleManager: diGraphShared.sseLifecycleManager,
+            applicationStateProvider: applicationStateProviderMock
         )
     }
 
@@ -523,6 +533,175 @@ class InAppMessageStateTests: IntegrationTest {
     }
 
     // MARK: fetch user messages from backend services
+
+    /// A queue fetch should run above deferrable background processing, but does not need the
+    /// interactive priority reserved for UI work.
+    ///
+    /// Every collaborator capable of replaying state or scheduling observable work on this path is
+    /// isolated in this test. Building a `Gist` on the class-wide `InAppMessageStoreManager` is not
+    /// viable here: `init` subscribes to the store, ReSwift replays the current state to a new
+    /// subscriber, and that replay drives a fetch of its own. It arrives on a store task at an
+    /// unpredictable moment, is indistinguishable from the fetch under test, and — because the store
+    /// keeps the subscription alive — can still arrive after this test has finished.
+    /// `InAppMessageManagerMock` gives the Gist no store to subscribe to and hands it state
+    /// synchronously, so the only fetch that can occur is the one asked for below, and it completes
+    /// before the call returns. The controlled 304 response also returns before the shared visual
+    /// inbox repository can be reached.
+    private func makeFetchHarness(
+        applicationState: UIApplication.State,
+        pollInterval: TimeInterval = 600
+    ) async -> FetchHarness {
+        let state = InAppMessageState(siteId: .random, dataCenter: .random, pollInterval: pollInterval, userId: .random)
+        let applicationStateProvider = ApplicationStateProviderMock()
+        applicationStateProvider.underlyingApplicationState = applicationState
+
+        let inAppMessageManagerMock = InAppMessageManagerMock()
+        // Inert subscriptions: no state replay, so nothing in `init` can schedule a fetch.
+        inAppMessageManagerMock.subscribeClosure = { _, _ in Task {} }
+        inAppMessageManagerMock.unsubscribeClosure = { _ in Task {} }
+        inAppMessageManagerMock.dispatchClosure = { _, completion in
+            completion?()
+            return Task {}
+        }
+        inAppMessageManagerMock.fetchStateClosure = { completion in
+            completion(state)
+            return Task { state }
+        }
+
+        let queueNetworkMock = GistQueueNetworkMock()
+        // 304 with no cached response is the shortest path through `QueueManager` that still proves a
+        // request was made, and it finishes inline.
+        queueNetworkMock.requestClosure = { _, _, completionHandler in
+            let response = HTTPURLResponse(
+                url: URL(string: "https://test.com")!, statusCode: 304, httpVersion: nil, headerFields: nil
+            )!
+
+            completionHandler(.success((Data(), response)))
+        }
+
+        let queueManagerUnderTest = QueueManager(
+            keyValueStore: InMemorySharedKeyValueStorage(),
+            gistQueueNetwork: queueNetworkMock,
+            inAppMessageManager: inAppMessageManagerMock,
+            anonymousMessageManager: AnonymousMessageManagerMock(),
+            inboxMessageCache: InboxMessageCacheManager(
+                keyValueStore: InMemorySharedKeyValueStorage(),
+                logger: diGraphShared.logger
+            ),
+            visualInboxRepository: diGraphShared.visualInboxRepository,
+            logger: diGraphShared.logger
+        )
+
+        let threadUtil = ThreadUtilStub()
+        let gistUnderTest = await MainActor.run {
+            Gist(
+                logger: diGraphShared.logger,
+                gistDelegate: diGraphShared.gistDelegate,
+                inAppMessageManager: inAppMessageManagerMock,
+                queueManager: queueManagerUnderTest,
+                threadUtil: threadUtil,
+                sseLifecycleManager: SseLifecycleManagerMock(),
+                applicationStateProvider: applicationStateProvider
+            )
+        }
+
+        return FetchHarness(
+            gist: gistUnderTest,
+            threadUtil: threadUtil,
+            queueNetwork: queueNetworkMock
+        )
+    }
+
+    func test_fetchUserMessages_givenIdentifiedUser_expectSingleQueueFetchScheduledAtUtilityPriority() async throws {
+        let harness = await makeFetchHarness(applicationState: .active)
+
+        // The production application-state provider requires this selector to run on main.
+        await MainActor.run { harness.gist.fetchUserMessages() }
+
+        // Both counts are exact. The whole path ran inline on this thread, so anything beyond one
+        // utility dispatch or one request would be a second fetch this test never asked for.
+        XCTAssertEqual(harness.threadUtil.runUtilityCallsCount, 1)
+        XCTAssertEqual(harness.threadUtil.runBackgroundCallsCount, 0)
+        XCTAssertEqual(harness.queueNetwork.requestCallsCount, 1)
+    }
+
+    func test_fetchUserMessages_givenBackgroundApp_expectNoQueueFetchScheduled() async {
+        let harness = await makeFetchHarness(applicationState: .background)
+
+        await MainActor.run { harness.gist.fetchUserMessages() }
+
+        XCTAssertEqual(harness.threadUtil.runUtilityCallsCount, 0)
+        XCTAssertEqual(harness.threadUtil.runBackgroundCallsCount, 0)
+        XCTAssertEqual(harness.queueNetwork.requestCallsCount, 0)
+    }
+
+    func test_fetchUserMessagesFromRemoteQueue_givenActiveApp_expectMainActorSetupAndUtilityFetch() async {
+        let harness = await makeFetchHarness(applicationState: .active)
+
+        harness.gist.fetchUserMessagesFromRemoteQueue()
+
+        await waitUntil {
+            harness.threadUtil.runMainActorExecutionsCount >= 1
+        }
+
+        XCTAssertEqual(harness.threadUtil.runUtilityCallsCount, 1)
+        XCTAssertEqual(harness.threadUtil.runBackgroundCallsCount, 0)
+        XCTAssertEqual(harness.queueNetwork.requestCallsCount, 1)
+
+        let executionsBeforeReset = harness.threadUtil.runMainActorExecutionsCount
+        harness.gist.resetState()
+        await waitUntil {
+            harness.threadUtil.runMainActorExecutionsCount > executionsBeforeReset
+        }
+    }
+
+    func test_fetchUserMessagesFromRemoteQueue_givenReplacedTimer_expectResetStopsAllPolling() async throws {
+        let harness = await makeFetchHarness(applicationState: .active, pollInterval: 0.05)
+
+        harness.gist.fetchUserMessagesFromRemoteQueue()
+        harness.gist.fetchUserMessagesFromRemoteQueue()
+        await waitUntil(pollInterval: 0.01) {
+            harness.threadUtil.runMainActorExecutionsCount >= 2
+        }
+
+        harness.gist.resetState()
+        await waitUntil(pollInterval: 0.01) {
+            harness.threadUtil.runMainActorExecutionsCount >= 3
+        }
+        let requestsAfterReset = harness.queueNetwork.requestCallsCount
+
+        try await Task.sleep(nanoseconds: 200000000)
+
+        XCTAssertEqual(harness.queueNetwork.requestCallsCount, requestsAfterReset)
+    }
+
+    func test_fetchUserMessagesFromRemoteQueue_givenActiveTimer_expectGistCanDeallocateAndCleanUp() async throws {
+        var harness: FetchHarness? = await makeFetchHarness(applicationState: .active, pollInterval: 0.05)
+        var retainedGist = harness?.gist
+        let isGistReleased = { [weak retainedGist] in retainedGist == nil }
+        guard let threadUtil = harness?.threadUtil, let queueNetwork = harness?.queueNetwork else {
+            XCTFail("Expected the fetch harness to provide its collaborators")
+            return
+        }
+
+        harness?.gist.fetchUserMessagesFromRemoteQueue()
+        await waitUntil {
+            threadUtil.runMainActorExecutionsCount >= 1
+        }
+
+        let executionsBeforeDeinit = threadUtil.runMainActorExecutionsCount
+        retainedGist = nil
+        harness = nil
+
+        await waitUntil {
+            isGistReleased() && threadUtil.runMainActorExecutionsCount > executionsBeforeDeinit
+        }
+        let requestsAfterDeinit = queueNetwork.requestCallsCount
+
+        try await Task.sleep(nanoseconds: 200000000)
+
+        XCTAssertEqual(queueNetwork.requestCallsCount, requestsAfterDeinit)
+    }
 
     var sampleFetchResponseBody: String {
         readSampleDataFile(subdirectory: "InAppUserQueue", fileName: "fetch_response.json")

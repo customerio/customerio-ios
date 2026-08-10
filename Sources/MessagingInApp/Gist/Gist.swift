@@ -1,6 +1,5 @@
 import CioInternalCommon
 import Foundation
-import UIKit
 
 // wrapper around Gist SDK to make it mockable
 protocol GistProvider: AutoMockable {
@@ -26,11 +25,12 @@ class Gist: GistProvider {
     private let queueManager: QueueManager
     private let threadUtil: ThreadUtil
     private let sseLifecycleManager: SseLifecycleManager
+    private let applicationStateProvider: ApplicationStateProvider
 
     private var pollIntervalSubscriber: InAppMessageStoreSubscriber?
     private var sseEnabledSubscriber: InAppMessageStoreSubscriber?
     private var userIdSubscriber: InAppMessageStoreSubscriber?
-    private var queueTimer: Timer?
+    private let queueTimer = CioInternalCommon.Synchronized<Timer?>(nil)
 
     init(
         logger: Logger,
@@ -38,7 +38,8 @@ class Gist: GistProvider {
         inAppMessageManager: InAppMessageManager,
         queueManager: QueueManager,
         threadUtil: ThreadUtil,
-        sseLifecycleManager: SseLifecycleManager
+        sseLifecycleManager: SseLifecycleManager,
+        applicationStateProvider: ApplicationStateProvider
     ) {
         self.logger = logger
         self.gistDelegate = gistDelegate
@@ -46,6 +47,7 @@ class Gist: GistProvider {
         self.queueManager = queueManager
         self.threadUtil = threadUtil
         self.sseLifecycleManager = sseLifecycleManager
+        self.applicationStateProvider = applicationStateProvider
 
         subscribeToInAppMessageState()
 
@@ -73,7 +75,16 @@ class Gist: GistProvider {
         sseEnabledSubscriber = nil
         userIdSubscriber = nil
 
-        invalidateTimer()
+        // The timer callback holds Gist weakly, so deinit can run while the timer is scheduled.
+        // Capture the synchronized storage so cleanup does not depend on a deallocating `self`
+        // or send a non-Sendable Timer across isolation boundaries.
+        let queueTimer = queueTimer
+        threadUtil.runMainActor {
+            queueTimer.mutating { timer in
+                timer?.invalidate()
+                timer = nil
+            }
+        }
     }
 
     private func subscribeToInAppMessageState() {
@@ -173,12 +184,17 @@ class Gist: GistProvider {
     }
 
     private func invalidateTimer() {
-        // Timer must be scheduled or modified on main.
-        let timerWasActive = queueTimer != nil
-        logger.logWithModuleTag("Gist: Invalidating polling timer (wasActive: \(timerWasActive))", level: .debug)
-        threadUtil.runMain {
-            self.queueTimer?.invalidate()
-            self.queueTimer = nil
+        // Timer mutations happen on the main actor, while synchronized storage also makes the
+        // deinit handoff atomic with any pending replacement.
+        threadUtil.runMainActor { [weak self] in
+            guard let self else { return }
+
+            self.queueTimer.mutating { timer in
+                let timerWasActive = timer != nil
+                self.logger.logWithModuleTag("Gist: Invalidating polling timer (wasActive: \(timerWasActive))", level: .debug)
+                timer?.invalidate()
+                timer = nil
+            }
         }
     }
 
@@ -249,37 +265,49 @@ class Gist: GistProvider {
 
     private func setupPollingAndFetch(skipMessageFetch: Bool, pollingInterval: Double) {
         logger.logWithModuleTag("Gist: Setting up polling timer - interval: \(pollingInterval)s, skipInitialFetch: \(skipMessageFetch)", level: .info)
-        invalidateTimer()
 
-        // Timer must be scheduled on the main thread
-        threadUtil.runMain {
-            self.queueTimer = Timer.scheduledTimer(
-                timeInterval: pollingInterval,
-                target: self,
-                selector: #selector(self.fetchUserMessages),
-                userInfo: nil,
-                repeats: true
-            )
-            self.logger.logWithModuleTag("Gist: Polling timer started with interval: \(pollingInterval)s", level: .debug)
-        }
+        // Replace the timer in one main-actor operation. Keeping invalidation and creation together
+        // prevents concurrent setup callers from interleaving and leaving an orphaned timer behind.
+        threadUtil.runMainActor { [weak self] in
+            guard let self else { return }
 
-        if !skipMessageFetch {
-            threadUtil.runMain {
-                self.fetchUserMessages()
+            self.queueTimer.mutating { timer in
+                let timerWasActive = timer != nil
+                self.logger.logWithModuleTag("Gist: Replacing polling timer (wasActive: \(timerWasActive))", level: .debug)
+                timer?.invalidate()
+                timer = Timer.scheduledTimer(withTimeInterval: pollingInterval, repeats: true) { [weak self] timer in
+                    MainActor.assumeIsolated {
+                        guard let self else {
+                            timer.invalidate()
+                            return
+                        }
+
+                        self.fetchUserMessages()
+                    }
+                }
+            }
+            logger.logWithModuleTag("Gist: Polling timer started with interval: \(pollingInterval)s", level: .debug)
+
+            if !skipMessageFetch {
+                fetchUserMessages()
             }
         }
     }
 
     /// Fetches the user messages from the remote service and dispatches actions to the `InAppMessageManager`.
-    /// The method must be marked with `@objc` and public to be used as a selector in the `Timer` scheduled.
-    /// Also, the method must be called on main thread since it checks the application state.
-    @objc
+    /// The method runs on the main actor because it checks the application state.
+    @MainActor
     func fetchUserMessages() {
-        guard UIApplication.shared.applicationState != .background else {
+        guard applicationStateProvider.applicationState != .background else {
             logger.logWithModuleTag("Gist: Application in background, skipping queue check", level: .debug)
             return
         }
 
+        fetchUserQueueIfPollingActive()
+    }
+
+    /// Keep the store callback nonisolated because the manager invokes it from its own task.
+    private func fetchUserQueueIfPollingActive() {
         inAppMessageManager.fetchState { [weak self] state in
             guard let self else { return }
 
@@ -308,8 +336,11 @@ class Gist: GistProvider {
             return
         }
 
-        threadUtil.runBackground {
-            self.queueManager.fetchUserQueue(state: state) { [weak self] response in
+        threadUtil.runUtility { [weak self] in
+            guard let self else { return }
+
+            logger.logWithModuleTag("Gist: Initiating queue fetch from utility-priority work", level: .debug)
+            queueManager.fetchUserQueue(state: state) { [weak self] response in
                 guard let self else { return }
 
                 switch response {

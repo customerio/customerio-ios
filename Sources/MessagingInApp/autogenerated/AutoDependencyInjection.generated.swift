@@ -171,7 +171,7 @@ extension DIGraphShared {
     }
 
     private func _get_gistProvider() -> GistProvider {
-        Gist(logger: logger, gistDelegate: gistDelegate, inAppMessageManager: inAppMessageManager, queueManager: queueManager, threadUtil: threadUtil, sseLifecycleManager: sseLifecycleManager)
+        Gist(logger: logger, gistDelegate: gistDelegate, inAppMessageManager: inAppMessageManager, queueManager: queueManager, threadUtil: threadUtil, sseLifecycleManager: sseLifecycleManager, applicationStateProvider: applicationStateProvider)
     }
 
     // GistDelegate (singleton)
