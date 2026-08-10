@@ -10,14 +10,17 @@ import Foundation
 /// retaining XCTest state in an escaping closure.
 public class ThreadUtilStub: ThreadUtil {
     private let _runMainCallsCount: Synchronized<Int> = .init(0)
+    private let _runMainActorCallsCount: Synchronized<Int> = .init(0)
     private let _runBackgroundCallsCount: Synchronized<Int> = .init(0)
     private let _runUtilityCallsCount: Synchronized<Int> = .init(0)
 
     public var runMainCallsCount: Int { _runMainCallsCount.wrappedValue }
+    public var runMainActorCallsCount: Int { _runMainActorCallsCount.wrappedValue }
     public var runBackgroundCallsCount: Int { _runBackgroundCallsCount.wrappedValue }
     public var runUtilityCallsCount: Int { _runUtilityCallsCount.wrappedValue }
 
     public var runMainCalled: Bool { runMainCallsCount > 0 }
+    public var runMainActorCalled: Bool { runMainActorCallsCount > 0 }
     public var runBackgroundCalled: Bool { runBackgroundCallsCount > 0 }
     public var runUtilityCalled: Bool { runUtilityCallsCount > 0 }
 
@@ -28,6 +31,22 @@ public class ThreadUtilStub: ThreadUtil {
     public func runMain(_ block: @escaping () -> Void) {
         _runMainCallsCount.mutating { $0 += 1 }
         block()
+    }
+
+    public func runMainActor(_ block: @MainActor @escaping () -> Void) {
+        _runMainActorCallsCount.mutating { $0 += 1 }
+
+        if Thread.isMainThread {
+            MainActor.assumeIsolated {
+                block()
+            }
+        } else {
+            DispatchQueue.main.sync {
+                MainActor.assumeIsolated {
+                    block()
+                }
+            }
+        }
     }
 
     public func runBackground(_ block: @escaping () -> Void) {

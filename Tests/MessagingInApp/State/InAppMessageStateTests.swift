@@ -634,6 +634,19 @@ class InAppMessageStateTests: IntegrationTest {
         XCTAssertEqual(harness.queueNetwork.requestCallsCount, 0)
     }
 
+    func test_fetchUserMessagesFromRemoteQueue_givenActiveApp_expectMainActorSetupAndUtilityFetch() async {
+        let harness = await makeFetchHarness(applicationState: .active)
+
+        harness.gist.fetchUserMessagesFromRemoteQueue()
+
+        XCTAssertEqual(harness.threadUtil.runMainActorCallsCount, 1)
+        XCTAssertEqual(harness.threadUtil.runUtilityCallsCount, 1)
+        XCTAssertEqual(harness.threadUtil.runBackgroundCallsCount, 0)
+        XCTAssertEqual(harness.queueNetwork.requestCallsCount, 1)
+
+        await MainActor.run { harness.gist.resetState() }
+    }
+
     var sampleFetchResponseBody: String {
         readSampleDataFile(subdirectory: "InAppUserQueue", fileName: "fetch_response.json")
     }

@@ -254,21 +254,22 @@ class Gist: GistProvider {
         logger.logWithModuleTag("Gist: Setting up polling timer - interval: \(pollingInterval)s, skipInitialFetch: \(skipMessageFetch)", level: .info)
         invalidateTimer()
 
-        // Timer must be scheduled on the main thread
-        threadUtil.runMain {
-            self.queueTimer = Timer.scheduledTimer(
+        // Timer setup and the optional initial fetch share one main-actor hop so their ordering is
+        // deterministic and tests can execute the complete path through the injected scheduler.
+        threadUtil.runMainActor { [weak self] in
+            guard let self else { return }
+
+            queueTimer = Timer.scheduledTimer(
                 timeInterval: pollingInterval,
                 target: self,
-                selector: #selector(self.fetchUserMessages),
+                selector: #selector(fetchUserMessages),
                 userInfo: nil,
                 repeats: true
             )
-            self.logger.logWithModuleTag("Gist: Polling timer started with interval: \(pollingInterval)s", level: .debug)
-        }
+            logger.logWithModuleTag("Gist: Polling timer started with interval: \(pollingInterval)s", level: .debug)
 
-        if !skipMessageFetch {
-            Task { @MainActor [weak self] in
-                self?.fetchUserMessages()
+            if !skipMessageFetch {
+                fetchUserMessages()
             }
         }
     }
