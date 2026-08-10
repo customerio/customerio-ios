@@ -30,7 +30,7 @@ class Gist: GistProvider {
     private var pollIntervalSubscriber: InAppMessageStoreSubscriber?
     private var sseEnabledSubscriber: InAppMessageStoreSubscriber?
     private var userIdSubscriber: InAppMessageStoreSubscriber?
-    private var queueTimer: Timer?
+    private let queueTimer = CioInternalCommon.Synchronized<Timer?>(nil)
 
     init(
         logger: Logger,
@@ -76,10 +76,14 @@ class Gist: GistProvider {
         userIdSubscriber = nil
 
         // The timer callback holds Gist weakly, so deinit can run while the timer is scheduled.
-        // Capture the timer itself so queued cleanup does not depend on a deallocating `self`.
-        let timer = queueTimer
+        // Capture the synchronized storage so cleanup does not depend on a deallocating `self`
+        // or send a non-Sendable Timer across isolation boundaries.
+        let queueTimer = queueTimer
         threadUtil.runMainActor {
-            timer?.invalidate()
+            queueTimer.mutating { timer in
+                timer?.invalidate()
+                timer = nil
+            }
         }
     }
 
@@ -180,15 +184,17 @@ class Gist: GistProvider {
     }
 
     private func invalidateTimer() {
-        // All live-instance timer mutations are serialized on the main actor. Deinit only captures
-        // the final timer reference so it can schedule cleanup after this instance is released.
+        // Timer mutations happen on the main actor, while synchronized storage also makes the
+        // deinit handoff atomic with any pending replacement.
         threadUtil.runMainActor { [weak self] in
             guard let self else { return }
 
-            let timerWasActive = queueTimer != nil
-            logger.logWithModuleTag("Gist: Invalidating polling timer (wasActive: \(timerWasActive))", level: .debug)
-            queueTimer?.invalidate()
-            queueTimer = nil
+            self.queueTimer.mutating { timer in
+                let timerWasActive = timer != nil
+                self.logger.logWithModuleTag("Gist: Invalidating polling timer (wasActive: \(timerWasActive))", level: .debug)
+                timer?.invalidate()
+                timer = nil
+            }
         }
     }
 
@@ -265,17 +271,19 @@ class Gist: GistProvider {
         threadUtil.runMainActor { [weak self] in
             guard let self else { return }
 
-            let timerWasActive = queueTimer != nil
-            logger.logWithModuleTag("Gist: Replacing polling timer (wasActive: \(timerWasActive))", level: .debug)
-            queueTimer?.invalidate()
-            queueTimer = Timer.scheduledTimer(withTimeInterval: pollingInterval, repeats: true) { [weak self] timer in
-                MainActor.assumeIsolated {
-                    guard let self else {
-                        timer.invalidate()
-                        return
-                    }
+            self.queueTimer.mutating { timer in
+                let timerWasActive = timer != nil
+                self.logger.logWithModuleTag("Gist: Replacing polling timer (wasActive: \(timerWasActive))", level: .debug)
+                timer?.invalidate()
+                timer = Timer.scheduledTimer(withTimeInterval: pollingInterval, repeats: true) { [weak self] timer in
+                    MainActor.assumeIsolated {
+                        guard let self else {
+                            timer.invalidate()
+                            return
+                        }
 
-                    self.fetchUserMessages()
+                        self.fetchUserMessages()
+                    }
                 }
             }
             logger.logWithModuleTag("Gist: Polling timer started with interval: \(pollingInterval)s", level: .debug)

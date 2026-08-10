@@ -11,7 +11,8 @@ public protocol ThreadUtil {
     /// Schedules work that must execute on the main thread.
     func runMain(_ block: @escaping () -> Void)
 
-    /// Schedules work that must execute in main-actor isolation.
+    /// Schedules work asynchronously in main-actor isolation and FIFO order. The ordering lets
+    /// callers combine related main-thread mutations into one operation without interleaving.
     func runMainActor(_ block: @MainActor @escaping () -> Void)
 }
 

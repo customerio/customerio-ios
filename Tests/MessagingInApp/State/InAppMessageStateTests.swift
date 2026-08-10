@@ -548,9 +548,10 @@ class InAppMessageStateTests: IntegrationTest {
     /// before the call returns. The controlled 304 response also returns before the shared visual
     /// inbox repository can be reached.
     private func makeFetchHarness(
-        applicationState: UIApplication.State
+        applicationState: UIApplication.State,
+        pollInterval: TimeInterval = 600
     ) async -> FetchHarness {
-        let state = InAppMessageState(siteId: .random, dataCenter: .random, userId: .random)
+        let state = InAppMessageState(siteId: .random, dataCenter: .random, pollInterval: pollInterval, userId: .random)
         let applicationStateProvider = ApplicationStateProviderMock()
         applicationStateProvider.underlyingApplicationState = applicationState
 
@@ -654,12 +655,32 @@ class InAppMessageStateTests: IntegrationTest {
         }
     }
 
-    func test_fetchUserMessagesFromRemoteQueue_givenActiveTimer_expectGistCanDeallocateAndCleanUp() async {
-        var harness: FetchHarness? = await makeFetchHarness(applicationState: .active)
+    func test_fetchUserMessagesFromRemoteQueue_givenReplacedTimer_expectResetStopsAllPolling() async throws {
+        let harness = await makeFetchHarness(applicationState: .active, pollInterval: 0.05)
+
+        harness.gist.fetchUserMessagesFromRemoteQueue()
+        harness.gist.fetchUserMessagesFromRemoteQueue()
+        await waitUntil(pollInterval: 0.01) {
+            harness.threadUtil.runMainActorExecutionsCount >= 2
+        }
+
+        harness.gist.resetState()
+        await waitUntil(pollInterval: 0.01) {
+            harness.threadUtil.runMainActorExecutionsCount >= 3
+        }
+        let requestsAfterReset = harness.queueNetwork.requestCallsCount
+
+        try await Task.sleep(nanoseconds: 200000000)
+
+        XCTAssertEqual(harness.queueNetwork.requestCallsCount, requestsAfterReset)
+    }
+
+    func test_fetchUserMessagesFromRemoteQueue_givenActiveTimer_expectGistCanDeallocateAndCleanUp() async throws {
+        var harness: FetchHarness? = await makeFetchHarness(applicationState: .active, pollInterval: 0.05)
         var retainedGist = harness?.gist
         let isGistReleased = { [weak retainedGist] in retainedGist == nil }
-        guard let threadUtil = harness?.threadUtil else {
-            XCTFail("Expected the fetch harness to provide a thread utility")
+        guard let threadUtil = harness?.threadUtil, let queueNetwork = harness?.queueNetwork else {
+            XCTFail("Expected the fetch harness to provide its collaborators")
             return
         }
 
@@ -675,6 +696,11 @@ class InAppMessageStateTests: IntegrationTest {
         await waitUntil {
             isGistReleased() && threadUtil.runMainActorExecutionsCount > executionsBeforeDeinit
         }
+        let requestsAfterDeinit = queueNetwork.requestCallsCount
+
+        try await Task.sleep(nanoseconds: 200000000)
+
+        XCTAssertEqual(queueNetwork.requestCallsCount, requestsAfterDeinit)
     }
 
     var sampleFetchResponseBody: String {
