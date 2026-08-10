@@ -1,3 +1,9 @@
+## [4.7.3](https://github.com/customerio/customerio-ios/compare/4.7.2...4.7.3) (2026-08-10)
+
+### Bug Fixes
+
+* prioritize SDK background work ([#1198](https://github.com/customerio/customerio-ios/issues/1198)) ([d9a745e](https://github.com/customerio/customerio-ios/commit/d9a745efc31c03bc8fc0207d75b57e5ba4da1294))
+
 ## [4.7.2](https://github.com/customerio/customerio-ios/compare/4.7.1...4.7.2) (2026-08-06)
 
 ### Bug Fixes
