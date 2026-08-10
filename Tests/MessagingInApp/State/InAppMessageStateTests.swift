@@ -656,7 +656,8 @@ class InAppMessageStateTests: IntegrationTest {
 
     func test_fetchUserMessagesFromRemoteQueue_givenActiveTimer_expectGistCanDeallocateAndCleanUp() async {
         var harness: FetchHarness? = await makeFetchHarness(applicationState: .active)
-        weak let weakGist = harness?.gist
+        var retainedGist = harness?.gist
+        let isGistReleased = { [weak retainedGist] in retainedGist == nil }
         guard let threadUtil = harness?.threadUtil else {
             XCTFail("Expected the fetch harness to provide a thread utility")
             return
@@ -668,10 +669,11 @@ class InAppMessageStateTests: IntegrationTest {
         }
 
         let executionsBeforeDeinit = threadUtil.runMainActorExecutionsCount
+        retainedGist = nil
         harness = nil
 
         await waitUntil {
-            weakGist == nil && threadUtil.runMainActorExecutionsCount > executionsBeforeDeinit
+            isGistReleased() && threadUtil.runMainActorExecutionsCount > executionsBeforeDeinit
         }
     }
 

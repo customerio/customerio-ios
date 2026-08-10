@@ -1,6 +1,5 @@
 import CioInternalCommon
 import Foundation
-import UIKit
 
 // wrapper around Gist SDK to make it mockable
 protocol GistProvider: AutoMockable {
@@ -269,9 +268,14 @@ class Gist: GistProvider {
             let timerWasActive = queueTimer != nil
             logger.logWithModuleTag("Gist: Replacing polling timer (wasActive: \(timerWasActive))", level: .debug)
             queueTimer?.invalidate()
-            queueTimer = Timer.scheduledTimer(withTimeInterval: pollingInterval, repeats: true) { [weak self] _ in
+            queueTimer = Timer.scheduledTimer(withTimeInterval: pollingInterval, repeats: true) { [weak self] timer in
                 MainActor.assumeIsolated {
-                    self?.fetchUserMessages()
+                    guard let self else {
+                        timer.invalidate()
+                        return
+                    }
+
+                    self.fetchUserMessages()
                 }
             }
             logger.logWithModuleTag("Gist: Polling timer started with interval: \(pollingInterval)s", level: .debug)
