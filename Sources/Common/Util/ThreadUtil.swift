@@ -5,7 +5,7 @@ public protocol ThreadUtil {
     /// Schedules deferrable bulk work that should not compete with user-visible operations.
     func runBackground(_ block: @escaping () -> Void)
 
-    /// Schedules non-deferrable, user-visible work, such as network requests needed to populate UI.
+    /// Schedules user-visible work that should run at a higher priority than deferrable bulk work.
     func runUtility(_ block: @escaping () -> Void)
 
     /// Schedules work that must execute on the main thread.

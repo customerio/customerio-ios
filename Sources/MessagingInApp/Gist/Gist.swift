@@ -26,6 +26,7 @@ class Gist: GistProvider {
     private let queueManager: QueueManager
     private let threadUtil: ThreadUtil
     private let sseLifecycleManager: SseLifecycleManager
+    private let applicationStateProvider: ApplicationStateProvider
 
     private var pollIntervalSubscriber: InAppMessageStoreSubscriber?
     private var sseEnabledSubscriber: InAppMessageStoreSubscriber?
@@ -38,7 +39,8 @@ class Gist: GistProvider {
         inAppMessageManager: InAppMessageManager,
         queueManager: QueueManager,
         threadUtil: ThreadUtil,
-        sseLifecycleManager: SseLifecycleManager
+        sseLifecycleManager: SseLifecycleManager,
+        applicationStateProvider: ApplicationStateProvider = RealApplicationStateProvider()
     ) {
         self.logger = logger
         self.gistDelegate = gistDelegate
@@ -46,6 +48,7 @@ class Gist: GistProvider {
         self.queueManager = queueManager
         self.threadUtil = threadUtil
         self.sseLifecycleManager = sseLifecycleManager
+        self.applicationStateProvider = applicationStateProvider
 
         subscribeToInAppMessageState()
 
@@ -275,7 +278,7 @@ class Gist: GistProvider {
     /// Also, the method must be called on main thread since it checks the application state.
     @objc
     func fetchUserMessages() {
-        guard UIApplication.shared.applicationState != .background else {
+        guard applicationStateProvider.applicationState != .background else {
             logger.logWithModuleTag("Gist: Application in background, skipping queue check", level: .debug)
             return
         }

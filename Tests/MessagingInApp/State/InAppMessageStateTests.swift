@@ -524,8 +524,8 @@ class InAppMessageStateTests: IntegrationTest {
 
     // MARK: fetch user messages from backend services
 
-    /// A queue fetch is user-visible work, so it must be scheduled at utility priority, never at
-    /// background priority where the OS is free to defer it indefinitely.
+    /// A queue fetch is user-visible work, so it must be scheduled at utility priority instead of
+    /// the lower-priority background queue used for deferrable bulk work.
     ///
     /// Every collaborator capable of replaying state or scheduling observable work on this path is
     /// isolated in this test. Building a `Gist` on the class-wide `InAppMessageStoreManager` is not
@@ -538,10 +538,9 @@ class InAppMessageStateTests: IntegrationTest {
     /// before the call returns. The controlled 304 response also returns before the shared visual
     /// inbox repository can be reached.
     func test_fetchUserMessages_givenIdentifiedUser_expectSingleQueueFetchScheduledAtUtilityPriority() async throws {
-        let applicationState = await MainActor.run { UIApplication.shared.applicationState }
-        try XCTSkipIf(applicationState == .background, "A backgrounded XCTest host bypasses this foreground path.")
-
         let state = InAppMessageState(siteId: .random, dataCenter: .random, userId: .random)
+        let applicationStateProvider = ApplicationStateProviderMock()
+        applicationStateProvider.underlyingApplicationState = .active
 
         let inAppMessageManagerMock = InAppMessageManagerMock()
         // Inert subscriptions: no state replay, so nothing in `init` can schedule a fetch.
@@ -588,11 +587,12 @@ class InAppMessageStateTests: IntegrationTest {
                 inAppMessageManager: inAppMessageManagerMock,
                 queueManager: queueManagerUnderTest,
                 threadUtil: threadUtil,
-                sseLifecycleManager: SseLifecycleManagerMock()
+                sseLifecycleManager: SseLifecycleManagerMock(),
+                applicationStateProvider: applicationStateProvider
             )
         }
 
-        // `fetchUserMessages` reads `UIApplication.applicationState`, so it must be called on main.
+        // The production application-state provider requires this selector to run on main.
         await MainActor.run { gistUnderTest.fetchUserMessages() }
 
         // Both counts are exact. The whole path ran inline on this thread, so anything beyond one
