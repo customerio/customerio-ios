@@ -639,12 +639,19 @@ class InAppMessageStateTests: IntegrationTest {
 
         harness.gist.fetchUserMessagesFromRemoteQueue()
 
-        XCTAssertEqual(harness.threadUtil.runMainActorCallsCount, 1)
+        await waitUntil {
+            harness.threadUtil.runMainActorExecutionsCount == 2
+        }
+
+        XCTAssertEqual(harness.threadUtil.runMainActorCallsCount, 2)
         XCTAssertEqual(harness.threadUtil.runUtilityCallsCount, 1)
         XCTAssertEqual(harness.threadUtil.runBackgroundCallsCount, 0)
         XCTAssertEqual(harness.queueNetwork.requestCallsCount, 1)
 
-        await MainActor.run { harness.gist.resetState() }
+        harness.gist.resetState()
+        await waitUntil {
+            harness.threadUtil.runMainActorExecutionsCount == 3
+        }
     }
 
     var sampleFetchResponseBody: String {

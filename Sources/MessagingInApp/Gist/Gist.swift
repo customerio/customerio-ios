@@ -176,12 +176,14 @@ class Gist: GistProvider {
     }
 
     private func invalidateTimer() {
-        // Timer must be scheduled or modified on main.
-        let timerWasActive = queueTimer != nil
-        logger.logWithModuleTag("Gist: Invalidating polling timer (wasActive: \(timerWasActive))", level: .debug)
-        threadUtil.runMain {
-            self.queueTimer?.invalidate()
-            self.queueTimer = nil
+        // Timer state is only read or modified from the main actor.
+        threadUtil.runMainActor { [weak self] in
+            guard let self else { return }
+
+            let timerWasActive = queueTimer != nil
+            logger.logWithModuleTag("Gist: Invalidating polling timer (wasActive: \(timerWasActive))", level: .debug)
+            queueTimer?.invalidate()
+            queueTimer = nil
         }
     }
 
@@ -254,8 +256,8 @@ class Gist: GistProvider {
         logger.logWithModuleTag("Gist: Setting up polling timer - interval: \(pollingInterval)s, skipInitialFetch: \(skipMessageFetch)", level: .info)
         invalidateTimer()
 
-        // Timer setup and the optional initial fetch share one main-actor hop so their ordering is
-        // deterministic and tests can execute the complete path through the injected scheduler.
+        // Invalidation above, timer setup, and the optional initial fetch use the same main-actor
+        // scheduler, preserving FIFO ordering while keeping the complete path observable in tests.
         threadUtil.runMainActor { [weak self] in
             guard let self else { return }
 

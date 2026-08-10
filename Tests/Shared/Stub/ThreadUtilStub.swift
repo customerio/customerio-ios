@@ -1,7 +1,8 @@
 import CioInternalCommon
 import Foundation
 
-/// Runs every scheduled block inline on the calling thread and records how each one was scheduled.
+/// Runs non-actor blocks inline and enqueues main-actor blocks on the main queue, recording how each
+/// block was scheduled and completed.
 ///
 /// Only counters are exposed on purpose. An injectable "call me back" closure would let a test attach
 /// an `XCTestExpectation` to a stub whose lifetime it does not own, and any late block — from a timer,
@@ -11,11 +12,13 @@ import Foundation
 public class ThreadUtilStub: ThreadUtil {
     private let _runMainCallsCount: Synchronized<Int> = .init(0)
     private let _runMainActorCallsCount: Synchronized<Int> = .init(0)
+    private let _runMainActorExecutionsCount: Synchronized<Int> = .init(0)
     private let _runBackgroundCallsCount: Synchronized<Int> = .init(0)
     private let _runUtilityCallsCount: Synchronized<Int> = .init(0)
 
     public var runMainCallsCount: Int { _runMainCallsCount.wrappedValue }
     public var runMainActorCallsCount: Int { _runMainActorCallsCount.wrappedValue }
+    public var runMainActorExecutionsCount: Int { _runMainActorExecutionsCount.wrappedValue }
     public var runBackgroundCallsCount: Int { _runBackgroundCallsCount.wrappedValue }
     public var runUtilityCallsCount: Int { _runUtilityCallsCount.wrappedValue }
 
@@ -36,16 +39,11 @@ public class ThreadUtilStub: ThreadUtil {
     public func runMainActor(_ block: @MainActor @escaping () -> Void) {
         _runMainActorCallsCount.mutating { $0 += 1 }
 
-        if Thread.isMainThread {
+        DispatchQueue.main.async { [self] in
             MainActor.assumeIsolated {
                 block()
             }
-        } else {
-            DispatchQueue.main.sync {
-                MainActor.assumeIsolated {
-                    block()
-                }
-            }
+            _runMainActorExecutionsCount.mutating { $0 += 1 }
         }
     }
 

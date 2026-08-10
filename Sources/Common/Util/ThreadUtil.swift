@@ -15,6 +15,22 @@ public protocol ThreadUtil {
     func runMainActor(_ block: @MainActor @escaping () -> Void)
 }
 
+public extension ThreadUtil {
+    /// Preserves source compatibility for conformers that predate the utility scheduling seam.
+    func runUtility(_ block: @escaping () -> Void) {
+        runBackground(block)
+    }
+
+    /// Preserves source compatibility while honoring the existing `runMain` contract.
+    func runMainActor(_ block: @MainActor @escaping () -> Void) {
+        runMain {
+            MainActor.assumeIsolated {
+                block()
+            }
+        }
+    }
+}
+
 // sourcery: InjectRegisterShared = "ThreadUtil"
 public class CioThreadUtil: ThreadUtil {
     public func runMain(_ block: @escaping () -> Void) {
