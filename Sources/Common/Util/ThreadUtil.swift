@@ -24,8 +24,17 @@ public extension ThreadUtil {
     /// Preserves source compatibility while honoring the existing `runMain` contract.
     func runMainActor(_ block: @MainActor @escaping () -> Void) {
         runMain {
-            MainActor.assumeIsolated {
-                block()
+            if Thread.isMainThread {
+                MainActor.assumeIsolated {
+                    block()
+                }
+            } else {
+                // Be defensive for legacy/test conformers that execute `runMain` inline.
+                DispatchQueue.main.async {
+                    MainActor.assumeIsolated {
+                        block()
+                    }
+                }
             }
         }
     }

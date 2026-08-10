@@ -76,7 +76,13 @@ class Gist: GistProvider {
         sseEnabledSubscriber = nil
         userIdSubscriber = nil
 
-        invalidateTimer()
+        // Do not weakly capture `self` from deinit. Capture the timer itself so the queued cleanup
+        // still runs after this instance has finished deallocating.
+        let timer = queueTimer
+        queueTimer = nil
+        threadUtil.runMainActor {
+            timer?.invalidate()
+        }
     }
 
     private func subscribeToInAppMessageState() {
@@ -317,7 +323,7 @@ class Gist: GistProvider {
         threadUtil.runUtility { [weak self] in
             guard let self else { return }
 
-            logger.logWithModuleTag("Gist: Starting queue fetch at utility priority", level: .debug)
+            logger.logWithModuleTag("Gist: Initiating queue fetch from utility-priority work", level: .debug)
             queueManager.fetchUserQueue(state: state) { [weak self] response in
                 guard let self else { return }
 

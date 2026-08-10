@@ -11,7 +11,7 @@ private final class LegacyThreadUtil: ThreadUtil {
     }
 
     func runMain(_ block: @escaping () -> Void) {
-        DispatchQueue.main.async(execute: block)
+        block()
     }
 }
 
@@ -43,8 +43,11 @@ class ThreadUtilTest: UnitTest {
         let mainActorBlockExecuted = expectation(description: "default main-actor block executed")
 
         threadUtil.runUtility {}
-        threadUtil.runMainActor {
-            mainActorBlockExecuted.fulfill()
+        DispatchQueue.global().async {
+            threadUtil.runMainActor {
+                XCTAssertTrue(Thread.isMainThread)
+                mainActorBlockExecuted.fulfill()
+            }
         }
 
         wait(for: [mainActorBlockExecuted], timeout: 1)
