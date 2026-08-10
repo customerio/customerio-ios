@@ -12,12 +12,78 @@ public class CombinedCacheEventBusHandler: EventBusHandler {
     let eventStorage: EventStorage
     let logger: Logger
 
+    /// Tails of the FIFO chains of observer registrations/removals, grouped by event key.
+    ///
+    /// `addObserver` and `removeObserver` are synchronous entry points that must reach the
+    /// `bus` actor asynchronously. Independent unstructured `Task`s carry no ordering
+    /// guarantee, so `addObserver(X)` followed by `removeObserver(X)` could reach the actor
+    /// in reverse order and leave a live observer behind. Chaining operations for the same
+    /// event key restores the caller's ordering without blocking unrelated event types.
+    ///
+    /// The dictionary retains only the latest tail encountered for each event key. SDK event
+    /// types are finite, so pruning completed tails would add race-prone bookkeeping for no
+    /// meaningful memory benefit.
+    private let pendingRegistryWork = Synchronized<[String: Task<Void, Never>]>([:])
+
+    /// Tails of best-effort persistent cleanup work, grouped by event key.
+    ///
+    /// Cleanup is retained and serialized separately from registry work so disk operations
+    /// do not delay observer registration or replay delivery. Cleanup can still contend with
+    /// later persistence work performed by the same `EventStorage` actor.
+    private let pendingCleanupWork = Synchronized<[String: Task<Void, Never>]>([:])
+
     public init(eventStorage: EventStorage, logger: Logger) {
         self.bus = CioEventBus()
         self.eventStorage = eventStorage
         self.logger = logger
         Task { [weak self] in
             await self?.loadEventsFromStorage()
+        }
+    }
+
+    deinit {
+        pendingRegistryWork.using { $0.values.forEach { $0.cancel() } }
+    }
+
+    /// Appends a registry operation to the chain for `key`.
+    ///
+    /// Reading the previous tail and installing the new one happen in one synchronized
+    /// mutation, so concurrent callers still produce a single well-defined order per key.
+    /// This is internal only as a deterministic concurrency-test seam; production callers
+    /// should use the public observer APIs.
+    func chainRegistryWork(forKey key: String, operation: @escaping () async -> Void) {
+        pendingRegistryWork.mutating { workByKey in
+            let previous = workByKey[key]
+            workByKey[key] = Task {
+                await previous?.value
+                guard !Task.isCancelled else { return }
+                await operation()
+            }
+        }
+    }
+
+    /// Suspends until registry work previously enqueued for `key` has been applied.
+    private func awaitPendingRegistryWork(forKey key: String) async {
+        let pending = pendingRegistryWork.using { $0[key] }
+        await pending?.value
+    }
+
+    /// Schedules idempotent storage cleanup without adding file I/O to the delivery path.
+    private func enqueueCleanup<E: EventRepresentable>(for events: [E], key: String) {
+        guard !events.isEmpty else { return }
+
+        let storage = eventStorage
+        pendingCleanupWork.mutating { workByKey in
+            let previous = workByKey[key]
+            workByKey[key] = Task {
+                await previous?.value
+                for event in events {
+                    await storage.remove(
+                        ofType: event.key,
+                        withStorageId: event.storageId
+                    )
+                }
+            }
         }
     }
 
@@ -42,11 +108,14 @@ public class CombinedCacheEventBusHandler: EventBusHandler {
     /// Registration and the cache snapshot are taken atomically inside the actor.
     /// Events posted after registration returns are delivered directly to the observer;
     /// events already in the cache at registration time are replayed exactly once.
+    ///
+    /// Registration is applied asynchronously, but in order relative to other registry
+    /// calls and to any later `postEventAndWait` for the same event key.
     public func addObserver<E: EventRepresentable>(
         _ eventType: E.Type, action: @escaping (E) -> Void
     ) {
         logger.debug("CombinedCacheEventBusHandler: Adding observer for \(eventType)")
-        Task { [weak self] in
+        chainRegistryWork(forKey: E.key) { [weak self] in
             guard let self else { return }
             let registration = await bus.addObserver(key: E.key) { [weak self] event in
                 guard self != nil else { return }
@@ -58,26 +127,35 @@ public class CombinedCacheEventBusHandler: EventBusHandler {
                     )
                 }
             }
-            // Replay is performed outside the actor to keep delivery concurrent.
-            // removeFromStorage is safe to call for events not on disk (no-op).
-            for event in registration.eventsToReplay.compactMap({ $0 as? E }) {
+            // Replay stays off the bus actor but remains ordered with registry work and
+            // awaited posts for this key. Observer actions are synchronous; they must not
+            // block while waiting for work that is itself queued behind this chain.
+            let eventsToReplay = registration.eventsToReplay.compactMap { $0 as? E }
+            for event in eventsToReplay {
                 logger.debug("CombinedCacheEventBusHandler: Replaying event \(event)")
                 action(event)
-                await removeFromStorage(event)
             }
+            // Removal is idempotent and runs on a separately retained chain so slow file I/O
+            // never stalls replay delivery or registry ordering. A process terminated before
+            // cleanup finishes can replay the event again on its next launch.
+            enqueueCleanup(for: eventsToReplay, key: E.key)
         }
     }
 
     /// Removes all observers for `eventType`.
+    ///
+    /// Removal is applied asynchronously, but in order relative to other registry calls and
+    /// to any later `postEventAndWait` for the same event key, so an observer added and then
+    /// removed never receives a subsequently posted event of that type.
     public func removeObserver<E: EventRepresentable>(for eventType: E.Type) {
-        Task { [weak self] in
+        chainRegistryWork(forKey: E.key) { [weak self] in
             guard let self else { return }
             await bus.removeAllObservers(key: E.key)
         }
     }
 
-    /// Posts `event` asynchronously. Prefer `postEventAndWait` when delivery must
-    /// complete before the next line of code runs (e.g. in tests).
+    /// Posts `event` asynchronously. This fire-and-forget API does not guarantee ordering
+    /// relative to later calls; use `postEventAndWait` when delivery or ordering matters.
     public func postEvent<E: EventRepresentable>(_ event: E) {
         Task { [weak self] in
             guard let self else { return }
@@ -91,8 +169,12 @@ public class CombinedCacheEventBusHandler: EventBusHandler {
     /// post time, a persistent event is also written to storage so a future observer
     /// can receive it via replay. Transient events (`isPersistent == false`) are never
     /// written to disk — they are only useful in the moment.
+    ///
+    /// Any `addObserver`/`removeObserver` requested before this call for the same event key
+    /// is applied first, so the observer set seen here matches what the caller last asked for.
     public func postEventAndWait<E: EventRepresentable>(_ event: E) async {
         logger.debug("CombinedCacheEventBusHandler: Posting event \(event)")
+        await awaitPendingRegistryWork(forKey: event.key)
         let observers = await bus.post(event)
         // Deliver outside the actor so callbacks run concurrently and cannot deadlock.
         for observer in observers {

@@ -116,6 +116,7 @@ public final class CioInternalCommon.CioThreadUtil {
 }
 public final class CioInternalCommon.CombinedCacheEventBusHandler {
 	public fun init(eventStorage: EventStorage, logger: Logger);
+	public fun deinit;
 	public fun func loadEventsFromStorage() async;
 	public fun func addObserver<E: EventRepresentable>(_ eventType: E.Type, action: @escaping (E) -> Unit);
 	public fun func removeObserver<E: EventRepresentable>(for eventType: E.Type);
