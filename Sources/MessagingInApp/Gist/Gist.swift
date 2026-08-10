@@ -267,10 +267,8 @@ class Gist: GistProvider {
         }
 
         if !skipMessageFetch {
-            threadUtil.runMain { [weak self] in
-                Task { @MainActor [weak self] in
-                    self?.fetchUserMessages()
-                }
+            Task { @MainActor [weak self] in
+                self?.fetchUserMessages()
             }
         }
     }

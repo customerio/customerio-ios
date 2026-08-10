@@ -11,6 +11,12 @@ extension InAppMessageManager {
 }
 
 class InAppMessageStateTests: IntegrationTest {
+    private struct FetchHarness {
+        let gist: Gist
+        let threadUtil: ThreadUtilStub
+        let queueNetwork: GistQueueNetworkMock
+    }
+
     var inAppMessageManager: InAppMessageManager!
     private let engineWebMock = EngineWebInstanceMock()
     private var engineWebProvider: EngineWebProvider {
@@ -18,15 +24,18 @@ class InAppMessageStateTests: IntegrationTest {
     }
 
     private let globalEventListener = InAppEventListenerMock()
+    private var applicationStateProviderMock: ApplicationStateProviderMock!
     var gist: Gist!
     var queueManager: QueueManager!
 
     override func setUp() {
         super.setUp()
         engineWebMock.underlyingView = UIView()
+        applicationStateProviderMock = ApplicationStateProviderMock()
+        applicationStateProviderMock.underlyingApplicationState = .active
         MessagingInApp.shared.setEventListener(globalEventListener)
 
-        mockCollection.add(mocks: [engineWebMock, globalEventListener])
+        mockCollection.add(mocks: [engineWebMock, globalEventListener, applicationStateProviderMock])
 
         diGraphShared.override(value: CioThreadUtil(), forType: ThreadUtil.self)
         diGraphShared.override(value: engineWebProvider, forType: EngineWebProvider.self)
@@ -59,7 +68,7 @@ class InAppMessageStateTests: IntegrationTest {
             queueManager: queueManager,
             threadUtil: diGraphShared.threadUtil,
             sseLifecycleManager: diGraphShared.sseLifecycleManager,
-            applicationStateProvider: diGraphShared.applicationStateProvider
+            applicationStateProvider: applicationStateProviderMock
         )
     }
 
@@ -538,10 +547,12 @@ class InAppMessageStateTests: IntegrationTest {
     /// synchronously, so the only fetch that can occur is the one asked for below, and it completes
     /// before the call returns. The controlled 304 response also returns before the shared visual
     /// inbox repository can be reached.
-    func test_fetchUserMessages_givenIdentifiedUser_expectSingleQueueFetchScheduledAtUtilityPriority() async throws {
+    private func makeFetchHarness(
+        applicationState: UIApplication.State
+    ) async -> FetchHarness {
         let state = InAppMessageState(siteId: .random, dataCenter: .random, userId: .random)
         let applicationStateProvider = ApplicationStateProviderMock()
-        applicationStateProvider.underlyingApplicationState = .active
+        applicationStateProvider.underlyingApplicationState = applicationState
 
         let inAppMessageManagerMock = InAppMessageManagerMock()
         // Inert subscriptions: no state replay, so nothing in `init` can schedule a fetch.
@@ -593,14 +604,34 @@ class InAppMessageStateTests: IntegrationTest {
             )
         }
 
+        return FetchHarness(
+            gist: gistUnderTest,
+            threadUtil: threadUtil,
+            queueNetwork: queueNetworkMock
+        )
+    }
+
+    func test_fetchUserMessages_givenIdentifiedUser_expectSingleQueueFetchScheduledAtUtilityPriority() async throws {
+        let harness = await makeFetchHarness(applicationState: .active)
+
         // The production application-state provider requires this selector to run on main.
-        await MainActor.run { gistUnderTest.fetchUserMessages() }
+        await MainActor.run { harness.gist.fetchUserMessages() }
 
         // Both counts are exact. The whole path ran inline on this thread, so anything beyond one
         // utility dispatch or one request would be a second fetch this test never asked for.
-        XCTAssertEqual(threadUtil.runUtilityCallsCount, 1)
-        XCTAssertEqual(threadUtil.runBackgroundCallsCount, 0)
-        XCTAssertEqual(queueNetworkMock.requestCallsCount, 1)
+        XCTAssertEqual(harness.threadUtil.runUtilityCallsCount, 1)
+        XCTAssertEqual(harness.threadUtil.runBackgroundCallsCount, 0)
+        XCTAssertEqual(harness.queueNetwork.requestCallsCount, 1)
+    }
+
+    func test_fetchUserMessages_givenBackgroundApp_expectNoQueueFetchScheduled() async {
+        let harness = await makeFetchHarness(applicationState: .background)
+
+        await MainActor.run { harness.gist.fetchUserMessages() }
+
+        XCTAssertEqual(harness.threadUtil.runUtilityCallsCount, 0)
+        XCTAssertEqual(harness.threadUtil.runBackgroundCallsCount, 0)
+        XCTAssertEqual(harness.queueNetwork.requestCallsCount, 0)
     }
 
     var sampleFetchResponseBody: String {
