@@ -16,6 +16,10 @@ private final class LegacyThreadUtil: ThreadUtil {
 }
 
 class ThreadUtilTest: UnitTest {
+    /// These tests verify queue selection, not dispatch latency. Shared CI runners can delay
+    /// low-priority global queues when the full test suite is running concurrently.
+    private let queueSchedulingTimeout: TimeInterval = 10
+
     func test_runMainActor_expectBlockRunsOnMainThread() {
         let blockExecuted = expectation(description: "main-actor block executed")
 
@@ -24,7 +28,7 @@ class ThreadUtilTest: UnitTest {
             blockExecuted.fulfill()
         }
 
-        wait(for: [blockExecuted], timeout: 1)
+        wait(for: [blockExecuted], timeout: queueSchedulingTimeout)
     }
 
     func test_runUtility_expectBlockRunsOffMainThread() {
@@ -35,7 +39,7 @@ class ThreadUtilTest: UnitTest {
             blockExecuted.fulfill()
         }
 
-        wait(for: [blockExecuted], timeout: 1)
+        wait(for: [blockExecuted], timeout: queueSchedulingTimeout)
     }
 
     func test_defaultScheduling_givenLegacyConformer_expectNewSeamsRemainUsable() {
@@ -50,7 +54,7 @@ class ThreadUtilTest: UnitTest {
             }
         }
 
-        wait(for: [mainActorBlockExecuted], timeout: 1)
+        wait(for: [mainActorBlockExecuted], timeout: queueSchedulingTimeout)
         XCTAssertEqual(threadUtil.runBackgroundCallsCount, 1)
     }
 }
