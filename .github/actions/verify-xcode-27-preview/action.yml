@@ -1,0 +1,38 @@
+name: Verify pinned Xcode 27 preview
+description: Fail closed when the floating GitHub Xcode 27 preview image no longer matches the reviewed toolchain.
+
+outputs:
+  classification:
+    description: verified-toolchain on success, preview-infrastructure-drift on a pin mismatch.
+    value: ${{ steps.verify.outputs.classification }}
+  image-version:
+    description: GitHub hosted runner image version observed by the action.
+    value: ${{ steps.verify.outputs.image-version }}
+  xcode-build:
+    description: Xcode build observed by the action.
+    value: ${{ steps.verify.outputs.xcode-build }}
+  xcode-version:
+    description: Xcode version observed by the action.
+    value: ${{ steps.verify.outputs.xcode-version }}
+  simulator-sdk:
+    description: iOS Simulator SDK version observed by the action.
+    value: ${{ steps.verify.outputs.simulator-sdk }}
+
+runs:
+  using: composite
+  steps:
+    - name: Verify Xcode 27 preview pin and print toolchain
+      id: verify
+      shell: bash
+      env:
+        XCODE27_EXPECTED_IMAGE_VERSION: "20260805.0079.1"
+        XCODE27_EXPECTED_MACOS_VERSION: "26.5.2"
+        XCODE27_EXPECTED_MACOS_BUILD: "25F84"
+        XCODE27_EXPECTED_ARCHITECTURE: arm64
+        XCODE27_EXPECTED_VERSION: "27.0"
+        XCODE27_EXPECTED_BUILD: 27A5228h
+        XCODE27_EXPECTED_APP_PATH: /Applications/Xcode_27_beta_4.app
+        XCODE27_EXPECTED_IPHONEOS_SDK: "27.0"
+        XCODE27_EXPECTED_SIMULATOR_SDK: "27.0"
+        XCODE27_EXPECTED_IOS_RUNTIME: com.apple.CoreSimulator.SimRuntime.iOS-27-0
+      run: bash "$GITHUB_ACTION_PATH/verify.sh"

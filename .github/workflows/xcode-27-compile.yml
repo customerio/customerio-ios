@@ -1,0 +1,147 @@
+name: Xcode 27 compile fixtures
+
+on:
+  pull_request:
+    paths:
+      - ".github/actions/verify-xcode-27-preview/**"
+      - ".github/workflows/xcode-27-compile.yml"
+      - "Apps/APN-UIKit/**"
+      - "Apps/CocoaPods-FCM/**"
+      - "Apps/Common/**"
+      - "Sources/**"
+      - "Package.swift"
+      - "*.podspec"
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: xcode-27-compile-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  compile:
+    name: Xcode 27 compile (${{ matrix.fixture }})
+    runs-on: xcode-27
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        fixture: [native-apn, customerio-ios-fcm]
+    steps:
+      - name: Check out iOS SDK
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Verify pinned preview toolchain
+        id: preview
+        uses: ./.github/actions/verify-xcode-27-preview
+
+      - name: Prepare placeholder build environment
+        shell: bash
+        env:
+          FIXTURE: ${{ matrix.fixture }}
+        run: |
+          set -euo pipefail
+          if [[ "$FIXTURE" == "native-apn" ]]; then
+            source_path="Apps/APN-UIKit/BuildEnvironment.sample.swift"
+            destination_path="Apps/APN-UIKit/BuildEnvironment.swift"
+          else
+            source_path="Apps/CocoaPods-FCM/BuildEnvironment.sample.swift"
+            destination_path="Apps/CocoaPods-FCM/BuildEnvironment.swift"
+          fi
+          if ! cp "$source_path" "$destination_path"; then
+            echo "::error title=Xcode 27 fixture preparation failure::The $FIXTURE build environment could not be prepared. No compile conclusion is available."
+            echo "**Classification:** fixture-preparation-failure" >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+
+      - name: Install pinned CocoaPods for FCM fixture
+        if: matrix.fixture == 'customerio-ios-fcm'
+        shell: bash
+        run: gem install cocoapods -v 1.16.2 --no-document
+
+      - name: Resolve FCM fixture dependencies
+        if: matrix.fixture == 'customerio-ios-fcm'
+        shell: bash
+        run: |
+          set -o pipefail
+          if ! pod install --project-directory="Apps/CocoaPods-FCM" 2>&1 | tee "$RUNNER_TEMP/fcm-pod-install.log"; then
+            echo "::error title=Xcode 27 fixture preparation failure::CocoaPods could not resolve the customerio-ios-fcm fixture. This is not yet an SDK compile result."
+            {
+              echo "## customerio-ios-fcm fixture"
+              echo
+              echo "**Classification:** fixture-preparation-failure"
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+
+      - name: Compile native APN fixture
+        if: matrix.fixture == 'native-apn'
+        shell: bash
+        env:
+          XCODE_BUILD: ${{ steps.preview.outputs.xcode-build }}
+          XCODE_VERSION: ${{ steps.preview.outputs.xcode-version }}
+          SIMULATOR_SDK: ${{ steps.preview.outputs.simulator-sdk }}
+        run: |
+          set -o pipefail
+          if ! xcodebuild \
+            -project "Apps/APN-UIKit/APN UIKit.xcodeproj" \
+            -scheme "APN UIKit" \
+            -configuration Debug \
+            -sdk "iphonesimulator$SIMULATOR_SDK" \
+            -destination "generic/platform=iOS Simulator" \
+            -derivedDataPath "$RUNNER_TEMP/xcode27-native-apn" \
+            CODE_SIGNING_ALLOWED=NO \
+            build 2>&1 | tee "$RUNNER_TEMP/xcode27-native-apn.log"; then
+            echo "::error title=Xcode 27 SDK compile regression (native APN)::The pinned toolchain passed, but the APN fixture did not compile."
+            {
+              echo "## Native APN fixture"
+              echo
+              echo "**Classification:** sdk-compile-failure"
+              echo "**Toolchain:** Xcode $XCODE_VERSION build $XCODE_BUILD, iphonesimulator$SIMULATOR_SDK"
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+          {
+            echo "## Native APN fixture"
+            echo
+            echo "**Classification:** compile-passed"
+            echo "**Toolchain:** Xcode $XCODE_VERSION build $XCODE_BUILD, iphonesimulator$SIMULATOR_SDK"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Compile customerio-ios-fcm fixture
+        if: matrix.fixture == 'customerio-ios-fcm'
+        shell: bash
+        env:
+          XCODE_BUILD: ${{ steps.preview.outputs.xcode-build }}
+          XCODE_VERSION: ${{ steps.preview.outputs.xcode-version }}
+          SIMULATOR_SDK: ${{ steps.preview.outputs.simulator-sdk }}
+        run: |
+          set -o pipefail
+          if ! xcodebuild \
+            -workspace "Apps/CocoaPods-FCM/test cocoapods.xcworkspace" \
+            -scheme "test cocoapods" \
+            -configuration Debug \
+            -sdk "iphonesimulator$SIMULATOR_SDK" \
+            -destination "generic/platform=iOS Simulator" \
+            -derivedDataPath "$RUNNER_TEMP/xcode27-customerio-ios-fcm" \
+            CODE_SIGNING_ALLOWED=NO \
+            build 2>&1 | tee "$RUNNER_TEMP/xcode27-customerio-ios-fcm.log"; then
+            echo "::error title=Xcode 27 SDK compile regression (customerio-ios-fcm)::The pinned toolchain passed, but the CocoaPods FCM fixture did not compile."
+            {
+              echo "## customerio-ios-fcm fixture"
+              echo
+              echo "**Classification:** sdk-compile-failure"
+              echo "**Toolchain:** Xcode $XCODE_VERSION build $XCODE_BUILD, iphonesimulator$SIMULATOR_SDK"
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+          {
+            echo "## customerio-ios-fcm fixture"
+            echo
+            echo "**Classification:** compile-passed"
+            echo "**Toolchain:** Xcode $XCODE_VERSION build $XCODE_BUILD, iphonesimulator$SIMULATOR_SDK"
+          } >> "$GITHUB_STEP_SUMMARY"
