@@ -18,7 +18,8 @@ public class CombinedCacheEventBusHandler: EventBusHandler {
     /// `bus` actor asynchronously. Independent unstructured `Task`s carry no ordering
     /// guarantee, so `addObserver(X)` followed by `removeObserver(X)` could reach the actor
     /// in reverse order and leave a live observer behind. Chaining operations for the same
-    /// event key restores the caller's ordering without blocking unrelated event types.
+    /// event key restores the caller's ordering without chaining unrelated event types together.
+    /// Startup loads still share one `EventStorage` actor, so their disk reads are serialized.
     ///
     /// The dictionary retains only the latest tail encountered for each event key. SDK event
     /// types are finite, so pruning completed tails would add race-prone bookkeeping for no
@@ -36,8 +37,11 @@ public class CombinedCacheEventBusHandler: EventBusHandler {
         self.bus = CioEventBus()
         self.eventStorage = eventStorage
         self.logger = logger
-        Task { [weak self] in
-            await self?.loadEventsFromStorage()
+
+        // Seed each event cache on the same per-key chain used by observer registration.
+        // This makes startup ordering deterministic without blocking unrelated event types.
+        for eventType in EventTypesRegistry.allEventTypes() {
+            enqueueStoredEventsLoad(for: eventType)
         }
     }
 
@@ -51,14 +55,17 @@ public class CombinedCacheEventBusHandler: EventBusHandler {
     /// mutation, so concurrent callers still produce a single well-defined order per key.
     /// This is internal only as a deterministic concurrency-test seam; production callers
     /// should use the public observer APIs.
-    func chainRegistryWork(forKey key: String, operation: @escaping () async -> Void) {
+    @discardableResult
+    func chainRegistryWork(forKey key: String, operation: @escaping () async -> Void) -> Task<Void, Never> {
         pendingRegistryWork.mutating { workByKey in
             let previous = workByKey[key]
-            workByKey[key] = Task {
+            let next = Task {
                 await previous?.value
                 guard !Task.isCancelled else { return }
                 await operation()
             }
+            workByKey[key] = next
+            return next
         }
     }
 
@@ -89,7 +96,20 @@ public class CombinedCacheEventBusHandler: EventBusHandler {
 
     /// Loads events from persistent storage into the in-memory cache on startup.
     public func loadEventsFromStorage() async {
-        for eventType in EventTypesRegistry.allEventTypes() {
+        let loadTasks = EventTypesRegistry.allEventTypes().map { eventType in
+            enqueueStoredEventsLoad(for: eventType)
+        }
+        for loadTask in loadTasks {
+            await loadTask.value
+        }
+    }
+
+    @discardableResult
+    private func enqueueStoredEventsLoad(
+        for eventType: any EventRepresentable.Type
+    ) -> Task<Void, Never> {
+        chainRegistryWork(forKey: eventType.key) { [weak self] in
+            guard let self else { return }
             do {
                 let events: [AnyEventRepresentable] = try await eventStorage.loadEvents(
                     ofType: eventType.key
