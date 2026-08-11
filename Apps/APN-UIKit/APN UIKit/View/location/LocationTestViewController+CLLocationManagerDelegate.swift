@@ -22,18 +22,16 @@ extension LocationTestViewController: @MainActor CLLocationManagerDelegate {
 
     /// Returns a short label for the device location source.
     /// Core Location can provide location from GPS, Wi‑Fi, cell, or a combination; the public API does not expose which.
-    /// We only get simulation and accessory info on iOS 15+.
+    /// The supported deployment target exposes simulation and accessory information.
     private func deviceLocationSourceName(for location: CLLocation) -> String {
-        if #available(iOS 15.0, *) {
-            guard let sourceInfo = location.sourceInformation else {
-                return "Device"
-            }
-            if sourceInfo.isSimulatedBySoftware {
-                return "Device (Simulated)"
-            }
-            if sourceInfo.isProducedByAccessory {
-                return "Device (Accessory)"
-            }
+        guard let sourceInfo = location.sourceInformation else {
+            return "Device"
+        }
+        if sourceInfo.isSimulatedBySoftware {
+            return "Device (Simulated)"
+        }
+        if sourceInfo.isProducedByAccessory {
+            return "Device (Accessory)"
         }
         return "Device"
     }
@@ -47,16 +45,8 @@ extension LocationTestViewController: @MainActor CLLocationManagerDelegate {
     /// when permission lands in a granted state — it bootstraps geofence sync from the current
     /// location without emitting a `CIO Location Update` analytics event (unlike
     /// `requestLocationUpdate()`). Safe to invoke on every delegate firing.
-    @available(iOS 14.0, *)
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         let status = manager.authorizationStatus
-        if status == .authorizedWhenInUse || status == .authorizedAlways {
-            CustomerIO.geofence.refreshFromCurrentLocation()
-        }
-        handleAuthorizationChange(status)
-    }
-
-    func locationManager(_ manager: CLLocationManager, didChangeAuthorization status: CLAuthorizationStatus) {
         if status == .authorizedWhenInUse || status == .authorizedAlways {
             CustomerIO.geofence.refreshFromCurrentLocation()
         }

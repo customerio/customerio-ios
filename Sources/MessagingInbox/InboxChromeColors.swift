@@ -13,7 +13,6 @@ import SwiftUI
 ///      palette (`patterns.modes.dark` is OPTIONAL; absent in most workspaces),
 ///   2. `patterns.inbox.*` — the workspace's configured (light) inbox chrome,
 ///   3. a SwiftUI/system default (`Color.accentColor` / `Color(.systemBackground)` / `Color.red` …).
-@available(iOS 13.0, *)
 struct ResolvedInboxColors {
     let bellBackground: Color
     let bellIcon: Color
@@ -82,10 +81,8 @@ struct ResolvedInboxColors {
     }
 }
 
-/// Parses branding hex color strings into SwiftUI colors. iOS 13-safe: builds `Color` directly from
-/// sRGB components (no `UIColor(_:)`/`Color` round-trip, which is iOS 14+) and computes luminance from
-/// the same components.
-@available(iOS 13.0, *)
+/// Parses branding hex color strings directly from sRGB components so color construction and
+/// luminance calculations use the same normalized values.
 enum InboxColorParser {
     /// Normalized sRGB components parsed from a hex string.
     private struct RGBA {

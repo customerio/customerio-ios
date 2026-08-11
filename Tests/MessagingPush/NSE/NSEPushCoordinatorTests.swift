@@ -7,7 +7,6 @@ import SharedTests
 import UserNotifications
 import XCTest
 
-@available(iOS 13.0, *)
 class NSEPushCoordinatorTests: UnitTest {
     private var contentHandlerInvocations: [UNNotificationContent]!
     private var deliveryTrackingMock: RichPushDeliveryTrackingMock!

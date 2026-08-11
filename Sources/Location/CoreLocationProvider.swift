@@ -71,11 +71,7 @@ actor CoreLocationProvider: NSObject, CLLocationManagerDelegate, LocationProvidi
     private func currentAuthorizationStatus() async -> AuthorizationSnapshot {
         let m = manager
         let clStatus: CLAuthorizationStatus = await MainActor.run {
-            if #available(iOS 14.0, *) {
-                return m.authorizationStatus
-            } else {
-                return CLLocationManager.authorizationStatus()
-            }
+            m.authorizationStatus
         }
         return AuthorizationSnapshot(status: authorizationStatusFromCL(clStatus))
     }

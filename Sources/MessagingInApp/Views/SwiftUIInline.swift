@@ -117,8 +117,7 @@ struct InlineMessageUIViewRepresentable: UIViewRepresentable {
     }
 }
 
-// UIActivityIndicatorView to use in SwiftUI.
-// Must use this because SwiftUI activity indicator was introduced in iOS 14.
+// Keep the large UIKit spinner so SwiftUI and UIKit inline-message loading states have matching size.
 struct ActivityIndicator: UIViewRepresentable {
     func makeUIView(context: Context) -> UIActivityIndicatorView {
         let indicator = UIActivityIndicatorView(style: .large)

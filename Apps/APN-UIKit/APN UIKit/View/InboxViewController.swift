@@ -49,7 +49,6 @@ class InboxViewController: BaseViewController, UITableViewDelegate, UITableViewD
 
     /// Pushes the visual message list as a dedicated screen, without the floating bell or sheet.
     @objc private func presentVisualInboxDemo() {
-        guard #available(iOS 13.0, *) else { return }
         let host = UIHostingController(rootView: VisualInboxScreen())
         host.title = "Visual Inbox"
         navigationController?.pushViewController(host, animated: true)
@@ -257,7 +256,6 @@ private extension InboxViewController {
 // MARK: - VisualInboxOverlayScreen
 
 /// Dedicated-screen integration of the visual Inbox message list.
-@available(iOS 13.0, *)
 private struct VisualInboxScreen: View {
     var body: some View {
         ZStack {

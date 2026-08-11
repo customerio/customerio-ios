@@ -212,7 +212,7 @@ extension UIViewController {
     private func getActiveRootViewController() -> UIViewController? {
         if let viewController = UIApplication.shared.delegate?.window??.rootViewController {
             return viewController
-        } else if #available(iOS 13.0, *) {
+        } else {
             for scene in UIApplication.shared.connectedScenes {
                 if scene.activationState == .foregroundActive, let windowScene = scene as? UIWindowScene {
                     if let sceneDelegate = windowScene.delegate as? UIWindowSceneDelegate {
@@ -222,10 +222,6 @@ extension UIViewController {
                     }
                 }
             }
-        } else { // keyWindow is deprecated in iOS 13.0*
-            #if os(iOS)
-            return UIApplication.shared.keyWindow?.rootViewController
-            #endif
         }
 
         return nil

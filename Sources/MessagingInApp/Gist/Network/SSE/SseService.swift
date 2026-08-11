@@ -69,8 +69,8 @@ actor SseService: SseServiceProtocol {
 
         logger.logWithModuleTag("SseService: Connecting to \(url.absoluteString)", level: .info)
 
-        // Create stream and continuation separately to avoid race conditions
-        // (Using backport for iOS 13+ compatibility; native makeStream() requires iOS 17+)
+        // Create stream and continuation separately to avoid race conditions. The backport remains
+        // necessary at the iOS 15 floor because native makeStream() requires iOS 17+.
         let (stream, continuation) = AsyncStreamBackport.makeStream(of: SseEvent.self)
 
         // Create event handler with continuation

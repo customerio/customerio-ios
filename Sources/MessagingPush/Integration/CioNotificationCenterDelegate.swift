@@ -41,11 +41,7 @@ open class CioNotificationCenterDelegate: NSObject, UNUserNotificationCenterDele
         }
 
         if config?().showPushAppInForeground ?? false {
-            if #available(iOS 14.0, *) {
-                completionHandler([.list, .banner, .badge, .sound])
-            } else {
-                completionHandler([.alert, .badge, .sound])
-            }
+            completionHandler([.list, .banner, .badge, .sound])
         } else {
             completionHandler([])
         }

@@ -65,7 +65,7 @@ actor HeartbeatTimer: HeartbeatTimerProtocol {
 
         currentTimerTask = Task { [weak self, generation, clampedTimeout] in
             do {
-                // Task.sleep with nanoseconds required for iOS 13+ compatibility
+                // The duration-based Task.sleep API is unavailable at the iOS 15 deployment target.
                 try await Task.sleep(nanoseconds: nanoseconds)
 
                 // Check cancellation after sleep completes

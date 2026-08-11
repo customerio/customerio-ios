@@ -9,7 +9,6 @@ import XCTest
 /// EQUAL and was dropped by `emitSnapshot` — leaving the overlay rendering stale Jist rows/theme.
 /// These tests pin that such render-payload changes now count as DIFFERENT (so they're emitted),
 /// while truly-identical snapshots still compare equal (so genuine dupes are still dropped).
-@available(iOS 13.0, *)
 final class VisualInboxSnapshotTests: XCTestCase {
     private func snapshot(
         state: VisualInboxState = .visible(messageCount: 1),

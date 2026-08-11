@@ -17,11 +17,10 @@ import SwiftUI
 /// ```swift
 /// NotificationInboxBell { showInbox = true }
 /// ```
-@available(iOS 13.0, *)
 public struct NotificationInboxBell: View {
-    /// Owns the model for standalone use. `@State` rather than `@ObservedObject` so SwiftUI keeps the
-    /// instance across view reconstruction; `@StateObject` is iOS 14+ and this view is public on
-    /// iOS 13. See ``NotificationInboxView`` for the full rationale.
+    /// Owns the model for standalone use. `@State` intentionally preserves the existing ownership
+    /// behavior; `@ObservedObject` would not own the value and could replace a started model during
+    /// parent updates. Moving to another ownership wrapper requires separate lifecycle validation.
     @State private var model = VisualInboxModel()
 
     private let onTap: () -> Void
@@ -39,7 +38,6 @@ public struct NotificationInboxBell: View {
 
 /// Renders the bell for a model it does not own. Always constructed with an explicit model — either
 /// the shared one from ``NotificationInboxOverlay`` or the one ``NotificationInboxBell`` owns.
-@available(iOS 13.0, *)
 struct InboxBellView: View {
     @ObservedObject private var model: VisualInboxModel
 
@@ -107,7 +105,6 @@ struct InboxBellView: View {
                 }
             }
         })
-        // `.accessibility(label:)` is the iOS 13-safe form; `.accessibilityLabel` is iOS 14+.
         .accessibility(label: Text(showsUnreadCount ? "Notifications, \(model.unopenedCount) unread" : "Notifications"))
     }
 
@@ -138,7 +135,6 @@ struct InboxBellView: View {
 
 /// Starts/stops the shared model only when this view owns the lifecycle. Centralizes the
 /// `onAppear`/`onDisappear` so the bell and panel can each conditionally drive it.
-@available(iOS 13.0, *)
 struct LifecycleModifier: ViewModifier {
     @ObservedObject var model: VisualInboxModel
     let enabled: Bool

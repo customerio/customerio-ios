@@ -207,7 +207,7 @@ final class CoreLocationGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @pr
         logger.geofenceMonitoringFailed(region: identifier, error: error)
     }
 
-    // iOS 14+ fires this on delegate set with the current status, and again on every change.
+    // Core Location fires this on delegate set with the current status, and again on every change.
     // We surface it to callers so the bootstrap can re-attempt registration when permission
     // improves mid-process (the initial fire after delegate-set is harmless — the bootstrap
     // already read the current status synchronously before installing the handler).
@@ -246,11 +246,7 @@ final class CoreLocationGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @pr
     }
 
     private func currentAuthorizationStatus() -> CLAuthorizationStatus {
-        if #available(iOS 14.0, *) {
-            return manager.authorizationStatus
-        } else {
-            return CLLocationManager.authorizationStatus()
-        }
+        manager.authorizationStatus
     }
 
     private func currentLocationData() -> LocationData? {
@@ -279,7 +275,7 @@ extension DIGraphShared {
         let overridden: GeofenceRegionMonitoring? = getOverriddenInstance()
         if let overridden { return overridden }
         // iOS 18+ uses the CLMonitor-backed monitor: only there does `CLServiceSession` provide a
-        // documented way to keep background event delivery alive. iOS 13–17 keep the classic
+        // documented way to keep background event delivery alive. iOS 15–17 keep the classic
         // CLLocationManager monitor — the region APIs are deprecated on 17 but still deliver
         // reliably in the background (OS relaunch), whereas iOS 17 CLMonitor has no session and
         // no dependable background story. Revisit lowering this to 17 only if it proves reliable.

@@ -20,15 +20,11 @@ import UIKit
 /// ```swift
 /// NavigationView { NotificationInboxView() }
 /// ```
-@available(iOS 13.0, *)
 public struct NotificationInboxView: View {
-    /// Owns the model for standalone embedding.
-    ///
-    /// `@State` rather than `@ObservedObject`: `@ObservedObject` does not own its value, so a parent
-    /// update could hand the view a brand-new model after the original had already started its
-    /// lifecycle — losing load state, dedupe guards, and in-flight work. `@StateObject` would be the
-    /// natural owner but is iOS 14+, and this view is public on iOS 13. `VisualInboxModel.init` has no
-    /// side effects (work begins in `start()`), so the instances SwiftUI discards are inert.
+    /// Owns the model for standalone embedding. `@State` intentionally preserves the existing
+    /// ownership behavior; `@ObservedObject` would not own the value and could replace a started
+    /// model during parent updates, losing load state, dedupe guards, and in-flight work. Moving to
+    /// another ownership wrapper requires separate lifecycle validation.
     @State private var model = VisualInboxModel()
 
     /// Creates a standalone inbox list backed by the SDK's shared Visual Inbox data layer.
@@ -41,7 +37,6 @@ public struct NotificationInboxView: View {
 
 /// Renders the inbox list for a model it does not own. Always constructed with an explicit model —
 /// either the shared one from ``NotificationInboxOverlay`` or the one ``NotificationInboxView`` owns.
-@available(iOS 13.0, *)
 struct InboxListView: View {
     @ObservedObject private var model: VisualInboxModel
 
@@ -145,8 +140,6 @@ struct InboxListView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if model.messages.isEmpty {
             // idle/loading (pre-first-snapshot or fetch in progress) → spinner, not the empty copy.
-            // `InboxLoadingSpinner` (UIKit) instead of SwiftUI `ProgressView`, which is iOS 14+ while
-            // this view is public on iOS 13.
             VStack {
                 Spacer()
                 InboxLoadingSpinner()
@@ -278,9 +271,8 @@ struct InboxListView: View {
     }
 }
 
-/// iOS 13-compatible loading spinner. SwiftUI's `ProgressView` is iOS 14+, but ``NotificationInboxView``
-/// is public on iOS 13, so the loading state wraps UIKit's `UIActivityIndicatorView` instead.
-@available(iOS 13.0, *)
+/// Preserves the standalone inbox list's existing medium UIKit loading indicator. Migrating to a
+/// different SwiftUI loading view requires separate visual validation.
 private struct InboxLoadingSpinner: UIViewRepresentable {
     func makeUIView(context: Context) -> UIActivityIndicatorView {
         let indicator = UIActivityIndicatorView(style: .medium)
