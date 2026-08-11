@@ -97,6 +97,14 @@ actor LocationServicesImplementation: LocationServices {
     private let locationSyncCoordinator: LocationSyncCoordinator
     private let lifecycleNotifying: AppLifecycleNotifying
     private let applicationStateProvider: ApplicationStateProvider
+    /// Serializes calls from the synchronous `setLastKnownLocation` API so locations are
+    /// processed in the same order the host app supplies them.
+    private nonisolated let pendingSetLastKnownLocationWork = Synchronized<Task<Void, Never>?>(nil)
+    /// Retains the latest fire-and-forget request entry task so tests can join it without sleeps.
+    /// Overlap tests observe the earlier request in flight before joining this latest entry.
+    private nonisolated let pendingLocationRequestEntryWork = Synchronized<Task<Void, Never>?>(nil)
+    /// Retains the latest fire-and-forget stop task so tests can join it without sleeps.
+    private nonisolated let pendingStopLocationWork = Synchronized<Task<Void, Never>?>(nil)
     private var currentTask: Task<Void, Never>?
     /// Set when a tracked request arrives while another request is in flight, so the tracked
     /// intent survives the single-request gate (the lifecycle's tracked request and geofence's
@@ -147,17 +155,38 @@ actor LocationServicesImplementation: LocationServices {
     }
 
     nonisolated func setLastKnownLocation(_ location: CLLocation) {
-        Task { await self.setLastKnownLocationImpl(location) }
+        pendingSetLastKnownLocationWork.mutating { pendingWork in
+            let previousWork = pendingWork
+            pendingWork = Task { [weak self] in
+                await previousWork?.value
+                await self?.setLastKnownLocationImpl(location)
+            }
+        }
+    }
+
+    /// Waits for location work that was enqueued before this method was called.
+    /// Internal synchronization seam used by tests for the synchronous public API.
+    nonisolated func waitForPendingSetLastKnownLocation() async {
+        let pendingWork = pendingSetLastKnownLocationWork.using { $0 }
+        await pendingWork?.value
     }
 
     nonisolated func requestLocationUpdate() {
-        Task { await self.startRequestIfNeeded(track: true, respectMode: true) }
+        let requestEntryWork = Task { [weak self] in
+            guard let self else { return }
+            await self.startRequestIfNeeded(track: true, respectMode: true)
+        }
+        pendingLocationRequestEntryWork.wrappedValue = requestEntryWork
     }
 
     nonisolated func requestLocationUpdateSilently() {
         // Internal consumers (geofencing) need a fix regardless of the tracking mode, and it must
         // not emit a track event or be cached.
-        Task { await self.startRequestIfNeeded(track: false, respectMode: false) }
+        let requestEntryWork = Task { [weak self] in
+            guard let self else { return }
+            await self.startRequestIfNeeded(track: false, respectMode: false)
+        }
+        pendingLocationRequestEntryWork.wrappedValue = requestEntryWork
     }
 
     nonisolated func getLastKnownLocation() async -> LocationData? {
@@ -166,7 +195,37 @@ actor LocationServicesImplementation: LocationServices {
 
     /// Cancels any in-flight location request. No-op if nothing in progress. Called automatically when the app enters background; not exposed on the public LocationServices protocol.
     nonisolated func stopLocationUpdates() {
-        Task { await self.stopLocationUpdatesImpl() }
+        let stopWork = Task { [weak self] in
+            guard let self else { return }
+            await self.stopLocationUpdatesImpl()
+        }
+        pendingStopLocationWork.wrappedValue = stopWork
+    }
+
+    /// Waits until the latest request has entered the actor and applied its request intent.
+    /// This joins the latest assigned entry only. Overlap tests must first observe any earlier
+    /// request in flight before releasing a held request.
+    nonisolated func waitForPendingLocationRequestEntry() async {
+        let requestEntryWork = pendingLocationRequestEntryWork.using { $0 }
+        await requestEntryWork?.value
+    }
+
+    /// Waits for the latest request entry and any location acquisition it started or joined.
+    /// Internal synchronization seam used by tests for the synchronous public API.
+    nonisolated func waitForPendingLocationRequest() async {
+        await waitForPendingLocationRequestEntry()
+        await waitForCurrentLocationRequest()
+    }
+
+    /// Waits for the latest stop request to finish cancelling the provider.
+    /// Internal synchronization seam used by tests for the synchronous public API.
+    nonisolated func waitForPendingStopLocationUpdates() async {
+        let stopWork = pendingStopLocationWork.using { $0 }
+        await stopWork?.value
+    }
+
+    private func waitForCurrentLocationRequest() async {
+        await currentTask?.value
     }
 
     private func stopLocationUpdatesImpl() async {

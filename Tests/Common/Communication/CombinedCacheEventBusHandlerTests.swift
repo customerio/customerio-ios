@@ -304,18 +304,42 @@ class CombinedCacheEventBusHandlerTest: UnitTest {
 
     // MARK: - loadEventsFromStorage
 
-    func test_loadEventsFromStorage_expectEventsSeededAndReplayed() async {
+    func test_initialization_expectEventsSeededBeforeObserverRegistration() async {
         let event = ProfileIdentifiedEvent(identifier: "persisted")
         mockEventStorage.loadEventsClosure = { key in
             key == ProfileIdentifiedEvent.key ? [event] : []
         }
 
         let handler = makeHandler()
-        // Explicitly await loading so the cache is populated before the observer registers.
-        // This avoids a race with the background Task launched in init.
+        let replayed = XCTestExpectation(description: "persisted event replayed to new observer")
+        replayed.assertForOverFulfill = true
+        // Registration requested immediately after initialization must run after the
+        // persisted cache seed for this event key and replay the event exactly once.
+        handler.addObserver(ProfileIdentifiedEvent.self) { received in
+            if received.identifier == event.identifier { replayed.fulfill() }
+        }
+
+        await fulfillment(of: [replayed], timeout: 5.0)
+    }
+
+    func test_loadEventsFromStorage_expectReturnsAfterEventsSeeded() async {
+        let event = ProfileIdentifiedEvent(identifier: "explicit-load")
+        let profileLoadCount = Synchronized(0)
+        mockEventStorage.loadEventsClosure = { key in
+            guard key == ProfileIdentifiedEvent.key else { return [] }
+            let currentLoadCount = profileLoadCount.mutating { count in
+                count += 1
+                return count
+            }
+            // Initialization owns the first load. The explicit API call below owns the second.
+            return currentLoadCount == 2 ? [event] : []
+        }
+
+        let handler = makeHandler()
         await handler.loadEventsFromStorage()
 
-        let replayed = XCTestExpectation(description: "persisted event replayed to new observer")
+        let replayed = XCTestExpectation(description: "explicitly loaded event replayed")
+        replayed.assertForOverFulfill = true
         handler.addObserver(ProfileIdentifiedEvent.self) { received in
             if received.identifier == event.identifier { replayed.fulfill() }
         }
