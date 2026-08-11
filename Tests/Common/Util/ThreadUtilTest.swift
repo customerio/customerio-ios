@@ -17,7 +17,7 @@ private final class LegacyThreadUtil: ThreadUtil {
 
 class ThreadUtilTest: UnitTest {
     /// These tests verify queue selection, not dispatch latency. Shared CI runners can delay
-    /// low-priority global queues when the full test suite is running concurrently.
+    /// main-queue and global-queue work when the full test suite is running concurrently.
     private let queueSchedulingTimeout: TimeInterval = 10
 
     func test_runMainActor_expectBlockRunsOnMainThread() {
