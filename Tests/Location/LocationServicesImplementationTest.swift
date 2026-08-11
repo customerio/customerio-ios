@@ -41,13 +41,6 @@ struct LocationServicesImplementationTests {
         )
     }
 
-    /// Yields so the fire-and-forget task from requestLocationUpdate() can run (no sleep).
-    private func yieldForLocationTask() async {
-        for _ in 0 ..< 40 {
-            await Task.yield()
-        }
-    }
-
     @Test
     func setLastKnownLocation_givenTrackingDisabled_expectNoTrackCalled() async {
         let pipelineMock = DataPipelineTrackingMock()
@@ -55,7 +48,7 @@ struct LocationServicesImplementationTests {
         let validLocation = CLLocation(latitude: 37.7749, longitude: -122.4194)
 
         service.setLastKnownLocation(validLocation)
-        await yieldForLocationTask()
+        await service.waitForPendingSetLastKnownLocation()
 
         #expect(pipelineMock.trackCallsCount == 0)
     }
@@ -67,7 +60,7 @@ struct LocationServicesImplementationTests {
         let invalidLocation = CLLocation(latitude: 91.0, longitude: 181.0)
 
         service.setLastKnownLocation(invalidLocation)
-        await yieldForLocationTask()
+        await service.waitForPendingSetLastKnownLocation()
 
         #expect(pipelineMock.trackCallsCount == 0)
     }
@@ -81,7 +74,7 @@ struct LocationServicesImplementationTests {
         let validLocation = CLLocation(latitude: expectedLatitude, longitude: expectedLongitude)
 
         service.setLastKnownLocation(validLocation)
-        await yieldForLocationTask()
+        await service.waitForPendingSetLastKnownLocation()
 
         #expect(pipelineMock.trackCallsCount == 1)
         #expect(pipelineMock.trackInvocations.first?.name == "CIO Location Update")
@@ -100,11 +93,14 @@ struct LocationServicesImplementationTests {
 
         service.setLastKnownLocation(location1)
         service.setLastKnownLocation(location2)
-        await yieldForLocationTask()
+        await service.waitForPendingSetLastKnownLocation()
 
         #expect(pipelineMock.trackCallsCount == 1)
         #expect(pipelineMock.trackInvocations.first?.properties["latitude"] as? Double == 37.7749)
         #expect(pipelineMock.trackInvocations.first?.properties["longitude"] as? Double == -122.4194)
+        let lastKnownLocation = await service.getLastKnownLocation()
+        #expect(lastKnownLocation?.latitude == 40.7128)
+        #expect(lastKnownLocation?.longitude == -74.0060)
     }
 
     @Test
@@ -114,7 +110,7 @@ struct LocationServicesImplementationTests {
         let zeroLocation = CLLocation(latitude: 0.0, longitude: 0.0)
 
         service.setLastKnownLocation(zeroLocation)
-        await yieldForLocationTask()
+        await service.waitForPendingSetLastKnownLocation()
 
         #expect(pipelineMock.trackCallsCount == 1)
     }
@@ -126,7 +122,7 @@ struct LocationServicesImplementationTests {
         let negativeLocation = CLLocation(latitude: -33.8688, longitude: 151.2093)
 
         service.setLastKnownLocation(negativeLocation)
-        await yieldForLocationTask()
+        await service.waitForPendingSetLastKnownLocation()
 
         #expect(pipelineMock.trackCallsCount == 1)
         #expect(pipelineMock.trackInvocations.first?.properties["latitude"] as? Double == -33.8688)
@@ -154,7 +150,7 @@ struct LocationServicesImplementationTests {
         )
 
         service.requestLocationUpdate()
-        await yieldForLocationTask()
+        await service.waitForPendingLocationRequest()
 
         #expect(pipelineMock.trackCallsCount == 1)
         #expect(pipelineMock.trackInvocations.first?.properties["latitude"] as? Double == 37.7749)
@@ -173,7 +169,7 @@ struct LocationServicesImplementationTests {
         )
 
         service.requestLocationUpdate()
-        await yieldForLocationTask()
+        await service.waitForPendingLocationRequest()
 
         #expect(pipelineMock.trackCallsCount == 0)
         let requestCount = await mockProvider.requestLocationCallCount
@@ -199,7 +195,7 @@ struct LocationServicesImplementationTests {
         )
 
         service.requestLocationUpdateSilently()
-        await yieldForLocationTask()
+        await service.waitForPendingLocationRequest()
 
         // Silent acquisition ignores the .off tracking mode (geofencing needs a fix even when
         // tracking is off) but must never emit analytics. The fix is readable as last-known.
@@ -218,6 +214,7 @@ struct LocationServicesImplementationTests {
             if await provider.requestLocationCallCount >= 1 { return }
             await Task.yield()
         }
+        Issue.record("Location request never reached the provider")
     }
 
     private var validSnapshot: LocationSnapshot {
@@ -235,9 +232,9 @@ struct LocationServicesImplementationTests {
         service.requestLocationUpdateSilently()
         await waitUntilRequestInFlight(mockProvider)
         service.requestLocationUpdate()
-        await yieldForLocationTask()
+        await service.waitForPendingLocationRequestEntry()
         await mockProvider.releaseHeldRequest()
-        await yieldForLocationTask()
+        await service.waitForPendingLocationRequest()
 
         // One acquisition serves both callers: the silent fix is promoted to a tracked one
         // instead of the tracked request being dropped by the single-request gate.
@@ -257,9 +254,9 @@ struct LocationServicesImplementationTests {
         service.requestLocationUpdate()
         await waitUntilRequestInFlight(mockProvider)
         service.requestLocationUpdateSilently()
-        await yieldForLocationTask()
+        await service.waitForPendingLocationRequestEntry()
         await mockProvider.releaseHeldRequest()
-        await yieldForLocationTask()
+        await service.waitForPendingLocationRequest()
 
         // The reverse overlap needs no upgrade: the tracked result feeds silent consumers too.
         #expect(await mockProvider.requestLocationCallCount == 1)
@@ -277,9 +274,9 @@ struct LocationServicesImplementationTests {
         service.requestLocationUpdateSilently()
         await waitUntilRequestInFlight(mockProvider)
         service.requestLocationUpdate()
-        await yieldForLocationTask()
+        await service.waitForPendingLocationRequestEntry()
         await mockProvider.releaseHeldRequest()
-        await yieldForLocationTask()
+        await service.waitForPendingLocationRequest()
 
         // Under `.off` the tracked request would have been refused outright, so the latched
         // intent must not smuggle a track through the silent request either.
@@ -297,15 +294,15 @@ struct LocationServicesImplementationTests {
         service.requestLocationUpdateSilently()
         await waitUntilRequestInFlight(mockProvider)
         service.requestLocationUpdate()
-        await yieldForLocationTask()
+        await service.waitForPendingLocationRequestEntry()
         await mockProvider.releaseHeldRequest()
-        await yieldForLocationTask()
+        await service.waitForPendingLocationRequest()
 
         // A later silent request must start from a clean slate: the failed request dropped the
         // latched intent (the tracked request would have failed identically).
         await mockProvider.setResult(.success(validSnapshot))
         service.requestLocationUpdateSilently()
-        await yieldForLocationTask()
+        await service.waitForPendingLocationRequest()
 
         #expect(await mockProvider.requestLocationCallCount == 2)
         #expect(pipelineMock.trackCallsCount == 0)
@@ -325,9 +322,9 @@ struct LocationServicesImplementationTests {
         )
 
         service.requestLocationUpdate()
-        await yieldForLocationTask()
+        await service.waitForPendingLocationRequest()
         service.stopLocationUpdates()
-        await yieldForLocationTask()
+        await service.waitForPendingStopLocationUpdates()
 
         let cancelCount = await mockProvider.cancelCallCount
         #expect(cancelCount >= 1)
@@ -350,7 +347,7 @@ struct LocationServicesImplementationTests {
         await service.setUpLifecycleObserver()
 
         stub.simulateDidBecomeActive()
-        await yieldForLocationTask()
+        await service.waitForPendingLocationRequest()
 
         let requestCount = await mockProvider.requestLocationCallCount
         #expect(requestCount >= 1)
@@ -367,7 +364,7 @@ struct LocationServicesImplementationTests {
         await service.setUpLifecycleObserver()
 
         stub.simulateDidEnterBackground()
-        await yieldForLocationTask()
+        await service.waitForPendingStopLocationUpdates()
 
         let cancelCount = await mockProvider.cancelCallCount
         #expect(cancelCount >= 1)
@@ -389,7 +386,7 @@ struct LocationServicesImplementationTests {
             applicationStateProvider: stubState
         )
         await service.setUpLifecycleObserver()
-        await yieldForLocationTask()
+        await service.waitForPendingLocationRequest()
 
         let requestCount = await mockProvider.requestLocationCallCount
         #expect(requestCount >= 1)

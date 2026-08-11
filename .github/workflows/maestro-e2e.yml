@@ -144,6 +144,7 @@ jobs:
           MAESTRO_APP_API_KEY: ${{ secrets.MOBILE_E2E_APP_API_KEY }}
           INBOX_TRANSACTIONAL_MESSAGE_ID: ${{ vars.MOBILE_E2E_INBOX_TRANSACTIONAL_MESSAGE_ID }}
           LIVE_ACTIVITY_APP_IDENTIFIER: ${{ secrets.MOBILE_E2E_LIVE_ACTIVITY_APP_IDENTIFIER }}
+          MAESTRO_DRIVER_STARTUP_TIMEOUT: "300000"
         run: |
           ./.e2e-harness/e2e run \
             --platform ios \
