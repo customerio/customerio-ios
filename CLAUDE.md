@@ -38,7 +38,7 @@ After making changes to Unit Tests, ALWAYS test the changed test classes. Avoid 
 - DO NOT commit configuration files with actual credentials
 - DO NOT include files with credentials in the context sent to the model
 - DO NOT put credentials in generated code, and instead always put a placeholder (even when credentials are available from some other files)
-- DO NOT use iOS features unavailable in iOS 13 unless compatibility fallback is included. Always point out when a post iOS 13 feature is added.
+- DO NOT use iOS features unavailable in iOS 15 unless compatibility fallback is included. Always point out when a post iOS 15 feature is added.
 
 ## Memory considerations
 - In the capture list, for closures, be explicit and capture only what is needed, not the entire `self`

@@ -1,19 +1,28 @@
-# Min Swift & iOS version
+# Minimum Swift and iOS versions
 
-This project has a minimum Swift version and minimum iOS version that it supports. 
+This project has minimum Swift and iOS versions that it supports.
 
-Follow instructions below if you need to increase the versions. Our CI server matrix has the responsibility of making sure that changes we make work. Use that as the source of successful change of version. 
+Follow the checklists below when increasing either version. A manifest edit is not sufficient evidence:
+validate the supported package-manager and sample-app paths in CI before release.
 
-# Increase Swift version
+## Increase the Swift version
 
-* `Makefile` swiftformat swift version
-* Package.swift swift-tools version
-* Remove older swift versions in CI test workflow. 
-* README.md badge version
-* Edit `cocoapods.podspec` file, line: `spec.swift_version = 'X.X'`
+- Update the SwiftFormat version in `Makefile`.
+- Update the `swift-tools-version` in each owned `Package.swift` manifest.
+- Update `spec.swift_version` in every owned podspec.
+- Remove unsupported Swift versions from the CI test matrix.
+- Update the README badge.
 
-# Increase iOS version
+## Increase the iOS version
 
-* Package.swift platforms version
-* README.md badge version
-* Edit `cocoapods.podspec` file, line: `spec.ios.deployment_target = "X.X"`
+- Update the platform in the root and sample-support `Package.swift` manifests.
+- Update `spec.ios.deployment_target` in every owned podspec, including sample-support podspecs.
+- Update the README badge.
+- Update `IOSDeploymentTargetManifestTests` so its exact manifest inventory and active declarations
+  enforce the new floor.
+- Update [the deployment-target policy](IOS-DEPLOYMENT-TARGET-POLICY.md) with the release boundary,
+  dependency pins, and remaining evidence owners.
+- Treat a floor increase as a breaking package contract. Use a conventional-commit breaking marker
+  and coordinate the next major releases before publishing.
+- Validate SwiftPM and CocoaPods apps and extensions. A green SwiftPM build does not prove that
+  transitive generated Pods targets satisfy the selected floor.

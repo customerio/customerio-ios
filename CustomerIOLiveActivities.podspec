@@ -13,7 +13,7 @@ Pod::Spec.new do |spec|
   spec.cocoapods_version = '>= 1.11.0'
 
   spec.platform = :ios
-  spec.ios.deployment_target = "13.0"
+  spec.ios.deployment_target = "15.0"
 
   # Live Activities runtime (registration, lifecycle, delivery/token reporting). Import in the
   # app target only. Live Activities APIs are @available(iOS 16.2, *)-gated in source.
