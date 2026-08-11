@@ -215,7 +215,7 @@ class LifecycleTraceContractTests(unittest.TestCase):
             repositories = (("customerio-reactnative", "1edc94769359dfd992d6622884561d448d3f8dd9"),)
             frameworks = (
                 ("customerio-reactnative", "wrapper", "6.6.2", repositories[0][1]),
-                ("react-native", "runtime", "0.86.2", None),
+                ("react-native", "runtime", "0.83.6", None),
             )
         for name, sha in repositories:
             manifest["repositories"].append({
@@ -550,14 +550,44 @@ class LifecycleTraceContractTests(unittest.TestCase):
             rn_manifest, rn_native, rn_wrapper, "react-native"
         )
         self.normalize_capture(rn_manifest, [rn_native])
+        self.validate_temp(rn_manifest, [rn_native])
+
+        mutated = copy.deepcopy(rn_manifest)
+        arbitrary_sha = "9999999999999999999999999999999999999999"
         next(
-            item for item in rn_manifest["frameworks"]
-            if item["name"] == "react-native"
+            item for item in mutated["repositories"]
+            if item["name"] == "customerio-reactnative"
+        )["commit_sha"] = arbitrary_sha
+        next(
+            item for item in mutated["frameworks"]
+            if item["name"] == "customerio-reactnative"
+        )["commit_sha"] = arbitrary_sha
+        self.validate_temp(
+            mutated, [rn_native],
+            "react-native callback topology requires audited repository customerio-reactnative",
+        )
+
+        mutated = copy.deepcopy(rn_manifest)
+        next(
+            item for item in mutated["frameworks"]
+            if item["name"] == "customerio-reactnative"
         )["version"] = "99.0.0"
         self.validate_temp(
-            rn_manifest, [rn_native],
-            "react-native callback topology requires audited framework react-native",
+            mutated, [rn_native],
+            "react-native callback topology requires audited framework customerio-reactnative",
         )
+
+        for version in ("0.86.2", "99.0.0"):
+            with self.subTest(standalone_react_native_version=version):
+                mutated = copy.deepcopy(rn_manifest)
+                next(
+                    item for item in mutated["frameworks"]
+                    if item["name"] == "react-native"
+                )["version"] = version
+                self.validate_temp(
+                    mutated, [rn_native],
+                    "react-native callback topology requires audited framework react-native",
+                )
 
     def test_wrapper_receipt_callbacks_are_scenario_bound_in_full_capture(self) -> None:
         mutations = (

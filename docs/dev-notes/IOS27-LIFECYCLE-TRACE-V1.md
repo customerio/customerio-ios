@@ -314,7 +314,10 @@ The Expo registry is tied to the generated Expo 57 fixture at
 `customerio-reactnative` 6.6.2, and React Native 0.86.2). It also pins
 `customerio-reactnative` commit
 `1edc94769359dfd992d6622884561d448d3f8dd9`. Standalone React Native uses that
-same Customer.io React Native commit and the exact 6.6.2/0.86.2 framework pair.
+same Customer.io React Native commit, `customerio-reactnative` 6.6.2, and the
+React Native 0.83.6 version resolved by the repository's checked-in `example`
+app lockfile.
+Expo's transitive React Native 0.86.2 is not valid standalone provenance.
 These are executable entries in `AUDITED_WRAPPER_TOPOLOGIES`, not illustrative
 versions. An internally coherent arbitrary SHA or version such as 99.0.0 cannot
 opt into these callback signatures. A future wrapper topology requires a new

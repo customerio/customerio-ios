@@ -105,8 +105,10 @@ commit `3637028bfa4c5c66752697b346ad826266e6ae03` and version 3.7.1, plus
 `customerio-reactnative` commit
 `1edc94769359dfd992d6622884561d448d3f8dd9` and version 6.6.2, Expo 57.0.12,
 `expo-notifications` 57.0.10, `expo-modules-core` 57.0.10, and React Native
-0.86.2. Standalone React Native uses the same Customer.io commit/version and
-React Native 0.86.2. Arbitrary internally coherent SHAs or versions do not opt
+0.86.2. The standalone fixture is the `customerio-reactnative` repository's
+checked-in `example` app at that Customer.io commit and version; its lockfile
+resolves React Native 0.83.6. Expo's transitive React Native 0.86.2 is not valid
+standalone provenance. Arbitrary internally coherent SHAs or versions do not opt
 into these source-derived callback seats. A future topology needs a new audited
 registry entry, source/signature evidence, mutation coverage, and reconciled
 contract version rather than a manifest-only claim.

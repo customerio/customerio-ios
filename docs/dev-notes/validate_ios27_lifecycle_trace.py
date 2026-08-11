@@ -437,7 +437,7 @@ AUDITED_WRAPPER_TOPOLOGIES = {
         },
         "frameworks": {
             "customerio-reactnative": "6.6.2",
-            "react-native": "0.86.2",
+            "react-native": "0.83.6",
         },
     },
 }
