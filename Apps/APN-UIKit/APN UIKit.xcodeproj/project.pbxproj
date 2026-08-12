@@ -12,6 +12,12 @@
 		30DB021B873DE5D52C01151C /* InboxViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6271087BB2D1D2EED90C6A75 /* InboxViewController.swift */; };
 		A1B2C3D4E5F60718293A4B5D /* InboxMessageCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4B5C /* InboxMessageCell.swift */; };
 		30F117082D63531A00DB1E11 /* SampleAppsCommon in Frameworks */ = {isa = PBXBuildFile; productRef = 30F117072D63531A00DB1E11 /* SampleAppsCommon */; };
+		AB2232000000000000000011 /* LifecycleTraceRecorderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB2232000000000000000001 /* LifecycleTraceRecorderTests.swift */; };
+		AB2232000000000000000012 /* LifecycleTraceEvidenceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB2232000000000000000002 /* LifecycleTraceEvidenceTests.swift */; };
+		AB2232000000000000000013 /* LifecycleTraceRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB2232000000000000000003 /* LifecycleTraceRecorder.swift */; };
+		AB2232000000000000000014 /* LifecycleTraceEvidence.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB2232000000000000000004 /* LifecycleTraceEvidence.swift */; };
+		AB2232000000000000000015 /* LifecycleTraceModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB2232000000000000000005 /* LifecycleTraceModel.swift */; };
+		AB2232000000000000000016 /* LifecycleTraceProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB2232000000000000000006 /* LifecycleTraceProbe.swift */; };
 		30F1170A2D6356BA00DB1E11 /* SampleAppsCommon in Frameworks */ = {isa = PBXBuildFile; productRef = 30F117092D6356BA00DB1E11 /* SampleAppsCommon */; };
 		4650330629F68FEB001B6552 /* NotificationServiceExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 465032FF29F68FEB001B6552 /* NotificationServiceExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		5C75965B010A435A3AAB0210 /* DMSans-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 848B7817C2E58241424CE8FA /* DMSans-SemiBold.ttf */; };
@@ -181,6 +187,12 @@
 		669B9FA52D8B2D430087CC20 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/Main.storyboard; sourceTree = "<group>"; };
 		669B9FA72D8B2D430087CC20 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
 		669B9FD62D8B2D490087CC20 /* APN_UIKitTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APN_UIKitTests.swift; sourceTree = "<group>"; };
+		AB2232000000000000000001 /* LifecycleTraceRecorderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LifecycleTraceRecorderTests.swift; sourceTree = "<group>"; };
+		AB2232000000000000000002 /* LifecycleTraceEvidenceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LifecycleTraceEvidenceTests.swift; sourceTree = "<group>"; };
+		AB2232000000000000000003 /* LifecycleTraceRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = LifecycleTraceRecorder.swift; path = ../../Common/Source/Diagnostics/LifecycleTraceRecorder.swift; sourceTree = "<group>"; };
+		AB2232000000000000000004 /* LifecycleTraceEvidence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = LifecycleTraceEvidence.swift; path = ../../Common/Source/Diagnostics/LifecycleTraceEvidence.swift; sourceTree = "<group>"; };
+		AB2232000000000000000005 /* LifecycleTraceModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = LifecycleTraceModel.swift; path = ../../Common/Source/Diagnostics/LifecycleTraceModel.swift; sourceTree = "<group>"; };
+		AB2232000000000000000006 /* LifecycleTraceProbe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = LifecycleTraceProbe.swift; path = ../../Common/Source/Diagnostics/LifecycleTraceProbe.swift; sourceTree = "<group>"; };
 		669B9FD92D8B2D4D0087CC20 /* APN_UIKitUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APN_UIKitUITests.swift; sourceTree = "<group>"; };
 		669B9FDA2D8B2D4D0087CC20 /* APN_UIKitUITestsLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APN_UIKitUITestsLaunchTests.swift; sourceTree = "<group>"; };
 		669B9FDE2D8B2D500087CC20 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
@@ -459,6 +471,12 @@
 			isa = PBXGroup;
 			children = (
 				669B9FD62D8B2D490087CC20 /* APN_UIKitTests.swift */,
+				AB2232000000000000000004 /* LifecycleTraceEvidence.swift */,
+				AB2232000000000000000002 /* LifecycleTraceEvidenceTests.swift */,
+				AB2232000000000000000005 /* LifecycleTraceModel.swift */,
+				AB2232000000000000000006 /* LifecycleTraceProbe.swift */,
+				AB2232000000000000000003 /* LifecycleTraceRecorder.swift */,
+				AB2232000000000000000001 /* LifecycleTraceRecorderTests.swift */,
 			);
 			path = "APN UIKitTests";
 			sourceTree = "<group>";
@@ -784,6 +802,12 @@
 			buildActionMask = 2147483647;
 			files = (
 				669B9FD82D8B2D490087CC20 /* APN_UIKitTests.swift in Sources */,
+				AB2232000000000000000014 /* LifecycleTraceEvidence.swift in Sources */,
+				AB2232000000000000000012 /* LifecycleTraceEvidenceTests.swift in Sources */,
+				AB2232000000000000000015 /* LifecycleTraceModel.swift in Sources */,
+				AB2232000000000000000016 /* LifecycleTraceProbe.swift in Sources */,
+				AB2232000000000000000013 /* LifecycleTraceRecorder.swift in Sources */,
+				AB2232000000000000000011 /* LifecycleTraceRecorderTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

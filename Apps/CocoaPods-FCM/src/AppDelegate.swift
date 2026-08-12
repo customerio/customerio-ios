@@ -14,6 +14,13 @@ import Foundation
 import SampleAppsCommon
 import UIKit
 
+private let sampleLifecycleTraceRecorder = LifecycleTraceHarness.configureFromEnvironment(
+    sink: ConsoleLifecycleTraceSink()
+)
+private let sampleLifecycleProbeObserver = sampleLifecycleTraceRecorder.map { _ in
+    LifecycleTracePlatformProbeObserver()
+}
+
 class AppDelegate: NSObject, UIApplicationDelegate {
     /*
      Next line of code is used for testing how Firebase behaves when another object is set as the delegate for `UNUserNotificationCenter`.
@@ -21,7 +28,14 @@ class AppDelegate: NSObject, UIApplicationDelegate {
      */
 //    let anotherPushEventHandler = AnotherPushEventHandler()
 
+    // Existing SDK initialization remains in this delegate seat; tracing does not split or reorder it.
+    // swiftlint:disable:next function_body_length
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
+        _ = sampleLifecycleTraceRecorder
+        _ = sampleLifecycleProbeObserver
+        LifecycleTraceHarness.startScenario()
+        recordLaunchCallback(application, launchOptions: launchOptions)
+
         // Follow setup guide for setting up FCM push: https://firebase.google.com/docs/cloud-messaging/ios/client
         // The FCM SDK provides a device token to the app that you then send to the Customer.io SDK.
 
@@ -39,12 +53,46 @@ class AppDelegate: NSObject, UIApplicationDelegate {
             .flushAt(appSetSettings?.flushAt ?? 10)
             .flushInterval(Double(appSetSettings?.flushInterval ?? 30))
             .autoTrackDeviceAttributes(appSetSettings?.trackDeviceAttributes ?? true)
-            .deepLinkCallback { (url: URL) in
+            .deepLinkCallback { [self] (url: URL) in
+                let urlEvidence = LifecycleTraceEvidence.observe(url: url)
+                LifecycleTraceHarness.sharedRecorder?.record(
+                    callback: .customerIORouteDeepLink,
+                    owner: .customerIOSDK,
+                    kind: .sdkRouting,
+                    phase: .intent,
+                    observations: urlEvidence
+                )
                 // You can call any method to process this furhter,
                 // or redirect it to `application(_:continue:restorationHandler:)` for consistency, if you use deep-linking in Firebase
                 let openLinkInHostAppActivity = NSUserActivity(activityType: NSUserActivityTypeBrowsingWeb)
                 openLinkInHostAppActivity.webpageURL = url
-                return self.application(UIApplication.shared, continue: openLinkInHostAppActivity, restorationHandler: { _ in })
+                let activityEvidence = LifecycleTraceEvidence.observe(userActivity: openLinkInHostAppActivity)
+                LifecycleTraceHarness.sharedRecorder?.record(
+                    callback: .hostRouteUserActivity,
+                    owner: .host,
+                    kind: .hostRouting,
+                    phase: .intent,
+                    observations: activityEvidence
+                )
+                let handled = routeUniversalLink(openLinkInHostAppActivity)
+                LifecycleTraceHarness.sharedRecorder?.record(
+                    callback: .hostRouteUserActivity,
+                    owner: .host,
+                    kind: .hostRouting,
+                    phase: .result,
+                    observations: activityEvidence,
+                    LifecycleTraceEvidence.observe(routingResult: handled ? .handled : .unhandled)
+                )
+                LifecycleTraceHarness.sharedRecorder?.record(
+                    callback: .customerIORouteDeepLink,
+                    owner: .customerIOSDK,
+                    kind: .sdkRouting,
+                    phase: .result,
+                    observations: urlEvidence,
+                    LifecycleTraceEvidence.observe(routingResult: handled ? .handled : .unhandled)
+                )
+                LifecycleTraceHarness.endScenario(after: .hostUserActivityRoute)
+                return handled
             }
         let logLevel = appSetSettings?.debugSdkMode
         if logLevel == nil || logLevel == true {
@@ -99,13 +147,57 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         return true
     }
 
+    // MARK: MBL-2232 trace helpers (kept out of `didFinishLaunching` to respect function-length lint)
+
+    private func recordLaunchCallback(_ application: UIApplication, launchOptions: [UIApplication.LaunchOptionsKey: Any]?) {
+        guard LifecycleTraceHarness.sharedRecorder?.scenario.isColdStart == true else { return }
+        LifecycleTraceHarness.sharedRecorder?.record(
+            callback: .applicationDidFinishLaunching,
+            owner: .applicationDelegate,
+            kind: .osCallback,
+            phase: .entry,
+            observations: LifecycleTraceEvidence.observe(applicationState: application.applicationState),
+            LifecycleTraceEvidence.observe(launchOptions: launchOptions)
+        )
+    }
+
     // IMPORTANT: If FCM is used with enabled swizzling (default state) it will not call this method in SwiftUI based apps.
     //            Use `deepLinkCallback` on SDKConfigBuilder, as that works in all scenarios.
     func application(_ application: UIApplication, continue userActivity: NSUserActivity, restorationHandler: @escaping ([any UIUserActivityRestoring]?) -> Void) -> Bool {
-        guard let universalLinkUrl = userActivity.webpageURL else {
+        LifecycleTraceHarness.sharedRecorder?.record(
+            callback: .applicationContinueUserActivity,
+            owner: .applicationDelegate,
+            kind: .osCallback,
+            phase: .entry,
+            observations: LifecycleTraceEvidence.observe(applicationState: application.applicationState),
+            LifecycleTraceEvidence.observe(userActivity: userActivity)
+        )
+
+        let routeEvidence = LifecycleTraceEvidence.observe(userActivity: userActivity)
+        LifecycleTraceHarness.sharedRecorder?.record(
+            callback: .hostRouteUserActivity,
+            owner: .host,
+            kind: .hostRouting,
+            phase: .intent,
+            observations: routeEvidence
+        )
+        let handled = routeUniversalLink(userActivity)
+        LifecycleTraceHarness.sharedRecorder?.record(
+            callback: .hostRouteUserActivity,
+            owner: .host,
+            kind: .hostRouting,
+            phase: .result,
+            observations: routeEvidence,
+            LifecycleTraceEvidence.observe(routingResult: handled ? .handled : .unhandled)
+        )
+        LifecycleTraceHarness.endScenario(after: .hostUserActivityRoute)
+        return handled
+    }
+
+    private func routeUniversalLink(_ userActivity: NSUserActivity) -> Bool {
+        guard userActivity.webpageURL != nil else {
             return false
         }
-        print("universalLinkUrl: \(universalLinkUrl)")
         // By returning `false` we are indicating to iOS that not no screen is shown in associateion to provided URL.
         // Same information is used by CIO `deepLinkCallback` to open URL in the browser
         return false

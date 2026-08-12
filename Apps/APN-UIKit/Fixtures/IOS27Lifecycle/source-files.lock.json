@@ -1,0 +1,28 @@
+{
+  "schema": "cio-lifecycle-source-patch-lock/3",
+  "source_commit": "2e64ddf8802c1b74c9be637eca5f94ee27737444",
+  "algorithm": "sha256",
+  "patch_sha256": "0c8c67a2311ff924d049407bc38ba069046481618a38d7a926a2be05c982576d",
+  "files": [
+    {
+      "path": "Sources/MessagingPush/Integration/CioNotificationCenterDelegate.swift",
+      "sha256": "c6205dee06aff379dbf219ec172ba95d42a4008b0e6f5c11ddefc3756de29906",
+      "post_sha256": "79d4758f9a58cadf880fcdb226c7197a4f909a7a240aa22622ed46ee3eb6ad9b"
+    },
+    {
+      "path": "Sources/MessagingPush/Integration/CioProviderAgnosticAppDelegate.swift",
+      "sha256": "cda4615fdbb44c9d9a9a21a58bd1eac9752787befb7fdde53b86751dfe82af3c",
+      "post_sha256": "8b9d103e021a48cc07eb565d201056705c7bf6c3448bd3d1347b7b3f3a50e025"
+    },
+    {
+      "path": "Sources/MessagingPushAPN/Integration/CioAppDelegateAPN.swift",
+      "sha256": "3e03275e533633842dfc8d393f650dca3dc33dc347cd80d8629c381deb1cf549",
+      "post_sha256": "c9931c01a54749153049198fa5df62166f06030f47b6538cec9168c2fa19c241"
+    },
+    {
+      "path": "Sources/MessagingPushFCM/Integration/CioAppDelegateFCM.swift",
+      "sha256": "f7293e78daa312de780d14094451128fa23d023097a2471682ecfdb7c7ef0ff8",
+      "post_sha256": "f896c92da871577343274efbbca8c1cd34893bd01524d6b4af206697c092a8bf"
+    }
+  ]
+}

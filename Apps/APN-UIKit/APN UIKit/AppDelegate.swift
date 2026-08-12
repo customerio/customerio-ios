@@ -8,7 +8,15 @@ import CioMessagingInApp
 import CioMessagingPush
 import CioMessagingPushAPN
 import os
+import SampleAppsCommon
 import UIKit
+
+private let sampleLifecycleTraceRecorder = LifecycleTraceHarness.configureFromEnvironment(
+    sink: ConsoleLifecycleTraceSink()
+)
+private let sampleLifecycleProbeObserver = sampleLifecycleTraceRecorder.map { _ in
+    LifecycleTracePlatformProbeObserver()
+}
 
 @main
 class AppDelegateWithCioIntegration: CioAppDelegateWrapper<AppDelegate> {}
@@ -19,6 +27,20 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     private let inboxEventListener = SampleInboxEventListener()
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
+        _ = sampleLifecycleTraceRecorder
+        _ = sampleLifecycleProbeObserver
+        LifecycleTraceHarness.startScenario()
+        if LifecycleTraceHarness.sharedRecorder?.scenario.isColdStart == true {
+            LifecycleTraceHarness.sharedRecorder?.record(
+                callback: .applicationDidFinishLaunching,
+                owner: .applicationDelegate,
+                kind: .osCallback,
+                phase: .entry,
+                observations: LifecycleTraceEvidence.observe(applicationState: application.applicationState),
+                LifecycleTraceEvidence.observe(launchOptions: launchOptions)
+            )
+        }
+
         // Override point for customization after application launch.
         initializeCioAndInAppListeners()
 
@@ -115,11 +137,38 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     //
     // Learn more: https://customer.io/docs/sdk/ios/push/#universal-links-deep-links
     func application(_ application: UIApplication, continue userActivity: NSUserActivity, restorationHandler: @escaping ([UIUserActivityRestoring]?) -> Void) -> Bool {
+        LifecycleTraceHarness.sharedRecorder?.record(
+            callback: .applicationContinueUserActivity,
+            owner: .applicationDelegate,
+            kind: .osCallback,
+            phase: .entry,
+            observations: LifecycleTraceEvidence.observe(applicationState: application.applicationState),
+            LifecycleTraceEvidence.observe(userActivity: userActivity)
+        )
+
         guard let universalLinkUrl = userActivity.webpageURL else {
             return false
         }
 
-        return deepLinkHandler.handleUniversalLinkDeepLink(universalLinkUrl)
+        let routeEvidence = LifecycleTraceEvidence.observe(userActivity: userActivity)
+        LifecycleTraceHarness.sharedRecorder?.record(
+            callback: .hostRouteUserActivity,
+            owner: .host,
+            kind: .hostRouting,
+            phase: .intent,
+            observations: routeEvidence
+        )
+        let handled = deepLinkHandler.handleUniversalLinkDeepLink(universalLinkUrl)
+        LifecycleTraceHarness.sharedRecorder?.record(
+            callback: .hostRouteUserActivity,
+            owner: .host,
+            kind: .hostRouting,
+            phase: .result,
+            observations: routeEvidence,
+            LifecycleTraceEvidence.observe(routingResult: handled ? .handled : .unhandled)
+        )
+        LifecycleTraceHarness.endScenario(after: .hostUserActivityRoute)
+        return handled
     }
 
     // MARK: UISceneSession Lifecycle
@@ -127,13 +176,30 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     func application(_ application: UIApplication, configurationForConnecting connectingSceneSession: UISceneSession, options: UIScene.ConnectionOptions) -> UISceneConfiguration {
         // Called when a new scene session is being created.
         // Use this method to select a configuration to create the new scene with.
-        UISceneConfiguration(name: "Default Configuration", sessionRole: connectingSceneSession.role)
+        LifecycleTraceHarness.sharedRecorder?.record(
+            callback: .applicationConfigurationForConnecting,
+            owner: .applicationDelegate,
+            kind: .osCallback,
+            phase: .entry,
+            observations: LifecycleTraceEvidence.observe(applicationState: application.applicationState),
+            LifecycleTraceEvidence.observe(sceneSession: connectingSceneSession),
+            LifecycleTraceEvidence.observe(connectionOptions: options)
+        )
+        return UISceneConfiguration(name: "Default Configuration", sessionRole: connectingSceneSession.role)
     }
 
     func application(_ application: UIApplication, didDiscardSceneSessions sceneSessions: Set<UISceneSession>) {
         // Called when the user discards a scene session.
         // If any sessions were discarded while the application was not running, this will be called shortly after application:didFinishLaunchingWithOptions.
         // Use this method to release any resources that were specific to the discarded scenes, as they will not return.
+        LifecycleTraceHarness.sharedRecorder?.record(
+            callback: .applicationDidDiscardSceneSessions,
+            owner: .applicationDelegate,
+            kind: .osCallback,
+            phase: .stateChange,
+            observations: LifecycleTraceEvidence.observe(applicationState: application.applicationState),
+            LifecycleTraceEvidence.observe(sceneSessions: sceneSessions)
+        )
     }
 }
 

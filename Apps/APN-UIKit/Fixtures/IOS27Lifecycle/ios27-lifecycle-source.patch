@@ -1,0 +1,146 @@
+diff --git a/Sources/MessagingPush/Integration/CioNotificationCenterDelegate.swift b/Sources/MessagingPush/Integration/CioNotificationCenterDelegate.swift
+index c793ba59..2c598140 100644
+--- a/Sources/MessagingPush/Integration/CioNotificationCenterDelegate.swift
++++ b/Sources/MessagingPush/Integration/CioNotificationCenterDelegate.swift
+@@ -23,6 +23,12 @@ open class CioNotificationCenterDelegate: NSObject, UNUserNotificationCenterDele
+         willPresent notification: UNNotification,
+         withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
+     ) {
++        NotificationCenter.default.post(
++            name: Notification.Name("io.customer.lifecycle-trace.probe.v1"),
++            object: nil,
++            userInfo: ["seat": "notification-center.will-present.entry", "notification": notification]
++        )
++
+         if let wrappedNotificationCenterDelegate = wrappedNotificationCenterDelegate,
+            wrappedNotificationCenterDelegate.responds(to: #selector(UNUserNotificationCenterDelegate.userNotificationCenter(_:willPresent:withCompletionHandler:))) {
+             // Pass completionHandler directly to support async implementations (e.g. a React Native JS bridge that
+@@ -57,10 +63,33 @@ open class CioNotificationCenterDelegate: NSObject, UNUserNotificationCenterDele
+         didReceive response: UNNotificationResponse,
+         withCompletionHandler completionHandler: @escaping () -> Void
+     ) {
++        NotificationCenter.default.post(
++            name: Notification.Name("io.customer.lifecycle-trace.probe.v1"),
++            object: nil,
++            userInfo: ["seat": "notification-center.did-receive-response.entry", "notification_response": response]
++        )
++
+         // Cast to concrete type since method was removed from protocol
++        var handled = false
+         if let implementation = messagingPush as? MessagingPush {
+-            _ = implementation.userNotificationCenter(center, didReceive: response)
++            handled = implementation.userNotificationCenter(center, didReceive: response) != nil
++        }
++        if handled, response.actionIdentifier == UNNotificationDefaultActionIdentifier {
++            NotificationCenter.default.post(
++                name: Notification.Name("io.customer.lifecycle-trace.probe.v1"),
++                object: nil,
++                userInfo: [
++                    "seat": "customerio.handle-notification-response.result",
++                    "notification_response": response,
++                    "handled": handled
++                ]
++            )
+         }
++        NotificationCenter.default.post(
++            name: Notification.Name("io.customer.lifecycle-trace.probe.v1"),
++            object: nil,
++            userInfo: ["seat": "notification-center.did-receive-response.terminal"]
++        )
+ 
+         if let wrappedNotificationCenterDelegate = wrappedNotificationCenterDelegate,
+            wrappedNotificationCenterDelegate.responds(to: #selector(UNUserNotificationCenterDelegate.userNotificationCenter(_:didReceive:withCompletionHandler:))) {
+diff --git a/Sources/MessagingPush/Integration/CioProviderAgnosticAppDelegate.swift b/Sources/MessagingPush/Integration/CioProviderAgnosticAppDelegate.swift
+index e472ec21..c4a296f9 100644
+--- a/Sources/MessagingPush/Integration/CioProviderAgnosticAppDelegate.swift
++++ b/Sources/MessagingPush/Integration/CioProviderAgnosticAppDelegate.swift
+@@ -80,6 +80,11 @@ open class CioProviderAgnosticAppDelegate: CioAppDelegateType {
+         _ application: UIApplication,
+         didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data
+     ) {
++        NotificationCenter.default.post(
++            name: Notification.Name("io.customer.lifecycle-trace.probe.v1"),
++            object: nil,
++            userInfo: ["seat": "application.did-register-for-remote-notifications.entry", "device_token": deviceToken]
++        )
+         wrappedAppDelegate?.application?(application, didRegisterForRemoteNotificationsWithDeviceToken: deviceToken)
+     }
+ 
+@@ -87,12 +92,22 @@ open class CioProviderAgnosticAppDelegate: CioAppDelegateType {
+         _ application: UIApplication,
+         didFailToRegisterForRemoteNotificationsWithError error: Error
+     ) {
++        NotificationCenter.default.post(
++            name: Notification.Name("io.customer.lifecycle-trace.probe.v1"),
++            object: nil,
++            userInfo: ["seat": "application.did-fail-to-register-for-remote-notifications.entry"]
++        )
+         wrappedAppDelegate?.application?(application, didFailToRegisterForRemoteNotificationsWithError: error)
+ 
+         logger.error("CIO: Device token is deleted for current user. Failed to register for remote notifications: \(error.localizedDescription)")
+         if config?().autoFetchDeviceToken ?? false {
+             messagingPush.deleteDeviceToken()
+         }
++        NotificationCenter.default.post(
++            name: Notification.Name("io.customer.lifecycle-trace.probe.v1"),
++            object: nil,
++            userInfo: ["seat": "application.did-fail-to-register-for-remote-notifications.terminal"]
++        )
+     }
+ 
+     // MARK: - method forwarding
+diff --git a/Sources/MessagingPushAPN/Integration/CioAppDelegateAPN.swift b/Sources/MessagingPushAPN/Integration/CioAppDelegateAPN.swift
+index d17a0336..a1efc33c 100644
+--- a/Sources/MessagingPushAPN/Integration/CioAppDelegateAPN.swift
++++ b/Sources/MessagingPushAPN/Integration/CioAppDelegateAPN.swift
+@@ -25,7 +25,14 @@ open class CioAppDelegate: CioProviderAgnosticAppDelegate {
+     ) {
+         super.application(application, didRegisterForRemoteNotificationsWithDeviceToken: deviceToken)
+ 
+-        messagingPushAPN?.registerDeviceToken(apnDeviceToken: deviceToken)
++        if let messagingPushAPN {
++            messagingPushAPN.registerDeviceToken(apnDeviceToken: deviceToken)
++            NotificationCenter.default.post(
++                name: Notification.Name("io.customer.lifecycle-trace.probe.v1"),
++                object: nil,
++                userInfo: ["seat": "customerio.register-device-token.apn.result", "device_token": deviceToken]
++            )
++        }
+     }
+ }
+ 
+diff --git a/Sources/MessagingPushFCM/Integration/CioAppDelegateFCM.swift b/Sources/MessagingPushFCM/Integration/CioAppDelegateFCM.swift
+index 9ba94160..ac9ef44e 100644
+--- a/Sources/MessagingPushFCM/Integration/CioAppDelegateFCM.swift
++++ b/Sources/MessagingPushFCM/Integration/CioAppDelegateFCM.swift
+@@ -42,12 +42,29 @@ open class CioAppDelegate: CioProviderAgnosticAppDelegate, FirebaseServiceDelega
+     // MARK: - FirebaseServiceDelegate
+ 
+     public func didReceiveRegistrationToken(_ token: String?) {
++        if let token, !token.isEmpty {
++            NotificationCenter.default.post(
++                name: Notification.Name("io.customer.lifecycle-trace.probe.v1"),
++                object: nil,
++                userInfo: ["seat": "fcm.registration-token-refreshed.entry", "fcm_token": token]
++            )
++        }
++
+         if let wrappedFirebaseDelegate {
+             wrappedFirebaseDelegate.didReceiveRegistrationToken(token)
+         }
+ 
+         // Forward the device token to the Customer.io SDK:
+-        messagingPushFCM?.registerDeviceToken(fcmToken: token)
++        if let messagingPushFCM {
++            messagingPushFCM.registerDeviceToken(fcmToken: token)
++            if let token, !token.isEmpty {
++                NotificationCenter.default.post(
++                    name: Notification.Name("io.customer.lifecycle-trace.probe.v1"),
++                    object: nil,
++                    userInfo: ["seat": "customerio.register-device-token.fcm.result", "fcm_token": token]
++                )
++            }
++        }
+     }
+ }
+ 
