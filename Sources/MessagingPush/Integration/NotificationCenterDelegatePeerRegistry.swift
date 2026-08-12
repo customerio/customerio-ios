@@ -156,6 +156,7 @@ final class NotificationDelegatePeerRegistryImpl: NotificationDelegatePeerRegist
     }
 }
 
+@available(iOSApplicationExtension, unavailable)
 extension NotificationDelegateRegistrationOutcome {
     /// Records the result after the caller has released every install/registry lock. Logger dispatchers may
     /// execute app code, so logging deliberately does not happen as part of the registry mutation.
