@@ -939,12 +939,27 @@ def _validate_manifest_relations(manifest: dict[str, Any]) -> tuple[datetime, da
                     f"{expected_integration} callback topology requires audited "
                     f"repository {name}@{expected_sha}"
                 )
+            if repositories[name]["dirty"]:
+                raise ContractError(
+                    f"{expected_integration} audited production repository {name} "
+                    "must be clean"
+                )
         for name, expected_version in audited_topology["frameworks"].items():
             if frameworks[name]["version"] != expected_version:
                 raise ContractError(
                     f"{expected_integration} callback topology requires audited "
                     f"framework {name}@{expected_version}"
                 )
+    fixture_source = manifest.get("fixture_source")
+    if expected_integration == "expo" and manifest["evidence_level"] in ("L2", "L3"):
+        if fixture_source is None:
+            raise ContractError("Expo L2/L3 requires exact fixture_source provenance")
+        if fixture_source["name"] != "customerio-expo-plugin":
+            raise ContractError(
+                "Expo fixture_source.name must equal customerio-expo-plugin"
+            )
+    elif fixture_source is not None:
+        raise ContractError("fixture_source provenance is supported only for Expo L2/L3")
     if frameworks["apple-usernotifications"]["version"] != manifest["sdk"]["version"]:
         raise ContractError("apple-usernotifications version must equal the build SDK version")
 

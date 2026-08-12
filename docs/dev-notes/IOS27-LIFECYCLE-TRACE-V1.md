@@ -37,9 +37,13 @@ The harness writes the final manifest only after every declared recorder has
 logically drained. It records:
 
 - `manifest_id`, the shared harness `run_id`, and run start/end/creation times;
-- exact lowercase repository commits and whether each worktree was dirty;
-- for a dirty repository, SHA-256 hashes of both the source tree snapshot and
-  diff snapshot used for the build;
+- exact lowercase production repository commits and whether each production
+  checkout was dirty;
+- for a dirty production repository, SHA-256 hashes of both the source tree
+  snapshot and diff snapshot used for the build;
+- when a fixture checkout differs from the audited production repository,
+  separate `fixture_source` provenance with its exact commit, actual checkout
+  dirty state, and required snapshot hashes when dirty;
 - Xcode version/build, Swift, Flutter, Dart, Node, and Expo CLI versions;
 - iOS SDK name/version/build, scheme, target, configuration, product kind, and
   deployment target;
@@ -77,6 +81,17 @@ coherent package version; a module cannot claim an unrelated version.
 Flutter's runtime framework version must equal the Flutter toolchain version.
 A dirty repository cannot omit its source snapshot hashes, and a clean
 repository must use `source_snapshot=null`.
+`repositories` and their owning framework commits identify the production code
+whose callback topology is being exercised. `fixture_source` identifies the
+harness checkout that generated and instrumented that topology; it does not own
+a framework and is never substituted for production repository provenance.
+Every audited production repository in a wrapper topology must be clean;
+arbitrary local changes cannot retain an audited callback-topology claim.
+Expo L2/L3 captures require `fixture_source.name=customerio-expo-plugin` so a
+clean committed fixture branch remains reproducible without falsely attributing
+its fixture-only commit to the installed Expo plugin. Its `dirty` flag always
+describes the actual fixture checkout status, not whether its commit differs
+from the audited production commit.
 
 Every Swift stream requires `swift_version`, every Dart stream requires Flutter
 and Dart versions, and every JavaScript stream requires Node. Integration-level

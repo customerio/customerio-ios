@@ -182,6 +182,12 @@ class LifecycleTraceContractTests(unittest.TestCase):
         })
         manifest["streams"][0]["integration"] = integration
         if integration == "expo":
+            manifest["fixture_source"] = {
+                "name": "customerio-expo-plugin",
+                "commit_sha": "5635e80e69eaed39f4b2dfff01d1a01104766abe",
+                "dirty": False,
+                "source_snapshot": None,
+            }
             repositories = (
                 ("customerio-expo-plugin", "3637028bfa4c5c66752697b346ad826266e6ae03"),
                 ("customerio-reactnative", "1edc94769359dfd992d6622884561d448d3f8dd9"),
@@ -527,6 +533,25 @@ class LifecycleTraceContractTests(unittest.TestCase):
                     f"expo callback topology requires audited repository {repository_name}",
                 )
 
+            with self.subTest(repository=f"{repository_name}-dirty"):
+                mutated = copy.deepcopy(manifest)
+                repository = next(
+                    item for item in mutated["repositories"]
+                    if item["name"] == repository_name
+                )
+                repository.update({
+                    "dirty": True,
+                    "source_snapshot": {
+                        "algorithm": "sha256",
+                        "tree_hash": "1" * 64,
+                        "diff_hash": "2" * 64,
+                    },
+                })
+                self.validate_temp(
+                    mutated, [native, wrapper],
+                    f"expo audited production repository {repository_name} must be clean",
+                )
+
         pinned_frameworks = (
             "customerio-expo-plugin", "expo", "expo-notifications",
             "expo-modules-core", "customerio-reactnative", "react-native",
@@ -568,6 +593,24 @@ class LifecycleTraceContractTests(unittest.TestCase):
         )
 
         mutated = copy.deepcopy(rn_manifest)
+        rn_repository = next(
+            item for item in mutated["repositories"]
+            if item["name"] == "customerio-reactnative"
+        )
+        rn_repository.update({
+            "dirty": True,
+            "source_snapshot": {
+                "algorithm": "sha256",
+                "tree_hash": "1" * 64,
+                "diff_hash": "2" * 64,
+            },
+        })
+        self.validate_temp(
+            mutated, [rn_native],
+            "react-native audited production repository customerio-reactnative must be clean",
+        )
+
+        mutated = copy.deepcopy(rn_manifest)
         next(
             item for item in mutated["frameworks"]
             if item["name"] == "customerio-reactnative"
@@ -588,6 +631,52 @@ class LifecycleTraceContractTests(unittest.TestCase):
                     mutated, [rn_native],
                     "react-native callback topology requires audited framework react-native",
                 )
+
+    def test_expo_runtime_fixture_source_is_separate_from_audited_production(self) -> None:
+        manifest = _load_json(VECTORS / "manifest.valid.json")
+        native = load_records("native.valid.ndjson")
+        wrapper = load_records("wrapper.valid.ndjson")
+        self.convert_wrapper_integration(manifest, native, wrapper, "expo")
+        self.normalize_capture(manifest, [native, wrapper])
+        self.validate_temp(manifest, [native, wrapper])
+
+        missing = copy.deepcopy(manifest)
+        missing.pop("fixture_source")
+        self.validate_temp(
+            missing, [native, wrapper], "Expo L2/L3 requires exact fixture_source provenance"
+        )
+
+        wrong_name = copy.deepcopy(manifest)
+        wrong_name["fixture_source"]["name"] = "customerio-reactnative"
+        self.validate_temp(
+            wrong_name, [native, wrapper],
+            "Expo fixture_source.name must equal customerio-expo-plugin",
+        )
+
+        dirty_without_snapshot = copy.deepcopy(manifest)
+        dirty_without_snapshot["fixture_source"]["dirty"] = True
+        self.validate_temp(
+            dirty_without_snapshot, [native, wrapper], "is not valid under any of the given schemas"
+        )
+
+        clean_with_snapshot = copy.deepcopy(manifest)
+        clean_with_snapshot["fixture_source"]["source_snapshot"] = {
+            "algorithm": "sha256", "tree_hash": "1" * 64, "diff_hash": "2" * 64,
+        }
+        self.validate_temp(
+            clean_with_snapshot, [native, wrapper], "is not valid under any of the given schemas"
+        )
+
+        different_clean_fixture = copy.deepcopy(manifest)
+        different_clean_fixture["fixture_source"]["commit_sha"] = "9" * 40
+        self.validate_temp(different_clean_fixture, [native, wrapper])
+
+        non_expo = copy.deepcopy(self.manifest)
+        non_expo["fixture_source"] = copy.deepcopy(manifest["fixture_source"])
+        self.validate_temp(
+            non_expo, [self.native, self.wrapper],
+            "fixture_source provenance is supported only for Expo L2/L3",
+        )
 
     def test_wrapper_receipt_callbacks_are_scenario_bound_in_full_capture(self) -> None:
         mutations = (
