@@ -22,7 +22,8 @@ class GistQueueNetworkImpl: GistQueueNetwork {
             throw GistNetworkRequestError.invalidBaseURL
         }
 
-        let sdkClient = DIGraphShared.shared.sdkClient
+        let diGraph = DIGraphShared.shared
+        let commonHeaders = GistCommonHeaders(sdkClient: diGraph.sdkClient, deviceInfo: diGraph.deviceInfo)
 
         var urlRequest = URLRequest(url: baseURL.appendingPathComponent(request.path))
         urlRequest.httpMethod = request.method.rawValue
@@ -31,10 +32,9 @@ class GistQueueNetworkImpl: GistQueueNetwork {
         if let timeoutInterval = request.timeoutInterval {
             urlRequest.timeoutInterval = timeoutInterval
         }
-        urlRequest.addValue(state.siteId, forHTTPHeaderField: HTTPHeader.siteId.rawValue)
-        urlRequest.addValue(state.dataCenter, forHTTPHeaderField: HTTPHeader.cioDataCenter.rawValue)
-        urlRequest.addValue(sdkClient.sdkVersion, forHTTPHeaderField: HTTPHeader.cioClientVersion.rawValue)
-        urlRequest.addValue(sdkClient.source.lowercased() + "-apple", forHTTPHeaderField: HTTPHeader.cioClientPlatform.rawValue)
+        for (header, value) in commonHeaders.headers(state: state) {
+            urlRequest.addValue(value, forHTTPHeaderField: header)
+        }
 
         // Set user token: use userId if available, otherwise use anonymousId
         // At least one identifier is required to make a request
