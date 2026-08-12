@@ -468,11 +468,17 @@ stream cannot claim Flutter/Expo wrapper acceptance. Standalone React Native is
 the explicit exception: it is a native Swift pass-through capture because the
 pinned iOS wrapper has no automatic JavaScript receipt. The two selected
 records also reconcile notification origin/class/response or the applicable
-URL, user-activity, quick-action, or lifecycle `app_state` safe facts. Scene
+URL, user-activity, quick-action, or lifecycle transition safe facts. Scene
 aliases remain stream-local and are deliberately excluded from cross-stream
 handoff comparison. Icon launch handoff is narrowed to the defining
-`application.did-finish-launching` seat and reconciles `app_state`; unrelated
-initialization callbacks cannot substitute for it. Equal counts with contradictory
+`application.did-finish-launching` seat. It requires `app_state=inactive` at the
+raw application entry and native launch forward, then `app_state=active` at the
+terminal wrapper lifecycle receipt; equal state would collapse distinct
+lifecycle instants. For Expo,
+one active application seat and one active subscriber forward must occur after
+the did-finish forward, and both that active forward and the RCT bundle-load
+seat must be captured before the wrapper receipt. Unrelated initialization callbacks cannot substitute
+for this progression. Equal counts with contradictory
 payload classifications are not a handoff. A multi-stream L2/L3 manifest cannot
 mix unrelated integrations outside that shared topology.
 
