@@ -18,7 +18,6 @@ final class InMemoryLifecycleTraceSink: LifecycleTraceSink {
     }
 }
 
-// Recorder invariants intentionally share one fixture and deterministic clock.
 // swiftlint:disable type_body_length
 final class LifecycleTraceRecorderTests: XCTestCase {
     private let fixedDate = Date(timeIntervalSince1970: 1754930800)
@@ -77,6 +76,26 @@ final class LifecycleTraceRecorderTests: XCTestCase {
         let persistedReceipt = try decodeReceipt(in: sink)
         XCTAssertEqual(persistedReceipt["last_assigned_sequence"] as? Int, 3)
         XCTAssertEqual(persistedReceipt["emitted_records"] as? Int, 3)
+    }
+
+    func testFileSink_whenReceiptIsPersisted_thenExclusiveWriteSucceedsExactlyOnce() throws {
+        let manager = FileManager.default
+        let directory = manager.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try manager.createDirectory(at: directory, withIntermediateDirectories: false)
+        defer { try? manager.removeItem(at: directory) }
+        let traceURL = directory.appendingPathComponent("trace.ndjson")
+        let fileSink = try XCTUnwrap(FileLifecycleTraceSink(path: traceURL.path))
+        let fileRecorder = makeRecorder(sink: fileSink)
+        XCTAssertTrue(fileRecorder.startScenario())
+        let receipt = close(fileRecorder)
+        let receiptURL = URL(fileURLWithPath: traceURL.path + FileLifecycleTraceSink.receiptPathSuffix)
+        let receiptData = try Data(contentsOf: receiptURL)
+        let persisted = try XCTUnwrap(JSONSerialization.jsonObject(with: receiptData) as? [String: Any])
+        XCTAssertGreaterThan(receipt?.lastAssignedSequence ?? 0, 0)
+        XCTAssertEqual(persisted["last_assigned_sequence"] as? Int, receipt?.lastAssignedSequence)
+        XCTAssertNil(FileLifecycleTraceSink(path: traceURL.path))
+        XCTAssertFalse(fileSink.writeReceipt(json: "{}"))
+        XCTAssertEqual(try Data(contentsOf: receiptURL), receiptData)
     }
 
     func testStart_whenFirstRecord_thenRecorderStateIsPristine() throws {
