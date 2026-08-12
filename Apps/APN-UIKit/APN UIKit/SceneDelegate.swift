@@ -34,9 +34,11 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         // On a cold launch from a Live Activity tap, iOS delivers the `widgetURL` here in
         // `connectionOptions.urlContexts` rather than via `scene(_:openURLContexts:)`. Route it
         // through the same path so the deep link opens and the SDK reports the `opened` metric.
+        let shouldTraceColdURLRoute = LifecycleTraceHarness.sharedRecorder?.scenario.isColdStart == true &&
+            connectionOptions.urlContexts.count == 1
         if handle(
             urlContexts: connectionOptions.urlContexts,
-            shouldTrace: LifecycleTraceHarness.sharedRecorder?.scenario.isColdStart == true
+            shouldTrace: shouldTraceColdURLRoute
         ) {
             LifecycleTraceHarness.endScenario(after: .hostURLRoute)
         }

@@ -45,7 +45,14 @@ added by this fixture.
 Notification-response acceptance is limited to the default action. Dismiss and custom actions do
 not emit the Customer.io-open result or the terminal seat. When a wrapped notification delegate
 owns an asynchronous completion, the passive patch passes that completion through unchanged and
-does not close the native stream because it cannot observe completion without interposition.
+does not close the native stream because it cannot observe completion without interposition. This
+includes a CocoaPods-FCM fixture when Firebase or another integration has installed a wrapped
+delegate: a push-tap capture fails closed with no receipt instead of claiming that completion.
+
+The producer emits launch/bootstrap seats only for scenarios classified as cold by the canonical
+contract. A controller may still start a new process for `token-registration`,
+`registration-failure`, or `app-background-foreground`; their launch callbacks are intentionally
+outside those scenario-focused traces so they cannot be mistaken for cold-launch ingress evidence.
 
 The focused test target compiles a fixture-local copy of the recorder types so it can stress the
 buffer and serializer without linking SampleAppsCommon into notification extensions. Therefore the

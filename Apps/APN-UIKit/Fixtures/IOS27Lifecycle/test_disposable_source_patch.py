@@ -35,7 +35,13 @@ class DisposableSourcePatchTests(unittest.TestCase):
         self.assertIn("LifecycleTraceEvidence.isCustomerIOLiveActivityRoute(url)", scene_delegate)
         self.assertIn("let shouldTrace = URLContexts.count == 1", scene_delegate)
         self.assertIn("urlContexts: connectionOptions.urlContexts", scene_delegate)
-        self.assertIn("shouldTrace: LifecycleTraceHarness.sharedRecorder?.scenario.isColdStart == true", scene_delegate)
+        self.assertIn("connectionOptions.urlContexts.count == 1", scene_delegate)
+        self.assertIn("shouldTrace: shouldTraceColdURLRoute", scene_delegate)
+        continue_user_activity = app_delegate.split("continue userActivity: NSUserActivity", 1)[1]
+        self.assertLess(
+            continue_user_activity.index("guard let universalLinkUrl = userActivity.webpageURL"),
+            continue_user_activity.index("callback: .applicationContinueUserActivity"),
+        )
         source_patch = (FIXTURE_DIRECTORY / "ios27-lifecycle-source.patch").read_text(encoding="utf-8")
         self.assertIn(
             "if handled, response.actionIdentifier == UNNotificationDefaultActionIdentifier",

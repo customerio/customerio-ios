@@ -137,6 +137,10 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     //
     // Learn more: https://customer.io/docs/sdk/ios/push/#universal-links-deep-links
     func application(_ application: UIApplication, continue userActivity: NSUserActivity, restorationHandler: @escaping ([UIUserActivityRestoring]?) -> Void) -> Bool {
+        guard let universalLinkUrl = userActivity.webpageURL else {
+            return false
+        }
+
         LifecycleTraceHarness.sharedRecorder?.record(
             callback: .applicationContinueUserActivity,
             owner: .applicationDelegate,
@@ -145,10 +149,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             observations: LifecycleTraceEvidence.observe(applicationState: application.applicationState),
             LifecycleTraceEvidence.observe(userActivity: userActivity)
         )
-
-        guard let universalLinkUrl = userActivity.webpageURL else {
-            return false
-        }
 
         let routeEvidence = LifecycleTraceEvidence.observe(userActivity: userActivity)
         LifecycleTraceHarness.sharedRecorder?.record(
