@@ -1,7 +1,7 @@
 {
   "schema": "cio-lifecycle-contract-lock/1",
   "source_repository": "customerio/customerio-ios",
-  "source_commit": "342eabf17ea7eef258c256ff2138279bfa15bc9a",
+  "source_commit": "9e588e810ed1b3553931cdd662a248a2a54c11ae",
   "algorithm": "sha256",
   "files": [
     {
