@@ -18,6 +18,8 @@ class LifecycleInstrumentationTests(unittest.TestCase):
     def test_real_delegate_selector_owns_os_entry_before_shared_routing_helper(self) -> None:
         selector = SOURCE.split("func application(_ application: UIApplication, continue userActivity:", 1)[1]
         selector = selector.split("private func routeUniversalLink", 1)[0]
+        first_record = selector.index("LifecycleTraceHarness.sharedRecorder?.record")
+        self.assertLess(selector.index("guard userActivity.webpageURL != nil"), first_record)
         self.assertEqual(selector.count("callback: .applicationContinueUserActivity"), 1)
         self.assertEqual(selector.count("callback: .hostRouteUserActivity"), 2)
         self.assertIn("let handled = routeUniversalLink(userActivity)", selector)

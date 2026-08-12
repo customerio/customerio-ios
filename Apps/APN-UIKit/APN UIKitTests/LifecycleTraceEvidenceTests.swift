@@ -76,6 +76,8 @@ final class LifecycleTraceEvidenceTests: XCTestCase {
 
         XCTAssertTrue(LifecycleTraceEvidence.isTraceableURLRoute(valid))
         XCTAssertFalse(LifecycleTraceEvidence.isTraceableURLRoute(malformed))
+        let meaningless = try XCTUnwrap(URL(string: "cio-live-activity://open?foo=bar"))
+        XCTAssertFalse(LifecycleTraceEvidence.isTraceableURLRoute(meaningless))
     }
 
     func testObserveLaunchOptions_whenPayloadExists_thenRecordsOnlyPresenceAndCount() {

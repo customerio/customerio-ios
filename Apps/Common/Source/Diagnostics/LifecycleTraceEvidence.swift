@@ -45,15 +45,19 @@ public enum LifecycleTraceEvidence {
             && URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems != nil
     }
 
-    /// Returns false only when a Customer.io Live Activity redirect cannot be parsed by the SDK.
+    /// Returns false when a Customer.io Live Activity route has no usable delivery/redirect fact,
+    /// or when its redirect cannot be parsed by the SDK.
     /// The host must still execute the production route, but the fixture cannot claim a coherent
     /// Customer.io redirect result for that malformed stimulus.
     public static func isTraceableURLRoute(_ url: URL) -> Bool {
         guard isCustomerIOLiveActivityRoute(url),
-              let redirect = URLComponents(url: url, resolvingAgainstBaseURL: false)?
-              .queryItems?.first(where: { $0.name == "cio_redirect" })?.value else {
+              let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems else {
             return true
         }
+        let deliveryID = items.first(where: { $0.name == "cio_delivery_id" })?.value
+        let redirect = items.first(where: { $0.name == "cio_redirect" })?.value
+        guard deliveryID?.isEmpty == false || redirect?.isEmpty == false else { return false }
+        guard let redirect, !redirect.isEmpty else { return true }
         return URL(string: redirect) != nil
     }
 
@@ -418,7 +422,7 @@ public final class LifecycleTracePlatformProbeObserver: @unchecked Sendable {
         self.center = center
         self.token = center.addObserver(
             forName: LifecycleTraceProbe.notificationName,
-            object: nil,
+            object: center,
             queue: nil
         ) { [weak self] notification in
             self?.receive(notification)
@@ -438,7 +442,10 @@ public final class LifecycleTracePlatformProbeObserver: @unchecked Sendable {
         lock.lock()
         let shouldReceive = isActive
         lock.unlock()
-        guard shouldReceive else { return }
+        guard shouldReceive,
+              notification.object as AnyObject? === center,
+              notification.userInfo?[LifecycleTraceProbe.processInstanceIDKey] as? String
+              == LifecycleTraceHarness.sharedRecorder?.processInstanceID else { return }
         guard let seat = notification.userInfo?[LifecycleTraceProbe.seatKey] as? String else { return }
         switch seat {
         case "notification-center.will-present.entry":
@@ -510,7 +517,7 @@ public final class LifecycleTracePlatformProbeObserver: @unchecked Sendable {
                 kind: .sdkRouting,
                 phase: .result,
                 observations: LifecycleTraceEvidence.observe(deviceToken: value),
-                LifecycleTraceEvidence.observe(routingResult: .success)
+                LifecycleTraceEvidence.observe(routingResult: .unknown)
             )
             LifecycleTraceHarness.endScenario(after: .tokenRegistration)
         case "customerio.register-device-token.fcm.result":
@@ -521,7 +528,7 @@ public final class LifecycleTracePlatformProbeObserver: @unchecked Sendable {
                 kind: .sdkRouting,
                 phase: .result,
                 observations: LifecycleTraceEvidence.observe(fcmToken: value), requestCorrelation(),
-                LifecycleTraceEvidence.observe(routingResult: .success)
+                LifecycleTraceEvidence.observe(routingResult: .unknown)
             )
             LifecycleTraceHarness.endScenario(after: .tokenRegistration)
         default:

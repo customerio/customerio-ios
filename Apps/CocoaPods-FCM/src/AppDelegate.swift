@@ -164,6 +164,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
     // IMPORTANT: If FCM is used with enabled swizzling (default state) it will not call this method in SwiftUI based apps.
     //            Use `deepLinkCallback` on SDKConfigBuilder, as that works in all scenarios.
     func application(_ application: UIApplication, continue userActivity: NSUserActivity, restorationHandler: @escaping ([any UIUserActivityRestoring]?) -> Void) -> Bool {
+        guard userActivity.webpageURL != nil else { return false }
         LifecycleTraceHarness.sharedRecorder?.record(
             callback: .applicationContinueUserActivity,
             owner: .applicationDelegate,

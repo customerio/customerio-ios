@@ -14,7 +14,7 @@
     },
     {
       "path": "docs/dev-notes/ios27-lifecycle-capture-manifest-v1.schema.json",
-      "sha256": "fda332a4749454a4987cb6f2b887bb69c92f702d5cbb5c0ef49db0feba0dc83e"
+      "sha256": "aaee919a7c32825b2b7bf3485ee422663844e62e7debf87b80f0628868a67879"
     },
     {
       "path": "docs/dev-notes/ios27-lifecycle-trace-v1-test-vectors/aggregate.invalid-counts.json",

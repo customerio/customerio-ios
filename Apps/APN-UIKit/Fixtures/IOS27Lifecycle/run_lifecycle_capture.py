@@ -27,10 +27,8 @@ SOURCE_PATCH_PATH = Path(__file__).with_name("ios27-lifecycle-source.patch")
 CONTRACT_TOOL_RELATIVE_PATH = Path("scripts/ios27_lifecycle_contract.py")
 CONTRACT_VALIDATOR_RELATIVE_PATH = Path("docs/dev-notes/validate_ios27_lifecycle_trace.py")
 PATCH_DEPENDENT_SCENARIOS = frozenset({
-    "push-foreground",
     "push-tap-warm",
     "push-tap-cold",
-    "local-notification-foreground",
     "local-notification-tap-warm",
     "local-notification-tap-cold",
     "token-registration",
@@ -74,7 +72,7 @@ def _load_object(path: Path, description: str) -> dict[str, Any]:
     return value
 
 
-def _patched_source_paths() -> frozenset[str]:
+def _patched_source_entries() -> tuple[dict[str, str], ...]:
     lock = _load_object(PATCH_LOCK_PATH, "source patch lock")
     if set(lock) != {"schema", "source_commit", "algorithm", "patch_sha256", "files"}:
         raise CaptureError("source patch lock has an unexpected shape")
@@ -90,6 +88,7 @@ def _patched_source_paths() -> frozenset[str]:
     files = lock.get("files")
     if not isinstance(files, list) or len(files) != 4:
         raise CaptureError("source patch lock must contain exactly four files")
+    entries: list[dict[str, str]] = []
     paths: set[str] = set()
     for entry in files:
         if not isinstance(entry, dict) or set(entry) != {"path", "sha256", "post_sha256"}:
@@ -100,9 +99,14 @@ def _patched_source_paths() -> frozenset[str]:
         if any(not isinstance(entry.get(key), str) or not re.fullmatch(r"[0-9a-f]{64}", entry[key]) for key in ("sha256", "post_sha256")):
             raise CaptureError("source patch lock contains an invalid file digest")
         paths.add(path)
+        entries.append(entry)
     if len(paths) != 4:
         raise CaptureError("source patch lock contains duplicate paths")
-    return frozenset(paths)
+    return tuple(entries)
+
+
+def _patched_source_paths() -> frozenset[str]:
+    return frozenset(entry["path"] for entry in _patched_source_entries())
 
 
 def _run(arguments: list[str], *, cwd: Path, environment: dict[str, str] | None = None) -> str:
@@ -183,6 +187,7 @@ def _snapshot(root: Path) -> tuple[bool, dict[str, str] | None]:
         "algorithm": "sha256",
         "tree_hash": tree.hexdigest(),
         "diff_hash": combined_diff,
+        "ignored_build_inputs_excluded": True,
     }
 
 
@@ -203,10 +208,17 @@ def _require_disposable_checkout(root: Path, scenario: str) -> None:
     changed_paths = set(
         _git(root, "diff", "--name-only", "--no-renames", "HEAD", "--").splitlines()
     )
-    if not _patched_source_paths().issubset(changed_paths):
+    entries = _patched_source_entries()
+    if not {entry["path"] for entry in entries}.issubset(changed_paths):
         raise CaptureError(
             "disposable checkout does not contain every required production source patch"
         )
+    for entry in entries:
+        path = root / entry["path"]
+        if path.is_symlink() or not path.is_file():
+            raise CaptureError(f"patched production source is missing or unsafe: {entry['path']}")
+        if hashlib.sha256(path.read_bytes()).hexdigest() != entry["post_sha256"]:
+            raise CaptureError(f"patched production source digest mismatch: {entry['path']}")
 
 
 def _toolchain(root: Path) -> dict[str, str | None]:

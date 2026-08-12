@@ -186,6 +186,7 @@ public final class LifecycleTraceRecorder: @unchecked Sendable {
     private var captureFailed = false
 
     public var scenario: LifecycleTraceScenario { context.scenario }
+    public var processInstanceID: String { context.processInstanceID }
 
     // Used only by focused tests to create deterministic overflow. Production code never pauses.
     var isDrainSchedulingPausedForTesting = false
@@ -433,16 +434,11 @@ public final class LifecycleTraceRecorder: @unchecked Sendable {
         )
 
         pendingRecords.append(record)
-        bufferHighWatermark = max(bufferHighWatermark, min(bufferCapacity, pendingRecords.count))
+        bufferHighWatermark = max(bufferHighWatermark, pendingRecords.count)
         if pendingRecords.count > bufferCapacity {
-            let protectedCallbacks: Set<LifecycleTraceCallback> = [.traceScenarioStart, .traceScenarioEnd]
-            let dropIndex = pendingRecords.firstIndex { !protectedCallbacks.contains($0.callback) }
-            if let dropIndex {
-                pendingRecords.remove(at: dropIndex)
-                droppedRecordsTotal += 1
-                captureFailed = true
-                pendingRecords.removeAll()
-            }
+            droppedRecordsTotal += pendingRecords.count
+            captureFailed = true
+            pendingRecords.removeAll()
         }
 
         record.recorder = snapshotLocked()

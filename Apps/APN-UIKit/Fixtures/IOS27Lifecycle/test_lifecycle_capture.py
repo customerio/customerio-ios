@@ -132,8 +132,10 @@ class LifecycleCaptureTests(unittest.TestCase):
                     MODULE.FIXTURE_ROOT_ENVIRONMENT_KEY: str(source.resolve()),
                 }), \
                     patch.object(MODULE, "_git", side_effect=fake_git), \
+                    patch.object(MODULE, "_require_disposable_checkout"), \
                     patch.object(MODULE, "_snapshot", return_value=(True, {
                         "algorithm": "sha256", "tree_hash": "2" * 64, "diff_hash": "3" * 64,
+                        "ignored_build_inputs_excluded": True,
                     })), \
                     patch.object(MODULE, "_toolchain", return_value={
                         "xcode_version": "26.6", "xcode_build": "17F113", "swift_version": "6.2.4",
@@ -154,6 +156,7 @@ class LifecycleCaptureTests(unittest.TestCase):
             manifest = json.loads((output / "manifest.json").read_text(encoding="utf-8"))
             self.assertTrue(manifest["repositories"][0]["dirty"])
             self.assertEqual(manifest["repositories"][0]["source_snapshot"]["tree_hash"], "2" * 64)
+            self.assertTrue(manifest["repositories"][0]["source_snapshot"]["ignored_build_inputs_excluded"])
             self.assertEqual(manifest["frameworks"][0]["commit_sha"], "1" * 40)
             self.assertEqual(manifest["streams"][0]["process_id"], 42)
             self.assertEqual(manifest["streams"][0]["receipt"]["dropped_records_total"], 0)

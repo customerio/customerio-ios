@@ -188,7 +188,6 @@ def _prepare(
     _overlay(source_root, checkout)
     _verify_sources(checkout, entries)
     _run(["git", "add", "-A"], cwd=checkout)
-    _run(["git", "diff", "--quiet"], cwd=checkout)
     expected_paths = {entry["path"] for entry in entries}
     _verify_patch_paths(checkout, PATCH_PATH, expected_paths)
     _run(["git", "apply", "--check", str(PATCH_PATH)], cwd=checkout)

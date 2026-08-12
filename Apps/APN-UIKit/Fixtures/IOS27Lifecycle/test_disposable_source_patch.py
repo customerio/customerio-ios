@@ -34,12 +34,19 @@ class DisposableSourcePatchTests(unittest.TestCase):
         self.assertIn("scenario.isColdStart == true", connection)
         self.assertIn("LifecycleTraceEvidence.isCustomerIOLiveActivityRoute(url)", scene_delegate)
         self.assertIn("let shouldTrace = URLContexts.count == 1", scene_delegate)
-        self.assertIn("if handle(urlContexts: connectionOptions.urlContexts)", scene_delegate)
+        self.assertIn("urlContexts: connectionOptions.urlContexts", scene_delegate)
+        self.assertIn("shouldTrace: LifecycleTraceHarness.sharedRecorder?.scenario.isColdStart == true", scene_delegate)
         source_patch = (FIXTURE_DIRECTORY / "ios27-lifecycle-source.patch").read_text(encoding="utf-8")
         self.assertIn(
             "if handled, response.actionIdentifier == UNNotificationDefaultActionIdentifier",
             source_patch,
         )
+        wrapped_delegate = source_patch.index("if let wrappedNotificationCenterDelegate")
+        direct_completion = source_patch.index("         completionHandler()", wrapped_delegate)
+        terminal = source_patch.index("notification-center.did-receive-response.terminal")
+        self.assertGreater(terminal, direct_completion)
+        self.assertGreaterEqual(source_patch.count("object: NotificationCenter.default"), 9)
+        self.assertGreaterEqual(source_patch.count('"process_instance_id"'), 9)
 
     def test_fixture_applies_in_disposable_checkout_without_absolute_workspace_paths(self) -> None:
         forbidden_workspace_prefix = b"/" + b"Users/"
@@ -65,6 +72,13 @@ class DisposableSourcePatchTests(unittest.TestCase):
                     "module = importlib.util.module_from_spec(spec); "
                     "spec.loader.exec_module(module); "
                     "module._require_disposable_checkout(root, 'token-registration'); "
+                    "patched = root / 'Sources/MessagingPushFCM/Integration/CioAppDelegateFCM.swift'; "
+                    "patched.write_text(patched.read_text() + '\\n'); "
+                    "check = lambda: module._require_disposable_checkout(root, 'token-registration'); "
+                    "caught = False; "
+                    "exec(\"try:\\n check()\\nexcept module.CaptureError as error:\\n "
+                    "assert 'digest mismatch' in str(error)\\n caught = True\"); "
+                    "assert caught, 'mutated post-patch bytes were accepted'; "
                     "assert 'LifecycleTraceHarness.configureFromEnvironment' in "
                     "(root / 'Apps/CocoaPods-FCM/src/AppDelegate.swift').read_text(); "
                     "assert (root / 'Apps/CocoaPods-FCM/test_ios27_lifecycle_instrumentation.py').is_file(); "

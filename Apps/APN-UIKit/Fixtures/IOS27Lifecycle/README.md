@@ -5,8 +5,8 @@ sample app's one process-wide recorder. It does not add an application, scene, n
 or provider delegate. It posts safe in-process observations before or after existing calls and
 passes every production completion object through unchanged.
 
-`run_disposable_source_patch.py` verifies the four production source files against hashes from
-the last commit that changed those paths, `2e64ddf8802c1b74c9be637eca5f94ee27737444`, creates a temporary local clone, overlays only
+`run_disposable_source_patch.py` verifies the four production source files against hashes recorded
+at `2e64ddf8802c1b74c9be637eca5f94ee27737444`, the commit that introduced this lock, creates a temporary local clone, overlays only
 the current producer/test files, applies the checked patch there, runs the requested command from
 that checkout, verifies the original sources again, and removes the checkout. A mismatch or patch
 drift fails closed. `source-files.lock.json` also pins the exact repository-owned patch SHA-256, so
@@ -42,6 +42,19 @@ observe the real Customer.io ingress, but it does not wrap a production completi
 presentation result. Quick-action and background-fetch callbacks are likewise absent and are not
 added by this fixture.
 
+Notification-response acceptance is limited to the default action. Dismiss and custom actions do
+not emit the Customer.io-open result or the terminal seat. When a wrapped notification delegate
+owns an asynchronous completion, the passive patch passes that completion through unchanged and
+does not close the native stream because it cannot observe completion without interposition.
+
+The focused test target compiles a fixture-local copy of the recorder types so it can stress the
+buffer and serializer without linking SampleAppsCommon into notification extensions. Therefore the
+process-wide singleton/probe wiring remains an integration boundary for an actual capture runner.
+An invalid early terminal intentionally leaves the observer registered because the
+`app-background-foreground` scenario must ignore its initial active seat and wait for the real
+background-to-active transition. Supported producer paths do not emit any other speculative
+terminal.
+
 The capture CLI rejects those unsupported scenarios before launching a controller. Its accepted
 scenario set is limited to the real terminal seats implemented by this producer.
 
@@ -66,7 +79,8 @@ does not read it as evidence, log it, or hash it, and only copies it into the te
 the existing sample can compile. A capture must prove provider/backend behavior separately through
 the controller-written `provider_provenance`; neither the source snapshot nor this opaque local
 configuration establishes that proof. Therefore the manifest snapshot is not a claim that every
-compiled byte was hashed.
+compiled byte was hashed. The manifest carries `ignored_build_inputs_excluded: true` inside this
+repository's `source_snapshot` so that qualification travels with the capture artifact.
 
 The required blueprint is deliberately limited to facts the runner cannot discover without guessing.
 Its build identity and framework versions are operator assertions, not runtime-derived facts. A
