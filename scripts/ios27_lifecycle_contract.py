@@ -16,7 +16,7 @@ from typing import Any
 
 SCHEMA = "cio-lifecycle-contract-lock/1"
 SOURCE_REPOSITORY = "customerio/customerio-ios"
-SOURCE_COMMIT = "9e588e810ed1b3553931cdd662a248a2a54c11ae"
+SOURCE_COMMIT = "d96a31da110ba8cb4138a21945503d88607a2c9b"
 ALGORITHM = "sha256"
 EXPECTED_PATHS = (
     "docs/dev-notes/IOS27-LIFECYCLE-CALLBACK-CONTRACT.md",
