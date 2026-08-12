@@ -12,18 +12,24 @@ struct MovementFixResolverTests {
     private func makeResolver(
         maxAge: TimeInterval = 30,
         requestTimeout: TimeInterval = 30,
+        backgroundTaskRunner: BackgroundTaskRunner = NoBackgroundTaskRunner(),
         onRequest: @escaping () -> Void = {}
     ) -> MovementFixResolver {
-        let resolver = MovementFixResolver(logger: LoggerMock(), maxAge: maxAge, requestTimeout: requestTimeout)
+        let resolver = MovementFixResolver(
+            logger: LoggerMock(),
+            maxAge: maxAge,
+            requestTimeout: requestTimeout,
+            backgroundTaskRunner: backgroundTaskRunner
+        )
         resolver.requestFreshFix = onRequest
         return resolver
     }
 
-    private func makeFix(latitude: Double = 31.0, longitude: Double = 74.0, ageSeconds: TimeInterval) -> CLLocation {
+    private func makeFix(latitude: Double = 31.0, longitude: Double = 74.0, ageSeconds: TimeInterval, accuracy: Double = 10) -> CLLocation {
         CLLocation(
             coordinate: CLLocationCoordinate2D(latitude: latitude, longitude: longitude),
             altitude: 0,
-            horizontalAccuracy: 10,
+            horizontalAccuracy: accuracy,
             verticalAccuracy: 10,
             timestamp: Date(timeIntervalSinceNow: -ageSeconds)
         )
@@ -170,5 +176,78 @@ struct MovementFixResolverTests {
 
         resolver.handleResolvedFix(makeFix(latitude: 32.2, ageSeconds: 0))
         #expect(received.map(\.?.latitude) == [32.1, 32.2])
+    }
+
+    @Test
+    func didUpdateLocations_givenStaleEchoedFix_expectKeptWaitingUntilFreshFix() {
+        let resolver = makeResolver()
+        var received: [LocationData?] = []
+
+        resolver.resolve(cached: nil) { received.append($0) }
+        // Core Location echoing a cached (stale) location must not complete the pass...
+        resolver.locationManager(CLLocationManager(), didUpdateLocations: [
+            makeFix(latitude: 31.9, ageSeconds: 120)
+        ])
+        #expect(received.isEmpty)
+        // ...but it is still retained for the monitor's newest-fix reads.
+        #expect(resolver.latestFix?.coordinate.latitude == 31.9)
+
+        resolver.locationManager(CLLocationManager(), didUpdateLocations: [
+            makeFix(latitude: 32.4, ageSeconds: 1)
+        ])
+        #expect(received.map(\.?.latitude) == [32.4])
+    }
+
+    @Test
+    func didUpdateLocations_givenInvalidAccuracy_expectIgnoredEntirely() {
+        let resolver = makeResolver()
+        var received: [LocationData?] = []
+
+        resolver.resolve(cached: nil) { received.append($0) }
+        resolver.locationManager(CLLocationManager(), didUpdateLocations: [
+            makeFix(latitude: 31.9, ageSeconds: 0, accuracy: -1)
+        ])
+        #expect(received.isEmpty)
+        #expect(resolver.latestFix == nil)
+
+        resolver.locationManager(CLLocationManager(), didUpdateLocations: [
+            makeFix(latitude: 32.6, ageSeconds: 0)
+        ])
+        #expect(received.map(\.?.latitude) == [32.6])
+    }
+
+    @Test
+    func resolve_givenStaleCachedFix_expectBackgroundTimeHeldUntilCompletion() async {
+        let runner = BackgroundTaskRunnerSpy()
+        let resolver = makeResolver(backgroundTaskRunner: runner)
+        var received: [LocationData?] = []
+
+        resolver.resolve(cached: makeFix(ageSeconds: 120)) { received.append($0) }
+        for _ in 0 ..< 200 {
+            if runner.started.wrappedValue == 1 { break }
+            try? await Task.sleep(nanoseconds: 5000000)
+        }
+        #expect(runner.started.wrappedValue == 1)
+        #expect(runner.finished.wrappedValue == 0)
+
+        resolver.handleResolvedFix(makeFix(latitude: 32.7, ageSeconds: 0))
+        for _ in 0 ..< 200 {
+            if runner.finished.wrappedValue == 1 { break }
+            try? await Task.sleep(nanoseconds: 5000000)
+        }
+        #expect(runner.finished.wrappedValue == 1)
+        #expect(received.map(\.?.latitude) == [32.7])
+    }
+}
+
+/// Records entry/exit of the background-time window so tests can assert it brackets the request.
+private final class BackgroundTaskRunnerSpy: BackgroundTaskRunner, @unchecked Sendable {
+    let started = Synchronized(0)
+    let finished = Synchronized(0)
+
+    func withBackgroundTime(_ work: @Sendable () async -> Void) async {
+        started.mutating { $0 += 1 }
+        await work()
+        finished.mutating { $0 += 1 }
     }
 }

@@ -99,7 +99,10 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preco
         self.storage = storage
         self.userDefaults = userDefaults
         self.authManager = CLLocationManager()
-        self.movementFixResolver = MovementFixResolver(logger: logger)
+        self.movementFixResolver = MovementFixResolver(
+            logger: logger,
+            backgroundTaskRunner: GeofenceBackgroundTime.runner(name: "io.customer.geofence.movement-fix")
+        )
         super.init()
         let mirrored = Set(userDefaults.stringArray(forKey: Self.conditionMirrorKey) ?? [])
         self.knownConditionIdentifiers = mirrored

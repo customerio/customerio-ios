@@ -46,7 +46,10 @@ final class CoreLocationGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @pr
     init(logger: Logger) {
         self.manager = CLLocationManager()
         self.logger = logger
-        self.movementFixResolver = MovementFixResolver(logger: logger)
+        self.movementFixResolver = MovementFixResolver(
+            logger: logger,
+            backgroundTaskRunner: GeofenceBackgroundTime.runner(name: "io.customer.geofence.movement-fix")
+        )
         super.init()
         manager.delegate = self
     }
