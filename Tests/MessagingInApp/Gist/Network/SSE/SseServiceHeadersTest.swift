@@ -25,7 +25,7 @@ class SseServiceHeadersTest: UnitTest {
 
         let headers = await sut.buildHeaders(state: state)
 
-        XCTAssertEqual(headers["X-CIO-App-Identifier"], "io.customer.superawesomestore")
+        XCTAssertEqual(headers["X-CIO-Client-App-Identifier"], "io.customer.superawesomestore")
         XCTAssertEqual(headers["X-Gist-User-Anonymous"], "false")
         XCTAssertNil(headers["X-Gist-Encoded-User-Token"])
     }

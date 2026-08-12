@@ -18,7 +18,7 @@ struct GistCommonHeaders {
             HTTPHeader.cioDataCenter.rawValue: state.dataCenter,
             HTTPHeader.cioClientPlatform.rawValue: sdkClient.source.lowercased() + "-apple",
             HTTPHeader.cioClientVersion.rawValue: sdkClient.sdkVersion,
-            HTTPHeader.cioAppIdentifier.rawValue: deviceInfo.customerBundleId
+            HTTPHeader.cioClientAppIdentifier.rawValue: deviceInfo.customerBundleId
         ]
     }
 }

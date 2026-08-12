@@ -36,7 +36,7 @@ class GistCommonHeadersTest: UnitTest {
             let headers = builder(source: source).headers(state: state)
 
             XCTAssertEqual(headers["X-CIO-Client-Platform"], expectedPlatform, "source: \(source)")
-            XCTAssertEqual(headers["X-CIO-App-Identifier"], "com.example.wrapperapp", "source: \(source)")
+            XCTAssertEqual(headers["X-CIO-Client-App-Identifier"], "com.example.wrapperapp", "source: \(source)")
         }
     }
 
@@ -58,7 +58,7 @@ class GistCommonHeadersTest: UnitTest {
             "X-CIO-Datacenter",
             "X-CIO-Client-Platform",
             "X-CIO-Client-Version",
-            "X-CIO-App-Identifier"
+            "X-CIO-Client-App-Identifier"
         ])
     }
 }

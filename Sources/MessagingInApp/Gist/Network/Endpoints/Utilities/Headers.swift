@@ -6,7 +6,7 @@ enum HTTPHeader: String {
     case userAnonymous = "X-Gist-User-Anonymous"
     case cioClientVersion = "X-CIO-Client-Version"
     case cioClientPlatform = "X-CIO-Client-Platform"
-    case cioAppIdentifier = "X-CIO-App-Identifier"
+    case cioClientAppIdentifier = "X-CIO-Client-App-Identifier"
 }
 
 enum ContentTypes: String {
