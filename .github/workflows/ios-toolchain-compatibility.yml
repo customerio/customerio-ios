@@ -47,6 +47,8 @@ jobs:
             fixture: customerio-ios-fcm
           - toolchain: Xcode 27 preview
             runner: xcode-27
+            # Empty selects the Xcode bundled with the floating preview image;
+            # the next step fails closed unless it is Xcode/iOS SDK 27.
             xcode-version: ''
             xcode-major: '27'
             ios-sdk-major: '27'
@@ -54,6 +56,8 @@ jobs:
             fixture: native-apn
           - toolchain: Xcode 27 preview
             runner: xcode-27
+            # Empty selects the Xcode bundled with the floating preview image;
+            # the next step fails closed unless it is Xcode/iOS SDK 27.
             xcode-version: ''
             xcode-major: '27'
             ios-sdk-major: '27'
@@ -71,7 +75,7 @@ jobs:
 
       - name: Report and verify toolchain family
         id: toolchain
-        uses: customerio/mobile-ci-tools/github-actions/ios/report-toolchain/v1@1572446a747bfd0aa33226a037617b62ab2e53ab
+        uses: customerio/mobile-ci-tools/github-actions/ios/report-toolchain/v1@981c9ddc975e352edd80357ccac10ea91b3b9473
         with:
           expected-xcode-major: ${{ matrix.xcode-major }}
           expected-ios-sdk-major: ${{ matrix.ios-sdk-major }}
@@ -103,6 +107,7 @@ jobs:
           pod install --project-directory='Apps/CocoaPods-FCM' 2>&1 | tee "$RUNNER_TEMP/${{ matrix.fixture }}-pod-install.log"
 
       - name: Compile native APN fixture
+        id: compile-apn
         if: matrix.fixture == 'native-apn'
         shell: bash
         run: |
@@ -118,6 +123,7 @@ jobs:
             build 2>&1 | tee "$RUNNER_TEMP/${{ matrix.fixture }}-build.log"
 
       - name: Compile CocoaPods FCM fixture
+        id: compile-fcm
         if: matrix.fixture == 'customerio-ios-fcm'
         shell: bash
         run: |
@@ -133,7 +139,7 @@ jobs:
             build 2>&1 | tee "$RUNNER_TEMP/${{ matrix.fixture }}-build.log"
 
       - name: Record compile result
-        if: success()
+        if: steps.compile-apn.outcome == 'success' || steps.compile-fcm.outcome == 'success'
         shell: bash
         run: |
           {
@@ -145,17 +151,30 @@ jobs:
             echo '**Scope:** unsigned simulator compile only; no launch, callback, push-delivery, signing, or App Store claim'
           } >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Record compatibility failure
-        if: failure()
+      - name: Record compile failure
+        if: steps.compile-apn.outcome == 'failure' || steps.compile-fcm.outcome == 'failure'
         shell: bash
         run: |
           {
             echo '## Native fixture compile'
             echo
-            echo '**Classification:** compatibility-failed'
+            echo '**Classification:** sdk-compile-failed'
             echo '**Fixture:** ${{ matrix.fixture }}'
             echo '**Toolchain family:** Xcode ${{ matrix.xcode-major }} / iOS SDK ${{ matrix.ios-sdk-major }}'
-            echo '**Next step:** inspect the toolchain report and uploaded dependency/build logs to classify setup versus SDK compilation'
+            echo '**Next step:** inspect the uploaded build log for the exact compiler failure'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Record setup failure
+        if: failure() && steps.compile-apn.outcome != 'failure' && steps.compile-fcm.outcome != 'failure'
+        shell: bash
+        run: |
+          {
+            echo '## Native fixture compile'
+            echo
+            echo '**Classification:** fixture-setup-failed'
+            echo '**Fixture:** ${{ matrix.fixture }}'
+            echo '**Toolchain family:** Xcode ${{ matrix.xcode-major }} / iOS SDK ${{ matrix.ios-sdk-major }}'
+            echo '**Next step:** inspect checkout, toolchain selection, dependency installation, and fixture preparation before attributing this to SDK compilation'
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload build logs
