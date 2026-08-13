@@ -1,6 +1,6 @@
 # iOS toolchain compatibility CI
 
-`iOS toolchain compatibility` compiles the same native APN and CocoaPods FCM fixtures on the supported Xcode 26.6 toolchain and the floating Xcode 27 preview runner. The stable cells are required regression evidence. Preview cells are experimental and non-blocking until Xcode 27 is a supported stable toolchain.
+`iOS toolchain compatibility` compiles the same native APN and CocoaPods FCM fixtures on the supported Xcode 26.6 toolchain and the floating Xcode 27 preview runner. When this path-scoped workflow runs, its stable cells are blocking regression controls and its preview cells are experimental and non-blocking. Do not configure these path-scoped checks as universally required branch-protection checks without an always-run fallback.
 
 The workflow deliberately verifies only the Xcode and iOS SDK major families. It records the hosted image, macOS, architecture, exact Xcode build, SDK versions, and installed runtimes through the shared `mobile-ci-tools` action. It does not copy an exact beta-image pin into this repository.
 
