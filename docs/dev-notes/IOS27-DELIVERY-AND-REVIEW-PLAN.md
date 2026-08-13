@@ -18,14 +18,15 @@ Keep released SDK behavior unchanged while adding continuous Xcode 27 compile ev
 | Order | PR | Target | What it changes | Release effect |
 | --- | --- | --- | --- | --- |
 | 1 | [mobile-ci-tools #15](https://github.com/customerio/mobile-ci-tools/pull/15) | `main` | Shared toolchain report and major-version validation | No SDK release |
-| 2 | [Flutter #388](https://github.com/customerio/customerio-flutter/pull/388) | `main` | Pins both sample apps to Flutter 3.44.8, the first stable version with the Xcode 27 lipo fix | No package release; keep a `ci:` or `chore:` title |
-| 3 | [iOS #1208](https://github.com/customerio/customerio-ios/pull/1208) | `main` | Normalizes generated CocoaPods sample targets for Xcode 27 | No SDK release; retitle from `fix:` to `ci:` before merge |
-| 4 | [Flutter #389](https://github.com/customerio/customerio-flutter/pull/389) | `main` | Applies the same normalization to the Flutter CocoaPods sample | No package release; retitle from `fix:` to `ci:` before merge |
-| 5 | [iOS #1213](https://github.com/customerio/customerio-ios/pull/1213) | `main`, after #1208 | Xcode 26.6 and Xcode 27 matrix for APN/SwiftPM and FCM/CocoaPods | No SDK release |
-| 6 | [Flutter #392](https://github.com/customerio/customerio-flutter/pull/392) | `main`, after #388 and #389 | Xcode 26.6 and Xcode 27 matrix for Flutter SwiftPM and CocoaPods | No package release |
-| 7 | [Expo #389](https://github.com/customerio/customerio-expo-plugin/pull/389) | `main`, after mobile-ci-tools #15 | Adds Xcode 27 APN/FCM cells to the existing latest-Expo PR matrix | No package release |
+| 2 | [Flutter #393](https://github.com/customerio/customerio-flutter/pull/393) | `main` | Keeps the ordinary floating-Flutter checks deterministic after Flutter 3.47 and fails API extraction closed | No package release |
+| 3 | [Flutter #388](https://github.com/customerio/customerio-flutter/pull/388) | `main` | Pins both sample apps to Flutter 3.44.8, the first stable version with the Xcode 27 lipo fix | No package release; keep a `ci:` or `chore:` title |
+| 4 | [iOS #1208](https://github.com/customerio/customerio-ios/pull/1208) | `main` | Normalizes generated CocoaPods sample targets for Xcode 27 | No SDK release; keep a `ci:` title |
+| 5 | [Flutter #389](https://github.com/customerio/customerio-flutter/pull/389) | `main` | Applies the same normalization to the Flutter CocoaPods sample | No package release; keep a `ci:` title |
+| 6 | [iOS #1213](https://github.com/customerio/customerio-ios/pull/1213) | `main`, after #1208 | Xcode 26.6 and Xcode 27 matrix for APN/SwiftPM and FCM/CocoaPods | No SDK release |
+| 7 | [Flutter #392](https://github.com/customerio/customerio-flutter/pull/392) | `main`, after #393, #388, and #389 | Xcode 26.6 and Xcode 27 matrix for Flutter SwiftPM and CocoaPods | No package release |
+| 8 | [Expo #389](https://github.com/customerio/customerio-expo-plugin/pull/389) | `main`, after mobile-ci-tools #15 | Adds Xcode 27 APN/FCM cells to the existing latest-Expo PR matrix | No package release |
 
-Orders 2 through 4 are independent after review and may merge in parallel. After their prerequisites merge, rebase #1213 and #392 onto current `main`, retarget them to `main`, and delete Flutter's temporary `codex/mbl-2248-flutter-xcode27-prereqs` branch. After mobile-ci-tools #15 merges, update every consumer to its final merge commit SHA.
+Orders 2 through 5 are independent after review and may merge in parallel. After their prerequisites merge, rebase #1213 and #392 onto current `main`, retarget them to `main`, and delete Flutter's temporary `codex/mbl-2248-flutter-xcode27-prereqs` branch. After mobile-ci-tools #15 merges, update every consumer to its final merge commit SHA.
 
 These CI and sample-tooling PRs may merge directly to `main`. A feature branch would add coordination cost without protecting users because they contain no production runtime behavior and their semantic titles must not request a package release.
 
