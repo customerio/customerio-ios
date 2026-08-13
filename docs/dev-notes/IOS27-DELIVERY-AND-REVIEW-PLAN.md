@@ -9,7 +9,7 @@ Add continuous Xcode 27 compile evidence without changing released SDK behavior.
 - Stable controls run the same fixture on `macos-26` with Xcode 26.6 and are blocking when the path-scoped workflow runs.
 - Preview cells run on the floating `xcode-27` hosted label. The setup action leaves the image-bundled Xcode selected, then the shared reporter fails closed unless Xcode and the iOS SDK are major version 27.
 - Preview cells use `continue-on-error: true` and must not be configured as required branch-protection checks. Path-scoped stable checks also need an always-run fallback before they can be universally required.
-- New matrices pin `report-toolchain/v1` to an immutable `mobile-ci-tools` commit. Existing release/test workflows that reference other `mobile-ci-tools` actions through `@main` are outside this rollout and are not repinned.
+- New matrices pin `customerio/mobile-ci-tools/github-actions/ios/report-toolchain/v1@<merge-sha>` to an immutable commit. Existing release/test workflows that reference other `mobile-ci-tools` actions through `@main` are outside this rollout and are not repinned.
 - Exact beta-image validation remains only in clearly titled test-only PRs. It is point-in-time diagnostic evidence, not permanent CI.
 - When Xcode 27 becomes stable, replace `xcode-27` with the supported stable runner/version, make those cells blocking, and remove preview wording.
 
@@ -61,9 +61,11 @@ Native delegate-composition PR [#1211](https://github.com/customerio/customerio-
 
 ## Required gate before removing draft status
 
+This gate applies to Expo #389, iOS #1213, and Flutter #392. Lifecycle PRs are additionally gated by the runtime release order above.
+
 - Record the exact head and current base in the PR body.
 - Confirm the stable and preview cells exercise the same fixture and dependency setup.
-- Require green stable cells. Classify any preview failure as toolchain, fixture-setup, or SDK-compile failure.
+- Require green stable cells. Classify any preview failure as toolchain, fixture-setup, or SDK-compile failure. Record a toolchain or fixture-setup failure in the PR body as non-blocking evidence. Record an SDK-compile failure and file a tracked source-compatibility issue; the additive matrix may still merge because preview cells are explicitly non-blocking.
 - Confirm release workflows and squash titles do not request a package release.
 - Confirm generated locks and sample projects have no unexplained churn.
 - Run the Customer.io source-command review manually with Claude Opus against the exact head. Record the substantive verdict in the PR body; empty output, timeout, or quota failure is not acceptance.
