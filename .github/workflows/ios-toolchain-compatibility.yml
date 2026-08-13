@@ -8,6 +8,7 @@ on:
       - 'Apps/CocoaPods-FCM/**'
       - 'Apps/Common/**'
       - 'Sources/**'
+      - 'scripts/cocoapods_deployment_target.rb'
       - 'Package.swift'
       - '*.podspec'
   push:
@@ -104,7 +105,7 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          pod install --project-directory='Apps/CocoaPods-FCM' 2>&1 | tee "$RUNNER_TEMP/${{ matrix.fixture }}-pod-install.log"
+          pod _1.16.2_ install --project-directory='Apps/CocoaPods-FCM' 2>&1 | tee "$RUNNER_TEMP/${{ matrix.fixture }}-pod-install.log"
 
       - name: Compile native APN fixture
         id: compile-apn
@@ -165,7 +166,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Record setup failure
-        if: failure() && steps.compile-apn.outcome != 'failure' && steps.compile-fcm.outcome != 'failure'
+        if: failure() && steps.toolchain.outcome != 'failure' && steps.compile-apn.outcome != 'failure' && steps.compile-fcm.outcome != 'failure'
         shell: bash
         run: |
           {
@@ -175,6 +176,19 @@ jobs:
             echo '**Fixture:** ${{ matrix.fixture }}'
             echo '**Toolchain family:** Xcode ${{ matrix.xcode-major }} / iOS SDK ${{ matrix.ios-sdk-major }}'
             echo '**Next step:** inspect checkout, toolchain selection, dependency installation, and fixture preparation before attributing this to SDK compilation'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Record unavailable toolchain
+        if: failure() && steps.toolchain.outcome == 'failure'
+        shell: bash
+        run: |
+          {
+            echo '## Native fixture compile'
+            echo
+            echo '**Classification:** toolchain-unavailable'
+            echo '**Fixture:** ${{ matrix.fixture }}'
+            echo '**Expected toolchain family:** Xcode ${{ matrix.xcode-major }} / iOS SDK ${{ matrix.ios-sdk-major }}'
+            echo '**Next step:** inspect the toolchain report before evaluating fixture setup or SDK compilation'
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload build logs
