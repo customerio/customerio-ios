@@ -1,0 +1,155 @@
+name: iOS toolchain compatibility
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/ios-toolchain-compatibility.yml'
+      - 'Apps/APN-UIKit/**'
+      - 'Apps/CocoaPods-FCM/**'
+      - 'Apps/Common/**'
+      - 'Sources/**'
+      - 'Package.swift'
+      - '*.podspec'
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-toolchain-compatibility-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  compile:
+    name: ${{ matrix.toolchain }} (${{ matrix.fixture }})
+    runs-on: ${{ matrix.runner }}
+    continue-on-error: ${{ matrix.experimental }}
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - toolchain: Xcode 26.6
+            runner: macos-26
+            xcode-version: '26.6'
+            xcode-major: '26'
+            ios-sdk-major: '26'
+            experimental: false
+            fixture: native-apn
+          - toolchain: Xcode 26.6
+            runner: macos-26
+            xcode-version: '26.6'
+            xcode-major: '26'
+            ios-sdk-major: '26'
+            experimental: false
+            fixture: customerio-ios-fcm
+          - toolchain: Xcode 27 preview
+            runner: xcode-27
+            xcode-version: ''
+            xcode-major: '27'
+            ios-sdk-major: '27'
+            experimental: true
+            fixture: native-apn
+          - toolchain: Xcode 27 preview
+            runner: xcode-27
+            xcode-version: ''
+            xcode-major: '27'
+            ios-sdk-major: '27'
+            experimental: true
+            fixture: customerio-ios-fcm
+
+    steps:
+      - name: Check out iOS SDK
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Select Xcode
+        uses: customerio/mobile-ci-tools/github-actions/ios/setup-ios/v1@86901f620405b9acdcbee56020f3d4ef38e45650
+        with:
+          xcode-version: ${{ matrix.xcode-version }}
+
+      - name: Report and verify toolchain family
+        id: toolchain
+        uses: customerio/mobile-ci-tools/github-actions/ios/report-toolchain/v1@1572446a747bfd0aa33226a037617b62ab2e53ab
+        with:
+          expected-xcode-major: ${{ matrix.xcode-major }}
+          expected-ios-sdk-major: ${{ matrix.ios-sdk-major }}
+
+      - name: Prepare placeholder build environment
+        shell: bash
+        env:
+          FIXTURE: ${{ matrix.fixture }}
+        run: |
+          set -euo pipefail
+          if [[ "$FIXTURE" == 'native-apn' ]]; then
+            source_path='Apps/APN-UIKit/BuildEnvironment.sample.swift'
+            destination_path='Apps/APN-UIKit/BuildEnvironment.swift'
+          else
+            source_path='Apps/CocoaPods-FCM/BuildEnvironment.sample.swift'
+            destination_path='Apps/CocoaPods-FCM/BuildEnvironment.swift'
+          fi
+          cp "$source_path" "$destination_path"
+
+      - name: Install CocoaPods for FCM fixture
+        if: matrix.fixture == 'customerio-ios-fcm'
+        run: gem install cocoapods -v 1.16.2 --no-document
+
+      - name: Resolve FCM fixture dependencies
+        if: matrix.fixture == 'customerio-ios-fcm'
+        shell: bash
+        run: |
+          set -o pipefail
+          pod install --project-directory='Apps/CocoaPods-FCM' 2>&1 | tee "$RUNNER_TEMP/${{ matrix.fixture }}-pod-install.log"
+
+      - name: Compile native APN fixture
+        if: matrix.fixture == 'native-apn'
+        shell: bash
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -project 'Apps/APN-UIKit/APN UIKit.xcodeproj' \
+            -scheme 'APN UIKit' \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath "$RUNNER_TEMP/${{ matrix.fixture }}-${{ matrix.xcode-major }}" \
+            CODE_SIGNING_ALLOWED=NO \
+            build 2>&1 | tee "$RUNNER_TEMP/${{ matrix.fixture }}-build.log"
+
+      - name: Compile CocoaPods FCM fixture
+        if: matrix.fixture == 'customerio-ios-fcm'
+        shell: bash
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -workspace 'Apps/CocoaPods-FCM/test cocoapods.xcworkspace' \
+            -scheme 'test cocoapods' \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath "$RUNNER_TEMP/${{ matrix.fixture }}-${{ matrix.xcode-major }}" \
+            CODE_SIGNING_ALLOWED=NO \
+            build 2>&1 | tee "$RUNNER_TEMP/${{ matrix.fixture }}-build.log"
+
+      - name: Record compile result
+        if: success()
+        shell: bash
+        run: |
+          {
+            echo '## Native fixture compile'
+            echo
+            echo '**Classification:** compile-passed'
+            echo '**Fixture:** ${{ matrix.fixture }}'
+            echo '**Toolchain:** Xcode ${{ steps.toolchain.outputs.xcode-version }} build ${{ steps.toolchain.outputs.xcode-build }}, iphonesimulator ${{ steps.toolchain.outputs.iphonesimulator-sdk }}'
+            echo '**Scope:** unsigned simulator compile only; no launch, callback, push-delivery, signing, or App Store claim'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload build logs
+        if: always() && !cancelled()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: ios-toolchain-${{ matrix.xcode-major }}-${{ matrix.fixture }}-logs
+          path: ${{ runner.temp }}/${{ matrix.fixture }}-*.log
+          if-no-files-found: ignore
+          retention-days: 7
