@@ -65,7 +65,7 @@ This gate applies to Expo #389, iOS #1213, and Flutter #392. Lifecycle PRs are a
 
 - Record the exact head and current base in the PR body.
 - Confirm the stable and preview cells exercise the same fixture and dependency setup.
-- Require green stable cells. Classify any preview failure as toolchain, fixture-setup, or SDK-compile failure. Record a toolchain or fixture-setup failure in the PR body as non-blocking evidence. Record an SDK-compile failure and file a tracked source-compatibility issue; the additive matrix may still merge because preview cells are explicitly non-blocking.
+- Require stable cells that actually ran on the exact head and are green. A skipped or filtered-out stable job is not evidence and must be rerun. Classify any preview failure as toolchain, fixture-setup, or SDK-compile failure. Record a toolchain or fixture-setup failure in the PR body as non-blocking evidence. Record an SDK-compile failure and file a tracked source-compatibility issue; the additive matrix may still merge because preview cells are explicitly non-blocking.
 - Confirm release workflows and squash titles do not request a package release.
 - Confirm generated locks and sample projects have no unexplained churn.
 - Run the Customer.io source-command review manually with Claude Opus against the exact head. Record the substantive verdict in the PR body; empty output, timeout, or quota failure is not acceptance.
