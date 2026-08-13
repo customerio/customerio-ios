@@ -145,6 +145,19 @@ jobs:
             echo '**Scope:** unsigned simulator compile only; no launch, callback, push-delivery, signing, or App Store claim'
           } >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Record compatibility failure
+        if: failure()
+        shell: bash
+        run: |
+          {
+            echo '## Native fixture compile'
+            echo
+            echo '**Classification:** compatibility-failed'
+            echo '**Fixture:** ${{ matrix.fixture }}'
+            echo '**Toolchain family:** Xcode ${{ matrix.xcode-major }} / iOS SDK ${{ matrix.ios-sdk-major }}'
+            echo '**Next step:** inspect the toolchain report and uploaded dependency/build logs to classify setup versus SDK compilation'
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Upload build logs
         if: always() && !cancelled()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
