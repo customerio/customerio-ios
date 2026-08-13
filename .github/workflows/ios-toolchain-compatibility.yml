@@ -19,8 +19,8 @@ permissions:
   contents: read
 
 concurrency:
-  group: ios-toolchain-compatibility-${{ github.ref }}
-  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   compile:
@@ -70,6 +70,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Select Xcode
+        id: select-xcode
         uses: customerio/mobile-ci-tools/github-actions/ios/setup-ios/v1@86901f620405b9acdcbee56020f3d4ef38e45650
         with:
           xcode-version: ${{ matrix.xcode-version }}
@@ -166,7 +167,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Record setup failure
-        if: failure() && steps.toolchain.outcome != 'failure' && steps.compile-apn.outcome != 'failure' && steps.compile-fcm.outcome != 'failure'
+        if: failure() && steps.select-xcode.outcome != 'failure' && steps.toolchain.outcome != 'failure' && steps.compile-apn.outcome != 'failure' && steps.compile-fcm.outcome != 'failure'
         shell: bash
         run: |
           {
@@ -179,7 +180,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Record unavailable toolchain
-        if: failure() && steps.toolchain.outcome == 'failure'
+        if: failure() && (steps.select-xcode.outcome == 'failure' || steps.toolchain.outcome == 'failure')
         shell: bash
         run: |
           {
