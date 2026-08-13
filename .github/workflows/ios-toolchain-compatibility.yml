@@ -27,7 +27,7 @@ jobs:
     name: ${{ matrix.toolchain }} (${{ matrix.fixture }})
     runs-on: ${{ matrix.runner }}
     continue-on-error: ${{ matrix.experimental }}
-    timeout-minutes: 35
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
@@ -143,13 +143,18 @@ jobs:
       - name: Record compile result
         if: steps.compile-apn.outcome == 'success' || steps.compile-fcm.outcome == 'success'
         shell: bash
+        env:
+          FIXTURE: ${{ matrix.fixture }}
+          XCODE_VERSION: ${{ steps.toolchain.outputs.xcode-version }}
+          XCODE_BUILD: ${{ steps.toolchain.outputs.xcode-build }}
+          IOS_SIMULATOR_SDK: ${{ steps.toolchain.outputs.iphonesimulator-sdk }}
         run: |
           {
             echo '## Native fixture compile'
             echo
             echo '**Classification:** compile-passed'
-            echo '**Fixture:** ${{ matrix.fixture }}'
-            echo '**Toolchain:** Xcode ${{ steps.toolchain.outputs.xcode-version }} build ${{ steps.toolchain.outputs.xcode-build }}, iphonesimulator ${{ steps.toolchain.outputs.iphonesimulator-sdk }}'
+            echo "**Fixture:** $FIXTURE"
+            echo "**Toolchain:** Xcode $XCODE_VERSION build $XCODE_BUILD, iphonesimulator $IOS_SIMULATOR_SDK"
             echo '**Scope:** unsigned simulator compile only; no launch, callback, push-delivery, signing, or App Store claim'
           } >> "$GITHUB_STEP_SUMMARY"
 
@@ -193,7 +198,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload build logs
-        if: always() && !cancelled()
+        if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: ios-toolchain-${{ matrix.xcode-major }}-${{ matrix.fixture }}-logs
