@@ -61,8 +61,7 @@ jobs:
       # CLI to replace strings in files. The CLI recommends using `cargo install` which is slow. This Action is fast because it downloads pre-built binaries.
       # If using sd on macos, "brew install" works great. for Linux, this is the recommended way.
       - name: Install sd CLI to use later in the workflow
-        # uses: kenji-miyake/setup-sd@59a1bd7bba077f6c491f04cd9d24b524ea2db4b6 # v1.1.1
-        uses: levibostian/setup-sd@cbdeed93d4fe03f9e36b73bb6d9e7c3c4805e1f9 # add-file-extension # Using fork until upstream Action has bug fixed in it.
+        uses: kenji-miyake/setup-sd@08c14e27d65a1c215342ef00c81583ae67f4c5ef # v2.0.0
 
       # We want to track the SDK binary size for each release.
       # The reports is pushed by semantic-release action below by including files listed in the `assets` array in the `.releaserc` file.
