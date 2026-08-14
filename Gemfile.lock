@@ -172,6 +172,7 @@ GEM
     logger (1.7.0)
     mini_magick (4.13.2)
     mini_mime (1.1.5)
+    minitest (5.27.0)
     multi_json (1.15.0)
     multipart-post (2.4.1)
     mutex_m (0.3.0)
@@ -239,6 +240,7 @@ DEPENDENCIES
   faraday (= 1.10.5)
   fastlane
   fastlane-plugin-firebase_app_distribution
+  minitest (~> 5.25)
   rexml (= 3.4.2)
 
 BUNDLED WITH
