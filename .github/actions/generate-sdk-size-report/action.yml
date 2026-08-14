@@ -71,25 +71,42 @@ runs:
       xcode-version: ${{ inputs.xcode-version }}
 
   - name: Make the SDK size report
-    uses: mathiasvr/command-output@a02b5f3ecea10756041f78470699ac25161ecb76 # v2.0.0
+    shell: bash
     id: sdk-size-report
-    with:
-      run: |
-        bloaty --source-filter ".*(customerio-ios\/Sources).*" \
-          -d compileunits --debug-file=${{ steps.build-sample-app.outputs.app-xcarchive-path }}/dSYMs/APN\ UIKit.app.dSYM/Contents/Resources/DWARF/APN\ UIKit \
-          ${{ steps.build-sample-app.outputs.app-xcarchive-path }}/Products/Applications/APN\ UIKit.app/APN\ UIKit \
-          -n 0 
-    
+    run: |
+      report=$(bloaty --source-filter ".*(customerio-ios\/Sources).*" \
+        -d compileunits --debug-file=${{ steps.build-sample-app.outputs.app-xcarchive-path }}/dSYMs/APN\ UIKit.app.dSYM/Contents/Resources/DWARF/APN\ UIKit \
+        ${{ steps.build-sample-app.outputs.app-xcarchive-path }}/Products/Applications/APN\ UIKit.app/APN\ UIKit \
+        -n 0)
+      echo "$report"
+      # Random delimiter rather than a fixed string: a report line that happened to
+      # equal the delimiter would close the block early and corrupt the step output.
+      delim="CIO_REPORT_EOF_$(openssl rand -hex 16)"
+      {
+        echo "stdout<<$delim"
+        echo "$report"
+        echo "$delim"
+      } >> "$GITHUB_OUTPUT"
+
   - name: Make the SDK size report, including dependencies
-    uses: mathiasvr/command-output@a02b5f3ecea10756041f78470699ac25161ecb76 # v2.0.0
+    shell: bash
     id: sdk-size-including-dependencies-report
-    with: 
-      run: |
-        bloaty --source-filter ".*(customerio-ios\/Sources)|(SourcePackages\/checkouts).*" \
-          -d compileunits --debug-file=${{ steps.build-sample-app.outputs.app-xcarchive-path }}/dSYMs/APN\ UIKit.app.dSYM/Contents/Resources/DWARF/APN\ UIKit \
-          ${{ steps.build-sample-app.outputs.app-xcarchive-path }}/Products/Applications/APN\ UIKit.app/APN\ UIKit \
-          -n 0 
-  
+    run: |
+      report=$(bloaty --source-filter ".*(customerio-ios\/Sources)|(SourcePackages\/checkouts).*" \
+        -d compileunits --debug-file=${{ steps.build-sample-app.outputs.app-xcarchive-path }}/dSYMs/APN\ UIKit.app.dSYM/Contents/Resources/DWARF/APN\ UIKit \
+        ${{ steps.build-sample-app.outputs.app-xcarchive-path }}/Products/Applications/APN\ UIKit.app/APN\ UIKit \
+        -n 0)
+      echo "$report"
+      # Random delimiter rather than a fixed string: a report line that happened to
+      # equal the delimiter would close the block early and corrupt the step output.
+      delim="CIO_REPORT_EOF_$(openssl rand -hex 16)"
+      {
+        echo "stdout<<$delim"
+        echo "$report"
+        echo "$delim"
+      } >> "$GITHUB_OUTPUT"
+
+
   # We want to determine if the SDK's binary size will change after merging a PR. 
   # To do that, we take the latest sample app build from the main branch and compare it to the app passed into this action.
   # Preserve the PR build before main-sample-app-build runs: that action may checkout main and run git clean,
@@ -112,10 +129,18 @@ runs:
   - name: Generate SDK binary diff report between main branch and current branch 
     if: ${{ steps.download-latest-main-build.outputs.apn-app-xcarchive-path != '' }}
     id: sdk-size-diff-report
-    uses: mathiasvr/command-output@a02b5f3ecea10756041f78470699ac25161ecb76 # v2.0.0
-    with: 
-      run: |
-        bloaty --source-filter ".*(customerio-ios\/Sources).*" -d compileunits \
-          --debug-file="${{ steps.download-latest-main-build.outputs.apn-app-xcarchive-path }}/dSYMs/APN UIKit.app.dSYM/Contents/Resources/DWARF/APN UIKit" \
-          --debug-file="$RUNNER_TEMP/PR-App.xcarchive/dSYMs/APN UIKit.app.dSYM/Contents/Resources/DWARF/APN UIKit" \
-          "$RUNNER_TEMP/PR-App.xcarchive/Products/Applications/APN UIKit.app/APN UIKit" -- "${{ steps.download-latest-main-build.outputs.apn-app-xcarchive-path }}/Products/Applications/APN UIKit.app/APN UIKit" 
+    shell: bash
+    run: |
+      report=$(bloaty --source-filter ".*(customerio-ios\/Sources).*" -d compileunits \
+        --debug-file="${{ steps.download-latest-main-build.outputs.apn-app-xcarchive-path }}/dSYMs/APN UIKit.app.dSYM/Contents/Resources/DWARF/APN UIKit" \
+        --debug-file="$RUNNER_TEMP/PR-App.xcarchive/dSYMs/APN UIKit.app.dSYM/Contents/Resources/DWARF/APN UIKit" \
+        "$RUNNER_TEMP/PR-App.xcarchive/Products/Applications/APN UIKit.app/APN UIKit" -- "${{ steps.download-latest-main-build.outputs.apn-app-xcarchive-path }}/Products/Applications/APN UIKit.app/APN UIKit")
+      echo "$report"
+      # Random delimiter rather than a fixed string: a report line that happened to
+      # equal the delimiter would close the block early and corrupt the step output.
+      delim="CIO_REPORT_EOF_$(openssl rand -hex 16)"
+      {
+        echo "stdout<<$delim"
+        echo "$report"
+        echo "$delim"
+      } >> "$GITHUB_OUTPUT"
