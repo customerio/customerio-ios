@@ -151,7 +151,7 @@ runs:
       if: steps.check_podfile_exists.outputs.files_exists == 'true'
       shell: bash
       run: |
-        ruby scripts/test_cocoapods_deployment_target.rb
+        bundle exec ruby scripts/test_cocoapods_deployment_target.rb
         bundle exec ruby scripts/audit_cocoapods_deployment_targets.rb \
           --minimum 15.0 \
           "Apps/${{ inputs.sample-app }}/Pods" \
