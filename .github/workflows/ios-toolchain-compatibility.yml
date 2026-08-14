@@ -1,86 +1,44 @@
-name: iOS toolchain compatibility
+name: Xcode 27 preview compatibility
 
 on:
   pull_request:
     paths:
       - '.github/workflows/ios-toolchain-compatibility.yml'
-      - 'Apps/APN-UIKit/**'
-      - 'Apps/CocoaPods-FCM/**'
-      - 'Apps/Common/**'
-      - 'Sources/**'
-      - 'scripts/cocoapods_deployment_target.rb'
-      - 'Package.swift'
-      - '*.podspec'
-  push:
-    branches: [main]
+  schedule:
+    # Stagger preview demand across repositories instead of competing for the
+    # hosted macOS pool at the top of the hour.
+    - cron: '17 5 * * *'
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   compile:
-    name: ${{ matrix.toolchain }} (${{ matrix.fixture }})
-    runs-on: ${{ matrix.runner }}
-    continue-on-error: ${{ matrix.experimental }}
+    name: Xcode 27 preview (${{ matrix.fixture }})
+    runs-on: xcode-27
     timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - toolchain: Xcode 26.6
-            runner: macos-26
-            xcode-version: '26.6'
-            xcode-major: '26'
-            ios-sdk-major: '26'
-            experimental: false
-            fixture: native-apn
-          - toolchain: Xcode 26.6
-            runner: macos-26
-            xcode-version: '26.6'
-            xcode-major: '26'
-            ios-sdk-major: '26'
-            experimental: false
-            fixture: customerio-ios-fcm
-          - toolchain: Xcode 27 preview
-            runner: xcode-27
-            # Empty selects the Xcode bundled with the floating preview image;
-            # the next step fails closed unless it is Xcode/iOS SDK 27.
-            xcode-version: ''
-            xcode-major: '27'
-            ios-sdk-major: '27'
-            experimental: true
-            fixture: native-apn
-          - toolchain: Xcode 27 preview
-            runner: xcode-27
-            # Empty selects the Xcode bundled with the floating preview image;
-            # the next step fails closed unless it is Xcode/iOS SDK 27.
-            xcode-version: ''
-            xcode-major: '27'
-            ios-sdk-major: '27'
-            experimental: true
-            fixture: customerio-ios-fcm
+        fixture:
+          - native-apn
+          - customerio-ios-fcm
 
     steps:
       - name: Check out iOS SDK
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
-      - name: Select Xcode
-        id: select-xcode
-        uses: customerio/mobile-ci-tools/github-actions/ios/setup-ios/v1@86901f620405b9acdcbee56020f3d4ef38e45650
-        with:
-          xcode-version: ${{ matrix.xcode-version }}
-
       - name: Report and verify toolchain family
         id: toolchain
         uses: customerio/mobile-ci-tools/github-actions/ios/report-toolchain/v1@39fdbfa85b60c110c5f40a979b27f7b2a8d54268
         with:
-          expected-xcode-major: ${{ matrix.xcode-major }}
-          expected-ios-sdk-major: ${{ matrix.ios-sdk-major }}
+          expected-xcode-major: '27'
+          expected-ios-sdk-major: '27'
 
       - name: Prepare placeholder build environment
         shell: bash
@@ -120,7 +78,7 @@ jobs:
             -configuration Debug \
             -sdk iphonesimulator \
             -destination 'generic/platform=iOS Simulator' \
-            -derivedDataPath "$RUNNER_TEMP/${{ matrix.fixture }}-${{ matrix.xcode-major }}" \
+            -derivedDataPath "$RUNNER_TEMP/${{ matrix.fixture }}-xcode-27" \
             CODE_SIGNING_ALLOWED=NO \
             build 2>&1 | tee "$RUNNER_TEMP/${{ matrix.fixture }}-build.log"
 
@@ -136,7 +94,7 @@ jobs:
             -configuration Debug \
             -sdk iphonesimulator \
             -destination 'generic/platform=iOS Simulator' \
-            -derivedDataPath "$RUNNER_TEMP/${{ matrix.fixture }}-${{ matrix.xcode-major }}" \
+            -derivedDataPath "$RUNNER_TEMP/${{ matrix.fixture }}-xcode-27" \
             CODE_SIGNING_ALLOWED=NO \
             build 2>&1 | tee "$RUNNER_TEMP/${{ matrix.fixture }}-build.log"
 
@@ -149,6 +107,10 @@ jobs:
           XCODE_BUILD: ${{ steps.toolchain.outputs.xcode-build }}
           IOS_SIMULATOR_SDK: ${{ steps.toolchain.outputs.iphonesimulator-sdk }}
         run: |
+          set -euo pipefail
+          : "${XCODE_VERSION:?missing xcode-version output}"
+          : "${XCODE_BUILD:?missing xcode-build output}"
+          : "${IOS_SIMULATOR_SDK:?missing iphonesimulator-sdk output}"
           {
             echo '## Native fixture compile'
             echo
@@ -161,39 +123,45 @@ jobs:
       - name: Record compile failure
         if: failure() && (steps.compile-apn.outcome == 'failure' || steps.compile-fcm.outcome == 'failure')
         shell: bash
+        env:
+          FIXTURE: ${{ matrix.fixture }}
         run: |
           {
             echo '## Native fixture compile'
             echo
-            echo '**Classification:** sdk-compile-failed'
-            echo '**Fixture:** ${{ matrix.fixture }}'
-            echo '**Toolchain family:** Xcode ${{ matrix.xcode-major }} / iOS SDK ${{ matrix.ios-sdk-major }}'
+            echo '**Classification:** fixture-compile-failed'
+            echo "**Fixture:** $FIXTURE"
+            echo '**Toolchain family:** Xcode 27 / iOS SDK 27'
             echo '**Next step:** inspect the uploaded build log for the exact compiler failure'
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Record setup failure
-        if: failure() && steps.select-xcode.outcome != 'failure' && steps.toolchain.outcome != 'failure' && steps.compile-apn.outcome != 'failure' && steps.compile-fcm.outcome != 'failure'
+        if: failure() && steps.toolchain.outcome != 'failure' && steps.compile-apn.outcome != 'failure' && steps.compile-fcm.outcome != 'failure'
         shell: bash
+        env:
+          FIXTURE: ${{ matrix.fixture }}
         run: |
           {
             echo '## Native fixture compile'
             echo
             echo '**Classification:** fixture-setup-failed'
-            echo '**Fixture:** ${{ matrix.fixture }}'
-            echo '**Toolchain family:** Xcode ${{ matrix.xcode-major }} / iOS SDK ${{ matrix.ios-sdk-major }}'
+            echo "**Fixture:** $FIXTURE"
+            echo '**Toolchain family:** Xcode 27 / iOS SDK 27'
             echo '**Next step:** inspect checkout, toolchain selection, dependency installation, and fixture preparation before attributing this to SDK compilation'
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Record unavailable toolchain
-        if: failure() && (steps.select-xcode.outcome == 'failure' || steps.toolchain.outcome == 'failure')
+        if: failure() && steps.toolchain.outcome == 'failure'
         shell: bash
+        env:
+          FIXTURE: ${{ matrix.fixture }}
         run: |
           {
             echo '## Native fixture compile'
             echo
             echo '**Classification:** toolchain-unavailable'
-            echo '**Fixture:** ${{ matrix.fixture }}'
-            echo '**Expected toolchain family:** Xcode ${{ matrix.xcode-major }} / iOS SDK ${{ matrix.ios-sdk-major }}'
+            echo "**Fixture:** $FIXTURE"
+            echo '**Expected toolchain family:** Xcode 27 / iOS SDK 27'
             echo '**Next step:** inspect the toolchain report before evaluating fixture setup or SDK compilation'
           } >> "$GITHUB_STEP_SUMMARY"
 
@@ -201,7 +169,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: ios-toolchain-${{ matrix.xcode-major }}-${{ matrix.fixture }}-logs
+          name: xcode-27-preview-${{ matrix.fixture }}-logs
           path: ${{ runner.temp }}/${{ matrix.fixture }}-*.log
           if-no-files-found: ignore
           retention-days: 7
