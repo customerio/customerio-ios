@@ -41,6 +41,13 @@ enum GeofenceConstants {
     static let movementFixMaxAge: TimeInterval = 30
     static let movementFixRequestTimeout: TimeInterval = 10
 
+    /// Minimum time between foreground re-arms of the armed conditions. locationd's per-fence
+    /// promotion record can wedge while a process stays suspended for days (observed in field:
+    /// a fence unpromoted for hours on precise fixes); a re-arm rebuilds the record and the OS
+    /// emits a corrective for any crossing it missed. Cold launch already re-arms via adopt —
+    /// this covers processes that live for days without one.
+    static let foregroundRearmInterval: TimeInterval = 6 * 60 * 60
+
     // Sane bounds the SDK coerces server config into, so a misconfigured backend can't push
     // monitoring into a pathological state: a positive out-of-range value clamps to the nearest
     // bound; a non-positive value falls back. (`maxMonitoringDistance` needs no upper bound — a

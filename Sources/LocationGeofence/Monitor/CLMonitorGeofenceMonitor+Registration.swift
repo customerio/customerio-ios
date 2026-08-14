@@ -27,6 +27,7 @@ extension CLMonitorGeofenceMonitor {
             )
         }
         rearmConditions(adopted, records: records)
+        lastRearmAt = Date()
         logger.geofenceRegionsAdopted(count: adopted.count)
     }
 
