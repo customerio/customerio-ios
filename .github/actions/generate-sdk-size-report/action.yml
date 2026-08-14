@@ -79,10 +79,13 @@ runs:
         ${{ steps.build-sample-app.outputs.app-xcarchive-path }}/Products/Applications/APN\ UIKit.app/APN\ UIKit \
         -n 0)
       echo "$report"
+      # Random delimiter rather than a fixed string: a report line that happened to
+      # equal the delimiter would close the block early and corrupt the step output.
+      delim="CIO_REPORT_EOF_$(openssl rand -hex 16)"
       {
-        echo 'stdout<<CIO_REPORT_EOF'
+        echo "stdout<<$delim"
         echo "$report"
-        echo 'CIO_REPORT_EOF'
+        echo "$delim"
       } >> "$GITHUB_OUTPUT"
 
   - name: Make the SDK size report, including dependencies
@@ -94,10 +97,13 @@ runs:
         ${{ steps.build-sample-app.outputs.app-xcarchive-path }}/Products/Applications/APN\ UIKit.app/APN\ UIKit \
         -n 0)
       echo "$report"
+      # Random delimiter rather than a fixed string: a report line that happened to
+      # equal the delimiter would close the block early and corrupt the step output.
+      delim="CIO_REPORT_EOF_$(openssl rand -hex 16)"
       {
-        echo 'stdout<<CIO_REPORT_EOF'
+        echo "stdout<<$delim"
         echo "$report"
-        echo 'CIO_REPORT_EOF'
+        echo "$delim"
       } >> "$GITHUB_OUTPUT"
 
 
@@ -130,8 +136,11 @@ runs:
         --debug-file="$RUNNER_TEMP/PR-App.xcarchive/dSYMs/APN UIKit.app.dSYM/Contents/Resources/DWARF/APN UIKit" \
         "$RUNNER_TEMP/PR-App.xcarchive/Products/Applications/APN UIKit.app/APN UIKit" -- "${{ steps.download-latest-main-build.outputs.apn-app-xcarchive-path }}/Products/Applications/APN UIKit.app/APN UIKit")
       echo "$report"
+      # Random delimiter rather than a fixed string: a report line that happened to
+      # equal the delimiter would close the block early and corrupt the step output.
+      delim="CIO_REPORT_EOF_$(openssl rand -hex 16)"
       {
-        echo 'stdout<<CIO_REPORT_EOF'
+        echo "stdout<<$delim"
         echo "$report"
-        echo 'CIO_REPORT_EOF'
+        echo "$delim"
       } >> "$GITHUB_OUTPUT"
