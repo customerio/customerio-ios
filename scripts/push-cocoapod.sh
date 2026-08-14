@@ -35,18 +35,28 @@ POD_NAME=$(grep -m1 -E '^[[:space:]]*spec\.name[[:space:]]*=' "$PODSPEC" | sed -
 VERSION=$(grep -m1 -E '^[[:space:]]*spec\.version[[:space:]]*=' "$PODSPEC" | sed -nE 's/[^"]*"([^"]+)".*/\1/p')
 TRUNK_URL="https://trunk.cocoapods.org/api/v1/pods/$POD_NAME/versions/$VERSION"
 
+# How long to let GitHub's post-commit hook reach trunk before asking whether a
+# failed push actually landed. Spent only on the failure path.
+TRUNK_SETTLE_SECONDS=45
+
+# Both paths below need the name and version, and neither can say anything
+# truthful without them. Defined once so an unreadable podspec cannot be a hard
+# error on one path and a silent "trunk refused it" on the other.
+require_pod_identity() {
+  if [ -z "$POD_NAME" ] || [ -z "$VERSION" ]; then
+    echo "::error::Could not read spec.name and spec.version from $PODSPEC, so trunk cannot be checked."
+    exit 1
+  fi
+}
+
 # Prints trunk's status for this exact version: 200 it holds it, 404 it does not,
 # anything else the question could not be answered. curl's own error text is left
 # on stderr, where the log needs it to tell an unreachable trunk from an absent
 # pod. Trunk, not the CDN: the CDN lags publication by minutes, so it cannot tell
 # "not published" apart from "not propagated yet".
 trunk_status() {
-  if [ -z "$POD_NAME" ] || [ -z "$VERSION" ]; then
-    echo "000"
-    return
-  fi
-  HTTP_CODE=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 20 "$TRUNK_URL") || HTTP_CODE="000"
-  echo "$HTTP_CODE"
+  STATUS_CODE=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 20 "$TRUNK_URL") || STATUS_CODE="000"
+  echo "$STATUS_CODE"
 }
 
 echo "Pushing podspec: $PODSPEC."
@@ -78,9 +88,20 @@ elif echo "$OUTPUT" | grep -qi "we have closed pushing to cocoapods"; then
   # Reads still work, so ask: without this, re-running a part-published release
   # during the read-only window would report every pod as refused and hide the
   # fact that some of them are on trunk.
-  if [ "$(trunk_status)" = "200" ]; then
+  require_pod_identity
+  TRUNK_CODE=$(trunk_status)
+
+  if [ "$TRUNK_CODE" = "200" ]; then
     echo "Trunk is closed to writes, but it already holds $POD_NAME $VERSION."
     exit 0
+  fi
+
+  if [ "$TRUNK_CODE" != "404" ]; then
+    # Only a 404 proves the pod is absent. Calling this a refusal without that
+    # proof would let a part-published release be reported as a clean refusal,
+    # which is green, and the partial would go unnoticed.
+    echo "::error::CocoaPods trunk is closed to writes, and whether it already holds $POD_NAME $VERSION could not be checked (HTTP $TRUNK_CODE)."
+    exit 1
   fi
 
   echo "::warning::CocoaPods trunk is closed to writes, so $PODSPEC was not published."
@@ -92,36 +113,32 @@ fi
 # re-running it by hand until the duplicate-entry branch above catches it, which
 # has cost several manual re-runs per release. Asking trunk which of the two
 # happened removes the re-run.
-if [ -z "$POD_NAME" ] || [ -z "$VERSION" ]; then
-  echo "::error::Failed to push $PODSPEC, and could not read spec.name and spec.version from it to check trunk."
-  exit 1
+require_pod_identity
+
+# Asked once, after a wait, because trunk reports a version as published only
+# once a Commit row exists (PodVersion#published? is `!deleted? && commits.any?`)
+# and PodVersion#push! adds that row in the request only when GitHub answered it.
+# When GitHub timed out or 5xx'd - the failure this whole check exists for - the
+# row instead arrives from GitHub's post-commit hook, so an immediate question
+# would answer 404 for a pod that is on its way in.
+echo "Push reported a failure. Waiting ${TRUNK_SETTLE_SECONDS}s, then asking whether trunk holds $POD_NAME $VERSION."
+sleep "$TRUNK_SETTLE_SECONDS"
+
+HTTP_CODE=$(trunk_status)
+
+if [ "$HTTP_CODE" = "200" ]; then
+  # Deliberately not "the push succeeded": on a re-run this version may have been
+  # on trunk before this run started. Warned rather than logged quietly so a push
+  # that failed for a local reason - a lint error, an expired token - stays
+  # visible in the run summary instead of vanishing into a green release.
+  echo "::warning::$PODSPEC reported a push failure, but trunk holds $POD_NAME $VERSION. Treating it as published; see the push output above."
+  exit 0
 fi
 
-echo "Push reported a failure. Checking whether trunk holds $POD_NAME $VERSION anyway..."
-
-# Asked more than once because trunk reports a version as published only once a
-# Commit row exists (PodVersion#published? is `!deleted? && commits.any?`), and
-# PodVersion#push! adds that row in the request only when GitHub answered it.
-# When GitHub timed out or 5xx'd - the failure this whole check exists for - the
-# row instead arrives from GitHub's post-commit hook a moment later, so a single
-# immediate question would answer 404 for a pod that is on its way in.
-for DELAY in 0 15 30; do
-  if [ "$DELAY" -gt 0 ]; then
-    sleep "$DELAY"
-  fi
-
-  HTTP_CODE=$(trunk_status)
-
-  if [ "$HTTP_CODE" = "200" ]; then
-    echo "Trunk holds $POD_NAME $VERSION. The push itself succeeded, so this is treated as published."
-    exit 0
-  fi
-
-  echo "Trunk does not report $POD_NAME $VERSION yet (HTTP $HTTP_CODE)."
-done
-
 if [ "$HTTP_CODE" = "404" ]; then
-  echo "::error::Failed to push $PODSPEC. Trunk does not hold $POD_NAME $VERSION."
+  # True but not the diagnosis: the push may have died before it reached trunk at
+  # all, so point at the output that says why rather than at this check.
+  echo "::error::Failed to push $PODSPEC, and trunk does not hold $POD_NAME $VERSION. The push output above is the cause."
   exit 1
 fi
 
