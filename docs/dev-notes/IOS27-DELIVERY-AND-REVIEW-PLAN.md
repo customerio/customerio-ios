@@ -6,10 +6,10 @@ Add continuous Xcode 27 compile evidence without changing released SDK behavior.
 
 ## Permanent CI design
 
-- Stable controls run the same fixture on `macos-26` with Xcode 26.6 and are blocking when the path-scoped workflow runs.
-- Preview cells run on the floating `xcode-27` hosted label. The setup action leaves the image-bundled Xcode selected, then the shared reporter fails closed unless Xcode and the iOS SDK are major version 27.
-- Preview cells use `continue-on-error: true` and must not be configured as required branch-protection checks. Path-scoped stable checks also need an always-run fallback before they can be universally required.
-- New matrices pin `customerio/mobile-ci-tools/github-actions/ios/report-toolchain/v1@<merge-sha>` to an immutable commit. Existing release/test workflows that reference other `mobile-ci-tools` actions through `@main` are outside this rollout and are not repinned.
+- Existing stable CI remains the blocking release gate and is not duplicated by this rollout.
+- New preview jobs run nightly on the floating `xcode-27` hosted label. The setup action leaves the image-bundled Xcode selected, then the shared reporter fails closed unless Xcode and the iOS SDK are major version 27.
+- Preview jobs use `continue-on-error: true` and must not be configured as required branch-protection checks.
+- The new workflows reference the first-party reporter as `customerio/mobile-ci-tools/github-actions/ios/report-toolchain/v1@main`, matching existing Customer.io usage. Breaking reporter changes require a new versioned action path.
 - Exact beta-image validation remains only in clearly titled test-only PRs. It is point-in-time diagnostic evidence, not permanent CI.
 - When Xcode 27 becomes stable, replace `xcode-27` with the supported stable runner/version, make those cells blocking, and remove preview wording.
 
@@ -22,13 +22,13 @@ Add continuous Xcode 27 compile evidence without changing released SDK behavior.
 | 3 | [Flutter #388](https://github.com/customerio/customerio-flutter/pull/388) | `main` | None | `main`: pin samples to Flutter 3.44.8 with the Xcode 27 lipo fix | No package release |
 | 4 | [iOS #1208](https://github.com/customerio/customerio-ios/pull/1208) | `main` | None | `main`: normalize generated CocoaPods sample targets | No SDK release |
 | 5 | [Flutter #389](https://github.com/customerio/customerio-flutter/pull/389) | `main` | None | `main`: normalize the Flutter CocoaPods sample | No package release |
-| 6 | [Expo #389](https://github.com/customerio/customerio-expo-plugin/pull/389) | `main` | mobile-ci-tools #15 | `main`: add stable/preview APN and FCM cells | No package release |
-| 7 | [iOS #1213](https://github.com/customerio/customerio-ios/pull/1213) | `codex/mbl-2278-cocoapods-target-normalization` | mobile-ci-tools #15, iOS #1208 | Rebase and retarget to `main`: add native APN and FCM stable/preview cells | No SDK release |
-| 8 | [Flutter #392](https://github.com/customerio/customerio-flutter/pull/392) | `codex/mbl-2248-flutter-xcode27-prereqs` | mobile-ci-tools #15, Flutter #393, Flutter #388, Flutter #389 | Rebase and retarget to `main`: add SwiftPM and CocoaPods stable/preview cells | No package release |
+| 6 | [Expo #389](https://github.com/customerio/customerio-expo-plugin/pull/389) | `main` | mobile-ci-tools #15 | `main`: add nightly Xcode 27 APN and FCM jobs | No package release |
+| 7 | [iOS #1213](https://github.com/customerio/customerio-ios/pull/1213) | `codex/mbl-2278-cocoapods-target-normalization` | mobile-ci-tools #15, iOS #1208 | Rebase and retarget to `main`: add nightly native APN and FCM jobs | No SDK release |
+| 8 | [Flutter #392](https://github.com/customerio/customerio-flutter/pull/392) | `codex/mbl-2248-flutter-xcode27-prereqs` | mobile-ci-tools #15, Flutter #393, Flutter #388, Flutter #389 | Rebase and retarget to `main`: add nightly SwiftPM and CocoaPods jobs | No package release |
 
 Orders 2 through 5 are independent and may merge in parallel. Use squash merge with the reviewed `ci:` or `chore:` title. This matters because semantic-release runs on `main`; preserving a release-bearing `feat:` or `fix:` commit from branch history could publish a package.
 
-After mobile-ci-tools #15 squash-merges, update only these three new reporter references to its final merge SHA: Expo #389, iOS #1213, and Flutter #392. Rerun their matrices. Do not repo-wide repin unrelated existing `mobile-ci-tools@main` consumers. The action is additive, so rollback before consumer merge is simply reverting #15; after a consumer matrix merges, revert that matrix first.
+Mobile-ci-tools #15 is merged. Expo #389, iOS #1213, and Flutter #392 use the reporter from `@main`, consistent with existing first-party action references. The action is additive, so rollback before consumer merge is simply reverting #15; after a consumer workflow merges, revert that workflow first.
 
 After the other prerequisites merge, rebase iOS #1213 and Flutter #392 onto current `main`, retarget them to `main`, and rerun exact-head checks. Delete Flutter's temporary `codex/mbl-2248-flutter-xcode27-prereqs` branch after #392 is retargeted.
 
@@ -64,8 +64,8 @@ Native delegate-composition PR [#1211](https://github.com/customerio/customerio-
 This gate applies to Expo #389, iOS #1213, and Flutter #392. Lifecycle PRs are additionally gated by the runtime release order above.
 
 - Record the exact head and current base in the PR body.
-- Confirm the stable and preview cells exercise the same fixture and dependency setup.
-- Require stable cells that actually ran on the exact head and are green. A skipped or filtered-out stable job is not evidence and must be forced to run on the exact head through `workflow_dispatch` or an always-run fallback. Classify any preview failure as toolchain, fixture-setup, or SDK-compile failure. Record a toolchain or fixture-setup failure in the PR body as non-blocking evidence. Record an SDK-compile failure and file a tracked source-compatibility issue; the additive matrix may still merge because preview cells are explicitly non-blocking.
+- Confirm the existing stable workflow and new preview job exercise the same fixture and dependency shape.
+- Require the existing stable workflow to be green on the exact head. Classify any preview failure as toolchain, fixture-setup, or SDK-compile failure. Record a toolchain or fixture-setup failure in the PR body as non-blocking evidence. Record an SDK-compile failure and file a tracked source-compatibility issue; the additive preview workflow may still merge because preview jobs are explicitly non-blocking.
 - Confirm release workflows and squash titles do not request a package release.
 - Confirm generated locks and sample projects have no unexplained churn.
 - Run the Customer.io source-command review manually with Claude Opus against the exact head. Record the substantive verdict in the PR body; empty output, timeout, or quota failure is not acceptance.
