@@ -1,7 +1,10 @@
 # frozen_string_literal: true
 
+require "fileutils"
 require "minitest/autorun"
+require "open3"
 require "pathname"
+require "rbconfig"
 require "stringio"
 require "tmpdir"
 
@@ -315,6 +318,31 @@ class CocoaPodsDeploymentTargetTest < Minitest::Test
     assert_includes output.string, "\t\t\t16.0\t16.0\n"
   end
 
+  def test_standalone_audit_discovers_direct_cocoapods_projects_without_vendored_examples
+    skip "Xcodeproj is unavailable" unless xcodeproj_available?
+
+    Dir.mktmpdir do |directory|
+      %w[Pods CustomerIOCommon].each do |name|
+        project = Xcodeproj::Project.new(Pathname(directory).join("#{name}.xcodeproj"))
+        project.new_target(:static_library, name, :ios, "15.0")
+        project.save
+      end
+      FileUtils.mkdir_p(Pathname(directory).join("DownloadedPod/Example.xcodeproj"))
+
+      output, error, status = Open3.capture3(
+        RbConfig.ruby,
+        File.expand_path("audit_cocoapods_deployment_targets.rb", __dir__),
+        "--minimum",
+        "15.0",
+        directory
+      )
+
+      assert status.success?, error
+      assert_includes output, "Pods.xcodeproj"
+      assert_includes output, "CustomerIOCommon.xcodeproj"
+      refute_includes output, "DownloadedPod"
+    end
+  end
   def test_normalize_preserves_a_higher_target_xcconfig_floor
     skip "Xcodeproj is unavailable" unless xcodeproj_available?
 
@@ -342,6 +370,37 @@ class CocoaPodsDeploymentTargetTest < Minitest::Test
     end
   end
 
+  def test_target_xcconfig_skips_an_unreadable_lower_precedence_project_xcconfig
+    Dir.mktmpdir do |directory|
+      target_xcconfig = Pathname(directory).join("Target.xcconfig")
+      File.write(target_xcconfig, "#{CustomerIO::CocoaPodsDeploymentTarget::BUILD_SETTING} = 17.0\n")
+      project_configuration = OpaqueConfiguration.new(
+        "Debug",
+        {},
+        ConfigurationReference.new(Pathname(directory).join("MissingProject.xcconfig"))
+      )
+      project = Project.new(Pathname("App.xcodeproj"), [], 0, [project_configuration])
+      configuration = OpaqueConfiguration.new(
+        "Debug",
+        {},
+        ConfigurationReference.new(target_xcconfig)
+      )
+      app = Target.new("App", "App-uuid", project, [configuration])
+      project.targets << app
+      installer = Installer.new([], nil, [AggregateTarget.new([app], project)])
+
+      records = CustomerIO::CocoaPodsDeploymentTarget.normalize!(
+        installer,
+        minimum_ios_version: "15.0",
+        io: nil
+      )
+
+      assert_equal ["17.0"], records.map(&:current)
+      assert_nil records.first.project_value
+      assert_equal 0, records.count(&:changed)
+      assert_equal 0, project.save_count
+    end
+  end
   def test_normalize_uses_public_xcodeproj_config_parser_with_real_project_objects
     skip "Xcodeproj is unavailable" unless xcodeproj_available?
 

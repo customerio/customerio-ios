@@ -102,9 +102,10 @@ a later dependency update cannot silently reintroduce a lower target.
 The standalone audit prints the target, matching project, and effective value for every
 target/configuration pair in a stable order. It exits nonzero if any effective value is missing,
 non-numeric, or below the requested minimum. Pass the `Pods` directory and each integrated
-application project so app and extension targets are included. The audit recursively discovers
-every `.xcodeproj` under `Pods`, including CocoaPods multi-project output, and fails if a supplied
-path is missing or contains no projects. The audit examines every target in each passed
+application project so app and extension targets are included. The audit discovers every
+`.xcodeproj` directly under `Pods`, including CocoaPods multi-project output, while ignoring
+unrelated example projects vendored inside downloaded pod sources. It fails if a supplied path is
+missing or contains no projects. The audit examines every target in each passed
 project, including non-integrated targets that the normalizer intentionally does not change; set
 those targets to the host minimum explicitly.
 
