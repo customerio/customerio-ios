@@ -35,7 +35,7 @@ jobs:
 
       - name: Report and verify toolchain family
         id: toolchain
-        uses: customerio/mobile-ci-tools/github-actions/ios/report-toolchain/v1@3627c1c79f604c312fb1184305d94f98453b34e5
+        uses: customerio/mobile-ci-tools/github-actions/ios/report-toolchain/v1@main
         with:
           expected-xcode-major: '27'
           expected-ios-sdk-major: '27'
