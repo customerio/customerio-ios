@@ -410,6 +410,42 @@ class CheckXcode27NightlyRunsTests(unittest.TestCase):
         self.assertIn("## Xcode 27 nightly watchdog", contents)
         self.assertIn("latest scheduled run succeeded", contents)
 
+    @mock.patch("scripts.ci.check_xcode27_nightly_runs.write_summary")
+    def test_main_reports_summary_failure_as_monitoring_error(self, summary_mock):
+        summary_mock.side_effect = OSError("summary unavailable")
+
+        with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
+            result = main(
+                [
+                    "--target",
+                    "customerio/customerio-ios:ios-toolchain-compatibility.yml",
+                    "--max-age-hours",
+                    "26",
+                ],
+                fetcher=lambda _target, _token: self.payload(),
+                now=self.now,
+            )
+
+        self.assertEqual(result, 2)
+
+    @mock.patch("scripts.ci.check_xcode27_nightly_runs.write_summary")
+    def test_main_preserves_unhealthy_result_when_summary_write_fails(self, summary_mock):
+        summary_mock.side_effect = OSError("summary unavailable")
+
+        with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
+            result = main(
+                [
+                    "--target",
+                    "customerio/customerio-ios:ios-toolchain-compatibility.yml",
+                    "--max-age-hours",
+                    "26",
+                ],
+                fetcher=lambda _target, _token: self.payload(conclusion="failure"),
+                now=self.now,
+            )
+
+        self.assertEqual(result, 3)
+
     def test_main_preserves_unhealthy_message_when_another_target_has_monitoring_error(self):
         def fetcher(target, _token):
             if target.repository.endswith("customerio-ios"):
@@ -445,6 +481,7 @@ class CheckXcode27NightlyRunsTests(unittest.TestCase):
 
         self.assertEqual(result, 2)
         self.assertIn("watchdog failed before classifying nightlies", error.getvalue())
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -188,7 +188,11 @@ def main(
         messages.append(message)
         print(message)
 
-    write_summary(messages)
+    try:
+        write_summary(messages)
+    except OSError as error:
+        print(f"failed to write watchdog summary: {error}", file=sys.stderr)
+        monitoring_failed = True
     if monitoring_failed:
         return 3 if unhealthy_detected else 2
     return 0 if healthy else 1
