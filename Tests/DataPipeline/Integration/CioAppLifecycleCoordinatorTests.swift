@@ -316,19 +316,47 @@ final class CioAppLifecycleCoordinatorTests: XCTestCase {
         XCTAssertEqual(routeCount, 0)
     }
 
-    func testHandleSceneOpenURLs_givenMultipleURLs_thenRejectsAndLogs() {
+    func testHandleSceneOpenURLs_givenMultipleURLs_thenRoutesEveryURL() {
+        let coordinator = makeCoordinator(.uiScene)
+        let secondURL = URL(string: "myapp://dashboard")!
+        var receivedURLs: [URL] = []
+
+        let result = coordinator.handleSceneOpenURLs([url, secondURL]) { receivedURL in
+            receivedURLs.append(receivedURL)
+            return true
+        }
+
+        XCTAssertEqual(result, .handled)
+        XCTAssertEqual(receivedURLs, [url, secondURL])
+        XCTAssertEqual(logger.errorCallsCount, 0)
+    }
+
+    func testHandleSceneOpenURLs_givenMixedRouteResults_thenRoutesEveryURLAndReturnsHandled() {
+        let coordinator = makeCoordinator(.uiScene)
+        let secondURL = URL(string: "myapp://dashboard")!
+        var receivedURLs: [URL] = []
+
+        let result = coordinator.handleSceneOpenURLs([url, secondURL]) { receivedURL in
+            receivedURLs.append(receivedURL)
+            return receivedURL == secondURL
+        }
+
+        XCTAssertEqual(result, .handled)
+        XCTAssertEqual(receivedURLs, [url, secondURL])
+    }
+
+    func testHandleSceneOpenURLs_givenEveryRouteDeclines_thenReturnsUnhandled() {
         let coordinator = makeCoordinator(.uiScene)
         let secondURL = URL(string: "myapp://dashboard")!
         var routeCount = 0
 
         let result = coordinator.handleSceneOpenURLs([url, secondURL]) { _ in
             routeCount += 1
-            return true
+            return false
         }
 
-        XCTAssertEqual(result, .rejectedAmbiguousInput)
-        XCTAssertEqual(routeCount, 0)
-        XCTAssertEqual(logger.errorCallsCount, 1)
+        XCTAssertEqual(result, .unhandled)
+        XCTAssertEqual(routeCount, 2)
     }
 
     func testHandleSceneUserActivity_givenSceneTopology_thenRoutesExactlyOnce() {

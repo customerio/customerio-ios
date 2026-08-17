@@ -9,6 +9,8 @@ struct MainApp: App {
 //    @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
     // Use this option if you don't have a need to extend `CioAppDelegateWrapper`
+    // The adaptor keeps application-global initialization, token, and notification callbacks in
+    // UIApplicationDelegate. UI activation routing remains exclusively in SwiftUI's onOpenURL.
     @UIApplicationDelegateAdaptor(CioAppDelegateWrapper<AppDelegate>.self) private var appDelegate
 
     // Use this option if you need to extend `CioAppDelegateWrapper`: class AppDelegateWithCioIntegration: CioAppDelegateWrapper<AppDelegate> {}

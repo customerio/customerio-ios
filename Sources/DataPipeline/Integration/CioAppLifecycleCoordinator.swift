@@ -6,8 +6,9 @@ import UIKit
 ///
 /// Create one coordinator for one host lifecycle owner. Each method invocation represents a new
 /// activation occurrence, even when a later activation carries an identical URL or activity. This
-/// deliberately avoids permanent payload or delivery-ID deduplication. The coordinator calls at
-/// most one host routing closure for each invocation and rejects ambiguous multi-item callbacks.
+/// deliberately avoids permanent payload or delivery-ID deduplication. Single-activation callbacks
+/// call at most one host routing closure and reject ambiguous multi-item input. A warm scene URL
+/// callback can contain multiple independent activation occurrences, so it routes every URL once.
 ///
 /// Notification response processing is intentionally not part of this coordinator. Customer.io,
 /// host, and third-party notification delegates continue to receive responses through the single
@@ -91,9 +92,10 @@ public final class CioAppLifecycleCoordinator {
 
     /// Handles the activation reason attached to a newly connected UIKit scene.
     ///
-    /// Exactly one URL, user activity, shortcut, or notification response is accepted. Multiple
-    /// candidates are ambiguous and no routing closure is called. A notification response is
-    /// reported as application-owned and is not processed here.
+    /// Exactly one URL, user activity, shortcut, or notification response is accepted. A cold scene
+    /// connection represents one activation, so multiple candidates, including multiple URLs, are
+    /// ambiguous and no routing closure is called. A notification response is reported as
+    /// application-owned and is not processed here.
     @discardableResult
     public func handleSceneConnection(
         options connectionOptions: UIScene.ConnectionOptions,
@@ -115,6 +117,9 @@ public final class CioAppLifecycleCoordinator {
     }
 
     /// Handles warm URL activations delivered to a UIKit scene.
+    ///
+    /// UIKit may coalesce multiple independent URL opens into one callback. Each URL is routed once
+    /// in unspecified order; the aggregate result is handled when at least one route accepts its URL.
     @discardableResult
     public func handleSceneOpenURLContexts(
         _ urlContexts: Set<UIOpenURLContext>,
@@ -207,11 +212,18 @@ public final class CioAppLifecycleCoordinator {
         guard accepts(.uiScene, callback: "scene open URL") else {
             return .rejectedHostTopology
         }
-        guard urls.count <= 1 else {
-            return rejectAmbiguous(callback: "scene open URL", candidateCount: urls.count)
+        guard !urls.isEmpty else { return .noActivation }
+
+        var handled = false
+        // `route` has a required side effect for every URL, so keep the iteration explicit.
+        // swiftlint:disable for_where
+        for url in urls {
+            if route(url) {
+                handled = true
+            }
         }
-        guard let url = urls.first else { return .noActivation }
-        return routeOnce { route(url) }
+        // swiftlint:enable for_where
+        return handled ? .handled : .unhandled
     }
 
     private func accepts(

@@ -3,7 +3,7 @@ import CioLiveActivities
 import UIKit
 
 class SceneDelegate: UIResponder, UIWindowSceneDelegate {
-    static let lifecycleCoordinator = CioAppLifecycleCoordinator(hostTopology: .uiScene)
+    private let lifecycleCoordinator = CioAppLifecycleCoordinator(hostTopology: .uiScene)
 
     var window: UIWindow?
     let storage = DIGraphShared.shared.storage
@@ -22,10 +22,11 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         // public `NotificationInboxBell` / `NotificationInboxView` views (see DashboardViewController)
         // — the recommended integration — rather than a separate passthrough overlay window.
 
-        // A cold URL, user activity, or quick action is delivered here. The coordinator accepts
-        // exactly one activation candidate and leaves notification responses with the global
-        // UNUserNotificationCenter delegate proxy.
-        _ = Self.lifecycleCoordinator.handleSceneConnection(
+        // On a cold launch, iOS delivers a Live Activity widget URL here instead of calling
+        // scene(_:openURLContexts:). The coordinator accepts exactly one activation candidate and
+        // leaves notification responses with the global UNUserNotificationCenter delegate proxy.
+        // This sample does not expose Home Screen quick actions, so that route deliberately declines.
+        _ = lifecycleCoordinator.handleSceneConnection(
             options: connectionOptions,
             routeURL: { [weak self] in self?.route(url: $0) ?? false },
             continueUserActivity: { [weak self] in self?.route(userActivity: $0) ?? false },
@@ -79,7 +80,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
     // Opens one or more URLs, handles deep link for the apps
     func scene(_ scene: UIScene, openURLContexts URLContexts: Set<UIOpenURLContext>) {
-        _ = Self.lifecycleCoordinator.handleSceneOpenURLContexts(
+        _ = lifecycleCoordinator.handleSceneOpenURLContexts(
             URLContexts,
             route: { [weak self] in self?.route(url: $0) ?? false }
         )
@@ -110,7 +111,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     // To handle Universal Links from the Customer.io SDK, see `AppDelegate` file for implementation.
     // Learn more: https://customer.io/docs/sdk/ios/push/#universal-links-deep-links
     func scene(_ scene: UIScene, continue userActivity: NSUserActivity) {
-        _ = Self.lifecycleCoordinator.handleSceneUserActivity(
+        _ = lifecycleCoordinator.handleSceneUserActivity(
             userActivity,
             route: { [weak self] in self?.route(userActivity: $0) ?? false }
         )

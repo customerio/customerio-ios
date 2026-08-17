@@ -9,7 +9,10 @@ public enum CioAppLifecycleHostTopology: String, Sendable {
     /// UIKit routes activations through `UISceneDelegate` callbacks.
     case uiScene = "ui-scene"
 
-    /// SwiftUI routes activations through view lifecycle callbacks such as `onOpenURL`.
+    /// SwiftUI routes UI activations through view lifecycle callbacks such as `onOpenURL`.
+    /// A `UIApplicationDelegateAdaptor` may still own application-global initialization, token,
+    /// and notification callbacks, but it must not route the same UI activation through this
+    /// coordinator's AppDelegate-only methods.
     case swiftUILifecycle = "swiftui-lifecycle"
 }
 
