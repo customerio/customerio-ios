@@ -14,7 +14,6 @@ on:
   workflow_dispatch:
 
 permissions:
-  actions: read
   contents: read
 
 jobs:
@@ -40,6 +39,7 @@ jobs:
           client-id: ${{ secrets.CIO_APP_CLIENT_ID }}
           private-key: ${{ secrets.CIO_APP_SECRET }}
           owner: customerio
+          permission-actions: read
           repositories: |
             customerio-ios
             customerio-flutter

@@ -119,6 +119,7 @@ jobs:
 
       - name: Install and launch fixture
         id: launch
+        # TODO(MBL-2248): switch to @main after customerio/mobile-ci-tools#16 merges.
         uses: customerio/mobile-ci-tools/github-actions/ios/launch-simulator-app/v1@codex/ios-simulator-launch-smoke
         with:
           app-path: ${{ env.APP_PRODUCT_PATH }}
@@ -154,6 +155,7 @@ jobs:
         env:
           FIXTURE: ${{ matrix.fixture }}
         run: |
+          set -euo pipefail
           {
             echo '## Native fixture compile'
             echo
@@ -168,15 +170,73 @@ jobs:
         shell: bash
         env:
           FIXTURE: ${{ matrix.fixture }}
+          FAILURE_REASON: ${{ steps.launch.outputs.failure-reason }}
         run: |
+          set -euo pipefail
+          case "$FAILURE_REASON" in
+            runtime-unavailable|runtime-selection-failed|simulator-boot-failed)
+              classification=simulator-infrastructure-unavailable
+              next_step='inspect the launch log and hosted image runtimes before attributing this to the SDK'
+              ;;
+            install-failed)
+              classification=fixture-install-failed
+              next_step='inspect the launch log and built app before evaluating runtime compatibility'
+              ;;
+            launch-failed)
+              classification=fixture-launch-failed
+              next_step='inspect the launch diagnostics for the UIKit runtime issue or launch rejection'
+              ;;
+            did-not-survive)
+              classification=fixture-exited-early
+              next_step='inspect the launch diagnostics for the crash or process-identity change'
+              ;;
+            invalid-input|invalid-app|sdk-mismatch)
+              classification=launch-contract-invalid
+              next_step='inspect the built product metadata and smoke-test inputs'
+              ;;
+            *)
+              classification=launch-smoke-failed
+              next_step='inspect the launch log and diagnostics before classifying the failure'
+              ;;
+          esac
           {
             echo '## Native fixture launch'
             echo
-            echo '**Classification:** fixture-launch-failed'
+            echo "**Classification:** $classification"
+            echo "**Failure category:** $FAILURE_REASON"
             echo "**Fixture:** $FIXTURE"
             echo '**Toolchain family:** Xcode 27 / iOS SDK 27'
-            echo '**Next step:** inspect the uploaded launch log for the UIKit runtime issue or early process exit'
+            echo "**Next step:** $next_step"
           } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Collect launch diagnostics
+        if: failure() && steps.launch.outcome == 'failure'
+        shell: bash
+        env:
+          FIXTURE: ${{ matrix.fixture }}
+          APP_NAME: ${{ matrix.app-name }}
+          SIMULATOR_UDID: ${{ steps.launch.outputs.simulator-udid }}
+        run: |
+          set -euo pipefail
+          diagnostics="$RUNNER_TEMP/${FIXTURE}-launch-diagnostics"
+          mkdir -p "$diagnostics"
+          if [[ "$SIMULATOR_UDID" =~ ^[A-Za-z0-9-]+$ && "$SIMULATOR_UDID" != unknown ]]; then
+            xcrun simctl diagnose \
+              -b \
+              --timeout=120 \
+              --output="$diagnostics" \
+              --udid="$SIMULATOR_UDID" || true
+          fi
+          crash_reports="$HOME/Library/Logs/DiagnosticReports"
+          if [[ -d "$crash_reports" ]]; then
+            expected_executable="${APP_NAME%.app}"
+            actual_executable="$(/usr/libexec/PlistBuddy \
+              -c 'Print :CFBundleExecutable' "$APP_PRODUCT_PATH/Info.plist" 2>/dev/null || true)"
+            if [[ -n "$actual_executable" && "$actual_executable" == "$expected_executable" ]]; then
+              find "$crash_reports" -type f -name "${actual_executable}*.ips" -mmin -60 \
+                -exec cp -p {} "$diagnostics"/ \; || true
+            fi
+          fi
 
       - name: Record product resolution failure
         if: failure() && steps.resolve-app.outcome == 'failure'
@@ -184,6 +244,7 @@ jobs:
         env:
           FIXTURE: ${{ matrix.fixture }}
         run: |
+          set -euo pipefail
           {
             echo '## Native fixture product resolution'
             echo
@@ -198,6 +259,7 @@ jobs:
         env:
           FIXTURE: ${{ matrix.fixture }}
         run: |
+          set -euo pipefail
           {
             echo '## Native fixture compile'
             echo
@@ -213,6 +275,7 @@ jobs:
         env:
           FIXTURE: ${{ matrix.fixture }}
         run: |
+          set -euo pipefail
           {
             echo '## Native fixture compile'
             echo
@@ -227,6 +290,8 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: xcode-27-preview-${{ matrix.fixture }}-logs
-          path: ${{ runner.temp }}/${{ matrix.fixture }}-*.log
+          path: |
+            ${{ runner.temp }}/${{ matrix.fixture }}-*.log
+            ${{ runner.temp }}/${{ matrix.fixture }}-launch-diagnostics
           if-no-files-found: ignore
           retention-days: 7

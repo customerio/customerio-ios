@@ -9,6 +9,7 @@ import datetime as dt
 import json
 import os
 import sys
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -27,6 +28,9 @@ def parse_target(raw: str) -> Target:
     except ValueError as error:
         raise argparse.ArgumentTypeError("target must be OWNER/REPO:WORKFLOW") from error
     if repository.count("/") != 1 or not workflow:
+        raise argparse.ArgumentTypeError("target must be OWNER/REPO:WORKFLOW")
+    owner, name = repository.split("/", 1)
+    if not owner or not name:
         raise argparse.ArgumentTypeError("target must be OWNER/REPO:WORKFLOW")
     return Target(repository=repository, workflow=workflow)
 
@@ -74,7 +78,14 @@ def build_workflow_runs_url(target: Target) -> str:
     )
 
 
-def fetch_latest_run(target: Target, token: str | None) -> dict[str, object]:
+def fetch_latest_run(
+    target: Target,
+    token: str | None,
+    *,
+    opener=urllib.request.urlopen,
+    sleeper=time.sleep,
+    attempts: int = 3,
+) -> dict[str, object]:
     url = build_workflow_runs_url(target)
     headers = {
         "Accept": "application/vnd.github+json",
@@ -84,11 +95,17 @@ def fetch_latest_run(target: Target, token: str | None) -> dict[str, object]:
     if token:
         headers["Authorization"] = f"Bearer {token}"
     request = urllib.request.Request(url, headers=headers)
-    try:
-        with urllib.request.urlopen(request, timeout=20) as response:
-            return json.load(response)
-    except (urllib.error.URLError, json.JSONDecodeError) as error:
-        raise RuntimeError(f"{target.repository}: GitHub API request failed: {error}") from error
+    for attempt in range(attempts):
+        try:
+            with opener(request, timeout=20) as response:
+                return json.load(response)
+        except (TimeoutError, urllib.error.URLError, json.JSONDecodeError) as error:
+            if attempt + 1 == attempts:
+                raise RuntimeError(
+                    f"{target.repository}: GitHub API request failed after {attempts} attempts: {error}"
+                ) from error
+            sleeper(2**attempt)
+    raise AssertionError("unreachable")
 
 
 def write_summary(lines: list[str]) -> None:
@@ -115,11 +132,15 @@ def main(
 
     now = now or dt.datetime.now(dt.timezone.utc)
     max_age = dt.timedelta(hours=arguments.max_age_hours)
+    token = os.environ.get("GITHUB_TOKEN")
+    if not token:
+        print("GITHUB_TOKEN is required for cross-repository Actions checks", file=sys.stderr)
+        return 1
     messages: list[str] = []
     healthy = True
     for target in arguments.target:
         try:
-            payload = fetcher(target, os.environ.get("GITHUB_TOKEN"))
+            payload = fetcher(target, token)
             target_healthy, message = classify_latest_run(target, payload, now=now, max_age=max_age)
         except Exception as error:
             target_healthy, message = False, f"{target.repository}: check failed: {error}"

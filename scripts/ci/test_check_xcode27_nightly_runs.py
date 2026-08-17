@@ -1,12 +1,16 @@
 import datetime as dt
 import io
+import json
 import unittest
+import urllib.error
 from contextlib import redirect_stdout
+from unittest import mock
 
 from scripts.ci.check_xcode27_nightly_runs import (
     Target,
     build_workflow_runs_url,
     classify_latest_run,
+    fetch_latest_run,
     main,
     parse_target,
 )
@@ -83,9 +87,67 @@ class CheckXcode27NightlyRunsTests(unittest.TestCase):
         self.assertFalse(healthy)
         self.assertIn("failure", message)
 
+    def test_cancelled_run_is_unhealthy(self):
+        healthy, message = self.classify(self.payload(conclusion="cancelled"))
+        self.assertFalse(healthy)
+        self.assertIn("cancelled", message)
+
+    def test_timed_out_run_is_unhealthy(self):
+        healthy, message = self.classify(self.payload(conclusion="timed_out"))
+        self.assertFalse(healthy)
+        self.assertIn("timed_out", message)
+
+    def test_queued_run_is_unhealthy(self):
+        healthy, message = self.classify(self.payload(status="queued", conclusion=None))
+        self.assertFalse(healthy)
+        self.assertIn("queued", message)
+
     def test_target_parser_rejects_missing_repository(self):
         with self.assertRaises(Exception):
             parse_target("ios-toolchain-compatibility.yml")
+
+    def test_target_parser_rejects_empty_owner_or_repository(self):
+        for target in (
+            "/customerio-ios:ios-toolchain-compatibility.yml",
+            "customerio/:ios-toolchain-compatibility.yml",
+        ):
+            with self.subTest(target=target), self.assertRaises(Exception):
+                parse_target(target)
+
+    def test_fetch_retries_a_transient_api_failure(self):
+        response = io.StringIO(json.dumps(self.payload()))
+        opener = mock.Mock(
+            side_effect=[urllib.error.URLError("temporary"), response]
+        )
+        sleeper = mock.Mock()
+
+        result = fetch_latest_run(
+            self.target,
+            "token",
+            opener=opener,
+            sleeper=sleeper,
+        )
+
+        self.assertEqual(result, self.payload())
+        self.assertEqual(opener.call_count, 2)
+        sleeper.assert_called_once_with(1)
+        request = opener.call_args_list[0].args[0]
+        self.assertEqual(request.get_header("Authorization"), "Bearer token")
+
+    def test_fetch_fails_after_exhausting_retries(self):
+        opener = mock.Mock(side_effect=urllib.error.URLError("unavailable"))
+        sleeper = mock.Mock()
+
+        with self.assertRaisesRegex(RuntimeError, "failed after 3 attempts"):
+            fetch_latest_run(
+                self.target,
+                "token",
+                opener=opener,
+                sleeper=sleeper,
+            )
+
+        self.assertEqual(opener.call_count, 3)
+        self.assertEqual(sleeper.call_args_list, [mock.call(1), mock.call(2)])
 
     def test_workflow_runs_url_cannot_be_masked_by_manual_dispatch(self):
         self.assertEqual(
@@ -104,7 +166,7 @@ class CheckXcode27NightlyRunsTests(unittest.TestCase):
             return self.payload()
 
         output = io.StringIO()
-        with redirect_stdout(output):
+        with mock.patch.dict("os.environ", {"GITHUB_TOKEN": "token"}), redirect_stdout(output):
             result = main(
                 [
                     "--target",
@@ -140,7 +202,7 @@ class CheckXcode27NightlyRunsTests(unittest.TestCase):
                 raise TimeoutError("request timed out")
             return self.payload()
 
-        with redirect_stdout(io.StringIO()):
+        with mock.patch.dict("os.environ", {"GITHUB_TOKEN": "token"}), redirect_stdout(io.StringIO()):
             result = main(
                 [
                     "--target",
@@ -159,6 +221,21 @@ class CheckXcode27NightlyRunsTests(unittest.TestCase):
             requested,
             ["customerio/customerio-ios", "customerio/customerio-flutter"],
         )
+
+    def test_main_fails_closed_without_github_token(self):
+        with mock.patch.dict("os.environ", {}, clear=True), redirect_stdout(io.StringIO()):
+            self.assertEqual(
+                main(
+                    [
+                        "--target",
+                        "customerio/customerio-ios:ios-toolchain-compatibility.yml",
+                        "--max-age-hours",
+                        "26",
+                    ],
+                    now=self.now,
+                ),
+                1,
+            )
 
 
 if __name__ == "__main__":
