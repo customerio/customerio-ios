@@ -22,6 +22,7 @@ private let sampleLifecycleProbeObserver = sampleLifecycleTraceRecorder.map { _ 
 class AppDelegateWithCioIntegration: CioAppDelegateWrapper<AppDelegate> {}
 
 class AppDelegate: UIResponder, UIApplicationDelegate {
+    var window: UIWindow?
     var storage = DIGraphShared.shared.storage
     var deepLinkHandler = DIGraphShared.shared.deepLinksHandlerUtil
     private let inboxEventListener = SampleInboxEventListener()
@@ -53,6 +54,80 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 //        UNUserNotificationCenter.current().delegate = self
 
         return true
+    }
+
+    func applicationDidBecomeActive(_ application: UIApplication) {
+        guard LifecycleTraceHarness.sharedRecorder?.hostTopology == .appDelegateOnly else { return }
+        LifecycleTraceHarness.sharedRecorder?.record(
+            callback: .applicationDidBecomeActive,
+            owner: .applicationDelegate,
+            kind: .osCallback,
+            phase: .stateChange,
+            observations: LifecycleTraceEvidence.observe(applicationState: application.applicationState)
+        )
+        LifecycleTraceHarness.endScenario(after: .activeApplication)
+    }
+
+    func applicationDidEnterBackground(_ application: UIApplication) {
+        guard LifecycleTraceHarness.sharedRecorder?.hostTopology == .appDelegateOnly else { return }
+        LifecycleTraceHarness.sharedRecorder?.record(
+            callback: .applicationDidEnterBackground,
+            owner: .applicationDelegate,
+            kind: .osCallback,
+            phase: .stateChange,
+            observations: LifecycleTraceEvidence.observe(applicationState: application.applicationState)
+        )
+    }
+
+    func applicationWillEnterForeground(_ application: UIApplication) {
+        guard LifecycleTraceHarness.sharedRecorder?.hostTopology == .appDelegateOnly else { return }
+        LifecycleTraceHarness.sharedRecorder?.record(
+            callback: .applicationWillEnterForeground,
+            owner: .applicationDelegate,
+            kind: .osCallback,
+            phase: .stateChange,
+            observations: LifecycleTraceEvidence.observe(applicationState: application.applicationState)
+        )
+    }
+
+    func application(
+        _ application: UIApplication,
+        open url: URL,
+        options: [UIApplication.OpenURLOptionsKey: Any] = [:]
+    ) -> Bool {
+        let shouldTrace = LifecycleTraceHarness.sharedRecorder?.hostTopology == .appDelegateOnly
+        let evidence = LifecycleTraceEvidence.observe(url: url)
+        if shouldTrace {
+            LifecycleTraceHarness.sharedRecorder?.record(
+                callback: .applicationOpenURL,
+                owner: .applicationDelegate,
+                kind: .osCallback,
+                phase: .entry,
+                observations: LifecycleTraceEvidence.observe(applicationState: application.applicationState),
+                evidence
+            )
+            LifecycleTraceHarness.sharedRecorder?.record(
+                callback: .hostRouteURL,
+                owner: .host,
+                kind: .hostRouting,
+                phase: .intent,
+                observations: evidence
+            )
+        }
+        let destination = CustomerIO.liveActivities.handleWidgetUrl(url)
+        let handled = destination.map { deepLinkHandler.handleAppSchemeDeepLink($0) } ?? true
+        if shouldTrace {
+            LifecycleTraceHarness.sharedRecorder?.record(
+                callback: .hostRouteURL,
+                owner: .host,
+                kind: .hostRouting,
+                phase: .result,
+                observations: evidence,
+                LifecycleTraceEvidence.observe(routingResult: handled ? .handled : .unhandled)
+            )
+            LifecycleTraceHarness.endScenario(after: .hostURLRoute)
+        }
+        return handled
     }
 
     func initializeCioAndInAppListeners() {

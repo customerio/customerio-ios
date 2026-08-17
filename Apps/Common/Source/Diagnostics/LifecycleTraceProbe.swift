@@ -148,6 +148,9 @@ public enum LifecycleTraceHarness {
               let scenario = LifecycleTraceScenario(rawValue: scenarioValue),
               let evidenceValue = value("EVIDENCE_LEVEL"),
               let evidence = LifecycleTraceEvidenceLevel(rawValue: evidenceValue),
+              let hostTopologyValue = value("HOST_TOPOLOGY"),
+              let hostTopology = LifecycleTraceHostTopology(rawValue: hostTopologyValue),
+              let activationOccurrenceIdentity = value("ACTIVATION_OCCURRENCE_ID"),
               let integrationValue = value("INTEGRATION"),
               let integration = LifecycleTraceIntegration(rawValue: integrationValue),
               let runtimeValue = value("RUNTIME"),
@@ -166,7 +169,9 @@ public enum LifecycleTraceHarness {
             runtime: runtime,
             provider: provider,
             scenario: scenario,
-            evidenceLevel: evidence
+            evidenceLevel: evidence,
+            hostTopology: hostTopology,
+            activationOccurrenceIdentity: activationOccurrenceIdentity
         )
     }
 }

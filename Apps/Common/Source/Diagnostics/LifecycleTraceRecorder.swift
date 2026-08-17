@@ -183,10 +183,12 @@ public final class LifecycleTraceRecorder: @unchecked Sendable {
     private var negativeFixtureDropFloors: [String: Int] = [:]
     private var endCompletion: ((LifecycleTraceStreamReceipt?) -> Void)?
     private var observedBackgroundSeat = false
+    private var participatingSceneIdentity: LifecycleTraceCorrelationValue?
     private var captureFailed = false
 
     public var scenario: LifecycleTraceScenario { context.scenario }
     public var processInstanceID: String { context.processInstanceID }
+    public var hostTopology: LifecycleTraceHostTopology { context.hostTopology }
 
     // Used only by focused tests to create deterministic overflow. Production code never pauses.
     var isDrainSchedulingPausedForTesting = false
@@ -240,7 +242,7 @@ public final class LifecycleTraceRecorder: @unchecked Sendable {
         phase: LifecycleTracePhase,
         observations: LifecycleTraceObservation...
     ) -> Bool {
-        let observation = observations.reduce(LifecycleTraceObservation()) { $0.merging($1) }
+        var observation = observations.reduce(LifecycleTraceObservation()) { $0.merging($1) }
         stateLock.lock()
         defer { stateLock.unlock() }
         guard case .recording = state,
@@ -253,7 +255,21 @@ public final class LifecycleTraceRecorder: @unchecked Sendable {
             return false
         }
 
-        if callback == .sceneDidEnterBackground {
+        observation.correlations[.occurrence] = .string(context.activationOccurrenceIdentity)
+        if observation.counts[.urlContexts, default: 0] > 1 {
+            invalidateCaptureLocked()
+            return false
+        }
+        if let sceneIdentity = observation.correlations[.scene] {
+            if let participatingSceneIdentity, participatingSceneIdentity != sceneIdentity {
+                invalidateCaptureLocked()
+                return false
+            }
+            participatingSceneIdentity = sceneIdentity
+        }
+
+        if callback == .sceneDidEnterBackground || callback == .applicationDidEnterBackground ||
+            (callback == .swiftUIScenePhaseChange && observation.enums[.appState] == "background") {
             observedBackgroundSeat = true
         }
 
@@ -269,6 +285,13 @@ public final class LifecycleTraceRecorder: @unchecked Sendable {
         guard !captureFailed else { return false }
         scheduleDrainLocked()
         return true
+    }
+
+    /// Invalidates ambiguous evidence without changing the host application's production route.
+    public func invalidateCapture() {
+        stateLock.lock()
+        invalidateCaptureLocked()
+        stateLock.unlock()
     }
 
     /// Records a fixture-owned closure creation. It never accepts a production completion object.
@@ -471,6 +494,7 @@ public final class LifecycleTraceRecorder: @unchecked Sendable {
 
     private func snapshotLocked() -> LifecycleTraceRecorderSnapshot {
         let counts = LifecycleTraceAliasCounts(
+            occurrence: aliasTables[.occurrence]?.count ?? 0,
             delivery: aliasTables[.delivery]?.count ?? 0,
             request: aliasTables[.request]?.count ?? 0,
             scene: aliasTables[.scene]?.count ?? 0,
@@ -589,6 +613,17 @@ public final class LifecycleTraceRecorder: @unchecked Sendable {
             && fixtureStates.values.allSatisfy { $0.observedCallCount > 0 || $0.hasNotInvokedOutcome }
     }
 
+    private func invalidateCaptureLocked() {
+        captureFailed = true
+        state = .ended
+        pendingRecords.removeAll()
+        let completion = endCompletion
+        endCompletion = nil
+        if let completion {
+            sinkQueue.async { completion(nil) }
+        }
+    }
+
     private func beginEndingLocked(completion: @escaping (LifecycleTraceStreamReceipt?) -> Void) {
         state = .ending
         endCompletion = completion
@@ -612,7 +647,10 @@ public final class LifecycleTraceRecorder: @unchecked Sendable {
 
     private func terminalIsValidForScenarioLocked(_ terminal: LifecycleTraceTerminal) -> Bool {
         switch (context.scenario, terminal) {
-        case (.iconColdLaunch, .activeScene),
+        case (.iconColdLaunch, .activeApplication)
+            where context.hostTopology == .appDelegateOnly,
+             (.iconColdLaunch, .activeScene)
+                 where context.hostTopology != .appDelegateOnly,
              (.pushTapWarm, .notificationResponse),
              (.pushTapCold, .notificationResponse),
              (.localNotificationTapWarm, .notificationResponse),
@@ -626,7 +664,10 @@ public final class LifecycleTraceRecorder: @unchecked Sendable {
              (.tokenRegistration, .tokenRegistration),
              (.registrationFailure, .registrationFailure):
             return true
-        case (.appBackgroundForeground, .activeScene):
+        case (.appBackgroundForeground, .activeApplication)
+            where context.hostTopology == .appDelegateOnly,
+             (.appBackgroundForeground, .activeScene)
+                 where context.hostTopology != .appDelegateOnly:
             return observedBackgroundSeat
         default:
             return false

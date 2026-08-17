@@ -38,6 +38,8 @@ class LifecycleInstrumentationTests(unittest.TestCase):
         self.assertIn("scenario.isColdStart == true", launch_helper)
         self.assertIn("LifecycleTraceEvidence.isCustomerIOLiveActivityRoute(incomingURL)", APP_SOURCE)
         self.assertIn("LifecycleTraceEvidence.isTraceableURLRoute(incomingURL)", APP_SOURCE)
+        self.assertIn("callback: .swiftUIScenePhaseChange", APP_SOURCE)
+        self.assertIn("hostTopology == .swiftUILifecycle", APP_SOURCE)
 
     def test_raw_universal_link_is_never_logged(self) -> None:
         self.assertNotIn('print("universalLinkUrl:', SOURCE)

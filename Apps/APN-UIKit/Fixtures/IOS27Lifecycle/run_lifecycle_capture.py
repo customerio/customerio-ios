@@ -395,6 +395,7 @@ def capture(arguments: argparse.Namespace) -> None:
     sdk = _sdk(root)
     target = _simulator(root, arguments.simulator_id)
     manifest_id, run_id, stream_id, process_instance_id = (str(uuid.uuid4()) for _ in UUID_KEYS)
+    activation_occurrence_id = str(uuid.uuid4())
     ids = dict(zip(UUID_KEYS, (manifest_id, run_id, stream_id, process_instance_id)))
     trace_path = output / "swift.ndjson"
     receipt_path = output / "swift.ndjson.receipt.json"
@@ -410,6 +411,7 @@ def capture(arguments: argparse.Namespace) -> None:
         "process_instance_id": process_instance_id,
         "scenario": arguments.scenario,
         "evidence_level": arguments.evidence_level,
+        "host_topology": arguments.host_topology,
         "integration": arguments.integration,
         "runtime": "swift",
         "provider": arguments.provider,
@@ -423,6 +425,8 @@ def capture(arguments: argparse.Namespace) -> None:
         **{f"CIO_LIFECYCLE_{key}": value for key, value in ids.items()},
         "CIO_LIFECYCLE_SCENARIO": arguments.scenario,
         "CIO_LIFECYCLE_EVIDENCE_LEVEL": arguments.evidence_level,
+        "CIO_LIFECYCLE_HOST_TOPOLOGY": arguments.host_topology,
+        "CIO_LIFECYCLE_ACTIVATION_OCCURRENCE_ID": activation_occurrence_id,
         "CIO_LIFECYCLE_INTEGRATION": arguments.integration,
         "CIO_LIFECYCLE_RUNTIME": "swift",
         "CIO_LIFECYCLE_PROVIDER": arguments.provider,
@@ -470,6 +474,7 @@ def capture(arguments: argparse.Namespace) -> None:
         "run_ended_at": ended_at,
         "created_at": _timestamp(),
         "evidence_level": arguments.evidence_level,
+        "host_topology": arguments.host_topology,
         "scenario": arguments.scenario,
         "repositories": [{
             "name": "customerio-ios",
@@ -515,6 +520,11 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--simulator-id", required=True)
     parser.add_argument("--scenario", choices=SUPPORTED_SCENARIOS, required=True)
     parser.add_argument("--evidence-level", choices=("diagnostic", "L2"), required=True)
+    parser.add_argument(
+        "--host-topology",
+        choices=("app-delegate-only", "ui-scene", "swiftui-lifecycle"),
+        required=True,
+    )
     parser.add_argument("--integration", choices=("native-ios",), default="native-ios")
     parser.add_argument("--provider", choices=("apn", "fcm", "local", "none", "unknown"), required=True)
     parser.add_argument("--validator-python", default=sys.executable)

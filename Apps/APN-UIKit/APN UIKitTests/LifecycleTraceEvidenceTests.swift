@@ -3,6 +3,23 @@ import UIKit
 import UserNotifications
 import XCTest
 
+final class InMemoryLifecycleTraceSink: LifecycleTraceSink {
+    private let lock = NSLock()
+    private var storedLines: [String] = []
+
+    var lines: [String] {
+        lock.lock()
+        defer { lock.unlock() }
+        return storedLines
+    }
+
+    func write(line: String) {
+        lock.lock()
+        storedLines.append(line)
+        lock.unlock()
+    }
+}
+
 final class LifecycleTraceEvidenceTests: XCTestCase {
     func testScenario_whenClassifyingColdStart_thenMatchesCanonicalScenarioBinding() {
         let cold: Set<LifecycleTraceScenario> = [
@@ -213,5 +230,90 @@ private extension LifecycleTraceEvidenceLevel {
             LifecycleTraceEvidenceLevel.l2.rawValue,
             LifecycleTraceEvidenceLevel.l3.rawValue
         ]
+    }
+}
+
+final class LifecycleTraceCaptureGuardrailTests: XCTestCase {
+    func testRecord_whenSecondSceneParticipates_thenCaptureFailsClosed() throws {
+        let (recorder, sink) = try makeRecorder()
+        XCTAssertTrue(recorder.record(
+            callback: .sceneDidBecomeActive,
+            owner: .sceneDelegate,
+            kind: .osCallback,
+            phase: .stateChange,
+            observations: LifecycleTraceObservation(correlations: [.scene: .string("scene-A")])
+        ))
+        XCTAssertFalse(recorder.record(
+            callback: .sceneWillResignActive,
+            owner: .sceneDelegate,
+            kind: .osCallback,
+            phase: .stateChange,
+            observations: LifecycleTraceObservation(correlations: [.scene: .string("scene-B")])
+        ))
+        XCTAssertNil(close(recorder))
+        XCTAssertFalse(sink.lines.contains { $0.hasPrefix(LifecycleTraceRecorder.receiptPrefix) })
+    }
+
+    func testRecord_whenMultipleURLContextsArrive_thenCaptureFailsClosed() throws {
+        let (recorder, sink) = try makeRecorder()
+        XCTAssertFalse(recorder.record(
+            callback: .sceneOpenURLContexts,
+            owner: .sceneDelegate,
+            kind: .osCallback,
+            phase: .entry,
+            observations: LifecycleTraceObservation(counts: [.urlContexts: 2])
+        ))
+        XCTAssertNil(close(recorder))
+        XCTAssertFalse(sink.lines.contains { $0.hasPrefix(LifecycleTraceRecorder.receiptPrefix) })
+    }
+
+    func testAppDelegateOnlyTerminal_whenApplicationBecomesActive_thenCloses() throws {
+        let (recorder, _) = try makeRecorder(topology: .appDelegateOnly)
+        XCTAssertTrue(recorder.record(
+            callback: .applicationDidBecomeActive,
+            owner: .applicationDelegate,
+            kind: .osCallback,
+            phase: .stateChange
+        ))
+        let expectation = expectation(description: "app delegate terminal receipt")
+        XCTAssertTrue(recorder.endScenario(after: .activeApplication) { receipt in
+            XCTAssertNotNil(receipt)
+            expectation.fulfill()
+        })
+        wait(for: [expectation], timeout: 3)
+    }
+
+    private func makeRecorder(
+        topology: LifecycleTraceHostTopology = .uiScene
+    ) throws -> (LifecycleTraceRecorder, InMemoryLifecycleTraceSink) {
+        let context = try XCTUnwrap(LifecycleTraceContext(
+            manifestID: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            runID: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+            streamID: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+            processID: 42,
+            processInstanceID: "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+            integration: .nativeIOS,
+            runtime: .swift,
+            provider: .apn,
+            scenario: .iconColdLaunch,
+            evidenceLevel: .diagnostic,
+            hostTopology: topology,
+            activationOccurrenceIdentity: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee"
+        ))
+        let sink = InMemoryLifecycleTraceSink()
+        let recorder = LifecycleTraceRecorder(context: context, sink: sink)
+        XCTAssertTrue(recorder.startScenario())
+        return (recorder, sink)
+    }
+
+    private func close(_ recorder: LifecycleTraceRecorder) -> LifecycleTraceStreamReceipt? {
+        let expectation = expectation(description: "post-drain receipt")
+        var result: LifecycleTraceStreamReceipt?
+        recorder.endScenarioAndDrain { receipt in
+            result = receipt
+            expectation.fulfill()
+        }
+        wait(for: [expectation], timeout: 3)
+        return result
     }
 }

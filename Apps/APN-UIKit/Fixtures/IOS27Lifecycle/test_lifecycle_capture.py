@@ -52,7 +52,7 @@ class LifecycleCaptureTests(unittest.TestCase):
                 "--output-dir", str(output),
                 "--simulator-id", "SIMULATOR",
                 "--scenario", "token-registration",
-                "--evidence-level", "L2",
+                "--evidence-level", "L2", "--host-topology", "ui-scene",
                 "--provider", "apn",
                 "--", "scenario-command",
             ])
@@ -82,6 +82,11 @@ class LifecycleCaptureTests(unittest.TestCase):
                             environment[f"CIO_LIFECYCLE_{key}"],
                             environment[f"SIMCTL_CHILD_CIO_LIFECYCLE_{key}"],
                         )
+                    self.assertEqual(
+                        environment["CIO_LIFECYCLE_ACTIVATION_OCCURRENCE_ID"],
+                        environment["SIMCTL_CHILD_CIO_LIFECYCLE_ACTIVATION_OCCURRENCE_ID"],
+                    )
+                    self.assertEqual(environment["CIO_LIFECYCLE_HOST_TOPOLOGY"], "ui-scene")
                     trace = Path(environment["CIO_LIFECYCLE_OUTPUT_PATH"])
                     common = {
                         "manifest_id": environment["CIO_LIFECYCLE_MANIFEST_ID"],
@@ -106,7 +111,10 @@ class LifecycleCaptureTests(unittest.TestCase):
                         "dropped_records_total": 0,
                         "buffer_high_watermark": 1,
                         "buffer_capacity": 256,
-                        "alias_counts": {"delivery": 0, "request": 1, "scene": 0, "url": 0, "closure": 0},
+                        "alias_counts": {
+                            "occurrence": 1, "delivery": 0, "request": 1,
+                            "scene": 0, "url": 0, "closure": 0,
+                        },
                         "alias_overflow": False,
                         "alias_overflow_namespaces": [],
                     }), encoding="utf-8")
@@ -160,6 +168,9 @@ class LifecycleCaptureTests(unittest.TestCase):
             self.assertEqual(manifest["frameworks"][0]["commit_sha"], "1" * 40)
             self.assertEqual(manifest["streams"][0]["process_id"], 42)
             self.assertEqual(manifest["streams"][0]["receipt"]["dropped_records_total"], 0)
+            self.assertEqual(manifest["host_topology"], "ui-scene")
+            context = json.loads((output / "context.json").read_text(encoding="utf-8"))
+            self.assertNotIn("activation_occurrence_id", context)
             self.assertEqual(
                 manifest["streams"][0]["process_instance_id"],
                 json.loads((output / "context.json").read_text(encoding="utf-8"))["process_instance_id"],
@@ -174,7 +185,7 @@ class LifecycleCaptureTests(unittest.TestCase):
                 "--output-dir", str(Path(output_parent) / "capture"),
                 "--simulator-id", "SIMULATOR",
                 "--scenario", "token-registration",
-                "--evidence-level", "L2",
+                "--evidence-level", "L2", "--host-topology", "ui-scene",
                 "--provider", "apn",
                 "--", "scenario-command",
             ])
@@ -239,7 +250,7 @@ class LifecycleCaptureTests(unittest.TestCase):
                 "--output-dir", "capture",
                 "--simulator-id", "SIMULATOR",
                 "--scenario", "icon-cold-launch",
-                "--evidence-level", "diagnostic",
+                "--evidence-level", "diagnostic", "--host-topology", "ui-scene",
                 "--provider", "none",
                 "--validator", "noop.py",
                 "--", "scenario-command",
@@ -253,7 +264,7 @@ class LifecycleCaptureTests(unittest.TestCase):
                 "--output-dir", "capture",
                 "--simulator-id", "SIMULATOR",
                 "--scenario", "notification-settings",
-                "--evidence-level", "diagnostic",
+                "--evidence-level", "diagnostic", "--host-topology", "ui-scene",
                 "--provider", "none",
                 "--", "scenario-command",
             ])

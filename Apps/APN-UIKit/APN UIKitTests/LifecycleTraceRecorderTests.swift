@@ -1,23 +1,6 @@
 import Foundation
 import XCTest
 
-final class InMemoryLifecycleTraceSink: LifecycleTraceSink {
-    private let lock = NSLock()
-    private var storedLines: [String] = []
-
-    var lines: [String] {
-        lock.lock()
-        defer { lock.unlock() }
-        return storedLines
-    }
-
-    func write(line: String) {
-        lock.lock()
-        storedLines.append(line)
-        lock.unlock()
-    }
-}
-
 // swiftlint:disable type_body_length
 final class LifecycleTraceRecorderTests: XCTestCase {
     private let fixedDate = Date(timeIntervalSince1970: 1754930800)
@@ -56,6 +39,9 @@ final class LifecycleTraceRecorderTests: XCTestCase {
         XCTAssertEqual(records.map { $0["sequence"] as? Int }, [1, 2, 3])
         XCTAssertEqual(records.first?["callback"] as? String, "trace.scenario-start")
         XCTAssertEqual(records.last?["callback"] as? String, "trace.scenario-end")
+        let runtimeCorrelation = try XCTUnwrap(records[1]["correlation"] as? [String: String])
+        XCTAssertEqual(runtimeCorrelation["occurrence"], "occurrence-1")
+        XCTAssertEqual(runtimeCorrelation["scene"], "scene-1")
         let required: Set = [
             "schema", "manifest_id", "run_id", "stream_id", "sequence", "monotonic_ms",
             "captured_at", "process_id", "integration", "runtime", "provider", "scenario",
@@ -342,7 +328,8 @@ final class LifecycleTraceRecorderTests: XCTestCase {
     private func makeRecorder(
         sink: LifecycleTraceSink,
         scenario: LifecycleTraceScenario = .unscoped,
-        capacity: Int = 256
+        capacity: Int = 256,
+        topology: LifecycleTraceHostTopology = .uiScene
     ) -> LifecycleTraceRecorder {
         let context = LifecycleTraceContext(
             manifestID: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
@@ -354,7 +341,9 @@ final class LifecycleTraceRecorderTests: XCTestCase {
             runtime: .swift,
             provider: scenario == .unitFixture ? .none : .apn,
             scenario: scenario,
-            evidenceLevel: .diagnostic
+            evidenceLevel: .diagnostic,
+            hostTopology: topology,
+            activationOccurrenceIdentity: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee"
         )
         let fixedDate = fixedDate
         return LifecycleTraceRecorder(

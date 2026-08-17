@@ -142,6 +142,7 @@ python3 Apps/APN-UIKit/Fixtures/IOS27Lifecycle/run_disposable_source_patch.py \
   --simulator-id SIMULATOR_ID \
   --scenario token-registration \
   --evidence-level L2 \
+  --host-topology ui-scene \
   --provider apn -- \
   /path/to/scenario-controller
 ```

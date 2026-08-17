@@ -6,6 +6,7 @@ import SwiftUI
 
 @main
 struct MainApp: App {
+    @Environment(\.scenePhase) private var scenePhase
     // Default option, without CIO integration
 //    @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
@@ -33,6 +34,9 @@ struct MainApp: App {
                         .environmentObject(userManager)
                 }
             }.accentColor(Color("AccentColor")) // sets Color.accentColor for all children
+                .onChange(of: scenePhase) { nextPhase in
+                    MainApp.recordScenePhase(nextPhase)
+                }
                 .onOpenURL { incomingURL in // This function is how to implement deep links in a Swift UI app.
                     let shouldTrace = LifecycleTraceEvidence.isTraceableURLRoute(incomingURL)
                     let routeEvidence = LifecycleTraceEvidence.observe(url: incomingURL)
@@ -134,6 +138,33 @@ struct MainApp: App {
     }
 
     // MARK: MBL-2232 trace helpers
+
+    private static func recordScenePhase(_ phase: ScenePhase) {
+        guard LifecycleTraceHarness.sharedRecorder?.hostTopology == .swiftUILifecycle else {
+            return
+        }
+        let appState: String
+        switch phase {
+        case .active:
+            appState = "active"
+        case .inactive:
+            appState = "inactive"
+        case .background:
+            appState = "background"
+        @unknown default:
+            appState = "unknown"
+        }
+        LifecycleTraceHarness.sharedRecorder?.record(
+            callback: .swiftUIScenePhaseChange,
+            owner: .swiftUIScene,
+            kind: .osCallback,
+            phase: .stateChange,
+            observations: LifecycleTraceObservation(enums: [.appState: appState])
+        )
+        if phase == .active {
+            LifecycleTraceHarness.endScenario(after: .activeScene)
+        }
+    }
 
     // `handleWidgetUrl` returns nil for a consumed CIO tracking URL without a redirect, the
     // unwrapped deep link for one with a redirect, and the input unchanged for non-CIO URLs.
