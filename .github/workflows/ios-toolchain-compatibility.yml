@@ -287,8 +287,7 @@ jobs:
           steps.toolchain.outcome != 'failure' &&
           steps.compile-apn.outcome != 'failure' &&
           steps.compile-fcm.outcome != 'failure' &&
-          steps.compile-apn.outcome != 'skipped' &&
-          steps.compile-fcm.outcome != 'skipped' &&
+          (steps.compile-apn.outcome != 'skipped' || steps.compile-fcm.outcome != 'skipped') &&
           steps.resolve-app.outcome != 'failure' &&
           steps.launch.outcome != 'failure'
         shell: bash

@@ -73,7 +73,7 @@ jobs:
             {
               "username": "Xcode 27 nightly watchdog",
               "icon_emoji": ":warning:",
-              "text": ${{ toJSON(format('The watchdog could not determine Xcode 27 nightly health because its GitHub API/configuration check failed. {0} <https://github.com/{1}/actions/runs/{2}|Inspect the watchdog run>.', steps.verify.outputs.result, github.repository, github.run_id)) }}
+              "text": ${{ toJSON(format('The watchdog could not determine complete Xcode 27 nightly health because its GitHub API/configuration check failed. Its output may also contain definite nightly failures. {0} <https://github.com/{1}/actions/runs/{2}|Inspect the watchdog run>.', steps.verify.outputs.result, github.repository, github.run_id)) }}
             }
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_NOTIFY_RELEASES_WEBHOOK_URL }}
@@ -91,6 +91,25 @@ jobs:
               "username": "Xcode 27 nightly watchdog",
               "icon_emoji": ":warning:",
               "text": "The Xcode 27 nightly watchdog failed before it could determine nightly health. <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}|Inspect the watchdog run>."
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_NOTIFY_RELEASES_WEBHOOK_URL }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+
+      - name: Notify Mobile team of an unexpected watchdog exit
+        if: >-
+          github.event_name == 'schedule' &&
+          steps.verify.outputs.exit-code != '' &&
+          steps.verify.outputs.exit-code != '0' &&
+          steps.verify.outputs.exit-code != '1' &&
+          steps.verify.outputs.exit-code != '2'
+        uses: slackapi/slack-github-action@70cd7be8e40a46e8b0eced40b0de447bdb42f68e # v1.26.0
+        with:
+          payload: |
+            {
+              "username": "Xcode 27 nightly watchdog",
+              "icon_emoji": ":warning:",
+              "text": "The Xcode 27 nightly watchdog returned unexpected exit code ${{ steps.verify.outputs.exit-code }}. <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}|Inspect the watchdog run>."
             }
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_NOTIFY_RELEASES_WEBHOOK_URL }}
