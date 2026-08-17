@@ -29,26 +29,8 @@ jobs:
       - name: Test watchdog classification
         run: python3 -m unittest scripts/ci/test_check_xcode27_nightly_runs.py
 
-      # github.token is scoped to this repository. Mint an installation token
-      # that can read Actions runs from every SDK repository monitored below.
-      - name: Generate cross-repository Actions token
-        if: github.event_name != 'pull_request'
-        id: sdk-token
-        uses: actions/create-github-app-token@1b10c78c7865c340bc4f6099eb2f838309f1e8c3 # v3.1.1
-        with:
-          client-id: ${{ secrets.CIO_APP_CLIENT_ID }}
-          private-key: ${{ secrets.CIO_APP_SECRET }}
-          owner: customerio
-          permission-actions: read
-          repositories: |
-            customerio-ios
-            customerio-flutter
-            customerio-expo-plugin
-
       - name: Verify scheduled runs completed successfully
         if: github.event_name != 'pull_request'
-        env:
-          GITHUB_TOKEN: ${{ steps.sdk-token.outputs.token }}
         run: |
           python3 scripts/ci/check_xcode27_nightly_runs.py \
             --target customerio/customerio-ios:ios-toolchain-compatibility.yml \

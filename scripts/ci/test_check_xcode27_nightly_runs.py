@@ -149,6 +149,15 @@ class CheckXcode27NightlyRunsTests(unittest.TestCase):
         self.assertEqual(opener.call_count, 3)
         self.assertEqual(sleeper.call_args_list, [mock.call(1), mock.call(2)])
 
+    def test_fetch_omits_authorization_for_public_api_read(self):
+        response = io.StringIO(json.dumps(self.payload()))
+        opener = mock.Mock(return_value=response)
+
+        fetch_latest_run(self.target, None, opener=opener)
+
+        request = opener.call_args.args[0]
+        self.assertIsNone(request.get_header("Authorization"))
+
     def test_workflow_runs_url_cannot_be_masked_by_manual_dispatch(self):
         self.assertEqual(
             build_workflow_runs_url(self.target),
@@ -166,7 +175,7 @@ class CheckXcode27NightlyRunsTests(unittest.TestCase):
             return self.payload()
 
         output = io.StringIO()
-        with mock.patch.dict("os.environ", {"GITHUB_TOKEN": "token"}), redirect_stdout(output):
+        with redirect_stdout(output):
             result = main(
                 [
                     "--target",
@@ -202,7 +211,7 @@ class CheckXcode27NightlyRunsTests(unittest.TestCase):
                 raise TimeoutError("request timed out")
             return self.payload()
 
-        with mock.patch.dict("os.environ", {"GITHUB_TOKEN": "token"}), redirect_stdout(io.StringIO()):
+        with redirect_stdout(io.StringIO()):
             result = main(
                 [
                     "--target",
@@ -221,22 +230,6 @@ class CheckXcode27NightlyRunsTests(unittest.TestCase):
             requested,
             ["customerio/customerio-ios", "customerio/customerio-flutter"],
         )
-
-    def test_main_fails_closed_without_github_token(self):
-        with mock.patch.dict("os.environ", {}, clear=True), redirect_stdout(io.StringIO()):
-            self.assertEqual(
-                main(
-                    [
-                        "--target",
-                        "customerio/customerio-ios:ios-toolchain-compatibility.yml",
-                        "--max-age-hours",
-                        "26",
-                    ],
-                    now=self.now,
-                ),
-                1,
-            )
-
 
 if __name__ == "__main__":
     unittest.main()

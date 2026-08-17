@@ -133,9 +133,6 @@ def main(
     now = now or dt.datetime.now(dt.timezone.utc)
     max_age = dt.timedelta(hours=arguments.max_age_hours)
     token = os.environ.get("GITHUB_TOKEN")
-    if not token:
-        print("GITHUB_TOKEN is required for cross-repository Actions checks", file=sys.stderr)
-        return 1
     messages: list[str] = []
     healthy = True
     for target in arguments.target:
