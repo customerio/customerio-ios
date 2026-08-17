@@ -16,6 +16,10 @@ import urllib.request
 from dataclasses import dataclass
 
 
+class MonitoringError(RuntimeError):
+    """Raised when the watchdog cannot determine a nightly's health."""
+
+
 @dataclass(frozen=True)
 class Target:
     repository: str
@@ -100,22 +104,31 @@ def fetch_latest_run(
             with opener(request, timeout=20) as response:
                 return json.load(response)
         except urllib.error.HTTPError as error:
-            remaining = error.headers.get("X-RateLimit-Remaining")
-            retry_after = error.headers.get("Retry-After")
-            if error.code in (403, 429) and (remaining == "0" or retry_after):
-                reset = error.headers.get("X-RateLimit-Reset", "unknown")
-                raise RuntimeError(
+            response_headers = error.headers or {}
+            remaining = response_headers.get("X-RateLimit-Remaining")
+            retry_after = response_headers.get("Retry-After")
+            if error.code == 429 or (error.code == 403 and (remaining == "0" or retry_after)):
+                reset = response_headers.get("X-RateLimit-Reset", "unknown")
+                raise MonitoringError(
                     f"{target.repository}: GitHub API rate limited this runner "
                     f"(reset={reset}, retry-after={retry_after or 'unknown'})"
                 ) from error
+            if error.code == 404:
+                raise MonitoringError(
+                    f"{target.repository}: monitored workflow was not found; verify the repository and filename"
+                ) from error
+            if error.code in (401, 403):
+                raise MonitoringError(
+                    f"{target.repository}: GitHub API denied the watchdog request (HTTP {error.code})"
+                ) from error
             if attempt + 1 == attempts:
-                raise RuntimeError(
+                raise MonitoringError(
                     f"{target.repository}: GitHub API request failed after {attempts} attempts: {error}"
                 ) from error
             sleeper(2**attempt)
         except (TimeoutError, urllib.error.URLError, json.JSONDecodeError) as error:
             if attempt + 1 == attempts:
-                raise RuntimeError(
+                raise MonitoringError(
                     f"{target.repository}: GitHub API request failed after {attempts} attempts: {error}"
                 ) from error
             sleeper(2**attempt)
@@ -149,17 +162,21 @@ def main(
     token = os.environ.get("GITHUB_TOKEN")
     messages: list[str] = []
     healthy = True
+    monitoring_failed = False
     for target in arguments.target:
         try:
             payload = fetcher(target, token)
             target_healthy, message = classify_latest_run(target, payload, now=now, max_age=max_age)
         except Exception as error:
             target_healthy, message = False, f"{target.repository}: check failed: {error}"
+            monitoring_failed = True
         healthy = healthy and target_healthy
         messages.append(message)
         print(message)
 
     write_summary(messages)
+    if monitoring_failed:
+        return 2
     return 0 if healthy else 1
 
 

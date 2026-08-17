@@ -120,7 +120,7 @@ jobs:
       - name: Install and launch fixture
         id: launch
         # TODO(MBL-2248): switch to @main after customerio/mobile-ci-tools#16 merges.
-        uses: customerio/mobile-ci-tools/github-actions/ios/launch-simulator-app/v1@8e270bbad1fa659379755aec99c5ad80ac23a7a4
+        uses: customerio/mobile-ci-tools/github-actions/ios/launch-simulator-app/v1@7e22693841ec0e896dbef13efac814e54ba09c41
         with:
           app-path: ${{ env.APP_PRODUCT_PATH }}
           expected-ios-major: '27'
@@ -227,6 +227,10 @@ jobs:
             if [[ -n "$actual_executable" && "$actual_executable" == "$expected_executable" ]]; then
               find "$crash_reports" -type f -name "${actual_executable}*.ips" -mmin -60 \
                 -exec cp -p {} "$diagnostics"/ \; || true
+            elif [[ -z "$actual_executable" ]]; then
+              echo "::warning::could not read CFBundleExecutable; no crash report was collected"
+            else
+              echo "::warning::expected executable $expected_executable but built $actual_executable; no crash report was collected"
             fi
           fi
 
@@ -275,6 +279,26 @@ jobs:
             echo "**Fixture:** $FIXTURE"
             echo '**Expected toolchain family:** Xcode 27 / iOS SDK 27'
             echo '**Next step:** inspect the toolchain report before evaluating fixture setup or SDK compilation'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Record unclassified workflow failure
+        if: >-
+          failure() &&
+          steps.toolchain.outcome != 'failure' &&
+          steps.compile-apn.outcome != 'failure' &&
+          steps.compile-fcm.outcome != 'failure' &&
+          steps.resolve-app.outcome != 'failure' &&
+          steps.launch.outcome != 'failure'
+        shell: bash
+        env:
+          FIXTURE: ${{ matrix.fixture }}
+        run: |
+          {
+            echo '## Native fixture workflow'
+            echo
+            echo '**Classification:** fixture-workflow-failed'
+            echo "**Fixture:** $FIXTURE"
+            echo '**Next step:** inspect the first failing step; no product compatibility result was produced'
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload build logs

@@ -30,24 +30,57 @@ jobs:
         run: python3 -m unittest scripts/ci/test_check_xcode27_nightly_runs.py
 
       - name: Verify scheduled runs completed successfully
+        id: verify
         if: github.event_name != 'pull_request'
+        shell: bash
         run: |
+          set -euo pipefail
+          result_file="$RUNNER_TEMP/xcode27-watchdog-result.txt"
+          set +e
           python3 scripts/ci/check_xcode27_nightly_runs.py \
             --target customerio/customerio-ios:ios-toolchain-compatibility.yml \
             --target customerio/customerio-flutter:ios-toolchain-compatibility.yml \
             --target customerio/customerio-expo-plugin:ios-toolchain-compatibility.yml \
-            --max-age-hours 26
+            --max-age-hours 26 2>&1 | tee "$result_file"
+          status="${PIPESTATUS[0]}"
+          set -e
+          {
+            echo "exit-code=$status"
+            echo 'result<<CIO_WATCHDOG_RESULT'
+            cat "$result_file"
+            echo 'CIO_WATCHDOG_RESULT'
+          } >> "$GITHUB_OUTPUT"
 
       - name: Notify Mobile team of a failed or missing nightly
-        if: failure() && github.event_name == 'schedule'
+        if: github.event_name == 'schedule' && steps.verify.outputs.exit-code == '1'
         uses: slackapi/slack-github-action@70cd7be8e40a46e8b0eced40b0de447bdb42f68e # v1.26.0
         with:
           payload: |
             {
               "username": "Xcode 27 nightly watchdog",
               "icon_emoji": ":rotating_light:",
-              "text": "The Xcode 27 nightly watchdog failed. A nightly may have failed, remained incomplete, or not run within 26 hours, or the watchdog itself may have encountered an error. <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}|Inspect the watchdog run>."
+              "text": ${{ toJSON(format('An Xcode 27 nightly failed, remained incomplete, or did not run within 26 hours. {0} <https://github.com/{1}/actions/runs/{2}|Inspect the watchdog run>.', steps.verify.outputs.result, github.repository, github.run_id)) }}
             }
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_NOTIFY_RELEASES_WEBHOOK_URL }}
           SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+
+      - name: Notify Mobile team of a watchdog infrastructure failure
+        if: github.event_name == 'schedule' && steps.verify.outputs.exit-code == '2'
+        uses: slackapi/slack-github-action@70cd7be8e40a46e8b0eced40b0de447bdb42f68e # v1.26.0
+        with:
+          payload: |
+            {
+              "username": "Xcode 27 nightly watchdog",
+              "icon_emoji": ":warning:",
+              "text": ${{ toJSON(format('The watchdog could not determine Xcode 27 nightly health because its GitHub API/configuration check failed. {0} <https://github.com/{1}/actions/runs/{2}|Inspect the watchdog run>.', steps.verify.outputs.result, github.repository, github.run_id)) }}
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_NOTIFY_RELEASES_WEBHOOK_URL }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+
+      - name: Fail unhealthy watchdog run
+        if: github.event_name != 'pull_request' && steps.verify.outputs.exit-code != '0'
+        env:
+          WATCHDOG_EXIT_CODE: ${{ steps.verify.outputs.exit-code }}
+        run: exit "$WATCHDOG_EXIT_CODE"

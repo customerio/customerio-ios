@@ -184,6 +184,29 @@ class CheckXcode27NightlyRunsTests(unittest.TestCase):
         opener.assert_called_once()
         sleeper.assert_not_called()
 
+    def test_fetch_reports_missing_workflow_without_retrying(self):
+        error = urllib.error.HTTPError(
+            url="https://api.github.com/example",
+            code=404,
+            msg="not found",
+            hdrs=None,
+            fp=None,
+        )
+        self.addCleanup(error.close)
+        opener = mock.Mock(side_effect=error)
+        sleeper = mock.Mock()
+
+        with self.assertRaisesRegex(RuntimeError, "monitored workflow was not found"):
+            fetch_latest_run(
+                self.target,
+                None,
+                opener=opener,
+                sleeper=sleeper,
+            )
+
+        opener.assert_called_once()
+        sleeper.assert_not_called()
+
     def test_fetch_omits_authorization_for_public_api_read(self):
         response = io.StringIO(json.dumps(self.payload()))
         opener = mock.Mock(return_value=response)
@@ -237,7 +260,7 @@ class CheckXcode27NightlyRunsTests(unittest.TestCase):
         )
         self.assertIn("customerio/customerio-flutter: no scheduled run", output.getvalue())
 
-    def test_main_continues_after_a_target_fetch_raises(self):
+    def test_main_returns_monitoring_error_after_a_target_fetch_raises(self):
         requested = []
 
         def fetcher(target, _token):
@@ -260,7 +283,7 @@ class CheckXcode27NightlyRunsTests(unittest.TestCase):
                 now=self.now,
             )
 
-        self.assertEqual(result, 1)
+        self.assertEqual(result, 2)
         self.assertEqual(
             requested,
             ["customerio/customerio-ios", "customerio/customerio-flutter"],
