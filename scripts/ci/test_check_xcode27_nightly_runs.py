@@ -49,6 +49,11 @@ class CheckXcode27NightlyRunsTests(unittest.TestCase):
         self.assertFalse(healthy)
         self.assertIn("stale", message)
 
+    def test_future_run_is_unhealthy_with_specific_diagnostic(self):
+        healthy, message = self.classify(self.payload(created_at="2026-08-18T05:17:00Z"))
+        self.assertFalse(healthy)
+        self.assertIn("dated in the future", message)
+
     def test_run_older_than_missing_nightly_threshold_is_stale(self):
         healthy, message = classify_latest_run(
             self.target,

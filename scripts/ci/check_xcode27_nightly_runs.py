@@ -55,7 +55,9 @@ def classify_latest_run(
 
     age = now - parse_github_time(created_at)
     url = run.get("html_url", "unknown URL")
-    if age < dt.timedelta(0) or age > max_age:
+    if age < dt.timedelta(0):
+        return False, f"{target.repository}: latest scheduled run is dated in the future ({created_at}, {url})"
+    if age > max_age:
         return False, f"{target.repository}: latest scheduled run is stale ({created_at}, {url})"
     if run.get("status") != "completed":
         return False, f"{target.repository}: latest scheduled run is {run.get('status')} ({url})"
