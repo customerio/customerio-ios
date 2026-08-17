@@ -8,9 +8,9 @@ on:
       - 'scripts/ci/test_check_xcode27_nightly_runs.py'
   schedule:
     # iOS, Flutter, and Expo start at 05:17, 06:17, and 07:17 UTC. Check after
-    # a six-hour Expo completion window rather than relying on workflow actors
+    # an eight-hour Expo completion window rather than relying on workflow actors
     # to notice failures or absent scheduled runs.
-    - cron: '17 13 * * *'
+    - cron: '17 15 * * *'
   workflow_dispatch:
 
 permissions:

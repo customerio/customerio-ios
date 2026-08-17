@@ -99,6 +99,20 @@ def fetch_latest_run(
         try:
             with opener(request, timeout=20) as response:
                 return json.load(response)
+        except urllib.error.HTTPError as error:
+            remaining = error.headers.get("X-RateLimit-Remaining")
+            retry_after = error.headers.get("Retry-After")
+            if error.code in (403, 429) and (remaining == "0" or retry_after):
+                reset = error.headers.get("X-RateLimit-Reset", "unknown")
+                raise RuntimeError(
+                    f"{target.repository}: GitHub API rate limited this runner "
+                    f"(reset={reset}, retry-after={retry_after or 'unknown'})"
+                ) from error
+            if attempt + 1 == attempts:
+                raise RuntimeError(
+                    f"{target.repository}: GitHub API request failed after {attempts} attempts: {error}"
+                ) from error
+            sleeper(2**attempt)
         except (TimeoutError, urllib.error.URLError, json.JSONDecodeError) as error:
             if attempt + 1 == attempts:
                 raise RuntimeError(

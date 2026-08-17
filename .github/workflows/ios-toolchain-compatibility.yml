@@ -120,7 +120,7 @@ jobs:
       - name: Install and launch fixture
         id: launch
         # TODO(MBL-2248): switch to @main after customerio/mobile-ci-tools#16 merges.
-        uses: customerio/mobile-ci-tools/github-actions/ios/launch-simulator-app/v1@codex/ios-simulator-launch-smoke
+        uses: customerio/mobile-ci-tools/github-actions/ios/launch-simulator-app/v1@8e270bbad1fa659379755aec99c5ad80ac23a7a4
         with:
           app-path: ${{ env.APP_PRODUCT_PATH }}
           expected-ios-major: '27'
@@ -215,18 +215,10 @@ jobs:
         env:
           FIXTURE: ${{ matrix.fixture }}
           APP_NAME: ${{ matrix.app-name }}
-          SIMULATOR_UDID: ${{ steps.launch.outputs.simulator-udid }}
         run: |
           set -euo pipefail
           diagnostics="$RUNNER_TEMP/${FIXTURE}-launch-diagnostics"
           mkdir -p "$diagnostics"
-          if [[ "$SIMULATOR_UDID" =~ ^[A-Za-z0-9-]+$ && "$SIMULATOR_UDID" != unknown ]]; then
-            xcrun simctl diagnose \
-              -b \
-              --timeout=120 \
-              --output="$diagnostics" \
-              --udid="$SIMULATOR_UDID" || true
-          fi
           crash_reports="$HOME/Library/Logs/DiagnosticReports"
           if [[ -d "$crash_reports" ]]; then
             expected_executable="${APP_NAME%.app}"

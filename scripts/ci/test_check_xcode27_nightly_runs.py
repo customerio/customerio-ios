@@ -48,6 +48,18 @@ class CheckXcode27NightlyRunsTests(unittest.TestCase):
         self.assertFalse(healthy)
         self.assertIn("no scheduled run", message)
 
+    def test_malformed_run_is_unhealthy(self):
+        healthy, message = self.classify({"workflow_runs": ["not a run"]})
+        self.assertFalse(healthy)
+        self.assertIn("response is malformed", message)
+
+    def test_run_without_creation_time_is_unhealthy(self):
+        payload = self.payload()
+        del payload["workflow_runs"][0]["created_at"]
+        healthy, message = self.classify(payload)
+        self.assertFalse(healthy)
+        self.assertIn("no creation time", message)
+
     def test_stale_run_is_unhealthy(self):
         healthy, message = self.classify(self.payload(created_at="2026-08-15T05:17:00Z"))
         self.assertFalse(healthy)
@@ -148,6 +160,29 @@ class CheckXcode27NightlyRunsTests(unittest.TestCase):
 
         self.assertEqual(opener.call_count, 3)
         self.assertEqual(sleeper.call_args_list, [mock.call(1), mock.call(2)])
+
+    def test_fetch_reports_rate_limit_without_retrying(self):
+        error = urllib.error.HTTPError(
+            url="https://api.github.com/example",
+            code=403,
+            msg="rate limited",
+            hdrs={"X-RateLimit-Remaining": "0", "X-RateLimit-Reset": "12345"},
+            fp=None,
+        )
+        self.addCleanup(error.close)
+        opener = mock.Mock(side_effect=error)
+        sleeper = mock.Mock()
+
+        with self.assertRaisesRegex(RuntimeError, "rate limited this runner.*reset=12345"):
+            fetch_latest_run(
+                self.target,
+                None,
+                opener=opener,
+                sleeper=sleeper,
+            )
+
+        opener.assert_called_once()
+        sleeper.assert_not_called()
 
     def test_fetch_omits_authorization_for_public_api_read(self):
         response = io.StringIO(json.dumps(self.payload()))
