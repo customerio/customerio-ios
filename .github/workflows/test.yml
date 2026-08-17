@@ -16,6 +16,9 @@ jobs:
     steps:
       - name: Check out iOS SDK
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          # The disposable patch test verifies ancestry from its canonical source commit.
+          fetch-depth: 0
 
       - name: Validate lifecycle contract and fixture tooling
         shell: bash

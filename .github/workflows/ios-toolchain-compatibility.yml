@@ -66,12 +66,12 @@ jobs:
           set -o pipefail
           pod _1.16.2_ install --project-directory='Apps/CocoaPods-FCM' 2>&1 | tee "$RUNNER_TEMP/${{ matrix.fixture }}-pod-install.log"
 
-      - name: Compile native APN fixture
+      - name: Compile native APN fixtures
         id: compile-apn
         if: matrix.fixture == 'native-apn'
         shell: bash
         run: |
-          set -o pipefail
+          set -euo pipefail
           xcodebuild \
             -project 'Apps/APN-UIKit/APN UIKit.xcodeproj' \
             -scheme 'APN UIKit' \
@@ -81,6 +81,16 @@ jobs:
             -derivedDataPath "$RUNNER_TEMP/${{ matrix.fixture }}-xcode-27" \
             CODE_SIGNING_ALLOWED=NO \
             build 2>&1 | tee "$RUNNER_TEMP/${{ matrix.fixture }}-build.log"
+          xcodebuild \
+            -project 'Apps/APN-UIKit/APN UIKit.xcodeproj' \
+            -scheme 'APN UIKit' \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath "$RUNNER_TEMP/${{ matrix.fixture }}-xcode-27" \
+            -xcconfig Apps/APN-UIKit/Fixtures/IOS27Lifecycle/AppDelegateOnly.xcconfig \
+            CODE_SIGNING_ALLOWED=NO \
+            build 2>&1 | tee "$RUNNER_TEMP/${{ matrix.fixture }}-appdelegate-only-build.log"
 
       - name: Compile CocoaPods FCM fixture
         id: compile-fcm
@@ -116,6 +126,9 @@ jobs:
             echo
             echo '**Classification:** compile-passed'
             echo "**Fixture:** $FIXTURE"
+            if [[ "$FIXTURE" == 'native-apn' ]]; then
+              echo '**Host topologies:** UIScene and AppDelegate-only control'
+            fi
             echo "**Toolchain:** Xcode $XCODE_VERSION build $XCODE_BUILD, iphonesimulator $IOS_SIMULATOR_SDK"
             echo '**Scope:** unsigned simulator compile only; no launch, callback, push-delivery, signing, or App Store claim'
           } >> "$GITHUB_STEP_SUMMARY"

@@ -4,6 +4,7 @@ from pathlib import Path
 
 
 APP_ROOT = Path(__file__).resolve().parents[2] / "APN UIKit"
+FIXTURE_ROOT = Path(__file__).resolve().parent
 
 
 class NativeHostTopologyTests(unittest.TestCase):
@@ -30,6 +31,37 @@ class NativeHostTopologyTests(unittest.TestCase):
         ).read_text(encoding="utf-8")
         setting = 'INFOPLIST_FILE = "APN UIKit/Info$(CIO_LIFECYCLE_INFOPLIST_SUFFIX).plist";'
         self.assertEqual(project.count(setting), 2)
+        compilation_setting = (
+            'SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) '
+            '$(CIO_LIFECYCLE_SWIFT_ACTIVE_COMPILATION_CONDITIONS)";'
+        )
+        self.assertEqual(project.count(compilation_setting), 2)
+
+        control = (FIXTURE_ROOT / "AppDelegateOnly.xcconfig").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("CIO_LIFECYCLE_INFOPLIST_SUFFIX = -AppDelegateOnly", control)
+        self.assertIn(
+            "CIO_LIFECYCLE_SWIFT_ACTIVE_COMPILATION_CONDITIONS = "
+            "CIO_APP_DELEGATE_ONLY",
+            control,
+        )
+
+    def testAppDelegateOnlyControl_compilesOutSceneSessionSelectors(self) -> None:
+        source = (APP_ROOT / "AppDelegate.swift").read_text(encoding="utf-8")
+        scene_section = source.split("// MARK: UISceneSession Lifecycle", 1)[1].split(
+            "\n}\n\n/*", 1
+        )[0]
+
+        guard_start = scene_section.index("#if !CIO_APP_DELEGATE_ONLY")
+        guard_end = scene_section.index("#endif")
+        for selector in (
+            "configurationForConnecting connectingSceneSession",
+            "didDiscardSceneSessions sceneSessions",
+        ):
+            selector_position = scene_section.index(selector)
+            self.assertLess(guard_start, selector_position)
+            self.assertLess(selector_position, guard_end)
 
     def testAppDelegateOnlyURLRoute_matchesCanonicalTraceChain(self) -> None:
         source = (APP_ROOT / "AppDelegate.swift").read_text(encoding="utf-8")
