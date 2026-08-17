@@ -1,0 +1,56 @@
+name: Xcode 27 nightly watchdog
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/xcode27-nightly-watchdog.yml'
+      - 'scripts/ci/check_xcode27_nightly_runs.py'
+      - 'scripts/ci/test_check_xcode27_nightly_runs.py'
+  schedule:
+    # iOS, Flutter, and Expo start at 05:17, 06:17, and 07:17 UTC. Check after
+    # a six-hour Expo completion window rather than relying on workflow actors
+    # to notice failures or absent scheduled runs.
+    - cron: '17 13 * * *'
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  verify-nightlies:
+    name: Verify Xcode 27 nightly results
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out iOS SDK
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Test watchdog classification
+        run: python3 -m unittest scripts/ci/test_check_xcode27_nightly_runs.py
+
+      - name: Verify scheduled runs completed successfully
+        if: github.event_name != 'pull_request'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          python3 scripts/ci/check_xcode27_nightly_runs.py \
+            --target customerio/customerio-ios:ios-toolchain-compatibility.yml \
+            --target customerio/customerio-flutter:ios-toolchain-compatibility.yml \
+            --target customerio/customerio-expo-plugin:ios-toolchain-compatibility.yml \
+            --max-age-hours 26
+
+      - name: Notify Mobile team of a failed or missing nightly
+        if: failure() && github.event_name == 'schedule'
+        uses: slackapi/slack-github-action@70cd7be8e40a46e8b0eced40b0de447bdb42f68e # v1.26.0
+        with:
+          payload: |
+            {
+              "username": "Xcode 27 nightly watchdog",
+              "icon_emoji": ":rotating_light:",
+              "text": "An Xcode 27 nightly failed, did not complete, or did not run within 26 hours. <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}|Inspect the watchdog run>."
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_NOTIFY_RELEASES_WEBHOOK_URL }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
