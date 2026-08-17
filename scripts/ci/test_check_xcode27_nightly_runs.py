@@ -49,6 +49,14 @@ class CheckXcode27NightlyRunsTests(unittest.TestCase):
         self.assertFalse(healthy)
         self.assertIn("no scheduled run", message)
 
+    def test_missing_runs_field_is_a_monitoring_error(self):
+        with self.assertRaisesRegex(RuntimeError, "workflow runs response is malformed"):
+            self.classify({})
+
+    def test_non_list_runs_field_is_a_monitoring_error(self):
+        with self.assertRaisesRegex(RuntimeError, "workflow runs response is malformed"):
+            self.classify({"workflow_runs": None})
+
     def test_malformed_run_is_a_monitoring_error(self):
         with self.assertRaisesRegex(RuntimeError, "response is malformed"):
             self.classify({"workflow_runs": ["not a run"]})

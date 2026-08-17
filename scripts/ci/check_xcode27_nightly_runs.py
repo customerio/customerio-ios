@@ -51,7 +51,9 @@ def classify_latest_run(
     max_age: dt.timedelta,
 ) -> tuple[bool, str]:
     runs = payload.get("workflow_runs")
-    if not isinstance(runs, list) or not runs:
+    if not isinstance(runs, list):
+        raise MonitoringError(f"{target.repository}: workflow runs response is malformed")
+    if not runs:
         return False, f"{target.repository}: no scheduled run exists"
 
     run = runs[0]
