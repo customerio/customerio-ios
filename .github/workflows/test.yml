@@ -10,6 +10,29 @@ concurrency: # cancel previous workflow run if one exists.
   cancel-in-progress: true
 
 jobs:
+  ios27-lifecycle-contract:
+    name: iOS 27 lifecycle contract
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out iOS SDK
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Validate lifecycle contract and fixture tooling
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m venv "$RUNNER_TEMP/ios27-lifecycle-python"
+          source "$RUNNER_TEMP/ios27-lifecycle-python/bin/activate"
+          python -m pip install --disable-pip-version-check 'jsonschema[format]>=4.18,<5'
+          PYTHONDONTWRITEBYTECODE=1 python -m unittest \
+            docs/dev-notes/test_validate_ios27_lifecycle_trace.py \
+            scripts/test_ios27_lifecycle_contract.py \
+            Apps/APN-UIKit/Fixtures/IOS27Lifecycle/test_native_host_topologies.py \
+            Apps/APN-UIKit/Fixtures/IOS27Lifecycle/test_lifecycle_capture.py \
+            Apps/APN-UIKit/Fixtures/IOS27Lifecycle/test_disposable_source_patch.py \
+            Apps/CocoaPods-FCM/test_ios27_lifecycle_instrumentation.py
+          python scripts/ios27_lifecycle_contract.py verify --root .
+
   test:
     uses: customerio/mobile-ci-tools/.github/workflows/ios-test.yml@main
     with:
@@ -19,5 +42,4 @@ jobs:
       # excon 1.7, which needs >= 3.3, so the shared workflow's 3.2 default cannot install it.
       ruby-version: '3.4'
     secrets:
-      CODECOV_UPLOAD_TOKEN: ${{ secrets.CODECOV_UPLOAD_TOKEN }}  
-  
+      CODECOV_UPLOAD_TOKEN: ${{ secrets.CODECOV_UPLOAD_TOKEN }}

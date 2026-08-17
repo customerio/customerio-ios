@@ -132,7 +132,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
                 routingResult: LifecycleTraceEvidence.widgetRoutingResult(original: url, destination: destination)
             )
         }
-        let handled = destination.map { deepLinkHandler.handleAppSchemeDeepLink($0) } ?? true
+        let handled = routeAppSchemeDestination(destination, window: window, fallback: deepLinkHandler)
         if traceRoute {
             LifecycleTraceHarness.recordURLRoute(
                 callback: .hostRouteURL,
@@ -231,33 +231,37 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             return false
         }
 
-        LifecycleTraceHarness.sharedRecorder?.record(
-            callback: .applicationContinueUserActivity,
-            owner: .applicationDelegate,
-            kind: .osCallback,
-            phase: .entry,
-            observations: LifecycleTraceEvidence.observe(applicationState: application.applicationState),
-            LifecycleTraceEvidence.observe(userActivity: userActivity)
-        )
-
+        let shouldTraceIngress = LifecycleTraceHarness.sharedRecorder?.hostTopology == .appDelegateOnly
         let routeEvidence = LifecycleTraceEvidence.observe(userActivity: userActivity)
-        LifecycleTraceHarness.sharedRecorder?.record(
-            callback: .hostRouteUserActivity,
-            owner: .host,
-            kind: .hostRouting,
-            phase: .intent,
-            observations: routeEvidence
-        )
+        if shouldTraceIngress {
+            LifecycleTraceHarness.sharedRecorder?.record(
+                callback: .applicationContinueUserActivity,
+                owner: .applicationDelegate,
+                kind: .osCallback,
+                phase: .entry,
+                observations: LifecycleTraceEvidence.observe(applicationState: application.applicationState),
+                routeEvidence
+            )
+            LifecycleTraceHarness.sharedRecorder?.record(
+                callback: .hostRouteUserActivity,
+                owner: .host,
+                kind: .hostRouting,
+                phase: .intent,
+                observations: routeEvidence
+            )
+        }
         let handled = deepLinkHandler.handleUniversalLinkDeepLink(universalLinkUrl)
-        LifecycleTraceHarness.sharedRecorder?.record(
-            callback: .hostRouteUserActivity,
-            owner: .host,
-            kind: .hostRouting,
-            phase: .result,
-            observations: routeEvidence,
-            LifecycleTraceEvidence.observe(routingResult: handled ? .handled : .unhandled)
-        )
-        LifecycleTraceHarness.endScenario(after: .hostUserActivityRoute)
+        if shouldTraceIngress {
+            LifecycleTraceHarness.sharedRecorder?.record(
+                callback: .hostRouteUserActivity,
+                owner: .host,
+                kind: .hostRouting,
+                phase: .result,
+                observations: routeEvidence,
+                LifecycleTraceEvidence.observe(routingResult: handled ? .handled : .unhandled)
+            )
+            LifecycleTraceHarness.endScenario(after: .hostUserActivityRoute)
+        }
         return handled
     }
 

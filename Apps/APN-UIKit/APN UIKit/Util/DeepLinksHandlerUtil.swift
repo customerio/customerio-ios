@@ -1,8 +1,24 @@
 import Foundation
+import UIKit
 
 protocol DeepLinksHandlerUtil {
     func handleAppSchemeDeepLink(_ url: URL) -> Bool
     func handleUniversalLinkDeepLink(_ url: URL) -> Bool
+}
+
+@MainActor func routeAppSchemeDestination(
+    _ destination: URL?,
+    window: UIWindow?,
+    fallback: DeepLinksHandlerUtil
+) -> Bool {
+    guard let destination else { return true }
+    guard #available(iOS 17.2, *), destination.host == LiveActivitiesViewController.deepLinkHost else {
+        return fallback.handleAppSchemeDeepLink(destination)
+    }
+    guard let navigationController = window?.rootViewController as? UINavigationController else { return false }
+    if navigationController.topViewController is LiveActivitiesViewController { return true }
+    navigationController.pushViewController(LiveActivitiesViewController(), animated: true)
+    return true
 }
 
 // sourcery: InjectRegisterShared = "DeepLinksHandlerUtil"

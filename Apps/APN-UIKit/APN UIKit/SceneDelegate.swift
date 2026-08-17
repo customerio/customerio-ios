@@ -168,12 +168,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
             return traceRoute
         }
         url = destination
-        let handled: Bool
-        if #available(iOS 17.2, *), url.host == LiveActivitiesViewController.deepLinkHost {
-            handled = routeToLiveActivities()
-        } else {
-            handled = deepLinkHandler.handleAppSchemeDeepLink(url)
-        }
+        let handled = routeAppSchemeDestination(url, window: window, fallback: deepLinkHandler)
         if traceRoute {
             recordHostRouteResult(evidence: routeEvidence, handled: handled)
         }
@@ -185,14 +180,6 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     private static func widgetRoutingResult(original: URL, destination: URL?) -> LifecycleTraceRoutingResult {
         guard let destination = destination else { return .handled }
         return destination == original ? .unhandled : .redirect
-    }
-
-    @available(iOS 17.2, *)
-    private func routeToLiveActivities() -> Bool {
-        guard let nav = window?.rootViewController as? UINavigationController else { return false }
-        if nav.topViewController is LiveActivitiesViewController { return true }
-        nav.pushViewController(LiveActivitiesViewController(), animated: true)
-        return true
     }
 
     private func recordHostRouteIntent(evidence: LifecycleTraceObservation) {

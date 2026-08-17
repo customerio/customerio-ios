@@ -54,6 +54,16 @@ contract. A controller may still start a new process for `token-registration`,
 `registration-failure`, or `app-background-foreground`; their launch callbacks are intentionally
 outside those scenario-focused traces so they cannot be mistaken for cold-launch ingress evidence.
 
+The APN UIKit target keeps both host topologies buildable from the same project. Its normal build
+uses `Info.plist` and UIScene. The AppDelegate-only control selects the scene-free
+`Info-AppDelegateOnly.plist` without changing dependency targets:
+
+```sh
+xcodebuild -project 'Apps/APN-UIKit/APN UIKit.xcodeproj' -scheme 'APN UIKit' \
+  -destination 'generic/platform=iOS Simulator' \
+  CIO_LIFECYCLE_INFOPLIST_SUFFIX=-AppDelegateOnly build
+```
+
 The focused test target compiles a fixture-local copy of the recorder types so it can stress the
 buffer and serializer without linking SampleAppsCommon into notification extensions. Therefore the
 process-wide singleton/probe wiring remains an integration boundary for an actual capture runner.
