@@ -260,6 +260,23 @@ class CheckXcode27NightlyRunsTests(unittest.TestCase):
         )
         self.assertIn("customerio/customerio-flutter: no scheduled run", output.getvalue())
 
+    def test_main_returns_success_when_every_target_is_healthy(self):
+        with redirect_stdout(io.StringIO()):
+            result = main(
+                [
+                    "--target",
+                    "customerio/customerio-ios:ios-toolchain-compatibility.yml",
+                    "--target",
+                    "customerio/customerio-flutter:ios-toolchain-compatibility.yml",
+                    "--max-age-hours",
+                    "26",
+                ],
+                fetcher=lambda _target, _token: self.payload(),
+                now=self.now,
+            )
+
+        self.assertEqual(result, 0)
+
     def test_main_returns_monitoring_error_after_a_target_fetch_raises(self):
         requested = []
 
