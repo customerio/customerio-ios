@@ -93,6 +93,42 @@ final class PeerDeliveryCompletionAggregateTests: XCTestCase {
         XCTAssertEqual(completionCount, 1)
     }
 
+    func testAggregate_whenPeerDiscardsCompletion_thenAbandonmentCleanupRuns() {
+        var abandonmentCount = 0
+
+        do {
+            let aggregate = PeerDeliveryCompletionAggregate<Void>(
+                retaining: [LifetimeToken()],
+                initialValue: (),
+                merge: { _, _ in () },
+                onFinished: { _ in XCTFail("incomplete delivery must not finish") },
+                onAbandoned: { abandonmentCount += 1 }
+            )
+            aggregate.finishDispatching()
+        }
+
+        XCTAssertEqual(abandonmentCount, 1)
+    }
+
+    func testAggregate_whenDeliveryCompletes_thenAbandonmentCleanupDoesNotRun() {
+        var abandonmentCount = 0
+
+        do {
+            let aggregate = PeerDeliveryCompletionAggregate<Void>(
+                retaining: [LifetimeToken()],
+                initialValue: (),
+                merge: { _, _ in () },
+                onFinished: { _ in },
+                onAbandoned: { abandonmentCount += 1 }
+            )
+
+            aggregate.finishDispatching()
+            aggregate.complete(token: 0, with: ())
+        }
+
+        XCTAssertEqual(abandonmentCount, 0)
+    }
+
     func testAggregate_whenOuterHandlerReenters_thenSnapshotIsRetainedUntilOuterReturns() {
         var token: LifetimeToken? = LifetimeToken()
         weak var weakToken = token

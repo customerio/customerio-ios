@@ -30,6 +30,7 @@ final class CioNotificationDelegateMultiPeerTests: XCTestCase {
         var openSettingsCallsCount = 0
         var presentationOptions: UNNotificationPresentationOptions = []
         var completionCapture: CompletionCapture?
+        var discardsDidReceiveCompletion = false
         var onWillPresentInvocation: (() -> Void)?
 
         override func responds(to selector: Selector!) -> Bool {
@@ -65,6 +66,7 @@ final class CioNotificationDelegateMultiPeerTests: XCTestCase {
             withCompletionHandler completionHandler: @escaping () -> Void
         ) {
             didReceiveCallsCount += 1
+            guard !discardsDidReceiveCompletion else { return }
             if let completionCapture = completionCapture {
                 completionCapture.captureDidReceive(completionHandler)
             } else {
@@ -300,6 +302,29 @@ final class CioNotificationDelegateMultiPeerTests: XCTestCase {
         XCTAssertEqual(implementingPeer.didReceiveCallsCount, 1)
         XCTAssertEqual(outerCallsCount, 1)
         XCTAssertEqual(pushHandlingCallsCount, 1)
+    }
+
+    func testDidReceive_whenPeerDiscardsCompletion_thenAbandonedDeliveryDoesNotPoisonObjectIdentity() {
+        let peer = Peer()
+        peer.discardsDidReceiveCompletion = true
+        registry.register(peer)
+        let response = UNNotificationResponse.testInstance
+        var outerCallsCount = 0
+
+        delegate.userNotificationCenter(
+            UNUserNotificationCenter.current(),
+            didReceive: response,
+            withCompletionHandler: { outerCallsCount += 1 }
+        )
+        delegate.userNotificationCenter(
+            UNUserNotificationCenter.current(),
+            didReceive: response,
+            withCompletionHandler: { outerCallsCount += 1 }
+        )
+
+        XCTAssertEqual(peer.didReceiveCallsCount, 2)
+        XCTAssertEqual(pushHandlingCallsCount, 2)
+        XCTAssertEqual(outerCallsCount, 0)
     }
 
     func testDidReceive_whenCioHandlingRegistersPeerReentrantly_thenNewPeerStartsNextDelivery() {

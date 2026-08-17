@@ -17,7 +17,9 @@ import Foundation
 /// ignore a reply after an SDK-selected deadline, but choosing that deadline would guess on behalf of an
 /// asynchronous peer and can discard its real `willPresent` options. That policy change is outside this
 /// compatibility fix. Apple may decline to present a notification when completion is not timely, so host
-/// delegates must still honor the platform completion contract.
+/// delegates must still honor the platform completion contract. A peer that retains its completion forever
+/// intentionally keeps the peer snapshot and delivery object alive forever as the cost of that no-timeout policy;
+/// retaining the delivery object also prevents its guarded identity from being recycled.
 final class PeerDeliveryCompletionAggregate<Value> {
     /// Guards every stored property.
     ///
@@ -37,14 +39,18 @@ final class PeerDeliveryCompletionAggregate<Value> {
     private let merge: (Value, Value) -> Value
     /// Set to `nil` the moment it is handed out, which is what makes the outer call one-shot.
     private var onFinished: ((Value) -> Void)?
-    /// The exact peer snapshot used for this delivery. Keeping it here prevents an app-owned peer from being
-    /// deallocated after dispatch but before an asynchronous completion. It is released immediately after the
-    /// one outer completion returns. This is intentional per-delivery retention, not registry ownership.
-    private var retainedPeers: [AnyObject]
+    /// The exact peer snapshot and delivery object used for this fan-out. Retaining the delivery object prevents
+    /// its `ObjectIdentifier` from being recycled while the reentrancy guard still contains that identifier.
+    /// These objects are released immediately after the one outer completion returns.
+    private var retainedObjects: [AnyObject]
+    /// Clears the proxy's reentrancy guard if every peer discards its completion closure. A peer that retains the
+    /// closure for asynchronous work keeps this aggregate and its delivery object alive until it reports, including
+    /// indefinitely if it never reports.
+    private var onAbandoned: (() -> Void)?
 
     /// - Parameters:
-    ///   - retainedPeers: The exact peers invoked for this delivery. `[]` is valid: the outer handler then
-    ///     fires from ``finishDispatching()`` with only `initialValue`.
+    ///   - retainedPeers: The exact peers invoked for this delivery. `[]` is valid.
+    ///   - deliveryObject: The notification or response whose identity is held by the proxy's reentrancy guard.
     ///   - initialValue: The value to return before merging peer results. The caller decides whether this is an
     ///     SDK fallback or the merge operation's identity value.
     ///   - merge: Combines the value so far with the value a peer reported. Must be order independent so the
@@ -52,15 +58,22 @@ final class PeerDeliveryCompletionAggregate<Value> {
     ///   - onFinished: The system's completion handler. Called exactly once, never while the lock is held.
     init(
         retaining retainedPeers: [AnyObject],
+        deliveryObject: AnyObject? = nil,
         initialValue: Value,
         merge: @escaping (Value, Value) -> Value,
-        onFinished: @escaping (Value) -> Void
+        onFinished: @escaping (Value) -> Void,
+        onAbandoned: (() -> Void)? = nil
     ) {
         self.pendingTokens = Set(retainedPeers.indices)
         self.value = initialValue
         self.merge = merge
         self.onFinished = onFinished
-        self.retainedPeers = retainedPeers
+        self.retainedObjects = [deliveryObject].compactMap { $0 } + retainedPeers
+        self.onAbandoned = onAbandoned
+    }
+
+    deinit {
+        onAbandoned?()
     }
 
     /// Records that the peer identified by `token` finished, merging the value it reported.
@@ -81,7 +94,7 @@ final class PeerDeliveryCompletionAggregate<Value> {
 
         if let finish = finish {
             finish(mergedValue)
-            releaseRetainedPeers()
+            releaseRetainedObjects()
         }
     }
 
@@ -103,7 +116,7 @@ final class PeerDeliveryCompletionAggregate<Value> {
 
         if let finish = finish {
             finish(mergedValue)
-            releaseRetainedPeers()
+            releaseRetainedObjects()
         }
     }
 
@@ -115,15 +128,16 @@ final class PeerDeliveryCompletionAggregate<Value> {
 
         let handler = onFinished
         onFinished = nil
+        onAbandoned = nil
         return handler
     }
 
     /// Releases the stable delivery snapshot. Called only by the invocation that won the one-shot finish race,
     /// and only after the outer completion returned, so a losing or reentrant call cannot release peers while
     /// the outer handler is still executing.
-    private func releaseRetainedPeers() {
+    private func releaseRetainedObjects() {
         lock.lock()
-        retainedPeers = []
+        retainedObjects = []
         lock.unlock()
     }
 }

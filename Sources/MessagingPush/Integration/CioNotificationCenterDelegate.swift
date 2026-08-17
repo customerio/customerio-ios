@@ -119,11 +119,15 @@ open class CioNotificationCenterDelegate: NSObject, UNUserNotificationCenterDele
         )
         let aggregate = PeerDeliveryCompletionAggregate<UNNotificationPresentationOptions>(
             retaining: peers.map { $0 as AnyObject },
+            deliveryObject: notification,
             initialValue: peers.isEmpty ? cioConfiguredPresentationOptions : [],
             merge: { $0.union($1) },
             onFinished: { [weak self] options in
                 self?.endDelivery(deliveryIdentifier)
                 completionHandler(options)
+            },
+            onAbandoned: { [weak self] in
+                self?.endDelivery(deliveryIdentifier)
             }
         )
 
@@ -164,11 +168,15 @@ open class CioNotificationCenterDelegate: NSObject, UNUserNotificationCenterDele
         }
         let aggregate = PeerDeliveryCompletionAggregate<Void>(
             retaining: peers.map { $0 as AnyObject },
+            deliveryObject: response,
             initialValue: (),
             merge: { _, _ in () },
             onFinished: { [weak self] _ in
                 self?.endDelivery(deliveryIdentifier)
                 completionHandler()
+            },
+            onAbandoned: { [weak self] in
+                self?.endDelivery(deliveryIdentifier)
             }
         )
 
