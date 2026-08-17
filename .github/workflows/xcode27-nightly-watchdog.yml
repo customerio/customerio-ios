@@ -56,7 +56,9 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
       - name: Notify Mobile team of a failed or missing nightly
-        if: github.event_name == 'schedule' && steps.verify.outputs.exit-code == '1'
+        if: >-
+          github.event_name == 'schedule' &&
+          (steps.verify.outputs.exit-code == '1' || steps.verify.outputs.exit-code == '3')
         uses: slackapi/slack-github-action@70cd7be8e40a46e8b0eced40b0de447bdb42f68e # v1.26.0
         with:
           payload: |
@@ -70,7 +72,9 @@ jobs:
           SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
 
       - name: Notify Mobile team of a watchdog infrastructure failure
-        if: github.event_name == 'schedule' && steps.verify.outputs.exit-code == '2'
+        if: >-
+          github.event_name == 'schedule' &&
+          (steps.verify.outputs.exit-code == '2' || steps.verify.outputs.exit-code == '3')
         uses: slackapi/slack-github-action@70cd7be8e40a46e8b0eced40b0de447bdb42f68e # v1.26.0
         with:
           payload: |
@@ -106,7 +110,8 @@ jobs:
           steps.verify.outputs.exit-code != '' &&
           steps.verify.outputs.exit-code != '0' &&
           steps.verify.outputs.exit-code != '1' &&
-          steps.verify.outputs.exit-code != '2'
+          steps.verify.outputs.exit-code != '2' &&
+          steps.verify.outputs.exit-code != '3'
         uses: slackapi/slack-github-action@70cd7be8e40a46e8b0eced40b0de447bdb42f68e # v1.26.0
         with:
           payload: |

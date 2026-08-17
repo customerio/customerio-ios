@@ -2,6 +2,7 @@ import datetime as dt
 import io
 import json
 import os
+import tempfile
 import unittest
 import urllib.error
 from contextlib import redirect_stderr, redirect_stdout
@@ -360,6 +361,55 @@ class CheckXcode27NightlyRunsTests(unittest.TestCase):
             },
         )
 
+    def test_main_omits_token_when_repository_identity_is_unavailable(self):
+        received_tokens = []
+
+        def fetcher(_target, token):
+            received_tokens.append(token)
+            return self.payload()
+
+        with mock.patch.dict(
+            os.environ,
+            {"GITHUB_TOKEN": "installation-token"},
+            clear=True,
+        ), redirect_stdout(io.StringIO()):
+            result = main(
+                [
+                    "--target",
+                    "customerio/customerio-ios:ios-toolchain-compatibility.yml",
+                    "--max-age-hours",
+                    "26",
+                ],
+                fetcher=fetcher,
+                now=self.now,
+            )
+
+        self.assertEqual(result, 0)
+        self.assertEqual(received_tokens, [None])
+
+    def test_main_writes_github_summary(self):
+        with tempfile.NamedTemporaryFile(mode="r+", encoding="utf-8") as summary:
+            with mock.patch.dict(
+                os.environ,
+                {"GITHUB_STEP_SUMMARY": summary.name},
+            ), redirect_stdout(io.StringIO()):
+                result = main(
+                    [
+                        "--target",
+                        "customerio/customerio-ios:ios-toolchain-compatibility.yml",
+                        "--max-age-hours",
+                        "26",
+                    ],
+                    fetcher=lambda _target, _token: self.payload(),
+                    now=self.now,
+                )
+            summary.seek(0)
+            contents = summary.read()
+
+        self.assertEqual(result, 0)
+        self.assertIn("## Xcode 27 nightly watchdog", contents)
+        self.assertIn("latest scheduled run succeeded", contents)
+
     def test_main_preserves_unhealthy_message_when_another_target_has_monitoring_error(self):
         def fetcher(target, _token):
             if target.repository.endswith("customerio-ios"):
@@ -381,7 +431,7 @@ class CheckXcode27NightlyRunsTests(unittest.TestCase):
                 now=self.now,
             )
 
-        self.assertEqual(result, 2)
+        self.assertEqual(result, 3)
         self.assertIn("latest scheduled run concluded failure", output.getvalue())
         self.assertIn("check failed: request timed out", output.getvalue())
 

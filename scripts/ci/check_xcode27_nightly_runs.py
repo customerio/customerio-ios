@@ -172,11 +172,15 @@ def main(
     messages: list[str] = []
     healthy = True
     monitoring_failed = False
+    unhealthy_detected = False
     for target in arguments.target:
         try:
-            target_token = token if not token_repository or target.repository == token_repository else None
+            target_token = (
+                token if token_repository and target.repository == token_repository else None
+            )
             payload = fetcher(target, target_token)
             target_healthy, message = classify_latest_run(target, payload, now=now, max_age=max_age)
+            unhealthy_detected = unhealthy_detected or not target_healthy
         except Exception as error:
             target_healthy, message = False, f"{target.repository}: check failed: {error}"
             monitoring_failed = True
@@ -186,7 +190,7 @@ def main(
 
     write_summary(messages)
     if monitoring_failed:
-        return 2
+        return 3 if unhealthy_detected else 2
     return 0 if healthy else 1
 
 
