@@ -18,6 +18,8 @@ struct MainApp: App {
 
     @State private var settingsScreen: SettingsView?
 
+    private let lifecycleCoordinator = CioAppLifecycleCoordinator(hostTopology: .swiftUILifecycle)
+
     var body: some Scene {
         WindowGroup {
             HStack {
@@ -32,50 +34,43 @@ struct MainApp: App {
                         .environmentObject(userManager)
                 }
             }.accentColor(Color("AccentColor")) // sets Color.accentColor for all children
-                .onOpenURL { incomingURL in // This function is how to implement deep links in a Swift UI app.
-                    // A tap on a Customer.io Live Activity arrives as a CIO tracking URL. Hand it to
-                    // the SDK first: it reports the `opened` metric for the exact delivery that was on
-                    // screen and returns the customer's deep link to navigate to (nil if there is
-                    // none). Any non-Customer.io URL is returned unchanged.
-                    guard let deepLink = CustomerIO.liveActivities.handleWidgetUrl(incomingURL) else { return }
-                    // This app opens deep links using Universal Links and app scheme deep links.
-                    //
-                    // Universal Links: Any URL that begins with `https://ciosample.page.link`...
-                    // App scheme: Any URL that begins with `cocoapods-fcm://`...
-                    //
-                    // ...will open the app and display the deep link in a pop-up.
-                    //
-                    // Suggestions for debugging why deep links aren't working: https://stackoverflow.com/questions/32751225/ios-universal-links-are-not-opening-in-app
-                    if let urlComponents = URLComponents(url: deepLink, resolvingAgainstBaseURL: false) {
-                        var command = ""
-                        if urlComponents.scheme == "https" { // universal link
-                            // path will start with a / character
-                            command = urlComponents.path.replacingOccurrences(of: "/", with: "")
-                        } else {
-                            command = urlComponents.host!
-                        }
-
-                        switch command {
-                        case "login":
-                            userManager.logout() // will force the app's UI to navigate back to login screen
-                        case "dashboard":
-                            settingsScreen = nil // as long as user is logged in, this will make dashboard show
-                        case "settings":
-                            var siteId: String?
-                            var cdpApiKey: String?
-
-                            if let queryItems = urlComponents.queryItems {
-                                siteId = queryItems.first { $0.name == "site_id" }?.value
-                                cdpApiKey = queryItems.first { $0.name == "cdp_api_key" }?.value
-                            }
-
-                            settingsScreen = SettingsView(siteId: siteId, cdpApiKey: cdpApiKey) {
-                                settingsScreen = nil
-                            }
-                        default: break
-                        }
-                    }
+                .onOpenURL { incomingURL in
+                    _ = lifecycleCoordinator.handleSwiftUIOpenURL(incomingURL) { route(url: $0) }
                 }
         }
+    }
+
+    private func route(url incomingURL: URL) -> Bool {
+        // A Customer.io Live Activity URL reports the exact opened delivery before routing its
+        // redirect. A delivery-only URL is handled even when there is no redirect.
+        guard let deepLink = CustomerIO.liveActivities.handleWidgetUrl(incomingURL) else {
+            return true
+        }
+        guard let urlComponents = URLComponents(url: deepLink, resolvingAgainstBaseURL: false) else {
+            return false
+        }
+
+        let command: String
+        if urlComponents.scheme == "https" {
+            command = urlComponents.path.replacingOccurrences(of: "/", with: "")
+        } else {
+            command = urlComponents.host ?? ""
+        }
+
+        switch command {
+        case "login":
+            userManager.logout()
+        case "dashboard":
+            settingsScreen = nil
+        case "settings":
+            let siteId = urlComponents.queryItems?.first { $0.name == "site_id" }?.value
+            let cdpApiKey = urlComponents.queryItems?.first { $0.name == "cdp_api_key" }?.value
+            settingsScreen = SettingsView(siteId: siteId, cdpApiKey: cdpApiKey) {
+                settingsScreen = nil
+            }
+        default:
+            return false
+        }
+        return true
     }
 }
