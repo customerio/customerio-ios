@@ -120,7 +120,7 @@ jobs:
       - name: Install and launch fixture
         id: launch
         # TODO(MBL-2248): switch to @main after customerio/mobile-ci-tools#16 merges.
-        uses: customerio/mobile-ci-tools/github-actions/ios/launch-simulator-app/v1@f178d035fd2d76c35abcf0561abca473c13e2084
+        uses: customerio/mobile-ci-tools/github-actions/ios/launch-simulator-app/v1@e83f36523b5068a2e274813a4d59929d438335d5
         with:
           app-path: ${{ env.APP_PRODUCT_PATH }}
           expected-ios-major: '27'
@@ -128,6 +128,7 @@ jobs:
           log-path: ${{ runner.temp }}/${{ matrix.fixture }}-launch.log
 
       - name: Record compatibility result
+        id: record-result
         if: steps.launch.outcome == 'success'
         shell: bash
         env:
@@ -289,7 +290,8 @@ jobs:
           steps.compile-fcm.outcome != 'failure' &&
           (steps.compile-apn.outcome != 'skipped' || steps.compile-fcm.outcome != 'skipped') &&
           steps.resolve-app.outcome != 'failure' &&
-          steps.launch.outcome != 'failure'
+          steps.launch.outcome != 'failure' &&
+          steps.record-result.outcome != 'success'
         shell: bash
         env:
           FIXTURE: ${{ matrix.fixture }}
