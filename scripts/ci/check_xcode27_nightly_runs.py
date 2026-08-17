@@ -56,12 +56,18 @@ def classify_latest_run(
 
     run = runs[0]
     if not isinstance(run, dict):
-        return False, f"{target.repository}: latest run response is malformed"
+        raise MonitoringError(f"{target.repository}: latest run response is malformed")
     created_at = run.get("created_at")
     if not isinstance(created_at, str):
-        return False, f"{target.repository}: latest run has no creation time"
+        raise MonitoringError(f"{target.repository}: latest run has no creation time")
 
-    age = now - parse_github_time(created_at)
+    try:
+        created_time = parse_github_time(created_at)
+    except ValueError as error:
+        raise MonitoringError(
+            f"{target.repository}: latest run has an invalid creation time"
+        ) from error
+    age = now - created_time
     url = run.get("html_url", "unknown URL")
     if age < dt.timedelta(0):
         return False, f"{target.repository}: latest scheduled run is dated in the future ({created_at}, {url})"
@@ -180,5 +186,15 @@ def main(
     return 0 if healthy else 1
 
 
+def run_cli() -> int:
+    """Return an infrastructure exit code for watchdog faults outside target checks."""
+
+    try:
+        return main()
+    except Exception as error:
+        print(f"watchdog failed before classifying nightlies: {error}", file=sys.stderr)
+        return 2
+
+
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(run_cli())

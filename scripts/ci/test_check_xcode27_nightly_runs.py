@@ -3,7 +3,7 @@ import io
 import json
 import unittest
 import urllib.error
-from contextlib import redirect_stdout
+from contextlib import redirect_stderr, redirect_stdout
 from unittest import mock
 
 from scripts.ci.check_xcode27_nightly_runs import (
@@ -13,6 +13,7 @@ from scripts.ci.check_xcode27_nightly_runs import (
     fetch_latest_run,
     main,
     parse_target,
+    run_cli,
 )
 
 
@@ -48,17 +49,19 @@ class CheckXcode27NightlyRunsTests(unittest.TestCase):
         self.assertFalse(healthy)
         self.assertIn("no scheduled run", message)
 
-    def test_malformed_run_is_unhealthy(self):
-        healthy, message = self.classify({"workflow_runs": ["not a run"]})
-        self.assertFalse(healthy)
-        self.assertIn("response is malformed", message)
+    def test_malformed_run_is_a_monitoring_error(self):
+        with self.assertRaisesRegex(RuntimeError, "response is malformed"):
+            self.classify({"workflow_runs": ["not a run"]})
 
-    def test_run_without_creation_time_is_unhealthy(self):
+    def test_run_without_creation_time_is_a_monitoring_error(self):
         payload = self.payload()
         del payload["workflow_runs"][0]["created_at"]
-        healthy, message = self.classify(payload)
-        self.assertFalse(healthy)
-        self.assertIn("no creation time", message)
+        with self.assertRaisesRegex(RuntimeError, "no creation time"):
+            self.classify(payload)
+
+    def test_invalid_creation_time_is_a_monitoring_error(self):
+        with self.assertRaisesRegex(RuntimeError, "invalid creation time"):
+            self.classify(self.payload(created_at="not-a-date"))
 
     def test_stale_run_is_unhealthy(self):
         healthy, message = self.classify(self.payload(created_at="2026-08-15T05:17:00Z"))
@@ -305,6 +308,17 @@ class CheckXcode27NightlyRunsTests(unittest.TestCase):
             requested,
             ["customerio/customerio-ios", "customerio/customerio-flutter"],
         )
+
+    @mock.patch("scripts.ci.check_xcode27_nightly_runs.main")
+    def test_cli_returns_monitoring_error_for_unclassified_fault(self, main_mock):
+        main_mock.side_effect = OSError("summary unavailable")
+        error = io.StringIO()
+
+        with redirect_stderr(error):
+            result = run_cli()
+
+        self.assertEqual(result, 2)
+        self.assertIn("watchdog failed before classifying nightlies", error.getvalue())
 
 if __name__ == "__main__":
     unittest.main()

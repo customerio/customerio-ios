@@ -33,6 +33,8 @@ jobs:
         id: verify
         if: github.event_name != 'pull_request'
         shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
           result_file="$RUNNER_TEMP/xcode27-watchdog-result.txt"

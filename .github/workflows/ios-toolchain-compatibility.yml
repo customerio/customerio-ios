@@ -120,7 +120,7 @@ jobs:
       - name: Install and launch fixture
         id: launch
         # TODO(MBL-2248): switch to @main after customerio/mobile-ci-tools#16 merges.
-        uses: customerio/mobile-ci-tools/github-actions/ios/launch-simulator-app/v1@4a09284521d9bdcb0747acf21a44371975112e2d
+        uses: customerio/mobile-ci-tools/github-actions/ios/launch-simulator-app/v1@5a3a7cfb412e5b2f25ccf968d002a4af6194a741
         with:
           app-path: ${{ env.APP_PRODUCT_PATH }}
           expected-ios-major: '27'
