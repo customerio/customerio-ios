@@ -81,6 +81,16 @@ jobs:
             -derivedDataPath "$RUNNER_TEMP/${{ matrix.fixture }}-xcode-27" \
             CODE_SIGNING_ALLOWED=NO \
             build 2>&1 | tee "$RUNNER_TEMP/${{ matrix.fixture }}-build.log"
+
+          default_info='Apps/APN-UIKit/APN UIKit/Info.plist'
+          control_info='Apps/APN-UIKit/APN UIKit/Info-AppDelegateOnly.plist'
+          saved_info="$RUNNER_TEMP/native-apn-default-Info.plist"
+          cp "$default_info" "$saved_info"
+          restore_default_info() {
+            cp "$saved_info" "$default_info"
+          }
+          trap restore_default_info EXIT HUP INT TERM
+          cp "$control_info" "$default_info"
           xcodebuild \
             -project 'Apps/APN-UIKit/APN UIKit.xcodeproj' \
             -scheme 'APN UIKit' \
@@ -91,6 +101,9 @@ jobs:
             -xcconfig Apps/APN-UIKit/Fixtures/IOS27Lifecycle/AppDelegateOnly.xcconfig \
             CODE_SIGNING_ALLOWED=NO \
             build 2>&1 | tee "$RUNNER_TEMP/${{ matrix.fixture }}-appdelegate-only-build.log"
+          restore_default_info
+          trap - EXIT HUP INT TERM
+          cmp "$saved_info" "$default_info"
 
       - name: Compile CocoaPods FCM fixture
         id: compile-fcm

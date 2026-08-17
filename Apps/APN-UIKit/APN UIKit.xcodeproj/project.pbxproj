@@ -1062,7 +1062,7 @@
 				DEVELOPMENT_TEAM = "";
 				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = 2YC97BQN3N;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = "APN UIKit/Info$(CIO_LIFECYCLE_INFOPLIST_SUFFIX).plist";
+				INFOPLIST_FILE = "APN UIKit/Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "Native iOS";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "This app uses your location to test the Customer.io Location module.";
 				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
@@ -1102,7 +1102,7 @@
 				DEVELOPMENT_TEAM = "";
 				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = 2YC97BQN3N;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = "APN UIKit/Info$(CIO_LIFECYCLE_INFOPLIST_SUFFIX).plist";
+				INFOPLIST_FILE = "APN UIKit/Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "Native iOS";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "This app uses your location to test the Customer.io Location module.";
 				INFOPLIST_KEY_NSSupportsLiveActivities = YES;

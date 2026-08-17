@@ -29,7 +29,7 @@ class NativeHostTopologyTests(unittest.TestCase):
         project = (
             APP_ROOT.parent / "APN UIKit.xcodeproj" / "project.pbxproj"
         ).read_text(encoding="utf-8")
-        setting = 'INFOPLIST_FILE = "APN UIKit/Info$(CIO_LIFECYCLE_INFOPLIST_SUFFIX).plist";'
+        setting = 'INFOPLIST_FILE = "APN UIKit/Info.plist";'
         self.assertEqual(project.count(setting), 2)
         compilation_setting = (
             'SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) '
@@ -40,12 +40,19 @@ class NativeHostTopologyTests(unittest.TestCase):
         control = (FIXTURE_ROOT / "AppDelegateOnly.xcconfig").read_text(
             encoding="utf-8"
         )
-        self.assertIn("CIO_LIFECYCLE_INFOPLIST_SUFFIX = -AppDelegateOnly", control)
+        self.assertNotIn("INFOPLIST_FILE", control)
         self.assertIn(
             "CIO_LIFECYCLE_SWIFT_ACTIVE_COMPILATION_CONDITIONS = "
             "CIO_APP_DELEGATE_ONLY",
             control,
         )
+
+        workflow = (
+            APP_ROOT.parents[2] / ".github/workflows/ios-toolchain-compatibility.yml"
+        ).read_text(encoding="utf-8")
+        self.assertIn("cp \"$control_info\" \"$default_info\"", workflow)
+        self.assertIn("trap restore_default_info EXIT HUP INT TERM", workflow)
+        self.assertIn("cmp \"$saved_info\" \"$default_info\"", workflow)
 
     def testAppDelegateOnlyControl_compilesOutSceneSessionSelectors(self) -> None:
         source = (APP_ROOT / "AppDelegate.swift").read_text(encoding="utf-8")

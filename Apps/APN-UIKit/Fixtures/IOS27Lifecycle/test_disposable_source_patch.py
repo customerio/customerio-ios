@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from contextlib import contextmanager
 import importlib.util
 from pathlib import Path
 import subprocess
@@ -18,8 +19,49 @@ assert SPEC is not None and SPEC.loader is not None
 MODULE = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(MODULE)
 
+EXTERNAL_BUILD_INPUTS = (
+    Path("Apps/APN-UIKit/BuildEnvironment.swift"),
+    Path("Apps/CocoaPods-FCM/BuildEnvironment.swift"),
+)
+
+
+@contextmanager
+def _available_external_build_inputs():
+    """Supply non-secret placeholders only when a test checkout lacks ignored build inputs."""
+    created: list[Path] = []
+    try:
+        for relative in EXTERNAL_BUILD_INPUTS:
+            path = REPOSITORY_ROOT / relative
+            if path.exists():
+                continue
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("// Disposable fixture test placeholder.\n", encoding="utf-8")
+            created.append(path)
+        yield
+    finally:
+        for path in created:
+            path.unlink(missing_ok=True)
+
 
 class DisposableSourcePatchTests(unittest.TestCase):
+    def test_missing_external_build_inputs_use_disposable_placeholders(self) -> None:
+        global REPOSITORY_ROOT
+
+        original_root = REPOSITORY_ROOT
+        with tempfile.TemporaryDirectory(prefix="cio-ios27-overlay-test-") as temporary:
+            REPOSITORY_ROOT = Path(temporary)
+            try:
+                with _available_external_build_inputs():
+                    for relative in EXTERNAL_BUILD_INPUTS:
+                        self.assertEqual(
+                            (REPOSITORY_ROOT / relative).read_text(encoding="utf-8"),
+                            "// Disposable fixture test placeholder.\n",
+                        )
+                for relative in EXTERNAL_BUILD_INPUTS:
+                    self.assertFalse((REPOSITORY_ROOT / relative).exists())
+            finally:
+                REPOSITORY_ROOT = original_root
+
     def test_app_cold_seats_and_live_activity_route_use_canonical_guards(self) -> None:
         app_delegate = (REPOSITORY_ROOT / "Apps/APN-UIKit/APN UIKit/AppDelegate.swift").read_text(
             encoding="utf-8"
@@ -59,46 +101,47 @@ class DisposableSourcePatchTests(unittest.TestCase):
         for path in FIXTURE_DIRECTORY.iterdir():
             if path.is_file():
                 self.assertNotIn(forbidden_workspace_prefix, path.read_bytes(), path.name)
-        completed = subprocess.run(
-            [
-                sys.executable,
-                str(RUNNER),
-                "--source-root",
-                str(REPOSITORY_ROOT),
-                "--",
-                sys.executable,
-                "-c",
-                (
-                    "import importlib.util, os; from pathlib import Path; "
-                    "root = Path(os.environ['CIO_LIFECYCLE_FIXTURE_REPO_ROOT']).resolve(); "
-                    "assert root == Path.cwd().resolve(); "
-                    "script = root / 'Apps/APN-UIKit/Fixtures/IOS27Lifecycle/"
-                    "run_lifecycle_capture.py'; assert script.is_file(); "
-                    "spec = importlib.util.spec_from_file_location('capture', script); "
-                    "module = importlib.util.module_from_spec(spec); "
-                    "spec.loader.exec_module(module); "
-                    "module._require_disposable_checkout(root, 'token-registration'); "
-                    "patched = root / 'Sources/MessagingPushFCM/Integration/CioAppDelegateFCM.swift'; "
-                    "patched.write_text(patched.read_text() + '\\n'); "
-                    "check = lambda: module._require_disposable_checkout(root, 'token-registration'); "
-                    "caught = False; "
-                    "exec(\"try:\\n check()\\nexcept module.CaptureError as error:\\n "
-                    "assert 'digest mismatch' in str(error)\\n caught = True\"); "
-                    "assert caught, 'mutated post-patch bytes were accepted'; "
-                    "assert 'LifecycleTraceHarness.configureFromEnvironment' in "
-                    "(root / 'Apps/CocoaPods-FCM/src/AppDelegate.swift').read_text(); "
-                    "assert (root / 'Apps/CocoaPods-FCM/test_ios27_lifecycle_instrumentation.py').is_file(); "
-                    "dirty, snapshot = module._snapshot(root); "
-                    "assert dirty and snapshot is not None; "
-                    "assert len(snapshot['tree_hash']) == 64; "
-                    "assert len(snapshot['diff_hash']) == 64"
-                ),
-            ],
-            cwd=REPOSITORY_ROOT,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            text=True,
-        )
+        with _available_external_build_inputs():
+            completed = subprocess.run(
+                [
+                    sys.executable,
+                    str(RUNNER),
+                    "--source-root",
+                    str(REPOSITORY_ROOT),
+                    "--",
+                    sys.executable,
+                    "-c",
+                    (
+                        "import importlib.util, os; from pathlib import Path; "
+                        "root = Path(os.environ['CIO_LIFECYCLE_FIXTURE_REPO_ROOT']).resolve(); "
+                        "assert root == Path.cwd().resolve(); "
+                        "script = root / 'Apps/APN-UIKit/Fixtures/IOS27Lifecycle/"
+                        "run_lifecycle_capture.py'; assert script.is_file(); "
+                        "spec = importlib.util.spec_from_file_location('capture', script); "
+                        "module = importlib.util.module_from_spec(spec); "
+                        "spec.loader.exec_module(module); "
+                        "module._require_disposable_checkout(root, 'token-registration'); "
+                        "patched = root / 'Sources/MessagingPushFCM/Integration/CioAppDelegateFCM.swift'; "
+                        "patched.write_text(patched.read_text() + '\\n'); "
+                        "check = lambda: module._require_disposable_checkout(root, 'token-registration'); "
+                        "caught = False; "
+                        "exec(\"try:\\n check()\\nexcept module.CaptureError as error:\\n "
+                        "assert 'digest mismatch' in str(error)\\n caught = True\"); "
+                        "assert caught, 'mutated post-patch bytes were accepted'; "
+                        "assert 'LifecycleTraceHarness.configureFromEnvironment' in "
+                        "(root / 'Apps/CocoaPods-FCM/src/AppDelegate.swift').read_text(); "
+                        "assert (root / 'Apps/CocoaPods-FCM/test_ios27_lifecycle_instrumentation.py').is_file(); "
+                        "dirty, snapshot = module._snapshot(root); "
+                        "assert dirty and snapshot is not None; "
+                        "assert len(snapshot['tree_hash']) == 64; "
+                        "assert len(snapshot['diff_hash']) == 64"
+                    ),
+                ],
+                cwd=REPOSITORY_ROOT,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+            )
         self.assertEqual(completed.returncode, 0, completed.stdout)
 
     def test_patch_path_verifier_rejects_patch_with_unlocked_path(self) -> None:
