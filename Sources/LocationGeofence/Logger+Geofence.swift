@@ -132,6 +132,21 @@ extension Logger {
         debug("Movement refresh failed; re-ranking from cache to re-arm the movement trigger", geofenceTag)
     }
 
+    func geofenceMovementFixResolved(ageSeconds: TimeInterval, requested: Bool) {
+        let source = requested ? "freshly requested" : "cached"
+        debug("Movement pass using \(source) fix, age \(String(format: "%.1f", ageSeconds))s", geofenceTag)
+    }
+
+    func geofenceMovementFixStale(ageSeconds: TimeInterval?) {
+        let age = ageSeconds.map { "\(String(format: "%.1f", $0))s old" } ?? "missing"
+        info("Cached fix is \(age); requesting a fresh fix for the movement pass", geofenceTag)
+    }
+
+    func geofenceMovementFixRequestFailed(fallingBackToCached: Bool) {
+        let outcome = fallingBackToCached ? "falling back to the stale cached fix" : "no cached fix to fall back to"
+        info("Fresh-fix request failed or timed out; \(outcome)", geofenceTag)
+    }
+
     func geofenceSyncSupersededByUserChange() {
         info("Sync result discarded: identified user changed during fetch", geofenceTag)
     }

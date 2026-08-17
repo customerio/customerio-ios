@@ -83,9 +83,9 @@ runs:
         brew install xcbeautify # used by fastlane for output 
     
     - name: Install tools from Gemfile (ruby language) used for building our apps with 
-      uses: ruby/setup-ruby@354a1ad156761f5ee2b7b13fa8e09943a5e8d252 # v1.229.0
+      uses: ruby/setup-ruby@95ef2b042f9d7a56d8268cba8559e2842e2ad01b # v1.321.0
       with:
-        ruby-version: '3.2'
+        ruby-version: '3.4'
         bundler-cache: true # cache tools to make builds faster in future 
 
     - name: Capture Git Context
@@ -146,6 +146,16 @@ runs:
       if: steps.check_podfile_exists.outputs.files_exists == 'true'
       shell: bash
       run: make install_cocoapods_dependencies app=${{ inputs.sample-app }}
+
+    - name: Audit CocoaPods deployment targets
+      if: steps.check_podfile_exists.outputs.files_exists == 'true'
+      shell: bash
+      run: |
+        bundle exec ruby scripts/test_cocoapods_deployment_target.rb
+        bundle exec ruby scripts/audit_cocoapods_deployment_targets.rb \
+          --minimum 15.0 \
+          "Apps/${{ inputs.sample-app }}/Pods" \
+          "Apps/${{ inputs.sample-app }}/"*.xcodeproj
 
     - name: Dump GitHub Action metadata because Fastlane uses it. Viewing it here helps debug JSON parsing code in Firebase. 
       shell: bash

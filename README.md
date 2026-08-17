@@ -49,6 +49,9 @@ While our SDK supports visionOS, there are some limitations:
 
 See our complete SDK documentation at [https://customer.io/docs/sdk/ios/](https://customer.io/docs/sdk/ios/)
 
+If a CocoaPods build reports that a generated dependency target is below the deployment range
+supported by Xcode, follow the [deployment-target normalization guide](docs/cocoapods-deployment-target-normalization.md).
+
 # Contributing
 
 Thanks for taking an interest in our project! We welcome your contributions. Check out [our development instructions](docs/dev-notes/DEVELOPMENT.md) to get your environment set up and start contributing.

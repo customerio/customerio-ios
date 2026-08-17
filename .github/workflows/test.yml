@@ -15,6 +15,9 @@ jobs:
     with:
       scheme: 'Customer.io-Package'
       xcresult-name: 'Customer.io-Package.xcresult'
+      # Must track the Ruby this repo's Gemfile.lock is resolved against; the lock pulls
+      # excon 1.7, which needs >= 3.3, so the shared workflow's 3.2 default cannot install it.
+      ruby-version: '3.4'
     secrets:
       CODECOV_UPLOAD_TOKEN: ${{ secrets.CODECOV_UPLOAD_TOKEN }}  
   

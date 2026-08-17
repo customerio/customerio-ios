@@ -59,8 +59,6 @@ class MessagingInAppImplementationTest: IntegrationTest {
         expectSdkReset: Bool = false,
         expectScreenViewEvent: Bool = false
     ) -> [XCTestExpectation] {
-        super.setUp(modifyModuleConfig: nil)
-
         var combinedExpectations: [XCTestExpectation] = []
 
         // Set default values on all expectations created in this function.
@@ -95,6 +93,10 @@ class MessagingInAppImplementationTest: IntegrationTest {
             screenViewEventExpectation.fulfill()
         }
         combinedExpectations.append(screenViewEventExpectation)
+
+        // Module initialization can immediately replay cached events. Install every
+        // expectation callback first so a replay cannot race ahead of the test observer.
+        super.setUp(modifyModuleConfig: nil)
 
         return combinedExpectations
     }
