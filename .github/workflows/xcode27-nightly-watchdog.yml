@@ -47,11 +47,12 @@ jobs:
             --max-age-hours 26 2>&1 | tee "$result_file"
           status="${PIPESTATUS[0]}"
           set -e
+          delimiter="CIO_WATCHDOG_RESULT_$(openssl rand -hex 16)"
           {
             echo "exit-code=$status"
-            echo 'result<<CIO_WATCHDOG_RESULT'
+            echo "result<<$delimiter"
             cat "$result_file"
-            echo 'CIO_WATCHDOG_RESULT'
+            echo "$delimiter"
           } >> "$GITHUB_OUTPUT"
 
       - name: Notify Mobile team of a failed or missing nightly

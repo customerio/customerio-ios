@@ -168,12 +168,14 @@ def main(
     now = now or dt.datetime.now(dt.timezone.utc)
     max_age = dt.timedelta(hours=arguments.max_age_hours)
     token = os.environ.get("GITHUB_TOKEN")
+    token_repository = os.environ.get("GITHUB_REPOSITORY")
     messages: list[str] = []
     healthy = True
     monitoring_failed = False
     for target in arguments.target:
         try:
-            payload = fetcher(target, token)
+            target_token = token if not token_repository or target.repository == token_repository else None
+            payload = fetcher(target, target_token)
             target_healthy, message = classify_latest_run(target, payload, now=now, max_age=max_age)
         except Exception as error:
             target_healthy, message = False, f"{target.repository}: check failed: {error}"

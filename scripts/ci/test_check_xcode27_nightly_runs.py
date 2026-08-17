@@ -1,6 +1,7 @@
 import datetime as dt
 import io
 import json
+import os
 import unittest
 import urllib.error
 from contextlib import redirect_stderr, redirect_stdout
@@ -20,6 +21,12 @@ from scripts.ci.check_xcode27_nightly_runs import (
 class CheckXcode27NightlyRunsTests(unittest.TestCase):
     now = dt.datetime(2026, 8, 17, 12, 0, tzinfo=dt.timezone.utc)
     target = Target("customerio/customerio-ios", "ios-toolchain-compatibility.yml")
+
+    def setUp(self):
+        super().setUp()
+        environment = mock.patch.dict(os.environ, {"GITHUB_STEP_SUMMARY": ""})
+        environment.start()
+        self.addCleanup(environment.stop)
 
     def payload(self, **overrides):
         run = {
@@ -316,6 +323,67 @@ class CheckXcode27NightlyRunsTests(unittest.TestCase):
             requested,
             ["customerio/customerio-ios", "customerio/customerio-flutter"],
         )
+
+    def test_main_uses_repository_token_only_for_its_own_repository(self):
+        received_tokens = {}
+
+        def fetcher(target, token):
+            received_tokens[target.repository] = token
+            return self.payload()
+
+        with mock.patch.dict(
+            os.environ,
+            {
+                "GITHUB_TOKEN": "installation-token",
+                "GITHUB_REPOSITORY": "customerio/customerio-ios",
+            },
+        ), redirect_stdout(io.StringIO()):
+            result = main(
+                [
+                    "--target",
+                    "customerio/customerio-ios:ios-toolchain-compatibility.yml",
+                    "--target",
+                    "customerio/customerio-flutter:ios-toolchain-compatibility.yml",
+                    "--max-age-hours",
+                    "26",
+                ],
+                fetcher=fetcher,
+                now=self.now,
+            )
+
+        self.assertEqual(result, 0)
+        self.assertEqual(
+            received_tokens,
+            {
+                "customerio/customerio-ios": "installation-token",
+                "customerio/customerio-flutter": None,
+            },
+        )
+
+    def test_main_preserves_unhealthy_message_when_another_target_has_monitoring_error(self):
+        def fetcher(target, _token):
+            if target.repository.endswith("customerio-ios"):
+                return self.payload(conclusion="failure")
+            raise TimeoutError("request timed out")
+
+        output = io.StringIO()
+        with redirect_stdout(output):
+            result = main(
+                [
+                    "--target",
+                    "customerio/customerio-ios:ios-toolchain-compatibility.yml",
+                    "--target",
+                    "customerio/customerio-flutter:ios-toolchain-compatibility.yml",
+                    "--max-age-hours",
+                    "26",
+                ],
+                fetcher=fetcher,
+                now=self.now,
+            )
+
+        self.assertEqual(result, 2)
+        self.assertIn("latest scheduled run concluded failure", output.getvalue())
+        self.assertIn("check failed: request timed out", output.getvalue())
 
     @mock.patch("scripts.ci.check_xcode27_nightly_runs.main")
     def test_cli_returns_monitoring_error_for_unclassified_fault(self, main_mock):

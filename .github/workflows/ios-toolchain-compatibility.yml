@@ -294,6 +294,7 @@ jobs:
         env:
           FIXTURE: ${{ matrix.fixture }}
         run: |
+          set -euo pipefail
           {
             echo '## Native fixture workflow'
             echo
