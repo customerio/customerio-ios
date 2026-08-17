@@ -97,14 +97,13 @@ final class LifecycleTraceRecorderTests: XCTestCase {
         XCTAssertEqual(aliases.values.compactMap { $0 as? Int }.reduce(0, +), 0)
     }
 
-    func testRecord_whenProductionBufferOverflows_thenCaptureFailsClosedWithoutReceipt() throws {
+    func testRecord_whenProductionBufferOverflows_thenDropsOldestAndBalancesReceipt() throws {
         recorder.waitUntilDrainedForTesting()
         let boundedSink = InMemoryLifecycleTraceSink()
-        let bounded = makeRecorder(sink: boundedSink, capacity: 256)
-        XCTAssertTrue(bounded.startScenario())
-        bounded.waitUntilDrainedForTesting()
+        let bounded = makeRecorder(sink: boundedSink, capacity: 2)
         bounded.isDrainSchedulingPausedForTesting = true
-        for _ in 0 ..< 256 {
+        XCTAssertTrue(bounded.startScenario())
+        for _ in 0 ..< 5 {
             XCTAssertTrue(bounded.record(
                 callback: .sceneDidBecomeActive,
                 owner: .sceneDelegate,
@@ -116,22 +115,26 @@ final class LifecycleTraceRecorderTests: XCTestCase {
                 )
             ))
         }
-        XCTAssertFalse(bounded.record(
-            callback: .sceneWillResignActive,
-            owner: .sceneDelegate,
-            kind: .osCallback,
-            phase: .stateChange,
-            observations: LifecycleTraceObservation(
-                flags: [.hasScene: true],
-                enums: [.sceneRole: "application", .sceneState: "foreground-inactive"]
-            )
-        ))
         bounded.isDrainSchedulingPausedForTesting = false
-        bounded.waitUntilDrainedForTesting()
         let receipt = close(bounded)
-        XCTAssertNil(receipt)
-        XCTAssertEqual(try traceLines(in: boundedSink).map(decode).count, 1)
-        XCTAssertFalse(boundedSink.lines.contains { $0.hasPrefix(LifecycleTraceRecorder.receiptPrefix) })
+        let records = try traceLines(in: boundedSink).map(decode)
+
+        XCTAssertEqual(records.map { $0["sequence"] as? Int }, [1, 6, 7])
+        XCTAssertEqual(receipt?.lastAssignedSequence, 7)
+        XCTAssertEqual(receipt?.emittedRecords, 3)
+        XCTAssertEqual(receipt?.droppedRecordsTotal, 4)
+        XCTAssertEqual(receipt?.bufferHighWatermark, 2)
+        for record in records.dropFirst() {
+            let state = try XCTUnwrap(record["recorder"] as? [String: Any])
+            let sequence = try XCTUnwrap(record["sequence"] as? Int)
+            let dropped = try XCTUnwrap(state["dropped_records_total"] as? Int)
+            let highWatermark = try XCTUnwrap(state["buffer_high_watermark"] as? Int)
+            let capacity = try XCTUnwrap(state["buffer_capacity"] as? Int)
+            XCTAssertEqual(dropped, 4)
+            XCTAssertEqual(highWatermark, 2)
+            XCTAssertGreaterThanOrEqual(sequence, capacity + dropped)
+            XCTAssertLessThanOrEqual(highWatermark, capacity)
+        }
     }
 
     func testAliases_whenCapacityExceeded_thenCapAndOverflowAreCumulative() {
@@ -208,7 +211,7 @@ final class LifecycleTraceRecorderTests: XCTestCase {
         fixtureRecorder.isDrainSchedulingPausedForTesting = true
         let handle = try XCTUnwrap(fixtureRecorder.createCompletionFixture(closureIdentity: .string("fixture")))
         XCTAssertTrue(fixtureRecorder.observeCompletionFixture(handle, result: .notInvoked))
-        XCTAssertFalse(fixtureRecorder.record(
+        XCTAssertTrue(fixtureRecorder.record(
             callback: .sceneDidBecomeActive,
             owner: .sceneDelegate,
             kind: .osCallback,

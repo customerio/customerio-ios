@@ -6,6 +6,11 @@ import XCTest
 final class InMemoryLifecycleTraceSink: LifecycleTraceSink {
     private let lock = NSLock()
     private var storedLines: [String] = []
+    private let receiptWritesSucceed: Bool
+
+    init(receiptWritesSucceed: Bool = true) {
+        self.receiptWritesSucceed = receiptWritesSucceed
+    }
 
     var lines: [String] {
         lock.lock()
@@ -17,6 +22,12 @@ final class InMemoryLifecycleTraceSink: LifecycleTraceSink {
         lock.lock()
         storedLines.append(line)
         lock.unlock()
+    }
+
+    func writeReceipt(json: String) -> Bool {
+        guard receiptWritesSucceed else { return false }
+        write(line: LifecycleTraceRecorder.receiptPrefix + json)
+        return true
     }
 }
 
@@ -95,6 +106,15 @@ final class LifecycleTraceEvidenceTests: XCTestCase {
         XCTAssertFalse(LifecycleTraceEvidence.isTraceableURLRoute(malformed))
         let meaningless = try XCTUnwrap(URL(string: "cio-live-activity://open?foo=bar"))
         XCTAssertFalse(LifecycleTraceEvidence.isTraceableURLRoute(meaningless))
+    }
+
+    func testWidgetRoutingResult_whenSDKTransformsURL_thenMatchesCanonicalRouteOutcome() throws {
+        let original = try XCTUnwrap(URL(string: "cio-live-activity://open?cio_delivery_id=value"))
+        let redirect = try XCTUnwrap(URL(string: "customerio-test://dashboard"))
+
+        XCTAssertEqual(LifecycleTraceEvidence.widgetRoutingResult(original: original, destination: nil), .handled)
+        XCTAssertEqual(LifecycleTraceEvidence.widgetRoutingResult(original: original, destination: original), .unhandled)
+        XCTAssertEqual(LifecycleTraceEvidence.widgetRoutingResult(original: original, destination: redirect), .redirect)
     }
 
     func testObserveLaunchOptions_whenPayloadExists_thenRecordsOnlyPresenceAndCount() {
@@ -283,8 +303,52 @@ final class LifecycleTraceCaptureGuardrailTests: XCTestCase {
         wait(for: [expectation], timeout: 3)
     }
 
+    func testHarnessEndCleanup_whenTerminalIsRejected_thenRetainsCleanupUntilAcceptedEnd() throws {
+        let (recorder, _) = try makeRecorder()
+        var cleanupCalls = 0
+        LifecycleTraceHarness.registerEndCleanup {
+            cleanupCalls += 1
+        }
+
+        var rejectedCompletionCalled = false
+        XCTAssertFalse(recorder.endScenario(after: .tokenRegistration) { _ in
+            rejectedCompletionCalled = true
+            LifecycleTraceHarness.handleEndCompletion()
+        })
+        XCTAssertFalse(rejectedCompletionCalled)
+        XCTAssertEqual(cleanupCalls, 0)
+
+        let expectation = expectation(description: "accepted end cleanup")
+        XCTAssertTrue(recorder.endScenario(after: .activeScene) { _ in
+            LifecycleTraceHarness.handleEndCompletion()
+            expectation.fulfill()
+        })
+        wait(for: [expectation], timeout: 3)
+        XCTAssertEqual(cleanupCalls, 1)
+    }
+
+    func testHarnessEndCleanup_whenAcceptedReceiptPublicationFails_thenStillRunsCleanup() throws {
+        let (recorder, sink) = try makeRecorder(receiptWritesSucceed: false)
+        var cleanupCalls = 0
+        LifecycleTraceHarness.registerEndCleanup {
+            cleanupCalls += 1
+        }
+
+        let expectation = expectation(description: "failed receipt publication cleanup")
+        XCTAssertTrue(recorder.endScenario(after: .activeScene) { receipt in
+            XCTAssertNil(receipt)
+            LifecycleTraceHarness.handleEndCompletion()
+            expectation.fulfill()
+        })
+        wait(for: [expectation], timeout: 3)
+
+        XCTAssertEqual(cleanupCalls, 1)
+        XCTAssertFalse(sink.lines.contains { $0.hasPrefix(LifecycleTraceRecorder.receiptPrefix) })
+    }
+
     private func makeRecorder(
-        topology: LifecycleTraceHostTopology = .uiScene
+        topology: LifecycleTraceHostTopology = .uiScene,
+        receiptWritesSucceed: Bool = true
     ) throws -> (LifecycleTraceRecorder, InMemoryLifecycleTraceSink) {
         let context = try XCTUnwrap(LifecycleTraceContext(
             manifestID: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
@@ -300,7 +364,7 @@ final class LifecycleTraceCaptureGuardrailTests: XCTestCase {
             hostTopology: topology,
             activationOccurrenceIdentity: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee"
         ))
-        let sink = InMemoryLifecycleTraceSink()
+        let sink = InMemoryLifecycleTraceSink(receiptWritesSucceed: receiptWritesSucceed)
         let recorder = LifecycleTraceRecorder(context: context, sink: sink)
         XCTAssertTrue(recorder.startScenario())
         return (recorder, sink)

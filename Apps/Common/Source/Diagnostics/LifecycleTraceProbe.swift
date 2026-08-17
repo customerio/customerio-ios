@@ -110,15 +110,53 @@ public enum LifecycleTraceHarness {
         sharedRecorder?.startScenario() ?? false
     }
 
-    /// Closes a scenario after an already-instrumented terminal seat and emits its receipt.
-    public static func endScenario(after terminal: LifecycleTraceTerminal) {
-        guard let recorder = sharedRecorder else {
-            runEndCleanups()
+    /// Records a canonical host or Customer.io URL-routing seat.
+    public static func recordURLRoute(
+        callback: LifecycleTraceCallback,
+        phase: LifecycleTracePhase,
+        evidence: LifecycleTraceObservation,
+        routingResult: LifecycleTraceRoutingResult? = nil
+    ) {
+        let attribution: (owner: LifecycleTraceOwner, kind: LifecycleTraceKind)
+        switch callback {
+        case .hostRouteURL:
+            attribution = (.host, .hostRouting)
+        case .customerIORouteDeepLink:
+            attribution = (.customerIOSDK, .sdkRouting)
+        default:
             return
         }
-        _ = recorder.endScenario(after: terminal) { _ in
-            runEndCleanups()
+        if let routingResult = routingResult {
+            sharedRecorder?.record(
+                callback: callback,
+                owner: attribution.owner,
+                kind: attribution.kind,
+                phase: phase,
+                observations: evidence,
+                LifecycleTraceEvidence.observe(routingResult: routingResult)
+            )
+        } else {
+            sharedRecorder?.record(
+                callback: callback,
+                owner: attribution.owner,
+                kind: attribution.kind,
+                phase: phase,
+                observations: evidence
+            )
         }
+    }
+
+    /// Closes a scenario after an already-instrumented terminal seat and emits its receipt.
+    public static func endScenario(after terminal: LifecycleTraceTerminal) {
+        guard let recorder = sharedRecorder else { return }
+        let accepted = recorder.endScenario(after: terminal) { _ in
+            handleEndCompletion()
+        }
+        guard accepted else { return }
+    }
+
+    static func handleEndCompletion() {
+        runEndCleanups()
     }
 
     static func registerEndCleanup(_ cleanup: @escaping () -> Void) {

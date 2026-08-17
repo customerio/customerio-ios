@@ -95,9 +95,10 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         open url: URL,
         options: [UIApplication.OpenURLOptionsKey: Any] = [:]
     ) -> Bool {
-        let shouldTrace = LifecycleTraceHarness.sharedRecorder?.hostTopology == .appDelegateOnly
+        let shouldTraceIngress = LifecycleTraceHarness.sharedRecorder?.hostTopology == .appDelegateOnly
+        let traceRoute = shouldTraceIngress && LifecycleTraceEvidence.isTraceableURLRoute(url)
         let evidence = LifecycleTraceEvidence.observe(url: url)
-        if shouldTrace {
+        if shouldTraceIngress {
             LifecycleTraceHarness.sharedRecorder?.record(
                 callback: .applicationOpenURL,
                 owner: .applicationDelegate,
@@ -106,24 +107,38 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
                 observations: LifecycleTraceEvidence.observe(applicationState: application.applicationState),
                 evidence
             )
-            LifecycleTraceHarness.sharedRecorder?.record(
+        }
+        if traceRoute {
+            LifecycleTraceHarness.recordURLRoute(
                 callback: .hostRouteURL,
-                owner: .host,
-                kind: .hostRouting,
                 phase: .intent,
-                observations: evidence
+                evidence: evidence
+            )
+        }
+        let isCustomerIORoute = LifecycleTraceEvidence.isCustomerIOLiveActivityRoute(url)
+        if traceRoute, isCustomerIORoute {
+            LifecycleTraceHarness.recordURLRoute(
+                callback: .customerIORouteDeepLink,
+                phase: .intent,
+                evidence: evidence
             )
         }
         let destination = CustomerIO.liveActivities.handleWidgetUrl(url)
-        let handled = destination.map { deepLinkHandler.handleAppSchemeDeepLink($0) } ?? true
-        if shouldTrace {
-            LifecycleTraceHarness.sharedRecorder?.record(
-                callback: .hostRouteURL,
-                owner: .host,
-                kind: .hostRouting,
+        if traceRoute, isCustomerIORoute {
+            LifecycleTraceHarness.recordURLRoute(
+                callback: .customerIORouteDeepLink,
                 phase: .result,
-                observations: evidence,
-                LifecycleTraceEvidence.observe(routingResult: handled ? .handled : .unhandled)
+                evidence: evidence,
+                routingResult: LifecycleTraceEvidence.widgetRoutingResult(original: url, destination: destination)
+            )
+        }
+        let handled = destination.map { deepLinkHandler.handleAppSchemeDeepLink($0) } ?? true
+        if traceRoute {
+            LifecycleTraceHarness.recordURLRoute(
+                callback: .hostRouteURL,
+                phase: .result,
+                evidence: evidence,
+                routingResult: handled ? .handled : .unhandled
             )
             LifecycleTraceHarness.endScenario(after: .hostURLRoute)
         }

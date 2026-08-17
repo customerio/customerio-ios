@@ -397,7 +397,8 @@ public final class LifecycleTraceRecorder: @unchecked Sendable {
     }
 
     /// Closes only when the caller has just observed a terminal seat valid for this scenario.
-    @discardableResult
+    /// A rejected terminal does not invoke `completion`. An accepted close invokes it after drain,
+    /// passing `nil` when the receipt cannot be encoded or persisted.
     public func endScenario(
         after terminal: LifecycleTraceTerminal,
         completion: @escaping (LifecycleTraceStreamReceipt?) -> Void
@@ -457,18 +458,58 @@ public final class LifecycleTraceRecorder: @unchecked Sendable {
         )
 
         pendingRecords.append(record)
-        bufferHighWatermark = max(bufferHighWatermark, pendingRecords.count)
-        if pendingRecords.count > bufferCapacity {
-            droppedRecordsTotal += pendingRecords.count
+        let displacedOldestRecord = bufferedRecordCountLocked() > bufferCapacity
+        if displacedOldestRecord, !evictOldestBufferedRecordLocked() {
             captureFailed = true
             pendingRecords.removeAll()
+            return record
         }
+        let observedBufferLoad = max(
+            pendingRecords.contains(where: { $0.callback == .traceScenarioStart }) ? 1 : 0,
+            bufferedRecordCountLocked()
+        )
+        bufferHighWatermark = max(bufferHighWatermark, observedBufferLoad)
 
         record.recorder = snapshotLocked()
         if let index = pendingRecords.firstIndex(where: { $0.sequence == sequence }) {
             pendingRecords[index] = record
         }
+        if displacedOldestRecord {
+            refreshPendingBufferAccountingLocked()
+        }
         return record
+    }
+
+    private func bufferedRecordCountLocked() -> Int {
+        pendingRecords.reduce(into: 0) { count, pending in
+            if pending.callback != .traceScenarioStart {
+                count += 1
+            }
+        }
+    }
+
+    private func evictOldestBufferedRecordLocked() -> Bool {
+        guard let evictionIndex = pendingRecords.firstIndex(where: {
+            $0.callback != .traceScenarioStart
+        }) else { return false }
+        pendingRecords.remove(at: evictionIndex)
+        droppedRecordsTotal += 1
+        return true
+    }
+
+    private func refreshPendingBufferAccountingLocked() {
+        for index in pendingRecords.indices {
+            guard pendingRecords[index].callback != .traceScenarioStart else { continue }
+            let snapshot = pendingRecords[index].recorder
+            pendingRecords[index].recorder = LifecycleTraceRecorderSnapshot(
+                droppedRecordsTotal: droppedRecordsTotal,
+                aliasCounts: snapshot.aliasCounts,
+                aliasOverflow: snapshot.aliasOverflow,
+                aliasOverflowNamespaces: snapshot.aliasOverflowNamespaces,
+                bufferHighWatermark: bufferHighWatermark,
+                bufferCapacity: snapshot.bufferCapacity
+            )
+        }
     }
 
     private func aliasesLocked(
