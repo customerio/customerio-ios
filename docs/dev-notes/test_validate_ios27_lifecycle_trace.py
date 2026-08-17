@@ -427,7 +427,7 @@ class LifecycleTraceContractTests(unittest.TestCase):
                 "framework-callback", "entry", scene_payload, {"scene": "scene-1"},
             )
             body = [
-                application, application_forward, did_finish_notification, engine, plugin,
+                application, plugin, application_forward, did_finish_notification, engine,
                 scene_raw, scene_forward, active_notification,
             ]
         else:

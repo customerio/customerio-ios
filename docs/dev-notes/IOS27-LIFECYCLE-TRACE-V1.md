@@ -523,8 +523,8 @@ records. A cold run instead requires in-process bootstrap seats. Flutter
 icon-cold is topology-specific: legacy requires engine -> plugin -> raw
 application did-finish -> Flutter application forward -> UIKit did-finish
 notification -> UIKit active notification -> Dart main; scene-enabled requires
-raw application did-finish -> Flutter application forward -> UIKit did-finish
-notification -> engine -> plugin -> raw scene will-connect -> Flutter scene
+raw application did-finish -> plugin -> Flutter application forward -> UIKit
+did-finish notification -> engine -> raw scene will-connect -> Flutter scene
 forward -> UIKit active notification -> Dart main. Expo requires
 subscriber registration before app-delegate will-finish forwarding, followed
 by the `application.did-finish-launching` entry. That application entry must

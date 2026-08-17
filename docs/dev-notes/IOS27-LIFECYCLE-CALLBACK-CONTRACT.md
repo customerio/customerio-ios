@@ -108,8 +108,8 @@ uses the real `flutter.dart-main-entered` Dart application receipt, never a
 synthesized `wrapper.app-lifecycle-state`. Its legacy topology is engine ->
 plugin -> raw application did-finish -> Flutter application forward -> UIKit
 did-finish notification -> UIKit active notification -> Dart main. Its scene
-topology is raw application did-finish -> Flutter application forward -> UIKit
-did-finish notification -> engine -> plugin -> raw scene will-connect -> Flutter
+topology is raw application did-finish -> plugin -> Flutter application forward
+-> UIKit did-finish notification -> engine -> raw scene will-connect -> Flutter
 scene forward -> UIKit active notification -> Dart main. Cold Expo records subscriber
 registration before app-delegate will-finish forwarding. In a cold Expo run,
 the `application.did-finish-launching` entry then precedes both the exact RCT

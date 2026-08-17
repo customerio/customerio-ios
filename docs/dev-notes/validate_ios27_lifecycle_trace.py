@@ -2322,10 +2322,10 @@ def _validate_cold_flutter_icon_topology(
     if scene_entries:
         ordered = (
             application,
+            plugin,
             application_forward,
             application_notification,
             engine,
-            plugin,
             scene_entries[0],
             scene_forwards[0],
             application_active,
