@@ -343,7 +343,6 @@ class CocoaPodsDeploymentTargetTest < Minitest::Test
       refute_includes output, "DownloadedPod"
     end
   end
-
   def test_normalize_preserves_a_higher_target_xcconfig_floor
     skip "Xcodeproj is unavailable" unless xcodeproj_available?
 
@@ -402,7 +401,6 @@ class CocoaPodsDeploymentTargetTest < Minitest::Test
       assert_equal 0, project.save_count
     end
   end
-
   def test_normalize_uses_public_xcodeproj_config_parser_with_real_project_objects
     skip "Xcodeproj is unavailable" unless xcodeproj_available?
 

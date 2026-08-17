@@ -187,6 +187,10 @@ jobs:
     runs-on: macos-26
     outputs:
       version: ${{ steps.get-version.outputs.version }}
+      # 'true' when trunk refused at least one write. The job may be green (nothing
+      # was published) or red (some pods were, or others failed outright), so
+      # downstream steps have to read this rather than infer it from job status.
+      trunk-closed: ${{ steps.push-pods.outputs.trunk-closed }}
     steps:
       - name: Checkout git tag that got created in previous step
         uses: actions/checkout@v4
@@ -224,6 +228,7 @@ jobs:
           fi
 
       - name: Push all podspecs to CocoaPods
+        id: push-pods
         run: |
           # Podspecs are grouped into tiers by their dependencies on each other.
           # Pods within a tier do not depend on each other, so they push in parallel.
@@ -238,6 +243,13 @@ jobs:
             "CustomerIO.podspec"
           )
 
+          # Every podspec across all tiers, so "N of M" stays right even though the
+          # dispatch loop below breaks early.
+          all_podspecs=(${tiers[*]})
+          total=${#all_podspecs[@]}
+
+          published_pods=()
+          refused_pods=()
           failed_pods=()
           for tier in "${tiers[@]}"; do
             pids=()
@@ -249,7 +261,17 @@ jobs:
             done
 
             for i in "${!pids[@]}"; do
-              if ! wait "${pids[$i]}"; then
+              # A bare `wait` needs `|| code=$?` to survive `set -e`. (The `if !
+              # wait` form this replaced did not, because a command used as an
+              # `if` condition is exempt.) Exit codes are push-cocoapod.sh's
+              # contract, documented at the top of that script.
+              code=0
+              wait "${pids[$i]}" || code=$?
+              if [[ $code -eq 0 ]]; then
+                published_pods+=("${specs[$i]}")
+              elif [[ $code -eq 3 ]]; then
+                refused_pods+=("${specs[$i]}")
+              else
                 failed_pods+=("${specs[$i]}")
               fi
               echo "::group::${specs[$i]}"
@@ -258,21 +280,95 @@ jobs:
             done
 
             # Stop if anything in this tier failed. Later tiers depend on this one,
-            # so pushing them would fail anyway.
-            if [[ ${#failed_pods[@]} -gt 0 ]]; then
+            # so pushing them would fail anyway. A closed trunk stops the run for
+            # the same reason, except that it refuses every remaining pod too.
+            if [[ ${#failed_pods[@]} -gt 0 || ${#refused_pods[@]} -gt 0 ]]; then
               break
             fi
           done
 
-          if [[ ${#failed_pods[@]} -gt 0 ]]; then
-            echo "::error::The following pods failed to publish: ${failed_pods[*]}"
+          # "confirmed on trunk", not "published by this run": a pod that was
+          # already there is a success here too. The loop breaks on the first bad
+          # tier, and the pods after it were never asked about - some of them may
+          # be on trunk as well, so this is a floor, not a total.
+          on_trunk="${#published_pods[@]} of $total pods confirmed on trunk at this version"
+          not_attempted=$((total - ${#published_pods[@]} - ${#refused_pods[@]} - ${#failed_pods[@]}))
+          echo "$on_trunk. Refused by trunk: ${#refused_pods[@]}. Failed: ${#failed_pods[@]}. Not attempted: $not_attempted."
+
+          if [[ $not_attempted -gt 0 ]]; then
+            on_trunk="$on_trunk, with $not_attempted never attempted and so never checked"
+          fi
+
+          # One message and one exit code, both derived from the same counts, so a
+          # green run cannot carry an alarming message or the reverse.
+          if [[ ${#failed_pods[@]} -gt 0 && ${#refused_pods[@]} -gt 0 ]]; then
+            headline="iOS SDK deployment to CocoaPods failed, and trunk is read-only"
+            summary="${#failed_pods[@]} pod(s) failed to publish (${failed_pods[*]}), and trunk refused ${#refused_pods[@]} more (${refused_pods[*]}). $on_trunk. A re-run cannot publish the refused pods while trunk is closed."
+            failed=true
+          elif [[ ${#failed_pods[@]} -gt 0 ]]; then
+            summary="The following pods failed to publish: ${failed_pods[*]}. $on_trunk."
+            failed=true
+          elif [[ ${#refused_pods[@]} -gt 0 && ${#published_pods[@]} -gt 0 ]]; then
+            # This is the one refusal somebody has to act on, so it goes red and
+            # says so in the headline, not only in the detail. The headline claims
+            # nothing about what trunk was asked: on a re-run during the read-only
+            # window trunk was closed the whole time, the pods on trunk got there
+            # earlier, and pods after the break were never asked at all.
+            headline="iOS SDK is only partly on CocoaPods"
+            summary="Trunk refused ${#refused_pods[@]} pod(s) (${refused_pods[*]}), so this version is incomplete on CocoaPods. $on_trunk."
+            failed=true
+          elif [[ ${#refused_pods[@]} -gt 0 ]]; then
+            # Nothing of ours went wrong and nothing can be re-run, so this is the
+            # one refusal that stays green.
+            headline="iOS SDK not deployed to CocoaPods: trunk is read-only"
+            # Not "nothing to re-run": the 1-7 Nov 2026 window is a dry run and
+            # trunk reopens afterwards, so this release does need re-running then.
+            # A green run nobody revisits is how a version silently never ships.
+            summary="Trunk is closed to new versions and refused the ${#refused_pods[@]} pod(s) it was asked for (${refused_pods[*]}), so the run stopped there. $on_trunk. Nothing is wrong on our side, but this version reaches CocoaPods only if the deploy is re-run while trunk accepts writes."
+            failed=false
+          else
+            echo "All $total pods are on trunk at this version."
+            exit 0
+          fi
+
+          # Any branch reaching here can have left part of this version on trunk -
+          # a refusal partway through, but equally a plain failure partway through.
+          # Said once, so the instruction does not depend on which of the two.
+          if [[ ${#published_pods[@]} -gt 0 ]]; then
+            summary="$summary The pods pin each other at an exact version, so what is on trunk cannot be installed until this version is finished or yanked."
+          fi
+
+          # True of every branch that reaches here, not just the refusals: they all
+          # skip wait-for-cocoapods and build-sample-apps with it. Only the
+          # CocoaPods-FCM app installs from CocoaPods; the APN-UIKit one would have
+          # built from the SwiftPM tag that did ship.
+          summary="$summary Sample apps were not built or distributed for this release."
+
+          if [[ ${#refused_pods[@]} -gt 0 ]]; then
+            # Delimiter form, not key=value: a newline reaching $GITHUB_OUTPUT
+            # would otherwise be parsed as further outputs, or fail the step and
+            # report a green trunk-closed release as a deployment failure.
+            {
+              echo "trunk-closed=true"
+              echo "refusal-headline<<CIO_EOF"
+              echo "$headline"
+              echo "CIO_EOF"
+              echo "refusal-summary<<CIO_EOF"
+              echo "$summary"
+              echo "CIO_EOF"
+            } >> "$GITHUB_OUTPUT"
+          fi
+
+          if [[ "$failed" == true ]]; then
+            echo "::error::$summary"
             exit 1
           fi
-          echo "All pods published successfully."
+
+          echo "::warning::$summary"
 
       - name: Notify team of successful deployment
         uses: slackapi/slack-github-action@70cd7be8e40a46e8b0eced40b0de447bdb42f68e # v1.26.0
-        if: ${{ success() }}
+        if: ${{ success() && steps.push-pods.outputs.trunk-closed != 'true' }}
         with:
           # Use block kit for format of the JSON payloads: https://app.slack.com/block-kit-builder
           payload: |
@@ -307,9 +403,59 @@ jobs:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_NOTIFY_RELEASES_WEBHOOK_URL }}
           SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
 
+      - name: Notify team that CocoaPods refused the release
+        id: notify-refusal
+        uses: slackapi/slack-github-action@70cd7be8e40a46e8b0eced40b0de447bdb42f68e # v1.26.0
+        # Not success(): a partial release goes red, and that is exactly the
+        # refusal the team most needs this message for.
+        if: ${{ !cancelled() && steps.push-pods.outputs.trunk-closed == 'true' }}
+        with:
+          # Use block kit for format of the JSON payloads: https://app.slack.com/block-kit-builder
+          # toJSON quotes and escapes these values. Pasting them in raw would let a
+          # quote in the version or the summary produce invalid JSON, which fails
+          # this step and reports a green release as a deployment failure.
+          payload: |
+            {
+              "text": ${{ toJSON(steps.push-pods.outputs.refusal-headline) }},
+              "username": "iOS deployment bot",
+              "icon_url": "https://pngimg.com/uploads/apple_logo/apple_logo_PNG19687.png",
+              "channel": "#mobile-deployments",
+              "blocks": [
+                  {
+                      "type": "section",
+                      "text": {
+                          "type": "mrkdwn",
+                          "text": ${{ toJSON(format('*{0}*', steps.push-pods.outputs.refusal-headline)) }}
+                      }
+                  },
+                  {
+                      "type": "divider"
+                  },
+                  {
+                      "type": "section",
+                      "text": {
+                          "type": "mrkdwn",
+                          "text": ${{ toJSON(format('*Version {0}* is released on Swift Package Manager. {1} <https://github.com/{2}/actions/runs/{3}|CI server logs>. <https://github.com/customerio/mobile/blob/main/GIT-WORKFLOW.md|Deployment process and how to fix errors>. See <https://blog.cocoapods.org/CocoaPods-Specs-Repo/|CocoaPods Trunk Read-only Plan>.', steps.get-version.outputs.version, steps.push-pods.outputs.refusal-summary, github.repository, github.run_id)) }}
+                      }
+                  }
+              ]
+            }
+        env:
+          # Incoming webhook URL that sends message into the correct Slack channel.
+          # Help on how to get the webhook URL: https://github.com/marketplace/actions/slack-send#setup-2
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_NOTIFY_RELEASES_WEBHOOK_URL }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+
       - name: Notify team of failure
         uses: slackapi/slack-github-action@70cd7be8e40a46e8b0eced40b0de447bdb42f68e # v1.26.0
-        if: ${{ failure() }} # only run this if any previous step failed
+        # A closed trunk gets the message above instead, which carries the failed
+        # pods and the run link when both happened at once. Two alerts for one run
+        # would leave the team reconciling them - but if that step did not post,
+        # this one still has to, or a red release goes out with no Slack at all.
+        # In that fallback the static text below overstates things (it names the
+        # deploy step when only the notification failed); an imprecise alert beats
+        # none on what is already a double failure.
+        if: ${{ failure() && (steps.push-pods.outputs.trunk-closed != 'true' || steps.notify-refusal.outcome != 'success') }}
         with:
           # Use block kit for format of the JSON payloads: https://app.slack.com/block-kit-builder
           payload: |
@@ -348,7 +494,14 @@ jobs:
     name: Wait for deploy-cocoapods to finish
     needs: [deploy-cocoapods]
     runs-on: ubuntu-latest
-    if: ${{ success() }}
+    # A refused release is missing at least one pod, so the poll below would spend
+    # its full 20 minute budget waiting for a version that is not coming. (It may
+    # still have published some of them - a partial release is red, so success()
+    # already covers that case, and this clause is what handles the green one.)
+    # Skipping this also skips build-sample-apps, which needs it - that is the only
+    # thing keeping it from installing pod versions that do not exist, so keep this
+    # job in its `needs`.
+    if: ${{ success() && needs.deploy-cocoapods.outputs.trunk-closed != 'true' }}
     steps:
       - name: Wait for CocoaPods CDN propagation
         run: |
