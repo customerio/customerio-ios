@@ -14,3 +14,4 @@ gem "rexml", "3.4.2"
 
 gem "fastlane"
 gem 'fastlane-plugin-firebase_app_distribution'
+gem "minitest", "~> 5.25"

@@ -14,7 +14,8 @@ enum GeofenceMonitorBinder {
     static func bind(
         monitor: GeofenceRegionMonitoring,
         tracker: GeofenceEventTracker,
-        coordinator: GeofenceSyncCoordinator
+        coordinator: GeofenceSyncCoordinator,
+        backgroundTaskRunner: BackgroundTaskRunner = GeofenceBackgroundTime.runner(name: "io.customer.geofence.movement-pass")
     ) {
         monitor.setOnTransition { [weak tracker, weak coordinator] identifier, transition, location in
             // CLLocationManager delivers on main; both handlers below are async with their
@@ -24,7 +25,14 @@ enum GeofenceMonitorBinder {
                 // EXIT is the only registered transition for the movement trigger; the
                 // guard defends against an unexpected ENTER reaching this dispatch.
                 guard transition == .exit, let location else { return }
-                Task { _ = await coordinator?.handleMovement(latitude: location.latitude, longitude: location.longitude) }
+                // The EXIT is consumed once dispatched; a wake window expiring mid-pass would
+                // lose it with no retry, so the pass runs under a background-task assertion.
+                // (The tracker path holds its own inside `trackTransition`.)
+                Task {
+                    await backgroundTaskRunner.withBackgroundTime {
+                        _ = await coordinator?.handleMovement(latitude: location.latitude, longitude: location.longitude)
+                    }
+                }
                 return
             }
             Task { await tracker?.trackTransition(geofenceId: identifier, transition: transition) }

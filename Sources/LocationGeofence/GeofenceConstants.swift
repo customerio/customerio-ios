@@ -34,6 +34,13 @@ enum GeofenceConstants {
     /// Staleness interval (in seconds) after which a server sync is considered stale.
     static let staleSyncInterval: TimeInterval = 24 * 60 * 60
 
+    // Movement passes act on the device's CURRENT position (re-center the trigger, measure
+    // displacement for the refetch tier), but a long-suspended process's cached fix can be frozen
+    // at process start. A cached fix older than `movementFixMaxAge` triggers a one-shot fresh-fix
+    // request; after `movementFixRequestTimeout` the pass falls back to the cached fix.
+    static let movementFixMaxAge: TimeInterval = 30
+    static let movementFixRequestTimeout: TimeInterval = 10
+
     // Sane bounds the SDK coerces server config into, so a misconfigured backend can't push
     // monitoring into a pathological state: a positive out-of-range value clamps to the nearest
     // bound; a non-positive value falls back. (`maxMonitoringDistance` needs no upper bound — a
