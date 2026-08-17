@@ -1,17 +1,17 @@
 {
   "schema": "cio-lifecycle-contract-lock/2",
   "source_repository": "customerio/customerio-ios",
-  "pinned_content_commit": "068a540e74921741251c6e1812f27d7c4a4155cb",
+  "pinned_content_commit": "ce73b1a4ef2b16e178a31ebbda1620034570c0af",
   "relock_note": "pinned_content_commit identifies the immutable reviewed contract content; this descendant lock cannot self-reference its own commit.",
   "algorithm": "sha256",
   "files": [
     {
       "path": "docs/dev-notes/IOS27-LIFECYCLE-CALLBACK-CONTRACT.md",
-      "sha256": "b7227fa3fec4b1ecd13625118c4098afe95aab7eb9cba85413989d025aa9258c"
+      "sha256": "6a26653cac736289edf68293748498cc73a2c51fe95bcdd546d3b73213603b39"
     },
     {
       "path": "docs/dev-notes/IOS27-LIFECYCLE-TRACE-V1.md",
-      "sha256": "91e4144a0090af27ff3606075b3ecdc7e16c647e7ef370e923f788d2cc3cb3de"
+      "sha256": "5da239e1f84346dfaa1ab1486565f13e3751f8893a9c4c432babc3ed0a75d74e"
     },
     {
       "path": "docs/dev-notes/ios27-lifecycle-capture-manifest-v1.schema.json",
@@ -71,11 +71,11 @@
     },
     {
       "path": "docs/dev-notes/test_validate_ios27_lifecycle_trace.py",
-      "sha256": "3759edf48631716ac2a3dc077eda8f120be16f1190cddeb5133961eefa463ee4"
+      "sha256": "6b42f9cb9e1a82fd749c4028a5f2e299fd58e62da8a25aa87fb1f61df2ad4f91"
     },
     {
       "path": "docs/dev-notes/validate_ios27_lifecycle_trace.py",
-      "sha256": "528f6e6497665663b332b0548a1a2cec59b4c218deadcac22ffb6610c750aa13"
+      "sha256": "172be94bba82d9e583b75c8cdada8f6c73b3e99b46b23d8bf10407061122ca02"
     }
   ]
 }
