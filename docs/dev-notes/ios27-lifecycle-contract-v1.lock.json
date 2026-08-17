@@ -1,7 +1,7 @@
 {
   "schema": "cio-lifecycle-contract-lock/2",
   "source_repository": "customerio/customerio-ios",
-  "pinned_content_commit": "5b8c02e4c85203d073a85da8abb2212b19867e68",
+  "pinned_content_commit": "068a540e74921741251c6e1812f27d7c4a4155cb",
   "relock_note": "pinned_content_commit identifies the immutable reviewed contract content; this descendant lock cannot self-reference its own commit.",
   "algorithm": "sha256",
   "files": [
