@@ -136,7 +136,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Record setup failure
-        if: failure() && steps.toolchain.outcome != 'failure' && steps.compile-apn.outcome != 'failure' && steps.compile-fcm.outcome != 'failure'
+        if: failure() && steps.toolchain.outcome != 'failure' && steps.compile-apn.outcome == 'skipped' && steps.compile-fcm.outcome == 'skipped'
         shell: bash
         env:
           FIXTURE: ${{ matrix.fixture }}
