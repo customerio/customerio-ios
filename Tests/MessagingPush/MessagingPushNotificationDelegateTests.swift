@@ -46,6 +46,99 @@ class MessagingPushNotificationDelegateTests: XCTestCase {
         var onProxyAssignment: (() -> Void)?
     }
 
+    private final class CoordinatedReadNotificationCenter: UserNotificationCenterIntegration {
+        private let lock = NSLock()
+        private var storedDelegate: UNUserNotificationCenterDelegate?
+        private var shouldCoordinateNextRead = true
+        let readStarted = DispatchSemaphore(value: 0)
+        let allowReadToFinish = DispatchSemaphore(value: 0)
+
+        init(delegate: UNUserNotificationCenterDelegate?) {
+            self.storedDelegate = delegate
+        }
+
+        var delegate: UNUserNotificationCenterDelegate? {
+            get {
+                lock.lock()
+                let delegate = storedDelegate
+                let shouldCoordinate = shouldCoordinateNextRead
+                shouldCoordinateNextRead = false
+                lock.unlock()
+
+                if shouldCoordinate {
+                    readStarted.signal()
+                    _ = allowReadToFinish.wait(timeout: .now() + 5)
+                }
+                return delegate
+            }
+            set {
+                lock.lock()
+                storedDelegate = newValue
+                lock.unlock()
+            }
+        }
+    }
+
+    private final class SubstitutingNotificationCenter: UserNotificationCenterIntegration {
+        private var storedDelegate: UNUserNotificationCenterDelegate?
+        let substitute: UNUserNotificationCenterDelegate
+        let substitutesEveryProxyAssignment: Bool
+        private(set) var proxyAssignmentsCount = 0
+
+        init(
+            substitute: UNUserNotificationCenterDelegate,
+            substitutesEveryProxyAssignment: Bool = false
+        ) {
+            self.substitute = substitute
+            self.substitutesEveryProxyAssignment = substitutesEveryProxyAssignment
+        }
+
+        var delegate: UNUserNotificationCenterDelegate? {
+            get { storedDelegate }
+            set {
+                guard newValue is CioNotificationCenterDelegate else {
+                    storedDelegate = newValue
+                    return
+                }
+
+                proxyAssignmentsCount += 1
+                if substitutesEveryProxyAssignment || proxyAssignmentsCount == 1 {
+                    storedDelegate = substitute
+                } else {
+                    storedDelegate = newValue
+                }
+            }
+        }
+    }
+
+    private final class ReentrantSubstitutingNotificationCenter: UserNotificationCenterIntegration {
+        private var storedDelegate: UNUserNotificationCenterDelegate?
+        private var shouldSubstituteNextProxy = true
+        var onFirstProxyAssignment: (() -> Void)?
+        private(set) var proxyAssignmentsCount = 0
+
+        var delegate: UNUserNotificationCenterDelegate? {
+            get { storedDelegate }
+            set {
+                guard newValue is CioNotificationCenterDelegate else {
+                    storedDelegate = newValue
+                    return
+                }
+
+                proxyAssignmentsCount += 1
+                guard shouldSubstituteNextProxy else {
+                    storedDelegate = newValue
+                    return
+                }
+
+                shouldSubstituteNextProxy = false
+                onFirstProxyAssignment?()
+                // Model an earlier swizzler that overwrites the value after its reentrant assignment returns.
+                storedDelegate = nil
+            }
+        }
+    }
+
     private final class CountingCioNotificationCenterDelegate: CioNotificationCenterDelegate {
         var willPresentCallsCount = 0
 
@@ -123,6 +216,36 @@ class MessagingPushNotificationDelegateTests: XCTestCase {
         )
 
         XCTAssertTrue(mockNotificationCenter.delegate is CioNotificationCenterDelegate)
+    }
+
+    func testInitialInstall_whenNilAssignmentRacesWithDelegateCapture_thenLaterNilDoesNotResurrectCapturedPeer() {
+        let originalPeer = MockNotificationCenterDelegate()
+        let center = CoordinatedReadNotificationCenter(delegate: originalPeer)
+        let laterAssignmentStarted = DispatchSemaphore(value: 0)
+        let group = DispatchGroup()
+
+        group.enter()
+        DispatchQueue.global().async {
+            MessagingPush.installNotificationCenterDelegate(centerProvider: { center })
+            group.leave()
+        }
+        XCTAssertEqual(center.readStarted.wait(timeout: .now() + 5), .success)
+
+        group.enter()
+        DispatchQueue.global().async {
+            laterAssignmentStarted.signal()
+            MessagingPush.installNotificationCenterDelegate(
+                wrapping: nil,
+                centerProvider: { center }
+            )
+            group.leave()
+        }
+        XCTAssertEqual(laterAssignmentStarted.wait(timeout: .now() + 5), .success)
+        center.allowReadToFinish.signal()
+
+        XCTAssertEqual(group.wait(timeout: .now() + 5), .success)
+        XCTAssertTrue(center.delegate === MessagingPush.shared.installedNotificationCenterDelegate)
+        XCTAssertTrue(MessagingPush.shared.installedNotificationCenterDelegate?.peerRegistry.livePeers().isEmpty == true)
     }
 
     func testInstallNotificationCenterDelegate_whenExistingDelegateIsPresent_thenItIsWrapped() {
@@ -347,6 +470,59 @@ class MessagingPushNotificationDelegateTests: XCTestCase {
             MessagingPush.shared.installedNotificationCenterDelegate?.peerRegistry.livePeers().map(ObjectIdentifier.init),
             [ObjectIdentifier(firstPeer), ObjectIdentifier(reentrantPeer)]
         )
+    }
+
+    func testInstallNotificationCenterDelegate_whenEarlierSetterSubstitutesOnce_thenPostSetVerificationReassertsProxy() {
+        let substitutedDelegate = MockNotificationCenterDelegate()
+        let center = SubstitutingNotificationCenter(substitute: substitutedDelegate)
+
+        MessagingPush.installNotificationCenterDelegate(
+            wrapping: nil,
+            centerProvider: { center }
+        )
+
+        XCTAssertEqual(center.proxyAssignmentsCount, 2)
+        XCTAssertTrue(center.delegate === MessagingPush.shared.installedNotificationCenterDelegate)
+    }
+
+    func testInstallNotificationCenterDelegate_whenEarlierSetterReentersAndThenSubstitutes_thenRegistersPeerAndReassertsProxy() {
+        let center = ReentrantSubstitutingNotificationCenter()
+        let reentrantPeer = MockNotificationCenterDelegate()
+        center.onFirstProxyAssignment = {
+            MessagingPush.installNotificationCenterDelegate(
+                wrapping: reentrantPeer,
+                centerProvider: { center }
+            )
+        }
+
+        MessagingPush.installNotificationCenterDelegate(
+            wrapping: nil,
+            centerProvider: { center }
+        )
+
+        XCTAssertEqual(center.proxyAssignmentsCount, 2)
+        XCTAssertTrue(center.delegate === MessagingPush.shared.installedNotificationCenterDelegate)
+        XCTAssertEqual(
+            MessagingPush.shared.installedNotificationCenterDelegate?.peerRegistry.livePeers().map(ObjectIdentifier.init),
+            [ObjectIdentifier(reentrantPeer)]
+        )
+    }
+
+    func testInstallNotificationCenterDelegate_whenEarlierSetterAlwaysSubstitutes_thenStopsAfterVerifiedReassertionFailure() {
+        let substitutedDelegate = MockNotificationCenterDelegate()
+        let center = SubstitutingNotificationCenter(
+            substitute: substitutedDelegate,
+            substitutesEveryProxyAssignment: true
+        )
+
+        let proxyInstalled = MessagingPush.installNotificationCenterDelegate(
+            wrapping: nil,
+            centerProvider: { center }
+        )
+
+        XCTAssertFalse(proxyInstalled)
+        XCTAssertEqual(center.proxyAssignmentsCount, 2)
+        XCTAssertTrue(center.delegate === substitutedDelegate)
     }
 
     func testInstallNotificationCenterDelegate_whenForeignCioDelegateExistsBeforeSharedProxy_thenPreservesItAsPeer() {

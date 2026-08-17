@@ -30,8 +30,6 @@ protocol NotificationDelegatePeerRegistry: AnyObject {
     /// - A peer that is not registered yet is appended after the already-registered peers. Sequential
     ///   assignments preserve their registration order. Assignments racing from different threads are
     ///   serialized safely, but their relative order is whichever registration acquires the lock first.
-    /// - Registration is bounded; see ``NotificationDelegatePeerRegistryImpl/maxPeerCount`` for the
-    ///   bound and the eviction order used once it is reached.
     @discardableResult
     func register(_ peer: UNUserNotificationCenterDelegate?) -> NotificationDelegateRegistrationOutcome
 
@@ -50,23 +48,11 @@ protocol NotificationDelegatePeerRegistry: AnyObject {
 enum NotificationDelegateRegistrationOutcome {
     case cleared(peerCount: Int)
     case alreadyRegistered
-    case registered(evicted: UNUserNotificationCenterDelegate?)
+    case registered(peerCount: Int)
 }
 
 @available(iOSApplicationExtension, unavailable)
 final class NotificationDelegatePeerRegistryImpl: NotificationDelegatePeerRegistry {
-    /// Upper bound on how many peers are held at once.
-    ///
-    /// A real app has a handful of notification delegates: its own, plus one for each SDK that observes
-    /// pushes. The bound exists so that a caller which assigns a freshly allocated delegate repeatedly — a
-    /// pattern seen in cross-platform bridges that rebuild their native layer — cannot grow this list without
-    /// limit for the lifetime of the process.
-    ///
-    /// Eviction is deterministic: deallocated peers are dropped first, and only if that still leaves the list
-    /// full is the oldest *live* peer evicted to make room for the newly assigned one. Newer assignments win
-    /// because they are the ones the app most recently expressed interest in.
-    static let maxPeerCount = 8
-
     /// Weak holder for one peer. The identifier is captured at registration time so that identity can be
     /// compared without resurrecting a released peer.
     private final class WeakPeerBox {
@@ -112,7 +98,7 @@ final class NotificationDelegatePeerRegistryImpl: NotificationDelegatePeerRegist
         defer { lock.unlock() }
 
         guard let peer = peer else {
-            let peerCount = boxes.count
+            let peerCount = compactAndReadLocked().count
             boxes = []
             return .cleared(peerCount: peerCount)
         }
@@ -127,14 +113,8 @@ final class NotificationDelegatePeerRegistryImpl: NotificationDelegatePeerRegist
             return .alreadyRegistered
         }
 
-        // Compaction above already dropped dead peers, so reaching the bound means this many peers are live.
-        var evicted: UNUserNotificationCenterDelegate?
-        if boxes.count >= Self.maxPeerCount {
-            evicted = boxes.removeFirst().peer
-        }
-
         boxes.append(WeakPeerBox(peer: peer))
-        return .registered(evicted: evicted)
+        return .registered(peerCount: boxes.count)
     }
 
     /// Drops boxes whose peer has been deallocated and returns the surviving peers in registration order.
@@ -166,11 +146,8 @@ extension NotificationDelegateRegistrationOutcome {
             logger.debug("CIO: UNUserNotificationCenter.delegate set to nil. Cleared \(peerCount) forwarding peer(s); Customer.io's delegate stays installed.")
         case .alreadyRegistered:
             logger.debug("CIO: Notification center delegate \(String(describing: peer)) is already a forwarding peer. Keeping its existing position.")
-        case .registered(let evicted):
-            logger.debug("CIO: Registered notification center delegate \(String(describing: peer)) as a forwarding peer.")
-            if let evicted = evicted {
-                logger.error("CIO: More than \(NotificationDelegatePeerRegistryImpl.maxPeerCount) notification center delegates are registered. Evicted the oldest live delegate, \(type(of: evicted)), which will no longer receive push callbacks.")
-            }
+        case .registered(let peerCount):
+            logger.debug("CIO: Registered notification center delegate \(String(describing: peer)) as forwarding peer \(peerCount).")
         }
     }
 }

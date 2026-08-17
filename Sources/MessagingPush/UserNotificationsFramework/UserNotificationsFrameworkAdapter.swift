@@ -29,8 +29,8 @@ extension UNUserNotificationCenter {
         if MessagingPush.isInstalledNotificationCenterDelegate(delegate) {
             // The exact installed shared proxy — forward to the original setter. A separately constructed public
             // CioNotificationCenterDelegate is external and is registered as a peer below. This guard must run
-            // before logger resolution because proxy reassertion occurs under the install lock, and an
-            // app-provided logger dispatcher could otherwise reenter that lock.
+            // before logger resolution because assigning the proxy can synchronously enter earlier setter
+            // swizzlers, which may call this method reentrantly and should not produce app logger side effects.
             cio_swizzled_setDelegate(delegate: delegate)
             return
         }
@@ -49,9 +49,15 @@ extension UNUserNotificationCenter {
         // called: the proxy stays the installed delegate, and installNotificationCenterDelegate re-asserts it
         // only if something else has replaced it — that assignment re-enters this method and passes through the
         // exact shared-proxy identity guard above.
-        MessagingPush.installNotificationCenterDelegate(
+        let proxyInstalled = MessagingPush.installNotificationCenterDelegate(
             wrapping: delegate,
             centerProvider: { self }
         )
+        guard !proxyInstalled else { return }
+
+        // Another setter swizzler displaced the proxy on both bounded attempts. Preserve the app's requested
+        // assignment through the remaining setter chain rather than swallowing it. Customer.io logged the
+        // incompatibility above and deliberately does not retry indefinitely or guess a timeout.
+        cio_swizzled_setDelegate(delegate: delegate)
     }
 }

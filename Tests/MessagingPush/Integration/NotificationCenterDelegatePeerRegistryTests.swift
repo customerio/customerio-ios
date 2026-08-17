@@ -74,38 +74,40 @@ final class NotificationDelegatePeerRegistryTests: XCTestCase {
         XCTAssertTrue(registry.livePeers().isEmpty)
     }
 
-    func testRegister_whenCapacityIsExceeded_thenEvictsOldestLivePeerDeterministically() {
-        let peers = (0 ... NotificationDelegatePeerRegistryImpl.maxPeerCount).map { _ in Peer() }
+    func testRegister_whenMoreThanEightPeersRemainLive_thenPreservesEveryPeer() {
+        let peers = (0 ..< 32).map { _ in Peer() }
         peers.forEach { registry.register($0) }
 
         let livePeers = registry.livePeers()
-        XCTAssertEqual(livePeers.count, NotificationDelegatePeerRegistryImpl.maxPeerCount)
-        XCTAssertFalse(livePeers.contains { $0 === peers[0] })
-
+        XCTAssertEqual(livePeers.count, peers.count)
         for (index, livePeer) in livePeers.enumerated() {
-            XCTAssertTrue(livePeer === peers[index + 1])
+            XCTAssertTrue(livePeer === peers[index])
         }
     }
 
-    func testRegister_whenDeadPeerExistsAtCapacity_thenCompactsBeforeEvictingLivePeer() {
-        var peers = (0 ..< NotificationDelegatePeerRegistryImpl.maxPeerCount).map { _ in Peer() as Peer? }
+    func testRegister_whenDeadPeerExists_thenCompactsBeforeReportingNewLivePeerCount() {
+        var peers = (0 ..< 12).map { _ in Peer() as Peer? }
         peers.forEach { registry.register($0) }
         weak var releasedPeer = peers[0]
         peers[0] = nil
         let newest = Peer()
 
-        registry.register(newest)
+        let outcome = registry.register(newest)
 
         XCTAssertNil(releasedPeer)
         let livePeers = registry.livePeers()
-        XCTAssertEqual(livePeers.count, NotificationDelegatePeerRegistryImpl.maxPeerCount)
+        XCTAssertEqual(livePeers.count, peers.count)
         XCTAssertTrue(livePeers.last === newest)
         for peer in peers.dropFirst().compactMap({ $0 }) {
             XCTAssertTrue(livePeers.contains { $0 === peer })
         }
+        guard case .registered(let peerCount) = outcome else {
+            return XCTFail("Expected a registered outcome")
+        }
+        XCTAssertEqual(peerCount, peers.count)
     }
 
-    func testRegister_whenCalledConcurrently_thenRemainsBoundedAndContainsNoDuplicateIdentity() {
+    func testRegister_whenCalledConcurrently_thenRetainsAllLivePeersWithoutDuplicateIdentity() {
         let peers = (0 ..< 64).map { _ in Peer() }
         let group = DispatchGroup()
         let queue = DispatchQueue(label: "io.customer.delegate-registry-stress", attributes: .concurrent)
@@ -120,7 +122,7 @@ final class NotificationDelegatePeerRegistryTests: XCTestCase {
 
         XCTAssertEqual(group.wait(timeout: .now() + 5), .success)
         let livePeers = registry.livePeers()
-        XCTAssertLessThanOrEqual(livePeers.count, NotificationDelegatePeerRegistryImpl.maxPeerCount)
+        XCTAssertEqual(livePeers.count, peers.count)
         XCTAssertEqual(Set(livePeers.map(ObjectIdentifier.init)).count, livePeers.count)
     }
 }
