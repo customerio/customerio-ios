@@ -4,32 +4,78 @@ import Foundation
 #if canImport(UIKit)
 import UIKit
 
-/// A topology-exclusive coordinator for application, scene, and SwiftUI activation callbacks.
+/// Routes activation callbacks owned by an AppDelegate-only UIKit host.
 ///
-/// Create one coordinator for one host lifecycle owner. The topology guard is per coordinator,
-/// not process-wide, so the host is responsible for wiring exactly one owner for each callback
-/// surface. Each method invocation represents a new
-/// activation occurrence, even when a later activation carries an identical URL or activity. This
-/// deliberately avoids permanent payload or delivery-ID deduplication. Single-activation callbacks
-/// call at most one host routing closure and reject ambiguous multi-item input. A warm scene URL
-/// callback can contain multiple independent activation occurrences, so it routes every URL once.
-///
-/// Notification response processing is intentionally not part of this coordinator. Customer.io,
-/// host, and third-party notification delegates continue to receive responses through the single
-/// global `UNUserNotificationCenter` delegate proxy, which retains completion ownership.
-///
+/// Each method invocation represents a new activation occurrence, even when a later activation
+/// carries an identical URL or activity. Notification response processing is intentionally not
+/// part of this coordinator and remains owned by the global `UNUserNotificationCenter` delegate.
 /// Framework and host adapters should invoke this coordinator only from their terminal routing
 /// callback, after any required framework forwarding. Do not invoke it from both raw and forwarded
 /// callback seats for the same activation.
 ///
-/// All methods are main-actor isolated because UIKit and SwiftUI lifecycle callbacks are delivered
-/// on the main thread. Routing closures are invoked synchronously and are never retained.
+/// All methods are main-actor isolated because UIKit lifecycle callbacks are delivered on the main
+/// thread. Routing closures are invoked synchronously and are never retained.
 @available(iOSApplicationExtension, unavailable)
 @MainActor
-public final class CioAppLifecycleCoordinator {
-    /// The explicitly configured callback owner for this coordinator.
-    public let hostTopology: CioAppLifecycleHostTopology
+public final class CioAppDelegateLifecycleCoordinator {
+    /// Creates an AppDelegate-only lifecycle coordinator.
+    public init() {}
 
+    /// Handles one URL received by an AppDelegate-only host.
+    @discardableResult
+    public func handleOpenURL(
+        _ url: URL,
+        options: [UIApplication.OpenURLOptionsKey: Any],
+        route: (URL, [UIApplication.OpenURLOptionsKey: Any]) -> Bool
+    ) -> CioAppLifecycleHandlingResult {
+        routeOnce { route(url, options) }
+    }
+
+    /// Handles one user activity delivered by iOS to an AppDelegate-only host.
+    ///
+    /// Invoke this method only from the OS-owned AppDelegate callback. If an SDK callback later
+    /// supplies the same activity or URL as a routing fallback, route that value directly through
+    /// the host's existing handler instead of re-entering the coordinator.
+    @discardableResult
+    public func handleUserActivity(
+        _ userActivity: NSUserActivity,
+        route: (NSUserActivity) -> Bool
+    ) -> CioAppLifecycleHandlingResult {
+        routeOnce { route(userActivity) }
+    }
+
+    /// Handles one Home Screen quick action received by an AppDelegate-only host.
+    ///
+    /// The completion is invoked synchronously exactly once and is never retained.
+    @discardableResult
+    public func handleShortcut(
+        _ shortcutItem: UIApplicationShortcutItem,
+        route: (UIApplicationShortcutItem) -> Bool,
+        completionHandler: (Bool) -> Void
+    ) -> CioAppLifecycleHandlingResult {
+        let result = routeOnce { route(shortcutItem) }
+        completionHandler(result.wasHandled)
+        return result
+    }
+
+    private func routeOnce(_ route: () -> Bool) -> CioAppLifecycleHandlingResult {
+        route() ? .handled : .unhandled
+    }
+}
+
+/// Routes activation callbacks owned by a UIKit scene host.
+///
+/// Create one coordinator for each scene lifecycle owner. Framework and host adapters should
+/// invoke it only from their terminal routing callback, after any required framework forwarding.
+/// A cold scene connection represents one activation and rejects ambiguous multi-item input. A
+/// warm scene URL callback may coalesce independent activations and routes every URL once.
+/// Do not invoke the coordinator from both raw and forwarded callback seats for one activation.
+///
+/// Notification responses remain application-owned and are not processed here. All methods are
+/// main-actor isolated. Routing closures are invoked synchronously and are never retained.
+@available(iOSApplicationExtension, unavailable)
+@MainActor
+public final class CioSceneLifecycleCoordinator {
     private let loggerProvider: () -> Logger
 
     struct SceneConnectionActivation<URLActivation> {
@@ -39,89 +85,30 @@ public final class CioAppLifecycleCoordinator {
         let hasNotificationResponse: Bool
     }
 
-    /// Creates a coordinator for one explicit host lifecycle surface.
-    public init(hostTopology: CioAppLifecycleHostTopology) {
-        self.hostTopology = hostTopology
+    /// Creates a UIKit scene lifecycle coordinator.
+    public init() {
         // This is a public host-integration entry point. Resolve the shared logger lazily so the
         // SDK can finish top-level module initialization before the first lifecycle callback.
         self.loggerProvider = { DIGraphShared.shared.logger }
     }
 
-    init(hostTopology: CioAppLifecycleHostTopology, logger: Logger) {
-        self.hostTopology = hostTopology
+    init(logger: Logger) {
         self.loggerProvider = { logger }
     }
 
-    // MARK: - AppDelegate-only ingress
-
-    /// Handles one URL received by an AppDelegate-only host.
-    @discardableResult
-    public func handleApplicationOpenURL(
-        _ url: URL,
-        options: [UIApplication.OpenURLOptionsKey: Any],
-        route: (URL, [UIApplication.OpenURLOptionsKey: Any]) -> Bool
-    ) -> CioAppLifecycleHandlingResult {
-        guard accepts(.appDelegateOnly, callback: "application open URL") else {
-            return .rejectedHostTopology
-        }
-        return routeOnce { route(url, options) }
-    }
-
-    /// Handles one user activity delivered by iOS to an AppDelegate-only host.
-    ///
-    /// Invoke this method only from the OS-owned AppDelegate callback. If an SDK callback later
-    /// supplies the same activity or URL as a routing fallback, route that value directly through
-    /// the host's existing handler instead of re-entering the coordinator. Each OS callback is a
-    /// new occurrence, so hosts must not add permanent payload deduplication.
-    @discardableResult
-    public func handleApplicationUserActivity(
-        _ userActivity: NSUserActivity,
-        route: (NSUserActivity) -> Bool
-    ) -> CioAppLifecycleHandlingResult {
-        guard accepts(.appDelegateOnly, callback: "application user activity") else {
-            return .rejectedHostTopology
-        }
-        return routeOnce { route(userActivity) }
-    }
-
-    /// Handles one Home Screen quick action received by an AppDelegate-only host.
-    ///
-    /// The completion is invoked synchronously exactly once and is never retained.
-    @discardableResult
-    public func handleApplicationShortcut(
-        _ shortcutItem: UIApplicationShortcutItem,
-        route: (UIApplicationShortcutItem) -> Bool,
-        completionHandler: (Bool) -> Void
-    ) -> CioAppLifecycleHandlingResult {
-        let result: CioAppLifecycleHandlingResult
-        if accepts(.appDelegateOnly, callback: "application shortcut") {
-            result = routeOnce { route(shortcutItem) }
-        } else {
-            result = .rejectedHostTopology
-        }
-        completionHandler(result.wasHandled)
-        return result
-    }
-
-    // MARK: - UIScene ingress
-
     /// Handles the activation reason attached to a newly connected UIKit scene.
     ///
-    /// Exactly one URL, user activity, shortcut, or notification response is accepted. A cold scene
-    /// connection represents one activation, so multiple candidates, including multiple URLs, are
-    /// ambiguous and no routing closure is called. Consequently, SDK open metrics associated with
-    /// a discarded URL are not emitted. A notification response is reported as application-owned
-    /// and is not processed here.
+    /// Exactly one URL, user activity, shortcut, or notification response is accepted. Multiple
+    /// candidates are ambiguous and no routing closure is called. A notification response is
+    /// reported as application-owned and is not processed here.
     @discardableResult
-    public func handleSceneConnection(
+    public func handleConnection(
         options connectionOptions: UIScene.ConnectionOptions,
         routeURL: (UIOpenURLContext) -> Bool,
         continueUserActivity: (NSUserActivity) -> Bool,
         performShortcut: (UIApplicationShortcutItem) -> Bool
     ) -> CioAppLifecycleHandlingResult {
-        // Keep this UIKit wrapper deliberately thin. Tests exercise the generic core because
-        // UIScene.ConnectionOptions cannot be constructed by host applications.
-        handleSceneConnection(
+        handleConnection(
             SceneConnectionActivation(
                 urlActivations: Array(connectionOptions.urlContexts),
                 userActivities: Array(connectionOptions.userActivities),
@@ -137,73 +124,44 @@ public final class CioAppLifecycleCoordinator {
     /// Handles warm URL activations delivered to a UIKit scene.
     ///
     /// UIKit may coalesce multiple independent URL opens into one callback. Each URL is routed once
-    /// in unspecified order; the aggregate result is handled when at least one route accepts its URL.
+    /// in unspecified order; the aggregate result is handled when at least one route accepts it.
     @discardableResult
-    public func handleSceneOpenURLContexts(
+    public func handleOpenURLContexts(
         _ urlContexts: Set<UIOpenURLContext>,
         route: (UIOpenURLContext) -> Bool
     ) -> CioAppLifecycleHandlingResult {
-        // Preserve every UIOpenURLContext for the host route; the generic core owns aggregation.
-        handleSceneOpenURLs(Array(urlContexts), route: route)
+        handleOpenURLs(Array(urlContexts), route: route)
     }
 
     /// Handles one warm user-activity activation delivered to a UIKit scene.
     @discardableResult
-    public func handleSceneUserActivity(
+    public func handleUserActivity(
         _ userActivity: NSUserActivity,
         route: (NSUserActivity) -> Bool
     ) -> CioAppLifecycleHandlingResult {
-        guard accepts(.uiScene, callback: "scene user activity") else {
-            return .rejectedHostTopology
-        }
-        return routeOnce { route(userActivity) }
+        routeOnce { route(userActivity) }
     }
 
     /// Handles one Home Screen quick action delivered to a UIKit scene.
     ///
     /// The completion is invoked synchronously exactly once and is never retained.
     @discardableResult
-    public func handleSceneShortcut(
+    public func handleShortcut(
         _ shortcutItem: UIApplicationShortcutItem,
         route: (UIApplicationShortcutItem) -> Bool,
         completionHandler: (Bool) -> Void
     ) -> CioAppLifecycleHandlingResult {
-        let result: CioAppLifecycleHandlingResult
-        if accepts(.uiScene, callback: "scene shortcut") {
-            result = routeOnce { route(shortcutItem) }
-        } else {
-            result = .rejectedHostTopology
-        }
+        let result = routeOnce { route(shortcutItem) }
         completionHandler(result.wasHandled)
         return result
     }
 
-    // MARK: - SwiftUI ingress
-
-    /// Handles one URL delivered by a SwiftUI host's `onOpenURL` callback.
-    @discardableResult
-    public func handleSwiftUIOpenURL(
-        _ url: URL,
-        route: (URL) -> Bool
-    ) -> CioAppLifecycleHandlingResult {
-        guard accepts(.swiftUILifecycle, callback: "SwiftUI open URL") else {
-            return .rejectedHostTopology
-        }
-        return routeOnce { route(url) }
-    }
-
-    // MARK: - Testable core
-
-    func handleSceneConnection<URLActivation>(
+    func handleConnection<URLActivation>(
         _ activation: SceneConnectionActivation<URLActivation>,
         routeURL: (URLActivation) -> Bool,
         continueUserActivity: (NSUserActivity) -> Bool,
         performShortcut: (UIApplicationShortcutItem) -> Bool
     ) -> CioAppLifecycleHandlingResult {
-        guard accepts(.uiScene, callback: "scene connection") else {
-            return .rejectedHostTopology
-        }
-
         let candidateCount = activation.urlActivations.count
             + activation.userActivities.count
             + (activation.shortcutItem == nil ? 0 : 1)
@@ -226,13 +184,10 @@ public final class CioAppLifecycleCoordinator {
         return routeOnce { performShortcut(shortcutItem) }
     }
 
-    func handleSceneOpenURLs<URLActivation>(
+    func handleOpenURLs<URLActivation>(
         _ urlActivations: [URLActivation],
         route: (URLActivation) -> Bool
     ) -> CioAppLifecycleHandlingResult {
-        guard accepts(.uiScene, callback: "scene open URL") else {
-            return .rejectedHostTopology
-        }
         guard !urlActivations.isEmpty else { return .noActivation }
 
         var handled = false
@@ -247,19 +202,6 @@ public final class CioAppLifecycleCoordinator {
         return handled ? .handled : .unhandled
     }
 
-    private func accepts(
-        _ expectedTopology: CioAppLifecycleHostTopology,
-        callback: String
-    ) -> Bool {
-        guard hostTopology == expectedTopology else {
-            loggerProvider().error(
-                "CIO: Ignoring \(callback) because the coordinator owns \(hostTopology.rawValue), not \(expectedTopology.rawValue)."
-            )
-            return false
-        }
-        return true
-    }
-
     private func rejectAmbiguous(
         callback: String,
         candidateCount: Int
@@ -272,6 +214,27 @@ public final class CioAppLifecycleCoordinator {
 
     private func routeOnce(_ route: () -> Bool) -> CioAppLifecycleHandlingResult {
         route() ? .handled : .unhandled
+    }
+}
+
+/// Routes URL activations owned by a SwiftUI app lifecycle.
+///
+/// A `UIApplicationDelegateAdaptor` may still own application-global initialization, token, and
+/// notification callbacks, but it must not route the same UI activation through an AppDelegate
+/// lifecycle coordinator. Each invocation represents a new activation occurrence.
+@available(iOSApplicationExtension, unavailable)
+@MainActor
+public final class CioSwiftUILifecycleCoordinator {
+    /// Creates a SwiftUI lifecycle coordinator.
+    public init() {}
+
+    /// Handles one URL delivered by a SwiftUI host's `onOpenURL` callback.
+    @discardableResult
+    public func handleOpenURL(
+        _ url: URL,
+        route: (URL) -> Bool
+    ) -> CioAppLifecycleHandlingResult {
+        route(url) ? .handled : .unhandled
     }
 }
 #endif

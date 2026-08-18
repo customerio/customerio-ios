@@ -20,7 +20,7 @@ struct MainApp: App {
 
     @State private var settingsScreen: SettingsView?
 
-    private let lifecycleCoordinator = CioAppLifecycleCoordinator(hostTopology: .swiftUILifecycle)
+    private let lifecycleCoordinator = CioSwiftUILifecycleCoordinator()
 
     var body: some Scene {
         WindowGroup {
@@ -37,7 +37,7 @@ struct MainApp: App {
                 }
             }.accentColor(Color("AccentColor")) // sets Color.accentColor for all children
                 .onOpenURL { incomingURL in
-                    _ = lifecycleCoordinator.handleSwiftUIOpenURL(incomingURL) { route(url: $0) }
+                    _ = lifecycleCoordinator.handleOpenURL(incomingURL) { route(url: $0) }
                 }
         }
     }

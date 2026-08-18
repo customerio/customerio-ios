@@ -3,7 +3,7 @@ import CioLiveActivities
 import UIKit
 
 class SceneDelegate: UIResponder, UIWindowSceneDelegate {
-    private let lifecycleCoordinator = CioAppLifecycleCoordinator(hostTopology: .uiScene)
+    private let lifecycleCoordinator = CioSceneLifecycleCoordinator()
 
     var window: UIWindow?
     let storage = DIGraphShared.shared.storage
@@ -26,7 +26,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         // scene(_:openURLContexts:). The coordinator accepts exactly one activation candidate and
         // leaves notification responses with the global UNUserNotificationCenter delegate proxy.
         // This sample does not expose Home Screen quick actions, so that route deliberately declines.
-        _ = lifecycleCoordinator.handleSceneConnection(
+        _ = lifecycleCoordinator.handleConnection(
             options: connectionOptions,
             routeURL: { [weak self] in self?.route(url: $0.url) ?? false },
             continueUserActivity: { [weak self] in self?.route(userActivity: $0) ?? false },
@@ -80,7 +80,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
     // Opens one or more URLs, handles deep link for the apps
     func scene(_ scene: UIScene, openURLContexts URLContexts: Set<UIOpenURLContext>) {
-        _ = lifecycleCoordinator.handleSceneOpenURLContexts(
+        _ = lifecycleCoordinator.handleOpenURLContexts(
             URLContexts,
             route: { [weak self] in self?.route(url: $0.url) ?? false }
         )
@@ -111,7 +111,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     // To handle Universal Links from the Customer.io SDK, see `AppDelegate` file for implementation.
     // Learn more: https://customer.io/docs/sdk/ios/push/#universal-links-deep-links
     func scene(_ scene: UIScene, continue userActivity: NSUserActivity) {
-        _ = lifecycleCoordinator.handleSceneUserActivity(
+        _ = lifecycleCoordinator.handleUserActivity(
             userActivity,
             route: { [weak self] in self?.route(userActivity: $0) ?? false }
         )
