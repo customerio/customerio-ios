@@ -98,9 +98,9 @@ public final class CioSceneLifecycleCoordinator {
 
     /// Handles the activation reason attached to a newly connected UIKit scene.
     ///
-    /// Exactly one URL, user activity, shortcut, or notification response is accepted. Multiple
-    /// candidates are ambiguous and no routing closure is called. A notification response is
-    /// reported as application-owned and is not processed here.
+    /// Exactly one URL, user activity, or shortcut is accepted. Multiple UI candidates are
+    /// ambiguous and no routing closure is called. A notification response is independently
+    /// application-owned, so its presence never suppresses one valid scene-owned UI activation.
     @discardableResult
     public func handleConnection(
         options connectionOptions: UIScene.ConnectionOptions,
@@ -165,14 +165,11 @@ public final class CioSceneLifecycleCoordinator {
         let candidateCount = activation.urlActivations.count
             + activation.userActivities.count
             + (activation.shortcutItem == nil ? 0 : 1)
-            + (activation.hasNotificationResponse ? 1 : 0)
         guard candidateCount <= 1 else {
             return rejectAmbiguous(callback: "scene connection", candidateCount: candidateCount)
         }
-        guard candidateCount == 1 else { return .noActivation }
-
-        if activation.hasNotificationResponse {
-            return .notificationOwnedByApplication
+        guard candidateCount == 1 else {
+            return activation.hasNotificationResponse ? .notificationOwnedByApplication : .noActivation
         }
         if let urlActivation = activation.urlActivations.first {
             return routeOnce { routeURL(urlActivation) }

@@ -179,7 +179,7 @@ final class CioLifecycleCoordinatorsTests: XCTestCase {
         XCTAssertEqual(routeCount, 0)
     }
 
-    func testSceneHandleConnection_givenNotificationAndURL_thenRejectsAndLogs() {
+    func testSceneHandleConnection_givenNotificationAndURL_thenRoutesSceneOwnedURL() {
         let coordinator = makeSceneCoordinator()
         var routeCount = 0
 
@@ -190,9 +190,9 @@ final class CioLifecycleCoordinatorsTests: XCTestCase {
             routeCount: &routeCount
         )
 
-        XCTAssertEqual(result, .rejectedAmbiguousInput)
-        XCTAssertEqual(routeCount, 0)
-        XCTAssertEqual(logger.errorCallsCount, 1)
+        XCTAssertEqual(result, .handled)
+        XCTAssertEqual(routeCount, 1)
+        XCTAssertEqual(logger.errorCallsCount, 0)
     }
 
     func testSceneHandleConnection_givenMultipleURLs_thenRejectsWithoutRouting() {
@@ -203,6 +203,23 @@ final class CioLifecycleCoordinatorsTests: XCTestCase {
         let result = handleConnection(
             coordinator,
             urls: [url, secondURL],
+            routeCount: &routeCount
+        )
+
+        XCTAssertEqual(result, .rejectedAmbiguousInput)
+        XCTAssertEqual(routeCount, 0)
+        XCTAssertEqual(logger.errorCallsCount, 1)
+    }
+
+    func testSceneHandleConnection_givenNotificationAndMultipleURLs_thenRejectsSceneAmbiguity() {
+        let coordinator = makeSceneCoordinator()
+        let secondURL = URL(string: "myapp://dashboard")!
+        var routeCount = 0
+
+        let result = handleConnection(
+            coordinator,
+            urls: [url, secondURL],
+            hasNotificationResponse: true,
             routeCount: &routeCount
         )
 
