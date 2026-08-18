@@ -7,6 +7,10 @@ import UserNotifications
 import XCTest
 
 final class CioNotificationDelegateMultiPeerTests: XCTestCase {
+    private final class WeakActivationObserverHolder {
+        weak var observer: ApplicationActivationObserver?
+    }
+
     private final class CompletionCapture {
         var willPresent: ((UNNotificationPresentationOptions) -> Void)?
         var didReceive: (() -> Void)?
@@ -118,6 +122,46 @@ final class CioNotificationDelegateMultiPeerTests: XCTestCase {
         ) {
             willPresentCallsCount += 1
             completionHandler([])
+        }
+    }
+
+    private final class SuperForwardingCioDelegate: CioNotificationCenterDelegate {
+        var willPresentCallsCount = 0
+        var didReceiveCallsCount = 0
+        var openSettingsCallsCount = 0
+
+        override func userNotificationCenter(
+            _ center: UNUserNotificationCenter,
+            willPresent notification: UNNotification,
+            withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
+        ) {
+            willPresentCallsCount += 1
+            super.userNotificationCenter(
+                center,
+                willPresent: notification,
+                withCompletionHandler: completionHandler
+            )
+        }
+
+        override func userNotificationCenter(
+            _ center: UNUserNotificationCenter,
+            didReceive response: UNNotificationResponse,
+            withCompletionHandler completionHandler: @escaping () -> Void
+        ) {
+            didReceiveCallsCount += 1
+            super.userNotificationCenter(
+                center,
+                didReceive: response,
+                withCompletionHandler: completionHandler
+            )
+        }
+
+        override func userNotificationCenter(
+            _ center: UNUserNotificationCenter,
+            openSettingsFor notification: UNNotification?
+        ) {
+            openSettingsCallsCount += 1
+            super.userNotificationCenter(center, openSettingsFor: notification)
         }
     }
 
@@ -594,6 +638,138 @@ final class CioNotificationDelegateMultiPeerTests: XCTestCase {
         XCTAssertEqual(wrappedPeer.willPresentCallsCount, 1)
         XCTAssertEqual(subclass.willPresentCallsCount, 1)
         XCTAssertEqual(outerCallsCount, 1)
+    }
+
+    func testFanOut_whenCioSubclassWrapsDirectPeerAndCallsSuper_thenEveryCallbackRunsOnce() {
+        let wrappedPeer = Peer()
+        wrappedPeer.presentationOptions = [.badge]
+        let subclass = SuperForwardingCioDelegate(
+            messagingPush: MessagingPushInstanceMock(),
+            config: { MessagingPushConfigBuilder().build() },
+            wrappedDelegate: wrappedPeer
+        )
+        registry.register(wrappedPeer)
+        registry.register(subclass)
+        let notification = UNNotification.testInstance
+        let response = UNNotificationResponse.testInstance
+        var willPresentOuterCallsCount = 0
+        var didReceiveOuterCallsCount = 0
+
+        delegate.userNotificationCenter(
+            UNUserNotificationCenter.current(),
+            willPresent: notification,
+            withCompletionHandler: { options in
+                XCTAssertEqual(options, [.badge])
+                willPresentOuterCallsCount += 1
+            }
+        )
+        delegate.userNotificationCenter(
+            UNUserNotificationCenter.current(),
+            didReceive: response,
+            withCompletionHandler: { didReceiveOuterCallsCount += 1 }
+        )
+        delegate.userNotificationCenter(
+            UNUserNotificationCenter.current(),
+            openSettingsFor: notification
+        )
+
+        XCTAssertEqual(wrappedPeer.willPresentCallsCount, 1)
+        XCTAssertEqual(wrappedPeer.didReceiveCallsCount, 1)
+        XCTAssertEqual(wrappedPeer.openSettingsCallsCount, 1)
+        XCTAssertEqual(subclass.willPresentCallsCount, 1)
+        XCTAssertEqual(subclass.didReceiveCallsCount, 1)
+        XCTAssertEqual(subclass.openSettingsCallsCount, 1)
+        XCTAssertEqual(willPresentOuterCallsCount, 1)
+        XCTAssertEqual(didReceiveOuterCallsCount, 1)
+        XCTAssertEqual(pushHandlingCallsCount, 1)
+    }
+
+    func testFanOut_whenCioSubclassPrecedesItsDirectWrappedPeer_thenEveryCallbackRunsOnce() {
+        let wrappedPeer = Peer()
+        wrappedPeer.presentationOptions = [.badge]
+        let subclass = SuperForwardingCioDelegate(
+            messagingPush: MessagingPushInstanceMock(),
+            config: { MessagingPushConfigBuilder().build() },
+            wrappedDelegate: wrappedPeer
+        )
+        registry.register(subclass)
+        registry.register(wrappedPeer)
+        let notification = UNNotification.testInstance
+        let response = UNNotificationResponse.testInstance
+        var willPresentOuterCallsCount = 0
+        var didReceiveOuterCallsCount = 0
+
+        delegate.userNotificationCenter(
+            UNUserNotificationCenter.current(),
+            willPresent: notification,
+            withCompletionHandler: { options in
+                XCTAssertEqual(options, [.badge])
+                willPresentOuterCallsCount += 1
+            }
+        )
+        delegate.userNotificationCenter(
+            UNUserNotificationCenter.current(),
+            didReceive: response,
+            withCompletionHandler: { didReceiveOuterCallsCount += 1 }
+        )
+        delegate.userNotificationCenter(
+            UNUserNotificationCenter.current(),
+            openSettingsFor: notification
+        )
+
+        XCTAssertEqual(wrappedPeer.willPresentCallsCount, 1)
+        XCTAssertEqual(wrappedPeer.didReceiveCallsCount, 1)
+        XCTAssertEqual(wrappedPeer.openSettingsCallsCount, 1)
+        XCTAssertEqual(subclass.willPresentCallsCount, 1)
+        XCTAssertEqual(subclass.didReceiveCallsCount, 1)
+        XCTAssertEqual(subclass.openSettingsCallsCount, 1)
+        XCTAssertEqual(willPresentOuterCallsCount, 1)
+        XCTAssertEqual(didReceiveOuterCallsCount, 1)
+        XCTAssertEqual(pushHandlingCallsCount, 1)
+    }
+
+    func testActivationObserver_whenRegistrationReentersStart_thenRegistersOnce() {
+        let holder = WeakActivationObserverHolder()
+        var registrationCount = 0
+        var removalCount = 0
+        var observer: ApplicationActivationObserver? = ApplicationActivationObserver(
+            addObserver: { _ in
+                registrationCount += 1
+                holder.observer?.start {}
+                return NSObject()
+            },
+            removeObserver: { _ in removalCount += 1 }
+        )
+        holder.observer = observer
+
+        observer?.start {}
+
+        XCTAssertEqual(registrationCount, 1)
+        observer = nil
+        XCTAssertEqual(removalCount, 1)
+    }
+
+    func testDidReceive_whenForeignCioWrappedPeerAbandonsCompletion_thenForwardingMarkerIsReleased() {
+        let abandoningPeer = Peer()
+        abandoningPeer.discardsDidReceiveCompletion = true
+        let foreignCioDelegate = CioNotificationCenterDelegate(
+            messagingPush: MessagingPushInstanceMock(),
+            config: { MessagingPushConfigBuilder().build() },
+            wrappedDelegate: abandoningPeer
+        )
+        registry.register(foreignCioDelegate)
+        var outerCallsCount = 0
+
+        delegate.userNotificationCenter(
+            UNUserNotificationCenter.current(),
+            didReceive: UNNotificationResponse.testInstance,
+            withCompletionHandler: { outerCallsCount += 1 }
+        )
+
+        XCTAssertEqual(abandoningPeer.didReceiveCallsCount, 1)
+        XCTAssertEqual(foreignCioDelegate.activeForwardedPeerInvocationsCount, 0)
+        XCTAssertEqual(pushHandlingCallsCount, 1)
+        XCTAssertEqual(outerCallsCount, 0)
     }
 
     func testDidReceive_whenOpaqueWrapperReachesForeignCioDelegate_thenCioHandlingRunsOnce() {

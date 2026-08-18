@@ -42,13 +42,3 @@ final class WillPresentDeliveryContextStore {
         lock.unlock()
     }
 }
-
-@available(iOSApplicationExtension, unavailable)
-extension CioNotificationCenterDelegate {
-    /// Direct peer identities this compatibility delegate will forward `selector` to when invoked.
-    func directForwardingPeerIdentities(respondingTo selector: Selector) -> [ObjectIdentifier] {
-        peerRegistry.livePeers()
-            .filter { $0.responds(to: selector) }
-            .map(ObjectIdentifier.init)
-    }
-}

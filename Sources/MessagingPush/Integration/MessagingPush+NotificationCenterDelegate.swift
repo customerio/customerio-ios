@@ -139,7 +139,8 @@ extension MessagingPush {
         let proxy = CioNotificationCenterDelegate(
             messagingPush: shared,
             config: { moduleConfig },
-            peerRegistry: NotificationDelegatePeerRegistryImpl()
+            peerRegistry: NotificationDelegatePeerRegistryImpl(),
+            observeApplicationActivation: false
         )
         shared.notificationCenterDelegate = proxy
         return proxy
@@ -161,6 +162,7 @@ extension MessagingPush {
             // storage. Release that temporary snapshot only after the outer install lock is no longer held.
             withExtendedLifetime(installation.registration?.retainedPeers) {}
         }
+        installation.proxy.startObservingApplicationActivation()
         let proxyInstallationOutcome = ensureNotificationCenterDelegateInstalled(
             installation.proxy,
             on: &center
