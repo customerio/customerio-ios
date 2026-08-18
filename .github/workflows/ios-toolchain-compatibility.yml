@@ -14,8 +14,13 @@ permissions:
   contents: read
 
 concurrency:
+  # Scheduled and manual runs for main share one slot. Pull-request runs use
+  # their merge ref, so they do not cancel the nightly.
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
+
+env:
+  LAUNCH_SURVIVAL_SECONDS: '10'
 
 jobs:
   compile:
@@ -25,16 +30,17 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        fixture:
-          - native-apn
-          - customerio-ios-fcm
+        include:
+          - fixture: native-apn
+            app-name: APN UIKit.app
+          - fixture: customerio-ios-fcm
+            app-name: test cocoapods.app
 
     steps:
       - name: Check out iOS SDK
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Report and verify toolchain family
-        id: toolchain
         uses: customerio/mobile-ci-tools/github-actions/ios/report-toolchain/v1@main
         with:
           expected-xcode-major: '27'
@@ -67,7 +73,6 @@ jobs:
           pod _1.16.2_ install --project-directory='Apps/CocoaPods-FCM' 2>&1 | tee "$RUNNER_TEMP/${{ matrix.fixture }}-pod-install.log"
 
       - name: Compile native APN fixture
-        id: compile-apn
         if: matrix.fixture == 'native-apn'
         shell: bash
         run: |
@@ -83,7 +88,6 @@ jobs:
             build 2>&1 | tee "$RUNNER_TEMP/${{ matrix.fixture }}-build.log"
 
       - name: Compile CocoaPods FCM fixture
-        id: compile-fcm
         if: matrix.fixture == 'customerio-ios-fcm'
         shell: bash
         run: |
@@ -98,78 +102,31 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             build 2>&1 | tee "$RUNNER_TEMP/${{ matrix.fixture }}-build.log"
 
-      - name: Record compile result
-        if: steps.compile-apn.outcome == 'success' || steps.compile-fcm.outcome == 'success'
+      - name: Resolve built simulator app
         shell: bash
-        env:
-          FIXTURE: ${{ matrix.fixture }}
-          XCODE_VERSION: ${{ steps.toolchain.outputs.xcode-version }}
-          XCODE_BUILD: ${{ steps.toolchain.outputs.xcode-build }}
-          IOS_SIMULATOR_SDK: ${{ steps.toolchain.outputs.iphonesimulator-sdk }}
         run: |
           set -euo pipefail
-          : "${XCODE_VERSION:?missing xcode-version output}"
-          : "${XCODE_BUILD:?missing xcode-build output}"
-          : "${IOS_SIMULATOR_SDK:?missing iphonesimulator-sdk output}"
-          {
-            echo '## Native fixture compile'
-            echo
-            echo '**Classification:** compile-passed'
-            echo "**Fixture:** $FIXTURE"
-            echo "**Toolchain:** Xcode $XCODE_VERSION build $XCODE_BUILD, iphonesimulator $IOS_SIMULATOR_SDK"
-            echo '**Scope:** unsigned simulator compile only; no launch, callback, push-delivery, signing, or App Store claim'
-          } >> "$GITHUB_STEP_SUMMARY"
+          app_path="$RUNNER_TEMP/${{ matrix.fixture }}-xcode-27/Build/Products/Debug-iphonesimulator/${{ matrix.app-name }}"
+          if [[ ! -d "$app_path" ]]; then
+            echo "::error::built simulator app not found at $app_path"
+            exit 1
+          fi
+          echo "APP_PRODUCT_PATH=$app_path" >> "$GITHUB_ENV"
 
-      - name: Record compile failure
-        if: failure() && (steps.compile-apn.outcome == 'failure' || steps.compile-fcm.outcome == 'failure')
-        shell: bash
-        env:
-          FIXTURE: ${{ matrix.fixture }}
-        run: |
-          {
-            echo '## Native fixture compile'
-            echo
-            echo '**Classification:** fixture-compile-failed'
-            echo "**Fixture:** $FIXTURE"
-            echo '**Toolchain family:** Xcode 27 / iOS SDK 27'
-            echo '**Next step:** inspect the uploaded build log for the exact compiler failure'
-          } >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Record setup failure
-        if: failure() && steps.toolchain.outcome != 'failure' && steps.compile-apn.outcome == 'skipped' && steps.compile-fcm.outcome == 'skipped'
-        shell: bash
-        env:
-          FIXTURE: ${{ matrix.fixture }}
-        run: |
-          {
-            echo '## Native fixture compile'
-            echo
-            echo '**Classification:** fixture-setup-failed'
-            echo "**Fixture:** $FIXTURE"
-            echo '**Toolchain family:** Xcode 27 / iOS SDK 27'
-            echo '**Next step:** inspect checkout, toolchain selection, dependency installation, and fixture preparation before attributing this to SDK compilation'
-          } >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Record unavailable toolchain
-        if: failure() && steps.toolchain.outcome == 'failure'
-        shell: bash
-        env:
-          FIXTURE: ${{ matrix.fixture }}
-        run: |
-          {
-            echo '## Native fixture compile'
-            echo
-            echo '**Classification:** toolchain-unavailable'
-            echo "**Fixture:** $FIXTURE"
-            echo '**Expected toolchain family:** Xcode 27 / iOS SDK 27'
-            echo '**Next step:** inspect the toolchain report before evaluating fixture setup or SDK compilation'
-          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Install and launch fixture
+        uses: customerio/mobile-ci-tools/github-actions/ios/launch-simulator-app/v1@main
+        with:
+          app-path: ${{ env.APP_PRODUCT_PATH }}
+          expected-ios-major: '27'
+          survival-seconds: ${{ env.LAUNCH_SURVIVAL_SECONDS }}
+          log-path: ${{ runner.temp }}/${{ matrix.fixture }}-launch.log
 
       - name: Upload build logs
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: xcode-27-preview-${{ matrix.fixture }}-logs
-          path: ${{ runner.temp }}/${{ matrix.fixture }}-*.log
-          if-no-files-found: ignore
+          path: |
+            ${{ runner.temp }}/${{ matrix.fixture }}-*.log
+          if-no-files-found: error
           retention-days: 7
