@@ -2,7 +2,6 @@ import CioAnalytics
 import CioDataPipelines // do not use `@testable` so we can test functions are made public and not `internal`.
 import Foundation
 import SharedTests
-import UIKit
 import XCTest
 
 /**
@@ -118,15 +117,5 @@ class DataPipelineAPITest: UnitTest {
             },
             autoScreenViewBody: { self.dictionaryData }
         )
-    }
-
-    @MainActor
-    func test_sceneLifecycleCoordinatorPublicFunctions() throws {
-        try skipRunningTest()
-
-        let sceneCoordinator = CioSceneLifecycleCoordinator()
-        let _: CioSceneLifecycleHandlingResult = sceneCoordinator.handleOpenURLContexts([]) { _ in true }
-
-        XCTAssertTrue(CioSceneLifecycleHandlingResult.handled.wasHandled)
     }
 }

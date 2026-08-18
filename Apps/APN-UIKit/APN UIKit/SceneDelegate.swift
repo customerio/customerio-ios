@@ -3,8 +3,6 @@ import CioLiveActivities
 import UIKit
 
 class SceneDelegate: UIResponder, UIWindowSceneDelegate {
-    private let lifecycleCoordinator = CioSceneLifecycleCoordinator()
-
     var window: UIWindow?
     let storage = DIGraphShared.shared.storage
     var deepLinkHandler = DIGraphShared.shared.deepLinksHandlerUtil
@@ -22,16 +20,10 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         // public `NotificationInboxBell` / `NotificationInboxView` views (see DashboardViewController)
         // — the recommended integration — rather than a separate passthrough overlay window.
 
-        // On a cold launch, iOS delivers a Live Activity widget URL here instead of calling
-        // scene(_:openURLContexts:). The coordinator accepts exactly one activation candidate and
-        // leaves notification responses with the global UNUserNotificationCenter delegate proxy.
-        // This sample does not expose Home Screen quick actions, so that route deliberately declines.
-        _ = lifecycleCoordinator.handleConnection(
-            options: connectionOptions,
-            routeURL: { [weak self] in self?.route(url: $0.url) ?? false },
-            continueUserActivity: { [weak self] in self?.route(userActivity: $0) ?? false },
-            performShortcut: { _ in false }
-        )
+        // On a cold launch from a Live Activity tap, iOS delivers the `widgetURL` here in
+        // `connectionOptions.urlContexts` rather than via `scene(_:openURLContexts:)`. Route it
+        // through the same path so the deep link opens and the SDK reports the `opened` metric.
+        handle(urlContexts: connectionOptions.urlContexts)
     }
 
     func sceneDidDisconnect(_ scene: UIScene) {
@@ -80,24 +72,24 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
     // Opens one or more URLs, handles deep link for the apps
     func scene(_ scene: UIScene, openURLContexts URLContexts: Set<UIOpenURLContext>) {
-        _ = lifecycleCoordinator.handleOpenURLContexts(
-            URLContexts,
-            route: { [weak self] in self?.route(url: $0.url) ?? false }
-        )
+        handle(urlContexts: URLContexts)
     }
 
-    private func route(url: URL) -> Bool {
-        // A tap on a Customer.io Live Activity arrives as a CIO tracking URL. Report the `opened`
-        // for the exact delivery shown, then route its redirect. A delivery-only URL is handled even
-        // though it has no redirect. Non-Customer.io URLs pass through unchanged.
-        guard let destination = CustomerIO.liveActivities.handleWidgetUrl(url) else {
-            return true
+    private func handle(urlContexts: Set<UIOpenURLContext>) {
+        for context in urlContexts {
+            var url = context.url
+            // A tap on a Customer.io Live Activity arrives as a CIO tracking URL: report the
+            // `opened` for the exact delivery shown and unwrap the customer's deep link (nil if
+            // none). Non-CIO URLs are returned unchanged. Activities render from iOS 16.2, so this
+            // must not be gated any higher — only the in-app routing below needs 17.2.
+            guard let destination = CustomerIO.liveActivities.handleWidgetUrl(url) else { continue }
+            url = destination
+            if #available(iOS 17.2, *), url.host == LiveActivitiesViewController.deepLinkHost {
+                routeToLiveActivities()
+                continue
+            }
+            _ = deepLinkHandler.handleAppSchemeDeepLink(url)
         }
-        if #available(iOS 17.2, *), destination.host == LiveActivitiesViewController.deepLinkHost {
-            routeToLiveActivities()
-            return true
-        }
-        return deepLinkHandler.handleAppSchemeDeepLink(destination)
     }
 
     @available(iOS 17.2, *)
@@ -111,11 +103,10 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     // To handle Universal Links from the Customer.io SDK, see `AppDelegate` file for implementation.
     // Learn more: https://customer.io/docs/sdk/ios/push/#universal-links-deep-links
     func scene(_ scene: UIScene, continue userActivity: NSUserActivity) {
-        _ = route(userActivity: userActivity)
-    }
+        guard let universalLinkUrl = userActivity.webpageURL else {
+            return
+        }
 
-    private func route(userActivity: NSUserActivity) -> Bool {
-        guard let universalLinkURL = userActivity.webpageURL else { return false }
-        return deepLinkHandler.handleUniversalLinkDeepLink(universalLinkURL)
+        _ = deepLinkHandler.handleUniversalLinkDeepLink(universalLinkUrl)
     }
 }
