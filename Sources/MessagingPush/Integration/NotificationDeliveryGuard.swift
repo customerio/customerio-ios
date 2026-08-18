@@ -20,23 +20,42 @@ final class NotificationDeliveryGuard<Delivery: AnyObject>: @unchecked Sendable 
 
     func begin(_ delivery: Delivery) -> Bool {
         lock.lock()
-        defer { lock.unlock() }
+        var retainedDeliveries: [Delivery] = []
+        let liveDeliveries = compactCompletedDeliveriesLocked(retaining: &retainedDeliveries)
+        let wasCompleted = liveDeliveries.contains { $0 === delivery }
+        let inserted = wasCompleted
+            ? false
+            : activeIdentifiers.insert(ObjectIdentifier(delivery)).inserted
+        lock.unlock()
+        withExtendedLifetime(retainedDeliveries) {}
 
-        completedDeliveries.removeAll { $0.delivery == nil }
-        guard !completedDeliveries.contains(where: { $0.delivery === delivery }) else { return false }
-
-        let identifier = ObjectIdentifier(delivery)
-        guard activeIdentifiers.insert(identifier).inserted else { return false }
-        return true
+        return inserted
     }
 
     func complete(_ delivery: Delivery) {
         lock.lock()
-        completedDeliveries.removeAll { $0.delivery == nil }
-        if !completedDeliveries.contains(where: { $0.delivery === delivery }) {
+        var retainedDeliveries: [Delivery] = []
+        let liveDeliveries = compactCompletedDeliveriesLocked(retaining: &retainedDeliveries)
+        if !liveDeliveries.contains(where: { $0 === delivery }) {
             completedDeliveries.append(WeakDelivery(delivery))
         }
         activeIdentifiers.remove(ObjectIdentifier(delivery))
         lock.unlock()
+        withExtendedLifetime(retainedDeliveries) {}
+    }
+
+    /// Weak loads are retained until after the state lock is released. Otherwise the temporary produced by a
+    /// weak load can become an app-owned delivery's last owner and run its `deinit` reentrantly under this lock.
+    private func compactCompletedDeliveriesLocked(
+        retaining retainedDeliveries: inout [Delivery]
+    ) -> [Delivery] {
+        var liveDeliveries: [Delivery] = []
+        completedDeliveries = completedDeliveries.filter { completedDelivery in
+            guard let delivery = completedDelivery.delivery else { return false }
+            retainedDeliveries.append(delivery)
+            liveDeliveries.append(delivery)
+            return true
+        }
+        return liveDeliveries
     }
 }
