@@ -121,35 +121,12 @@ class DataPipelineAPITest: UnitTest {
     }
 
     @MainActor
-    func test_appLifecycleCoordinatorPublicFunctions() throws {
+    func test_sceneLifecycleCoordinatorPublicFunctions() throws {
         try skipRunningTest()
 
-        let applicationCoordinator = CioAppDelegateLifecycleCoordinator()
         let sceneCoordinator = CioSceneLifecycleCoordinator()
-        let swiftUICoordinator = CioSwiftUILifecycleCoordinator()
-        let activity = NSUserActivity(activityType: "io.customer.test")
-        let shortcut = UIApplicationShortcutItem(type: "test", localizedTitle: "Test")
+        let _: CioSceneLifecycleHandlingResult = sceneCoordinator.handleOpenURLContexts([]) { _ in true }
 
-        let _: CioAppLifecycleHandlingResult = applicationCoordinator.handleOpenURL(
-            exampleURL,
-            options: [:],
-            route: { _, _ in true }
-        )
-        _ = applicationCoordinator.handleUserActivity(activity) { _ in true }
-        _ = applicationCoordinator.handleShortcut(
-            shortcut,
-            route: { _ in true },
-            completionHandler: { _ in }
-        )
-        _ = sceneCoordinator.handleOpenURLContexts([]) { _ in true }
-        _ = sceneCoordinator.handleUserActivity(activity) { _ in true }
-        _ = sceneCoordinator.handleShortcut(
-            shortcut,
-            route: { _ in true },
-            completionHandler: { _ in }
-        )
-        _ = swiftUICoordinator.handleOpenURL(exampleURL) { _ in true }
-
-        XCTAssertTrue(CioAppLifecycleHandlingResult.handled.wasHandled)
+        XCTAssertTrue(CioSceneLifecycleHandlingResult.handled.wasHandled)
     }
 }

@@ -20,8 +20,6 @@ struct MainApp: App {
 
     @State private var settingsScreen: SettingsView?
 
-    private let lifecycleCoordinator = CioSwiftUILifecycleCoordinator()
-
     var body: some Scene {
         WindowGroup {
             HStack {
@@ -37,42 +35,34 @@ struct MainApp: App {
                 }
             }.accentColor(Color("AccentColor")) // sets Color.accentColor for all children
                 .onOpenURL { incomingURL in
-                    _ = lifecycleCoordinator.handleOpenURL(incomingURL) { route(url: $0) }
+                    // A Customer.io Live Activity URL reports the exact opened delivery before
+                    // routing its redirect. A delivery-only URL needs no further navigation.
+                    guard let deepLink = CustomerIO.liveActivities.handleWidgetUrl(incomingURL),
+                          let urlComponents = URLComponents(url: deepLink, resolvingAgainstBaseURL: false)
+                    else { return }
+
+                    let command: String
+                    if urlComponents.scheme == "https" {
+                        command = urlComponents.path.replacingOccurrences(of: "/", with: "")
+                    } else {
+                        command = urlComponents.host ?? ""
+                    }
+
+                    switch command {
+                    case "login":
+                        userManager.logout()
+                    case "dashboard":
+                        settingsScreen = nil
+                    case "settings":
+                        let siteId = urlComponents.queryItems?.first { $0.name == "site_id" }?.value
+                        let cdpApiKey = urlComponents.queryItems?.first { $0.name == "cdp_api_key" }?.value
+                        settingsScreen = SettingsView(siteId: siteId, cdpApiKey: cdpApiKey) {
+                            settingsScreen = nil
+                        }
+                    default:
+                        break
+                    }
                 }
         }
-    }
-
-    private func route(url incomingURL: URL) -> Bool {
-        // A Customer.io Live Activity URL reports the exact opened delivery before routing its
-        // redirect. A delivery-only URL is handled even when there is no redirect.
-        guard let deepLink = CustomerIO.liveActivities.handleWidgetUrl(incomingURL) else {
-            return true
-        }
-        guard let urlComponents = URLComponents(url: deepLink, resolvingAgainstBaseURL: false) else {
-            return false
-        }
-
-        let command: String
-        if urlComponents.scheme == "https" {
-            command = urlComponents.path.replacingOccurrences(of: "/", with: "")
-        } else {
-            command = urlComponents.host ?? ""
-        }
-
-        switch command {
-        case "login":
-            userManager.logout()
-        case "dashboard":
-            settingsScreen = nil
-        case "settings":
-            let siteId = urlComponents.queryItems?.first { $0.name == "site_id" }?.value
-            let cdpApiKey = urlComponents.queryItems?.first { $0.name == "cdp_api_key" }?.value
-            settingsScreen = SettingsView(siteId: siteId, cdpApiKey: cdpApiKey) {
-                settingsScreen = nil
-            }
-        default:
-            return false
-        }
-        return true
     }
 }

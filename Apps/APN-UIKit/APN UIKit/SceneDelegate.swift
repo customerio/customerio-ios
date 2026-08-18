@@ -111,10 +111,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     // To handle Universal Links from the Customer.io SDK, see `AppDelegate` file for implementation.
     // Learn more: https://customer.io/docs/sdk/ios/push/#universal-links-deep-links
     func scene(_ scene: UIScene, continue userActivity: NSUserActivity) {
-        _ = lifecycleCoordinator.handleUserActivity(
-            userActivity,
-            route: { [weak self] in self?.route(userActivity: $0) ?? false }
-        )
+        _ = route(userActivity: userActivity)
     }
 
     private func route(userActivity: NSUserActivity) -> Bool {

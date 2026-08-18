@@ -1,5 +1,5 @@
-/// The outcome of handling one lifecycle activation ingress.
-public enum CioAppLifecycleHandlingResult: Equatable, Sendable {
+/// The outcome of one scene lifecycle activation ingress.
+public enum CioSceneLifecycleHandlingResult: Equatable, Sendable {
     /// The host routing closure accepted the activation.
     case handled
 
