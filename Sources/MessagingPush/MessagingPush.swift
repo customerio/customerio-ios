@@ -20,10 +20,32 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
 
     /// Holds a strong reference to the installed CioNotificationCenterDelegate. UNUserNotificationCenter only holds a weak reference.
     /// AnyObject avoids a stored-property availability conflict (CioNotificationCenterDelegate is unavailable in app extensions).
-    private var notificationCenterDelegate: AnyObject?
+    @Atomic var notificationCenterDelegate: AnyObject?
 
     /// Guards against swizzling the delegate setter more than once; swizzling twice would undo the first swap.
-    private static var delegateSetterSwizzled = false
+    static var delegateSetterSwizzled = false
+
+    /// Increments whenever an intercepted assignment explicitly clears the delegate. The first-install path
+    /// snapshots this under ``installLock`` before reading the notification-center delegate outside the lock.
+    /// A later non-nil assignment is additive and must not erase the captured pre-existing delegate, while a
+    /// later nil assignment is authoritative and must prevent that captured delegate from being resurrected.
+    static var notificationDelegateClearGeneration: UInt64 = 0
+
+    /// Serializes the install path, which is a check-then-act: reuse the installed proxy or create the one
+    /// proxy. `@Atomic` cannot express that atomically, and two concurrent installs would create two proxies,
+    /// only one of which the notification center would keep.
+    ///
+    /// A lock rather than an actor because the delegate setter this runs under is a synchronous Objective-C API
+    /// that cannot `await`. The center-provider closure and logger resolution run before the lock. During the
+    /// first install, a clear-generation check reconciles the center getter after unlocking because a previous
+    /// getter or setter swizzler may execute app code and reenter installation. Center getters, setters, and
+    /// logging all run outside this lock.
+    static let installLock = NSLock()
+
+    /// Marks the synchronous setter call used to install the proxy. If an earlier setter swizzler assigns a
+    /// delegate reentrantly, that nested assignment is registered immediately but leaves proxy reassertion to
+    /// the outermost call. This prevents recursive swizzler chains from repeatedly setting the proxy.
+    static let proxyInstallationThreadKey = "io.customer.notification-center-delegate.installing-proxy"
 
     // singleton constructor
     private init() {
@@ -68,6 +90,7 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
     @available(iOSApplicationExtension, unavailable)
     static func resetNotificationCenterDelegate() {
         shared.notificationCenterDelegate = nil
+        notificationDelegateClearGeneration = 0
     }
     #endif
 
@@ -87,7 +110,6 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
             // Put those parts in this non-NSE initialize method.
             if config.autoTrackPushEvents {
                 Self.installNotificationCenterDelegate(
-                    wrapping: UNUserNotificationCenter.current().delegate,
                     centerProvider: { UNUserNotificationCenter.current() }
                 )
             }
@@ -122,61 +144,6 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
 
     private func getImplementation(config: MessagingPushConfigOptions) -> MessagingPushInstance {
         MessagingPushImplementation(diGraph: DIGraphShared.shared, moduleConfig: config)
-    }
-
-    @available(iOSApplicationExtension, unavailable)
-    var installedNotificationCenterDelegate: CioNotificationCenterDelegate? {
-        notificationCenterDelegate as? CioNotificationCenterDelegate
-    }
-
-    @available(iOSApplicationExtension, unavailable)
-    static func installNotificationCenterDelegate(
-        wrapping wrappedDelegate: UNUserNotificationCenterDelegate?,
-        centerProvider: UserNotificationCenterInstance
-    ) {
-        beginSwizzlingDelegateSetter()
-        let proxy = CioNotificationCenterDelegate(
-            messagingPush: shared,
-            config: { moduleConfig },
-            wrappedDelegate: wrappedDelegate
-        )
-        shared.notificationCenterDelegate = proxy
-        var center = centerProvider()
-        center.delegate = proxy
-    }
-
-    /// Swizzles `UNUserNotificationCenter.delegate` setter so that any future assignment routes through
-    /// `cio_swizzled_setDelegate`, which wraps non-CIO delegates rather than displacing the SDK.
-    /// The guard ensures the exchange happens exactly once; a second exchange would undo the first.
-    @available(iOSApplicationExtension, unavailable)
-    private static func beginSwizzlingDelegateSetter() {
-        guard !delegateSetterSwizzled else { return }
-        delegateSetterSwizzled = true
-
-        let originalSelector = #selector(setter: UNUserNotificationCenter.delegate)
-        let swizzledSelector = #selector(UNUserNotificationCenter.cio_swizzled_setDelegate(delegate:))
-
-        guard
-            let originalMethod = class_getInstanceMethod(UNUserNotificationCenter.self, originalSelector),
-            let swizzledMethod = class_getInstanceMethod(UNUserNotificationCenter.self, swizzledSelector)
-        else { return }
-
-        let didAdd = class_addMethod(
-            UNUserNotificationCenter.self,
-            originalSelector,
-            method_getImplementation(swizzledMethod),
-            method_getTypeEncoding(swizzledMethod)
-        )
-        if didAdd {
-            class_replaceMethod(
-                UNUserNotificationCenter.self,
-                swizzledSelector,
-                method_getImplementation(originalMethod),
-                method_getTypeEncoding(originalMethod)
-            )
-        } else {
-            method_exchangeImplementations(originalMethod, swizzledMethod)
-        }
     }
 
     /**

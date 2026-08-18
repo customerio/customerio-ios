@@ -52,6 +52,23 @@ class CioNotificationCenterDelegateTests: XCTestCase {
 
     // MARK: - willPresent
 
+    func testPublicInitializer_whenWrappedDelegateHasNoOtherOwner_thenRetainsItUntilProxyDeallocates() {
+        var wrappedDelegate: MockNotificationCenterDelegate? = MockNotificationCenterDelegate()
+        weak var weakWrappedDelegate = wrappedDelegate
+        var proxy: CioNotificationCenterDelegate? = CioNotificationCenterDelegate(
+            messagingPush: mockMessagingPush,
+            config: { self.createMockConfig() },
+            wrappedDelegate: wrappedDelegate
+        )
+
+        wrappedDelegate = nil
+        XCTAssertNotNil(weakWrappedDelegate)
+
+        proxy = nil
+        XCTAssertNil(proxy)
+        XCTAssertNil(weakWrappedDelegate)
+    }
+
     func testUserNotificationCenterWillPresent_whenCalled_thenWrappedDelegateIsCalled() {
         var completionHandlerCalled = false
         let completionHandler: (UNNotificationPresentationOptions) -> Void = { _ in

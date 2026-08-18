@@ -1,3 +1,9 @@
+## [4.7.4](https://github.com/customerio/customerio-ios/compare/4.7.3...4.7.4) (2026-08-18)
+
+### Bug Fixes
+
+* compose notification center delegates (MBL-2281) ([#1211](https://github.com/customerio/customerio-ios/issues/1211)) ([fc575b7](https://github.com/customerio/customerio-ios/commit/fc575b72ef4922c65bb0caecf7c8d5f94cd40a8d))
+
 ## [4.7.3](https://github.com/customerio/customerio-ios/compare/4.7.2...4.7.3) (2026-08-10)
 
 ### Bug Fixes
