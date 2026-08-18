@@ -412,7 +412,7 @@ class CheckXcode27NightlyRunsTests(unittest.TestCase):
 
     @mock.patch("scripts.ci.check_xcode27_nightly_runs.write_summary")
     def test_main_reports_summary_failure_as_monitoring_error(self, summary_mock):
-        summary_mock.side_effect = OSError("summary unavailable")
+        summary_mock.side_effect = RuntimeError("summary unavailable")
 
         with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
             result = main(

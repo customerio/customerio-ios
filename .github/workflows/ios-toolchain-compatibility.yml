@@ -120,7 +120,7 @@ jobs:
       - name: Install and launch fixture
         id: launch
         # TODO(MBL-2248): switch to @main after customerio/mobile-ci-tools#16 merges.
-        uses: customerio/mobile-ci-tools/github-actions/ios/launch-simulator-app/v1@a5a10ee48b901234701ac38ff26daeb4b5d9c041
+        uses: customerio/mobile-ci-tools/github-actions/ios/launch-simulator-app/v1@76855cf3495a2c616d0a5ccc2e53a41d66b6c967
         with:
           app-path: ${{ env.APP_PRODUCT_PATH }}
           expected-ios-major: '27'
@@ -225,13 +225,14 @@ jobs:
             expected_executable="${APP_NAME%.app}"
             actual_executable="$(/usr/libexec/PlistBuddy \
               -c 'Print :CFBundleExecutable' "$APP_PRODUCT_PATH/Info.plist" 2>/dev/null || true)"
-            if [[ -n "$actual_executable" && "$actual_executable" == "$expected_executable" ]]; then
+            if [[ -n "$actual_executable" ]]; then
+              if [[ "$actual_executable" != "$expected_executable" ]]; then
+                echo "::warning::expected executable $expected_executable but built $actual_executable; collecting reports for the built executable"
+              fi
               find "$crash_reports" -type f -name "${actual_executable}*.ips" -mmin -60 \
                 -exec cp -p {} "$diagnostics"/ \; || true
-            elif [[ -z "$actual_executable" ]]; then
-              echo "::warning::could not read CFBundleExecutable; no crash report was collected"
             else
-              echo "::warning::expected executable $expected_executable but built $actual_executable; no crash report was collected"
+              echo "::warning::could not read CFBundleExecutable; no crash report was collected"
             fi
           fi
 

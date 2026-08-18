@@ -190,7 +190,7 @@ def main(
 
     try:
         write_summary(messages)
-    except OSError as error:
+    except Exception as error:
         print(f"failed to write watchdog summary: {error}", file=sys.stderr)
         monitoring_failed = True
     if monitoring_failed:
