@@ -4,6 +4,18 @@ import XCTest
 final class PeerDeliveryCompletionAggregateTests: XCTestCase {
     private final class LifetimeToken {}
 
+    private final class DeinitCallbackToken {
+        private let callback: () -> Void
+
+        init(callback: @escaping () -> Void) {
+            self.callback = callback
+        }
+
+        deinit {
+            callback()
+        }
+    }
+
     func testAggregate_whenPeersCompleteSynchronouslyBeforeDispatchFinishes_thenOuterCompletesOnceAfterDispatch() {
         var values: [Int] = []
         let aggregate = PeerDeliveryCompletionAggregate<[Int]>(
@@ -150,6 +162,27 @@ final class PeerDeliveryCompletionAggregateTests: XCTestCase {
         aggregate.complete(token: 0, with: ())
 
         XCTAssertNil(weakToken)
+    }
+
+    func testAggregate_whenReleasedPeerDeinitReenters_thenReleaseRunsOutsideAggregateLock() {
+        let deinitialized = expectation(description: "peer deinitialized without deadlock")
+        var aggregate: PeerDeliveryCompletionAggregate<Void>!
+        var token: DeinitCallbackToken? = DeinitCallbackToken {
+            aggregate.finishDispatching()
+            deinitialized.fulfill()
+        }
+        aggregate = PeerDeliveryCompletionAggregate<Void>(
+            retaining: [token!],
+            initialValue: (),
+            merge: { _, _ in () },
+            onFinished: { _ in }
+        )
+        token = nil
+
+        aggregate.finishDispatching()
+        aggregate.complete(token: 0, with: ())
+
+        wait(for: [deinitialized], timeout: 1)
     }
 
     func testAggregate_whenConcurrentCompletionsRace_thenOuterCompletesExactlyOnce() {

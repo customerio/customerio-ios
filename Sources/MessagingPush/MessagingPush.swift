@@ -25,16 +25,21 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
     /// Guards against swizzling the delegate setter more than once; swizzling twice would undo the first swap.
     static var delegateSetterSwizzled = false
 
+    /// Increments whenever an intercepted assignment explicitly clears the delegate. The first-install path
+    /// snapshots this under ``installLock`` before reading the notification-center delegate outside the lock.
+    /// A later non-nil assignment is additive and must not erase the captured pre-existing delegate, while a
+    /// later nil assignment is authoritative and must prevent that captured delegate from being resurrected.
+    static var notificationDelegateClearGeneration: UInt64 = 0
+
     /// Serializes the install path, which is a check-then-act: reuse the installed proxy or create the one
     /// proxy. `@Atomic` cannot express that atomically, and two concurrent installs would create two proxies,
     /// only one of which the notification center would keep.
     ///
     /// A lock rather than an actor because the delegate setter this runs under is a synchronous Objective-C API
     /// that cannot `await`. The center-provider closure and logger resolution run before the lock. During the
-    /// first install, the center getter runs under the lock only after the setter swizzle is active. That closes
-    /// the otherwise unavoidable gap where an assignment could happen after a stale pre-swizzle snapshot. The
-    /// center setter and logging still run after unlocking because a previous setter swizzler may execute app
-    /// code and reenter installation.
+    /// first install, a clear-generation check reconciles the center getter after unlocking because a previous
+    /// getter or setter swizzler may execute app code and reenter installation. Center getters, setters, and
+    /// logging all run outside this lock.
     static let installLock = NSLock()
 
     /// Marks the synchronous setter call used to install the proxy. If an earlier setter swizzler assigns a
@@ -85,6 +90,7 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
     @available(iOSApplicationExtension, unavailable)
     static func resetNotificationCenterDelegate() {
         shared.notificationCenterDelegate = nil
+        notificationDelegateClearGeneration = 0
     }
     #endif
 

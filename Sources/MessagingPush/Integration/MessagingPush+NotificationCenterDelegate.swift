@@ -41,9 +41,9 @@ extension MessagingPush {
 
     /// Installs the SDK proxy for the first time, preserving the delegate currently assigned to the center.
     ///
-    /// The setter swizzle is activated before reading `center.delegate`, and the read and registry mutation are
-    /// serialized with every intercepted later assignment. Therefore the captured delegate cannot become a
-    /// stale value that is registered after a newer delegate or `nil` assignment.
+    /// The setter swizzle is activated before reading `center.delegate`. The getter runs without the install
+    /// lock because another SDK may execute app code from a swizzled getter. A clear-generation check then
+    /// registers the captured delegate unless a newer intercepted nil assignment explicitly detached it.
     static func installNotificationCenterDelegate(
         centerProvider: UserNotificationCenterInstance
     ) {
@@ -52,14 +52,25 @@ extension MessagingPush {
 
         installLock.lock()
         beginSwizzlingDelegateSetter()
-        let wrappedDelegate = center.delegate
-        let preparedInstallation = prepareNotificationCenterDelegateInstallationLocked(
-            wrapping: wrappedDelegate
-        )
+        let proxy = notificationCenterDelegateProxyLocked()
+        let clearGenerationBeforeRead = notificationDelegateClearGeneration
         installLock.unlock()
 
-        finishNotificationCenterDelegateInstallation(
-            preparedInstallation,
+        let wrappedDelegate = center.delegate
+
+        installLock.lock()
+        let registration: NotificationDelegateRegistrationOutcome?
+        if let wrappedDelegate = wrappedDelegate,
+           notificationDelegateClearGeneration == clearGenerationBeforeRead,
+           wrappedDelegate !== proxy {
+            registration = proxy.peerRegistry.register(wrappedDelegate)
+        } else {
+            registration = nil
+        }
+        installLock.unlock()
+
+        _ = finishNotificationCenterDelegateInstallation(
+            (proxy: proxy, registration: registration),
             wrapping: wrappedDelegate,
             on: &center,
             logger: logger
@@ -80,6 +91,9 @@ extension MessagingPush {
 
         installLock.lock()
         beginSwizzlingDelegateSetter()
+        if wrappedDelegate == nil {
+            notificationDelegateClearGeneration &+= 1
+        }
         let preparedInstallation = prepareNotificationCenterDelegateInstallationLocked(
             wrapping: wrappedDelegate
         )
@@ -101,17 +115,7 @@ extension MessagingPush {
         proxy: CioNotificationCenterDelegate,
         registration: NotificationDelegateRegistrationOutcome?
     ) {
-        let proxy: CioNotificationCenterDelegate
-        if let installedProxy = shared.installedNotificationCenterDelegate {
-            proxy = installedProxy
-        } else {
-            proxy = CioNotificationCenterDelegate(
-                messagingPush: shared,
-                config: { moduleConfig },
-                peerRegistry: NotificationDelegatePeerRegistryImpl()
-            )
-            shared.notificationCenterDelegate = proxy
-        }
+        let proxy = notificationCenterDelegateProxyLocked()
 
         // Ignore only this exact installed proxy. A separately constructed public CioNotificationCenterDelegate
         // is an external peer and must be preserved like any other app-owned delegate.
@@ -123,6 +127,22 @@ extension MessagingPush {
         }
 
         return (proxy: proxy, registration: registrationOutcome)
+    }
+
+    /// Creates or reuses the process-wide proxy without reading or mutating external delegate state.
+    /// Must be called with ``installLock`` held.
+    private static func notificationCenterDelegateProxyLocked() -> CioNotificationCenterDelegate {
+        if let installedProxy = shared.installedNotificationCenterDelegate {
+            return installedProxy
+        }
+
+        let proxy = CioNotificationCenterDelegate(
+            messagingPush: shared,
+            config: { moduleConfig },
+            peerRegistry: NotificationDelegatePeerRegistryImpl()
+        )
+        shared.notificationCenterDelegate = proxy
+        return proxy
     }
 
     /// Completes installation without holding ``installLock``. Setter calls can enter earlier swizzlers and

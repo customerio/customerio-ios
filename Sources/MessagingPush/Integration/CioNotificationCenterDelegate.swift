@@ -19,12 +19,6 @@ import UserNotifications
 /// for the storage and ownership rules.
 @available(iOSApplicationExtension, unavailable)
 open class CioNotificationCenterDelegate: NSObject, UNUserNotificationCenterDelegate {
-    private enum DeliveryIdentifier: Hashable {
-        case willPresent(ObjectIdentifier)
-        case didReceive(ObjectIdentifier)
-        case openSettings(ObjectIdentifier?)
-    }
-
     // Preserve the initializer's ownership contract. The shared instance has process lifetime; compatibility
     // callers that provide another implementation continue to have it retained for the delegate's lifetime.
     private let messagingPush: MessagingPushInstance
@@ -44,10 +38,15 @@ open class CioNotificationCenterDelegate: NSObject, UNUserNotificationCenterDele
     /// asynchronously while still allowing its public override to be invoked dynamically.
     private let forwardedPeerLock = NSLock()
     private var forwardedPeerInvocations: [ObjectIdentifier: ForwardedPeerInvocation] = [:]
-    /// Detects a peer that forwards a delivery back into this same proxy. Completion-based deliveries remain
-    /// active until their aggregate completes, so a peer that forwards asynchronously cannot restart the graph.
-    private let deliveryLock = NSLock()
-    private var activeDeliveries: Set<DeliveryIdentifier> = []
+    /// Customer.io processing is process-wide even when an opaque third-party wrapper reaches another public
+    /// Customer.io delegate transitively. Per-proxy guards still own each proxy's forwarding graph.
+    private static let customerIOResponseGuard = NotificationDeliveryGuard<UNNotificationResponse>()
+    private let didReceiveDeliveryGuard = NotificationDeliveryGuard<UNNotificationResponse>()
+    private let openSettingsDeliveryGuard = NotificationDeliveryGuard<UNNotification>()
+    private let willPresentDeliveryGuard = NotificationDeliveryGuard<UNNotification>()
+    private let nilOpenSettingsLock = NSLock()
+    private var deliveredNilOpenSettingsSinceBackground = false
+    private var applicationBackgroundObserver: NSObjectProtocol?
     /// Preserves the public initializer's existing strong ownership of its single wrapped delegate. The
     /// process-wide internal proxy leaves this nil and keeps its multi-peer registry weak.
     private let compatibilityWrappedDelegate: UNUserNotificationCenterDelegate?
@@ -75,6 +74,7 @@ open class CioNotificationCenterDelegate: NSObject, UNUserNotificationCenterDele
         super.init()
 
         peerRegistry.register(wrappedDelegate)
+        observeApplicationBackground()
     }
 
     init(
@@ -91,6 +91,13 @@ open class CioNotificationCenterDelegate: NSObject, UNUserNotificationCenterDele
         self.systemDelegate = systemDelegate
         self.compatibilityWrappedDelegate = nil
         super.init()
+        observeApplicationBackground()
+    }
+
+    deinit {
+        if let applicationBackgroundObserver {
+            NotificationCenter.default.removeObserver(applicationBackgroundObserver)
+        }
     }
 
     /// The presentation options Customer.io uses only when no live peer implements `willPresent`.
@@ -109,12 +116,10 @@ open class CioNotificationCenterDelegate: NSObject, UNUserNotificationCenterDele
         willPresent notification: UNNotification,
         withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
     ) {
-        let deliveryIdentifier = DeliveryIdentifier.willPresent(ObjectIdentifier(notification))
-        guard beginDelivery(deliveryIdentifier) else {
+        guard willPresentDeliveryGuard.begin(notification) else {
             // A peer is forwarding this same delivery back into the proxy. Resolve the nested request with
-            // Customer.io's configured fallback, just as this proxy would with no implementing peer. A pure
-            // forwarding peer therefore preserves foreground presentation instead of turning the cycle into an
-            // accidental explicit `[]` preference.
+            // Customer.io's configured fallback, just as this proxy would with no implementing peer. The
+            // configured policy may legitimately be an empty option set.
             completionHandler(cioConfiguredPresentationOptions)
             return
         }
@@ -133,11 +138,11 @@ open class CioNotificationCenterDelegate: NSObject, UNUserNotificationCenterDele
             initialValue: peers.isEmpty ? cioConfiguredPresentationOptions : [],
             merge: { $0.union($1) },
             onFinished: { [weak self] options in
-                self?.endDelivery(deliveryIdentifier)
+                self?.willPresentDeliveryGuard.complete(notification)
                 completionHandler(options)
             },
             onAbandoned: { [weak self] in
-                self?.endDelivery(deliveryIdentifier)
+                self?.willPresentDeliveryGuard.complete(notification)
             }
         )
 
@@ -160,8 +165,7 @@ open class CioNotificationCenterDelegate: NSObject, UNUserNotificationCenterDele
         didReceive response: UNNotificationResponse,
         withCompletionHandler completionHandler: @escaping () -> Void
     ) {
-        let deliveryIdentifier = DeliveryIdentifier.didReceive(ObjectIdentifier(response))
-        guard beginDelivery(deliveryIdentifier) else {
+        guard didReceiveDeliveryGuard.begin(response) else {
             // The outer invocation already performed Customer.io handling and owns the peer aggregate.
             completionHandler()
             return
@@ -173,21 +177,27 @@ open class CioNotificationCenterDelegate: NSObject, UNUserNotificationCenterDele
         )
         // Snapshot before Customer.io processing, which may synchronously route into app code that assigns a
         // delegate. Such a reentrant peer begins with the next delivery, just like assignment from another peer.
-        if !isForwardedPeerInvocation(response) {
+        let shouldHandleCustomerIO = !isForwardedPeerInvocation(response)
+            && Self.customerIOResponseGuard.begin(response)
+        if shouldHandleCustomerIO {
             handlePushResponse(center, response)
+        }
+        let releaseDeliveryGuards = { [weak self] in
+            if shouldHandleCustomerIO {
+                Self.customerIOResponseGuard.complete(response)
+            }
+            self?.didReceiveDeliveryGuard.complete(response)
         }
         let aggregate = PeerDeliveryCompletionAggregate<Void>(
             retaining: peers.map { $0 as AnyObject },
             deliveryObject: response,
             initialValue: (),
             merge: { _, _ in () },
-            onFinished: { [weak self] _ in
-                self?.endDelivery(deliveryIdentifier)
+            onFinished: { _ in
+                releaseDeliveryGuards()
                 completionHandler()
             },
-            onAbandoned: { [weak self] in
-                self?.endDelivery(deliveryIdentifier)
-            }
+            onAbandoned: releaseDeliveryGuards
         )
 
         for (token, peer) in peers.enumerated() {
@@ -218,9 +228,8 @@ open class CioNotificationCenterDelegate: NSObject, UNUserNotificationCenterDele
     /// There is no completion handler to aggregate here, so every live peer that implements it is simply called
     /// once, in registration order.
     open func userNotificationCenter(_ center: UNUserNotificationCenter, openSettingsFor notification: UNNotification?) {
-        let deliveryIdentifier = DeliveryIdentifier.openSettings(notification.map(ObjectIdentifier.init))
-        guard beginDelivery(deliveryIdentifier) else { return }
-        defer { endDelivery(deliveryIdentifier) }
+        guard beginOpenSettingsDelivery(notification) else { return }
+        defer { completeOpenSettingsDelivery(notification) }
 
         let peers = peersResponding(
             on: center,
@@ -244,11 +253,29 @@ open class CioNotificationCenterDelegate: NSObject, UNUserNotificationCenterDele
         to selector: Selector
     ) -> [UNUserNotificationCenterDelegate] {
         let installedSystemDelegate = systemDelegate(center)
-        return peerRegistry.livePeers().filter {
+        let respondingPeers = peerRegistry.livePeers().filter {
             // An earlier setter swizzler may keep its own forwarding proxy installed above Customer.io's proxy.
             // That object has already received this system callback and is now forwarding it to us. Calling it
             // again as a peer would create a delegate cycle, so exclude only the exact installed object.
             $0 !== installedSystemDelegate && $0.responds(to: selector)
+        }
+
+        // A public Customer.io compatibility delegate may itself wrap a peer that was assigned earlier. Keep
+        // only the outer delegate in this fan-out so its normal forwarding reaches the wrapped peer once rather
+        // than calling the wrapped peer both directly and transitively. Opaque third-party proxies cannot expose
+        // this relationship; their installed-system identity is handled by the exclusion above.
+        let transitivelyForwardedIdentities = Set(
+            respondingPeers.compactMap { peer -> CioNotificationCenterDelegate? in
+                guard let cioPeer = peer as? CioNotificationCenterDelegate,
+                      type(of: cioPeer) == CioNotificationCenterDelegate.self else {
+                    return nil
+                }
+                return cioPeer
+            }
+            .flatMap { $0.directForwardingPeerIdentities(respondingTo: selector) }
+        )
+        return respondingPeers.filter {
+            !transitivelyForwardedIdentities.contains(ObjectIdentifier($0))
         }
     }
 
@@ -309,27 +336,51 @@ open class CioNotificationCenterDelegate: NSObject, UNUserNotificationCenterDele
         return isForwarded
     }
 
-    /// Marks one delivery on this proxy. Returning `false` means a peer in the current fan-out called back into
-    /// this exact proxy with the same notification or response, so the caller must terminate that nested path
-    /// instead of running Customer.io handling and the same peer graph again.
-    private func beginDelivery(_ identifier: DeliveryIdentifier) -> Bool {
-        deliveryLock.lock()
-        defer { deliveryLock.unlock() }
-        guard !activeDeliveries.contains(identifier) else { return false }
-        activeDeliveries.insert(identifier)
-        return true
+    private func observeApplicationBackground() {
+        applicationBackgroundObserver = NotificationCenter.default.addObserver(
+            forName: UIApplication.didEnterBackgroundNotification,
+            object: nil,
+            queue: nil
+        ) { [weak self] _ in
+            guard let self else { return }
+            nilOpenSettingsLock.lock()
+            deliveredNilOpenSettingsSinceBackground = false
+            nilOpenSettingsLock.unlock()
+        }
+    }
+}
+
+@available(iOSApplicationExtension, unavailable)
+private extension CioNotificationCenterDelegate {
+    /// Direct peer identities this compatibility delegate will forward `selector` to when invoked.
+    func directForwardingPeerIdentities(respondingTo selector: Selector) -> [ObjectIdentifier] {
+        peerRegistry.livePeers()
+            .filter { $0.responds(to: selector) }
+            .map(ObjectIdentifier.init)
     }
 
-    private func endDelivery(_ identifier: DeliveryIdentifier) {
-        deliveryLock.lock()
-        activeDeliveries.remove(identifier)
-        deliveryLock.unlock()
+    func beginOpenSettingsDelivery(_ notification: UNNotification?) -> Bool {
+        guard let notification = notification else {
+            // Apple supplies nil only when Settings opens the app without a notification object. With no
+            // delivery identity to propagate, retain one marker for the foreground epoch so an asynchronously
+            // forwarding delegate cannot create an unbounded cycle. Entering background starts the next real
+            // Settings activation epoch.
+            nilOpenSettingsLock.lock()
+            defer { nilOpenSettingsLock.unlock() }
+            guard !deliveredNilOpenSettingsSinceBackground else { return false }
+            deliveredNilOpenSettingsSinceBackground = true
+            return true
+        }
+        return openSettingsDeliveryGuard.begin(notification)
     }
 
-    /// Adapts the concrete-only push response function once at construction. Keeping this closure injectable
-    /// makes the proxy's exactly-once Customer.io processing independently testable without widening the public
-    /// `MessagingPushInstance` protocol with an app-only API.
-    private static func makePushResponseHandler(
+    func completeOpenSettingsDelivery(_ notification: UNNotification?) {
+        guard let notification else { return }
+        openSettingsDeliveryGuard.complete(notification)
+    }
+
+    /// Adapts the concrete-only push response function once at construction.
+    static func makePushResponseHandler(
         messagingPush: MessagingPushInstance
     ) -> (UNUserNotificationCenter, UNNotificationResponse) -> Void {
         guard let messagingPush = messagingPush as? MessagingPush else { return { _, _ in } }

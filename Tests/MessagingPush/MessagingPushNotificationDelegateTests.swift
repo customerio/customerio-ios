@@ -79,6 +79,26 @@ class MessagingPushNotificationDelegateTests: XCTestCase {
         }
     }
 
+    private final class ReentrantGetterNotificationCenter: UserNotificationCenterIntegration {
+        private var storedDelegate: UNUserNotificationCenterDelegate?
+        var onFirstRead: (() -> Void)?
+
+        init(delegate: UNUserNotificationCenterDelegate?) {
+            self.storedDelegate = delegate
+        }
+
+        var delegate: UNUserNotificationCenterDelegate? {
+            get {
+                let capturedDelegate = storedDelegate
+                let callback = onFirstRead
+                onFirstRead = nil
+                callback?()
+                return capturedDelegate
+            }
+            set { storedDelegate = newValue }
+        }
+    }
+
     private final class SubstitutingNotificationCenter: UserNotificationCenterIntegration {
         private var storedDelegate: UNUserNotificationCenterDelegate?
         let substitute: UNUserNotificationCenterDelegate
@@ -246,6 +266,61 @@ class MessagingPushNotificationDelegateTests: XCTestCase {
         XCTAssertEqual(group.wait(timeout: .now() + 5), .success)
         XCTAssertTrue(center.delegate === MessagingPush.shared.installedNotificationCenterDelegate)
         XCTAssertTrue(MessagingPush.shared.installedNotificationCenterDelegate?.peerRegistry.livePeers().isEmpty == true)
+    }
+
+    func testInitialInstall_whenGetterReentersWithNilClear_thenDoesNotRegisterStaleCapturedPeer() {
+        let originalPeer = MockNotificationCenterDelegate()
+        let center = ReentrantGetterNotificationCenter(delegate: originalPeer)
+        center.onFirstRead = {
+            MessagingPush.installNotificationCenterDelegate(
+                wrapping: nil,
+                centerProvider: { center }
+            )
+        }
+
+        MessagingPush.installNotificationCenterDelegate(centerProvider: { center })
+
+        XCTAssertTrue(center.delegate === MessagingPush.shared.installedNotificationCenterDelegate)
+        XCTAssertTrue(MessagingPush.shared.installedNotificationCenterDelegate?.peerRegistry.livePeers().isEmpty == true)
+    }
+
+    func testInitialInstall_whenDelegateGetterReentersWithNewAssignment_thenPreservesBothPeers() {
+        let originalPeer = MockNotificationCenterDelegate()
+        let newerPeer = MockNotificationCenterDelegate()
+        let center = ReentrantGetterNotificationCenter(delegate: originalPeer)
+        center.onFirstRead = {
+            MessagingPush.installNotificationCenterDelegate(
+                wrapping: newerPeer,
+                centerProvider: { center }
+            )
+        }
+
+        MessagingPush.installNotificationCenterDelegate(centerProvider: { center })
+
+        XCTAssertTrue(center.delegate === MessagingPush.shared.installedNotificationCenterDelegate)
+        XCTAssertEqual(
+            MessagingPush.shared.installedNotificationCenterDelegate?.peerRegistry.livePeers().map(ObjectIdentifier.init),
+            [ObjectIdentifier(newerPeer), ObjectIdentifier(originalPeer)]
+        )
+    }
+
+    func testInitialInstall_whenNilGetterReentersWithNewAssignment_thenPreservesNewPeer() {
+        let newerPeer = MockNotificationCenterDelegate()
+        let center = ReentrantGetterNotificationCenter(delegate: nil)
+        center.onFirstRead = {
+            MessagingPush.installNotificationCenterDelegate(
+                wrapping: newerPeer,
+                centerProvider: { center }
+            )
+        }
+
+        MessagingPush.installNotificationCenterDelegate(centerProvider: { center })
+
+        XCTAssertTrue(center.delegate === MessagingPush.shared.installedNotificationCenterDelegate)
+        XCTAssertEqual(
+            MessagingPush.shared.installedNotificationCenterDelegate?.peerRegistry.livePeers().map(ObjectIdentifier.init),
+            [ObjectIdentifier(newerPeer)]
+        )
     }
 
     func testInstallNotificationCenterDelegate_whenExistingDelegateIsPresent_thenItIsWrapped() {

@@ -137,7 +137,11 @@ final class PeerDeliveryCompletionAggregate<Value> {
     /// the outer handler is still executing.
     private func releaseRetainedObjects() {
         lock.lock()
+        let releasedObjects = retainedObjects
         retainedObjects = []
         lock.unlock()
+        // Keep the snapshot alive until after unlocking so releasing a peer's final reference, and therefore
+        // running arbitrary deinit code, cannot reenter this aggregate while its lock is held.
+        withExtendedLifetime(releasedObjects) {}
     }
 }
