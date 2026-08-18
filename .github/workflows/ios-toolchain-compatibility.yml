@@ -125,8 +125,7 @@ jobs:
 
       - name: Install and launch fixture
         id: launch
-        # Repin to the reviewed merge commit after customerio/mobile-ci-tools#16 merges.
-        uses: customerio/mobile-ci-tools/github-actions/ios/launch-simulator-app/v1@973084092fbe9a46b35aa8876137dca5bfde6c40
+        uses: customerio/mobile-ci-tools/github-actions/ios/launch-simulator-app/v1@main
         with:
           app-path: ${{ env.APP_PRODUCT_PATH }}
           expected-ios-major: '27'
