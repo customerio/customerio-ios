@@ -2,6 +2,8 @@ name: Xcode 27 preview compatibility
 
 on:
   pull_request:
+    # Ordinary source changes are covered by the nightly run. Only workflow changes opt a PR into
+    # scarce preview macOS capacity; stable required CI continues to cover every source PR.
     paths:
       - '.github/workflows/ios-toolchain-compatibility.yml'
   schedule:
@@ -82,16 +84,53 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             build 2>&1 | tee "$RUNNER_TEMP/${{ matrix.fixture }}-build.log"
 
+          scene_info_plist="$RUNNER_TEMP/${{ matrix.fixture }}-xcode-27/Build/Products/Debug-iphonesimulator/APN UIKit.app/Info.plist"
+          test -f "$scene_info_plist"
+          plutil -extract UIApplicationSceneManifest xml1 -o - "$scene_info_plist" >/dev/null
+
           xcodebuild \
             -project 'Apps/APN-UIKit/APN UIKit.xcodeproj' \
             -scheme 'APN UIKit' \
             -configuration Debug \
             -sdk iphonesimulator \
             -destination 'generic/platform=iOS Simulator' \
-            -derivedDataPath "$RUNNER_TEMP/${{ matrix.fixture }}-xcode-27" \
+            -derivedDataPath "$RUNNER_TEMP/${{ matrix.fixture }}-appdelegate-only-xcode-27" \
             -xcconfig Apps/APN-UIKit/Fixtures/IOS27Lifecycle/AppDelegateOnly.xcconfig \
             CODE_SIGNING_ALLOWED=NO \
             build 2>&1 | tee "$RUNNER_TEMP/${{ matrix.fixture }}-appdelegate-only-build.log"
+
+          control_info_plist="$RUNNER_TEMP/${{ matrix.fixture }}-appdelegate-only-xcode-27/Build/Products/Debug-iphonesimulator/APN UIKit.app/Info.plist"
+          test -f "$control_info_plist"
+          if plutil -extract UIApplicationSceneManifest xml1 -o - "$control_info_plist" >/dev/null 2>&1; then
+            echo 'AppDelegate-only control unexpectedly contains UIApplicationSceneManifest.' >&2
+            exit 1
+          fi
+
+          simulator_udid="$(xcrun simctl list devices available --json | python3 -c '
+          import json
+          import sys
+
+          payload = json.load(sys.stdin)
+          for runtime, devices in sorted(payload.get("devices", {}).items(), reverse=True):
+              if ".iOS-27-" not in runtime:
+                  continue
+              for device in devices:
+                  if device.get("isAvailable", True) and "iPhone" in device.get("name", ""):
+                      print(device["udid"])
+                      raise SystemExit(0)
+          raise SystemExit("No available iOS 27 iPhone simulator for lifecycle tests.")
+          ')"
+          xcodebuild \
+            -project 'Apps/APN-UIKit/APN UIKit.xcodeproj' \
+            -scheme 'APN UIKit' \
+            -configuration Debug \
+            -destination "platform=iOS Simulator,id=$simulator_udid" \
+            -derivedDataPath "$RUNNER_TEMP/${{ matrix.fixture }}-lifecycle-tests" \
+            -only-testing:'APN UIKitTests/LifecycleTraceRecorderTests' \
+            -only-testing:'APN UIKitTests/LifecycleTraceEvidenceTests' \
+            -only-testing:'APN UIKitTests/LifecycleTraceCaptureGuardrailTests' \
+            CODE_SIGNING_ALLOWED=NO \
+            test 2>&1 | tee "$RUNNER_TEMP/${{ matrix.fixture }}-lifecycle-tests.log"
 
       - name: Compile CocoaPods FCM fixture
         id: compile-fcm

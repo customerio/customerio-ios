@@ -1,4 +1,5 @@
 import Foundation
+import Darwin
 
 public final class FileLifecycleTraceSink: LifecycleTraceSink {
     public static let receiptPathSuffix = ".receipt.json"
@@ -38,10 +39,26 @@ public final class FileLifecycleTraceSink: LifecycleTraceSink {
         handle.closeFile()
     }
 
-    public func write(line: String) {
-        guard let data = (line + "\n").data(using: .utf8) else { return }
-        handle.seekToEndOfFile()
-        handle.write(data)
+    public func write(line: String) -> Bool {
+        guard let data = (line + "\n").data(using: .utf8) else { return false }
+        return data.withUnsafeBytes { bytes in
+            guard let baseAddress = bytes.baseAddress else { return data.isEmpty }
+            var offset = 0
+            while offset < bytes.count {
+                let written = Darwin.write(
+                    handle.fileDescriptor,
+                    baseAddress.advanced(by: offset),
+                    bytes.count - offset
+                )
+                if written < 0 {
+                    if errno == EINTR { continue }
+                    return false
+                }
+                guard written > 0 else { return false }
+                offset += written
+            }
+            return true
+        }
     }
 
     public func writeReceipt(json: String) -> Bool {
@@ -107,7 +124,12 @@ public enum LifecycleTraceHarness {
 
     @discardableResult
     public static func startScenario() -> Bool {
-        sharedRecorder?.startScenario() ?? false
+        let hasSceneManifest = Bundle.main.object(forInfoDictionaryKey: "UIApplicationSceneManifest") != nil
+        return sharedRecorder?.startScenario(
+            observation: LifecycleTraceObservation(
+                flags: [.sceneManifestActive: hasSceneManifest]
+            )
+        ) ?? false
     }
 
     /// Records a canonical host or Customer.io URL-routing seat.

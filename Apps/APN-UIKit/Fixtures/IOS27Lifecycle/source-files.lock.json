@@ -1,6 +1,6 @@
 {
   "schema": "cio-lifecycle-source-patch-lock/3",
-  "source_commit": "2e64ddf8802c1b74c9be637eca5f94ee27737444",
+  "source_commit": "7b981d83759167c47767640ccaf9976b8d0085ba",
   "algorithm": "sha256",
   "patch_sha256": "88e3405a47bfb7c1efec4e75ac41729421755588b2d876895e7842e60969f26e",
   "files": [

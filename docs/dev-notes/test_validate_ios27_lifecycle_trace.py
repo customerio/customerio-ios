@@ -117,6 +117,10 @@ class LifecycleTraceContractTests(unittest.TestCase):
         cold = manifest["scenario"].endswith("-cold") or manifest["scenario"] == "icon-cold-launch"
         for stream_index, records in enumerate(streams):
             declaration = manifest["streams"][stream_index]
+            if declaration["runtime"] == "swift" and records:
+                records[0]["payload_summary"]["flags"]["scene_manifest_active"] = (
+                    manifest["host_topology"] == "ui-scene"
+                )
             alias_counts = {
                 name: 0
                 for name in ("occurrence", "delivery", "request", "scene", "url", "closure")
@@ -1742,6 +1746,26 @@ class LifecycleTraceContractTests(unittest.TestCase):
     def test_multi_stream_acceptance_requires_aggregate(self) -> None:
         self.manifest["aggregate_assertions"] = []
         self.validate_temp(self.manifest, [self.native, self.wrapper], "requires at least one aggregate")
+
+    def test_swift_start_requires_scene_manifest_flag_matching_topology(self) -> None:
+        for topology, actual in (
+            ("app-delegate-only", True),
+            ("ui-scene", False),
+        ):
+            manifest = copy.deepcopy(self.manifest)
+            native = copy.deepcopy(self.native)
+            wrapper = copy.deepcopy(self.wrapper)
+            manifest["host_topology"] = topology
+            native[0]["payload_summary"]["flags"]["scene_manifest_active"] = actual
+            self.validate_temp(
+                manifest,
+                [native, wrapper],
+                "scene_manifest_active must match declared host_topology",
+            )
+
+    def test_swift_start_accepts_scene_manifest_flag_matching_topology(self) -> None:
+        self.native[0]["payload_summary"]["flags"]["scene_manifest_active"] = False
+        self.validate_temp(self.manifest, [self.native, self.wrapper])
 
     def test_aggregate_selector_cannot_use_trace_control_or_fixture(self) -> None:
         for index, member in enumerate(self.manifest["aggregate_assertions"][0]["members"]):
@@ -3701,6 +3725,7 @@ class LifecycleTraceContractTests(unittest.TestCase):
     def test_ui_scene_and_app_delegate_ingress_are_not_competing_owners(self) -> None:
         manifest, native, wrapper = self.url_capture()
         manifest["host_topology"] = "ui-scene"
+        native[0]["payload_summary"]["flags"]["scene_manifest_active"] = True
         self.validate_temp(
             manifest, [native, wrapper],
             "ui-scene UI activation must not use AppDelegate ingress",

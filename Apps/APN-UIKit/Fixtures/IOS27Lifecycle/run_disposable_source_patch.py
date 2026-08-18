@@ -15,7 +15,7 @@ import tempfile
 from typing import Any
 
 
-SOURCE_COMMIT = "2e64ddf8802c1b74c9be637eca5f94ee27737444"
+SOURCE_COMMIT = "7b981d83759167c47767640ccaf9976b8d0085ba"
 FIXTURE_DIRECTORY = Path(__file__).resolve().parent
 LOCK_PATH = FIXTURE_DIRECTORY / "source-files.lock.json"
 PATCH_PATH = FIXTURE_DIRECTORY / "ios27-lifecycle-source.patch"

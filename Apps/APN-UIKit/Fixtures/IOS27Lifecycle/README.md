@@ -6,7 +6,7 @@ or provider delegate. It posts safe in-process observations before or after exis
 passes every production completion object through unchanged.
 
 `run_disposable_source_patch.py` verifies the four production source files against hashes recorded
-at `2e64ddf8802c1b74c9be637eca5f94ee27737444`, the commit that introduced this lock, creates a temporary local clone, overlays only
+at `7b981d83759167c47767640ccaf9976b8d0085ba`, a reviewed `main` commit containing the locked production sources, creates a temporary local clone, overlays only
 the current producer/test files, applies the checked patch there, runs the requested command from
 that checkout, verifies the original sources again, and removes the checkout. A mismatch or patch
 drift fails closed. `source-files.lock.json` also pins the exact repository-owned patch SHA-256, so

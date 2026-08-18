@@ -1,7 +1,7 @@
 import Foundation
 import XCTest
 
-// swiftlint:disable type_body_length
+// swiftlint:disable file_length type_body_length
 final class LifecycleTraceRecorderTests: XCTestCase {
     private let fixedDate = Date(timeIntervalSince1970: 1754930800)
     private var sink: InMemoryLifecycleTraceSink!
@@ -442,4 +442,4 @@ final class LifecycleTraceRecorderTests: XCTestCase {
     }
 }
 
-// swiftlint:enable type_body_length
+// swiftlint:enable file_length type_body_length

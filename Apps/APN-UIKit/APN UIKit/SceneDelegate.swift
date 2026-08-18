@@ -35,7 +35,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         // `connectionOptions.urlContexts` rather than via `scene(_:openURLContexts:)`. Route it
         // through the same path so the deep link opens and the SDK reports the `opened` metric.
         let isColdTrace = LifecycleTraceHarness.sharedRecorder?.scenario.isColdStart == true
-        if isColdTrace, connectionOptions.urlContexts.count > 1 {
+        if connectionOptions.urlContexts.count > 1 {
             LifecycleTraceHarness.sharedRecorder?.invalidateCapture()
         }
         let shouldTraceColdURLRoute = isColdTrace && connectionOptions.urlContexts.count == 1

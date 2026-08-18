@@ -1802,6 +1802,18 @@ def _validate_stream(
         record["kind"] != "trace-control" for record in records
     ):
         raise ContractError(f"stream {stream_id}: L2/L3 requires a non-control runtime observation")
+    if (
+        manifest["evidence_level"] in ("L2", "L3")
+        and declaration["runtime"] == "swift"
+    ):
+        actual_scene_manifest = initial["payload_summary"]["flags"].get(
+            "scene_manifest_active"
+        )
+        expected_scene_manifest = manifest["host_topology"] == "ui-scene"
+        if actual_scene_manifest is not expected_scene_manifest:
+            raise ContractError(
+                f"stream {stream_id}: scene_manifest_active must match declared host_topology"
+            )
 
     expected_stable = {
         "manifest_id": manifest["manifest_id"], "run_id": manifest["run_id"],

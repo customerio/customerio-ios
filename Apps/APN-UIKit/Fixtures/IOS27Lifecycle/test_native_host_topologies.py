@@ -8,6 +8,13 @@ FIXTURE_ROOT = Path(__file__).resolve().parent
 
 
 class NativeHostTopologyTests(unittest.TestCase):
+    @staticmethod
+    def _build_configuration(project: str, identifier: str, name: str) -> str:
+        marker = f"\t\t{identifier} /* {name} */ = {{"
+        start = project.index(marker)
+        end = project.index(f"\n\t\t}};\n\t\t", start) + len("\n\t\t};")
+        return project[start:end]
+
     def testUISceneControl_hasOneParticipatingScene(self) -> None:
         with (APP_ROOT / "Info.plist").open("rb") as stream:
             info = plistlib.load(stream)
@@ -29,14 +36,23 @@ class NativeHostTopologyTests(unittest.TestCase):
         project = (
             APP_ROOT.parent / "APN UIKit.xcodeproj" / "project.pbxproj"
         ).read_text(encoding="utf-8")
-        self.assertEqual(
-            project.count('CIO_LIFECYCLE_INFOPLIST_FILE = "APN UIKit/Info.plist";'),
-            2,
+        app_configurations = (
+            self._build_configuration(project, "46D5D9A829E459D800EAF40B", "Debug"),
+            self._build_configuration(project, "46D5D9A929E459D800EAF40B", "Release"),
         )
-        self.assertEqual(
-            project.count('INFOPLIST_FILE = "$(CIO_LIFECYCLE_INFOPLIST_FILE)";'),
-            2,
+        for configuration in app_configurations:
+            self.assertIn(
+                'CIO_LIFECYCLE_INFOPLIST_FILE = "APN UIKit/Info.plist";',
+                configuration,
+            )
+            self.assertIn(
+                'INFOPLIST_FILE = "$(CIO_LIFECYCLE_INFOPLIST_FILE)";',
+                configuration,
+            )
+        notification_service_debug = self._build_configuration(
+            project, "4650330829F68FEB001B6552", "Debug"
         )
+        self.assertNotIn("CIO_LIFECYCLE_INFOPLIST_FILE", notification_service_debug)
         compilation_setting = (
             'SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) '
             '$(CIO_LIFECYCLE_SWIFT_ACTIVE_COMPILATION_CONDITIONS)";'
@@ -60,6 +76,18 @@ class NativeHostTopologyTests(unittest.TestCase):
             APP_ROOT.parents[2] / ".github/workflows/ios-toolchain-compatibility.yml"
         ).read_text(encoding="utf-8")
         self.assertNotIn("cp \"$control_info\" \"$default_info\"", workflow)
+        self.assertEqual(
+            workflow.split("pull_request:", 1)[1].split("schedule:", 1)[0].count("- '"),
+            1,
+        )
+        self.assertIn(
+            "plutil -extract UIApplicationSceneManifest xml1", workflow
+        )
+        self.assertIn("-appdelegate-only-xcode-27", workflow)
+        self.assertIn(
+            "AppDelegate-only control unexpectedly contains UIApplicationSceneManifest.",
+            workflow,
+        )
 
     def testAppDelegateOnlyControl_compilesOutSceneSessionSelectors(self) -> None:
         source = (APP_ROOT / "AppDelegate.swift").read_text(encoding="utf-8")

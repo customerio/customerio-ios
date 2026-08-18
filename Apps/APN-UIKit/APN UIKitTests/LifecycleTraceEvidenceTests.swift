@@ -6,9 +6,11 @@ import XCTest
 final class InMemoryLifecycleTraceSink: LifecycleTraceSink {
     private let lock = NSLock()
     private var storedLines: [String] = []
+    private let lineWritesSucceed: Bool
     private let receiptWritesSucceed: Bool
 
-    init(receiptWritesSucceed: Bool = true) {
+    init(lineWritesSucceed: Bool = true, receiptWritesSucceed: Bool = true) {
+        self.lineWritesSucceed = lineWritesSucceed
         self.receiptWritesSucceed = receiptWritesSucceed
     }
 
@@ -18,16 +20,18 @@ final class InMemoryLifecycleTraceSink: LifecycleTraceSink {
         return storedLines
     }
 
-    func write(line: String) {
+    @discardableResult
+    func write(line: String) -> Bool {
+        guard lineWritesSucceed else { return false }
         lock.lock()
         storedLines.append(line)
         lock.unlock()
+        return true
     }
 
     func writeReceipt(json: String) -> Bool {
         guard receiptWritesSucceed else { return false }
-        write(line: LifecycleTraceRecorder.receiptPrefix + json)
-        return true
+        return write(line: LifecycleTraceRecorder.receiptPrefix + json)
     }
 }
 
@@ -346,8 +350,16 @@ final class LifecycleTraceCaptureGuardrailTests: XCTestCase {
         XCTAssertFalse(sink.lines.contains { $0.hasPrefix(LifecycleTraceRecorder.receiptPrefix) })
     }
 
+    func testRecorder_whenLinePublicationFails_thenFailsClosedWithoutReceipt() throws {
+        let (recorder, sink) = try makeRecorder(lineWritesSucceed: false)
+
+        XCTAssertNil(close(recorder))
+        XCTAssertTrue(sink.lines.isEmpty)
+    }
+
     private func makeRecorder(
         topology: LifecycleTraceHostTopology = .uiScene,
+        lineWritesSucceed: Bool = true,
         receiptWritesSucceed: Bool = true
     ) throws -> (LifecycleTraceRecorder, InMemoryLifecycleTraceSink) {
         let context = try XCTUnwrap(LifecycleTraceContext(
@@ -364,7 +376,10 @@ final class LifecycleTraceCaptureGuardrailTests: XCTestCase {
             hostTopology: topology,
             activationOccurrenceIdentity: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee"
         ))
-        let sink = InMemoryLifecycleTraceSink(receiptWritesSucceed: receiptWritesSucceed)
+        let sink = InMemoryLifecycleTraceSink(
+            lineWritesSucceed: lineWritesSucceed,
+            receiptWritesSucceed: receiptWritesSucceed
+        )
         let recorder = LifecycleTraceRecorder(context: context, sink: sink)
         XCTAssertTrue(recorder.startScenario())
         return (recorder, sink)

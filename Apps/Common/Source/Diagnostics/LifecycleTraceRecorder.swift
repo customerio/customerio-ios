@@ -5,7 +5,8 @@ import Foundation
 
 /// A synchronous line sink. The recorder calls it only from its private serial output queue.
 public protocol LifecycleTraceSink: AnyObject {
-    func write(line: String)
+    @discardableResult
+    func write(line: String) -> Bool
 
     /// Persists the receipt outside the sequenced NDJSON stream.
     func writeReceipt(json: String) -> Bool
@@ -14,15 +15,15 @@ public protocol LifecycleTraceSink: AnyObject {
 public extension LifecycleTraceSink {
     func writeReceipt(json: String) -> Bool {
         write(line: LifecycleTraceRecorder.receiptPrefix + json)
-        return true
     }
 }
 
 public final class ConsoleLifecycleTraceSink: LifecycleTraceSink {
     public init() {}
 
-    public func write(line: String) {
+    public func write(line: String) -> Bool {
         print(line)
+        return true
     }
 }
 
@@ -141,8 +142,12 @@ public struct LifecycleTraceCompletionHandle: Equatable {
     fileprivate let droppedRecordsAtCreation: Int
 }
 
-// State ownership and wire serialization remain co-located to preserve one ordering boundary.
 // swiftlint:disable type_body_length
+/// A thread-safe, bounded evidence recorder available before application launch completes.
+///
+/// Synchronous UIKit and framework callbacks cannot await an actor, so a short `NSLock` protects state and a
+/// private serial queue performs ordered sink writes. No host callback or completion runs while the lock is held.
+/// State ownership and wire serialization remain co-located to preserve one ordering boundary.
 public final class LifecycleTraceRecorder: @unchecked Sendable {
     public static let linePrefix = "CIO-LIFECYCLE-TRACE "
     public static let receiptPrefix = "CIO-LIFECYCLE-RECEIPT "
@@ -214,7 +219,9 @@ public final class LifecycleTraceRecorder: @unchecked Sendable {
     }
 
     @discardableResult
-    public func startScenario() -> Bool {
+    public func startScenario(
+        observation: LifecycleTraceObservation = LifecycleTraceObservation()
+    ) -> Bool {
         stateLock.lock()
         defer { stateLock.unlock() }
         guard case .idle = state else { return false }
@@ -225,7 +232,7 @@ public final class LifecycleTraceRecorder: @unchecked Sendable {
             kind: .traceControl,
             callback: .traceScenarioStart,
             phase: .stateChange,
-            observation: LifecycleTraceObservation(),
+            observation: observation,
             completion: nil,
             prealiasedCorrelation: nil
         )
@@ -574,23 +581,28 @@ public final class LifecycleTraceRecorder: @unchecked Sendable {
 
             guard let line = encode(record) else {
                 stateLock.lock()
-                captureFailed = true
-                state = .ended
-                pendingRecords.removeAll()
-                let completion = endCompletion
-                endCompletion = nil
+                invalidateCaptureLocked()
                 stateLock.unlock()
-                completion?(nil)
                 return
             }
-            sink.write(line: Self.linePrefix + line)
+            let published = sink.write(line: Self.linePrefix + line)
 
             stateLock.lock()
+            guard !captureFailed else {
+                stateLock.unlock()
+                return
+            }
+            guard published else {
+                invalidateCaptureLocked()
+                stateLock.unlock()
+                return
+            }
             emittedRecords += 1
             lastEmittedSequence = record.sequence
             let isEnd = record.callback == .traceScenarioEnd
             if isEnd {
                 state = .ended
+                drainScheduled = false
                 let receipt = receiptLocked(drainedAt: max(now(), lastCapturedAt))
                 let completion = endCompletion
                 endCompletion = nil
@@ -657,7 +669,11 @@ public final class LifecycleTraceRecorder: @unchecked Sendable {
     private func invalidateCaptureLocked() {
         captureFailed = true
         state = .ended
+        drainScheduled = false
         pendingRecords.removeAll()
+        aliasTables.removeAll()
+        fixtureStates.removeAll()
+        negativeFixtureDropFloors.removeAll()
         let completion = endCompletion
         endCompletion = nil
         if let completion {

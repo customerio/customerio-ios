@@ -879,7 +879,6 @@
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
 				CODE_SIGN_STYLE = Manual;
 				CURRENT_PROJECT_VERSION = 1;
-				CIO_LIFECYCLE_INFOPLIST_FILE = "APN UIKit/Info.plist";
 				DEVELOPMENT_TEAM = "";
 				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = 2YC97BQN3N;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -1060,6 +1059,7 @@
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
 				CODE_SIGN_STYLE = Manual;
 				CURRENT_PROJECT_VERSION = 1;
+				CIO_LIFECYCLE_INFOPLIST_FILE = "APN UIKit/Info.plist";
 				DEVELOPMENT_TEAM = "";
 				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = 2YC97BQN3N;
 				GENERATE_INFOPLIST_FILE = YES;
