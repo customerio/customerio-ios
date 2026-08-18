@@ -411,10 +411,11 @@ class CheckXcode27NightlyRunsTests(unittest.TestCase):
         self.assertIn("latest scheduled run succeeded", contents)
 
     @mock.patch("scripts.ci.check_xcode27_nightly_runs.write_summary")
-    def test_main_reports_summary_failure_as_monitoring_error(self, summary_mock):
+    def test_main_preserves_healthy_result_when_summary_write_fails(self, summary_mock):
         summary_mock.side_effect = RuntimeError("summary unavailable")
 
-        with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
+        stderr = io.StringIO()
+        with redirect_stdout(io.StringIO()), redirect_stderr(stderr):
             result = main(
                 [
                     "--target",
@@ -426,7 +427,8 @@ class CheckXcode27NightlyRunsTests(unittest.TestCase):
                 now=self.now,
             )
 
-        self.assertEqual(result, 2)
+        self.assertEqual(result, 0)
+        self.assertIn("failed to write watchdog summary", stderr.getvalue())
 
     @mock.patch("scripts.ci.check_xcode27_nightly_runs.write_summary")
     def test_main_preserves_unhealthy_result_when_summary_write_fails(self, summary_mock):
@@ -444,7 +446,7 @@ class CheckXcode27NightlyRunsTests(unittest.TestCase):
                 now=self.now,
             )
 
-        self.assertEqual(result, 3)
+        self.assertEqual(result, 1)
 
     def test_main_preserves_unhealthy_message_when_another_target_has_monitoring_error(self):
         def fetcher(target, _token):

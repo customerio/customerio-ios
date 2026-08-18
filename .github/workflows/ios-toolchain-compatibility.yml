@@ -126,7 +126,7 @@ jobs:
       - name: Install and launch fixture
         id: launch
         # Repin to the reviewed merge commit after customerio/mobile-ci-tools#16 merges.
-        uses: customerio/mobile-ci-tools/github-actions/ios/launch-simulator-app/v1@bfa00684949587735d7076d2e11a8a44f27cb467
+        uses: customerio/mobile-ci-tools/github-actions/ios/launch-simulator-app/v1@5640301248dcfacde1ad22fd7015f849e45b4b2f
         with:
           app-path: ${{ env.APP_PRODUCT_PATH }}
           expected-ios-major: '27'
@@ -222,7 +222,11 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Collect launch diagnostics
-        if: failure() && steps.launch.outcome == 'failure'
+        if: >-
+          failure() &&
+          steps.launch.outcome == 'failure' &&
+          (steps.launch.outputs.failure-reason == 'launch-failed' ||
+          steps.launch.outputs.failure-reason == 'did-not-survive')
         shell: bash
         env:
           FIXTURE: ${{ matrix.fixture }}
@@ -259,6 +263,8 @@ jobs:
             else
               echo "::warning::could not read CFBundleExecutable; no crash report was collected"
             fi
+          else
+            echo "::warning::$crash_reports does not exist; no crash report was collected"
           fi
 
       - name: Record product resolution failure

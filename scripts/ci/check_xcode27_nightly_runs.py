@@ -192,7 +192,9 @@ def main(
         write_summary(messages)
     except Exception as error:
         print(f"failed to write watchdog summary: {error}", file=sys.stderr)
-        monitoring_failed = True
+        # The target health result has already been determined and printed. A presentation-only
+        # summary failure must not turn a healthy run into an infrastructure page or obscure a
+        # real unhealthy verdict.
     if monitoring_failed:
         return 3 if unhealthy_detected else 2
     return 0 if healthy else 1
