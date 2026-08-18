@@ -2,6 +2,7 @@ import CioAnalytics
 import CioDataPipelines // do not use `@testable` so we can test functions are made public and not `internal`.
 import Foundation
 import SharedTests
+import UIKit
 import XCTest
 
 /**
@@ -117,5 +118,39 @@ class DataPipelineAPITest: UnitTest {
             },
             autoScreenViewBody: { self.dictionaryData }
         )
+    }
+
+    @MainActor
+    func test_appLifecycleCoordinatorPublicFunctions() throws {
+        try skipRunningTest()
+
+        let applicationCoordinator = CioAppLifecycleCoordinator(hostTopology: .appDelegateOnly)
+        let sceneCoordinator = CioAppLifecycleCoordinator(hostTopology: .uiScene)
+        let swiftUICoordinator = CioAppLifecycleCoordinator(hostTopology: .swiftUILifecycle)
+        let activity = NSUserActivity(activityType: "io.customer.test")
+        let shortcut = UIApplicationShortcutItem(type: "test", localizedTitle: "Test")
+
+        let _: CioAppLifecycleHandlingResult = applicationCoordinator.handleApplicationOpenURL(
+            exampleURL,
+            options: [:],
+            route: { _, _ in true }
+        )
+        _ = applicationCoordinator.handleApplicationUserActivity(activity) { _ in true }
+        _ = applicationCoordinator.handleApplicationShortcut(
+            shortcut,
+            route: { _ in true },
+            completionHandler: { _ in }
+        )
+        _ = sceneCoordinator.handleSceneOpenURLContexts([]) { _ in true }
+        _ = sceneCoordinator.handleSceneUserActivity(activity) { _ in true }
+        _ = sceneCoordinator.handleSceneShortcut(
+            shortcut,
+            route: { _ in true },
+            completionHandler: { _ in }
+        )
+        _ = swiftUICoordinator.handleSwiftUIOpenURL(exampleURL) { _ in true }
+
+        let _: CioAppLifecycleHostTopology = applicationCoordinator.hostTopology
+        XCTAssertTrue(CioAppLifecycleHandlingResult.handled.wasHandled)
     }
 }

@@ -28,7 +28,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         // This sample does not expose Home Screen quick actions, so that route deliberately declines.
         _ = lifecycleCoordinator.handleSceneConnection(
             options: connectionOptions,
-            routeURL: { [weak self] in self?.route(url: $0) ?? false },
+            routeURL: { [weak self] in self?.route(url: $0.url) ?? false },
             continueUserActivity: { [weak self] in self?.route(userActivity: $0) ?? false },
             performShortcut: { _ in false }
         )
@@ -82,7 +82,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     func scene(_ scene: UIScene, openURLContexts URLContexts: Set<UIOpenURLContext>) {
         _ = lifecycleCoordinator.handleSceneOpenURLContexts(
             URLContexts,
-            route: { [weak self] in self?.route(url: $0) ?? false }
+            route: { [weak self] in self?.route(url: $0.url) ?? false }
         )
     }
 

@@ -9,13 +9,13 @@ public final class CioDataPipelines.AutoTrackingScreenViews {
 public final class CioDataPipelines.CioAppLifecycleCoordinator {
 	public final val hostTopology: CioAppLifecycleHostTopology;
 	public fun convenience init(hostTopology: CioAppLifecycleHostTopology);
-	public fun func handleApplicationOpenURL(_ url: URL, route: (URL) -> Boolean) -> CioAppLifecycleHandlingResult;
+	public fun func handleApplicationOpenURL(_ url: URL, options: Map<UIApplication.OpenURLOptionsKey, Any>, route: (URL, Map<UIApplication.OpenURLOptionsKey, Any>) -> Boolean) -> CioAppLifecycleHandlingResult;
 	public fun func handleApplicationUserActivity(_ userActivity: NSUserActivity, route: (NSUserActivity) -> Boolean) -> CioAppLifecycleHandlingResult;
-	public fun func handleApplicationShortcut(_ shortcutItem: UIApplicationShortcutItem, route: (UIApplicationShortcutItem) -> Boolean, completionHandler: (Boolean) -> Unit);
-	public fun func handleSceneConnection(options connectionOptions: UIScene.ConnectionOptions, routeURL: (URL) -> Boolean, continueUserActivity: (NSUserActivity) -> Boolean, performShortcut: (UIApplicationShortcutItem) -> Boolean) -> CioAppLifecycleHandlingResult;
-	public fun func handleSceneOpenURLContexts(_ urlContexts: Set<UIOpenURLContext>, route: (URL) -> Boolean) -> CioAppLifecycleHandlingResult;
+	public fun func handleApplicationShortcut(_ shortcutItem: UIApplicationShortcutItem, route: (UIApplicationShortcutItem) -> Boolean, completionHandler: (Boolean) -> Unit) -> CioAppLifecycleHandlingResult;
+	public fun func handleSceneConnection(options connectionOptions: UIScene.ConnectionOptions, routeURL: (UIOpenURLContext) -> Boolean, continueUserActivity: (NSUserActivity) -> Boolean, performShortcut: (UIApplicationShortcutItem) -> Boolean) -> CioAppLifecycleHandlingResult;
+	public fun func handleSceneOpenURLContexts(_ urlContexts: Set<UIOpenURLContext>, route: (UIOpenURLContext) -> Boolean) -> CioAppLifecycleHandlingResult;
 	public fun func handleSceneUserActivity(_ userActivity: NSUserActivity, route: (NSUserActivity) -> Boolean) -> CioAppLifecycleHandlingResult;
-	public fun func handleSceneShortcut(_ shortcutItem: UIApplicationShortcutItem, route: (UIApplicationShortcutItem) -> Boolean, completionHandler: (Boolean) -> Unit);
+	public fun func handleSceneShortcut(_ shortcutItem: UIApplicationShortcutItem, route: (UIApplicationShortcutItem) -> Boolean, completionHandler: (Boolean) -> Unit) -> CioAppLifecycleHandlingResult;
 	public fun func handleSwiftUIOpenURL(_ url: URL, route: (URL) -> Boolean) -> CioAppLifecycleHandlingResult;
 }
 public enum CioDataPipelines.CioAppLifecycleHandlingResult {

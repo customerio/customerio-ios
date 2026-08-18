@@ -109,7 +109,10 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         ))
     }
 
-    // Handle Universal Link deep link from the Customer.io SDK. This function will get called if a push notification
+    // Handle Universal Link deep link from the Customer.io SDK. This SDK-synthesized AppDelegate
+    // callback is intentionally routed directly instead of entering the scene coordinator: it is
+    // the delivery of an existing push-open occurrence, not a new OS AppDelegate activation.
+    // This function will get called if a push notification
     // gets clicked that has a Universal Link deep link attached and the app is in the foreground. Otherwise, another function
     // in your app may get called depending on what technology you use (Scenes, UIKit, Swift UI).
     //

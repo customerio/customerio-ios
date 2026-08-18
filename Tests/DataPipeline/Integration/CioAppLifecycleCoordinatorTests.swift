@@ -13,20 +13,24 @@ final class CioAppLifecycleCoordinatorTests: XCTestCase {
         let coordinator = makeCoordinator(.appDelegateOnly)
         var receivedURLs: [URL] = []
 
-        let result = coordinator.handleApplicationOpenURL(url) { receivedURL in
+        let options: [UIApplication.OpenURLOptionsKey: Any] = [.openInPlace: true]
+        var receivedOptions: [UIApplication.OpenURLOptionsKey: Any] = [:]
+        let result = coordinator.handleApplicationOpenURL(url, options: options) { receivedURL, routeOptions in
             receivedURLs.append(receivedURL)
+            receivedOptions = routeOptions
             return true
         }
 
         XCTAssertEqual(result, .handled)
         XCTAssertEqual(receivedURLs, [url])
+        XCTAssertEqual(receivedOptions[.openInPlace] as? Bool, true)
     }
 
     func testHandleApplicationOpenURL_givenSceneTopology_thenRejectsAndLogs() {
         let coordinator = makeCoordinator(.uiScene)
         var routeCount = 0
 
-        let result = coordinator.handleApplicationOpenURL(url) { _ in
+        let result = coordinator.handleApplicationOpenURL(url, options: [:]) { _, _ in
             routeCount += 1
             return true
         }
@@ -42,7 +46,7 @@ final class CioAppLifecycleCoordinatorTests: XCTestCase {
 
         for _ in 0 ..< 2 {
             XCTAssertEqual(
-                coordinator.handleApplicationOpenURL(url) { _ in
+                coordinator.handleApplicationOpenURL(url, options: [:]) { _, _ in
                     routeCount += 1
                     return true
                 },
@@ -65,6 +69,20 @@ final class CioAppLifecycleCoordinatorTests: XCTestCase {
 
         XCTAssertEqual(result, .unhandled)
         XCTAssertTrue(receivedActivity === activity)
+    }
+
+    func testHandleApplicationUserActivity_givenSceneTopology_thenRejectsSdkSynthesizedSeat() {
+        let coordinator = makeCoordinator(.uiScene)
+        let activity = NSUserActivity(activityType: NSUserActivityTypeBrowsingWeb)
+        var routeCount = 0
+
+        let result = coordinator.handleApplicationUserActivity(activity) { _ in
+            routeCount += 1
+            return true
+        }
+
+        XCTAssertEqual(result, .rejectedHostTopology)
+        XCTAssertEqual(routeCount, 0)
     }
 
     func testHandleApplicationShortcut_givenRouteCompletes_thenCompletionRunsExactlyOnce() {
@@ -303,6 +321,20 @@ final class CioAppLifecycleCoordinatorTests: XCTestCase {
         XCTAssertEqual(receivedURLs, [url])
     }
 
+    func testHandleSceneOpenURLs_givenAppDelegateTopology_thenRejectsWithoutRouting() {
+        let coordinator = makeCoordinator(.appDelegateOnly)
+        var routeCount = 0
+
+        let result = coordinator.handleSceneOpenURLs([url]) { _ in
+            routeCount += 1
+            return true
+        }
+
+        XCTAssertEqual(result, .rejectedHostTopology)
+        XCTAssertEqual(routeCount, 0)
+        XCTAssertEqual(logger.errorCallsCount, 1)
+    }
+
     func testHandleSceneOpenURLs_givenNoURL_thenReturnsNoActivationWithoutRouting() {
         let coordinator = makeCoordinator(.uiScene)
         var routeCount = 0
@@ -373,6 +405,19 @@ final class CioAppLifecycleCoordinatorTests: XCTestCase {
         XCTAssertEqual(routeCount, 1)
     }
 
+    func testHandleSceneUserActivity_givenAppDelegateTopology_thenRejectsWithoutRouting() {
+        let coordinator = makeCoordinator(.appDelegateOnly)
+        var routeCount = 0
+
+        let result = coordinator.handleSceneUserActivity(NSUserActivity(activityType: "test")) { _ in
+            routeCount += 1
+            return true
+        }
+
+        XCTAssertEqual(result, .rejectedHostTopology)
+        XCTAssertEqual(routeCount, 0)
+    }
+
     func testHandleSceneShortcut_givenRouteDeclines_thenCompletesFalseExactlyOnce() {
         let coordinator = makeCoordinator(.uiScene)
         var routeCount = 0
@@ -388,6 +433,26 @@ final class CioAppLifecycleCoordinatorTests: XCTestCase {
 
         XCTAssertEqual(routeCount, 1)
         XCTAssertEqual(completionValues, [false])
+    }
+
+    func testHandleSceneShortcut_givenAppDelegateTopology_thenRejectsAndCompletesFalseOnce() {
+        let coordinator = makeCoordinator(.appDelegateOnly)
+        let shortcut = UIApplicationShortcutItem(type: "test", localizedTitle: "Test")
+        var routeCount = 0
+        var completions: [Bool] = []
+
+        let result = coordinator.handleSceneShortcut(
+            shortcut,
+            route: { _ in
+                routeCount += 1
+                return true
+            },
+            completionHandler: { completions.append($0) }
+        )
+
+        XCTAssertEqual(result, .rejectedHostTopology)
+        XCTAssertEqual(routeCount, 0)
+        XCTAssertEqual(completions, [false])
     }
 
     func testHandleSwiftUIOpenURL_givenSwiftUITopology_thenRoutesRepeatedOccurrences() {
@@ -459,9 +524,9 @@ final class CioAppLifecycleCoordinatorTests: XCTestCase {
         userActivities: [NSUserActivity] = [],
         shortcutItem: UIApplicationShortcutItem? = nil,
         hasNotificationResponse: Bool = false
-    ) -> CioAppLifecycleCoordinator.SceneConnectionActivation {
+    ) -> CioAppLifecycleCoordinator.SceneConnectionActivation<URL> {
         CioAppLifecycleCoordinator.SceneConnectionActivation(
-            urls: urls,
+            urlActivations: urls,
             userActivities: userActivities,
             shortcutItem: shortcutItem,
             hasNotificationResponse: hasNotificationResponse
