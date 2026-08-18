@@ -55,9 +55,10 @@ contract. A controller may still start a new process for `token-registration`,
 outside those scenario-focused traces so they cannot be mistaken for cold-launch ingress evidence.
 
 The APN UIKit target keeps both host topologies buildable from the same project. Its normal build
-uses `Info.plist` and UIScene. The AppDelegate-only control applies one fixture configuration that
-selects the scene-free `Info-AppDelegateOnly.plist` and compiles the UIScene-session application
-delegate selectors out of the app target without changing dependency targets:
+uses `Info.plist` and UIScene. The AppDelegate-only control uses one fixture configuration to
+select the scene-free `Info-AppDelegateOnly.plist` through an app-target-only indirection and
+compile the UIScene-session application-delegate selectors out of that same app target. Dependency
+targets are unaffected:
 
 ```sh
 xcodebuild -project 'Apps/APN-UIKit/APN UIKit.xcodeproj' -scheme 'APN UIKit' \

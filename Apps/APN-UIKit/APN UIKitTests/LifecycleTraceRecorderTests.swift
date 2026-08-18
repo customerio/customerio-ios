@@ -179,6 +179,59 @@ final class LifecycleTraceRecorderTests: XCTestCase {
         XCTAssertTrue(joined.contains("url-1"))
     }
 
+    func testRecord_whenMoreThanOneURLContextIsObserved_thenCaptureFailsClosed() {
+        XCTAssertFalse(recorder.record(
+            callback: .sceneOpenURLContexts,
+            owner: .sceneDelegate,
+            kind: .osCallback,
+            phase: .entry,
+            observations: LifecycleTraceObservation(counts: [.urlContexts: 2])
+        ))
+        XCTAssertFalse(recorder.record(
+            callback: .sceneDidBecomeActive,
+            owner: .sceneDelegate,
+            kind: .osCallback,
+            phase: .stateChange
+        ))
+        XCTAssertNil(close(recorder))
+    }
+
+    func testRecord_whenTwoSceneIdentitiesParticipate_thenCaptureFailsClosed() {
+        for identity in ["scene-a", "scene-b"] {
+            let accepted = recorder.record(
+                callback: .sceneDidBecomeActive,
+                owner: .sceneDelegate,
+                kind: .osCallback,
+                phase: .stateChange,
+                observations: LifecycleTraceObservation(
+                    correlations: [.scene: .string(identity)]
+                )
+            )
+            XCTAssertEqual(accepted, identity == "scene-a")
+        }
+        XCTAssertNil(close(recorder))
+    }
+
+    func testTerminalClose_whenAppDelegateOnlyTopology_thenRequiresApplicationTerminal() {
+        let topologySink = InMemoryLifecycleTraceSink()
+        let topologyRecorder = makeRecorder(
+            sink: topologySink,
+            scenario: .iconColdLaunch,
+            topology: .appDelegateOnly
+        )
+        XCTAssertTrue(topologyRecorder.startScenario())
+        XCTAssertFalse(topologyRecorder.endScenario(after: .activeScene) { _ in
+            XCTFail("a scene terminal cannot close an AppDelegate-only activation")
+        })
+
+        let expectation = expectation(description: "application terminal closes")
+        XCTAssertTrue(topologyRecorder.endScenario(after: .activeApplication) { receipt in
+            XCTAssertNotNil(receipt)
+            expectation.fulfill()
+        })
+        wait(for: [expectation], timeout: 3)
+    }
+
     func testCompletionFixture_whenInvokedTwice_thenParentAndCountsAreCanonical() throws {
         let fixtureSink = InMemoryLifecycleTraceSink()
         let fixtureRecorder = makeRecorder(sink: fixtureSink, scenario: .unitFixture)

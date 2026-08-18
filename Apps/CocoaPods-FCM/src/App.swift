@@ -38,7 +38,8 @@ struct MainApp: App {
                     MainApp.recordScenePhase(nextPhase)
                 }
                 .onOpenURL { incomingURL in // This function is how to implement deep links in a Swift UI app.
-                    let shouldTrace = LifecycleTraceEvidence.isTraceableURLRoute(incomingURL)
+                    let shouldTrace = LifecycleTraceHarness.sharedRecorder?.hostTopology == .swiftUILifecycle
+                        && LifecycleTraceEvidence.isTraceableURLRoute(incomingURL)
                     let routeEvidence = LifecycleTraceEvidence.observe(url: incomingURL)
                     if shouldTrace {
                         LifecycleTraceHarness.sharedRecorder?.record(

@@ -20,6 +20,7 @@ class LifecycleInstrumentationTests(unittest.TestCase):
         selector = selector.split("private func routeUniversalLink", 1)[0]
         first_record = selector.index("LifecycleTraceHarness.sharedRecorder?.record")
         self.assertLess(selector.index("guard userActivity.webpageURL != nil"), first_record)
+        self.assertIn("hostTopology == .appDelegateOnly", selector)
         self.assertEqual(selector.count("callback: .applicationContinueUserActivity"), 1)
         self.assertEqual(selector.count("callback: .hostRouteUserActivity"), 2)
         self.assertIn("let handled = routeUniversalLink(userActivity)", selector)
@@ -38,6 +39,7 @@ class LifecycleInstrumentationTests(unittest.TestCase):
         self.assertIn("scenario.isColdStart == true", launch_helper)
         self.assertIn("LifecycleTraceEvidence.isCustomerIOLiveActivityRoute(incomingURL)", APP_SOURCE)
         self.assertIn("LifecycleTraceEvidence.isTraceableURLRoute(incomingURL)", APP_SOURCE)
+        self.assertIn("hostTopology == .swiftUILifecycle", APP_SOURCE)
         self.assertIn("callback: .swiftUIScenePhaseChange", APP_SOURCE)
         self.assertIn("hostTopology == .swiftUILifecycle", APP_SOURCE)
 

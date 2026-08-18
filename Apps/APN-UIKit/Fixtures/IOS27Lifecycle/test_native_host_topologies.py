@@ -29,8 +29,14 @@ class NativeHostTopologyTests(unittest.TestCase):
         project = (
             APP_ROOT.parent / "APN UIKit.xcodeproj" / "project.pbxproj"
         ).read_text(encoding="utf-8")
-        setting = 'INFOPLIST_FILE = "APN UIKit/Info.plist";'
-        self.assertEqual(project.count(setting), 2)
+        self.assertEqual(
+            project.count('CIO_LIFECYCLE_INFOPLIST_FILE = "APN UIKit/Info.plist";'),
+            2,
+        )
+        self.assertEqual(
+            project.count('INFOPLIST_FILE = "$(CIO_LIFECYCLE_INFOPLIST_FILE)";'),
+            2,
+        )
         compilation_setting = (
             'SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) '
             '$(CIO_LIFECYCLE_SWIFT_ACTIVE_COMPILATION_CONDITIONS)";'
@@ -40,7 +46,10 @@ class NativeHostTopologyTests(unittest.TestCase):
         control = (FIXTURE_ROOT / "AppDelegateOnly.xcconfig").read_text(
             encoding="utf-8"
         )
-        self.assertNotIn("INFOPLIST_FILE", control)
+        self.assertIn(
+            "CIO_LIFECYCLE_INFOPLIST_FILE = APN UIKit/Info-AppDelegateOnly.plist",
+            control,
+        )
         self.assertIn(
             "CIO_LIFECYCLE_SWIFT_ACTIVE_COMPILATION_CONDITIONS = "
             "CIO_APP_DELEGATE_ONLY",
@@ -50,9 +59,7 @@ class NativeHostTopologyTests(unittest.TestCase):
         workflow = (
             APP_ROOT.parents[2] / ".github/workflows/ios-toolchain-compatibility.yml"
         ).read_text(encoding="utf-8")
-        self.assertIn("cp \"$control_info\" \"$default_info\"", workflow)
-        self.assertIn("trap restore_default_info EXIT HUP INT TERM", workflow)
-        self.assertIn("cmp \"$saved_info\" \"$default_info\"", workflow)
+        self.assertNotIn("cp \"$control_info\" \"$default_info\"", workflow)
 
     def testAppDelegateOnlyControl_compilesOutSceneSessionSelectors(self) -> None:
         source = (APP_ROOT / "AppDelegate.swift").read_text(encoding="utf-8")

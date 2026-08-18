@@ -879,6 +879,7 @@
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
 				CODE_SIGN_STYLE = Manual;
 				CURRENT_PROJECT_VERSION = 1;
+				CIO_LIFECYCLE_INFOPLIST_FILE = "APN UIKit/Info.plist";
 				DEVELOPMENT_TEAM = "";
 				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = 2YC97BQN3N;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -1062,7 +1063,7 @@
 				DEVELOPMENT_TEAM = "";
 				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = 2YC97BQN3N;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = "APN UIKit/Info.plist";
+				INFOPLIST_FILE = "$(CIO_LIFECYCLE_INFOPLIST_FILE)";
 				INFOPLIST_KEY_CFBundleDisplayName = "Native iOS";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "This app uses your location to test the Customer.io Location module.";
 				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
@@ -1099,10 +1100,11 @@
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
 				CODE_SIGN_STYLE = Manual;
 				CURRENT_PROJECT_VERSION = 1;
+				CIO_LIFECYCLE_INFOPLIST_FILE = "APN UIKit/Info.plist";
 				DEVELOPMENT_TEAM = "";
 				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = 2YC97BQN3N;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = "APN UIKit/Info.plist";
+				INFOPLIST_FILE = "$(CIO_LIFECYCLE_INFOPLIST_FILE)";
 				INFOPLIST_KEY_CFBundleDisplayName = "Native iOS";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "This app uses your location to test the Customer.io Location module.";
 				INFOPLIST_KEY_NSSupportsLiveActivities = YES;

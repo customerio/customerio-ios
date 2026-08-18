@@ -165,33 +165,37 @@ class AppDelegate: NSObject, UIApplicationDelegate {
     //            Use `deepLinkCallback` on SDKConfigBuilder, as that works in all scenarios.
     func application(_ application: UIApplication, continue userActivity: NSUserActivity, restorationHandler: @escaping ([any UIUserActivityRestoring]?) -> Void) -> Bool {
         guard userActivity.webpageURL != nil else { return false }
-        LifecycleTraceHarness.sharedRecorder?.record(
-            callback: .applicationContinueUserActivity,
-            owner: .applicationDelegate,
-            kind: .osCallback,
-            phase: .entry,
-            observations: LifecycleTraceEvidence.observe(applicationState: application.applicationState),
-            LifecycleTraceEvidence.observe(userActivity: userActivity)
-        )
-
+        let shouldTrace = LifecycleTraceHarness.sharedRecorder?.hostTopology == .appDelegateOnly
         let routeEvidence = LifecycleTraceEvidence.observe(userActivity: userActivity)
-        LifecycleTraceHarness.sharedRecorder?.record(
-            callback: .hostRouteUserActivity,
-            owner: .host,
-            kind: .hostRouting,
-            phase: .intent,
-            observations: routeEvidence
-        )
+        if shouldTrace {
+            LifecycleTraceHarness.sharedRecorder?.record(
+                callback: .applicationContinueUserActivity,
+                owner: .applicationDelegate,
+                kind: .osCallback,
+                phase: .entry,
+                observations: LifecycleTraceEvidence.observe(applicationState: application.applicationState),
+                routeEvidence
+            )
+            LifecycleTraceHarness.sharedRecorder?.record(
+                callback: .hostRouteUserActivity,
+                owner: .host,
+                kind: .hostRouting,
+                phase: .intent,
+                observations: routeEvidence
+            )
+        }
         let handled = routeUniversalLink(userActivity)
-        LifecycleTraceHarness.sharedRecorder?.record(
-            callback: .hostRouteUserActivity,
-            owner: .host,
-            kind: .hostRouting,
-            phase: .result,
-            observations: routeEvidence,
-            LifecycleTraceEvidence.observe(routingResult: handled ? .handled : .unhandled)
-        )
-        LifecycleTraceHarness.endScenario(after: .hostUserActivityRoute)
+        if shouldTrace {
+            LifecycleTraceHarness.sharedRecorder?.record(
+                callback: .hostRouteUserActivity,
+                owner: .host,
+                kind: .hostRouting,
+                phase: .result,
+                observations: routeEvidence,
+                LifecycleTraceEvidence.observe(routingResult: handled ? .handled : .unhandled)
+            )
+            LifecycleTraceHarness.endScenario(after: .hostUserActivityRoute)
+        }
         return handled
     }
 
