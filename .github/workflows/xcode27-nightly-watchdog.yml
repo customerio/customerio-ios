@@ -57,6 +57,7 @@ jobs:
 
       - name: Notify Mobile team of a failed or missing nightly
         if: >-
+          always() &&
           github.event_name == 'schedule' &&
           (steps.verify.outputs.exit-code == '1' || steps.verify.outputs.exit-code == '3')
         uses: slackapi/slack-github-action@70cd7be8e40a46e8b0eced40b0de447bdb42f68e # v1.26.0
@@ -73,6 +74,7 @@ jobs:
 
       - name: Notify Mobile team of a watchdog infrastructure failure
         if: >-
+          always() &&
           github.event_name == 'schedule' &&
           (steps.verify.outputs.exit-code == '2' || steps.verify.outputs.exit-code == '3')
         uses: slackapi/slack-github-action@70cd7be8e40a46e8b0eced40b0de447bdb42f68e # v1.26.0
@@ -89,6 +91,7 @@ jobs:
 
       - name: Notify Mobile team when the watchdog could not run
         if: >-
+          always() &&
           failure() &&
           github.event_name == 'schedule' &&
           steps.verify.outputs.exit-code == ''
@@ -106,6 +109,7 @@ jobs:
 
       - name: Notify Mobile team of an unexpected watchdog exit
         if: >-
+          always() &&
           github.event_name == 'schedule' &&
           steps.verify.outputs.exit-code != '' &&
           steps.verify.outputs.exit-code != '0' &&
@@ -125,7 +129,7 @@ jobs:
           SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
 
       - name: Fail unhealthy watchdog run
-        if: github.event_name != 'pull_request' && steps.verify.outputs.exit-code != '0'
+        if: always() && github.event_name != 'pull_request' && steps.verify.outputs.exit-code != '0'
         env:
           WATCHDOG_EXIT_CODE: ${{ steps.verify.outputs.exit-code }}
-        run: exit "$WATCHDOG_EXIT_CODE"
+        run: exit "${WATCHDOG_EXIT_CODE:-1}"

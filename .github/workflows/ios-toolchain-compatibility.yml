@@ -117,6 +117,12 @@ jobs:
           fi
           echo "APP_PRODUCT_PATH=$app_path" >> "$GITHUB_ENV"
 
+      - name: Record launch diagnostic boundary
+        shell: bash
+        env:
+          FIXTURE: ${{ matrix.fixture }}
+        run: touch "$RUNNER_TEMP/${FIXTURE}-launch-start"
+
       - name: Install and launch fixture
         id: launch
         # TODO(MBL-2248): switch to @main after customerio/mobile-ci-tools#16 merges.
@@ -229,7 +235,8 @@ jobs:
               if [[ "$actual_executable" != "$expected_executable" ]]; then
                 echo "::warning::expected executable $expected_executable but built $actual_executable; collecting reports for the built executable"
               fi
-              find "$crash_reports" -type f -name "${actual_executable}*.ips" -mmin -60 \
+              find "$crash_reports" -type f -name "${actual_executable}*.ips" \
+                -newer "$RUNNER_TEMP/${FIXTURE}-launch-start" \
                 -exec cp -p {} "$diagnostics"/ \; || true
             else
               echo "::warning::could not read CFBundleExecutable; no crash report was collected"
@@ -307,6 +314,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload build logs
+        id: upload-logs
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
@@ -316,3 +324,17 @@ jobs:
             ${{ runner.temp }}/${{ matrix.fixture }}-launch-diagnostics
           if-no-files-found: ignore
           retention-days: 7
+
+      - name: Record diagnostics upload failure
+        if: always() && steps.upload-logs.outcome == 'failure'
+        shell: bash
+        env:
+          FIXTURE: ${{ matrix.fixture }}
+        run: |
+          {
+            echo '## Native fixture diagnostics'
+            echo
+            echo '**Classification:** diagnostics-upload-failed'
+            echo "**Fixture:** $FIXTURE"
+            echo '**Next step:** inspect the artifact action failure; the earlier compatibility classification remains authoritative'
+          } >> "$GITHUB_STEP_SUMMARY"
