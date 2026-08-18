@@ -74,6 +74,12 @@ configuration line with the original effective value and final value. It fails t
 selected effective value is non-numeric, such as `$(CUSTOM_IOS_FLOOR)`, because a
 generated-project audit cannot prove the resolved value. A non-numeric value at a lower precedence
 does not fail when an explicit target setting already determines the effective value.
+SDK-, architecture-, or configuration-qualified keys such as
+`IPHONEOS_DEPLOYMENT_TARGET[sdk=iphoneos*]` also fail before mutation at the selected precedence.
+Xcode can choose a qualified key over an unconditional value, so adding a numeric override would
+not prove the effective floor and could lower a higher conditional project setting. Replace the
+selected conditional matrix with one numeric, unconditional deployment target before rerunning the
+helper.
 
 If an error says a selected xcconfig cannot be read or parsed, repair or remove the reported base
 configuration file reference for the reported project, target, and configuration. Lower-precedence
