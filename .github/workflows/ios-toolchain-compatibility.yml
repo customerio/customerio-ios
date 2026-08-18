@@ -14,7 +14,9 @@ permissions:
   contents: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  # Scheduled and manual runs for main share one slot. Pull-request runs use
+  # their merge ref, so they do not cancel the nightly.
+  group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 env:
@@ -39,7 +41,6 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Report and verify toolchain family
-        id: toolchain
         uses: customerio/mobile-ci-tools/github-actions/ios/report-toolchain/v1@main
         with:
           expected-xcode-major: '27'
@@ -72,12 +73,10 @@ jobs:
           pod _1.16.2_ install --project-directory='Apps/CocoaPods-FCM' 2>&1 | tee "$RUNNER_TEMP/${{ matrix.fixture }}-pod-install.log"
 
       - name: Compile native APN fixture
-        id: compile-apn
         if: matrix.fixture == 'native-apn'
         shell: bash
         run: |
           set -o pipefail
-          rm -rf -- "$RUNNER_TEMP/${{ matrix.fixture }}-xcode-27"
           xcodebuild \
             -project 'Apps/APN-UIKit/APN UIKit.xcodeproj' \
             -scheme 'APN UIKit' \
@@ -89,12 +88,10 @@ jobs:
             build 2>&1 | tee "$RUNNER_TEMP/${{ matrix.fixture }}-build.log"
 
       - name: Compile CocoaPods FCM fixture
-        id: compile-fcm
         if: matrix.fixture == 'customerio-ios-fcm'
         shell: bash
         run: |
           set -o pipefail
-          rm -rf -- "$RUNNER_TEMP/${{ matrix.fixture }}-xcode-27"
           xcodebuild \
             -workspace 'Apps/CocoaPods-FCM/test cocoapods.xcworkspace' \
             -scheme 'test cocoapods' \
@@ -106,7 +103,6 @@ jobs:
             build 2>&1 | tee "$RUNNER_TEMP/${{ matrix.fixture }}-build.log"
 
       - name: Resolve built simulator app
-        id: resolve-app
         shell: bash
         run: |
           set -euo pipefail
@@ -117,14 +113,7 @@ jobs:
           fi
           echo "APP_PRODUCT_PATH=$app_path" >> "$GITHUB_ENV"
 
-      - name: Record launch diagnostic boundary
-        shell: bash
-        env:
-          FIXTURE: ${{ matrix.fixture }}
-        run: touch "$RUNNER_TEMP/${FIXTURE}-launch-start"
-
       - name: Install and launch fixture
-        id: launch
         uses: customerio/mobile-ci-tools/github-actions/ios/launch-simulator-app/v1@main
         with:
           app-path: ${{ env.APP_PRODUCT_PATH }}
@@ -132,234 +121,12 @@ jobs:
           survival-seconds: ${{ env.LAUNCH_SURVIVAL_SECONDS }}
           log-path: ${{ runner.temp }}/${{ matrix.fixture }}-launch.log
 
-      - name: Record compatibility result
-        id: record-result
-        if: steps.launch.outcome == 'success'
-        shell: bash
-        env:
-          FIXTURE: ${{ matrix.fixture }}
-          XCODE_VERSION: ${{ steps.toolchain.outputs.xcode-version }}
-          XCODE_BUILD: ${{ steps.toolchain.outputs.xcode-build }}
-          IOS_SIMULATOR_SDK: ${{ steps.toolchain.outputs.iphonesimulator-sdk }}
-        run: |
-          set -euo pipefail
-          : "${XCODE_VERSION:?missing xcode-version output}"
-          : "${XCODE_BUILD:?missing xcode-build output}"
-          : "${IOS_SIMULATOR_SDK:?missing iphonesimulator-sdk output}"
-          {
-            echo '## Native fixture compatibility'
-            echo
-            echo '**Classification:** launch-passed'
-            echo "**Fixture:** $FIXTURE"
-            echo "**Toolchain:** Xcode $XCODE_VERSION build $XCODE_BUILD, iphonesimulator $IOS_SIMULATOR_SDK"
-            echo "**Scope:** unsigned simulator compile, install, launch, and ${LAUNCH_SURVIVAL_SECONDS}-second process survival; no callback, push-delivery, signing, or App Store claim"
-          } >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Record compile failure
-        if: failure() && (steps.compile-apn.outcome == 'failure' || steps.compile-fcm.outcome == 'failure')
-        shell: bash
-        env:
-          FIXTURE: ${{ matrix.fixture }}
-        run: |
-          set -euo pipefail
-          {
-            echo '## Native fixture compile'
-            echo
-            echo '**Classification:** fixture-compile-failed'
-            echo "**Fixture:** $FIXTURE"
-            echo '**Toolchain family:** Xcode 27 / iOS SDK 27'
-            echo '**Next step:** inspect the uploaded build log for the exact compiler failure'
-          } >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Record launch failure
-        if: failure() && steps.launch.outcome == 'failure'
-        shell: bash
-        env:
-          FIXTURE: ${{ matrix.fixture }}
-          FAILURE_REASON: ${{ steps.launch.outputs.failure-reason }}
-        run: |
-          set -euo pipefail
-          case "$FAILURE_REASON" in
-            '')
-              classification=launch-smoke-inconclusive
-              next_step='inspect the launch action and setup steps; no structured failure category was published'
-              ;;
-            runtime-unavailable|runtime-selection-failed|simulator-boot-failed)
-              classification=simulator-infrastructure-unavailable
-              next_step='inspect the launch log and hosted image runtimes before attributing this to the SDK'
-              ;;
-            install-failed)
-              classification=fixture-install-failed
-              next_step='inspect the launch log and built app before evaluating runtime compatibility'
-              ;;
-            launch-failed)
-              classification=fixture-launch-failed
-              next_step='inspect the launch diagnostics for the UIKit runtime issue or launch rejection'
-              ;;
-            did-not-survive)
-              classification=fixture-exited-early
-              next_step='inspect the launch diagnostics for the crash or process-identity change'
-              ;;
-            invalid-input|invalid-app|sdk-mismatch)
-              classification=launch-contract-invalid
-              next_step='inspect the built product metadata and smoke-test inputs'
-              ;;
-            *)
-              echo "::warning::unrecognized launch failure reason: $FAILURE_REASON"
-              classification=launch-smoke-failed
-              next_step='inspect the launch log and diagnostics before classifying the failure'
-              ;;
-          esac
-          {
-            echo '## Native fixture launch'
-            echo
-            echo "**Classification:** $classification"
-            echo "**Failure category:** $FAILURE_REASON"
-            echo "**Fixture:** $FIXTURE"
-            echo '**Toolchain family:** Xcode 27 / iOS SDK 27'
-            echo "**Next step:** $next_step"
-          } >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Collect launch diagnostics
-        if: >-
-          failure() &&
-          steps.launch.outcome == 'failure' &&
-          (steps.launch.outputs.failure-reason == 'launch-failed' ||
-          steps.launch.outputs.failure-reason == 'did-not-survive')
-        shell: bash
-        env:
-          FIXTURE: ${{ matrix.fixture }}
-          APP_NAME: ${{ matrix.app-name }}
-        run: |
-          set -euo pipefail
-          diagnostics="$RUNNER_TEMP/${FIXTURE}-launch-diagnostics"
-          mkdir -p "$diagnostics"
-          crash_reports="$HOME/Library/Logs/DiagnosticReports"
-          if [[ -d "$crash_reports" ]]; then
-            expected_executable="${APP_NAME%.app}"
-            actual_executable="$(/usr/libexec/PlistBuddy \
-              -c 'Print :CFBundleExecutable' "$APP_PRODUCT_PATH/Info.plist" 2>/dev/null || true)"
-            if [[ -n "$actual_executable" ]]; then
-              if [[ "$actual_executable" != "$expected_executable" ]]; then
-                echo "::warning::expected executable $expected_executable but built $actual_executable; collecting reports for the built executable"
-              fi
-              found_crash_report=false
-              for _ in {1..10}; do
-                if ! find "$crash_reports" -type f -name "${actual_executable}*.ips" \
-                  -newer "$RUNNER_TEMP/${FIXTURE}-launch-start" \
-                  -exec cp -p {} "$diagnostics"/ \;; then
-                  echo "::warning::failed to copy one or more crash reports for $actual_executable"
-                fi
-                if find "$diagnostics" -type f -name "${actual_executable}*.ips" -print -quit | grep -q .; then
-                  found_crash_report=true
-                  break
-                fi
-                sleep 1
-              done
-              if [[ "$found_crash_report" != true ]]; then
-                echo "::warning::no crash report matching ${actual_executable}*.ips was found within 10 seconds"
-              fi
-            else
-              echo "::warning::could not read CFBundleExecutable; no crash report was collected"
-            fi
-          else
-            echo "::warning::$crash_reports does not exist; no crash report was collected"
-          fi
-
-      - name: Record product resolution failure
-        if: failure() && steps.resolve-app.outcome == 'failure'
-        shell: bash
-        env:
-          FIXTURE: ${{ matrix.fixture }}
-        run: |
-          set -euo pipefail
-          {
-            echo '## Native fixture product resolution'
-            echo
-            echo '**Classification:** built-app-not-found'
-            echo "**Fixture:** $FIXTURE"
-            echo '**Next step:** inspect the build settings and derived-data product path before evaluating launch compatibility'
-          } >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Record setup failure
-        if: failure() && steps.toolchain.outcome != 'failure' && steps.compile-apn.outcome == 'skipped' && steps.compile-fcm.outcome == 'skipped'
-        shell: bash
-        env:
-          FIXTURE: ${{ matrix.fixture }}
-        run: |
-          set -euo pipefail
-          {
-            echo '## Native fixture compile'
-            echo
-            echo '**Classification:** fixture-setup-failed'
-            echo "**Fixture:** $FIXTURE"
-            echo '**Toolchain family:** Xcode 27 / iOS SDK 27'
-            echo '**Next step:** inspect checkout, toolchain selection, dependency installation, and fixture preparation before attributing this to SDK compilation'
-          } >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Record unavailable toolchain
-        if: failure() && steps.toolchain.outcome == 'failure'
-        shell: bash
-        env:
-          FIXTURE: ${{ matrix.fixture }}
-        run: |
-          set -euo pipefail
-          {
-            echo '## Native fixture compile'
-            echo
-            echo '**Classification:** toolchain-unavailable'
-            echo "**Fixture:** $FIXTURE"
-            echo '**Expected toolchain family:** Xcode 27 / iOS SDK 27'
-            echo '**Next step:** inspect the toolchain report before evaluating fixture setup or SDK compilation'
-          } >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Record unclassified workflow failure
-        if: >-
-          failure() &&
-          steps.toolchain.outcome != 'failure' &&
-          steps.compile-apn.outcome != 'failure' &&
-          steps.compile-fcm.outcome != 'failure' &&
-          (steps.compile-apn.outcome != 'skipped' || steps.compile-fcm.outcome != 'skipped') &&
-          steps.resolve-app.outcome != 'failure' &&
-          steps.launch.outcome != 'failure' &&
-          steps.record-result.outcome != 'success'
-        shell: bash
-        env:
-          FIXTURE: ${{ matrix.fixture }}
-        run: |
-          set -euo pipefail
-          {
-            echo '## Native fixture workflow'
-            echo
-            echo '**Classification:** fixture-workflow-failed'
-            echo "**Fixture:** $FIXTURE"
-            echo '**Next step:** inspect the first failing step; no product compatibility result was produced'
-          } >> "$GITHUB_STEP_SUMMARY"
-
       - name: Upload build logs
-        id: upload-logs
         if: always()
-        continue-on-error: true
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: xcode-27-preview-${{ matrix.fixture }}-logs
           path: |
             ${{ runner.temp }}/${{ matrix.fixture }}-*.log
-            ${{ runner.temp }}/${{ matrix.fixture }}-launch-diagnostics
-          if-no-files-found: ignore
+          if-no-files-found: error
           retention-days: 7
-
-      - name: Record diagnostics upload failure
-        if: always() && steps.upload-logs.outcome == 'failure'
-        shell: bash
-        env:
-          FIXTURE: ${{ matrix.fixture }}
-        run: |
-          set -euo pipefail
-          {
-            echo '## Native fixture diagnostics'
-            echo
-            echo '**Classification:** diagnostics-upload-failed'
-            echo "**Fixture:** $FIXTURE"
-            echo '**Next step:** inspect the artifact action failure; the earlier compatibility classification remains authoritative'
-          } >> "$GITHUB_STEP_SUMMARY"
