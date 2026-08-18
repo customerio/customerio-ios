@@ -126,7 +126,7 @@ jobs:
       - name: Install and launch fixture
         id: launch
         # TODO(MBL-2248): switch to @main after customerio/mobile-ci-tools#16 merges.
-        uses: customerio/mobile-ci-tools/github-actions/ios/launch-simulator-app/v1@14d1d9b39c9b28e84d99f6e8e4e2c46ddd8096df
+        uses: customerio/mobile-ci-tools/github-actions/ios/launch-simulator-app/v1@7071072c77b3e92ac14418f54a3f8865f5863e75
         with:
           app-path: ${{ env.APP_PRODUCT_PATH }}
           expected-ios-major: '27'
@@ -181,6 +181,10 @@ jobs:
         run: |
           set -euo pipefail
           case "$FAILURE_REASON" in
+            '')
+              classification=launch-smoke-inconclusive
+              next_step='inspect the launch action and setup steps; no structured failure category was published'
+              ;;
             runtime-unavailable|runtime-selection-failed|simulator-boot-failed)
               classification=simulator-infrastructure-unavailable
               next_step='inspect the launch log and hosted image runtimes before attributing this to the SDK'
@@ -235,9 +239,15 @@ jobs:
               if [[ "$actual_executable" != "$expected_executable" ]]; then
                 echo "::warning::expected executable $expected_executable but built $actual_executable; collecting reports for the built executable"
               fi
-              find "$crash_reports" -type f -name "${actual_executable}*.ips" \
-                -newer "$RUNNER_TEMP/${FIXTURE}-launch-start" \
-                -exec cp -p {} "$diagnostics"/ \; || true
+              for _ in {1..10}; do
+                find "$crash_reports" -type f -name "${actual_executable}*.ips" \
+                  -newer "$RUNNER_TEMP/${FIXTURE}-launch-start" \
+                  -exec cp -p {} "$diagnostics"/ \; || true
+                if find "$diagnostics" -type f -name "${actual_executable}*.ips" -print -quit | grep -q .; then
+                  break
+                fi
+                sleep 1
+              done
             else
               echo "::warning::could not read CFBundleExecutable; no crash report was collected"
             fi
@@ -332,6 +342,7 @@ jobs:
         env:
           FIXTURE: ${{ matrix.fixture }}
         run: |
+          set -euo pipefail
           {
             echo '## Native fixture diagnostics'
             echo
