@@ -1,7 +1,7 @@
 {
   "schema": "cio-lifecycle-contract-lock/2",
   "source_repository": "customerio/customerio-ios",
-  "pinned_content_commit": "ce73b1a4ef2b16e178a31ebbda1620034570c0af",
+  "pinned_content_commit": "45009f814e8183a8feccb884efd50c4a2aff020a",
   "relock_note": "pinned_content_commit identifies the immutable reviewed contract content; this descendant lock cannot self-reference its own commit.",
   "algorithm": "sha256",
   "files": [
@@ -23,15 +23,15 @@
     },
     {
       "path": "docs/dev-notes/ios27-lifecycle-trace-v1-test-vectors/completion.invalid-drop-without-full-buffer.ndjson",
-      "sha256": "2ead08879c2ce997d90a85487f21a16f711824e8eee8478c1f6ba549c488a619"
+      "sha256": "4753efff2e7deaee3ebc1cfd9324b72b875aa0761ba2bea9bd61c4cd5cdbecc0"
     },
     {
       "path": "docs/dev-notes/ios27-lifecycle-trace-v1-test-vectors/completion.valid-diagnostic-drop.ndjson",
-      "sha256": "8d411c26effdb882b4f40ba712d91d12973bd84aa9627899a6e7c964b701504c"
+      "sha256": "7427e02c1c26efe9fac1d31794f9833d8d454770fcc32112970cdf1cefd32349"
     },
     {
       "path": "docs/dev-notes/ios27-lifecycle-trace-v1-test-vectors/completion.valid-zero-call.ndjson",
-      "sha256": "becf6b8523badd018eb608ce3a9573b4b19b09037444b73aed733cb9cbe1ca30"
+      "sha256": "78bbb019ba138cc743cfd41899322e96c8134106193ae4249b886ecb649d355d"
     },
     {
       "path": "docs/dev-notes/ios27-lifecycle-trace-v1-test-vectors/manifest.completion-valid.json",
@@ -47,11 +47,11 @@
     },
     {
       "path": "docs/dev-notes/ios27-lifecycle-trace-v1-test-vectors/native.invalid-aggregate-zero.ndjson",
-      "sha256": "d0598909476cb5f2591d315e2ad9359bb8eb9e6ad009e265f4d4019ffb46764b"
+      "sha256": "8aba634b248cde64f44aa6cb11375947e18fa901f31784273227ce0c0a0e15d1"
     },
     {
       "path": "docs/dev-notes/ios27-lifecycle-trace-v1-test-vectors/native.valid.ndjson",
-      "sha256": "73b4a54d33fc576fb6022bb477813a7b42f2de921448eedd48b2bc9f1ce41307"
+      "sha256": "245a9f30949d1abd690d4e7e5c5d357b51ca7c0dbf88d9dae5ea6ea6e29c45cb"
     },
     {
       "path": "docs/dev-notes/ios27-lifecycle-trace-v1-test-vectors/wrapper.invalid-aggregate-zero.ndjson",
@@ -71,11 +71,11 @@
     },
     {
       "path": "docs/dev-notes/test_validate_ios27_lifecycle_trace.py",
-      "sha256": "6b42f9cb9e1a82fd749c4028a5f2e299fd58e62da8a25aa87fb1f61df2ad4f91"
+      "sha256": "3a9d76cc9ad091e44d974e9d1145ba518e4e169897ca32bf5b595dbc2296aa94"
     },
     {
       "path": "docs/dev-notes/validate_ios27_lifecycle_trace.py",
-      "sha256": "172be94bba82d9e583b75c8cdada8f6c73b3e99b46b23d8bf10407061122ca02"
+      "sha256": "a6296ba429da8e3d02bd1c45c285b9c3b4113fe03a49721442e2be29296c91f4"
     }
   ]
 }
