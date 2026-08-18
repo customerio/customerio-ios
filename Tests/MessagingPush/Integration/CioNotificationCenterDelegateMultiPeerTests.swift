@@ -493,13 +493,17 @@ final class CioNotificationDelegateMultiPeerTests: XCTestCase {
         chainedPeer.forwardsDidReceiveAsynchronously = true
         registry.register(chainedPeer)
         var willPresentOuterCallsCount = 0
+        var willPresentOptions: UNNotificationPresentationOptions?
         var didReceiveOuterCallsCount = 0
         let didReceiveCompleted = expectation(description: "didReceive aggregate completed")
 
         delegate.userNotificationCenter(
             UNUserNotificationCenter.current(),
             willPresent: UNNotification.testInstance,
-            withCompletionHandler: { _ in willPresentOuterCallsCount += 1 }
+            withCompletionHandler: {
+                willPresentOptions = $0
+                willPresentOuterCallsCount += 1
+            }
         )
         delegate.userNotificationCenter(
             UNUserNotificationCenter.current(),
@@ -520,6 +524,11 @@ final class CioNotificationDelegateMultiPeerTests: XCTestCase {
         XCTAssertEqual(chainedPeer.didReceiveCallsCount, 1)
         XCTAssertEqual(chainedPeer.openSettingsCallsCount, 1)
         XCTAssertEqual(willPresentOuterCallsCount, 1)
+        if #available(iOS 14.0, *) {
+            XCTAssertEqual(willPresentOptions, [.list, .banner, .badge, .sound])
+        } else {
+            XCTAssertEqual(willPresentOptions, [.alert, .badge, .sound])
+        }
         XCTAssertEqual(didReceiveOuterCallsCount, 1)
     }
 

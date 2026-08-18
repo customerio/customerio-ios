@@ -31,11 +31,19 @@ open class CioNotificationCenterDelegate: NSObject, UNUserNotificationCenterDele
     private let config: ConfigInstance?
     private let handlePushResponse: (UNUserNotificationCenter, UNNotificationResponse) -> Void
     private let systemDelegate: (UNUserNotificationCenter) -> UNUserNotificationCenterDelegate?
+    /// Keeps a forwarded response alive for as long as its nesting count is active. Retaining the object, rather
+    /// than only its address, prevents a later response from reusing the same `ObjectIdentifier` after an
+    /// asynchronous peer abandons its completion.
+    private struct ForwardedPeerInvocation {
+        let response: UNNotificationResponse
+        var count: Int
+    }
+
     /// Tracks responses dispatched to this instance as a peer of another Customer.io proxy. The response stays
     /// marked through its completion, preserving the no-duplicate rule when a subclass calls `super`
     /// asynchronously while still allowing its public override to be invoked dynamically.
     private let forwardedPeerLock = NSLock()
-    private var forwardedPeerInvocationCounts: [ObjectIdentifier: Int] = [:]
+    private var forwardedPeerInvocations: [ObjectIdentifier: ForwardedPeerInvocation] = [:]
     /// Detects a peer that forwards a delivery back into this same proxy. Completion-based deliveries remain
     /// active until their aggregate completes, so a peer that forwards asynchronously cannot restart the graph.
     private let deliveryLock = NSLock()
@@ -103,9 +111,11 @@ open class CioNotificationCenterDelegate: NSObject, UNUserNotificationCenterDele
     ) {
         let deliveryIdentifier = DeliveryIdentifier.willPresent(ObjectIdentifier(notification))
         guard beginDelivery(deliveryIdentifier) else {
-            // A peer is forwarding this same delivery back into the proxy. It has no independent presentation
-            // preference, so resolve that peer's aggregate token with the merge identity and stop the cycle.
-            completionHandler([])
+            // A peer is forwarding this same delivery back into the proxy. Resolve the nested request with
+            // Customer.io's configured fallback, just as this proxy would with no implementing peer. A pure
+            // forwarding peer therefore preserves foreground presentation instead of turning the cycle into an
+            // accidental explicit `[]` preference.
+            completionHandler(cioConfiguredPresentationOptions)
             return
         }
 
@@ -269,25 +279,32 @@ open class CioNotificationCenterDelegate: NSObject, UNUserNotificationCenterDele
     private func beginForwardedPeerInvocation(_ response: UNNotificationResponse) {
         let identifier = ObjectIdentifier(response)
         forwardedPeerLock.lock()
-        forwardedPeerInvocationCounts[identifier, default: 0] += 1
+        if var invocation = forwardedPeerInvocations[identifier], invocation.response === response {
+            invocation.count += 1
+            forwardedPeerInvocations[identifier] = invocation
+        } else {
+            forwardedPeerInvocations[identifier] = ForwardedPeerInvocation(response: response, count: 1)
+        }
         forwardedPeerLock.unlock()
     }
 
     private func endForwardedPeerInvocation(_ response: UNNotificationResponse) {
         let identifier = ObjectIdentifier(response)
         forwardedPeerLock.lock()
-        let remainingCount = (forwardedPeerInvocationCounts[identifier] ?? 1) - 1
-        if remainingCount > 0 {
-            forwardedPeerInvocationCounts[identifier] = remainingCount
+        let remainingCount = (forwardedPeerInvocations[identifier]?.count ?? 1) - 1
+        if remainingCount > 0, var invocation = forwardedPeerInvocations[identifier] {
+            invocation.count = remainingCount
+            forwardedPeerInvocations[identifier] = invocation
         } else {
-            forwardedPeerInvocationCounts.removeValue(forKey: identifier)
+            forwardedPeerInvocations.removeValue(forKey: identifier)
         }
         forwardedPeerLock.unlock()
     }
 
     private func isForwardedPeerInvocation(_ response: UNNotificationResponse) -> Bool {
         forwardedPeerLock.lock()
-        let isForwarded = (forwardedPeerInvocationCounts[ObjectIdentifier(response)] ?? 0) > 0
+        let invocation = forwardedPeerInvocations[ObjectIdentifier(response)]
+        let isForwarded = invocation?.response === response && (invocation?.count ?? 0) > 0
         forwardedPeerLock.unlock()
         return isForwarded
     }
