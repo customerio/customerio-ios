@@ -6,6 +6,17 @@ import XCTest
 
 final class NotificationDelegatePeerRegistryTests: XCTestCase {
     private final class Peer: NSObject, UNUserNotificationCenterDelegate {}
+    private final class LifetimePeer: NSObject, UNUserNotificationCenterDelegate {
+        private let onDeinit: () -> Void
+
+        init(onDeinit: @escaping () -> Void) {
+            self.onDeinit = onDeinit
+        }
+
+        deinit {
+            onDeinit()
+        }
+    }
 
     private var registry: NotificationDelegatePeerRegistryImpl!
 
@@ -63,6 +74,21 @@ final class NotificationDelegatePeerRegistryTests: XCTestCase {
         XCTAssertTrue(registry.livePeers().isEmpty)
     }
 
+    func testRegister_whenClearingPeer_thenResultRetainsItUntilCallerReleasesSnapshot() {
+        var didDeinitialize = false
+        var peer: LifetimePeer? = LifetimePeer { didDeinitialize = true }
+        registry.register(peer)
+        var registration: NotificationDelegateRegistration? = registry.register(nil)
+
+        peer = nil
+
+        withExtendedLifetime(registration) {
+            XCTAssertFalse(didDeinitialize)
+        }
+        registration = nil
+        XCTAssertTrue(didDeinitialize)
+    }
+
     func testLivePeers_whenOwnerReleasesPeer_thenWeakReferenceIsCompacted() {
         var peer: Peer? = Peer()
         weak var weakPeer = peer
@@ -92,7 +118,7 @@ final class NotificationDelegatePeerRegistryTests: XCTestCase {
         peers[0] = nil
         let newest = Peer()
 
-        let outcome = registry.register(newest)
+        let registration = registry.register(newest)
 
         XCTAssertNil(releasedPeer)
         let livePeers = registry.livePeers()
@@ -101,7 +127,7 @@ final class NotificationDelegatePeerRegistryTests: XCTestCase {
         for peer in peers.dropFirst().compactMap({ $0 }) {
             XCTAssertTrue(livePeers.contains { $0 === peer })
         }
-        guard case .registered(let peerCount) = outcome else {
+        guard case .registered(let peerCount) = registration.outcome else {
             return XCTFail("Expected a registered outcome")
         }
         XCTAssertEqual(peerCount, peers.count)

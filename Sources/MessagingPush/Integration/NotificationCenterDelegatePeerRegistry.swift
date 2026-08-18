@@ -11,8 +11,8 @@ import UserNotifications
 /// only the most recently assigned one.
 ///
 /// Ownership: `UNUserNotificationCenter.delegate` is a weak property, so peers are owned by the host app.
-/// Implementations must hold peers weakly and must never extend a peer's lifetime. A peer the app releases
-/// simply stops receiving callbacks.
+/// Implementations must store peers weakly. The strong snapshots returned for registration and delivery live
+/// only for the caller's current operation; beyond that, a peer the app releases simply stops receiving callbacks.
 ///
 /// Threading: `UNUserNotificationCenter.delegate` can be assigned from any thread, including reentrantly from
 /// inside a callback the SDK is currently fanning out. Implementations must be safe for concurrent use, and
@@ -30,8 +30,11 @@ protocol NotificationDelegatePeerRegistry: AnyObject {
     /// - A peer that is not registered yet is appended after the already-registered peers. Sequential
     ///   assignments preserve their registration order. Assignments racing from different threads are
     ///   serialized safely, but their relative order is whichever registration acquires the lock first.
+    ///
+    /// The returned value temporarily retains peers read during compaction. Callers holding any outer lock must
+    /// keep it alive until after that lock is released, so peer deinitializers cannot reenter while locked.
     @discardableResult
-    func register(_ peer: UNUserNotificationCenterDelegate?) -> NotificationDelegateRegistrationOutcome
+    func register(_ peer: UNUserNotificationCenterDelegate?) -> NotificationDelegateRegistration
 
     /// The peers that are still alive, oldest registration first, dropping every peer that has been
     /// deallocated since the last call.
@@ -49,6 +52,15 @@ enum NotificationDelegateRegistrationOutcome {
     case cleared(peerCount: Int)
     case alreadyRegistered
     case registered(peerCount: Int)
+}
+
+/// Carries the mutation outcome plus a temporary strong snapshot of the peers read while compacting storage.
+/// The installer keeps this result alive until after its own lock is released, so releasing the snapshot cannot
+/// run app `deinit` code inside either the registry lock or the outer installation lock.
+@available(iOSApplicationExtension, unavailable)
+struct NotificationDelegateRegistration {
+    let outcome: NotificationDelegateRegistrationOutcome
+    let retainedPeers: [UNUserNotificationCenterDelegate]
 }
 
 @available(iOSApplicationExtension, unavailable)
@@ -85,7 +97,7 @@ final class NotificationDelegatePeerRegistryImpl: NotificationDelegatePeerRegist
     @discardableResult
     func register(
         _ peer: UNUserNotificationCenterDelegate?
-    ) -> NotificationDelegateRegistrationOutcome {
+    ) -> NotificationDelegateRegistration {
         updateStorage(with: peer)
     }
 
@@ -93,28 +105,32 @@ final class NotificationDelegatePeerRegistryImpl: NotificationDelegatePeerRegist
     /// lock is confined to this function and released before anything outside the SDK is called.
     private func updateStorage(
         with peer: UNUserNotificationCenterDelegate?
-    ) -> NotificationDelegateRegistrationOutcome {
+    ) -> NotificationDelegateRegistration {
         lock.lock()
-        defer { lock.unlock() }
 
         guard let peer = peer else {
-            let peerCount = compactAndReadLocked().count
+            let livePeers = compactAndReadLocked()
             boxes = []
-            return .cleared(peerCount: peerCount)
+            let outcome = NotificationDelegateRegistrationOutcome.cleared(peerCount: livePeers.count)
+            lock.unlock()
+            return NotificationDelegateRegistration(outcome: outcome, retainedPeers: livePeers)
         }
 
         // Compact before comparing identity. A deallocated peer's `ObjectIdentifier` is just its former
         // address, which the allocator can hand to a different object, so a stale box could otherwise report
         // a false identity match against a brand new peer.
-        _ = compactAndReadLocked()
+        let livePeers = compactAndReadLocked()
 
         let identifier = ObjectIdentifier(peer)
         if boxes.contains(where: { $0.identifier == identifier }) {
-            return .alreadyRegistered
+            lock.unlock()
+            return NotificationDelegateRegistration(outcome: .alreadyRegistered, retainedPeers: livePeers)
         }
 
         boxes.append(WeakPeerBox(peer: peer))
-        return .registered(peerCount: boxes.count)
+        let outcome = NotificationDelegateRegistrationOutcome.registered(peerCount: boxes.count)
+        lock.unlock()
+        return NotificationDelegateRegistration(outcome: outcome, retainedPeers: livePeers)
     }
 
     /// Drops boxes whose peer has been deallocated and returns the surviving peers in registration order.

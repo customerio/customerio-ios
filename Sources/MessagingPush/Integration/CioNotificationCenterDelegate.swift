@@ -44,9 +44,10 @@ open class CioNotificationCenterDelegate: NSObject, UNUserNotificationCenterDele
     private let didReceiveDeliveryGuard = NotificationDeliveryGuard<UNNotificationResponse>()
     private let openSettingsDeliveryGuard = NotificationDeliveryGuard<UNNotification>()
     private let willPresentDeliveryGuard = NotificationDeliveryGuard<UNNotification>()
+    private let willPresentDeliveryContexts = WillPresentDeliveryContextStore()
     private let nilOpenSettingsLock = NSLock()
-    private var deliveredNilOpenSettingsSinceBackground = false
-    private var applicationBackgroundObserver: NSObjectProtocol?
+    private var deliveredNilOpenSettingsInCurrentActivation = false
+    private var applicationWillEnterForegroundObserver: NSObjectProtocol?
     /// Preserves the public initializer's existing strong ownership of its single wrapped delegate. The
     /// process-wide internal proxy leaves this nil and keeps its multi-peer registry weak.
     private let compatibilityWrappedDelegate: UNUserNotificationCenterDelegate?
@@ -74,7 +75,7 @@ open class CioNotificationCenterDelegate: NSObject, UNUserNotificationCenterDele
         super.init()
 
         peerRegistry.register(wrappedDelegate)
-        observeApplicationBackground()
+        observeApplicationActivation()
     }
 
     init(
@@ -91,12 +92,12 @@ open class CioNotificationCenterDelegate: NSObject, UNUserNotificationCenterDele
         self.systemDelegate = systemDelegate
         self.compatibilityWrappedDelegate = nil
         super.init()
-        observeApplicationBackground()
+        observeApplicationActivation()
     }
 
     deinit {
-        if let applicationBackgroundObserver {
-            NotificationCenter.default.removeObserver(applicationBackgroundObserver)
+        if let applicationWillEnterForegroundObserver {
+            NotificationCenter.default.removeObserver(applicationWillEnterForegroundObserver)
         }
     }
 
@@ -117,10 +118,7 @@ open class CioNotificationCenterDelegate: NSObject, UNUserNotificationCenterDele
         withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
     ) {
         guard willPresentDeliveryGuard.begin(notification) else {
-            // A peer is forwarding this same delivery back into the proxy. Resolve the nested request with
-            // Customer.io's configured fallback, just as this proxy would with no implementing peer. The
-            // configured policy may legitimately be an empty option set.
-            completionHandler(cioConfiguredPresentationOptions)
+            completionHandler(presentationOptionsForNestedWillPresent(notification))
             return
         }
 
@@ -138,13 +136,15 @@ open class CioNotificationCenterDelegate: NSObject, UNUserNotificationCenterDele
             initialValue: peers.isEmpty ? cioConfiguredPresentationOptions : [],
             merge: { $0.union($1) },
             onFinished: { [weak self] options in
-                self?.willPresentDeliveryGuard.complete(notification)
+                self?.completeWillPresentDelivery(notification)
                 completionHandler(options)
             },
             onAbandoned: { [weak self] in
-                self?.willPresentDeliveryGuard.complete(notification)
+                self?.completeWillPresentDelivery(notification)
             }
         )
+
+        rememberWillPresentDelivery(notification, peerCount: peers.count)
 
         for (token, peer) in peers.enumerated() {
             peer.userNotificationCenter?(
@@ -336,15 +336,15 @@ open class CioNotificationCenterDelegate: NSObject, UNUserNotificationCenterDele
         return isForwarded
     }
 
-    private func observeApplicationBackground() {
-        applicationBackgroundObserver = NotificationCenter.default.addObserver(
-            forName: UIApplication.didEnterBackgroundNotification,
+    private func observeApplicationActivation() {
+        applicationWillEnterForegroundObserver = NotificationCenter.default.addObserver(
+            forName: UIApplication.willEnterForegroundNotification,
             object: nil,
             queue: nil
         ) { [weak self] _ in
             guard let self else { return }
             nilOpenSettingsLock.lock()
-            deliveredNilOpenSettingsSinceBackground = false
+            deliveredNilOpenSettingsInCurrentActivation = false
             nilOpenSettingsLock.unlock()
         }
     }
@@ -352,23 +352,31 @@ open class CioNotificationCenterDelegate: NSObject, UNUserNotificationCenterDele
 
 @available(iOSApplicationExtension, unavailable)
 private extension CioNotificationCenterDelegate {
-    /// Direct peer identities this compatibility delegate will forward `selector` to when invoked.
-    func directForwardingPeerIdentities(respondingTo selector: Selector) -> [ObjectIdentifier] {
-        peerRegistry.livePeers()
-            .filter { $0.responds(to: selector) }
-            .map(ObjectIdentifier.init)
+    func rememberWillPresentDelivery(_ notification: UNNotification, peerCount: Int) {
+        willPresentDeliveryContexts.remember(notification, peerCount: peerCount)
+    }
+
+    func presentationOptionsForNestedWillPresent(
+        _ notification: UNNotification
+    ) -> UNNotificationPresentationOptions {
+        willPresentDeliveryContexts.isSolePeerDelivery(notification) ? cioConfiguredPresentationOptions : []
+    }
+
+    func completeWillPresentDelivery(_ notification: UNNotification) {
+        willPresentDeliveryContexts.remove(notification)
+        willPresentDeliveryGuard.complete(notification)
     }
 
     func beginOpenSettingsDelivery(_ notification: UNNotification?) -> Bool {
         guard let notification = notification else {
             // Apple supplies nil only when Settings opens the app without a notification object. With no
-            // delivery identity to propagate, retain one marker for the foreground epoch so an asynchronously
-            // forwarding delegate cannot create an unbounded cycle. Entering background starts the next real
-            // Settings activation epoch.
+            // delivery identity to propagate, retain one marker for the current foreground activation so an
+            // asynchronously forwarding delegate cannot create an unbounded cycle. Each later transition into
+            // the foreground begins a new Settings activation and clears the marker.
             nilOpenSettingsLock.lock()
             defer { nilOpenSettingsLock.unlock() }
-            guard !deliveredNilOpenSettingsSinceBackground else { return false }
-            deliveredNilOpenSettingsSinceBackground = true
+            guard !deliveredNilOpenSettingsInCurrentActivation else { return false }
+            deliveredNilOpenSettingsInCurrentActivation = true
             return true
         }
         return openSettingsDeliveryGuard.begin(notification)

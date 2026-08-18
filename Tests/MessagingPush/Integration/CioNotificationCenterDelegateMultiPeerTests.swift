@@ -698,6 +698,24 @@ final class CioNotificationDelegateMultiPeerTests: XCTestCase {
         XCTAssertEqual(didReceiveOuterCallsCount, 1)
     }
 
+    func testWillPresent_whenCycleHasAnotherPeerReturningEmpty_thenDoesNotLeakCioFallback() {
+        let chainedPeer = ChainedNotificationCenterDelegate(previousDelegate: delegate)
+        let suppressingPeer = Peer()
+        registry.register(chainedPeer)
+        registry.register(suppressingPeer)
+        var presentationOptions: UNNotificationPresentationOptions?
+
+        delegate.userNotificationCenter(
+            UNUserNotificationCenter.current(),
+            willPresent: UNNotification.testInstance,
+            withCompletionHandler: { presentationOptions = $0 }
+        )
+
+        XCTAssertEqual(chainedPeer.willPresentCallsCount, 1)
+        XCTAssertEqual(suppressingPeer.willPresentCallsCount, 1)
+        XCTAssertEqual(presentationOptions, [])
+    }
+
     func testWillPresent_whenPeerChainsSameNotificationAsynchronously_thenFanOutRunsOnce() {
         let chainedPeer = ChainedNotificationCenterDelegate(previousDelegate: delegate)
         let forwarded = expectation(description: "asynchronous will-present forward returned")
@@ -752,7 +770,7 @@ final class CioNotificationDelegateMultiPeerTests: XCTestCase {
         XCTAssertEqual(chainedPeer.openSettingsCallsCount, 1)
     }
 
-    func testOpenSettings_whenPeerChainsNilAsynchronously_thenRunsOncePerBackgroundEpoch() {
+    func testOpenSettings_whenPeerChainsNilAsynchronously_thenRunsOncePerForegroundActivation() {
         let chainedPeer = ChainedNotificationCenterDelegate(previousDelegate: delegate)
         chainedPeer.forwardsOpenSettingsAsynchronously = true
         registry.register(chainedPeer)
@@ -765,7 +783,11 @@ final class CioNotificationDelegateMultiPeerTests: XCTestCase {
             XCTAssertEqual(chainedPeer.openSettingsCallsCount, expectedCount)
 
             if expectedCount == 1 {
-                NotificationCenter.default.post(name: UIApplication.didEnterBackgroundNotification, object: nil)
+                // A duplicate callback in the same activation is suppressed, while the
+                // next real foreground activation starts a new nil delivery.
+                delegate.userNotificationCenter(UNUserNotificationCenter.current(), openSettingsFor: nil)
+                XCTAssertEqual(chainedPeer.openSettingsCallsCount, expectedCount)
+                NotificationCenter.default.post(name: UIApplication.willEnterForegroundNotification, object: nil)
             }
         }
     }

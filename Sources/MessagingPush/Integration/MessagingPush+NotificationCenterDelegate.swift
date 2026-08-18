@@ -59,7 +59,7 @@ extension MessagingPush {
         let wrappedDelegate = center.delegate
 
         installLock.lock()
-        let registration: NotificationDelegateRegistrationOutcome?
+        let registration: NotificationDelegateRegistration?
         if let wrappedDelegate = wrappedDelegate,
            notificationDelegateClearGeneration == clearGenerationBeforeRead,
            wrappedDelegate !== proxy {
@@ -113,20 +113,20 @@ extension MessagingPush {
         wrapping wrappedDelegate: UNUserNotificationCenterDelegate?
     ) -> (
         proxy: CioNotificationCenterDelegate,
-        registration: NotificationDelegateRegistrationOutcome?
+        registration: NotificationDelegateRegistration?
     ) {
         let proxy = notificationCenterDelegateProxyLocked()
 
         // Ignore only this exact installed proxy. A separately constructed public CioNotificationCenterDelegate
         // is an external peer and must be preserved like any other app-owned delegate.
-        let registrationOutcome: NotificationDelegateRegistrationOutcome?
+        let registration: NotificationDelegateRegistration?
         if wrappedDelegate === proxy {
-            registrationOutcome = nil
+            registration = nil
         } else {
-            registrationOutcome = proxy.peerRegistry.register(wrappedDelegate)
+            registration = proxy.peerRegistry.register(wrappedDelegate)
         }
 
-        return (proxy: proxy, registration: registrationOutcome)
+        return (proxy: proxy, registration: registration)
     }
 
     /// Creates or reuses the process-wide proxy without reading or mutating external delegate state.
@@ -150,18 +150,23 @@ extension MessagingPush {
     private static func finishNotificationCenterDelegateInstallation(
         _ installation: (
             proxy: CioNotificationCenterDelegate,
-            registration: NotificationDelegateRegistrationOutcome?
+            registration: NotificationDelegateRegistration?
         ),
         wrapping wrappedDelegate: UNUserNotificationCenterDelegate?,
         on center: inout UserNotificationCenterIntegration,
         logger: Logger
     ) -> Bool {
+        defer {
+            // The registry may have acquired the last strong reference to an app peer while compacting weak
+            // storage. Release that temporary snapshot only after the outer install lock is no longer held.
+            withExtendedLifetime(installation.registration?.retainedPeers) {}
+        }
         let proxyInstallationOutcome = ensureNotificationCenterDelegateInstalled(
             installation.proxy,
             on: &center
         )
 
-        installation.registration?.log(peer: wrappedDelegate, logger: logger)
+        installation.registration?.outcome.log(peer: wrappedDelegate, logger: logger)
         proxyInstallationOutcome.log(logger: logger)
         return proxyInstallationOutcome.isInstalledOrDeferred
     }
