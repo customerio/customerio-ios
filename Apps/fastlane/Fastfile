@@ -124,7 +124,11 @@ platform :ios do
         # Here, we try to update Info.plist files. 
         # We do that by getting the Info.plist file path from the Xcode project. 
         if config.build_settings.key?("INFOPLIST_FILE")
-          plist_file_path = File.expand_path("../#{config.build_settings['INFOPLIST_FILE']}", Dir.pwd)
+          plist_setting = resolve_declared_build_settings(
+            config.build_settings['INFOPLIST_FILE'],
+            config.build_settings
+          )
+          plist_file_path = File.expand_path("../#{plist_setting}", Dir.pwd)
           UI.message("Found Info.plist file to modify: #{plist_file_path}")
 
           # We only want to modify a value in plist file and not add a new value if it doesn't exist in the file yet. 
@@ -144,6 +148,22 @@ platform :ios do
     project.save  
   end 
 end 
+
+def resolve_declared_build_settings(value, build_settings)
+  resolved = value.to_s
+  10.times do
+    changed = false
+    resolved = resolved.gsub(/\$\(([^)]+)\)/) do |matched_expression|
+      setting_name = Regexp.last_match(1)
+      replacement = build_settings.fetch(setting_name, matched_expression).to_s
+      changed ||= replacement != matched_expression
+      replacement
+    end
+    return resolved unless changed
+  end
+
+  UI.user_error!("Build setting expansion exceeded 10 passes: #{value}")
+end
 
 # Functions not specific to iOS go below. 
 

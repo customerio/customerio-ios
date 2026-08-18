@@ -80,6 +80,14 @@ class NativeHostTopologyTests(unittest.TestCase):
             workflow.split("pull_request:", 1)[1].split("schedule:", 1)[0].count("- '"),
             1,
         )
+        fastfile = (APP_ROOT.parents[1] / "fastlane/Fastfile").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("resolve_declared_build_settings", fastfile)
+        self.assertIn(
+            "build_settings.fetch(setting_name, matched_expression)",
+            fastfile,
+        )
         self.assertIn(
             "plutil -extract UIApplicationSceneManifest xml1", workflow
         )
