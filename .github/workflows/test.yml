@@ -34,7 +34,11 @@ jobs:
             Apps/APN-UIKit/Fixtures/IOS27Lifecycle/test_lifecycle_capture.py \
             Apps/APN-UIKit/Fixtures/IOS27Lifecycle/test_disposable_source_patch.py \
             Apps/CocoaPods-FCM/test_ios27_lifecycle_instrumentation.py
-          python scripts/ios27_lifecycle_contract.py verify --root .
+          contract_copy="$RUNNER_TEMP/ios27-lifecycle-contract-copy"
+          mkdir "$contract_copy"
+          python scripts/ios27_lifecycle_contract.py sync \
+            --source-root . \
+            --destination-root "$contract_copy"
 
   test:
     uses: customerio/mobile-ci-tools/.github/workflows/ios-test.yml@main

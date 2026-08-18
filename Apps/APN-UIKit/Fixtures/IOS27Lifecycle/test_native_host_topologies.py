@@ -96,6 +96,18 @@ class NativeHostTopologyTests(unittest.TestCase):
             "AppDelegate-only control unexpectedly contains UIApplicationSceneManifest.",
             workflow,
         )
+        contract_workflow = (
+            APP_ROOT.parents[2] / ".github/workflows/test.yml"
+        ).read_text(encoding="utf-8")
+        self.assertIn(
+            "python scripts/ios27_lifecycle_contract.py sync",
+            contract_workflow,
+        )
+        self.assertIn("--source-root .", contract_workflow)
+        self.assertIn(
+            '--destination-root "$contract_copy"',
+            contract_workflow,
+        )
 
     def testAppDelegateOnlyControl_compilesOutSceneSessionSelectors(self) -> None:
         source = (APP_ROOT / "AppDelegate.swift").read_text(encoding="utf-8")
