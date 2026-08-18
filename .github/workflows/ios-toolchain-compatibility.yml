@@ -126,7 +126,7 @@ jobs:
       - name: Install and launch fixture
         id: launch
         # TODO(MBL-2248): switch to @main after customerio/mobile-ci-tools#16 merges.
-        uses: customerio/mobile-ci-tools/github-actions/ios/launch-simulator-app/v1@e5fbb641ab946ca3a1b6cd443c450a9d00348c98
+        uses: customerio/mobile-ci-tools/github-actions/ios/launch-simulator-app/v1@14d1d9b39c9b28e84d99f6e8e4e2c46ddd8096df
         with:
           app-path: ${{ env.APP_PRODUCT_PATH }}
           expected-ios-major: '27'
@@ -316,6 +316,7 @@ jobs:
       - name: Upload build logs
         id: upload-logs
         if: always()
+        continue-on-error: true
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: xcode-27-preview-${{ matrix.fixture }}-logs
