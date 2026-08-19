@@ -72,8 +72,12 @@ extension AppDeepLinksHandlerUtil {
     /// - Parameter url: The URL to be checked.
     /// - Returns: A boolean indicating whether the provided URL matches the universal link.
     func doesMatchUniversalLink(_ url: URL) -> Bool {
-        (url.scheme == "http" || url.scheme == "https") &&
-            url.host == "ciosample.page.link" &&
+        guard let scheme = url.scheme?.lowercased(), let host = url.host?.lowercased() else {
+            return false
+        }
+
+        return (scheme == "http" || scheme == "https") &&
+            host == "ciosample.page.link" &&
             url.path == "/spm"
     }
 }
