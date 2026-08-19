@@ -80,6 +80,8 @@ Xcode can choose a qualified key over an unconditional value, so adding a numeri
 not prove the effective floor and could lower a higher conditional project setting. Replace the
 selected conditional matrix with one numeric, unconditional deployment target before rerunning the
 helper.
+For a generated Pods target, make that correction in the Podfile or dependency podspec rather than
+editing `Pods.xcodeproj`, which CocoaPods regenerates.
 
 If an error says a selected xcconfig cannot be read or parsed, repair or remove the reported base
 configuration file reference for the reported project, target, and configuration. Lower-precedence

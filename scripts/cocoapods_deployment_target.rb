@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
-# Keep this helper byte-identical across customerio-ios, customerio-flutter, and
-# customerio-reactnative so every wrapper applies the same CocoaPods contract.
+# This copy is owned by customerio-ios and covered by its local test suite.
 
 require "rubygems/version"
 

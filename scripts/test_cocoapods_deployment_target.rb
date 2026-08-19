@@ -124,6 +124,9 @@ class CocoaPodsDeploymentTargetTest < Minitest::Test
     low = target(project, "Low", "13.0")
     conditional = target(project, "Conditional", nil)
     conditional.build_configurations.first.build_settings[
+      CustomerIO::CocoaPodsDeploymentTarget::BUILD_SETTING
+    ] = "16.0"
+    conditional.build_configurations.first.build_settings[
       "#{CustomerIO::CocoaPodsDeploymentTarget::BUILD_SETTING}[sdk=iphoneos*]"
     ] = "13.0"
     project.targets.concat([low, conditional])
@@ -140,9 +143,7 @@ class CocoaPodsDeploymentTargetTest < Minitest::Test
     assert_includes error.message, "conditional IPHONEOS_DEPLOYMENT_TARGET"
     assert_includes error.message, "[sdk=iphoneos*]"
     assert_equal "13.0", deployment_target(low)
-    refute conditional.build_configurations.first.build_settings.key?(
-      CustomerIO::CocoaPodsDeploymentTarget::BUILD_SETTING
-    )
+    assert_equal "16.0", deployment_target(conditional)
   end
 
   def test_normalize_fails_before_mutating_whitespace_qualified_target_settings
@@ -303,6 +304,26 @@ class CocoaPodsDeploymentTargetTest < Minitest::Test
 
   def test_normalize_ignores_a_non_numeric_lower_precedence_project_floor
     project = project_with_floor("App.xcodeproj", "$(CUSTOM_IOS_FLOOR)")
+    app = target(project, "App", "16.0")
+    project.targets << app
+    installer = Installer.new([], nil, [AggregateTarget.new([app], project)])
+
+    records = CustomerIO::CocoaPodsDeploymentTarget.normalize!(
+      installer,
+      minimum_ios_version: "15.0",
+      io: nil
+    )
+
+    assert_equal %w[16.0 16.0], records.map(&:current)
+    assert_equal 0, records.count(&:changed)
+    assert_equal 0, project.save_count
+  end
+
+  def test_normalize_ignores_a_conditional_lower_precedence_project_floor
+    project = Project.new(Pathname("App.xcodeproj"), [], 0, project_configurations(nil))
+    project.build_configurations.first.build_settings[
+      "#{CustomerIO::CocoaPodsDeploymentTarget::BUILD_SETTING}[sdk=iphoneos*]"
+    ] = "13.0"
     app = target(project, "App", "16.0")
     project.targets << app
     installer = Installer.new([], nil, [AggregateTarget.new([app], project)])
@@ -625,10 +646,10 @@ class CocoaPodsDeploymentTargetTest < Minitest::Test
     end
   end
 
-  def test_normalize_fails_closed_for_whitespace_qualified_project_xcconfig_floors
+  def test_normalize_fails_closed_for_qualified_project_xcconfig_floors
     skip "Xcodeproj is unavailable" unless xcodeproj_available?
 
-    [" ", "\t"].each do |separator|
+    ["", " ", "\t"].each do |separator|
       Dir.mktmpdir do |directory|
         xcconfig_path = Pathname(directory).join("Project.xcconfig")
         File.write(
