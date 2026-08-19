@@ -282,7 +282,8 @@ module CustomerIO
       raise AuditError,
             "#{context} has conditional #{BUILD_SETTING} settings that cannot be audited deterministically: " \
             "#{conditional_keys.join(', ')}. Replace them with one numeric, unconditional #{BUILD_SETTING} " \
-            "before running this helper."
+            "before running this helper. For a generated Pods target, change the Podfile or dependency " \
+            "podspec rather than Pods.xcodeproj."
     end
     private_class_method :validate_no_conditional_settings!
 

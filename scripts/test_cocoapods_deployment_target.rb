@@ -364,6 +364,35 @@ class CocoaPodsDeploymentTargetTest < Minitest::Test
     assert_equal 0, project.save_count
   end
 
+  def test_explicit_target_setting_skips_a_conditional_lower_precedence_target_xcconfig
+    skip "Xcodeproj is unavailable" unless xcodeproj_available?
+
+    Dir.mktmpdir do |directory|
+      xcconfig_path = Pathname(directory).join("Target.xcconfig")
+      File.write(
+        xcconfig_path,
+        "#{CustomerIO::CocoaPodsDeploymentTarget::BUILD_SETTING}[sdk=iphoneos*] = 13.0\n"
+      )
+      project = Project.new(Pathname("App.xcodeproj"), [], 0)
+      app = target(project, "App", "16.0")
+      app.build_configurations.each do |configuration|
+        configuration.base_configuration_reference = ConfigurationReference.new(xcconfig_path)
+      end
+      project.targets << app
+      installer = Installer.new([], nil, [AggregateTarget.new([app], project)])
+
+      records = CustomerIO::CocoaPodsDeploymentTarget.normalize!(
+        installer,
+        minimum_ios_version: "15.0",
+        io: nil
+      )
+
+      assert_equal %w[16.0 16.0], records.map(&:current)
+      assert_equal 0, records.count(&:changed)
+      assert_equal 0, project.save_count
+    end
+  end
+
   def test_explicit_target_setting_skips_a_synchronized_lower_precedence_xcconfig
     project = project_with_floor("App.xcodeproj", "$(CUSTOM_IOS_FLOOR)")
     configuration = OpaqueSynchronizedConfiguration.new(
