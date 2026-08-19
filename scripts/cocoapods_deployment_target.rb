@@ -181,7 +181,7 @@ module CustomerIO
               project_configuration = matching_project_configuration(project, configuration.name)
               project_value = effective_configuration_value(
                 project_configuration,
-                context: context
+                context: "#{context}, project build configuration #{configuration.name}"
               )
               effective_value = project_value
             end

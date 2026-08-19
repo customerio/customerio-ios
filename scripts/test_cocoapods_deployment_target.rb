@@ -188,6 +188,7 @@ class CocoaPodsDeploymentTargetTest < Minitest::Test
     end
 
     assert_includes error.message, "conditional IPHONEOS_DEPLOYMENT_TARGET"
+    assert_includes error.message, "project build configuration Debug"
     refute app.build_configurations.first.build_settings.key?(
       CustomerIO::CocoaPodsDeploymentTarget::BUILD_SETTING
     )
