@@ -26,6 +26,8 @@ final class CoreLocationGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @pr
 
     private let manager: CLLocationManager
     private let logger: Logger
+    /// Freshens the fix behind movement-trigger EXIT dispatches (see `MovementFixResolver`).
+    private let movementFixResolver: MovementFixResolver
     private var onTransition: GeofenceTransitionHandler?
     private var onAuthorizationChanged: GeofenceAuthorizationChangedHandler?
     private var lastLoggedPermissionTier: PermissionTier?
@@ -44,6 +46,10 @@ final class CoreLocationGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @pr
     init(logger: Logger) {
         self.manager = CLLocationManager()
         self.logger = logger
+        self.movementFixResolver = MovementFixResolver(
+            logger: logger,
+            backgroundTaskRunner: GeofenceBackgroundTime.runner(name: "io.customer.geofence.movement-fix")
+        )
         super.init()
         manager.delegate = self
     }
@@ -183,7 +189,7 @@ final class CoreLocationGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @pr
             return
         }
         guard ownedRegionIdentifiers.contains(region.identifier) else { return }
-        onTransition?(region.identifier, transition, currentLocationData())
+        dispatchTransition(identifier: region.identifier, transition: transition, capturedLocation: currentLocationData())
     }
 
     private func drainPendingEventsIfReady() {
@@ -194,10 +200,24 @@ final class CoreLocationGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @pr
             while self.onTransition != nil, !self.pendingEvents.isEmpty {
                 let next = self.pendingEvents.removeFirst()
                 guard self.ownedRegionIdentifiers.contains(next.identifier) else { continue }
-                self.onTransition?(next.identifier, next.transition, next.location)
+                self.dispatchTransition(identifier: next.identifier, transition: next.transition, capturedLocation: next.location)
             }
             self.isDrainingPendingEvents = false
         }
+    }
+
+    /// Movement-trigger EXITs re-center the trigger and measure displacement at the attached
+    /// coords, so a frozen cached fix pins the whole pipeline to a stale point — freshen it first,
+    /// keeping the captured location only as the fallback. Fire-and-forget so a slow fix can't
+    /// stall the pending-event drain behind it. Business events keep the captured location.
+    private func dispatchTransition(identifier: String, transition: GeofenceTransition, capturedLocation: LocationData?) {
+        if identifier == GeofenceConstants.movementTriggerIdentifier, transition == .exit {
+            movementFixResolver.resolve(cached: bestKnownFix()) { [weak self] location in
+                self?.onTransition?(identifier, transition, location ?? capturedLocation)
+            }
+            return
+        }
+        onTransition?(identifier, transition, capturedLocation)
     }
 
     func locationManager(_ manager: CLLocationManager, monitoringDidFailFor region: CLRegion?, withError error: Error) {
@@ -253,12 +273,17 @@ final class CoreLocationGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @pr
         }
     }
 
+    /// Newest usable fix across the manager's cache and the resolver's requested fixes — the
+    /// manager's cache can freeze at process start on a long-suspended process.
+    private func bestKnownFix() -> CLLocation? {
+        let cached = manager.location.flatMap { CLLocationCoordinate2DIsValid($0.coordinate) ? $0 : nil }
+        guard let resolved = movementFixResolver.latestFix else { return cached }
+        guard let cached else { return resolved }
+        return resolved.timestamp > cached.timestamp ? resolved : cached
+    }
+
     private func currentLocationData() -> LocationData? {
-        guard let location = manager.location,
-              CLLocationCoordinate2DIsValid(location.coordinate)
-        else {
-            return nil
-        }
+        guard let location = bestKnownFix() else { return nil }
         return LocationData(latitude: location.coordinate.latitude, longitude: location.coordinate.longitude)
     }
 }

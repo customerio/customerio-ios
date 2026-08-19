@@ -1,6 +1,8 @@
 platform :ios, '15.0'
 use_frameworks!
 
+require_relative '../../scripts/cocoapods_deployment_target'
+
 # Always install the SDK from the local source code so the sample app tests this specific commit of the code. 
 sdk_local_path = File.join(File.dirname(__FILE__), '../../')
 
@@ -58,3 +60,9 @@ target 'Rich Push Notification Service Extension' do
   pod 'CustomerIOMessagingPushAPN', :path => sdk_local_path
 end 
 
+post_install do |installer|
+  CustomerIO::CocoaPodsDeploymentTarget.normalize!(
+    installer,
+    minimum_ios_version: '15.0'
+  )
+end
