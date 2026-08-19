@@ -438,6 +438,27 @@ class CocoaPodsDeploymentTargetTest < Minitest::Test
     assert_includes output.string, "\t\t\t16.0\t16.0\n"
   end
 
+  def test_standalone_audit_fails_before_output_for_a_conditional_setting
+    project = Project.new(Pathname("Pods.xcodeproj"), [], 0)
+    conditional = target(project, "Conditional", "16.0")
+    conditional.build_configurations.first.build_settings[
+      "#{CustomerIO::CocoaPodsDeploymentTarget::BUILD_SETTING}[sdk=iphoneos*]"
+    ] = "17.0"
+    project.targets << conditional
+    output = StringIO.new
+
+    error = assert_raises(CustomerIO::CocoaPodsDeploymentTarget::AuditError) do
+      CustomerIO::CocoaPodsDeploymentTarget.audit_projects!(
+        [project],
+        minimum_ios_version: "15.0",
+        io: output
+      )
+    end
+
+    assert_includes error.message, "conditional IPHONEOS_DEPLOYMENT_TARGET"
+    assert_empty output.string
+  end
+
   def test_standalone_audit_discovers_direct_cocoapods_projects_without_vendored_examples
     skip "Xcodeproj is unavailable" unless xcodeproj_available?
 
