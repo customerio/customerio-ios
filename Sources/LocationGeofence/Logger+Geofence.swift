@@ -142,6 +142,10 @@ extension Logger {
         info("Cached fix is \(age); requesting a fresh fix for the movement pass", geofenceTag)
     }
 
+    func geofenceEventRefusedByContradiction(identifier: String, transition: GeofenceTransition, distanceFromCenter: Double, radius: Double, accuracy: Double) {
+        info("Refused OS \(transition.rawValue) for region \(identifier): a fresh fix contradicts it (distance \(Int(distanceFromCenter)) m, radius \(Int(radius)) m, accuracy \(Int(accuracy)) m)", geofenceTag)
+    }
+
     func geofenceMovementFixRequestFailed(fallingBackToCached: Bool) {
         let outcome = fallingBackToCached ? "falling back to the stale cached fix" : "no cached fix to fall back to"
         info("Fresh-fix request failed or timed out; \(outcome)", geofenceTag)
