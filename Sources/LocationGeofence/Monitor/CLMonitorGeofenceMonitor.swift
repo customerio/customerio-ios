@@ -1,6 +1,9 @@
 import CioInternalCommon
 import CoreLocation
 import Foundation
+#if canImport(UIKit)
+import UIKit
+#endif
 
 /// `CLMonitor`-backed implementation of `GeofenceRegionMonitoring`. Available at iOS 17, but the DI
 /// accessor routes to it on iOS 18+ only — the floor where `CLServiceSession` keeps background
@@ -89,6 +92,12 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preco
     /// Held `CLServiceSession` (iOS 18+), stored untyped because stored properties can't carry
     /// availability. Non-nil only while Always authorization is granted.
     private var serviceSession: AnyObject?
+    /// When the armed conditions were last rebuilt at the OS (init, adopt, or a foreground re-arm).
+    /// Internal for the `+Rearm` extension. Regular syncs don't reset it: they leave unchanged
+    /// conditions untouched, which is exactly what lets a wedged promotion record persist.
+    var lastRearmAt = Date()
+    /// Internal for the `+Rearm` extension, which registers it.
+    var foregroundObserverToken: NSObjectProtocol?
 
     init(
         logger: Logger,
@@ -117,6 +126,13 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preco
             await self?.reconcileKnownConditions(with: monitor)
         }
         startConsuming()
+        registerForegroundRearm()
+    }
+
+    deinit {
+        if let foregroundObserverToken {
+            NotificationCenter.default.removeObserver(foregroundObserverToken)
+        }
     }
 
     // MARK: - CLMonitor lifecycle
