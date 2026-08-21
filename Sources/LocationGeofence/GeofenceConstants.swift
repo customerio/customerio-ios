@@ -41,6 +41,10 @@ enum GeofenceConstants {
     static let movementFixMaxAge: TimeInterval = 30
     static let movementFixRequestTimeout: TimeInterval = 10
 
+    // Floor on the baseline-heal ambiguity margin (meters): a fix closer than this to the fence
+    // edge never synthesizes a crossing, even when it reports better accuracy.
+    static let baselineHealMinEdgeMargin: Double = 20
+
     // Sane bounds the SDK coerces server config into, so a misconfigured backend can't push
     // monitoring into a pathological state: a positive out-of-range value clamps to the nearest
     // bound; a non-positive value falls back. (`maxMonitoringDistance` needs no upper bound — a

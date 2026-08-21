@@ -43,7 +43,8 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preco
     let authManager: CLLocationManager
     /// Freshens the fix behind movement-trigger EXIT dispatches (see `MovementFixResolver`).
     private let movementFixResolver: MovementFixResolver
-    private var onTransition: GeofenceTransitionHandler?
+    /// Internal (not private) for the `+BaselineHeal` extension's synthesized deliveries.
+    var onTransition: GeofenceTransitionHandler?
     private var onAuthorizationChanged: GeofenceAuthorizationChangedHandler?
     private var onReconciled: GeofenceReconciledHandler?
     private var lastLoggedPermissionTier: CoreLocationGeofenceMonitor.PermissionTier?
@@ -355,8 +356,9 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preco
 
     /// Newest usable fix across the auth manager's cache and the resolver's requested fixes.
     /// The manager's cache can freeze at process start on a long-suspended process, so a fresher
-    /// resolver fix must win wherever cached position is read.
-    private func bestKnownFix() -> CLLocation? {
+    /// resolver fix must win wherever cached position is read. Internal (not private) for the
+    /// `+Registration` extension's baseline-heal call site.
+    func bestKnownFix() -> CLLocation? {
         let cached = authManager.location.flatMap { CLLocationCoordinate2DIsValid($0.coordinate) ? $0 : nil }
         guard let resolved = movementFixResolver.latestFix else { return cached }
         guard let cached else { return resolved }
