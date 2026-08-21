@@ -273,7 +273,7 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preco
         // Runs BEFORE the baseline advance below: a refused event must leave the stored baseline
         // untouched so the daemon's own re-evaluation dedups against it (see `+ContradictionGate`).
         if identifier != GeofenceConstants.movementTriggerIdentifier,
-           await isEventContradictedByFreshFix(identifier: identifier, transition: transition) {
+           await isEventContradictedByFreshFix(identifier: identifier, transition: transition, eventDate: event.date) {
             return
         }
         guard case .deliver = await storage.recordMonitorEvent(transition, forIdentifier: identifier) else { return }

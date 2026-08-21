@@ -34,9 +34,13 @@ extension CLMonitorGeofenceMonitor {
     /// Geometry comes from the drained add's stamp, not `registeredConditions`: that map updates
     /// synchronously when a reshape is staged, so during its staging→drain gap an event the OS
     /// computed on the old circle must still be judged against the old circle.
-    func isEventContradictedByFreshFix(identifier: String, transition: GeofenceTransition) async -> Bool {
+    /// The window compares the EVENT's date to the add, not the processing time: an event can sit
+    /// in `pendingEvents` until the bootstrap binds the handler, and a belief replay must stay
+    /// gated no matter how late it drains — while a real crossing minutes after the add stays
+    /// ungated no matter how fast it is processed.
+    func isEventContradictedByFreshFix(identifier: String, transition: GeofenceTransition, eventDate: Date) async -> Bool {
         guard let readd = conditionReadds[identifier],
-              Date().timeIntervalSince(readd.date) <= GeofenceConstants.contradictionGateReplayWindow
+              eventDate.timeIntervalSince(readd.date) <= GeofenceConstants.contradictionGateReplayWindow
         else { return false }
         let gateFix = await resolveGateFix()
         guard let gateFix, CLLocationCoordinate2DIsValid(gateFix.coordinate) else { return false }
