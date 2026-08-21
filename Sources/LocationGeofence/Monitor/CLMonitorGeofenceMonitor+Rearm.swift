@@ -34,7 +34,7 @@ extension CLMonitorGeofenceMonitor {
                     radius: radius
                 )
                 await monitor.add(condition, identifier: identifier, assuming: record.lastState == .enter ? .satisfied : .unsatisfied)
-                self.conditionReaddTimestamps[identifier] = Date()
+                self.conditionReadds[identifier] = ConditionReadd(date: Date(), center: center, radius: radius)
                 // Recorded per identifier rather than in one pass at the end: an `.unmonitored` for
                 // one of these can land between two iterations, and it must be able to take the
                 // identifier back out.

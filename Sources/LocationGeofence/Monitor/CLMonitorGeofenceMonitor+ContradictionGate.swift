@@ -21,21 +21,30 @@ import Foundation
 /// passes. Undecidable fixes — none, stale, or within the ambiguity margin — fail OPEN.
 @available(iOS 17.0, *)
 extension CLMonitorGeofenceMonitor {
+    /// A drained (re)add: when it landed at the OS and the circle it imposed there.
+    struct ConditionReadd {
+        let date: Date
+        let center: LocationData
+        let radius: Double
+    }
+
     /// True when the event lands inside the identifier's replay window AND a trustworthy fix
     /// confidently contradicts it (`BaselineHealDecision` with `lastState` = the incoming
     /// transition — a non-nil result means the fix says the opposite of what the OS delivered).
+    /// Geometry comes from the drained add's stamp, not `registeredConditions`: that map updates
+    /// synchronously when a reshape is staged, so during its staging→drain gap an event the OS
+    /// computed on the old circle must still be judged against the old circle.
     func isEventContradictedByFreshFix(identifier: String, transition: GeofenceTransition) async -> Bool {
-        guard let readdedAt = conditionReaddTimestamps[identifier],
-              Date().timeIntervalSince(readdedAt) <= GeofenceConstants.contradictionGateReplayWindow,
-              let condition = registeredConditions[identifier]
+        guard let readd = conditionReadds[identifier],
+              Date().timeIntervalSince(readd.date) <= GeofenceConstants.contradictionGateReplayWindow
         else { return false }
         let gateFix = await resolveGateFix()
         guard let gateFix, CLLocationCoordinate2DIsValid(gateFix.coordinate) else { return false }
-        let center = CLLocation(latitude: condition.center.latitude, longitude: condition.center.longitude)
+        let center = CLLocation(latitude: readd.center.latitude, longitude: readd.center.longitude)
         let distanceFromCenter = gateFix.distance(from: center)
         guard BaselineHealDecision.synthesizedTransition(
             distanceFromCenter: distanceFromCenter,
-            radius: condition.radius,
+            radius: readd.radius,
             horizontalAccuracy: gateFix.horizontalAccuracy,
             fixAge: -gateFix.timestamp.timeIntervalSinceNow,
             lastState: transition
@@ -44,7 +53,7 @@ extension CLMonitorGeofenceMonitor {
             identifier: identifier,
             transition: transition,
             distanceFromCenter: distanceFromCenter,
-            radius: condition.radius,
+            radius: readd.radius,
             accuracy: gateFix.horizontalAccuracy
         )
         return true

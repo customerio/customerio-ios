@@ -94,7 +94,11 @@ extension CLMonitorGeofenceMonitor {
             await monitor.remove(identifier)
             let condition = CLMonitor.CircularGeographicCondition(center: coordinate, radius: clampedRadius)
             await monitor.add(condition, identifier: identifier, assuming: assumedState)
-            self.conditionReaddTimestamps[identifier] = Date()
+            self.conditionReadds[identifier] = ConditionReadd(
+                date: Date(),
+                center: LocationData(latitude: coordinate.latitude, longitude: coordinate.longitude),
+                radius: clampedRadius
+            )
             self.knownConditionIdentifiers.insert(identifier)
             self.persistConditionMirror()
         }

@@ -67,10 +67,13 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preco
     /// Conditions the OS stopped monitoring since their last registration. The next registration
     /// reseeds their stored baseline instead of preserving it — see `recordMonitorRegistration`.
     var conditionsNeedingBaselineReseed: Set<String> = []
-    /// When each condition was last (re)added at the OS, stamped at the add's drain time. The
-    /// contradiction gate only vets events landing shortly after an add — the daemon's belief
-    /// replays — so this is the gate's applicability check (see `+ContradictionGate`).
-    var conditionReaddTimestamps: [String: Date] = [:]
+    /// When each condition was last (re)added at the OS and the circle that add imposed, stamped
+    /// at the add's drain time. The contradiction gate only vets events landing shortly after an
+    /// add — the daemon's belief replays — and judges them against this geometry, NOT the staged
+    /// `registeredConditions` entry: a reshape updates that map synchronously, so during its
+    /// staging→drain gap an event computed on the old circle would otherwise be judged against
+    /// the new one (see `+ContradictionGate`).
+    var conditionReadds: [String: ConditionReadd] = [:]
 
     /// The circle a condition was added with.
     struct RegisteredCondition: Equatable {
@@ -247,6 +250,7 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preco
             logger.geofenceMonitorStoppedMonitoringRegion(identifier)
             knownConditionIdentifiers.remove(identifier)
             registeredConditions.removeValue(forKey: identifier)
+            conditionReadds.removeValue(forKey: identifier)
             // Whichever registration comes next must reseed the baseline rather than preserve it.
             // The clear below only covers the case where none comes: a re-registration with the same
             // circle preserves the stored state by design, and after the OS gave up that state is no
