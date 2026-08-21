@@ -42,7 +42,8 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preco
     /// Internal for the `+Registration` extension.
     let authManager: CLLocationManager
     /// Freshens the fix behind movement-trigger EXIT dispatches (see `MovementFixResolver`).
-    private let movementFixResolver: MovementFixResolver
+    /// Internal (not private) for the `+ContradictionGate` extension's gate-fix resolution.
+    let movementFixResolver: MovementFixResolver
     private var onTransition: GeofenceTransitionHandler?
     private var onAuthorizationChanged: GeofenceAuthorizationChangedHandler?
     private var onReconciled: GeofenceReconciledHandler?
@@ -66,6 +67,10 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preco
     /// Conditions the OS stopped monitoring since their last registration. The next registration
     /// reseeds their stored baseline instead of preserving it — see `recordMonitorRegistration`.
     var conditionsNeedingBaselineReseed: Set<String> = []
+    /// When each condition was last (re)added at the OS, stamped at the add's drain time. The
+    /// contradiction gate only vets events landing shortly after an add — the daemon's belief
+    /// replays — so this is the gate's applicability check (see `+ContradictionGate`).
+    var conditionReaddTimestamps: [String: Date] = [:]
 
     /// The circle a condition was added with.
     struct RegisteredCondition: Equatable {
@@ -261,6 +266,12 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preco
         @unknown default:
             return
         }
+        // Runs BEFORE the baseline advance below: a refused event must leave the stored baseline
+        // untouched so the daemon's own re-evaluation dedups against it (see `+ContradictionGate`).
+        if identifier != GeofenceConstants.movementTriggerIdentifier,
+           await isEventContradictedByFreshFix(identifier: identifier, transition: transition) {
+            return
+        }
         guard case .deliver = await storage.recordMonitorEvent(transition, forIdentifier: identifier) else { return }
         // No ownership re-check after the await: the baseline already advanced, so dropping here
         // loses the transition permanently — a sync's stop-all + re-add swap would eat a genuine
@@ -355,8 +366,9 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preco
 
     /// Newest usable fix across the auth manager's cache and the resolver's requested fixes.
     /// The manager's cache can freeze at process start on a long-suspended process, so a fresher
-    /// resolver fix must win wherever cached position is read.
-    private func bestKnownFix() -> CLLocation? {
+    /// resolver fix must win wherever cached position is read. Internal (not private) for the
+    /// `+ContradictionGate` extension's gate-fix resolution.
+    func bestKnownFix() -> CLLocation? {
         let cached = authManager.location.flatMap { CLLocationCoordinate2DIsValid($0.coordinate) ? $0 : nil }
         guard let resolved = movementFixResolver.latestFix else { return cached }
         guard let cached else { return resolved }
