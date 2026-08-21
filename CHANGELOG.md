@@ -1,3 +1,9 @@
+## [4.7.5](https://github.com/customerio/customerio-ios/compare/4.7.4...4.7.5) (2026-08-21)
+
+### Bug Fixes
+
+* **in-app:** send app identifier header to Gist ([#1210](https://github.com/customerio/customerio-ios/issues/1210)) ([7227169](https://github.com/customerio/customerio-ios/commit/7227169cf88208993de5e4d81afec45dd764185a))
+
 ## [4.7.4](https://github.com/customerio/customerio-ios/compare/4.7.3...4.7.4) (2026-08-18)
 
 ### Bug Fixes
