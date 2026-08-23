@@ -10,6 +10,19 @@ extension InAppMessageManager {
     }
 }
 
+private final class MainThreadDeinitTrackingSubscriber: InAppMessageStoreSubscriber {
+    private let onDeinit: () -> Void
+
+    init(onDeinit: @escaping () -> Void) {
+        self.onDeinit = onDeinit
+        super.init { _ in }
+    }
+
+    deinit {
+        onDeinit()
+    }
+}
+
 class InAppMessageStateTests: IntegrationTest {
     private struct FetchHarness {
         let gist: Gist
@@ -84,6 +97,26 @@ class InAppMessageStateTests: IntegrationTest {
     override func tearDown() {
         inAppMessageManager = nil
         super.tearDown()
+    }
+
+    @MainActor
+    private func unsubscribeWithTaskAsLastSubscriberOwner(onDeinit: @escaping () -> Void) async -> Task<Void, Never> {
+        let subscriber = MainThreadDeinitTrackingSubscriber(onDeinit: onDeinit)
+
+        await inAppMessageManager.subscribe(comparator: { _, _ in false }, subscriber: subscriber).value
+
+        return inAppMessageManager.unsubscribe(subscriber: subscriber)
+    }
+
+    func test_unsubscribe_whenTaskOwnsLastSubscriberReference_thenDeinitializesSubscriberOnMainThread() async {
+        let deinitExpectation = expectation(description: "Subscriber deinitialized")
+        let unsubscribeTask = await unsubscribeWithTaskAsLastSubscriberOwner {
+            XCTAssertTrue(Thread.isMainThread)
+            deinitExpectation.fulfill()
+        }
+
+        await unsubscribeTask.value
+        await fulfillment(of: [deinitExpectation], timeout: 1)
     }
 
     // MARK: - State Tests

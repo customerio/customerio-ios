@@ -95,7 +95,9 @@ class InAppMessageStoreManager: InAppMessageManager {
 
     @discardableResult
     func unsubscribe(subscriber: InAppMessageStoreSubscriber) -> Task<Void, Never> {
-        Task { await store.unsubscribe(subscriber) }
+        Task { @MainActor [store, subscriber] in
+            await store.unsubscribe(subscriber)
+        }
     }
 
     /// Subscribe to store updates with given subscriber.
