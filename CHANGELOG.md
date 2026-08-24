@@ -1,3 +1,9 @@
+## [4.7.6](https://github.com/customerio/customerio-ios/compare/4.7.5...4.7.6) (2026-08-24)
+
+### Bug Fixes
+
+* deallocate subscribers on main thread ([#1222](https://github.com/customerio/customerio-ios/issues/1222)) ([0da3107](https://github.com/customerio/customerio-ios/commit/0da310774edede6a4328c38b259e1fa8246de5c6))
+
 ## [4.7.5](https://github.com/customerio/customerio-ios/compare/4.7.4...4.7.5) (2026-08-21)
 
 ### Bug Fixes
