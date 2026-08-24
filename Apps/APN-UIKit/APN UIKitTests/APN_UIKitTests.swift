@@ -56,7 +56,7 @@ final class Tests: XCTestCase {
         let notificationCenter = NotificationCenter()
         let notificationExpectation = expectation(description: "Dashboard settings route posted")
         let observer = notificationCenter.addObserver(
-            forName: Notification.Name("showSettingsScreenOnDashboard"),
+            forName: .showSettingsScreenOnDashboard,
             object: nil,
             queue: .main
         ) { notification in
@@ -75,7 +75,7 @@ final class Tests: XCTestCase {
         let notificationCenter = NotificationCenter()
         let notificationExpectation = expectation(description: "Login settings route posted")
         let observer = notificationCenter.addObserver(
-            forName: Notification.Name("showSettingsScreenOnLogin"),
+            forName: .showSettingsScreenOnLogin,
             object: nil,
             queue: .main
         ) { _ in
@@ -100,7 +100,7 @@ final class Tests: XCTestCase {
         let notificationCenter = NotificationCenter()
         let notificationExpectation = expectation(description: "Dashboard deep-link route posted")
         let observer = notificationCenter.addObserver(
-            forName: Notification.Name("showDeepLinkScreenOnDashboard"),
+            forName: .showDeepLinkScreenOnDashboard,
             object: nil,
             queue: .main
         ) { notification in

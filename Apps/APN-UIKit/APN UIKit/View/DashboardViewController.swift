@@ -83,13 +83,13 @@ class DashboardViewController: BaseViewController {
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(deepLinkRouteToSettings(notification:)),
-            name: Notification.Name("showSettingsScreenOnDashboard"),
+            name: .showSettingsScreenOnDashboard,
             object: nil
         )
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(routeToDeepLinkScreen(notification:)),
-            name: Notification.Name("showDeepLinkScreenOnDashboard"),
+            name: .showDeepLinkScreenOnDashboard,
             object: nil
         )
     }

@@ -55,13 +55,13 @@ class LoginViewController: BaseViewController {
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(deepLinkRouteToSettings(notification:)),
-            name: Notification.Name("showSettingsScreenOnLogin"),
+            name: .showSettingsScreenOnLogin,
             object: nil
         )
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(routeToDeepLinkScreen(notification:)),
-            name: Notification.Name("showDeepLinkScreenOnLogin"),
+            name: .showDeepLinkScreenOnLogin,
             object: nil
         )
     }

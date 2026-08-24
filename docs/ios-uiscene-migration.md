@@ -89,8 +89,13 @@ returns the customer destination. Non-Customer.io URLs are returned unchanged.
 ## Legacy apps remain supported
 
 Apps that have not adopted scenes can keep their existing app-delegate lifecycle callbacks. In a
-legacy host, `application(_:continue:restorationHandler:)` can still receive the SDK's universal-link
-fallback, and `application(_:open:options:)` can receive app URL opens and Live Activity taps.
+legacy host, `application(_:open:options:)` can receive app URL opens and Live Activity taps.
+
+For Customer.io-initiated universal links, the SDK directly invokes
+`application(_:continue:restorationHandler:)` as its fallback when `deepLinkCallback` is absent or
+returns `false`, regardless of whether the host uses scenes. A scene-based host can omit that fallback
+when its `deepLinkCallback` handles every intended link. OS-delivered universal links still belong in
+`scene(_:continue:)` after scene adoption.
 
 Do not implement both paths for the same OS-delivered event unless the host deliberately supports
 both lifecycle models. Initialize the SDK once in the app delegate in either model.

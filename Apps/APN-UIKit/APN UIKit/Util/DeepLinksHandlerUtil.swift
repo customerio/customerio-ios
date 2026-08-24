@@ -1,5 +1,12 @@
 import Foundation
 
+extension Notification.Name {
+    static let showSettingsScreenOnDashboard = Notification.Name("showSettingsScreenOnDashboard")
+    static let showSettingsScreenOnLogin = Notification.Name("showSettingsScreenOnLogin")
+    static let showDeepLinkScreenOnDashboard = Notification.Name("showDeepLinkScreenOnDashboard")
+    static let showDeepLinkScreenOnLogin = Notification.Name("showDeepLinkScreenOnLogin")
+}
+
 protocol DeepLinksHandlerUtil {
     /// Routes an app-scheme URL owned by the sample app.
     func handleAppSchemeDeepLink(_ url: URL) -> Bool
@@ -21,8 +28,7 @@ class AppDeepLinksHandlerUtil: DeepLinksHandlerUtil {
         self.notificationCenter = notificationCenter
     }
 
-    // Handles the sample app's `apn-uikit://settings` route. Other app-scheme URLs fall through
-    // so UIScene or the system can route them.
+    // Only claims the sample app's `apn-uikit://settings` route.
     func handleAppSchemeDeepLink(_ url: URL) -> Bool {
         guard url.scheme?.lowercased() == "apn-uikit" else { return false }
         return handleDeepLinkAction(url)
@@ -43,10 +49,10 @@ extension AppDeepLinksHandlerUtil {
         }
 
         if let _ = storage.userEmailId {
-            post(name: "showSettingsScreenOnDashboard", userInfo: userInfo)
+            post(name: .showSettingsScreenOnDashboard, userInfo: userInfo)
             return true
         }
-        post(name: "showSettingsScreenOnLogin", userInfo: userInfo)
+        post(name: .showSettingsScreenOnLogin, userInfo: userInfo)
         return true
     }
 
@@ -55,18 +61,18 @@ extension AppDeepLinksHandlerUtil {
 
         let userInfo = ["linkType": "Universal link", "link": url.path]
         if let _ = storage.userEmailId {
-            post(name: "showDeepLinkScreenOnDashboard", userInfo: userInfo)
+            post(name: .showDeepLinkScreenOnDashboard, userInfo: userInfo)
         } else {
-            post(name: "showDeepLinkScreenOnLogin", userInfo: userInfo)
+            post(name: .showDeepLinkScreenOnLogin, userInfo: userInfo)
         }
         return true
     }
 
-    private func post(name: String, userInfo: [String: String]) {
+    private func post(name: Notification.Name, userInfo: [String: String]) {
         let notificationCenter = notificationCenter
         DispatchQueue.main.async {
             notificationCenter.post(
-                name: Notification.Name(name),
+                name: name,
                 object: nil,
                 userInfo: userInfo
             )
