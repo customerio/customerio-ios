@@ -89,6 +89,25 @@ final class MessagingPushPendingPushFlushTests: UnitTest {
         XCTAssertEqual(pipelineMock.trackDeliveryEventCallsCount, 0, "no metrics should be forwarded when store is empty")
     }
 
+    func test_initialize_capturesFlushTaskHandle_forDeterministicDrain() async {
+        // Capturing the detached flush task's handle lets a test await it to completion instead of
+        // racing a timeout, and lets teardown drain it so it cannot land on the next test's mocks.
+        // On unfixed source `pendingMetricsFlushTask` does not exist, so the suite fails to compile.
+        let metric = pendingMetric
+        pendingStoreMock.loadAllClosure = {
+            return [metric]
+        }
+        pendingStoreMock.removeAllReturnValue = true
+
+        MessagingPush.initialize(withConfig: messagingPushConfigOptions)
+
+        await MessagingPush.pendingMetricsFlushTask?.value
+
+        XCTAssertEqual(pipelineMock.trackDeliveryEventCallsCount, 1, "awaiting the captured flush handle deterministically observes the forwarded metric")
+        XCTAssertEqual(pipelineMock.trackDeliveryEventInvocations.first?.deliveryId, metric.deliveryId)
+        XCTAssertEqual(pendingStoreMock.removeAllCallsCount, 1, "the awaited flush removes the flushed rows")
+    }
+
     func test_initialize_whenDataPipelineNotInitialized_expectLoadAllButNoTracking() {
         // Simulate DataPipeline not being initialized — no DataPipelineTracking registered
         diGraphShared.reset()
