@@ -19,11 +19,13 @@ public class GistView: UIView {
     var onTraitCollectionChange: ((UITraitCollection) -> Void)?
     var message: Message?
 
+    /// Creates a Gist view with the specified frame.
     override public init(frame: CGRect) {
         super.init(frame: frame)
         registerForInterfaceStyleChanges()
     }
 
+    /// Creates a Gist view from an archived interface description.
     public required init?(coder: NSCoder) {
         super.init(coder: coder)
         registerForInterfaceStyleChanges()

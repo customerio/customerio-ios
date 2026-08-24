@@ -54,10 +54,11 @@ class GistModalViewController: UIViewController, GistViewDelegate, DoNotTrackScr
     func sizeChanged(message: Message, width: CGFloat, height: CGFloat) {
         currentHeight = height
         view.setNeedsUpdateConstraints()
+        view.setNeedsLayout()
     }
 
-    override func viewDidLayoutSubviews() {
-        super.viewDidLayoutSubviews()
+    override func viewWillLayoutSubviews() {
+        super.viewWillLayoutSubviews()
         updateConstraintConstants()
     }
 
