@@ -67,14 +67,15 @@ class GistModalViewController: UIViewController, GistViewDelegate, DoNotTrackScr
     }
 
     private func updateConstraintConstants() {
-        guard heightConstraint != nil, widthConstraint != nil else { return }
+        guard let heightConstraint, let widthConstraint else { return }
 
-        if currentHeight > view.frame.height {
-            heightConstraint.constant = view.frame.height
-        } else {
-            heightConstraint.constant = currentHeight
+        let targetHeight = min(currentHeight, view.frame.height)
+        if heightConstraint.constant != targetHeight {
+            heightConstraint.constant = targetHeight
         }
-        widthConstraint.constant = view.frame.width
+        if widthConstraint.constant != view.frame.width {
+            widthConstraint.constant = view.frame.width
+        }
     }
 
     func action(message: Message, currentRoute: String, action: String, name: String) {}

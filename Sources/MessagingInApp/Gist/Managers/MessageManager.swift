@@ -224,10 +224,13 @@ extension BaseMessageManager: EngineWebDelegate {
         let encodedUrl = URL(string: originalAction.percentEncode(character: "#")) ?? url
         if let page = encodedUrl.queryParameters?["url"],
            let pageUrl = URL(string: page) {
-            UIApplication.shared.open(pageUrl, options: [:]) { [weak self] didOpen in
+            let logger = logger
+            let message = currentMessage.describeForLogs
+            let scheme = pageUrl.scheme ?? "none"
+            UIApplication.shared.open(pageUrl, options: [:]) { didOpen in
                 guard !didOpen else { return }
-                self?.logger.logWithModuleTag(
-                    "Unable to open in-app message page action.",
+                logger.logWithModuleTag(
+                    "Unable to open in-app message page action. Message: \(message), scheme: \(scheme).",
                     level: .error
                 )
             }
