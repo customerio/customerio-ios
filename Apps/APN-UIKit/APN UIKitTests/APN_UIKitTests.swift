@@ -50,10 +50,42 @@ final class Tests: XCTestCase {
         XCTAssertFalse(handler.handleAppSchemeDeepLink(URL(string: "apn-uikit://live-activities")!))
     }
 
-    func testHandleAppSchemeDeepLink_givenSettingsRoute_thenReturnsTrue() {
-        let handler = AppDeepLinksHandlerUtil()
+    func testHandleAppSchemeDeepLink_givenLoggedInSettingsRoute_thenPostsDashboardRoute() {
+        let storage = StorageManagerStub()
+        storage.userEmailId = "test@example.com"
+        let notificationCenter = NotificationCenter()
+        let notificationExpectation = expectation(description: "Dashboard settings route posted")
+        let observer = notificationCenter.addObserver(
+            forName: Notification.Name("showSettingsScreenOnDashboard"),
+            object: nil,
+            queue: .main
+        ) { notification in
+            XCTAssertEqual(notification.userInfo?["site_id"] as? String, "test")
+            notificationExpectation.fulfill()
+        }
+        defer { notificationCenter.removeObserver(observer) }
+        let handler = AppDeepLinksHandlerUtil(storage: storage, notificationCenter: notificationCenter)
 
         XCTAssertTrue(handler.handleAppSchemeDeepLink(URL(string: "apn-uikit://settings?site_id=test")!))
+        wait(for: [notificationExpectation], timeout: 1)
+    }
+
+    func testHandleAppSchemeDeepLink_givenLoggedOutSettingsRoute_thenPostsLoginRoute() {
+        let storage = StorageManagerStub()
+        let notificationCenter = NotificationCenter()
+        let notificationExpectation = expectation(description: "Login settings route posted")
+        let observer = notificationCenter.addObserver(
+            forName: Notification.Name("showSettingsScreenOnLogin"),
+            object: nil,
+            queue: .main
+        ) { _ in
+            notificationExpectation.fulfill()
+        }
+        defer { notificationCenter.removeObserver(observer) }
+        let handler = AppDeepLinksHandlerUtil(storage: storage, notificationCenter: notificationCenter)
+
+        XCTAssertTrue(handler.handleAppSchemeDeepLink(URL(string: "apn-uikit://settings")!))
+        wait(for: [notificationExpectation], timeout: 1)
     }
 
     func testHandleUniversalLinkDeepLink_givenNonMatchingLink_thenReturnsFalse() {
@@ -61,4 +93,30 @@ final class Tests: XCTestCase {
 
         XCTAssertFalse(handler.handleUniversalLinkDeepLink(URL(string: "https://example.com/spm")!))
     }
+
+    func testHandleUniversalLinkDeepLink_givenMatchingLink_thenPostsDeepLinkRoute() {
+        let storage = StorageManagerStub()
+        storage.userEmailId = "test@example.com"
+        let notificationCenter = NotificationCenter()
+        let notificationExpectation = expectation(description: "Dashboard deep-link route posted")
+        let observer = notificationCenter.addObserver(
+            forName: Notification.Name("showDeepLinkScreenOnDashboard"),
+            object: nil,
+            queue: .main
+        ) { notification in
+            XCTAssertEqual(notification.userInfo?["link"] as? String, "/spm")
+            notificationExpectation.fulfill()
+        }
+        defer { notificationCenter.removeObserver(observer) }
+        let handler = AppDeepLinksHandlerUtil(storage: storage, notificationCenter: notificationCenter)
+
+        XCTAssertTrue(handler.handleUniversalLinkDeepLink(URL(string: "https://ciosample.page.link/spm")!))
+        wait(for: [notificationExpectation], timeout: 1)
+    }
+}
+
+private final class StorageManagerStub: StorageManager {
+    var settings: Settings?
+    var userEmailId: String?
+    var didSetDefaults: Bool?
 }

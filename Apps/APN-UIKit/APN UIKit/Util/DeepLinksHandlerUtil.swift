@@ -1,13 +1,25 @@
 import Foundation
 
 protocol DeepLinksHandlerUtil {
+    /// Routes an app-scheme URL owned by the sample app.
     func handleAppSchemeDeepLink(_ url: URL) -> Bool
+
+    /// Routes a universal link owned by the sample app.
     func handleUniversalLinkDeepLink(_ url: URL) -> Bool
 }
 
 // sourcery: InjectRegisterShared = "DeepLinksHandlerUtil"
 class AppDeepLinksHandlerUtil: DeepLinksHandlerUtil {
-    var storage = DIGraphShared.shared.storage
+    private let storage: StorageManager
+    private let notificationCenter: NotificationCenter
+
+    init(
+        storage: StorageManager = DIGraphShared.shared.storage,
+        notificationCenter: NotificationCenter = .default
+    ) {
+        self.storage = storage
+        self.notificationCenter = notificationCenter
+    }
 
     // Handles the sample app's `apn-uikit://settings` route. Other app-scheme URLs fall through
     // so UIScene or the system can route them.
@@ -51,8 +63,9 @@ extension AppDeepLinksHandlerUtil {
     }
 
     private func post(name: String, userInfo: [String: String]) {
+        let notificationCenter = notificationCenter
         DispatchQueue.main.async {
-            NotificationCenter.default.post(
+            notificationCenter.post(
                 name: Notification.Name(name),
                 object: nil,
                 userInfo: userInfo

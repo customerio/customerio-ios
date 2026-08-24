@@ -177,9 +177,10 @@ public class SDKConfigBuilder {
     /// Return `true` when the app handled the URL. Returning `false` lets the SDK try the legacy
     /// app-delegate continuation callback and then open the URL through the system. Scene-based apps
     /// should use this callback because the SDK cannot choose which of the host's scenes owns a URL.
-    /// The callback runs synchronously on the calling thread. Dispatch UI work to the main thread as
-    /// required by your router. The SDK retains the callback for the app's lifetime, so capture
-    /// app-owned objects weakly when appropriate.
+    /// The SDK invokes the callback on the action's delivery thread, which may not be the main
+    /// thread. Return the handling decision synchronously and dispatch UI work to the main thread.
+    /// The SDK retains the callback for the app's lifetime, so capture app-owned objects weakly when
+    /// appropriate.
     @discardableResult
     @available(iOSApplicationExtension, unavailable)
     public func deepLinkCallback(_ callback: @escaping DeepLinkCallback) -> SDKConfigBuilder {
