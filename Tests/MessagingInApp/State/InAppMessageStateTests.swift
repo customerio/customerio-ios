@@ -100,6 +100,24 @@ class InAppMessageStateTests: IntegrationTest {
     }
 
     @MainActor
+    private func subscribeWithTaskAsLastSubscriberOwner(onDeinit: @escaping () -> Void) -> Task<Void, Never> {
+        let subscriber = MainThreadDeinitTrackingSubscriber(onDeinit: onDeinit)
+
+        return inAppMessageManager.subscribe(comparator: { _, _ in false }, subscriber: subscriber)
+    }
+
+    func test_subscribe_whenTaskOwnsLastSubscriberReference_thenDeinitializesSubscriberOnMainThread() async {
+        let deinitExpectation = expectation(description: "Subscriber deinitialized")
+        let subscribeTask = await subscribeWithTaskAsLastSubscriberOwner {
+            XCTAssertTrue(Thread.isMainThread)
+            deinitExpectation.fulfill()
+        }
+
+        await subscribeTask.value
+        await fulfillment(of: [deinitExpectation], timeout: 1)
+    }
+
+    @MainActor
     private func unsubscribeWithTaskAsLastSubscriberOwner(onDeinit: @escaping () -> Void) async -> Task<Void, Never> {
         let subscriber = MainThreadDeinitTrackingSubscriber(onDeinit: onDeinit)
 
