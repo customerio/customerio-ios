@@ -16,6 +16,12 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
 
     private static let moduleName = "MessagingPush"
 
+    /// Retains the detached task that flushes pending push delivery metrics on startup so it can be awaited or
+    /// cancelled. Without a handle the flush is un-awaitable: a flush scheduled by one unit test can outlive that
+    /// test and land on the next test's freshly-overridden DI mocks, forwarding a stray metric. Test teardown
+    /// drains this via ``awaitPendingMetricsFlushForTests()`` so a flush can never outlive its test.
+    static var pendingMetricsFlushTask: Task<Void, Never>?
+
     private var globalDataStore: GlobalDataStore
 
     /// Holds a strong reference to the installed CioNotificationCenterDelegate. UNUserNotificationCenter only holds a weak reference.
@@ -83,8 +89,29 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
     }
 
     static func resetTestEnvironment() {
+        // Drain any in-flight startup flush before tearing down so a leaked detached task cannot resolve the
+        // next test's freshly-overridden DataPipeline/store mocks and forward a stray metric.
+        awaitPendingMetricsFlushForTests()
         moduleConfig = MessagingPushConfigBuilder().build()
         shared = MessagingPush()
+    }
+
+    /// Deterministically drains the pending push delivery metrics flush scheduled by ``initialize(withConfig:)``.
+    /// The flush runs as a detached background task; teardown and tests call this to block until it finishes so a
+    /// leaked flush can never outlive the test and contaminate the next test's DI overrides, and so tests can
+    /// await the flush exactly instead of racing a `wait(for:timeout:)`. Bridges the async task to this
+    /// synchronous reset path with a semaphore: the flush runs on a background executor, so blocking the calling
+    /// thread cannot deadlock. Cancellation is not enough on its own — the flush body has no cancellation
+    /// checkpoints, so an in-flight `forEach` must be awaited to completion.
+    static func awaitPendingMetricsFlushForTests() {
+        guard let task = pendingMetricsFlushTask else { return }
+        let semaphore = DispatchSemaphore(value: 0)
+        Task {
+            await task.value
+            semaphore.signal()
+        }
+        semaphore.wait()
+        pendingMetricsFlushTask = nil
     }
 
     @available(iOSApplicationExtension, unavailable)
@@ -223,7 +250,9 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
         // graph if initialize() is called concurrently with other DI graph setup.
         let store = DIGraphShared.shared.pendingPushDeliveryStore
         let logger = DIGraphShared.shared.logger
-        Task.detached(priority: .utility) {
+        // Retain the task handle so tests can await it deterministically and teardown can drain it, preventing a
+        // leaked flush from outliving its test. Production behavior is otherwise unchanged.
+        pendingMetricsFlushTask = Task.detached(priority: .utility) {
             let pending = store.loadAll()
             guard !pending.isEmpty else {
                 logger.debug(
