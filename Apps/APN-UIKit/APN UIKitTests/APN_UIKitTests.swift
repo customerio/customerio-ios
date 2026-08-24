@@ -49,4 +49,16 @@ final class Tests: XCTestCase {
 
         XCTAssertFalse(handler.handleAppSchemeDeepLink(URL(string: "apn-uikit://live-activities")!))
     }
+
+    func testHandleAppSchemeDeepLink_givenSettingsRoute_thenReturnsTrue() {
+        let handler = AppDeepLinksHandlerUtil()
+
+        XCTAssertTrue(handler.handleAppSchemeDeepLink(URL(string: "apn-uikit://settings?site_id=test")!))
+    }
+
+    func testHandleUniversalLinkDeepLink_givenNonMatchingLink_thenReturnsFalse() {
+        let handler = AppDeepLinksHandlerUtil()
+
+        XCTAssertFalse(handler.handleUniversalLinkDeepLink(URL(string: "https://example.com/spm")!))
+    }
 }

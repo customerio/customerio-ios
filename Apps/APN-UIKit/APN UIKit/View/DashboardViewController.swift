@@ -86,6 +86,12 @@ class DashboardViewController: BaseViewController {
             name: Notification.Name("showSettingsScreenOnDashboard"),
             object: nil
         )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(routeToDeepLinkScreen(notification:)),
+            name: Notification.Name("showDeepLinkScreenOnDashboard"),
+            object: nil
+        )
     }
 
     @objc
@@ -93,6 +99,12 @@ class DashboardViewController: BaseViewController {
         if let userInfo = notification.userInfo as? [String: String] {
             dashboardRouter?.routeToSettings(userInfo)
         }
+    }
+
+    @objc
+    func routeToDeepLinkScreen(notification: Notification) {
+        guard let userInfo = notification.userInfo as? [String: String] else { return }
+        dashboardRouter?.routeToDeepLinkScreen(withInfo: userInfo)
     }
 
     @objc func settingsTapped() {

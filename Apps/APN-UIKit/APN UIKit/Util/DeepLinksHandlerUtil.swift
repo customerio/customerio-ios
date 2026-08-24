@@ -8,8 +8,9 @@ protocol DeepLinksHandlerUtil {
 // sourcery: InjectRegisterShared = "DeepLinksHandlerUtil"
 class AppDeepLinksHandlerUtil: DeepLinksHandlerUtil {
     var storage = DIGraphShared.shared.storage
-    // URLs accepted:
-    // apn-uikit://deeplink
+
+    // Handles the sample app's `apn-uikit://settings` route. Other app-scheme URLs fall through
+    // so UIScene or the system can route them.
     func handleAppSchemeDeepLink(_ url: URL) -> Bool {
         guard url.scheme?.lowercased() == "apn-uikit" else { return false }
         return handleDeepLinkAction(url)
@@ -17,8 +18,6 @@ class AppDeepLinksHandlerUtil: DeepLinksHandlerUtil {
 }
 
 extension AppDeepLinksHandlerUtil {
-    // Call this function if you have confirmed the deep link is a `deeplink` deep link. This function assumes you
-    // have confirmed that.
     private func handleDeepLinkAction(_ url: URL) -> Bool {
         guard let urlComponents = URLComponents(string: url.absoluteString),
               urlComponents.host == "settings" else { return false }
@@ -32,20 +31,10 @@ extension AppDeepLinksHandlerUtil {
         }
 
         if let _ = storage.userEmailId {
-            NotificationCenter.default
-                .post(
-                    name: Notification.Name("showSettingsScreenOnDashboard"),
-                    object: nil,
-                    userInfo: userInfo
-                )
+            post(name: "showSettingsScreenOnDashboard", userInfo: userInfo)
             return true
         }
-        NotificationCenter.default
-            .post(
-                name: Notification.Name("showSettingsScreenOnLogin"),
-                object: nil,
-                userInfo: userInfo
-            )
+        post(name: "showSettingsScreenOnLogin", userInfo: userInfo)
         return true
     }
 
@@ -54,21 +43,21 @@ extension AppDeepLinksHandlerUtil {
 
         let userInfo = ["linkType": "Universal link", "link": url.path]
         if let _ = storage.userEmailId {
-            NotificationCenter.default
-                .post(
-                    name: Notification.Name("showDeepLinkScreenOnDashboard"),
-                    object: nil,
-                    userInfo: userInfo
-                )
+            post(name: "showDeepLinkScreenOnDashboard", userInfo: userInfo)
         } else {
-            NotificationCenter.default
-                .post(
-                    name: Notification.Name("showDeepLinkScreenOnLogin"),
-                    object: nil,
-                    userInfo: userInfo
-                )
+            post(name: "showDeepLinkScreenOnLogin", userInfo: userInfo)
         }
         return true
+    }
+
+    private func post(name: String, userInfo: [String: String]) {
+        DispatchQueue.main.async {
+            NotificationCenter.default.post(
+                name: Notification.Name(name),
+                object: nil,
+                userInfo: userInfo
+            )
+        }
     }
 
     /// Check if a provided URL matches a predefined universal link that app supports..

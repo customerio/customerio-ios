@@ -38,6 +38,9 @@ let config = SDKConfigBuilder(cdpApiKey: "...")
 CustomerIO.initialize(withConfig: config.build())
 ```
 
+The SDK retains this callback for the app's lifetime. Capture app-owned routers or coordinators
+weakly when they should not be retained for that lifetime.
+
 Return `true` when the host handled the URL. Returning `false` preserves the SDK fallback chain: it
 tries the legacy app-delegate continuation callback for universal links, then asks the system to open
 the URL.
