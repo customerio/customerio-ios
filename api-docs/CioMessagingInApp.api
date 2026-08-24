@@ -47,6 +47,8 @@ public final class CioMessagingInApp.GistProperties {
 public final class CioMessagingInApp.GistView {
 	public var delegate: (any GistViewDelegate)?;
 	public var lifecycleDelegate: (any GistViewLifecycleDelegate)?;
+	public fun override init(frame: CGRect);
+	public fun required init?(coder: NSCoder);
 	public fun override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?);
 	public fun override func removeFromSuperview();
 }
