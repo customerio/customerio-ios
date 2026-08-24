@@ -1,71 +1,82 @@
 import Foundation
 
+extension Notification.Name {
+    static let showSettingsScreenOnDashboard = Notification.Name("showSettingsScreenOnDashboard")
+    static let showSettingsScreenOnLogin = Notification.Name("showSettingsScreenOnLogin")
+    static let showDeepLinkScreenOnDashboard = Notification.Name("showDeepLinkScreenOnDashboard")
+    static let showDeepLinkScreenOnLogin = Notification.Name("showDeepLinkScreenOnLogin")
+}
+
 protocol DeepLinksHandlerUtil {
+    /// Routes an app-scheme URL owned by the sample app.
     func handleAppSchemeDeepLink(_ url: URL) -> Bool
+
+    /// Routes a universal link owned by the sample app.
     func handleUniversalLinkDeepLink(_ url: URL) -> Bool
 }
 
 // sourcery: InjectRegisterShared = "DeepLinksHandlerUtil"
 class AppDeepLinksHandlerUtil: DeepLinksHandlerUtil {
-    var storage = DIGraphShared.shared.storage
-    // URLs accepted:
-    // apn-uikit://deeplink
+    private let storage: StorageManager
+    private let notificationCenter: NotificationCenter
+
+    init(
+        storage: StorageManager = DIGraphShared.shared.storage,
+        notificationCenter: NotificationCenter = .default
+    ) {
+        self.storage = storage
+        self.notificationCenter = notificationCenter
+    }
+
+    // Only claims the sample app's `apn-uikit://settings` route.
     func handleAppSchemeDeepLink(_ url: URL) -> Bool {
-        handleDeepLinkAction(url)
+        guard url.scheme?.lowercased() == "apn-uikit" else { return false }
+        return handleDeepLinkAction(url)
     }
 }
 
 extension AppDeepLinksHandlerUtil {
-    // Call this function if you have confirmed the deep link is a `deeplink` deep link. This function assumes you
-    // have confirmed that.
     private func handleDeepLinkAction(_ url: URL) -> Bool {
-        if let urlComponents = URLComponents(string: url.absoluteString), let host = urlComponents.host, host == "settings" {
-            var userInfo: [String: String] = [:]
+        guard let urlComponents = URLComponents(string: url.absoluteString),
+              urlComponents.host == "settings" else { return false }
 
-            urlComponents.queryItems?.forEach { queryItem in
-                if queryItem.name == "site_id" || queryItem.name == "cdp_api_key" {
-                    userInfo[queryItem.name] = queryItem.value
-                }
-            }
+        var userInfo: [String: String] = [:]
 
-            if let _ = storage.userEmailId {
-                NotificationCenter.default
-                    .post(
-                        name: Notification.Name("showSettingsScreenOnDashboard"),
-                        object: nil,
-                        userInfo: userInfo
-                    )
-                return true
+        urlComponents.queryItems?.forEach { queryItem in
+            if queryItem.name == "site_id" || queryItem.name == "cdp_api_key" {
+                userInfo[queryItem.name] = queryItem.value
             }
-            NotificationCenter.default
-                .post(
-                    name: Notification.Name("showSettingsScreenOnLogin"),
-                    object: nil,
-                    userInfo: userInfo
-                )
         }
+
+        if let _ = storage.userEmailId {
+            post(name: .showSettingsScreenOnDashboard, userInfo: userInfo)
+            return true
+        }
+        post(name: .showSettingsScreenOnLogin, userInfo: userInfo)
         return true
     }
 
     func handleUniversalLinkDeepLink(_ url: URL) -> Bool {
+        guard doesMatchUniversalLink(url) else { return false }
+
         let userInfo = ["linkType": "Universal link", "link": url.path]
         if let _ = storage.userEmailId {
-            NotificationCenter.default
-                .post(
-                    name: Notification.Name("showDeepLinkScreenOnDashboard"),
-                    object: nil,
-                    userInfo: userInfo
-                )
+            post(name: .showDeepLinkScreenOnDashboard, userInfo: userInfo)
         } else {
-            NotificationCenter.default
-                .post(
-                    name: Notification.Name("showDeepLinkScreenOnLogin"),
-                    object: nil,
-                    userInfo: userInfo
-                )
+            post(name: .showDeepLinkScreenOnLogin, userInfo: userInfo)
         }
-        // navigation to browser depends if we handle the url inside app or not
-        return doesMatchUniversalLink(url)
+        return true
+    }
+
+    private func post(name: Notification.Name, userInfo: [String: String]) {
+        let notificationCenter = notificationCenter
+        DispatchQueue.main.async {
+            notificationCenter.post(
+                name: name,
+                object: nil,
+                userInfo: userInfo
+            )
+        }
     }
 
     /// Check if a provided URL matches a predefined universal link that app supports..

@@ -50,6 +50,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             .screenViewUse(screenView: settings.dataPipelines.screenViewUse.toCIOScreenViewUse())
             .logLevel(settings.dataPipelines.logLevel.toCIOLogLevel())
             .migrationSiteId(settings.dataPipelines.siteId)
+            .deepLinkCallback { [deepLinkHandler] url in deepLinkHandler.handleCustomerIODestination(url) }
 
         if settings.dataPipelines.autoTrackUIKitScreenViews {
             config.autoTrackUIKitScreenViews()
@@ -109,19 +110,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         ))
     }
 
-    // Handle Universal Link deep link from the Customer.io SDK. This function will get called if a push notification
-    // gets clicked that has a Universal Link deep link attached and the app is in the foreground. Otherwise, another function
-    // in your app may get called depending on what technology you use (Scenes, UIKit, Swift UI).
-    //
-    // Learn more: https://customer.io/docs/sdk/ios/push/#universal-links-deep-links
-    func application(_ application: UIApplication, continue userActivity: NSUserActivity, restorationHandler: @escaping ([UIUserActivityRestoring]?) -> Void) -> Bool {
-        guard let universalLinkUrl = userActivity.webpageURL else {
-            return false
-        }
-
-        return deepLinkHandler.handleUniversalLinkDeepLink(universalLinkUrl)
-    }
-
     // MARK: UISceneSession Lifecycle
 
     func application(_ application: UIApplication, configurationForConnecting connectingSceneSession: UISceneSession, options: UIScene.ConnectionOptions) -> UISceneConfiguration {
@@ -134,6 +122,18 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         // Called when the user discards a scene session.
         // If any sessions were discarded while the application was not running, this will be called shortly after application:didFinishLaunchingWithOptions.
         // Use this method to release any resources that were specific to the discarded scenes, as they will not return.
+    }
+}
+
+private extension DeepLinksHandlerUtil {
+    func handleCustomerIODestination(_ url: URL) -> Bool {
+        let scheme = url.scheme?.lowercased()
+        if scheme == "http" || scheme == "https" {
+            return handleUniversalLinkDeepLink(url)
+        }
+        // Returning false lets the SDK open unclaimed app schemes through the system, which
+        // delivers sample-owned URLs such as Live Activity destinations to UIScene.
+        return handleAppSchemeDeepLink(url)
     }
 }
 

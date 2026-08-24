@@ -5,6 +5,7 @@ import UIKit
 protocol LoginRouting {
     func routeToDashboard()
     func routeToSettings(_ withInfo: [String: String]?)
+    func routeToDeepLinkScreen(withInfo: [String: String])
 }
 
 class LoginRouter: LoginRouting {
@@ -18,5 +19,11 @@ class LoginRouter: LoginRouting {
 
     func routeToSettings(_ withInfo: [String: String]? = nil) {
         settingsRouter.routeToMainSettings(siteIdOverride: withInfo?["site_id"], cdpApiKeyOverride: withInfo?["cdp_api_key"])
+    }
+
+    func routeToDeepLinkScreen(withInfo: [String: String]) {
+        let viewController = DeepLinkViewController.newInstance()
+        viewController.deepLinkInfo = withInfo
+        loginViewController?.navigationController?.present(viewController, animated: true)
     }
 }
