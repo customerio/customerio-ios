@@ -31,6 +31,14 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
     /// later nil assignment is authoritative and must prevent that captured delegate from being resurrected.
     static var notificationDelegateClearGeneration: UInt64 = 0
 
+    /// Retains the detached task that flushes pending push delivery metrics on startup so the test
+    /// environment can deterministically drain it. Production runtime behavior is unchanged apart from
+    /// holding this reference: once the flush finishes, this is an inert, already-resolved handle. The
+    /// leak this closes is test-only -- an un-awaitable detached flush from one test resolving the DI
+    /// overrides of the next. `private(set)` exposes the handle to `@testable` readers (to await it to
+    /// completion) while keeping mutation inside this type.
+    static private(set) var pendingMetricsFlushTask: Task<Void, Never>?
+
     /// Serializes the install path, which is a check-then-act: reuse the installed proxy or create the one
     /// proxy. `@Atomic` cannot express that atomically, and two concurrent installs would create two proxies,
     /// only one of which the notification center would keep.
@@ -83,8 +91,34 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
     }
 
     static func resetTestEnvironment() {
+        drainPendingPushDeliveryMetricsFlush()
         moduleConfig = MessagingPushConfigBuilder().build()
         shared = MessagingPush()
+    }
+
+    /// Test-only: deterministically drains any in-flight pending-metrics flush so a detached task
+    /// scheduled by one test can never resolve the DI overrides of the next test.
+    ///
+    /// We both cancel AND await the task to completion. `cancel()` alone is insufficient: the flush
+    /// body has no cancellation checkpoints (no `Task.checkCancellation()` and no cancellation-aware
+    /// suspension inside the `forEach`), so a cancelled-but-already-running task would still call
+    /// `trackDeliveryEvent` on whatever pipeline mock is currently registered. Cancelling first only
+    /// prevents a not-yet-started task from doing work; awaiting the value is the reliable drain.
+    ///
+    /// The await is bridged to this synchronous reset path (called from `tearDown`) via a semaphore.
+    /// There is no deadlock: the flush runs on a background (`.utility`) cooperative executor and the
+    /// bridging `Task` suspends (releasing its thread) while awaiting, so blocking the caller's thread
+    /// here cannot starve the work we are waiting on.
+    static func drainPendingPushDeliveryMetricsFlush() {
+        guard let task = pendingMetricsFlushTask else { return }
+        pendingMetricsFlushTask = nil
+        task.cancel()
+        let semaphore = DispatchSemaphore(value: 0)
+        Task {
+            await task.value
+            semaphore.signal()
+        }
+        semaphore.wait()
     }
 
     @available(iOSApplicationExtension, unavailable)
@@ -223,7 +257,10 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
         // graph if initialize() is called concurrently with other DI graph setup.
         let store = DIGraphShared.shared.pendingPushDeliveryStore
         let logger = DIGraphShared.shared.logger
-        Task.detached(priority: .utility) {
+        // Retain the handle. The flush is fire-and-forget in production, but holding the task lets the
+        // test-reset path await it to completion so a detached flush can never outlive the test that
+        // started it and land on the next test's freshly-overridden DI mocks.
+        pendingMetricsFlushTask = Task.detached(priority: .utility) {
             let pending = store.loadAll()
             guard !pending.isEmpty else {
                 logger.debug(
