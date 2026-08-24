@@ -37,7 +37,7 @@ struct ToastView: View {
                 }
             }
         }
-        .onChange(of: message) { message in
+        .onValueChange(of: message) { message in
             if let message = message, !message.isEmpty {
                 timer.start(interval: duration) {
                     self.message = nil

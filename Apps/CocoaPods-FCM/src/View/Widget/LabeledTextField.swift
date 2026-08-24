@@ -32,7 +32,7 @@ struct LabeledTextField<InputType: Equatable>: View {
                 .setAppiumId(appiumId)
                 Divider()
             }
-        }.onChange(of: value) { newValue in // If the value changes outside of this View, update the text that the TextField is displaying in the UI.
+        }.onValueChange(of: value) { newValue in // If the value changes outside of this View, update the text that the TextField is displaying in the UI.
             // this helps provide a 2-way sync between the value and the textfield.
             text = valueToText(newValue)
         }.onAppear {
