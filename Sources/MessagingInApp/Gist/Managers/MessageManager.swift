@@ -223,9 +223,14 @@ extension BaseMessageManager: EngineWebDelegate {
         // Encode '#' in url action string and creates encoded URL to handle fragments
         let encodedUrl = URL(string: originalAction.percentEncode(character: "#")) ?? url
         if let page = encodedUrl.queryParameters?["url"],
-           let pageUrl = URL(string: page),
-           UIApplication.shared.canOpenURL(pageUrl) {
-            UIApplication.shared.open(pageUrl)
+           let pageUrl = URL(string: page) {
+            UIApplication.shared.open(pageUrl, options: [:]) { [weak self] didOpen in
+                guard !didOpen else { return }
+                self?.logger.logWithModuleTag(
+                    "Unable to open in-app message page action.",
+                    level: .error
+                )
+            }
         }
     }
 

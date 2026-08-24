@@ -24,11 +24,19 @@ public class GistView: UIView {
         self.message = message
         addSubview(engineView)
         engineView.autoresizingMask = [.flexibleWidth, .flexibleHeight, .flexibleBottomMargin, .flexibleRightMargin]
+
+        if #available(iOS 17.0, *) {
+            registerForTraitChanges([UITraitUserInterfaceStyle.self]) { (view: GistView, _: UITraitCollection) in
+                view.onTraitCollectionChange?(view.traitCollection)
+            }
+        }
     }
 
     override public func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
         super.traitCollectionDidChange(previousTraitCollection)
-        if traitCollection.userInterfaceStyle != previousTraitCollection?.userInterfaceStyle {
+
+        if #unavailable(iOS 17.0),
+           traitCollection.userInterfaceStyle != previousTraitCollection?.userInterfaceStyle {
             onTraitCollectionChange?(traitCollection)
         }
     }

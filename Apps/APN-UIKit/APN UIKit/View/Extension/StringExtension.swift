@@ -15,9 +15,7 @@ extension String {
     }
 
     var isValidUrl: Bool {
-        if let url = NSURL(string: self) {
-            return UIApplication.shared.canOpenURL(url as URL)
-        }
-        return false
+        guard let scheme = URL(string: self)?.scheme else { return false }
+        return !scheme.isEmpty
     }
 }

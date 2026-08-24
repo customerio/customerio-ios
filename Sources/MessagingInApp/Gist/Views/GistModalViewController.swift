@@ -15,6 +15,19 @@ class GistModalViewController: UIViewController, GistViewDelegate, DoNotTrackScr
         heightConstraint,
         bottomConstraint: NSLayoutConstraint!
 
+    override func viewDidLoad() {
+        super.viewDidLoad()
+
+        if #available(iOS 17.0, *) {
+            registerForTraitChanges([
+                UITraitHorizontalSizeClass.self,
+                UITraitVerticalSizeClass.self
+            ]) { (viewController: GistModalViewController, _: UITraitCollection) in
+                viewController.updateViewConstraints()
+            }
+        }
+    }
+
     func setup(position: MessagePosition) {
         gistView.delegate = self
         self.position = position
@@ -57,8 +70,11 @@ class GistModalViewController: UIViewController, GistViewDelegate, DoNotTrackScr
     }
 
     override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
-        updateViewConstraints()
         super.traitCollectionDidChange(previousTraitCollection)
+
+        if #unavailable(iOS 17.0) {
+            updateViewConstraints()
+        }
     }
 
     override func updateViewConstraints() {

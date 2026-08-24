@@ -1,6 +1,18 @@
 import SwiftUI
 
 extension View {
+    @available(iOS 14.0, *)
+    @ViewBuilder
+    func onValueChange<Value: Equatable>(of value: Value, perform action: @escaping (Value) -> Void) -> some View {
+        if #available(iOS 17.0, *) {
+            onChange(of: value) { _, newValue in
+                action(newValue)
+            }
+        } else {
+            onChange(of: value, perform: action)
+        }
+    }
+
     func setBackgroundColor(_ color: Color) -> some View {
         background(AnyView(Capsule().fill(color)))
     }
