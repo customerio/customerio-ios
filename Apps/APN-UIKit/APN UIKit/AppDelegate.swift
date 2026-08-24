@@ -50,6 +50,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             .screenViewUse(screenView: settings.dataPipelines.screenViewUse.toCIOScreenViewUse())
             .logLevel(settings.dataPipelines.logLevel.toCIOLogLevel())
             .migrationSiteId(settings.dataPipelines.siteId)
+            .deepLinkCallback { [weak self] url in self?.handleCustomerIODestination(url) ?? false }
 
         if settings.dataPipelines.autoTrackUIKitScreenViews {
             config.autoTrackUIKitScreenViews()
@@ -91,6 +92,13 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         MessagingInApp.shared.setInboxEventListener(inboxEventListener)
     }
 
+    private func handleCustomerIODestination(_ url: URL) -> Bool {
+        if url.scheme?.lowercased() == "http" || url.scheme?.lowercased() == "https" {
+            return deepLinkHandler.handleUniversalLinkDeepLink(url)
+        }
+        return deepLinkHandler.handleAppSchemeDeepLink(url)
+    }
+
     // Register Live Activities as an SDK-managed module. It initializes during
     // CustomerIO.initialize(withConfig:) and is reached via `CustomerIO.liveActivities`.
     // `DeliveryActivityAttributes` is defined in the widget extension folder and shared with
@@ -107,19 +115,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
                 .register(DeliveryActivityAttributes.self, identifier: DeliveryActivityAttributes.identifier)
                 .build()
         ))
-    }
-
-    // Handle Universal Link deep link from the Customer.io SDK. This function will get called if a push notification
-    // gets clicked that has a Universal Link deep link attached and the app is in the foreground. Otherwise, another function
-    // in your app may get called depending on what technology you use (Scenes, UIKit, Swift UI).
-    //
-    // Learn more: https://customer.io/docs/sdk/ios/push/#universal-links-deep-links
-    func application(_ application: UIApplication, continue userActivity: NSUserActivity, restorationHandler: @escaping ([UIUserActivityRestoring]?) -> Void) -> Bool {
-        guard let universalLinkUrl = userActivity.webpageURL else {
-            return false
-        }
-
-        return deepLinkHandler.handleUniversalLinkDeepLink(universalLinkUrl)
     }
 
     // MARK: UISceneSession Lifecycle

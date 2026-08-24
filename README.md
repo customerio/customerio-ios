@@ -21,6 +21,8 @@ You'll find our [complete SDK documentation at https://customer.io/docs/sdk/ios]
 
 Please follow the relevant migration guide for your current SDK version in our [migration docs](https://customer.io/docs/sdk/ios/migrate-upgrade/).
 
+If your app is adopting `UIScene`, see the [native UIScene migration guide](docs/ios-uiscene-migration.md) for lifecycle and deep-link ownership.
+
 ## Summary
 
 To get started, you need to install and initialize the relevant SDK packages in your project. 
