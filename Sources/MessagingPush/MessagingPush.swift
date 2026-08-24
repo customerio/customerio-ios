@@ -25,6 +25,12 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
     /// Guards against swizzling the delegate setter more than once; swizzling twice would undo the first swap.
     static var delegateSetterSwizzled = false
 
+    /// Retains the handle of the background metrics-flush task started by
+    /// ``schedulePendingPushDeliveryMetricsFlush()``. Without a handle the detached task is un-awaitable:
+    /// a flush started by one unit test can outlive it and land on the next test's freshly-overridden DI
+    /// mocks. ``resetTestEnvironment()`` drains this in teardown so a flush can never outlive its test.
+    static var pendingMetricsFlushTask: Task<Void, Never>?
+
     /// Increments whenever an intercepted assignment explicitly clears the delegate. The first-install path
     /// snapshots this under ``installLock`` before reading the notification-center delegate outside the lock.
     /// A later non-nil assignment is additive and must not erase the captured pre-existing delegate, while a
@@ -83,6 +89,16 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
     }
 
     static func resetTestEnvironment() {
+        // Drain any in-flight pending-metrics flush so a detached task started by one test cannot land
+        // on the next test's freshly-overridden DI mocks. This method is synchronous (called from
+        // teardown), so bridge to the async task with a semaphore; the flush runs on a background
+        // executor, so blocking this thread to await it cannot deadlock.
+        if let task = pendingMetricsFlushTask {
+            let sem = DispatchSemaphore(value: 0)
+            Task { await task.value; sem.signal() }
+            sem.wait()
+            pendingMetricsFlushTask = nil
+        }
         moduleConfig = MessagingPushConfigBuilder().build()
         shared = MessagingPush()
     }
@@ -223,7 +239,7 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
         // graph if initialize() is called concurrently with other DI graph setup.
         let store = DIGraphShared.shared.pendingPushDeliveryStore
         let logger = DIGraphShared.shared.logger
-        Task.detached(priority: .utility) {
+        pendingMetricsFlushTask = Task.detached(priority: .utility) {
             let pending = store.loadAll()
             guard !pending.isEmpty else {
                 logger.debug(
