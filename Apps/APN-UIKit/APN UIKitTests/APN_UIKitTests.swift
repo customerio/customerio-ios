@@ -37,4 +37,16 @@ final class Tests: XCTestCase {
 
         XCTAssertFalse(handler.doesMatchUniversalLink(URL(string: "https://ciosample.page.link/settings")!))
     }
+
+    func testHandleAppSchemeDeepLink_givenForeignScheme_thenReturnsFalse() {
+        let handler = AppDeepLinksHandlerUtil()
+
+        XCTAssertFalse(handler.handleAppSchemeDeepLink(URL(string: "mailto:support@example.com")!))
+    }
+
+    func testHandleAppSchemeDeepLink_givenUnhandledAppRoute_thenReturnsFalse() {
+        let handler = AppDeepLinksHandlerUtil()
+
+        XCTAssertFalse(handler.handleAppSchemeDeepLink(URL(string: "apn-uikit://live-activities")!))
+    }
 }

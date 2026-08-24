@@ -30,8 +30,9 @@ Register the public callback while building the SDK configuration:
 ```swift
 let config = SDKConfigBuilder(cdpApiKey: "...")
     .deepLinkCallback { url in
-        // Route in the scene or navigation coordinator your app owns.
-        return appRouter.handle(url)
+        guard appRouter.canHandle(url) else { return false }
+        DispatchQueue.main.async { appRouter.handle(url) }
+        return true
     }
 
 CustomerIO.initialize(withConfig: config.build())
@@ -66,15 +67,21 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     }
 
     private func route(_ url: URL) {
-        guard let destination = CustomerIO.liveActivities.handleWidgetUrl(url) else { return }
-        appRouter.handle(destination)
+        appRouter.handle(url)
     }
 }
 ```
 
-The example calls `CustomerIO.liveActivities.handleWidgetUrl(_:)` before normal app routing. It
-reports the opened metric for a Customer.io Live Activity tracking URL and returns the customer
-destination. Non-Customer.io URLs are returned unchanged.
+If the host uses Customer.io Live Activities, import `CioLiveActivities` and unwrap each URL before
+normal app routing:
+
+```swift
+guard let destination = CustomerIO.liveActivities.handleWidgetUrl(url) else { return }
+appRouter.handle(destination)
+```
+
+`handleWidgetUrl(_:)` reports the opened metric for a Customer.io Live Activity tracking URL and
+returns the customer destination. Non-Customer.io URLs are returned unchanged.
 
 ## Legacy apps remain supported
 
