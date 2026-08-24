@@ -15,19 +15,6 @@ class GistModalViewController: UIViewController, GistViewDelegate, DoNotTrackScr
         heightConstraint,
         bottomConstraint: NSLayoutConstraint!
 
-    override func viewDidLoad() {
-        super.viewDidLoad()
-
-        if #available(iOS 17.0, *) {
-            registerForTraitChanges([
-                UITraitHorizontalSizeClass.self,
-                UITraitVerticalSizeClass.self
-            ]) { (viewController: GistModalViewController, _: UITraitCollection) in
-                viewController.updateViewConstraints()
-            }
-        }
-    }
-
     func setup(position: MessagePosition) {
         gistView.delegate = self
         self.position = position
@@ -69,22 +56,25 @@ class GistModalViewController: UIViewController, GistViewDelegate, DoNotTrackScr
         updateViewConstraints()
     }
 
-    override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
-        super.traitCollectionDidChange(previousTraitCollection)
-
-        if #unavailable(iOS 17.0) {
-            updateViewConstraints()
-        }
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        updateConstraintConstants()
     }
 
     override func updateViewConstraints() {
+        updateConstraintConstants()
+        super.updateViewConstraints()
+    }
+
+    private func updateConstraintConstants() {
+        guard heightConstraint != nil, widthConstraint != nil else { return }
+
         if currentHeight > view.frame.height {
             heightConstraint.constant = view.frame.height
         } else {
             heightConstraint.constant = currentHeight
         }
         widthConstraint.constant = view.frame.width
-        super.updateViewConstraints()
     }
 
     func action(message: Message, currentRoute: String, action: String, name: String) {}

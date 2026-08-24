@@ -19,12 +19,24 @@ public class GistView: UIView {
     var onTraitCollectionChange: ((UITraitCollection) -> Void)?
     var message: Message?
 
+    override public init(frame: CGRect) {
+        super.init(frame: frame)
+        registerForInterfaceStyleChanges()
+    }
+
+    public required init?(coder: NSCoder) {
+        super.init(coder: coder)
+        registerForInterfaceStyleChanges()
+    }
+
     convenience init(message: Message, engineView: UIView) {
-        self.init()
+        self.init(frame: .zero)
         self.message = message
         addSubview(engineView)
         engineView.autoresizingMask = [.flexibleWidth, .flexibleHeight, .flexibleBottomMargin, .flexibleRightMargin]
+    }
 
+    private func registerForInterfaceStyleChanges() {
         if #available(iOS 17.0, *) {
             registerForTraitChanges([UITraitUserInterfaceStyle.self]) { (view: GistView, _: UITraitCollection) in
                 view.onTraitCollectionChange?(view.traitCollection)

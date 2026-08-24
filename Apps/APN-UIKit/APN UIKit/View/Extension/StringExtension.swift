@@ -1,5 +1,4 @@
 import Foundation
-import UIKit
 
 extension String {
     static func generateRandomString(ofLength length: Int = 15) -> Self {
@@ -12,10 +11,5 @@ extension String {
         let emailRegEx = "[A-Z0-9a-z._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,64}"
         let emailPred = NSPredicate(format: "SELF MATCHES %@", emailRegEx)
         return emailPred.evaluate(with: self)
-    }
-
-    var isValidUrl: Bool {
-        guard let scheme = URL(string: self)?.scheme else { return false }
-        return !scheme.isEmpty
     }
 }
