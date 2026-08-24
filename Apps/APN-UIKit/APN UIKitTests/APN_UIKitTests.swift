@@ -39,13 +39,13 @@ final class Tests: XCTestCase {
     }
 
     func testHandleAppSchemeDeepLink_givenForeignScheme_thenReturnsFalse() {
-        let handler = AppDeepLinksHandlerUtil()
+        let handler = AppDeepLinksHandlerUtil(storage: StorageManagerStub())
 
         XCTAssertFalse(handler.handleAppSchemeDeepLink(URL(string: "mailto:support@example.com")!))
     }
 
     func testHandleAppSchemeDeepLink_givenUnhandledAppRoute_thenReturnsFalse() {
-        let handler = AppDeepLinksHandlerUtil()
+        let handler = AppDeepLinksHandlerUtil(storage: StorageManagerStub())
 
         XCTAssertFalse(handler.handleAppSchemeDeepLink(URL(string: "apn-uikit://live-activities")!))
     }

@@ -50,7 +50,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             .screenViewUse(screenView: settings.dataPipelines.screenViewUse.toCIOScreenViewUse())
             .logLevel(settings.dataPipelines.logLevel.toCIOLogLevel())
             .migrationSiteId(settings.dataPipelines.siteId)
-            .deepLinkCallback { [weak self] url in self?.handleCustomerIODestination(url) ?? false }
+            .deepLinkCallback { [deepLinkHandler] url in deepLinkHandler.handleCustomerIODestination(url) }
 
         if settings.dataPipelines.autoTrackUIKitScreenViews {
             config.autoTrackUIKitScreenViews()
@@ -92,13 +92,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         MessagingInApp.shared.setInboxEventListener(inboxEventListener)
     }
 
-    private func handleCustomerIODestination(_ url: URL) -> Bool {
-        if url.scheme?.lowercased() == "http" || url.scheme?.lowercased() == "https" {
-            return deepLinkHandler.handleUniversalLinkDeepLink(url)
-        }
-        return deepLinkHandler.handleAppSchemeDeepLink(url)
-    }
-
     // Register Live Activities as an SDK-managed module. It initializes during
     // CustomerIO.initialize(withConfig:) and is reached via `CustomerIO.liveActivities`.
     // `DeliveryActivityAttributes` is defined in the widget extension folder and shared with
@@ -129,6 +122,18 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         // Called when the user discards a scene session.
         // If any sessions were discarded while the application was not running, this will be called shortly after application:didFinishLaunchingWithOptions.
         // Use this method to release any resources that were specific to the discarded scenes, as they will not return.
+    }
+}
+
+private extension DeepLinksHandlerUtil {
+    func handleCustomerIODestination(_ url: URL) -> Bool {
+        let scheme = url.scheme?.lowercased()
+        if scheme == "http" || scheme == "https" {
+            return handleUniversalLinkDeepLink(url)
+        }
+        // Returning false lets the SDK open unclaimed app schemes through the system, which
+        // delivers sample-owned URLs such as Live Activity destinations to UIScene.
+        return handleAppSchemeDeepLink(url)
     }
 }
 
