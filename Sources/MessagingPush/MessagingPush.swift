@@ -20,7 +20,7 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
     /// cancelled. Without a handle the flush is un-awaitable: a flush scheduled by one unit test can outlive that
     /// test and land on the next test's freshly-overridden DI mocks, forwarding a stray metric. Test teardown
     /// drains this via ``awaitPendingMetricsFlushForTests()`` so a flush can never outlive its test.
-    static private(set) var pendingMetricsFlushTask: Task<Void, Never>?
+    private(set) static var pendingMetricsFlushTask: Task<Void, Never>?
 
     private var globalDataStore: GlobalDataStore
 
