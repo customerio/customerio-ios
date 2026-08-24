@@ -1,7 +1,9 @@
 name: Tests
 
-on: 
+on:
   pull_request:
+    paths-ignore:
+      - '**/*.md'
   push:
     branches: [main] # code coverage reporting needs to be on main so all PRs can compare against it. 
 
