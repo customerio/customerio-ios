@@ -224,6 +224,9 @@ extension BaseMessageManager: EngineWebDelegate {
         let encodedUrl = URL(string: originalAction.percentEncode(character: "#")) ?? url
         if let page = encodedUrl.queryParameters?["url"],
            let pageUrl = URL(string: page) {
+            // `canOpenURL` returns false for schemes omitted from the host's
+            // `LSApplicationQueriesSchemes`, even when the system can open them. Attempt the
+            // configured action directly and use the completion result as the source of truth.
             let logger = logger
             let message = currentMessage.describeForLogs
             let scheme = pageUrl.scheme ?? "none"
