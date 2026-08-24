@@ -230,12 +230,14 @@ extension BaseMessageManager: EngineWebDelegate {
             let logger = logger
             let message = currentMessage.describeForLogs
             let scheme = pageUrl.scheme ?? "none"
-            UIApplication.shared.open(pageUrl, options: [:]) { didOpen in
-                guard !didOpen else { return }
-                logger.logWithModuleTag(
-                    "Unable to open in-app message page action. Message: \(message), scheme: \(scheme).",
-                    level: .error
-                )
+            threadUtil.runMain {
+                UIApplication.shared.open(pageUrl, options: [:]) { didOpen in
+                    guard !didOpen else { return }
+                    logger.logWithModuleTag(
+                        "Unable to open in-app message page action. Message: \(message), scheme: \(scheme).",
+                        level: .error
+                    )
+                }
             }
         }
     }
