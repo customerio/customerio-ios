@@ -125,18 +125,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 }
 
-private extension DeepLinksHandlerUtil {
-    func handleCustomerIODestination(_ url: URL) -> Bool {
-        let scheme = url.scheme?.lowercased()
-        if scheme == "http" || scheme == "https" {
-            return handleUniversalLinkDeepLink(url)
-        }
-        // Returning false lets the SDK open unclaimed app schemes through the system, which
-        // delivers sample-owned URLs such as Live Activity destinations to UIScene.
-        return handleAppSchemeDeepLink(url)
-    }
-}
-
 /*
  The lines of code below are optional and only required if you:
  - want fine-grained control over whether notifications are shown in the foreground

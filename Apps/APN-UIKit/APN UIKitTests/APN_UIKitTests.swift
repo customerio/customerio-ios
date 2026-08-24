@@ -113,6 +113,73 @@ final class Tests: XCTestCase {
         XCTAssertTrue(handler.handleUniversalLinkDeepLink(URL(string: "https://ciosample.page.link/spm")!))
         wait(for: [notificationExpectation], timeout: 1)
     }
+
+    func testHandleCustomerIODestination_givenUniversalLink_thenPostsDeepLinkRoute() {
+        let storage = StorageManagerStub()
+        storage.userEmailId = "test@example.com"
+        let notificationCenter = NotificationCenter()
+        let notificationExpectation = expectation(description: "Dashboard deep-link route posted")
+        let observer = notificationCenter.addObserver(
+            forName: .showDeepLinkScreenOnDashboard,
+            object: nil,
+            queue: .main
+        ) { notification in
+            XCTAssertEqual(notification.userInfo?["link"] as? String, "/spm")
+            notificationExpectation.fulfill()
+        }
+        defer { notificationCenter.removeObserver(observer) }
+        let handler = AppDeepLinksHandlerUtil(storage: storage, notificationCenter: notificationCenter)
+
+        XCTAssertTrue(handler.handleCustomerIODestination(URL(string: "https://ciosample.page.link/spm")!))
+        wait(for: [notificationExpectation], timeout: 1)
+    }
+
+    func testHandleCustomerIODestination_givenAppScheme_thenPostsSettingsRoute() {
+        let storage = StorageManagerStub()
+        storage.userEmailId = "test@example.com"
+        let notificationCenter = NotificationCenter()
+        let notificationExpectation = expectation(description: "Dashboard settings route posted")
+        let observer = notificationCenter.addObserver(
+            forName: .showSettingsScreenOnDashboard,
+            object: nil,
+            queue: .main
+        ) { notification in
+            XCTAssertEqual(notification.userInfo?["site_id"] as? String, "test")
+            notificationExpectation.fulfill()
+        }
+        defer { notificationCenter.removeObserver(observer) }
+        let handler = AppDeepLinksHandlerUtil(storage: storage, notificationCenter: notificationCenter)
+
+        XCTAssertTrue(handler.handleCustomerIODestination(URL(string: "apn-uikit://settings?site_id=test")!))
+        wait(for: [notificationExpectation], timeout: 1)
+    }
+
+    func testHandleCustomerIODestination_givenForeignScheme_thenReturnsFalse() {
+        let handler = AppDeepLinksHandlerUtil(
+            storage: StorageManagerStub(),
+            notificationCenter: NotificationCenter()
+        )
+
+        XCTAssertFalse(handler.handleCustomerIODestination(URL(string: "mailto:support@example.com")!))
+    }
+
+    func testHandleCustomerIODestination_givenNonMatchingUniversalLink_thenReturnsFalse() {
+        let handler = AppDeepLinksHandlerUtil(
+            storage: StorageManagerStub(),
+            notificationCenter: NotificationCenter()
+        )
+
+        XCTAssertFalse(handler.handleCustomerIODestination(URL(string: "https://example.com/spm")!))
+    }
+
+    func testHandleCustomerIODestination_givenUppercaseHTTPSLink_thenReturnsTrue() {
+        let handler = AppDeepLinksHandlerUtil(
+            storage: StorageManagerStub(),
+            notificationCenter: NotificationCenter()
+        )
+
+        XCTAssertTrue(handler.handleCustomerIODestination(URL(string: "HTTPS://CIOSAMPLE.PAGE.LINK/spm")!))
+    }
 }
 
 private final class StorageManagerStub: StorageManager {

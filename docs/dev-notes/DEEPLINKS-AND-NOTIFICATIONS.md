@@ -190,7 +190,7 @@ Tier 3: UIKitWrapper.open(url: url)
 ```
 
 **Notes:**
-- Native hosts register `deepLinkCallback` through the public `SDKConfigBuilder.deepLinkCallback(_:)` API. React Native and Flutter wrappers install their native routing adapters through the internal `setDeepLinkCallback(_:)` SPI.
+- Native hosts and the Flutter and React Native wrappers configure deep-link routing through the public `SDKConfigBuilder.deepLinkCallback(_:)` API. During `CustomerIO.initialize`, the SDK transfers that callback into the shared `DeepLinkUtil` through the internal `setDeepLinkCallback(_:)` SPI.
 - Scene-based native apps should prefer `deepLinkCallback`. The SDK cannot forward a URL to an arbitrary `UISceneDelegate` because the host may own more than one scene.
 - `NSUserActivity.webpageURL` only accepts `http`/`https` schemes. App-scheme URLs (e.g. `myapp://`) skip Tier 2 and fall through to `UIApplication.open()`.
 - SDK logs a message at each tier indicating how the deep link was handled (or if no tier handled it).

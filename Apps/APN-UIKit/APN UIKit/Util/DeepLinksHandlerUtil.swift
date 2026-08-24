@@ -15,6 +15,19 @@ protocol DeepLinksHandlerUtil {
     func handleUniversalLinkDeepLink(_ url: URL) -> Bool
 }
 
+extension DeepLinksHandlerUtil {
+    /// Routes a Customer.io deep-link destination through the handler matching its URL scheme.
+    func handleCustomerIODestination(_ url: URL) -> Bool {
+        let scheme = url.scheme?.lowercased()
+        if scheme == "http" || scheme == "https" {
+            return handleUniversalLinkDeepLink(url)
+        }
+        // Returning false lets the SDK open unclaimed app schemes through the system when this
+        // helper is used by SDKConfigBuilder.deepLinkCallback.
+        return handleAppSchemeDeepLink(url)
+    }
+}
+
 // sourcery: InjectRegisterShared = "DeepLinksHandlerUtil"
 class AppDeepLinksHandlerUtil: DeepLinksHandlerUtil {
     private let storage: StorageManager

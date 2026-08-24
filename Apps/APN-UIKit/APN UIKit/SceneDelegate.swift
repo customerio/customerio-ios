@@ -92,7 +92,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
                 routeToLiveActivities()
                 continue
             }
-            _ = deepLinkHandler.handleAppSchemeDeepLink(url)
+            _ = deepLinkHandler.handleCustomerIODestination(url)
         }
     }
 
