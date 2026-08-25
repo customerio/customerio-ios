@@ -358,7 +358,7 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preco
     /// Newest usable fix across the auth manager's cache and the resolver's requested fixes.
     /// The manager's cache can freeze at process start on a long-suspended process, so a fresher
     /// resolver fix must win wherever cached position is read. Internal (not private) for the
-    /// `+Registration` extension's baseline-heal call site.
+    /// `+BaselineHeal` extension's fix resolution.
     func bestKnownFix() -> CLLocation? {
         let cached = authManager.location.flatMap { CLLocationCoordinate2DIsValid($0.coordinate) ? $0 : nil }
         guard let resolved = movementFixResolver.latestFix else { return cached }
