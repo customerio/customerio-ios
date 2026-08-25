@@ -91,4 +91,57 @@ struct ContradictionGateDecisionTests {
         #expect(!refuses(incoming: .enter, distanceFromCenter: 7787, horizontalAccuracy: -1))
         #expect(!refuses(incoming: .enter, distanceFromCenter: 7787, horizontalAccuracy: 0))
     }
+
+    // MARK: - Replay window bounds (which events the gate vets at all)
+
+    @available(iOS 17.0, *)
+    private func makeReadd(start: Date, added: Date) -> CLMonitorGeofenceMonitor.ConditionReadd {
+        CLMonitorGeofenceMonitor.ConditionReadd(
+            start: start,
+            added: added,
+            center: LocationData(latitude: 0, longitude: 0),
+            radius: 500
+        )
+    }
+
+    @available(iOS 17.0, *)
+    @Test
+    func replayWindow_givenEventDatedBeforeReaddStart_expectNotCovered() {
+        // A catch-up buffered in `pendingEvents` across the re-add predates it — provably not this
+        // add's replay, and must never be judged against the geometry this add imposed.
+        let start = Date()
+        let readd = makeReadd(start: start, added: start.addingTimeInterval(0.05))
+        #expect(!readd.replayWindowCovers(start.addingTimeInterval(-0.001)))
+        #expect(!readd.replayWindowCovers(start.addingTimeInterval(-3600)))
+    }
+
+    @available(iOS 17.0, *)
+    @Test
+    func replayWindow_givenEventDatedInsideRemoveAddGap_expectCovered() {
+        // A replay can be stamped before `add` returns, so the window opens at the remove, not at
+        // the add's return — a bare non-negative check against `added` would leak these.
+        let start = Date()
+        let readd = makeReadd(start: start, added: start.addingTimeInterval(0.05))
+        #expect(readd.replayWindowCovers(start))
+        #expect(readd.replayWindowCovers(start.addingTimeInterval(0.02)))
+    }
+
+    @available(iOS 17.0, *)
+    @Test
+    func replayWindow_givenEventWithinWindowAfterAdd_expectCovered() {
+        let start = Date()
+        let added = start.addingTimeInterval(0.05)
+        let readd = makeReadd(start: start, added: added)
+        #expect(readd.replayWindowCovers(added.addingTimeInterval(3.3)))
+        #expect(readd.replayWindowCovers(added.addingTimeInterval(GeofenceConstants.contradictionGateReplayWindow)))
+    }
+
+    @available(iOS 17.0, *)
+    @Test
+    func replayWindow_givenEventBeyondWindow_expectNotCovered() {
+        let start = Date()
+        let added = start.addingTimeInterval(0.05)
+        let readd = makeReadd(start: start, added: added)
+        #expect(!readd.replayWindowCovers(added.addingTimeInterval(GeofenceConstants.contradictionGateReplayWindow + 0.1)))
+    }
 }

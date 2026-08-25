@@ -23,9 +23,23 @@ import Foundation
 extension CLMonitorGeofenceMonitor {
     /// A drained (re)add: when it landed at the OS and the circle it imposed there.
     struct ConditionReadd {
-        let date: Date
+        /// Stamped before the remove/add pair is issued. A replay is created by the add, so no
+        /// replay can be dated earlier — while an event dated before it (e.g. a catch-up buffered
+        /// in `pendingEvents` across the re-add) is provably not this add's replay.
+        let start: Date
+        /// Stamped after `add` returned; the replay window extends from here. Kept separate from
+        /// `start` because a replay can be dated inside the remove→add gap, before `add` returns.
+        let added: Date
         let center: LocationData
         let radius: Double
+
+        /// Whether an event's date falls inside this add's replay window. Both bounds matter:
+        /// without the lower one, any event dated before the add — however old — would be gated
+        /// and judged against geometry that may postdate it.
+        func replayWindowCovers(_ eventDate: Date) -> Bool {
+            eventDate >= start &&
+                eventDate.timeIntervalSince(added) <= GeofenceConstants.contradictionGateReplayWindow
+        }
     }
 
     /// True when the event lands inside the identifier's replay window AND a trustworthy fix
@@ -36,11 +50,11 @@ extension CLMonitorGeofenceMonitor {
     /// computed on the old circle must still be judged against the old circle.
     /// The window compares the EVENT's date to the add, not the processing time: an event can sit
     /// in `pendingEvents` until the bootstrap binds the handler, and a belief replay must stay
-    /// gated no matter how late it drains — while a real crossing minutes after the add stays
-    /// ungated no matter how fast it is processed.
+    /// gated no matter how late it drains — while a real crossing dated outside the window, before
+    /// the add or minutes after it, stays ungated no matter when it is processed.
     func isEventContradictedByFreshFix(identifier: String, transition: GeofenceTransition, eventDate: Date) async -> Bool {
         guard let readd = conditionReadds[identifier],
-              eventDate.timeIntervalSince(readd.date) <= GeofenceConstants.contradictionGateReplayWindow
+              readd.replayWindowCovers(eventDate)
         else { return false }
         let gateFix = await resolveGateFix()
         guard let gateFix, CLLocationCoordinate2DIsValid(gateFix.coordinate) else { return false }

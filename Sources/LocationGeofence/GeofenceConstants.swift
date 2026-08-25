@@ -47,8 +47,9 @@ enum GeofenceConstants {
 
     /// How long after a condition's (re)add the contradiction gate vets its events. The daemon's
     /// belief replays land 0.003–3.3 s after the add (measured across every reproduction); the
-    /// window adds slack for pipeline-drain latency. Events outside it are never gated, so a
-    /// normal crossing is never delayed by a fix request nor at any risk of refusal.
+    /// window adds slack for pipeline-drain latency. Events dated outside the window — before the
+    /// re-add began or beyond this bound after it (see `ConditionReadd.replayWindowCovers`) — are
+    /// never gated, so a normal crossing is never delayed by a fix request nor at any risk of refusal.
     static let contradictionGateReplayWindow: TimeInterval = 10
 
     // Sane bounds the SDK coerces server config into, so a misconfigured backend can't push
