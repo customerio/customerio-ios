@@ -42,9 +42,10 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preco
     /// Internal for the `+Registration` extension.
     let authManager: CLLocationManager
     /// Freshens the fix behind movement-trigger EXIT dispatches (see `MovementFixResolver`).
-    /// Internal (not private) for the `+ContradictionGate` extension's gate-fix resolution.
+    /// Internal (not private) for the `+BaselineHeal` and `+ContradictionGate` extensions' fix resolution.
     let movementFixResolver: MovementFixResolver
-    private var onTransition: GeofenceTransitionHandler?
+    /// Internal (not private) for the `+BaselineHeal` extension's synthesized deliveries.
+    var onTransition: GeofenceTransitionHandler?
     private var onAuthorizationChanged: GeofenceAuthorizationChangedHandler?
     private var onReconciled: GeofenceReconciledHandler?
     private var lastLoggedPermissionTier: CoreLocationGeofenceMonitor.PermissionTier?
@@ -375,7 +376,7 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preco
     /// Newest usable fix across the auth manager's cache and the resolver's requested fixes.
     /// The manager's cache can freeze at process start on a long-suspended process, so a fresher
     /// resolver fix must win wherever cached position is read. Internal (not private) for the
-    /// `+ContradictionGate` extension's gate-fix resolution.
+    /// `+BaselineHeal` and `+ContradictionGate` extensions' fix resolution.
     func bestKnownFix() -> CLLocation? {
         let cached = authManager.location.flatMap { CLLocationCoordinate2DIsValid($0.coordinate) ? $0 : nil }
         guard let resolved = movementFixResolver.latestFix else { return cached }
