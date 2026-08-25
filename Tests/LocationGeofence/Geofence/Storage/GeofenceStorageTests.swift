@@ -616,6 +616,79 @@ struct GeofenceStorageTests {
     }
 
     @Test
+    func recordMonitorEvent_givenEvidenceOlderThanBaseline_expectSuppressedAndBaselineUntouched() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let storage = makeStorage(directory: dir)
+        let crossingAt = Date()
+        await storage.recordMonitorRegistration(identifier: "geo_1", transitionTypes: [.enter, .exit], initialState: .exit, center: LocationData(latitude: 10, longitude: 20), radius: 100)
+        // A genuine OS crossing lands (baseline .enter, stamped at crossingAt) while a heal whose
+        // fix PREDATES it waits in the queue: the heal's reverse synthesis must lose.
+        #expect(await storage.recordMonitorEvent(.enter, forIdentifier: "geo_1", now: crossingAt) == .deliver)
+        let outcome = await storage.recordMonitorEvent(
+            .exit,
+            forIdentifier: "geo_1",
+            onlyIfBaselinePredates: crossingAt.addingTimeInterval(-20)
+        )
+        #expect(outcome == .suppressedNewerBaseline)
+        // The suppressed write advanced nothing: the user's real exit still delivers.
+        #expect(await storage.recordMonitorEvent(.exit, forIdentifier: "geo_1") == .deliver)
+    }
+
+    @Test
+    func recordMonitorEvent_givenEvidenceNotOlderThanBaseline_expectDeliver() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let storage = makeStorage(directory: dir)
+        let seededAt = Date()
+        await storage.recordMonitorRegistration(identifier: "geo_1", transitionTypes: [.enter, .exit], initialState: .exit, center: LocationData(latitude: 10, longitude: 20), radius: 100, now: seededAt)
+        // Evidence at or after the baseline's stamp passes the guard.
+        #expect(await storage.recordMonitorEvent(.enter, forIdentifier: "geo_1", onlyIfBaselinePredates: seededAt) == .deliver)
+    }
+
+    @Test
+    func recordMonitorEvent_givenGuardAgainstPreStampRecord_expectDeliver() async throws {
+        // A state file persisted before `lastStateChangedAt` existed: the record decodes with a
+        // nil stamp, and a nil stamp must never block a heal (fail open).
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let legacyState = """
+        {"monitorRegionRecords":{"geo_1":{"lastState":"exit","transitionTypes":["enter","exit"],"center":{"latitude":10,"longitude":20},"radius":100}}}
+        """
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        try Data(legacyState.utf8).write(to: dir.appendingPathComponent("geofenceState.json"))
+        let storage = makeStorage(directory: dir)
+        #expect(await storage.recordMonitorEvent(.enter, forIdentifier: "geo_1", onlyIfBaselinePredates: Date(timeIntervalSince1970: 0)) == .deliver)
+    }
+
+    @Test
+    func recordMonitorRegistration_givenUnchangedReRegistration_expectStampPreserved() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let storage = makeStorage(directory: dir)
+        let crossingAt = Date()
+        await storage.recordMonitorRegistration(identifier: "geo_1", transitionTypes: [.enter, .exit], initialState: .exit, center: LocationData(latitude: 10, longitude: 20), radius: 100, now: crossingAt.addingTimeInterval(-60))
+        #expect(await storage.recordMonitorEvent(.enter, forIdentifier: "geo_1", now: crossingAt) == .deliver)
+        // An unchanged re-registration preserves the baseline AND its stamp: a heal fix taken just
+        // after the crossing must still pass the guard even though the re-registration ran later.
+        await storage.recordMonitorRegistration(identifier: "geo_1", transitionTypes: [.enter, .exit], initialState: .exit, center: LocationData(latitude: 10, longitude: 20), radius: 100, now: crossingAt.addingTimeInterval(30))
+        #expect(await storage.recordMonitorEvent(.exit, forIdentifier: "geo_1", onlyIfBaselinePredates: crossingAt.addingTimeInterval(5)) == .deliver)
+    }
+
+    @Test
+    func recordMonitorRegistration_givenChangedGeometry_expectStampReset() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let storage = makeStorage(directory: dir)
+        let reshapedAt = Date()
+        await storage.recordMonitorRegistration(identifier: "geo_1", transitionTypes: [.enter, .exit], initialState: .enter, center: LocationData(latitude: 10, longitude: 20), radius: 100, now: reshapedAt.addingTimeInterval(-60))
+        // A reshape reseeds the baseline and stamps it: evidence predating the reseed cannot
+        // contradict a baseline that was just derived from the device's actual position.
+        await storage.recordMonitorRegistration(identifier: "geo_1", transitionTypes: [.enter, .exit], initialState: .exit, center: LocationData(latitude: 11, longitude: 20), radius: 200, now: reshapedAt)
+        #expect(await storage.recordMonitorEvent(.enter, forIdentifier: "geo_1", onlyIfBaselinePredates: reshapedAt.addingTimeInterval(-5)) == .suppressedNewerBaseline)
+    }
+
+    @Test
     func recordMonitorRegistration_givenUnchangedReRegistration_expectBaselinePreserved() async {
         let dir = makeTempDirectory()
         defer { try? FileManager.default.removeItem(at: dir) }

@@ -47,4 +47,9 @@ struct MonitorRegionRecord: Codable, Equatable, Sendable {
     var center: LocationData?
     /// Registered radius in meters; paired with `center` for the unchanged-geometry check.
     var radius: Double?
+    /// When `lastState` was last written (registration seed or observed state change; re-emissions
+    /// of an unchanged state don't move it). The baseline heal only trusts a fix newer than this —
+    /// an older fix judging a newer baseline would synthesize the reverse of the crossing that set
+    /// it. Optional so records persisted before this field decode; `nil` never blocks a heal.
+    var lastStateChangedAt: Date?
 }

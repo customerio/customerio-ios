@@ -117,18 +117,20 @@ actor GeofenceStorage {
         initialState: GeofenceTransition,
         center: LocationData,
         radius: Double,
-        forceReseed: Bool = false
+        forceReseed: Bool = false,
+        now: Date = Date()
     ) {
         var state = loadFromDisk() ?? GeofenceState()
         var records = state.monitorRegionRecords ?? [:]
         let existing = records[identifier]
         let unchangedGeometry = existing?.center == center && existing?.radius == radius
-        let lastState = unchangedGeometry && !forceReseed ? (existing?.lastState ?? initialState) : initialState
+        let preserved = unchangedGeometry && !forceReseed
         records[identifier] = MonitorRegionRecord(
-            lastState: lastState,
+            lastState: preserved ? (existing?.lastState ?? initialState) : initialState,
             transitionTypes: transitionTypes,
             center: center,
-            radius: radius
+            radius: radius,
+            lastStateChangedAt: preserved ? existing?.lastStateChangedAt : now
         )
         state.monitorRegionRecords = records
         saveToDisk(state)
@@ -139,19 +141,33 @@ actor GeofenceStorage {
     /// cannot both observe a stale baseline and both deliver. The baseline advances on every state
     /// change — including transitions filtered from delivery — so an exit-only region still tracks
     /// that the device entered, and the following exit is recognized as a change.
-    func recordMonitorEvent(_ transition: GeofenceTransition, forIdentifier identifier: String) -> GeofenceMonitorEventOutcome {
+    ///
+    /// `onlyIfBaselinePredates` makes the write conditional on the baseline's age, atomically with
+    /// the compare-and-store: when set, a baseline written after that instant suppresses the event.
+    /// The heal passes its fix's timestamp — a genuine OS crossing landing while the heal waited in
+    /// the queue (or within the fix's own age) must win over a decision made from an older position.
+    func recordMonitorEvent(
+        _ transition: GeofenceTransition,
+        forIdentifier identifier: String,
+        onlyIfBaselinePredates evidenceTimestamp: Date? = nil,
+        now: Date = Date()
+    ) -> GeofenceMonitorEventOutcome {
         var state = loadFromDisk() ?? GeofenceState()
         var records = state.monitorRegionRecords ?? [:]
         guard var record = records[identifier] else {
             // No registration record (condition predates this bookkeeping). Establish the baseline
             // without delivering — mirrors classic registration, which is silent about the initial state.
-            records[identifier] = MonitorRegionRecord(lastState: transition, transitionTypes: [.enter, .exit])
+            records[identifier] = MonitorRegionRecord(lastState: transition, transitionTypes: [.enter, .exit], lastStateChangedAt: now)
             state.monitorRegionRecords = records
             saveToDisk(state)
             return .suppressedNoBaseline
         }
+        if let evidenceTimestamp, let changedAt = record.lastStateChangedAt, changedAt > evidenceTimestamp {
+            return .suppressedNewerBaseline
+        }
         guard record.lastState != transition else { return .suppressedNoChange }
         record.lastState = transition
+        record.lastStateChangedAt = now
         records[identifier] = record
         state.monitorRegionRecords = records
         saveToDisk(state)
@@ -358,6 +374,9 @@ enum GeofenceMonitorEventOutcome: Equatable, Sendable {
     case suppressedFilteredType
     /// First observation for a condition with no registration record — baseline established, nothing delivered.
     case suppressedNoBaseline
+    /// The baseline was written after the caller's evidence (`onlyIfBaselinePredates`) — e.g. a
+    /// heal whose fix predates an OS crossing that landed while the heal was queued.
+    case suppressedNewerBaseline
 }
 
 // MARK: - DI

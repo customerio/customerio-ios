@@ -17,6 +17,11 @@ extension CLMonitorGeofenceMonitor {
     /// races its own sync's queued rewrites). Delivery reuses `recordMonitorEvent`, so the dedup
     /// flip and transition-type filter are identical to the OS event path, and a later OS
     /// delivery of the same crossing dedups against the healed baseline.
+    ///
+    /// The write is guarded on the baseline's age (`onlyIfBaselinePredates`): a genuine OS
+    /// crossing recorded after the fix was taken — while the heal waited in the queue, or within
+    /// the fix's own age — must win over a decision made from an older position, which would
+    /// otherwise synthesize the reverse transition and dedup away the real one.
     func enqueueBaselineHeal(candidates: [String], fix: CLLocation?) {
         guard let fix, CLLocationCoordinate2DIsValid(fix.coordinate), !candidates.isEmpty else { return }
         enqueueMonitorOperation { [weak self] _ in
@@ -37,7 +42,11 @@ extension CLMonitorGeofenceMonitor {
                     fixAge: -fix.timestamp.timeIntervalSinceNow,
                     lastState: record.lastState
                 ) else { continue }
-                guard case .deliver = await self.storage.recordMonitorEvent(transition, forIdentifier: identifier) else { continue }
+                guard case .deliver = await self.storage.recordMonitorEvent(
+                    transition,
+                    forIdentifier: identifier,
+                    onlyIfBaselinePredates: fix.timestamp
+                ) else { continue }
                 self.logger.geofenceBaselineHealed(identifier: identifier, transition: transition)
                 self.onTransition?(
                     identifier,
