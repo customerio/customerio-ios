@@ -185,7 +185,7 @@ extension CLMonitorGeofenceMonitor {
             if ownedRegionIdentifiers.contains(region.identifier) { added.insert(region.identifier) }
         }
         // Enqueued after the adds above so the heal drains behind this sync's own ops.
-        enqueueBaselineHeal(candidates: healCandidates, fix: bestKnownFix())
+        enqueueBaselineHeal(candidates: healCandidates)
         return GeofenceRegionDiff(added: added, removed: removed)
     }
 

@@ -42,7 +42,8 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preco
     /// Internal for the `+Registration` extension.
     let authManager: CLLocationManager
     /// Freshens the fix behind movement-trigger EXIT dispatches (see `MovementFixResolver`).
-    private let movementFixResolver: MovementFixResolver
+    /// Internal (not private) for the `+BaselineHeal` extension's drain-time fix resolution.
+    let movementFixResolver: MovementFixResolver
     /// Internal (not private) for the `+BaselineHeal` extension's synthesized deliveries.
     var onTransition: GeofenceTransitionHandler?
     private var onAuthorizationChanged: GeofenceAuthorizationChangedHandler?
