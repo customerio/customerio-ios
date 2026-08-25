@@ -1,10 +1,14 @@
 name: Build sample apps
 
 on:
-  pull_request: # build sample apps for every commit pushed to an open pull request (including drafts)
+  pull_request:
+    paths-ignore:
+      - '**/*.md'
   push:
     branches: [ main, feature/* ]
-  workflow_dispatch: # allow manual run     
+    paths-ignore:
+      - '**/*.md'
+  workflow_dispatch: # allow manual run
     inputs:
       use_latest_sdk_version:
         description: "Whether to build sample apps with the latest SDK version (newest tag)."
@@ -17,41 +21,13 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # 1) Update PR comment (optional) - only runs if event is a pull_request
-  update-pr-comment:
-    if: ${{ github.event_name == 'pull_request' }}
-    runs-on: ubuntu-latest
-    permissions: # to be able to comment on PR
-      pull-requests: write
-    outputs:
-      comment-id: ${{ steps.create-comment.outputs.comment-id }}
-    steps:
-      - name: Find existing PR comment
-        uses: peter-evans/find-comment@3eae4d37986fb5a8592848f6a574fdf654e61f9e # v3.1.0
-        id: existing-comment
-        with:
-          issue-number: ${{ github.event.pull_request.number }}
-          comment-author: 'github-actions[bot]'
-          body-includes: <!-- sample app builds -->
-
-      - name: Create or update comment
-        uses: peter-evans/create-or-update-comment@71345be0265236311c031f5c7866368bd1eff043 # v4.0.0
-        id: create-comment
-        with:
-          comment-id: ${{ steps.existing-comment.outputs.comment-id }}
-          issue-number: ${{ github.event.pull_request.number }}
-          body: |
-            <!-- sample app builds -->
-            # Sample app builds 📱
-
-            Below you will find the list of the latest versions of the sample apps. 
-            It's recommended to always download the latest builds to test this PR accurately.
-          edit-mode: replace # replace the existing comment with new content since we are creating new builds 
-
-  # 2) Call the reusable workflow to build all sample apps
+  # 1) Build and publish sample apps to Firebase App Distribution.
+  # Skipped on pull_request: reviewing a PR doesn't need a published distributable
+  # build, and the 2-job matrix (APN-UIKit + CocoaPods-FCM) was contending with
+  # Lint/Tests/Maestro E2E for the same limited macOS runner pool on every PR push.
+  # Still runs on push to main/feature branches, and on-demand via workflow_dispatch.
   build-sample-apps:
-    if: ${{ always() }}
-    needs: [ update-pr-comment ]
+    if: ${{ github.event_name != 'pull_request' }}
     uses: ./.github/workflows/reusable_build_sample_apps.yml
     with:
       # If manual run AND user sets 'use_latest_sdk_version' to true, get the new tag.
@@ -68,7 +44,9 @@ jobs:
       SAMPLE_APPS_INSTRUCTIONS_GUIDE_LINK: ${{ secrets.SAMPLE_APPS_INSTRUCTIONS_GUIDE_LINK }}
       SLACK_NOTIFY_RELEASES_WEBHOOK_URL: ${{ secrets.SLACK_NOTIFY_RELEASES_WEBHOOK_URL }}
 
-  # 3) Generate SDK size reports or other tasks
+  # 2) Generate SDK size reports. Kept on pull_request: this is the single job that
+  # surfaces the binary-size diff vs. main on every PR, separate from (and much
+  # cheaper than) the sample-app build matrix above.
   generate-sdk-size-reports:
     runs-on: macos-26
     permissions:

@@ -1,7 +1,9 @@
 name: Maestro SDK E2E
 
 on:
-  pull_request: {}
+  pull_request:
+    paths-ignore:
+      - '**/*.md'
   workflow_dispatch:
     inputs:
       profile:
