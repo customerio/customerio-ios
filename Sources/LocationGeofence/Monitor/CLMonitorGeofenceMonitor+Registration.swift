@@ -91,9 +91,16 @@ extension CLMonitorGeofenceMonitor {
             // and reporting no error, so the identifier is cleared first. Keyed on the OS rather
             // than on this process's bookkeeping, which can be missing an identifier the OS still
             // holds. Removing one the OS does not hold is a no-op.
+            let readdStart = Date()
             await monitor.remove(identifier)
             let condition = CLMonitor.CircularGeographicCondition(center: coordinate, radius: clampedRadius)
             await monitor.add(condition, identifier: identifier, assuming: assumedState)
+            self.conditionReadds[identifier] = ConditionReadd(
+                start: readdStart,
+                added: Date(),
+                center: LocationData(latitude: coordinate.latitude, longitude: coordinate.longitude),
+                radius: clampedRadius
+            )
             self.knownConditionIdentifiers.insert(identifier)
             self.persistConditionMirror()
         }

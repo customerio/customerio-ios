@@ -41,6 +41,17 @@ enum GeofenceConstants {
     static let movementFixMaxAge: TimeInterval = 30
     static let movementFixRequestTimeout: TimeInterval = 10
 
+    // Floor on the baseline-heal ambiguity margin (meters): a fix closer than this to the fence
+    // edge never synthesizes a crossing, even when it reports better accuracy.
+    static let baselineHealMinEdgeMargin: Double = 20
+
+    /// How long after a condition's (re)add the contradiction gate vets its events. The daemon's
+    /// belief replays land 0.003–3.3 s after the add (measured across every reproduction); the
+    /// window adds slack for pipeline-drain latency. Events dated outside the window — before the
+    /// re-add began or beyond this bound after it (see `ConditionReadd.replayWindowCovers`) — are
+    /// never gated, so a normal crossing is never delayed by a fix request nor at any risk of refusal.
+    static let contradictionGateReplayWindow: TimeInterval = 10
+
     // Sane bounds the SDK coerces server config into, so a misconfigured backend can't push
     // monitoring into a pathological state: a positive out-of-range value clamps to the nearest
     // bound; a non-positive value falls back. (`maxMonitoringDistance` needs no upper bound — a
