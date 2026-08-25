@@ -84,13 +84,13 @@ public struct NotificationInboxOverlay: View {
             model.stop()
         }
         // If the inbox transitions to hidden while the sheet is open, dismiss it so it doesn't linger.
-        .onChange(of: model.showsChrome) { visible in
+        .onValueChange(of: model.showsChrome) { visible in
             if !visible { isInboxPresented = false }
         }
         // Auto-mark-opened (item 8): keep marking later snapshots only while the sheet is presented
         // AND the app is active. SwiftUI does not call `onDisappear` merely because the app moves to
         // the background, so lifecycle notifications close that gap.
-        .onChange(of: isInboxPresented) { _ in
+        .onValueChange(of: isInboxPresented) { _ in
             updateAutoMarkState()
         }
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.willResignActiveNotification)) { _ in
@@ -124,6 +124,20 @@ public struct NotificationInboxOverlay: View {
                 isApplicationActive: UIApplication.shared.applicationState == .active
             )
         )
+    }
+}
+
+private extension View {
+    @available(iOS 14.0, *)
+    @ViewBuilder
+    func onValueChange<Value: Equatable>(of value: Value, perform action: @escaping (Value) -> Void) -> some View {
+        if #available(iOS 17.0, *) {
+            onChange(of: value) { _, newValue in
+                action(newValue)
+            }
+        } else {
+            onChange(of: value, perform: action)
+        }
     }
 }
 
