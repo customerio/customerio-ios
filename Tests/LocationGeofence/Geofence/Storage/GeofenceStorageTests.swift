@@ -642,8 +642,10 @@ struct GeofenceStorageTests {
         let storage = makeStorage(directory: dir)
         let seededAt = Date()
         await storage.recordMonitorRegistration(identifier: "geo_1", transitionTypes: [.enter, .exit], initialState: .exit, center: LocationData(latitude: 10, longitude: 20), radius: 100, now: seededAt)
-        // Evidence at or after the baseline's stamp passes the guard.
-        #expect(await storage.recordMonitorEvent(.enter, forIdentifier: "geo_1", onlyIfBaselinePredates: seededAt) == .deliver)
+        // Evidence newer than the baseline's stamp passes the guard. Not asserted at exact
+        // equality: the stamp round-trips disk as seconds-since-1970, whose float conversion can
+        // shift it by nanoseconds in either direction.
+        #expect(await storage.recordMonitorEvent(.enter, forIdentifier: "geo_1", onlyIfBaselinePredates: seededAt.addingTimeInterval(1)) == .deliver)
     }
 
     @Test
