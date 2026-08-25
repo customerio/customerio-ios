@@ -78,17 +78,38 @@ extension CLMonitorGeofenceMonitor {
     }
 
     /// Freshest fix obtainable for the gate: reuses the movement resolver (one-shot request when
-    /// the cache is stale, coalesced across concurrent events — a replay burst re-adds many
-    /// conditions at once and every event shares one resolution — cached-fix fallback on timeout).
+    /// the cache is stale, cached-fix fallback on timeout). In a replay burst the FIRST event pays
+    /// at most one request and every later event reads the fix it delivered from the cache — the
+    /// events loop awaits `process` serially, so the resolver's in-flight coalescing never engages
+    /// and repeated requests would stack instead. When an attempt fails to produce a fresh fix,
+    /// that failure is remembered for `movementFixMaxAge` and later events skip straight to the
+    /// cache (failing open, exactly as the timed-out attempt did) — otherwise a burst with no fix
+    /// obtainable would stall the single event consumer for one timeout per gated event. A late
+    /// fix from the failed request still reaches `latestFix` and serves the rest of the burst.
     /// A cached fix is acceptable as-is: the gate only runs moments after an add that itself
     /// positioned the staging off the same cache, so it cannot meaningfully predate the state the
     /// event claims. Returns via `bestKnownFix()` so the freshest of the cache and the request
     /// wins; the caller's decision applies the fix-age guard to the result.
     private func resolveGateFix() async -> CLLocation? {
-        await withCheckedContinuation { continuation in
+        if Self.gateFixRequestBlocked(failedAt: gateFixRequestFailedAt, now: Date()) {
+            return bestKnownFix()
+        }
+        let fix: CLLocation? = await withCheckedContinuation { continuation in
             movementFixResolver.resolve(cached: bestKnownFix()) { [weak self] _ in
                 continuation.resume(returning: self?.bestKnownFix())
             }
         }
+        let isFresh = fix.map { -$0.timestamp.timeIntervalSinceNow <= GeofenceConstants.movementFixMaxAge } ?? false
+        gateFixRequestFailedAt = isFresh ? nil : Date()
+        return fix
+    }
+
+    /// Whether a new gate-fix request is skipped because the last one recently came back without
+    /// a fresh fix. Blocked for `movementFixMaxAge` after the failure: within it a re-request at
+    /// the same conditions is unlikely to fare better, and a late fix from the failed request
+    /// still lands in `latestFix` where the cache read picks it up.
+    nonisolated static func gateFixRequestBlocked(failedAt: Date?, now: Date) -> Bool {
+        guard let failedAt else { return false }
+        return now.timeIntervalSince(failedAt) < GeofenceConstants.movementFixMaxAge
     }
 }

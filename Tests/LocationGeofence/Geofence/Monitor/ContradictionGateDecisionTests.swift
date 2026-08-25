@@ -144,4 +144,30 @@ struct ContradictionGateDecisionTests {
         let readd = makeReadd(start: start, added: added)
         #expect(!readd.replayWindowCovers(added.addingTimeInterval(GeofenceConstants.contradictionGateReplayWindow + 0.1)))
     }
+
+    // MARK: - Gate-fix request cooldown (one attempt per burst)
+
+    @available(iOS 17.0, *)
+    @Test
+    func gateFixRequest_givenRecentFailedAttempt_expectBlocked() {
+        // A burst with no fix obtainable must pay at most one request timeout, not one per event —
+        // the events loop is serial, so repeated requests would stall it for their sum.
+        let failedAt = Date()
+        #expect(CLMonitorGeofenceMonitor.gateFixRequestBlocked(failedAt: failedAt, now: failedAt.addingTimeInterval(1)))
+        #expect(CLMonitorGeofenceMonitor.gateFixRequestBlocked(
+            failedAt: failedAt,
+            now: failedAt.addingTimeInterval(GeofenceConstants.movementFixMaxAge - 1)
+        ))
+    }
+
+    @available(iOS 17.0, *)
+    @Test
+    func gateFixRequest_givenNoOrExpiredFailure_expectAllowed() {
+        let failedAt = Date()
+        #expect(!CLMonitorGeofenceMonitor.gateFixRequestBlocked(failedAt: nil, now: failedAt))
+        #expect(!CLMonitorGeofenceMonitor.gateFixRequestBlocked(
+            failedAt: failedAt,
+            now: failedAt.addingTimeInterval(GeofenceConstants.movementFixMaxAge)
+        ))
+    }
 }

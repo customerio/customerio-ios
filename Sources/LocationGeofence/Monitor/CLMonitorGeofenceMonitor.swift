@@ -74,6 +74,10 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preco
     /// staging→drain gap an event computed on the old circle would otherwise be judged against
     /// the new one (see `+ContradictionGate`).
     var conditionReadds: [String: ConditionReadd] = [:]
+    /// When the last gate-fix request completed without producing a fresh fix. While recent, the
+    /// gate reads the cache instead of requesting again — see `resolveGateFix`. Internal (not
+    /// private) for the `+ContradictionGate` extension.
+    var gateFixRequestFailedAt: Date?
 
     /// The circle a condition was added with.
     struct RegisteredCondition: Equatable {
