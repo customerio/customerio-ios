@@ -174,4 +174,8 @@ extension Logger {
     func geofenceRegionsAdopted(count: Int) {
         debug("Adopted \(count) OS-persisted region(s) on launch; re-armed in place", geofenceTag)
     }
+
+    func geofenceForegroundRearm(count: Int) {
+        info("Foreground entry after long suspension: re-armed \(count) condition(s) in place", geofenceTag)
+    }
 }
