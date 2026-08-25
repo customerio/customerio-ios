@@ -18,19 +18,33 @@ extension CLMonitorGeofenceMonitor {
     /// flip and transition-type filter are identical to the OS event path, and a later OS
     /// delivery of the same crossing dedups against the healed baseline.
     ///
+    /// Each candidate's registered circle is CAPTURED here, synchronously with the calling sync's
+    /// unchanged-diff, and re-verified when the operation drains: a later sync can stage a reshape
+    /// (updating `registeredConditions` synchronously) while its storage rewrite is still queued
+    /// behind this heal, and judging the old baseline against the new circle would synthesize a
+    /// wrong transition. A candidate whose staged geometry or stored record no longer matches the
+    /// capture is skipped — the reshape reseeds its baseline anyway.
+    ///
     /// The write is guarded on the baseline's age (`onlyIfBaselinePredates`): a genuine OS
     /// crossing recorded after the fix was taken — while the heal waited in the queue, or within
     /// the fix's own age — must win over a decision made from an older position, which would
     /// otherwise synthesize the reverse transition and dedup away the real one.
     func enqueueBaselineHeal(candidates: [String], fix: CLLocation?) {
-        guard let fix, CLLocationCoordinate2DIsValid(fix.coordinate), !candidates.isEmpty else { return }
+        guard let fix, CLLocationCoordinate2DIsValid(fix.coordinate) else { return }
+        // Captured before the enqueue: `registeredConditions` at this instant is what the calling
+        // sync just diffed as unchanged.
+        let expectedConditions = candidates.reduce(into: [String: RegisteredCondition]()) {
+            $0[$1] = registeredConditions[$1]
+        }
+        guard !expectedConditions.isEmpty else { return }
         enqueueMonitorOperation { [weak self] _ in
             guard let self else { return }
             let records = await self.storage.getMonitorRegionRecords()
-            for identifier in candidates.sorted() {
+            for (identifier, condition) in expectedConditions.sorted(by: { $0.key < $1.key }) {
                 guard self.ownedRegionIdentifiers.contains(identifier),
-                      let condition = self.registeredConditions[identifier],
-                      let record = records[identifier]
+                      self.registeredConditions[identifier] == condition,
+                      let record = records[identifier],
+                      record.center == condition.center, record.radius == condition.radius
                 else { continue }
                 let center = CLLocation(latitude: condition.center.latitude, longitude: condition.center.longitude)
                 guard let transition = BaselineHealDecision.synthesizedTransition(
