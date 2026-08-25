@@ -98,12 +98,14 @@ extension CLMonitorGeofenceMonitor {
                           transitionTypes: record.transitionTypes
                       )
                 else { continue }
+                let readdStart = Date()
                 await monitor.remove(identifier)
                 let condition = CLMonitor.CircularGeographicCondition(
                     center: CLLocationCoordinate2D(latitude: center.latitude, longitude: center.longitude),
                     radius: radius
                 )
                 await monitor.add(condition, identifier: identifier, assuming: record.lastState == .enter ? .satisfied : .unsatisfied)
+                self.conditionReadds[identifier] = ConditionReadd(start: readdStart, added: Date(), center: center, radius: radius)
                 self.knownConditionIdentifiers.insert(identifier)
                 rearmed += 1
             }
