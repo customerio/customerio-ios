@@ -95,7 +95,9 @@ class InAppMessageStoreManager: InAppMessageManager {
 
     @discardableResult
     func unsubscribe(subscriber: InAppMessageStoreSubscriber) -> Task<Void, Never> {
-        Task { await store.unsubscribe(subscriber) }
+        Task { @MainActor [store, subscriber] in
+            await store.unsubscribe(subscriber)
+        }
     }
 
     /// Subscribe to store updates with given subscriber.
@@ -103,7 +105,9 @@ class InAppMessageStoreManager: InAppMessageManager {
     /// In order to keep the subscriber alive, the caller must keep a strong reference to the subscriber.
     @discardableResult
     func subscribe(subscriber: InAppMessageStoreSubscriber) -> Task<Void, Never> {
-        Task { await store.subscribe(subscriber) }
+        Task { @MainActor [store, subscriber] in
+            await store.subscribe(subscriber)
+        }
     }
 
     /// Subscribe to store updates with given subscriber and comparator.
@@ -118,6 +122,8 @@ class InAppMessageStoreManager: InAppMessageManager {
         comparator: @escaping (InAppMessageState, InAppMessageState) -> Bool,
         subscriber: InAppMessageStoreSubscriber
     ) -> Task<Void, Never> {
-        Task { await self.store.subscribe(subscriber, comparator) }
+        Task { @MainActor [store, subscriber] in
+            await store.subscribe(subscriber, comparator)
+        }
     }
 }

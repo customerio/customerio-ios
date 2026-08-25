@@ -223,9 +223,22 @@ extension BaseMessageManager: EngineWebDelegate {
         // Encode '#' in url action string and creates encoded URL to handle fragments
         let encodedUrl = URL(string: originalAction.percentEncode(character: "#")) ?? url
         if let page = encodedUrl.queryParameters?["url"],
-           let pageUrl = URL(string: page),
-           UIApplication.shared.canOpenURL(pageUrl) {
-            UIApplication.shared.open(pageUrl)
+           let pageUrl = URL(string: page) {
+            // `canOpenURL` returns false for schemes omitted from the host's
+            // `LSApplicationQueriesSchemes`, even when the system can open them. Attempt the
+            // configured action directly and use the completion result as the source of truth.
+            let logger = logger
+            let message = currentMessage.describeForLogs
+            let scheme = pageUrl.scheme ?? "none"
+            threadUtil.runMain {
+                UIApplication.shared.open(pageUrl, options: [:]) { didOpen in
+                    guard !didOpen else { return }
+                    logger.logWithModuleTag(
+                        "Unable to open in-app message page action. Message: \(message), scheme: \(scheme).",
+                        level: .error
+                    )
+                }
+            }
         }
     }
 

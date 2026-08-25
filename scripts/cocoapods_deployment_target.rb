@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
-# Keep this helper byte-identical across customerio-ios, customerio-flutter, and
-# customerio-reactnative so every wrapper applies the same CocoaPods contract.
+# This copy is owned by customerio-ios and covered by its local test suite.
 
 require "rubygems/version"
 
@@ -162,9 +161,10 @@ module CustomerIO
       targets.flat_map do |target|
         project = target.respond_to?(:project) ? target.project : nil
         target.build_configurations.map do |configuration|
+          context = configuration_context(project, target, configuration)
+          validate_no_conditional_settings!(configuration.build_settings, context: context)
           target_setting_present = configuration.build_settings.key?(BUILD_SETTING)
           target_value = normalized_setting(configuration.build_settings[BUILD_SETTING])
-          context = configuration_context(project, target, configuration)
           if target_setting_present
             target_configuration_value = nil
             project_value = nil
@@ -181,7 +181,7 @@ module CustomerIO
               project_configuration = matching_project_configuration(project, configuration.name)
               project_value = effective_configuration_value(
                 project_configuration,
-                context: context
+                context: "#{context}, project build configuration #{configuration.name}"
               )
               effective_value = project_value
             end
@@ -204,6 +204,8 @@ module CustomerIO
 
     def effective_configuration_value(configuration, context:)
       return nil if configuration.nil?
+
+      validate_no_conditional_settings!(configuration.build_settings, context: context)
 
       if configuration.build_settings.key?(BUILD_SETTING)
         return normalized_setting(configuration.build_settings[BUILD_SETTING])
@@ -257,6 +259,10 @@ module CustomerIO
         unless settings.respond_to?(:key?)
           raise AuditError, "#{context}: Cannot inspect xcconfig #{xcconfig_path}"
         end
+        validate_no_conditional_settings!(
+          settings,
+          context: "#{context}, xcconfig #{xcconfig_path}"
+        )
         return [false, nil] unless settings.key?(BUILD_SETTING)
 
         return [true, normalized_setting(settings[BUILD_SETTING])]
@@ -265,6 +271,21 @@ module CustomerIO
       [false, nil]
     end
     private_class_method :configuration_file_setting
+
+    def validate_no_conditional_settings!(settings, context:)
+      conditional_setting_pattern = /\A#{Regexp.escape(BUILD_SETTING)}[[:space:]]*\[/
+      conditional_keys = settings.keys.map(&:to_s).select do |key|
+        key.match?(conditional_setting_pattern)
+      end.sort
+      return if conditional_keys.empty?
+
+      raise AuditError,
+            "#{context} has conditional #{BUILD_SETTING} settings that cannot be audited deterministically: " \
+            "#{conditional_keys.join(', ')}. Replace them with one numeric, unconditional #{BUILD_SETTING} " \
+            "before running this helper. For a generated Pods target, change the Podfile or dependency " \
+            "podspec rather than Pods.xcodeproj."
+    end
+    private_class_method :validate_no_conditional_settings!
 
     def rendered_synchronized_path(anchor, relative_path)
       anchor_path = if anchor.respond_to?(:path)

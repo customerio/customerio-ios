@@ -31,12 +31,14 @@ extension CLMonitorGeofenceMonitor {
                 guard let record = records[identifier],
                       let center = record.center, let radius = record.radius
                 else { continue }
+                let readdStart = Date()
                 await monitor.remove(identifier)
                 let condition = CLMonitor.CircularGeographicCondition(
                     center: CLLocationCoordinate2D(latitude: center.latitude, longitude: center.longitude),
                     radius: radius
                 )
                 await monitor.add(condition, identifier: identifier, assuming: record.lastState == .enter ? .satisfied : .unsatisfied)
+                self.conditionReadds[identifier] = ConditionReadd(start: readdStart, added: Date(), center: center, radius: radius)
                 // Recorded per identifier rather than in one pass at the end: an `.unmonitored` for
                 // one of these can land between two iterations, and it must be able to take the
                 // identifier back out.

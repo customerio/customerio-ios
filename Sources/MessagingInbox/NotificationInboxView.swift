@@ -18,7 +18,7 @@ import UIKit
 ///
 /// ## Usage
 /// ```swift
-/// NavigationView { NotificationInboxView() }
+/// NotificationInboxView()
 /// ```
 @available(iOS 13.0, *)
 public struct NotificationInboxView: View {

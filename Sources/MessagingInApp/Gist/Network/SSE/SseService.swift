@@ -164,18 +164,15 @@ actor SseService: SseServiceProtocol {
 
     /// Builds common headers for SSE connection (matching Android's addCommonHeaders with includeUserToken=false)
     /// SSE uses userToken in URL query parameter, not in header
-    private func buildHeaders(state: InAppMessageState) -> [String: String] {
-        let sdkClient = DIGraphShared.shared.sdkClient
+    func buildHeaders(state: InAppMessageState) -> [String: String] {
+        let diGraph = DIGraphShared.shared
+        let commonHeaders = GistCommonHeaders(sdkClient: diGraph.sdkClient, deviceInfo: diGraph.deviceInfo)
         let isAnonymous = state.userId == nil
 
-        return [
-            HTTPHeader.siteId.rawValue: state.siteId,
-            HTTPHeader.cioDataCenter.rawValue: state.dataCenter,
-            HTTPHeader.cioClientPlatform.rawValue: sdkClient.source.lowercased() + "-apple",
-            HTTPHeader.cioClientVersion.rawValue: sdkClient.sdkVersion,
-            HTTPHeader.userAnonymous.rawValue: String(isAnonymous)
-            // Note: userToken is NOT included in headers for SSE - it's in the URL query params
-        ]
+        var headers = commonHeaders.headers(state: state)
+        // Note: userToken is NOT included in headers for SSE - it's in the URL query params
+        headers[HTTPHeader.userAnonymous.rawValue] = String(isAnonymous)
+        return headers
     }
 }
 

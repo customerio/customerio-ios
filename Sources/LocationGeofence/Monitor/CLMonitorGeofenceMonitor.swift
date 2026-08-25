@@ -45,8 +45,10 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preco
     /// Internal for the `+Registration` extension.
     let authManager: CLLocationManager
     /// Freshens the fix behind movement-trigger EXIT dispatches (see `MovementFixResolver`).
-    private let movementFixResolver: MovementFixResolver
-    private var onTransition: GeofenceTransitionHandler?
+    /// Internal (not private) for the `+BaselineHeal` and `+ContradictionGate` extensions' fix resolution.
+    let movementFixResolver: MovementFixResolver
+    /// Internal (not private) for the `+BaselineHeal` extension's synthesized deliveries.
+    var onTransition: GeofenceTransitionHandler?
     private var onAuthorizationChanged: GeofenceAuthorizationChangedHandler?
     private var onReconciled: GeofenceReconciledHandler?
     private var lastLoggedPermissionTier: CoreLocationGeofenceMonitor.PermissionTier?
@@ -69,6 +71,17 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preco
     /// Conditions the OS stopped monitoring since their last registration. The next registration
     /// reseeds their stored baseline instead of preserving it — see `recordMonitorRegistration`.
     var conditionsNeedingBaselineReseed: Set<String> = []
+    /// When each condition was last (re)added at the OS and the circle that add imposed, stamped
+    /// at the add's drain time. The contradiction gate only vets events landing shortly after an
+    /// add — the daemon's belief replays — and judges them against this geometry, NOT the staged
+    /// `registeredConditions` entry: a reshape updates that map synchronously, so during its
+    /// staging→drain gap an event computed on the old circle would otherwise be judged against
+    /// the new one (see `+ContradictionGate`).
+    var conditionReadds: [String: ConditionReadd] = [:]
+    /// When the last gate-fix request completed without producing a fresh fix. While recent, the
+    /// gate reads the cache instead of requesting again — see `resolveGateFix`. Internal (not
+    /// private) for the `+ContradictionGate` extension.
+    var gateFixRequestFailedAt: Date?
 
     /// The circle a condition was added with.
     struct RegisteredCondition: Equatable {
@@ -258,6 +271,7 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preco
             logger.geofenceMonitorStoppedMonitoringRegion(identifier)
             knownConditionIdentifiers.remove(identifier)
             registeredConditions.removeValue(forKey: identifier)
+            conditionReadds.removeValue(forKey: identifier)
             // Whichever registration comes next must reseed the baseline rather than preserve it.
             // The clear below only covers the case where none comes: a re-registration with the same
             // circle preserves the stored state by design, and after the OS gave up that state is no
@@ -275,6 +289,12 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preco
             }
             return
         @unknown default:
+            return
+        }
+        // Runs BEFORE the baseline advance below: a refused event must leave the stored baseline
+        // untouched so the daemon's own re-evaluation dedups against it (see `+ContradictionGate`).
+        if identifier != GeofenceConstants.movementTriggerIdentifier,
+           await isEventContradictedByFreshFix(identifier: identifier, transition: transition, eventDate: event.date) {
             return
         }
         guard case .deliver = await storage.recordMonitorEvent(transition, forIdentifier: identifier) else { return }
@@ -371,8 +391,9 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preco
 
     /// Newest usable fix across the auth manager's cache and the resolver's requested fixes.
     /// The manager's cache can freeze at process start on a long-suspended process, so a fresher
-    /// resolver fix must win wherever cached position is read.
-    private func bestKnownFix() -> CLLocation? {
+    /// resolver fix must win wherever cached position is read. Internal (not private) for the
+    /// `+BaselineHeal` and `+ContradictionGate` extensions' fix resolution.
+    func bestKnownFix() -> CLLocation? {
         let cached = authManager.location.flatMap { CLLocationCoordinate2DIsValid($0.coordinate) ? $0 : nil }
         guard let resolved = movementFixResolver.latestFix else { return cached }
         guard let cached else { return resolved }

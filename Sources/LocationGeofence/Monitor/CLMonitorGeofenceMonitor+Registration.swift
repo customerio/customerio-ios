@@ -92,9 +92,16 @@ extension CLMonitorGeofenceMonitor {
             // and reporting no error, so the identifier is cleared first. Keyed on the OS rather
             // than on this process's bookkeeping, which can be missing an identifier the OS still
             // holds. Removing one the OS does not hold is a no-op.
+            let readdStart = Date()
             await monitor.remove(identifier)
             let condition = CLMonitor.CircularGeographicCondition(center: coordinate, radius: clampedRadius)
             await monitor.add(condition, identifier: identifier, assuming: assumedState)
+            self.conditionReadds[identifier] = ConditionReadd(
+                start: readdStart,
+                added: Date(),
+                center: LocationData(latitude: coordinate.latitude, longitude: coordinate.longitude),
+                radius: clampedRadius
+            )
             self.knownConditionIdentifiers.insert(identifier)
             self.persistConditionMirror()
         }
@@ -161,6 +168,13 @@ extension CLMonitorGeofenceMonitor {
             }
             self.persistConditionMirror()
         }
+        // Heal candidates: regions this sync leaves registered-unchanged (evaluated at entry,
+        // before the loop below mutates ownership for the changed ones). Newly-registered regions
+        // are excluded — their staged `assuming:` already provokes the OS corrective — as is the
+        // movement trigger, whose events are internal control flow, not customer transitions.
+        let healCandidates = regions
+            .filter { $0.identifier != GeofenceConstants.movementTriggerIdentifier && isRegisteredUnchanged($0) }
+            .map(\.identifier)
         var added: Set<String> = []
         for region in regions where !isRegisteredUnchanged(region) {
             // Release ownership first so a region `startMonitoring` rejects (blocked permission,
@@ -178,6 +192,8 @@ extension CLMonitorGeofenceMonitor {
             // initial-enter decision must not count a region the OS never took.
             if ownedRegionIdentifiers.contains(region.identifier) { added.insert(region.identifier) }
         }
+        // Enqueued after the adds above so the heal drains behind this sync's own ops.
+        enqueueBaselineHeal(candidates: healCandidates)
         return GeofenceRegionDiff(added: added, removed: removed)
     }
 

@@ -24,6 +24,10 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         // `connectionOptions.urlContexts` rather than via `scene(_:openURLContexts:)`. Route it
         // through the same path so the deep link opens and the SDK reports the `opened` metric.
         handle(urlContexts: connectionOptions.urlContexts)
+
+        // Universal links delivered while creating a scene arrive as user activities. Handle them
+        // here as well as in `scene(_:continue:)` so cold and warm launches use the same route.
+        handle(userActivities: connectionOptions.userActivities)
     }
 
     func sceneDidDisconnect(_ scene: UIScene) {
@@ -88,7 +92,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
                 routeToLiveActivities()
                 continue
             }
-            _ = deepLinkHandler.handleAppSchemeDeepLink(url)
+            _ = deepLinkHandler.handleCustomerIODestination(url)
         }
     }
 
@@ -99,14 +103,16 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         nav.pushViewController(LiveActivitiesViewController(), animated: true)
     }
 
-    // Universal Links - handling universal links that come into the mobile app, not from the Customer.io SDK.
-    // To handle Universal Links from the Customer.io SDK, see `AppDelegate` file for implementation.
-    // Learn more: https://customer.io/docs/sdk/ios/push/#universal-links-deep-links
+    // Universal links delivered directly by iOS belong to the scene. Customer.io-initiated deep
+    // links use the SDKConfigBuilder.deepLinkCallback configured in AppDelegate.
     func scene(_ scene: UIScene, continue userActivity: NSUserActivity) {
-        guard let universalLinkUrl = userActivity.webpageURL else {
-            return
-        }
+        handle(userActivities: [userActivity])
+    }
 
-        _ = deepLinkHandler.handleUniversalLinkDeepLink(universalLinkUrl)
+    private func handle(userActivities: Set<NSUserActivity>) {
+        for userActivity in userActivities {
+            guard let universalLinkUrl = userActivity.webpageURL else { continue }
+            _ = deepLinkHandler.handleUniversalLinkDeepLink(universalLinkUrl)
+        }
     }
 }

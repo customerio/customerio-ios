@@ -1446,7 +1446,8 @@ struct GeofenceSyncCoordinatorTests {
                     lastState: .enter,
                     transitionTypes: [.enter, .exit],
                     center: LocationData(latitude: 0.001, longitude: 0),
-                    radius: 500
+                    radius: 500,
+                    lastStateChangedAt: nil
                 )
             ]
         )
