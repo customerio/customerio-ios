@@ -42,24 +42,44 @@ final class InboxNetworkClientImpl: InboxNetworkClient, @unchecked Sendable {
 
     func get(endpoint: InboxEndpoint, state: InAppMessageState) async throws -> InboxNetworkResponse {
         try await withCheckedThrowingContinuation { continuation in
+            // Guard against a duplicate callback from the underlying network layer ever resuming
+            // the continuation a second time -- which would produce a SWIFT TASK CONTINUATION
+            // MISUSE fatal error. The root cause is BaseNetwork.request's missing `return` after
+            // the error branch (MBL-2321); this guard is a belt-and-suspenders defence so that
+            // any future callback path with the same class of bug cannot reach a fatal crash.
+            let lock = NSLock()
+            var hasResumed = false
+
+            let resumeOnce: (Result<InboxNetworkResponse, Error>) -> Void = { result in
+                lock.lock()
+                let shouldResume = !hasResumed
+                if shouldResume { hasResumed = true }
+                lock.unlock()
+                guard shouldResume else { return }
+                switch result {
+                case .success(let response): continuation.resume(returning: response)
+                case .failure(let error): continuation.resume(throwing: error)
+                }
+            }
+
             do {
                 try gistQueueNetwork.request(state: state, request: endpoint) { result in
                     switch result {
                     case .success(let (data, response)):
-                        continuation.resume(returning: (data, response))
+                        resumeOnce(.success((data, response)))
                     case .failure(let error):
-                        continuation.resume(throwing: InboxNetworkError.transport(error.localizedDescription))
+                        resumeOnce(.failure(InboxNetworkError.transport(error.localizedDescription)))
                     }
                 }
             } catch let error as GistNetworkRequestError {
                 switch error {
                 case .invalidBaseURL:
-                    continuation.resume(throwing: InboxNetworkError.invalidBaseURL)
+                    resumeOnce(.failure(InboxNetworkError.invalidBaseURL))
                 case .missingUserIdentifier:
-                    continuation.resume(throwing: InboxNetworkError.missingUserIdentifier)
+                    resumeOnce(.failure(InboxNetworkError.missingUserIdentifier))
                 }
             } catch {
-                continuation.resume(throwing: InboxNetworkError.transport(error.localizedDescription))
+                resumeOnce(.failure(InboxNetworkError.transport(error.localizedDescription)))
             }
         }
     }
