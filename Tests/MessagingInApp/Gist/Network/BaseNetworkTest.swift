@@ -9,8 +9,13 @@ import XCTest
 private final class TransportErrorURLProtocol: URLProtocol {
     static var stub: Error = URLError(.timedOut)
 
-    override class func canInit(with request: URLRequest) -> Bool { true }
-    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+    override class func canInit(with request: URLRequest) -> Bool {
+        true
+    }
+
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest {
+        request
+    }
 
     override func startLoading() {
         client?.urlProtocol(self, didFailWithError: Self.stub)
