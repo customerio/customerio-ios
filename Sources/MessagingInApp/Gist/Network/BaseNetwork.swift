@@ -48,7 +48,10 @@ enum BaseNetwork {
         urlRequest.url = components?.url
 
         URLSession.shared.dataTask(with: urlRequest, completionHandler: { data, response, error in
-            if let error = error { completionHandler(.failure(error)) }
+            if let error = error {
+                completionHandler(.failure(error))
+                return
+            }
             guard let data = data, let response = response as? HTTPURLResponse,
                   (200 ... 304).contains(response.statusCode)
             else {
