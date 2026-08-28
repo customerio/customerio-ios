@@ -76,4 +76,19 @@ enum GeofenceConstants {
     // drop valid data; per-value size is left to the server.
     static let maxMetadataCount = 100
     static let maxMetadataPayloadBytes = 100 * 1024 // ~20× the server's 5 KB total
+
+    // Polygon geofences. Server contract: a polygon fence carries a GeoJSON ring plus an enclosing
+    // circle the server GUARANTEES contains it. The SDK still defends both. The vertex cap mirrors
+    // the server's own cap on unique vertices, so it only ever catches a payload the server should
+    // have rejected; keep the two in step, and never set this below the server's value or we would
+    // drop fences the server considers valid.
+    static let maxPolygonVertexCount = 500
+    static let polygonCoverageSlackMeters = 1.0
+
+    /// Additional coverage slack as a fraction of the covering radius, to absorb the difference
+    /// between the earth model the server computed the circle with and the WGS84 ellipsoid
+    /// `CLLocation.distance` measures against. Measured at 11 m on a 7.9 km fence — far past a flat
+    /// one-metre slack, and a failed coverage check DROPS the region, so a legitimately-covering
+    /// circle would silently make the fence not exist.
+    static let polygonCoverageSlackFraction = 0.005
 }

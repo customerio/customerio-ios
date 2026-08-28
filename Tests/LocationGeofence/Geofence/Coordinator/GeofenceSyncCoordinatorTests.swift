@@ -81,9 +81,21 @@ struct GeofenceSyncCoordinatorTests {
             GeofenceApiRegion(
                 id: region.id,
                 name: region.name,
-                latitude: region.latitude,
-                longitude: region.longitude,
-                radius: region.radius,
+                shape: region.vertices == nil ? "circle" : "polygon",
+                latitude: region.vertices == nil ? region.latitude : nil,
+                longitude: region.vertices == nil ? region.longitude : nil,
+                radius: region.vertices == nil ? region.radius : nil,
+                geometry: region.vertices.map { ring in
+                    GeofenceApiGeometry(
+                        type: "Polygon",
+                        coordinates: [ring.map { [$0.longitude, $0.latitude] }]
+                    )
+                },
+                enclosingCircle: region.vertices == nil ? nil : GeofenceApiEnclosingCircle(
+                    latitude: region.latitude,
+                    longitude: region.longitude,
+                    baseRadiusM: region.radius
+                ),
                 externalId: nil,
                 transitionTypes: region.transitionTypes.map(\.rawValue),
                 lastUpdated: region.lastUpdated.timeIntervalSince1970,
