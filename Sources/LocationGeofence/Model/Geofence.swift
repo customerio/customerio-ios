@@ -18,6 +18,11 @@ struct Geofence: Codable, Equatable, Sendable {
     /// Workspace-defined key/value metadata; empty when the geofence carries none.
     /// Snapshotted onto transition events and preferred fresh from cache at send.
     let metadata: [String: GeofenceMetadataValue]
+    /// Polygon boundary, canonicalized (closed rings unclosed) and validated at the API boundary;
+    /// `nil` for a circle geofence. When present, `latitude`/`longitude`/`radius` describe the
+    /// server-guaranteed covering circle — the shape registered at the OS as the wake trigger —
+    /// and membership decisions come from the polygon, never the circle.
+    let vertices: [LocationData]?
 
     init(
         id: String,
@@ -28,7 +33,8 @@ struct Geofence: Codable, Equatable, Sendable {
         transitionTypes: Set<GeofenceTransition>,
         lastUpdated: Date,
         geosetIds: [String] = [],
-        metadata: [String: GeofenceMetadataValue] = [:]
+        metadata: [String: GeofenceMetadataValue] = [:],
+        vertices: [LocationData]? = nil
     ) {
         self.id = id
         self.latitude = latitude
@@ -39,6 +45,13 @@ struct Geofence: Codable, Equatable, Sendable {
         self.lastUpdated = lastUpdated
         self.geosetIds = geosetIds
         self.metadata = metadata
+        self.vertices = vertices
+    }
+
+    /// Geometry kernel for a polygon geofence; `nil` for circles. Built on demand — callers on a
+    /// hot path should hold the result rather than re-deriving it per fix.
+    var polygonRegion: PolygonRegion? {
+        vertices.flatMap(PolygonRegion.init(vertices:))
     }
 
     /// Custom decode so geofences cached by SDK versions predating `geosetIds` / `metadata` still
@@ -55,5 +68,6 @@ struct Geofence: Codable, Equatable, Sendable {
         self.lastUpdated = try container.decode(Date.self, forKey: .lastUpdated)
         self.geosetIds = try container.decodeIfPresent([String].self, forKey: .geosetIds) ?? []
         self.metadata = try container.decodeIfPresent([String: GeofenceMetadataValue].self, forKey: .metadata) ?? [:]
+        self.vertices = try container.decodeIfPresent([LocationData].self, forKey: .vertices)
     }
 }
