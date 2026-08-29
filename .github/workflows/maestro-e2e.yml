@@ -40,6 +40,14 @@ concurrency:
 jobs:
   prepare:
     name: Select iOS suites
+    if: >-
+      (vars.MOBILE_E2E_ENABLED == 'true' || github.event_name == 'workflow_dispatch') &&
+      (github.event.action != 'labeled' || github.event.label.name == 'ci:full') &&
+      (github.event_name != 'pull_request' ||
+      contains(github.event.pull_request.labels.*.name, 'ci:full')) &&
+      github.actor != 'dependabot[bot]' &&
+      (github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ubuntu-latest
     outputs:
       suites: ${{ steps.select.outputs.suites }}
