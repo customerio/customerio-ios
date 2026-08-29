@@ -2,10 +2,11 @@ name: Build sample apps
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, labeled]
     paths-ignore:
       - '**/*.md'
   push:
-    branches: [ main, feature/* ]
+    branches: [ main ]
     paths-ignore:
       - '**/*.md'
   workflow_dispatch: # allow manual run
@@ -17,17 +18,20 @@ on:
         default: false
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # Ignore unrelated label events without cancelling the active validation run.
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ (github.event.action == 'labeled' && github.event.label.name != 'ci:full') && github.run_id || 'validation' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   # 1) Build and publish sample apps to Firebase App Distribution.
-  # Skipped on pull_request: reviewing a PR doesn't need a published distributable
-  # build, and the 2-job matrix (APN-UIKit + CocoaPods-FCM) was contending with
-  # Lint/Tests/Maestro E2E for the same limited macOS runner pool on every PR push.
-  # Still runs on push to main/feature branches, and on-demand via workflow_dispatch.
+  # PRs use the lightweight compile/test workflows by default. Add `ci:full` when
+  # a distributable sample build is useful. Main and manual runs remain automatic.
   build-sample-apps:
-    if: ${{ github.event_name != 'pull_request' }}
+    if: >-
+      (github.event.action != 'labeled' || github.event.label.name == 'ci:full') &&
+      (github.event_name != 'pull_request' ||
+      (contains(github.event.pull_request.labels.*.name, 'ci:full') &&
+      github.event.pull_request.head.repo.full_name == github.repository))
     uses: ./.github/workflows/reusable_build_sample_apps.yml
     with:
       # If manual run AND user sets 'use_latest_sdk_version' to true, get the new tag.
@@ -44,10 +48,14 @@ jobs:
       SAMPLE_APPS_INSTRUCTIONS_GUIDE_LINK: ${{ secrets.SAMPLE_APPS_INSTRUCTIONS_GUIDE_LINK }}
       SLACK_NOTIFY_RELEASES_WEBHOOK_URL: ${{ secrets.SLACK_NOTIFY_RELEASES_WEBHOOK_URL }}
 
-  # 2) Generate SDK size reports. Kept on pull_request: this is the single job that
-  # surfaces the binary-size diff vs. main on every PR, separate from (and much
-  # cheaper than) the sample-app build matrix above.
+  # Binary-size comparison compiles the SDK twice on macOS. Keep it available in
+  # the full PR lane without charging every source or tooling change for it.
   generate-sdk-size-reports:
+    if: >-
+      (github.event.action != 'labeled' || github.event.label.name == 'ci:full') &&
+      github.event_name == 'pull_request' &&
+      contains(github.event.pull_request.labels.*.name, 'ci:full') &&
+      github.event.pull_request.head.repo.full_name == github.repository
     runs-on: macos-26
     permissions:
       pull-requests: write

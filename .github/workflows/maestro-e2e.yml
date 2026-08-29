@@ -2,6 +2,7 @@ name: Maestro SDK E2E
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, labeled]
     paths-ignore:
       - '**/*.md'
   workflow_dispatch:
@@ -33,8 +34,8 @@ on:
     - cron: "41 6 * * 1-5"
 
 concurrency:
-  group: maestro-ios-${{ github.ref }}
-  cancel-in-progress: true
+  group: maestro-ios-${{ github.ref }}-${{ (github.event.action == 'labeled' && github.event.label.name != 'ci:full') && github.run_id || 'validation' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   prepare:
@@ -72,6 +73,9 @@ jobs:
     needs: prepare
     if: >-
       (vars.MOBILE_E2E_ENABLED == 'true' || github.event_name == 'workflow_dispatch') &&
+      (github.event.action != 'labeled' || github.event.label.name == 'ci:full') &&
+      (github.event_name != 'pull_request' ||
+      contains(github.event.pull_request.labels.*.name, 'ci:full')) &&
       github.actor != 'dependabot[bot]' &&
       (github.event_name != 'pull_request' ||
       github.event.pull_request.head.repo.full_name == github.repository)
