@@ -294,6 +294,8 @@ extension BaseMessageManager: EngineWebDelegate {
     public func error() {
         // Only reachable from a conformer that predates the classified callback. `EngineWeb` always
         // classifies, so treat an unlabelled failure as an SDK-side gap rather than inventing a cause.
+        // Logged here because, unlike the classified sites, nothing upstream has logged this one.
+        logger.logWithModuleTag("Error loading message with id: \(currentMessage.describeForLogs)", level: .error)
         error(InAppMessageError(reason: .internalError, detail: "Engine reported a failure with no reason"))
     }
 
