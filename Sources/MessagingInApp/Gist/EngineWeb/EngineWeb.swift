@@ -11,6 +11,15 @@ public protocol EngineWebDelegate: AnyObject {
     func routeLoaded(route: String)
     func sizeChanged(width: CGFloat, height: CGFloat)
     func error()
+    /// Called when a message fails to load or render, with the reason it failed.
+    func error(_ error: InAppMessageError)
+}
+
+public extension EngineWebDelegate {
+    /// Defaulted so conformers written against the reason-less callback keep compiling.
+    func error(_ error: InAppMessageError) {
+        self.error()
+    }
 }
 
 protocol EngineWebInstance: AutoMockable {
@@ -136,7 +145,7 @@ public class EngineWeb: NSObject, EngineWebInstance {
             "Message \(currentMessage.describeForLogs) failed: \(error.describeForLogs)",
             level: .error
         )
-        delegate?.error()
+        delegate?.error(error)
     }
 
     @objc

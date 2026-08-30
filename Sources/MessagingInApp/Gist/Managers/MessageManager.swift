@@ -288,18 +288,19 @@ extension BaseMessageManager: EngineWebDelegate {
             "Message \(currentMessage.describeForLogs) failed: \(error.describeForLogs)",
             level: .error
         )
-        inAppMessageManager.dispatch(
-            action: .engineAction(
-                action: .messageLoadingFailed(message: currentMessage)
-            )
-        )
+        self.error(error)
     }
 
     public func error() {
-        logger.logWithModuleTag("Error loading message with id: \(currentMessage.describeForLogs)", level: .error)
+        // Only reachable from a conformer that predates the classified callback. `EngineWeb` always
+        // classifies, so treat an unlabelled failure as an SDK-side gap rather than inventing a cause.
+        error(InAppMessageError(reason: .internalError, detail: "Engine reported a failure with no reason"))
+    }
+
+    public func error(_ error: InAppMessageError) {
         inAppMessageManager.dispatch(
             action: .engineAction(
-                action: .messageLoadingFailed(message: currentMessage)
+                action: .messageLoadingFailed(message: currentMessage, error: error)
             )
         )
     }

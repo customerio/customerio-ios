@@ -170,11 +170,25 @@ extension AppDelegate: InAppEventListener {
         )
     }
 
-    // In-app message produces an error - preventing message from appearing to the user
+    // In-app message produces an error - preventing message from appearing to the user.
+    // Still a requirement of the protocol; the SDK calls the overload below, which carries the reason.
     nonisolated func errorWithMessage(message: InAppMessage) {
         CustomerIO.shared.track(
             name: "inapp error",
             properties: ["delivery-id": message.deliveryId ?? "(none)", "message-id": message.messageId]
+        )
+    }
+
+    nonisolated func errorWithMessage(message: InAppMessage, error: InAppMessageError) {
+        CustomerIO.shared.track(
+            name: "inapp error",
+            properties: [
+                "delivery-id": message.deliveryId ?? "(none)",
+                "message-id": message.messageId,
+                "error-reason": error.reason.rawValue,
+                "error-detail": error.detail ?? "(none)",
+                "error-code": error.code.map(String.init) ?? "(none)"
+            ]
         )
     }
 
