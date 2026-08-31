@@ -107,9 +107,11 @@ struct GeofenceLogTailTests {
             Invocation(name: "backgroundUnavailable", requiredKeys: ["perm", "why"]) { $0.geofenceBackgroundDeliveryUnavailable(currentStatus: .authorizedWhenInUse) },
             Invocation(name: "backgroundAvailable", requiredKeys: ["perm", "ok"]) { $0.geofenceBackgroundDeliveryAvailable(currentStatus: .authorizedAlways) },
             Invocation(name: "moduleInitialized", requiredKeys: ["launch"]) { $0.geofenceModuleInitialized(launchReason: .locationEvent) },
-            Invocation(name: "callbackReceived", requiredKeys: ["id", "t"]) { $0.geofenceCallbackReceived(identifier: "notl_core", transition: .enter, location: LocationData(latitude: 43.2, longitude: -79.0)) },
+            Invocation(name: "callbackReceived", requiredKeys: ["id", "t", "buf", "fixsrc", "acc", "age", "sim", "evage"]) { $0.geofenceCallbackReceived(identifier: "notl_core", transition: .enter, fix: location, source: .managerCache, eventDate: Date(timeIntervalSinceNow: -3), buffered: false) },
+            Invocation(name: "callbackReceivedNoFix", requiredKeys: ["id", "t", "fixsrc"]) { $0.geofenceCallbackReceived(identifier: "notl_core", transition: .exit, fix: nil, source: .none) },
             Invocation(name: "callbackDropped", requiredKeys: ["id", "t", "why"]) { $0.geofenceCallbackDropped(identifier: "notl_core", transition: .enter, reason: "movement_trigger_not_exit") },
             Invocation(name: "fixReceived", requiredKeys: ["prov"]) { $0.geofenceFixReceived(location, source: "movement_pass") },
+            Invocation(name: "fixQualityUngated", requiredKeys: ["fixsrc", "acc", "age"]) { $0.geofenceCallbackReceived(identifier: "q", transition: .enter, fix: location, source: .freshRequest) },
             Invocation(name: "eventTracked", requiredKeys: ["id", "t"]) { $0.geofenceEventTracked(geofenceId: "notl_core", transition: .enter) },
             Invocation(name: "eventSuppressed", requiredKeys: ["id", "t", "why", "cd"]) { $0.geofenceEventSuppressed(geofenceId: "notl_core", transition: .enter, cooldownRemaining: 42) },
             Invocation(name: "droppedAnonymous", requiredKeys: ["id", "t", "why"]) { $0.geofenceTransitionDroppedAnonymous(geofenceId: "notl_core", transition: .exit) },
@@ -241,6 +243,30 @@ struct GeofenceLogTailTests {
         // problem on a three-hour drive.
         let warnings = logger.messages.filter { $0.contains("precise location logging is ENABLED") }
         #expect(warnings.count == 1, "expected exactly one enablement warning, got \(warnings.count)")
+    }
+
+    @Test
+    func fixQuality_givenFlagOff_expectStillEmitted() {
+        CioDiagnostics.logPreciseLocation = false
+
+        let logger = CapturingLogger()
+        logger.geofenceCallbackReceived(
+            identifier: "notl_core",
+            transition: .enter,
+            fix: sampleLocation,
+            source: .managerCache,
+            eventDate: Date(timeIntervalSinceNow: -3)
+        )
+
+        // Accuracy, age, provenance and the simulated-fix marker say how good a fix is, never
+        // where it is — gating them would leave a default build unable to tell a measurement from
+        // a guess, which is most of the diagnostic value.
+        let fields = parseTail(logger.messages[0])
+        #expect(fields?["acc"] == "48.0")
+        #expect(fields?["fixsrc"] == "manager_cache")
+        #expect(fields?["age"] != nil)
+        #expect(fields?["evage"] != nil)
+        #expect(fields?["lat"] == nil, "coordinates must still be gated")
     }
 
     @Test

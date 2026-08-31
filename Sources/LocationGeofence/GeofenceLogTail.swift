@@ -126,6 +126,64 @@ enum GeofenceLog {
         }
     }
 
+    // MARK: - Fix quality and provenance (ungated)
+
+    /// Where a fix came from. Trustworthiness differs enormously between these, and until now the
+    /// log said only that *a* position existed.
+    enum FixSource: String {
+        /// `CLLocationManager.location` — the OS's cached fix. Can freeze at process start on a
+        /// long-suspended process, so this is the one that silently goes stale.
+        case managerCache = "manager_cache"
+        /// The freshest fix `MovementFixResolver` has seen delivered.
+        case resolver
+        /// Requested on purpose for this event and waited for.
+        case freshRequest = "fresh_request"
+        /// The contradiction gate's fix, taken inside a re-add replay window.
+        case gate
+        /// A synthesized transition, not an OS-delivered one.
+        case synthetic
+        case none
+    }
+
+    /// How good the fix is and where it came from. **Deliberately ungated.**
+    ///
+    /// None of these keys says anything about *where* the device is, so none of them is the thing
+    /// `logPreciseLocation` exists to protect. Gating them would mean a default build cannot judge
+    /// whether a transition's position is worth anything at all — and `age` in particular is the
+    /// difference between a measurement and a guess: `bestKnownFix()` can return a fix that is
+    /// hours old, and an overshoot distance computed from one of those looks identical to a real
+    /// one.
+    static func fixQuality(_ location: CLLocation?, source: FixSource) -> [(String, String?)] {
+        var fields: [(String, String?)] = [("fixsrc", source.rawValue)]
+        guard let location else { return fields }
+
+        fields.append(("acc", num(location.horizontalAccuracy)))
+        fields.append(("age", num(-location.timestamp.timeIntervalSinceNow)))
+        if location.verticalAccuracy > 0 {
+            fields.append(("vacc", num(location.verticalAccuracy)))
+        }
+        // Marks a fix injected by `devicectl simulate location` or Xcode. Without it a bench run
+        // and a real drive are indistinguishable once the files are pooled, which is exactly the
+        // sort of contamination nobody notices until a conclusion is already built on it.
+        if #available(iOS 15.0, *), let info = location.sourceInformation {
+            fields.append(("sim", bool(info.isSimulatedBySoftware)))
+            if info.isProducedByAccessory {
+                fields.append(("accessory", "true"))
+            }
+        }
+        return fields
+    }
+
+    /// How long an OS-dated event waited before the SDK processed it.
+    ///
+    /// `CLMonitor` stamps each event with the date the daemon decided it. An event can then sit in
+    /// `pendingEvents` until bootstrap binds a handler, so a "late" crossing may have been observed
+    /// on time and delivered late — two very different faults that currently look the same.
+    static func eventTiming(_ eventDate: Date?) -> [(String, String?)] {
+        guard let eventDate else { return [] }
+        return [("evage", num(-eventDate.timeIntervalSinceNow))]
+    }
+
     // MARK: - Gated device position
 
     /// Whether the caller may include device coordinates, warning loudly the first time it may.
@@ -144,30 +202,23 @@ enum GeofenceLog {
         return true
     }
 
-    /// Full device position, emitted only when ``CioDiagnostics/logPreciseLocation`` is on.
+    /// Device position, emitted only when ``CioDiagnostics/logPreciseLocation`` is on.
     ///
-    /// These are the keys that make overshoot distance computable — how far past the boundary the
-    /// device actually was when the OS finally reported the crossing — and also the only genuinely
-    /// sensitive thing in the record. Hence the switch.
+    /// Speed and course are gated alongside the coordinate, not with the quality keys above: a
+    /// run of them from a known starting point is dead reckoning, so they carry positional
+    /// information even though neither is a coordinate.
     static func position(_ location: CLLocation?, logger: Logger) -> [(String, String?)] {
         guard let location, allowPreciseLocation(logger: logger) else { return [] }
         return [
             ("lat", num(location.coordinate.latitude, 5)),
             ("lon", num(location.coordinate.longitude, 5)),
-            ("acc", num(location.horizontalAccuracy)),
+            ("alt", num(location.altitude, 1)),
             ("spd", location.speed >= 0 ? num(location.speed) : nil),
-            ("brg", location.course >= 0 ? num(location.course) : nil),
-            ("age", num(-location.timestamp.timeIntervalSinceNow))
+            ("brg", location.course >= 0 ? num(location.course) : nil)
         ]
     }
 
-    /// Coordinates only.
-    ///
-    /// `LocationData` is what the OS transition callback carries, and it holds latitude and
-    /// longitude and nothing else — **no accuracy**. Accuracy on a transition is the single most
-    /// useful number for judging a late crossing, and getting it here means threading `CLLocation`
-    /// through `GeofenceTransitionHandler`, which is a behavioural change rather than a logging
-    /// one. Recorded as a known gap rather than smuggled into this PR.
+    /// Coordinates only, for the paths that carry `LocationData` rather than a full fix.
     static func position(_ location: LocationData?, logger: Logger) -> [(String, String?)] {
         guard let location, allowPreciseLocation(logger: logger) else { return [] }
         return [

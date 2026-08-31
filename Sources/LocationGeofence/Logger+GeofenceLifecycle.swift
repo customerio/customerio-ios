@@ -134,15 +134,43 @@ extension Logger {
 
     // MARK: - OS callback routing
 
-    /// iOS has no equivalent of Android's `logReceiverSkipped`, so a callback the binder drops
-    /// before it reaches the coordinator currently leaves no trace at all.
-    func geofenceCallbackReceived(identifier: String, transition: GeofenceTransition, location: LocationData?) {
+    /// An OS-delivered crossing, logged in the monitor rather than further down the pipeline.
+    ///
+    /// The OS supplies **no position** with a geofence event on either path — `CLMonitor.Event` is
+    /// identifier, state and date; the classic delegate gets a `CLRegion`. The coordinate attached
+    /// to a transition is therefore always the SDK's own best known fix, and the monitor is the
+    /// last place that still holds it as a full `CLLocation`. One line later it has been narrowed
+    /// to two doubles and the accuracy, age and provenance are gone.
+    ///
+    /// - Parameters:
+    ///   - fix: the position the SDK will attach to this transition, whatever its quality.
+    ///   - source: which cache or request that fix came from.
+    ///   - eventDate: when the OS says the crossing happened, where it says so. The gap between
+    ///     this and now separates "observed late" from "observed on time, delivered late" — two
+    ///     faults that look identical without it.
+    ///   - buffered: whether the event waited in the pending queue for a handler to be bound.
+    func geofenceCallbackReceived(
+        identifier: String,
+        transition: GeofenceTransition,
+        fix: CLLocation?,
+        source: GeofenceLog.FixSource,
+        eventDate: Date? = nil,
+        buffered: Bool = false
+    ) {
         debug(
             "OS reported \(transition.rawValue) for region \(identifier)"
-                + GeofenceLog.tail("os.callback.received", .input, [
-                    ("id", identifier),
-                    ("t", transition.rawValue)
-                ] + GeofenceLog.position(location, logger: self)),
+                + GeofenceLog.tail(
+                    "os.callback.received",
+                    .input,
+                    [
+                        ("id", identifier),
+                        ("t", transition.rawValue),
+                        ("buf", GeofenceLog.bool(buffered))
+                    ]
+                        + GeofenceLog.fixQuality(fix, source: source)
+                        + GeofenceLog.eventTiming(eventDate)
+                        + GeofenceLog.position(fix, logger: self)
+                ),
             geofenceTag
         )
     }

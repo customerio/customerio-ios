@@ -19,10 +19,6 @@ enum GeofenceMonitorBinder {
         backgroundTaskRunner: BackgroundTaskRunner = GeofenceBackgroundTime.runner(name: "io.customer.geofence.movement-pass")
     ) {
         monitor.setOnTransition { [weak tracker, weak coordinator] identifier, transition, location in
-            // Logged here, at the edge, before any dispatch decision. Everything below this line
-            // can drop the callback, and until now a drop left no trace on iOS at all — Android
-            // has `logReceiverSkipped`, this path had nothing.
-            logger.geofenceCallbackReceived(identifier: identifier, transition: transition, location: location)
             // CLLocationManager delivers on main; both handlers below are async with their
             // own serialization (tracker active-delivery dedup, coordinator refresh gate),
             // so fire-and-forget Tasks are safe.

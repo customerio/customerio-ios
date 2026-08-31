@@ -182,7 +182,19 @@ final class CoreLocationGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @pr
     /// requires bind to never run, and then every buffered event is undeliverable anyway.
     private func handleRegionEvent(_ region: CLRegion, transition: GeofenceTransition) {
         guard region is CLCircularRegion else { return }
-        if onTransition == nil || !pendingEvents.isEmpty || isDrainingPendingEvents {
+        let mustBuffer = onTransition == nil || !pendingEvents.isEmpty || isDrainingPendingEvents
+        // The classic delegate carries no event date, so unlike the CLMonitor path there is no way
+        // to tell how long the OS sat on this before handing it over. `buf` at least distinguishes
+        // a crossing that waited on our own side for a handler to be bound.
+        let receivedFix = bestKnownFixDetail()
+        logger.geofenceCallbackReceived(
+            identifier: region.identifier,
+            transition: transition,
+            fix: receivedFix?.fix,
+            source: receivedFix?.source ?? .none,
+            buffered: mustBuffer
+        )
+        if mustBuffer {
             pendingEvents.append(PendingRegionEvent(identifier: region.identifier, transition: transition, location: currentLocationData()))
             if pendingEvents.count > Self.maxPendingEvents { pendingEvents.removeFirst() }
             drainPendingEventsIfReady()
@@ -276,10 +288,17 @@ final class CoreLocationGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @pr
     /// Newest usable fix across the manager's cache and the resolver's requested fixes — the
     /// manager's cache can freeze at process start on a long-suspended process.
     private func bestKnownFix() -> CLLocation? {
+        bestKnownFixDetail()?.fix
+    }
+
+    /// The same choice, reporting which source won — see the CLMonitor twin for why it matters.
+    private func bestKnownFixDetail() -> (fix: CLLocation, source: GeofenceLog.FixSource)? {
         let cached = manager.location.flatMap { CLLocationCoordinate2DIsValid($0.coordinate) ? $0 : nil }
-        guard let resolved = movementFixResolver.latestFix else { return cached }
-        guard let cached else { return resolved }
-        return resolved.timestamp > cached.timestamp ? resolved : cached
+        guard let resolved = movementFixResolver.latestFix else {
+            return cached.map { ($0, .managerCache) }
+        }
+        guard let cached else { return (resolved, .resolver) }
+        return resolved.timestamp > cached.timestamp ? (resolved, .resolver) : (cached, .managerCache)
     }
 
     private func currentLocationData() -> LocationData? {

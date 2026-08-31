@@ -291,6 +291,10 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preco
         @unknown default:
             return
         }
+        // Logged before the gate and the dedup baseline: an event refused or deduped is still an
+        // event the OS delivered, and the drives worth explaining are usually the ones where
+        // something arrived and was then discarded.
+        logReceivedCallback(identifier: identifier, transition: transition, eventDate: event.date)
         // Runs BEFORE the baseline advance below: a refused event must leave the stored baseline
         // untouched so the daemon's own re-evaluation dedups against it (see `+ContradictionGate`).
         if identifier != GeofenceConstants.movementTriggerIdentifier,
