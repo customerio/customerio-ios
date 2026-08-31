@@ -8,16 +8,17 @@ import Foundation
 /// Two dispatch paths:
 /// - `GeofenceConstants.movementTriggerIdentifier` (EXIT) → `coordinator.handleMovement`
 ///   (internal; never tracked as a customer event).
-/// - Any other identifier → `tracker.trackTransition` (the business geofences).
+/// - Any other identifier → `resolver.handleTransition`, which forwards circle geofences to the
+///   tracker unchanged and interprets a polygon's covering-circle event against membership.
 @MainActor
 enum GeofenceMonitorBinder {
     static func bind(
         monitor: GeofenceRegionMonitoring,
-        tracker: GeofenceEventTracker,
+        resolver: PolygonMembershipResolver,
         coordinator: GeofenceSyncCoordinator,
         backgroundTaskRunner: BackgroundTaskRunner = GeofenceBackgroundTime.runner(name: "io.customer.geofence.movement-pass")
     ) {
-        monitor.setOnTransition { [weak tracker, weak coordinator] identifier, transition, location in
+        monitor.setOnTransition { [weak resolver, weak coordinator] identifier, transition, location in
             // CLLocationManager delivers on main; both handlers below are async with their
             // own serialization (tracker active-delivery dedup, coordinator refresh gate),
             // so fire-and-forget Tasks are safe.
@@ -35,7 +36,7 @@ enum GeofenceMonitorBinder {
                 }
                 return
             }
-            Task { await tracker?.trackTransition(geofenceId: identifier, transition: transition) }
+            Task { await resolver?.handleTransition(identifier: identifier, transition: transition, occurredAt: Date()) }
         }
     }
 }
