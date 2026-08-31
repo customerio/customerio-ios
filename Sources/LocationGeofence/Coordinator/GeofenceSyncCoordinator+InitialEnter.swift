@@ -56,6 +56,11 @@ extension GeofenceSyncCoordinatorImpl {
     /// site rather than stored: the resolver is a `@MainActor` singleton and this coordinator is
     /// one of its own dependencies, so a stored reference back would make the two initialize each
     /// other.
+    ///
+    /// The tripwire this plants may not reach the OS on this pass — its re-registration needs the
+    /// refresh gate, which the sync calling us still holds. It is persisted either way, so the next
+    /// sync carries it. A device standing still has no next sync, which is what foreground
+    /// evaluation is for.
     private func evaluateNewPolygons(_ polygons: [Geofence], expectedUserId: String) {
         Task { @MainActor [contextStore] in
             let resolver = DIGraphShared.shared.polygonMembershipResolver
