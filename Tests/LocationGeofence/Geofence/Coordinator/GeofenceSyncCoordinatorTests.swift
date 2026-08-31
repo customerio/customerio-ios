@@ -2267,6 +2267,10 @@ private actor SpyGeofenceSyncStorage: GeofenceSyncStorage {
         return await underlying.getRegisteredBusinessIds()
     }
 
+    func getPolygonTripwires() async -> [String: PolygonTripwire] {
+        await underlying.getPolygonTripwires()
+    }
+
     func setCachedGeofences(_ regions: [Geofence]) async {
         onSetCachedGeofences?()
         operations.append(.setCachedGeofences)

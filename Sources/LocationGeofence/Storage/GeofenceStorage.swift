@@ -205,6 +205,7 @@ actor GeofenceStorage {
         state.monitoredGeofenceIds = nil
         state.monitorRegionRecords = nil
         state.polygonMembership = nil
+        state.polygonTripwires = nil
         saveToDisk(state)
     }
 
@@ -289,7 +290,11 @@ actor GeofenceStorage {
         // dropped. Retaining exactly the registered set bounds the records the same way
         // `monitoredGeofenceIds` is bounded, and clears anything a previous version stranded.
         if let records = state.monitorRegionRecords {
-            let retained = businessIds.union([GeofenceConstants.movementTriggerIdentifier])
+            // Tripwire conditions are keyed by their own identifier, not the geofence id, so they
+            // have to be named explicitly or every sync would drop the record for a live tripwire.
+            let retained = businessIds
+                .union(businessIds.map(GeofenceInternalIdentifier.tripwire(for:)))
+                .union([GeofenceConstants.movementTriggerIdentifier])
             state.monitorRegionRecords = records.filter { retained.contains($0.key) }
         }
         state.prunePolygonState(retaining: businessIds)

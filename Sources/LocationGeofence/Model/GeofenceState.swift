@@ -23,6 +23,9 @@ struct GeofenceState: Codable, Equatable, Sendable {
     /// Believed device membership for each polygon geofence, keyed by geofence id. Absent for
     /// circle fences, and absent for a polygon no fix has yet decided (see `PolygonMembership`).
     var polygonMembership: [String: PolygonMembershipRecord]?
+    /// Tripwires currently planted for polygon geofences, keyed by geofence id. Present only while
+    /// the device is inside that polygon's covering circle.
+    var polygonTripwires: [String: PolygonTripwire]?
     /// Per-condition bookkeeping for the CLMonitor (iOS 17+) monitor, keyed by region identifier.
     /// `nil` on the classic CLLocationManager path, which needs neither: its delegate fires only on
     /// real crossings (no dedup needed) and filters transition types at the OS level.

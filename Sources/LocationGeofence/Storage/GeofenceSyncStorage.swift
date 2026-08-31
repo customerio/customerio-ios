@@ -10,6 +10,7 @@ protocol GeofenceSyncStorage: Sendable {
     func getLastSync() async -> LastSyncRecord?
     func getLastRegistrationCenter() async -> LocationData?
     func getRegisteredBusinessIds() async -> Set<String>
+    func getPolygonTripwires() async -> [String: PolygonTripwire]
     func setCachedGeofences(_ regions: [Geofence]) async
     func setCachedConfig(_ config: GeofenceConfig) async
     func recordSync(timestamp: Date, location: LocationData) async

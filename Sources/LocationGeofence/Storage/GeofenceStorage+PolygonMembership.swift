@@ -46,15 +46,47 @@ extension GeofenceStorage {
     func getPolygonMembership() -> [String: PolygonMembershipRecord] {
         loadFromDisk()?.polygonMembership ?? [:]
     }
+
+    /// Snapshot of every planted tripwire. Read when composing the OS-monitored set, so a tripwire
+    /// survives the reconciliation that would otherwise sweep away a region nobody asked for.
+    func getPolygonTripwires() -> [String: PolygonTripwire] {
+        loadFromDisk()?.polygonTripwires ?? [:]
+    }
+
+    /// Plants or moves the tripwire for a polygon. Persisted before the OS registration so a sync
+    /// racing the plant still finds it in the desired set.
+    func setPolygonTripwire(_ tripwire: PolygonTripwire, forIdentifier identifier: String) {
+        var state = loadFromDisk() ?? GeofenceState()
+        var tripwires = state.polygonTripwires ?? [:]
+        tripwires[identifier] = tripwire
+        state.polygonTripwires = tripwires
+        saveToDisk(state)
+    }
+
+    /// Removes the tripwire for a polygon, once the device has left its covering circle and the
+    /// wake it provided is no longer needed. Returns whether anything was removed, so the caller
+    /// can skip a re-registration that would change nothing.
+    @discardableResult
+    func clearPolygonTripwire(forIdentifier identifier: String) -> Bool {
+        var state = loadFromDisk() ?? GeofenceState()
+        guard var tripwires = state.polygonTripwires, tripwires.removeValue(forKey: identifier) != nil else { return false }
+        state.polygonTripwires = tripwires
+        saveToDisk(state)
+        return true
+    }
 }
 
 extension GeofenceState {
-    /// Drops polygon belief for geofences a registration no longer covers, on the same rule the
-    /// monitor records use: a polygon outside the registered set is no longer being evaluated, so a
-    /// retained belief would go stale and suppress the enter owed when the device comes back to it.
+    /// Drops polygon belief and tripwires for geofences a registration no longer covers, on the
+    /// same rule the monitor records use: a polygon outside the registered set is no longer being
+    /// evaluated, so a retained belief would go stale and suppress the enter owed when the device
+    /// comes back to it, and a retained tripwire would name a condition nothing plants.
     mutating func prunePolygonState(retaining businessIds: Set<String>) {
         if let membership = polygonMembership {
             polygonMembership = membership.filter { businessIds.contains($0.key) }
+        }
+        if let tripwires = polygonTripwires {
+            polygonTripwires = tripwires.filter { businessIds.contains($0.key) }
         }
     }
 }
