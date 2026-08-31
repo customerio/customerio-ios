@@ -32,7 +32,8 @@ extension GeofenceSyncCoordinatorImpl {
         businessRegions: [Geofence],
         movementTriggerLocation: LocationData,
         movementTriggerRadius: Double,
-        registerMovementTrigger: Bool
+        registerMovementTrigger: Bool,
+        tripwires: [String: PolygonTripwire] = [:]
     ) -> GeofenceOsRegistration {
         var desired: [GeofenceRegionRequest] = []
         // Order the movement trigger FIRST so it isn't starved when business regions fill the
@@ -61,6 +62,25 @@ extension GeofenceSyncCoordinatorImpl {
             )
             return false
         }
+        // Tripwires next, ahead of the business regions and for the same reason the movement
+        // trigger is: a tripwire only exists while the device is inside that polygon's covering
+        // circle, and losing it to a full budget would leave the annulus with no wake source at
+        // all. Only for polygons still in this pass's set — one evicted from the set is no longer
+        // evaluated, and its tripwire is pruned alongside its membership.
+        let registeredIdsForTripwires = Set(registrable.map(\.id))
+        desired.append(
+            contentsOf: tripwires
+                .filter { registeredIdsForTripwires.contains($0.key) }
+                .sorted { $0.key < $1.key }
+                .map { geofenceId, tripwire in
+                    GeofenceRegionRequest(
+                        identifier: GeofenceInternalIdentifier.tripwire(for: geofenceId),
+                        center: tripwire.center,
+                        radius: tripwire.radius,
+                        transitionTypes: [.exit]
+                    )
+                }
+        )
         desired.append(contentsOf: registrable.map { region in
             GeofenceRegionRequest(
                 identifier: region.id,

@@ -44,6 +44,7 @@ enum GeofenceBootstrap {
         // registration center but leaves lastSync at the fetch point, so restoring from lastSync
         // would revert the OS to the older nearest-set. Falls back to lastSync before any re-rank.
         let restoreAnchor = await di.geofenceStorage.getLastRegistrationCenter() ?? lastSync?.location
+        let tripwires = await di.geofenceStorage.getPolygonTripwires()
         let userId = di.backgroundDeliveryContextStore.currentUserId
 
         // The set we expect to still own: the business geofences registered last session plus the
@@ -51,8 +52,12 @@ enum GeofenceBootstrap {
         // — expected-owned mirrors the register condition, so a kill-switched account reclaims
         // nothing. Compared against the OS-retained set below.
         let lastRegisteredBusinessIds = await di.geofenceStorage.getRegisteredBusinessIds()
+        // Planted tripwires are owned regions too: without them here a cold wake never re-claims
+        // the condition, and the ownership gate drops the very EXIT the tripwire exists to deliver.
         let expectedOwnedRegions = (cachedConfig ?? .fallback).maxBusinessGeofences > 0
-            ? lastRegisteredBusinessIds.union([GeofenceConstants.movementTriggerIdentifier])
+            ? lastRegisteredBusinessIds
+            .union(tripwires.keys.map(GeofenceInternalIdentifier.tripwire(for:)))
+            .union([GeofenceConstants.movementTriggerIdentifier])
             : []
         // Adopt-time seed for the CLMonitor path's geometry bookkeeping (empty on classic).
         let monitorRecords = await di.geofenceStorage.getMonitorRegionRecords()
@@ -97,6 +102,7 @@ enum GeofenceBootstrap {
                 cachedRegions: cachedRegions,
                 anchor: restoreAnchor,
                 config: cachedConfig,
+                tripwires: tripwires,
                 userId: userId
             )
             // Persist what was registered as the ranking-staleness reference. The await is safe

@@ -5,9 +5,11 @@ import Foundation
 /// `startMonitoring` call so cold-wake delegate callbacks arriving immediately after
 /// `CLLocationManager` becomes active have a handler to dispatch to.
 ///
-/// Two dispatch paths:
+/// Three dispatch paths:
 /// - `GeofenceConstants.movementTriggerIdentifier` (EXIT) → `coordinator.handleMovement`
 ///   (internal; never tracked as a customer event).
+/// - A polygon's tripwire (EXIT) → `resolver.evaluateMembership` (internal; the wake that lets the
+///   SDK re-check membership inside a covering circle, where the OS is silent).
 /// - Any other identifier → `resolver.handleTransition`, which forwards circle geofences to the
 ///   tracker unchanged and interprets a polygon's covering-circle event against membership.
 @MainActor
@@ -36,7 +38,20 @@ enum GeofenceMonitorBinder {
                 }
                 return
             }
-            Task { await resolver?.handleTransition(identifier: identifier, transition: transition) }
+            if let polygonId = GeofenceInternalIdentifier.geofenceId(forTripwire: identifier) {
+                // A tripwire is planted around the device to provoke a wake once it has moved far
+                // enough to change the verdict; only leaving it carries information. Held under a
+                // background-task assertion for the same reason the movement pass is — the wake
+                // window can expire mid-evaluation, and nothing re-delivers a consumed EXIT.
+                guard transition == .exit else { return }
+                Task {
+                    await backgroundTaskRunner.withBackgroundTime {
+                        await resolver?.evaluateMembership(geofenceId: polygonId, reason: "tripwire wake")
+                    }
+                }
+                return
+            }
+            Task { await resolver?.handleTransition(identifier: identifier, transition: transition, location: location) }
         }
     }
 }

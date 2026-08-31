@@ -681,6 +681,7 @@ struct GeofenceSyncCoordinatorTests {
             cachedRegions: [sampleRegion()],
             anchor: LocationData(latitude: 0, longitude: 0),
             config: .fallback,
+            tripwires: [:],
             userId: nil
         )
 
@@ -698,6 +699,7 @@ struct GeofenceSyncCoordinatorTests {
             cachedRegions: [],
             anchor: LocationData(latitude: 0, longitude: 0),
             config: .fallback,
+            tripwires: [:],
             userId: "user-1"
         )
 
@@ -722,6 +724,7 @@ struct GeofenceSyncCoordinatorTests {
             cachedRegions: [],
             anchor: LocationData(latitude: 0, longitude: 0),
             config: config,
+            tripwires: [:],
             userId: "user-1"
         )
 
@@ -738,6 +741,7 @@ struct GeofenceSyncCoordinatorTests {
             cachedRegions: [sampleRegion()],
             anchor: nil,
             config: .fallback,
+            tripwires: [:],
             userId: "user-1"
         )
 
@@ -765,6 +769,7 @@ struct GeofenceSyncCoordinatorTests {
             cachedRegions: regions,
             anchor: anchor,
             config: config,
+            tripwires: [:],
             userId: "user-1"
         )
 
@@ -806,6 +811,7 @@ struct GeofenceSyncCoordinatorTests {
             cachedRegions: regions,
             anchor: anchor,
             config: config,
+            tripwires: [:],
             userId: "user-1"
         )
 
@@ -821,6 +827,7 @@ struct GeofenceSyncCoordinatorTests {
             cachedRegions: [sampleRegion()],
             anchor: LocationData(latitude: 0, longitude: 0),
             config: .fallback,
+            tripwires: [:],
             userId: nil
         )
 
@@ -845,6 +852,7 @@ struct GeofenceSyncCoordinatorTests {
             cachedRegions: [makeRegion(id: "far", latitude: 1, longitude: 2)], // ~248 km from anchor
             anchor: LocationData(latitude: 0, longitude: 0),
             config: config,
+            tripwires: [:],
             userId: "user-1"
         )
 
@@ -869,6 +877,7 @@ struct GeofenceSyncCoordinatorTests {
             cachedRegions: [makeRegion(id: "g1", latitude: 0, longitude: 0)],
             anchor: LocationData(latitude: 0, longitude: 0),
             config: config,
+            tripwires: [:],
             userId: "user-1"
         )
 
@@ -884,6 +893,7 @@ struct GeofenceSyncCoordinatorTests {
             cachedRegions: [sampleRegion(offset: 0.1)],
             anchor: anchor,
             config: nil,
+            tripwires: [:],
             userId: "user-1"
         )
 
@@ -917,6 +927,7 @@ struct GeofenceSyncCoordinatorTests {
             cachedRegions: [sampleRegion()],
             anchor: LocationData(latitude: 0, longitude: 0),
             config: .fallback,
+            tripwires: [:],
             userId: "user-1"
         )
         #expect(setup.monitor.startedRegions.count == monitorCallsBefore)

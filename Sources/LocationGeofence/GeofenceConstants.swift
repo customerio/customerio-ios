@@ -48,6 +48,11 @@ enum GeofenceConstants {
     /// this covers processes that live for days without one.
     static let foregroundRearmInterval: TimeInterval = 6 * 60 * 60
 
+    /// Floor on the radius of a polygon tripwire — the device-centered circle planted inside a
+    /// covering circle to provoke a wake once the device has moved far enough to change the
+    /// membership verdict. Below this the OS promotes crossings too unreliably to be worth a slot.
+    static let polygonTripwireMinRadius: Double = 100
+
     // Floor on the baseline-heal ambiguity margin (meters): a fix closer than this to the fence
     // edge never synthesizes a crossing, even when it reports better accuracy.
     static let baselineHealMinEdgeMargin: Double = 20

@@ -32,13 +32,14 @@ struct GeofenceMonitorBinderTests {
 
     /// The binder holds the resolver weakly (the production instance is a DI singleton), so every
     /// test must keep its own strong reference or the dispatch silently never fires.
-    private func makeResolver(tracker: GeofenceEventTracker) -> PolygonMembershipResolver {
+    private func makeResolver(tracker: GeofenceEventTracker, coordinator: GeofenceSyncCoordinator) -> PolygonMembershipResolver {
         PolygonMembershipResolver(
             storage: GeofenceStorage(
                 fileManager: .default,
                 directoryURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
             ),
             transitionEmitter: tracker,
+            coordinator: coordinator,
             logger: LoggerMock()
         )
     }
@@ -47,6 +48,7 @@ struct GeofenceMonitorBinderTests {
         let mock = GeofenceSyncCoordinatorMock()
         mock.refreshReturnValue = .success(())
         mock.handleMovementReturnValue = .success(())
+        mock.reapplyRegistrationReturnValue = .success(())
         return mock
     }
 
@@ -71,7 +73,7 @@ struct GeofenceMonitorBinderTests {
         let coordinator = makeCoordinatorMock()
         let tracker = makeTracker(deliveryTracker: makeDeliveryMock())
 
-        let resolver = makeResolver(tracker: tracker)
+        let resolver = makeResolver(tracker: tracker, coordinator: coordinator)
         GeofenceMonitorBinder.bind(monitor: monitor, resolver: resolver, coordinator: coordinator)
         monitor.simulateTransition(
             identifier: GeofenceConstants.movementTriggerIdentifier,
@@ -94,7 +96,7 @@ struct GeofenceMonitorBinderTests {
         let delivery = makeDeliveryMock()
         let tracker = makeTracker(deliveryTracker: delivery)
 
-        let resolver = makeResolver(tracker: tracker)
+        let resolver = makeResolver(tracker: tracker, coordinator: coordinator)
         GeofenceMonitorBinder.bind(monitor: monitor, resolver: resolver, coordinator: coordinator)
         monitor.simulateTransition(
             identifier: GeofenceConstants.movementTriggerIdentifier,
@@ -117,7 +119,7 @@ struct GeofenceMonitorBinderTests {
         let coordinator = makeCoordinatorMock()
         let tracker = makeTracker(deliveryTracker: makeDeliveryMock())
 
-        let resolver = makeResolver(tracker: tracker)
+        let resolver = makeResolver(tracker: tracker, coordinator: coordinator)
         GeofenceMonitorBinder.bind(monitor: monitor, resolver: resolver, coordinator: coordinator)
         monitor.simulateTransition(
             identifier: GeofenceConstants.movementTriggerIdentifier,
@@ -138,7 +140,7 @@ struct GeofenceMonitorBinderTests {
         let delivery = makeDeliveryMock()
         let tracker = makeTracker(deliveryTracker: delivery)
 
-        let resolver = makeResolver(tracker: tracker)
+        let resolver = makeResolver(tracker: tracker, coordinator: coordinator)
         GeofenceMonitorBinder.bind(monitor: monitor, resolver: resolver, coordinator: coordinator)
         monitor.simulateTransition(
             identifier: "business-region-1",

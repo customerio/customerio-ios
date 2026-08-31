@@ -5,7 +5,7 @@ import Foundation
 import UIKit
 #endif
 
-/// Turns OS covering-circle events into customer-facing polygon transitions.
+/// Turns OS covering-circle events and tripwire wakes into customer-facing polygon transitions.
 ///
 /// The OS monitors a polygon's server-guaranteed covering circle and knows nothing about the
 /// polygon itself, so membership is a second fact that has to be established on device. This sits
@@ -28,6 +28,7 @@ import UIKit
 final class PolygonMembershipResolver {
     private let storage: GeofenceStorage
     private let transitionEmitter: GeofenceTransitionEmitting
+    private let coordinator: GeofenceSyncCoordinator
     private let fixResolver: MovementFixResolver
     private let logger: Logger
     private var foregroundObserverToken: NSObjectProtocol?
@@ -35,11 +36,13 @@ final class PolygonMembershipResolver {
     init(
         storage: GeofenceStorage,
         transitionEmitter: GeofenceTransitionEmitting,
+        coordinator: GeofenceSyncCoordinator,
         logger: Logger,
         fixResolver: MovementFixResolver? = nil
     ) {
         self.storage = storage
         self.transitionEmitter = transitionEmitter
+        self.coordinator = coordinator
         self.logger = logger
         self.fixResolver = fixResolver ?? MovementFixResolver(
             logger: logger,
@@ -61,7 +64,7 @@ final class PolygonMembershipResolver {
     /// condition the cache has dropped) is forwarded rather than dropped: treating it as a circle
     /// is the behaviour that predates polygons, and losing a real crossing is worse than a
     /// covering-circle-shaped one.
-    func handleTransition(identifier: String, transition: GeofenceTransition) async {
+    func handleTransition(identifier: String, transition: GeofenceTransition, location: LocationData?) async {
         logger.geofenceOsTransitionReceived(identifier: identifier, transition: transition)
         guard let geofence = await cachedGeofence(id: identifier),
               let polygon = geofence.polygonRegion
@@ -71,17 +74,19 @@ final class PolygonMembershipResolver {
         }
         switch transition {
         case .exit:
-            // polygon ⊆ covering circle, so leaving the circle is geometric certainty and needs
-            // no fix.
+            // polygon ⊆ covering circle, so leaving the circle is geometric certainty and needs no
+            // fix. The tripwire goes with it: outside the circle there is no annulus to watch.
             await apply(.outside, to: geofence, evidence: nil)
+            await clearTripwire(for: geofence.id, at: location)
         case .enter:
-            await evaluate(geofence: geofence, polygon: polygon)
+            await evaluate(geofence: geofence, polygon: polygon, containment: .coveringCircleEnter)
         }
     }
 
-    /// Re-evaluates membership for one polygon: the entry point for a polygon that has just been
-    /// registered, where the device may already be standing inside and no crossing will ever be
-    /// delivered. A geofence that is no longer cached or no longer a polygon has nothing to decide.
+    /// Re-evaluates membership for one polygon: the wake path used by tripwire exits, and the
+    /// entry point for a polygon that has just been registered, where the device may already be
+    /// standing inside and no crossing will ever be delivered. A geofence that is no longer cached
+    /// or no longer a polygon has nothing to decide.
     ///
     /// Logged because this path bypasses `handleTransition`, so nothing else records that we were
     /// asked to re-check. Reading the absence of a log line as an absence of evaluations led to
@@ -125,13 +130,52 @@ final class PolygonMembershipResolver {
         #endif
     }
 
-    private func evaluate(geofence: Geofence, polygon: PolygonRegion) async {
+    /// How we know whether the device is inside the covering circle, which decides whether a
+    /// tripwire is worth a slot. The distinction matters because our own fix can be staler than the
+    /// event we are reacting to.
+    private enum ContainmentEvidence {
+        /// The OS reported a crossing INTO the covering circle. That is stronger than any fix we
+        /// hold: it is the OS's own evaluation, at the moment it happened.
+        case coveringCircleEnter
+        /// No OS statement — containment has to be inferred from the fix.
+        case fixOnly
+    }
+
+    private func evaluate(
+        geofence: Geofence, polygon: PolygonRegion, containment: ContainmentEvidence = .fixOnly
+    ) async {
         guard let fix = await resolveFix(), CLLocationCoordinate2DIsValid(fix.coordinate) else {
             logger.geofencePolygonUndecided(identifier: geofence.id, reason: "no usable fix")
             return
         }
         let point = LocationData(latitude: fix.coordinate.latitude, longitude: fix.coordinate.longitude)
         let signedEdgeDistance = polygon.signedEdgeDistance(to: point)
+        // A tripwire is only worth a slot inside the covering circle. Outside it the OS's own
+        // covering-circle enter is the wake, and a tripwire would be a region that can never fire
+        // first — this path is reached for EVERY registered polygon on a foreground evaluation,
+        // including ones the device is kilometres from, so planting unconditionally burns the
+        // scarce 20-region budget on wakes that cannot happen.
+        //
+        // Planted before the verdict is consulted, and whatever the verdict is: an undecided
+        // evaluation still needs a wake to try again from, and that is exactly the annulus case the
+        // tripwire exists for.
+        let headroom = geofence.radius - geofence.distanceTo(point)
+        switch containment {
+        case .coveringCircleEnter:
+            // The OS just said we are inside, so never clear here, whatever our fix says. Measured
+            // in the field: a 15.5 s-old cached fix — well within `movementFixMaxAge` — placed the
+            // device ~400 m from where it was, outside a circle it had just entered, and retired
+            // the tripwire for the whole 12 minutes it then spent in the annulus.
+            await updateTripwire(for: geofence.id, center: point, signedEdgeDistance: signedEdgeDistance)
+        case .fixOnly:
+            if headroom > 0 {
+                await updateTripwire(for: geofence.id, center: point, signedEdgeDistance: signedEdgeDistance)
+            } else if -headroom > max(fix.horizontalAccuracy, GeofenceConstants.baselineHealMinEdgeMargin) {
+                // Retire it only when decisively outside. Inside the uncertainty band, leaving the
+                // tripwire alone costs a slot; dropping it can cost a crossing.
+                await clearTripwire(for: geofence.id, at: point)
+            }
+        }
         guard let membership = PolygonMembershipDecision.resolvedMembership(
             signedEdgeDistance: signedEdgeDistance,
             horizontalAccuracy: fix.horizontalAccuracy,
@@ -164,6 +208,40 @@ final class PolygonMembershipResolver {
             confirmedByFix: evidence != nil
         )
         await transitionEmitter.trackTransition(geofenceId: geofence.id, transition: transition)
+    }
+
+    /// Plants or moves the tripwire so it sits on the device with a radius reaching the polygon
+    /// boundary — leaving it is precisely the point at which this evaluation's verdict stops being
+    /// safe to trust. Floored, because below that the OS promotes crossings too unreliably.
+    ///
+    /// Deliberately NOT capped at the distance left inside the covering circle. Capping sounds
+    /// tidy — it keeps the tripwire a strictly earlier signal than the circle's own exit — but a
+    /// tripwire larger than the circle is merely redundant, while a small one is not promoted at
+    /// all, and the cap pinned the radius to the floor at exactly the moment a covering-circle
+    /// enter plants one. Promotability wins over tidiness.
+    ///
+    /// Persisted before the re-registration so a sync racing this call still composes it into the
+    /// desired set. An unchanged tripwire is left alone: re-registering the same circle would risk
+    /// absorbing a crossing the OS has detected but not yet delivered.
+    private func updateTripwire(for geofenceId: String, center: LocationData, signedEdgeDistance: Double) async {
+        let tripwire = PolygonTripwire(
+            center: center,
+            radius: max(abs(signedEdgeDistance), GeofenceConstants.polygonTripwireMinRadius)
+        )
+        guard await storage.getPolygonTripwires()[geofenceId] != tripwire else { return }
+        await storage.setPolygonTripwire(tripwire, forIdentifier: geofenceId)
+        logger.geofencePolygonTripwirePlanted(identifier: geofenceId, radius: tripwire.radius)
+        _ = await coordinator.reapplyRegistration(latitude: center.latitude, longitude: center.longitude)
+    }
+
+    /// Drops the tripwire once its polygon's covering circle has been left. Without a location the
+    /// re-registration is skipped rather than guessed at — the tripwire is already gone from
+    /// storage, so the next sync composes a desired set without it and the OS condition goes then.
+    private func clearTripwire(for geofenceId: String, at location: LocationData?) async {
+        guard await storage.clearPolygonTripwire(forIdentifier: geofenceId) else { return }
+        logger.geofencePolygonTripwireCleared(identifier: geofenceId)
+        guard let location else { return }
+        _ = await coordinator.reapplyRegistration(latitude: location.latitude, longitude: location.longitude)
     }
 
     private func cachedGeofence(id: String) async -> Geofence? {
@@ -202,6 +280,7 @@ extension PolygonMembershipResolver {
     static let shared = PolygonMembershipResolver(
         storage: DIGraphShared.shared.geofenceStorage,
         transitionEmitter: DIGraphShared.shared.geofenceEventTracker,
+        coordinator: DIGraphShared.shared.geofenceSyncCoordinator,
         logger: DIGraphShared.shared.logger
     )
 }

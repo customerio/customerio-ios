@@ -158,6 +158,14 @@ extension Logger {
         info("Polygon \(transition.rawValue) for region \(identifier), confirmed by \(basis)", geofenceTag)
     }
 
+    func geofencePolygonTripwirePlanted(identifier: String, radius: Double) {
+        debug("Planted polygon tripwire for region \(identifier), radius \(Int(radius)) m", geofenceTag)
+    }
+
+    func geofencePolygonTripwireCleared(identifier: String) {
+        debug("Cleared polygon tripwire for region \(identifier)", geofenceTag)
+    }
+
     func geofencePolygonEvaluationRequested(identifier: String, reason: String) {
         debug("Re-evaluating polygon membership for region \(identifier) (\(reason))", geofenceTag)
     }

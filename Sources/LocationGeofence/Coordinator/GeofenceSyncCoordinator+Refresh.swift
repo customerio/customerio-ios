@@ -36,7 +36,8 @@ extension GeofenceSyncCoordinatorImpl {
         let regions = response.toDomainRegions(onInvalidRegion: { logger.geofenceInvalidRegionDropped($0) })
         let effectiveConfig = parsedConfig ?? cachedConfig ?? .fallback
         let anchor = LocationData(latitude: latitude, longitude: longitude)
-        let nearest = distanceFilter.nearest(regions, to: anchor, limit: effectiveConfig.maxBusinessGeofences, maxDistance: effectiveConfig.maxMonitoringDistance)
+        let tripwires = await storage.getPolygonTripwires()
+        let nearest = distanceFilter.nearest(regions, to: anchor, limit: businessLimit(for: effectiveConfig, tripwires: tripwires), maxDistance: effectiveConfig.maxMonitoringDistance)
         let registerMovementTrigger = effectiveConfig.maxBusinessGeofences > 0
         // Read before `recordRegistration` overwrites it — the diff decides which registrations are new.
         let previouslyRegisteredIds = await storage.getRegisteredBusinessIds()
@@ -46,7 +47,8 @@ extension GeofenceSyncCoordinatorImpl {
                 businessRegions: nearest,
                 movementTriggerLocation: anchor,
                 movementTriggerRadius: effectiveConfig.localRefreshTriggerRadius,
-                registerMovementTrigger: registerMovementTrigger
+                registerMovementTrigger: registerMovementTrigger,
+                tripwires: tripwires
             )
         }
 
@@ -81,7 +83,8 @@ extension GeofenceSyncCoordinatorImpl {
         cachedRegions: [Geofence]
     ) async -> Result<Void, GeofenceSyncError> {
         let anchor = LocationData(latitude: latitude, longitude: longitude)
-        let nearest = distanceFilter.nearest(cachedRegions, to: anchor, limit: config.maxBusinessGeofences, maxDistance: config.maxMonitoringDistance)
+        let tripwires = await storage.getPolygonTripwires()
+        let nearest = distanceFilter.nearest(cachedRegions, to: anchor, limit: businessLimit(for: config, tripwires: tripwires), maxDistance: config.maxMonitoringDistance)
         let registerMovementTrigger = config.maxBusinessGeofences > 0
         // Read before `recordRegistration` overwrites it — the diff decides which registrations are new.
         let previouslyRegisteredIds = await storage.getRegisteredBusinessIds()
@@ -91,7 +94,8 @@ extension GeofenceSyncCoordinatorImpl {
                 businessRegions: nearest,
                 movementTriggerLocation: anchor,
                 movementTriggerRadius: config.localRefreshTriggerRadius,
-                registerMovementTrigger: registerMovementTrigger
+                registerMovementTrigger: registerMovementTrigger,
+                tripwires: tripwires
             )
         }
         await storage.recordRegistration(center: anchor, businessIds: nearestIds)

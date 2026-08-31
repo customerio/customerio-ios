@@ -243,6 +243,11 @@ class GeofenceSyncCoordinatorMock: @unchecked Sendable, GeofenceSyncCoordinator,
         _resetCallsCount.wrappedValue = 0
 
         mockCalled = false // do last as resetting properties above can make this true
+        _reapplyRegistrationCallsCount.wrappedValue = 0
+        _reapplyRegistrationReceivedArguments.wrappedValue = nil
+        _reapplyRegistrationReceivedInvocations.wrappedValue = []
+
+        mockCalled = false // do last as resetting properties above can make this true
         _applyCachedRegistrationCallsCount.wrappedValue = 0
         _applyCachedRegistrationReceivedArguments.wrappedValue = nil
         _applyCachedRegistrationReceivedInvocations.wrappedValue = []
@@ -380,6 +385,54 @@ class GeofenceSyncCoordinatorMock: @unchecked Sendable, GeofenceSyncCoordinator,
         return resetClosure.map { $0() } ?? resetReturnValue
     }
 
+    // MARK: - reapplyRegistration
+
+    /// Number of times the function was called.
+    private let _reapplyRegistrationCallsCount: CioInternalCommon.Synchronized<Int> = .init(0)
+    var reapplyRegistrationCallsCount: Int {
+        _reapplyRegistrationCallsCount.wrappedValue
+    }
+
+    /// `true` if the function was ever called.
+    var reapplyRegistrationCalled: Bool {
+        reapplyRegistrationCallsCount > 0
+    }
+
+    /// The arguments from the *last* time the function was called.
+    private let _reapplyRegistrationReceivedArguments: CioInternalCommon.Synchronized<(latitude: Double, longitude: Double)?> = .init(nil)
+    var reapplyRegistrationReceivedArguments: (latitude: Double, longitude: Double)? {
+        _reapplyRegistrationReceivedArguments.wrappedValue
+    }
+
+    /// Arguments from *all* of the times that the function was called.
+    private let _reapplyRegistrationReceivedInvocations: CioInternalCommon.Synchronized<[(latitude: Double, longitude: Double)]> = .init([])
+    var reapplyRegistrationReceivedInvocations: [(latitude: Double, longitude: Double)] {
+        _reapplyRegistrationReceivedInvocations.wrappedValue
+    }
+
+    /// Value to return from the mocked function.
+    private let _reapplyRegistrationReturnValue: CioInternalCommon.Synchronized<Result<Void, GeofenceSyncError>?> = .init(nil)
+    var reapplyRegistrationReturnValue: Result<Void, GeofenceSyncError>! {
+        get { _reapplyRegistrationReturnValue.wrappedValue }
+        set { _reapplyRegistrationReturnValue.wrappedValue = newValue }
+    }
+
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     The closure has first priority to return a value for the mocked function. If the closure returns `nil`,
+     then the mock will attempt to return the value for `reapplyRegistrationReturnValue`
+     */
+    var reapplyRegistrationClosure: ((Double, Double) -> Result<Void, GeofenceSyncError>)?
+
+    /// Mocked function for `reapplyRegistration(latitude: Double, longitude: Double)`. Your opportunity to return a mocked value and check result of mock in test code.
+    func reapplyRegistration(latitude: Double, longitude: Double) -> Result<Void, GeofenceSyncError> {
+        mockCalled = true
+        _reapplyRegistrationCallsCount += 1
+        _reapplyRegistrationReceivedArguments.wrappedValue = (latitude: latitude, longitude: longitude)
+        _reapplyRegistrationReceivedInvocations.append((latitude: latitude, longitude: longitude))
+        return reapplyRegistrationClosure.map { $0(latitude, longitude) } ?? reapplyRegistrationReturnValue
+    }
+
     // MARK: - applyCachedRegistration
 
     /// Number of times the function was called.
@@ -394,14 +447,14 @@ class GeofenceSyncCoordinatorMock: @unchecked Sendable, GeofenceSyncCoordinator,
     }
 
     /// The arguments from the *last* time the function was called.
-    private let _applyCachedRegistrationReceivedArguments: CioInternalCommon.Synchronized<(cachedRegions: [Geofence], anchor: LocationData?, config: GeofenceConfig?, userId: String?)?> = .init(nil)
-    var applyCachedRegistrationReceivedArguments: (cachedRegions: [Geofence], anchor: LocationData?, config: GeofenceConfig?, userId: String?)? {
+    private let _applyCachedRegistrationReceivedArguments: CioInternalCommon.Synchronized<(cachedRegions: [Geofence], anchor: LocationData?, config: GeofenceConfig?, tripwires: [String: PolygonTripwire], userId: String?)?> = .init(nil)
+    var applyCachedRegistrationReceivedArguments: (cachedRegions: [Geofence], anchor: LocationData?, config: GeofenceConfig?, tripwires: [String: PolygonTripwire], userId: String?)? {
         _applyCachedRegistrationReceivedArguments.wrappedValue
     }
 
     /// Arguments from *all* of the times that the function was called.
-    private let _applyCachedRegistrationReceivedInvocations: CioInternalCommon.Synchronized<[(cachedRegions: [Geofence], anchor: LocationData?, config: GeofenceConfig?, userId: String?)]> = .init([])
-    var applyCachedRegistrationReceivedInvocations: [(cachedRegions: [Geofence], anchor: LocationData?, config: GeofenceConfig?, userId: String?)] {
+    private let _applyCachedRegistrationReceivedInvocations: CioInternalCommon.Synchronized<[(cachedRegions: [Geofence], anchor: LocationData?, config: GeofenceConfig?, tripwires: [String: PolygonTripwire], userId: String?)]> = .init([])
+    var applyCachedRegistrationReceivedInvocations: [(cachedRegions: [Geofence], anchor: LocationData?, config: GeofenceConfig?, tripwires: [String: PolygonTripwire], userId: String?)] {
         _applyCachedRegistrationReceivedInvocations.wrappedValue
     }
 
@@ -417,16 +470,16 @@ class GeofenceSyncCoordinatorMock: @unchecked Sendable, GeofenceSyncCoordinator,
      The closure has first priority to return a value for the mocked function. If the closure returns `nil`,
      then the mock will attempt to return the value for `applyCachedRegistrationReturnValue`
      */
-    var applyCachedRegistrationClosure: (([Geofence], LocationData?, GeofenceConfig?, String?) -> GeofenceRegistration?)?
+    var applyCachedRegistrationClosure: (([Geofence], LocationData?, GeofenceConfig?, [String: PolygonTripwire], String?) -> GeofenceRegistration?)?
 
-    /// Mocked function for `applyCachedRegistration(cachedRegions: [Geofence], anchor: LocationData?, config: GeofenceConfig?, userId: String?)`. Your opportunity to return a mocked value and check result of mock in test code.
+    /// Mocked function for `applyCachedRegistration(cachedRegions: [Geofence], anchor: LocationData?, config: GeofenceConfig?, tripwires: [String: PolygonTripwire], userId: String?)`. Your opportunity to return a mocked value and check result of mock in test code.
     @MainActor
-    func applyCachedRegistration(cachedRegions: [Geofence], anchor: LocationData?, config: GeofenceConfig?, userId: String?) -> GeofenceRegistration? {
+    func applyCachedRegistration(cachedRegions: [Geofence], anchor: LocationData?, config: GeofenceConfig?, tripwires: [String: PolygonTripwire], userId: String?) -> GeofenceRegistration? {
         mockCalled = true
         _applyCachedRegistrationCallsCount += 1
-        _applyCachedRegistrationReceivedArguments.wrappedValue = (cachedRegions: cachedRegions, anchor: anchor, config: config, userId: userId)
-        _applyCachedRegistrationReceivedInvocations.append((cachedRegions: cachedRegions, anchor: anchor, config: config, userId: userId))
-        return applyCachedRegistrationClosure.map { $0(cachedRegions, anchor, config, userId) } ?? applyCachedRegistrationReturnValue
+        _applyCachedRegistrationReceivedArguments.wrappedValue = (cachedRegions: cachedRegions, anchor: anchor, config: config, tripwires: tripwires, userId: userId)
+        _applyCachedRegistrationReceivedInvocations.append((cachedRegions: cachedRegions, anchor: anchor, config: config, tripwires: tripwires, userId: userId))
+        return applyCachedRegistrationClosure.map { $0(cachedRegions, anchor, config, tripwires, userId) } ?? applyCachedRegistrationReturnValue
     }
 }
 

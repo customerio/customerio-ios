@@ -31,17 +31,23 @@ enum HandleMovementTier: String, Sendable {
 ///   `ownedRegionIdentifiers` is populated before the next yield — otherwise the OS may
 ///   deliver a queued cold-wake transition into an empty filter set. Returns what it
 ///   registered so the caller can persist it once the no-await window has closed.
+/// - `reapplyRegistration(latitude:longitude:)` — re-composes the OS-monitored set for the current
+///   location without consulting the server. Used when the desired set changed for a reason other
+///   than device movement: a polygon tripwire was planted or cleared and must reach the OS before
+///   the next sync would otherwise run.
 /// - `reset()` — sign-out cleanup. Stops OS-side monitoring and clears user-scoped store
 ///   state (cooldowns, last-sync). Preserves the workspace cache.
 protocol GeofenceSyncCoordinator: AutoMockable, AnyObject, Sendable {
     func refresh(latitude: Double, longitude: Double) async -> Result<Void, GeofenceSyncError>
     func handleMovement(latitude: Double, longitude: Double) async -> Result<Void, GeofenceSyncError>
     func reset() async -> Result<Void, GeofenceSyncError>
+    func reapplyRegistration(latitude: Double, longitude: Double) async -> Result<Void, GeofenceSyncError>
     @MainActor
     func applyCachedRegistration(
         cachedRegions: [Geofence],
         anchor: LocationData?,
         config: GeofenceConfig?,
+        tripwires: [String: PolygonTripwire],
         userId: String?
     ) -> GeofenceRegistration?
 }
@@ -193,6 +199,34 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
         }
     }
 
+    func reapplyRegistration(latitude: Double, longitude: Double) async -> Result<Void, GeofenceSyncError> {
+        // Losing the gate here is benign: the tripwire that prompted this call is already persisted,
+        // so the sync currently holding the gate composes its desired set from storage and carries
+        // the tripwire to the OS itself.
+        guard acquireGate() else {
+            logger.geofenceSyncSkipped(reason: "refresh already in progress")
+            return .failure(.alreadyInProgress)
+        }
+        let expectedUserId = identifiedUserId
+        let result: Result<Void, GeofenceSyncError>
+        if let userId = expectedUserId {
+            result = await performLocalRefresh(
+                expectedUserId: userId,
+                latitude: latitude,
+                longitude: longitude,
+                config: await storage.getCachedConfig() ?? .fallback,
+                cachedRegions: await storage.getCachedGeofences()
+            )
+        } else {
+            logger.geofenceSyncSkipped(reason: "no identified user")
+            result = .failure(.noIdentifiedUser)
+        }
+        let cleaned = await cleanupIfUserChanged(expectedUserId: expectedUserId)
+        releaseGate()
+        if cleaned { retryForCurrentUser(latitude: latitude, longitude: longitude) }
+        return result
+    }
+
     func reset() async -> Result<Void, GeofenceSyncError> {
         guard acquireGate() else {
             logger.geofenceSyncSkipped(reason: "refresh already in progress")
@@ -219,6 +253,7 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
         cachedRegions: [Geofence],
         anchor: LocationData?,
         config: GeofenceConfig?,
+        tripwires: [String: PolygonTripwire],
         userId: String?
     ) -> GeofenceRegistration? {
         guard let userId, !userId.isEmpty else {
@@ -240,18 +275,30 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
         defer { releaseGate() }
 
         let effectiveConfig = config ?? .fallback
-        let nearest = distanceFilter.nearest(cachedRegions, to: anchor, limit: effectiveConfig.maxBusinessGeofences, maxDistance: effectiveConfig.maxMonitoringDistance)
+        let nearest = distanceFilter.nearest(cachedRegions, to: anchor, limit: businessLimit(for: effectiveConfig, tripwires: tripwires), maxDistance: effectiveConfig.maxMonitoringDistance)
         let registerMovementTrigger = effectiveConfig.maxBusinessGeofences > 0
         registerWithOsSync(
             businessRegions: nearest,
             movementTriggerLocation: anchor,
             movementTriggerRadius: effectiveConfig.localRefreshTriggerRadius,
-            registerMovementTrigger: registerMovementTrigger
+            registerMovementTrigger: registerMovementTrigger,
+            tripwires: tripwires
         )
         logger.geofenceSyncCompleted(registeredCount: nearest.count, movementTriggerRegistered: registerMovementTrigger)
         // No initial-enter here: a cold-wake restore of the pre-kill set (not new registrations) off a
         // possibly-stale anchor. Genuinely-new fences come from a refresh fetch, which emits there.
         return GeofenceRegistration(center: anchor, businessIds: Set(nearest.map(\.id)))
+    }
+
+    /// Business-region cap for one pass, with a slot held back for every planted tripwire.
+    ///
+    /// `maxBusinessGeofences` keeps meaning *business fences*, but a tripwire draws from the same
+    /// 20-region OS budget, so the cap has to shrink or the total overflows and the OS starts
+    /// refusing registrations. Steady-state tripwire count is zero, so this normally changes
+    /// nothing. A polygon whose tripwire costs it its own slot cannot happen: the device is inside
+    /// that polygon's covering circle, so its edge distance is 0 and it sorts first.
+    func businessLimit(for config: GeofenceConfig, tripwires: [String: PolygonTripwire]) -> Int {
+        max(0, config.maxBusinessGeofences - tripwires.count)
     }
 
     /// The identified user a gated operation runs for (`nil` when signed out); the exit cleanup compares against it.
