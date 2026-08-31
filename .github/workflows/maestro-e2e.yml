@@ -2,7 +2,7 @@ name: Maestro SDK E2E
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened, edited, labeled]
+    types: [opened, synchronize, reopened, labeled]
     paths-ignore:
       - '**/*.md'
   workflow_dispatch:
@@ -38,32 +38,13 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  release_policy:
-    if: github.event_name == 'pull_request'
-    uses: ./.github/workflows/reusable-release-policy.yml
-    permissions:
-      contents: read
-    with:
-      pr_title: ${{ github.event.pull_request.title }}
-      pr_body: ${{ github.event.pull_request.body || '' }}
-      base_sha: ${{ github.event.pull_request.base.sha }}
-      head_sha: ${{ github.event.pull_request.head.sha }}
-      head_repository: ${{ github.event.pull_request.head.repo.full_name }}
-      target_repository: ${{ github.repository }}
-      pr_author: ${{ github.event.pull_request.user.login }}
-      ci_full: ${{ contains(github.event.pull_request.labels.*.name, 'ci:full') }}
-
-  # Metadata edits rerun full so a newer skipped check cannot replace a failure.
   prepare:
     name: Select iOS suites
-    needs: release_policy
     if: >-
-      always() &&
       (vars.MOBILE_E2E_ENABLED == 'true' || github.event_name == 'workflow_dispatch') &&
       (github.event_name != 'pull_request' ||
-      ((github.event.action == 'edited' ||
-      github.event.action == 'labeled' ||
-      needs.release_policy.outputs.full_validation == 'true') &&
+      (contains(github.event.pull_request.labels.*.name, 'ci:full') &&
+      (github.event.action != 'labeled' || github.event.label.name == 'ci:full') &&
       github.event.pull_request.user.login != 'dependabot[bot]' &&
       github.event.pull_request.head.repo.full_name == github.repository))
     runs-on: ubuntu-latest

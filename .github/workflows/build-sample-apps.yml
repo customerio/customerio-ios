@@ -18,7 +18,8 @@ on:
         default: false
 
 concurrency:
-  # Ignore unrelated label events without cancelling the active validation run.
+  # Keep only the newest PR or feature-branch run. Metadata replacements remain
+  # fail-closed because the SDK-size correctness job repeats on those events.
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' || startsWith(github.ref, 'refs/heads/feature/') }}
 
@@ -30,25 +31,20 @@ jobs:
       contents: read
     with:
       pr_title: ${{ github.event.pull_request.title }}
-      pr_body: ${{ github.event.pull_request.body || '' }}
       base_sha: ${{ github.event.pull_request.base.sha }}
       head_sha: ${{ github.event.pull_request.head.sha }}
-      head_repository: ${{ github.event.pull_request.head.repo.full_name }}
-      target_repository: ${{ github.repository }}
-      pr_author: ${{ github.event.pull_request.user.login }}
       ci_full: ${{ contains(github.event.pull_request.labels.*.name, 'ci:full') }}
 
-  # 1) Build and publish sample apps to Firebase App Distribution.
-  # Release-bearing PRs mirror semantic-release and validate distributable sample
-  # builds automatically. `ci:full` remains an override for non-release PRs.
-  # Metadata edits rerun full so a newer skipped check cannot replace a failure.
+  # Build and publish sample apps to Firebase App Distribution. Correctness is
+  # covered separately by unsigned path-based sample and compatibility builds;
+  # release intent or ci:full controls only this distribution side effect.
   build-sample-apps:
     if: >-
       always() &&
       (github.event_name != 'pull_request' ||
-      ((github.event.action == 'edited' ||
-      github.event.action == 'labeled' ||
-      needs.release_policy.outputs.full_validation == 'true') &&
+      (needs.release_policy.outputs.full_validation == 'true' &&
+      (github.event.action != 'edited' || github.event.changes.title.from != '') &&
+      (github.event.action != 'labeled' || github.event.label.name == 'ci:full') &&
       github.event.pull_request.head.repo.full_name == github.repository &&
       github.event.pull_request.user.login != 'dependabot[bot]'))
     needs: release_policy

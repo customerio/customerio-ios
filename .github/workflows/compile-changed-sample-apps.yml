@@ -2,7 +2,7 @@ name: Compile changed sample apps
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened, edited]
+    types: [opened, synchronize, reopened]
     paths:
       - 'Apps/APN-UIKit/**'
       - 'Apps/CocoaPods-FCM/**'
@@ -21,32 +21,13 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-jobs:
-  release_policy:
-    uses: ./.github/workflows/reusable-release-policy.yml
-    permissions:
-      contents: read
-    with:
-      pr_title: ${{ github.event.pull_request.title }}
-      pr_body: ${{ github.event.pull_request.body || '' }}
-      base_sha: ${{ github.event.pull_request.base.sha }}
-      head_sha: ${{ github.event.pull_request.head.sha }}
-      head_repository: ${{ github.event.pull_request.head.repo.full_name }}
-      target_repository: ${{ github.repository }}
-      pr_author: ${{ github.event.pull_request.user.login }}
-      ci_full: ${{ contains(github.event.pull_request.labels.*.name, 'ci:full') }}
+env:
+  LAUNCH_SURVIVAL_SECONDS: '10'
 
+jobs:
   detect-changes:
-    # Signed builds own internal release-bearing and explicitly full PRs. Forks
-    # retain this unsigned lane because secret-dependent builds cannot run there.
-    if: >-
-      always() &&
-      (github.event.pull_request.user.login == 'dependabot[bot]' ||
-      github.event.pull_request.head.repo.full_name != github.repository ||
-      (needs.release_policy.result == 'success' &&
-      github.event.action != 'edited' &&
-      needs.release_policy.outputs.full_validation != 'true'))
-    needs: release_policy
+    # Unsigned correctness is selected only by changed paths. Release intent
+    # may add a signed distribution build, but it never suppresses this lane.
     runs-on: ubuntu-latest
     outputs:
       apn: ${{ steps.changes.outputs.apn }}
@@ -81,6 +62,7 @@ jobs:
                 ;;
               Sources/*)
                 apn=true
+                fcm=true
                 ;;
               Apps/CocoaPods-FCM/*)
                 fcm=true
@@ -129,6 +111,14 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             build
 
+      - name: Install and launch APN sample
+        uses: customerio/mobile-ci-tools/github-actions/ios/launch-simulator-app/v1@main
+        with:
+          app-path: ${{ runner.temp }}/apn-sample/Build/Products/Debug-iphonesimulator/APN UIKit.app
+          expected-ios-major: '26'
+          survival-seconds: ${{ env.LAUNCH_SURVIVAL_SECONDS }}
+          log-path: ${{ runner.temp }}/apn-sample-launch.log
+
   compile-fcm:
     name: Compile FCM sample
     needs: detect-changes
@@ -165,3 +155,11 @@ jobs:
             -derivedDataPath "$RUNNER_TEMP/fcm-sample" \
             CODE_SIGNING_ALLOWED=NO \
             build
+
+      - name: Install and launch FCM sample
+        uses: customerio/mobile-ci-tools/github-actions/ios/launch-simulator-app/v1@main
+        with:
+          app-path: ${{ runner.temp }}/fcm-sample/Build/Products/Debug-iphonesimulator/test cocoapods.app
+          expected-ios-major: '26'
+          survival-seconds: ${{ env.LAUNCH_SURVIVAL_SECONDS }}
+          log-path: ${{ runner.temp }}/fcm-sample-launch.log

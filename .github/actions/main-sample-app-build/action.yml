@@ -5,21 +5,17 @@ inputs:
   # If you want to save a new build, pass in this input. If you want to get the latest build, leave this input out.
   set-latest-main-build:
     description: 'The name of the xcarchive for the APN sample app to save. Example: "App.xcarchive"'
-    type: string
     required: false 
     default: ''
   GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64:
     description: 'Maps to the secret, GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64. Used for code signing. See the Fastlane config files to learn more.'
-    type: string
     required: true
   xcode-version:
     description: 'Xcode version used for the main build (e.g. "26.6"). The main build and cache key use this version so size diffs compare the same toolchain.'
-    type: string
     required: false
     default: '26.6'
   baseline-ref:
     description: 'Exact commit used as the comparison baseline. PR callers should pass github.event.pull_request.base.sha.'
-    type: string
     required: false
     default: ''
 

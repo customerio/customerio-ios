@@ -5,7 +5,6 @@ description: Run this action to generate all of the SDK size reports.
 inputs:
   GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64:
     description: 'Maps to the secret, GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64. Used for code signing. See the Fastlane config files to learn more.'
-    type: string
     required: true
   xcode-version:
     description: 'Xcode version to install. Pinned so every size report and the main-branch baseline it is diffed against are built with the same toolchain — the cache key for the stored main build includes this value.'

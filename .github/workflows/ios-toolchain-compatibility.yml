@@ -2,13 +2,12 @@ name: Xcode 27 preview compatibility
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened, edited, labeled]
+    types: [opened, synchronize, reopened]
     paths:
       - '.github/workflows/ios-toolchain-compatibility.yml'
       - 'Apps/APN-UIKit/**'
       - 'Apps/CocoaPods-FCM/**'
       - 'Apps/Common/**'
-      - 'Sources/**'
       - 'Package.swift'
       - 'Package.resolved'
       - '*.podspec'
@@ -32,44 +31,76 @@ env:
   LAUNCH_SURVIVAL_SECONDS: '10'
 
 jobs:
-  release_policy:
-    if: github.event_name == 'pull_request'
-    uses: ./.github/workflows/reusable-release-policy.yml
-    permissions:
-      contents: read
-    with:
-      pr_title: ${{ github.event.pull_request.title }}
-      pr_body: ${{ github.event.pull_request.body || '' }}
-      base_sha: ${{ github.event.pull_request.base.sha }}
-      head_sha: ${{ github.event.pull_request.head.sha }}
-      head_repository: ${{ github.event.pull_request.head.repo.full_name }}
-      target_repository: ${{ github.repository }}
-      pr_author: ${{ github.event.pull_request.user.login }}
-      ci_full: ${{ contains(github.event.pull_request.labels.*.name, 'ci:full') }}
+  select-fixtures:
+    name: Select Xcode 27 fixtures
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.select.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+        if: github.event_name == 'pull_request'
+        with:
+          fetch-depth: 0
+
+      - name: Select affected fixtures
+        id: select
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          apn=false
+          fcm=false
+
+          if [[ "$EVENT_NAME" != 'pull_request' ]]; then
+            apn=true
+            fcm=true
+          else
+            changed_paths="$RUNNER_TEMP/xcode-27-changed-paths"
+            git diff --name-only -z "$BASE_SHA...$HEAD_SHA" > "$changed_paths"
+            while IFS= read -r -d '' path; do
+              case "$path" in
+                *.md)
+                  ;;
+                Apps/APN-UIKit/*)
+                  apn=true
+                  ;;
+                Apps/CocoaPods-FCM/*|*.podspec|scripts/cocoapods_deployment_target.rb)
+                  fcm=true
+                  ;;
+                Apps/Common/*|Package.swift|Package.resolved|.github/workflows/ios-toolchain-compatibility.yml)
+                  apn=true
+                  fcm=true
+                  ;;
+              esac
+            done < "$changed_paths"
+          fi
+
+          matrix='[]'
+          if [[ "$apn" == 'true' ]]; then
+            matrix=$(jq -c '. + [{"fixture":"native-apn","app-name":"APN UIKit.app"}]' <<< "$matrix")
+          fi
+          if [[ "$fcm" == 'true' ]]; then
+            matrix=$(jq -c '. + [{"fixture":"customerio-ios-fcm","app-name":"test cocoapods.app"}]' <<< "$matrix")
+          fi
+          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
 
   compile:
-    # Metadata edits rerun the lane fail-closed so a newer skipped check cannot
-    # replace an earlier failure for the same commit.
-    if: >-
-      always() &&
-      (github.event_name != 'pull_request' ||
-      ((github.event.action == 'edited' ||
-      github.event.action == 'labeled' ||
-      needs.release_policy.outputs.full_validation == 'true') &&
-      github.event.pull_request.head.repo.full_name == github.repository &&
-      github.event.pull_request.user.login != 'dependabot[bot]'))
-    needs: release_policy
+    # Preview-toolchain compatibility follows integration and packaging paths.
+    # Ordinary source regressions are compiled and launch-tested on the stable
+    # toolchain in compile-changed-sample-apps.yml, while the nightly still runs
+    # both preview fixtures against all source changes accumulated on main.
+    needs: select-fixtures
+    if: needs.select-fixtures.outputs.matrix != '[]'
     name: Xcode 27 preview (${{ matrix.fixture }})
     runs-on: xcode-27
     timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - fixture: native-apn
-            app-name: APN UIKit.app
-          - fixture: customerio-ios-fcm
-            app-name: test cocoapods.app
+        include: ${{ fromJSON(needs.select-fixtures.outputs.matrix) }}
 
     steps:
       - name: Check out iOS SDK
