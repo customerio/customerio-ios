@@ -61,9 +61,8 @@ enum GeofenceBootstrap {
         // `adoptExistingRegions` / `startMonitoring`, so `ownedRegionIdentifiers` is populated
         // before any new delegate call can land.
         let monitor = di.geofenceMonitor
-        let tracker = di.geofenceEventTracker
         let coordinator = di.geofenceSyncCoordinator
-        GeofenceMonitorBinder.bind(monitor: monitor, tracker: tracker, coordinator: coordinator)
+        GeofenceMonitorBinder.bind(monitor: monitor, resolver: di.polygonMembershipResolver, coordinator: coordinator)
 
         // Install both re-run handlers BEFORE the adopt/re-register decision so the CLMonitor path's
         // first reconciliation — which can fire right after this synchronous phase yields — finds a

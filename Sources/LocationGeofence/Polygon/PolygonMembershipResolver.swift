@@ -79,6 +79,21 @@ final class PolygonMembershipResolver {
         }
     }
 
+    /// Re-evaluates membership for one polygon: the entry point for a polygon that has just been
+    /// registered, where the device may already be standing inside and no crossing will ever be
+    /// delivered. A geofence that is no longer cached or no longer a polygon has nothing to decide.
+    ///
+    /// Logged because this path bypasses `handleTransition`, so nothing else records that we were
+    /// asked to re-check. Reading the absence of a log line as an absence of evaluations led to
+    /// exactly the wrong conclusion once already.
+    func evaluateMembership(geofenceId: String, reason: String) async {
+        logger.geofencePolygonEvaluationRequested(identifier: geofenceId, reason: reason)
+        guard let geofence = await cachedGeofence(id: geofenceId),
+              let polygon = geofence.polygonRegion
+        else { return }
+        await evaluate(geofence: geofence, polygon: polygon)
+    }
+
     /// Re-evaluates every registered polygon when the app comes to the foreground.
     ///
     /// The one case no OS event covers: a device already inside a polygon when monitoring begins

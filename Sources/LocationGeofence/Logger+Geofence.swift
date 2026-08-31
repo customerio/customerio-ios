@@ -158,6 +158,14 @@ extension Logger {
         info("Polygon \(transition.rawValue) for region \(identifier), confirmed by \(basis)", geofenceTag)
     }
 
+    func geofencePolygonEvaluationRequested(identifier: String, reason: String) {
+        debug("Re-evaluating polygon membership for region \(identifier) (\(reason))", geofenceTag)
+    }
+
+    func geofencePolygonExceedsMonitoringLimit(identifier: String, radius: Double, limit: Double) {
+        error("Polygon \(identifier) dropped: covering circle \(Int(radius)) m exceeds the OS monitoring limit \(Int(limit)) m, and a clamped circle would no longer contain the polygon", geofenceTag, nil)
+    }
+
     func geofencePolygonUndecided(identifier: String, reason: String) {
         debug("Polygon membership undecided for region \(identifier): \(reason)", geofenceTag)
     }
