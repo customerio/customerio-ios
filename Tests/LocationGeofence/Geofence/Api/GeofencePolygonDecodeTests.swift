@@ -64,11 +64,12 @@ struct GeofencePolygonDecodeTests {
 
     /// A ring of `count` distinct positions well inside the enclosing circle, so a cap test fails
     /// on the cap and not incidentally on the coverage guarantee.
-    private static func ringInsideCircle(count: Int) -> String {
-        let positions = (0 ..< count).map { i -> String in
+    private static func ringInsideCircle(count: Int, repeatingFirstPosition: Bool = false) -> String {
+        var positions = (0 ..< count).map { i -> String in
             let angle = 2 * Double.pi * Double(i) / Double(count)
             return "[\(centre.longitude + 0.0009 * sin(angle)), \(centre.latitude + 0.0008 * cos(angle))]"
         }
+        if repeatingFirstPosition, let first = positions.first { positions.insert(first, at: 1) }
         return "[[\(positions.joined(separator: ","))]]"
     }
 
@@ -217,6 +218,20 @@ struct GeofencePolygonDecodeTests {
         """
         let response = try decode(responseJson([polygonJson(ring: ring)]))
         #expect(response.toDomainRegions().isEmpty)
+    }
+
+    /// The cap is stated in UNIQUE vertices, so a ring that only exceeds it by repeating positions
+    /// is one the server considers valid — dropping it would make the fence silently not exist.
+    @Test
+    func toDomain_givenDuplicatesPushingRingPastCap_expectAccepted() throws {
+        let unique = GeofenceConstants.maxPolygonVertexCount
+        let response = try decode(responseJson([
+            polygonJson(ring: Self.ringInsideCircle(count: unique, repeatingFirstPosition: true))
+        ]))
+
+        let regions = response.toDomainRegions()
+        #expect(regions.count == 1)
+        #expect(regions.first?.vertices?.count == unique)
     }
 
     @Test
