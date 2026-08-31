@@ -46,7 +46,9 @@ enum GeofenceMonitorBinder {
                 guard transition == .exit else { return }
                 Task {
                     await backgroundTaskRunner.withBackgroundTime {
-                        await resolver?.evaluateMembership(geofenceId: polygonId, reason: "tripwire wake")
+                        await resolver?.evaluateMembership(
+                            geofenceId: polygonId, reason: "tripwire wake", requiresFreshFix: true
+                        )
                     }
                 }
                 return

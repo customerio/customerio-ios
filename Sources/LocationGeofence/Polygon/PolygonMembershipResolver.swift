@@ -91,12 +91,17 @@ final class PolygonMembershipResolver {
     /// Logged because this path bypasses `handleTransition`, so nothing else records that we were
     /// asked to re-check. Reading the absence of a log line as an absence of evaluations led to
     /// exactly the wrong conclusion once already.
-    func evaluateMembership(geofenceId: String, reason: String) async {
+    /// `requiresFreshFix` is set by the tripwire wake, which fires *because* the device moved far
+    /// enough to change the verdict. Answering it from the cached fix — the one that planted the
+    /// tripwire, still inside `movementFixMaxAge` — replays the same verdict, leaves the tripwire
+    /// unchanged so nothing is re-planted, and consumes the wake for nothing. Measured on a 30 m/s
+    /// simulated drive: a 15 s-old fix is 450 m stale, and the polygon's ENTER was never delivered.
+    func evaluateMembership(geofenceId: String, reason: String, requiresFreshFix: Bool = false) async {
         logger.geofencePolygonEvaluationRequested(identifier: geofenceId, reason: reason)
         guard let geofence = await cachedGeofence(id: geofenceId),
               let polygon = geofence.polygonRegion
         else { return }
-        await evaluate(geofence: geofence, polygon: polygon)
+        await evaluate(geofence: geofence, polygon: polygon, requiresFreshFix: requiresFreshFix)
     }
 
     /// Re-evaluates every registered polygon when the app comes to the foreground.
@@ -142,9 +147,14 @@ final class PolygonMembershipResolver {
     }
 
     private func evaluate(
-        geofence: Geofence, polygon: PolygonRegion, containment: ContainmentEvidence = .fixOnly
+        geofence: Geofence,
+        polygon: PolygonRegion,
+        containment: ContainmentEvidence = .fixOnly,
+        requiresFreshFix: Bool = false
     ) async {
-        guard let fix = await resolveFix(), CLLocationCoordinate2DIsValid(fix.coordinate) else {
+        guard let fix = await resolveFix(requiringFresh: requiresFreshFix),
+              CLLocationCoordinate2DIsValid(fix.coordinate)
+        else {
             logger.geofencePolygonUndecided(identifier: geofence.id, reason: "no usable fix")
             return
         }
@@ -251,9 +261,9 @@ final class PolygonMembershipResolver {
     /// Freshest fix obtainable, requesting one when the cache is stale. Mirrors the gate's
     /// resolution: the completion's coordinates are discarded in favour of `latestFix`, which
     /// carries the accuracy and timestamp the decision needs.
-    private func resolveFix() async -> CLLocation? {
+    private func resolveFix(requiringFresh: Bool = false) async -> CLLocation? {
         await withCheckedContinuation { continuation in
-            fixResolver.resolve(cached: fixResolver.latestFix) { [weak self] _ in
+            fixResolver.resolve(cached: requiringFresh ? nil : fixResolver.latestFix) { [weak self] _ in
                 continuation.resume(returning: self?.fixResolver.latestFix)
             }
         }

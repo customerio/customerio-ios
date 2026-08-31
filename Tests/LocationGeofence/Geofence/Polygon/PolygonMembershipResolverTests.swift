@@ -349,6 +349,50 @@ struct PolygonMembershipResolverTests {
         #expect(setup.coordinator.reapplyRegistrationCallsCount == 1)
     }
 
+    /// The tripwire fires BECAUSE the device moved far enough to change the verdict, so answering
+    /// the wake from the fix that planted it just replays the old verdict — and because the
+    /// tripwire it recomputes is identical, nothing is re-planted and the wake is spent for
+    /// nothing. Caught on a simulated 30 m/s drive, where the polygon's ENTER was never delivered.
+    @Test
+    func evaluateMembership_givenTripwireWake_expectFreshFixRequestedNotCachedReplay() async {
+        let outside = fix(latitude: 0.0024, longitude: 0)
+        let setup = await makeSetup(fix: outside)
+        await setup.storage.setCachedGeofences([polygonGeofence()])
+        await setup.resolver.handleTransition(identifier: "1", transition: .enter, location: nil)
+        #expect(await setup.emitter.snapshot().isEmpty)
+
+        // The device has since moved inside; only a fresh request can see it.
+        let inside = fix(latitude: 0, longitude: 0)
+        setup.fixResolver.requestFreshFix = { [weak fixResolver = setup.fixResolver] in
+            fixResolver?.handleResolvedFix(inside)
+        }
+
+        await setup.resolver.evaluateMembership(geofenceId: "1", reason: "tripwire wake", requiresFreshFix: true)
+
+        let delivered = await setup.emitter.snapshot()
+        #expect(delivered.count == 1)
+        #expect(delivered.first?.transition == .enter)
+    }
+
+    /// The negative control for the test above: without the flag the cached fix is still inside
+    /// `movementFixMaxAge`, so the stale verdict stands and no crossing is reported.
+    @Test
+    func evaluateMembership_givenCachedFixAllowed_expectStaleVerdictReplayed() async {
+        let outside = fix(latitude: 0.0024, longitude: 0)
+        let setup = await makeSetup(fix: outside)
+        await setup.storage.setCachedGeofences([polygonGeofence()])
+        await setup.resolver.handleTransition(identifier: "1", transition: .enter, location: nil)
+
+        let inside = fix(latitude: 0, longitude: 0)
+        setup.fixResolver.requestFreshFix = { [weak fixResolver = setup.fixResolver] in
+            fixResolver?.handleResolvedFix(inside)
+        }
+
+        await setup.resolver.evaluateMembership(geofenceId: "1", reason: "sync pass")
+
+        #expect(await setup.emitter.snapshot().isEmpty)
+    }
+
     // MARK: - Foreground evaluation
 
     /// The case no OS event reaches: a device already standing inside a polygon when monitoring
