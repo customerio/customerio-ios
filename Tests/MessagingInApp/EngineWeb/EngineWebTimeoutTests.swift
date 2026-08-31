@@ -91,6 +91,11 @@ class EngineWebTimeoutTests: IntegrationTest {
         XCTAssertEqual(delegateSpy.errorCallCount, 1)
         // EngineWeb must not reach the store on its own. `MessageManager` owns that dispatch, and
         // doing both is what delivered the host callback twice.
+        //
+        // Both counters matter: the SDK delivers failures through `errorWithMessage(message:error:)`,
+        // which the generated mock counts separately. Asserting only the reason-less counter would
+        // let the original double-dispatch regress without failing this test.
         XCTAssertEqual(globalEventListener.errorWithMessageCallsCount, 0)
+        XCTAssertEqual(globalEventListener.errorWithMessageAndErrorCallsCount, 0)
     }
 }
