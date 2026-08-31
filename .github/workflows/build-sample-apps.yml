@@ -25,8 +25,8 @@ concurrency:
       github.event_name == 'pull_request' &&
       ((github.event.action == 'labeled' && github.event.label.name != 'ci:full') ||
       (github.event.action == 'edited' &&
-      !github.event.changes.title &&
-      !github.event.changes.base)) &&
+      github.event.changes.title == null &&
+      github.event.changes.base == null)) &&
       'metadata' || 'validation'
     }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' || startsWith(github.ref, 'refs/heads/feature/') }}
@@ -51,7 +51,9 @@ jobs:
       always() &&
       (github.event_name != 'pull_request' ||
       (needs.release_policy.outputs.full_validation == 'true' &&
-      (github.event.action != 'edited' || github.event.changes.title.from != '') &&
+      (github.event.action != 'edited' ||
+      github.event.changes.title != null ||
+      github.event.changes.base != null) &&
       (github.event.action != 'labeled' || github.event.label.name == 'ci:full') &&
       github.event.pull_request.head.repo.full_name == github.repository &&
       github.event.pull_request.user.login != 'dependabot[bot]'))
@@ -100,8 +102,8 @@ jobs:
         if: >-
           github.event_name == 'pull_request' &&
           (github.event.action != 'edited' ||
-          github.event.changes.title ||
-          github.event.changes.base) &&
+          github.event.changes.title != null ||
+          github.event.changes.base != null) &&
           (github.event.action != 'labeled' || github.event.label.name == 'ci:full')
         uses: peter-evans/find-comment@3eae4d37986fb5a8592848f6a574fdf654e61f9e # v3.1.0
         id: find-sdk-size-report-comment
@@ -114,8 +116,8 @@ jobs:
         if: >-
           github.event_name == 'pull_request' &&
           (github.event.action != 'edited' ||
-          github.event.changes.title ||
-          github.event.changes.base) &&
+          github.event.changes.title != null ||
+          github.event.changes.base != null) &&
           (github.event.action != 'labeled' || github.event.label.name == 'ci:full')
         uses: peter-evans/create-or-update-comment@71345be0265236311c031f5c7866368bd1eff043 # v4.0.0
         with:
