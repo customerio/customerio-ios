@@ -13,6 +13,7 @@ import XCTest
 class EngineWebTimeoutTests: IntegrationTest {
     private final class EngineWebDelegateSpy: EngineWebDelegate {
         private(set) var errorCallCount = 0
+        private(set) var lastError: InAppMessageError?
 
         func bootstrapped() {}
         func tap(name: String, action: String, system: Bool) {}
@@ -23,6 +24,11 @@ class EngineWebTimeoutTests: IntegrationTest {
 
         func error() {
             errorCallCount += 1
+        }
+
+        func error(_ error: InAppMessageError) {
+            errorCallCount += 1
+            lastError = error
         }
     }
 
@@ -54,6 +60,42 @@ class EngineWebTimeoutTests: IntegrationTest {
         engine = nil
         inAppMessageManager = nil
         super.tearDown()
+    }
+
+    // `EngineWeb` builds a `WKWebView`, so this has to run on the main actor.
+    /// `EngineWeb` can fail before it has a delegate: `loadMessage()` runs from `init`, and
+    /// `MessageManager` only assigns itself afterwards. A malformed renderer URL fails on exactly
+    /// that path, and before this the failure went nowhere and the message simply hung.
+    ///
+    /// `GistEnvironment` is a closed enum, so a bad URL cannot be injected from a test. This drives
+    /// the same mechanism through the timeout instead — any failure raised while the delegate is nil
+    /// must be held and delivered once one is attached.
+    @MainActor
+    func test_reportFailure_givenFailureBeforeDelegateAttached_expectDeliveredOnAssignment() async throws {
+        await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: .random))
+
+        let message = Message.random
+        engine = EngineWeb(
+            configuration: EngineWebConfiguration(
+                siteId: .random,
+                dataCenter: .random,
+                instanceId: message.instanceId,
+                endpoint: .random,
+                messageId: message.messageId,
+                properties: nil
+            ),
+            state: InAppMessageState(),
+            message: message
+        )
+
+        // Fail while nothing is attached.
+        engine.forcedTimeout()
+        XCTAssertEqual(delegateSpy.errorCallCount, 0)
+
+        engine.delegate = delegateSpy
+
+        XCTAssertEqual(delegateSpy.errorCallCount, 1)
+        XCTAssertEqual(delegateSpy.lastError?.reason, .timeout)
     }
 
     // `EngineWeb` builds a `WKWebView`, so this has to run on the main actor.

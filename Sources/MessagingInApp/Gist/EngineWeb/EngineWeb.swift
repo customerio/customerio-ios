@@ -39,7 +39,18 @@ public class EngineWeb: NSObject, EngineWebInstance {
     /// How long the engine gets to report `bootstrapped` before the message is treated as failed.
     static let bootstrapTimeoutSeconds: TimeInterval = 5.0
 
-    public weak var delegate: EngineWebDelegate?
+    public weak var delegate: EngineWebDelegate? {
+        didSet {
+            // `loadMessage()` runs from `init`, before the delegate exists, so a failure raised
+            // there has nobody to report to yet. Deliver it as soon as one is attached.
+            guard delegate != nil, let failure = pendingFailure else { return }
+            pendingFailure = nil
+            delegate?.error(failure)
+        }
+    }
+
+    /// A failure raised before a delegate was attached, held until one is.
+    private var pendingFailure: InAppMessageError?
     var webView = WKWebView()
 
     public var view: UIView {
@@ -140,12 +151,18 @@ public class EngineWeb: NSObject, EngineWebInstance {
     /// Single exit for every failure in this class: classify, log, then tell the delegate.
     ///
     /// `MessageManager` owns the resulting `messageLoadingFailed` dispatch — see `forcedTimeout`.
+    /// A failure raised before the delegate is attached is held and delivered on assignment, so no
+    /// path here reports into the void.
     private func reportFailure(_ error: InAppMessageError) {
         logger.logWithModuleTag(
             "Message \(currentMessage.describeForLogs) failed: \(error.describeForLogs)",
             level: .error
         )
-        delegate?.error(error)
+        guard let delegate = delegate else {
+            pendingFailure = error
+            return
+        }
+        delegate.error(error)
     }
 
     @objc
