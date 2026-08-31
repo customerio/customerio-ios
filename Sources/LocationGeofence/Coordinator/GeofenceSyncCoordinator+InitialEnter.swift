@@ -21,11 +21,22 @@ extension GeofenceSyncCoordinatorImpl {
         expectedUserId: String,
         anchor: LocationData
     ) {
-        let newInside = candidates.filter { region in
+        let newlyRegistered = candidates.filter { region in
             osRegistration.registeredIds.contains(region.id)
                 && !previouslyRegisteredIds.contains(region.id)
+        }
+        // A polygon must NOT be judged by this containment test: `radius` is its covering circle, so
+        // a device in the annulus would emit an enter it never earned. Newly-registered polygons go
+        // to the resolver's gated evaluation instead, which is also the only thing that reports the
+        // device already standing inside one — there is no crossing for the OS to deliver.
+        let newPolygons = newlyRegistered.filter { $0.vertices != nil }
+        let newInside = newlyRegistered.filter { region in
+            region.vertices == nil
                 && region.transitionTypes.contains(.enter)
                 && region.distanceTo(anchor) <= min(region.radius, osRegistration.maxMonitoringRadius)
+        }
+        if !newPolygons.isEmpty {
+            evaluateNewPolygons(newPolygons, expectedUserId: expectedUserId)
         }
         guard !newInside.isEmpty else { return }
         // Deliver off the refresh gate (like the binder does for real crossings) so a slow send can't
@@ -37,6 +48,20 @@ extension GeofenceSyncCoordinatorImpl {
                 // current — so stop the batch the moment identity changes.
                 guard contextStore.currentUserId == expectedUserId else { return }
                 await transitionEmitter.trackTransition(geofenceId: region.id, transition: .enter)
+            }
+        }
+    }
+
+    /// Hands newly-registered polygons to the gated evaluation. Resolved from the graph at the call
+    /// site rather than stored: the resolver is a `@MainActor` singleton and this coordinator is
+    /// one of its own dependencies, so a stored reference back would make the two initialize each
+    /// other.
+    private func evaluateNewPolygons(_ polygons: [Geofence], expectedUserId: String) {
+        Task { @MainActor [contextStore] in
+            let resolver = DIGraphShared.shared.polygonMembershipResolver
+            for polygon in polygons {
+                guard contextStore.currentUserId == expectedUserId else { return }
+                await resolver.evaluateMembership(geofenceId: polygon.id, reason: "new polygon")
             }
         }
     }

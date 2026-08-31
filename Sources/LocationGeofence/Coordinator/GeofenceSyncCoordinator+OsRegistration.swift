@@ -48,7 +48,20 @@ extension GeofenceSyncCoordinatorImpl {
                 transitionTypes: [.exit]
             ))
         }
-        desired.append(contentsOf: businessRegions.map { region in
+        // A polygon whose covering circle exceeds the OS cap must be DROPPED, not clamped. Both
+        // monitors clamp silently, and a clamped circle no longer contains the polygon — which
+        // turns the covering-circle exit from geometric certainty into a false exit, and lets the
+        // device enter through a part of the polygon no wake covers. Circles keep clamping: for
+        // them the monitored circle IS the fence, so a smaller one only reports later.
+        let maximumRadius = monitor.maximumMonitoringRadius
+        let registrable = businessRegions.filter { region in
+            guard region.vertices != nil, region.radius > maximumRadius else { return true }
+            logger.geofencePolygonExceedsMonitoringLimit(
+                identifier: region.id, radius: region.radius, limit: maximumRadius
+            )
+            return false
+        }
+        desired.append(contentsOf: registrable.map { region in
             GeofenceRegionRequest(
                 identifier: region.id,
                 center: LocationData(latitude: region.latitude, longitude: region.longitude),
