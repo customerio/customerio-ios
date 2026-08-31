@@ -22,8 +22,14 @@ struct PolygonRegion {
     private let projected: [Point]
     private let referenceLatitudeRadians: Double
     private let referenceLongitudeRadians: Double
+    private let cosReferenceLatitude: Double
 
-    private static let earthRadius = 6371000.0
+    /// IUGG mean Earth radius, the `R` of the projection above. CoreLocation exposes no equivalent
+    /// constant — it offers geodesic distances (`CLLocation.distance`) but no way to project, which
+    /// point-in-polygon needs — and the value is part of the projection contract shared with
+    /// Android, so changing it would desynchronize the cross-SDK fixtures.
+    private static let earthRadiusMeters = 6371000.0
+    private static let degreesToRadians = Double.pi / 180
 
     /// Fails on fewer than 3 distinct vertices. A closed ring (last vertex repeating the
     /// first) is accepted and unclosed — servers commonly send GeoJSON-style closed rings.
@@ -38,13 +44,18 @@ struct PolygonRegion {
 
         let lat0 = open.map(\.latitude).reduce(0, +) / Double(open.count)
         let lon0 = open.map(\.longitude).reduce(0, +) / Double(open.count)
-        self.referenceLatitudeRadians = lat0 * .pi / 180
-        self.referenceLongitudeRadians = lon0 * .pi / 180
-        let cosLat0 = cos(referenceLatitudeRadians)
-        self.projected = open.map { v in
-            Point(
-                x: Self.earthRadius * (v.longitude * .pi / 180 - lon0 * .pi / 180) * cosLat0,
-                y: Self.earthRadius * (v.latitude * .pi / 180 - lat0 * .pi / 180)
+        let latitudeRadians = lat0 * Self.degreesToRadians
+        let longitudeRadians = lon0 * Self.degreesToRadians
+        let cosLatitude = cos(latitudeRadians)
+        self.referenceLatitudeRadians = latitudeRadians
+        self.referenceLongitudeRadians = longitudeRadians
+        self.cosReferenceLatitude = cosLatitude
+        self.projected = open.map {
+            Self.project(
+                $0,
+                referenceLatitudeRadians: latitudeRadians,
+                referenceLongitudeRadians: longitudeRadians,
+                cosReferenceLatitude: cosLatitude
             )
         }
     }
@@ -72,9 +83,25 @@ struct PolygonRegion {
     }
 
     private func project(_ location: LocationData) -> Point {
+        Self.project(
+            location,
+            referenceLatitudeRadians: referenceLatitudeRadians,
+            referenceLongitudeRadians: referenceLongitudeRadians,
+            cosReferenceLatitude: cosReferenceLatitude
+        )
+    }
+
+    /// `static` so the initializer can project the ring before `self` is fully formed, and so the
+    /// formula lives in exactly one place.
+    private static func project(
+        _ location: LocationData,
+        referenceLatitudeRadians: Double,
+        referenceLongitudeRadians: Double,
+        cosReferenceLatitude: Double
+    ) -> Point {
         Point(
-            x: Self.earthRadius * (location.longitude * .pi / 180 - referenceLongitudeRadians) * cos(referenceLatitudeRadians),
-            y: Self.earthRadius * (location.latitude * .pi / 180 - referenceLatitudeRadians)
+            x: earthRadiusMeters * (location.longitude * degreesToRadians - referenceLongitudeRadians) * cosReferenceLatitude,
+            y: earthRadiusMeters * (location.latitude * degreesToRadians - referenceLatitudeRadians)
         )
     }
 
