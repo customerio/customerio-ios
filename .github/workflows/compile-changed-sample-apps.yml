@@ -6,6 +6,7 @@ on:
       - 'Apps/APN-UIKit/**'
       - 'Apps/CocoaPods-FCM/**'
       - 'Apps/Common/**'
+      - 'Sources/**'
       - 'Package.swift'
       - 'Package.resolved'
       - '*.podspec'
@@ -48,7 +49,12 @@ jobs:
 
           while IFS= read -r -d '' path; do
             case "$path" in
+              *.md)
+                ;;
               Apps/APN-UIKit/*)
+                apn=true
+                ;;
+              Sources/*)
                 apn=true
                 ;;
               Apps/CocoaPods-FCM/*)

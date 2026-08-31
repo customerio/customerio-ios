@@ -50,6 +50,16 @@ class SseConnectionManagerTest: XCTestCase {
         super.tearDown()
     }
 
+    private func waitForHeartbeatReset(file: StaticString = #filePath, line: UInt = #line) async {
+        for _ in 0 ..< 100 {
+            if heartbeatTimerMock.resetCalled {
+                return
+            }
+            try? await Task.sleep(nanoseconds: 10000000) // 0.01 seconds
+        }
+        XCTFail("Timed out waiting for the heartbeat timer to reset", file: file, line: line)
+    }
+
     // MARK: - Start Connection Tests
 
     func test_startConnection_expectSseServiceConnectCalled() async {
@@ -247,7 +257,7 @@ class SseConnectionManagerTest: XCTestCase {
         // Action
         await sut.startConnection()
         continuation.yield(.connectionFailed(.networkError(message: "Error", underlyingError: nil)))
-        try? await Task.sleep(nanoseconds: 100000000) // 0.1 seconds
+        await waitForHeartbeatReset()
         continuation.finish()
 
         // Assert
@@ -262,7 +272,7 @@ class SseConnectionManagerTest: XCTestCase {
         // Action
         await sut.startConnection()
         continuation.yield(.connectionClosed)
-        try? await Task.sleep(nanoseconds: 100000000) // 0.1 seconds
+        await waitForHeartbeatReset()
         continuation.finish()
 
         // Assert
