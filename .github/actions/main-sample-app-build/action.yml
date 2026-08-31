@@ -38,7 +38,7 @@ runs:
       shell: bash
       env:
         REQUESTED_BASELINE_REF: ${{ inputs.baseline-ref }}
-        FALLBACK_BASELINE_REF: ${{ github.sha }}
+        FALLBACK_BASELINE_REF: main
       # Use each of the set variables in future steps like: ${{ env.APN_SAMPLE_APP_BUILD_PATH }}      
       run: |
         echo "APN_SAMPLE_APP_BUILD_PATH=Apps/APN-UIKit/build" >> $GITHUB_ENV

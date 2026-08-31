@@ -6,7 +6,7 @@ on:
     paths-ignore:
       - '**/*.md'
   push:
-    branches: [ main ]
+    branches: [ main, feature/* ]
     paths-ignore:
       - '**/*.md'
   workflow_dispatch: # allow manual run
@@ -20,7 +20,7 @@ on:
 concurrency:
   # Ignore unrelated label events without cancelling the active validation run.
   group: ${{ github.workflow }}-${{ github.ref }}-${{ (github.event.action == 'labeled' && github.event.label.name != 'ci:full') && github.run_id || 'validation' }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' || startsWith(github.ref, 'refs/heads/feature/') }}
 
 jobs:
   # 1) Build and publish sample apps to Firebase App Distribution.
@@ -49,14 +49,18 @@ jobs:
       SLACK_NOTIFY_RELEASES_WEBHOOK_URL: ${{ secrets.SLACK_NOTIFY_RELEASES_WEBHOOK_URL }}
 
   # Binary-size comparison compiles the SDK twice on macOS. Keep it available in
-  # the full PR lane without charging every source or tooling change for it.
+  # the full PR lane, and keep warming the exact-SHA baseline cache from main so
+  # labeled PRs do not rebuild the comparison archive unnecessarily.
   generate-sdk-size-reports:
     if: >-
-      (github.event.action != 'labeled' || github.event.label.name == 'ci:full') &&
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      ((github.event.action != 'labeled' || github.event.label.name == 'ci:full') &&
       github.event_name == 'pull_request' &&
       contains(github.event.pull_request.labels.*.name, 'ci:full') &&
-      github.event.pull_request.head.repo.full_name == github.repository
+      github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: macos-26
+    timeout-minutes: 60
     permissions:
       pull-requests: write
     steps:
@@ -66,7 +70,7 @@ jobs:
         id: generate-sdk-size-report
         with:
           GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64: ${{ secrets.GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64 }}
-          baseline-ref: ${{ github.event.pull_request.base.sha }}
+          baseline-ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event_name == 'push' && github.sha || '' }}
 
       - name: Find existing "SDK size reports" comment
         if: github.event_name == 'pull_request'

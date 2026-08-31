@@ -74,6 +74,7 @@ jobs:
         if: ${{ inputs.use_latest_sdk_version == true }}
         id: latest-sdk-version-step
         run: |
+          git fetch --tags  # Make sure we have all tags
           latest_tag=$(git describe --tags --abbrev=0)
           echo "LATEST_TAG=$latest_tag" >> "$GITHUB_ENV"
           echo "Found latest tag: $latest_tag"
