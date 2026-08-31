@@ -80,6 +80,11 @@ final class DiagnosticLog: @unchecked Sendable {
         started = true
         startMono = DiagnosticClock.monotonicNanos()
 
+        // Internal SDK diagnostics: the machine-readable tail the harness parses. Off by default
+        // in the SDK and unreachable from a customer app; on here because this app exists to
+        // produce field data. See CioDiagnostics for why the default must stay false.
+        CioDiagnostics.enabled = true
+
         writer.open(header: fileHeaderLine())
         deviceState.start(onChange: makeDeviceStateHandler())
         installDispatcher()

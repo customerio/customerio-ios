@@ -1,6 +1,6 @@
 import Foundation
 
-/// Internal diagnostics switches.
+/// Switch for the SDK's internal diagnostic instrumentation.
 ///
 /// Not part of the public SDK surface. `CioInternalCommon` is only exposed as a package product
 /// when the `CI` environment variable is set, so nothing here appears in a host app's autocomplete
@@ -8,34 +8,39 @@ import Foundation
 public enum CioDiagnostics {
     private static let state = DiagnosticsState()
 
-    /// Whether geofence diagnostics may include the device's precise position.
+    /// Whether the SDK emits machine-readable diagnostic detail alongside its human-readable logs.
     ///
     /// **Default `false`, and it must stay that way.**
     ///
-    /// Geofence logs carry a lot that is safe at debug level — region identifiers, transition
-    /// types, counts, ranking positions, reasons, durations. Precise coordinates are different in
-    /// kind. "User entered geofence X" reveals coarse location and is inherent to the feature; it
-    /// is what the SDK already reports to the backend. A latitude and longitude to five decimal
-    /// places is strictly extra, and it is what a host app would leak if it shipped with debug
-    /// logging left on and a crash reporter or log aggregator capturing console output.
+    /// This is an audience switch, not a privacy classifier. The `| key=value` tail the geofence
+    /// logger appends exists for one consumer: our own off-device test harness. No customer reads
+    /// it, no customer needs it, and no product behaviour depends on it. So the question for any
+    /// given field is not "is this one sensitive enough to hide" — it is "did we ask for this
+    /// output here", and in a customer's app the answer is always no.
     ///
-    /// Gates `lat`, `lon`, `acc`, `spd` and `brg` only. Region geometry (`rlat`, `rlon`, `rad`)
-    /// stays on: it is workspace configuration rather than user data, and the geofence identifier
-    /// already carries the same information for anyone holding that configuration.
+    /// Framing it that way is what makes the guarantee checkable in one line rather than field by
+    /// field: **with this off, the SDK's log output is byte-identical to what it was before the
+    /// diagnostics work.** A host app that ships with debug logging left on — the case this
+    /// protects — sees exactly the prose it saw before, and gains nothing new to leak into a crash
+    /// reporter or log aggregator.
     ///
-    /// Leaking anything therefore takes two deliberate actions — this flag set *and* the log level
-    /// at `.debug`, which is not the default.
-    public static var logPreciseLocation: Bool {
+    /// It also means a field added to the tail later needs no privacy review of its own. The
+    /// alternative, deciding per field whether it reveals position, gets the easy calls right and
+    /// then quietly gets one wrong.
+    ///
+    /// Turning anything on therefore takes two deliberate actions — this flag set *and* the log
+    /// level at `.debug`, which is not the default.
+    public static var enabled: Bool {
         get { state.enabled }
         set { state.enabled = newValue }
     }
 
-    /// Claims the right to log the "precise location is enabled" warning, returning `true` exactly
-    /// once per enablement.
+    /// Claims the right to log the "diagnostics enabled" warning, returning `true` exactly once
+    /// per enablement.
     ///
     /// `public` only because the caller lives in another module (`CioLocationGeofence`); like the
     /// rest of this type it is not reachable from a host app.
-    public static func claimPreciseLocationWarning() -> Bool {
+    public static func claimEnabledWarning() -> Bool {
         state.claimWarning()
     }
 }

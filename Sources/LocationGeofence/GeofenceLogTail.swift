@@ -37,13 +37,34 @@ enum GeofenceLog {
     /// parses cleanly as `key=value` pairs, so prose that someday contains `||` stays prose.
     static let delimiter = " || "
 
+    /// Builds the tail, or returns nothing at all when diagnostics are off.
+    ///
+    /// **This is the single gate.** Every enriched record routes through here, so a field added to
+    /// the tail later cannot leak by omission — there is no second path to keep in sync and no
+    /// per-field judgement to get wrong. With ``CioDiagnostics/enabled`` false the SDK's log output
+    /// is byte-identical to what it was before this instrumentation existed.
+    ///
     /// - Parameters:
     ///   - ev: stable machine key from the event taxonomy. Never reworded — `msg` is the prose that
     ///     someone will eventually rewrite, `ev` is the contract.
     ///   - io: replay classification.
     ///   - fields: ordered key/value pairs. `nil` values are omitted rather than written as empty,
     ///     so absent and empty stay distinguishable.
-    static func tail(_ ev: String, _ io: GeofenceLogIO, _ fields: [(String, String?)] = []) -> String {
+    static func tail(
+        _ ev: String,
+        _ io: GeofenceLogIO,
+        _ fields: [(String, String?)] = [],
+        logger: Logger? = nil
+    ) -> String {
+        guard CioDiagnostics.enabled else { return "" }
+        if let logger, CioDiagnostics.claimEnabledWarning() {
+            logger.error(
+                "Diagnostics: internal geofence diagnostics are ENABLED. Logs now carry machine-readable detail including device coordinates. This is intended for Customer.io field testing and must not be enabled in a production build.",
+                "Geofence",
+                nil
+            )
+        }
+
         var parts = ["ev=\(ev)", "io=\(io.rawValue)"]
         for (key, value) in fields {
             guard let value else { continue }
@@ -145,14 +166,14 @@ enum GeofenceLog {
         case none
     }
 
-    /// How good the fix is and where it came from. **Deliberately ungated.**
+    /// How good the fix is and where it came from.
     ///
-    /// None of these keys says anything about *where* the device is, so none of them is the thing
-    /// `logPreciseLocation` exists to protect. Gating them would mean a default build cannot judge
-    /// whether a transition's position is worth anything at all — and `age` in particular is the
-    /// difference between a measurement and a guess: `bestKnownFix()` can return a fix that is
-    /// hours old, and an overshoot distance computed from one of those looks identical to a real
-    /// one.
+    /// `age` is the one to notice: `bestKnownFix()` can return a fix that is hours old on a
+    /// long-suspended process, and an overshoot distance computed from one of those looks identical
+    /// to a real measurement without it.
+    ///
+    /// Like everything else in the tail, these reach a log only when diagnostics are enabled — the
+    /// gate lives in `tail(_:_:_:logger:)`, so nothing here needs its own check.
     static func fixQuality(_ location: CLLocation?, source: FixSource) -> [(String, String?)] {
         var fields: [(String, String?)] = [("fixsrc", source.rawValue)]
         guard let location else { return fields }
@@ -184,31 +205,15 @@ enum GeofenceLog {
         return [("evage", num(-eventDate.timeIntervalSinceNow))]
     }
 
-    // MARK: - Gated device position
+    // MARK: - Device position
 
-    /// Whether the caller may include device coordinates, warning loudly the first time it may.
+    /// Device position.
     ///
-    /// The warning is an error-level log so it survives in a host app's own console even at a
-    /// restrictive log level: if this somehow ships enabled, the app's owner is told.
-    private static func allowPreciseLocation(logger: Logger) -> Bool {
-        guard CioDiagnostics.logPreciseLocation else { return false }
-        if CioDiagnostics.claimPreciseLocationWarning() {
-            logger.error(
-                "Diagnostics: precise location logging is ENABLED. Geofence debug logs now contain device coordinates. This is intended for Customer.io field testing and must not be enabled in a production build.",
-                "Geofence",
-                nil
-            )
-        }
-        return true
-    }
-
-    /// Device position, emitted only when ``CioDiagnostics/logPreciseLocation`` is on.
-    ///
-    /// Speed and course are gated alongside the coordinate, not with the quality keys above: a
-    /// run of them from a known starting point is dead reckoning, so they carry positional
-    /// information even though neither is a coordinate.
-    static func position(_ location: CLLocation?, logger: Logger) -> [(String, String?)] {
-        guard let location, allowPreciseLocation(logger: logger) else { return [] }
+    /// No separate switch: a single gate over the whole tail is what makes "customer builds see
+    /// exactly what they saw before" a claim you can check in one assertion, instead of a set of
+    /// per-field arguments a reviewer has to accept one at a time.
+    static func position(_ location: CLLocation?) -> [(String, String?)] {
+        guard let location else { return [] }
         return [
             ("lat", num(location.coordinate.latitude, 5)),
             ("lon", num(location.coordinate.longitude, 5)),
@@ -219,11 +224,19 @@ enum GeofenceLog {
     }
 
     /// Coordinates only, for the paths that carry `LocationData` rather than a full fix.
-    static func position(_ location: LocationData?, logger: Logger) -> [(String, String?)] {
-        guard let location, allowPreciseLocation(logger: logger) else { return [] }
+    static func position(_ location: LocationData?) -> [(String, String?)] {
+        guard let location else { return [] }
         return [
             ("lat", num(location.latitude, 5)),
             ("lon", num(location.longitude, 5))
         ]
+    }
+}
+
+extension Logger {
+    /// Shim so every geofence call site passes itself to the gate, which is what lets the
+    /// "diagnostics are enabled" warning be logged exactly once through the app's own logger.
+    func geofenceTail(_ ev: String, _ io: GeofenceLogIO, _ fields: [(String, String?)] = []) -> String {
+        GeofenceLog.tail(ev, io, fields, logger: self)
     }
 }

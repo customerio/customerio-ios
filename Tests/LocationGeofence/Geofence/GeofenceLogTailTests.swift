@@ -152,7 +152,8 @@ struct GeofenceLogTailTests {
 
     @Test
     func everyRecord_expectMachineKeyAndReplayClassification() {
-        CioDiagnostics.logPreciseLocation = false
+        CioDiagnostics.enabled = true
+        defer { CioDiagnostics.enabled = false }
 
         for invocation in invocations {
             let logger = CapturingLogger()
@@ -175,7 +176,8 @@ struct GeofenceLogTailTests {
 
     @Test
     func everyRecord_expectProseAndTailSeparated() {
-        CioDiagnostics.logPreciseLocation = false
+        CioDiagnostics.enabled = true
+        defer { CioDiagnostics.enabled = false }
 
         for invocation in invocations {
             let logger = CapturingLogger()
@@ -193,7 +195,8 @@ struct GeofenceLogTailTests {
 
     @Test
     func everyValue_expectNoWhitespace() {
-        CioDiagnostics.logPreciseLocation = false
+        CioDiagnostics.enabled = true
+        defer { CioDiagnostics.enabled = false }
 
         for invocation in invocations {
             let logger = CapturingLogger()
@@ -211,26 +214,49 @@ struct GeofenceLogTailTests {
         }
     }
 
-    // MARK: - Sensitive-field gating
+    // MARK: - The gate
 
     @Test
-    func position_givenFlagOff_expectNoCoordinates() {
-        CioDiagnostics.logPreciseLocation = false
+    func everyRecord_givenDiagnosticsOff_expectOutputUnchangedFromBeforeInstrumentation() {
+        CioDiagnostics.enabled = false
+
+        for invocation in invocations {
+            let logger = CapturingLogger()
+            invocation.run(logger)
+            guard let message = logger.messages.last else { continue }
+
+            // The whole guarantee in one assertion: a customer build that ships with debug logging
+            // left on sees exactly the prose it saw before this instrumentation existed. Not "sees
+            // only the safe fields" — sees nothing new at all, so no field added to the tail later
+            // needs a privacy review of its own.
+            #expect(
+                !message.contains(GeofenceLog.delimiter),
+                "\(invocation.name): emitted a tail with diagnostics off — '\(message)'"
+            )
+            #expect(!message.contains("ev="), "\(invocation.name): leaked a machine key — '\(message)'")
+        }
+    }
+
+    @Test
+    func everyRecord_givenDiagnosticsOff_expectNoDiagnosticKeyAnywhere() {
+        CioDiagnostics.enabled = false
 
         let logger = CapturingLogger()
         runAll(logger)
 
+        // Spot-checks the classes of value the harness cares about, including the ones that are
+        // harmless in isolation. The point is that "harmless in isolation" stopped being the test.
         for message in logger.messages {
-            for key in ["lat=", "lon=", "spd=", "brg=", "rlat=", "rlon="] {
-                #expect(!message.contains(key), "\(key) leaked with the flag off: '\(message)'")
+            for key in ["lat=", "lon=", "alt=", "spd=", "brg=", "rlat=", "rlon=", "acc=", "age=", "fixsrc=", "io=", "why="] {
+                #expect(!message.contains(key), "\(key) leaked with diagnostics off: '\(message)'")
             }
         }
     }
 
     @Test
-    func position_givenFlagOn_expectCoordinates() {
-        CioDiagnostics.logPreciseLocation = true
-        defer { CioDiagnostics.logPreciseLocation = false }
+    func everyRecord_givenDiagnosticsOn_expectFullDetailAndOneWarning() {
+        CioDiagnostics.enabled = true
+        defer { CioDiagnostics.enabled = false }
 
         let logger = CapturingLogger()
         runAll(logger)
@@ -239,65 +265,48 @@ struct GeofenceLogTailTests {
         #expect(joined.contains("lat="))
         #expect(joined.contains("lon="))
         #expect(joined.contains("acc="))
-        // Enabling it must be loud, and exactly once — a warning on every fix would be its own
-        // problem on a three-hour drive.
-        let warnings = logger.messages.filter { $0.contains("precise location logging is ENABLED") }
+        #expect(joined.contains("fixsrc="))
+        // Enabling it must be loud, and exactly once — a warning per record would be its own
+        // problem over a three-hour drive.
+        let warnings = logger.messages.filter { $0.contains("internal geofence diagnostics are ENABLED") }
         #expect(warnings.count == 1, "expected exactly one enablement warning, got \(warnings.count)")
     }
 
     @Test
-    func fixQuality_givenFlagOff_expectStillEmitted() {
-        CioDiagnostics.logPreciseLocation = false
+    func proseHalf_expectIdenticalWhicheverWayTheGateIsSet() {
+        // The prose is what a customer reads and what existing tests assert on. Enabling
+        // diagnostics must append to it and never rewrite it.
+        for invocation in invocations {
+            CioDiagnostics.enabled = false
+            let off = CapturingLogger()
+            invocation.run(off)
 
-        let logger = CapturingLogger()
-        logger.geofenceCallbackReceived(
-            identifier: "notl_core",
-            transition: .enter,
-            fix: sampleLocation,
-            source: .managerCache,
-            eventDate: Date(timeIntervalSinceNow: -3)
-        )
+            CioDiagnostics.enabled = true
+            let on = CapturingLogger()
+            invocation.run(on)
+            CioDiagnostics.enabled = false
 
-        // Accuracy, age, provenance and the simulated-fix marker say how good a fix is, never
-        // where it is — gating them would leave a default build unable to tell a measurement from
-        // a guess, which is most of the diagnostic value.
-        let fields = parseTail(logger.messages[0])
-        #expect(fields?["acc"] == "48.0")
-        #expect(fields?["fixsrc"] == "manager_cache")
-        #expect(fields?["age"] != nil)
-        #expect(fields?["evage"] != nil)
-        #expect(fields?["lat"] == nil, "coordinates must still be gated")
-    }
-
-    @Test
-    func regionGeometry_givenFlagOff_expectStillEmitted() {
-        CioDiagnostics.logPreciseLocation = false
-
-        let logger = CapturingLogger()
-        logger.geofenceEventRefusedByContradiction(
-            identifier: "notl_core",
-            transition: .enter,
-            distanceFromCenter: 1400,
-            radius: 1000,
-            accuracy: 48
-        )
-
-        // Region radius and the derived edge distance are workspace configuration, not user data,
-        // and stay on so a refusal is still explicable without turning the flag on.
-        let fields = parseTail(logger.messages[0])
-        #expect(fields?["rad"] == "1000")
-        #expect(fields?["edge"] == "400")
+            guard let offMessage = off.messages.last, let onMessage = on.messages.last else { continue }
+            let onProse = onMessage.components(separatedBy: GeofenceLog.delimiter)[0]
+            #expect(
+                onProse == offMessage,
+                "\(invocation.name): prose differs between gate states\n  off: \(offMessage)\n  on:  \(onProse)"
+            )
+        }
     }
 
     // MARK: - Value formatting
 
     @Test
     func sanitize_givenWhitespaceInIdentifier_expectFolded() {
+        CioDiagnostics.enabled = true
+        defer { CioDiagnostics.enabled = false }
+
         let logger = CapturingLogger()
         logger.geofenceEventTracked(geofenceId: "niagara on the lake", transition: .enter)
 
         // Workspace-authored identifiers can contain anything; the parser splits on whitespace.
-        #expect(parseTail(logger.messages[0])?["id"] == "niagara_on_the_lake")
+        #expect(parseTail(logger.messages.last ?? "")?["id"] == "niagara_on_the_lake")
     }
 
     @Test
@@ -309,10 +318,14 @@ struct GeofenceLogTailTests {
 
     @Test
     func skipReason_expectProseAndTokenBothPresent() {
+        CioDiagnostics.enabled = true
+        defer { CioDiagnostics.enabled = false }
+
         let logger = CapturingLogger()
         logger.geofenceSyncSkipped(reason: .noLastSyncAnchor)
 
-        let message = logger.messages[0]
+        // `.last`, not `[0]`: enabling the gate emits its one-time warning first.
+        let message = logger.messages.last ?? ""
         // The prose half must be byte-identical to what it was before enrichment, because it is
         // what a human reads and what an existing test may assert on.
         #expect(message.hasPrefix("[Geofence] Sync skipped: no last-sync anchor to restore from"))
