@@ -146,6 +146,22 @@ extension Logger {
         info("Synthesized \(transition.rawValue) for region \(identifier): fresh fix contradicts stored baseline (OS never delivered the crossing)", geofenceTag)
     }
 
+    /// Positive record of an OS-delivered business transition. Without it a native delivery is
+    /// only identifiable by the ABSENCE of a synthesized line, which makes the OS promotion rate
+    /// inferred rather than measured.
+    func geofenceOsTransitionReceived(identifier: String, transition: GeofenceTransition) {
+        debug("OS delivered \(transition.rawValue) for region \(identifier)", geofenceTag)
+    }
+
+    func geofencePolygonTransition(identifier: String, transition: GeofenceTransition, confirmedByFix: Bool) {
+        let basis = confirmedByFix ? "a gated fix" : "the covering-circle exit"
+        info("Polygon \(transition.rawValue) for region \(identifier), confirmed by \(basis)", geofenceTag)
+    }
+
+    func geofencePolygonUndecided(identifier: String, reason: String) {
+        debug("Polygon membership undecided for region \(identifier): \(reason)", geofenceTag)
+    }
+
     func geofenceEventRefusedByContradiction(identifier: String, transition: GeofenceTransition, distanceFromCenter: Double, radius: Double, accuracy: Double) {
         info("Refused OS \(transition.rawValue) for region \(identifier): a fresh fix contradicts it (distance \(Int(distanceFromCenter)) m, radius \(Int(radius)) m, accuracy \(Int(accuracy)) m)", geofenceTag)
     }
