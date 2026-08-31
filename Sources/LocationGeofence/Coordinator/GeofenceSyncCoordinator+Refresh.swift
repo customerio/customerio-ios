@@ -14,11 +14,16 @@ extension GeofenceSyncCoordinatorImpl {
         longitude: Double,
         cachedConfig: GeofenceConfig?
     ) async -> Result<Void, GeofenceSyncError> {
+        let fetchStartedAt = dateUtil.now
         let fetchResult = await awaitApiFetch(latitude: latitude, longitude: longitude)
+        let fetchElapsed = dateUtil.now.timeIntervalSince(fetchStartedAt)
         let response: GeofenceApiResponse
         switch fetchResult {
         case .success(let value):
             response = value
+            // The count off the wire, before local filtering — the difference between what the
+            // server offered and what survived ranking is the thing worth being able to see.
+            logger.geofenceApiFetchResult(returnedCount: value.geofences.count, elapsed: fetchElapsed)
         case .failure(let error):
             logger.geofenceSyncFetchFailed(error: error)
             return .failure(.fetchFailed(error))
@@ -41,6 +46,7 @@ extension GeofenceSyncCoordinatorImpl {
         // Read before `recordRegistration` overwrites it — the diff decides which registrations are new.
         let previouslyRegisteredIds = await storage.getRegisteredBusinessIds()
         let nearestIds = Set(nearest.map(\.id))
+        logRanking(candidates: regions, nearest: nearest, nearestIds: nearestIds, anchor: anchor)
         let osRegistration = await MainActor.run {
             registerWithOsSync(
                 businessRegions: nearest,
@@ -49,6 +55,7 @@ extension GeofenceSyncCoordinatorImpl {
                 registerMovementTrigger: registerMovementTrigger
             )
         }
+        logRegistration(nearest: nearest, anchor: anchor, registerMovementTrigger: registerMovementTrigger, triggerRadius: effectiveConfig.localRefreshTriggerRadius)
 
         await storage.setCachedGeofences(regions)
         // Skip overwriting when the response did not ship a config — a previously cached
@@ -86,6 +93,7 @@ extension GeofenceSyncCoordinatorImpl {
         // Read before `recordRegistration` overwrites it — the diff decides which registrations are new.
         let previouslyRegisteredIds = await storage.getRegisteredBusinessIds()
         let nearestIds = Set(nearest.map(\.id))
+        logRanking(candidates: cachedRegions, nearest: nearest, nearestIds: nearestIds, anchor: anchor)
         let osRegistration = await MainActor.run {
             registerWithOsSync(
                 businessRegions: nearest,
@@ -94,6 +102,7 @@ extension GeofenceSyncCoordinatorImpl {
                 registerMovementTrigger: registerMovementTrigger
             )
         }
+        logRegistration(nearest: nearest, anchor: anchor, registerMovementTrigger: registerMovementTrigger, triggerRadius: config.localRefreshTriggerRadius)
         await storage.recordRegistration(center: anchor, businessIds: nearestIds)
         emitInitialEnters(
             candidates: nearest,
@@ -117,5 +126,32 @@ extension GeofenceSyncCoordinatorImpl {
         await storage.clearUserScopedState()
         logger.geofenceSyncSupersededByUserChange()
         return true
+    }
+
+    // MARK: - Diagnostics
+
+    /// The 19-of-N selection, which is otherwise invisible: a geofence that never registered
+    /// because it ranked 20th looks exactly like one that registered and never fired.
+    private func logRanking(candidates: [Geofence], nearest: [Geofence], nearestIds: Set<String>, anchor: LocationData) {
+        logger.geofenceRankEvaluated(
+            candidates: candidates.count,
+            selected: nearest.map(\.id),
+            evicted: candidates.map(\.id).filter { !nearestIds.contains($0) },
+            edgeDistances: Dictionary(nearest.map { ($0.id, $0.edgeDistanceTo(anchor)) }, uniquingKeysWith: { first, _ in first })
+        )
+    }
+
+    /// What the OS is actually monitoring now, by identifier, plus the movement bubble's geometry.
+    private func logRegistration(nearest: [Geofence], anchor: LocationData, registerMovementTrigger: Bool, triggerRadius: Double) {
+        logger.geofenceRegionsRegistered(
+            identifiers: nearest.map(\.id),
+            movementTrigger: registerMovementTrigger ? GeofenceConstants.movementTriggerIdentifier : nil
+        )
+        guard registerMovementTrigger else { return }
+        logger.geofenceMovementTriggerRegistered(
+            latitude: anchor.latitude,
+            longitude: anchor.longitude,
+            radius: triggerRadius
+        )
     }
 }

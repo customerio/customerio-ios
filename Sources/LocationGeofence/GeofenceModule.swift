@@ -53,10 +53,13 @@ public final class GeofenceModule: CustomerIOModule {
     /// no double-init, no duplicate monitoring.
     @MainActor
     public static func bootstrapForBackgroundDelivery(launchOptions: [UIApplication.LaunchOptionsKey: Any]?) {
-        // Reserved for future cold-wake detection (e.g. `launchOptions[.location]`).
-        _ = launchOptions
+        // A cold wake for a geofence crossing and a user tapping the icon run the same code and,
+        // until now, produced identical logs — while behaving very differently. `launchOptions`
+        // already distinguishes them.
+        let launchReason: GeofenceLaunchReason = launchOptions?[.location] != nil ? .locationEvent : .appStart
 
         let di = DIGraphShared.shared
+        di.logger.geofenceModuleInitialized(launchReason: launchReason)
         GeofenceBootstrap.emitDiscoverabilityLogIfNeeded(di: di)
         Task { await di.geofenceEventTracker.flushPending() }
         Task { @MainActor in

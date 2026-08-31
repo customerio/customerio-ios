@@ -15,16 +15,28 @@ enum GeofenceMonitorBinder {
         monitor: GeofenceRegionMonitoring,
         tracker: GeofenceEventTracker,
         coordinator: GeofenceSyncCoordinator,
+        logger: Logger,
         backgroundTaskRunner: BackgroundTaskRunner = GeofenceBackgroundTime.runner(name: "io.customer.geofence.movement-pass")
     ) {
         monitor.setOnTransition { [weak tracker, weak coordinator] identifier, transition, location in
+            // Logged here, at the edge, before any dispatch decision. Everything below this line
+            // can drop the callback, and until now a drop left no trace on iOS at all — Android
+            // has `logReceiverSkipped`, this path had nothing.
+            logger.geofenceCallbackReceived(identifier: identifier, transition: transition, location: location)
             // CLLocationManager delivers on main; both handlers below are async with their
             // own serialization (tracker active-delivery dedup, coordinator refresh gate),
             // so fire-and-forget Tasks are safe.
             if identifier == GeofenceConstants.movementTriggerIdentifier {
                 // EXIT is the only registered transition for the movement trigger; the
                 // guard defends against an unexpected ENTER reaching this dispatch.
-                guard transition == .exit, let location else { return }
+                guard transition == .exit else {
+                    logger.geofenceCallbackDropped(identifier: identifier, transition: transition, reason: "movement_trigger_not_exit")
+                    return
+                }
+                guard let location else {
+                    logger.geofenceCallbackDropped(identifier: identifier, transition: transition, reason: "movement_trigger_no_location")
+                    return
+                }
                 // The EXIT is consumed once dispatched; a wake window expiring mid-pass would
                 // lose it with no retry, so the pass runs under a background-task assertion.
                 // (The tracker path holds its own inside `trackTransition`.)

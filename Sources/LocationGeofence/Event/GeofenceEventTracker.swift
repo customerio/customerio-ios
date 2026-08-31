@@ -93,7 +93,8 @@ final class GeofenceEventTracker: @unchecked Sendable {
         let interval = await storage.getCachedConfig()?.duplicateEventsExpiry ?? cooldownInterval
 
         guard await storage.tryAcquireCooldown(key: cooldownKey, now: now, interval: interval) else {
-            logger.geofenceEventSuppressed(geofenceId: geofenceId, transition: transition)
+            let remaining = await storage.cooldownRemaining(key: cooldownKey, now: now, interval: interval)
+            logger.geofenceEventSuppressed(geofenceId: geofenceId, transition: transition, cooldownRemaining: remaining)
             return []
         }
         // Resolve the geofence name and geoset membership now and carry them on the metric;

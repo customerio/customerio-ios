@@ -122,6 +122,7 @@ final class MovementFixResolver: NSObject, @preconcurrency CLLocationManagerDele
     // MARK: - Private
 
     private func recordDeliveredFix(_ fix: CLLocation) {
+        logger.geofenceFixReceived(fix, source: "movement_resolver")
         if latestFix.map({ fix.timestamp > $0.timestamp }) ?? true {
             latestFix = fix
         }

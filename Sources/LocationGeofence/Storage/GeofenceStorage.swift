@@ -64,6 +64,14 @@ actor GeofenceStorage {
         return true
     }
 
+    /// Seconds left on an active cooldown for `key`, or nil when there is none. Diagnostics only,
+    /// kept separate from `tryAcquireCooldown` so its atomic check-and-record keeps exact semantics.
+    func cooldownRemaining(key: String, now: Date, interval: TimeInterval) -> TimeInterval? {
+        guard let last = loadFromDisk()?.eventCooldowns?[key] else { return nil }
+        let remaining = interval - now.timeIntervalSince(last)
+        return remaining > 0 ? remaining : nil
+    }
+
     /// Atomically removes cooldown entries whose recorded timestamp is older than `interval`
     /// before `now`. Filtering happens inside the actor so a concurrent `tryAcquireCooldown`
     /// cannot have its fresh write deleted by a stale snapshot.

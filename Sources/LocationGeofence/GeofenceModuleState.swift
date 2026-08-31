@@ -48,6 +48,7 @@ final class GeofenceModuleState {
         // missed movement EXIT are caught on cold start. Anchors at the last registration center
         // (no GPS) when available; otherwise `.automatic` acquires a fix. Later refreshes come from
         // identify and fresh location fixes.
+        di.logger.geofenceModuleInitialized(launchReason: .appStart)
         refreshGeofencesIfPossible(di: di)
         Task { await di.geofenceEventTracker.flushPending() }
         Task { @MainActor in
