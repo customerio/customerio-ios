@@ -33,10 +33,18 @@ struct PolygonRegion {
 
     /// Fails on fewer than 3 distinct vertices. A closed ring (last vertex repeating the
     /// first) is accepted and unclosed — servers commonly send GeoJSON-style closed rings.
+    ///
+    /// Consecutively repeated positions are collapsed, so `vertices` is the canonical unique ring.
+    /// A repeat describes a zero-length edge, which contributes nothing to either containment or
+    /// edge distance; collapsing it keeps the count comparable to the server's own cap, which is
+    /// stated in unique vertices.
     init?(vertices: [LocationData]) {
-        var open = vertices
-        if let first = open.first, let last = open.last, open.count > 1,
-           first.latitude == last.latitude, first.longitude == last.longitude {
+        var open: [LocationData] = []
+        open.reserveCapacity(vertices.count)
+        for vertex in vertices where vertex != open.last {
+            open.append(vertex)
+        }
+        if let first = open.first, let last = open.last, open.count > 1, first == last {
             open.removeLast()
         }
         guard open.count >= 3 else { return nil }

@@ -23,6 +23,38 @@ struct PolygonRegionTests {
         }
     }
 
+    /// A repeated position is a zero-length edge: geometrically nothing, but it inflates the count
+    /// the vertex cap is compared against, and the server states that cap in UNIQUE vertices. So a
+    /// ring the server considers valid must not be dropped for carrying a duplicate.
+    @Test
+    func init_givenConsecutiveDuplicateVertices_expectCollapsedAndGeometryUnchanged() throws {
+        let fixture = try #require(polygonGeometryFixtures.first)
+        var withDuplicates: [LocationData] = []
+        for vertex in fixture.vertices {
+            withDuplicates.append(vertex)
+            withDuplicates.append(vertex)
+        }
+        let plain = try #require(PolygonRegion(vertices: fixture.vertices))
+        let collapsed = try #require(PolygonRegion(vertices: withDuplicates))
+
+        #expect(collapsed.vertices == plain.vertices)
+        for sample in fixture.samples {
+            #expect(collapsed.contains(sample.point) == sample.inside, "\(sample.note)")
+            #expect(
+                abs(collapsed.signedEdgeDistance(to: sample.point) - plain.signedEdgeDistance(to: sample.point)) < 0.001,
+                "\(sample.note)"
+            )
+        }
+    }
+
+    /// A triangle written with every point doubled is still a triangle, not a six-sided ring.
+    @Test
+    func init_givenOnlyDuplicatesLeavingTwoDistinct_expectNil() {
+        let a = LocationData(latitude: 0, longitude: 0)
+        let b = LocationData(latitude: 0.001, longitude: 0)
+        #expect(PolygonRegion(vertices: [a, a, b, b, a]) == nil)
+    }
+
     @Test
     func init_givenClosedRing_expectRingUnclosedAndGeometryIntact() throws {
         let fixture = try #require(polygonGeometryFixtures.first)
