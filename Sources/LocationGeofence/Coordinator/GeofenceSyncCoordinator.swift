@@ -275,7 +275,7 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
         defer { releaseGate() }
 
         let effectiveConfig = config ?? .fallback
-        let nearest = distanceFilter.nearest(cachedRegions, to: anchor, limit: businessLimit(for: effectiveConfig, tripwires: tripwires), maxDistance: effectiveConfig.maxMonitoringDistance)
+        let nearest = nearestBusinessRegions(cachedRegions, to: anchor, config: effectiveConfig, tripwires: tripwires)
         let registerMovementTrigger = effectiveConfig.maxBusinessGeofences > 0
         registerWithOsSync(
             businessRegions: nearest,
@@ -290,15 +290,31 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
         return GeofenceRegistration(center: anchor, businessIds: Set(nearest.map(\.id)))
     }
 
-    /// Business-region cap for one pass, with a slot held back for every planted tripwire.
+    /// Nearest business regions for one pass, with a slot held back for each tripwire the pass will
+    /// actually register.
     ///
-    /// `maxBusinessGeofences` keeps meaning *business fences*, but a tripwire draws from the same
-    /// 20-region OS budget, so the cap has to shrink or the total overflows and the OS starts
-    /// refusing registrations. Steady-state tripwire count is zero, so this normally changes
-    /// nothing. A polygon whose tripwire costs it its own slot cannot happen: the device is inside
-    /// that polygon's covering circle, so its edge distance is 0 and it sorts first.
-    func businessLimit(for config: GeofenceConfig, tripwires: [String: PolygonTripwire]) -> Int {
-        max(0, config.maxBusinessGeofences - tripwires.count)
+    /// A tripwire draws from the same 20-region OS budget as a business fence, so the cap has to
+    /// shrink or the total overflows and the OS starts refusing registrations. Steady-state
+    /// tripwire count is zero, so this normally changes nothing.
+    ///
+    /// Only tripwires for polygons in the ranked set are reserved for, because only those are
+    /// composed into the desired set — one for a polygon that fell out of the ranking is pruned at
+    /// the end of this same pass, and reserving for it would register fewer fences than the budget
+    /// allows. Ranking first and trimming after avoids the circularity of letting the cap depend on
+    /// a set that depends on the cap: trimming can only drop tripwires from the reserved set, never
+    /// add them, so the total stays within budget without a second ranking pass.
+    func nearestBusinessRegions(
+        _ regions: [Geofence],
+        to anchor: LocationData,
+        config: GeofenceConfig,
+        tripwires: [String: PolygonTripwire]
+    ) -> [Geofence] {
+        let ranked = distanceFilter.nearest(
+            regions, to: anchor, limit: config.maxBusinessGeofences, maxDistance: config.maxMonitoringDistance
+        )
+        let rankedIds = Set(ranked.map(\.id))
+        let reserved = tripwires.keys.filter { rankedIds.contains($0) }.count
+        return Array(ranked.prefix(max(0, config.maxBusinessGeofences - reserved)))
     }
 
     /// The identified user a gated operation runs for (`nil` when signed out); the exit cleanup compares against it.

@@ -37,7 +37,7 @@ extension GeofenceSyncCoordinatorImpl {
         let effectiveConfig = parsedConfig ?? cachedConfig ?? .fallback
         let anchor = LocationData(latitude: latitude, longitude: longitude)
         let tripwires = await storage.getPolygonTripwires()
-        let nearest = distanceFilter.nearest(regions, to: anchor, limit: businessLimit(for: effectiveConfig, tripwires: tripwires), maxDistance: effectiveConfig.maxMonitoringDistance)
+        let nearest = nearestBusinessRegions(regions, to: anchor, config: effectiveConfig, tripwires: tripwires)
         let registerMovementTrigger = effectiveConfig.maxBusinessGeofences > 0
         // Read before `recordRegistration` overwrites it — the diff decides which registrations are new.
         let previouslyRegisteredIds = await storage.getRegisteredBusinessIds()
@@ -84,7 +84,7 @@ extension GeofenceSyncCoordinatorImpl {
     ) async -> Result<Void, GeofenceSyncError> {
         let anchor = LocationData(latitude: latitude, longitude: longitude)
         let tripwires = await storage.getPolygonTripwires()
-        let nearest = distanceFilter.nearest(cachedRegions, to: anchor, limit: businessLimit(for: config, tripwires: tripwires), maxDistance: config.maxMonitoringDistance)
+        let nearest = nearestBusinessRegions(cachedRegions, to: anchor, config: config, tripwires: tripwires)
         let registerMovementTrigger = config.maxBusinessGeofences > 0
         // Read before `recordRegistration` overwrites it — the diff decides which registrations are new.
         let previouslyRegisteredIds = await storage.getRegisteredBusinessIds()

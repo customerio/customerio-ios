@@ -1781,6 +1781,71 @@ struct GeofenceSyncCoordinatorTests {
         #expect(refreshResult.errorOrNil == .alreadyInProgress)
     }
 
+    // MARK: - Tripwire slot budget
+
+    /// Drives a remote refresh whose config caps business fences at `maxBusiness`, with `tripwires`
+    /// already persisted from an earlier pass.
+    private func runBudgetRefresh(
+        regions: [Geofence], tripwires: [String: PolygonTripwire], maxBusiness: Int
+    ) async -> Set<String> {
+        let anchor = LocationData(latitude: 0, longitude: 0)
+        let storage = makeStorage()
+        let dateUtil = DateUtilStub()
+        await storage.recordSync(timestamp: dateUtil.givenNow.addingTimeInterval(-25 * 60 * 60), location: anchor)
+        for (id, tripwire) in tripwires {
+            await storage.setPolygonTripwire(tripwire, forIdentifier: id)
+        }
+        let config = GeofenceConfig(
+            localRefreshTriggerRadius: 1000,
+            remoteFetchRefreshTriggerRadius: 5000,
+            remoteFetchRefreshExpiry: 86400,
+            duplicateEventsExpiry: 3600,
+            maxBusinessGeofences: maxBusiness,
+            maxMonitoringDistance: 100000
+        )
+        let api = GeofenceApiServiceMock()
+        api.fetchNearbyGeofencesClosure = { _, _, completion in
+            completion(.success(makeApiResponse(regions: regions, config: config)))
+        }
+        let setup = makeCoordinator(api: api, storage: storage, dateUtil: dateUtil)
+        _ = await setup.coordinator.refresh(latitude: anchor.latitude, longitude: anchor.longitude)
+        return Set(setup.monitor.startedRegions.map(\.identifier))
+    }
+
+    /// A tripwire draws from the same 20-region budget as a business fence, so the business cap
+    /// shrinks by one for each tripwire this pass will register.
+    @Test
+    func remoteRefresh_givenTripwireForRankedPolygon_expectBusinessCapShrinksByOne() async {
+        let near = makeRegion(id: "first", latitude: 0, longitude: 0)
+        let second = makeRegion(id: "second", latitude: 0.5, longitude: 0)
+        let registered = await runBudgetRefresh(
+            regions: [near, second],
+            tripwires: ["first": PolygonTripwire(center: LocationData(latitude: 0, longitude: 0), radius: 100)],
+            maxBusiness: 2
+        )
+
+        #expect(registered.contains("first"))
+        #expect(registered.contains(GeofenceInternalIdentifier.tripwire(for: "first")))
+        #expect(!registered.contains("second"))
+    }
+
+    /// Reported by Bugbot on #1248: a tripwire whose polygon fell out of the ranking is pruned at
+    /// the end of this same pass, so reserving a slot for it registers fewer business fences than
+    /// the budget allows. Only tripwires the pass actually composes may cost a slot.
+    @Test
+    func remoteRefresh_givenTripwireForUnrankedPolygon_expectNoSlotReserved() async {
+        let first = makeRegion(id: "first", latitude: 0, longitude: 0)
+        let second = makeRegion(id: "second", latitude: 0.5, longitude: 0)
+        let registered = await runBudgetRefresh(
+            regions: [first, second],
+            tripwires: ["gone": PolygonTripwire(center: LocationData(latitude: 0, longitude: 0), radius: 100)],
+            maxBusiness: 2
+        )
+
+        #expect(registered.contains("first"))
+        #expect(registered.contains("second"))
+    }
+
     // MARK: - Oversized covering circles
 
     /// Both monitors clamp a radius to the OS limit. For a circle that is graceful — the monitored
