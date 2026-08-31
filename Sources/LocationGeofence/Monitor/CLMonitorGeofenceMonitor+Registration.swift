@@ -67,8 +67,10 @@ extension CLMonitorGeofenceMonitor {
             transitionTypes: transitionTypes
         )
 
-        let isMovementTrigger = identifier == GeofenceConstants.movementTriggerIdentifier
-        let isInside = isDeviceInside(center: coordinate, radius: clampedRadius) ?? isMovementTrigger
+        // Internal regions — the movement trigger and polygon tripwires — are planted ON the
+        // device, so with no fix to check against, inside is the correct assumption.
+        let isDeviceCentered = GeofenceInternalIdentifier.isInternal(identifier)
+        let isInside = isDeviceInside(center: coordinate, radius: clampedRadius) ?? isDeviceCentered
         let initialTransition: GeofenceTransition = isInside ? .enter : .exit
         let assumedState: CLMonitor.Event.State = isInside ? .satisfied : .unsatisfied
 

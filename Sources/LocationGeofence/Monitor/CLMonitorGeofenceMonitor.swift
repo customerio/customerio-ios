@@ -293,7 +293,7 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preco
         }
         // Runs BEFORE the baseline advance below: a refused event must leave the stored baseline
         // untouched so the daemon's own re-evaluation dedups against it (see `+ContradictionGate`).
-        if identifier != GeofenceConstants.movementTriggerIdentifier,
+        if !GeofenceInternalIdentifier.isInternal(identifier),
            await isEventContradictedByFreshFix(identifier: identifier, transition: transition, eventDate: event.date) {
             return
         }
@@ -301,7 +301,7 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preco
         // No ownership re-check after the await: the baseline already advanced, so dropping here
         // loses the transition permanently — a sync's stop-all + re-add swap would eat a genuine
         // crossing that raced it. A region truly removed in that window delivers one last gated event.
-        if identifier == GeofenceConstants.movementTriggerIdentifier, transition == .exit {
+        if GeofenceInternalIdentifier.isInternal(identifier), transition == .exit {
             // The movement pass re-centers the trigger and measures displacement at these coords, so
             // a frozen cached fix pins the whole pipeline to a stale point — freshen it first.
             // Fire-and-forget so a slow fix can't stall the pending-event drain behind it.

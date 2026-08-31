@@ -211,7 +211,7 @@ final class CoreLocationGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @pr
     /// keeping the captured location only as the fallback. Fire-and-forget so a slow fix can't
     /// stall the pending-event drain behind it. Business events keep the captured location.
     private func dispatchTransition(identifier: String, transition: GeofenceTransition, capturedLocation: LocationData?) {
-        if identifier == GeofenceConstants.movementTriggerIdentifier, transition == .exit {
+        if GeofenceInternalIdentifier.isInternal(identifier), transition == .exit {
             movementFixResolver.resolve(cached: bestKnownFix()) { [weak self] location in
                 self?.onTransition?(identifier, transition, location ?? capturedLocation)
             }
