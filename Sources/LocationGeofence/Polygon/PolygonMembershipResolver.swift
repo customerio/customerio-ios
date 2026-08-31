@@ -79,7 +79,17 @@ final class PolygonMembershipResolver {
             await apply(.outside, to: geofence, evidence: nil)
             await clearTripwire(for: geofence.id, at: location)
         case .enter:
-            await evaluate(geofence: geofence, polygon: polygon, containment: .coveringCircleEnter)
+            // Fresh fix for the same reason the tripwire wake needs one: the OS is telling us the
+            // device is ON this circle's boundary right now, while a cached fix may be 30 s old —
+            // 900 m at driving speed. Measured on a simulated drive: a stale fix on this path put
+            // the device 918 m from the polygon and planted a tripwire wider than the covering
+            // circle, which can never fire before the circle's own exit.
+            await evaluate(
+                geofence: geofence,
+                polygon: polygon,
+                containment: .coveringCircleEnter,
+                requiresFreshFix: true
+            )
         }
     }
 

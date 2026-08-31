@@ -349,6 +349,28 @@ struct PolygonMembershipResolverTests {
         #expect(setup.coordinator.reapplyRegistrationCallsCount == 1)
     }
 
+    /// The OS says the device is on this circle's boundary right now; a cached fix can be 30 s and
+    /// ~900 m out of date, which both mis-sizes the tripwire and can answer the membership question
+    /// for the wrong place.
+    @Test
+    func handleTransition_givenCoveringCircleEnter_expectFreshFixRequested() async {
+        let stale = fix(latitude: 0.02, longitude: 0)
+        let setup = await makeSetup(fix: stale)
+        await setup.storage.setCachedGeofences([polygonGeofence()])
+        // Seed the cache with the stale fix, then move the device inside before the OS event lands.
+        _ = await setup.resolver.evaluateAllPolygons()
+        let inside = fix(latitude: 0, longitude: 0)
+        setup.fixResolver.requestFreshFix = { [weak fixResolver = setup.fixResolver] in
+            fixResolver?.handleResolvedFix(inside)
+        }
+
+        await setup.resolver.handleTransition(identifier: "1", transition: .enter, location: nil)
+
+        let delivered = await setup.emitter.snapshot()
+        #expect(delivered.count == 1)
+        #expect(delivered.first?.transition == .enter)
+    }
+
     /// The tripwire fires BECAUSE the device moved far enough to change the verdict, so answering
     /// the wake from the fix that planted it just replays the old verdict — and because the
     /// tripwire it recomputes is identical, nothing is re-planted and the wake is spent for
