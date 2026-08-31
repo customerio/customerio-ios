@@ -2,8 +2,17 @@ name: Xcode 27 preview compatibility
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, edited, labeled]
     paths:
       - '.github/workflows/ios-toolchain-compatibility.yml'
+      - 'Apps/APN-UIKit/**'
+      - 'Apps/CocoaPods-FCM/**'
+      - 'Apps/Common/**'
+      - 'Sources/**'
+      - 'Package.swift'
+      - 'Package.resolved'
+      - '*.podspec'
+      - 'scripts/cocoapods_deployment_target.rb'
   schedule:
     # Stagger preview demand across repositories instead of competing for the
     # hosted macOS pool at the top of the hour.
@@ -24,6 +33,29 @@ env:
 
 jobs:
   compile:
+    # Metadata edits rerun the lane fail-closed so a newer skipped check cannot
+    # replace an earlier failure for the same commit.
+    if: >-
+      github.event_name != 'pull_request' ||
+      ((github.event.action == 'edited' ||
+      github.event.action == 'labeled' ||
+      contains(github.event.pull_request.labels.*.name, 'ci:full') ||
+      startsWith(github.event.pull_request.title, 'fix:') ||
+      startsWith(github.event.pull_request.title, 'fix(') ||
+      startsWith(github.event.pull_request.title, 'feat:') ||
+      startsWith(github.event.pull_request.title, 'feat(') ||
+      startsWith(github.event.pull_request.title, 'perf:') ||
+      startsWith(github.event.pull_request.title, 'perf(') ||
+      startsWith(github.event.pull_request.title, 'revert:') ||
+      startsWith(github.event.pull_request.title, 'revert(') ||
+      startsWith(github.event.pull_request.title, 'Revert "') ||
+      contains(github.event.pull_request.body, 'This reverts commit') ||
+      contains(github.event.pull_request.title, '!:') ||
+      contains(github.event.pull_request.body, 'BREAKING CHANGE:') ||
+      contains(github.event.pull_request.body, 'BREAKING CHANGES:') ||
+      contains(github.event.pull_request.body, 'BREAKING-CHANGE:')) &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.user.login != 'dependabot[bot]')
     name: Xcode 27 preview (${{ matrix.fixture }})
     runs-on: xcode-27
     timeout-minutes: 60

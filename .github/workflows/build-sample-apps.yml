@@ -2,7 +2,7 @@ name: Build sample apps
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened, labeled]
+    types: [opened, synchronize, reopened, edited, labeled]
     paths-ignore:
       - '**/*.md'
   push:
@@ -19,19 +19,36 @@ on:
 
 concurrency:
   # Ignore unrelated label events without cancelling the active validation run.
-  group: ${{ github.workflow }}-${{ github.ref }}-${{ (github.event.action == 'labeled' && github.event.label.name != 'ci:full') && github.run_id || 'validation' }}
+  group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' || startsWith(github.ref, 'refs/heads/feature/') }}
 
 jobs:
   # 1) Build and publish sample apps to Firebase App Distribution.
-  # PRs use the lightweight compile/test workflows by default. Add `ci:full` when
-  # a distributable sample build is useful. Main and manual runs remain automatic.
+  # Release-bearing PRs mirror semantic-release and validate distributable sample
+  # builds automatically. `ci:full` remains an override for non-release PRs.
+  # Metadata edits rerun full so a newer skipped check cannot replace a failure.
   build-sample-apps:
     if: >-
-      (github.event.action != 'labeled' || github.event.label.name == 'ci:full') &&
       (github.event_name != 'pull_request' ||
-      (contains(github.event.pull_request.labels.*.name, 'ci:full') &&
-      github.event.pull_request.head.repo.full_name == github.repository))
+      ((github.event.action == 'edited' ||
+      github.event.action == 'labeled' ||
+      contains(github.event.pull_request.labels.*.name, 'ci:full') ||
+      startsWith(github.event.pull_request.title, 'fix:') ||
+      startsWith(github.event.pull_request.title, 'fix(') ||
+      startsWith(github.event.pull_request.title, 'feat:') ||
+      startsWith(github.event.pull_request.title, 'feat(') ||
+      startsWith(github.event.pull_request.title, 'perf:') ||
+      startsWith(github.event.pull_request.title, 'perf(') ||
+      startsWith(github.event.pull_request.title, 'revert:') ||
+      startsWith(github.event.pull_request.title, 'revert(') ||
+      startsWith(github.event.pull_request.title, 'Revert "') ||
+      contains(github.event.pull_request.body, 'This reverts commit') ||
+      contains(github.event.pull_request.title, '!:') ||
+      contains(github.event.pull_request.body, 'BREAKING CHANGE:') ||
+      contains(github.event.pull_request.body, 'BREAKING CHANGES:') ||
+      contains(github.event.pull_request.body, 'BREAKING-CHANGE:')) &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.user.login != 'dependabot[bot]'))
     uses: ./.github/workflows/reusable_build_sample_apps.yml
     with:
       # If manual run AND user sets 'use_latest_sdk_version' to true, get the new tag.
@@ -48,17 +65,15 @@ jobs:
       SAMPLE_APPS_INSTRUCTIONS_GUIDE_LINK: ${{ secrets.SAMPLE_APPS_INSTRUCTIONS_GUIDE_LINK }}
       SLACK_NOTIFY_RELEASES_WEBHOOK_URL: ${{ secrets.SLACK_NOTIFY_RELEASES_WEBHOOK_URL }}
 
-  # Binary-size comparison compiles the SDK twice on macOS. Keep it available in
-  # the full PR lane, and keep warming the exact-SHA baseline cache from main so
-  # labeled PRs do not rebuild the comparison archive unnecessarily.
+  # Size is a release guardrail, so it runs for every internal non-documentation
+  # PR. Main keeps warming the exact-SHA baseline cache to avoid rebuilding it.
   generate-sdk-size-reports:
     if: >-
       github.event_name == 'workflow_dispatch' ||
       (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
-      ((github.event.action != 'labeled' || github.event.label.name == 'ci:full') &&
-      github.event_name == 'pull_request' &&
-      contains(github.event.pull_request.labels.*.name, 'ci:full') &&
-      github.event.pull_request.head.repo.full_name == github.repository)
+      (github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.user.login != 'dependabot[bot]')
     runs-on: macos-26
     timeout-minutes: 60
     permissions:
