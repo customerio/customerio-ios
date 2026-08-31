@@ -71,10 +71,10 @@ jobs:
                 Apps/CocoaPods-FCM/*|*.podspec|scripts/cocoapods_deployment_target.rb)
                   fcm=true
                   ;;
-                # The APN SwiftPM fixture compiles every source module except
-                # MessagingPushFCM and Migration. The CocoaPods FCM fixture
-                # includes those two modules as well as the shared SDK graph.
-                Sources/MessagingPushFCM/*|Sources/Migration/*)
+                # The APN SwiftPM fixture compiles the shared SDK graph,
+                # including Migration. FCM sources require the CocoaPods FCM
+                # fixture because they are not part of the APN package graph.
+                Sources/MessagingPushFCM/*)
                   fcm=true
                   ;;
                 Sources/*)
