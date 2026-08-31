@@ -204,6 +204,7 @@ actor GeofenceStorage {
         state.movementTriggerCenter = nil
         state.monitoredGeofenceIds = nil
         state.monitorRegionRecords = nil
+        state.polygonMembership = nil
         saveToDisk(state)
     }
 
@@ -291,12 +292,14 @@ actor GeofenceStorage {
             let retained = businessIds.union([GeofenceConstants.movementTriggerIdentifier])
             state.monitorRegionRecords = records.filter { retained.contains($0.key) }
         }
+        state.prunePolygonState(retaining: businessIds)
         saveToDisk(state)
     }
 
     // MARK: - Private (file persistence)
 
-    private func loadFromDisk() -> GeofenceState? {
+    // Internal (not private): reached by the `+PolygonMembership` extension in its own file.
+    func loadFromDisk() -> GeofenceState? {
         guard let url = stateFileURL() else { return nil }
         guard fileManager.fileExists(atPath: url.path),
               let data = try? Data(contentsOf: url)
@@ -306,7 +309,7 @@ actor GeofenceStorage {
         return try? Self.makeDecoder().decode(GeofenceState.self, from: data)
     }
 
-    private func saveToDisk(_ state: GeofenceState) {
+    func saveToDisk(_ state: GeofenceState) {
         guard let data = try? Self.makeEncoder().encode(state),
               let url = stateFileURL()
         else {
