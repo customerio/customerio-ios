@@ -8,6 +8,7 @@ on:
       - 'Apps/APN-UIKit/**'
       - 'Apps/CocoaPods-FCM/**'
       - 'Apps/Common/**'
+      - 'Sources/**'
       - 'Package.swift'
       - 'Package.resolved'
       - '*.podspec'
@@ -70,6 +71,15 @@ jobs:
                 Apps/CocoaPods-FCM/*|*.podspec|scripts/cocoapods_deployment_target.rb)
                   fcm=true
                   ;;
+                # The APN SwiftPM fixture compiles every source module except
+                # MessagingPushFCM and Migration. The CocoaPods FCM fixture
+                # includes those two modules as well as the shared SDK graph.
+                Sources/MessagingPushFCM/*|Sources/Migration/*)
+                  fcm=true
+                  ;;
+                Sources/*)
+                  apn=true
+                  ;;
                 Apps/Common/*|Package.swift|Package.resolved|.github/workflows/ios-toolchain-compatibility.yml)
                   apn=true
                   fcm=true
@@ -88,10 +98,9 @@ jobs:
           echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
 
   compile:
-    # Preview-toolchain compatibility follows integration and packaging paths.
-    # Ordinary source regressions are compiled and launch-tested on the stable
-    # toolchain in compile-changed-sample-apps.yml, while the nightly still runs
-    # both preview fixtures against all source changes accumulated on main.
+    # Source changes use one representative fixture selected by module. Changes
+    # to integration or packaging inputs still select every affected fixture,
+    # and nightly/manual runs exercise both fixtures together.
     needs: select-fixtures
     if: needs.select-fixtures.outputs.matrix != '[]'
     name: Xcode 27 preview (${{ matrix.fixture }})
