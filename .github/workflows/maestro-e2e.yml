@@ -34,7 +34,14 @@ on:
     - cron: "41 6 * * 1-5"
 
 concurrency:
-  group: maestro-ios-${{ github.ref }}
+  # Unrelated label events skip E2E and cannot cancel a requested ci:full run.
+  group: >-
+    maestro-ios-${{ github.ref }}-${{
+      github.event_name == 'pull_request' &&
+      github.event.action == 'labeled' &&
+      github.event.label.name != 'ci:full' &&
+      'metadata' || 'validation'
+    }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
