@@ -312,10 +312,7 @@ extension GeofenceApiRegion {
         guard let region = PolygonRegion(vertices: positions),
               region.vertices.count <= GeofenceConstants.maxPolygonVertexCount
         else { return nil }
-        let coverageBound = coveringRadius + max(
-            GeofenceConstants.polygonCoverageSlackMeters,
-            coveringRadius * GeofenceConstants.polygonCoverageSlackFraction
-        )
+        let coverageBound = coveringRadius + GeofenceConstants.polygonCoverageSlackMeters
         guard region.vertices.allSatisfy({ vertex in
             coveringCenter.distance(from: CLLocation(latitude: vertex.latitude, longitude: vertex.longitude)) <= coverageBound
         }) else { return nil }

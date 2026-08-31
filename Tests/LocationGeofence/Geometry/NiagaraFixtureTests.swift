@@ -12,11 +12,13 @@ struct NiagaraFixtureTests {
         (43.1500, -79.1200), (43.1800, -79.1800), (43.2300, -79.1500), (43.2620, -79.0750)
     ].map { LocationData(latitude: $0.0, longitude: $0.1) }
 
-    /// Minimum enclosing circle of the ring, radius from a SPHERICAL model — 7864 m, where WGS84
-    /// measures 7875.3 to the farthest vertex. Deliberately the pessimistic value: the proportional
-    /// coverage slack exists so a server using a different earth model doesn't get its region
-    /// dropped, and this fixture is what proves it.
-    private static let covering = (latitude: 43.219062, longitude: -79.099117, radius: 7864.0)
+    /// Minimum enclosing circle of the ring, radius measured on WGS84 — the farthest vertex sits
+    /// 7877.1 m out, which is what the server computes (PostGIS `geography`) and what
+    /// `CLLocation.distance` measures here. A spherical model puts the same circle at 7864 m, 13 m
+    /// short; `niagaraRing_expectSphericalRadiusRejected` pins that we depend on the WGS84 value.
+    private static let covering = (latitude: 43.219062, longitude: -79.099117, radius: 7878.0)
+
+    private static let sphericalCoveringRadius = 7864.0
 
     @Test
     func niagaraRing_expectAcceptedByKernel() {
@@ -25,27 +27,35 @@ struct NiagaraFixtureTests {
         #expect(region?.vertices.count == 7)
     }
 
-    @Test
-    func niagaraRing_expectAcceptedByApiValidation() {
-        let api = GeofenceApiRegion(
+    private static func apiRegion(coveringRadius: Double) -> GeofenceApiRegion {
+        GeofenceApiRegion(
             id: "niagara", name: "Niagara-on-the-Lake", shape: "polygon",
             latitude: nil, longitude: nil, radius: nil,
             geometry: GeofenceApiGeometry(
                 type: "Polygon",
                 // GeoJSON is longitude-first, and the ring stays closed on the wire.
-                coordinates: [Self.ring.map { [$0.longitude, $0.latitude] }]
+                coordinates: [ring.map { [$0.longitude, $0.latitude] }]
             ),
             enclosingCircle: GeofenceApiEnclosingCircle(
-                latitude: Self.covering.latitude,
-                longitude: Self.covering.longitude,
-                baseRadiusM: Self.covering.radius
+                latitude: covering.latitude, longitude: covering.longitude, baseRadiusM: coveringRadius
             ),
             externalId: nil, transitionTypes: nil, lastUpdated: nil, geosetIds: nil, metadata: nil
         )
-        let domain = api.toDomain()
+    }
+
+    @Test
+    func niagaraRing_expectAcceptedByApiValidation() {
+        let domain = Self.apiRegion(coveringRadius: Self.covering.radius).toDomain()
         #expect(domain != nil)
         #expect(domain?.vertices?.count == 7)
         #expect(domain?.polygonRegion != nil)
+    }
+
+    /// The coverage slack is a flat metre and does not scale, so a circle sized on the wrong earth
+    /// model no longer squeaks through: it fails coverage and the region is dropped outright.
+    @Test
+    func niagaraRing_expectSphericalRadiusRejected() {
+        #expect(Self.apiRegion(coveringRadius: Self.sphericalCoveringRadius).toDomain() == nil)
     }
 
     /// Well inside the town: the verdict must be decisive at any realistic accuracy.

@@ -245,10 +245,21 @@ struct GeofencePolygonDecodeTests {
 
     @Test
     func toDomain_givenEnclosingCircleExactlyAtCorners_expectAccepted() throws {
-        // Corner distance ≈282.8 m; radius 283 must accept. The slack absorbs earth-model drift
-        // between the server's computation and WGS84 on device, not real violations.
+        // Corner distance ≈282.8 m; radius 283 must accept. The slack absorbs rounding between the
+        // server's spheroidal distances and WGS84 on device, not real violations.
         let response = try decode(responseJson([polygonJson(radius: 283)]))
         #expect(response.toDomainRegions().count == 1)
+    }
+
+    @Test
+    func toDomain_givenLargeFenceVertexPastFlatSlack_expectRegionDropped() throws {
+        // Both sides measure on WGS84, so the slack is a flat metre and does NOT scale with radius:
+        // a vertex 15 m outside a 7.9 km circle is a real coverage violation, not drift.
+        let ring = """
+        [[[74.169508, 31.440346], [74.1675080, 31.3669600], [74.1715080, 31.3669600]]]
+        """
+        let response = try decode(responseJson([polygonJson(radius: 7900, ring: ring)]))
+        #expect(response.toDomainRegions().isEmpty)
     }
 
     // MARK: - Cache round-trip

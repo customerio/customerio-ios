@@ -83,12 +83,11 @@ enum GeofenceConstants {
     // have rejected; keep the two in step, and never set this below the server's value or we would
     // drop fences the server considers valid.
     static let maxPolygonVertexCount = 500
-    static let polygonCoverageSlackMeters = 1.0
 
-    /// Additional coverage slack as a fraction of the covering radius, to absorb the difference
-    /// between the earth model the server computed the circle with and the WGS84 ellipsoid
-    /// `CLLocation.distance` measures against. Measured at 11 m on a 7.9 km fence — far past a flat
-    /// one-metre slack, and a failed coverage check DROPS the region, so a legitimately-covering
-    /// circle would silently make the fence not exist.
-    static let polygonCoverageSlackFraction = 0.005
+    /// Slack on the coverage check, absorbing only the numerical difference between the server's
+    /// WGS84 spheroidal distances (PostGIS `geography`) and the WGS84 ellipsoid `CLLocation.distance`
+    /// measures against — the two agree on the earth model, so the residual is rounding, not geometry.
+    /// A failed coverage check DROPS the region, so this errs generous: too tight and a legitimately
+    /// covering circle silently makes the fence not exist.
+    static let polygonCoverageSlackMeters = 1.0
 }
