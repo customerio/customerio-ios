@@ -19,6 +19,13 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     private let inboxEventListener = SampleInboxEventListener()
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
+        // Field-drive diagnostics sink, installed before anything else runs.
+        //
+        // A cold background wake — the geofence case we care most about — reaches SDK code within
+        // milliseconds of process start. Anything installed after SDK initialization, or from a
+        // scene delegate, misses the wake it was meant to observe.
+        DiagnosticLog.shared.start()
+
         // Override point for customization after application launch.
         initializeCioAndInAppListeners()
 
@@ -48,7 +55,12 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             .autoTrackDeviceAttributes(settings.dataPipelines.autoTrackDeviceAttributes)
             .trackApplicationLifecycleEvents(settings.dataPipelines.trackApplicationLifecycleEvents)
             .screenViewUse(screenView: settings.dataPipelines.screenViewUse.toCIOScreenViewUse())
-            .logLevel(settings.dataPipelines.logLevel.toCIOLogLevel())
+            // Forced to `.debug` rather than taking the stored setting. The SDK filters by level
+            // *before* the dispatcher runs, and `CustomerIO.initialize` re-applies the configured
+            // level over whatever the sink set at install time — so a stored level of ERROR would
+            // produce an empty file after a three-hour drive. Diagnostics win over the setting;
+            // the Location Test screen says so on screen.
+            .logLevel(.debug)
             .migrationSiteId(settings.dataPipelines.siteId)
             .deepLinkCallback { [deepLinkHandler] url in deepLinkHandler.handleCustomerIODestination(url) }
 
