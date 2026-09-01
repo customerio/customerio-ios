@@ -5,33 +5,26 @@ inputs:
   # If you want to save a new build, pass in this input. If you want to get the latest build, leave this input out.
   apn-or-fcm:
     description: 'Defines which push service to build the sample app for. Either "APN" or "FCM".'
-    type: string
     required: true
   sample-app:
     description: 'The name of the sample app to build. Provide name of 1 of the directories in the Apps/ directory. Example: "CocoaPods-FCM"'
-    type: string
     required: true
   # The action we use to interact with Fastlane requires a JSON object for arguments, https://github.com/maierj/fastlane-action?tab=readme-ov-file#inputs
   fastlane-build-args:
     description: 'Arguments to pass to the Fastlane build command. Example: "{ "option1": "value1", "option2": "value2" }"'
-    type: string
     required: false
     default: '{}'
   customerio-workspace-siteid:
     description: 'The site ID for a workspace in Customer.io to set as default in compiled app, probably a secret.'
-    type: string
     required: true 
   customerio-workspace-cdp-api-key:
     description: 'The CDP API key for a workspace in Customer.io to set as default in compiled app, probably a secret.'
-    type: string
     required: true
   customerio-workspace-name:
     description: "The name of the workspace used in Customer.io to set as default in compiled app. This makes it easier to know which workspace the app is connected to."
-    type: string
     required: true
   customerio-public-sdk-version:
     description: "The public version of Customer.io to use in compiled app. This is used to test public releases of Customer.io SDK in the sample apps."
-    type: string
     required: false
     default: ''
   firebase-app-id:
@@ -44,16 +37,13 @@ inputs:
     default: ''
   GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64:
     description: 'Maps to the secret, GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64. Used for code signing. See the Fastlane config files to learn more.'
-    type: string
     required: true
   FIREBASE_APP_DISTRIBUTION_SERVICE_ACCOUNT_CREDS_B64:
     description: 'Set this input, only if you want to upload app for internal testing. Maps to the secret, FIREBASE_APP_DISTRIBUTION_SERVICE_ACCOUNT_CREDS_B64. Used for uploading compiled apps for testing. See the Fastlane config files to learn more.'
-    type: string
     required: false
     default: ''
   xcode-version:
     description: 'Xcode version to use for the build (e.g. "26.6"). Pinned rather than left empty: an empty value makes setup-ios skip Xcode selection entirely, so the build would silently follow whatever the runner image defaults to.'
-    type: string
     required: false
     default: '26.6'
   SLACK_WEBHOOK_URL:
