@@ -135,6 +135,7 @@ extension GeofenceSyncCoordinatorImpl {
     private func logRanking(candidates: [Geofence], nearest: [Geofence], nearestIds: Set<String>, anchor: LocationData) {
         logger.geofenceRankEvaluated(
             candidates: candidates.count,
+            selectedCount: nearest.count,
             selected: nearest.map(\.id),
             evicted: candidates.map(\.id).filter { !nearestIds.contains($0) },
             edgeDistances: Dictionary(nearest.map { ($0.id, $0.edgeDistanceTo(anchor)) }, uniquingKeysWith: { first, _ in first })

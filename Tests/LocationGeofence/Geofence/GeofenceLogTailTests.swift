@@ -122,7 +122,7 @@ struct GeofenceLogTailTests {
             Invocation(name: "apiFetchResult", requiredKeys: ["ok", "n", "ms"]) { $0.geofenceApiFetchResult(returnedCount: 30, elapsed: 0.42) },
             Invocation(name: "syncCompleted", requiredKeys: ["n", "mvmt", "ms"]) { $0.geofenceSyncCompleted(registeredCount: 19, movementTriggerRegistered: true, elapsed: 1.5) },
             Invocation(name: "registrationDiff", requiredKeys: ["nadd", "nrem", "nkeep"]) { $0.geofenceRegistrationDiff(added: 3, removed: 2, unchanged: 17) },
-            Invocation(name: "rankEvaluated", requiredKeys: ["ncand", "n", "ranked", "evicted"]) { $0.geofenceRankEvaluated(candidates: 30, selected: ["a", "b"], evicted: ["c"], edgeDistances: ["a": 120, "b": 340]) },
+            Invocation(name: "rankEvaluated", requiredKeys: ["ncand", "n", "ranked", "evicted"]) { $0.geofenceRankEvaluated(candidates: 30, selectedCount: 2, selected: ["a", "b"], evicted: ["c"], edgeDistances: ["a": 120, "b": 340]) },
             Invocation(name: "movementTrigger", requiredKeys: ["tier"]) { $0.geofenceMovementTrigger(tier: .localRerank) },
             Invocation(name: "movementTriggerRegistered", requiredKeys: ["rad"]) { $0.geofenceMovementTriggerRegistered(latitude: 43.2, longitude: -79.0, radius: 500) },
             Invocation(name: "movementRearmed", requiredKeys: ["why"]) { $0.geofenceMovementRearmedAfterFailedRefresh() },
@@ -152,8 +152,8 @@ struct GeofenceLogTailTests {
 
     @Test
     func everyRecord_expectMachineKeyAndReplayClassification() {
-        CioDiagnostics.enabled = true
-        defer { CioDiagnostics.enabled = false }
+        GeofenceDiagnostics.setEnabledForTesting(true)
+        defer { GeofenceDiagnostics.setEnabledForTesting(nil) }
 
         for invocation in invocations {
             let logger = CapturingLogger()
@@ -176,8 +176,8 @@ struct GeofenceLogTailTests {
 
     @Test
     func everyRecord_expectProseAndTailSeparated() {
-        CioDiagnostics.enabled = true
-        defer { CioDiagnostics.enabled = false }
+        GeofenceDiagnostics.setEnabledForTesting(true)
+        defer { GeofenceDiagnostics.setEnabledForTesting(nil) }
 
         for invocation in invocations {
             let logger = CapturingLogger()
@@ -195,8 +195,8 @@ struct GeofenceLogTailTests {
 
     @Test
     func everyValue_expectNoWhitespace() {
-        CioDiagnostics.enabled = true
-        defer { CioDiagnostics.enabled = false }
+        GeofenceDiagnostics.setEnabledForTesting(true)
+        defer { GeofenceDiagnostics.setEnabledForTesting(nil) }
 
         for invocation in invocations {
             let logger = CapturingLogger()
@@ -218,7 +218,7 @@ struct GeofenceLogTailTests {
 
     @Test
     func everyRecord_givenDiagnosticsOff_expectOutputUnchangedFromBeforeInstrumentation() {
-        CioDiagnostics.enabled = false
+        GeofenceDiagnostics.setEnabledForTesting(false)
 
         for invocation in invocations {
             let logger = CapturingLogger()
@@ -239,7 +239,7 @@ struct GeofenceLogTailTests {
 
     @Test
     func everyRecord_givenDiagnosticsOff_expectNoDiagnosticKeyAnywhere() {
-        CioDiagnostics.enabled = false
+        GeofenceDiagnostics.setEnabledForTesting(false)
 
         let logger = CapturingLogger()
         runAll(logger)
@@ -255,8 +255,8 @@ struct GeofenceLogTailTests {
 
     @Test
     func everyRecord_givenDiagnosticsOn_expectFullDetailAndOneWarning() {
-        CioDiagnostics.enabled = true
-        defer { CioDiagnostics.enabled = false }
+        GeofenceDiagnostics.setEnabledForTesting(true)
+        defer { GeofenceDiagnostics.setEnabledForTesting(nil) }
 
         let logger = CapturingLogger()
         runAll(logger)
@@ -277,14 +277,14 @@ struct GeofenceLogTailTests {
         // The prose is what a customer reads and what existing tests assert on. Enabling
         // diagnostics must append to it and never rewrite it.
         for invocation in invocations {
-            CioDiagnostics.enabled = false
+            GeofenceDiagnostics.setEnabledForTesting(false)
             let off = CapturingLogger()
             invocation.run(off)
 
-            CioDiagnostics.enabled = true
+            GeofenceDiagnostics.setEnabledForTesting(true)
             let on = CapturingLogger()
             invocation.run(on)
-            CioDiagnostics.enabled = false
+            GeofenceDiagnostics.setEnabledForTesting(false)
 
             guard let offMessage = off.messages.last, let onMessage = on.messages.last else { continue }
             let onProse = onMessage.components(separatedBy: GeofenceLog.delimiter)[0]
@@ -299,8 +299,8 @@ struct GeofenceLogTailTests {
 
     @Test
     func sanitize_givenWhitespaceInIdentifier_expectFolded() {
-        CioDiagnostics.enabled = true
-        defer { CioDiagnostics.enabled = false }
+        GeofenceDiagnostics.setEnabledForTesting(true)
+        defer { GeofenceDiagnostics.setEnabledForTesting(nil) }
 
         let logger = CapturingLogger()
         logger.geofenceEventTracked(geofenceId: "niagara on the lake", transition: .enter)
@@ -318,8 +318,8 @@ struct GeofenceLogTailTests {
 
     @Test
     func skipReason_expectProseAndTokenBothPresent() {
-        CioDiagnostics.enabled = true
-        defer { CioDiagnostics.enabled = false }
+        GeofenceDiagnostics.setEnabledForTesting(true)
+        defer { GeofenceDiagnostics.setEnabledForTesting(nil) }
 
         let logger = CapturingLogger()
         logger.geofenceSyncSkipped(reason: .noLastSyncAnchor)

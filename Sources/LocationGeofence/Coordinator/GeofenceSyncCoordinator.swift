@@ -245,6 +245,7 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
         let nearestIds = Set(nearest.map(\.id))
         logger.geofenceRankEvaluated(
             candidates: cachedRegions.count,
+            selectedCount: nearest.count,
             selected: nearest.map(\.id),
             evicted: cachedRegions.map(\.id).filter { !nearestIds.contains($0) },
             edgeDistances: Dictionary(nearest.map { ($0.id, $0.edgeDistanceTo(anchor)) }, uniquingKeysWith: { first, _ in first })

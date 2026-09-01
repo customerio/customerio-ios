@@ -164,19 +164,31 @@ extension Logger {
     ///
     /// Without this, a geofence that was never registered because it ranked 20th is
     /// indistinguishable from one that was registered and simply never fired.
-    func geofenceRankEvaluated(candidates: Int, selected: [String], evicted: [String], edgeDistances: [String: Double]) {
-        let ranked = selected.map { id -> String in
-            guard let edge = edgeDistances[id] else { return GeofenceLog.sanitize(id) }
-            return "\(GeofenceLog.sanitize(id)):\(Int(edge))"
-        }
+    /// `selected`, `evicted` and `edgeDistances` are autoclosures: building them means a distance
+    /// computation per region and a filter over every candidate, on a background wake path, and
+    /// none of it is wanted unless the tail will carry it.
+    func geofenceRankEvaluated(
+        candidates: Int,
+        selectedCount: Int,
+        selected: @autoclosure () -> [String],
+        evicted: @autoclosure () -> [String],
+        edgeDistances: @autoclosure () -> [String: Double]
+    ) {
         debug(
-            "Ranked \(candidates) candidate(s), selected \(selected.count)"
-                + geofenceTail("rank.evaluated", .output, [
-                    ("ncand", GeofenceLog.int(candidates)),
-                    ("n", GeofenceLog.int(selected.count)),
-                    ("ranked", GeofenceLog.list(ranked)),
-                    ("evicted", GeofenceLog.list(evicted))
-                ]),
+            "Ranked \(candidates) candidate(s), selected \(selectedCount)"
+                + geofenceTail("rank.evaluated", .output, {
+                    let distances = edgeDistances()
+                    let ranked = selected().map { id -> String in
+                        guard let edge = distances[id] else { return GeofenceLog.sanitize(id) }
+                        return "\(GeofenceLog.sanitize(id)):\(Int(edge))"
+                    }
+                    return [
+                        ("ncand", GeofenceLog.int(candidates)),
+                        ("n", GeofenceLog.int(selectedCount)),
+                        ("ranked", GeofenceLog.list(ranked)),
+                        ("evicted", GeofenceLog.list(evicted()))
+                    ]
+                }()),
             geofenceTag
         )
     }
