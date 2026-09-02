@@ -34,7 +34,6 @@ enum GeofenceSyncSkipReason: String {
 enum GeofenceLaunchReason: String {
     case appStart = "app_start"
     case locationEvent = "location_event"
-    case foreground
 }
 
 extension Logger {

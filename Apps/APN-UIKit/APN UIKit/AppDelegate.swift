@@ -26,6 +26,11 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         // scene delegate, misses the wake it was meant to observe.
         DiagnosticLog.shared.start()
 
+        // Geofence cold-wake delivery: iOS can launch the app into the background for a transition,
+        // so region monitoring is wired here rather than relying on CustomerIO.initialize. Matches
+        // the React Native and Flutter samples; safe alongside normal init.
+        GeofenceModule.bootstrapForBackgroundDelivery(launchOptions: launchOptions)
+
         // Override point for customization after application launch.
         initializeCioAndInAppListeners()
 

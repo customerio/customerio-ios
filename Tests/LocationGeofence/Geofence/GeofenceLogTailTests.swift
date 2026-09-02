@@ -71,9 +71,7 @@ struct GeofenceLogTailTests {
 
     /// One entry per geofence logger method, paired with the keys its record must carry.
     ///
-    /// Each is run against its own logger so a method that emits more than one record — the
-    /// precise-location warning fires ahead of the first gated record — cannot shift every later
-    /// assertion onto the wrong message. Enumerated by hand because Swift cannot reflect over an
+    /// Enumerated by hand because Swift cannot reflect over an
     /// extension's methods: a new method added without a line here is simply uncovered, while a
     /// *renamed key* on anything listed here fails loudly, which is the failure this exists to catch.
     private struct Invocation {
@@ -150,17 +148,12 @@ struct GeofenceLogTailTests {
 
     // MARK: - Contract
 
-    /// Runs `body` with diagnostics forced on or off.
-    ///
-    /// Both overrides are task-local, so nothing here is observable by suites running in parallel
-    /// in the same process — `.serialized` orders this suite, not the process.
+    /// Runs `body` with diagnostics forced on or off, restoring the previous value after.
     private func withDiagnostics<T>(_ enabled: Bool, _ body: () throws -> T) rethrows -> T {
-        try GeofenceDiagnostics.$overrideForTesting.withValue(enabled) {
-            try GeofenceDiagnostics.$warningLatchForTesting.withValue(GeofenceOneShot()) {
-                // Each invocation below is a fresh "launch" for the once-per-process module.init.
-                try GeofenceModuleInitLatch.$bypassForTesting.withValue(true, operation: body)
-            }
-        }
+        let previous = GeofenceDiagnostics.overrideForTesting
+        GeofenceDiagnostics.overrideForTesting = enabled
+        defer { GeofenceDiagnostics.overrideForTesting = previous }
+        return try body()
     }
 
     @Test
@@ -269,7 +262,7 @@ struct GeofenceLogTailTests {
     }
 
     @Test
-    func everyRecord_givenDiagnosticsOn_expectFullDetailAndOneWarning() {
+    func everyRecord_givenDiagnosticsOn_expectFullDetail() {
         withDiagnostics(true) {
             let logger = CapturingLogger()
             runAll(logger)
@@ -279,10 +272,6 @@ struct GeofenceLogTailTests {
             #expect(joined.contains("lon="))
             #expect(joined.contains("acc="))
             #expect(joined.contains("fixsrc="))
-            // Enabling it must be loud, and exactly once — a warning per record would be its own
-            // problem over a three-hour drive.
-            let warnings = logger.messages.filter { $0.contains("internal geofence diagnostics are ENABLED") }
-            #expect(warnings.count == 1, "expected exactly one enablement warning, got \(warnings.count)")
         }
     }
 
@@ -332,7 +321,6 @@ struct GeofenceLogTailTests {
             let logger = CapturingLogger()
             logger.geofenceSyncSkipped(reason: .noLastSyncAnchor)
 
-            // `.last`, not `[0]`: enabling the gate emits its one-time warning first.
             let message = logger.messages.last ?? ""
             // The prose half must be byte-identical to what it was before enrichment, because it is
             // what a human reads and what an existing test may assert on.

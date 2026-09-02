@@ -221,6 +221,7 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
         config: GeofenceConfig?,
         userId: String?
     ) -> GeofenceRegistration? {
+        let syncStartedAt = GeofenceLog.monotonicNow()
         guard let userId, !userId.isEmpty else {
             logger.geofenceSyncSkipped(reason: .noIdentifiedUser)
             return nil
@@ -243,36 +244,20 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
         let nearest = distanceFilter.nearest(cachedRegions, to: anchor, limit: effectiveConfig.maxBusinessGeofences, maxDistance: effectiveConfig.maxMonitoringDistance)
         let registerMovementTrigger = effectiveConfig.maxBusinessGeofences > 0
         let nearestIds = Set(nearest.map(\.id))
-        logger.geofenceRankEvaluated(
-            candidates: cachedRegions.count,
-            selectedCount: nearest.count,
-            selected: nearest.map(\.id),
-            evicted: cachedRegions.map(\.id).filter { !nearestIds.contains($0) },
-            edgeDistances: Dictionary(nearest.map { ($0.id, $0.edgeDistanceTo(anchor)) }, uniquingKeysWith: { first, _ in first })
-        )
+        logRanking(candidates: cachedRegions, nearest: nearest, nearestIds: nearestIds, anchor: anchor)
         let osRegistration = registerWithOsSync(
             businessRegions: nearest,
             movementTriggerLocation: anchor,
             movementTriggerRadius: effectiveConfig.localRefreshTriggerRadius,
             registerMovementTrigger: registerMovementTrigger
         )
-        // What the OS holds, not what was requested: a rejected region or a starved movement
-        // trigger is precisely what this record is for.
-        let movementTriggerId = GeofenceConstants.movementTriggerIdentifier
-        let acceptedBusinessIds = osRegistration.registeredIds.subtracting([movementTriggerId]).sorted()
-        let movementTriggerAccepted = osRegistration.registeredIds.contains(movementTriggerId)
-        logger.geofenceRegionsRegistered(
-            identifiers: acceptedBusinessIds,
-            movementTrigger: movementTriggerAccepted ? movementTriggerId : nil
+        let registration = logRegistration(
+            registeredIds: osRegistration.registeredIds,
+            anchor: anchor,
+            registerMovementTrigger: registerMovementTrigger,
+            triggerRadius: effectiveConfig.localRefreshTriggerRadius
         )
-        if movementTriggerAccepted {
-            logger.geofenceMovementTriggerRegistered(
-                latitude: anchor.latitude,
-                longitude: anchor.longitude,
-                radius: effectiveConfig.localRefreshTriggerRadius
-            )
-        }
-        logger.geofenceSyncCompleted(registeredCount: acceptedBusinessIds.count, movementTriggerRegistered: movementTriggerAccepted)
+        logSyncCompleted(registration, startedAt: syncStartedAt)
         // No initial-enter here: a cold-wake restore of the pre-kill set (not new registrations) off a
         // possibly-stale anchor. Genuinely-new fences come from a refresh fetch, which emits there.
         return GeofenceRegistration(center: anchor, businessIds: nearestIds)

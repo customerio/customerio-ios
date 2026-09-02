@@ -2,27 +2,6 @@ import CioInternalCommon
 import CoreLocation
 import Foundation
 
-/// One-shot latch for the `module.init` record.
-final class GeofenceModuleInitLatch: @unchecked Sendable {
-    /// Test-only. Task-local so a suite treating every invocation as a fresh launch cannot make
-    /// other suites in the same process miss their own `module.init` record.
-    @TaskLocal static var bypassForTesting = false
-
-    private let lock = NSLock()
-    private var claimed = false
-
-    func claim() -> Bool {
-        if GeofenceModuleInitLatch.bypassForTesting { return true }
-        lock.lock()
-        defer { lock.unlock() }
-        guard !claimed else { return false }
-        claimed = true
-        return true
-    }
-}
-
-let geofenceModuleInitLatch = GeofenceModuleInitLatch()
-
 private let geofenceTag = "Geofence"
 
 /// Setup, permissions and OS plumbing.
@@ -143,18 +122,22 @@ extension Logger {
 
     // MARK: - Lifecycle
 
-    /// Process start and why. A background wake and a user opening the app look identical in the
-    /// log today, and they are the two cases whose behaviour differs most.
-    ///
-    /// Emitted once per process, first caller wins. Both `bootstrapForBackgroundDelivery` and
-    /// module init reach here, and on a cold location wake the second would otherwise overwrite
-    /// `location_event` with `app_start` — two records for one launch, disagreeing. Only the
-    /// bootstrap path has `launchOptions`, so the earliest observation is the informed one.
+    /// The module came up. Always `app_start`; a cold wake announces itself separately via
+    /// ``geofenceModuleWoke(launchReason:)`` rather than racing this one for a single record.
     func geofenceModuleInitialized(launchReason: GeofenceLaunchReason) {
-        guard geofenceModuleInitLatch.claim() else { return }
         info(
             "Geofence module initialized (\(launchReason.rawValue))"
                 + geofenceTail("module.init", .observation, [("launch", launchReason.rawValue)]),
+            geofenceTag
+        )
+    }
+
+    /// The process was started *by* something — a location event today. A separate record from
+    /// `module.init` because they are separate facts, and the OS decides their order.
+    func geofenceModuleWoke(launchReason: GeofenceLaunchReason) {
+        info(
+            "Geofence module woken (\(launchReason.rawValue))"
+                + geofenceTail("module.wake", .observation, [("launch", launchReason.rawValue)]),
             geofenceTag
         )
     }

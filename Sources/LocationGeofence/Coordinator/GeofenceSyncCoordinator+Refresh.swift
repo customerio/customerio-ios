@@ -14,7 +14,8 @@ extension GeofenceSyncCoordinatorImpl {
         longitude: Double,
         cachedConfig: GeofenceConfig?
     ) async -> Result<Void, GeofenceSyncError> {
-        let fetchStartedAt = GeofenceLog.monotonicNow()
+        let syncStartedAt = GeofenceLog.monotonicNow()
+        let fetchStartedAt = syncStartedAt
         let fetchResult = await awaitApiFetch(latitude: latitude, longitude: longitude)
         let fetchElapsed = GeofenceLog.monotonicNow() - fetchStartedAt
         let response: GeofenceApiResponse
@@ -72,7 +73,7 @@ extension GeofenceSyncCoordinatorImpl {
             expectedUserId: expectedUserId,
             anchor: anchor
         )
-        logger.geofenceSyncCompleted(registeredCount: registration.accepted.count, movementTriggerRegistered: registration.movementTrigger)
+        logSyncCompleted(registration, startedAt: syncStartedAt)
         return .success(())
     }
 
@@ -87,6 +88,7 @@ extension GeofenceSyncCoordinatorImpl {
         config: GeofenceConfig,
         cachedRegions: [Geofence]
     ) async -> Result<Void, GeofenceSyncError> {
+        let syncStartedAt = GeofenceLog.monotonicNow()
         let anchor = LocationData(latitude: latitude, longitude: longitude)
         let nearest = distanceFilter.nearest(cachedRegions, to: anchor, limit: config.maxBusinessGeofences, maxDistance: config.maxMonitoringDistance)
         let registerMovementTrigger = config.maxBusinessGeofences > 0
@@ -111,7 +113,7 @@ extension GeofenceSyncCoordinatorImpl {
             expectedUserId: expectedUserId,
             anchor: anchor
         )
-        logger.geofenceSyncCompleted(registeredCount: registration.accepted.count, movementTriggerRegistered: registration.movementTrigger)
+        logSyncCompleted(registration, startedAt: syncStartedAt)
         return .success(())
     }
 
@@ -132,7 +134,15 @@ extension GeofenceSyncCoordinatorImpl {
 
     /// The 19-of-N selection, which is otherwise invisible: a geofence that never registered
     /// because it ranked 20th looks exactly like one that registered and never fired.
-    private func logRanking(candidates: [Geofence], nearest: [Geofence], nearestIds: Set<String>, anchor: LocationData) {
+    func logSyncCompleted(_ registration: (accepted: [String], movementTrigger: Bool), startedAt: TimeInterval) {
+        logger.geofenceSyncCompleted(
+            registeredCount: registration.accepted.count,
+            movementTriggerRegistered: registration.movementTrigger,
+            elapsed: GeofenceLog.monotonicNow() - startedAt
+        )
+    }
+
+    func logRanking(candidates: [Geofence], nearest: [Geofence], nearestIds: Set<String>, anchor: LocationData) {
         logger.geofenceRankEvaluated(
             candidates: candidates.count,
             selectedCount: nearest.count,
@@ -147,7 +157,7 @@ extension GeofenceSyncCoordinatorImpl {
     /// movement trigger starved out of the shared 20-region budget — is exactly what this record
     /// exists to surface, and `nearest` would hide both. Sorted so replay output is stable.
     @discardableResult
-    private func logRegistration(registeredIds: Set<String>, anchor: LocationData, registerMovementTrigger: Bool, triggerRadius: Double) -> (accepted: [String], movementTrigger: Bool) {
+    func logRegistration(registeredIds: Set<String>, anchor: LocationData, registerMovementTrigger: Bool, triggerRadius: Double) -> (accepted: [String], movementTrigger: Bool) {
         let movementTriggerId = GeofenceConstants.movementTriggerIdentifier
         let accepted = registeredIds.subtracting([movementTriggerId]).sorted()
         let movementTriggerAccepted = registeredIds.contains(movementTriggerId)

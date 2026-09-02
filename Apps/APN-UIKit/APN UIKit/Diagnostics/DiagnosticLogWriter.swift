@@ -52,10 +52,6 @@ final class DiagnosticLogWriter: @unchecked Sendable {
     /// deaths stay perfectly visible as `session.start` records *inside* the file.
     private func openCurrentFile(now: Date) {
         closeCurrentFile()
-        // Every open, not just the first: this is also the daily rollover and the reopen after a
-        // file is deleted underneath us, and a process that lives across both would otherwise run
-        // unbounded. Runs before the new file exists so it is never a pruning candidate.
-        prune()
 
         do {
             try FileManager.default.createDirectory(
@@ -87,8 +83,12 @@ final class DiagnosticLogWriter: @unchecked Sendable {
         rolloverAt = DiagnosticLogWriter.startOfNextDay(after: now)
         writesSinceExistenceCheck = 0
 
-        if isNew, !header.isEmpty {
-            write(header)
+        if isNew {
+            // Only when a file was actually created — the first open, the daily rollover, and the
+            // reopen after one is deleted underneath us. Keeping it off the failure paths matters:
+            // they return before `rolloverAt` is set, so every later append re-enters this method.
+            prune()
+            if !header.isEmpty { write(header) }
         }
     }
 

@@ -22,41 +22,14 @@ enum GeofenceDiagnostics {
 
     private static let gate = DiagnosticsGate()
 
-    /// Test-only override. Task-local rather than a stored property so a suite cannot perturb
-    /// suites running in parallel in the same process — Swift Testing's `.serialized` orders one
-    /// suite, not the process, and a leaked `true` here changes what every other suite observes.
-    @TaskLocal static var overrideForTesting: Bool?
-
-    /// Test-only. A fresh latch per scope, so "exactly one warning" is assertable without
-    /// depending on whether some other suite already claimed the process-wide one.
-    @TaskLocal static var warningLatchForTesting: GeofenceOneShot?
+    /// Test-only. The one concession to testability in this file; production reads the bundle.
+    static var overrideForTesting: Bool?
 
     static var isEnabled: Bool { overrideForTesting ?? gate.isEnabled }
-
-    /// True exactly once per enablement, so the warning does not repeat on every record.
-    static func claimWarning() -> Bool {
-        if let latch = warningLatchForTesting { return latch.claim() }
-        return gate.claimWarning()
-    }
-}
-
-/// A claim that succeeds exactly once.
-final class GeofenceOneShot: @unchecked Sendable {
-    private let lock = NSLock()
-    private var claimed = false
-
-    func claim() -> Bool {
-        lock.lock()
-        defer { lock.unlock() }
-        guard !claimed else { return false }
-        claimed = true
-        return true
-    }
 }
 
 private final class DiagnosticsGate: @unchecked Sendable {
     private let lock = NSLock()
-    private var warned = false
     private lazy var fromBundle: Bool =
         (Bundle.main.object(forInfoDictionaryKey: GeofenceDiagnostics.infoPlistKey) as? Bool) ?? false
 
@@ -64,14 +37,6 @@ private final class DiagnosticsGate: @unchecked Sendable {
         lock.lock()
         defer { lock.unlock() }
         return fromBundle
-    }
-
-    func claimWarning() -> Bool {
-        lock.lock()
-        defer { lock.unlock() }
-        guard !warned else { return false }
-        warned = true
-        return true
     }
 }
 
@@ -97,18 +62,9 @@ enum GeofenceLog {
     static func tail(
         _ ev: String,
         _ io: GeofenceLogIO,
-        _ fields: @autoclosure () -> [(String, String?)] = [],
-        logger: Logger? = nil
+        _ fields: @autoclosure () -> [(String, String?)] = []
     ) -> String {
         guard GeofenceDiagnostics.isEnabled else { return "" }
-        if let logger, GeofenceDiagnostics.claimWarning() {
-            logger.error(
-                "Diagnostics: internal geofence diagnostics are ENABLED. Logs now carry machine-readable detail including device coordinates. This is intended for Customer.io field testing and must not be enabled in a production build.",
-                "Geofence",
-                nil
-            )
-        }
-
         var parts = ["ev=\(ev)", "io=\(io.rawValue)"]
         for (key, value) in fields() {
             guard let value else { continue }
@@ -263,13 +219,12 @@ enum GeofenceLog {
 }
 
 extension Logger {
-    /// Routes every call site through the gate with `self`, so the one-time "diagnostics are
-    /// enabled" warning reaches the host app's own logger.
+    /// Call-site shim; keeps `GeofenceLog.` off ~40 call sites.
     func geofenceTail(
         _ ev: String,
         _ io: GeofenceLogIO,
         _ fields: @autoclosure () -> [(String, String?)] = []
     ) -> String {
-        GeofenceLog.tail(ev, io, fields(), logger: self)
+        GeofenceLog.tail(ev, io, fields())
     }
 }
