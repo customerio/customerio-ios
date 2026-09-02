@@ -17,12 +17,10 @@ final class DiagnosticLog: @unchecked Sendable {
     /// invisible to it.
     static let delimiter = " || "
 
-    /// Records produced by the SDK's logger, by the sample app itself, or by a reference app
-    /// emitting this same schema.
+    /// Who produced the record: the SDK's logger, or the sample app itself.
     enum Source: String {
         case sdk
         case app
-        case ref
     }
 
     private let lock = NSRecursiveLock()
