@@ -2,10 +2,6 @@ import Darwin
 import Foundation
 
 /// Appends NDJSON records to a file on disk.
-///
-/// NDJSON rather than a JSON array specifically because it is append-safe and
-/// truncation-tolerant: a process killed mid-write loses one line, not the file. Losing the file
-/// is losing the drive.
 final class DiagnosticLogWriter: @unchecked Sendable {
     /// Two weeks covers a test cycle; a drive is single-digit megabytes.
     private static let maxFiles = 14
@@ -47,7 +43,6 @@ final class DiagnosticLogWriter: @unchecked Sendable {
         lock.lock()
         defer { lock.unlock() }
         self.header = header
-        prune()
         openCurrentFile(now: Date())
     }
 
@@ -88,9 +83,15 @@ final class DiagnosticLogWriter: @unchecked Sendable {
         rolloverAt = DiagnosticLogWriter.startOfNextDay(after: now)
         writesSinceExistenceCheck = 0
 
-        if isNew, !header.isEmpty {
-            write(header)
-        }
+        // Retention only when a file was actually created. Keeping it off the failure paths
+        // matters: they return before `rolloverAt` is set, so every later append re-enters this
+        // method.
+        if isNew { prune() }
+
+        // The header repeats on every open, not just on a new file. A same-day relaunch reuses
+        // the file but restarts the monotonic clock and may carry a different build, so without
+        // this every record after the first process is correlated to the wrong session.
+        if !header.isEmpty { write(header) }
     }
 
     private func closeCurrentFile() {
@@ -130,9 +131,6 @@ final class DiagnosticLogWriter: @unchecked Sendable {
     /// One unbuffered `write(2)` per record, so a record that has returned is already in the file
     /// and survives the process being killed the instant afterwards — which is the normal way a
     /// background wake ends.
-    ///
-    /// Deliberately no `fsync`: that would only add durability across a kernel panic or power
-    /// loss, at the cost of a flash write per log line for hours at a time.
     private func write(_ line: String) {
         guard fd >= 0 else { return }
         var bytes = Array(line.utf8)
@@ -174,27 +172,28 @@ final class DiagnosticLogWriter: @unchecked Sendable {
     }
 
     /// Enforces the retention policy by evicting the **oldest** files.
-    ///
-    /// Never clears the directory on launch. A drive that ended with the phone dying, or an
-    /// engineer who forgot to pull the file before the next test, must still find yesterday's data
-    /// where they left it.
     private func prune() {
         let existing = files()
         guard !existing.isEmpty else { return }
 
-        var kept: [URL] = []
+        var keptCount = 0
         var total = 0
+        // Once the budget is spent everything older goes. Without the latch a large file could be
+        // deleted and then a smaller, *older* one still fit and survive it — retention preferring
+        // older data over newer, which is backwards.
+        var budgetSpent = false
 
         for url in existing {
             let size = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
-            let withinCount = kept.count < DiagnosticLogWriter.maxFiles
+            let withinCount = keptCount < DiagnosticLogWriter.maxFiles
             let withinSize = total + size <= DiagnosticLogWriter.maxTotalBytes
             // The newest file is always kept, however large it is — it may be the drive that has
             // not been pulled off the device yet.
-            if kept.isEmpty || (withinCount && withinSize) {
-                kept.append(url)
+            if !budgetSpent, keptCount == 0 || (withinCount && withinSize) {
+                keptCount += 1
                 total += size
             } else {
+                budgetSpent = true
                 try? FileManager.default.removeItem(at: url)
             }
         }
