@@ -104,12 +104,13 @@ struct GeofenceLogTailTests {
             Invocation(name: "permissionUnavailable", requiredKeys: ["perm", "why"]) { $0.geofencePermissionUnavailable(currentStatus: .denied) },
             Invocation(name: "backgroundUnavailable", requiredKeys: ["perm", "why"]) { $0.geofenceBackgroundDeliveryUnavailable(currentStatus: .authorizedWhenInUse) },
             Invocation(name: "backgroundAvailable", requiredKeys: ["perm", "ok"]) { $0.geofenceBackgroundDeliveryAvailable(currentStatus: .authorizedAlways) },
-            Invocation(name: "moduleInitialized", requiredKeys: ["launch"]) { $0.geofenceModuleInitialized(launchReason: .locationEvent) },
+            Invocation(name: "moduleInitialized", requiredKeys: ["launch"]) { $0.geofenceModuleInitialized(launchReason: .appStart) },
+            Invocation(name: "moduleWoke", requiredKeys: ["launch"]) { $0.geofenceModuleWoke(launchReason: .locationEvent) },
             Invocation(name: "callbackReceived", requiredKeys: ["id", "t", "buf", "fixsrc", "acc", "age", "sim", "evage"]) { $0.geofenceCallbackReceived(identifier: "notl_core", transition: .enter, fix: location, source: .managerCache, eventDate: Date(timeIntervalSinceNow: -3), buffered: false) },
             Invocation(name: "callbackReceivedNoFix", requiredKeys: ["id", "t", "fixsrc"]) { $0.geofenceCallbackReceived(identifier: "notl_core", transition: .exit, fix: nil, source: .none) },
             Invocation(name: "callbackDropped", requiredKeys: ["id", "t", "why"]) { $0.geofenceCallbackDropped(identifier: "notl_core", transition: .enter, reason: "movement_trigger_not_exit") },
             Invocation(name: "fixReceived", requiredKeys: ["prov"]) { $0.geofenceFixReceived(location, source: "movement_pass") },
-            Invocation(name: "fixQualityUngated", requiredKeys: ["fixsrc", "acc", "age"]) { $0.geofenceCallbackReceived(identifier: "q", transition: .enter, fix: location, source: .freshRequest) },
+            Invocation(name: "fixQuality", requiredKeys: ["fixsrc", "acc", "age"]) { $0.geofenceCallbackReceived(identifier: "q", transition: .enter, fix: location, source: .freshRequest) },
             Invocation(name: "eventTracked", requiredKeys: ["id", "t"]) { $0.geofenceEventTracked(geofenceId: "notl_core", transition: .enter) },
             Invocation(name: "eventSuppressed", requiredKeys: ["id", "t", "why", "cd"]) { $0.geofenceEventSuppressed(geofenceId: "notl_core", transition: .enter, cooldownRemaining: 42) },
             Invocation(name: "droppedAnonymous", requiredKeys: ["id", "t", "why"]) { $0.geofenceTransitionDroppedAnonymous(geofenceId: "notl_core", transition: .exit) },
@@ -118,7 +119,7 @@ struct GeofenceLogTailTests {
             Invocation(name: "syncSkippedFresh", requiredKeys: ["why"]) { $0.geofenceSyncSkippedFresh() },
             Invocation(name: "syncFetchFailed", requiredKeys: ["ok", "why"]) { $0.geofenceSyncFetchFailed(error: .http(statusCode: 503)) },
             Invocation(name: "apiFetchResult", requiredKeys: ["ok", "n", "ms"]) { $0.geofenceApiFetchResult(returnedCount: 30, elapsed: 0.42) },
-            Invocation(name: "syncCompleted", requiredKeys: ["n", "mvmt", "ms"]) { $0.geofenceSyncCompleted(registeredCount: 19, movementTriggerRegistered: true, elapsed: 1.5) },
+            Invocation(name: "syncCompleted", requiredKeys: ["n", "mvmt", "ms"]) { $0.geofenceSyncCompleted(requestedCount: 19, movementTriggerRequested: true, acceptedCount: 19, movementTriggerAccepted: true, elapsed: 1.5) },
             Invocation(name: "registrationDiff", requiredKeys: ["nadd", "nrem", "nkeep"]) { $0.geofenceRegistrationDiff(added: 3, removed: 2, unchanged: 17) },
             Invocation(name: "rankEvaluated", requiredKeys: ["ncand", "n", "ranked", "evicted"]) { $0.geofenceRankEvaluated(candidates: 30, selectedCount: 2, selected: ["a", "b"], evicted: ["c"], edgeDistances: ["a": 120, "b": 340]) },
             Invocation(name: "movementTrigger", requiredKeys: ["tier"]) { $0.geofenceMovementTrigger(tier: .localRerank) },
@@ -322,7 +323,7 @@ struct GeofenceLogTailTests {
             logger.geofenceSyncSkipped(reason: .noLastSyncAnchor)
 
             let message = logger.messages.last ?? ""
-            // The prose half must be byte-identical to what it was before enrichment, because it is
+            // The prose half must be identical between the two gate states, because it is
             // what a human reads and what an existing test may assert on.
             #expect(message.hasPrefix("[Geofence] Sync skipped: no last-sync anchor to restore from"))
             #expect(parseTail(message)?["why"] == "no_last_sync_anchor")

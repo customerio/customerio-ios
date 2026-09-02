@@ -73,7 +73,7 @@ extension GeofenceSyncCoordinatorImpl {
             expectedUserId: expectedUserId,
             anchor: anchor
         )
-        logSyncCompleted(registration, startedAt: syncStartedAt)
+        logSyncCompleted(registration, requested: (nearest.count, registerMovementTrigger), startedAt: syncStartedAt)
         return .success(())
     }
 
@@ -113,7 +113,7 @@ extension GeofenceSyncCoordinatorImpl {
             expectedUserId: expectedUserId,
             anchor: anchor
         )
-        logSyncCompleted(registration, startedAt: syncStartedAt)
+        logSyncCompleted(registration, requested: (nearest.count, registerMovementTrigger), startedAt: syncStartedAt)
         return .success(())
     }
 
@@ -134,10 +134,16 @@ extension GeofenceSyncCoordinatorImpl {
 
     /// The 19-of-N selection, which is otherwise invisible: a geofence that never registered
     /// because it ranked 20th looks exactly like one that registered and never fired.
-    func logSyncCompleted(_ registration: (accepted: [String], movementTrigger: Bool), startedAt: TimeInterval) {
+    func logSyncCompleted(
+        _ registration: (accepted: [String], movementTrigger: Bool),
+        requested: (count: Int, movementTrigger: Bool),
+        startedAt: TimeInterval
+    ) {
         logger.geofenceSyncCompleted(
-            registeredCount: registration.accepted.count,
-            movementTriggerRegistered: registration.movementTrigger,
+            requestedCount: requested.count,
+            movementTriggerRequested: requested.movementTrigger,
+            acceptedCount: registration.accepted.count,
+            movementTriggerAccepted: registration.movementTrigger,
             elapsed: GeofenceLog.monotonicNow() - startedAt
         )
     }

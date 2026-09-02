@@ -111,7 +111,7 @@ extension Logger {
             "Sync fetch failed: \(error)"
                 + geofenceTail("api.fetch.result", .input, [
                     ("ok", GeofenceLog.bool(false)),
-                    ("why", GeofenceLog.token(String(describing: error)))
+                    ("why", error.diagnosticToken)
                 ]),
             geofenceTag,
             nil
@@ -132,15 +132,25 @@ extension Logger {
         )
     }
 
-    func geofenceSyncCompleted(registeredCount: Int, movementTriggerRegistered: Bool, elapsed: TimeInterval? = nil) {
-        let trigger = movementTriggerRegistered
+    /// Prose reports what was *requested* and reads exactly as it did before this instrumentation
+    /// — its else-branch states a config fact, so driving it from an OS outcome made it assert
+    /// "max business geofences is 0" whenever the trigger was merely rejected. The tail reports
+    /// what the OS *accepted*; the two differing is the thing worth seeing.
+    func geofenceSyncCompleted(
+        requestedCount: Int,
+        movementTriggerRequested: Bool,
+        acceptedCount: Int,
+        movementTriggerAccepted: Bool,
+        elapsed: TimeInterval? = nil
+    ) {
+        let trigger = movementTriggerRequested
             ? " + 1 movement trigger"
             : "; monitoring disabled (max business geofences is 0)"
         info(
-            "Sync completed: registered \(registeredCount) business geofences\(trigger)"
+            "Sync completed: registered \(requestedCount) business geofences\(trigger)"
                 + geofenceTail("sync.completed", .output, [
-                    ("n", GeofenceLog.int(registeredCount)),
-                    ("mvmt", GeofenceLog.bool(movementTriggerRegistered)),
+                    ("n", GeofenceLog.int(acceptedCount)),
+                    ("mvmt", GeofenceLog.bool(movementTriggerAccepted)),
                     ("ms", GeofenceLog.num(elapsed.map { $0 * 1000 }, 0))
                 ]),
             geofenceTag

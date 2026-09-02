@@ -257,7 +257,7 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
             registerMovementTrigger: registerMovementTrigger,
             triggerRadius: effectiveConfig.localRefreshTriggerRadius
         )
-        logSyncCompleted(registration, startedAt: syncStartedAt)
+        logSyncCompleted(registration, requested: (nearest.count, registerMovementTrigger), startedAt: syncStartedAt)
         // No initial-enter here: a cold-wake restore of the pre-kill set (not new registrations) off a
         // possibly-stale anchor. Genuinely-new fences come from a refresh fetch, which emits there.
         return GeofenceRegistration(center: anchor, businessIds: nearestIds)

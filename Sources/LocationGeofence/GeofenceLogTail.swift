@@ -74,11 +74,16 @@ enum GeofenceLog {
     }
 
     /// The parser splits on whitespace, and workspace-authored ids can contain anything.
+    /// Every character the format itself uses to separate things. Region ids are workspace
+    /// authored, so an id containing one of these would otherwise split a field: `=` a pair,
+    /// `,` a list, `:` an `id:distance` entry in `ranked`, `|` the tail delimiter.
+    private static let separators: Set<Character> = ["=", ",", ":", "|"]
+
     static func sanitize(_ value: String) -> String {
         var out = ""
         out.reserveCapacity(value.count)
         for character in value {
-            out.append(character.isWhitespace ? "_" : character)
+            out.append(separators.contains(character) || character.isWhitespace ? "_" : character)
         }
         return out.isEmpty ? "_" : out
     }
