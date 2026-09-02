@@ -250,24 +250,29 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
             evicted: cachedRegions.map(\.id).filter { !nearestIds.contains($0) },
             edgeDistances: Dictionary(nearest.map { ($0.id, $0.edgeDistanceTo(anchor)) }, uniquingKeysWith: { first, _ in first })
         )
-        registerWithOsSync(
+        let osRegistration = registerWithOsSync(
             businessRegions: nearest,
             movementTriggerLocation: anchor,
             movementTriggerRadius: effectiveConfig.localRefreshTriggerRadius,
             registerMovementTrigger: registerMovementTrigger
         )
+        // What the OS holds, not what was requested: a rejected region or a starved movement
+        // trigger is precisely what this record is for.
+        let movementTriggerId = GeofenceConstants.movementTriggerIdentifier
+        let acceptedBusinessIds = osRegistration.registeredIds.subtracting([movementTriggerId]).sorted()
+        let movementTriggerAccepted = osRegistration.registeredIds.contains(movementTriggerId)
         logger.geofenceRegionsRegistered(
-            identifiers: nearest.map(\.id),
-            movementTrigger: registerMovementTrigger ? GeofenceConstants.movementTriggerIdentifier : nil
+            identifiers: acceptedBusinessIds,
+            movementTrigger: movementTriggerAccepted ? movementTriggerId : nil
         )
-        if registerMovementTrigger {
+        if movementTriggerAccepted {
             logger.geofenceMovementTriggerRegistered(
                 latitude: anchor.latitude,
                 longitude: anchor.longitude,
                 radius: effectiveConfig.localRefreshTriggerRadius
             )
         }
-        logger.geofenceSyncCompleted(registeredCount: nearest.count, movementTriggerRegistered: registerMovementTrigger)
+        logger.geofenceSyncCompleted(registeredCount: acceptedBusinessIds.count, movementTriggerRegistered: movementTriggerAccepted)
         // No initial-enter here: a cold-wake restore of the pre-kill set (not new registrations) off a
         // possibly-stale anchor. Genuinely-new fences come from a refresh fetch, which emits there.
         return GeofenceRegistration(center: anchor, businessIds: nearestIds)

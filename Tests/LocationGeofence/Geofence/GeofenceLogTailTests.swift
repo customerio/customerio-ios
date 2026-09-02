@@ -157,6 +157,8 @@ struct GeofenceLogTailTests {
 
         for invocation in invocations {
             let logger = CapturingLogger()
+            // module.init is latched once per process; each invocation is a fresh "launch".
+            geofenceModuleInitLatch.resetForTesting()
             invocation.run(logger)
 
             guard let message = logger.messages.last, let fields = parseTail(message) else {
@@ -181,6 +183,8 @@ struct GeofenceLogTailTests {
 
         for invocation in invocations {
             let logger = CapturingLogger()
+            // module.init is latched once per process; each invocation is a fresh "launch".
+            geofenceModuleInitLatch.resetForTesting()
             invocation.run(logger)
             guard let message = logger.messages.last else { continue }
 
@@ -200,6 +204,8 @@ struct GeofenceLogTailTests {
 
         for invocation in invocations {
             let logger = CapturingLogger()
+            // module.init is latched once per process; each invocation is a fresh "launch".
+            geofenceModuleInitLatch.resetForTesting()
             invocation.run(logger)
             guard let message = logger.messages.last,
                   let range = message.range(of: GeofenceLog.delimiter, options: .backwards)
@@ -222,6 +228,8 @@ struct GeofenceLogTailTests {
 
         for invocation in invocations {
             let logger = CapturingLogger()
+            // module.init is latched once per process; each invocation is a fresh "launch".
+            geofenceModuleInitLatch.resetForTesting()
             invocation.run(logger)
             guard let message = logger.messages.last else { continue }
 

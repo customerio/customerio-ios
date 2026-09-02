@@ -148,10 +148,12 @@ extension Logger {
         )
     }
 
+    /// The change, distinct from `registration.applied`, which reports the resulting set. Sharing
+    /// one `ev` between them makes either uncountable.
     func geofenceRegistrationDiff(added: Int, removed: Int, unchanged: Int) {
         debug(
             "OS registration diff: +\(added) / -\(removed); \(unchanged) left registered untouched"
-                + geofenceTail("registration.applied", .output, [
+                + geofenceTail("registration.diff", .output, [
                     ("nadd", GeofenceLog.int(added)),
                     ("nrem", GeofenceLog.int(removed)),
                     ("nkeep", GeofenceLog.int(unchanged))

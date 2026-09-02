@@ -14,9 +14,9 @@ extension GeofenceSyncCoordinatorImpl {
         longitude: Double,
         cachedConfig: GeofenceConfig?
     ) async -> Result<Void, GeofenceSyncError> {
-        let fetchStartedAt = dateUtil.now
+        let fetchStartedAt = GeofenceLog.monotonicNow()
         let fetchResult = await awaitApiFetch(latitude: latitude, longitude: longitude)
-        let fetchElapsed = dateUtil.now.timeIntervalSince(fetchStartedAt)
+        let fetchElapsed = GeofenceLog.monotonicNow() - fetchStartedAt
         let response: GeofenceApiResponse
         switch fetchResult {
         case .success(let value):
@@ -55,7 +55,7 @@ extension GeofenceSyncCoordinatorImpl {
                 registerMovementTrigger: registerMovementTrigger
             )
         }
-        logRegistration(nearest: nearest, anchor: anchor, registerMovementTrigger: registerMovementTrigger, triggerRadius: effectiveConfig.localRefreshTriggerRadius)
+        let registration = logRegistration(registeredIds: osRegistration.registeredIds, anchor: anchor, registerMovementTrigger: registerMovementTrigger, triggerRadius: effectiveConfig.localRefreshTriggerRadius)
 
         await storage.setCachedGeofences(regions)
         // Skip overwriting when the response did not ship a config — a previously cached
@@ -72,7 +72,7 @@ extension GeofenceSyncCoordinatorImpl {
             expectedUserId: expectedUserId,
             anchor: anchor
         )
-        logger.geofenceSyncCompleted(registeredCount: nearest.count, movementTriggerRegistered: registerMovementTrigger)
+        logger.geofenceSyncCompleted(registeredCount: registration.accepted.count, movementTriggerRegistered: registration.movementTrigger)
         return .success(())
     }
 
@@ -102,7 +102,7 @@ extension GeofenceSyncCoordinatorImpl {
                 registerMovementTrigger: registerMovementTrigger
             )
         }
-        logRegistration(nearest: nearest, anchor: anchor, registerMovementTrigger: registerMovementTrigger, triggerRadius: config.localRefreshTriggerRadius)
+        let registration = logRegistration(registeredIds: osRegistration.registeredIds, anchor: anchor, registerMovementTrigger: registerMovementTrigger, triggerRadius: config.localRefreshTriggerRadius)
         await storage.recordRegistration(center: anchor, businessIds: nearestIds)
         emitInitialEnters(
             candidates: nearest,
@@ -111,7 +111,7 @@ extension GeofenceSyncCoordinatorImpl {
             expectedUserId: expectedUserId,
             anchor: anchor
         )
-        logger.geofenceSyncCompleted(registeredCount: nearest.count, movementTriggerRegistered: registerMovementTrigger)
+        logger.geofenceSyncCompleted(registeredCount: registration.accepted.count, movementTriggerRegistered: registration.movementTrigger)
         return .success(())
     }
 
@@ -143,16 +143,24 @@ extension GeofenceSyncCoordinatorImpl {
     }
 
     /// What the OS is actually monitoring now, by identifier, plus the movement bubble's geometry.
-    private func logRegistration(nearest: [Geofence], anchor: LocationData, registerMovementTrigger: Bool, triggerRadius: Double) {
+    /// Reports what the OS is holding, not what was asked for. A region the monitor rejected — or a
+    /// movement trigger starved out of the shared 20-region budget — is exactly what this record
+    /// exists to surface, and `nearest` would hide both. Sorted so replay output is stable.
+    @discardableResult
+    private func logRegistration(registeredIds: Set<String>, anchor: LocationData, registerMovementTrigger: Bool, triggerRadius: Double) -> (accepted: [String], movementTrigger: Bool) {
+        let movementTriggerId = GeofenceConstants.movementTriggerIdentifier
+        let accepted = registeredIds.subtracting([movementTriggerId]).sorted()
+        let movementTriggerAccepted = registeredIds.contains(movementTriggerId)
         logger.geofenceRegionsRegistered(
-            identifiers: nearest.map(\.id),
-            movementTrigger: registerMovementTrigger ? GeofenceConstants.movementTriggerIdentifier : nil
+            identifiers: accepted,
+            movementTrigger: movementTriggerAccepted ? movementTriggerId : nil
         )
-        guard registerMovementTrigger else { return }
+        guard movementTriggerAccepted else { return (accepted, false) }
         logger.geofenceMovementTriggerRegistered(
             latitude: anchor.latitude,
             longitude: anchor.longitude,
             radius: triggerRadius
         )
+        return (accepted, true)
     }
 }

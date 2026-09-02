@@ -2,6 +2,28 @@ import CioInternalCommon
 import CoreLocation
 import Foundation
 
+/// One-shot latch for the `module.init` record. Reset only by tests.
+final class GeofenceModuleInitLatch: @unchecked Sendable {
+    private let lock = NSLock()
+    private var claimed = false
+
+    func claim() -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        guard !claimed else { return false }
+        claimed = true
+        return true
+    }
+
+    func resetForTesting() {
+        lock.lock()
+        defer { lock.unlock() }
+        claimed = false
+    }
+}
+
+let geofenceModuleInitLatch = GeofenceModuleInitLatch()
+
 private let geofenceTag = "Geofence"
 
 /// Setup, permissions and OS plumbing.
@@ -124,7 +146,13 @@ extension Logger {
 
     /// Process start and why. A background wake and a user opening the app look identical in the
     /// log today, and they are the two cases whose behaviour differs most.
+    ///
+    /// Emitted once per process, first caller wins. Both `bootstrapForBackgroundDelivery` and
+    /// module init reach here, and on a cold location wake the second would otherwise overwrite
+    /// `location_event` with `app_start` — two records for one launch, disagreeing. Only the
+    /// bootstrap path has `launchOptions`, so the earliest observation is the informed one.
     func geofenceModuleInitialized(launchReason: GeofenceLaunchReason) {
+        guard geofenceModuleInitLatch.claim() else { return }
         info(
             "Geofence module initialized (\(launchReason.rawValue))"
                 + geofenceTail("module.init", .observation, [("launch", launchReason.rawValue)]),

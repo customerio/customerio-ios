@@ -26,10 +26,14 @@ enum GeofenceDiagnostics {
     static var isEnabled: Bool { gate.isEnabled }
 
     /// True exactly once per enablement, so the warning does not repeat on every record.
-    static func claimWarning() -> Bool { gate.claimWarning() }
+    static func claimWarning() -> Bool {
+        gate.claimWarning()
+    }
 
     /// Test hook; `nil` restores the Info.plist value.
-    static func setEnabledForTesting(_ value: Bool?) { gate.setOverride(value) }
+    static func setEnabledForTesting(_ value: Bool?) {
+        gate.setOverride(value)
+    }
 }
 
 private final class DiagnosticsGate: @unchecked Sendable {
@@ -131,6 +135,17 @@ enum GeofenceLog {
 
     static func bool(_ value: Bool) -> String {
         value ? "true" : "false"
+    }
+
+    /// Monotonic seconds for measuring durations.
+    ///
+    /// Wall clock can step under NTP mid-measurement and yield a negative `ms=`. `CLOCK_MONOTONIC`
+    /// counts through sleep, which is what makes it comparable with Android's `elapsedRealtime()` —
+    /// the two platforms have to mean the same thing by `ms=` for one parser to read both.
+    static func monotonicNow() -> TimeInterval {
+        var time = timespec()
+        clock_gettime(CLOCK_MONOTONIC, &time)
+        return TimeInterval(time.tv_sec) + TimeInterval(time.tv_nsec) / 1000000000
     }
 
     /// A comma-separated list, no spaces. Used for registered identifiers and ranking results.
