@@ -277,6 +277,27 @@ struct GeofenceLogTailTests {
     }
 
     @Test
+    func listValues_expectSeparatorsSurviveTheTailBuilder() {
+        // Regression: `sanitize` folds the format's separators so an untrusted id cannot split a
+        // field, but it must not be applied to a value that composed those separators on purpose.
+        // Folding them turned `ids=a,b` into `ids=a_b` and `ranked=x:120` into `ranked=x_120`,
+        // which no unit test noticed and a device capture did.
+        GeofenceDiagnostics.overrideForTesting = true
+        defer { GeofenceDiagnostics.overrideForTesting = nil }
+        let logger = CapturingLogger()
+        logger.geofenceRankEvaluated(
+            candidates: 3,
+            selectedCount: 2,
+            selected: ["alpha", "beta"],
+            evicted: ["gamma"],
+            edgeDistances: ["alpha": 120, "beta": 340]
+        )
+        let message = logger.messages.last ?? ""
+        #expect(message.contains("ranked=alpha:120,beta:340"), "ranked lost its separators: \(message)")
+        #expect(message.contains("evicted=gamma"), "evicted malformed: \(message)")
+    }
+
+    @Test
     func proseHalf_expectIdenticalWhicheverWayTheGateIsSet() {
         // The prose is what a customer reads and what existing tests assert on. Enabling
         // diagnostics must append to it and never rewrite it.

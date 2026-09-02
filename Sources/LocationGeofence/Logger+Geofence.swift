@@ -196,7 +196,7 @@ extension Logger {
                     return [
                         ("ncand", GeofenceLog.int(candidates)),
                         ("n", GeofenceLog.int(selectedCount)),
-                        ("ranked", GeofenceLog.list(ranked)),
+                        ("ranked", GeofenceLog.composedList(ranked)),
                         ("evicted", GeofenceLog.list(evicted()))
                     ]
                 }()),

@@ -68,16 +68,30 @@ enum GeofenceLog {
         var parts = ["ev=\(ev)", "io=\(io.rawValue)"]
         for (key, value) in fields() {
             guard let value else { continue }
-            parts.append("\(key)=\(sanitize(value))")
+            parts.append("\(key)=\(foldWhitespace(value))")
         }
         return delimiter + parts.joined(separator: " ")
     }
 
     /// The parser splits on whitespace, and workspace-authored ids can contain anything.
-    /// Every character the format itself uses to separate things. Region ids are workspace
-    /// authored, so an id containing one of these would otherwise split a field: `=` a pair,
-    /// `,` a list, `:` an `id:distance` entry in `ranked`, `|` the tail delimiter.
+    /// Every character the format itself uses to separate things. Applied to *untrusted tokens*
+    /// only — a workspace-authored id containing one of these would otherwise split a field: `=` a
+    /// pair, `,` a list, `:` an `id:distance` entry in `ranked`, `|` the tail delimiter.
+    ///
+    /// Deliberately not applied to a finished value: `list` and `ranked` compose their separators
+    /// on purpose, and folding those turns `a,b` into `a_b`.
     private static let separators: Set<Character> = ["=", ",", ":", "|"]
+
+    /// Applied to every finished value. Only whitespace, which is what separates one `key=value`
+    /// from the next — the value's own structure is already the caller's business.
+    static func foldWhitespace(_ value: String) -> String {
+        var out = ""
+        out.reserveCapacity(value.count)
+        for character in value {
+            out.append(character.isWhitespace ? "_" : character)
+        }
+        return out.isEmpty ? "_" : out
+    }
 
     static func sanitize(_ value: String) -> String {
         var out = ""
@@ -109,6 +123,14 @@ enum GeofenceLog {
         var time = timespec()
         clock_gettime(CLOCK_MONOTONIC, &time)
         return TimeInterval(time.tv_sec) + TimeInterval(time.tv_nsec) / 1000000000
+    }
+
+    /// For elements the caller has already composed, like `id:distance` — their structure is
+    /// deliberate, so the untrusted part must be sanitized before composing, not after.
+    static func composedList(_ values: [String], limit: Int = 25) -> String? {
+        guard !values.isEmpty else { return nil }
+        let head = values.prefix(max(0, limit)).joined(separator: ",")
+        return values.count > limit ? "\(head),+\(values.count - limit)" : head
     }
 
     /// Comma-separated, capped; the count travels separately so truncation stays honest.
