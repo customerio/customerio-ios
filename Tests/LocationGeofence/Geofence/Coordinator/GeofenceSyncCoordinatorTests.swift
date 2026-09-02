@@ -1384,9 +1384,14 @@ struct GeofenceSyncCoordinatorTests {
 
     @Test
     func handleMovement_givenRerankLandsOnSameNearestSet_expectBusinessRegionsUntouched() async {
-        // Steady-state drive: adjacent trigger EXITs mostly re-rank onto the identical nearest set.
+        // Steady-state drive: adjacent trigger EXITs mostly land on the identical nearest set.
         // Re-registering re-seeds the OS's assumed state and absorbs an undelivered crossing, so the
-        // business regions must be left alone — only the trigger re-centers and the ranking anchor walks.
+        // business regions must be left alone — only the trigger re-centers.
+        //
+        // 111 m is inside the re-rank radius, so this takes the cheap polygon wake pass: the wake
+        // re-arms at the new position but the ranking anchor must NOT walk. Walking it on every
+        // wake would reset the distance re-ranking is measured against, and re-ranking would never
+        // come due — see `handleMovement_givenMoveBeyondRerankRadius_expectAnchorWalks`.
         let region = makeRegion(id: "g1", latitude: 0.5, longitude: 0.5)
         let storage = makeStorage()
         let setup = await makeRegisteredSetup(regions: [region], config: diffConfig, storage: storage)
@@ -1402,6 +1407,57 @@ struct GeofenceSyncCoordinatorTests {
         let triggerStarts = setup.monitor.startedRegions.filter { $0.identifier == GeofenceConstants.movementTriggerIdentifier }
         #expect(triggerStarts.count == 2)
         #expect(triggerStarts.last?.center == newLocation)
+        #expect(await storage.getLastRegistrationCenter() == LocationData(latitude: 0, longitude: 0))
+    }
+
+    @Test
+    func handleMovement_givenNearbyPolygon_expectTriggerShrunkToItsBoundary() async {
+        // The end-to-end assertion behind `PolygonWakeRadius`: a polygon the device stands inside
+        // must actually shrink the trigger the OS is given, not just the value the helper returns.
+        let ring = [
+            LocationData(latitude: -0.0018, longitude: -0.0018),
+            LocationData(latitude: -0.0018, longitude: 0.0018),
+            LocationData(latitude: 0.0018, longitude: 0.0018),
+            LocationData(latitude: 0.0018, longitude: -0.0018)
+        ]
+        let polygon = Geofence(
+            id: "poly", latitude: 0, longitude: 0, radius: 500, name: "poly",
+            transitionTypes: [.enter, .exit], lastUpdated: Date(timeIntervalSince1970: 1700000000),
+            vertices: ring
+        )
+        let storage = makeStorage()
+        let setup = await makeRegisteredSetup(regions: [polygon], config: diffConfig, storage: storage)
+
+        // ~111 m east of centre: still ~89 m from the eastern edge, so the floor should win.
+        _ = await setup.coordinator.handleMovement(latitude: 0, longitude: 0.001)
+
+        let trigger = setup.monitor.startedRegions
+            .last { $0.identifier == GeofenceConstants.movementTriggerIdentifier }
+        #expect(trigger?.radius == GeofenceConstants.polygonWakeMinRadius, "got \(String(describing: trigger?.radius))")
+        // And the circle-only control: no polygon means the configured radius, untouched.
+        let circleStorage = makeStorage()
+        let circleSetup = await makeRegisteredSetup(
+            regions: [makeRegion(id: "c1", latitude: 0, longitude: 0)], config: diffConfig, storage: circleStorage
+        )
+        _ = await circleSetup.coordinator.handleMovement(latitude: 0, longitude: 0.001)
+        let circleTrigger = circleSetup.monitor.startedRegions
+            .last { $0.identifier == GeofenceConstants.movementTriggerIdentifier }
+        #expect(circleTrigger?.radius == diffConfig.localRefreshTriggerRadius)
+    }
+
+    @Test
+    func handleMovement_givenMoveBeyondRerankRadius_expectAnchorWalks() async {
+        // The other side of the gate: past the re-rank radius the full pass runs and the ranking
+        // anchor moves, so the cheap-pass short-circuit cannot starve re-ranking.
+        let region = makeRegion(id: "g1", latitude: 0.5, longitude: 0.5)
+        let storage = makeStorage()
+        let setup = await makeRegisteredSetup(regions: [region], config: diffConfig, storage: storage)
+
+        // ~1.7 km east: beyond localRefreshTriggerRadius (1000 m), inside the refetch radius.
+        let newLocation = LocationData(latitude: 0, longitude: 0.015)
+        let result = await setup.coordinator.handleMovement(latitude: newLocation.latitude, longitude: newLocation.longitude)
+
+        #expect(result.isSuccess)
         #expect(await storage.getLastRegistrationCenter() == newLocation)
     }
 

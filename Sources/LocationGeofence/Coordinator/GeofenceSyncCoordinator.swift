@@ -180,6 +180,10 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
                 )
             }
             return remote
+        } else if await !movedBeyondRerankRadius(to: movement, config: effectiveConfig) {
+            return await performPolygonWakePass(
+                expectedUserId: userId, at: movement, config: effectiveConfig
+            )
         } else {
             logger.geofenceMovementTrigger(tier: .localRerank)
             let cachedRegions = await storage.getCachedGeofences()
@@ -245,7 +249,9 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
         let osRegistration = registerWithOsSync(
             businessRegions: nearest,
             movementTriggerLocation: anchor,
-            movementTriggerRadius: effectiveConfig.localRefreshTriggerRadius,
+            movementTriggerRadius: PolygonWakeRadius.radius(
+                at: anchor, registeredPolygons: nearest, config: effectiveConfig
+            ),
             registerMovementTrigger: registerMovementTrigger
         )
         logger.geofenceSyncCompleted(registeredCount: nearest.count, movementTriggerRegistered: registerMovementTrigger)
