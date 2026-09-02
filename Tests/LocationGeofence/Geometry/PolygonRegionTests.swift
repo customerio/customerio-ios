@@ -197,6 +197,62 @@ struct PolygonRegionTests {
         #expect(!region.contains(LocationData(latitude: maxLat, longitude: maxLon))) // NE vertex
     }
 
+    /// Translation invariance: the same shape must behave identically wherever it sits. Before the
+    /// unwrap, a fix mid-island on an antimeridian ring read `contains=false` at -4256 m — decisive
+    /// enough to clear the ambiguity gate, so the fence silently never fired.
+    @Test
+    func contains_givenRingCrossingAntimeridian_expectSameVerdictsAsAwayFromIt() throws {
+        // Taveuni, Fiji — a real island on the antimeridian.
+        let onDateline = [
+            LocationData(latitude: -16.80, longitude: 179.95),
+            LocationData(latitude: -16.80, longitude: -179.95),
+            LocationData(latitude: -16.90, longitude: -179.95),
+            LocationData(latitude: -16.90, longitude: 179.95)
+        ]
+        // The identical 0.1-degree-wide shape, moved so nothing wraps.
+        let atGreenwich = onDateline.map {
+            LocationData(latitude: $0.latitude, longitude: $0.longitude > 0 ? $0.longitude - 180 : $0.longitude + 180)
+        }
+        let dateline = try #require(PolygonRegion(vertices: onDateline))
+        let control = try #require(PolygonRegion(vertices: atGreenwich))
+
+        for (offset, expectedInside) in [(0.0, true), (0.04, true), (0.08, false)] {
+            let datelinePoint = LocationData(latitude: -16.85, longitude: (180.0 - offset).normalizedLongitude)
+            let controlPoint = LocationData(latitude: -16.85, longitude: -offset)
+            #expect(dateline.contains(datelinePoint) == expectedInside, "offset \(offset)")
+            #expect(control.contains(controlPoint) == expectedInside, "control offset \(offset)")
+            let a = dateline.signedEdgeDistance(to: datelinePoint)
+            let b = control.signedEdgeDistance(to: controlPoint)
+            #expect(abs(a - b) < 0.001, "offset \(offset): dateline \(a) vs control \(b)")
+        }
+    }
+
+    /// The unwrap's reference is the first vertex, so rotating the ring must not change the fence.
+    @Test
+    func contains_givenAntimeridianRingRotated_expectIdenticalGeometry() throws {
+        let ring = [
+            LocationData(latitude: -16.80, longitude: 179.95),
+            LocationData(latitude: -16.80, longitude: -179.95),
+            LocationData(latitude: -16.90, longitude: -179.95),
+            LocationData(latitude: -16.90, longitude: 179.95)
+        ]
+        let base = try #require(PolygonRegion(vertices: ring))
+        for rotation in 1 ..< ring.count {
+            let rotated = try #require(PolygonRegion(vertices: Array(ring[rotation...] + ring[..<rotation])))
+            for point in [
+                LocationData(latitude: -16.85, longitude: 179.99),
+                LocationData(latitude: -16.85, longitude: -179.99),
+                LocationData(latitude: -16.85, longitude: 179.80)
+            ] {
+                #expect(rotated.contains(point) == base.contains(point), "rotation \(rotation)")
+                #expect(
+                    abs(rotated.signedEdgeDistance(to: point) - base.signedEdgeDistance(to: point)) < 0.001,
+                    "rotation \(rotation)"
+                )
+            }
+        }
+    }
+
     @Test
     func signedEdgeDistance_givenSignFlipAcrossEdge_expectContinuousMagnitude() throws {
         // Walk a straight line across the square's eastern edge; the signed distance must
@@ -219,5 +275,19 @@ struct PolygonRegionTests {
             previous = sd
         }
         #expect(signFlips == 1)
+    }
+}
+
+private extension Double {
+    /// Wraps a longitude built by arithmetic (e.g. `180 - offset`) back into [-180, 180].
+    var normalizedLongitude: Double {
+        var value = self
+        while value > 180 {
+            value -= 360
+        }
+        while value < -180 {
+            value += 360
+        }
+        return value
     }
 }
