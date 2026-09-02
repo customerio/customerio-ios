@@ -93,9 +93,9 @@ struct GeofenceStorageTests {
         let storage = makeStorage(directory: dir)
         let now = Date(timeIntervalSince1970: 1700000000)
 
-        let acquired = await storage.tryAcquireCooldown(key: "geo_1:enter", now: now, interval: 3600)
+        let remaining = await storage.tryAcquireCooldown(key: "geo_1:enter", now: now, interval: 3600)
 
-        #expect(acquired == true)
+        #expect(remaining == nil)
         let cooldowns = await storage.getEventCooldowns()
         #expect(cooldowns["geo_1:enter"] == now)
     }
@@ -109,9 +109,10 @@ struct GeofenceStorageTests {
         let secondAttempt = firstAttempt.addingTimeInterval(1800)
 
         _ = await storage.tryAcquireCooldown(key: "geo_1:enter", now: firstAttempt, interval: 3600)
-        let acquired = await storage.tryAcquireCooldown(key: "geo_1:enter", now: secondAttempt, interval: 3600)
+        let remaining = await storage.tryAcquireCooldown(key: "geo_1:enter", now: secondAttempt, interval: 3600)
 
-        #expect(acquired == false)
+        // Half the interval has passed, so half of it is what is left to report.
+        #expect(remaining == 1800)
         let cooldowns = await storage.getEventCooldowns()
         #expect(cooldowns["geo_1:enter"] == firstAttempt)
     }
@@ -125,9 +126,9 @@ struct GeofenceStorageTests {
         let secondAttempt = firstAttempt.addingTimeInterval(3600)
 
         _ = await storage.tryAcquireCooldown(key: "geo_1:enter", now: firstAttempt, interval: 3600)
-        let acquired = await storage.tryAcquireCooldown(key: "geo_1:enter", now: secondAttempt, interval: 3600)
+        let remaining = await storage.tryAcquireCooldown(key: "geo_1:enter", now: secondAttempt, interval: 3600)
 
-        #expect(acquired == true)
+        #expect(remaining == nil)
         let cooldowns = await storage.getEventCooldowns()
         #expect(cooldowns["geo_1:enter"] == secondAttempt)
     }
@@ -140,9 +141,9 @@ struct GeofenceStorageTests {
         let now = Date(timeIntervalSince1970: 1700000000)
 
         _ = await storage.tryAcquireCooldown(key: "geo_1:enter", now: now, interval: 3600)
-        let acquired = await storage.tryAcquireCooldown(key: "geo_2:enter", now: now, interval: 3600)
+        let remaining = await storage.tryAcquireCooldown(key: "geo_2:enter", now: now, interval: 3600)
 
-        #expect(acquired == true)
+        #expect(remaining == nil)
     }
 
     @Test

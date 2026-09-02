@@ -114,7 +114,9 @@ enum GeofenceLog {
     /// Comma-separated, capped; the count travels separately so truncation stays honest.
     static func list(_ values: [String], limit: Int = 25) -> String? {
         guard !values.isEmpty else { return nil }
-        let head = values.prefix(limit).map(sanitize).joined(separator: ",")
+        // `prefix` traps on a negative length; no caller passes one, but a log must not be
+        // the thing that takes the process down.
+        let head = values.prefix(max(0, limit)).map(sanitize).joined(separator: ",")
         return values.count > limit ? "\(head),+\(values.count - limit)" : head
     }
 

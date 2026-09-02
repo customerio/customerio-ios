@@ -92,12 +92,7 @@ final class GeofenceEventTracker: @unchecked Sendable {
         // an SDK release; constructor default applies otherwise.
         let interval = await storage.getCachedConfig()?.duplicateEventsExpiry ?? cooldownInterval
 
-        guard await storage.tryAcquireCooldown(key: cooldownKey, now: now, interval: interval) else {
-            // A second full load-and-decode of the cooldown store, on a background wake, purely to
-            // put a number in a log. Only pay it when something will read it.
-            let remaining = GeofenceDiagnostics.isEnabled
-                ? await storage.cooldownRemaining(key: cooldownKey, now: now, interval: interval)
-                : nil
+        if let remaining = await storage.tryAcquireCooldown(key: cooldownKey, now: now, interval: interval) {
             logger.geofenceEventSuppressed(geofenceId: geofenceId, transition: transition, cooldownRemaining: remaining)
             return []
         }

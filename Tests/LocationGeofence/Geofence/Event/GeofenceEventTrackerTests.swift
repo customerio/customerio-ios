@@ -136,8 +136,8 @@ struct GeofenceEventTrackerTests {
         #expect(delivery.trackMetricCallsCount == 0)
         // The cooldown claimed for this crossing was released, so the next crossing retries from a
         // clean state instead of being suppressed. A held cooldown would make this claim return false.
-        let canRetry = await storage.tryAcquireCooldown(key: "user_42:geo_1:enter", now: dateUtil.now, interval: cooldownInterval)
-        #expect(canRetry)
+        let remaining = await storage.tryAcquireCooldown(key: "user_42:geo_1:enter", now: dateUtil.now, interval: cooldownInterval)
+        #expect(remaining == nil)
     }
 
     @Test
