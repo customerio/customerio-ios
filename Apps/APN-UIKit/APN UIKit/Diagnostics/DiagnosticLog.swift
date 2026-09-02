@@ -12,6 +12,11 @@ enum DiagnosticLogSchema {
 final class DiagnosticLog: @unchecked Sendable {
     static let shared = DiagnosticLog()
 
+    /// Same delimiter the SDK's geofence tail uses. The app's own records follow the same
+    /// contract so one parser reads the whole file — inline `key=value` in the prose would be
+    /// invisible to it.
+    static let delimiter = " || "
+
     /// Records produced by the SDK's logger, by the sample app itself, or by a reference app
     /// emitting this same schema.
     enum Source: String {
@@ -71,7 +76,9 @@ final class DiagnosticLog: @unchecked Sendable {
             src: .app,
             tag: "Diagnostics",
             level: .info,
-            message: "session.start schema=\(DiagnosticLogSchema.version) dir=\(DiagnosticLog.directory.lastPathComponent)"
+            message: "Diagnostic session started\(DiagnosticLog.delimiter)"
+                + "ev=session.start io=obs schema=\(DiagnosticLogSchema.version) "
+                + "dir=\(DiagnosticLog.directory.lastPathComponent)"
         )
     }
 
@@ -90,7 +97,12 @@ final class DiagnosticLog: @unchecked Sendable {
 
     private nonisolated func makeDeviceStateHandler() -> @Sendable (String) -> Void {
         { [weak self] reason in
-            self?.emit(src: .app, tag: "Diagnostics", level: .debug, message: "device.state changed=\(reason)")
+            self?.emit(
+                src: .app,
+                tag: "Diagnostics",
+                level: .debug,
+                message: "Device state changed\(DiagnosticLog.delimiter)ev=device.state io=obs changed=\(reason)"
+            )
         }
     }
 
@@ -106,11 +118,6 @@ final class DiagnosticLog: @unchecked Sendable {
         // filtered by subsystem, and leave the rest of the string untouched.
         let (tag, body) = DiagnosticLog.splitTag(from: message)
         emit(src: .sdk, tag: tag, level: level, message: body)
-    }
-
-    /// Write an app-side record. Used for anything the SDK does not say itself.
-    func note(_ message: String, tag: String = "Diagnostics", level: CioLogLevel = .debug) {
-        emit(src: .app, tag: tag, level: level, message: message)
     }
 
     private func emit(src: Source, tag: String?, level: CioLogLevel, message: String) {
