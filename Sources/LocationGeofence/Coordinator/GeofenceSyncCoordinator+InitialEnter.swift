@@ -52,16 +52,14 @@ extension GeofenceSyncCoordinatorImpl {
         }
     }
 
-    /// Hands newly-registered polygons to the gated evaluation. Resolved from the graph at the call
-    /// site rather than stored: the resolver is a `@MainActor` singleton and this coordinator is
-    /// one of its own dependencies, so a stored reference back would make the two initialize each
-    /// other.
     /// The trigger is sized to the nearest polygon boundary, so its EXIT is the signal that some
-    /// membership may have changed. Resolved from the graph for the same reason as `evaluateNewPolygons`.
+    /// membership may have changed. A wake fires BECAUSE the device moved, so the cached fix
+    /// describes where it was — answering from it re-affirms the old verdict and swallows the
+    /// crossing outright (measured: a 26 s fix at 20 m/s is 520 m stale).
     func evaluatePolygonsAfterMovement(expectedUserId: String) {
         Task { @MainActor [contextStore] in
             guard contextStore.currentUserId == expectedUserId else { return }
-            await DIGraphShared.shared.polygonMembershipResolver.evaluateAllPolygons()
+            await DIGraphShared.shared.polygonMembershipResolver.evaluateAllPolygons(requiresFreshFix: true)
         }
     }
 
