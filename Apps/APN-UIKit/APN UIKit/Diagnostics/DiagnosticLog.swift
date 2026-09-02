@@ -3,20 +3,6 @@ import Foundation
 import UIKit
 
 /// Field-drive diagnostics sink.
-///
-/// Installs a dispatcher on the Customer.io logger and mirrors every record the SDK emits into an
-/// NDJSON file on disk, together with a device-state snapshot.
-///
-/// Geofence field drives run for hours with the app in the background and no debugger attached.
-/// Most geofence logging is `debug`, which never reaches the unified log store, so today a
-/// completed drive leaves essentially nothing to analyse afterwards. This is the sink that fixes
-/// that.
-///
-/// **Nothing here parses the SDK's message.** The device writes the raw string, including any
-/// ` || key=value` tail, into `msg`. A host-side script splits the tail and fills in `ev` and
-/// `data`. One parser, living off-device, means no Swift/Kotlin pair to drift apart and a parser
-/// bug can be fixed and re-run over files we already captured, instead of having destroyed what
-/// it misread.
 enum DiagnosticLogSchema {
     /// Bumped only when a field is removed, renamed, or changes meaning. Adding an optional
     /// field is not a bump — parsers ignore unknown fields.
@@ -68,10 +54,6 @@ final class DiagnosticLog: @unchecked Sendable {
 
     /// Install the sink. Call this as the **first** statement of
     /// `application(_:didFinishLaunchingWithOptions:)`.
-    ///
-    /// A cold background wake reaches geofence code within milliseconds of process start. Install
-    /// this lazily — on a settings screen, after SDK initialization, from a scene delegate — and
-    /// the wake you most wanted to observe is already over.
     @MainActor
     func start() {
         lock.lock()
@@ -80,9 +62,7 @@ final class DiagnosticLog: @unchecked Sendable {
         started = true
         startMono = DiagnosticClock.monotonicNanos()
 
-        // The SDK's diagnostic tail is enabled by the CIOGeofenceDiagnostics key in Info.plist,
-        // not from here — there is no API for it.
-
+        // The SDK's diagnostic tail is enabled by the CIOGeofenceDiagnostics Info.plist key.
         writer.open(header: fileHeaderLine())
         deviceState.start(onChange: makeDeviceStateHandler())
         installDispatcher()
@@ -95,14 +75,8 @@ final class DiagnosticLog: @unchecked Sendable {
         )
     }
 
-    /// Both callback-installing helpers are `nonisolated` on purpose, and it is not a style
-    /// preference.
-    ///
-    /// A closure formed inside a `@MainActor` function inherits main-actor isolation. The SDK
-    /// calls its log dispatcher from whatever thread it happens to be logging on, and under
-    /// Swift 6 that mismatch is not a warning — it traps in `swift_task_isCurrentExecutorImpl`.
-    /// Installed from `start()` directly, this sink takes the whole app down on the first log line
-    /// the SDK emits off the main thread, which on a field drive is essentially all of them.
+    /// `nonisolated` on purpose: a closure formed inside a `@MainActor` method inherits that
+    /// isolation, and the SDK calls the dispatcher from any thread — which hard-traps under Swift 6.
     private nonisolated func installDispatcher() {
         let logger = CioInternalCommon.DIGraphShared.shared.logger
         // The SDK filters by level *before* reaching the dispatcher, so a sink installed while the

@@ -14,31 +14,48 @@ enum GeofenceLogIO: String {
 
 /// Whether the SDK emits the diagnostic tail.
 ///
-/// Read from the host app's `Info.plist`, deliberately not from an API. `CioInternalCommon` ships
-/// as a CocoaPods module on every app that takes a Customer.io pod, so anything public there is
-/// reachable from a customer app — including via React Native and Flutter. An Info.plist key is
-/// not importable and cannot be set by a dependency.
+/// Read from the host app's `Info.plist`, not from an API: `CioInternalCommon` ships as a
+/// CocoaPods module on every app taking a Customer.io pod, so anything public there is reachable
+/// from a customer app. An Info.plist key is not importable and cannot be set by a dependency.
 enum GeofenceDiagnostics {
     static let infoPlistKey = "CIOGeofenceDiagnostics"
 
     private static let gate = DiagnosticsGate()
 
-    static var isEnabled: Bool { gate.isEnabled }
+    /// Test-only override. Task-local rather than a stored property so a suite cannot perturb
+    /// suites running in parallel in the same process — Swift Testing's `.serialized` orders one
+    /// suite, not the process, and a leaked `true` here changes what every other suite observes.
+    @TaskLocal static var overrideForTesting: Bool?
+
+    /// Test-only. A fresh latch per scope, so "exactly one warning" is assertable without
+    /// depending on whether some other suite already claimed the process-wide one.
+    @TaskLocal static var warningLatchForTesting: GeofenceOneShot?
+
+    static var isEnabled: Bool { overrideForTesting ?? gate.isEnabled }
 
     /// True exactly once per enablement, so the warning does not repeat on every record.
     static func claimWarning() -> Bool {
-        gate.claimWarning()
+        if let latch = warningLatchForTesting { return latch.claim() }
+        return gate.claimWarning()
     }
+}
 
-    /// Test hook; `nil` restores the Info.plist value.
-    static func setEnabledForTesting(_ value: Bool?) {
-        gate.setOverride(value)
+/// A claim that succeeds exactly once.
+final class GeofenceOneShot: @unchecked Sendable {
+    private let lock = NSLock()
+    private var claimed = false
+
+    func claim() -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        guard !claimed else { return false }
+        claimed = true
+        return true
     }
 }
 
 private final class DiagnosticsGate: @unchecked Sendable {
     private let lock = NSLock()
-    private var override: Bool?
     private var warned = false
     private lazy var fromBundle: Bool =
         (Bundle.main.object(forInfoDictionaryKey: GeofenceDiagnostics.infoPlistKey) as? Bool) ?? false
@@ -46,14 +63,7 @@ private final class DiagnosticsGate: @unchecked Sendable {
     var isEnabled: Bool {
         lock.lock()
         defer { lock.unlock() }
-        return override ?? fromBundle
-    }
-
-    func setOverride(_ value: Bool?) {
-        lock.lock()
-        defer { lock.unlock() }
-        override = value
-        warned = false
+        return fromBundle
     }
 
     func claimWarning() -> Bool {
@@ -67,17 +77,14 @@ private final class DiagnosticsGate: @unchecked Sendable {
 
 /// Builds the machine-readable tail appended to a geofence log message.
 ///
-/// Existing prose is unchanged; the machine detail rides behind a ` || ` delimiter as flat
-/// `key=value` pairs. Records added by this work emit their prose either way — only the tail
+/// Existing prose is unchanged. Records added by this work emit prose either way; only the tail
 /// is gated.
 ///
 /// ```
 /// [Geofence] Tracked enter event for geofence notl_core || ev=transition.emitted io=out id=notl_core t=enter
 /// ```
 enum GeofenceLog {
-    /// Chosen over a single pipe after confirming no log message on either platform contains one.
-    /// A parser splits on the **last** occurrence and only accepts the remainder as a tail if it
-    /// parses cleanly as `key=value` pairs, so prose that someday contains `||` stays prose.
+    /// A parser splits on the **last** occurrence, and only if the remainder is all `key=value`.
     static let delimiter = " || "
 
     /// The single gate for every diagnostic value; returns nothing when diagnostics are off.
@@ -110,9 +117,7 @@ enum GeofenceLog {
         return delimiter + parts.joined(separator: " ")
     }
 
-    /// Values may not contain whitespace — the parser splits the tail on it. Geofence identifiers
-    /// come from workspace configuration and can contain anything at all, so they are folded here
-    /// rather than trusted.
+    /// The parser splits on whitespace, and workspace-authored ids can contain anything.
     static func sanitize(_ value: String) -> String {
         var out = ""
         out.reserveCapacity(value.count)
@@ -137,33 +142,22 @@ enum GeofenceLog {
         value ? "true" : "false"
     }
 
-    /// Monotonic seconds for measuring durations.
-    ///
-    /// Wall clock can step under NTP mid-measurement and yield a negative `ms=`. `CLOCK_MONOTONIC`
-    /// counts through sleep, which is what makes it comparable with Android's `elapsedRealtime()` —
-    /// the two platforms have to mean the same thing by `ms=` for one parser to read both.
+    /// Monotonic: wall clock can step under NTP and yield a negative `ms=`. `CLOCK_MONOTONIC`
+    /// counts through sleep, matching Android's `elapsedRealtime()` so `ms=` means one thing.
     static func monotonicNow() -> TimeInterval {
         var time = timespec()
         clock_gettime(CLOCK_MONOTONIC, &time)
         return TimeInterval(time.tv_sec) + TimeInterval(time.tv_nsec) / 1000000000
     }
 
-    /// A comma-separated list, no spaces. Used for registered identifiers and ranking results.
-    ///
-    /// Capped because a ranked list of every candidate on a dense workspace would dwarf the record
-    /// it is attached to. The count travels separately, so a truncated list is still honest about
-    /// how much it left out.
+    /// Comma-separated, capped; the count travels separately so truncation stays honest.
     static func list(_ values: [String], limit: Int = 25) -> String? {
         guard !values.isEmpty else { return nil }
         let head = values.prefix(limit).map(sanitize).joined(separator: ",")
         return values.count > limit ? "\(head),+\(values.count - limit)" : head
     }
 
-    /// Folds arbitrary text into a snake_case token.
-    ///
-    /// Reasons are tokens, never prose: `why=no_identified_user` survives someone rewriting the
-    /// sentence in front of it, and `why=no identified user` would break the parser on the first
-    /// space anyway.
+    /// Reasons are tokens so they survive the sentence in front of them being reworded.
     static func token(_ value: String) -> String {
         var out = ""
         var lastWasSeparator = false
@@ -182,8 +176,7 @@ enum GeofenceLog {
         return out.isEmpty ? "unknown" : out
     }
 
-    /// Permission tier as a stable token rather than the raw enum ordinal, which means nothing to
-    /// anyone reading a log a month later.
+    /// A stable token rather than the raw enum ordinal.
     static func permission(_ status: CLAuthorizationStatus) -> String {
         switch status {
         case .notDetermined: return "not_determined"
@@ -197,8 +190,7 @@ enum GeofenceLog {
 
     // MARK: - Fix quality and provenance (ungated)
 
-    /// Where a fix came from. Trustworthiness differs enormously between these, and until now the
-    /// log said only that *a* position existed.
+    /// Where a fix came from; the log previously said only that *a* position existed.
     enum FixSource: String {
         /// `CLLocationManager.location` — the OS's cached fix. Can freeze at process start on a
         /// long-suspended process, so this is the one that silently goes stale.
@@ -216,12 +208,8 @@ enum GeofenceLog {
 
     /// How good the fix is and where it came from.
     ///
-    /// `age` is the one to notice: `bestKnownFix()` can return a fix that is hours old on a
-    /// long-suspended process, and an overshoot distance computed from one of those looks identical
-    /// to a real measurement without it.
-    ///
-    /// Like everything else in the tail, these reach a log only when diagnostics are enabled — the
-    /// gate lives in `tail(_:_:_:logger:)`, so nothing here needs its own check.
+    /// `age` is the one to notice: `bestKnownFix()` can be hours old on a long-suspended process,
+    /// and an overshoot computed from one of those looks identical to a real measurement.
     static func fixQuality(_ location: CLLocation?, source: FixSource) -> [(String, String?)] {
         var fields: [(String, String?)] = [("fixsrc", source.rawValue)]
         guard let location else { return fields }
@@ -243,11 +231,8 @@ enum GeofenceLog {
         return fields
     }
 
-    /// How long an OS-dated event waited before the SDK processed it.
-    ///
-    /// `CLMonitor` stamps each event with the date the daemon decided it. An event can then sit in
-    /// `pendingEvents` until bootstrap binds a handler, so a "late" crossing may have been observed
-    /// on time and delivered late — two very different faults that currently look the same.
+    /// How long an OS-dated event waited before the SDK processed it — "observed late" and
+    /// "observed on time, delivered late" are different faults that otherwise look the same.
     static func eventTiming(_ eventDate: Date?) -> [(String, String?)] {
         guard let eventDate else { return [] }
         return [("evage", num(-eventDate.timeIntervalSinceNow))]
@@ -255,11 +240,7 @@ enum GeofenceLog {
 
     // MARK: - Device position
 
-    /// Device position.
-    ///
-    /// No separate switch: a single gate over the whole tail is what makes "customer builds see
-    /// exactly what they saw before" a claim you can check in one assertion, instead of a set of
-    /// per-field arguments a reviewer has to accept one at a time.
+    /// Device position. Gated with the rest of the tail; no per-field switch.
     static func position(_ location: CLLocation?) -> [(String, String?)] {
         guard let location else { return [] }
         return [

@@ -2,23 +2,8 @@ import Foundation
 import UIKit
 
 /// Getting the files off the phone.
-///
-/// A drive that produced perfect data and then lost it to a wiped device or a forgotten export is
-/// a drive wasted, and drives are the expensive part. Three independent routes out, because the
-/// one that works depends on what is to hand at the end of a drive:
-///
-/// - **Share sheet** (this type) — AirDrop or Files, no cable, works standing next to the car.
-/// - **Files app** — `UIFileSharingEnabled` and `LSSupportsOpeningDocumentsInPlace` in Info.plist
-///   surface the directory for drag-and-drop from Finder. Two plist keys, zero code.
-/// - **`xcrun devicectl device copy from`** — scriptable, for pulling a batch after the fact.
-///
-/// Security is deliberately relaxed here. This is a sample app whose entire job is producing
-/// diagnostics; none of it ships in the SDK.
 enum DiagnosticLogExport {
     /// Presents a share sheet for the whole diagnostics directory, zipped.
-    ///
-    /// A drive usually spans more than one file once it crosses midnight or gets pulled a day
-    /// later, and sharing loose files one at a time is how half a drive goes missing.
     @MainActor
     static func presentShareSheet(from viewController: UIViewController, sourceView: UIView?) {
         let files = DiagnosticLog.shared.sessionFiles()

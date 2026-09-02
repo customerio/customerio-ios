@@ -2,23 +2,22 @@ import CioInternalCommon
 import CoreLocation
 import Foundation
 
-/// One-shot latch for the `module.init` record. Reset only by tests.
+/// One-shot latch for the `module.init` record.
 final class GeofenceModuleInitLatch: @unchecked Sendable {
+    /// Test-only. Task-local so a suite treating every invocation as a fresh launch cannot make
+    /// other suites in the same process miss their own `module.init` record.
+    @TaskLocal static var bypassForTesting = false
+
     private let lock = NSLock()
     private var claimed = false
 
     func claim() -> Bool {
+        if GeofenceModuleInitLatch.bypassForTesting { return true }
         lock.lock()
         defer { lock.unlock() }
         guard !claimed else { return false }
         claimed = true
         return true
-    }
-
-    func resetForTesting() {
-        lock.lock()
-        defer { lock.unlock() }
-        claimed = false
     }
 }
 

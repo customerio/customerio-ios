@@ -150,72 +150,79 @@ struct GeofenceLogTailTests {
 
     // MARK: - Contract
 
+    /// Runs `body` with diagnostics forced on or off.
+    ///
+    /// Both overrides are task-local, so nothing here is observable by suites running in parallel
+    /// in the same process — `.serialized` orders this suite, not the process.
+    private func withDiagnostics<T>(_ enabled: Bool, _ body: () throws -> T) rethrows -> T {
+        try GeofenceDiagnostics.$overrideForTesting.withValue(enabled) {
+            try GeofenceDiagnostics.$warningLatchForTesting.withValue(GeofenceOneShot()) {
+                // Each invocation below is a fresh "launch" for the once-per-process module.init.
+                try GeofenceModuleInitLatch.$bypassForTesting.withValue(true, operation: body)
+            }
+        }
+    }
+
     @Test
     func everyRecord_expectMachineKeyAndReplayClassification() {
-        GeofenceDiagnostics.setEnabledForTesting(true)
-        defer { GeofenceDiagnostics.setEnabledForTesting(nil) }
+        withDiagnostics(true) {
 
-        for invocation in invocations {
-            let logger = CapturingLogger()
-            // module.init is latched once per process; each invocation is a fresh "launch".
-            geofenceModuleInitLatch.resetForTesting()
-            invocation.run(logger)
+            for invocation in invocations {
+                let logger = CapturingLogger()
+                invocation.run(logger)
 
-            guard let message = logger.messages.last, let fields = parseTail(message) else {
-                Issue.record("\(invocation.name): no parseable tail in '\(logger.messages.last ?? "<nothing logged>")'")
-                continue
-            }
-            #expect(fields["ev"] != nil, "\(invocation.name): missing ev=")
-            #expect(
-                ["in", "out", "obs"].contains(fields["io"] ?? ""),
-                "\(invocation.name): io= must be in/out/obs, got '\(fields["io"] ?? "<absent>")'"
-            )
-            for key in invocation.requiredKeys {
-                #expect(fields[key] != nil, "\(invocation.name): missing \(key)= in '\(message)'")
+                guard let message = logger.messages.last, let fields = parseTail(message) else {
+                    Issue.record("\(invocation.name): no parseable tail in '\(logger.messages.last ?? "<nothing logged>")'")
+                    continue
+                }
+                #expect(fields["ev"] != nil, "\(invocation.name): missing ev=")
+                #expect(
+                    ["in", "out", "obs"].contains(fields["io"] ?? ""),
+                    "\(invocation.name): io= must be in/out/obs, got '\(fields["io"] ?? "<absent>")'"
+                )
+                for key in invocation.requiredKeys {
+                    #expect(fields[key] != nil, "\(invocation.name): missing \(key)= in '\(message)'")
+                }
             }
         }
     }
 
     @Test
     func everyRecord_expectProseAndTailSeparated() {
-        GeofenceDiagnostics.setEnabledForTesting(true)
-        defer { GeofenceDiagnostics.setEnabledForTesting(nil) }
+        withDiagnostics(true) {
 
-        for invocation in invocations {
-            let logger = CapturingLogger()
-            // module.init is latched once per process; each invocation is a fresh "launch".
-            geofenceModuleInitLatch.resetForTesting()
-            invocation.run(logger)
-            guard let message = logger.messages.last else { continue }
+            for invocation in invocations {
+                let logger = CapturingLogger()
+                invocation.run(logger)
+                guard let message = logger.messages.last else { continue }
 
-            // Prose in front, machine-readable behind. A record that is all tail has lost the
-            // human-readable half the console still depends on.
-            let head = message.components(separatedBy: GeofenceLog.delimiter)[0]
-            #expect(head.hasPrefix("[Geofence] "), "\(invocation.name): lost its tag — '\(message)'")
-            #expect(head.count > "[Geofence] ".count, "\(invocation.name): has no prose — '\(message)'")
-            #expect(!head.contains("ev="), "\(invocation.name): machine fields leaked into the prose — '\(message)'")
+                // Prose in front, machine-readable behind. A record that is all tail has lost the
+                // human-readable half the console still depends on.
+                let head = message.components(separatedBy: GeofenceLog.delimiter)[0]
+                #expect(head.hasPrefix("[Geofence] "), "\(invocation.name): lost its tag — '\(message)'")
+                #expect(head.count > "[Geofence] ".count, "\(invocation.name): has no prose — '\(message)'")
+                #expect(!head.contains("ev="), "\(invocation.name): machine fields leaked into the prose — '\(message)'")
+            }
         }
     }
 
     @Test
     func everyValue_expectNoWhitespace() {
-        GeofenceDiagnostics.setEnabledForTesting(true)
-        defer { GeofenceDiagnostics.setEnabledForTesting(nil) }
+        withDiagnostics(true) {
 
-        for invocation in invocations {
-            let logger = CapturingLogger()
-            // module.init is latched once per process; each invocation is a fresh "launch".
-            geofenceModuleInitLatch.resetForTesting()
-            invocation.run(logger)
-            guard let message = logger.messages.last,
-                  let range = message.range(of: GeofenceLog.delimiter, options: .backwards)
-            else { continue }
+            for invocation in invocations {
+                let logger = CapturingLogger()
+                invocation.run(logger)
+                guard let message = logger.messages.last,
+                      let range = message.range(of: GeofenceLog.delimiter, options: .backwards)
+                else { continue }
 
-            for token in message[range.upperBound...].split(separator: " ") {
-                #expect(
-                    token.split(separator: "=", maxSplits: 1).count == 2,
-                    "\(invocation.name): token '\(token)' is not key=value — a value contained a space"
-                )
+                for token in message[range.upperBound...].split(separator: " ") {
+                    #expect(
+                        token.split(separator: "=", maxSplits: 1).count == 2,
+                        "\(invocation.name): token '\(token)' is not key=value — a value contained a space"
+                    )
+                }
             }
         }
     }
@@ -224,60 +231,59 @@ struct GeofenceLogTailTests {
 
     @Test
     func everyRecord_givenDiagnosticsOff_expectOutputUnchangedFromBeforeInstrumentation() {
-        GeofenceDiagnostics.setEnabledForTesting(false)
+        withDiagnostics(false) {
 
-        for invocation in invocations {
-            let logger = CapturingLogger()
-            // module.init is latched once per process; each invocation is a fresh "launch".
-            geofenceModuleInitLatch.resetForTesting()
-            invocation.run(logger)
-            guard let message = logger.messages.last else { continue }
+            for invocation in invocations {
+                let logger = CapturingLogger()
+                invocation.run(logger)
+                guard let message = logger.messages.last else { continue }
 
-            // The whole guarantee in one assertion: a customer build that ships with debug logging
-            // left on sees exactly the prose it saw before this instrumentation existed. Not "sees
-            // only the safe fields" — sees nothing new at all, so no field added to the tail later
-            // needs a privacy review of its own.
-            #expect(
-                !message.contains(GeofenceLog.delimiter),
-                "\(invocation.name): emitted a tail with diagnostics off — '\(message)'"
-            )
-            #expect(!message.contains("ev="), "\(invocation.name): leaked a machine key — '\(message)'")
+                // The whole guarantee in one assertion: a customer build that ships with debug logging
+                // left on sees exactly the prose it saw before this instrumentation existed. Not "sees
+                // only the safe fields" — sees nothing new at all, so no field added to the tail later
+                // needs a privacy review of its own.
+                #expect(
+                    !message.contains(GeofenceLog.delimiter),
+                    "\(invocation.name): emitted a tail with diagnostics off — '\(message)'"
+                )
+                #expect(!message.contains("ev="), "\(invocation.name): leaked a machine key — '\(message)'")
+            }
         }
     }
 
     @Test
     func everyRecord_givenDiagnosticsOff_expectNoDiagnosticKeyAnywhere() {
-        GeofenceDiagnostics.setEnabledForTesting(false)
+        withDiagnostics(false) {
 
-        let logger = CapturingLogger()
-        runAll(logger)
+            let logger = CapturingLogger()
+            runAll(logger)
 
-        // Spot-checks the classes of value the harness cares about, including the ones that are
-        // harmless in isolation. The point is that "harmless in isolation" stopped being the test.
-        for message in logger.messages {
-            for key in ["lat=", "lon=", "alt=", "spd=", "brg=", "rlat=", "rlon=", "acc=", "age=", "fixsrc=", "io=", "why="] {
-                #expect(!message.contains(key), "\(key) leaked with diagnostics off: '\(message)'")
+            // Spot-checks the classes of value the harness cares about, including the ones that are
+            // harmless in isolation. The point is that "harmless in isolation" stopped being the test.
+            for message in logger.messages {
+                for key in ["lat=", "lon=", "alt=", "spd=", "brg=", "rlat=", "rlon=", "acc=", "age=", "fixsrc=", "io=", "why="] {
+                    #expect(!message.contains(key), "\(key) leaked with diagnostics off: '\(message)'")
+                }
             }
         }
     }
 
     @Test
     func everyRecord_givenDiagnosticsOn_expectFullDetailAndOneWarning() {
-        GeofenceDiagnostics.setEnabledForTesting(true)
-        defer { GeofenceDiagnostics.setEnabledForTesting(nil) }
+        withDiagnostics(true) {
+            let logger = CapturingLogger()
+            runAll(logger)
+            let joined = logger.messages.joined(separator: "\n")
 
-        let logger = CapturingLogger()
-        runAll(logger)
-        let joined = logger.messages.joined(separator: "\n")
-
-        #expect(joined.contains("lat="))
-        #expect(joined.contains("lon="))
-        #expect(joined.contains("acc="))
-        #expect(joined.contains("fixsrc="))
-        // Enabling it must be loud, and exactly once — a warning per record would be its own
-        // problem over a three-hour drive.
-        let warnings = logger.messages.filter { $0.contains("internal geofence diagnostics are ENABLED") }
-        #expect(warnings.count == 1, "expected exactly one enablement warning, got \(warnings.count)")
+            #expect(joined.contains("lat="))
+            #expect(joined.contains("lon="))
+            #expect(joined.contains("acc="))
+            #expect(joined.contains("fixsrc="))
+            // Enabling it must be loud, and exactly once — a warning per record would be its own
+            // problem over a three-hour drive.
+            let warnings = logger.messages.filter { $0.contains("internal geofence diagnostics are ENABLED") }
+            #expect(warnings.count == 1, "expected exactly one enablement warning, got \(warnings.count)")
+        }
     }
 
     @Test
@@ -285,14 +291,11 @@ struct GeofenceLogTailTests {
         // The prose is what a customer reads and what existing tests assert on. Enabling
         // diagnostics must append to it and never rewrite it.
         for invocation in invocations {
-            GeofenceDiagnostics.setEnabledForTesting(false)
             let off = CapturingLogger()
-            invocation.run(off)
+            withDiagnostics(false) { invocation.run(off) }
 
-            GeofenceDiagnostics.setEnabledForTesting(true)
             let on = CapturingLogger()
-            invocation.run(on)
-            GeofenceDiagnostics.setEnabledForTesting(false)
+            withDiagnostics(true) { invocation.run(on) }
 
             guard let offMessage = off.messages.last, let onMessage = on.messages.last else { continue }
             let onProse = onMessage.components(separatedBy: GeofenceLog.delimiter)[0]
@@ -307,14 +310,13 @@ struct GeofenceLogTailTests {
 
     @Test
     func sanitize_givenWhitespaceInIdentifier_expectFolded() {
-        GeofenceDiagnostics.setEnabledForTesting(true)
-        defer { GeofenceDiagnostics.setEnabledForTesting(nil) }
+        withDiagnostics(true) {
+            let logger = CapturingLogger()
+            logger.geofenceEventTracked(geofenceId: "niagara on the lake", transition: .enter)
 
-        let logger = CapturingLogger()
-        logger.geofenceEventTracked(geofenceId: "niagara on the lake", transition: .enter)
-
-        // Workspace-authored identifiers can contain anything; the parser splits on whitespace.
-        #expect(parseTail(logger.messages.last ?? "")?["id"] == "niagara_on_the_lake")
+            // Workspace-authored identifiers can contain anything; the parser splits on whitespace.
+            #expect(parseTail(logger.messages.last ?? "")?["id"] == "niagara_on_the_lake")
+        }
     }
 
     @Test
@@ -326,18 +328,17 @@ struct GeofenceLogTailTests {
 
     @Test
     func skipReason_expectProseAndTokenBothPresent() {
-        GeofenceDiagnostics.setEnabledForTesting(true)
-        defer { GeofenceDiagnostics.setEnabledForTesting(nil) }
+        withDiagnostics(true) {
+            let logger = CapturingLogger()
+            logger.geofenceSyncSkipped(reason: .noLastSyncAnchor)
 
-        let logger = CapturingLogger()
-        logger.geofenceSyncSkipped(reason: .noLastSyncAnchor)
-
-        // `.last`, not `[0]`: enabling the gate emits its one-time warning first.
-        let message = logger.messages.last ?? ""
-        // The prose half must be byte-identical to what it was before enrichment, because it is
-        // what a human reads and what an existing test may assert on.
-        #expect(message.hasPrefix("[Geofence] Sync skipped: no last-sync anchor to restore from"))
-        #expect(parseTail(message)?["why"] == "no_last_sync_anchor")
+            // `.last`, not `[0]`: enabling the gate emits its one-time warning first.
+            let message = logger.messages.last ?? ""
+            // The prose half must be byte-identical to what it was before enrichment, because it is
+            // what a human reads and what an existing test may assert on.
+            #expect(message.hasPrefix("[Geofence] Sync skipped: no last-sync anchor to restore from"))
+            #expect(parseTail(message)?["why"] == "no_last_sync_anchor")
+        }
     }
 
     @Test

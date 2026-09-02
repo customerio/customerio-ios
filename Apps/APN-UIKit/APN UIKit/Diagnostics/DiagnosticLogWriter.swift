@@ -2,10 +2,6 @@ import Darwin
 import Foundation
 
 /// Appends NDJSON records to a file on disk.
-///
-/// NDJSON rather than a JSON array specifically because it is append-safe and
-/// truncation-tolerant: a process killed mid-write loses one line, not the file. Losing the file
-/// is losing the drive.
 final class DiagnosticLogWriter: @unchecked Sendable {
     /// Two weeks covers a test cycle; a drive is single-digit megabytes.
     private static let maxFiles = 14
@@ -47,7 +43,6 @@ final class DiagnosticLogWriter: @unchecked Sendable {
         lock.lock()
         defer { lock.unlock() }
         self.header = header
-        prune()
         openCurrentFile(now: Date())
     }
 
@@ -57,6 +52,10 @@ final class DiagnosticLogWriter: @unchecked Sendable {
     /// deaths stay perfectly visible as `session.start` records *inside* the file.
     private func openCurrentFile(now: Date) {
         closeCurrentFile()
+        // Every open, not just the first: this is also the daily rollover and the reopen after a
+        // file is deleted underneath us, and a process that lives across both would otherwise run
+        // unbounded. Runs before the new file exists so it is never a pruning candidate.
+        prune()
 
         do {
             try FileManager.default.createDirectory(
@@ -130,9 +129,6 @@ final class DiagnosticLogWriter: @unchecked Sendable {
     /// One unbuffered `write(2)` per record, so a record that has returned is already in the file
     /// and survives the process being killed the instant afterwards — which is the normal way a
     /// background wake ends.
-    ///
-    /// Deliberately no `fsync`: that would only add durability across a kernel panic or power
-    /// loss, at the cost of a flash write per log line for hours at a time.
     private func write(_ line: String) {
         guard fd >= 0 else { return }
         var bytes = Array(line.utf8)
@@ -174,27 +170,28 @@ final class DiagnosticLogWriter: @unchecked Sendable {
     }
 
     /// Enforces the retention policy by evicting the **oldest** files.
-    ///
-    /// Never clears the directory on launch. A drive that ended with the phone dying, or an
-    /// engineer who forgot to pull the file before the next test, must still find yesterday's data
-    /// where they left it.
     private func prune() {
         let existing = files()
         guard !existing.isEmpty else { return }
 
-        var kept: [URL] = []
+        var keptCount = 0
         var total = 0
+        // Once the budget is spent everything older goes. Without the latch a large file could be
+        // deleted and then a smaller, *older* one still fit and survive it — retention preferring
+        // older data over newer, which is backwards.
+        var budgetSpent = false
 
         for url in existing {
             let size = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
-            let withinCount = kept.count < DiagnosticLogWriter.maxFiles
+            let withinCount = keptCount < DiagnosticLogWriter.maxFiles
             let withinSize = total + size <= DiagnosticLogWriter.maxTotalBytes
             // The newest file is always kept, however large it is — it may be the drive that has
             // not been pulled off the device yet.
-            if kept.isEmpty || (withinCount && withinSize) {
-                kept.append(url)
+            if !budgetSpent, keptCount == 0 || (withinCount && withinSize) {
+                keptCount += 1
                 total += size
             } else {
+                budgetSpent = true
                 try? FileManager.default.removeItem(at: url)
             }
         }

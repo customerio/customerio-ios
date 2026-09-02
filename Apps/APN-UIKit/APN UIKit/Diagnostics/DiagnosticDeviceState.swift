@@ -4,19 +4,10 @@ import Network
 import UIKit
 
 /// The `dev` block attached to every record.
-///
-/// Two sessions over the same route are only comparable if you know what state the phone was in
-/// for each. Low Power Mode, thermal pressure and whether Wi-Fi was up all change geofence
-/// behaviour materially — geofence monitoring is a *network-location* feature, so "was there
-/// Wi-Fi" is frequently the whole explanation for a session that behaved unlike its neighbour.
-///
-/// **Everything here is pushed by the OS. Nothing is polled.** No timer, no periodic sampler, and
-/// never a Wi-Fi scan. A repeating wakeup is a wakeup the device would not otherwise have taken:
-/// it can pull the phone out of Doze-equivalent states and improve the very behaviour we are
-/// trying to measure. An observer that changes what it observes is worse than no observer.
 final class DiagnosticDeviceState: NSObject, @unchecked Sendable {
     private struct Snapshot: Equatable {
-        var battery: Float = -1
+        /// `nil` until UIKit has populated it; never the raw -1 sentinel.
+        var battery: Float?
         var charging = false
         var lowPower = false
         var thermal = "unknown"
@@ -114,7 +105,7 @@ final class DiagnosticDeviceState: NSObject, @unchecked Sendable {
         lock.unlock()
 
         var out = "{"
-        out += "\"batt\":\(String(format: "%.2f", current.battery))"
+        out += "\"batt\":\(current.battery.map { String(format: "%.2f", $0) } ?? "null")"
         out += ",\"charging\":\(current.charging)"
         out += ",\"lowPower\":\(current.lowPower)"
         out += ",\"thermal\":\(DiagnosticJSON.string(current.thermal))"
@@ -137,9 +128,16 @@ final class DiagnosticDeviceState: NSObject, @unchecked Sendable {
         }
     }
 
+    /// `-1` is UIKit's "not known yet" sentinel, not a level.
+    @MainActor
+    private static func batteryLevel(_ device: UIDevice) -> Float? {
+        let level = device.batteryLevel
+        return level >= 0 ? level : nil
+    }
+
     @MainActor @objc private func batteryChanged() {
         update("batt") {
-            $0.battery = UIDevice.current.batteryLevel
+            $0.battery = DiagnosticDeviceState.batteryLevel(UIDevice.current)
             $0.charging = UIDevice.current.batteryState == .charging || UIDevice.current.batteryState == .full
         }
     }
@@ -159,7 +157,10 @@ final class DiagnosticDeviceState: NSObject, @unchecked Sendable {
         let process = ProcessInfo.processInfo
 
         lock.lock()
-        snapshot.battery = device.batteryLevel
+        // UIKit populates batteryLevel asynchronously after monitoring is enabled and reports -1
+        // meanwhile, correcting only on a 1% step — which never arrives during a short background
+        // wake. Absent is honest; -1.00 reads as a real measurement.
+        snapshot.battery = DiagnosticDeviceState.batteryLevel(device)
         snapshot.charging = device.batteryState == .charging || device.batteryState == .full
         snapshot.lowPower = process.isLowPowerModeEnabled
         snapshot.thermal = DiagnosticDeviceState.describe(process.thermalState)
