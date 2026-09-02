@@ -35,6 +35,7 @@ extension LocationTestViewController {
         descriptionLabel.text = description
         descriptionLabel.font = .systemFont(ofSize: 12)
         descriptionLabel.textColor = .gray
+        descriptionLabel.numberOfLines = 0
         stackView.addArrangedSubview(descriptionLabel)
 
         return container

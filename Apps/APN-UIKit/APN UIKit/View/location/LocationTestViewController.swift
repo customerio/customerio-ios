@@ -139,7 +139,7 @@ class LocationTestViewController: BaseViewController {
 
         stackView.addArrangedSubview(createOptionSection(
             title: "DIAGNOSTIC LOGS",
-            description: "Every SDK log line is mirrored to an NDJSON file in Documents/cio-diagnostics, with a device-state snapshot on each record. Rotates daily, keeps 14 files. The SDK log level is forced to DEBUG while this sink is installed, so the Settings log level does not apply. Also reachable over USB from the Files app.",
+            description: "Log level forced to DEBUG while recording, overriding Settings. Rotates daily, keeps 14 files.",
             content: createDiagnosticLogSection()
         ))
         stackView.addArrangedSubview(createOrSeparator())
