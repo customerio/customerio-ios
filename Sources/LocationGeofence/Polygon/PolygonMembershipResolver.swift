@@ -102,13 +102,15 @@ final class PolygonMembershipResolver {
                 logger.geofencePolygonUndecided(identifier: identifier, reason: "stored ring no longer builds")
                 return
             }
+            // Also a movement event, so the same staleness rule applies as on a wake.
+            //
             // No user boundary across the fix, unlike `evaluateMembership`, and none exists to
             // carry: the binder dispatches this with no expected user captured anywhere. Accepted
             // on the trade this file makes elsewhere — the crossing is geometrically real, and
             // declining it loses it for good because the dedup baseline has already advanced. The
             // cost is real: a switch inside the fix window attributes it to a user who may not
             // monitor this polygon at all.
-            await evaluate(geofenceId: identifier)
+            await evaluate(geofenceId: identifier, requiresFreshFix: true)
         }
     }
 
@@ -130,6 +132,7 @@ final class PolygonMembershipResolver {
     func evaluateMembership(
         geofenceIds: [String],
         reason: String,
+        requiresFreshFix: Bool = false,
         isStillCurrent: (@Sendable () -> Bool)? = nil
     ) async {
         for geofenceId in geofenceIds {
@@ -147,7 +150,7 @@ final class PolygonMembershipResolver {
             pending.append(geofenceId)
         }
         guard !pending.isEmpty else { return }
-        guard let fix = await resolveFix() else {
+        guard let fix = await resolveFix(requiringFresh: requiresFreshFix) else {
             for geofenceId in pending {
                 logger.geofencePolygonUndecided(identifier: geofenceId, reason: "no usable fix")
             }
@@ -167,7 +170,10 @@ final class PolygonMembershipResolver {
     ///
     /// Foregrounds arrive in bursts, so a pass already running wins: a second concurrent scan reads
     /// the same storage and the same fix and can only duplicate the location work.
-    func evaluateAllPolygons(isStillCurrent: (@Sendable () -> Bool)? = nil) async {
+    func evaluateAllPolygons(
+        requiresFreshFix: Bool = false,
+        isStillCurrent: (@Sendable () -> Bool)? = nil
+    ) async {
         guard !isEvaluatingAllPolygons else {
             logger.geofencePolygonPassSkipped(reason: "a pass is already running")
             return
@@ -180,8 +186,9 @@ final class PolygonMembershipResolver {
         guard !polygons.isEmpty else { return }
         // One request for the whole pass. Resolving per polygon would issue a fresh timed request
         // for every one of them whenever the cache stays empty, holding the main actor for minutes
-        // and still deciding nothing.
-        guard let fix = await resolveFix() else {
+        // and still deciding nothing — and a failed fresh request would silently downgrade every
+        // polygon after the first to the pre-wake fix.
+        guard let fix = await resolveFix(requiringFresh: requiresFreshFix) else {
             for geofence in polygons {
                 logger.geofencePolygonUndecided(identifier: geofence.id, reason: "no usable fix")
             }
@@ -220,8 +227,12 @@ final class PolygonMembershipResolver {
         #endif
     }
 
-    private func evaluate(geofenceId: String, isStillCurrent: (@Sendable () -> Bool)? = nil) async {
-        guard let fix = await resolveFix() else {
+    private func evaluate(
+        geofenceId: String,
+        requiresFreshFix: Bool = false,
+        isStillCurrent: (@Sendable () -> Bool)? = nil
+    ) async {
+        guard let fix = await resolveFix(requiringFresh: requiresFreshFix) else {
             logger.geofencePolygonUndecided(identifier: geofenceId, reason: "no usable fix")
             return
         }
@@ -270,6 +281,11 @@ final class PolygonMembershipResolver {
             )
             return
         }
+        logger.geofencePolygonVerdict(
+            identifier: geofence.id, membership: membership,
+            signedEdgeDistance: signedEdgeDistance, horizontalAccuracy: fix.horizontalAccuracy,
+            fixAge: -fix.timestamp.timeIntervalSinceNow
+        )
         await apply(
             membership, to: geofence, evidence: fix.timestamp,
             confirmedByFix: true, evaluatedRing: geofence.vertices, isStillCurrent: isStillCurrent
@@ -310,9 +326,12 @@ final class PolygonMembershipResolver {
         )
         guard case .deliver(let transition) = outcome,
               geofence.transitionTypes.contains(transition)
-        else { return }
+        else {
+            logger.geofencePolygonNotDelivered(identifier: geofence.id, outcome: "\(outcome)")
+            return
+        }
         if let isStillCurrent, !isStillCurrent() {
-            logger.geofencePolygonUndecided(identifier: geofence.id, reason: "user changed before delivery")
+            logger.geofencePolygonNotDelivered(identifier: geofence.id, outcome: "user changed before delivery")
             return
         }
         logger.geofencePolygonTransition(
@@ -330,12 +349,12 @@ final class PolygonMembershipResolver {
     /// Freshest fix obtainable, requesting one when the cache is stale. Mirrors the gate's
     /// resolution: the completion's coordinates are discarded in favour of `latestFix`, which
     /// carries the accuracy and timestamp the decision needs.
-    private func resolveFix() async -> CLLocation? {
+    private func resolveFix(requiringFresh: Bool = false) async -> CLLocation? {
         await withCheckedContinuation { continuation in
-            fixResolver.resolve(cached: fixResolver.cachedFix) { [weak self] _ in
-                // `cachedFix` again on failure: on a cold process this resolver has delivered
-                // nothing, and the monitor has already advanced its dedup baseline, so declining
-                // here loses the crossing for good. The decision's age gate bounds how stale it can be.
+            fixResolver.resolve(cached: requiringFresh ? nil : fixResolver.cachedFix) { [weak self] _ in
+                // `cachedFix` on failure: on a cold process this resolver has delivered nothing, and
+                // the monitor has already advanced its dedup baseline, so declining loses the
+                // crossing for good. The decision's age gate bounds how stale it can be.
                 continuation.resume(returning: self?.fixResolver.cachedFix)
             }
         }

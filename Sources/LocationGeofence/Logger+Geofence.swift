@@ -185,6 +185,17 @@ extension Logger {
         debug("Polygon wake pass: re-armed at \(Int(radius)) m, re-evaluating \(polygonCount) polygon(s)", geofenceTag)
     }
 
+    /// Logged on every decisive evaluation, delivered or not: without it the commonest outcome —
+    /// decisively outside, belief unchanged — writes nothing, and a correct silence is
+    /// indistinguishable from an evaluator that never ran.
+    func geofencePolygonVerdict(identifier: String, membership: PolygonMembership, signedEdgeDistance: Double, horizontalAccuracy: Double, fixAge: TimeInterval) {
+        debug("Polygon membership \(membership) for region \(identifier): edge \(Int(signedEdgeDistance)) m, accuracy \(Int(horizontalAccuracy)) m, fix age \(String(format: "%.1f", fixAge))s", geofenceTag)
+    }
+
+    func geofencePolygonNotDelivered(identifier: String, outcome: String) {
+        debug("Polygon verdict for region \(identifier) delivered nothing: \(outcome)", geofenceTag)
+    }
+
     func geofencePolygonUndecided(identifier: String, reason: String) {
         debug("Polygon membership undecided for region \(identifier): \(reason)", geofenceTag)
     }
