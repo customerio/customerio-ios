@@ -116,17 +116,19 @@ jobs:
           # Example lines to replace:
           #   pod 'CustomerIODataPipelines', :path => ...
           #   =>  pod 'CustomerIODataPipelines', '1.2.3'
-          sd "pod 'CustomerIODataPipelines', :path =>.*" "pod 'CustomerIODataPipelines', '$TAG'" "Apps/CocoaPods-FCM/Podfile"
-          sd "pod 'CustomerIOMessagingPushAPN', :path =>.*" "pod 'CustomerIOMessagingPushAPN', '$TAG'" "Apps/CocoaPods-FCM/Podfile"
-          sd "pod 'CustomerIOMessagingInApp', :path =>.*" "pod 'CustomerIOMessagingInApp', '$TAG'" "Apps/CocoaPods-FCM/Podfile"
-          sd "pod 'CustomerIOLocation', :path =>.*" "pod 'CustomerIOLocation', '$TAG'" "Apps/CocoaPods-FCM/Podfile"
-          sd "pod 'CustomerIOMessagingInbox', :path =>.*" "pod 'CustomerIOMessagingInbox', '$TAG'" "Apps/CocoaPods-FCM/Podfile"
-          sd "pod 'CustomerIOLocationGeofence', :path =>.*" "pod 'CustomerIOLocationGeofence', '$TAG'" "Apps/CocoaPods-FCM/Podfile"
-          sd "pod 'CustomerIOLiveActivities', :path =>.*" "pod 'CustomerIOLiveActivities', '$TAG'" "Apps/CocoaPods-FCM/Podfile"
-          sd "pod 'CustomerIOLiveActivitiesAttributes', :path =>.*" "pod 'CustomerIOLiveActivitiesAttributes', '$TAG'" "Apps/CocoaPods-FCM/Podfile"
-          # Declared in both the app and the widget extension targets; sd rewrites every occurrence.
-          sd "pod 'CustomerIOLiveActivitiesTemplates', :path =>.*" "pod 'CustomerIOLiveActivitiesTemplates', '$TAG'" "Apps/CocoaPods-FCM/Podfile"
-          # If you have other modules: repeat
+          #
+          # One rule for every local `CustomerIO*` pod rather than a hand-listed set.
+          # The list had drifted: `CustomerIOCommon`, `CustomerIOMessagingPush`,
+          # `CustomerIOMessagingPushFCM` and `CustomerIOTrackingMigration` were declared
+          # local but never rewritten, so they resolved from the triggering checkout at
+          # the previous release while the rewritten pods required the new one, and
+          # `pod install` failed on the exact-version conflict.
+          #
+          # `SampleAppsCommon` is not a `CustomerIO*` pod and stays local, which is correct.
+          # Pods declared in both the app and the widget extension targets are rewritten
+          # in every occurrence.
+          PODFILE="Apps/CocoaPods-FCM/Podfile"
+          TAG="$TAG" perl -pi -e "s/pod '(CustomerIO[A-Za-z]*)', :path =>.*/pod '\$1', '\$ENV{TAG}'/" "$PODFILE"
 
           # 2) SwiftPM package in `Apps/Common/Package.swift`
           # Original: .package(path: "../../")
@@ -164,6 +166,18 @@ jobs:
           fi
           if grep -q '\.package(path:' "Apps/Common/Package.swift"; then
             echo "::error::Apps/Common/Package.swift still points at the local SDK checkout."
+            exit 1
+          fi
+          # Catches a newly added CustomerIO pod that the rule above did not match,
+          # instead of letting it surface as a version conflict during `pod install`.
+          if grep -qE "pod 'CustomerIO[A-Za-z]*', :path =>" "$PODFILE"; then
+            echo "::error::$PODFILE still declares local CustomerIO pods:"
+            grep -nE "pod 'CustomerIO[A-Za-z]*', :path =>" "$PODFILE"
+            exit 1
+          fi
+          # SampleAppsCommon is the sample apps' own shared code and must stay local.
+          if ! grep -q "pod 'SampleAppsCommon', :path =>" "$PODFILE"; then
+            echo "::error::$PODFILE no longer declares SampleAppsCommon locally; the pod rewrite was too broad."
             exit 1
           fi
 
