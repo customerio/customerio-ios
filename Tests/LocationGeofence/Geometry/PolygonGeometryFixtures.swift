@@ -68,5 +68,18 @@ let polygonGeometryFixtures: [PolygonGeometryFixture] = [
             PolygonGeometryFixture.Sample(point: LocationData(latitude: 31.36950537, longitude: 74.17), inside: false, signedEdgeDistance: -5.0, note: "5m outside base"),
             PolygonGeometryFixture.Sample(point: LocationData(latitude: 31.37053959, longitude: 74.1707373), inside: false, signedEdgeDistance: -50.639, note: "outside near slanted edge")
         ]
+    ),
+    PolygonGeometryFixture(
+        name: "square400_dateline",
+        vertices: [LocationData(latitude: -16.85179864, longitude: 179.99812067), LocationData(latitude: -16.85179864, longitude: -179.99812067), LocationData(latitude: -16.84820136, longitude: -179.99812067), LocationData(latitude: -16.84820136, longitude: 179.99812067)],
+        samples: [
+            PolygonGeometryFixture.Sample(point: LocationData(latitude: -16.85, longitude: 180.0), inside: true, signedEdgeDistance: 200.0, note: "center (antimeridian twin of square400)"),
+            PolygonGeometryFixture.Sample(point: LocationData(latitude: -16.84865102, longitude: -179.9985905), inside: true, signedEdgeDistance: 50.0, note: "deep interior (antimeridian twin of square400)"),
+            PolygonGeometryFixture.Sample(point: LocationData(latitude: -16.85, longitude: -179.99816765), inside: true, signedEdgeDistance: 5.0, note: "5m inside edge (antimeridian twin of square400)"),
+            PolygonGeometryFixture.Sample(point: LocationData(latitude: -16.85, longitude: -179.99807369), inside: false, signedEdgeDistance: -5.0, note: "5m outside edge (antimeridian twin of square400)"),
+            PolygonGeometryFixture.Sample(point: LocationData(latitude: -16.84821035, longitude: -179.99813007), inside: true, signedEdgeDistance: 1.0, note: "near vertex inside (antimeridian twin of square400)"),
+            PolygonGeometryFixture.Sample(point: LocationData(latitude: -16.85, longitude: 179.99755687), inside: false, signedEdgeDistance: -60.0, note: "annulus (in covering circle, outside polygon) (antimeridian twin of square400)"),
+            PolygonGeometryFixture.Sample(point: LocationData(latitude: -16.85809389, longitude: 180.0), inside: false, signedEdgeDistance: -700.0, note: "far outside (antimeridian twin of square400)")
+        ]
     )
 ]
