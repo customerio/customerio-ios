@@ -50,7 +50,9 @@ extension GeofenceSyncCoordinatorImpl {
             registerWithOsSync(
                 businessRegions: nearest,
                 movementTriggerLocation: anchor,
-                movementTriggerRadius: effectiveConfig.localRefreshTriggerRadius,
+                movementTriggerRadius: PolygonWakeRadius.radius(
+                    at: anchor, registeredPolygons: nearest, config: effectiveConfig
+                ),
                 registerMovementTrigger: registerMovementTrigger
             )
         }
@@ -99,7 +101,9 @@ extension GeofenceSyncCoordinatorImpl {
             registerWithOsSync(
                 businessRegions: nearest,
                 movementTriggerLocation: anchor,
-                movementTriggerRadius: config.localRefreshTriggerRadius,
+                movementTriggerRadius: PolygonWakeRadius.radius(
+                    at: anchor, registeredPolygons: nearest, config: config
+                ),
                 registerMovementTrigger: registerMovementTrigger
             )
         }
@@ -115,6 +119,31 @@ extension GeofenceSyncCoordinatorImpl {
             anchor: anchor
         )
         logger.geofenceSyncCompleted(registeredCount: nearest.count, movementTriggerRegistered: registerMovementTrigger)
+        evaluatePolygonsAfterMovement(expectedUserId: expectedUserId)
+        return .success(())
+    }
+
+    /// Re-arms the wake and re-evaluates membership, nothing more: the nearby set is unchanged, so
+    /// ranking and cache writes would be waste. Must not `recordRegistration` — see
+    /// `movedBeyondRerankRadius`.
+    func performPolygonWakePass(
+        expectedUserId: String,
+        at location: LocationData,
+        config: GeofenceConfig
+    ) async -> Result<Void, GeofenceSyncError> {
+        let registeredIds = await storage.getRegisteredBusinessIds()
+        let registered = await storage.getCachedGeofences().filter { registeredIds.contains($0.id) }
+        let radius = PolygonWakeRadius.radius(at: location, registeredPolygons: registered, config: config)
+        logger.geofencePolygonWakePass(radius: radius, polygonCount: registered.count { $0.vertices != nil })
+        _ = await MainActor.run {
+            registerWithOsSync(
+                businessRegions: registered,
+                movementTriggerLocation: location,
+                movementTriggerRadius: radius,
+                registerMovementTrigger: config.maxBusinessGeofences > 0
+            )
+        }
+        evaluatePolygonsAfterMovement(expectedUserId: expectedUserId)
         return .success(())
     }
 

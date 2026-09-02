@@ -181,6 +181,10 @@ extension Logger {
         error("Polygon \(identifier) dropped: covering circle \(Int(radius)) m exceeds the OS monitoring limit \(Int(limit)) m, and a clamped circle would no longer contain the polygon", geofenceTag, nil)
     }
 
+    func geofencePolygonWakePass(radius: Double, polygonCount: Int) {
+        debug("Polygon wake pass: re-armed at \(Int(radius)) m, re-evaluating \(polygonCount) polygon(s)", geofenceTag)
+    }
+
     func geofencePolygonUndecided(identifier: String, reason: String) {
         debug("Polygon membership undecided for region \(identifier): \(reason)", geofenceTag)
     }

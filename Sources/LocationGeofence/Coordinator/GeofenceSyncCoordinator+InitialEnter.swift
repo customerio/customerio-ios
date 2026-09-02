@@ -56,6 +56,15 @@ extension GeofenceSyncCoordinatorImpl {
     /// site rather than stored: the resolver is a `@MainActor` singleton and this coordinator is
     /// one of its own dependencies, so a stored reference back would make the two initialize each
     /// other.
+    /// The trigger is sized to the nearest polygon boundary, so its EXIT is the signal that some
+    /// membership may have changed. Resolved from the graph for the same reason as `evaluateNewPolygons`.
+    func evaluatePolygonsAfterMovement(expectedUserId: String) {
+        Task { @MainActor [contextStore] in
+            guard contextStore.currentUserId == expectedUserId else { return }
+            await DIGraphShared.shared.polygonMembershipResolver.evaluateAllPolygons()
+        }
+    }
+
     private func evaluateNewPolygons(_ polygons: [Geofence], expectedUserId: String) {
         Task { @MainActor [contextStore] in
             guard contextStore.currentUserId == expectedUserId else { return }
