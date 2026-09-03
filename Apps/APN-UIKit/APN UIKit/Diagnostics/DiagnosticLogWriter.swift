@@ -194,7 +194,15 @@ final class DiagnosticLogWriter: @unchecked Sendable {
                 total += size
             } else {
                 budgetSpent = true
-                try? FileManager.default.removeItem(at: url)
+                // Never unlink the file this writer holds open. `prune()` runs from `openFile`
+                // right after creating today's file, which is normally newest and so always kept
+                // — but a future-dated `cio-diag-` file (clock set forward, a capture copied back
+                // through the Files app) takes that slot and can push the open one over budget.
+                // Removing it would leave writes going to an unlinked inode until the existence
+                // check reopens. The latch is still set, so retention cannot prefer older data.
+                if url.path != currentPath {
+                    try? FileManager.default.removeItem(at: url)
+                }
             }
         }
     }
