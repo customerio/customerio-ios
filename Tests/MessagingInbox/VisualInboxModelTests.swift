@@ -33,6 +33,25 @@ final class VisualInboxModelTests: XCTestCase {
         XCTAssertEqual(model.state, .visible(messageCount: 3))
     }
 
+    func test_accessibilityLabels_readsProviderAtAccessTime_notAtInit() {
+        let provider = FakeVisualInboxProvider()
+        let model = VisualInboxModel(provider: provider)
+
+        // Nothing configured when the model was constructed: the inbox stays unlabeled.
+        XCTAssertNil(model.accessibilityLabels.bell)
+
+        // Host initializes the SDK after the view was built — the labels must still be picked up.
+        provider.stubAccessibilityLabels = NotificationInboxAccessibilityLabels(
+            bell: "Aviseringar",
+            emptyState: "Inga aviseringar"
+        )
+
+        XCTAssertEqual(model.accessibilityLabels.bell, "Aviseringar")
+        XCTAssertEqual(model.accessibilityLabels.emptyState, "Inga aviseringar")
+        XCTAssertNil(model.accessibilityLabels.loadingIndicator)
+        XCTAssertNil(model.accessibilityLabels.bellWithUnreadCount)
+    }
+
     func test_refresh_whenProviderHidden_thenStateIsHidden() async {
         let provider = FakeVisualInboxProvider()
         provider.stubState = .hidden(reason: "no selected messages")
@@ -547,6 +566,13 @@ private final class FakeVisualInboxProvider: VisualInboxProvider, @unchecked Sen
     var initialSnapshot: VisualInboxSnapshot?
     private var observeContinuation: AsyncStream<VisualInboxSnapshot>.Continuation?
     private let observeLock = NSLock()
+
+    /// Labels the fake reports as module config; all-nil by default like production without host config.
+    var stubAccessibilityLabels = NotificationInboxAccessibilityLabels()
+
+    func accessibilityLabels() -> NotificationInboxAccessibilityLabels {
+        stubAccessibilityLabels
+    }
 
     func load() async {}
 
