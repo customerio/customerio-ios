@@ -180,13 +180,15 @@ extension AppDelegate: InAppEventListener {
     }
 
     nonisolated func errorWithMessage(message: InAppMessage, error: InAppMessageError) {
+        // `detail` is deliberately logged but not tracked: it is diagnostic text, partly supplied
+        // by the renderer, and not something to forward verbatim to analytics.
+        print("in-app message failed: \(error.reason.rawValue) — \(error.detail ?? "(no detail)")")
         CustomerIO.shared.track(
             name: "inapp error",
             properties: [
                 "delivery-id": message.deliveryId ?? "(none)",
                 "message-id": message.messageId,
                 "error-reason": error.reason.rawValue,
-                "error-detail": error.detail ?? "(none)",
                 "error-code": error.code.map(String.init) ?? "(none)"
             ]
         )
