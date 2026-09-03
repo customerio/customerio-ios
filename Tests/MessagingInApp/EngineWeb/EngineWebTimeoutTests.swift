@@ -99,6 +99,47 @@ class EngineWebTimeoutTests: IntegrationTest {
     }
 
     // `EngineWeb` builds a `WKWebView`, so this has to run on the main actor.
+    /// An engine instance renders one message, so it fails at most once.
+    ///
+    /// WebKit can deliver several failure callbacks for a single load, and the bootstrap timer stays
+    /// armed when a failure arrives — the dispatch it triggers is asynchronous. Without a latch a
+    /// host could be told `.network` and then `.timeout` about the same message, with no way to tell
+    /// which was the real cause. Deterministic for inline messages, whose dismissal never reaches
+    /// `cleanEngineWeb()`.
+    @MainActor
+    func test_reportFailure_givenSecondFailure_expectOnlyTheFirstReported() async throws {
+        await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: .random))
+
+        let message = Message.random
+        engine = EngineWeb(
+            configuration: EngineWebConfiguration(
+                siteId: .random,
+                dataCenter: .random,
+                instanceId: message.instanceId,
+                endpoint: .random,
+                messageId: message.messageId,
+                properties: nil
+            ),
+            state: InAppMessageState(),
+            message: message
+        )
+        engine.delegate = delegateSpy
+
+        // A navigation failure, then the bootstrap timer firing on the same engine.
+        engine.webView(
+            engine.webView,
+            didFailProvisionalNavigation: nil,
+            withError: NSError(domain: NSURLErrorDomain, code: NSURLErrorNotConnectedToInternet)
+        )
+        engine.forcedTimeout()
+
+        XCTAssertEqual(delegateSpy.errorCallCount, 1)
+        // The first cause is the true one; the timeout is a consequence of it.
+        XCTAssertEqual(delegateSpy.lastError?.reason, .network)
+        XCTAssertEqual(delegateSpy.lastError?.code, NSURLErrorNotConnectedToInternet)
+    }
+
+    // `EngineWeb` builds a `WKWebView`, so this has to run on the main actor.
     @MainActor
     func test_forcedTimeout_givenEngineTimesOut_expectDelegateNotifiedOnceAndNoDirectDispatch() async throws {
         // The store drops engine actions while no user is known, so identify first. Without this a
