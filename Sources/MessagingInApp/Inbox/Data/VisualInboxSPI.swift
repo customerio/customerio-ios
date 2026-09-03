@@ -57,6 +57,12 @@ public protocol VisualInboxProvider: Sendable {
     /// branding. Nil when no branding is cached; individual fields are nil when not configured.
     func brandingChrome() async -> VisualInboxChrome?
 
+    /// Host-configured VoiceOver labels for the inbox UI (`MessagingInAppConfigBuilder
+    /// .setNotificationInboxAccessibilityLabels`). All-nil when the host configured none: the UI then
+    /// emits no accessibility strings of its own. Synchronous — it is module config, not repository
+    /// state — and read per render so late SDK initialization is still picked up.
+    func accessibilityLabels() -> NotificationInboxAccessibilityLabels
+
     /// Marks a message opened via the existing headless plumbing (no new mutation path). Looked up
     /// by the snapshot id so the overlay never has to hold an internal `InboxMessage`.
     /// - Returns: `true` if a matching message was still present in the store and the mark was
@@ -114,6 +120,10 @@ final class VisualInboxProviderImpl: VisualInboxProvider, @unchecked Sendable {
         self.repository = repository
         self.inbox = inbox
         self.inAppMessageManager = inAppMessageManager
+    }
+
+    func accessibilityLabels() -> NotificationInboxAccessibilityLabels {
+        MessagingInAppImplementation.currentNotificationInboxAccessibilityLabels
     }
 
     func load() async {

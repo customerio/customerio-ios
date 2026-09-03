@@ -97,10 +97,22 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
                 .build()
         )
         MessagingInApp
-            .initialize(withConfig: MessagingInAppConfigBuilder(
-                siteId: settings.inApp.siteId,
-                region: settings.inApp.region.toCIORegion()
-            ).build())
+            .initialize(
+                withConfig: MessagingInAppConfigBuilder(
+                    siteId: settings.inApp.siteId,
+                    region: settings.inApp.region.toCIORegion()
+                )
+                // Visual Notification Inbox VoiceOver labels. The SDK ships none of its own (so no English
+                // leaks into a localized app); the host supplies them in its language.
+                // `bellWithUnreadCount` is a closure so the app can apply its own plural rules.
+                .setNotificationInboxAccessibilityLabels(NotificationInboxAccessibilityLabels(
+                    bell: "Notifications",
+                    bellWithUnreadCount: { count in count == 1 ? "Notifications, 1 unread" : "Notifications, \(count) unread" },
+                    loadingIndicator: "Loading inbox",
+                    emptyState: "No notifications"
+                ))
+                .build()
+            )
             .setEventListener(self)
 
         // Visual Notification Inbox action listener. Observational here (logs each callback and
