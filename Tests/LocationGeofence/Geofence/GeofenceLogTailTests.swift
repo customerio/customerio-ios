@@ -358,4 +358,34 @@ struct GeofenceLogTailTests {
         #expect(rendered?.hasSuffix(",+5") == true)
         #expect(GeofenceLog.list([]) == nil)
     }
+
+    @Test
+    func fieldBuilders_givenDiagnosticsOff_expectNeverEvaluated() {
+        // The gate's worth is that a coordinate is never *computed*, not merely never printed.
+        // Nothing else here pins that: every other test asserts on output, so a shim rewritten to
+        // `let built = fields(); return GeofenceLog.tail(ev, io, built)` would leave them all
+        // green while running a distance map over every candidate on every background wake.
+        var builds = 0
+        let fields: () -> [(String, String?)] = {
+            builds += 1
+            return [("lat", "37.45000"), ("lon", "-122.08400")]
+        }
+
+        withDiagnostics(false) {
+            #expect(GeofenceLog.tail("probe", .output, fields()).isEmpty)
+            #expect(builds == 0, "GeofenceLog.tail evaluated its fields with the gate off")
+
+            // Through the call-site shim as well: it takes an autoclosure and hands it to another
+            // one, and that re-wrapping is the part easy to lose in a refactor.
+            let logger = CapturingLogger()
+            #expect(logger.geofenceTail("probe", .output, fields()).isEmpty)
+            #expect(builds == 0, "Logger.geofenceTail evaluated its fields with the gate off")
+        }
+
+        // Proves the assertions above are not passing because the closure is simply unreachable.
+        withDiagnostics(true) {
+            #expect(GeofenceLog.tail("probe", .output, fields()).contains("lat=37.45000"))
+            #expect(builds == 1)
+        }
+    }
 }
