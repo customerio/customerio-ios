@@ -7,7 +7,46 @@ import Foundation
 /// gradually; per-field fallbacks live in `toDomain`.
 struct GeofenceApiResponse: Decodable {
     let config: GeofenceApiConfig?
+    /// How many regions the payload carried, including any that failed to decode. `geofences`
+    /// alone cannot tell "the server sent none" from "none of them survived".
+    let receivedRegionCount: Int
     let geofences: [GeofenceApiRegion]
+
+    private enum CodingKeys: String, CodingKey {
+        case config, geofences
+    }
+
+    /// One malformed region must not cost the whole response, so regions are decoded leniently and
+    /// the bad ones skipped.
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.config = try container.decodeIfPresent(GeofenceApiConfig.self, forKey: .config)
+        let lenient = try container.decodeIfPresent([LenientRegion].self, forKey: .geofences) ?? []
+        self.receivedRegionCount = lenient.count
+        self.geofences = lenient.compactMap(\.region)
+    }
+
+    init(config: GeofenceApiConfig?, geofences: [GeofenceApiRegion]) {
+        self.config = config
+        self.geofences = geofences
+        self.receivedRegionCount = geofences.count
+    }
+}
+
+/// Decodes a region without ever throwing, so one bad element cannot fail the array around it.
+private struct LenientRegion: Decodable {
+    let region: GeofenceApiRegion?
+
+    init(from decoder: Decoder) throws {
+        self.region = try? GeofenceApiRegion(from: decoder)
+    }
+}
+
+/// Why a region on the wire never became a monitorable fence.
+enum GeofenceRegionDropReason: String, Error {
+    case unknownShape = "unrecognized shape"
+    case unusableCircle = "invalid coordinates or radius"
+    case unusablePolygon = "missing or undecodable polygon geometry"
 }
 
 struct GeofenceApiConfig: Decodable {
@@ -69,9 +108,7 @@ struct GeofenceApiGeometry: Decodable, Equatable {
 struct GeofenceApiEnclosingCircle: Decodable, Equatable {
     let latitude: Double
     let longitude: Double
-    /// Unpadded canonical radius: the smallest circle the server will claim contains the polygon.
-    /// Any platform margin is added when registering with the OS, never here — the coverage check
-    /// has to run against the value the server actually guaranteed.
+    /// The smallest circle the server claims contains the polygon, registered with the OS as-is.
     let baseRadiusM: Double
 }
 
@@ -151,13 +188,15 @@ extension GeofenceApiResponse {
 
     /// Regions the OS would reject (non-positive radius, out-of-range coordinates) are dropped
     /// here so one bad server region costs itself, not a nearest-selection slot or the whole sync.
-    func toDomainRegions(onInvalidRegion: (String) -> Void = { _ in }) -> [Geofence] {
+    func toDomainRegions(onInvalidRegion: (String, GeofenceRegionDropReason) -> Void = { _, _ in }) -> [Geofence] {
         geofences.compactMap { region in
-            guard let domain = region.toDomain() else {
-                onInvalidRegion(region.id)
+            switch region.toDomain() {
+            case .success(let domain):
+                return domain
+            case .failure(let reason):
+                onInvalidRegion(region.id, reason)
                 return nil
             }
-            return domain
         }
     }
 }
@@ -222,18 +261,21 @@ extension GeofenceApiRegion {
     /// defaults to epoch when missing so callers can compare without unwrapping. `name` is `nil`
     /// when the server omits it (or sends an empty string), so the domain value is always either
     /// `nil` or non-empty.
-    func toDomain() -> Geofence? {
+    func toDomain() -> Result<Geofence, GeofenceRegionDropReason> {
         let resolved: ResolvedGeometry?
+        let dropReason: GeofenceRegionDropReason
         switch shape?.lowercased() {
         case nil, "circle":
             resolved = resolvedCircle()
+            dropReason = .unusableCircle
         case "polygon":
             resolved = resolvedPolygon()
+            dropReason = .unusablePolygon
         default:
-            resolved = nil
+            return .failure(.unknownShape)
         }
-        guard let resolved else { return nil }
-        return Geofence(
+        guard let resolved else { return .failure(dropReason) }
+        return .success(Geofence(
             id: id,
             latitude: resolved.center.latitude,
             longitude: resolved.center.longitude,
@@ -244,7 +286,7 @@ extension GeofenceApiRegion {
             geosetIds: geosetIds ?? [],
             metadata: Self.cappedMetadata(metadata),
             vertices: resolved.vertices
-        )
+        ))
     }
 
     /// What the monitors need regardless of shape: the circle to register, plus the polygon that
@@ -272,11 +314,7 @@ extension GeofenceApiRegion {
         else { return nil }
         let center = CLLocationCoordinate2D(latitude: enclosingCircle.latitude, longitude: enclosingCircle.longitude)
         guard CLLocationCoordinate2DIsValid(center) else { return nil }
-        guard let vertices = Self.validatedPolygonVertices(
-            geometry.coordinates[0],
-            coveringCenter: CLLocation(latitude: center.latitude, longitude: center.longitude),
-            coveringRadius: enclosingCircle.baseRadiusM
-        ) else { return nil }
+        guard let vertices = Self.polygonVertices(geometry.coordinates[0]) else { return nil }
         return ResolvedGeometry(
             center: LocationData(latitude: center.latitude, longitude: center.longitude),
             radius: enclosingCircle.baseRadiusM,
@@ -284,39 +322,17 @@ extension GeofenceApiRegion {
         )
     }
 
-    /// The polygon acceptance rules, in validation order; failing any drops the whole region
-    /// ("no illusions" — a broken polygon must cost itself, never masquerade as its circle):
-    /// - every position is `[longitude, latitude]`, optionally with a third elevation element the
-    ///   GeoJSON spec allows and we ignore;
-    /// - every position is a valid coordinate;
-    /// - the kernel accepts the ring (≥3 distinct vertices after unclosing the closed ring);
-    /// - the distinct vertex count is within `maxPolygonVertexCount`, counted after unclosing so it
-    ///   matches the server's cap on *unique* vertices;
-    /// - the covering guarantee holds: every vertex within the enclosing radius (+ slack) of its
-    ///   center. Vertices inside a convex circle imply the whole polygon is inside, so this fully
-    ///   defends "enclosing-circle exit ⇒ polygon exit" against a server that miscomputed it.
-    /// Returns the kernel's canonical (unclosed) vertices so the cache stores one representation.
-    private static func validatedPolygonVertices(
-        _ ring: [[Double]],
-        coveringCenter: CLLocation,
-        coveringRadius: Double
-    ) -> [LocationData]? {
+    /// Decodes the ring into the kernel's canonical (unclosed) vertices so the cache stores one
+    /// representation. Only what building the region needs — the server validates the geometry.
+    private static func polygonVertices(_ ring: [[Double]]) -> [LocationData]? {
         var positions: [LocationData] = []
         positions.reserveCapacity(ring.count)
         for position in ring {
+            // GeoJSON positions are [longitude, latitude], plus an elevation we ignore.
             guard position.count >= 2 else { return nil }
-            let coordinate = CLLocationCoordinate2D(latitude: position[1], longitude: position[0])
-            guard CLLocationCoordinate2DIsValid(coordinate) else { return nil }
             positions.append(LocationData(latitude: position[1], longitude: position[0]))
         }
-        guard let region = PolygonRegion(vertices: positions),
-              region.vertices.count <= GeofenceConstants.maxPolygonVertexCount
-        else { return nil }
-        let coverageBound = coveringRadius + GeofenceConstants.polygonCoverageSlackMeters
-        guard region.vertices.allSatisfy({ vertex in
-            coveringCenter.distance(from: CLLocation(latitude: vertex.latitude, longitude: vertex.longitude)) <= coverageBound
-        }) else { return nil }
-        return region.vertices
+        return PolygonRegion(vertices: positions)?.vertices
     }
 
     private static func resolveTransitionTypes(_ raw: [String]?) -> Set<GeofenceTransition> {

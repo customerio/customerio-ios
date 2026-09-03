@@ -33,7 +33,14 @@ extension GeofenceSyncCoordinatorImpl {
         }
 
         let parsedConfig = response.toDomainConfig()
-        let regions = response.toDomainRegions(onInvalidRegion: { logger.geofenceInvalidRegionDropped($0) })
+        let regions = response.toDomainRegions(onInvalidRegion: { logger.geofenceInvalidRegionDropped($0, reason: $1) })
+        // A response whose regions all failed to resolve is a broken payload, not "this user has no
+        // geofences": reading it as the latter wipes the cache and deregisters everything. An
+        // actually empty list still applies normally.
+        if regions.isEmpty, response.receivedRegionCount > 0 {
+            logger.geofenceAllRegionsDropped(count: response.receivedRegionCount)
+            return .failure(.fetchFailed(.decoding))
+        }
         let effectiveConfig = parsedConfig ?? cachedConfig ?? .fallback
         let anchor = LocationData(latitude: latitude, longitude: longitude)
         let nearest = distanceFilter.nearest(regions, to: anchor, limit: effectiveConfig.maxBusinessGeofences, maxDistance: effectiveConfig.maxMonitoringDistance)

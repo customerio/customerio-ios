@@ -491,6 +491,32 @@ struct GeofenceSyncCoordinatorTests {
         #expect(movementTrigger?.transitionTypes == [.exit])
     }
 
+    /// A payload whose regions all fail to resolve is a broken response, not a geofence-free area:
+    /// treating it as the latter would wipe the cache and deregister every fence the user has.
+    @Test
+    func refresh_givenEveryRegionUnusable_expectFetchFailureAndCacheKept() async {
+        let storage = makeStorage()
+        await storage.setCachedGeofences([makeRegion(id: "kept", latitude: 37.7749, longitude: -122.4194)])
+        let unusable = GeofenceApiRegion(
+            id: "broken", name: nil, shape: "circle",
+            latitude: 91, longitude: 2, radius: 100,
+            geometry: nil, enclosingCircle: nil, externalId: nil,
+            transitionTypes: nil, lastUpdated: nil, geosetIds: nil, metadata: nil
+        )
+        let api = GeofenceApiServiceMock()
+        api.fetchNearbyGeofencesClosure = { _, _, completion in
+            completion(.success(GeofenceApiResponse(config: nil, geofences: [unusable])))
+        }
+
+        let setup = makeCoordinator(api: api, storage: storage)
+        let result = await setup.coordinator.refresh(latitude: 37.7749, longitude: -122.4194)
+
+        #expect(result.errorOrNil == .fetchFailed(.decoding))
+        let cached = await storage.getCachedGeofences()
+        #expect(cached.map(\.id) == ["kept"])
+        #expect(setup.monitor.startedRegions.isEmpty)
+    }
+
     @Test
     func refresh_givenEmptyServerResponse_expectMovementTriggerStillRegistered() async {
         let storage = makeStorage()

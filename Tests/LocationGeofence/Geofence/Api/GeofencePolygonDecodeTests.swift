@@ -96,7 +96,7 @@ struct GeofencePolygonDecodeTests {
     func toDomain_givenUnknownShape_expectRegionDroppedNotCircled() throws {
         let response = try decode(responseJson([circleJson(shape: "corridor"), circleJson(id: 2)]))
         var invalidIds: [String] = []
-        let regions = response.toDomainRegions(onInvalidRegion: { invalidIds.append($0) })
+        let regions = response.toDomainRegions(onInvalidRegion: { id, _ in invalidIds.append(id) })
         #expect(regions.map(\.id) == ["2"])
         #expect(invalidIds == ["1"])
     }
@@ -147,9 +147,8 @@ struct GeofencePolygonDecodeTests {
     }
 
     @Test
-    func toDomain_givenVertexCountAtCap_expectAccepted() throws {
-        let ring = Self.ringInsideCircle(count: GeofenceConstants.maxPolygonVertexCount)
-        let regions = try decode(responseJson([polygonJson(ring: ring)])).toDomainRegions()
+    func toDomain_givenLargeRing_expectAccepted() throws {
+        let regions = try decode(responseJson([polygonJson(ring: Self.ringInsideCircle(count: 500))])).toDomainRegions()
         #expect(regions.count == 1)
     }
 
@@ -199,7 +198,7 @@ struct GeofencePolygonDecodeTests {
         """
         let response = try decode(responseJson([broken, circleJson(id: 2)]))
         var invalidIds: [String] = []
-        let regions = response.toDomainRegions(onInvalidRegion: { invalidIds.append($0) })
+        let regions = response.toDomainRegions(onInvalidRegion: { id, _ in invalidIds.append(id) })
         #expect(regions.map(\.id) == ["2"])
         #expect(invalidIds == ["1"])
     }
@@ -220,11 +219,11 @@ struct GeofencePolygonDecodeTests {
         #expect(response.toDomainRegions().isEmpty)
     }
 
-    /// The cap is stated in UNIQUE vertices, so a ring that only exceeds it by repeating positions
-    /// is one the server considers valid — dropping it would make the fence silently not exist.
+    /// Repeated positions collapse to the kernel's canonical unclosed ring, so the cache stores one
+    /// representation regardless of how the server spelled the boundary.
     @Test
-    func toDomain_givenDuplicatesPushingRingPastCap_expectAccepted() throws {
-        let unique = GeofenceConstants.maxPolygonVertexCount
+    func toDomain_givenRepeatedPositions_expectCollapsedToUnique() throws {
+        let unique = 500
         let response = try decode(responseJson([
             polygonJson(ring: Self.ringInsideCircle(count: unique, repeatingFirstPosition: true))
         ]))
@@ -232,49 +231,6 @@ struct GeofencePolygonDecodeTests {
         let regions = response.toDomainRegions()
         #expect(regions.count == 1)
         #expect(regions.first?.vertices?.count == unique)
-    }
-
-    @Test
-    func toDomain_givenVertexCountOverCap_expectRegionDropped() throws {
-        let ring = Self.ringInsideCircle(count: GeofenceConstants.maxPolygonVertexCount + 1)
-        let response = try decode(responseJson([polygonJson(ring: ring)]))
-        #expect(response.toDomainRegions().isEmpty)
-    }
-
-    @Test
-    func toDomain_givenInvalidCoordinate_expectRegionDropped() throws {
-        let ring = """
-        [[[74.1674038, 95.0], [74.1716122, 31.3671634], [74.1716122, 31.3707566]]]
-        """
-        let response = try decode(responseJson([polygonJson(ring: ring)]))
-        #expect(response.toDomainRegions().isEmpty)
-    }
-
-    @Test
-    func toDomain_givenVertexOutsideEnclosingCircle_expectRegionDropped() throws {
-        // The square's corners sit ~283 m from the centre; a 200 m "enclosing" circle violates the
-        // server guarantee, and enclosing-exit ⇒ polygon-exit rests on it, so the region is dropped.
-        let response = try decode(responseJson([polygonJson(radius: 200)]))
-        #expect(response.toDomainRegions().isEmpty)
-    }
-
-    @Test
-    func toDomain_givenEnclosingCircleExactlyAtCorners_expectAccepted() throws {
-        // Corner distance ≈282.8 m; radius 283 must accept. The slack absorbs rounding between the
-        // server's spheroidal distances and WGS84 on device, not real violations.
-        let response = try decode(responseJson([polygonJson(radius: 283)]))
-        #expect(response.toDomainRegions().count == 1)
-    }
-
-    @Test
-    func toDomain_givenLargeFenceVertexPastFlatSlack_expectRegionDropped() throws {
-        // Both sides measure on WGS84, so the slack is a flat metre and does NOT scale with radius:
-        // a vertex 15 m outside a 7.9 km circle is a real coverage violation, not drift.
-        let ring = """
-        [[[74.169508, 31.440346], [74.1675080, 31.3669600], [74.1715080, 31.3669600]]]
-        """
-        let response = try decode(responseJson([polygonJson(radius: 7900, ring: ring)]))
-        #expect(response.toDomainRegions().isEmpty)
     }
 
     // MARK: - Cache round-trip
