@@ -56,7 +56,7 @@ final class MovementFixResolver: NSObject, @preconcurrency CLLocationManagerDele
 
     /// Freshest fix this resolver has received, retained even when it arrives after a timeout.
     private(set) var latestFix: CLLocation?
-    private var pendingCompletions: [(LocationData?) -> Void] = []
+    private var pendingCompletions: [(LocationData?, Bool) -> Void] = []
     /// Newest cached fix seen while a request is in flight — the fallback on failure/timeout.
     private var fallbackFix: CLLocation?
     private var timeoutTask: Task<Void, Never>?
@@ -89,11 +89,17 @@ final class MovementFixResolver: NSObject, @preconcurrency CLLocationManagerDele
 
     /// Completes with a fix no older than `maxAge` when one can be obtained, exactly once per call.
     /// `cached` should be the caller's best currently-known fix.
-    func resolve(cached: CLLocation?, completion: @escaping (LocationData?) -> Void) {
+    ///
+    /// The completion's `Bool` is whether those coordinates are current: true for a delivered fix or
+    /// a cached one still inside `maxAge`, false when the request failed or timed out and the answer
+    /// is `fallbackFix` — which is by definition the stale fix that prompted the request. A caller
+    /// that sizes anything to the coordinates needs that apart, and deriving it from the fix's age
+    /// at the call site would put this rule in two more places to get wrong.
+    func resolve(cached: CLLocation?, completion: @escaping (LocationData?, Bool) -> Void) {
         let age = cached.map { -$0.timestamp.timeIntervalSinceNow }
         if let cached, let age, age <= maxAge {
             logger.geofenceMovementFixResolved(ageSeconds: age, requested: false)
-            completion(locationData(from: cached))
+            completion(locationData(from: cached), true)
             return
         }
         logger.geofenceMovementFixStale(ageSeconds: age)
@@ -137,13 +143,13 @@ final class MovementFixResolver: NSObject, @preconcurrency CLLocationManagerDele
         recordDeliveredFix(fix)
         guard !pendingCompletions.isEmpty else { return }
         logger.geofenceMovementFixResolved(ageSeconds: -fix.timestamp.timeIntervalSinceNow, requested: true)
-        completeAll(with: locationData(from: fix))
+        completeAll(with: locationData(from: fix), isFresh: true)
     }
 
     func handleRequestFailure() {
         guard !pendingCompletions.isEmpty else { return }
         logger.geofenceMovementFixRequestFailed(fallingBackToCached: fallbackFix != nil)
-        completeAll(with: fallbackFix.map(locationData(from:)))
+        completeAll(with: fallbackFix.map(locationData(from:)), isFresh: false)
     }
 
     // MARK: - Private
@@ -175,7 +181,7 @@ final class MovementFixResolver: NSObject, @preconcurrency CLLocationManagerDele
         }
     }
 
-    private func completeAll(with location: LocationData?) {
+    private func completeAll(with location: LocationData?, isFresh: Bool) {
         timeoutTask?.cancel()
         timeoutTask = nil
         fallbackFix = nil
@@ -184,7 +190,7 @@ final class MovementFixResolver: NSObject, @preconcurrency CLLocationManagerDele
         let completions = pendingCompletions
         pendingCompletions = []
         for completion in completions {
-            completion(location)
+            completion(location, isFresh)
         }
     }
 

@@ -196,6 +196,13 @@ extension Logger {
         debug("Polygon verdict for region \(identifier) delivered nothing: \(outcome)", geofenceTag)
     }
 
+    /// Which radius the movement trigger was armed with and why. Pairs with the fix-age line the
+    /// resolver logs just before it: together they say whether a re-arm was warranted.
+    func geofenceWakeRadiusChosen(radius: Double, anchorIsLiveFix: Bool) {
+        let basis = anchorIsLiveFix ? "a held fix" : "a stored anchor"
+        debug("Movement trigger sized to \(Int(radius)) m from \(basis)", geofenceTag)
+    }
+
     func geofencePolygonUndecided(identifier: String, reason: String) {
         debug("Polygon membership undecided for region \(identifier): \(reason)", geofenceTag)
     }

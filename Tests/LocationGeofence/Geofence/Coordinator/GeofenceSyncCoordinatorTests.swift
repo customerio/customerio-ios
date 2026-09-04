@@ -126,7 +126,7 @@ struct GeofenceSyncCoordinatorTests {
         let storage = makeStorage()
         let setup = makeCoordinator(storage: storage, contextStore: makeContextStore(userId: nil))
 
-        let result = await setup.coordinator.refresh(latitude: 1.0, longitude: 2.0)
+        let result = await setup.coordinator.refresh(latitude: 1.0, longitude: 2.0, anchorIsLiveFix: true)
 
         #expect(result.errorOrNil == .noIdentifiedUser)
         #expect(setup.api.fetchNearbyGeofencesCallsCount == 0)
@@ -154,7 +154,7 @@ struct GeofenceSyncCoordinatorTests {
 
         let setup = makeCoordinator(storage: storage, dateUtil: dateUtil)
         // Same anchor → distance is 0; freshness gate skips API.
-        let result = await setup.coordinator.refresh(latitude: 0, longitude: 0)
+        let result = await setup.coordinator.refresh(latitude: 0, longitude: 0, anchorIsLiveFix: true)
 
         #expect(result.isSuccess)
         #expect(setup.api.fetchNearbyGeofencesCallsCount == 0)
@@ -183,7 +183,7 @@ struct GeofenceSyncCoordinatorTests {
 
         // ~2.2km from the anchor: beyond the 1km trigger radius (ranking stale) but within the 3km
         // refetch radius (no remote fetch).
-        let result = await setup.coordinator.refresh(latitude: 0.02, longitude: 0)
+        let result = await setup.coordinator.refresh(latitude: 0.02, longitude: 0, anchorIsLiveFix: true)
 
         #expect(result.isSuccess)
         #expect(setup.api.fetchNearbyGeofencesCallsCount == 0)
@@ -212,7 +212,7 @@ struct GeofenceSyncCoordinatorTests {
         let setup = makeCoordinator(storage: storage, dateUtil: dateUtil)
 
         // Same location as anchor → time-fresh + ranking-fresh, but nothing is registered.
-        let result = await setup.coordinator.refresh(latitude: 0, longitude: 0)
+        let result = await setup.coordinator.refresh(latitude: 0, longitude: 0, anchorIsLiveFix: true)
 
         #expect(result.isSuccess)
         #expect(setup.api.fetchNearbyGeofencesCallsCount == 0)
@@ -241,7 +241,7 @@ struct GeofenceSyncCoordinatorTests {
         await storage.setCachedGeofences([makeRegion(id: "far", latitude: 1, longitude: 2)]) // ~248 km, beyond the 5 km cap
         let setup = makeCoordinator(storage: storage, dateUtil: dateUtil)
 
-        let result = await setup.coordinator.refresh(latitude: 0, longitude: 0)
+        let result = await setup.coordinator.refresh(latitude: 0, longitude: 0, anchorIsLiveFix: true)
 
         #expect(result.isSuccess)
         #expect(setup.api.fetchNearbyGeofencesCallsCount == 0)
@@ -274,7 +274,7 @@ struct GeofenceSyncCoordinatorTests {
         }
         let setup = makeCoordinator(api: api, storage: storage, dateUtil: dateUtil)
 
-        let result = await setup.coordinator.refresh(latitude: 0, longitude: 0)
+        let result = await setup.coordinator.refresh(latitude: 0, longitude: 0, anchorIsLiveFix: true)
 
         #expect(result.isSuccess)
         #expect(api.fetchNearbyGeofencesCallsCount == 1)
@@ -299,7 +299,7 @@ struct GeofenceSyncCoordinatorTests {
         }
 
         let setup = makeCoordinator(api: api, storage: storage, dateUtil: dateUtil)
-        let result = await setup.coordinator.refresh(latitude: 1.0, longitude: 2.0)
+        let result = await setup.coordinator.refresh(latitude: 1.0, longitude: 2.0, anchorIsLiveFix: true)
 
         #expect(result.isSuccess)
         #expect(api.fetchNearbyGeofencesCallsCount == 1)
@@ -323,7 +323,7 @@ struct GeofenceSyncCoordinatorTests {
         let setup = makeCoordinator(storage: storage, dateUtil: dateUtil)
 
         // Same anchor → distance is 0; freshness gate skips even without a cached config.
-        let result = await setup.coordinator.refresh(latitude: 0, longitude: 0)
+        let result = await setup.coordinator.refresh(latitude: 0, longitude: 0, anchorIsLiveFix: true)
 
         #expect(result.isSuccess)
         #expect(setup.api.fetchNearbyGeofencesCallsCount == 0)
@@ -340,7 +340,7 @@ struct GeofenceSyncCoordinatorTests {
         }
         let setup = makeCoordinator(api: api, storage: storage)
 
-        let result = await setup.coordinator.refresh(latitude: 1.0, longitude: 2.0)
+        let result = await setup.coordinator.refresh(latitude: 1.0, longitude: 2.0, anchorIsLiveFix: true)
 
         #expect(result.isSuccess)
         #expect(api.fetchNearbyGeofencesCallsCount == 1)
@@ -354,7 +354,7 @@ struct GeofenceSyncCoordinatorTests {
         contextStore.setUserId("") // covers the `!userId.isEmpty` branch
         let setup = makeCoordinator(storage: storage, contextStore: contextStore)
 
-        let result = await setup.coordinator.refresh(latitude: 1.0, longitude: 2.0)
+        let result = await setup.coordinator.refresh(latitude: 1.0, longitude: 2.0, anchorIsLiveFix: true)
 
         #expect(result.errorOrNil == .noIdentifiedUser)
         #expect(setup.api.fetchNearbyGeofencesCallsCount == 0)
@@ -371,7 +371,7 @@ struct GeofenceSyncCoordinatorTests {
         }
 
         let setup = makeCoordinator(api: api, storage: storage)
-        let result = await setup.coordinator.refresh(latitude: 1.0, longitude: 2.0)
+        let result = await setup.coordinator.refresh(latitude: 1.0, longitude: 2.0, anchorIsLiveFix: true)
 
         #expect(result.errorOrNil == .fetchFailed(.transport))
         let cached = await storage.getCachedGeofences()
@@ -399,7 +399,7 @@ struct GeofenceSyncCoordinatorTests {
         }
 
         let setup = makeCoordinator(api: api, storage: storage)
-        _ = await setup.coordinator.refresh(latitude: 1.0, longitude: 2.0)
+        _ = await setup.coordinator.refresh(latitude: 1.0, longitude: 2.0, anchorIsLiveFix: true)
 
         let cached = await storage.getCachedConfig()
         #expect(cached == priorConfig)
@@ -422,7 +422,7 @@ struct GeofenceSyncCoordinatorTests {
         }
 
         let setup = makeCoordinator(api: api, storage: storage)
-        _ = await setup.coordinator.refresh(latitude: 1.0, longitude: 2.0)
+        _ = await setup.coordinator.refresh(latitude: 1.0, longitude: 2.0, anchorIsLiveFix: true)
 
         #expect(await storage.getCachedConfig() == newConfig)
     }
@@ -452,7 +452,7 @@ struct GeofenceSyncCoordinatorTests {
         }
 
         let setup = makeCoordinator(api: api, storage: storage)
-        _ = await setup.coordinator.refresh(latitude: 0, longitude: 0)
+        _ = await setup.coordinator.refresh(latitude: 0, longitude: 0, anchorIsLiveFix: true)
 
         let registeredIds = setup.monitor.startedRegions.map(\.identifier)
         #expect(registeredIds.contains("g0"))
@@ -481,7 +481,7 @@ struct GeofenceSyncCoordinatorTests {
         }
 
         let setup = makeCoordinator(api: api, storage: storage)
-        _ = await setup.coordinator.refresh(latitude: 37.7749, longitude: -122.4194)
+        _ = await setup.coordinator.refresh(latitude: 37.7749, longitude: -122.4194, anchorIsLiveFix: true)
 
         let movementTrigger = setup.monitor.startedRegions.first {
             $0.identifier == GeofenceConstants.movementTriggerIdentifier
@@ -510,7 +510,7 @@ struct GeofenceSyncCoordinatorTests {
         }
 
         let setup = makeCoordinator(api: api, storage: storage)
-        let result = await setup.coordinator.refresh(latitude: 37.7749, longitude: -122.4194)
+        let result = await setup.coordinator.refresh(latitude: 37.7749, longitude: -122.4194, anchorIsLiveFix: true)
 
         #expect(result.errorOrNil == .fetchFailed(.decoding))
         let cached = await storage.getCachedGeofences()
@@ -538,7 +538,7 @@ struct GeofenceSyncCoordinatorTests {
         api.fetchNearbyGeofencesClosure = { _, _, completion in completion(.success(response)) }
 
         let setup = makeCoordinator(api: api, storage: storage)
-        let result = await setup.coordinator.refresh(latitude: 37.7749, longitude: -122.4194)
+        let result = await setup.coordinator.refresh(latitude: 37.7749, longitude: -122.4194, anchorIsLiveFix: true)
 
         #expect(result.errorOrNil == .fetchFailed(.decoding))
         #expect(await storage.getCachedGeofences().map(\.id) == ["kept"])
@@ -586,7 +586,7 @@ struct GeofenceSyncCoordinatorTests {
         }
 
         let setup = makeCoordinator(api: api, storage: storage)
-        let result = await setup.coordinator.refresh(latitude: 37.7749, longitude: -122.4194)
+        let result = await setup.coordinator.refresh(latitude: 37.7749, longitude: -122.4194, anchorIsLiveFix: true)
 
         #expect(result.errorOrNil == nil)
         #expect(await storage.getCachedGeofences().isEmpty)
@@ -601,7 +601,7 @@ struct GeofenceSyncCoordinatorTests {
         }
 
         let setup = makeCoordinator(api: api, storage: storage)
-        _ = await setup.coordinator.refresh(latitude: 37.7749, longitude: -122.4194)
+        _ = await setup.coordinator.refresh(latitude: 37.7749, longitude: -122.4194, anchorIsLiveFix: true)
 
         // Empty nearby response is a geofence-free area, not a stop signal: keep the movement trigger
         // armed so a later EXIT re-fetches as the device moves back toward geofences. The trigger is
@@ -629,7 +629,7 @@ struct GeofenceSyncCoordinatorTests {
         }
 
         let setup = makeCoordinator(api: api, storage: storage)
-        _ = await setup.coordinator.refresh(latitude: 37.7749, longitude: -122.4194)
+        _ = await setup.coordinator.refresh(latitude: 37.7749, longitude: -122.4194, anchorIsLiveFix: true)
 
         #expect(setup.monitor.startedRegions.isEmpty)
     }
@@ -644,7 +644,7 @@ struct GeofenceSyncCoordinatorTests {
         }
 
         let setup = makeCoordinator(api: api, storage: storage)
-        _ = await setup.coordinator.refresh(latitude: 1.0, longitude: 2.0)
+        _ = await setup.coordinator.refresh(latitude: 1.0, longitude: 2.0, anchorIsLiveFix: true)
 
         // The trigger goes first so it isn't starved when business regions fill the shared OS budget.
         // Nothing was registered before, so nothing is stopped.
@@ -671,11 +671,11 @@ struct GeofenceSyncCoordinatorTests {
         }
 
         let setup = makeCoordinator(api: api, storage: storage)
-        async let first = setup.coordinator.refresh(latitude: 1.0, longitude: 2.0)
+        async let first = setup.coordinator.refresh(latitude: 1.0, longitude: 2.0, anchorIsLiveFix: true)
         // Wait for the first call to enter the API mock before firing the second, so the
         // dedup-gate test is deterministic instead of timing-dependent.
         await firstReachedApi.wait()
-        let second = await setup.coordinator.refresh(latitude: 3.0, longitude: 4.0)
+        let second = await setup.coordinator.refresh(latitude: 3.0, longitude: 4.0, anchorIsLiveFix: true)
         await allowFinish.fire()
         let firstResult = await first
 
@@ -709,7 +709,7 @@ struct GeofenceSyncCoordinatorTests {
         }
         let setup = makeCoordinator(api: api, storage: spy)
 
-        _ = await setup.coordinator.refresh(latitude: 1.0, longitude: 2.0)
+        _ = await setup.coordinator.refresh(latitude: 1.0, longitude: 2.0, anchorIsLiveFix: true)
 
         let writes = await spy.operations.filter { op in
             op == .setCachedGeofences || op == .setCachedConfig || op == .recordSync || op == .recordRegistration
@@ -739,7 +739,7 @@ struct GeofenceSyncCoordinatorTests {
         }
         let setup = makeCoordinator(api: api, storage: storage)
 
-        _ = await setup.coordinator.refresh(latitude: 0, longitude: 0)
+        _ = await setup.coordinator.refresh(latitude: 0, longitude: 0, anchorIsLiveFix: true)
 
         #expect(await storage.getLastRegistrationCenter() == LocationData(latitude: 0, longitude: 0))
         #expect(await storage.getRegisteredBusinessIds() == ["g0", "g1"])
@@ -763,7 +763,7 @@ struct GeofenceSyncCoordinatorTests {
         }
         let setup = makeCoordinator(api: api, storage: storage)
 
-        _ = await setup.coordinator.refresh(latitude: 1.0, longitude: 2.0)
+        _ = await setup.coordinator.refresh(latitude: 1.0, longitude: 2.0, anchorIsLiveFix: true)
 
         #expect(await storage.getCachedConfig() == priorConfig)
     }
@@ -1041,7 +1041,7 @@ struct GeofenceSyncCoordinatorTests {
             }
         }
         let setup = makeCoordinator(api: api, storage: storage)
-        async let refreshResult = setup.coordinator.refresh(latitude: 1.0, longitude: 2.0)
+        async let refreshResult = setup.coordinator.refresh(latitude: 1.0, longitude: 2.0, anchorIsLiveFix: true)
         await firstReachedApi.wait()
 
         // Refresh holds the dedup gate. ApplyCachedRegistration must bail without touching
@@ -1073,12 +1073,12 @@ struct GeofenceSyncCoordinatorTests {
         }
         let setup = makeCoordinator(api: api, storage: storage, contextStore: contextStore)
 
-        let first = await setup.coordinator.refresh(latitude: 1.0, longitude: 2.0)
+        let first = await setup.coordinator.refresh(latitude: 1.0, longitude: 2.0, anchorIsLiveFix: true)
         #expect(first.errorOrNil == .noIdentifiedUser)
 
         // User signs in between calls.
         contextStore.setUserId("user-1")
-        let second = await setup.coordinator.refresh(latitude: 1.0, longitude: 2.0)
+        let second = await setup.coordinator.refresh(latitude: 1.0, longitude: 2.0, anchorIsLiveFix: true)
 
         #expect(second.isSuccess)
         #expect(api.fetchNearbyGeofencesCallsCount == 1)
@@ -1091,7 +1091,7 @@ struct GeofenceSyncCoordinatorTests {
         let storage = makeStorage()
         let setup = makeCoordinator(storage: storage, contextStore: makeContextStore(userId: nil))
 
-        let result = await setup.coordinator.handleMovement(latitude: 1.0, longitude: 2.0)
+        let result = await setup.coordinator.handleMovement(latitude: 1.0, longitude: 2.0, anchorIsLiveFix: true)
 
         #expect(result.errorOrNil == .noIdentifiedUser)
         #expect(setup.api.fetchNearbyGeofencesCallsCount == 0)
@@ -1109,7 +1109,7 @@ struct GeofenceSyncCoordinatorTests {
         }
         let setup = makeCoordinator(api: api, storage: storage)
 
-        let result = await setup.coordinator.handleMovement(latitude: 1.0, longitude: 2.0)
+        let result = await setup.coordinator.handleMovement(latitude: 1.0, longitude: 2.0, anchorIsLiveFix: true)
 
         #expect(result.isSuccess)
         #expect(setup.api.fetchNearbyGeofencesCallsCount == 1)
@@ -1137,7 +1137,7 @@ struct GeofenceSyncCoordinatorTests {
         let setup = makeCoordinator(api: api, storage: storage)
 
         // New position ~111 m from anchor — re-ranks the cached set locally, no fetch.
-        let result = await setup.coordinator.handleMovement(latitude: 0, longitude: 0.001)
+        let result = await setup.coordinator.handleMovement(latitude: 0, longitude: 0.001, anchorIsLiveFix: true)
 
         #expect(result.isSuccess)
         #expect(setup.api.fetchNearbyGeofencesCallsCount == 0)
@@ -1166,7 +1166,7 @@ struct GeofenceSyncCoordinatorTests {
         let setup = makeCoordinator(api: api, storage: storage)
 
         // ~111 m from anchor — within the refetch radius, so it re-ranks locally, no fetch.
-        let result = await setup.coordinator.handleMovement(latitude: 0, longitude: 0.001)
+        let result = await setup.coordinator.handleMovement(latitude: 0, longitude: 0.001, anchorIsLiveFix: true)
 
         #expect(result.isSuccess)
         #expect(setup.api.fetchNearbyGeofencesCallsCount == 0)
@@ -1196,7 +1196,7 @@ struct GeofenceSyncCoordinatorTests {
         let setup = makeCoordinator(api: api, storage: storage)
 
         // ~157 km from anchor — beyond the 5 km refetch radius.
-        let result = await setup.coordinator.handleMovement(latitude: 1.0, longitude: 1.0)
+        let result = await setup.coordinator.handleMovement(latitude: 1.0, longitude: 1.0, anchorIsLiveFix: true)
 
         #expect(result.isSuccess)
         #expect(setup.api.fetchNearbyGeofencesCallsCount == 1)
@@ -1227,7 +1227,7 @@ struct GeofenceSyncCoordinatorTests {
         let setup = makeCoordinator(api: api, storage: storage, dateUtil: dateUtil)
 
         // ~157 km from the fetch anchor — beyond the 5 km refetch radius.
-        let result = await setup.coordinator.refresh(latitude: 1.0, longitude: 1.0)
+        let result = await setup.coordinator.refresh(latitude: 1.0, longitude: 1.0, anchorIsLiveFix: true)
 
         #expect(result.isSuccess)
         #expect(setup.api.fetchNearbyGeofencesCallsCount == 1)
@@ -1253,7 +1253,7 @@ struct GeofenceSyncCoordinatorTests {
         await storage.setCachedGeofences([makeRegion(id: "g1", latitude: 0, longitude: 0)])
         let setup = makeCoordinator(storage: storage)
 
-        _ = await setup.coordinator.handleMovement(latitude: 0, longitude: 0.001)
+        _ = await setup.coordinator.handleMovement(latitude: 0, longitude: 0.001, anchorIsLiveFix: true)
 
         let lastSync = await storage.getLastSync()
         #expect(lastSync?.location == originalAnchor)
@@ -1279,7 +1279,7 @@ struct GeofenceSyncCoordinatorTests {
         let setup = makeCoordinator(storage: storage)
 
         let newLocation = LocationData(latitude: 0, longitude: 0.001)
-        _ = await setup.coordinator.handleMovement(latitude: newLocation.latitude, longitude: newLocation.longitude)
+        _ = await setup.coordinator.handleMovement(latitude: newLocation.latitude, longitude: newLocation.longitude, anchorIsLiveFix: true)
 
         #expect(await storage.getLastRegistrationCenter() == newLocation)
         #expect(await storage.getRegisteredBusinessIds() == ["near"])
@@ -1304,7 +1304,7 @@ struct GeofenceSyncCoordinatorTests {
         let setup = makeCoordinator(storage: storage)
 
         let newLocation = LocationData(latitude: 0, longitude: 0.001)
-        _ = await setup.coordinator.handleMovement(latitude: newLocation.latitude, longitude: newLocation.longitude)
+        _ = await setup.coordinator.handleMovement(latitude: newLocation.latitude, longitude: newLocation.longitude, anchorIsLiveFix: true)
 
         let movementTrigger = setup.monitor.startedRegions.first { $0.identifier == GeofenceConstants.movementTriggerIdentifier }
         #expect(movementTrigger?.center == newLocation)
@@ -1335,7 +1335,7 @@ struct GeofenceSyncCoordinatorTests {
 
         // ~157 km from the anchor — beyond the 5 km refetch radius, so this takes the remote tier.
         let newLocation = LocationData(latitude: 1.0, longitude: 1.0)
-        let result = await setup.coordinator.handleMovement(latitude: newLocation.latitude, longitude: newLocation.longitude)
+        let result = await setup.coordinator.handleMovement(latitude: newLocation.latitude, longitude: newLocation.longitude, anchorIsLiveFix: true)
 
         // The fetch failure is still what the caller sees.
         #expect(result.errorOrNil == .fetchFailed(.transport))
@@ -1369,7 +1369,7 @@ struct GeofenceSyncCoordinatorTests {
         }
         let setup = makeCoordinator(api: api, storage: storage)
 
-        let result = await setup.coordinator.handleMovement(latitude: 1.0, longitude: 1.0)
+        let result = await setup.coordinator.handleMovement(latitude: 1.0, longitude: 1.0, anchorIsLiveFix: true)
 
         #expect(result.errorOrNil == .fetchFailed(.transport))
         #expect(setup.monitor.monitoredRegionIdentifiers.isEmpty)
@@ -1391,7 +1391,7 @@ struct GeofenceSyncCoordinatorTests {
             completion(.success(makeApiResponse(regions: regions, config: config)))
         }
         let setup = makeCoordinator(api: api, storage: storage)
-        _ = await setup.coordinator.refresh(latitude: 0, longitude: 0)
+        _ = await setup.coordinator.refresh(latitude: 0, longitude: 0, anchorIsLiveFix: true)
         return setup
     }
 
@@ -1422,7 +1422,7 @@ struct GeofenceSyncCoordinatorTests {
 
         // ~111 m: within the refetch radius → local re-rank, same nearest set.
         let newLocation = LocationData(latitude: 0, longitude: 0.001)
-        let result = await setup.coordinator.handleMovement(latitude: newLocation.latitude, longitude: newLocation.longitude)
+        let result = await setup.coordinator.handleMovement(latitude: newLocation.latitude, longitude: newLocation.longitude, anchorIsLiveFix: true)
 
         #expect(result.isSuccess)
         #expect(setup.monitor.stopAllCallCount == 0)
@@ -1510,7 +1510,7 @@ struct GeofenceSyncCoordinatorTests {
         let setup = await makeRegisteredSetup(regions: [polygon], config: diffConfig, storage: storage)
 
         // ~111 m east of centre: still ~89 m from the eastern edge, so the floor should win.
-        _ = await setup.coordinator.handleMovement(latitude: 0, longitude: 0.001)
+        _ = await setup.coordinator.handleMovement(latitude: 0, longitude: 0.001, anchorIsLiveFix: true)
 
         let trigger = setup.monitor.startedRegions
             .last { $0.identifier == GeofenceConstants.movementTriggerIdentifier }
@@ -1520,7 +1520,7 @@ struct GeofenceSyncCoordinatorTests {
         let circleSetup = await makeRegisteredSetup(
             regions: [makeRegion(id: "c1", latitude: 0, longitude: 0)], config: diffConfig, storage: circleStorage
         )
-        _ = await circleSetup.coordinator.handleMovement(latitude: 0, longitude: 0.001)
+        _ = await circleSetup.coordinator.handleMovement(latitude: 0, longitude: 0.001, anchorIsLiveFix: true)
         let circleTrigger = circleSetup.monitor.startedRegions
             .last { $0.identifier == GeofenceConstants.movementTriggerIdentifier }
         #expect(circleTrigger?.radius == diffConfig.localRefreshTriggerRadius)
@@ -1536,7 +1536,7 @@ struct GeofenceSyncCoordinatorTests {
 
         // ~1.7 km east: beyond localRefreshTriggerRadius (1000 m), inside the refetch radius.
         let newLocation = LocationData(latitude: 0, longitude: 0.015)
-        let result = await setup.coordinator.handleMovement(latitude: newLocation.latitude, longitude: newLocation.longitude)
+        let result = await setup.coordinator.handleMovement(latitude: newLocation.latitude, longitude: newLocation.longitude, anchorIsLiveFix: true)
 
         #expect(result.isSuccess)
         #expect(await storage.getLastRegistrationCenter() == newLocation)
@@ -1560,7 +1560,7 @@ struct GeofenceSyncCoordinatorTests {
             maxMonitoringDistance: GeofenceConstants.noMonitoringDistanceCap
         ))
 
-        let result = await setup.coordinator.handleMovement(latitude: 0, longitude: 0.001)
+        let result = await setup.coordinator.handleMovement(latitude: 0, longitude: 0.001, anchorIsLiveFix: true)
 
         #expect(result.isSuccess)
         #expect(setup.monitor.stoppedIdentifiers == [GeofenceConstants.movementTriggerIdentifier])
@@ -1584,7 +1584,7 @@ struct GeofenceSyncCoordinatorTests {
         let setup = await makeRegisteredSetup(regions: [nearStart, nearEnd], config: config, storage: makeStorage())
 
         // ~2.2 km: still a local re-rank, but the single budget slot now belongs to near-end.
-        let result = await setup.coordinator.handleMovement(latitude: 0, longitude: 0.02)
+        let result = await setup.coordinator.handleMovement(latitude: 0, longitude: 0.02, anchorIsLiveFix: true)
 
         #expect(result.isSuccess)
         #expect(setup.monitor.stopAllCallCount == 0)
@@ -1613,7 +1613,7 @@ struct GeofenceSyncCoordinatorTests {
         #expect(setup.monitor.monitoredRegionIdentifiers == ["carry", "leaves", GeofenceConstants.movementTriggerIdentifier])
 
         // ~2.2 km east: local re-rank. `joins` takes the slot `leaves` gives up; `carry` stays.
-        let result = await setup.coordinator.handleMovement(latitude: 0, longitude: 0.02)
+        let result = await setup.coordinator.handleMovement(latitude: 0, longitude: 0.02, anchorIsLiveFix: true)
 
         #expect(result.isSuccess)
         #expect(setup.monitor.monitoredRegionIdentifiers == ["carry", "joins", GeofenceConstants.movementTriggerIdentifier])
@@ -1637,9 +1637,9 @@ struct GeofenceSyncCoordinatorTests {
             completion(.success(makeApiResponse(regions: [region], config: diffConfig)))
         }
         let setup = makeCoordinator(api: api, storage: storage, monitor: monitor)
-        _ = await setup.coordinator.refresh(latitude: 0, longitude: 0)
+        _ = await setup.coordinator.refresh(latitude: 0, longitude: 0, anchorIsLiveFix: true)
 
-        let result = await setup.coordinator.handleMovement(latitude: 0, longitude: 0.001)
+        let result = await setup.coordinator.handleMovement(latitude: 0, longitude: 0.001, anchorIsLiveFix: true)
 
         #expect(result.isSuccess)
         #expect(!setup.monitor.stoppedIdentifiers.contains("wide"))
@@ -1654,7 +1654,7 @@ struct GeofenceSyncCoordinatorTests {
         let setup = await makeRegisteredSetup(regions: [region], config: diffConfig, storage: makeStorage())
         setup.monitor.osMonitoredRegions.remove("g1")
 
-        let result = await setup.coordinator.handleMovement(latitude: 0, longitude: 0.001)
+        let result = await setup.coordinator.handleMovement(latitude: 0, longitude: 0.001, anchorIsLiveFix: true)
 
         #expect(result.isSuccess)
         #expect(setup.monitor.stopAllCallCount == 0)
@@ -1679,7 +1679,7 @@ struct GeofenceSyncCoordinatorTests {
             transitionTypes: [.enter, .exit]
         )
 
-        _ = await setup.coordinator.refresh(latitude: 0, longitude: 0)
+        _ = await setup.coordinator.refresh(latitude: 0, longitude: 0, anchorIsLiveFix: true)
 
         #expect(!setup.monitor.osMonitoredRegions.contains("stranded"))
         #expect(setup.monitor.osMonitoredRegions.contains("g1"))
@@ -1711,7 +1711,7 @@ struct GeofenceSyncCoordinatorTests {
             ]
         )
 
-        _ = await setup.coordinator.refresh(latitude: 0, longitude: 0)
+        _ = await setup.coordinator.refresh(latitude: 0, longitude: 0, anchorIsLiveFix: true)
 
         #expect(!setup.monitor.stoppedIdentifiers.contains("g1"))
         #expect(setup.monitor.startedRegions.filter { $0.identifier == "g1" }.isEmpty)
@@ -1740,7 +1740,7 @@ struct GeofenceSyncCoordinatorTests {
             transitionTypes: [.enter, .exit]
         )
 
-        let result = await setup.coordinator.refresh(latitude: 0.02, longitude: 0)
+        let result = await setup.coordinator.refresh(latitude: 0.02, longitude: 0, anchorIsLiveFix: true)
 
         #expect(result.isSuccess)
         #expect(setup.monitor.osGeometry(for: "g1")?.radius == 750)
@@ -1761,7 +1761,7 @@ struct GeofenceSyncCoordinatorTests {
         setup.monitor.osMonitoredRegions = ["g1", GeofenceConstants.movementTriggerIdentifier]
 
         // ~2.2 km from the registration center → ranking stale → local re-rank, same nearest set.
-        let result = await setup.coordinator.refresh(latitude: 0.02, longitude: 0)
+        let result = await setup.coordinator.refresh(latitude: 0.02, longitude: 0, anchorIsLiveFix: true)
 
         #expect(result.isSuccess)
         #expect(setup.monitor.stopAllCallCount == 0)
@@ -1780,7 +1780,7 @@ struct GeofenceSyncCoordinatorTests {
 
         // ~5.5 km from the fetch anchor → remote tier.
         let newLocation = LocationData(latitude: 0, longitude: 0.05)
-        let result = await setup.coordinator.handleMovement(latitude: newLocation.latitude, longitude: newLocation.longitude)
+        let result = await setup.coordinator.handleMovement(latitude: newLocation.latitude, longitude: newLocation.longitude, anchorIsLiveFix: true)
 
         #expect(result.isSuccess)
         #expect(setup.api.fetchNearbyGeofencesCallsCount == 2)
@@ -1805,9 +1805,9 @@ struct GeofenceSyncCoordinatorTests {
             completion(.success(makeApiResponse(regions: responses.removeFirst(), config: config)))
         }
         let setup = makeCoordinator(api: api, storage: makeStorage())
-        _ = await setup.coordinator.refresh(latitude: 0, longitude: 0)
+        _ = await setup.coordinator.refresh(latitude: 0, longitude: 0, anchorIsLiveFix: true)
 
-        let result = await setup.coordinator.handleMovement(latitude: 0, longitude: 0.05)
+        let result = await setup.coordinator.handleMovement(latitude: 0, longitude: 0.05, anchorIsLiveFix: true)
 
         #expect(result.isSuccess)
         #expect(setup.monitor.stoppedIdentifiers.contains("g1"))
@@ -1821,7 +1821,7 @@ struct GeofenceSyncCoordinatorTests {
         let setup = await makeRegisteredSetup(regions: [], config: diffConfig, storage: makeStorage())
 
         let newLocation = LocationData(latitude: 0, longitude: 0.05)
-        let result = await setup.coordinator.handleMovement(latitude: newLocation.latitude, longitude: newLocation.longitude)
+        let result = await setup.coordinator.handleMovement(latitude: newLocation.latitude, longitude: newLocation.longitude, anchorIsLiveFix: true)
 
         #expect(result.isSuccess)
         #expect(setup.api.fetchNearbyGeofencesCallsCount == 2)
@@ -1849,9 +1849,9 @@ struct GeofenceSyncCoordinatorTests {
         }
         let setup = makeCoordinator(api: api, storage: storage)
 
-        async let firstRefresh = setup.coordinator.refresh(latitude: 0, longitude: 0)
+        async let firstRefresh = setup.coordinator.refresh(latitude: 0, longitude: 0, anchorIsLiveFix: true)
         await arrived.wait()
-        let movement = await setup.coordinator.handleMovement(latitude: 0, longitude: 0)
+        let movement = await setup.coordinator.handleMovement(latitude: 0, longitude: 0, anchorIsLiveFix: true)
         await suspendUntil.fire()
         _ = await firstRefresh
 
@@ -1918,7 +1918,7 @@ struct GeofenceSyncCoordinatorTests {
         }
         let setup = makeCoordinator(api: api, storage: storage)
 
-        async let firstRefresh = setup.coordinator.refresh(latitude: 0, longitude: 0)
+        async let firstRefresh = setup.coordinator.refresh(latitude: 0, longitude: 0, anchorIsLiveFix: true)
         await arrived.wait()
         let resetResult = await setup.coordinator.reset()
         await suspendUntil.fire()
@@ -1945,7 +1945,7 @@ struct GeofenceSyncCoordinatorTests {
         }
         let setup = makeCoordinator(api: api, storage: storage, contextStore: contextStore)
 
-        async let refreshResult = setup.coordinator.refresh(latitude: 0, longitude: 0)
+        async let refreshResult = setup.coordinator.refresh(latitude: 0, longitude: 0, anchorIsLiveFix: true)
         await arrived.wait()
         // User signs out while the API call is pending.
         contextStore.setUserId(nil)
@@ -1977,7 +1977,7 @@ struct GeofenceSyncCoordinatorTests {
         }
         let setup = makeCoordinator(api: api, storage: storage, contextStore: contextStore)
 
-        async let refreshResult = setup.coordinator.refresh(latitude: 0, longitude: 0)
+        async let refreshResult = setup.coordinator.refresh(latitude: 0, longitude: 0, anchorIsLiveFix: true)
         await arrived.wait()
         contextStore.setUserId("user-2")
         await suspendUntil.fire()
@@ -2008,9 +2008,9 @@ struct GeofenceSyncCoordinatorTests {
         }
         let setup = makeCoordinator(api: api, storage: storage)
 
-        async let firstMovement = setup.coordinator.handleMovement(latitude: 0, longitude: 0)
+        async let firstMovement = setup.coordinator.handleMovement(latitude: 0, longitude: 0, anchorIsLiveFix: true)
         await arrived.wait()
-        let refreshResult = await setup.coordinator.refresh(latitude: 0, longitude: 0)
+        let refreshResult = await setup.coordinator.refresh(latitude: 0, longitude: 0, anchorIsLiveFix: true)
         await suspendUntil.fire()
         _ = await firstMovement
 
@@ -2052,7 +2052,7 @@ struct GeofenceSyncCoordinatorTests {
         monitor.maximumMonitoringRadius = 1000
         let setup = makeCoordinator(api: api, storage: storage, monitor: monitor, dateUtil: dateUtil)
 
-        _ = await setup.coordinator.refresh(latitude: anchor.latitude, longitude: anchor.longitude)
+        _ = await setup.coordinator.refresh(latitude: anchor.latitude, longitude: anchor.longitude, anchorIsLiveFix: true)
 
         let registered = Set(setup.monitor.startedRegions.map(\.identifier))
         #expect(!registered.contains("poly"))
@@ -2095,7 +2095,7 @@ struct GeofenceSyncCoordinatorTests {
         monitor.maximumMonitoringRadius = 1000
         let setup = makeCoordinator(api: api, storage: storage, monitor: monitor, dateUtil: dateUtil)
 
-        _ = await setup.coordinator.refresh(latitude: anchor.latitude, longitude: anchor.longitude)
+        _ = await setup.coordinator.refresh(latitude: anchor.latitude, longitude: anchor.longitude, anchorIsLiveFix: true)
 
         #expect(setup.monitor.startedRegions.map(\.identifier).contains("spare"))
     }
@@ -2128,7 +2128,7 @@ struct GeofenceSyncCoordinatorTests {
         }
         let setup = makeCoordinator(api: api, storage: storage, dateUtil: dateUtil)
 
-        _ = await setup.coordinator.refresh(latitude: anchor.latitude, longitude: anchor.longitude)
+        _ = await setup.coordinator.refresh(latitude: anchor.latitude, longitude: anchor.longitude, anchorIsLiveFix: true)
 
         let polygonRequest = setup.monitor.startedRegions.first { $0.identifier == "poly" }
         #expect(polygonRequest?.transitionTypes == [.enter, .exit])
@@ -2168,7 +2168,7 @@ struct GeofenceSyncCoordinatorTests {
         monitor.maximumMonitoringRadius = 1000
         let setup = makeCoordinator(api: api, storage: storage, monitor: monitor, dateUtil: dateUtil)
 
-        _ = await setup.coordinator.refresh(latitude: anchor.latitude, longitude: anchor.longitude)
+        _ = await setup.coordinator.refresh(latitude: anchor.latitude, longitude: anchor.longitude, anchorIsLiveFix: true)
 
         let recorded = await storage.getRegisteredBusinessIds()
         #expect(!recorded.contains("poly"))
@@ -2224,7 +2224,7 @@ struct GeofenceSyncCoordinatorTests {
         let api = GeofenceApiServiceMock()
         api.fetchNearbyGeofencesClosure = { _, _, completion in completion(.success(makeApiResponse(regions: regions))) }
         let setup = makeCoordinator(api: api, storage: storage, dateUtil: dateUtil)
-        _ = await setup.coordinator.refresh(latitude: anchor.latitude, longitude: anchor.longitude)
+        _ = await setup.coordinator.refresh(latitude: anchor.latitude, longitude: anchor.longitude, anchorIsLiveFix: true)
         return setup.emitter
     }
 
@@ -2284,7 +2284,7 @@ struct GeofenceSyncCoordinatorTests {
         await storage.recordSync(timestamp: dateUtil.givenNow.addingTimeInterval(-60), location: anchor)
         let setup = makeCoordinator(storage: storage, dateUtil: dateUtil)
 
-        _ = await setup.coordinator.refresh(latitude: anchor.latitude, longitude: anchor.longitude)
+        _ = await setup.coordinator.refresh(latitude: anchor.latitude, longitude: anchor.longitude, anchorIsLiveFix: true)
 
         await awaitEmits(setup.emitter, count: 1)
         #expect(setup.api.fetchNearbyGeofencesCallsCount == 0) // local path — no fetch
@@ -2307,7 +2307,7 @@ struct GeofenceSyncCoordinatorTests {
         monitor.rejectedIdentifiers = ["g1"]
         let setup = makeCoordinator(api: api, storage: storage, monitor: monitor, dateUtil: dateUtil)
 
-        _ = await setup.coordinator.refresh(latitude: anchor.latitude, longitude: anchor.longitude)
+        _ = await setup.coordinator.refresh(latitude: anchor.latitude, longitude: anchor.longitude, anchorIsLiveFix: true)
 
         // No count to await — assert nothing emitted after yielding the fire-and-forget window. The
         // sibling "device inside" test proves this same setup DOES emit without the rejection, so
@@ -2329,13 +2329,13 @@ struct GeofenceSyncCoordinatorTests {
         await storage.setCachedGeofences([makeRegion(id: "g1", latitude: 0.001, longitude: 0, radius: 500)])
         let setup = makeCoordinator(storage: storage, dateUtil: dateUtil)
 
-        _ = await setup.coordinator.refresh(latitude: 0, longitude: 0)
+        _ = await setup.coordinator.refresh(latitude: 0, longitude: 0, anchorIsLiveFix: true)
         #expect(setup.monitor.monitoredRegionIdentifiers.contains("g1"))
 
         // Same id, different circle, and the monitor now refuses it.
         await storage.setCachedGeofences([makeRegion(id: "g1", latitude: 0.001, longitude: 0, radius: 900)])
         setup.monitor.rejectedIdentifiers = ["g1"]
-        _ = await setup.coordinator.handleMovement(latitude: 0, longitude: 0.001)
+        _ = await setup.coordinator.handleMovement(latitude: 0, longitude: 0.001, anchorIsLiveFix: true)
 
         #expect(!setup.monitor.monitoredRegionIdentifiers.contains("g1"))
         // And the circle it held before the refused reshape is gone from the OS, not left occupying
@@ -2364,7 +2364,7 @@ struct GeofenceSyncCoordinatorTests {
         monitor.maximumMonitoringRadius = 200
         let setup = makeCoordinator(api: api, storage: storage, monitor: monitor, dateUtil: dateUtil)
 
-        _ = await setup.coordinator.refresh(latitude: anchor.latitude, longitude: anchor.longitude)
+        _ = await setup.coordinator.refresh(latitude: anchor.latitude, longitude: anchor.longitude, anchorIsLiveFix: true)
 
         await awaitEmits(setup.emitter, count: 0)
         #expect(setup.emitter.calls.wrappedValue.isEmpty)
@@ -2390,7 +2390,7 @@ struct GeofenceSyncCoordinatorTests {
         emitter.onEmit = { index in if index == 0 { contextStore.setUserId("user-2") } }
         let setup = makeCoordinator(api: api, storage: storage, contextStore: contextStore, emitter: emitter, dateUtil: dateUtil)
 
-        _ = await setup.coordinator.refresh(latitude: anchor.latitude, longitude: anchor.longitude)
+        _ = await setup.coordinator.refresh(latitude: anchor.latitude, longitude: anchor.longitude, anchorIsLiveFix: true)
 
         // Exactly one delivered: the guard stopped the batch after the first send changed identity.
         // Without the per-iteration recheck, both would fire (count == 2).
@@ -2414,7 +2414,7 @@ struct GeofenceSyncCoordinatorTests {
         }
         let setup = makeCoordinator(api: api, storage: spy, contextStore: contextStore, dateUtil: dateUtil)
 
-        let result = await setup.coordinator.refresh(latitude: 0, longitude: 0)
+        let result = await setup.coordinator.refresh(latitude: 0, longitude: 0, anchorIsLiveFix: true)
 
         #expect(result.isSuccess)
         // Cleanup ran: monitoring torn down wholesale, user-scoped state cleared, and no initial
@@ -2442,7 +2442,7 @@ struct GeofenceSyncCoordinatorTests {
         }
         let setup = makeCoordinator(api: api, storage: storage, contextStore: contextStore)
 
-        let result = await setup.coordinator.refresh(latitude: 0, longitude: 0)
+        let result = await setup.coordinator.refresh(latitude: 0, longitude: 0, anchorIsLiveFix: true)
 
         #expect(result.errorOrNil == .fetchFailed(.transport))
         // The exit cleanup ran: monitoring stopped and the stale user-scoped state cleared.
@@ -2464,7 +2464,7 @@ struct GeofenceSyncCoordinatorTests {
         let spy = SpyGeofenceSyncStorage(underlying: backing, onGetLastSync: { contextStore.setUserId(nil) })
         let setup = makeCoordinator(storage: spy, contextStore: contextStore, dateUtil: dateUtil)
 
-        let result = await setup.coordinator.refresh(latitude: 0, longitude: 0)
+        let result = await setup.coordinator.refresh(latitude: 0, longitude: 0, anchorIsLiveFix: true)
 
         #expect(result.isSuccess)
         #expect(setup.api.fetchNearbyGeofencesCallsCount == 0)
@@ -2490,7 +2490,7 @@ struct GeofenceSyncCoordinatorTests {
         }
         let setup = makeCoordinator(api: api, storage: storage, contextStore: contextStore)
 
-        let refreshTask = Task { await setup.coordinator.refresh(latitude: 0, longitude: 0) }
+        let refreshTask = Task { await setup.coordinator.refresh(latitude: 0, longitude: 0, anchorIsLiveFix: true) }
         for await _ in fetchStarted {
             break
         }
@@ -2533,7 +2533,7 @@ struct GeofenceSyncCoordinatorTests {
         }
         let setup = makeCoordinator(api: api, storage: storage, contextStore: contextStore)
 
-        let result = await setup.coordinator.refresh(latitude: 0, longitude: 0)
+        let result = await setup.coordinator.refresh(latitude: 0, longitude: 0, anchorIsLiveFix: true)
         #expect(result.isSuccess)
 
         // The retry is fire-and-forget; wait for its registration to land.
