@@ -102,6 +102,12 @@ final class PolygonMembershipResolver {
                 logger.geofencePolygonUndecided(identifier: identifier, reason: "stored ring no longer builds")
                 return
             }
+            // No user boundary across the fix, unlike `evaluateMembership`, and none exists to
+            // carry: the binder dispatches this with no expected user captured anywhere. Accepted
+            // on the trade this file makes elsewhere — the crossing is geometrically real, and
+            // declining it loses it for good because the dedup baseline has already advanced. The
+            // cost is real: a switch inside the fix window attributes it to a user who may not
+            // monitor this polygon at all.
             await evaluate(geofenceId: identifier)
         }
     }
