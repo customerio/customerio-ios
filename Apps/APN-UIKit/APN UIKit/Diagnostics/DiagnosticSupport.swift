@@ -43,14 +43,19 @@ enum DiagnosticClock {
     private static let formatter = DiagnosticLocked<ISO8601DateFormatter>({
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        formatter.timeZone = TimeZone.current
         return formatter
     }())
 
     /// ISO 8601 with milliseconds and a local UTC offset. The offset is deliberate — a drive log
     /// is read next to a route recorded in local time.
     static func iso8601(_ date: Date) -> String {
-        formatter.withValue { $0.string(from: date) }
+        // Zone per call rather than at construction: a formatter pinned at launch keeps stamping
+        // the zone the process started in, so a log written after the device changes zone stops
+        // being local — which is the whole reason the offset is here.
+        formatter.withValue { formatter -> String in
+            formatter.timeZone = TimeZone.current
+            return formatter.string(from: date)
+        }
     }
 }
 
