@@ -24,6 +24,10 @@ extension GeofenceStorage {
     /// An evaluation that CONFIRMS the belief refreshes that stamp too. Re-proving a belief is
     /// newer evidence for it, and holding the stamp at the last change would let a later evaluation
     /// carrying older opposite evidence pass the guard and flip what a newer fix just confirmed.
+    /// Refreshing cannot suppress a queued covering-circle exit that is still owed: confirmation
+    /// requires the belief to be true, so a stamp advanced past that exit's date means the device
+    /// was inside the polygon — and polygon ⊆ circle, so inside the circle too, which makes the
+    /// older exit genuinely superseded rather than lost.
     func recordPolygonMembership(
         _ membership: PolygonMembership,
         forIdentifier identifier: String,
