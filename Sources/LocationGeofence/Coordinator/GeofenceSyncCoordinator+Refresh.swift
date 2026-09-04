@@ -75,6 +75,7 @@ extension GeofenceSyncCoordinatorImpl {
             anchor: anchor
         )
         logger.geofenceSyncCompleted(registeredCount: nearest.count, movementTriggerRegistered: registerMovementTrigger)
+        evaluatePolygonsAfterMovement(expectedUserId: expectedUserId)
         return .success(())
     }
 
