@@ -264,14 +264,14 @@ class GeofenceSyncCoordinatorMock: @unchecked Sendable, GeofenceSyncCoordinator,
     }
 
     /// The arguments from the *last* time the function was called.
-    private let _refreshReceivedArguments: CioInternalCommon.Synchronized<(latitude: Double, longitude: Double)?> = .init(nil)
-    var refreshReceivedArguments: (latitude: Double, longitude: Double)? {
+    private let _refreshReceivedArguments: CioInternalCommon.Synchronized<(latitude: Double, longitude: Double, anchorIsLiveFix: Bool)?> = .init(nil)
+    var refreshReceivedArguments: (latitude: Double, longitude: Double, anchorIsLiveFix: Bool)? {
         _refreshReceivedArguments.wrappedValue
     }
 
     /// Arguments from *all* of the times that the function was called.
-    private let _refreshReceivedInvocations: CioInternalCommon.Synchronized<[(latitude: Double, longitude: Double)]> = .init([])
-    var refreshReceivedInvocations: [(latitude: Double, longitude: Double)] {
+    private let _refreshReceivedInvocations: CioInternalCommon.Synchronized<[(latitude: Double, longitude: Double, anchorIsLiveFix: Bool)]> = .init([])
+    var refreshReceivedInvocations: [(latitude: Double, longitude: Double, anchorIsLiveFix: Bool)] {
         _refreshReceivedInvocations.wrappedValue
     }
 
@@ -287,15 +287,15 @@ class GeofenceSyncCoordinatorMock: @unchecked Sendable, GeofenceSyncCoordinator,
      The closure has first priority to return a value for the mocked function. If the closure returns `nil`,
      then the mock will attempt to return the value for `refreshReturnValue`
      */
-    var refreshClosure: ((Double, Double) -> Result<Void, GeofenceSyncError>)?
+    var refreshClosure: ((Double, Double, Bool) -> Result<Void, GeofenceSyncError>)?
 
-    /// Mocked function for `refresh(latitude: Double, longitude: Double)`. Your opportunity to return a mocked value and check result of mock in test code.
-    func refresh(latitude: Double, longitude: Double) -> Result<Void, GeofenceSyncError> {
+    /// Mocked function for `refresh(latitude: Double, longitude: Double, anchorIsLiveFix: Bool)`. Your opportunity to return a mocked value and check result of mock in test code.
+    func refresh(latitude: Double, longitude: Double, anchorIsLiveFix: Bool) -> Result<Void, GeofenceSyncError> {
         mockCalled = true
         _refreshCallsCount += 1
-        _refreshReceivedArguments.wrappedValue = (latitude: latitude, longitude: longitude)
-        _refreshReceivedInvocations.append((latitude: latitude, longitude: longitude))
-        return refreshClosure.map { $0(latitude, longitude) } ?? refreshReturnValue
+        _refreshReceivedArguments.wrappedValue = (latitude: latitude, longitude: longitude, anchorIsLiveFix: anchorIsLiveFix)
+        _refreshReceivedInvocations.append((latitude: latitude, longitude: longitude, anchorIsLiveFix: anchorIsLiveFix))
+        return refreshClosure.map { $0(latitude, longitude, anchorIsLiveFix) } ?? refreshReturnValue
     }
 
     // MARK: - handleMovement

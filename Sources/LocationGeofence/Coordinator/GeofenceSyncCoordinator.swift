@@ -20,9 +20,12 @@ enum HandleMovementTier: String, Sendable {
 
 /// Sync pipeline for the on-device geofence cache. Entry points:
 ///
-/// - `refresh(latitude:longitude:)` — identify / app-launch entry. Routes through `refreshAction`:
-///   re-fetch when stale, re-rank locally when the ranking is stale or the cache is unregistered,
-///   else skip. Gated on identified user and in-flight dedup.
+/// - `refresh(latitude:longitude:anchorIsLiveFix:)` — identify / app-launch entry. Routes through
+///   `refreshAction`: re-fetch when stale, re-rank locally when the ranking is stale or the cache is
+///   unregistered, else skip. Gated on identified user and in-flight dedup. `anchorIsLiveFix` says
+///   whether the coordinates describe where the device is NOW or are a stored value standing in for
+///   it; only the caller knows, and the movement trigger cannot be sized to a polygon boundary
+///   around a point the device may not be at.
 /// - `handleMovement(latitude:longitude:)` — movement-trigger EXIT entry. Re-ranks the cached set
 ///   for the new location; bootstraps from the server only when there's no anchor. Shares the same
 ///   dedup gate as `refresh`.
@@ -34,7 +37,7 @@ enum HandleMovementTier: String, Sendable {
 /// - `reset()` — sign-out cleanup. Stops OS-side monitoring and clears user-scoped store
 ///   state (cooldowns, last-sync). Preserves the workspace cache.
 protocol GeofenceSyncCoordinator: AutoMockable, AnyObject, Sendable {
-    func refresh(latitude: Double, longitude: Double) async -> Result<Void, GeofenceSyncError>
+    func refresh(latitude: Double, longitude: Double, anchorIsLiveFix: Bool) async -> Result<Void, GeofenceSyncError>
     func handleMovement(latitude: Double, longitude: Double) async -> Result<Void, GeofenceSyncError>
     func reset() async -> Result<Void, GeofenceSyncError>
     @MainActor
@@ -44,6 +47,14 @@ protocol GeofenceSyncCoordinator: AutoMockable, AnyObject, Sendable {
         config: GeofenceConfig?,
         userId: String?
     ) -> GeofenceRegistration?
+}
+
+extension GeofenceSyncCoordinator {
+    /// For callers holding a fix they just obtained. A caller passing a stored or fallback
+    /// coordinate must use the full form and say so — see `anchorIsLiveFix`.
+    func refresh(latitude: Double, longitude: Double) async -> Result<Void, GeofenceSyncError> {
+        await refresh(latitude: latitude, longitude: longitude, anchorIsLiveFix: true)
+    }
 }
 
 /// `@unchecked Sendable`: stored `Logger` and `DateUtil` are existentials of protocols
@@ -82,25 +93,33 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
         self.logger = logger
     }
 
-    func refresh(latitude: Double, longitude: Double) async -> Result<Void, GeofenceSyncError> {
+    func refresh(latitude: Double, longitude: Double, anchorIsLiveFix: Bool) async -> Result<Void, GeofenceSyncError> {
         guard acquireGate() else {
             logger.geofenceSyncSkipped(reason: "refresh already in progress")
             return .failure(.alreadyInProgress)
         }
         let expectedUserId = identifiedUserId
-        let result = await performRefresh(expectedUserId: expectedUserId, latitude: latitude, longitude: longitude)
+        let result = await performRefresh(
+            expectedUserId: expectedUserId, latitude: latitude, longitude: longitude,
+            anchorIsLiveFix: anchorIsLiveFix
+        )
         let cleaned = await cleanupIfUserChanged(expectedUserId: expectedUserId)
         // Explicit release (not defer): the self-heal retry below must find the gate free, or it
         // would be dropped exactly like the refresh it compensates for.
         releaseGate()
-        if cleaned { retryForCurrentUser(latitude: latitude, longitude: longitude) }
+        if cleaned { retryForCurrentUser(latitude: latitude, longitude: longitude, anchorIsLiveFix: anchorIsLiveFix) }
         return result
     }
 
     /// The refresh body, extracted so `refresh` has a single exit at which `cleanupIfUserChanged`
     /// runs while the gate is still held — covering every path (freshness-skip, fetch failure,
     /// post-fetch supersede, success alike).
-    private func performRefresh(expectedUserId: String?, latitude: Double, longitude: Double) async -> Result<Void, GeofenceSyncError> {
+    private func performRefresh(
+        expectedUserId: String?,
+        latitude: Double,
+        longitude: Double,
+        anchorIsLiveFix: Bool
+    ) async -> Result<Void, GeofenceSyncError> {
         guard let userId = expectedUserId else {
             logger.geofenceSyncSkipped(reason: "no identified user")
             return .failure(.noIdentifiedUser)
@@ -113,18 +132,18 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
         case .remote:
             return await performRemoteRefresh(
                 expectedUserId: userId,
-                latitude: latitude,
-                longitude: longitude,
-                cachedConfig: cachedConfig
+                anchor: location,
+                cachedConfig: cachedConfig,
+                anchorIsLiveFix: anchorIsLiveFix
             )
         case .local:
             let cachedRegions = await storage.getCachedGeofences()
             return await performLocalRefresh(
                 expectedUserId: userId,
-                latitude: latitude,
-                longitude: longitude,
+                anchor: location,
                 config: effectiveConfig,
-                cachedRegions: cachedRegions
+                cachedRegions: cachedRegions,
+                anchorIsLiveFix: anchorIsLiveFix
             )
         case .skip:
             logger.geofenceSyncSkippedFresh()
@@ -141,7 +160,8 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
         let result = await performMovement(expectedUserId: expectedUserId, latitude: latitude, longitude: longitude)
         let cleaned = await cleanupIfUserChanged(expectedUserId: expectedUserId)
         releaseGate()
-        if cleaned { retryForCurrentUser(latitude: latitude, longitude: longitude) }
+        // A movement EXIT always carries a fresh fix, so the retry may size the trigger tightly.
+        if cleaned { retryForCurrentUser(latitude: latitude, longitude: longitude, anchorIsLiveFix: true) }
         return result
     }
 
@@ -163,9 +183,9 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
             logger.geofenceMovementTrigger(tier: .remoteRefresh)
             let remote = await performRemoteRefresh(
                 expectedUserId: userId,
-                latitude: latitude,
-                longitude: longitude,
-                cachedConfig: cachedConfig
+                anchor: movement,
+                cachedConfig: cachedConfig,
+                anchorIsLiveFix: true
             )
             if case .failure = remote {
                 // A failed pass never re-centers the trigger, leaving it on the circle the device
@@ -173,10 +193,10 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
                 logger.geofenceMovementRearmedAfterFailedRefresh()
                 _ = await performLocalRefresh(
                     expectedUserId: userId,
-                    latitude: latitude,
-                    longitude: longitude,
+                    anchor: movement,
                     config: effectiveConfig,
-                    cachedRegions: await storage.getCachedGeofences()
+                    cachedRegions: await storage.getCachedGeofences(),
+                    anchorIsLiveFix: true
                 )
             }
             return remote
@@ -189,10 +209,10 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
             let cachedRegions = await storage.getCachedGeofences()
             return await performLocalRefresh(
                 expectedUserId: userId,
-                latitude: latitude,
-                longitude: longitude,
+                anchor: movement,
                 config: effectiveConfig,
-                cachedRegions: cachedRegions
+                cachedRegions: cachedRegions,
+                anchorIsLiveFix: true
             )
         }
     }
@@ -249,12 +269,12 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
         let osRegistration = registerWithOsSync(
             businessRegions: nearest,
             movementTriggerLocation: anchor,
-            // The full refresh radius, NOT a boundary-sized one: this path has no live fix, and
-            // `anchor` is the last recorded registration centre, which the wake pass deliberately
-            // does not walk. The device is therefore within `localRefreshTriggerRadius` of it and
-            // so inside a trigger of that size — an invariant a smaller circle would break, arming
-            // a region the device already stands outside. The first movement pass re-arms it
-            // against a live fix.
+            // The full refresh radius, NOT a boundary-sized one: this path has no live fix. While
+            // monitoring is live the recorded centre stays within `localRefreshTriggerRadius` of
+            // the device, but this path exists precisely because the OS dropped the regions and the
+            // process died — nothing re-recorded it, so the device can be arbitrarily far away. A
+            // boundary-sized circle there would be one the device already stands outside. The first
+            // movement pass re-arms against a live fix.
             movementTriggerRadius: effectiveConfig.localRefreshTriggerRadius,
             registerMovementTrigger: registerMovementTrigger
         )
@@ -281,10 +301,12 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
     /// signed in now, with this operation's seconds-old coordinates, so a user switch converges to a
     /// registered state instead of an outage lasting until the next launch. Loop-safe: a retry only
     /// re-fires if the identity changes yet again during the retry itself.
-    private func retryForCurrentUser(latitude: Double, longitude: Double) {
+    private func retryForCurrentUser(latitude: Double, longitude: Double, anchorIsLiveFix: Bool) {
         guard identifiedUserId != nil else { return }
         Task { [weak self] in
-            _ = await self?.refresh(latitude: latitude, longitude: longitude)
+            _ = await self?.refresh(
+                latitude: latitude, longitude: longitude, anchorIsLiveFix: anchorIsLiveFix
+            )
         }
     }
 

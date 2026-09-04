@@ -10,11 +10,11 @@ extension GeofenceSyncCoordinatorImpl {
     /// re-check that the identified user hasn't changed during the (potentially long) fetch.
     func performRemoteRefresh(
         expectedUserId: String,
-        latitude: Double,
-        longitude: Double,
-        cachedConfig: GeofenceConfig?
+        anchor: LocationData,
+        cachedConfig: GeofenceConfig?,
+        anchorIsLiveFix: Bool
     ) async -> Result<Void, GeofenceSyncError> {
-        let fetchResult = await awaitApiFetch(latitude: latitude, longitude: longitude)
+        let fetchResult = await awaitApiFetch(latitude: anchor.latitude, longitude: anchor.longitude)
         let response: GeofenceApiResponse
         switch fetchResult {
         case .success(let value):
@@ -39,14 +39,13 @@ extension GeofenceSyncCoordinatorImpl {
         case .failure(let error): return .failure(error)
         }
         let effectiveConfig = parsedConfig ?? cachedConfig ?? .fallback
-        let anchor = LocationData(latitude: latitude, longitude: longitude)
         let monitorable = await MainActor.run { monitorableRegions(regions) }
         let nearest = distanceFilter.nearest(monitorable, to: anchor, limit: effectiveConfig.maxBusinessGeofences, maxDistance: effectiveConfig.maxMonitoringDistance)
         let registerMovementTrigger = effectiveConfig.maxBusinessGeofences > 0
         // Read before `recordRegistration` overwrites it — the diff decides which registrations are new.
         let previouslyRegisteredIds = await storage.getRegisteredBusinessIds()
         let nearestIds = Set(nearest.map(\.id))
-        let wakeRadius = PolygonWakeRadius.radius(at: anchor, registeredPolygons: nearest, config: effectiveConfig)
+        let wakeRadius = wakeRadius(at: anchor, polygons: nearest, config: effectiveConfig, anchorIsLiveFix: anchorIsLiveFix)
         let osRegistration = await MainActor.run {
             registerWithOsSync(
                 businessRegions: nearest,
@@ -85,12 +84,11 @@ extension GeofenceSyncCoordinatorImpl {
     /// ranking-staleness reference follows the device after a local re-rank.
     func performLocalRefresh(
         expectedUserId: String,
-        latitude: Double,
-        longitude: Double,
+        anchor: LocationData,
         config: GeofenceConfig,
-        cachedRegions: [Geofence]
+        cachedRegions: [Geofence],
+        anchorIsLiveFix: Bool
     ) async -> Result<Void, GeofenceSyncError> {
-        let anchor = LocationData(latitude: latitude, longitude: longitude)
         let monitorable = await MainActor.run { monitorableRegions(cachedRegions) }
         let nearest = distanceFilter.nearest(monitorable, to: anchor, limit: config.maxBusinessGeofences, maxDistance: config.maxMonitoringDistance)
         let registerMovementTrigger = config.maxBusinessGeofences > 0
@@ -101,8 +99,8 @@ extension GeofenceSyncCoordinatorImpl {
             registerWithOsSync(
                 businessRegions: nearest,
                 movementTriggerLocation: anchor,
-                movementTriggerRadius: PolygonWakeRadius.radius(
-                    at: anchor, registeredPolygons: nearest, config: config
+                movementTriggerRadius: wakeRadius(
+                    at: anchor, polygons: nearest, config: config, anchorIsLiveFix: anchorIsLiveFix
                 ),
                 registerMovementTrigger: registerMovementTrigger
             )
@@ -145,6 +143,22 @@ extension GeofenceSyncCoordinatorImpl {
         }
         evaluatePolygonsAfterMovement(expectedUserId: expectedUserId)
         return .success(())
+    }
+
+    /// The trigger radius for a registration, sized to the nearest polygon boundary only when the
+    /// anchor is where the device actually is. A stored anchor can be a long way from the device —
+    /// unbounded once the process has been dead — and a boundary-sized circle around it would be
+    /// one the device already stands outside: a spurious cycle on iOS 17+, and on the classic path
+    /// a trigger that never fires at all. The full refresh radius is the safe default there; the
+    /// first movement pass re-arms against a live fix.
+    private func wakeRadius(
+        at anchor: LocationData,
+        polygons: [Geofence],
+        config: GeofenceConfig,
+        anchorIsLiveFix: Bool
+    ) -> Double {
+        guard anchorIsLiveFix else { return config.localRefreshTriggerRadius }
+        return PolygonWakeRadius.radius(at: anchor, registeredPolygons: polygons, config: config)
     }
 
     /// Decodes the response's regions, or fails when the payload turns out to be unreadable rather
