@@ -183,6 +183,22 @@ struct PolygonMembershipResolverTests {
         #expect(await setup.storage.getPolygonMembership()["1"]?.membership == .inside)
     }
 
+    /// A wake fires BECAUSE the device moved, so the fix it already holds describes where it was.
+    /// When the forced request fails, falling back to that fix re-affirms the stale verdict — the
+    /// exact silent miss the fresh-fix rule exists to prevent — so no verdict must be reached.
+    @Test
+    func handleTransition_givenFreshFixRequiredButRequestFails_expectNoVerdictFromHeldFix() async {
+        let setup = await makeSetup(fix: nil) // the forced request fails
+        // Seed a pre-wake fix that is inside the polygon and still within `movementFixMaxAge`.
+        setup.fixResolver.handleResolvedFix(fix(latitude: 0, longitude: 0))
+        await setup.storage.setCachedGeofences([polygonGeofence()])
+
+        await setup.resolver.handleTransition(identifier: "1", transition: .enter)
+
+        #expect(await setup.emitter.snapshot().isEmpty)
+        #expect(await setup.storage.getPolygonMembership()["1"] == nil)
+    }
+
     /// A stored ring that no longer builds is not a circle. Forwarding it would fire a customer
     /// enter anywhere inside the covering circle — the polygon's whole annulus included.
     @Test

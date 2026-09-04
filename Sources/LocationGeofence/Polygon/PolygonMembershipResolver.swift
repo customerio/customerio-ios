@@ -278,13 +278,24 @@ final class PolygonMembershipResolver {
     /// Freshest fix obtainable, requesting one when the cache is stale. Mirrors the gate's
     /// resolution: the completion's coordinates are discarded in favour of `latestFix`, which
     /// carries the accuracy and timestamp the decision needs.
+    ///
+    /// When a fresh fix is REQUIRED, a request that fails or times out still resumes with the fix
+    /// already held. That one predates the wake and can sit inside `movementFixMaxAge`, so it would
+    /// re-affirm the very verdict the wake exists to revisit — report no fix instead.
     private func resolveFix(requiringFresh: Bool = false) async -> CLLocation? {
-        await withCheckedContinuation { continuation in
+        let priorTimestamp = fixResolver.latestFix?.timestamp
+        return await withCheckedContinuation { continuation in
             fixResolver.resolve(cached: requiringFresh ? nil : fixResolver.cachedFix) { [weak self] _ in
-                // `cachedFix` on failure: on a cold process this resolver has delivered nothing, and
-                // the monitor has already advanced its dedup baseline, so declining loses the
-                // crossing for good. The decision's age gate bounds how stale it can be.
-                continuation.resume(returning: self?.fixResolver.cachedFix)
+                guard let self else { return continuation.resume(returning: nil) }
+                let resolved = fixResolver.latestFix
+                if requiringFresh, let resolved, let priorTimestamp, resolved.timestamp <= priorTimestamp {
+                    continuation.resume(returning: nil)
+                    return
+                }
+                // Cold process: nothing delivered and the request failed, so CoreLocation's own
+                // cached fix is the only evidence there is. The monitor has already advanced its
+                // dedup baseline, so declining here loses the crossing for good.
+                continuation.resume(returning: resolved ?? fixResolver.cachedFix)
             }
         }
     }
