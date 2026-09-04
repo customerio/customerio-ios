@@ -187,7 +187,12 @@ struct PolygonRegion {
         }
     }
 
+    /// The walk is bounded by its inputs: `init?(vertices:)` refuses out-of-range ring positions and
+    /// `evaluate` refuses an invalid fix, so both sides arrive inside ±180°. The guard keeps that a
+    /// property of this function rather than of its callers — a value far enough out of range stops
+    /// changing when 360 is subtracted from it, and the loop would never end.
     private static func unwrapLongitude(_ longitude: Double, near reference: Double) -> Double {
+        guard longitude.isFinite, abs(longitude) <= 360, reference.isFinite else { return longitude }
         var value = longitude
         while value - reference > 180 {
             value -= 360
