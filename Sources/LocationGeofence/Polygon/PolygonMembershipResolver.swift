@@ -67,26 +67,26 @@ final class PolygonMembershipResolver {
     /// is the behaviour that predates polygons, and losing a real crossing is worse than a
     /// covering-circle-shaped one.
     func handleTransition(identifier: String, transition: GeofenceTransition, occurredAt: Date) async {
-        logger.geofenceOsTransitionReceived(identifier: identifier, transition: transition)
         guard let geofence = await cachedGeofence(id: identifier), geofence.vertices != nil else {
             // Uncached, or a genuine circle: forward untouched, the behaviour that predates polygons.
             await transitionEmitter.trackTransition(geofenceId: identifier, transition: transition)
             return
         }
-        guard let polygon = geofence.polygonRegion else {
-            // A stored ring that no longer builds is NOT a circle — forwarding it would fire a
-            // customer enter anywhere inside the covering circle.
-            logger.geofencePolygonUndecided(identifier: identifier, reason: "stored ring no longer builds")
-            return
-        }
         switch transition {
         case .exit:
-            // polygon ⊆ covering circle, so leaving the circle is geometric certainty and needs no
-            // fix. It is still ORDERED against the stored belief: a synthesized or replayed exit
-            // arriving after a newer enter would otherwise swallow it and leave the device believed
-            // outside while it sits inside.
+            // polygon ⊆ covering circle, so leaving the circle is geometric certainty: it needs no
+            // fix, and no ring either — which is why this runs before the geometry is built. It is
+            // still ORDERED against the stored belief: a synthesized or replayed exit arriving
+            // after a newer enter would otherwise swallow it and leave the device believed outside
+            // while it sits inside.
             await apply(.outside, to: geofence, evidence: occurredAt, confirmedByFix: false)
         case .enter:
+            guard let polygon = geofence.polygonRegion else {
+                // A stored ring that no longer builds is NOT a circle — forwarding it would fire a
+                // customer enter anywhere inside the covering circle.
+                logger.geofencePolygonUndecided(identifier: identifier, reason: "stored ring no longer builds")
+                return
+            }
             await evaluate(geofence: geofence, polygon: polygon)
         }
     }

@@ -201,6 +201,29 @@ struct PolygonMembershipResolverTests {
         #expect(await setup.storage.getPolygonMembership()["1"] == nil)
     }
 
+    /// An exit needs no ring: polygon ⊆ covering circle, so leaving the circle proves it whatever
+    /// the stored geometry does. Refusing one because the ring no longer builds would strand the
+    /// belief at inside, suppressing every later exit and re-enter.
+    @Test
+    func handleTransition_givenStoredRingThatCannotBuild_expectExitStillApplied() async {
+        let setup = await makeSetup(fix: fix(latitude: 0, longitude: 0))
+        await setup.storage.setCachedGeofences([polygonGeofence()])
+        await setup.resolver.handleTransition(identifier: "1", transition: .enter, occurredAt: Date())
+        #expect(await setup.storage.getPolygonMembership()["1"]?.membership == .inside)
+
+        let degenerate = Geofence(
+            id: "1", latitude: 0, longitude: 0, radius: 300, name: "poly",
+            transitionTypes: [.enter, .exit], lastUpdated: Date(),
+            vertices: [LocationData(latitude: 0, longitude: 0), LocationData(latitude: 0, longitude: 0)]
+        )
+        await setup.storage.setCachedGeofences([degenerate])
+
+        await setup.resolver.handleTransition(identifier: "1", transition: .exit, occurredAt: Date())
+
+        #expect(await setup.storage.getPolygonMembership()["1"]?.membership == .outside)
+        #expect(await setup.emitter.snapshot().map(\.transition) == [.enter, .exit])
+    }
+
     /// A replayed or synthesized exit arriving after a newer enter must not overwrite it: the device
     /// would be believed outside while sitting inside, with the enter cooldown blocking recovery.
     @Test
