@@ -25,11 +25,14 @@ final class DiagnosticLogWriter: @unchecked Sendable {
     /// every record so that rotation costs an inequality rather than a date format.
     private var rolloverAt: TimeInterval = 0
 
+    // The zone is set per use, not at construction. `startOfNextDay` reads `TimeZone.current`
+    // live, so a formatter pinned at launch would stamp a filename in the old zone while the
+    // rollover boundary moved to the new one — two files for one day, or a file named for a day
+    // it does not contain.
     private static let dayFormatter = DiagnosticLocked<DateFormatter>({
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.dateFormat = "yyyy-MM-dd"
-        formatter.timeZone = TimeZone.current
         return formatter
     }())
 
@@ -210,7 +213,10 @@ final class DiagnosticLogWriter: @unchecked Sendable {
     // MARK: - Paths
 
     private func fileURL(for date: Date) -> URL {
-        let day = DiagnosticLogWriter.dayFormatter.withValue { $0.string(from: date) }
+        let day = DiagnosticLogWriter.dayFormatter.withValue { formatter -> String in
+            formatter.timeZone = TimeZone.current
+            return formatter.string(from: date)
+        }
         return directory.appendingPathComponent(
             "\(DiagnosticLogWriter.filePrefix)\(day)\(DiagnosticLogWriter.fileSuffix)",
             isDirectory: false
