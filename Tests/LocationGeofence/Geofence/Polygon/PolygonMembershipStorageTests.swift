@@ -184,6 +184,28 @@ struct PolygonMembershipStorageTests {
         #expect(outcome == .deliver(.exit))
     }
 
+    /// A confirming evaluation is newer evidence for the belief it re-proves. Left unrecorded, an
+    /// evaluation carrying OLDER opposite evidence — a foreground pass holding a pre-crossing fix,
+    /// resuming after a wake already decided — clears the ordering guard and delivers a crossing
+    /// the newer fix had just disproved.
+    @Test
+    func recordPolygonMembership_givenBeliefConfirmedByNewerEvidence_expectOlderOppositeSuppressed() async {
+        let storage = await makeStorage()
+        let established = Date(timeIntervalSince1970: 1000)
+        let stalePassFix = Date(timeIntervalSince1970: 1003)
+        let confirmingFix = Date(timeIntervalSince1970: 1005)
+        _ = await storage.recordPolygonMembership(.inside, forIdentifier: "1", onlyIfBeliefPredates: established)
+        _ = await storage.recordPolygonMembership(.inside, forIdentifier: "1", onlyIfBeliefPredates: confirmingFix)
+
+        let outcome = await storage.recordPolygonMembership(
+            .outside, forIdentifier: "1", onlyIfBeliefPredates: stalePassFix
+        )
+
+        #expect(outcome == .suppressedNewerDecision)
+        #expect(await storage.getPolygonMembership()["1"]?.membership == .inside)
+        #expect(await storage.getPolygonMembership()["1"]?.lastChangedAt == confirmingFix)
+    }
+
     @Test
     func clearUserScopedState_expectMembershipCleared() async {
         let storage = await makeStorage()

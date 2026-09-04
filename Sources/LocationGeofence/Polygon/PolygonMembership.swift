@@ -19,8 +19,10 @@ enum PolygonMembership: String, Codable, Sendable {
 /// cold wake compares against the pre-kill belief rather than starting over.
 struct PolygonMembershipRecord: Codable, Equatable, Sendable {
     var membership: PolygonMembership
-    /// When `membership` was last written. Lets a late evaluation defer to a newer decision, the
-    /// same way `MonitorRegionRecord.lastStateChangedAt` guards the baseline heal.
+    /// Evidence time of the belief currently held: the timestamp of the newest fix or OS event to
+    /// establish it OR confirm it, not only the one that last changed it. Lets a late evaluation
+    /// defer to a newer decision, the same way `MonitorRegionRecord.lastStateChangedAt` guards the
+    /// baseline heal.
     var lastChangedAt: Date
 }
 
