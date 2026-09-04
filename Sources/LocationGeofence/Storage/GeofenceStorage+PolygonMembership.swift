@@ -16,7 +16,10 @@ extension GeofenceStorage {
     ///
     /// `onlyIfBeliefPredates` makes the write conditional on the belief's age, atomically with the
     /// compare-and-store: an evaluation whose fix predates a belief written since must not
-    /// overwrite it with an older reading.
+    /// overwrite it with an older reading. The stored `lastChangedAt` is that same evidence time,
+    /// not the moment of the write — the comparison is evidence against evidence, and a write time
+    /// always postdates the fix that justified it, so storing it would reject verdicts whose
+    /// evidence is genuinely newer than the previous verdict's.
     func recordPolygonMembership(
         _ membership: PolygonMembership,
         forIdentifier identifier: String,
@@ -37,13 +40,17 @@ extension GeofenceStorage {
             guard state.monitoredGeofenceIds?.contains(identifier) == true else {
                 return .suppressedUnmonitored
             }
-            records[identifier] = PolygonMembershipRecord(membership: membership, lastChangedAt: now)
+            records[identifier] = PolygonMembershipRecord(
+                membership: membership, lastChangedAt: evidenceTimestamp ?? now
+            )
             state.polygonMembership = records
             saveToDisk(state)
             return membership == .inside ? .deliver(.enter) : .suppressedInitialOutside
         }
         guard existing.membership != membership else { return .suppressedNoChange }
-        records[identifier] = PolygonMembershipRecord(membership: membership, lastChangedAt: now)
+        records[identifier] = PolygonMembershipRecord(
+            membership: membership, lastChangedAt: evidenceTimestamp ?? now
+        )
         state.polygonMembership = records
         saveToDisk(state)
         return .deliver(membership == .inside ? .enter : .exit)

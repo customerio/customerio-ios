@@ -162,6 +162,28 @@ struct PolygonMembershipStorageTests {
         #expect(await storage.recordPolygonMembership(.inside, forIdentifier: "1") == .suppressedNoChange)
     }
 
+    /// The ordering guard compares the stored time against the incoming evidence, so the stored one
+    /// has to BE evidence. Storing the write time instead made every record instantly "newer" than
+    /// the fix that justified it, rejecting a later verdict whose own fix was genuinely newer.
+    @Test
+    func recordPolygonMembership_givenEvidenceNewerThanPriorEvidence_expectAccepted() async {
+        let storage = await makeStorage()
+        let firstFix = Date(timeIntervalSince1970: 1000)
+        let secondFix = Date(timeIntervalSince1970: 1005)
+        // A write lands well after the fix that justified it — the gap the old code stored.
+        _ = await storage.recordPolygonMembership(
+            .inside, forIdentifier: "1", onlyIfBeliefPredates: firstFix,
+            now: Date(timeIntervalSince1970: 1060)
+        )
+
+        let outcome = await storage.recordPolygonMembership(
+            .outside, forIdentifier: "1", onlyIfBeliefPredates: secondFix,
+            now: Date(timeIntervalSince1970: 1065)
+        )
+
+        #expect(outcome == .deliver(.exit))
+    }
+
     @Test
     func clearUserScopedState_expectMembershipCleared() async {
         let storage = await makeStorage()
