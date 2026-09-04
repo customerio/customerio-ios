@@ -764,6 +764,39 @@ struct GeofenceSyncCoordinatorTests {
         #expect(setup.monitor.startedRegions.isEmpty)
     }
 
+    /// Cold-wake sibling of the refresh rule: bootstrap persists whatever this returns, so an
+    /// oversized polygon reported here would be evaluated for membership with no OS wake behind it.
+    @Test
+    func applyCachedRegistration_givenOversizedPolygon_expectExcludedFromReportedRegistration() {
+        let monitor = MockGeofenceRegionMonitor()
+        monitor.maximumMonitoringRadius = 1000
+        let setup = makeCoordinator(storage: makeStorage(), monitor: monitor)
+        let oversizedPolygon = Geofence(
+            id: "poly", latitude: 0, longitude: 0, radius: 5000, name: nil,
+            transitionTypes: [.enter, .exit], lastUpdated: Date(timeIntervalSince1970: 0),
+            vertices: [
+                LocationData(latitude: -0.01, longitude: -0.01),
+                LocationData(latitude: -0.01, longitude: 0.01),
+                LocationData(latitude: 0.01, longitude: 0.01),
+                LocationData(latitude: 0.01, longitude: -0.01)
+            ]
+        )
+        let circle = Geofence(
+            id: "circle", latitude: 0, longitude: 0, radius: 100, name: nil,
+            transitionTypes: [.enter, .exit], lastUpdated: Date(timeIntervalSince1970: 0)
+        )
+
+        let registration = setup.coordinator.applyCachedRegistration(
+            cachedRegions: [oversizedPolygon, circle],
+            anchor: LocationData(latitude: 0, longitude: 0),
+            config: .fallback,
+            userId: "user-1"
+        )
+
+        #expect(registration?.businessIds.contains("poly") == false)
+        #expect(registration?.businessIds.contains("circle") == true)
+    }
+
     @Test
     func applyCachedRegistration_givenEmptyRegions_expectMovementTriggerRegistered() {
         // An empty nearby response clears the cache but leaves the trigger armed. If the OS then
