@@ -183,10 +183,14 @@ actor GeofenceStorage {
     /// Drops the baseline for a condition the OS stopped monitoring, so the next registration
     /// reseeds from the device's real position rather than carrying a state it may have left while
     /// unmonitored — an unchanged-geometry re-register would preserve that stale value.
+    /// Drops both the OS-facing baseline and the polygon belief: the region is no longer monitored,
+    /// so a belief kept across the gap would suppress the next real enter as no-change if the device
+    /// left the polygon while nothing was watching.
     func clearMonitorRegionRecord(identifier: String) {
         var state = loadFromDisk() ?? GeofenceState()
-        guard var records = state.monitorRegionRecords, records.removeValue(forKey: identifier) != nil else { return }
-        state.monitorRegionRecords = records
+        let hadRecord = state.monitorRegionRecords?.removeValue(forKey: identifier) != nil
+        let hadBelief = state.polygonMembership?.removeValue(forKey: identifier) != nil
+        guard hadRecord || hadBelief else { return }
         saveToDisk(state)
     }
 

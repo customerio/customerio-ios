@@ -9,12 +9,11 @@ import Foundation
 /// enforced in one function rather than at each call site.
 enum PolygonMembershipDecision {
     /// The membership the fix establishes, or `nil` when it cannot decide — a stale fix, an
-    /// unusable accuracy, or a boundary inside the ambiguity band. Never returns `.unknown`:
-    /// that is what the caller records in response to `nil`.
+    /// unusable accuracy, or a boundary inside the ambiguity band.
     ///
     /// - Parameter signedEdgeDistance: metres to the polygon boundary in `PolygonRegion`'s
     ///   convention — **positive inside**, which is the opposite of the circle path's edge
-    ///   distance. Converting here rather than at call sites keeps the mismatch in one place.
+    ///   distance. The sign test below is written for this convention; nothing is converted.
     static func resolvedMembership(
         signedEdgeDistance: Double,
         horizontalAccuracy: Double,

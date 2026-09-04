@@ -5,18 +5,22 @@ import Testing
 
 @Suite("GeofenceStorage polygon membership")
 struct PolygonMembershipStorageTests {
-    private func makeStorage() -> GeofenceStorage {
-        GeofenceStorage(
+    /// Registers the ids first: a belief is only created for a polygon in the registered set, so a
+    /// bare storage would suppress every write as `.suppressedUnmonitored`.
+    private func makeStorage(registering ids: Set<String> = ["1"]) async -> GeofenceStorage {
+        let storage = GeofenceStorage(
             fileManager: .default,
             directoryURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         )
+        await storage.recordRegistration(center: LocationData(latitude: 0, longitude: 0), businessIds: ids)
+        return storage
     }
 
     /// A polygon with no record is undecided, not outside — so the first decisive fix placing the
     /// device inside is a genuine enter. This is the polygon counterpart of enter-when-inside.
     @Test
     func recordPolygonMembership_givenNoRecordAndInside_expectEnterDelivered() async {
-        let storage = makeStorage()
+        let storage = await makeStorage()
         let outcome = await storage.recordPolygonMembership(.inside, forIdentifier: "1")
         #expect(outcome == .deliver(.enter))
     }
@@ -24,7 +28,7 @@ struct PolygonMembershipStorageTests {
     /// Establishing "outside" for the first time is not a crossing — nothing was entered to leave.
     @Test
     func recordPolygonMembership_givenNoRecordAndOutside_expectSuppressed() async {
-        let storage = makeStorage()
+        let storage = await makeStorage()
         let outcome = await storage.recordPolygonMembership(.outside, forIdentifier: "1")
         #expect(outcome == .suppressedInitialOutside)
         #expect(await storage.getPolygonMembership()["1"]?.membership == .outside)
@@ -32,7 +36,7 @@ struct PolygonMembershipStorageTests {
 
     @Test
     func recordPolygonMembership_givenUnchangedBelief_expectSuppressed() async {
-        let storage = makeStorage()
+        let storage = await makeStorage()
         _ = await storage.recordPolygonMembership(.inside, forIdentifier: "1")
         let outcome = await storage.recordPolygonMembership(.inside, forIdentifier: "1")
         #expect(outcome == .suppressedNoChange)
@@ -40,7 +44,7 @@ struct PolygonMembershipStorageTests {
 
     @Test
     func recordPolygonMembership_givenBeliefFlips_expectExitDelivered() async {
-        let storage = makeStorage()
+        let storage = await makeStorage()
         _ = await storage.recordPolygonMembership(.inside, forIdentifier: "1")
         let outcome = await storage.recordPolygonMembership(.outside, forIdentifier: "1")
         #expect(outcome == .deliver(.exit))
@@ -51,7 +55,7 @@ struct PolygonMembershipStorageTests {
     /// reading — the same protection `recordMonitorEvent` gives the baseline heal.
     @Test
     func recordPolygonMembership_givenEvidenceOlderThanBelief_expectSuppressed() async {
-        let storage = makeStorage()
+        let storage = await makeStorage()
         let beliefWrittenAt = Date()
         _ = await storage.recordPolygonMembership(.inside, forIdentifier: "1", now: beliefWrittenAt)
 
@@ -67,7 +71,7 @@ struct PolygonMembershipStorageTests {
 
     @Test
     func recordPolygonMembership_givenEvidenceNewerThanBelief_expectDelivered() async {
-        let storage = makeStorage()
+        let storage = await makeStorage()
         let beliefWrittenAt = Date()
         _ = await storage.recordPolygonMembership(.inside, forIdentifier: "1", now: beliefWrittenAt)
 
@@ -84,7 +88,7 @@ struct PolygonMembershipStorageTests {
     /// without needing the registered-ids diff the circle path uses.
     @Test
     func recordPolygonMembership_givenRegistrationRetainsGeofence_expectBeliefPreserved() async {
-        let storage = makeStorage()
+        let storage = await makeStorage()
         _ = await storage.recordPolygonMembership(.inside, forIdentifier: "1")
 
         await storage.recordRegistration(center: LocationData(latitude: 1, longitude: 1), businessIds: ["1"])
@@ -97,10 +101,27 @@ struct PolygonMembershipStorageTests {
     /// go stale and suppress the enter owed when the device comes back to it.
     @Test
     func recordPolygonMembership_givenGeofenceLeavesRegisteredSet_expectBeliefPruned() async {
-        let storage = makeStorage()
+        let storage = await makeStorage()
         _ = await storage.recordPolygonMembership(.inside, forIdentifier: "1")
 
         await storage.recordRegistration(center: LocationData(latitude: 1, longitude: 1), businessIds: ["2"])
+        #expect(await storage.getPolygonMembership()["1"] == nil)
+
+        // Coming back means being registered again; the pruned belief is what makes it an enter
+        // rather than a no-change.
+        await storage.recordRegistration(center: LocationData(latitude: 0, longitude: 0), businessIds: ["1"])
+        #expect(await storage.recordPolygonMembership(.inside, forIdentifier: "1") == .deliver(.enter))
+    }
+
+    /// The OS reporting the covering circle unmonitored reseeds the circle baseline; the polygon
+    /// belief has to go with it. Kept, it would suppress the next real enter as no-change if the
+    /// device left the polygon while nothing was watching.
+    @Test
+    func clearMonitorRegionRecord_expectPolygonBeliefClearedToo() async {
+        let storage = await makeStorage()
+        _ = await storage.recordPolygonMembership(.inside, forIdentifier: "1")
+
+        await storage.clearMonitorRegionRecord(identifier: "1")
 
         #expect(await storage.getPolygonMembership()["1"] == nil)
         #expect(await storage.recordPolygonMembership(.inside, forIdentifier: "1") == .deliver(.enter))
@@ -108,11 +129,21 @@ struct PolygonMembershipStorageTests {
 
     @Test
     func clearUserScopedState_expectMembershipCleared() async {
-        let storage = makeStorage()
+        let storage = await makeStorage()
         _ = await storage.recordPolygonMembership(.inside, forIdentifier: "1")
 
         await storage.clearUserScopedState()
 
         #expect(await storage.getPolygonMembership().isEmpty)
+    }
+
+    /// An evaluation still in flight when the polygon is pruned must not resurrect it: creating a
+    /// belief there would deliver an enter for a fence the OS is no longer watching.
+    @Test
+    func recordPolygonMembership_givenIdNotRegistered_expectSuppressedAndNoRecord() async {
+        let storage = await makeStorage(registering: ["other"])
+        let outcome = await storage.recordPolygonMembership(.inside, forIdentifier: "1")
+        #expect(outcome == .suppressedUnmonitored)
+        #expect(await storage.getPolygonMembership()["1"] == nil)
     }
 }
