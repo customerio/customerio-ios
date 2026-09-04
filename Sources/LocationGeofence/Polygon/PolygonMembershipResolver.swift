@@ -32,7 +32,6 @@ final class PolygonMembershipResolver {
     private let logger: Logger
     private var foregroundObserverToken: NSObjectProtocol?
     private var passesInFlight = 0
-    private var freshPassInFlight = false
 
     init(
         storage: GeofenceStorage,
@@ -150,21 +149,18 @@ final class PolygonMembershipResolver {
     /// serves the whole pass.
     ///
     /// Foregrounds arrive in bursts, so a pass already running wins: a second concurrent scan reads
-    /// the same storage and the same fix and can only duplicate the location work. Strength decides
-    /// that, not mere existence — a wake requires a fresh fix and an in-flight foreground pass does
-    /// not, so skipping behind one would drop exactly the pass that runs BECAUSE the device moved,
-    /// with nothing to retry it.
+    /// the same storage and the same fix and can only duplicate the location work. That reasoning
+    /// covers only a pass content with the fix already in hand. A wake runs BECAUSE the device
+    /// moved, and any pass already in flight is working from a fix requested before that movement —
+    /// so no wake yields, not even to another wake, and nothing else would retry it if it did.
+    /// Concurrent requests coalesce inside `MovementFixResolver`, which is what bounds the cost.
     func evaluateAllPolygons(requiresFreshFix: Bool = false) async {
-        if passesInFlight > 0, freshPassInFlight || !requiresFreshFix {
-            logger.geofencePolygonPassSkipped(reason: "a pass of at least this strength is already running")
+        if passesInFlight > 0, !requiresFreshFix {
+            logger.geofencePolygonPassSkipped(reason: "a pass is already running")
             return
         }
         passesInFlight += 1
-        freshPassInFlight = freshPassInFlight || requiresFreshFix
-        defer {
-            passesInFlight -= 1
-            if passesInFlight == 0 { freshPassInFlight = false }
-        }
+        defer { passesInFlight -= 1 }
         let registered = await storage.getRegisteredBusinessIds()
         let polygons = await storage.getCachedGeofences()
             .filter { registered.contains($0.id) && $0.vertices != nil }
