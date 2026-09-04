@@ -46,13 +46,12 @@ extension GeofenceSyncCoordinatorImpl {
         // Read before `recordRegistration` overwrites it — the diff decides which registrations are new.
         let previouslyRegisteredIds = await storage.getRegisteredBusinessIds()
         let nearestIds = Set(nearest.map(\.id))
+        let wakeRadius = PolygonWakeRadius.radius(at: anchor, registeredPolygons: nearest, config: effectiveConfig)
         let osRegistration = await MainActor.run {
             registerWithOsSync(
                 businessRegions: nearest,
                 movementTriggerLocation: anchor,
-                movementTriggerRadius: PolygonWakeRadius.radius(
-                    at: anchor, registeredPolygons: nearest, config: effectiveConfig
-                ),
+                movementTriggerRadius: wakeRadius,
                 registerMovementTrigger: registerMovementTrigger
             )
         }
