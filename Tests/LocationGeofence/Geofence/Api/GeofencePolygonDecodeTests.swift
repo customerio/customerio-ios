@@ -193,6 +193,33 @@ struct GeofencePolygonDecodeTests {
         #expect(reasons["1"] == .unknownShape)
     }
 
+    /// `geometry` and `enclosing_circle` decode with `try?`, so a malformed one becomes nil. Keyed
+    /// on the decoded value the region would read as a plain v1 circle and be monitored as one.
+    @Test
+    func toDomain_givenUndecodablePolygonFieldsWithoutShape_expectRegionDropped() throws {
+        let malformed = """
+        {"id": 1, "latitude": \(Self.centre.latitude), "longitude": \(Self.centre.longitude),
+         "radius": 300, "geometry": "not-an-object"}
+        """
+        var reasons: [String: GeofenceRegionDropReason] = [:]
+        let regions = try decode(responseJson([malformed])).toDomainRegions(onInvalidRegion: { reasons[$0] = $1 })
+        #expect(regions.isEmpty)
+        #expect(reasons["1"] == .unknownShape)
+    }
+
+    /// An explicit null is the server saying "no polygon here", which a v1 circle payload may carry
+    /// once the field ships. It must stay a circle.
+    @Test
+    func toDomain_givenNullPolygonFieldsWithoutShape_expectCircleAccepted() throws {
+        let nulled = """
+        {"id": 1, "latitude": \(Self.centre.latitude), "longitude": \(Self.centre.longitude),
+         "radius": 300, "geometry": null, "enclosing_circle": null}
+        """
+        let regions = try decode(responseJson([nulled])).toDomainRegions()
+        #expect(regions.count == 1)
+        #expect(regions.first?.vertices == nil)
+    }
+
     @Test
     func toDomain_givenMultiPolygonType_expectRegionDropped() throws {
         let response = try decode(responseJson([polygonJson(type: "MultiPolygon")]))

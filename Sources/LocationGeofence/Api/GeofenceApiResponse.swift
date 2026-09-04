@@ -81,6 +81,10 @@ struct GeofenceApiRegion: Decodable {
     /// The circle the server guarantees contains the polygon — the shape actually registered at
     /// the OS as the wake trigger.
     let enclosingCircle: GeofenceApiEnclosingCircle?
+    /// Whether the payload carried a non-null `geometry` or `enclosing_circle` at all, which is not
+    /// the same as either having decoded: both use `try?`, so a malformed value becomes `nil` and
+    /// would otherwise be indistinguishable from a v1 circle.
+    var carriesPolygonFields: Bool = false
     let externalId: String?
     let transitionTypes: [String]?
     /// Wire format is milliseconds since epoch.
@@ -131,6 +135,7 @@ extension GeofenceApiRegion {
         self.radius = try container.decodeIfPresent(Double.self, forKey: .radius)
         self.geometry = try? container.decodeIfPresent(GeofenceApiGeometry.self, forKey: .geometry)
         self.enclosingCircle = try? container.decodeIfPresent(GeofenceApiEnclosingCircle.self, forKey: .enclosingCircle)
+        self.carriesPolygonFields = container.holdsValue(forKey: .geometry) || container.holdsValue(forKey: .enclosingCircle)
         self.externalId = try container.decodeIfPresent(String.self, forKey: .externalId)
         self.transitionTypes = try container.decodeIfPresent([String].self, forKey: .transitionTypes)
         self.lastUpdated = try container.decodeIfPresent(Double.self, forKey: .lastUpdated)
@@ -167,6 +172,12 @@ private extension KeyedDecodingContainer {
         guard let raw = try? decode([String: LenientMetadataValue].self, forKey: key) else { return nil }
         let filtered = raw.compactMapValues(\.value)
         return filtered.isEmpty ? nil : filtered
+    }
+
+    /// Whether the key is present with a non-null value, regardless of whether that value decodes
+    /// into the type the field expects.
+    func holdsValue(forKey key: Key) -> Bool {
+        contains(key) && ((try? decodeNil(forKey: key)) == false)
     }
 
     /// Absent or null → nil, so a not-yet-rolled-out field is treated as "no value" rather than throwing.
@@ -265,10 +276,11 @@ extension GeofenceApiRegion {
         let resolved: ResolvedGeometry?
         let dropReason: GeofenceRegionDropReason
         switch shape?.lowercased() {
-        case nil where geometry != nil || enclosingCircle != nil:
+        case nil where carriesPolygonFields:
             // Polygon fields with no discriminator: the payload describes something this decoder
             // cannot name. Falling through to the flat circle fields would monitor a shape the
-            // server never described. Android drops the same combination.
+            // server never described. Android drops the same combination. Keyed on the fields being
+            // PRESENT, not on their having decoded — a malformed one is still a claim of a polygon.
             return .failure(.unknownShape)
         case nil, "circle":
             resolved = resolvedCircle()
