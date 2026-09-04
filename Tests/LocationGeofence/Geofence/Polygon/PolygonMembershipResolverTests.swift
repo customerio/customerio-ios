@@ -218,6 +218,22 @@ struct PolygonMembershipResolverTests {
         #expect(await setup.storage.getPolygonMembership()["1"] == nil)
     }
 
+    /// The first wake of a process holds no fix of its own, so there was nothing for the freshness
+    /// comparison to reject — and CoreLocation's cached fix, which is exactly the pre-movement one,
+    /// answered the forced request.
+    @Test
+    func handleTransition_givenFreshFixRequiredOnFirstWake_expectNoVerdictFromSystemCache() async {
+        let setup = await makeSetup(fix: nil) // the forced request fails
+        // No fix delivered to this resolver yet: a cold process with only CoreLocation's cache.
+        setup.fixResolver.systemCachedFix = { fix(latitude: 0, longitude: 0) }
+        await setup.storage.setCachedGeofences([polygonGeofence()])
+
+        await setup.resolver.handleTransition(identifier: "1", transition: .enter, occurredAt: Date())
+
+        #expect(await setup.emitter.snapshot().isEmpty)
+        #expect(await setup.storage.getPolygonMembership()["1"] == nil)
+    }
+
     /// A stored ring that no longer builds is not a circle. Forwarding it would fire a customer
     /// enter anywhere inside the covering circle — the polygon's whole annulus included.
     @Test

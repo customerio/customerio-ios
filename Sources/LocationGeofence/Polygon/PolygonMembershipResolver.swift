@@ -283,13 +283,22 @@ final class PolygonMembershipResolver {
     /// already held. That one predates the wake and can sit inside `movementFixMaxAge`, so it would
     /// re-affirm the very verdict the wake exists to revisit — report no fix instead.
     private func resolveFix(requiringFresh: Bool = false) async -> CLLocation? {
-        let priorTimestamp = fixResolver.latestFix?.timestamp
+        // Everything obtainable without asking, which is exactly what a forced request must beat.
+        // Reading only `latestFix` would leave the first wake of a process — which has none — with
+        // nothing to compare against, and CoreLocation's own cached fix would pass as fresh.
+        let priorTimestamp = fixResolver.cachedFix?.timestamp
         return await withCheckedContinuation { continuation in
             fixResolver.resolve(cached: requiringFresh ? nil : fixResolver.cachedFix) { [weak self] _ in
                 guard let self else { return continuation.resume(returning: nil) }
                 let resolved = fixResolver.latestFix
-                if requiringFresh, let resolved, let priorTimestamp, resolved.timestamp <= priorTimestamp {
-                    continuation.resume(returning: nil)
+                if requiringFresh {
+                    // No fallback to the held fix here, on any branch: a wake fires BECAUSE the
+                    // device moved, so anything predating the request describes where it was.
+                    guard let resolved, priorTimestamp.map({ resolved.timestamp > $0 }) ?? true else {
+                        continuation.resume(returning: nil)
+                        return
+                    }
+                    continuation.resume(returning: resolved)
                     return
                 }
                 // Cold process: nothing delivered and the request failed, so CoreLocation's own
