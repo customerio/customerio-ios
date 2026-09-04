@@ -27,6 +27,9 @@ public class EngineWeb: NSObject, EngineWebInstance {
     private var _timeoutTimer: Timer?
     private var _elapsedTimer = ElapsedTimer()
 
+    /// How long the engine gets to report `bootstrapped` before the message is treated as failed.
+    static let bootstrapTimeoutSeconds: TimeInterval = 5.0
+
     public weak var delegate: EngineWebDelegate?
     var webView = WKWebView()
 
@@ -86,11 +89,10 @@ public class EngineWeb: NSObject, EngineWebInstance {
 
         if let url = URL(string: messageUrl) {
             _timeoutTimer?.invalidate()
-            _timeoutTimer = Timer.scheduledTimer(timeInterval: 5.0, target: self, selector: #selector(forcedTimeout), userInfo: nil, repeats: false)
+            _timeoutTimer = Timer.scheduledTimer(timeInterval: Self.bootstrapTimeoutSeconds, target: self, selector: #selector(forcedTimeout), userInfo: nil, repeats: false)
             webView.load(URLRequest(url: url))
         } else {
-            logger.logWithModuleTag("Invalid URL: \(messageUrl)", level: .error)
-            delegate?.error()
+            reportFailure(InAppMessageError(reason: .internalError, detail: "Invalid renderer URL: \(messageUrl)"))
         }
     }
 
@@ -126,13 +128,23 @@ public class EngineWeb: NSObject, EngineWebInstance {
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "gist")
     }
 
+    /// Single exit for every failure in this class: classify, log, then tell the delegate.
+    ///
+    /// `MessageManager` owns the resulting `messageLoadingFailed` dispatch — see `forcedTimeout`.
+    private func reportFailure(_ error: InAppMessageError) {
+        logger.logWithModuleTag(
+            "Message \(currentMessage.describeForLogs) failed: \(error.describeForLogs)",
+            level: .error
+        )
+        delegate?.error()
+    }
+
     @objc
     func forcedTimeout() {
-        logger.logWithModuleTag("Timeout triggered for message: \(currentMessage.describeForLogs), triggering message error.", level: .info)
         // Report through the delegate only. `MessageManager` turns this into a single
         // `messageLoadingFailed` dispatch, the same as every other failure site in this class.
         // Dispatching here as well delivered the host's error callback twice for a timeout.
-        delegate?.error()
+        reportFailure(InAppMessageError(reason: .timeout, detail: "Engine did not bootstrap within \(Int(Self.bootstrapTimeoutSeconds))s"))
     }
 }
 
@@ -179,7 +191,10 @@ extension EngineWeb: WKScriptMessageHandler {
                 delegate?.tap(name: tapProperties.name, action: tapProperties.action, system: tapProperties.system)
             }
         case .error:
-            delegate?.error()
+            reportFailure(InAppMessageError(
+                reason: .renderFailed,
+                detail: EngineEventHandler.getErrorProperties(properties: eventProperties)
+            ))
         }
     }
 }
@@ -212,27 +227,31 @@ extension EngineWeb: WKNavigationDelegate {
 
             webView.evaluateJavaScript(js) { [weak self] _, error in
                 if let error = error {
-                    self?.logger.logWithModuleTag("JavaScript execution error: \(error)", level: .error)
-                    self?.delegate?.error()
+                    self?.reportFailure(InAppMessageError(
+                        reason: .internalError,
+                        detail: "Configuration injection failed: \(error.localizedDescription)"
+                    ))
                 } else {
                     self?.logger.logWithModuleTag("Configuration injected successfully", level: .info)
                 }
             }
         } catch {
-            logger.logWithModuleTag("Failed to encode configuration: \(error)", level: .error)
-            delegate?.error()
+            reportFailure(InAppMessageError(
+                reason: .internalError,
+                detail: "Failed to encode configuration: \(error.localizedDescription)"
+            ))
         }
     }
 
     public func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
-        delegate?.error()
+        reportFailure(InAppMessageError(reason: .webViewCrashed, detail: "WebView content process terminated"))
     }
 
     public func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
-        delegate?.error()
+        reportFailure(InAppMessageError(networkError: error))
     }
 
     public func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
-        delegate?.error()
+        reportFailure(InAppMessageError(networkError: error))
     }
 }

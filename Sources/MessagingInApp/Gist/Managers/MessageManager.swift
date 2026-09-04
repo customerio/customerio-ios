@@ -280,7 +280,14 @@ extension BaseMessageManager: EngineWebDelegate {
     }
 
     public func routeError(route: String) {
-        logger.logWithModuleTag("Error loading message with route: \(route)", level: .error)
+        // The renderer has not emitted `routeError` since the 3.0 bundle, so this path is
+        // effectively unreachable today. Classified anyway so it behaves like the live sites if a
+        // future renderer brings it back.
+        let error = InAppMessageError(reason: .renderFailed, detail: "Failed to load route: \(route)")
+        logger.logWithModuleTag(
+            "Message \(currentMessage.describeForLogs) failed: \(error.describeForLogs)",
+            level: .error
+        )
         inAppMessageManager.dispatch(
             action: .engineAction(
                 action: .messageLoadingFailed(message: currentMessage)
