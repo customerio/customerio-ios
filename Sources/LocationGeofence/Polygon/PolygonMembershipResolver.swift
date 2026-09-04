@@ -113,12 +113,19 @@ final class PolygonMembershipResolver {
     /// Logged because this path bypasses `handleTransition`, so nothing else records that we were
     /// asked to re-check. Reading the absence of a log line as an absence of evaluations led to
     /// exactly the wrong conclusion once already.
-    func evaluateMembership(geofenceId: String, reason: String) async {
+    /// `isStillCurrent` is re-checked after the fix resolves. Resolving suspends, and a user switch
+    /// in that window clears user-scoped state — without the re-check this task would resume and
+    /// rewrite the old user's belief, stamping any resulting event to whoever signed in.
+    func evaluateMembership(
+        geofenceId: String,
+        reason: String,
+        isStillCurrent: (@Sendable () -> Bool)? = nil
+    ) async {
         logger.geofencePolygonEvaluationRequested(identifier: geofenceId, reason: reason)
-        guard let geofence = await cachedGeofence(id: geofenceId),
-              let polygon = geofence.polygonRegion
+        // Early-out only. The ring that decides is read after the fix, inside `evaluate`.
+        guard let geofence = await cachedGeofence(id: geofenceId), geofence.polygonRegion != nil
         else { return }
-        await evaluate(geofence: geofence, polygon: polygon)
+        await evaluate(geofenceId: geofenceId, isStillCurrent: isStillCurrent)
     }
 
     /// Re-evaluates every registered polygon when the app comes to the foreground.
@@ -218,6 +225,10 @@ final class PolygonMembershipResolver {
               let polygon = geofence.polygonRegion
         else {
             logger.geofencePolygonUndecided(identifier: geofenceId, reason: "no longer a registered polygon")
+            return
+        }
+        if let isStillCurrent, !isStillCurrent() {
+            logger.geofencePolygonUndecided(identifier: geofence.id, reason: "user changed while resolving the fix")
             return
         }
         let point = LocationData(latitude: fix.coordinate.latitude, longitude: fix.coordinate.longitude)
