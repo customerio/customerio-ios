@@ -31,6 +31,7 @@ final class PolygonMembershipResolver {
     private let fixResolver: MovementFixResolver
     private let logger: Logger
     private var foregroundObserverToken: NSObjectProtocol?
+    private var isEvaluatingAllPolygons = false
 
     init(
         storage: GeofenceStorage,
@@ -65,7 +66,7 @@ final class PolygonMembershipResolver {
     /// condition the cache has dropped) is forwarded rather than dropped: treating it as a circle
     /// is the behaviour that predates polygons, and losing a real crossing is worse than a
     /// covering-circle-shaped one.
-    func handleTransition(identifier: String, transition: GeofenceTransition, occurredAt: Date? = nil) async {
+    func handleTransition(identifier: String, transition: GeofenceTransition, occurredAt: Date) async {
         logger.geofenceOsTransitionReceived(identifier: identifier, transition: transition)
         guard let geofence = await cachedGeofence(id: identifier), geofence.vertices != nil else {
             // Uncached, or a genuine circle: forward untouched, the behaviour that predates polygons.
@@ -84,7 +85,7 @@ final class PolygonMembershipResolver {
             // fix. It is still ORDERED against the stored belief: a synthesized or replayed exit
             // arriving after a newer enter would otherwise swallow it and leave the device believed
             // outside while it sits inside.
-            await apply(.outside, to: geofence, evidence: occurredAt)
+            await apply(.outside, to: geofence, evidence: occurredAt, confirmedByFix: false)
         case .enter:
             await evaluate(geofence: geofence, polygon: polygon)
         }
@@ -94,15 +95,34 @@ final class PolygonMembershipResolver {
     ///
     /// The one case no OS event covers: a device already inside a polygon when monitoring begins
     /// has crossed nothing, so the OS has nothing to report, and a device standing still produces
-    /// no movement pass either. Foregrounding is the remaining signal, and it is free — the first
-    /// evaluation resolves a fix and the rest read it from the cache.
+    /// no movement pass either. Foregrounding is the remaining signal, and it is free — one fix
+    /// serves the whole pass.
+    ///
+    /// Foregrounds arrive in bursts, so a pass already running wins: a second concurrent scan reads
+    /// the same storage and the same fix and can only duplicate the location work.
     func evaluateAllPolygons() async {
+        guard !isEvaluatingAllPolygons else {
+            logger.geofencePolygonPassSkipped(reason: "a pass is already running")
+            return
+        }
+        isEvaluatingAllPolygons = true
+        defer { isEvaluatingAllPolygons = false }
         let registered = await storage.getRegisteredBusinessIds()
         let polygons = await storage.getCachedGeofences()
             .filter { registered.contains($0.id) && $0.vertices != nil }
+        guard !polygons.isEmpty else { return }
+        // One request for the whole pass. Resolving per polygon would issue a fresh timed request
+        // for every one of them whenever the cache stays empty, holding the main actor for minutes
+        // and still deciding nothing.
+        guard let fix = await resolveFix() else {
+            for geofence in polygons {
+                logger.geofencePolygonUndecided(identifier: geofence.id, reason: "no usable fix")
+            }
+            return
+        }
         for geofence in polygons {
             guard let polygon = geofence.polygonRegion else { continue }
-            await evaluate(geofence: geofence, polygon: polygon)
+            await evaluate(geofence: geofence, polygon: polygon, fix: fix)
         }
     }
 
@@ -122,7 +142,15 @@ final class PolygonMembershipResolver {
     }
 
     private func evaluate(geofence: Geofence, polygon: PolygonRegion) async {
-        guard let fix = await resolveFix(), CLLocationCoordinate2DIsValid(fix.coordinate) else {
+        guard let fix = await resolveFix() else {
+            logger.geofencePolygonUndecided(identifier: geofence.id, reason: "no usable fix")
+            return
+        }
+        await evaluate(geofence: geofence, polygon: polygon, fix: fix)
+    }
+
+    private func evaluate(geofence: Geofence, polygon: PolygonRegion, fix: CLLocation) async {
+        guard CLLocationCoordinate2DIsValid(fix.coordinate) else {
             logger.geofencePolygonUndecided(identifier: geofence.id, reason: "no usable fix")
             return
         }
@@ -139,14 +167,21 @@ final class PolygonMembershipResolver {
             )
             return
         }
-        await apply(membership, to: geofence, evidence: fix.timestamp)
+        await apply(membership, to: geofence, evidence: fix.timestamp, confirmedByFix: true)
     }
 
     /// Applies a membership verdict and delivers the crossing when it changes the stored belief.
     /// `evidence` is when the crossing happened — a fix's timestamp, or the OS event's date for a
-    /// covering-circle exit. `nil` only when the caller has no date, which leaves the write
-    /// unordered against the stored belief.
-    private func apply(_ membership: PolygonMembership, to geofence: Geofence, evidence: Date?) async {
+    /// covering-circle exit. Required, not optional: it is what orders the write against the stored
+    /// belief, and a caller allowed to omit it could silently write an unordered one. `confirmedByFix`
+    /// says which of the two it was, since both carry a date and the date alone cannot tell the log
+    /// how membership was decided.
+    private func apply(
+        _ membership: PolygonMembership,
+        to geofence: Geofence,
+        evidence: Date,
+        confirmedByFix: Bool
+    ) async {
         let outcome = await storage.recordPolygonMembership(
             membership,
             forIdentifier: geofence.id,
@@ -158,7 +193,7 @@ final class PolygonMembershipResolver {
         logger.geofencePolygonTransition(
             identifier: geofence.id,
             transition: transition,
-            confirmedByFix: evidence != nil
+            confirmedByFix: confirmedByFix
         )
         await transitionEmitter.trackTransition(geofenceId: geofence.id, transition: transition)
     }

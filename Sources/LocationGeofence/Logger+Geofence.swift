@@ -166,6 +166,12 @@ extension Logger {
         info("Polygon \(transition.rawValue) for region \(identifier), confirmed by \(basis)", geofenceTag)
     }
 
+    /// A whole-set pass declined because one is already running. Logged so a foreground that
+    /// produced no verdicts is distinguishable from one that never ran.
+    func geofencePolygonPassSkipped(reason: String) {
+        debug("Skipped polygon evaluation pass: \(reason)", geofenceTag)
+    }
+
     func geofencePolygonUndecided(identifier: String, reason: String) {
         debug("Polygon membership undecided for region \(identifier): \(reason)", geofenceTag)
     }

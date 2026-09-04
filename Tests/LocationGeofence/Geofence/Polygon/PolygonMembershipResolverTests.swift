@@ -92,6 +92,57 @@ struct PolygonMembershipResolverTests {
         )
     }
 
+    /// Counts location requests so a pass that says it shares one fix can be held to it.
+    private final class RequestCounter {
+        var count = 0
+    }
+
+    private func countingRequests(_ setup: Setup) -> RequestCounter {
+        let counter = RequestCounter()
+        setup.fixResolver.requestFreshFix = { [weak fixResolver = setup.fixResolver] in
+            counter.count += 1
+            fixResolver?.handleRequestFailure()
+        }
+        return counter
+    }
+
+    private func registerPolygons(_ setup: Setup, ids: [String]) async {
+        await setup.storage.recordRegistration(
+            center: LocationData(latitude: 0, longitude: 0), businessIds: Set(ids)
+        )
+        await setup.storage.setCachedGeofences(ids.map { polygonGeofence(id: $0) })
+    }
+
+    // MARK: - One fix per pass
+
+    /// A failed request leaves the cache empty, so resolving inside the loop would issue one timed
+    /// request per polygon and hold the main actor for as long as that takes.
+    @Test
+    func evaluateAllPolygons_givenNoFixAvailable_expectOneRequestForTheWholePass() async {
+        let setup = await makeSetup(fix: nil)
+        await registerPolygons(setup, ids: ["1", "2", "3"])
+        let counter = countingRequests(setup)
+
+        await setup.resolver.evaluateAllPolygons()
+
+        #expect(counter.count == 1)
+    }
+
+    /// Foregrounds arrive in bursts. A second concurrent pass reads the same storage and the same
+    /// fix, so it can only duplicate the location work.
+    @Test
+    func evaluateAllPolygons_givenConcurrentPasses_expectSecondSkipped() async {
+        let setup = await makeSetup(fix: nil)
+        await registerPolygons(setup, ids: ["1", "2"])
+        let counter = countingRequests(setup)
+
+        async let first: Void = setup.resolver.evaluateAllPolygons()
+        async let second: Void = setup.resolver.evaluateAllPolygons()
+        _ = await(first, second)
+
+        #expect(counter.count == 1)
+    }
+
     // MARK: - Circle fences pass through untouched
 
     @Test
@@ -99,7 +150,7 @@ struct PolygonMembershipResolverTests {
         let setup = await makeSetup(fix: nil)
         await setup.storage.setCachedGeofences([circleGeofence()])
 
-        await setup.resolver.handleTransition(identifier: "2", transition: .enter)
+        await setup.resolver.handleTransition(identifier: "2", transition: .enter, occurredAt: Date())
 
         let delivered = await setup.emitter.snapshot()
         #expect(delivered.count == 1)
@@ -112,7 +163,7 @@ struct PolygonMembershipResolverTests {
     func handleTransition_givenUncachedGeofence_expectForwarded() async {
         let setup = await makeSetup(fix: nil)
 
-        await setup.resolver.handleTransition(identifier: "999", transition: .exit)
+        await setup.resolver.handleTransition(identifier: "999", transition: .exit, occurredAt: Date())
 
         #expect(await setup.emitter.snapshot().count == 1)
     }
@@ -124,7 +175,7 @@ struct PolygonMembershipResolverTests {
         let setup = await makeSetup(fix: fix(latitude: 0, longitude: 0))
         await setup.storage.setCachedGeofences([polygonGeofence()])
 
-        await setup.resolver.handleTransition(identifier: "1", transition: .enter)
+        await setup.resolver.handleTransition(identifier: "1", transition: .enter, occurredAt: Date())
 
         let delivered = await setup.emitter.snapshot()
         #expect(delivered.count == 1)
@@ -144,7 +195,7 @@ struct PolygonMembershipResolverTests {
         )
         await setup.storage.setCachedGeofences([degenerate])
 
-        await setup.resolver.handleTransition(identifier: "1", transition: .enter)
+        await setup.resolver.handleTransition(identifier: "1", transition: .enter, occurredAt: Date())
 
         #expect(await setup.emitter.snapshot().isEmpty)
         #expect(await setup.storage.getPolygonMembership()["1"] == nil)
@@ -156,7 +207,7 @@ struct PolygonMembershipResolverTests {
     func handleTransition_givenExitOlderThanBelief_expectSuppressed() async {
         let setup = await makeSetup(fix: fix(latitude: 0, longitude: 0))
         await setup.storage.setCachedGeofences([polygonGeofence()])
-        await setup.resolver.handleTransition(identifier: "1", transition: .enter)
+        await setup.resolver.handleTransition(identifier: "1", transition: .enter, occurredAt: Date())
         #expect(await setup.storage.getPolygonMembership()["1"]?.membership == .inside)
 
         await setup.resolver.handleTransition(
@@ -174,7 +225,7 @@ struct PolygonMembershipResolverTests {
         let setup = await makeSetup(fix: fix(latitude: 0.0024, longitude: 0))
         await setup.storage.setCachedGeofences([polygonGeofence()])
 
-        await setup.resolver.handleTransition(identifier: "1", transition: .enter)
+        await setup.resolver.handleTransition(identifier: "1", transition: .enter, occurredAt: Date())
 
         #expect(await setup.emitter.snapshot().isEmpty)
         #expect(await setup.storage.getPolygonMembership()["1"]?.membership == .outside)
@@ -187,7 +238,7 @@ struct PolygonMembershipResolverTests {
         let setup = await makeSetup(fix: fix(latitude: 0, longitude: 0, accuracy: 400))
         await setup.storage.setCachedGeofences([polygonGeofence()])
 
-        await setup.resolver.handleTransition(identifier: "1", transition: .enter)
+        await setup.resolver.handleTransition(identifier: "1", transition: .enter, occurredAt: Date())
 
         #expect(await setup.emitter.snapshot().isEmpty)
         #expect(await setup.storage.getPolygonMembership()["1"] == nil)
@@ -198,7 +249,7 @@ struct PolygonMembershipResolverTests {
         let setup = await makeSetup(fix: nil)
         await setup.storage.setCachedGeofences([polygonGeofence()])
 
-        await setup.resolver.handleTransition(identifier: "1", transition: .enter)
+        await setup.resolver.handleTransition(identifier: "1", transition: .enter, occurredAt: Date())
 
         #expect(await setup.emitter.snapshot().isEmpty)
         #expect(await setup.storage.getPolygonMembership()["1"] == nil)
@@ -213,7 +264,7 @@ struct PolygonMembershipResolverTests {
         await setup.storage.setCachedGeofences([polygonGeofence()])
         _ = await setup.storage.recordPolygonMembership(.inside, forIdentifier: "1")
 
-        await setup.resolver.handleTransition(identifier: "1", transition: .exit)
+        await setup.resolver.handleTransition(identifier: "1", transition: .exit, occurredAt: Date())
 
         let delivered = await setup.emitter.snapshot()
         #expect(delivered.count == 1)
@@ -226,7 +277,7 @@ struct PolygonMembershipResolverTests {
         await setup.storage.setCachedGeofences([polygonGeofence()])
         _ = await setup.storage.recordPolygonMembership(.outside, forIdentifier: "1")
 
-        await setup.resolver.handleTransition(identifier: "1", transition: .exit)
+        await setup.resolver.handleTransition(identifier: "1", transition: .exit, occurredAt: Date())
 
         #expect(await setup.emitter.snapshot().isEmpty)
     }
@@ -283,7 +334,7 @@ struct PolygonMembershipResolverTests {
         await setup.storage.setCachedGeofences([polygonGeofence(transitionTypes: [.enter])])
         _ = await setup.storage.recordPolygonMembership(.inside, forIdentifier: "1")
 
-        await setup.resolver.handleTransition(identifier: "1", transition: .exit)
+        await setup.resolver.handleTransition(identifier: "1", transition: .exit, occurredAt: Date())
 
         #expect(await setup.emitter.snapshot().isEmpty)
         #expect(await setup.storage.getPolygonMembership()["1"]?.membership == .outside)
