@@ -58,6 +58,9 @@ struct PolygonMembershipResolverTests {
             fileManager: .default,
             directoryURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         )
+        // A belief is only created for a registered polygon, so the fixture has to be registered or
+        // every write comes back `.suppressedUnmonitored`.
+        await storage.recordRegistration(center: LocationData(latitude: 0, longitude: 0), businessIds: ["1"])
         let emitter = EmitterSpy()
         let fixResolver = MovementFixResolver(logger: LoggerMock())
         // Seam: resolve inline with the supplied fix instead of touching CoreLocation.
