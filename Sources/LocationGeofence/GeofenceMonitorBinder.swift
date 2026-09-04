@@ -18,7 +18,7 @@ enum GeofenceMonitorBinder {
         coordinator: GeofenceSyncCoordinator,
         backgroundTaskRunner: BackgroundTaskRunner = GeofenceBackgroundTime.runner(name: "io.customer.geofence.movement-pass")
     ) {
-        monitor.setOnTransition { [weak resolver, weak coordinator] identifier, transition, location in
+        monitor.setOnTransition { [weak resolver, weak coordinator] identifier, transition, location, occurredAt in
             // CLLocationManager delivers on main; both handlers below are async with their
             // own serialization (tracker active-delivery dedup, coordinator refresh gate),
             // so fire-and-forget Tasks are safe.
@@ -36,7 +36,7 @@ enum GeofenceMonitorBinder {
                 }
                 return
             }
-            Task { await resolver?.handleTransition(identifier: identifier, transition: transition, occurredAt: Date()) }
+            Task { await resolver?.handleTransition(identifier: identifier, transition: transition, occurredAt: occurredAt) }
         }
     }
 }
