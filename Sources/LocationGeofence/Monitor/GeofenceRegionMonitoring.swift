@@ -9,7 +9,10 @@ import Foundation
 /// The closure body is not statically isolated — callers are free to hop to whatever actor they
 /// need: `Task.detached { ... }` for off-main work, `MainActor.assumeIsolated { ... }` for direct
 /// main-actor reads, or an `await someActor.method()` to hand off to another isolation domain.
-typealias GeofenceTransitionHandler = @Sendable (String, GeofenceTransition, LocationData?) -> Void
+/// `occurredAt` is when the crossing happened — the OS event's date, or the fix's timestamp for a
+/// synthesized heal. Lets a consumer order a late or replayed transition against what it believes,
+/// which is why every dispatch site owes one: a consumer handed no date writes unordered.
+typealias GeofenceTransitionHandler = @Sendable (String, GeofenceTransition, LocationData?, Date) -> Void
 
 /// Callback when iOS reports a change to the location authorization status.
 /// Invoked on the main actor — same isolation domain as `CLLocationManagerDelegate`.

@@ -54,4 +54,18 @@ extension GeofenceSyncCoordinatorImpl {
         CLLocation(latitude: from.latitude, longitude: from.longitude)
             .distance(from: CLLocation(latitude: to.latitude, longitude: to.longitude))
     }
+
+    /// Drops polygons the OS cannot monitor BEFORE ranking, so a fence that would be refused does
+    /// not consume one of `maxBusinessGeofences` and leave a usable candidate unregistered.
+    @MainActor
+    func monitorableRegions(_ regions: [Geofence]) -> [Geofence] {
+        let maximumRadius = monitor.maximumMonitoringRadius
+        return regions.filter { region in
+            guard region.vertices != nil, region.radius > maximumRadius else { return true }
+            logger.geofencePolygonExceedsMonitoringLimit(
+                identifier: region.id, radius: region.radius, limit: maximumRadius
+            )
+            return false
+        }
+    }
 }

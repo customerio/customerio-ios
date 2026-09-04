@@ -307,12 +307,12 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preco
             // Fire-and-forget so a slow fix can't stall the pending-event drain behind it.
             movementFixResolver.resolve(cached: bestKnownFix()) { [weak self] location in
                 self?.logger.geofenceOsTransitionReceived(identifier: identifier, transition: transition)
-                self?.onTransition?(identifier, transition, location)
+                self?.onTransition?(identifier, transition, location, event.date)
             }
             return
         }
         logger.geofenceOsTransitionReceived(identifier: identifier, transition: transition)
-        onTransition?(identifier, transition, currentLocationData())
+        onTransition?(identifier, transition, currentLocationData(), event.date)
     }
 
     // MARK: - GeofenceRegionMonitoring

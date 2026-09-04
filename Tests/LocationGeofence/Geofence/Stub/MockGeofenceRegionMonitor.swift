@@ -230,7 +230,12 @@ final class MockGeofenceRegionMonitor: GeofenceRegionMonitoring {
         )
     }
 
-    func simulateTransition(identifier: String, transition: GeofenceTransition, location: LocationData?) {
-        onTransition?(identifier, transition, location)
+    func simulateTransition(
+        identifier: String,
+        transition: GeofenceTransition,
+        location: LocationData?,
+        occurredAt: Date = Date()
+    ) {
+        onTransition?(identifier, transition, location, occurredAt)
     }
 }
