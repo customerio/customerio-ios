@@ -183,6 +183,25 @@ struct PolygonMembershipResolverTests {
         #expect(await setup.storage.getPolygonMembership()["1"]?.membership == .inside)
     }
 
+    /// The pass resolves ONE fix for every polygon. A per-polygon "first one pays" flag would clear
+    /// after the first evaluation even when it got no fresh fix, silently downgrading polygon two
+    /// onward to the pre-wake fix — so assert the second polygon is undecided too, not just the first.
+    @Test
+    func evaluateAllPolygons_givenFreshFixRequiredButRequestFails_expectEveryPolygonUndecided() async {
+        let setup = await makeSetup(fix: nil) // the forced request fails
+        setup.fixResolver.handleResolvedFix(fix(latitude: 0, longitude: 0)) // pre-wake fix, inside
+        await setup.storage.recordRegistration(
+            center: LocationData(latitude: 0, longitude: 0), businessIds: ["1", "3"]
+        )
+        await setup.storage.setCachedGeofences([polygonGeofence(), polygonGeofence(id: "3")])
+
+        await setup.resolver.evaluateAllPolygons(requiresFreshFix: true)
+
+        #expect(await setup.emitter.snapshot().isEmpty)
+        #expect(await setup.storage.getPolygonMembership()["1"] == nil)
+        #expect(await setup.storage.getPolygonMembership()["3"] == nil)
+    }
+
     /// A wake fires BECAUSE the device moved, so the fix it already holds describes where it was.
     /// When the forced request fails, falling back to that fix re-affirms the stale verdict — the
     /// exact silent miss the fresh-fix rule exists to prevent — so no verdict must be reached.
@@ -193,7 +212,7 @@ struct PolygonMembershipResolverTests {
         setup.fixResolver.handleResolvedFix(fix(latitude: 0, longitude: 0))
         await setup.storage.setCachedGeofences([polygonGeofence()])
 
-        await setup.resolver.handleTransition(identifier: "1", transition: .enter)
+        await setup.resolver.handleTransition(identifier: "1", transition: .enter, occurredAt: Date())
 
         #expect(await setup.emitter.snapshot().isEmpty)
         #expect(await setup.storage.getPolygonMembership()["1"] == nil)
