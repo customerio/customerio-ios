@@ -1889,6 +1889,44 @@ struct GeofenceSyncCoordinatorTests {
         #expect(registered.contains("circle"))
     }
 
+    /// The dropped polygon must not be recorded as registered either: `evaluateAllPolygons` reads
+    /// that set, so recording it would have the resolver decide membership for a fence the OS never
+    /// took — an enter with no wake behind it and no exit to balance it.
+    @Test
+    func remoteRefresh_givenPolygonCoveringCircleOverOsLimit_expectNotRecordedAsRegistered() async {
+        let anchor = LocationData(latitude: 0, longitude: 0)
+        let storage = makeStorage()
+        let dateUtil = DateUtilStub()
+        await storage.recordSync(timestamp: dateUtil.givenNow.addingTimeInterval(-25 * 60 * 60), location: anchor)
+        let oversizedPolygon = Geofence(
+            id: "poly", latitude: 0, longitude: 0, radius: 5000, name: nil,
+            transitionTypes: [.enter, .exit], lastUpdated: dateUtil.givenNow,
+            vertices: [
+                LocationData(latitude: -0.01, longitude: -0.01),
+                LocationData(latitude: -0.01, longitude: 0.01),
+                LocationData(latitude: 0.01, longitude: 0.01),
+                LocationData(latitude: 0.01, longitude: -0.01)
+            ]
+        )
+        let smallCircle = Geofence(
+            id: "circle", latitude: 0, longitude: 0, radius: 100, name: nil,
+            transitionTypes: [.enter, .exit], lastUpdated: dateUtil.givenNow
+        )
+        let api = GeofenceApiServiceMock()
+        api.fetchNearbyGeofencesClosure = { _, _, completion in
+            completion(.success(makeApiResponse(regions: [oversizedPolygon, smallCircle])))
+        }
+        let monitor = MockGeofenceRegionMonitor()
+        monitor.maximumMonitoringRadius = 1000
+        let setup = makeCoordinator(api: api, storage: storage, monitor: monitor, dateUtil: dateUtil)
+
+        _ = await setup.coordinator.refresh(latitude: anchor.latitude, longitude: anchor.longitude)
+
+        let recorded = await storage.getRegisteredBusinessIds()
+        #expect(!recorded.contains("poly"))
+        #expect(recorded.contains("circle"))
+    }
+
     // MARK: - Initial enter-when-inside (diff-based, both monitor paths)
 
     /// A polygon's `radius` is its covering circle, so the containment test that serves circles

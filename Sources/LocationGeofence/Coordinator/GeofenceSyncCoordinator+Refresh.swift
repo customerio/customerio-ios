@@ -61,7 +61,10 @@ extension GeofenceSyncCoordinatorImpl {
             await storage.setCachedConfig(parsedConfig)
         }
         await storage.recordSync(timestamp: dateUtil.now, location: anchor)
-        await storage.recordRegistration(center: anchor, businessIds: nearestIds)
+        // Only what the OS accepted: an oversized polygon is deliberately not registered, and
+        // recording it anyway would have the membership resolver evaluate a fence with no wake
+        // behind it — delivering an enter that nothing can ever balance with an exit.
+        await storage.recordRegistration(center: anchor, businessIds: nearestIds.intersection(osRegistration.registeredIds))
         emitInitialEnters(
             candidates: nearest,
             osRegistration: osRegistration,
@@ -98,7 +101,10 @@ extension GeofenceSyncCoordinatorImpl {
                 registerMovementTrigger: registerMovementTrigger
             )
         }
-        await storage.recordRegistration(center: anchor, businessIds: nearestIds)
+        // Only what the OS accepted: an oversized polygon is deliberately not registered, and
+        // recording it anyway would have the membership resolver evaluate a fence with no wake
+        // behind it — delivering an enter that nothing can ever balance with an exit.
+        await storage.recordRegistration(center: anchor, businessIds: nearestIds.intersection(osRegistration.registeredIds))
         emitInitialEnters(
             candidates: nearest,
             osRegistration: osRegistration,
