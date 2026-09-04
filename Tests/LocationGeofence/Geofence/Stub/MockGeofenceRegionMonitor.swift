@@ -234,8 +234,9 @@ final class MockGeofenceRegionMonitor: GeofenceRegionMonitoring {
         identifier: String,
         transition: GeofenceTransition,
         location: LocationData?,
-        occurredAt: Date = Date()
+        occurredAt: Date = Date(),
+        locationIsFresh: Bool = true
     ) {
-        onTransition?(identifier, transition, location, occurredAt)
+        onTransition?(identifier, transition, location, occurredAt, locationIsFresh)
     }
 }

@@ -26,9 +26,10 @@ enum HandleMovementTier: String, Sendable {
 ///   whether the coordinates describe where the device is NOW or are a stored value standing in for
 ///   it; only the caller knows, and the movement trigger cannot be sized to a polygon boundary
 ///   around a point the device may not be at.
-/// - `handleMovement(latitude:longitude:)` — movement-trigger EXIT entry. Re-ranks the cached set
-///   for the new location; bootstraps from the server only when there's no anchor. Shares the same
-///   dedup gate as `refresh`.
+/// - `handleMovement(latitude:longitude:anchorIsLiveFix:)` — movement-trigger EXIT entry. Re-ranks
+///   the cached set for the new location; bootstraps from the server only when there's no anchor.
+///   Shares the same dedup gate as `refresh`. A movement pass whose fresh-fix request failed carries
+///   the cached fix that prompted it, so this entry is not automatically live either.
 /// - `applyCachedRegistration(...)` — synchronously register from caller-fetched state,
 ///   used by cold-wake / boot / auth-change paths. Synchronous on the main actor so
 ///   `ownedRegionIdentifiers` is populated before the next yield — otherwise the OS may
@@ -38,7 +39,7 @@ enum HandleMovementTier: String, Sendable {
 ///   state (cooldowns, last-sync). Preserves the workspace cache.
 protocol GeofenceSyncCoordinator: AutoMockable, AnyObject, Sendable {
     func refresh(latitude: Double, longitude: Double, anchorIsLiveFix: Bool) async -> Result<Void, GeofenceSyncError>
-    func handleMovement(latitude: Double, longitude: Double) async -> Result<Void, GeofenceSyncError>
+    func handleMovement(latitude: Double, longitude: Double, anchorIsLiveFix: Bool) async -> Result<Void, GeofenceSyncError>
     func reset() async -> Result<Void, GeofenceSyncError>
     @MainActor
     func applyCachedRegistration(
@@ -47,14 +48,6 @@ protocol GeofenceSyncCoordinator: AutoMockable, AnyObject, Sendable {
         config: GeofenceConfig?,
         userId: String?
     ) -> GeofenceRegistration?
-}
-
-extension GeofenceSyncCoordinator {
-    /// For callers holding a fix they just obtained. A caller passing a stored or fallback
-    /// coordinate must use the full form and say so — see `anchorIsLiveFix`.
-    func refresh(latitude: Double, longitude: Double) async -> Result<Void, GeofenceSyncError> {
-        await refresh(latitude: latitude, longitude: longitude, anchorIsLiveFix: true)
-    }
 }
 
 /// `@unchecked Sendable`: stored `Logger` and `DateUtil` are existentials of protocols
@@ -151,22 +144,29 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
         }
     }
 
-    func handleMovement(latitude: Double, longitude: Double) async -> Result<Void, GeofenceSyncError> {
+    func handleMovement(latitude: Double, longitude: Double, anchorIsLiveFix: Bool) async -> Result<Void, GeofenceSyncError> {
         guard acquireGate() else {
             logger.geofenceSyncSkipped(reason: "refresh already in progress")
             return .failure(.alreadyInProgress)
         }
         let expectedUserId = identifiedUserId
-        let result = await performMovement(expectedUserId: expectedUserId, latitude: latitude, longitude: longitude)
+        let result = await performMovement(
+            expectedUserId: expectedUserId, latitude: latitude, longitude: longitude,
+            anchorIsLiveFix: anchorIsLiveFix
+        )
         let cleaned = await cleanupIfUserChanged(expectedUserId: expectedUserId)
         releaseGate()
-        // A movement EXIT always carries a fresh fix, so the retry may size the trigger tightly.
-        if cleaned { retryForCurrentUser(latitude: latitude, longitude: longitude, anchorIsLiveFix: true) }
+        if cleaned { retryForCurrentUser(latitude: latitude, longitude: longitude, anchorIsLiveFix: anchorIsLiveFix) }
         return result
     }
 
     /// The movement body, extracted for a single gated exit — same rationale as `performRefresh`.
-    private func performMovement(expectedUserId: String?, latitude: Double, longitude: Double) async -> Result<Void, GeofenceSyncError> {
+    private func performMovement(
+        expectedUserId: String?,
+        latitude: Double,
+        longitude: Double,
+        anchorIsLiveFix: Bool
+    ) async -> Result<Void, GeofenceSyncError> {
         guard let userId = expectedUserId else {
             logger.geofenceSyncSkipped(reason: "no identified user")
             return .failure(.noIdentifiedUser)
@@ -185,7 +185,7 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
                 expectedUserId: userId,
                 anchor: movement,
                 cachedConfig: cachedConfig,
-                anchorIsLiveFix: true
+                anchorIsLiveFix: anchorIsLiveFix
             )
             if case .failure = remote {
                 // A failed pass never re-centers the trigger, leaving it on the circle the device
@@ -196,13 +196,14 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
                     anchor: movement,
                     config: effectiveConfig,
                     cachedRegions: await storage.getCachedGeofences(),
-                    anchorIsLiveFix: true
+                    anchorIsLiveFix: anchorIsLiveFix
                 )
             }
             return remote
         } else if await !movedBeyondRerankRadius(to: movement, config: effectiveConfig) {
             return await performPolygonWakePass(
-                expectedUserId: userId, at: movement, config: effectiveConfig
+                expectedUserId: userId, at: movement, config: effectiveConfig,
+                anchorIsLiveFix: anchorIsLiveFix
             )
         } else {
             logger.geofenceMovementTrigger(tier: .localRerank)
@@ -212,7 +213,7 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
                 anchor: movement,
                 config: effectiveConfig,
                 cachedRegions: cachedRegions,
-                anchorIsLiveFix: true
+                anchorIsLiveFix: anchorIsLiveFix
             )
         }
     }

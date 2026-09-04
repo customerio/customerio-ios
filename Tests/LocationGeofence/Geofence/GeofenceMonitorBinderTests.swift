@@ -83,6 +83,29 @@ struct GeofenceMonitorBinderTests {
         #expect(coordinator.handleMovementCallsCount == 1)
         #expect(coordinator.handleMovementReceivedArguments?.latitude == 37.0)
         #expect(coordinator.handleMovementReceivedArguments?.longitude == -122.0)
+        #expect(coordinator.handleMovementReceivedArguments?.anchorIsLiveFix == true)
+    }
+
+    /// A movement pass whose fresh-fix request failed carries the cached fix that prompted it. The
+    /// coordinator sizes the wake circle from these coordinates, so the staleness has to survive the
+    /// hop rather than being assumed away because it is the movement path.
+    @Test
+    func bind_givenMovementTriggerExitOnStaleFix_expectAnchorNotReportedLive() async {
+        let monitor = MockGeofenceRegionMonitor()
+        let coordinator = makeCoordinatorMock()
+        let tracker = makeTracker(deliveryTracker: makeDeliveryMock())
+
+        let resolver = makeResolver(tracker: tracker)
+        GeofenceMonitorBinder.bind(monitor: monitor, resolver: resolver, coordinator: coordinator)
+        monitor.simulateTransition(
+            identifier: GeofenceConstants.movementTriggerIdentifier,
+            transition: .exit,
+            location: LocationData(latitude: 37.0, longitude: -122.0),
+            locationIsFresh: false
+        )
+        await awaitDispatch(coordinator.handleMovementCallsCount > 0)
+
+        #expect(coordinator.handleMovementReceivedArguments?.anchorIsLiveFix == false)
     }
 
     /// We only register the movement trigger for `.exit`; an unexpected `.enter` on the

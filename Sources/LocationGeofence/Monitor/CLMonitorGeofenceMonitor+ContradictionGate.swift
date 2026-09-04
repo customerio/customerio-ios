@@ -95,7 +95,7 @@ extension CLMonitorGeofenceMonitor {
             return bestKnownFix()
         }
         let fix: CLLocation? = await withCheckedContinuation { continuation in
-            movementFixResolver.resolve(cached: bestKnownFix()) { [weak self] _ in
+            movementFixResolver.resolve(cached: bestKnownFix()) { [weak self] _, _ in
                 continuation.resume(returning: self?.bestKnownFix())
             }
         }

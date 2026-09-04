@@ -127,11 +127,12 @@ extension GeofenceSyncCoordinatorImpl {
     func performPolygonWakePass(
         expectedUserId: String,
         at location: LocationData,
-        config: GeofenceConfig
+        config: GeofenceConfig,
+        anchorIsLiveFix: Bool
     ) async -> Result<Void, GeofenceSyncError> {
         let registeredIds = await storage.getRegisteredBusinessIds()
         let registered = await storage.getCachedGeofences().filter { registeredIds.contains($0.id) }
-        let radius = PolygonWakeRadius.radius(at: location, registeredPolygons: registered, config: config)
+        let radius = wakeRadius(at: location, polygons: registered, config: config, anchorIsLiveFix: anchorIsLiveFix)
         logger.geofencePolygonWakePass(radius: radius, polygonCount: registered.count { $0.vertices != nil })
         _ = await MainActor.run {
             registerWithOsSync(
@@ -146,7 +147,15 @@ extension GeofenceSyncCoordinatorImpl {
     }
 
     /// The trigger radius for a registration, sized to the nearest polygon boundary only when the
-    /// anchor is where the device actually is. A stored anchor can be a long way from the device —
+    /// anchor is a fix the caller holds.
+    ///
+    /// `anchorIsLiveFix` means "a fix no older than `movementFixMaxAge`", NOT "the device is here":
+    /// a 30 s fix at speed is several hundred metres old, so a floor-sized trigger can still be
+    /// planted around a point the device has left. On iOS 17+ that costs one spurious re-arm cycle
+    /// and self-corrects; the classic path, where it would instead be a trigger that never fires,
+    /// has to size the radius against the fix's age. Logged with the chosen radius so a drive can
+    /// tell a spurious cycle from a real one — the fix's own age is on the line above it.
+    /// A stored anchor can be a long way from the device —
     /// unbounded once the process has been dead — and a boundary-sized circle around it would be
     /// one the device already stands outside: a spurious cycle on iOS 17+, and on the classic path
     /// a trigger that never fires at all. The full refresh radius is the safe default there; the
@@ -157,8 +166,13 @@ extension GeofenceSyncCoordinatorImpl {
         config: GeofenceConfig,
         anchorIsLiveFix: Bool
     ) -> Double {
-        guard anchorIsLiveFix else { return config.localRefreshTriggerRadius }
-        return PolygonWakeRadius.radius(at: anchor, registeredPolygons: polygons, config: config)
+        guard anchorIsLiveFix else {
+            logger.geofenceWakeRadiusChosen(radius: config.localRefreshTriggerRadius, anchorIsLiveFix: false)
+            return config.localRefreshTriggerRadius
+        }
+        let radius = PolygonWakeRadius.radius(at: anchor, registeredPolygons: polygons, config: config)
+        logger.geofenceWakeRadiusChosen(radius: radius, anchorIsLiveFix: true)
+        return radius
     }
 
     /// Decodes the response's regions, or fails when the payload turns out to be unreadable rather

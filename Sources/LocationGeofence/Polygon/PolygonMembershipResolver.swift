@@ -296,7 +296,7 @@ final class PolygonMembershipResolver {
         // nothing to compare against, and CoreLocation's own cached fix would pass as fresh.
         let priorTimestamp = fixResolver.cachedFix?.timestamp
         return await withCheckedContinuation { continuation in
-            fixResolver.resolve(cached: requiringFresh ? nil : fixResolver.cachedFix) { [weak self] _ in
+            fixResolver.resolve(cached: requiringFresh ? nil : fixResolver.cachedFix) { [weak self] _, _ in
                 guard let self else { return continuation.resume(returning: nil) }
                 let resolved = fixResolver.latestFix
                 if requiringFresh {
