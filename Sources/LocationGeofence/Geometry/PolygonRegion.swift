@@ -4,14 +4,13 @@ import Foundation
 /// Planar geometry for a polygon geofence, evaluated on a local equirectangular projection
 /// around the polygon's vertex centroid.
 ///
-/// Projection (shared verbatim with the Android SDK; the cross-SDK fixtures assume it):
-/// `x = R·Δlon·cos(lat₀)`, `y = R·Δlat` (radians, R = 6371000 m). At fence scale (≤ ~10 km)
-/// the projection error is far below GPS accuracy, and both SDKs agree within the fixtures'
-/// 0.5 m tolerance.
+/// Projection: `x = R·Δlon·cos(lat₀)`, `y = R·Δlat` (radians, R = 6371000 m). Android implements
+/// the same contract independently rather than sharing this code; the two agree to ~0.0005 m on
+/// the shared fixtures (≤1 km) and diverge further out — up to ~1.2 m at lat 31°, ~3.5 m at 60°.
 ///
-/// A point exactly on the boundary counts as outside (signed distance 0 with a negative sign
-/// convention would be ambiguous; delivery decisions never act inside the accuracy-gate floor
-/// anyway, so the tie-break is unobservable in practice).
+/// The ray cast is half-open, so the boundary is not symmetric: a point on the west or south edge
+/// (and the south-west vertex) reads as INSIDE, one on the east or north edge as outside. Delivery
+/// never acts within the accuracy-gate floor, so the asymmetry is unobservable in practice.
 struct PolygonRegion {
     private struct Point {
         let x: Double
@@ -74,11 +73,11 @@ struct PolygonRegion {
 
     /// Meters to the nearest polygon edge: **positive inside, negative outside**.
     ///
-    /// Note this is the OPPOSITE sign to the circle path's edge distance
-    /// (`Geofence.edgeDistanceTo`, and `BaselineHealDecision`'s `distanceFromCenter - radius`),
-    /// which is negative inside. The convention here is fixed by the cross-SDK geometry fixtures
-    /// shared with Android and cannot be flipped unilaterally, so every consumer must convert
-    /// rather than assume.
+    /// The circle path does not mirror this: `Geofence.edgeDistanceTo` is
+    /// `max(0, distanceTo - radius)`, clamped to 0 inside and never negative. Ranking a polygon
+    /// alongside circles therefore needs `max(0, -signedEdgeDistance)`, not a plain negation.
+    /// The sign convention here is fixed by the cross-SDK geometry fixtures and cannot be flipped
+    /// unilaterally.
     func signedEdgeDistance(to location: LocationData) -> Double {
         let p = project(location)
         var minDistance = Double.greatestFiniteMagnitude

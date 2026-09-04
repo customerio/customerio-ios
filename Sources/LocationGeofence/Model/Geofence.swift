@@ -18,8 +18,9 @@ struct Geofence: Codable, Equatable, Sendable {
     /// Workspace-defined key/value metadata; empty when the geofence carries none.
     /// Snapshotted onto transition events and preferred fresh from cache at send.
     let metadata: [String: GeofenceMetadataValue]
-    /// Polygon boundary, canonicalized (closed rings unclosed) and validated at the API boundary;
-    /// `nil` for a circle geofence. When present, `latitude`/`longitude`/`radius` describe the
+    /// Polygon boundary, canonicalized (closed rings unclosed) at the API boundary; `nil` for a
+    /// circle geofence. Geometry validity is the server's — the SDK only rejects a ring it cannot
+    /// build a region from. When present, `latitude`/`longitude`/`radius` describe the
     /// server-guaranteed covering circle — the shape registered at the OS as the wake trigger —
     /// and membership decisions come from the polygon, never the circle.
     let vertices: [LocationData]?
@@ -48,8 +49,12 @@ struct Geofence: Codable, Equatable, Sendable {
         self.vertices = vertices
     }
 
-    /// Geometry kernel for a polygon geofence; `nil` for circles. Built on demand — callers on a
-    /// hot path should hold the result rather than re-deriving it per fix.
+    /// Geometry kernel for a polygon geofence. Built on demand — callers on a hot path should hold
+    /// the result rather than re-deriving it per fix.
+    ///
+    /// `nil` means EITHER a circle or a polygon whose stored ring no longer builds, so it must not
+    /// be read as "this is a circle": check `vertices` for that. The two differ if `init?` ever
+    /// tightens, since cached rings decode without re-validation.
     var polygonRegion: PolygonRegion? {
         vertices.flatMap(PolygonRegion.init(vertices:))
     }

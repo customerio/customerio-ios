@@ -76,6 +76,28 @@ struct PolygonRegionTests {
         #expect(PolygonRegion(vertices: [a, b, a]) == nil)
     }
 
+    /// Pins the half-open ray cast documented on the type: boundary points are NOT symmetric.
+    /// Nothing depends on the asymmetry (delivery never acts within the accuracy-gate floor), but
+    /// it is the rule the cross-SDK fixtures encode, so a silent flip would diverge from Android.
+    @Test
+    func contains_givenPointsExactlyOnBoundary_expectHalfOpenRule() throws {
+        let square = try #require(polygonGeometryFixtures.first { $0.name == "square400" })
+        let region = try #require(PolygonRegion(vertices: square.vertices))
+        let minLat = square.vertices.map(\.latitude).min()!
+        let maxLat = square.vertices.map(\.latitude).max()!
+        let minLon = square.vertices.map(\.longitude).min()!
+        let maxLon = square.vertices.map(\.longitude).max()!
+        let midLat = (minLat + maxLat) / 2
+        let midLon = (minLon + maxLon) / 2
+
+        #expect(region.contains(LocationData(latitude: midLat, longitude: minLon))) // west edge
+        #expect(region.contains(LocationData(latitude: minLat, longitude: midLon))) // south edge
+        #expect(region.contains(LocationData(latitude: minLat, longitude: minLon))) // SW vertex
+        #expect(!region.contains(LocationData(latitude: midLat, longitude: maxLon))) // east edge
+        #expect(!region.contains(LocationData(latitude: maxLat, longitude: midLon))) // north edge
+        #expect(!region.contains(LocationData(latitude: maxLat, longitude: maxLon))) // NE vertex
+    }
+
     @Test
     func signedEdgeDistance_givenSignFlipAcrossEdge_expectContinuousMagnitude() throws {
         // Walk a straight line across the square's eastern edge; the signed distance must
