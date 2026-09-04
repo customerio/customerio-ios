@@ -22,7 +22,6 @@ protocol EngineWebInstance: AutoMockable {
 
 public class EngineWeb: NSObject, EngineWebInstance {
     private let logger: Logger = DIGraphShared.shared.logger
-    private let inAppMessageManager: InAppMessageManager = DIGraphShared.shared.inAppMessageManager
     private let currentMessage: Message
     private var _currentRoute = ""
     private var _timeoutTimer: Timer?
@@ -129,8 +128,10 @@ public class EngineWeb: NSObject, EngineWebInstance {
 
     @objc
     func forcedTimeout() {
-        logger.logWithModuleTag("Timeout triggered, triggering message error.", level: .info)
-        inAppMessageManager.dispatch(action: .engineAction(action: .messageLoadingFailed(message: currentMessage)))
+        logger.logWithModuleTag("Timeout triggered for message: \(currentMessage.describeForLogs), triggering message error.", level: .info)
+        // Report through the delegate only. `MessageManager` turns this into a single
+        // `messageLoadingFailed` dispatch, the same as every other failure site in this class.
+        // Dispatching here as well delivered the host's error callback twice for a timeout.
         delegate?.error()
     }
 }
