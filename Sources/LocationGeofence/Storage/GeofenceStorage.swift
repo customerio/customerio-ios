@@ -110,7 +110,7 @@ actor GeofenceStorage {
     /// `forceReseed` overrides that preservation. The caller sets it when the OS stopped monitoring
     /// the condition since the last registration: the device can cross while unmonitored, so the
     /// persisted state is no longer known to match reality and keeping it would suppress the next
-    /// genuine crossing.
+    /// genuine crossing. Polygon belief reseeds with it, for the same reason.
     func recordMonitorRegistration(
         identifier: String,
         transitionTypes: Set<GeofenceTransition>,
@@ -133,6 +133,7 @@ actor GeofenceStorage {
             lastStateChangedAt: preserved ? existing?.lastStateChangedAt : now
         )
         state.monitorRegionRecords = records
+        if forceReseed { state.dropPolygonBelief(for: identifier) }
         saveToDisk(state)
     }
 

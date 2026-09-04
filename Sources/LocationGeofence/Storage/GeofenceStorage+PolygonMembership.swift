@@ -56,6 +56,13 @@ extension GeofenceStorage {
 }
 
 extension GeofenceState {
+    /// Drops one identifier's belief, for a reseed that has already decided the stored circle
+    /// baseline can no longer be trusted: kept, a belief of "inside" formed before an unmonitored
+    /// gap swallows the next real enter as no-change.
+    mutating func dropPolygonBelief(for identifier: String) {
+        polygonMembership?.removeValue(forKey: identifier)
+    }
+
     /// Drops polygon belief for geofences a registration no longer covers, on the same rule the
     /// monitor records use: a polygon outside the registered set is no longer being evaluated, so a
     /// retained belief would go stale and suppress the enter owed when the device comes back to it.
