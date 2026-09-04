@@ -127,6 +127,41 @@ struct PolygonMembershipStorageTests {
         #expect(await storage.recordPolygonMembership(.inside, forIdentifier: "1") == .deliver(.enter))
     }
 
+    /// The deferred clear can be skipped when a re-registration overtakes it, and then `forceReseed`
+    /// is the only thing standing between an unmonitored gap and a swallowed enter. It reseeds the
+    /// circle baseline, so it has to reseed the belief too.
+    @Test
+    func recordMonitorRegistration_givenForceReseed_expectPolygonBeliefCleared() async {
+        let storage = await makeStorage()
+        let center = LocationData(latitude: 0, longitude: 0)
+        _ = await storage.recordPolygonMembership(.inside, forIdentifier: "1")
+
+        await storage.recordMonitorRegistration(
+            identifier: "1", transitionTypes: [.enter, .exit], initialState: .exit,
+            center: center, radius: 100, forceReseed: true
+        )
+
+        #expect(await storage.getPolygonMembership()["1"] == nil)
+        #expect(await storage.recordPolygonMembership(.inside, forIdentifier: "1") == .deliver(.enter))
+    }
+
+    /// The ordinary sync path re-registers every identifier. Dropping belief there would re-fire an
+    /// enter on every sync for a device that never moved.
+    @Test
+    func recordMonitorRegistration_givenRoutineReregistration_expectPolygonBeliefKept() async {
+        let storage = await makeStorage()
+        let center = LocationData(latitude: 0, longitude: 0)
+        _ = await storage.recordPolygonMembership(.inside, forIdentifier: "1")
+
+        await storage.recordMonitorRegistration(
+            identifier: "1", transitionTypes: [.enter, .exit], initialState: .exit,
+            center: center, radius: 100
+        )
+
+        #expect(await storage.getPolygonMembership()["1"]?.membership == .inside)
+        #expect(await storage.recordPolygonMembership(.inside, forIdentifier: "1") == .suppressedNoChange)
+    }
+
     @Test
     func clearUserScopedState_expectMembershipCleared() async {
         let storage = await makeStorage()
