@@ -77,6 +77,10 @@ class EngineWebTimeoutTests: IntegrationTest {
             message: message
         )
         engine.delegate = delegateSpy
+        // `init` arms the real 5s bootstrap timer. Cancel it before driving the timeout by hand: on
+        // a slow runner a test body lasting longer than that would let the real timer fire too, and
+        // the extra call would break the once-only assertion for reasons unrelated to the fix.
+        engine.cleanEngineWeb()
 
         engine.forcedTimeout()
 
