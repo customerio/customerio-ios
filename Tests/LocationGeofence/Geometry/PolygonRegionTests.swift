@@ -23,6 +23,76 @@ struct PolygonRegionTests {
         }
     }
 
+    /// A bow-tie's lobes both read as inside under even-odd, at a signed distance decisive enough
+    /// to clear the delivery gate — measured +33 m — so it would fire an enter for ground the
+    /// polygon never covered. Rejected at construction, matching Android.
+    @Test
+    func init_givenSelfIntersectingRing_expectRejected() {
+        let bowtie = [
+            LocationData(latitude: 0.000, longitude: 0.000),
+            LocationData(latitude: 0.002, longitude: 0.002),
+            LocationData(latitude: 0.002, longitude: 0.000),
+            LocationData(latitude: 0.000, longitude: 0.002)
+        ]
+        #expect(PolygonRegion(validating: bowtie) == nil)
+    }
+
+    /// Zero area: never contains anything, but would still hold an OS slot and drag the shared wake
+    /// circle to its floor, so every other fence in the set wakes more often.
+    @Test
+    func init_givenCollinearRing_expectRejected() {
+        let line = [
+            LocationData(latitude: 0.000, longitude: 0.000),
+            LocationData(latitude: 0.001, longitude: 0.000),
+            LocationData(latitude: 0.002, longitude: 0.000)
+        ]
+        #expect(PolygonRegion(validating: line) == nil)
+    }
+
+    /// Two lobes joined at a single point: the bow-tie with its crossing degenerated to a vertex.
+    /// Android rejects touches as well as crossings, so a crossing-only test here would let this
+    /// through on iOS and drop it on Android.
+    @Test
+    func init_givenRingTouchingAtAVertex_expectRejected() {
+        let touching = [
+            LocationData(latitude: 0.000, longitude: 0.000),
+            LocationData(latitude: 0.002, longitude: 0.000),
+            LocationData(latitude: 0.001, longitude: 0.001),
+            LocationData(latitude: 0.002, longitude: 0.002),
+            LocationData(latitude: 0.000, longitude: 0.002),
+            LocationData(latitude: 0.001, longitude: 0.001)
+        ]
+        #expect(PolygonRegion(validating: touching) == nil)
+    }
+
+    /// A non-consecutive repeat survives collapsing on both SDKs (both collapse consecutive repeats
+    /// only), so the drop has to come from the intersection test: the two edges leaving the repeated
+    /// vertex are non-adjacent and touch.
+    @Test
+    func init_givenNonConsecutiveRepeatedVertex_expectRejected() {
+        let repeated = [
+            LocationData(latitude: 0.000, longitude: 0.000),
+            LocationData(latitude: 0.002, longitude: 0.000),
+            LocationData(latitude: 0.000, longitude: 0.000),
+            LocationData(latitude: 0.000, longitude: 0.002)
+        ]
+        #expect(PolygonRegion(validating: repeated) == nil)
+    }
+
+    /// Concave rings are the point of polygons and must survive the new rejection.
+    @Test
+    func init_givenConcaveRing_expectAccepted() {
+        let lShape = [
+            LocationData(latitude: 0.000, longitude: 0.000),
+            LocationData(latitude: 0.000, longitude: 0.003),
+            LocationData(latitude: 0.001, longitude: 0.003),
+            LocationData(latitude: 0.001, longitude: 0.001),
+            LocationData(latitude: 0.003, longitude: 0.001),
+            LocationData(latitude: 0.003, longitude: 0.000)
+        ]
+        #expect(PolygonRegion(validating: lShape) != nil)
+    }
+
     /// A repeated position is a zero-length edge: geometrically nothing, but it inflates the count
     /// the vertex cap is compared against, and the server states that cap in UNIQUE vertices. So a
     /// ring the server considers valid must not be dropped for carrying a duplicate.

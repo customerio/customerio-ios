@@ -37,6 +37,8 @@ struct PolygonRegion {
     /// A repeat describes a zero-length edge, which contributes nothing to either containment or
     /// edge distance; collapsing it keeps the count comparable to the server's own cap, which is
     /// stated in unique vertices.
+    /// Canonicalises and projects a ring already known to be well formed. O(n): the degeneracy
+    /// checks live in `init(validating:)`, not here, because callers rebuild a region per evaluation.
     init?(vertices: [LocationData]) {
         var open: [LocationData] = []
         open.reserveCapacity(vertices.count)
@@ -47,17 +49,13 @@ struct PolygonRegion {
             open.removeLast()
         }
         guard open.count >= 3 else { return nil }
-        self.vertices = open
 
         let lat0 = open.map(\.latitude).reduce(0, +) / Double(open.count)
         let lon0 = open.map(\.longitude).reduce(0, +) / Double(open.count)
         let latitudeRadians = lat0 * Self.degreesToRadians
         let longitudeRadians = lon0 * Self.degreesToRadians
         let cosLatitude = cos(latitudeRadians)
-        self.referenceLatitudeRadians = latitudeRadians
-        self.referenceLongitudeRadians = longitudeRadians
-        self.cosReferenceLatitude = cosLatitude
-        self.projected = open.map {
+        let planar = open.map {
             Self.project(
                 $0,
                 referenceLatitudeRadians: latitudeRadians,
@@ -65,6 +63,82 @@ struct PolygonRegion {
                 cosReferenceLatitude: cosLatitude
             )
         }
+        self.vertices = open
+        self.referenceLatitudeRadians = latitudeRadians
+        self.referenceLongitudeRadians = longitudeRadians
+        self.cosReferenceLatitude = cosLatitude
+        self.projected = planar
+    }
+
+    /// Decode-time construction: additionally rejects rings that cannot be monitored sensibly —
+    /// zero area, or self-intersecting. Separate from `init(vertices:)` because that one runs on
+    /// hot paths (once per polygon per wake and per evaluation) while these checks are O(n²), so
+    /// they belong at the API boundary where they run once per sync.
+    init?(validating vertices: [LocationData]) {
+        self.init(vertices: vertices)
+        guard Self.enclosesArea(projected), !Self.selfIntersects(projected) else { return nil }
+    }
+
+    /// A ring below this is a line or a point. It can never contain anything, so it would hold an OS
+    /// monitoring slot and pull the shared wake circle toward its floor while never firing.
+    private static let minimumAreaSquareMeters = 1.0
+
+    private static func enclosesArea(_ ring: [Point]) -> Bool {
+        var twiceArea = 0.0
+        for i in 0 ..< ring.count {
+            let a = ring[i]
+            let b = ring[(i + 1) % ring.count]
+            twiceArea += a.x * b.y - b.x * a.y
+        }
+        return abs(twiceArea) / 2 >= minimumAreaSquareMeters
+    }
+
+    /// True when two non-adjacent edges cross OR touch. Even-odd ray casting reports both lobes of a
+    /// bow-tie as inside, so such a ring delivers enters for ground the polygon never covered, and a
+    /// pair of lobes joined at a single point is the same shape with the crossing degenerated to a
+    /// vertex. Touching counts, matching Android — a ring repeating a vertex non-consecutively
+    /// (a…b…a…c) survives canonicalisation on both SDKs and must then be dropped on both.
+    private static func selfIntersects(_ ring: [Point]) -> Bool {
+        let n = ring.count
+        guard n >= 4 else { return false }
+        for i in 0 ..< n {
+            let a1 = ring[i], a2 = ring[(i + 1) % n]
+            // j starts at i+2 to skip the shared-vertex neighbour; the i == 0 guard skips the
+            // closing edge, which shares a vertex with the first.
+            for j in stride(from: i + 2, to: n, by: 1) where !(i == 0 && j == n - 1) {
+                let b1 = ring[j], b2 = ring[(j + 1) % n]
+                if Self.segmentsMeet(a1, a2, b1, b2) { return true }
+            }
+        }
+        return false
+    }
+
+    /// Orientations below this are treated as collinear. Projected coordinates are metres, so the
+    /// cross product is m²: this is exact-zero with room for float error, not a tolerance.
+    private static let orientationEpsilon = 1e-9
+
+    private static func segmentsMeet(_ p1: Point, _ p2: Point, _ p3: Point, _ p4: Point) -> Bool {
+        let o1 = orientation(p1, p2, p3)
+        let o2 = orientation(p1, p2, p4)
+        let o3 = orientation(p3, p4, p1)
+        let o4 = orientation(p3, p4, p2)
+        if o1 * o2 < 0, o3 * o4 < 0 { return true }
+        if abs(o1) <= orientationEpsilon, within(p1, p3, p2) { return true }
+        if abs(o2) <= orientationEpsilon, within(p1, p4, p2) { return true }
+        if abs(o3) <= orientationEpsilon, within(p3, p1, p4) { return true }
+        if abs(o4) <= orientationEpsilon, within(p3, p2, p4) { return true }
+        return false
+    }
+
+    /// Whether `point` lies in the bounding box of the `a`–`b` segment, used only once the three are
+    /// known to be collinear.
+    private static func within(_ a: Point, _ point: Point, _ b: Point) -> Bool {
+        point.x >= min(a.x, b.x) && point.x <= max(a.x, b.x)
+            && point.y >= min(a.y, b.y) && point.y <= max(a.y, b.y)
+    }
+
+    private static func orientation(_ a: Point, _ b: Point, _ c: Point) -> Double {
+        (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x)
     }
 
     func contains(_ location: LocationData) -> Bool {
