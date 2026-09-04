@@ -44,8 +44,11 @@ struct GeofenceLogTailTests {
             record(message, tag)
         }
 
-        func error(_ message: String, _ tag: String?, _: Error?) {
-            record(message, tag)
+        /// Mirrors `LoggerImpl.formatMessage`, which appends the description to the **whole**
+        /// message. A double that quietly dropped the error let a record ship whose tail was no
+        /// longer last, and every assertion here passed anyway.
+        func error(_ message: String, _ tag: String?, _ error: Error?) {
+            record(error.map { "\(message) Error: \($0.localizedDescription)" } ?? message, tag)
         }
 
         private func record(_ message: String, _ tag: String?) {

@@ -36,24 +36,30 @@ extension Logger {
         )
     }
 
+    // The description is inlined into the prose and `nil` passed for the error, rather than
+    // handed to the logger. `Logger.formatMessage` appends " Error: <desc>" to the *whole*
+    // message, which lands after the tail and leaves the remainder past the last `||` no longer
+    // entirely `key=value` — dropping every field on the two records that explain why background
+    // delivery stopped. The tail has to stay last.
     func geofenceMonitoringFailed(region: String, error: Error) {
         self.error(
-            "Monitoring failed for region \(region)"
+            "Monitoring failed for region \(region): \(error.localizedDescription)"
                 + geofenceTail("os.monitor.failed", .input, [
                     ("id", region),
                     ("ok", GeofenceLog.bool(false))
                 ]),
             geofenceTag,
-            error
+            nil
         )
     }
 
+    /// See `geofenceMonitoringFailed` for why the description is inlined rather than passed.
     func geofenceMonitorEventStreamFailed(error: Error) {
         self.error(
-            "Geofence monitor event stream ended with an error; background transitions may stop until the app is relaunched"
+            "Geofence monitor event stream ended with an error; background transitions may stop until the app is relaunched: \(error.localizedDescription)"
                 + geofenceTail("os.stream.failed", .input, [("ok", GeofenceLog.bool(false))]),
             geofenceTag,
-            error
+            nil
         )
     }
 
