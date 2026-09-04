@@ -517,6 +517,57 @@ struct GeofenceSyncCoordinatorTests {
         #expect(setup.monitor.startedRegions.isEmpty)
     }
 
+    /// The loss that never reaches `toDomainRegions`: a region rejected at JSON decode is compacted
+    /// out of `geofences` before the domain mapping runs, so no drop callback fires for it. It is
+    /// still an unreadable payload, and treating it as "no geofences" wipes the cache.
+    ///
+    /// Built through `JSONDecoder` deliberately — the memberwise init sets `receivedRegionCount`
+    /// from the surviving array, so it cannot express "one arrived, none survived".
+    @Test
+    func refresh_givenEveryRegionLostAtJsonDecode_expectFetchFailureAndCacheKept() async throws {
+        let storage = makeStorage()
+        await storage.setCachedGeofences([makeRegion(id: "kept", latitude: 37.7749, longitude: -122.4194)])
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        let payload = #"{"geofences":[{"id":{},"latitude":1,"longitude":2,"radius":100}]}"#
+        let response = try decoder.decode(GeofenceApiResponse.self, from: Data(payload.utf8))
+        #expect(response.receivedRegionCount == 1)
+        #expect(response.geofences.isEmpty)
+        let api = GeofenceApiServiceMock()
+        api.fetchNearbyGeofencesClosure = { _, _, completion in completion(.success(response)) }
+
+        let setup = makeCoordinator(api: api, storage: storage)
+        let result = await setup.coordinator.refresh(latitude: 37.7749, longitude: -122.4194)
+
+        #expect(result.errorOrNil == .fetchFailed(.decoding))
+        #expect(await storage.getCachedGeofences().map(\.id) == ["kept"])
+    }
+
+    /// A workspace whose fences have all moved to a shape this SDK cannot monitor is the opposite
+    /// of a broken payload: the response read fine and there is genuinely nothing here for us.
+    /// Failing would freeze the previous fences in place with a refresh that can never succeed.
+    @Test
+    func refresh_givenEveryRegionAnUnsupportedShape_expectAppliedAsEmpty() async {
+        let storage = makeStorage()
+        await storage.setCachedGeofences([makeRegion(id: "stale", latitude: 37.7749, longitude: -122.4194)])
+        let futureShape = GeofenceApiRegion(
+            id: "future", name: nil, shape: "corridor",
+            latitude: 37.7749, longitude: -122.4194, radius: 100,
+            geometry: nil, enclosingCircle: nil, externalId: nil,
+            transitionTypes: nil, lastUpdated: nil, geosetIds: nil, metadata: nil
+        )
+        let api = GeofenceApiServiceMock()
+        api.fetchNearbyGeofencesClosure = { _, _, completion in
+            completion(.success(GeofenceApiResponse(config: nil, geofences: [futureShape])))
+        }
+
+        let setup = makeCoordinator(api: api, storage: storage)
+        let result = await setup.coordinator.refresh(latitude: 37.7749, longitude: -122.4194)
+
+        #expect(result.errorOrNil == nil)
+        #expect(await storage.getCachedGeofences().isEmpty)
+    }
+
     @Test
     func refresh_givenEmptyServerResponse_expectMovementTriggerStillRegistered() async {
         let storage = makeStorage()
