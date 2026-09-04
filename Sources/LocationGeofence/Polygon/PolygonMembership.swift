@@ -23,6 +23,12 @@ struct PolygonMembershipRecord: Codable, Equatable, Sendable {
     /// establish it OR confirm it, not only the one that last changed it. Lets a late evaluation
     /// defer to a newer decision, the same way `MonitorRegionRecord.lastStateChangedAt` guards the
     /// baseline heal.
+    ///
+    /// Do not rename without a `CodingKeys` case mapping back to the literal `"lastChangedAt"`. The
+    /// synthesized keys make the property name the stored key, and a record written by an earlier
+    /// build then fails the whole `GeofenceState` decode — which `loadFromDisk` swallows with
+    /// `try?`, taking the cached geofences, monitor baselines, registration set and cooldowns with
+    /// it on the next write.
     var lastChangedAt: Date
 }
 
