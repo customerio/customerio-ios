@@ -249,9 +249,13 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
         let osRegistration = registerWithOsSync(
             businessRegions: nearest,
             movementTriggerLocation: anchor,
-            movementTriggerRadius: PolygonWakeRadius.radius(
-                at: anchor, registeredPolygons: nearest, config: effectiveConfig
-            ),
+            // The full refresh radius, NOT a boundary-sized one: this path has no live fix, and
+            // `anchor` is the last recorded registration centre, which the wake pass deliberately
+            // does not walk. The device is therefore within `localRefreshTriggerRadius` of it and
+            // so inside a trigger of that size — an invariant a smaller circle would break, arming
+            // a region the device already stands outside. The first movement pass re-arms it
+            // against a live fix.
+            movementTriggerRadius: effectiveConfig.localRefreshTriggerRadius,
             registerMovementTrigger: registerMovementTrigger
         )
         logger.geofenceSyncCompleted(registeredCount: nearest.count, movementTriggerRegistered: registerMovementTrigger)

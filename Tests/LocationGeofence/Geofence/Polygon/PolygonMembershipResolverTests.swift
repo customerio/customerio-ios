@@ -143,6 +143,36 @@ struct PolygonMembershipResolverTests {
         #expect(counter.count == 1)
     }
 
+    /// A wake requires a fresh fix; a foreground pass does not. Skipping the wake behind an
+    /// in-flight foreground would drop exactly the pass that runs BECAUSE the device moved, and
+    /// nothing retries it.
+    @Test
+    func evaluateAllPolygons_givenFreshRequiredDuringForegroundPass_expectNotSkipped() async {
+        let setup = await makeSetup(fix: nil)
+        await registerPolygons(setup, ids: ["1", "2"])
+        let counter = countingRequests(setup)
+
+        async let foreground: Void = setup.resolver.evaluateAllPolygons()
+        async let wake: Void = setup.resolver.evaluateAllPolygons(requiresFreshFix: true)
+        _ = await(foreground, wake)
+
+        #expect(counter.count == 2)
+    }
+
+    /// The converse still holds: a weaker pass behind a fresh one adds nothing.
+    @Test
+    func evaluateAllPolygons_givenForegroundDuringFreshPass_expectSkipped() async {
+        let setup = await makeSetup(fix: nil)
+        await registerPolygons(setup, ids: ["1", "2"])
+        let counter = countingRequests(setup)
+
+        async let wake: Void = setup.resolver.evaluateAllPolygons(requiresFreshFix: true)
+        async let foreground: Void = setup.resolver.evaluateAllPolygons()
+        _ = await(wake, foreground)
+
+        #expect(counter.count == 1)
+    }
+
     // MARK: - Circle fences pass through untouched
 
     @Test
