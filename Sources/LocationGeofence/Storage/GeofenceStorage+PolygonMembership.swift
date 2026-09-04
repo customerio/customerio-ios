@@ -30,6 +30,13 @@ extension GeofenceStorage {
             return .suppressedNewerDecision
         }
         guard let existing else {
+            // An evaluation in flight when the polygon was pruned would otherwise create a belief —
+            // and an enter — for a fence no longer registered. Only the create path needs this: an
+            // existing record means it was registered when the belief was formed, and pruning
+            // removes it.
+            guard state.monitoredGeofenceIds?.contains(identifier) == true else {
+                return .suppressedUnmonitored
+            }
             records[identifier] = PolygonMembershipRecord(membership: membership, lastChangedAt: now)
             state.polygonMembership = records
             saveToDisk(state)

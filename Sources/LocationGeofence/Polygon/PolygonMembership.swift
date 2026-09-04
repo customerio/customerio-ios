@@ -34,4 +34,7 @@ enum PolygonMembershipOutcome: Equatable {
     case suppressedNewerDecision
     /// First decision for this polygon placed the device outside; there is no crossing to report.
     case suppressedInitialOutside
+    /// The polygon is not in the registered set — an evaluation that raced a prune. Creating a
+    /// belief here would deliver an enter for a fence the OS is no longer watching.
+    case suppressedUnmonitored
 }
