@@ -24,11 +24,17 @@ final class DiagnosticLogWriter: @unchecked Sendable {
     /// Wall-clock instant at which today's file stops being today's file. Compared against on
     /// every record so that rotation costs an inequality rather than a date format.
     private var rolloverAt: TimeInterval = 0
+    /// Zone the open file was named and its `rolloverAt` computed in. Both come from a single
+    /// snapshot, so a file can never be named for one zone and roll over on another's midnight.
+    /// Compared on every append: reading `TimeZone.current` fresh each time is not enough on its
+    /// own, because `rolloverAt` is a precomputed instant and nothing else would notice it had
+    /// become the wrong one. Flying east would otherwise keep appending to the previous day's
+    /// file until midnight in the zone the file was opened in.
+    private var openZoneIdentifier = ""
 
-    // The zone is set per use, not at construction. `startOfNextDay` reads `TimeZone.current`
-    // live, so a formatter pinned at launch would stamp a filename in the old zone while the
-    // rollover boundary moved to the new one — two files for one day, or a file named for a day
-    // it does not contain.
+    // The zone is passed in per use, not pinned at construction. A formatter fixed at launch
+    // would stamp a filename in the old zone while the rollover boundary moved to the new one —
+    // two files for one day, or a file named for a day it does not contain.
     private static let dayFormatter = DiagnosticLocked<DateFormatter>({
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
@@ -69,7 +75,11 @@ final class DiagnosticLogWriter: @unchecked Sendable {
             return
         }
 
-        let url = fileURL(for: now)
+        // One snapshot for the name, the boundary and the recorded identifier. Reading
+        // `TimeZone.current` separately in each could straddle a change and pair a filename with
+        // another zone's midnight.
+        let zone = TimeZone.current
+        let url = fileURL(for: now, in: zone)
         let isNew = !FileManager.default.fileExists(atPath: url.path)
 
         // O_APPEND makes each write atomic with respect to other writers, so interleaved records
@@ -83,7 +93,8 @@ final class DiagnosticLogWriter: @unchecked Sendable {
         )
 
         currentPath = url.path
-        rolloverAt = DiagnosticLogWriter.startOfNextDay(after: now)
+        rolloverAt = DiagnosticLogWriter.startOfNextDay(after: now, in: zone)
+        openZoneIdentifier = zone.identifier
         writesSinceExistenceCheck = 0
 
         // Retention only when a file was actually created. Keeping it off the failure paths
@@ -111,7 +122,7 @@ final class DiagnosticLogWriter: @unchecked Sendable {
         defer { lock.unlock() }
 
         let now = Date()
-        if now.timeIntervalSince1970 >= rolloverAt {
+        if now.timeIntervalSince1970 >= rolloverAt || TimeZone.current.identifier != openZoneIdentifier {
             openCurrentFile(now: now)
         } else if needsExistenceCheck(), !FileManager.default.fileExists(atPath: currentPath) {
             // The file was unlinked while we held it open — a person clearing logs from the Files
@@ -212,9 +223,9 @@ final class DiagnosticLogWriter: @unchecked Sendable {
 
     // MARK: - Paths
 
-    private func fileURL(for date: Date) -> URL {
+    private func fileURL(for date: Date, in zone: TimeZone) -> URL {
         let day = DiagnosticLogWriter.dayFormatter.withValue { formatter -> String in
-            formatter.timeZone = TimeZone.current
+            formatter.timeZone = zone
             return formatter.string(from: date)
         }
         return directory.appendingPathComponent(
@@ -223,9 +234,9 @@ final class DiagnosticLogWriter: @unchecked Sendable {
         )
     }
 
-    private static func startOfNextDay(after date: Date) -> TimeInterval {
+    private static func startOfNextDay(after date: Date, in zone: TimeZone) -> TimeInterval {
         var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = TimeZone.current
+        calendar.timeZone = zone
         guard let next = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: date))
         else {
             // Falling back to a fixed 24 hours keeps the file rotating rather than growing without
