@@ -195,8 +195,8 @@ actor GeofenceStorage {
         saveToDisk(state)
     }
 
-    /// Clears the cooldown map, last-sync record, registration set, and monitor baselines but
-    /// preserves the cached geofences and config. Called on sign-out: the workspace cache is shared
+    /// Clears the cooldown map, last-sync record, registration set, monitor baselines and polygon
+    /// beliefs but preserves the cached geofences and config. Called on sign-out: the workspace cache is shared
     /// across users, while cooldowns belong to the signed-out user and the last-sync anchor would
     /// otherwise let the freshness gate skip the first sync for the next signed-in user against stale
     /// state. `monitorRegionRecords` is dropped so the next session can't inherit a stale per-region
