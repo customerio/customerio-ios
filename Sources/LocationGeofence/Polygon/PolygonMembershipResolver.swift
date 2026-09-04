@@ -287,6 +287,12 @@ final class PolygonMembershipResolver {
     /// resolution: the completion's coordinates are discarded in favour of `latestFix`, which
     /// carries the accuracy and timestamp the decision needs.
     ///
+    /// "Fresh" here is strictly newer than anything held before the request — a deliberately
+    /// stricter test than the within-`movementFixMaxAge` one the movement trigger is sized against
+    /// (`GeofenceSyncCoordinatorImpl.wakeRadius`). A verdict may not be re-affirmed by the very fix
+    /// the wake exists to revisit, whereas a trigger only needs an anchor roughly where the device
+    /// is. The two are not interchangeable and neither should be relaxed to the other.
+    ///
     /// When a fresh fix is REQUIRED, a request that fails or times out still resumes with the fix
     /// already held. That one predates the wake and can sit inside `movementFixMaxAge`, so it would
     /// re-affirm the very verdict the wake exists to revisit — report no fix instead.
