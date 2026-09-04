@@ -20,6 +20,10 @@ extension GeofenceStorage {
     /// not the moment of the write — the comparison is evidence against evidence, and a write time
     /// always postdates the fix that justified it, so storing it would reject verdicts whose
     /// evidence is genuinely newer than the previous verdict's.
+    ///
+    /// An evaluation that CONFIRMS the belief refreshes that stamp too. Re-proving a belief is
+    /// newer evidence for it, and holding the stamp at the last change would let a later evaluation
+    /// carrying older opposite evidence pass the guard and flip what a newer fix just confirmed.
     func recordPolygonMembership(
         _ membership: PolygonMembership,
         forIdentifier identifier: String,
@@ -47,7 +51,16 @@ extension GeofenceStorage {
             saveToDisk(state)
             return membership == .inside ? .deliver(.enter) : .suppressedInitialOutside
         }
-        guard existing.membership != membership else { return .suppressedNoChange }
+        guard existing.membership != membership else {
+            if let evidenceTimestamp, evidenceTimestamp > existing.lastChangedAt {
+                records[identifier] = PolygonMembershipRecord(
+                    membership: membership, lastChangedAt: evidenceTimestamp
+                )
+                state.polygonMembership = records
+                saveToDisk(state)
+            }
+            return .suppressedNoChange
+        }
         records[identifier] = PolygonMembershipRecord(
             membership: membership, lastChangedAt: evidenceTimestamp ?? now
         )
