@@ -44,7 +44,7 @@ private struct LenientRegion: Decodable {
 
 /// Why a region on the wire never became a monitorable fence.
 enum GeofenceRegionDropReason: String, Error {
-    case unknownShape = "unrecognized shape"
+    case unknownShape = "unrecognized or inconsistent shape"
     case unusableCircle = "invalid coordinates or radius"
     case unusablePolygon = "missing or undecodable polygon geometry"
 }
@@ -265,6 +265,11 @@ extension GeofenceApiRegion {
         let resolved: ResolvedGeometry?
         let dropReason: GeofenceRegionDropReason
         switch shape?.lowercased() {
+        case nil where geometry != nil || enclosingCircle != nil:
+            // Polygon fields with no discriminator: the payload describes something this decoder
+            // cannot name. Falling through to the flat circle fields would monitor a shape the
+            // server never described. Android drops the same combination.
+            return .failure(.unknownShape)
         case nil, "circle":
             resolved = resolvedCircle()
             dropReason = .unusableCircle

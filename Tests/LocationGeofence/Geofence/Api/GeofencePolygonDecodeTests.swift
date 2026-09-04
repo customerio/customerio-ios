@@ -175,6 +175,24 @@ struct GeofencePolygonDecodeTests {
         #expect(response.toDomainRegions().isEmpty)
     }
 
+    /// A payload carrying polygon fields but no `shape` is inconsistent, not a v1 circle. Taking
+    /// the flat circle fields there would monitor a shape the server never described; Android drops
+    /// the same combination.
+    @Test
+    func toDomain_givenPolygonFieldsWithoutShape_expectRegionDropped() throws {
+        let inconsistent = """
+        {"id": 1, "latitude": \(Self.centre.latitude), "longitude": \(Self.centre.longitude),
+         "radius": 300,
+         "geometry": {"type": "Polygon", "coordinates": \(Self.squareRing)},
+         "enclosing_circle": {"latitude": \(Self.centre.latitude),
+          "longitude": \(Self.centre.longitude), "base_radius_m": 300}}
+        """
+        var reasons: [String: GeofenceRegionDropReason] = [:]
+        let regions = try decode(responseJson([inconsistent])).toDomainRegions(onInvalidRegion: { reasons[$0] = $1 })
+        #expect(regions.isEmpty)
+        #expect(reasons["1"] == .unknownShape)
+    }
+
     @Test
     func toDomain_givenMultiPolygonType_expectRegionDropped() throws {
         let response = try decode(responseJson([polygonJson(type: "MultiPolygon")]))
