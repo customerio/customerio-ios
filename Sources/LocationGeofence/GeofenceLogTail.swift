@@ -68,7 +68,10 @@ enum GeofenceLog {
         var parts = ["ev=\(ev)", "io=\(io.rawValue)"]
         for (key, value) in fields() {
             guard let value else { continue }
-            parts.append("\(key)=\(foldWhitespace(value))")
+            // Sanitize by default; the few composed keys opt out. The reverse arrangement left
+            // every `id` call site unprotected, because nothing forced a new field to be wrapped.
+            let safe = composedKeys.contains(key) ? foldWhitespace(value) : sanitize(value)
+            parts.append("\(key)=\(safe)")
         }
         return delimiter + parts.joined(separator: " ")
     }
@@ -81,6 +84,10 @@ enum GeofenceLog {
     /// Deliberately not applied to a finished value: `list` and `ranked` compose their separators
     /// on purpose, and folding those turns `a,b` into `a_b`.
     private static let separators: Set<Character> = ["=", ",", ":", "|"]
+
+    /// The only values that compose the format's separators on purpose. Everything else is an
+    /// untrusted token — region identifiers are workspace-authored and can hold anything.
+    private static let composedKeys: Set<String> = ["ranked", "evicted", "ids"]
 
     /// Applied to every finished value. Only whitespace, which is what separates one `key=value`
     /// from the next — the value's own structure is already the caller's business.

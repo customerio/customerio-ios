@@ -360,6 +360,23 @@ struct GeofenceLogTailTests {
     }
 
     @Test
+    func tokenValues_givenSeparatorsInIdentifier_expectFolded() {
+        // The whitespace test elsewhere passes whether or not token fields are sanitized, because
+        // `tail` folds whitespace for every value. It never covered the characters the format
+        // itself uses, and every `id` call site went unprotected behind it.
+        GeofenceDiagnostics.overrideForTesting = true
+        defer { GeofenceDiagnostics.overrideForTesting = nil }
+        for raw in ["store,north", "a=b", "aisle:3", "wing|west"] {
+            let logger = CapturingLogger()
+            logger.geofenceEventTracked(geofenceId: raw, transition: .enter)
+            let tail = parseTail(logger.messages.last ?? "")
+            #expect(tail?["id"] != nil, "no id for \(raw)")
+            let id = tail?["id"] ?? ""
+            #expect(!id.contains(where: { "=,:|".contains($0) }), "id kept a separator: \(id)")
+        }
+    }
+
+    @Test
     func fieldBuilders_givenDiagnosticsOff_expectNeverEvaluated() {
         // The gate's worth is that a coordinate is never *computed*, not merely never printed.
         // Nothing else here pins that: every other test asserts on output, so a shim rewritten to
