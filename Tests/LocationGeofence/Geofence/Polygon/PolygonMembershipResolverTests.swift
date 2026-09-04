@@ -63,6 +63,7 @@ struct PolygonMembershipResolverTests {
         await storage.recordRegistration(center: LocationData(latitude: 0, longitude: 0), businessIds: ["1"])
         let emitter = EmitterSpy()
         let fixResolver = MovementFixResolver(logger: LoggerMock())
+        fixResolver.systemCachedFix = { nil } // never touch CoreLocation from a unit test
         // Seam: resolve inline with the supplied fix instead of touching CoreLocation.
         fixResolver.requestFreshFix = { [weak fixResolver] in
             guard let fix else { return fixResolver?.handleRequestFailure() ?? () }
@@ -129,6 +130,41 @@ struct PolygonMembershipResolverTests {
         #expect(delivered.count == 1)
         #expect(delivered.first?.transition == .enter)
         #expect(await setup.storage.getPolygonMembership()["1"]?.membership == .inside)
+    }
+
+    /// A stored ring that no longer builds is not a circle. Forwarding it would fire a customer
+    /// enter anywhere inside the covering circle — the polygon's whole annulus included.
+    @Test
+    func handleTransition_givenStoredRingThatCannotBuild_expectNothingForwarded() async {
+        let setup = await makeSetup(fix: fix(latitude: 0, longitude: 0))
+        let degenerate = Geofence(
+            id: "1", latitude: 0, longitude: 0, radius: 300, name: "poly",
+            transitionTypes: [.enter, .exit], lastUpdated: Date(),
+            vertices: [LocationData(latitude: 0, longitude: 0), LocationData(latitude: 0, longitude: 0)]
+        )
+        await setup.storage.setCachedGeofences([degenerate])
+
+        await setup.resolver.handleTransition(identifier: "1", transition: .enter)
+
+        #expect(await setup.emitter.snapshot().isEmpty)
+        #expect(await setup.storage.getPolygonMembership()["1"] == nil)
+    }
+
+    /// A replayed or synthesized exit arriving after a newer enter must not overwrite it: the device
+    /// would be believed outside while sitting inside, with the enter cooldown blocking recovery.
+    @Test
+    func handleTransition_givenExitOlderThanBelief_expectSuppressed() async {
+        let setup = await makeSetup(fix: fix(latitude: 0, longitude: 0))
+        await setup.storage.setCachedGeofences([polygonGeofence()])
+        await setup.resolver.handleTransition(identifier: "1", transition: .enter)
+        #expect(await setup.storage.getPolygonMembership()["1"]?.membership == .inside)
+
+        await setup.resolver.handleTransition(
+            identifier: "1", transition: .exit, occurredAt: Date(timeIntervalSince1970: 0)
+        )
+
+        #expect(await setup.storage.getPolygonMembership()["1"]?.membership == .inside)
+        #expect(await setup.emitter.snapshot().map(\.transition) == [.enter])
     }
 
     /// The annulus: inside the covering circle, outside the polygon. The OS thinks we arrived;
