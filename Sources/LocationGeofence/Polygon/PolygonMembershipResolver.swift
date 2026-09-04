@@ -98,12 +98,19 @@ final class PolygonMembershipResolver {
     /// Logged because this path bypasses `handleTransition`, so nothing else records that we were
     /// asked to re-check. Reading the absence of a log line as an absence of evaluations led to
     /// exactly the wrong conclusion once already.
-    func evaluateMembership(geofenceId: String, reason: String) async {
+    /// `isStillCurrent` is re-checked after the fix resolves. Resolving suspends, and a user switch
+    /// in that window clears user-scoped state — without the re-check this task would resume and
+    /// rewrite the old user's belief, stamping any resulting event to whoever signed in.
+    func evaluateMembership(
+        geofenceId: String,
+        reason: String,
+        isStillCurrent: (@Sendable () -> Bool)? = nil
+    ) async {
         logger.geofencePolygonEvaluationRequested(identifier: geofenceId, reason: reason)
         guard let geofence = await cachedGeofence(id: geofenceId),
               let polygon = geofence.polygonRegion
         else { return }
-        await evaluate(geofence: geofence, polygon: polygon)
+        await evaluate(geofence: geofence, polygon: polygon, isStillCurrent: isStillCurrent)
     }
 
     /// Re-evaluates every registered polygon when the app comes to the foreground.
@@ -156,17 +163,30 @@ final class PolygonMembershipResolver {
         #endif
     }
 
-    private func evaluate(geofence: Geofence, polygon: PolygonRegion) async {
+    private func evaluate(
+        geofence: Geofence,
+        polygon: PolygonRegion,
+        isStillCurrent: (@Sendable () -> Bool)? = nil
+    ) async {
         guard let fix = await resolveFix() else {
             logger.geofencePolygonUndecided(identifier: geofence.id, reason: "no usable fix")
             return
         }
-        await evaluate(geofence: geofence, polygon: polygon, fix: fix)
+        await evaluate(geofence: geofence, polygon: polygon, fix: fix, isStillCurrent: isStillCurrent)
     }
 
-    private func evaluate(geofence: Geofence, polygon: PolygonRegion, fix: CLLocation) async {
+    private func evaluate(
+        geofence: Geofence,
+        polygon: PolygonRegion,
+        fix: CLLocation,
+        isStillCurrent: (@Sendable () -> Bool)? = nil
+    ) async {
         guard CLLocationCoordinate2DIsValid(fix.coordinate) else {
             logger.geofencePolygonUndecided(identifier: geofence.id, reason: "no usable fix")
+            return
+        }
+        if let isStillCurrent, !isStillCurrent() {
+            logger.geofencePolygonUndecided(identifier: geofence.id, reason: "user changed while resolving the fix")
             return
         }
         let point = LocationData(latitude: fix.coordinate.latitude, longitude: fix.coordinate.longitude)

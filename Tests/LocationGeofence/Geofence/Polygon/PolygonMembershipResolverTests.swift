@@ -241,6 +241,36 @@ struct PolygonMembershipResolverTests {
         #expect(await setup.emitter.snapshot().map(\.transition) == [.enter])
     }
 
+    /// The fix resolves across a suspension point. If the user switches in that window, cleanup has
+    /// already cleared user-scoped state, so resuming would rewrite the old user's belief and stamp
+    /// any event to whoever signed in.
+    @Test
+    func evaluateMembership_givenUserChangesWhileResolving_expectNoBeliefAndNoEvent() async {
+        let setup = await makeSetup(fix: fix(latitude: 0, longitude: 0))
+        await setup.storage.setCachedGeofences([polygonGeofence()])
+
+        await setup.resolver.evaluateMembership(
+            geofenceId: "1", reason: "test", isStillCurrent: { false }
+        )
+
+        #expect(await setup.emitter.snapshot().isEmpty)
+        #expect(await setup.storage.getPolygonMembership()["1"] == nil)
+    }
+
+    /// Control: the same call with the user unchanged must still decide, so the guard above is not
+    /// passing by refusing everything.
+    @Test
+    func evaluateMembership_givenUserUnchanged_expectVerdictRecorded() async {
+        let setup = await makeSetup(fix: fix(latitude: 0, longitude: 0))
+        await setup.storage.setCachedGeofences([polygonGeofence()])
+
+        await setup.resolver.evaluateMembership(
+            geofenceId: "1", reason: "test", isStillCurrent: { true }
+        )
+
+        #expect(await setup.storage.getPolygonMembership()["1"]?.membership == .inside)
+    }
+
     /// The annulus: inside the covering circle, outside the polygon. The OS thinks we arrived;
     /// geometry says otherwise, so nothing is delivered and the belief records `outside`.
     @Test
