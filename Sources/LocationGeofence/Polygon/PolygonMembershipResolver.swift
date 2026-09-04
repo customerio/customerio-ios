@@ -33,7 +33,8 @@ final class PolygonMembershipResolver {
     private let contextStore: BackgroundDeliveryContextStore
     private let notificationCenter: NotificationCenter
     private var foregroundObserverToken: NSObjectProtocol?
-    private var isEvaluatingAllPolygons = false
+    private var passesInFlight = 0
+    private var freshPassInFlight = false
 
     init(
         storage: GeofenceStorage,
@@ -169,17 +170,24 @@ final class PolygonMembershipResolver {
     /// serves the whole pass.
     ///
     /// Foregrounds arrive in bursts, so a pass already running wins: a second concurrent scan reads
-    /// the same storage and the same fix and can only duplicate the location work.
+    /// the same storage and the same fix and can only duplicate the location work. Strength decides
+    /// that, not mere existence — a wake requires a fresh fix and an in-flight foreground pass does
+    /// not, so skipping behind one would drop exactly the pass that runs BECAUSE the device moved,
+    /// with nothing to retry it.
     func evaluateAllPolygons(
         requiresFreshFix: Bool = false,
         isStillCurrent: (@Sendable () -> Bool)? = nil
     ) async {
-        guard !isEvaluatingAllPolygons else {
-            logger.geofencePolygonPassSkipped(reason: "a pass is already running")
+        if passesInFlight > 0, freshPassInFlight || !requiresFreshFix {
+            logger.geofencePolygonPassSkipped(reason: "a pass of at least this strength is already running")
             return
         }
-        isEvaluatingAllPolygons = true
-        defer { isEvaluatingAllPolygons = false }
+        passesInFlight += 1
+        freshPassInFlight = freshPassInFlight || requiresFreshFix
+        defer {
+            passesInFlight -= 1
+            if passesInFlight == 0 { freshPassInFlight = false }
+        }
         let registered = await storage.getRegisteredBusinessIds()
         let polygons = await storage.getCachedGeofences()
             .filter { registered.contains($0.id) && $0.vertices != nil }

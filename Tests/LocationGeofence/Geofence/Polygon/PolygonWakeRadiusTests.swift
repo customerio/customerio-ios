@@ -63,12 +63,24 @@ struct PolygonWakeRadiusTests {
         #expect(r == 1000)
     }
 
-    /// Outside every covering circle, nothing can be crossed before its own enter fires.
+    /// No boundary within the refresh radius, so there is nothing to tighten for.
     @Test
-    func radius_givenDeviceOutsideCoveringCircle_expectConfiguredRefreshRadius() {
+    func radius_givenNoBoundaryWithinRefreshRadius_expectConfiguredRefreshRadius() {
         let faraway = LocationData(latitude: 31.45, longitude: 74.17)
         let r = PolygonWakeRadius.radius(at: faraway, registeredPolygons: [polygon(id: "1")], config: config())
         #expect(r == 1000)
+    }
+
+    /// Outside the covering circle but near the ring. A covering-circle enter does not re-arm the
+    /// trigger, so if the radius ignored polygons the device has not yet reached, the device would
+    /// carry a wide trigger into the circle and across the boundary — no wake, no OS event, and an
+    /// exit over an unchanged belief on the way out, making the whole visit silent.
+    @Test
+    func radius_givenDeviceOutsideCoveringCircleButNearBoundary_expectDistanceToBoundary() {
+        // ~600 m north of centre: beyond the 500 m covering circle, ~400 m from the ring's north edge.
+        let approaching = LocationData(latitude: 31.37539, longitude: 74.17)
+        let r = PolygonWakeRadius.radius(at: approaching, registeredPolygons: [polygon(id: "1")], config: config())
+        #expect(r > 360 && r < 440, "got \(r)")
     }
 
     @Test
