@@ -36,6 +36,10 @@ final class CoreLocationGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @pr
         let identifier: String
         let transition: GeofenceTransition
         let location: LocationData?
+        /// Fix as it stood when the OS reported the crossing. Carried so the deferred
+        /// `os.callback.received` record reports receive-time truth rather than drain-time.
+        let fix: CLLocation?
+        let fixSource: GeofenceLog.FixSource
     }
 
     /// Region events received before the bootstrap bound `onTransition` (see `handleRegionEvent`).
@@ -186,21 +190,32 @@ final class CoreLocationGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @pr
         // The classic delegate carries no event date, so unlike the CLMonitor path there is no way
         // to tell how long the OS sat on this before handing it over. `buf` at least distinguishes
         // a crossing that waited on our own side for a handler to be bound.
+        //
+        // The fix is read here, when the OS handed the crossing over, but the record is only
+        // emitted once the region is known to be ours. A host app's own circular regions reach
+        // this delegate too, and recording before the ownership check wrote crossings we never
+        // owned — and the host's region identifiers — into a capture we hand around.
         let receivedFix = bestKnownFixDetail()
-        logger.geofenceCallbackReceived(
-            identifier: region.identifier,
-            transition: transition,
-            fix: receivedFix?.fix,
-            source: receivedFix?.source ?? .none,
-            buffered: mustBuffer
-        )
         if mustBuffer {
-            pendingEvents.append(PendingRegionEvent(identifier: region.identifier, transition: transition, location: currentLocationData()))
+            pendingEvents.append(PendingRegionEvent(
+                identifier: region.identifier,
+                transition: transition,
+                location: currentLocationData(),
+                fix: receivedFix?.fix,
+                fixSource: receivedFix?.source ?? .none
+            ))
             if pendingEvents.count > Self.maxPendingEvents { pendingEvents.removeFirst() }
             drainPendingEventsIfReady()
             return
         }
         guard ownedRegionIdentifiers.contains(region.identifier) else { return }
+        logger.geofenceCallbackReceived(
+            identifier: region.identifier,
+            transition: transition,
+            fix: receivedFix?.fix,
+            source: receivedFix?.source ?? .none,
+            buffered: false
+        )
         dispatchTransition(identifier: region.identifier, transition: transition, capturedLocation: currentLocationData())
     }
 
@@ -212,6 +227,16 @@ final class CoreLocationGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @pr
             while self.onTransition != nil, !self.pendingEvents.isEmpty {
                 let next = self.pendingEvents.removeFirst()
                 guard self.ownedRegionIdentifiers.contains(next.identifier) else { continue }
+                // Emitted at drain, not at receive: on the cold-wake path ownership is only
+                // knowable here. `buf=true` marks that delay; the fix is the one read when the OS
+                // reported the crossing, not the one current at drain.
+                self.logger.geofenceCallbackReceived(
+                    identifier: next.identifier,
+                    transition: next.transition,
+                    fix: next.fix,
+                    source: next.fixSource,
+                    buffered: true
+                )
                 self.dispatchTransition(identifier: next.identifier, transition: next.transition, capturedLocation: next.location)
             }
             self.isDrainingPendingEvents = false
