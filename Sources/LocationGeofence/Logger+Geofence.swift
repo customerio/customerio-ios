@@ -156,7 +156,8 @@ extension Logger {
 
     /// Positive record of an OS-delivered business transition. Without it a native delivery is
     /// only identifiable by the ABSENCE of a synthesized line, which makes the OS promotion rate
-    /// inferred rather than measured.
+    /// inferred rather than measured. Logged at the monitors' dispatch sites, where provenance is
+    /// known: the resolver's entry point also receives synthesized heals, which would inflate it.
     func geofenceOsTransitionReceived(identifier: String, transition: GeofenceTransition) {
         debug("OS delivered \(transition.rawValue) for region \(identifier)", geofenceTag)
     }
