@@ -20,14 +20,28 @@ final class MovementFixResolver: NSObject, @preconcurrency CLLocationManagerDele
     private let maxAge: TimeInterval
     private let requestTimeout: TimeInterval
     private let backgroundTaskRunner: BackgroundTaskRunner
+    private let desiredAccuracy: CLLocationAccuracy
 
     /// Created lazily so tests using the `requestFreshFix` seam never touch CoreLocation.
     private lazy var manager: CLLocationManager = {
         let manager = CLLocationManager()
-        manager.desiredAccuracy = kCLLocationAccuracyHundredMeters
+        manager.desiredAccuracy = desiredAccuracy
         manager.delegate = self
         return manager
     }()
+
+    /// Test seam mirroring `requestFreshFix`: where the pre-request fix comes from when this
+    /// resolver has delivered none itself. Unset, it reads CoreLocation's own cached fix.
+    var systemCachedFix: (() -> CLLocation?)?
+
+    /// Freshest fix obtainable without issuing a request. On a cold process this resolver has
+    /// delivered nothing, so CoreLocation's cached fix is the only evidence available — the
+    /// decision's age gate is what keeps it honest.
+    var cachedFix: CLLocation? {
+        if let latestFix { return latestFix }
+        if let systemCachedFix { return systemCachedFix() }
+        return manager.location
+    }
 
     /// Freshest fix this resolver has received, retained even when it arrives after a timeout.
     private(set) var latestFix: CLLocation?
@@ -47,12 +61,14 @@ final class MovementFixResolver: NSObject, @preconcurrency CLLocationManagerDele
         logger: Logger,
         maxAge: TimeInterval = GeofenceConstants.movementFixMaxAge,
         requestTimeout: TimeInterval = GeofenceConstants.movementFixRequestTimeout,
-        backgroundTaskRunner: BackgroundTaskRunner = NoBackgroundTaskRunner()
+        backgroundTaskRunner: BackgroundTaskRunner = NoBackgroundTaskRunner(),
+        desiredAccuracy: CLLocationAccuracy = kCLLocationAccuracyHundredMeters
     ) {
         self.logger = logger
         self.maxAge = maxAge
         self.requestTimeout = requestTimeout
         self.backgroundTaskRunner = backgroundTaskRunner
+        self.desiredAccuracy = desiredAccuracy
     }
 
     deinit {

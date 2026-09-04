@@ -41,9 +41,13 @@ final class PolygonMembershipResolver {
         self.storage = storage
         self.transitionEmitter = transitionEmitter
         self.logger = logger
+        // Ten metres, not the hundred the circle path uses: a verdict needs the device farther from
+        // the boundary than the fix is accurate, so a hundred-metre fix cannot decide anything for a
+        // polygon near the minimum monitored size.
         self.fixResolver = fixResolver ?? MovementFixResolver(
             logger: logger,
-            backgroundTaskRunner: GeofenceBackgroundTime.runner(name: "io.customer.geofence.polygon-fix")
+            backgroundTaskRunner: GeofenceBackgroundTime.runner(name: "io.customer.geofence.polygon-fix"),
+            desiredAccuracy: kCLLocationAccuracyNearestTenMeters
         )
         registerForegroundEvaluation()
     }
@@ -61,19 +65,26 @@ final class PolygonMembershipResolver {
     /// condition the cache has dropped) is forwarded rather than dropped: treating it as a circle
     /// is the behaviour that predates polygons, and losing a real crossing is worse than a
     /// covering-circle-shaped one.
-    func handleTransition(identifier: String, transition: GeofenceTransition) async {
+    func handleTransition(identifier: String, transition: GeofenceTransition, occurredAt: Date? = nil) async {
         logger.geofenceOsTransitionReceived(identifier: identifier, transition: transition)
-        guard let geofence = await cachedGeofence(id: identifier),
-              let polygon = geofence.polygonRegion
-        else {
+        guard let geofence = await cachedGeofence(id: identifier), geofence.vertices != nil else {
+            // Uncached, or a genuine circle: forward untouched, the behaviour that predates polygons.
             await transitionEmitter.trackTransition(geofenceId: identifier, transition: transition)
+            return
+        }
+        guard let polygon = geofence.polygonRegion else {
+            // A stored ring that no longer builds is NOT a circle — forwarding it would fire a
+            // customer enter anywhere inside the covering circle.
+            logger.geofencePolygonUndecided(identifier: identifier, reason: "stored ring no longer builds")
             return
         }
         switch transition {
         case .exit:
-            // polygon ⊆ covering circle, so leaving the circle is geometric certainty and needs
-            // no fix.
-            await apply(.outside, to: geofence, evidence: nil)
+            // polygon ⊆ covering circle, so leaving the circle is geometric certainty and needs no
+            // fix. It is still ORDERED against the stored belief: a synthesized or replayed exit
+            // arriving after a newer enter would otherwise swallow it and leave the device believed
+            // outside while it sits inside.
+            await apply(.outside, to: geofence, evidence: occurredAt)
         case .enter:
             await evaluate(geofence: geofence, polygon: polygon)
         }
@@ -132,8 +143,9 @@ final class PolygonMembershipResolver {
     }
 
     /// Applies a membership verdict and delivers the crossing when it changes the stored belief.
-    /// `evidence` is the fix's timestamp, or `nil` for the covering-circle exit, which is
-    /// geometric rather than fix-derived and so is never outranked by a newer belief.
+    /// `evidence` is when the crossing happened — a fix's timestamp, or the OS event's date for a
+    /// covering-circle exit. `nil` only when the caller has no date, which leaves the write
+    /// unordered against the stored belief.
     private func apply(_ membership: PolygonMembership, to geofence: Geofence, evidence: Date?) async {
         let outcome = await storage.recordPolygonMembership(
             membership,
@@ -160,8 +172,11 @@ final class PolygonMembershipResolver {
     /// carries the accuracy and timestamp the decision needs.
     private func resolveFix() async -> CLLocation? {
         await withCheckedContinuation { continuation in
-            fixResolver.resolve(cached: fixResolver.latestFix) { [weak self] _ in
-                continuation.resume(returning: self?.fixResolver.latestFix)
+            fixResolver.resolve(cached: fixResolver.cachedFix) { [weak self] _ in
+                // `cachedFix` again on failure: on a cold process this resolver has delivered
+                // nothing, and the monitor has already advanced its dedup baseline, so declining
+                // here loses the crossing for good. The decision's age gate bounds how stale it can be.
+                continuation.resume(returning: self?.fixResolver.cachedFix)
             }
         }
     }
