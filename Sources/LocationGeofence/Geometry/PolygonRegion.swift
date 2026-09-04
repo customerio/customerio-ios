@@ -62,12 +62,15 @@ struct PolygonRegion {
         }
         guard open.count >= 3 else { return nil }
 
-        let lat0 = open.map(\.latitude).reduce(0, +) / Double(open.count)
-        let lon0 = open.map(\.longitude).reduce(0, +) / Double(open.count)
+        // Unwrap before averaging: a ring spanning the antimeridian holds values near both +180
+        // and -180, whose mean is Greenwich, and the fence then projects a hemisphere wide.
+        let unwrapped = Self.unwrapLongitudes(open)
+        let lat0 = unwrapped.map(\.latitude).reduce(0, +) / Double(unwrapped.count)
+        let lon0 = unwrapped.map(\.longitude).reduce(0, +) / Double(unwrapped.count)
         let latitudeRadians = lat0 * Self.degreesToRadians
         let longitudeRadians = lon0 * Self.degreesToRadians
         let cosLatitude = cos(latitudeRadians)
-        let planar = open.map {
+        let planar = unwrapped.map {
             Self.project(
                 $0,
                 referenceLatitudeRadians: latitudeRadians,
@@ -175,9 +178,39 @@ struct PolygonRegion {
         return isInside(p) ? minDistance : -minDistance
     }
 
+    /// Shifts longitudes into the ±180° window around the first vertex so a ring crossing the
+    /// antimeridian is continuous. Part of the projection contract shared with Android.
+    private static func unwrapLongitudes(_ ring: [LocationData]) -> [LocationData] {
+        guard let reference = ring.first?.longitude else { return ring }
+        return ring.map {
+            LocationData(latitude: $0.latitude, longitude: unwrapLongitude($0.longitude, near: reference))
+        }
+    }
+
+    /// The walk is bounded by its inputs: `init?(vertices:)` refuses out-of-range ring positions and
+    /// `evaluate` refuses an invalid fix, so both sides arrive inside ±180°. The guard keeps that a
+    /// property of this function rather than of its callers — a value far enough out of range stops
+    /// changing when 360 is subtracted from it, and the loop would never end.
+    private static func unwrapLongitude(_ longitude: Double, near reference: Double) -> Double {
+        guard longitude.isFinite, abs(longitude) <= 360, reference.isFinite else { return longitude }
+        var value = longitude
+        while value - reference > 180 {
+            value -= 360
+        }
+        while value - reference < -180 {
+            value += 360
+        }
+        return value
+    }
+
     private func project(_ location: LocationData) -> Point {
-        Self.project(
-            location,
+        // Onto the ring's line: a fix at -179.99 belongs beside a ring unwrapped to +180.01.
+        let aligned = LocationData(
+            latitude: location.latitude,
+            longitude: Self.unwrapLongitude(location.longitude, near: referenceLongitudeRadians * 180 / .pi)
+        )
+        return Self.project(
+            aligned,
             referenceLatitudeRadians: referenceLatitudeRadians,
             referenceLongitudeRadians: referenceLongitudeRadians,
             cosReferenceLatitude: cosReferenceLatitude
