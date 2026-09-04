@@ -66,7 +66,8 @@ extension CLMonitorGeofenceMonitor {
                 self.onTransition?(
                     identifier,
                     transition,
-                    LocationData(latitude: fix.coordinate.latitude, longitude: fix.coordinate.longitude)
+                    LocationData(latitude: fix.coordinate.latitude, longitude: fix.coordinate.longitude),
+                    fix.timestamp
                 )
             }
         }

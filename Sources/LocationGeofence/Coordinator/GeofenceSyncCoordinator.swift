@@ -240,9 +240,9 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
         defer { releaseGate() }
 
         let effectiveConfig = config ?? .fallback
-        let nearest = distanceFilter.nearest(cachedRegions, to: anchor, limit: effectiveConfig.maxBusinessGeofences, maxDistance: effectiveConfig.maxMonitoringDistance)
+        let nearest = distanceFilter.nearest(monitorableRegions(cachedRegions), to: anchor, limit: effectiveConfig.maxBusinessGeofences, maxDistance: effectiveConfig.maxMonitoringDistance)
         let registerMovementTrigger = effectiveConfig.maxBusinessGeofences > 0
-        registerWithOsSync(
+        let osRegistration = registerWithOsSync(
             businessRegions: nearest,
             movementTriggerLocation: anchor,
             movementTriggerRadius: effectiveConfig.localRefreshTriggerRadius,
@@ -251,7 +251,13 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
         logger.geofenceSyncCompleted(registeredCount: nearest.count, movementTriggerRegistered: registerMovementTrigger)
         // No initial-enter here: a cold-wake restore of the pre-kill set (not new registrations) off a
         // possibly-stale anchor. Genuinely-new fences come from a refresh fetch, which emits there.
-        return GeofenceRegistration(center: anchor, businessIds: Set(nearest.map(\.id)))
+        // Only what the OS took, for the same reason as the refresh paths: an oversized polygon is
+        // deliberately unregistered, and recording it would have the resolver decide membership for
+        // a fence with no wake behind it.
+        return GeofenceRegistration(
+            center: anchor,
+            businessIds: Set(nearest.map(\.id)).intersection(osRegistration.registeredIds)
+        )
     }
 
     /// The identified user a gated operation runs for (`nil` when signed out); the exit cleanup compares against it.

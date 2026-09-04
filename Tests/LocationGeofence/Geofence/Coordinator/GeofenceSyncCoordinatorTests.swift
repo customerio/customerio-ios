@@ -764,6 +764,39 @@ struct GeofenceSyncCoordinatorTests {
         #expect(setup.monitor.startedRegions.isEmpty)
     }
 
+    /// Cold-wake sibling of the refresh rule: bootstrap persists whatever this returns, so an
+    /// oversized polygon reported here would be evaluated for membership with no OS wake behind it.
+    @Test
+    func applyCachedRegistration_givenOversizedPolygon_expectExcludedFromReportedRegistration() {
+        let monitor = MockGeofenceRegionMonitor()
+        monitor.maximumMonitoringRadius = 1000
+        let setup = makeCoordinator(storage: makeStorage(), monitor: monitor)
+        let oversizedPolygon = Geofence(
+            id: "poly", latitude: 0, longitude: 0, radius: 5000, name: nil,
+            transitionTypes: [.enter, .exit], lastUpdated: Date(timeIntervalSince1970: 0),
+            vertices: [
+                LocationData(latitude: -0.01, longitude: -0.01),
+                LocationData(latitude: -0.01, longitude: 0.01),
+                LocationData(latitude: 0.01, longitude: 0.01),
+                LocationData(latitude: 0.01, longitude: -0.01)
+            ]
+        )
+        let circle = Geofence(
+            id: "circle", latitude: 0, longitude: 0, radius: 100, name: nil,
+            transitionTypes: [.enter, .exit], lastUpdated: Date(timeIntervalSince1970: 0)
+        )
+
+        let registration = setup.coordinator.applyCachedRegistration(
+            cachedRegions: [oversizedPolygon, circle],
+            anchor: LocationData(latitude: 0, longitude: 0),
+            config: .fallback,
+            userId: "user-1"
+        )
+
+        #expect(registration?.businessIds.contains("poly") == false)
+        #expect(registration?.businessIds.contains("circle") == true)
+    }
+
     @Test
     func applyCachedRegistration_givenEmptyRegions_expectMovementTriggerRegistered() {
         // An empty nearby response clears the cache but leaves the trigger armed. If the OS then
@@ -1847,7 +1880,199 @@ struct GeofenceSyncCoordinatorTests {
         #expect(refreshResult.errorOrNil == .alreadyInProgress)
     }
 
+    // MARK: - Oversized covering circles
+
+    /// Both monitors clamp a radius to the OS limit. For a circle that is graceful — the monitored
+    /// circle IS the fence, so a smaller one just reports later. For a polygon it is not: a clamped
+    /// circle no longer contains the polygon, so the covering-circle exit stops being geometric
+    /// certainty and becomes a false exit. Such a polygon is dropped instead, while the circle
+    /// alongside it still registers — the control that proves the drop is selective.
+    @Test
+    func remoteRefresh_givenPolygonCoveringCircleOverOsLimit_expectDroppedButCircleRegistered() async {
+        let anchor = LocationData(latitude: 0, longitude: 0)
+        let storage = makeStorage()
+        let dateUtil = DateUtilStub()
+        await storage.recordSync(timestamp: dateUtil.givenNow.addingTimeInterval(-25 * 60 * 60), location: LocationData(latitude: 0, longitude: 0))
+        let oversizedPolygon = Geofence(
+            id: "poly", latitude: 0, longitude: 0, radius: 5000, name: nil,
+            transitionTypes: [.enter, .exit], lastUpdated: dateUtil.givenNow,
+            vertices: [
+                LocationData(latitude: -0.01, longitude: -0.01),
+                LocationData(latitude: -0.01, longitude: 0.01),
+                LocationData(latitude: 0.01, longitude: 0.01),
+                LocationData(latitude: 0.01, longitude: -0.01)
+            ]
+        )
+        let oversizedCircle = Geofence(
+            id: "circle", latitude: 0, longitude: 0, radius: 5000, name: nil,
+            transitionTypes: [.enter, .exit], lastUpdated: dateUtil.givenNow
+        )
+        let api = GeofenceApiServiceMock()
+        api.fetchNearbyGeofencesClosure = { _, _, completion in
+            completion(.success(makeApiResponse(regions: [oversizedPolygon, oversizedCircle])))
+        }
+        let monitor = MockGeofenceRegionMonitor()
+        monitor.maximumMonitoringRadius = 1000
+        let setup = makeCoordinator(api: api, storage: storage, monitor: monitor, dateUtil: dateUtil)
+
+        _ = await setup.coordinator.refresh(latitude: anchor.latitude, longitude: anchor.longitude)
+
+        let registered = Set(setup.monitor.startedRegions.map(\.identifier))
+        #expect(!registered.contains("poly"))
+        #expect(registered.contains("circle"))
+    }
+
+    /// A polygon the OS will refuse must not consume one of `maxBusinessGeofences`: dropping it
+    /// after ranking left the slot empty even with a usable candidate waiting behind it.
+    @Test
+    func remoteRefresh_givenOversizedPolygonAndSpareCandidate_expectSlotGoesToTheNextRegion() async {
+        let anchor = LocationData(latitude: 0, longitude: 0)
+        let storage = makeStorage()
+        let dateUtil = DateUtilStub()
+        await storage.recordSync(timestamp: dateUtil.givenNow.addingTimeInterval(-25 * 60 * 60), location: anchor)
+        let oversizedPolygon = Geofence(
+            id: "poly", latitude: 0, longitude: 0, radius: 5000, name: nil,
+            transitionTypes: [.enter, .exit], lastUpdated: dateUtil.givenNow,
+            vertices: [
+                LocationData(latitude: -0.01, longitude: -0.01),
+                LocationData(latitude: -0.01, longitude: 0.01),
+                LocationData(latitude: 0.01, longitude: 0.01),
+                LocationData(latitude: 0.01, longitude: -0.01)
+            ]
+        )
+        // Nearer than the spare, so ranking puts it in the single available slot.
+        let spare = Geofence(
+            id: "spare", latitude: 0.02, longitude: 0.02, radius: 100, name: nil,
+            transitionTypes: [.enter, .exit], lastUpdated: dateUtil.givenNow
+        )
+        let config = GeofenceConfig(
+            localRefreshTriggerRadius: 750, remoteFetchRefreshTriggerRadius: 3000,
+            remoteFetchRefreshExpiry: 86400, duplicateEventsExpiry: 60,
+            maxBusinessGeofences: 1, maxMonitoringDistance: 100000
+        )
+        let api = GeofenceApiServiceMock()
+        api.fetchNearbyGeofencesClosure = { _, _, completion in
+            completion(.success(makeApiResponse(regions: [oversizedPolygon, spare], config: config)))
+        }
+        let monitor = MockGeofenceRegionMonitor()
+        monitor.maximumMonitoringRadius = 1000
+        let setup = makeCoordinator(api: api, storage: storage, monitor: monitor, dateUtil: dateUtil)
+
+        _ = await setup.coordinator.refresh(latitude: anchor.latitude, longitude: anchor.longitude)
+
+        #expect(setup.monitor.startedRegions.map(\.identifier).contains("spare"))
+    }
+
+    /// A polygon's covering circle is machinery: it must report both edges regardless of the
+    /// customer's transition types, or the resolver never sees the edge it needs to advance belief.
+    @Test
+    func remoteRefresh_givenEnterOnlyPolygon_expectCoveringCircleRegisteredWithBothEdges() async {
+        let anchor = LocationData(latitude: 0, longitude: 0)
+        let storage = makeStorage()
+        let dateUtil = DateUtilStub()
+        await storage.recordSync(timestamp: dateUtil.givenNow.addingTimeInterval(-25 * 60 * 60), location: anchor)
+        let enterOnly = Geofence(
+            id: "poly", latitude: 0, longitude: 0, radius: 300, name: nil,
+            transitionTypes: [.enter], lastUpdated: dateUtil.givenNow,
+            vertices: [
+                LocationData(latitude: -0.001, longitude: -0.001),
+                LocationData(latitude: -0.001, longitude: 0.001),
+                LocationData(latitude: 0.001, longitude: 0.001),
+                LocationData(latitude: 0.001, longitude: -0.001)
+            ]
+        )
+        let enterOnlyCircle = Geofence(
+            id: "circle", latitude: 0, longitude: 0, radius: 120, name: nil,
+            transitionTypes: [.enter], lastUpdated: dateUtil.givenNow
+        )
+        let api = GeofenceApiServiceMock()
+        api.fetchNearbyGeofencesClosure = { _, _, completion in
+            completion(.success(makeApiResponse(regions: [enterOnly, enterOnlyCircle])))
+        }
+        let setup = makeCoordinator(api: api, storage: storage, dateUtil: dateUtil)
+
+        _ = await setup.coordinator.refresh(latitude: anchor.latitude, longitude: anchor.longitude)
+
+        let polygonRequest = setup.monitor.startedRegions.first { $0.identifier == "poly" }
+        #expect(polygonRequest?.transitionTypes == [.enter, .exit])
+        // A real circle keeps the customer's types — the change is polygon-only.
+        let circleRequest = setup.monitor.startedRegions.first { $0.identifier == "circle" }
+        #expect(circleRequest?.transitionTypes == [.enter])
+    }
+
+    /// The dropped polygon must not be recorded as registered either: `evaluateAllPolygons` reads
+    /// that set, so recording it would have the resolver decide membership for a fence the OS never
+    /// took — an enter with no wake behind it and no exit to balance it.
+    @Test
+    func remoteRefresh_givenPolygonCoveringCircleOverOsLimit_expectNotRecordedAsRegistered() async {
+        let anchor = LocationData(latitude: 0, longitude: 0)
+        let storage = makeStorage()
+        let dateUtil = DateUtilStub()
+        await storage.recordSync(timestamp: dateUtil.givenNow.addingTimeInterval(-25 * 60 * 60), location: anchor)
+        let oversizedPolygon = Geofence(
+            id: "poly", latitude: 0, longitude: 0, radius: 5000, name: nil,
+            transitionTypes: [.enter, .exit], lastUpdated: dateUtil.givenNow,
+            vertices: [
+                LocationData(latitude: -0.01, longitude: -0.01),
+                LocationData(latitude: -0.01, longitude: 0.01),
+                LocationData(latitude: 0.01, longitude: 0.01),
+                LocationData(latitude: 0.01, longitude: -0.01)
+            ]
+        )
+        let smallCircle = Geofence(
+            id: "circle", latitude: 0, longitude: 0, radius: 100, name: nil,
+            transitionTypes: [.enter, .exit], lastUpdated: dateUtil.givenNow
+        )
+        let api = GeofenceApiServiceMock()
+        api.fetchNearbyGeofencesClosure = { _, _, completion in
+            completion(.success(makeApiResponse(regions: [oversizedPolygon, smallCircle])))
+        }
+        let monitor = MockGeofenceRegionMonitor()
+        monitor.maximumMonitoringRadius = 1000
+        let setup = makeCoordinator(api: api, storage: storage, monitor: monitor, dateUtil: dateUtil)
+
+        _ = await setup.coordinator.refresh(latitude: anchor.latitude, longitude: anchor.longitude)
+
+        let recorded = await storage.getRegisteredBusinessIds()
+        #expect(!recorded.contains("poly"))
+        #expect(recorded.contains("circle"))
+    }
+
     // MARK: - Initial enter-when-inside (diff-based, both monitor paths)
+
+    /// A polygon's `radius` is its covering circle, so the containment test that serves circles
+    /// would emit an enter for a device sitting in the annulus — a crossing that never happened.
+    /// Polygons are excluded here and decided by the resolver's gated evaluation instead.
+    ///
+    /// The circle in the same pass is the negative control: it proves the harness would have caught
+    /// an emit, so the polygon's silence is the exclusion working and not a dead assertion.
+    @Test
+    func remoteRefresh_givenNewPolygonCoveringAnchorButNotContainingIt_expectNoInitialEnter() async {
+        let anchor = LocationData(latitude: 0, longitude: 0)
+        // Square sitting ~111 m north of the anchor: every vertex is inside the 400 m covering
+        // circle, while the anchor itself is outside the polygon.
+        let polygon = Geofence(
+            id: "poly", latitude: 0, longitude: 0, radius: 400, name: nil,
+            transitionTypes: [.enter, .exit], lastUpdated: Date(),
+            vertices: [
+                LocationData(latitude: 0.001, longitude: -0.0016),
+                LocationData(latitude: 0.001, longitude: 0.0016),
+                LocationData(latitude: 0.0026, longitude: 0.0016),
+                LocationData(latitude: 0.0026, longitude: -0.0016)
+            ]
+        )
+        let circle = Geofence(
+            id: "circle", latitude: 0, longitude: 0, radius: 400, name: nil,
+            transitionTypes: [.enter, .exit], lastUpdated: Date()
+        )
+
+        let emitter = await runRemoteRefresh(regions: [polygon, circle], anchor: anchor, previousIds: [])
+        await awaitEmits(emitter, count: 1)
+
+        let emitted = emitter.calls.wrappedValue
+        #expect(emitted.count == 1)
+        #expect(emitted.first?.geofenceId == "circle")
+    }
 
     /// Drives a remote refresh that fetches `regions`, anchored at `anchor`, with `previousIds`
     /// already recorded as registered. The emit is fire-and-forget, so callers poll via `awaitEmits`.

@@ -40,7 +40,8 @@ extension GeofenceSyncCoordinatorImpl {
         }
         let effectiveConfig = parsedConfig ?? cachedConfig ?? .fallback
         let anchor = LocationData(latitude: latitude, longitude: longitude)
-        let nearest = distanceFilter.nearest(regions, to: anchor, limit: effectiveConfig.maxBusinessGeofences, maxDistance: effectiveConfig.maxMonitoringDistance)
+        let monitorable = await MainActor.run { monitorableRegions(regions) }
+        let nearest = distanceFilter.nearest(monitorable, to: anchor, limit: effectiveConfig.maxBusinessGeofences, maxDistance: effectiveConfig.maxMonitoringDistance)
         let registerMovementTrigger = effectiveConfig.maxBusinessGeofences > 0
         // Read before `recordRegistration` overwrites it — the diff decides which registrations are new.
         let previouslyRegisteredIds = await storage.getRegisteredBusinessIds()
@@ -61,7 +62,10 @@ extension GeofenceSyncCoordinatorImpl {
             await storage.setCachedConfig(parsedConfig)
         }
         await storage.recordSync(timestamp: dateUtil.now, location: anchor)
-        await storage.recordRegistration(center: anchor, businessIds: nearestIds)
+        // Only what the OS accepted: an oversized polygon is deliberately not registered, and
+        // recording it anyway would have the membership resolver evaluate a fence with no wake
+        // behind it — delivering an enter that nothing can ever balance with an exit.
+        await storage.recordRegistration(center: anchor, businessIds: nearestIds.intersection(osRegistration.registeredIds))
         emitInitialEnters(
             candidates: nearest,
             osRegistration: osRegistration,
@@ -85,7 +89,8 @@ extension GeofenceSyncCoordinatorImpl {
         cachedRegions: [Geofence]
     ) async -> Result<Void, GeofenceSyncError> {
         let anchor = LocationData(latitude: latitude, longitude: longitude)
-        let nearest = distanceFilter.nearest(cachedRegions, to: anchor, limit: config.maxBusinessGeofences, maxDistance: config.maxMonitoringDistance)
+        let monitorable = await MainActor.run { monitorableRegions(cachedRegions) }
+        let nearest = distanceFilter.nearest(monitorable, to: anchor, limit: config.maxBusinessGeofences, maxDistance: config.maxMonitoringDistance)
         let registerMovementTrigger = config.maxBusinessGeofences > 0
         // Read before `recordRegistration` overwrites it — the diff decides which registrations are new.
         let previouslyRegisteredIds = await storage.getRegisteredBusinessIds()
@@ -98,7 +103,10 @@ extension GeofenceSyncCoordinatorImpl {
                 registerMovementTrigger: registerMovementTrigger
             )
         }
-        await storage.recordRegistration(center: anchor, businessIds: nearestIds)
+        // Only what the OS accepted: an oversized polygon is deliberately not registered, and
+        // recording it anyway would have the membership resolver evaluate a fence with no wake
+        // behind it — delivering an enter that nothing can ever balance with an exit.
+        await storage.recordRegistration(center: anchor, businessIds: nearestIds.intersection(osRegistration.registeredIds))
         emitInitialEnters(
             candidates: nearest,
             osRegistration: osRegistration,

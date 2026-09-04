@@ -36,6 +36,9 @@ final class CoreLocationGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @pr
         let identifier: String
         let transition: GeofenceTransition
         let location: LocationData?
+        /// CoreLocation's region callbacks carry no date, so this is when we received it — which is
+        /// what a queued event needs so a drain minutes later is not read as happening now.
+        let receivedAt: Date
     }
 
     /// Region events received before the bootstrap bound `onTransition` (see `handleRegionEvent`).
@@ -183,13 +186,13 @@ final class CoreLocationGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @pr
     private func handleRegionEvent(_ region: CLRegion, transition: GeofenceTransition) {
         guard region is CLCircularRegion else { return }
         if onTransition == nil || !pendingEvents.isEmpty || isDrainingPendingEvents {
-            pendingEvents.append(PendingRegionEvent(identifier: region.identifier, transition: transition, location: currentLocationData()))
+            pendingEvents.append(PendingRegionEvent(identifier: region.identifier, transition: transition, location: currentLocationData(), receivedAt: Date()))
             if pendingEvents.count > Self.maxPendingEvents { pendingEvents.removeFirst() }
             drainPendingEventsIfReady()
             return
         }
         guard ownedRegionIdentifiers.contains(region.identifier) else { return }
-        dispatchTransition(identifier: region.identifier, transition: transition, capturedLocation: currentLocationData())
+        dispatchTransition(identifier: region.identifier, transition: transition, capturedLocation: currentLocationData(), occurredAt: Date())
     }
 
     private func drainPendingEventsIfReady() {
@@ -200,7 +203,7 @@ final class CoreLocationGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @pr
             while self.onTransition != nil, !self.pendingEvents.isEmpty {
                 let next = self.pendingEvents.removeFirst()
                 guard self.ownedRegionIdentifiers.contains(next.identifier) else { continue }
-                self.dispatchTransition(identifier: next.identifier, transition: next.transition, capturedLocation: next.location)
+                self.dispatchTransition(identifier: next.identifier, transition: next.transition, capturedLocation: next.location, occurredAt: next.receivedAt)
             }
             self.isDrainingPendingEvents = false
         }
@@ -210,16 +213,16 @@ final class CoreLocationGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @pr
     /// coords, so a frozen cached fix pins the whole pipeline to a stale point — freshen it first,
     /// keeping the captured location only as the fallback. Fire-and-forget so a slow fix can't
     /// stall the pending-event drain behind it. Business events keep the captured location.
-    private func dispatchTransition(identifier: String, transition: GeofenceTransition, capturedLocation: LocationData?) {
+    private func dispatchTransition(identifier: String, transition: GeofenceTransition, capturedLocation: LocationData?, occurredAt: Date) {
         if identifier == GeofenceConstants.movementTriggerIdentifier, transition == .exit {
             movementFixResolver.resolve(cached: bestKnownFix()) { [weak self] location in
                 self?.logger.geofenceOsTransitionReceived(identifier: identifier, transition: transition)
-                self?.onTransition?(identifier, transition, location ?? capturedLocation)
+                self?.onTransition?(identifier, transition, location ?? capturedLocation, occurredAt)
             }
             return
         }
         logger.geofenceOsTransitionReceived(identifier: identifier, transition: transition)
-        onTransition?(identifier, transition, capturedLocation)
+        onTransition?(identifier, transition, capturedLocation, occurredAt)
     }
 
     func locationManager(_ manager: CLLocationManager, monitoringDidFailFor region: CLRegion?, withError error: Error) {
