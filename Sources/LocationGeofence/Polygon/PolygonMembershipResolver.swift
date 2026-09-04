@@ -96,26 +96,46 @@ final class PolygonMembershipResolver {
         }
     }
 
-    /// Re-evaluates membership for one polygon: the entry point for a polygon that has just been
-    /// registered, where the device may already be standing inside and no crossing will ever be
-    /// delivered. A geofence that is no longer cached or no longer a polygon has nothing to decide.
+    /// Re-evaluates membership for polygons that have just been registered, where the device may
+    /// already be standing inside and no crossing will ever be delivered. A geofence that is no
+    /// longer cached or no longer a polygon has nothing to decide.
+    ///
+    /// One fix serves the whole batch, for the same reason the foreground pass shares one: resolving
+    /// per geofence issues a fresh timed request each time the cache stays empty, and a registration
+    /// carrying several new polygons would spend that timeout once per polygon on the main actor.
     ///
     /// Logged because this path bypasses `handleTransition`, so nothing else records that we were
     /// asked to re-check. Reading the absence of a log line as an absence of evaluations led to
     /// exactly the wrong conclusion once already.
+    ///
     /// `isStillCurrent` is re-checked after the fix resolves. Resolving suspends, and a user switch
     /// in that window clears user-scoped state — without the re-check this task would resume and
     /// rewrite the old user's belief, stamping any resulting event to whoever signed in.
     func evaluateMembership(
-        geofenceId: String,
+        geofenceIds: [String],
         reason: String,
         isStillCurrent: (@Sendable () -> Bool)? = nil
     ) async {
-        logger.geofencePolygonEvaluationRequested(identifier: geofenceId, reason: reason)
-        guard let geofence = await cachedGeofence(id: geofenceId),
-              let polygon = geofence.polygonRegion
-        else { return }
-        await evaluate(geofence: geofence, polygon: polygon, isStillCurrent: isStillCurrent)
+        for geofenceId in geofenceIds {
+            logger.geofencePolygonEvaluationRequested(identifier: geofenceId, reason: reason)
+        }
+        var pending: [(Geofence, PolygonRegion)] = []
+        for geofenceId in geofenceIds {
+            guard let geofence = await cachedGeofence(id: geofenceId),
+                  let polygon = geofence.polygonRegion
+            else { continue }
+            pending.append((geofence, polygon))
+        }
+        guard !pending.isEmpty else { return }
+        guard let fix = await resolveFix() else {
+            for (geofence, _) in pending {
+                logger.geofencePolygonUndecided(identifier: geofence.id, reason: "no usable fix")
+            }
+            return
+        }
+        for (geofence, polygon) in pending {
+            await evaluate(geofence: geofence, polygon: polygon, fix: fix, isStillCurrent: isStillCurrent)
+        }
     }
 
     /// Re-evaluates every registered polygon when the app comes to the foreground.

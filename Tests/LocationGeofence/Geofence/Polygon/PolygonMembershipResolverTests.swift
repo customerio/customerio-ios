@@ -250,7 +250,7 @@ struct PolygonMembershipResolverTests {
         await setup.storage.setCachedGeofences([polygonGeofence()])
 
         await setup.resolver.evaluateMembership(
-            geofenceId: "1", reason: "test", isStillCurrent: { false }
+            geofenceIds: ["1"], reason: "test", isStillCurrent: { false }
         )
 
         #expect(await setup.emitter.snapshot().isEmpty)
@@ -265,10 +265,24 @@ struct PolygonMembershipResolverTests {
         await setup.storage.setCachedGeofences([polygonGeofence()])
 
         await setup.resolver.evaluateMembership(
-            geofenceId: "1", reason: "test", isStillCurrent: { true }
+            geofenceIds: ["1"], reason: "test", isStillCurrent: { true }
         )
 
         #expect(await setup.storage.getPolygonMembership()["1"]?.membership == .inside)
+    }
+
+    /// A registration carrying several new polygons must cost one location request, not one each:
+    /// with no fix obtainable, per-polygon resolution spends the full request timeout N times over
+    /// on the main actor and still decides nothing.
+    @Test
+    func evaluateMembership_givenSeveralNewPolygons_expectOneRequestForTheBatch() async {
+        let setup = await makeSetup(fix: nil)
+        await registerPolygons(setup, ids: ["1", "2", "3"])
+        let counter = countingRequests(setup)
+
+        await setup.resolver.evaluateMembership(geofenceIds: ["1", "2", "3"], reason: "test")
+
+        #expect(counter.count == 1)
     }
 
     /// The annulus: inside the covering circle, outside the polygon. The OS thinks we arrived;
