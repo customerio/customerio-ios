@@ -147,12 +147,6 @@ struct PolygonMembershipResolverTests {
         logger.debugReceivedInvocations.contains { $0.message.contains(needle) }
     }
 
-    private func yieldUntil(_ condition: () -> Bool) async {
-        for _ in 0 ..< 1000 where !condition() {
-            await Task.yield()
-        }
-    }
-
     /// The same ring shifted a degree away, so a point decisive INSIDE the original is decisively
     /// outside this one.
     private func movedPolygonGeofence(id: String = "1") -> Geofence {
@@ -231,6 +225,26 @@ struct PolygonMembershipResolverTests {
         await settle()
         gate.releaseAll()
         _ = await(foreground, wake)
+
+        #expect(skipCount(logger) == 0)
+    }
+
+    /// Two wakes are not interchangeable just because both demand a fresh fix. The in-flight one
+    /// asked for its fix before the crossing that caused this one, so yielding to it drops the
+    /// second crossing entirely — there is no retry behind a wake.
+    @Test
+    func evaluateAllPolygons_givenFreshRequiredDuringFreshPass_expectNotSkipped() async {
+        let logger = LoggerMock()
+        let setup = await makeSetup(fix: nil, logger: logger)
+        await registerPolygons(setup, ids: ["1", "2"])
+        let gate = gatingRequests(setup)
+
+        async let firstWake: Void = setup.resolver.evaluateAllPolygons(requiresFreshFix: true)
+        await yieldUntil { !gate.releases.isEmpty }
+        async let secondWake: Void = setup.resolver.evaluateAllPolygons(requiresFreshFix: true)
+        await settle()
+        gate.releaseAll()
+        _ = await(firstWake, secondWake)
 
         #expect(skipCount(logger) == 0)
     }
