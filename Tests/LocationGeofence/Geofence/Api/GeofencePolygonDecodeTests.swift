@@ -154,6 +154,27 @@ struct GeofencePolygonDecodeTests {
 
     // MARK: - "No illusions": unusable polygons drop the region
 
+    /// End-to-end at the API boundary: a bow-tie reaching the cache would fire enters for ground
+    /// the polygon never covered, so it must not survive decode.
+    @Test
+    func toDomain_givenSelfIntersectingRing_expectRegionDropped() throws {
+        let bowtie = """
+        [[[74.1674038, 31.3671634], [74.1716122, 31.3707566],
+          [74.1716122, 31.3671634], [74.1674038, 31.3707566]]]
+        """
+        let response = try decode(responseJson([polygonJson(ring: bowtie)]))
+        #expect(response.toDomainRegions().isEmpty)
+    }
+
+    @Test
+    func toDomain_givenZeroAreaRing_expectRegionDropped() throws {
+        let line = """
+        [[[74.1674038, 31.3671634], [74.1674038, 31.3681634], [74.1674038, 31.3691634]]]
+        """
+        let response = try decode(responseJson([polygonJson(ring: line)]))
+        #expect(response.toDomainRegions().isEmpty)
+    }
+
     @Test
     func toDomain_givenMultiPolygonType_expectRegionDropped() throws {
         let response = try decode(responseJson([polygonJson(type: "MultiPolygon")]))

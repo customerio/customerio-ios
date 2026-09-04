@@ -323,7 +323,8 @@ extension GeofenceApiRegion {
     }
 
     /// Decodes the ring into the kernel's canonical (unclosed) vertices so the cache stores one
-    /// representation. Only what building the region needs — the server validates the geometry.
+    /// representation. Validates here rather than at every use: the degeneracy checks are O(n²) and
+    /// a region is rebuilt per wake and per evaluation, so this is the one place they can run once.
     private static func polygonVertices(_ ring: [[Double]]) -> [LocationData]? {
         var positions: [LocationData] = []
         positions.reserveCapacity(ring.count)
@@ -332,7 +333,7 @@ extension GeofenceApiRegion {
             guard position.count >= 2 else { return nil }
             positions.append(LocationData(latitude: position[1], longitude: position[0]))
         }
-        return PolygonRegion(vertices: positions)?.vertices
+        return PolygonRegion(validating: positions)?.vertices
     }
 
     private static func resolveTransitionTypes(_ raw: [String]?) -> Set<GeofenceTransition> {
