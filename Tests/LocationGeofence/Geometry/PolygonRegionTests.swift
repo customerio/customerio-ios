@@ -93,6 +93,35 @@ struct PolygonRegionTests {
         #expect(PolygonRegion(validating: lShape) != nil)
     }
 
+    /// A wild longitude is decodable JSON, and every consumer walks longitudes in 360° steps.
+    /// 1e12 is billions of iterations per vertex; past ~3.2e18 subtracting 360 stops changing the
+    /// value and the walk never terminates. The ring has to be refused at construction, on the
+    /// cheap initializer, because that is the one every rebuild from cache goes through.
+    @Test
+    func init_givenOutOfRangeCoordinate_expectRejectedWithoutWalking() {
+        let wild = [
+            LocationData(latitude: 0, longitude: 1e12),
+            LocationData(latitude: 0.001, longitude: 0.001),
+            LocationData(latitude: 0.001, longitude: 0)
+        ]
+        #expect(PolygonRegion(vertices: wild) == nil)
+        #expect(PolygonRegion(validating: wild) == nil)
+
+        let unterminating = [
+            LocationData(latitude: 0, longitude: 1e300),
+            LocationData(latitude: 0.001, longitude: 0.001),
+            LocationData(latitude: 0.001, longitude: 0)
+        ]
+        #expect(PolygonRegion(vertices: unterminating) == nil)
+
+        let outOfRangeLatitude = [
+            LocationData(latitude: 91, longitude: 0),
+            LocationData(latitude: 0.001, longitude: 0.001),
+            LocationData(latitude: 0.001, longitude: 0)
+        ]
+        #expect(PolygonRegion(vertices: outOfRangeLatitude) == nil)
+    }
+
     /// A repeated position is a zero-length edge: geometrically nothing, but it inflates the count
     /// the vertex cap is compared against, and the server states that cap in UNIQUE vertices. So a
     /// ring the server considers valid must not be dropped for carrying a duplicate.

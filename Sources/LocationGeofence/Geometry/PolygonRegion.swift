@@ -1,4 +1,5 @@
 import CioInternalCommon
+import CoreLocation
 import Foundation
 
 /// Planar geometry for a polygon geofence, evaluated on a local equirectangular projection
@@ -30,19 +31,30 @@ struct PolygonRegion {
     private static let earthRadiusMeters = 6371000.0
     private static let degreesToRadians = Double.pi / 180
 
-    /// Fails on fewer than 3 distinct vertices. A closed ring (last vertex repeating the
-    /// first) is accepted and unclosed — servers commonly send GeoJSON-style closed rings.
+    /// Canonicalises and projects a ring. Fails on fewer than 3 distinct vertices, or on a position
+    /// outside the valid coordinate range. A closed ring (last vertex repeating the first) is
+    /// accepted and unclosed — servers commonly send GeoJSON-style closed rings.
     ///
     /// Consecutively repeated positions are collapsed, so `vertices` is the canonical unique ring.
     /// A repeat describes a zero-length edge, which contributes nothing to either containment or
     /// edge distance; collapsing it keeps the count comparable to the server's own cap, which is
     /// stated in unique vertices.
-    /// Canonicalises and projects a ring already known to be well formed. O(n): the degeneracy
-    /// checks live in `init(validating:)`, not here, because callers rebuild a region per evaluation.
+    ///
+    /// The range check is a construction precondition rather than a second opinion on server
+    /// policy: it is what bounds the work this initializer does. Everything downstream walks
+    /// longitudes in 360° steps, and past roughly 3.2e18 subtracting 360 no longer changes a
+    /// `Double` at all — a single wild value in a decodable payload would hang the process, on
+    /// every rebuild from cache rather than only on the sync that received it.
+    ///
+    /// O(n): the degeneracy checks live in `init(validating:)`, not here, because callers rebuild a
+    /// region per evaluation.
     init?(vertices: [LocationData]) {
         var open: [LocationData] = []
         open.reserveCapacity(vertices.count)
         for vertex in vertices where vertex != open.last {
+            guard CLLocationCoordinate2DIsValid(
+                CLLocationCoordinate2D(latitude: vertex.latitude, longitude: vertex.longitude)
+            ) else { return nil }
             open.append(vertex)
         }
         if let first = open.first, let last = open.last, open.count > 1, first == last {

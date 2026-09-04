@@ -19,8 +19,9 @@ struct Geofence: Codable, Equatable, Sendable {
     /// Snapshotted onto transition events and preferred fresh from cache at send.
     let metadata: [String: GeofenceMetadataValue]
     /// Polygon boundary, canonicalized (closed rings unclosed) at the API boundary; `nil` for a
-    /// circle geofence. Geometry validity is the server's — the SDK only rejects a ring it cannot
-    /// build a region from. When present, `latitude`/`longitude`/`radius` describe the
+    /// circle geofence. Which rings are worth monitoring is the server's call; the SDK rejects only
+    /// what it cannot evaluate — an out-of-range coordinate, or a ring enclosing no area or
+    /// crossing itself, both of which make containment meaningless. When present, `latitude`/`longitude`/`radius` describe the
     /// server-guaranteed covering circle — the shape registered at the OS as the wake trigger —
     /// and membership decisions come from the polygon, never the circle.
     let vertices: [LocationData]?

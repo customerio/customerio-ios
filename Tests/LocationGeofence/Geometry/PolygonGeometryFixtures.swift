@@ -1,6 +1,7 @@
 // Cross-SDK polygon geometry fixtures. Source of truth: the polygon spike's Python model
-// (scratchpad geofence-polygon-spike/gen_fixtures.py); the Android SDK consumes the same values
-// from test-vectors-geometry-latlon.json. Regenerate there — do not hand-edit values.
+// (scratchpad geofence-polygon-spike/gen_fixtures.py), which emits these values and the
+// test-vectors-geometry-latlon.json handed to the Android port. Regenerate there — do not
+// hand-edit values.
 import CioInternalCommon
 import Foundation
 
