@@ -87,6 +87,11 @@ final class PolygonMembershipResolver {
                 logger.geofencePolygonUndecided(identifier: identifier, reason: "stored ring no longer builds")
                 return
             }
+            // No user re-check across the fix, unlike `evaluateMembership`: this is an OS-delivered
+            // crossing, and a sign-out clears the registration set, which already refuses the write.
+            // A switch that re-registers the same polygon leaves the new user genuinely inside it,
+            // owed the same enter their own initial evaluation would produce — and the belief
+            // compare-and-store collapses the two into one.
             await evaluate(geofence: geofence, polygon: polygon)
         }
     }
