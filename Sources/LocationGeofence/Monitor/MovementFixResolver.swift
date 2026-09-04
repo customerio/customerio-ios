@@ -34,13 +34,15 @@ final class MovementFixResolver: NSObject, @preconcurrency CLLocationManagerDele
     /// resolver has delivered none itself. Unset, it reads CoreLocation's own cached fix.
     var systemCachedFix: (() -> CLLocation?)?
 
-    /// Freshest fix obtainable without issuing a request, whichever source holds it. On a cold
-    /// process this resolver has delivered nothing, so CoreLocation's cached fix is the only
-    /// evidence available — the decision's age gate is what keeps it honest. CoreLocation's cache
-    /// also moves on its own between passes, driven by other clients in the process, so preferring
-    /// `latestFix` on age alone would hand a stale fallback to a request that then fails.
+    /// Freshest usable fix obtainable without issuing a request, whichever source holds it — the
+    /// same newest-of-the-two rule the monitors' `bestKnownFix` applies, invalid coordinates
+    /// included. On a cold process this resolver has delivered nothing, so CoreLocation's cached
+    /// fix is the only evidence available, and the decision's age gate is what keeps it honest.
+    /// That cache also moves on its own between passes, driven by other clients in the process, so
+    /// preferring `latestFix` by source would hand a stale fallback to a request that then fails.
     var cachedFix: CLLocation? {
-        let systemFix: CLLocation? = systemCachedFix.map { $0() } ?? manager.location
+        let systemFix = (systemCachedFix.map { $0() } ?? manager.location)
+            .flatMap { CLLocationCoordinate2DIsValid($0.coordinate) ? $0 : nil }
         guard let latestFix else { return systemFix }
         guard let systemFix, systemFix.timestamp > latestFix.timestamp else { return latestFix }
         return systemFix
