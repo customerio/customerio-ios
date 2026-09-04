@@ -12,7 +12,12 @@ import Foundation
 /// `occurredAt` is when the crossing happened — the OS event's date, or the fix's timestamp for a
 /// synthesized heal. Lets a consumer order a late or replayed transition against what it believes,
 /// which is why every dispatch site owes one: a consumer handed no date writes unordered.
-typealias GeofenceTransitionHandler = @Sendable (String, GeofenceTransition, LocationData?, Date) -> Void
+///
+/// `locationIsFresh` says whether the attached coordinates came from a fix delivered for THIS event
+/// rather than a cached one. A movement pass falls back to the cached fix when its request fails or
+/// times out, and that fix is by definition the stale one that prompted the request — a consumer
+/// sizing anything to those coordinates has to know the difference.
+typealias GeofenceTransitionHandler = @Sendable (String, GeofenceTransition, LocationData?, Date, Bool) -> Void
 
 /// Callback when iOS reports a change to the location authorization status.
 /// Invoked on the main actor — same isolation domain as `CLLocationManagerDelegate`.

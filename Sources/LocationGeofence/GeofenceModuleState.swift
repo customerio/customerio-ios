@@ -106,9 +106,13 @@ final class GeofenceModuleState {
                 return
             }
             self.lastSkippedForNoLocation.wrappedValue = false
+            // Not a live fix: `anchor` is the stored registration centre (or, before anything is
+            // registered, the last-known cache), so the movement trigger must not be sized to a
+            // polygon boundary around it.
             _ = await di.geofenceSyncCoordinator.refresh(
                 latitude: anchor.latitude,
-                longitude: anchor.longitude
+                longitude: anchor.longitude,
+                anchorIsLiveFix: false
             )
         }
     }
@@ -140,7 +144,8 @@ final class GeofenceModuleState {
         Task { @MainActor in
             _ = await di.geofenceSyncCoordinator.refresh(
                 latitude: location.latitude,
-                longitude: location.longitude
+                longitude: location.longitude,
+                anchorIsLiveFix: true
             )
         }
     }

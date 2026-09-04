@@ -67,7 +67,9 @@ extension CLMonitorGeofenceMonitor {
                     identifier,
                     transition,
                     LocationData(latitude: fix.coordinate.latitude, longitude: fix.coordinate.longitude),
-                    fix.timestamp
+                    fix.timestamp,
+                    // A heal only synthesizes off a fix it just gated as fresh.
+                    true
                 )
             }
         }
@@ -84,7 +86,7 @@ extension CLMonitorGeofenceMonitor {
     /// wins; the decision's fix-age guard applies to the result.
     private func resolveHealFix() async -> CLLocation? {
         await withCheckedContinuation { continuation in
-            movementFixResolver.resolve(cached: bestKnownFix()) { [weak self] _ in
+            movementFixResolver.resolve(cached: bestKnownFix()) { [weak self] _, _ in
                 continuation.resume(returning: self?.bestKnownFix())
             }
         }

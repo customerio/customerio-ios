@@ -31,7 +31,7 @@ final class PolygonMembershipResolver {
     private let fixResolver: MovementFixResolver
     private let logger: Logger
     private var foregroundObserverToken: NSObjectProtocol?
-    private var isEvaluatingAllPolygons = false
+    private var passesInFlight = 0
 
     init(
         storage: GeofenceStorage,
@@ -87,12 +87,14 @@ final class PolygonMembershipResolver {
                 logger.geofencePolygonUndecided(identifier: identifier, reason: "stored ring no longer builds")
                 return
             }
+            // Also a movement event, so the same staleness rule applies as on a wake.
+            //
             // No user re-check across the fix, unlike `evaluateMembership`: this is an OS-delivered
             // crossing, and a sign-out clears the registration set, which already refuses the write.
             // A switch that re-registers the same polygon leaves the new user genuinely inside it,
             // owed the same enter their own initial evaluation would produce — and the belief
             // compare-and-store collapses the two into one.
-            await evaluate(geofence: geofence, polygon: polygon)
+            await evaluate(geofence: geofence, polygon: polygon, requiresFreshFix: true)
         }
     }
 
@@ -114,6 +116,7 @@ final class PolygonMembershipResolver {
     func evaluateMembership(
         geofenceIds: [String],
         reason: String,
+        requiresFreshFix: Bool = false,
         isStillCurrent: (@Sendable () -> Bool)? = nil
     ) async {
         for geofenceId in geofenceIds {
@@ -127,7 +130,7 @@ final class PolygonMembershipResolver {
             pending.append((geofence, polygon))
         }
         guard !pending.isEmpty else { return }
-        guard let fix = await resolveFix() else {
+        guard let fix = await resolveFix(requiringFresh: requiresFreshFix) else {
             for (geofence, _) in pending {
                 logger.geofencePolygonUndecided(identifier: geofence.id, reason: "no usable fix")
             }
@@ -146,22 +149,27 @@ final class PolygonMembershipResolver {
     /// serves the whole pass.
     ///
     /// Foregrounds arrive in bursts, so a pass already running wins: a second concurrent scan reads
-    /// the same storage and the same fix and can only duplicate the location work.
-    func evaluateAllPolygons() async {
-        guard !isEvaluatingAllPolygons else {
+    /// the same storage and the same fix and can only duplicate the location work. That reasoning
+    /// covers only a pass content with the fix already in hand. A wake runs BECAUSE the device
+    /// moved, and any pass already in flight is working from a fix requested before that movement —
+    /// so no wake yields, not even to another wake, and nothing else would retry it if it did.
+    /// Concurrent requests coalesce inside `MovementFixResolver`, which is what bounds the cost.
+    func evaluateAllPolygons(requiresFreshFix: Bool = false) async {
+        if passesInFlight > 0, !requiresFreshFix {
             logger.geofencePolygonPassSkipped(reason: "a pass is already running")
             return
         }
-        isEvaluatingAllPolygons = true
-        defer { isEvaluatingAllPolygons = false }
+        passesInFlight += 1
+        defer { passesInFlight -= 1 }
         let registered = await storage.getRegisteredBusinessIds()
         let polygons = await storage.getCachedGeofences()
             .filter { registered.contains($0.id) && $0.vertices != nil }
         guard !polygons.isEmpty else { return }
         // One request for the whole pass. Resolving per polygon would issue a fresh timed request
         // for every one of them whenever the cache stays empty, holding the main actor for minutes
-        // and still deciding nothing.
-        guard let fix = await resolveFix() else {
+        // and still deciding nothing — and a failed fresh request would silently downgrade every
+        // polygon after the first to the pre-wake fix.
+        guard let fix = await resolveFix(requiringFresh: requiresFreshFix) else {
             for geofence in polygons {
                 logger.geofencePolygonUndecided(identifier: geofence.id, reason: "no usable fix")
             }
@@ -191,9 +199,10 @@ final class PolygonMembershipResolver {
     private func evaluate(
         geofence: Geofence,
         polygon: PolygonRegion,
+        requiresFreshFix: Bool = false,
         isStillCurrent: (@Sendable () -> Bool)? = nil
     ) async {
-        guard let fix = await resolveFix() else {
+        guard let fix = await resolveFix(requiringFresh: requiresFreshFix) else {
             logger.geofencePolygonUndecided(identifier: geofence.id, reason: "no usable fix")
             return
         }
@@ -227,6 +236,11 @@ final class PolygonMembershipResolver {
             )
             return
         }
+        logger.geofencePolygonVerdict(
+            identifier: geofence.id, membership: membership,
+            signedEdgeDistance: signedEdgeDistance, horizontalAccuracy: fix.horizontalAccuracy,
+            fixAge: -fix.timestamp.timeIntervalSinceNow
+        )
         await apply(membership, to: geofence, evidence: fix.timestamp, confirmedByFix: true)
     }
 
@@ -249,7 +263,10 @@ final class PolygonMembershipResolver {
         )
         guard case .deliver(let transition) = outcome,
               geofence.transitionTypes.contains(transition)
-        else { return }
+        else {
+            logger.geofencePolygonNotDelivered(identifier: geofence.id, outcome: "\(outcome)")
+            return
+        }
         logger.geofencePolygonTransition(
             identifier: geofence.id,
             transition: transition,
@@ -265,13 +282,39 @@ final class PolygonMembershipResolver {
     /// Freshest fix obtainable, requesting one when the cache is stale. Mirrors the gate's
     /// resolution: the completion's coordinates are discarded in favour of `latestFix`, which
     /// carries the accuracy and timestamp the decision needs.
-    private func resolveFix() async -> CLLocation? {
-        await withCheckedContinuation { continuation in
-            fixResolver.resolve(cached: fixResolver.cachedFix) { [weak self] _ in
-                // `cachedFix` again on failure: on a cold process this resolver has delivered
-                // nothing, and the monitor has already advanced its dedup baseline, so declining
-                // here loses the crossing for good. The decision's age gate bounds how stale it can be.
-                continuation.resume(returning: self?.fixResolver.cachedFix)
+    ///
+    /// "Fresh" here is strictly newer than anything held before the request — a deliberately
+    /// stricter test than the within-`movementFixMaxAge` one the movement trigger is sized against
+    /// (`GeofenceSyncCoordinatorImpl.wakeRadius`). A verdict may not be re-affirmed by the very fix
+    /// the wake exists to revisit, whereas a trigger only needs an anchor roughly where the device
+    /// is. The two are not interchangeable and neither should be relaxed to the other.
+    ///
+    /// When a fresh fix is REQUIRED, a request that fails or times out still resumes with the fix
+    /// already held. That one predates the wake and can sit inside `movementFixMaxAge`, so it would
+    /// re-affirm the very verdict the wake exists to revisit — report no fix instead.
+    private func resolveFix(requiringFresh: Bool = false) async -> CLLocation? {
+        // Everything obtainable without asking, which is exactly what a forced request must beat.
+        // Reading only `latestFix` would leave the first wake of a process — which has none — with
+        // nothing to compare against, and CoreLocation's own cached fix would pass as fresh.
+        let priorTimestamp = fixResolver.cachedFix?.timestamp
+        return await withCheckedContinuation { continuation in
+            fixResolver.resolve(cached: requiringFresh ? nil : fixResolver.cachedFix) { [weak self] _, _ in
+                guard let self else { return continuation.resume(returning: nil) }
+                let resolved = fixResolver.latestFix
+                if requiringFresh {
+                    // No fallback to the held fix here, on any branch: a wake fires BECAUSE the
+                    // device moved, so anything predating the request describes where it was.
+                    guard let resolved, priorTimestamp.map({ resolved.timestamp > $0 }) ?? true else {
+                        continuation.resume(returning: nil)
+                        return
+                    }
+                    continuation.resume(returning: resolved)
+                    return
+                }
+                // Cold process: nothing delivered and the request failed, so CoreLocation's own
+                // cached fix is the only evidence there is. The monitor has already advanced its
+                // dedup baseline, so declining here loses the crossing for good.
+                continuation.resume(returning: resolved ?? fixResolver.cachedFix)
             }
         }
     }

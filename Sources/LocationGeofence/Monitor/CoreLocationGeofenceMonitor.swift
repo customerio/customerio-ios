@@ -215,14 +215,19 @@ final class CoreLocationGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @pr
     /// stall the pending-event drain behind it. Business events keep the captured location.
     private func dispatchTransition(identifier: String, transition: GeofenceTransition, capturedLocation: LocationData?, occurredAt: Date) {
         if identifier == GeofenceConstants.movementTriggerIdentifier, transition == .exit {
-            movementFixResolver.resolve(cached: bestKnownFix()) { [weak self] location in
+            movementFixResolver.resolve(cached: bestKnownFix()) { [weak self] location, isFresh in
                 self?.logger.geofenceOsTransitionReceived(identifier: identifier, transition: transition)
-                self?.onTransition?(identifier, transition, location ?? capturedLocation, occurredAt)
+                // Falling back to the captured location is a second layer of staleness on top of a
+                // failed request, so it can never be reported as current.
+                self?.onTransition?(
+                    identifier, transition, location ?? capturedLocation, occurredAt,
+                    isFresh && location != nil
+                )
             }
             return
         }
         logger.geofenceOsTransitionReceived(identifier: identifier, transition: transition)
-        onTransition?(identifier, transition, capturedLocation, occurredAt)
+        onTransition?(identifier, transition, capturedLocation, occurredAt, false)
     }
 
     func locationManager(_ manager: CLLocationManager, monitoringDidFailFor region: CLRegion?, withError error: Error) {
