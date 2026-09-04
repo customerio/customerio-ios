@@ -11,6 +11,15 @@ public protocol EngineWebDelegate: AnyObject {
     func routeLoaded(route: String)
     func sizeChanged(width: CGFloat, height: CGFloat)
     func error()
+    /// Called when a message fails to load or render, with the reason it failed.
+    func error(_ error: InAppMessageError)
+}
+
+public extension EngineWebDelegate {
+    /// Defaulted so conformers written against the reason-less callback keep compiling.
+    func error(_ error: InAppMessageError) {
+        self.error()
+    }
 }
 
 protocol EngineWebInstance: AutoMockable {
@@ -30,7 +39,22 @@ public class EngineWeb: NSObject, EngineWebInstance {
     /// How long the engine gets to report `bootstrapped` before the message is treated as failed.
     static let bootstrapTimeoutSeconds: TimeInterval = 5.0
 
-    public weak var delegate: EngineWebDelegate?
+    public weak var delegate: EngineWebDelegate? {
+        didSet {
+            // `loadMessage()` runs from `init`, before the delegate exists, so a failure raised
+            // there has nobody to report to yet. Deliver it as soon as one is attached.
+            guard delegate != nil, let failure = pendingFailure else { return }
+            pendingFailure = nil
+            delegate?.error(failure)
+        }
+    }
+
+    /// A failure raised before a delegate was attached, held until one is.
+    private var pendingFailure: InAppMessageError?
+
+    /// Set once the first failure is accepted. An engine instance renders one message, so it fails
+    /// at most once.
+    private var hasReportedFailure = false
     var webView = WKWebView()
 
     public var view: UIView {
@@ -131,12 +155,32 @@ public class EngineWeb: NSObject, EngineWebInstance {
     /// Single exit for every failure in this class: classify, log, then tell the delegate.
     ///
     /// `MessageManager` owns the resulting `messageLoadingFailed` dispatch — see `forcedTimeout`.
+    /// A failure raised before the delegate is attached is held and delivered on assignment, so no
+    /// path here reports into the void.
+    ///
+    /// The first failure wins and every later one is dropped. WebKit can deliver more than one
+    /// failure callback for a single load, and the bootstrap timer is still armed when a failure
+    /// arrives — the dispatch it triggers is asynchronous, so without latching, a host could be told
+    /// `.network` and then `.timeout` about the same message. That is deterministic for inline
+    /// messages, whose dismissal never reaches `cleanEngineWeb()`.
     private func reportFailure(_ error: InAppMessageError) {
+        guard !hasReportedFailure else { return }
+        hasReportedFailure = true
+
+        // The timer retains self through its target, so leaving it armed also keeps this instance
+        // alive for the rest of the timeout after the message has already failed.
+        _timeoutTimer?.invalidate()
+        _timeoutTimer = nil
+
         logger.logWithModuleTag(
             "Message \(currentMessage.describeForLogs) failed: \(error.describeForLogs)",
             level: .error
         )
-        delegate?.error()
+        guard let delegate = delegate else {
+            pendingFailure = error
+            return
+        }
+        delegate.error(error)
     }
 
     @objc

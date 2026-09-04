@@ -25,12 +25,14 @@ public interface CioMessagingInApp.EngineWebDelegate {
 	public fun func routeLoaded(route: String);
 	public fun func sizeChanged(width: CGFloat, height: CGFloat);
 	public fun func error();
+	public fun func error(_ error: InAppMessageError);
 }
 public interface CioMessagingInApp.GistDelegate {
 	public fun func embedMessage(message: Message, elementId: String);
 	public fun func messageShown(message: Message);
 	public fun func messageDismissed(message: Message);
 	public fun func messageError(message: Message);
+	public fun func messageError(message: Message, error: InAppMessageError);
 	public fun func action(message: Message, currentRoute: String, action: String, name: String);
 	public fun func setEventListener(_ eventListener: InAppEventListener?);
 }
@@ -72,12 +74,21 @@ public interface CioMessagingInApp.InAppEventListener {
 	public fun func messageShown(message: InAppMessage);
 	public fun func messageDismissed(message: InAppMessage);
 	public fun func errorWithMessage(message: InAppMessage);
+	public fun func errorWithMessage(message: InAppMessage, error: InAppMessageError);
 	public fun func messageActionTaken(message: InAppMessage, actionValue: String, actionName: String);
 }
 public final class CioMessagingInApp.InAppMessage {
 	public final val messageId: String;
 	public final val deliveryId: String?;
 	public final val elementId: String?;
+}
+public final class CioMessagingInApp.InAppMessageError {
+	public final val reason: InAppMessageErrorReason;
+	public final val detail: String?;
+	public final val code: Int?;
+	public fun init(reason: InAppMessageErrorReason, detail: String? = nil, code: Int? = nil);
+}
+public enum CioMessagingInApp.InAppMessageErrorReason {
 }
 public interface CioMessagingInApp.InboxEventListener {
 	public fun func messageActionTaken(message: InboxMessage, actionName: String, actionValue: String) -> Boolean;

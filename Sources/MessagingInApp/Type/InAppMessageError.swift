@@ -5,9 +5,14 @@ import Foundation
 /// The cases are deliberately coarse: each one maps to a different thing an integrator would do
 /// about it — check connectivity, look at a slow renderer, report the message content to us, or
 /// file an SDK bug. Finer detail belongs in ``InAppMessageError/detail``.
-enum InAppMessageErrorReason: String {
-    /// The renderer could not be reached: navigation failed, TLS failed, or the host returned an
-    /// error status.
+///
+/// **Keep a `default:` branch when you switch on this.** More cases may be added in future
+/// releases, and an exhaustive switch will stop compiling when that happens. The SDK is
+/// distributed as source, so the compiler treats this enum as frozen at your build — use a plain
+/// `default:` rather than `@unknown default:`.
+public enum InAppMessageErrorReason: String {
+    /// The renderer could not be reached: the navigation failed, for example on DNS, connectivity
+    /// or TLS.
     case network
     /// The renderer was reached but never signalled that it had bootstrapped within the timeout.
     case timeout
@@ -21,19 +26,25 @@ enum InAppMessageErrorReason: String {
 }
 
 /// A single in-app message load/render failure, with as much context as the failing layer had.
-struct InAppMessageError: Error, Equatable {
+public struct InAppMessageError: Error, Equatable {
     /// The coarse category. Branch on this.
-    let reason: InAppMessageErrorReason
+    public let reason: InAppMessageErrorReason
 
     /// Human-readable detail from the layer that failed — a `WKWebView` error description, or the
-    /// message the renderer itself reported. Free-form and unstable: log it, don't parse it.
-    let detail: String?
+    /// message the renderer itself reported. Free-form, unstable, and partly renderer-supplied, so
+    /// treat it as **local diagnostics only**: write it to your logs, don't parse it, and don't
+    /// forward it verbatim to analytics or crash reporting. Branch on ``reason`` instead.
+    public let detail: String?
 
-    /// The underlying platform error code where the failing layer had one, e.g. an `NSURLError`
-    /// code or an HTTP status. `nil` when the failure carried no numeric code.
-    let code: Int?
+    /// The underlying platform error code where the failing layer had one — on iOS this is the
+    /// `NSError` code behind a failed navigation, typically an `NSURLError`. `nil` when the failure
+    /// carried no numeric code.
+    ///
+    /// Note this is not an HTTP status: an error response still completes navigation, so it does
+    /// not reach the failure callbacks the SDK maps from.
+    public let code: Int?
 
-    init(reason: InAppMessageErrorReason, detail: String? = nil, code: Int? = nil) {
+    public init(reason: InAppMessageErrorReason, detail: String? = nil, code: Int? = nil) {
         self.reason = reason
         self.detail = detail
         self.code = code

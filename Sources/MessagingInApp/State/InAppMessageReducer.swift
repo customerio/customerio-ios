@@ -137,7 +137,7 @@ private func reducer(action: InAppMessageAction, state: InAppMessageState) -> In
         switch engineAction {
         case .tap:
             return state
-        case .messageLoadingFailed(let message):
+        case .messageLoadingFailed(let message, _):
             return state.copy(modalMessageState: .dismissed(message: message))
         }
 
