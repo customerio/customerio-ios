@@ -1410,6 +1410,63 @@ struct GeofenceSyncCoordinatorTests {
         #expect(await storage.getLastRegistrationCenter() == LocationData(latitude: 0, longitude: 0))
     }
 
+    /// The launch/identify refresh anchors on the STORED registration centre, not a live fix, so a
+    /// boundary-sized trigger there would be a small circle around a point the device may be far
+    /// from — spurious on 17+, and never fired at all on the classic path. Only a caller holding a
+    /// real fix gets the tight radius.
+    @Test
+    func refresh_givenNearbyPolygonButStoredAnchor_expectFullRefreshRadius() async {
+        let ring = [
+            LocationData(latitude: -0.0018, longitude: -0.0018),
+            LocationData(latitude: -0.0018, longitude: 0.0018),
+            LocationData(latitude: 0.0018, longitude: 0.0018),
+            LocationData(latitude: 0.0018, longitude: -0.0018)
+        ]
+        let polygon = Geofence(
+            id: "poly", latitude: 0, longitude: 0, radius: 500, name: "poly",
+            transitionTypes: [.enter, .exit], lastUpdated: Date(timeIntervalSince1970: 1700000000),
+            vertices: ring
+        )
+        let storage = makeStorage()
+        let setup = await makeRegisteredSetup(regions: [polygon], config: diffConfig, storage: storage)
+        let before = setup.monitor.startedRegions.count
+        // Age the sync so the refresh actually re-registers rather than taking the freshness skip.
+        await storage.recordSync(timestamp: Date(timeIntervalSince1970: 0), location: LocationData(latitude: 0, longitude: 0))
+
+        _ = await setup.coordinator.refresh(latitude: 0, longitude: 0.001, anchorIsLiveFix: false)
+
+        let trigger = setup.monitor.startedRegions.dropFirst(before)
+            .last { $0.identifier == GeofenceConstants.movementTriggerIdentifier }
+        #expect(trigger?.radius == diffConfig.localRefreshTriggerRadius, "got \(String(describing: trigger?.radius))")
+    }
+
+    /// Control for the above: the same refresh from a caller that does hold a fix still tightens.
+    @Test
+    func refresh_givenNearbyPolygonAndLiveAnchor_expectTriggerShrunkToItsBoundary() async {
+        let ring = [
+            LocationData(latitude: -0.0018, longitude: -0.0018),
+            LocationData(latitude: -0.0018, longitude: 0.0018),
+            LocationData(latitude: 0.0018, longitude: 0.0018),
+            LocationData(latitude: 0.0018, longitude: -0.0018)
+        ]
+        let polygon = Geofence(
+            id: "poly", latitude: 0, longitude: 0, radius: 500, name: "poly",
+            transitionTypes: [.enter, .exit], lastUpdated: Date(timeIntervalSince1970: 1700000000),
+            vertices: ring
+        )
+        let storage = makeStorage()
+        let setup = await makeRegisteredSetup(regions: [polygon], config: diffConfig, storage: storage)
+        let before = setup.monitor.startedRegions.count
+        // Age the sync so the refresh actually re-registers rather than taking the freshness skip.
+        await storage.recordSync(timestamp: Date(timeIntervalSince1970: 0), location: LocationData(latitude: 0, longitude: 0))
+
+        _ = await setup.coordinator.refresh(latitude: 0, longitude: 0.001, anchorIsLiveFix: true)
+
+        let trigger = setup.monitor.startedRegions.dropFirst(before)
+            .last { $0.identifier == GeofenceConstants.movementTriggerIdentifier }
+        #expect(trigger?.radius == GeofenceConstants.polygonWakeMinRadius, "got \(String(describing: trigger?.radius))")
+    }
+
     @Test
     func handleMovement_givenNearbyPolygon_expectTriggerShrunkToItsBoundary() async {
         // The end-to-end assertion behind `PolygonWakeRadius`: a polygon the device stands inside

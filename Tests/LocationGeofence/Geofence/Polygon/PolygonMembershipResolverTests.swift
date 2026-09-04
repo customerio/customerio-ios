@@ -53,7 +53,7 @@ struct PolygonMembershipResolverTests {
         let fixResolver: MovementFixResolver
     }
 
-    private func makeSetup(fix: CLLocation?) async -> Setup {
+    private func makeSetup(fix: CLLocation?, logger: LoggerMock = LoggerMock()) async -> Setup {
         let storage = GeofenceStorage(
             fileManager: .default,
             directoryURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
@@ -73,7 +73,7 @@ struct PolygonMembershipResolverTests {
             resolver: PolygonMembershipResolver(
                 storage: storage,
                 transitionEmitter: emitter,
-                logger: LoggerMock(),
+                logger: logger,
                 fixResolver: fixResolver
             ),
             storage: storage,
@@ -146,31 +146,81 @@ struct PolygonMembershipResolverTests {
     /// A wake requires a fresh fix; a foreground pass does not. Skipping the wake behind an
     /// in-flight foreground would drop exactly the pass that runs BECAUSE the device moved, and
     /// nothing retries it.
+    ///
+    /// `async let` does not order task start-up, and a request count cannot tell "skipped" from
+    /// "coalesced into the pending request" — so the first pass is held inside its request and the
+    /// assertion is on the skip decision itself.
     @Test
     func evaluateAllPolygons_givenFreshRequiredDuringForegroundPass_expectNotSkipped() async {
-        let setup = await makeSetup(fix: nil)
+        let logger = LoggerMock()
+        let setup = await makeSetup(fix: nil, logger: logger)
         await registerPolygons(setup, ids: ["1", "2"])
-        let counter = countingRequests(setup)
+        let gate = gatingRequests(setup)
 
         async let foreground: Void = setup.resolver.evaluateAllPolygons()
+        await yieldUntil { !gate.releases.isEmpty }
         async let wake: Void = setup.resolver.evaluateAllPolygons(requiresFreshFix: true)
+        await settle()
+        gate.releaseAll()
         _ = await(foreground, wake)
 
-        #expect(counter.count == 2)
+        #expect(skipCount(logger) == 0)
     }
 
     /// The converse still holds: a weaker pass behind a fresh one adds nothing.
     @Test
     func evaluateAllPolygons_givenForegroundDuringFreshPass_expectSkipped() async {
-        let setup = await makeSetup(fix: nil)
+        let logger = LoggerMock()
+        let setup = await makeSetup(fix: nil, logger: logger)
         await registerPolygons(setup, ids: ["1", "2"])
-        let counter = countingRequests(setup)
+        let gate = gatingRequests(setup)
 
         async let wake: Void = setup.resolver.evaluateAllPolygons(requiresFreshFix: true)
+        await yieldUntil { !gate.releases.isEmpty }
         async let foreground: Void = setup.resolver.evaluateAllPolygons()
+        await settle()
+        gate.releaseAll()
         _ = await(wake, foreground)
 
-        #expect(counter.count == 1)
+        #expect(skipCount(logger) == 1)
+    }
+
+    /// Holds each pass inside its location request until released, so a second pass always starts
+    /// against a known in-flight state.
+    private final class RequestGate {
+        var releases: [() -> Void] = []
+        func releaseAll() {
+            let pending = releases
+            releases = []
+            pending.forEach { $0() }
+        }
+    }
+
+    private func gatingRequests(_ setup: Setup) -> RequestGate {
+        let gate = RequestGate()
+        setup.fixResolver.requestFreshFix = { [weak fixResolver = setup.fixResolver] in
+            gate.releases.append { fixResolver?.handleRequestFailure() }
+        }
+        return gate
+    }
+
+    private func yieldUntil(_ condition: () -> Bool) async {
+        for _ in 0 ..< 1000 where !condition() {
+            await Task.yield()
+        }
+    }
+
+    /// Lets a just-started task reach its first suspension point.
+    private func settle() async {
+        for _ in 0 ..< 20 {
+            await Task.yield()
+        }
+    }
+
+    private func skipCount(_ logger: LoggerMock) -> Int {
+        logger.debugReceivedInvocations
+            .filter { $0.message.contains("Skipped polygon evaluation pass") }
+            .count
     }
 
     // MARK: - Circle fences pass through untouched
