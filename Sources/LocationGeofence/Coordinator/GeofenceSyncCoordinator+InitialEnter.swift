@@ -58,17 +58,14 @@ extension GeofenceSyncCoordinatorImpl {
     /// other.
     private func evaluateNewPolygons(_ polygons: [Geofence], expectedUserId: String) {
         Task { @MainActor [contextStore] in
-            let resolver = DIGraphShared.shared.polygonMembershipResolver
-            for polygon in polygons {
-                guard contextStore.currentUserId == expectedUserId else { return }
-                // Also re-checked inside, after the fix resolves: that await is the window where a
-                // user switch would otherwise land an event on the wrong profile.
-                await resolver.evaluateMembership(
-                    geofenceId: polygon.id,
-                    reason: "new polygon",
-                    isStillCurrent: { contextStore.currentUserId == expectedUserId }
-                )
-            }
+            guard contextStore.currentUserId == expectedUserId else { return }
+            // Also re-checked inside, per polygon, after the fix resolves: that await is the window
+            // where a user switch would otherwise land an event on the wrong profile.
+            await DIGraphShared.shared.polygonMembershipResolver.evaluateMembership(
+                geofenceIds: polygons.map(\.id),
+                reason: "new polygon",
+                isStillCurrent: { contextStore.currentUserId == expectedUserId }
+            )
         }
     }
 }
