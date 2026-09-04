@@ -149,17 +149,20 @@ extension GeofenceSyncCoordinatorImpl {
     /// The trigger radius for a registration, sized to the nearest polygon boundary only when the
     /// anchor is a fix the caller holds.
     ///
-    /// `anchorIsLiveFix` means "a fix no older than `movementFixMaxAge`", NOT "the device is here":
-    /// a 30 s fix at speed is several hundred metres old, so a floor-sized trigger can still be
-    /// planted around a point the device has left. On iOS 17+ that costs one spurious re-arm cycle
-    /// and self-corrects; the classic path, where it would instead be a trigger that never fires,
-    /// has to size the radius against the fix's age. Logged with the chosen radius so a drive can
-    /// tell a spurious cycle from a real one — the fix's own age is on the line above it.
-    /// A stored anchor can be a long way from the device —
-    /// unbounded once the process has been dead — and a boundary-sized circle around it would be
-    /// one the device already stands outside: a spurious cycle on iOS 17+, and on the classic path
-    /// a trigger that never fires at all. The full refresh radius is the safe default there; the
-    /// first movement pass re-arms against a live fix.
+    /// A stored anchor can be a long way from the device — unbounded once the process has been dead
+    /// — so a boundary-sized circle around one may already have the device outside it. The full
+    /// refresh radius is the safe default there, and the first movement pass re-arms against a fix.
+    ///
+    /// Residual, because `anchorIsLiveFix` means "a fix no older than `movementFixMaxAge`" and not
+    /// "the device is here": a 30 s fix at speed is several hundred metres old against a 100 m
+    /// floor, so a tight trigger can still be planted around a point the device has left. On iOS
+    /// 17+ that costs one spurious re-arm cycle and self-corrects. The classic path, where it is
+    /// instead a trigger that never fires, has to size the radius against the fix's own age — the
+    /// same strictly-newer question `PolygonMembershipResolver.resolveFix` already answers for a
+    /// forced-fresh evaluation, which is a deliberately stricter test than this one.
+    ///
+    /// The chosen radius is logged so a drive can tell a spurious re-arm from a real one; the fix's
+    /// age is on the resolver's line just above it.
     private func wakeRadius(
         at anchor: LocationData,
         polygons: [Geofence],
