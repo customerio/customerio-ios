@@ -5,9 +5,17 @@ import Foundation
 private let geofenceTag = "Geofence"
 
 extension Logger {
-    func geofenceInvalidRegionDropped(_ identifier: String) {
+    func geofenceInvalidRegionDropped(_ identifier: String, reason: GeofenceRegionDropReason) {
         error(
-            "Geofence '\(identifier)' dropped — invalid coordinates or radius, not registerable with the OS",
+            "Geofence '\(identifier)' dropped — \(reason.rawValue), not registerable with the OS",
+            geofenceTag,
+            nil
+        )
+    }
+
+    func geofenceAllRegionsDropped(count: Int) {
+        error(
+            "All \(count) region(s) in the response were unusable — treating as a fetch failure so the cache survives",
             geofenceTag,
             nil
         )
