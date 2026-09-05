@@ -14,7 +14,10 @@ final class DiagnosticLogWriter: @unchecked Sendable {
     private let lock = NSLock()
 
     private var fd: Int32 = -1
-    private var header = ""
+    /// Rebuilt on every open, not stored as a string. The header describes the file it heads: a
+    /// process that outlives a day rolls to a new file, and re-writing the original string there
+    /// stamped it with the old session's timestamp — and the old timezone.
+    private var headerProvider: (() -> String)?
     private var currentPath = ""
     /// Counts records since the last check that the file we hold open still exists.
     private var writesSinceExistenceCheck = 0
@@ -48,10 +51,10 @@ final class DiagnosticLogWriter: @unchecked Sendable {
 
     // MARK: - Opening
 
-    func open(header: String) {
+    func open(headerProvider: @escaping () -> String) {
         lock.lock()
         defer { lock.unlock() }
-        self.header = header
+        self.headerProvider = headerProvider
         openCurrentFile(now: Date())
     }
 
@@ -105,6 +108,7 @@ final class DiagnosticLogWriter: @unchecked Sendable {
         // The header repeats on every open, not just on a new file. A same-day relaunch reuses
         // the file but restarts the monotonic clock and may carry a different build, so without
         // this every record after the first process is correlated to the wrong session.
+        let header = headerProvider?() ?? ""
         if !header.isEmpty { write(header) }
     }
 
