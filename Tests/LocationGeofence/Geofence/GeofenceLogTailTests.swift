@@ -154,10 +154,7 @@ struct GeofenceLogTailTests {
 
     /// Runs `body` with diagnostics forced on or off, restoring the previous value after.
     private func withDiagnostics<T>(_ enabled: Bool, _ body: () throws -> T) rethrows -> T {
-        let previous = GeofenceDiagnostics.overrideForTesting
-        GeofenceDiagnostics.overrideForTesting = enabled
-        defer { GeofenceDiagnostics.overrideForTesting = previous }
-        return try body()
+        try DiagnosticsGateTesting.withDiagnostics(enabled, body)
     }
 
     @Test
@@ -406,6 +403,103 @@ struct GeofenceLogTailTests {
         withDiagnostics(true) {
             #expect(GeofenceLog.tail("probe", .output, fields()).contains("lat=37.45000"))
             #expect(builds == 1)
+        }
+    }
+
+    // MARK: - Fence catalog
+
+    private func catalogRegion(id: String = "11125", name: String? = "Momo Dubai Test") -> GeofenceApiRegion {
+        GeofenceApiRegion(
+            id: id,
+            name: name,
+            latitude: 25.109908,
+            longitude: 55.184004,
+            radius: 150,
+            externalId: nil,
+            transitionTypes: ["enter", "exit"],
+            lastUpdated: 0,
+            geosetIds: ["4471", "9002"],
+            metadata: nil
+        )
+    }
+
+    /// Deliberately absent from `invocations`: that table asserts the gated-*tail* contract, where
+    /// the gate strips detail and leaves the prose identical. The catalog is a different kind of
+    /// record — it exists only for diagnostics, so the gate removes it entirely. Emitting bare
+    /// "catalogued" lines to every customer's console would be noise, and moving the detail into
+    /// the prose to satisfy the table would leak coordinates with the gate off. These tests pin the
+    /// same contract the table would have.
+    @Test
+    func fenceCatalog_expectMachineKeyAndReplayClassification() {
+        withDiagnostics(true) {
+            let logger = CapturingLogger()
+            logger.geofenceApiFetchResult(returnedCount: 1, elapsed: 0.4, regions: [catalogRegion()])
+
+            guard let message = logger.messages.last, let fields = parseTail(message) else {
+                Issue.record("no parseable tail in '\(logger.messages.last ?? "<nothing>")'")
+                return
+            }
+            #expect(message.hasPrefix("[Geofence] "))
+            #expect(fields["ev"] == "fence.cataloged")
+            #expect(fields["io"] == "in")
+            for key in ["id", "name", "gs", "lat", "lon", "rad", "tt"] {
+                #expect(fields[key] != nil, "missing \(key)= in '\(message)'")
+            }
+        }
+    }
+
+    @Test
+    func fenceCatalog_givenNameWithSeparators_expectSanitizedButReadable() {
+        withDiagnostics(true) {
+            let logger = CapturingLogger()
+            logger.geofenceApiFetchResult(
+                returnedCount: 1,
+                elapsed: 0.4,
+                regions: [catalogRegion(name: "Momo Dubai, Test=1")]
+            )
+            guard let fields = parseTail(logger.messages.last ?? "") else {
+                Issue.record("no parseable tail")
+                return
+            }
+            let name = fields["name"] ?? ""
+            #expect(name.contains("Momo"))
+            #expect(!name.contains(" "))
+            #expect(!name.contains("="))
+        }
+    }
+
+    @Test
+    func fenceCatalog_givenGeosetList_expectSeparatorsPreserved() {
+        withDiagnostics(true) {
+            let logger = CapturingLogger()
+            logger.geofenceApiFetchResult(returnedCount: 1, elapsed: 0.4, regions: [catalogRegion()])
+            let fields = parseTail(logger.messages.last ?? "")
+            #expect(fields?["gs"] == "4471,9002")
+            #expect(fields?["tt"] == "enter,exit")
+            #expect(fields?["lat"] == "25.10991")
+            #expect(fields?["rad"] == "150")
+        }
+    }
+
+    @Test
+    func fenceCatalog_expectOneRecordPerFence() {
+        withDiagnostics(true) {
+            let logger = CapturingLogger()
+            logger.geofenceApiFetchResult(
+                returnedCount: 3,
+                elapsed: 0.4,
+                regions: [catalogRegion(id: "1"), catalogRegion(id: "2"), catalogRegion(id: "3")]
+            )
+            #expect(logger.messages.filter { $0.contains("ev=fence.cataloged") }.count == 3)
+        }
+    }
+
+    @Test
+    func fenceCatalog_givenDiagnosticsOff_expectNoCatalogRecords() {
+        withDiagnostics(false) {
+            let logger = CapturingLogger()
+            logger.geofenceApiFetchResult(returnedCount: 1, elapsed: 0.4, regions: [catalogRegion()])
+            #expect(!logger.messages.contains { $0.contains("catalogued") })
         }
     }
 }
