@@ -35,6 +35,9 @@ final class MovementFixResolver: NSObject, @preconcurrency CLLocationManagerDele
     /// Newest cached fix seen while a request is in flight — the fallback on failure/timeout.
     private var fallbackFix: CLLocation?
     private var timeoutTask: Task<Void, Never>?
+    /// Monotonic start of the in-flight request, so a failure can report how long it waited —
+    /// "timed out after 10s" and "failed immediately" are different faults.
+    private var requestStartedAt: TimeInterval?
     /// Completed when the in-flight request resolves, releasing its background-time window.
     /// One signal per request cycle, so a window can never outlive its own cycle.
     private var currentRequestSignal: RequestCompletionSignal?
@@ -75,6 +78,7 @@ final class MovementFixResolver: NSObject, @preconcurrency CLLocationManagerDele
         }
         pendingCompletions.append(completion)
         guard pendingCompletions.count == 1 else { return }
+        requestStartedAt = GeofenceLog.monotonicNow()
         startTimeout()
         holdBackgroundTimeUntilCompletion()
         if let requestFreshFix {
@@ -115,13 +119,17 @@ final class MovementFixResolver: NSObject, @preconcurrency CLLocationManagerDele
 
     func handleRequestFailure() {
         guard !pendingCompletions.isEmpty else { return }
-        logger.geofenceMovementFixRequestFailed(fallingBackToCached: fallbackFix != nil)
+        logger.geofenceMovementFixRequestFailed(
+            fallingBackToCached: fallbackFix != nil,
+            elapsed: requestStartedAt.map { GeofenceLog.monotonicNow() - $0 }
+        )
         completeAll(with: fallbackFix.map(locationData(from:)))
     }
 
     // MARK: - Private
 
     private func recordDeliveredFix(_ fix: CLLocation) {
+        logger.geofenceFixReceived(fix, source: "movement_resolver")
         if latestFix.map({ fix.timestamp > $0.timestamp }) ?? true {
             latestFix = fix
         }
@@ -152,6 +160,7 @@ final class MovementFixResolver: NSObject, @preconcurrency CLLocationManagerDele
         timeoutTask?.cancel()
         timeoutTask = nil
         fallbackFix = nil
+        requestStartedAt = nil
         currentRequestSignal?.complete()
         currentRequestSignal = nil
         let completions = pendingCompletions

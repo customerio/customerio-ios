@@ -52,16 +52,20 @@ actor GeofenceStorage {
     /// cooldown), `false` when the event should be suppressed. The whole check-and-record
     /// runs inside the actor with no `await` between steps, so concurrent callers cannot
     /// both observe an expired window and both fire the event.
-    func tryAcquireCooldown(key: String, now: Date, interval: TimeInterval) -> Bool {
+    /// `nil` when the cooldown was acquired. Otherwise the seconds still left on it — a value the
+    /// check already computes, returned rather than recomputed, so reporting it costs no second
+    /// load of the store on a background wake.
+    func tryAcquireCooldown(key: String, now: Date, interval: TimeInterval) -> TimeInterval? {
         var state = loadFromDisk() ?? GeofenceState()
         var cooldowns = state.eventCooldowns ?? [:]
-        if let last = cooldowns[key], now.timeIntervalSince(last) < interval {
-            return false
+        if let last = cooldowns[key] {
+            let elapsed = now.timeIntervalSince(last)
+            if elapsed < interval { return interval - elapsed }
         }
         cooldowns[key] = now
         state.eventCooldowns = cooldowns
         saveToDisk(state)
-        return true
+        return nil
     }
 
     /// Atomically removes cooldown entries whose recorded timestamp is older than `interval`

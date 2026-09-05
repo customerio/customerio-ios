@@ -58,7 +58,7 @@ struct GeofenceMonitorBinderTests {
         let coordinator = makeCoordinatorMock()
         let tracker = makeTracker(deliveryTracker: makeDeliveryMock())
 
-        GeofenceMonitorBinder.bind(monitor: monitor, tracker: tracker, coordinator: coordinator)
+        GeofenceMonitorBinder.bind(monitor: monitor, tracker: tracker, coordinator: coordinator, logger: LoggerMock())
         monitor.simulateTransition(
             identifier: GeofenceConstants.movementTriggerIdentifier,
             transition: .exit,
@@ -80,7 +80,7 @@ struct GeofenceMonitorBinderTests {
         let delivery = makeDeliveryMock()
         let tracker = makeTracker(deliveryTracker: delivery)
 
-        GeofenceMonitorBinder.bind(monitor: monitor, tracker: tracker, coordinator: coordinator)
+        GeofenceMonitorBinder.bind(monitor: monitor, tracker: tracker, coordinator: coordinator, logger: LoggerMock())
         monitor.simulateTransition(
             identifier: GeofenceConstants.movementTriggerIdentifier,
             transition: .enter,
@@ -102,7 +102,7 @@ struct GeofenceMonitorBinderTests {
         let coordinator = makeCoordinatorMock()
         let tracker = makeTracker(deliveryTracker: makeDeliveryMock())
 
-        GeofenceMonitorBinder.bind(monitor: monitor, tracker: tracker, coordinator: coordinator)
+        GeofenceMonitorBinder.bind(monitor: monitor, tracker: tracker, coordinator: coordinator, logger: LoggerMock())
         monitor.simulateTransition(
             identifier: GeofenceConstants.movementTriggerIdentifier,
             transition: .exit,
@@ -122,7 +122,7 @@ struct GeofenceMonitorBinderTests {
         let delivery = makeDeliveryMock()
         let tracker = makeTracker(deliveryTracker: delivery)
 
-        GeofenceMonitorBinder.bind(monitor: monitor, tracker: tracker, coordinator: coordinator)
+        GeofenceMonitorBinder.bind(monitor: monitor, tracker: tracker, coordinator: coordinator, logger: LoggerMock())
         monitor.simulateTransition(
             identifier: "business-region-1",
             transition: .enter,

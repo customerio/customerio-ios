@@ -53,10 +53,12 @@ public final class GeofenceModule: CustomerIOModule {
     /// no double-init, no duplicate monitoring.
     @MainActor
     public static func bootstrapForBackgroundDelivery(launchOptions: [UIApplication.LaunchOptionsKey: Any]?) {
-        // Reserved for future cold-wake detection (e.g. `launchOptions[.location]`).
-        _ = launchOptions
-
         let di = DIGraphShared.shared
+        // Only a cold wake is worth a record here; a normal launch is already covered by
+        // module.init, and this path is the only one that can see `launchOptions`.
+        if launchOptions?[.location] != nil {
+            di.logger.geofenceModuleWoke(launchReason: .locationEvent)
+        }
         GeofenceBootstrap.emitDiscoverabilityLogIfNeeded(di: di)
         Task { await di.geofenceEventTracker.flushPending() }
         Task { @MainActor in

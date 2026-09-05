@@ -84,7 +84,7 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
 
     func refresh(latitude: Double, longitude: Double) async -> Result<Void, GeofenceSyncError> {
         guard acquireGate() else {
-            logger.geofenceSyncSkipped(reason: "refresh already in progress")
+            logger.geofenceSyncSkipped(reason: .refreshInProgress)
             return .failure(.alreadyInProgress)
         }
         let expectedUserId = identifiedUserId
@@ -102,7 +102,7 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
     /// post-fetch supersede, success alike).
     private func performRefresh(expectedUserId: String?, latitude: Double, longitude: Double) async -> Result<Void, GeofenceSyncError> {
         guard let userId = expectedUserId else {
-            logger.geofenceSyncSkipped(reason: "no identified user")
+            logger.geofenceSyncSkipped(reason: .noIdentifiedUser)
             return .failure(.noIdentifiedUser)
         }
 
@@ -134,7 +134,7 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
 
     func handleMovement(latitude: Double, longitude: Double) async -> Result<Void, GeofenceSyncError> {
         guard acquireGate() else {
-            logger.geofenceSyncSkipped(reason: "refresh already in progress")
+            logger.geofenceSyncSkipped(reason: .refreshInProgress)
             return .failure(.alreadyInProgress)
         }
         let expectedUserId = identifiedUserId
@@ -148,7 +148,7 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
     /// The movement body, extracted for a single gated exit — same rationale as `performRefresh`.
     private func performMovement(expectedUserId: String?, latitude: Double, longitude: Double) async -> Result<Void, GeofenceSyncError> {
         guard let userId = expectedUserId else {
-            logger.geofenceSyncSkipped(reason: "no identified user")
+            logger.geofenceSyncSkipped(reason: .noIdentifiedUser)
             return .failure(.noIdentifiedUser)
         }
 
@@ -195,7 +195,7 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
 
     func reset() async -> Result<Void, GeofenceSyncError> {
         guard acquireGate() else {
-            logger.geofenceSyncSkipped(reason: "refresh already in progress")
+            logger.geofenceSyncSkipped(reason: .refreshInProgress)
             return .failure(.alreadyInProgress)
         }
         defer { releaseGate() }
@@ -221,8 +221,9 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
         config: GeofenceConfig?,
         userId: String?
     ) -> GeofenceRegistration? {
+        let syncStartedAt = GeofenceLog.monotonicNow()
         guard let userId, !userId.isEmpty else {
-            logger.geofenceSyncSkipped(reason: "no identified user")
+            logger.geofenceSyncSkipped(reason: .noIdentifiedUser)
             return nil
         }
         // No early return on an empty cache: an empty nearby response clears it while the movement
@@ -230,11 +231,11 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
         // Need an anchor to distance-filter and to center the movement trigger. Skipping
         // when absent is safer than re-using an arbitrary location.
         guard let anchor else {
-            logger.geofenceSyncSkipped(reason: "no last-sync anchor to restore from")
+            logger.geofenceSyncSkipped(reason: .noLastSyncAnchor)
             return nil
         }
         guard acquireGate() else {
-            logger.geofenceSyncSkipped(reason: "restore already in progress")
+            logger.geofenceSyncSkipped(reason: .restoreInProgress)
             return nil
         }
         defer { releaseGate() }
@@ -242,16 +243,24 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
         let effectiveConfig = config ?? .fallback
         let nearest = distanceFilter.nearest(cachedRegions, to: anchor, limit: effectiveConfig.maxBusinessGeofences, maxDistance: effectiveConfig.maxMonitoringDistance)
         let registerMovementTrigger = effectiveConfig.maxBusinessGeofences > 0
-        registerWithOsSync(
+        let nearestIds = Set(nearest.map(\.id))
+        logRanking(candidates: cachedRegions, nearest: nearest, nearestIds: nearestIds, anchor: anchor)
+        let osRegistration = registerWithOsSync(
             businessRegions: nearest,
             movementTriggerLocation: anchor,
             movementTriggerRadius: effectiveConfig.localRefreshTriggerRadius,
             registerMovementTrigger: registerMovementTrigger
         )
-        logger.geofenceSyncCompleted(registeredCount: nearest.count, movementTriggerRegistered: registerMovementTrigger)
+        let registration = logRegistration(
+            registeredIds: osRegistration.registeredIds,
+            anchor: anchor,
+            registerMovementTrigger: registerMovementTrigger,
+            triggerRadius: effectiveConfig.localRefreshTriggerRadius
+        )
+        logSyncCompleted(registration, requested: (nearest.count, registerMovementTrigger), startedAt: syncStartedAt)
         // No initial-enter here: a cold-wake restore of the pre-kill set (not new registrations) off a
         // possibly-stale anchor. Genuinely-new fences come from a refresh fetch, which emits there.
-        return GeofenceRegistration(center: anchor, businessIds: Set(nearest.map(\.id)))
+        return GeofenceRegistration(center: anchor, businessIds: nearestIds)
     }
 
     /// The identified user a gated operation runs for (`nil` when signed out); the exit cleanup compares against it.

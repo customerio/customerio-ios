@@ -92,8 +92,8 @@ final class GeofenceEventTracker: @unchecked Sendable {
         // an SDK release; constructor default applies otherwise.
         let interval = await storage.getCachedConfig()?.duplicateEventsExpiry ?? cooldownInterval
 
-        guard await storage.tryAcquireCooldown(key: cooldownKey, now: now, interval: interval) else {
-            logger.geofenceEventSuppressed(geofenceId: geofenceId, transition: transition)
+        if let remaining = await storage.tryAcquireCooldown(key: cooldownKey, now: now, interval: interval) {
+            logger.geofenceEventSuppressed(geofenceId: geofenceId, transition: transition, cooldownRemaining: remaining)
             return []
         }
         // Resolve the geofence name and geoset membership now and carry them on the metric;
