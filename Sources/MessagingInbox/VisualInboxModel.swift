@@ -53,6 +53,14 @@ final class VisualInboxModel: ObservableObject {
 
     private let provider: VisualInboxProvider
 
+    /// Host-configured VoiceOver labels (all nil unless the host set them). Computed rather than
+    /// captured at init: a SwiftUI view can be constructed before `MessagingInApp.initialize` runs, and
+    /// a captured value would pin the empty defaults for the lifetime of the model. Reading module
+    /// config is cheap enough to do per render.
+    var accessibilityLabels: NotificationInboxAccessibilityLabels {
+        provider.accessibilityLabels()
+    }
+
     /// SDK logger for [CIO-Inbox] diagnostics (e.g. the no-template skip in item 4).
     private let logger: Logger = DIGraphShared.shared.logger
 

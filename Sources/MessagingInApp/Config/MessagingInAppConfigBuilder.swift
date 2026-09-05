@@ -19,6 +19,7 @@ public class MessagingInAppConfigBuilder {
     private let siteId: String
     private let region: Region
     private var colorScheme: ColorScheme = .auto
+    private var notificationInboxAccessibilityLabels = NotificationInboxAccessibilityLabels()
 
     /// Initializes new `MessagingInAppConfigBuilder` with required configuration options.
     /// - Parameters:
@@ -35,12 +36,23 @@ public class MessagingInAppConfigBuilder {
         return self
     }
 
+    /// Sets the VoiceOver labels for the Visual Notification Inbox UI (bell, unread badge, loading and
+    /// empty states). The SDK ships no default labels, so provide these in your app's language if you
+    /// want the inbox to be announced by assistive technologies.
+    /// See ``NotificationInboxAccessibilityLabels``.
+    @discardableResult
+    public func setNotificationInboxAccessibilityLabels(_ labels: NotificationInboxAccessibilityLabels) -> MessagingInAppConfigBuilder {
+        notificationInboxAccessibilityLabels = labels
+        return self
+    }
+
     /// Builds and returns `MessagingInAppConfigOptions` instance from the configured properties.
     public func build() -> MessagingInAppConfigOptions {
         MessagingInAppConfigOptions(
             siteId: siteId,
             region: region,
-            colorScheme: colorScheme
+            colorScheme: colorScheme,
+            notificationInboxAccessibilityLabels: notificationInboxAccessibilityLabels
         )
     }
 }
@@ -56,6 +68,17 @@ public extension MessagingInAppConfigBuilder {
     private enum Keys: String {
         case siteId
         case region
+        case notificationInboxAccessibilityLabels
+    }
+
+    /// Keys of the `notificationInboxAccessibilityLabels` sub-dictionary. `bellWithUnreadCount` is a
+    /// template string carrying a `{count}` placeholder, because wrapper SDK configuration crosses a
+    /// bridge that carries data but not closures.
+    private enum LabelKeys: String {
+        case bell
+        case bellWithUnreadCount
+        case loadingIndicator
+        case emptyState
     }
 
     /// Constructs `MessagingInAppConfigOptions` by parsing and applying configurations from provided dictionary.
@@ -90,6 +113,16 @@ public extension MessagingInAppConfigBuilder {
             case "dark": builder.setColorScheme(.dark)
             default: builder.setColorScheme(.auto)
             }
+        }
+
+        if let labels = config[Keys.notificationInboxAccessibilityLabels.rawValue] as? [String: Any] {
+            builder.setNotificationInboxAccessibilityLabels(NotificationInboxAccessibilityLabels(
+                bell: labels[LabelKeys.bell.rawValue] as? String,
+                bellWithUnreadCount: (labels[LabelKeys.bellWithUnreadCount.rawValue] as? String)
+                    .map(NotificationInboxAccessibilityLabels.unreadCountTemplate),
+                loadingIndicator: labels[LabelKeys.loadingIndicator.rawValue] as? String,
+                emptyState: labels[LabelKeys.emptyState.rawValue] as? String
+            ))
         }
 
         return builder.build()

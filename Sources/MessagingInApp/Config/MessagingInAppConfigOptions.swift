@@ -7,4 +7,7 @@ public struct MessagingInAppConfigOptions {
     public let siteId: String
     public let region: Region
     public let colorScheme: ColorScheme
+    /// Host-provided VoiceOver labels for the Visual Notification Inbox UI. All nil by default (the SDK
+    /// emits no strings of its own). See ``NotificationInboxAccessibilityLabels``.
+    public let notificationInboxAccessibilityLabels: NotificationInboxAccessibilityLabels
 }
