@@ -1,3 +1,15 @@
+## [4.7.8](https://github.com/customerio/customerio-ios/compare/4.7.7...4.7.8) (2026-09-04)
+
+### Bug Fixes
+
+* surface the failure reason on in-app error callback ([#1238](https://github.com/customerio/customerio-ios/issues/1238)) ([3733867](https://github.com/customerio/customerio-ios/commit/37338679d33d1f7a76e3d0fb209f5993b44fc7b4))
+
+## [4.7.7](https://github.com/customerio/customerio-ios/compare/4.7.6...4.7.7) (2026-08-31)
+
+### Bug Fixes
+
+* call BaseNetwork completion handler once on transport error ([#1233](https://github.com/customerio/customerio-ios/issues/1233)) ([2a36ef2](https://github.com/customerio/customerio-ios/commit/2a36ef227e39402d85aaf31f7d2abdb9455d9598))
+
 ## [4.7.6](https://github.com/customerio/customerio-ios/compare/4.7.5...4.7.6) (2026-08-24)
 
 ### Bug Fixes

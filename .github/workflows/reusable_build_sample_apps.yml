@@ -8,6 +8,11 @@ on:
         type: boolean
         required: false
         default: false
+      sdk_version:
+        description: "Published SDK version to build against (example: 4.7.6). Required when the caller is the deploy workflow; manual runs may leave it empty to fall back to the newest git tag."
+        type: string
+        required: false
+        default: ""
     secrets:
       GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64:
         required: true
@@ -73,11 +78,31 @@ jobs:
       - name: Get latest SDK version if requested
         if: ${{ inputs.use_latest_sdk_version == true }}
         id: latest-sdk-version-step
+        env:
+          SDK_VERSION: ${{ inputs.sdk_version }}
+        # The `if` above scopes everything here to release-version builds. Ordinary PR and push
+        # builds skip this step entirely, and `build-sample-app` recomputes `LATEST_TAG` with its
+        # own `git describe` for `commitsAheadCount`, which is a real ancestry question and stays
+        # answered by `git describe` on every build.
         run: |
-          git fetch --tags  # Make sure we have all tags
-          latest_tag=$(git describe --tags --abbrev=0)
-          echo "LATEST_TAG=$latest_tag" >> "$GITHUB_ENV"
-          echo "Found latest tag: $latest_tag"
+          if [ -n "$SDK_VERSION" ]; then
+            # The release path passes the version the release job just published.
+            echo "LATEST_TAG=$SDK_VERSION" >> "$GITHUB_ENV"
+            echo "Using SDK version supplied by the caller: $SDK_VERSION"
+          elif [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            # Manual runs have no release job to ask, and the newest tag is already an
+            # ancestor of the checked out commit, so `git describe` is correct here.
+            git fetch --tags  # Make sure we have all tags
+            latest_tag=$(git describe --tags --abbrev=0)
+            echo "LATEST_TAG=$latest_tag" >> "$GITHUB_ENV"
+            echo "Found latest tag: $latest_tag"
+          else
+            # Never guess on the release path: semantic-release creates the tag on a new
+            # child commit, and `git describe` only walks ancestors of the commit this job
+            # checked out, so it would silently resolve to the *previous* release.
+            echo "::error::use_latest_sdk_version is true but no sdk_version was passed. The caller must pass the version that was just published."
+            exit 1
+          fi
 
       - name: Replace local references with published SDK version
         if: ${{ inputs.use_latest_sdk_version == true }}
@@ -91,17 +116,19 @@ jobs:
           # Example lines to replace:
           #   pod 'CustomerIODataPipelines', :path => ...
           #   =>  pod 'CustomerIODataPipelines', '1.2.3'
-          sd "pod 'CustomerIODataPipelines', :path =>.*" "pod 'CustomerIODataPipelines', '$TAG'" "Apps/CocoaPods-FCM/Podfile"
-          sd "pod 'CustomerIOMessagingPushAPN', :path =>.*" "pod 'CustomerIOMessagingPushAPN', '$TAG'" "Apps/CocoaPods-FCM/Podfile"
-          sd "pod 'CustomerIOMessagingInApp', :path =>.*" "pod 'CustomerIOMessagingInApp', '$TAG'" "Apps/CocoaPods-FCM/Podfile"
-          sd "pod 'CustomerIOLocation', :path =>.*" "pod 'CustomerIOLocation', '$TAG'" "Apps/CocoaPods-FCM/Podfile"
-          sd "pod 'CustomerIOMessagingInbox', :path =>.*" "pod 'CustomerIOMessagingInbox', '$TAG'" "Apps/CocoaPods-FCM/Podfile"
-          sd "pod 'CustomerIOLocationGeofence', :path =>.*" "pod 'CustomerIOLocationGeofence', '$TAG'" "Apps/CocoaPods-FCM/Podfile"
-          sd "pod 'CustomerIOLiveActivities', :path =>.*" "pod 'CustomerIOLiveActivities', '$TAG'" "Apps/CocoaPods-FCM/Podfile"
-          sd "pod 'CustomerIOLiveActivitiesAttributes', :path =>.*" "pod 'CustomerIOLiveActivitiesAttributes', '$TAG'" "Apps/CocoaPods-FCM/Podfile"
-          # Declared in both the app and the widget extension targets; sd rewrites every occurrence.
-          sd "pod 'CustomerIOLiveActivitiesTemplates', :path =>.*" "pod 'CustomerIOLiveActivitiesTemplates', '$TAG'" "Apps/CocoaPods-FCM/Podfile"
-          # If you have other modules: repeat
+          #
+          # One rule for every local `CustomerIO*` pod rather than a hand-listed set.
+          # The list had drifted: `CustomerIOCommon`, `CustomerIOMessagingPush`,
+          # `CustomerIOMessagingPushFCM` and `CustomerIOTrackingMigration` were declared
+          # local but never rewritten, so they resolved from the triggering checkout at
+          # the previous release while the rewritten pods required the new one, and
+          # `pod install` failed on the exact-version conflict.
+          #
+          # `SampleAppsCommon` is not a `CustomerIO*` pod and stays local, which is correct.
+          # Pods declared in both the app and the widget extension targets are rewritten
+          # in every occurrence.
+          PODFILE="Apps/CocoaPods-FCM/Podfile"
+          TAG="$TAG" perl -pi -e "s/pod '(CustomerIO[A-Za-z]*)', :path =>.*/pod '\$1', '\$ENV{TAG}'/" "$PODFILE"
 
           # 2) SwiftPM package in `Apps/Common/Package.swift`
           # Original: .package(path: "../../")
@@ -124,9 +151,35 @@ jobs:
           sd 'XCLocalSwiftPackageReference "\.\./\.\./"' 'XCRemoteSwiftPackageReference "customerio-ios"' "$PBXPROJ"
           # Swap the reference body itself. Matching `isa` together with the `../../` path leaves the
           # sibling `../Common` local reference alone, which has to stay local.
-          sd 'isa = XCLocalSwiftPackageReference;\n(\s*)relativePath = "\.\./\.\./";' \
-             "isa = XCRemoteSwiftPackageReference;\n\${1}repositoryURL = \"https://github.com/customerio/customerio-ios.git\";\n\${1}requirement = {\n\${1}\tkind = upToNextMajorVersion;\n\${1}\tminimumVersion = \"${TAG}\";\n\${1}};" \
-             "$PBXPROJ"
+          # This one has to match across a newline, so it uses `perl -0` (slurp mode) rather than `sd`:
+          # `brew install sd` now pours sd 1.1.0, which matches line by line and can never match `\n`.
+          # It exits 0 having changed nothing, which is how this substitution stayed silently inert.
+          # `perl` is preinstalled on the macOS runners, so there is nothing to install or version-pin.
+          TAG="$TAG" perl -0pi -e 's!isa = XCLocalSwiftPackageReference;\n(\s*)relativePath = "\.\./\.\./";!isa = XCRemoteSwiftPackageReference;\n${1}repositoryURL = "https://github.com/customerio/customerio-ios.git";\n${1}requirement = {\n${1}\tkind = upToNextMajorVersion;\n${1}\tminimumVersion = "$ENV{TAG}";\n${1}};!' "$PBXPROJ"
+
+          # Every substitution in this step is silent on no match, so a stale pattern reads exactly
+          # like a successful run. Assert the local references are actually gone instead of finding
+          # out later from an unrelated-looking `Conflicting identity` failure in xcodebuild.
+          if grep -q 'relativePath = "\.\./\.\./";' "$PBXPROJ"; then
+            echo "::error::$PBXPROJ still points at the local SDK checkout. SwiftPM will fail to resolve with a conflicting identity for customerio-ios."
+            exit 1
+          fi
+          if grep -q '\.package(path:' "Apps/Common/Package.swift"; then
+            echo "::error::Apps/Common/Package.swift still points at the local SDK checkout."
+            exit 1
+          fi
+          # Catches a newly added CustomerIO pod that the rule above did not match,
+          # instead of letting it surface as a version conflict during `pod install`.
+          if grep -qE "pod 'CustomerIO[A-Za-z]*', :path =>" "$PODFILE"; then
+            echo "::error::$PODFILE still declares local CustomerIO pods:"
+            grep -nE "pod 'CustomerIO[A-Za-z]*', :path =>" "$PODFILE"
+            exit 1
+          fi
+          # SampleAppsCommon is the sample apps' own shared code and must stay local.
+          if ! grep -q "pod 'SampleAppsCommon', :path =>" "$PODFILE"; then
+            echo "::error::$PODFILE no longer declares SampleAppsCommon locally; the pod rewrite was too broad."
+            exit 1
+          fi
 
           echo "Finished updating references. Now we have pinned SDK version $TAG."
 

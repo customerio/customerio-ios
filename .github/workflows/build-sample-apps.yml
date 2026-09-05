@@ -2,6 +2,7 @@ name: Build sample apps
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, edited, labeled]
     paths-ignore:
       - '**/*.md'
   push:
@@ -17,17 +18,46 @@ on:
         default: false
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # Unrelated labels and body-only edits must not cancel an in-flight release or
+  # ci:full run. They share a separate group, where SDK-size validation repeats.
+  group: >-
+    ${{ github.workflow }}-${{ github.ref }}-${{
+      github.event_name == 'pull_request' &&
+      ((github.event.action == 'labeled' && github.event.label.name != 'ci:full') ||
+      (github.event.action == 'edited' &&
+      github.event.changes.title == null &&
+      github.event.changes.base == null)) &&
+      'metadata' || 'validation'
+    }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' || startsWith(github.ref, 'refs/heads/feature/') }}
 
 jobs:
-  # 1) Build and publish sample apps to Firebase App Distribution.
-  # Skipped on pull_request: reviewing a PR doesn't need a published distributable
-  # build, and the 2-job matrix (APN-UIKit + CocoaPods-FCM) was contending with
-  # Lint/Tests/Maestro E2E for the same limited macOS runner pool on every PR push.
-  # Still runs on push to main/feature branches, and on-demand via workflow_dispatch.
+  release_policy:
+    if: github.event_name == 'pull_request'
+    uses: ./.github/workflows/reusable-release-policy.yml
+    permissions:
+      contents: read
+    with:
+      pr_title: ${{ github.event.pull_request.title }}
+      base_sha: ${{ github.event.pull_request.base.sha }}
+      head_sha: ${{ github.event.pull_request.head.sha }}
+      ci_full: ${{ contains(github.event.pull_request.labels.*.name, 'ci:full') }}
+
+  # Build and publish sample apps to Firebase App Distribution. Correctness is
+  # covered separately by unsigned path-based sample and compatibility builds;
+  # release intent or ci:full controls only this distribution side effect.
   build-sample-apps:
-    if: ${{ github.event_name != 'pull_request' }}
+    if: >-
+      always() &&
+      (github.event_name != 'pull_request' ||
+      (needs.release_policy.outputs.full_validation == 'true' &&
+      (github.event.action != 'edited' ||
+      github.event.changes.title != null ||
+      github.event.changes.base != null) &&
+      (github.event.action != 'labeled' || github.event.label.name == 'ci:full') &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.user.login != 'dependabot[bot]'))
+    needs: release_policy
     uses: ./.github/workflows/reusable_build_sample_apps.yml
     with:
       # If manual run AND user sets 'use_latest_sdk_version' to true, get the new tag.
@@ -44,11 +74,17 @@ jobs:
       SAMPLE_APPS_INSTRUCTIONS_GUIDE_LINK: ${{ secrets.SAMPLE_APPS_INSTRUCTIONS_GUIDE_LINK }}
       SLACK_NOTIFY_RELEASES_WEBHOOK_URL: ${{ secrets.SLACK_NOTIFY_RELEASES_WEBHOOK_URL }}
 
-  # 2) Generate SDK size reports. Kept on pull_request: this is the single job that
-  # surfaces the binary-size diff vs. main on every PR, separate from (and much
-  # cheaper than) the sample-app build matrix above.
+  # Size is a release guardrail, so it runs for every internal non-documentation
+  # PR. Main keeps warming the exact-SHA baseline cache to avoid rebuilding it.
   generate-sdk-size-reports:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.user.login != 'dependabot[bot]')
     runs-on: macos-26
+    timeout-minutes: 60
     permissions:
       pull-requests: write
     steps:
@@ -58,9 +94,17 @@ jobs:
         id: generate-sdk-size-report
         with:
           GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64: ${{ secrets.GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64 }}
+          baseline-ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event_name == 'push' && github.sha || '' }}
 
       - name: Find existing "SDK size reports" comment
-        if: github.event_name == 'pull_request'
+        # A metadata-only run still validates size, but must not race a newer
+        # commit when replacing the PR's single shared report comment.
+        if: >-
+          github.event_name == 'pull_request' &&
+          (github.event.action != 'edited' ||
+          github.event.changes.title != null ||
+          github.event.changes.base != null) &&
+          (github.event.action != 'labeled' || github.event.label.name == 'ci:full')
         uses: peter-evans/find-comment@3eae4d37986fb5a8592848f6a574fdf654e61f9e # v3.1.0
         id: find-sdk-size-report-comment
         with:
@@ -69,7 +113,12 @@ jobs:
           body-includes: <!-- sdk size reports -->
 
       - name: Send SDK size reports to the PR
-        if: github.event_name == 'pull_request'
+        if: >-
+          github.event_name == 'pull_request' &&
+          (github.event.action != 'edited' ||
+          github.event.changes.title != null ||
+          github.event.changes.base != null) &&
+          (github.event.action != 'labeled' || github.event.label.name == 'ci:full')
         uses: peter-evans/create-or-update-comment@71345be0265236311c031f5c7866368bd1eff043 # v4.0.0
         with:
           comment-id: ${{ steps.find-sdk-size-report-comment.outputs.comment-id }}

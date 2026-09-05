@@ -88,11 +88,24 @@ class GistDelegateImplTests: UnitTest {
 
     func testMessageError() {
         let message = Message(messageId: "test-message-id")
+        let error = InAppMessageError(reason: .network, detail: "offline", code: -1009)
+
+        gistDelegate.messageError(message: message, error: error)
+
+        XCTAssertTrue(mockEventListener.errorWithMessageAndErrorCalled, "EventListener's errorWithMessage should be called")
+        XCTAssertEqual(mockEventListener.errorWithMessageAndErrorReceivedArguments?.message.messageId, "test-message-id", "Message ID should match")
+        XCTAssertEqual(mockEventListener.errorWithMessageAndErrorReceivedArguments?.error, error, "Failure reason should reach the listener")
+    }
+
+    /// The reason-less entry point is still part of the public `GistDelegate`, so a failure arriving
+    /// through it must still reach the host rather than being dropped for want of a reason.
+    func testMessageErrorWithoutReason() {
+        let message = Message(messageId: "test-message-id")
 
         gistDelegate.messageError(message: message)
 
-        XCTAssertTrue(mockEventListener.errorWithMessageCalled, "EventListener's errorWithMessage should be called")
-        XCTAssertEqual(mockEventListener.errorWithMessageReceivedArguments?.messageId, "test-message-id", "Message ID should match")
+        XCTAssertTrue(mockEventListener.errorWithMessageAndErrorCalled, "EventListener's errorWithMessage should be called")
+        XCTAssertEqual(mockEventListener.errorWithMessageAndErrorReceivedArguments?.error.reason, .internalError)
     }
 
     func testActionWithNormalAction() {
@@ -158,6 +171,7 @@ class GistDelegateImplTests: UnitTest {
         XCTAssertFalse(mockEventListener.messageShownCalled, "No event listener methods should be called")
         XCTAssertFalse(mockEventListener.messageDismissedCalled, "No event listener methods should be called")
         XCTAssertFalse(mockEventListener.errorWithMessageCalled, "No event listener methods should be called")
+        XCTAssertFalse(mockEventListener.errorWithMessageAndErrorCalled, "No event listener methods should be called")
         XCTAssertFalse(mockEventListener.messageActionTakenCalled, "No event listener methods should be called")
     }
 }

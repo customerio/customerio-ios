@@ -1,0 +1,165 @@
+name: Compile changed sample apps
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - 'Apps/APN-UIKit/**'
+      - 'Apps/CocoaPods-FCM/**'
+      - 'Apps/Common/**'
+      - 'Sources/**'
+      - 'Package.swift'
+      - 'Package.resolved'
+      - '*.podspec'
+      - 'scripts/cocoapods_deployment_target.rb'
+      - '.github/workflows/compile-changed-sample-apps.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  LAUNCH_SURVIVAL_SECONDS: '10'
+
+jobs:
+  detect-changes:
+    # Unsigned correctness is selected only by changed paths. Release intent
+    # may add a signed distribution build, but it never suppresses this lane.
+    runs-on: ubuntu-latest
+    outputs:
+      apn: ${{ steps.changes.outputs.apn }}
+      fcm: ${{ steps.changes.outputs.fcm }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Select affected sample apps
+        id: changes
+        shell: bash
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          apn=false
+          fcm=false
+
+          git cat-file -e "$BASE_SHA^{commit}"
+          git cat-file -e "$HEAD_SHA^{commit}"
+          changed_paths="$RUNNER_TEMP/changed-sample-paths"
+          git diff --no-renames --name-only -z "$BASE_SHA...$HEAD_SHA" > "$changed_paths"
+
+          while IFS= read -r -d '' path; do
+            case "$path" in
+              *.md)
+                ;;
+              Apps/APN-UIKit/*)
+                apn=true
+                ;;
+              Sources/*)
+                apn=true
+                fcm=true
+                ;;
+              Apps/CocoaPods-FCM/*)
+                fcm=true
+                ;;
+              *.podspec|scripts/cocoapods_deployment_target.rb)
+                fcm=true
+                ;;
+              Apps/Common/*|Package.swift|Package.resolved|.github/workflows/compile-changed-sample-apps.yml)
+                apn=true
+                fcm=true
+                ;;
+            esac
+          done < "$changed_paths"
+
+          echo "apn=$apn" >> "$GITHUB_OUTPUT"
+          echo "fcm=$fcm" >> "$GITHUB_OUTPUT"
+
+  compile-apn:
+    name: Compile APN sample
+    needs: detect-changes
+    if: needs.detect-changes.outputs.apn == 'true'
+    runs-on: macos-26
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Xcode
+        uses: maxim-lobanov/setup-xcode@60606e260d2fc5762a71e64e74b2174e8ea3c8bd # v1.6.0
+        with:
+          xcode-version: '26.6'
+
+      - name: Prepare placeholder build environment
+        run: cp 'Apps/APN-UIKit/BuildEnvironment.sample.swift' 'Apps/APN-UIKit/BuildEnvironment.swift'
+
+      - name: Compile APN sample without signing
+        shell: bash
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -project 'Apps/APN-UIKit/APN UIKit.xcodeproj' \
+            -scheme 'APN UIKit' \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath "$RUNNER_TEMP/apn-sample" \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+      - name: Install and launch APN sample
+        uses: customerio/mobile-ci-tools/github-actions/ios/launch-simulator-app/v1@main
+        with:
+          app-path: ${{ runner.temp }}/apn-sample/Build/Products/Debug-iphonesimulator/APN UIKit.app
+          expected-ios-major: '26'
+          survival-seconds: ${{ env.LAUNCH_SURVIVAL_SECONDS }}
+          log-path: ${{ runner.temp }}/apn-sample-launch.log
+
+  compile-fcm:
+    name: Compile FCM sample
+    needs: detect-changes
+    if: needs.detect-changes.outputs.fcm == 'true'
+    runs-on: macos-26
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Xcode
+        uses: maxim-lobanov/setup-xcode@60606e260d2fc5762a71e64e74b2174e8ea3c8bd # v1.6.0
+        with:
+          xcode-version: '26.6'
+
+      - name: Prepare placeholder build environment
+        run: cp 'Apps/CocoaPods-FCM/BuildEnvironment.sample.swift' 'Apps/CocoaPods-FCM/BuildEnvironment.swift'
+
+      - name: Install CocoaPods
+        run: gem install cocoapods -v 1.16.2 --no-document
+
+      - name: Resolve FCM sample dependencies
+        run: pod _1.16.2_ install --project-directory='Apps/CocoaPods-FCM'
+
+      - name: Compile FCM sample without signing
+        shell: bash
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -workspace 'Apps/CocoaPods-FCM/test cocoapods.xcworkspace' \
+            -scheme 'test cocoapods' \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath "$RUNNER_TEMP/fcm-sample" \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+      - name: Install and launch FCM sample
+        uses: customerio/mobile-ci-tools/github-actions/ios/launch-simulator-app/v1@main
+        with:
+          app-path: ${{ runner.temp }}/fcm-sample/Build/Products/Debug-iphonesimulator/test cocoapods.app
+          expected-ios-major: '26'
+          survival-seconds: ${{ env.LAUNCH_SURVIVAL_SECONDS }}
+          log-path: ${{ runner.temp }}/fcm-sample-launch.log
