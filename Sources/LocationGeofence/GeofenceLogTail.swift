@@ -87,7 +87,7 @@ enum GeofenceLog {
 
     /// The only values that compose the format's separators on purpose. Everything else is an
     /// untrusted token — region identifiers are workspace-authored and can hold anything.
-    private static let composedKeys: Set<String> = ["ranked", "evicted", "ids"]
+    private static let composedKeys: Set<String> = ["ranked", "evicted", "ids", "gs", "tt"]
 
     /// Applied to every finished value. Only whitespace, which is what separates one `key=value`
     /// from the next — the value's own structure is already the caller's business.

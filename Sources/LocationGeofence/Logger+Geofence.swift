@@ -120,7 +120,11 @@ extension Logger {
 
     /// Outcome of a nearby-geofence fetch. Classified as an **input**: replay feeds the response
     /// back rather than re-issuing the request.
-    func geofenceApiFetchResult(returnedCount: Int, elapsed: TimeInterval?) {
+    func geofenceApiFetchResult(
+        returnedCount: Int,
+        elapsed: TimeInterval?,
+        regions: [GeofenceApiRegion] = []
+    ) {
         debug(
             "Fetched \(returnedCount) nearby geofence(s) from the server"
                 + geofenceTail("api.fetch.result", .input, [
@@ -130,6 +134,37 @@ extension Logger {
                 ]),
             geofenceTag
         )
+        geofenceFenceCatalog(regions)
+    }
+
+    /// One record per fetched fence, describing the circle the server sent.
+    ///
+    /// Without it a capture names fences only by opaque id: a replay cannot place them, and nobody
+    /// reading the log can tell which geoset a crossing belonged to. Re-fetching the geometry from
+    /// the workspace later is not equivalent — fences move, so a drive replayed months on would
+    /// silently run against today's circles, and a capture from a customer has no workspace to ask.
+    ///
+    /// Gated whole rather than gated-tail: these records carry no prose worth emitting on their
+    /// own, so with diagnostics off they must not exist at all.
+    private func geofenceFenceCatalog(_ regions: [GeofenceApiRegion]) {
+        guard !regions.isEmpty, GeofenceDiagnostics.isEnabled else { return }
+        for region in regions {
+            debug(
+                "Geofence '\(region.id)' catalogued"
+                    + geofenceTail("fence.cataloged", .input, [
+                        ("id", region.id),
+                        // Sanitized like any other value: a workspace-authored name can contain
+                        // spaces, commas and `=`, all of which would break the parser's split.
+                        ("name", region.name),
+                        ("gs", GeofenceLog.list(region.geosetIds ?? [])),
+                        ("lat", GeofenceLog.num(region.latitude, 5)),
+                        ("lon", GeofenceLog.num(region.longitude, 5)),
+                        ("rad", GeofenceLog.num(region.radius, 0)),
+                        ("tt", GeofenceLog.list(region.transitionTypes ?? []))
+                    ]),
+                geofenceTag
+            )
+        }
     }
 
     /// Prose reports what was *requested* and reads exactly as it did before this instrumentation

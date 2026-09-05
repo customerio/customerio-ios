@@ -66,7 +66,7 @@ final class DiagnosticLog: @unchecked Sendable {
         startMono = DiagnosticClock.monotonicNanos()
 
         // The SDK's diagnostic tail is enabled by the CIOGeofenceDiagnostics Info.plist key.
-        writer.open(header: fileHeaderLine())
+        writer.open { [weak self] in self?.fileHeaderLine() ?? "" }
         deviceState.start(onChange: makeDeviceStateHandler())
         installDispatcher()
 
