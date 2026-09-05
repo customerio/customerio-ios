@@ -35,6 +35,7 @@ extension LocationTestViewController {
         descriptionLabel.text = description
         descriptionLabel.font = .systemFont(ofSize: 12)
         descriptionLabel.textColor = .gray
+        descriptionLabel.numberOfLines = 0
         stackView.addArrangedSubview(descriptionLabel)
 
         return container
@@ -90,6 +91,28 @@ extension LocationTestViewController {
         grantBackgroundStatusLabel.textColor = .darkGray
         grantBackgroundStatusLabel.numberOfLines = 0
         stackView.addArrangedSubview(grantBackgroundStatusLabel)
+
+        return stackView
+    }
+
+    func createDiagnosticLogSection() -> UIView {
+        let stackView = UIStackView()
+        stackView.axis = .vertical
+        stackView.spacing = 8
+
+        shareDiagnosticLogsButton = ThemeButton()
+        shareDiagnosticLogsButton.setTitle("Share diagnostic logs", for: .normal)
+        shareDiagnosticLogsButton.accessibilityIdentifier = "share_diagnostic_logs"
+        shareDiagnosticLogsButton.titleLabel?.font = .systemFont(ofSize: 14)
+        shareDiagnosticLogsButton.heightAnchor.constraint(equalToConstant: 50).isActive = true
+        shareDiagnosticLogsButton.addTarget(self, action: #selector(shareDiagnosticLogsTapped), for: .touchUpInside)
+        stackView.addArrangedSubview(shareDiagnosticLogsButton)
+
+        diagnosticLogStatusLabel = UILabel()
+        diagnosticLogStatusLabel.font = .systemFont(ofSize: 12)
+        diagnosticLogStatusLabel.textColor = .darkGray
+        diagnosticLogStatusLabel.numberOfLines = 0
+        stackView.addArrangedSubview(diagnosticLogStatusLabel)
 
         return stackView
     }

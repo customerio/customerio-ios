@@ -8,6 +8,10 @@ extension LocationTestViewController {
         handleGrantBackgroundLocationTap()
     }
 
+    @objc func shareDiagnosticLogsTapped() {
+        DiagnosticLogExport.presentShareSheet(from: self, sourceView: shareDiagnosticLogsButton)
+    }
+
     @objc func presetButtonTapped(_ sender: UIButton) {
         let index = sender.tag
         guard index >= 0, index < presetLocations.count else { return }

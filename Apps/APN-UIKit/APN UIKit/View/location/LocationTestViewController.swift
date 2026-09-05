@@ -28,6 +28,8 @@ class LocationTestViewController: BaseViewController {
     var requestSdkLocationOnceButton: ThemeButton!
     var grantBackgroundLocationButton: ThemeButton!
     var grantBackgroundStatusLabel: UILabel!
+    var shareDiagnosticLogsButton: ThemeButton!
+    var diagnosticLogStatusLabel: UILabel!
 
     /// Tracks if we're mid-Always-upgrade so the auth-change callback knows to skip
     /// the WhenInUse-only flows (which both also live on this delegate).
@@ -66,6 +68,7 @@ class LocationTestViewController: BaseViewController {
         navigationController?.isNavigationBarHidden = false
         CustomerIO.shared.screen(title: "Location Test")
         addKeyboardObservers()
+        diagnosticLogStatusLabel?.text = DiagnosticLogExport.statusSummary()
     }
 
     override func viewWillDisappear(_ animated: Bool) {
@@ -131,6 +134,13 @@ class LocationTestViewController: BaseViewController {
             title: "BACKGROUND LOCATION",
             description: "Geofence background delivery requires 'Always' location authorization. Grant 'When In Use' first; iOS allows the in-app upgrade prompt once before falling back to the Settings app.",
             content: createGrantBackgroundLocationButton()
+        ))
+        stackView.addArrangedSubview(createOrSeparator())
+
+        stackView.addArrangedSubview(createOptionSection(
+            title: "DIAGNOSTIC LOGS",
+            description: "Log level forced to DEBUG while recording, overriding Settings. Rotates daily, keeps 14 files.",
+            content: createDiagnosticLogSection()
         ))
         stackView.addArrangedSubview(createOrSeparator())
 
