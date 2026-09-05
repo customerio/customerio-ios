@@ -105,6 +105,8 @@ final class DiagnosticLogWriter: @unchecked Sendable {
         // The header repeats on every open, not just on a new file. A same-day relaunch reuses
         // the file but restarts the monotonic clock and may carry a different build, so without
         // this every record after the first process is correlated to the wrong session.
+        // A new file must be self-contained, so the next record re-states the device state.
+        DiagnosticLog.shared.resetDeviceStateCadence()
         if !header.isEmpty { write(header) }
     }
 
