@@ -114,7 +114,9 @@ struct GeofenceLogTailTests {
             Invocation(name: "callbackDropped", requiredKeys: ["id", "t", "why"]) { $0.geofenceCallbackDropped(identifier: "notl_core", transition: .enter, reason: "movement_trigger_not_exit") },
             Invocation(name: "fixReceived", requiredKeys: ["prov"]) { $0.geofenceFixReceived(location, source: "movement_pass") },
             Invocation(name: "fixQuality", requiredKeys: ["fixsrc", "acc", "age"]) { $0.geofenceCallbackReceived(identifier: "q", transition: .enter, fix: location, source: .freshRequest) },
-            Invocation(name: "eventTracked", requiredKeys: ["id", "t"]) { $0.geofenceEventTracked(geofenceId: "notl_core", transition: .enter) },
+            Invocation(name: "deliverySent", requiredKeys: ["id", "t", "via"]) { $0.geofenceDeliverySent(geofenceId: "notl_core", transition: .enter, via: "http") },
+            Invocation(name: "deliveryQueued", requiredKeys: ["id", "t", "via"]) { $0.geofenceDeliveryQueued(geofenceId: "notl_core", transition: .enter, via: "event_bus") },
+            Invocation(name: "deliveryFailed", requiredKeys: ["id", "t", "ok", "retry"]) { $0.geofenceDeliveryFailed(geofenceId: "notl_core", transition: .exit, retry: true) },
             Invocation(name: "transitionAccepted", requiredKeys: ["id", "t", "n"]) { $0.geofenceTransitionAccepted(geofenceId: "notl_core", transition: .enter, rows: 2) },
             Invocation(name: "eventSuppressed", requiredKeys: ["id", "t", "why", "cd"]) { $0.geofenceEventSuppressed(geofenceId: "notl_core", transition: .enter, cooldownRemaining: 42) },
             Invocation(name: "droppedAnonymous", requiredKeys: ["id", "t", "why"]) { $0.geofenceTransitionDroppedAnonymous(geofenceId: "notl_core", transition: .exit) },
@@ -324,7 +326,7 @@ struct GeofenceLogTailTests {
     func sanitize_givenWhitespaceInIdentifier_expectFolded() {
         withDiagnostics(true) {
             let logger = CapturingLogger()
-            logger.geofenceEventTracked(geofenceId: "niagara on the lake", transition: .enter)
+            logger.geofenceTransitionAccepted(geofenceId: "niagara on the lake", transition: .enter, rows: 1)
 
             // Workspace-authored identifiers can contain anything; the parser splits on whitespace.
             #expect(parseTail(logger.messages.last ?? "")?["id"] == "niagara_on_the_lake")
@@ -369,7 +371,7 @@ struct GeofenceLogTailTests {
         defer { GeofenceDiagnostics.overrideForTesting = nil }
         for raw in ["store,north", "a=b", "aisle:3", "wing|west"] {
             let logger = CapturingLogger()
-            logger.geofenceEventTracked(geofenceId: raw, transition: .enter)
+            logger.geofenceTransitionAccepted(geofenceId: raw, transition: .enter, rows: 1)
             let tail = parseTail(logger.messages.last ?? "")
             #expect(tail?["id"] != nil, "no id for \(raw)")
             let id = tail?["id"] ?? ""

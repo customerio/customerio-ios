@@ -206,9 +206,12 @@ final class GeofenceEventTracker: @unchecked Sendable {
 
         if success {
             _ = await pendingStore.remove(key: metric.key)
-            logger.geofenceEventTracked(geofenceId: effective.geofenceId, transition: effective.transition)
+            logger.geofenceDeliverySent(geofenceId: effective.geofenceId, transition: effective.transition, via: "http")
+        } else {
+            // Row stays for the next flush. Logged rather than left silent: an accepted crossing
+            // still in the queue and one the SDK never saw are the same absence otherwise.
+            logger.geofenceDeliveryFailed(geofenceId: effective.geofenceId, transition: effective.transition, retry: true)
         }
-        // HTTP failure: row stays for next flush.
     }
 
     /// Replay via EventBus → DataPipeline, which then owns delivery and retry. We drop our copy
@@ -251,7 +254,7 @@ final class GeofenceEventTracker: @unchecked Sendable {
             geosetId: metric.geosetId,
             metadata: metric.metadata
         ))
-        logger.geofenceEventTracked(geofenceId: metric.geofenceId, transition: metric.transition)
+        logger.geofenceDeliveryQueued(geofenceId: metric.geofenceId, transition: metric.transition, via: "event_bus")
     }
 }
 

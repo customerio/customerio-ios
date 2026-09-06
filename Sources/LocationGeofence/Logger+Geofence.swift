@@ -39,17 +39,6 @@ enum GeofenceLaunchReason: String {
 extension Logger {
     // MARK: - Event tracking
 
-    func geofenceEventTracked(geofenceId: String, transition: GeofenceTransition) {
-        debug(
-            "Tracked \(transition.rawValue) event for geofence \(geofenceId)"
-                + geofenceTail("transition.emitted", .output, [
-                    ("id", geofenceId),
-                    ("t", transition.rawValue)
-                ]),
-            geofenceTag
-        )
-    }
-
     func geofenceEventSuppressed(geofenceId: String, transition: GeofenceTransition, cooldownRemaining: TimeInterval? = nil) {
         debug(
             "Suppressed duplicate \(transition.rawValue) event for geofence \(geofenceId), within cooldown"
