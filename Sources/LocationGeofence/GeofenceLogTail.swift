@@ -264,3 +264,20 @@ extension Logger {
         GeofenceLog.tail(ev, io, fields())
     }
 }
+
+/// Diagnostic vocabulary for the monitor's dedup decision. Lives with the rest of the tail
+/// rather than on the storage type: the token is a log contract, and `GeofenceStorage` is already
+/// at the module's file-length limit.
+extension GeofenceMonitorEventOutcome {
+    /// Stable token for the diagnostic tail. Without it every suppression here is indistinguishable
+    /// from the others — and from the OS never having delivered anything at all.
+    var diagnosticReason: String? {
+        switch self {
+        case .deliver: return nil
+        case .suppressedNoChange: return "no_state_change"
+        case .suppressedFilteredType: return "transition_type_not_registered"
+        case .suppressedNoBaseline: return "baseline_established"
+        case .suppressedNewerBaseline: return "newer_baseline"
+        }
+    }
+}

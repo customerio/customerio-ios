@@ -191,6 +191,29 @@ extension Logger {
         )
     }
 
+    /// The SDK accepted a crossing and durably queued it — the decision replay asserts on.
+    ///
+    /// Distinct from `transition.emitted`, which fires only once the row leaves: on the direct
+    /// path after HTTP success, on the backlog path after the EventBus handoff. Neither says the
+    /// SDK judged the crossing real, and on an offline device they can trail the crossing by many
+    /// minutes or never arrive, which makes them useless as a signal about geofencing itself.
+    /// A field drive showed exactly that — one crossing surfaced 26 minutes late and another,
+    /// accepted and persisted, produced no positive record at all.
+    ///
+    /// `n` is the row count: one per geoset the fence belongs to, so a fan-out is visible as one
+    /// acceptance rather than inferred from the delivery records that follow.
+    func geofenceTransitionAccepted(geofenceId: String, transition: GeofenceTransition, rows: Int) {
+        debug(
+            "Accepted \(transition.rawValue) for geofence \(geofenceId), queued \(rows) row(s)"
+                + geofenceTail("transition.accepted", .output, [
+                    ("id", geofenceId),
+                    ("t", transition.rawValue),
+                    ("n", GeofenceLog.int(rows))
+                ]),
+            geofenceTag
+        )
+    }
+
     func geofenceCallbackDropped(identifier: String, transition: GeofenceTransition, reason: String) {
         debug(
             "OS \(transition.rawValue) for region \(identifier) not routed: \(reason)"

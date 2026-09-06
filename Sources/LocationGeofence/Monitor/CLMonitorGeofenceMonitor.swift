@@ -301,7 +301,11 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preco
            await isEventContradictedByFreshFix(identifier: identifier, transition: transition, eventDate: event.date) {
             return
         }
-        guard case .deliver = await storage.recordMonitorEvent(transition, forIdentifier: identifier) else { return }
+        let outcome = await storage.recordMonitorEvent(transition, forIdentifier: identifier)
+        guard case .deliver = outcome else {
+            logDiscardedCallback(identifier: identifier, transition: transition, outcome: outcome)
+            return
+        }
         // No ownership re-check after the await: the baseline already advanced, so dropping here
         // loses the transition permanently — a sync's stop-all + re-add swap would eat a genuine
         // crossing that raced it. A region truly removed in that window delivers one last gated event.

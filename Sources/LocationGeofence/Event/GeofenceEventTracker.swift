@@ -136,6 +136,10 @@ final class GeofenceEventTracker: @unchecked Sendable {
             await storage.releaseCooldown(key: cooldownKey)
             return []
         }
+        // The crossing is now the SDK's responsibility and will be retried until it lands, so this
+        // is the point a replay can assert on. Logged before delivery is attempted: everything
+        // after this depends on the network.
+        logger.geofenceTransitionAccepted(geofenceId: geofenceId, transition: transition, rows: metrics.count)
 
         // Hold a background-task assertion across delivery so the OS doesn't suspend us mid-send when
         // it woke us only briefly for the transition. Deliver concurrently so N geosets don't

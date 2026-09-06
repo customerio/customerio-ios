@@ -910,4 +910,28 @@ struct GeofenceStorageTests {
 
         #expect(await storage.recordMonitorEvent(.enter, forIdentifier: "g1") == .suppressedNoChange)
     }
+
+    @Test
+    func diagnosticReason_expectEverySuppressionNamedAndDeliverSilent() {
+        // The monitor logs this token when it discards a callback. A new case added without a
+        // token would discard silently again, which is the gap this exists to close — an
+        // unattributable disappearance is indistinguishable from the OS never delivering at all.
+        let cases: [GeofenceMonitorEventOutcome] = [
+            .deliver, .suppressedNoChange, .suppressedFilteredType,
+            .suppressedNoBaseline, .suppressedNewerBaseline
+        ]
+        for outcome in cases {
+            if case .deliver = outcome {
+                #expect(outcome.diagnosticReason == nil, "deliver is not a discard and must log nothing")
+            } else {
+                let reason = outcome.diagnosticReason
+                #expect(reason != nil, "\(outcome) has no diagnostic token")
+                // Tokens ride in a whitespace-split tail, so a space would break the parser.
+                #expect(!(reason ?? " ").contains(" "), "\(outcome): token must not contain whitespace")
+            }
+        }
+        // Distinct reasons, or two different discards read as the same thing off-device.
+        let tokens = cases.compactMap(\.diagnosticReason)
+        #expect(Set(tokens).count == tokens.count, "duplicate tokens: \(tokens)")
+    }
 }

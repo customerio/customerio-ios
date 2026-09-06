@@ -115,6 +115,7 @@ struct GeofenceLogTailTests {
             Invocation(name: "fixReceived", requiredKeys: ["prov"]) { $0.geofenceFixReceived(location, source: "movement_pass") },
             Invocation(name: "fixQuality", requiredKeys: ["fixsrc", "acc", "age"]) { $0.geofenceCallbackReceived(identifier: "q", transition: .enter, fix: location, source: .freshRequest) },
             Invocation(name: "eventTracked", requiredKeys: ["id", "t"]) { $0.geofenceEventTracked(geofenceId: "notl_core", transition: .enter) },
+            Invocation(name: "transitionAccepted", requiredKeys: ["id", "t", "n"]) { $0.geofenceTransitionAccepted(geofenceId: "notl_core", transition: .enter, rows: 2) },
             Invocation(name: "eventSuppressed", requiredKeys: ["id", "t", "why", "cd"]) { $0.geofenceEventSuppressed(geofenceId: "notl_core", transition: .enter, cooldownRemaining: 42) },
             Invocation(name: "droppedAnonymous", requiredKeys: ["id", "t", "why"]) { $0.geofenceTransitionDroppedAnonymous(geofenceId: "notl_core", transition: .exit) },
             Invocation(name: "pendingPersistFailed", requiredKeys: ["id", "t", "ok"]) { $0.geofencePendingPersistFailed(geofenceId: "notl_core", transition: .exit) },
