@@ -11,4 +11,12 @@ concurrency:
 
 jobs:
   lint:
+    # Points at the branch, not @main, while we prove the Linux runner reports exactly what the
+    # macOS runner does. Flip to ios-lint-linux.yml@main once mobile-ci-tools#<PR> merges.
+    uses: customerio/mobile-ci-tools/.github/workflows/ios-lint-linux.yml@ci/ios-lint-ubuntu
+
+  # TEMPORARY, delete before this PR leaves draft. Runs today's macOS lint on the same commit
+  # so the two jobs can be compared side by side. They are expected to agree on everything:
+  # the same files formatted, the same autocorrections, and no net diff.
+  lint-macos-baseline:
     uses: customerio/mobile-ci-tools/.github/workflows/ios-lint.yml@main
