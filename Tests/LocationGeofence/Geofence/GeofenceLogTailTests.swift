@@ -116,7 +116,8 @@ struct GeofenceLogTailTests {
             Invocation(name: "fixQuality", requiredKeys: ["fixsrc", "acc", "age"]) { $0.geofenceCallbackReceived(identifier: "q", transition: .enter, fix: location, source: .freshRequest) },
             Invocation(name: "deliverySent", requiredKeys: ["id", "t", "via"]) { $0.geofenceDeliverySent(geofenceId: "notl_core", transition: .enter, via: "http") },
             Invocation(name: "deliveryQueued", requiredKeys: ["id", "t", "via"]) { $0.geofenceDeliveryQueued(geofenceId: "notl_core", transition: .enter, via: "event_bus") },
-            Invocation(name: "deliveryFailed", requiredKeys: ["id", "t", "ok", "retry"]) { $0.geofenceDeliveryFailed(geofenceId: "notl_core", transition: .exit, retry: true) },
+            Invocation(name: "deliveryFailed", requiredKeys: ["id", "t", "ok", "retry", "why"]) { $0.geofenceDeliveryFailed(geofenceId: "notl_core", transition: .exit, error: .transport) },
+            Invocation(name: "deliveryFailedPermanent", requiredKeys: ["id", "t", "ok", "retry", "why"]) { $0.geofenceDeliveryFailed(geofenceId: "notl_core", transition: .exit, error: .http(statusCode: 401)) },
             Invocation(name: "transitionAccepted", requiredKeys: ["id", "t", "n"]) { $0.geofenceTransitionAccepted(geofenceId: "notl_core", transition: .enter, rows: 2) },
             Invocation(name: "eventSuppressed", requiredKeys: ["id", "t", "why", "cd"]) { $0.geofenceEventSuppressed(geofenceId: "notl_core", transition: .enter, cooldownRemaining: 42) },
             Invocation(name: "droppedAnonymous", requiredKeys: ["id", "t", "why"]) { $0.geofenceTransitionDroppedAnonymous(geofenceId: "notl_core", transition: .exit) },
@@ -182,6 +183,30 @@ struct GeofenceLogTailTests {
                 }
             }
         }
+    }
+
+    @Test
+    func deliveryFailure_expectPermanentErrorsReportedNotRetryable() {
+        // Reporting a permanent failure as retryable made a misconfiguration read as flaky
+        // network off-device, which are opposite diagnoses: one needs a fix, one needs waiting.
+        let permanent: [BackgroundDeliveryHttpError] = [
+            .missingApiHost, .missingCdpApiKey, .invalidRequest,
+            .http(statusCode: 400), .http(statusCode: 401), .http(statusCode: 404)
+        ]
+        let retryable: [BackgroundDeliveryHttpError] = [
+            .transport, .http(statusCode: 408), .http(statusCode: 429),
+            .http(statusCode: 500), .http(statusCode: 503)
+        ]
+        for error in permanent {
+            #expect(error.isRetryable == false, "\(error) should not be reported as retryable")
+        }
+        for error in retryable {
+            #expect(error.isRetryable == true, "\(error) should be reported as retryable")
+        }
+        // Tokens ride a whitespace-split tail and must tell the cases apart.
+        let tokens = (permanent + retryable).map(\.diagnosticReason)
+        #expect(tokens.allSatisfy { !$0.contains(" ") }, "a reason token contains whitespace")
+        #expect(Set(tokens).count == tokens.count, "duplicate reason tokens: \(tokens)")
     }
 
     @Test

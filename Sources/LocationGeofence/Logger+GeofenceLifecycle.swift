@@ -193,10 +193,10 @@ extension Logger {
 
     /// The SDK accepted a crossing and durably queued it — the decision replay asserts on.
     ///
-    /// Distinct from `transition.emitted`, which fires only once the row leaves: on the direct
-    /// path after HTTP success, on the backlog path after the EventBus handoff. Neither says the
-    /// SDK judged the crossing real, and on an offline device they can trail the crossing by many
-    /// minutes or never arrive, which makes them useless as a signal about geofencing itself.
+    /// Distinct from the `delivery.*` family, which fires only once the row leaves: after HTTP
+    /// success on the direct path, after the EventBus handoff on the backlog path. Neither says
+    /// the SDK judged the crossing real, and on an offline device they can trail the crossing by
+    /// many minutes or never arrive, which makes them useless as a signal about geofencing.
     /// A field drive showed exactly that — one crossing surfaced 26 minutes late and another,
     /// accepted and persisted, produced no positive record at all.
     ///

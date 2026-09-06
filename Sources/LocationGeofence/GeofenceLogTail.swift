@@ -46,7 +46,7 @@ private final class DiagnosticsGate: @unchecked Sendable {
 /// is gated.
 ///
 /// ```
-/// [Geofence] Tracked enter event for geofence notl_core || ev=transition.emitted io=out id=notl_core t=enter
+/// [Geofence] Accepted enter for geofence notl_core, queued 1 row(s) || ev=transition.accepted io=out id=notl_core t=enter n=1
 /// ```
 enum GeofenceLog {
     /// A parser splits on the **last** occurrence, and only if the remainder is all `key=value`.

@@ -193,24 +193,22 @@ final class GeofenceEventTracker: @unchecked Sendable {
 
         let effective = await resolvingLiveValues(metric)
 
-        let success = await withCheckedContinuation { (continuation: CheckedContinuation<Bool, Never>) in
+        // The error is carried out, not collapsed to a Bool: `delivery.failed` reports why, and
+        // whether retrying can help, which a Bool cannot express.
+        let outcome = await withCheckedContinuation { (continuation: CheckedContinuation<Result<Void, BackgroundDeliveryHttpError>, Never>) in
             deliveryTracker.trackMetric(metric: effective, userId: effective.userId) { result in
-                switch result {
-                case .success:
-                    continuation.resume(returning: true)
-                case .failure:
-                    continuation.resume(returning: false)
-                }
+                continuation.resume(returning: result)
             }
         }
 
-        if success {
+        switch outcome {
+        case .success:
             _ = await pendingStore.remove(key: metric.key)
             logger.geofenceDeliverySent(geofenceId: effective.geofenceId, transition: effective.transition, via: "http")
-        } else {
+        case .failure(let error):
             // Row stays for the next flush. Logged rather than left silent: an accepted crossing
             // still in the queue and one the SDK never saw are the same absence otherwise.
-            logger.geofenceDeliveryFailed(geofenceId: effective.geofenceId, transition: effective.transition, retry: true)
+            logger.geofenceDeliveryFailed(geofenceId: effective.geofenceId, transition: effective.transition, error: error)
         }
     }
 

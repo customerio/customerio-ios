@@ -57,11 +57,19 @@ extension CLMonitorGeofenceMonitor {
                     fixAge: -fix.timestamp.timeIntervalSinceNow,
                     lastState: record.lastState
                 ) else { continue }
-                guard case .deliver = await self.storage.recordMonitorEvent(
+                // Logged for the same reason as the OS-event path: a heal that decides a crossing
+                // is real and is then refused by the baseline used to vanish. This is also the
+                // only site that can return `.suppressedNewerBaseline` — the OS path passes no
+                // evidence timestamp — so without this the token exists but can never print.
+                let outcome = await self.storage.recordMonitorEvent(
                     transition,
                     forIdentifier: identifier,
                     onlyIfBaselinePredates: fix.timestamp
-                ) else { continue }
+                )
+                guard case .deliver = outcome else {
+                    self.logDiscardedCallback(identifier: identifier, transition: transition, outcome: outcome)
+                    continue
+                }
                 self.logger.geofenceBaselineHealed(identifier: identifier, transition: transition)
                 self.onTransition?(
                     identifier,
