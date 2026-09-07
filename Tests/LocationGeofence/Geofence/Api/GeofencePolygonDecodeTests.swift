@@ -190,7 +190,7 @@ struct GeofencePolygonDecodeTests {
         var reasons: [String: GeofenceRegionDropReason] = [:]
         let regions = try decode(responseJson([inconsistent])).toDomainRegions(onInvalidRegion: { reasons[$0] = $1 })
         #expect(regions.isEmpty)
-        #expect(reasons["1"] == .unknownShape)
+        #expect(reasons["1"] == .undescribedShape)
     }
 
     /// `geometry` and `enclosing_circle` decode with `try?`, so a malformed one becomes nil. Keyed
@@ -204,7 +204,7 @@ struct GeofencePolygonDecodeTests {
         var reasons: [String: GeofenceRegionDropReason] = [:]
         let regions = try decode(responseJson([malformed])).toDomainRegions(onInvalidRegion: { reasons[$0] = $1 })
         #expect(regions.isEmpty)
-        #expect(reasons["1"] == .unknownShape)
+        #expect(reasons["1"] == .undescribedShape)
     }
 
     /// An explicit null is the server saying "no polygon here", which a v1 circle payload may carry

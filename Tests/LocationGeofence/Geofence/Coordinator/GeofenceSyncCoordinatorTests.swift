@@ -543,6 +543,29 @@ struct GeofenceSyncCoordinatorTests {
         #expect(await storage.getCachedGeofences().map(\.id) == ["kept"])
     }
 
+    /// Polygon fields with no shape discriminator is a MALFORMED payload, not a workspace that has
+    /// moved to a shape we cannot monitor — so it must preserve the cache, the way a decode loss
+    /// does. Both used to report `unknownShape`, which the all-dropped guard exempts, so this
+    /// payload cleared every fence the user had. Reproduction supplied by @Shahroz16 in review.
+    @Test
+    func refresh_givenPolygonFieldsWithoutShape_expectFetchFailureAndCacheKept() async throws {
+        let storage = makeStorage()
+        await storage.setCachedGeofences([makeRegion(id: "kept", latitude: 37.7749, longitude: -122.4194)])
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        let payload = #"{"geofences":[{"id":"broken","latitude":1,"longitude":2,"radius":100,"geometry":{}}]}"#
+        let response = try decoder.decode(GeofenceApiResponse.self, from: Data(payload.utf8))
+        let api = GeofenceApiServiceMock()
+        api.fetchNearbyGeofencesClosure = { _, _, completion in completion(.success(response)) }
+
+        let setup = makeCoordinator(api: api, storage: storage)
+        let result = await setup.coordinator.refresh(latitude: 37.7749, longitude: -122.4194)
+
+        #expect(result.errorOrNil == .fetchFailed(.decoding))
+        #expect(await storage.getCachedGeofences().map(\.id) == ["kept"])
+        #expect(setup.monitor.startedRegions.isEmpty)
+    }
+
     /// A workspace whose fences have all moved to a shape this SDK cannot monitor is the opposite
     /// of a broken payload: the response read fine and there is genuinely nothing here for us.
     /// Failing would freeze the previous fences in place with a refresh that can never succeed.

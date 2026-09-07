@@ -121,7 +121,11 @@ extension GeofenceSyncCoordinatorImpl {
         var unreadableCount = 0
         let regions = response.toDomainRegions(onInvalidRegion: { id, reason in
             logger.geofenceInvalidRegionDropped(id, reason: reason)
-            // A shape we understood and declined is not a payload we failed to read.
+            // A shape the server NAMED and this version does not implement is not a payload we
+            // failed to read — the workspace moved on and the stale monitors should go with it.
+            // Everything else counts, `undescribedShape` included: polygon fields with no
+            // discriminator is a malformed response, and letting it clear the cache is the same
+            // defect as letting a decode failure clear it.
             if reason != .unknownShape { unreadableCount += 1 }
         })
         // Regions lost at JSON decode never reach `toDomainRegions` — it maps over what survived —
