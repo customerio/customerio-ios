@@ -136,6 +136,11 @@ final class GeofenceEventTracker: @unchecked Sendable {
             await storage.releaseCooldown(key: cooldownKey)
             return []
         }
+        // The SDK has accepted the crossing and written it down; that is the fact replay asserts
+        // on, and it is complete here. What happens to the row afterwards is delivery's business
+        // and is reported by the `delivery.*` family — this record deliberately promises nothing
+        // about it.
+        logger.geofenceTransitionAccepted(geofenceId: geofenceId, transition: transition, rows: metrics.count)
 
         // Hold a background-task assertion across delivery so the OS doesn't suspend us mid-send when
         // it woke us only briefly for the transition. Deliver concurrently so N geosets don't
@@ -189,22 +194,23 @@ final class GeofenceEventTracker: @unchecked Sendable {
 
         let effective = await resolvingLiveValues(metric)
 
-        let success = await withCheckedContinuation { (continuation: CheckedContinuation<Bool, Never>) in
+        // The error is carried out, not collapsed to a Bool, so `delivery.failed` can report a
+        // reason — an offline device and a misconfigured one are otherwise identical in the log.
+        let outcome = await withCheckedContinuation { (continuation: CheckedContinuation<Result<Void, BackgroundDeliveryHttpError>, Never>) in
             deliveryTracker.trackMetric(metric: effective, userId: effective.userId) { result in
-                switch result {
-                case .success:
-                    continuation.resume(returning: true)
-                case .failure:
-                    continuation.resume(returning: false)
-                }
+                continuation.resume(returning: result)
             }
         }
 
-        if success {
+        switch outcome {
+        case .success:
             _ = await pendingStore.remove(key: metric.key)
-            logger.geofenceEventTracked(geofenceId: effective.geofenceId, transition: effective.transition)
+            logger.geofenceDeliverySent(geofenceId: effective.geofenceId, transition: effective.transition, via: "http")
+        case .failure(let error):
+            // Row stays for the next flush. Logged rather than left silent: an accepted crossing
+            // still in the queue and one the SDK never saw are the same absence otherwise.
+            logger.geofenceDeliveryFailed(geofenceId: effective.geofenceId, transition: effective.transition, error: error)
         }
-        // HTTP failure: row stays for next flush.
     }
 
     /// Replay via EventBus → DataPipeline, which then owns delivery and retry. We drop our copy
@@ -247,7 +253,7 @@ final class GeofenceEventTracker: @unchecked Sendable {
             geosetId: metric.geosetId,
             metadata: metric.metadata
         ))
-        logger.geofenceEventTracked(geofenceId: metric.geofenceId, transition: metric.transition)
+        logger.geofenceDeliveryQueued(geofenceId: metric.geofenceId, transition: metric.transition, via: "event_bus")
     }
 }
 
