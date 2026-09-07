@@ -193,6 +193,25 @@ struct GeofencePolygonDecodeTests {
         #expect(reasons["1"] == .undescribedShape)
     }
 
+    /// An empty or whitespace `shape` is a serialization slip, not a shape the server named. As a
+    /// distinct string it would reach `default` and report `unknownShape` — the one reason the
+    /// all-dropped guard exempts — so a payload of these would clear the whole fence set. Both
+    /// forms must route as if the discriminator were absent.
+    @Test(arguments: ["\"\"", "\" \"", "\"  circle \""])
+    func toDomain_givenBlankOrPaddedShape_expectRoutedAsIfAbsent(shapeJson: String) throws {
+        let withPolygonFields = """
+        {"id": 1, "shape": \(shapeJson),
+         "latitude": \(Self.centre.latitude), "longitude": \(Self.centre.longitude), "radius": 300,
+         "geometry": {"type": "Polygon", "coordinates": \(Self.squareRing)}}
+        """
+        var reasons: [String: GeofenceRegionDropReason] = [:]
+        let regions = try decode(responseJson([withPolygonFields]))
+            .toDomainRegions(onInvalidRegion: { reasons[$0] = $1 })
+        // Either it resolves (padded "circle") or it drops under a reason that COUNTS as unreadable.
+        #expect(reasons["1"] != .unknownShape, "blank/padded shape must not take the exempt branch")
+        if regions.isEmpty { #expect(reasons["1"] == .undescribedShape) }
+    }
+
     /// `geometry` and `enclosing_circle` decode with `try?`, so a malformed one becomes nil. Keyed
     /// on the decoded value the region would read as a plain v1 circle and be monitored as one.
     @Test

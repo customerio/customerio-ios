@@ -44,12 +44,11 @@ private struct LenientRegion: Decodable {
 
 /// Why a region on the wire never became a monitorable fence.
 enum GeofenceRegionDropReason: String, Error {
-    /// The server named a shape this version does not implement — a workspace that has moved on.
-    /// Exempt from the all-regions-dropped guard: an old SDK must stop monitoring geometry it can
-    /// no longer describe, rather than holding the last set it understood forever.
+    /// A shape the server NAMED that this version cannot monitor. The workspace moved on, so this
+    /// is the one reason exempt from the all-dropped guard: stale monitors should go with it.
     case unknownShape = "unrecognized shape"
-    /// The server named NO shape but sent polygon fields anyway. That is a malformed payload, not
-    /// a workspace on a newer shape, so it counts as unreadable and preserves the cache.
+    /// No shape named, but polygon fields present — a malformed payload, so it counts as unreadable
+    /// and the cache survives.
     case undescribedShape = "shape missing but polygon fields present"
     case unusableCircle = "invalid coordinates or radius"
     case unusablePolygon = "missing or undecodable polygon geometry"
@@ -281,16 +280,15 @@ extension GeofenceApiRegion {
     func toDomain() -> Result<Geofence, GeofenceRegionDropReason> {
         let resolved: ResolvedGeometry?
         let dropReason: GeofenceRegionDropReason
-        switch shape?.lowercased() {
+        // Blank or padded is a serialization slip, not a shape the server named — left distinct it
+        // would reach `default`, the one branch the all-dropped guard exempts, and clear the cache.
+        let named = shape?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        switch named?.isEmpty == true ? nil : named {
         case nil where carriesPolygonFields:
             // Polygon fields with no discriminator: the payload describes something this decoder
             // cannot name. Falling through to the flat circle fields would monitor a shape the
             // server never described. Android drops the same combination. Keyed on the fields being
             // PRESENT, not on their having decoded — a malformed one is still a claim of a polygon.
-            //
-            // Distinct from `unknownShape`: a NAMED shape we do not implement means the workspace
-            // moved on and stale monitors should go, whereas a missing name is a broken payload and
-            // must not be allowed to clear the cache.
             return .failure(.undescribedShape)
         case nil, "circle":
             resolved = resolvedCircle()
