@@ -173,7 +173,14 @@ final class PolygonMembershipResolver {
     /// covers only a pass content with the fix already in hand. A wake runs BECAUSE the device
     /// moved, and any pass already in flight is working from a fix requested before that movement —
     /// so no wake yields, not even to another wake, and nothing else would retry it if it did.
-    /// Concurrent requests coalesce inside `MovementFixResolver`, which is what bounds the cost.
+    ///
+    /// What running actually buys the second wake is bounded, and worth stating so it is not
+    /// over-read: concurrent requests COALESCE inside `MovementFixResolver`, so a wake arriving
+    /// while a request is in flight is answered by that request rather than one of its own. It
+    /// gains a delivered fix it would otherwise never have seen, but not one that postdates its own
+    /// crossing, and if the shared request fails both wakes end undecided rather than one of them
+    /// skipped. Giving the second wake a fix of its own means a request per wake — a design change,
+    /// not a comment fix.
     func evaluateAllPolygons(
         requiresFreshFix: Bool = false,
         isStillCurrent: (@Sendable () -> Bool)? = nil
@@ -355,11 +362,20 @@ final class PolygonMembershipResolver {
     /// carries the accuracy and timestamp the decision needs.
     ///
     /// "Fresh" here is a fix this resolver received in answer to THIS request, and strictly newer
-    /// than the last one it delivered — a deliberately stricter test than the
-    /// within-`movementFixMaxAge` one the movement trigger is sized against
-    /// (`GeofenceSyncCoordinatorImpl.wakeRadius`). A verdict may not be re-affirmed by the very fix
+    /// than the last one it delivered. Once it has delivered anything that is stricter than the
+    /// within-`movementFixMaxAge` test the movement trigger is sized against
+    /// (`GeofenceSyncCoordinatorImpl.wakeRadius`): a verdict may not be re-affirmed by the very fix
     /// the wake exists to revisit, whereas a trigger only needs an anchor roughly where the device
-    /// is. The two are not interchangeable and neither should be relaxed to the other.
+    /// is.
+    ///
+    /// On the FIRST pass of a process the two collapse into one. Nothing has been delivered to be
+    /// newer than, and CoreLocation may echo its cached fix as a new manager's first delivery — an
+    /// echo inside `movementFixMaxAge` is accepted — so a cold wake can be answered by a fix that
+    /// much older than the wake, several hundred metres at speed. That is the same bound
+    /// `PolygonMembershipDecision` already applies, so `requiringFresh` adds nothing on a cold
+    /// process, and every cold-process wake is a first pass. Tightening it needs an assumed-speed
+    /// constant — the same one the ≤17 wake radius wants — so it belongs with that work. The
+    /// verdict line logs fix age, which is what makes a stale-echo verdict identifiable in a field log.
     ///
     /// When a fresh fix is REQUIRED, a request that fails or times out still resumes with the fix
     /// already held. That one predates the wake and can sit inside `movementFixMaxAge`, so it would
@@ -376,10 +392,11 @@ final class PolygonMembershipResolver {
                 let resolved = fixResolver.latestFix
                 if requiringFresh {
                     // `isFresh` is the resolver's own account of what it answered with: true only
-                    // for a fix it received in response to this request. It is what stops the first
-                    // wake of a process — which has delivered nothing, so has no baseline — from
-                    // being answered out of CoreLocation's pre-movement cache. The timestamp
-                    // comparison then keeps each later wake strictly ahead of the one before.
+                    // for a fix it received in response to this request, which is what keeps a
+                    // failed or timed-out request from resuming on the held fix. It does NOT prove
+                    // the fix postdates the wake — an echoed cache fix inside `movementFixMaxAge`
+                    // clears it — so on a cold process the age gate is the whole bound. The
+                    // timestamp comparison then keeps each later wake strictly ahead of the one before.
                     //
                     // No fallback to the held fix here, on any branch: a wake fires BECAUSE the
                     // device moved, so anything predating the request describes where it was.

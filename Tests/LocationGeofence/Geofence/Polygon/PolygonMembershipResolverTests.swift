@@ -243,6 +243,12 @@ struct PolygonMembershipResolverTests {
         await yieldUntil { !gate.releases.isEmpty }
         async let secondWake: Void = setup.resolver.evaluateAllPolygons(requiresFreshFix: true)
         await settle()
+        // One entry, not two: the second wake COALESCED onto the in-flight request rather than
+        // issuing its own. Pinned because it bounds what not-skipping buys — the second wake is
+        // answered by a request that predates its own crossing, and when that shared request fails
+        // both wakes end undecided. Not skipping is still the better of the two, but the guarantee
+        // is "it gets an answer", not "it gets a fix of its own".
+        #expect(gate.releases.count == 1, "expected the second wake to coalesce, got \(gate.releases.count) requests")
         gate.releaseAll()
         _ = await(firstWake, secondWake)
 
@@ -385,6 +391,52 @@ struct PolygonMembershipResolverTests {
         let delivered = await setup.emitter.snapshot()
         #expect(delivered.count == 1, "verdict was refused; got \(delivered)")
         #expect(delivered.first?.transition == .enter)
+        #expect(await setup.storage.getPolygonMembership()["1"]?.membership == .inside)
+    }
+
+    /// Resolves through `locationManager(_:didUpdateLocations:)` rather than the direct
+    /// `handleResolvedFix` seam every other test in this suite uses. That seam bypasses the
+    /// delegate's own filters — the `movementFixMaxAge` echo check, `horizontalAccuracy > 0`, and
+    /// the invalid-coordinate drop — so nothing here exercised them until this test.
+    @Test
+    func handleTransition_givenFixArrivingThroughTheDelegate_expectEnterDelivered() async {
+        let setup = await makeSetup(fix: nil)
+        setup.fixResolver.requestFreshFix = { [weak fixResolver = setup.fixResolver] in
+            fixResolver?.locationManager(CLLocationManager(), didUpdateLocations: [
+                fix(latitude: 0, longitude: 0)
+            ])
+        }
+        await setup.storage.setCachedGeofences([polygonGeofence()])
+
+        await setup.resolver.handleTransition(identifier: "1", transition: .enter, occurredAt: Date())
+
+        let delivered = await setup.emitter.snapshot()
+        #expect(delivered.count == 1)
+        #expect(delivered.first?.transition == .enter)
+    }
+
+    /// KNOWN LIMIT, pinned so it cannot change silently. CoreLocation can echo its cached fix as a
+    /// new manager's first delivery, and the delegate accepts an echo inside `movementFixMaxAge`.
+    /// On the first pass of a process there is no delivered fix to be newer than, so that echo
+    /// reaches a verdict: a cold wake can be decided by a fix up to `movementFixMaxAge` older than
+    /// the wake — several hundred metres at speed. Narrowing it needs an assumed-speed constant and
+    /// belongs with the ≤17 work; if this test starts failing, someone has done that deliberately.
+    @Test
+    func handleTransition_givenColdProcessAndEchoedPreWakeFix_expectVerdictFromTheStaleEcho() async {
+        let setup = await makeSetup(fix: nil) // cold: nothing delivered, no system cache
+        let preWakeFix = CLLocation(
+            coordinate: CLLocationCoordinate2D(latitude: 0, longitude: 0),
+            altitude: 0, horizontalAccuracy: 5, verticalAccuracy: 5,
+            timestamp: Date(timeIntervalSinceNow: -20) // stale, but inside movementFixMaxAge
+        )
+        setup.fixResolver.requestFreshFix = { [weak fixResolver = setup.fixResolver] in
+            fixResolver?.locationManager(CLLocationManager(), didUpdateLocations: [preWakeFix])
+        }
+        await setup.storage.setCachedGeofences([polygonGeofence()])
+
+        await setup.resolver.handleTransition(identifier: "1", transition: .enter, occurredAt: Date())
+
+        #expect(await setup.emitter.snapshot().count == 1)
         #expect(await setup.storage.getPolygonMembership()["1"]?.membership == .inside)
     }
 
