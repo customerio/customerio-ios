@@ -139,6 +139,9 @@ final class PolygonMembershipResolver {
         // that fix inside `evaluate`, so a refresh landing mid-request cannot be decided against.
         var pending: [String] = []
         for geofenceId in geofenceIds {
+            // Builds the ring and discards it, unlike the foreground pass's cheaper `vertices`
+            // test: this one runs before the request, so an unbuildable ring is worth catching
+            // here rather than spending a whole fix request to reject it after.
             guard let geofence = await cachedGeofence(id: geofenceId), geofence.polygonRegion != nil
             else { continue }
             pending.append(geofenceId)
@@ -252,10 +255,6 @@ final class PolygonMembershipResolver {
               let polygon = geofence.polygonRegion
         else {
             logger.geofencePolygonUndecided(identifier: geofenceId, reason: "no longer a registered polygon")
-            return
-        }
-        if let isStillCurrent, !isStillCurrent() {
-            logger.geofencePolygonUndecided(identifier: geofence.id, reason: "user changed while resolving the fix")
             return
         }
         let point = LocationData(latitude: fix.coordinate.latitude, longitude: fix.coordinate.longitude)

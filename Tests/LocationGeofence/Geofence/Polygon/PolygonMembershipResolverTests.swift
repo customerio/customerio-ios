@@ -339,6 +339,43 @@ struct PolygonMembershipResolverTests {
         #expect(await setup.storage.getPolygonMembership()["1"]?.membership == .inside)
     }
 
+    /// The batch shares one fix, so every polygon in it spans the same request — and a refresh
+    /// landing inside that request replaces rings under the ids the batch is holding. Each verdict
+    /// must come from the ring current when it is decided, not the one the batch was built from.
+    @Test
+    func evaluateMembership_givenPolygonReplacedWhileFixPending_expectVerdictFromTheCurrentRing() async {
+        let setup = await makeSetup(fix: nil)
+        await registerPolygons(setup, ids: ["1"])
+        let requested = Flag()
+        setup.fixResolver.requestFreshFix = { requested.value = true }
+
+        async let pass: Void = setup.resolver.evaluateMembership(geofenceIds: ["1"], reason: "test")
+        await yieldUntil { requested.value }
+        await setup.storage.setCachedGeofences([movedPolygonGeofence()])
+        setup.fixResolver.handleResolvedFix(fix(latitude: 0, longitude: 0))
+        await pass
+
+        #expect(await setup.emitter.snapshot().isEmpty)
+        #expect(await setup.storage.getPolygonMembership()["1"]?.membership == .outside)
+    }
+
+    /// Control: the same interleaving with the catalog left alone must still deliver.
+    @Test
+    func evaluateMembership_givenCatalogUnchangedWhileFixPending_expectEnterDelivered() async {
+        let setup = await makeSetup(fix: nil)
+        await registerPolygons(setup, ids: ["1"])
+        let requested = Flag()
+        setup.fixResolver.requestFreshFix = { requested.value = true }
+
+        async let pass: Void = setup.resolver.evaluateMembership(geofenceIds: ["1"], reason: "test")
+        await yieldUntil { requested.value }
+        setup.fixResolver.handleResolvedFix(fix(latitude: 0, longitude: 0))
+        await pass
+
+        #expect(await setup.storage.getPolygonMembership()["1"]?.membership == .inside)
+        #expect(await setup.emitter.snapshot().map(\.transition) == [.enter])
+    }
+
     /// A registration carrying several new polygons must cost one location request, not one each:
     /// with no fix obtainable, per-polygon resolution spends the full request timeout N times over
     /// on the main actor and still decides nothing.

@@ -39,7 +39,11 @@ struct GeofenceMonitorBinderTests {
                 directoryURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
             ),
             transitionEmitter: tracker,
-            logger: LoggerMock()
+            logger: LoggerMock(),
+            contextStore: BackgroundDeliveryContextStore(
+                fileManager: .default,
+                directoryURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+            )
         )
     }
 
