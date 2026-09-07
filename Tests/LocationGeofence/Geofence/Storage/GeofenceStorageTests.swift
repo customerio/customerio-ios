@@ -916,14 +916,11 @@ struct GeofenceStorageTests {
         // The monitor logs this token when it discards a callback.
         //
         // A case added with no token at all is already a compile error — `diagnosticReason`
-        // switches exhaustively with no `default`. What the compiler cannot catch is a case
-        // wired to `nil`, which `logDiscardedCallback` then swallows silently; that is what the
-        // `!= nil` assertions below exist for. An unattributable disappearance is
-        // indistinguishable from the OS never delivering at all.
-        let cases: [GeofenceMonitorEventOutcome] = [
-            .deliver, .suppressedNoChange, .suppressedFilteredType,
-            .suppressedNoBaseline, .suppressedNewerBaseline
-        ]
+        // switches exhaustively with no `default`. What the compiler cannot catch is a case wired
+        // to `nil`, which the caller's `if let` then swallows silently. Driven off `allCases` so
+        // that a newly added case is covered too; a hand-written list would simply not mention it.
+        // An unattributable disappearance is indistinguishable from the OS never delivering at all.
+        let cases = GeofenceMonitorEventOutcome.allCases
         for outcome in cases {
             if case .deliver = outcome {
                 #expect(outcome.diagnosticReason == nil, "deliver is not a discard and must log nothing")

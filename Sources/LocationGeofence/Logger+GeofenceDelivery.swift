@@ -51,19 +51,18 @@ extension Logger {
     /// Previously silent, which is what made an offline drive unreadable: a crossing the SDK had
     /// accepted and was retrying was indistinguishable from one it never saw.
     ///
-    /// `why` and `retry` both come from the error, because without them an offline device and a
-    /// revoked API key produce byte-identical records — and the Android record of this name has
-    /// always carried `why`.
+    /// Reports `why` and nothing more. An earlier version also carried a `retry` flag; it was
+    /// wrong on the commonest path (a default-config cold wake has no persisted key and recovers
+    /// on the next foreground flush) and it meant something different from the Android field of
+    /// the same name. Delivery is out of the harness's scope either way, so the honest record is
+    /// what happened, not a prediction about what happens next.
     func geofenceDeliveryFailed(geofenceId: String, transition: GeofenceTransition, error: BackgroundDeliveryHttpError) {
-        let retry = error.isRetryable
         debug(
-            "Geofence '\(geofenceId)' \(transition.rawValue): delivery failed (\(error.diagnosticReason)); "
-                + (retry ? "row stays queued for the next flush" : "retrying cannot help")
+            "Geofence '\(geofenceId)' \(transition.rawValue): delivery failed (\(error.diagnosticReason)); row stays queued"
                 + geofenceTail("delivery.failed", .output, [
                     ("id", geofenceId),
                     ("t", transition.rawValue),
                     ("ok", GeofenceLog.bool(false)),
-                    ("retry", GeofenceLog.bool(retry)),
                     ("why", error.diagnosticReason)
                 ]),
             geofenceTag
@@ -72,29 +71,20 @@ extension Logger {
 }
 
 extension BackgroundDeliveryHttpError {
-    /// Stable token for the tail. Mirrors the Android `why` vocabulary on `delivery.failed`.
+    /// Stable token for the tail, so a reader can tell an offline device from a misconfigured one.
+    ///
+    /// Deliberately not paired with a retryable/permanent verdict: the SDK re-attempts every queued
+    /// row on every flush regardless, so any such flag would describe a theory rather than the
+    /// SDK's behaviour.
     var diagnosticReason: String {
         switch self {
         case .missingApiHost: return "missing_api_host"
         case .missingCdpApiKey: return "missing_cdp_api_key"
         case .invalidRequest: return "invalid_request"
         case .transport: return "transport"
-        case .http(let statusCode): return "http_\(statusCode)"
-        }
-    }
-
-    /// Whether another attempt with the same row and config could ever succeed.
-    ///
-    /// A missing host or key, a malformed request, and a 4xx other than 408/429 fail identically
-    /// forever. Reporting those as retryable made a permanent misconfiguration read as flaky
-    /// network — the two need different responses from whoever reads the log.
-    var isRetryable: Bool {
-        switch self {
-        case .transport: return true
-        case .missingApiHost, .missingCdpApiKey, .invalidRequest: return false
-        case .http(let statusCode):
-            if statusCode == 408 || statusCode == 429 { return true }
-            return !(400 ..< 500).contains(statusCode)
+        // `BackgroundDeliveryHttpClient` synthesizes 0 when there was no response at all, which is
+        // not a status a server ever sent.
+        case .http(let statusCode): return statusCode == 0 ? "no_response" : "http_\(statusCode)"
         }
     }
 }

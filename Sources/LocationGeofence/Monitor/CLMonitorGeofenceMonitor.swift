@@ -254,7 +254,7 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preco
         case .unsatisfied:
             transition = .exit
         case .unknown:
-            return
+            return logger.geofenceInfo("os_state_unusable", fields: [("id", identifier), ("state", "unknown")])
         case .unmonitored:
             // CLMonitor gave up on the condition (e.g. condition budget exceeded). Drop the mirror
             // entry and the recorded circle so the next sync re-registers it. The stored baseline
@@ -289,7 +289,7 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preco
             }
             return
         @unknown default:
-            return
+            return logger.geofenceInfo("os_state_unusable", fields: [("id", identifier), ("state", "unhandled")])
         }
         // Logged before the gate and the dedup baseline: an event refused or deduped is still an
         // event the OS delivered, and the drives worth explaining are usually the ones where

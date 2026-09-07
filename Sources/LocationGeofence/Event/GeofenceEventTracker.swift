@@ -136,9 +136,10 @@ final class GeofenceEventTracker: @unchecked Sendable {
             await storage.releaseCooldown(key: cooldownKey)
             return []
         }
-        // The crossing is now the SDK's responsibility and will be retried until it lands, so this
-        // is the point a replay can assert on. Logged before delivery is attempted: everything
-        // after this depends on the network.
+        // The SDK has accepted the crossing and written it down; that is the fact replay asserts
+        // on, and it is complete here. What happens to the row afterwards is delivery's business
+        // and is reported by the `delivery.*` family — this record deliberately promises nothing
+        // about it.
         logger.geofenceTransitionAccepted(geofenceId: geofenceId, transition: transition, rows: metrics.count)
 
         // Hold a background-task assertion across delivery so the OS doesn't suspend us mid-send when
@@ -193,8 +194,8 @@ final class GeofenceEventTracker: @unchecked Sendable {
 
         let effective = await resolvingLiveValues(metric)
 
-        // The error is carried out, not collapsed to a Bool: `delivery.failed` reports why, and
-        // whether retrying can help, which a Bool cannot express.
+        // The error is carried out, not collapsed to a Bool, so `delivery.failed` can report a
+        // reason — an offline device and a misconfigured one are otherwise identical in the log.
         let outcome = await withCheckedContinuation { (continuation: CheckedContinuation<Result<Void, BackgroundDeliveryHttpError>, Never>) in
             deliveryTracker.trackMetric(metric: effective, userId: effective.userId) { result in
                 continuation.resume(returning: result)

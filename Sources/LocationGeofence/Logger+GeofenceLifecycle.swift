@@ -191,25 +191,24 @@ extension Logger {
         )
     }
 
-    /// The SDK accepted a crossing and durably queued it — the decision replay asserts on.
+    /// Something worth reading in a log, deliberately outside the asserted vocabulary.
     ///
-    /// Distinct from the `delivery.*` family, which fires only once the row leaves: after HTTP
-    /// success on the direct path, after the EventBus handoff on the backlog path. Neither says
-    /// the SDK judged the crossing real, and on an offline device they can trail the crossing by
-    /// many minutes or never arrive, which makes them useless as a signal about geofencing.
-    /// A field drive showed exactly that — one crossing surfaced 26 minutes late and another,
-    /// accepted and persisted, produced no positive record at all.
+    /// `ev=info` is the bucket for records a human wants when explaining a capture but a scenario
+    /// must never assert on. Two reasons it exists rather than reusing a semantic key:
     ///
-    /// `n` is the row count: one per geoset the fence belongs to, so a fan-out is visible as one
-    /// acceptance rather than inferred from the delivery records that follow.
-    func geofenceTransitionAccepted(geofenceId: String, transition: GeofenceTransition, rows: Int) {
+    /// - Unexpected cases do not deserve invented semantics. Minting `os.callback.unusable` for
+    ///   every oddity grows the vocabulary faster than anyone can keep it aligned across platforms.
+    /// - More importantly, the obvious reuse is actively wrong. Filing these under
+    ///   `os.callback.dropped` would inflate the received-vs-dropped count — the count that
+    ///   separates "the OS never reported it" from "we discarded it", which is the question a
+    ///   paired drive exists to answer. Every real `os.callback.dropped` nets against an
+    ///   `os.callback.received`; these have no receipt to net against.
+    ///
+    /// `io=obs`, so the off-device transform drops the whole family rather than replaying it.
+    func geofenceInfo(_ reason: String, fields: [(String, String?)] = []) {
         debug(
-            "Accepted \(transition.rawValue) for geofence \(geofenceId), queued \(rows) row(s)"
-                + geofenceTail("transition.accepted", .output, [
-                    ("id", geofenceId),
-                    ("t", transition.rawValue),
-                    ("n", GeofenceLog.int(rows))
-                ]),
+            "Geofence note: \(reason.replacingOccurrences(of: "_", with: " "))"
+                + geofenceTail("info", .observation, [("why", reason)] + fields),
             geofenceTag
         )
     }

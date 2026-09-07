@@ -298,34 +298,6 @@ extension Logger {
         )
     }
 
-    // MARK: - Baseline healing and contradiction
-
-    func geofenceBaselineHealed(identifier: String, transition: GeofenceTransition) {
-        info(
-            "Synthesized \(transition.rawValue) for region \(identifier): fresh fix contradicts stored baseline (OS never delivered the crossing)"
-                + geofenceTail("baseline.healed", .output, [
-                    ("id", identifier),
-                    ("t", transition.rawValue)
-                ]),
-            geofenceTag
-        )
-    }
-
-    func geofenceEventRefusedByContradiction(identifier: String, transition: GeofenceTransition, distanceFromCenter: Double, radius: Double, accuracy: Double) {
-        info(
-            "Refused OS \(transition.rawValue) for region \(identifier): a fresh fix contradicts it (distance \(Int(distanceFromCenter)) m, radius \(Int(radius)) m, accuracy \(Int(accuracy)) m)"
-                + geofenceTail("contradiction.refused", .output, [
-                    ("id", identifier),
-                    ("t", transition.rawValue),
-                    ("dist", GeofenceLog.num(distanceFromCenter, 0)),
-                    ("rad", GeofenceLog.num(radius, 0)),
-                    ("edge", GeofenceLog.num(max(0, distanceFromCenter - radius), 0)),
-                    ("acc", GeofenceLog.num(accuracy))
-                ]),
-            geofenceTag
-        )
-    }
-
     // MARK: - Module state
 
     func geofenceSyncSupersededByUserChange() {

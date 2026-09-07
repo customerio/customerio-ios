@@ -79,6 +79,10 @@ struct GeofenceLogTailTests {
     /// *renamed key* on anything listed here fails loudly, which is the failure this exists to catch.
     private struct Invocation {
         let name: String
+        /// The `ev=` this record must emit. Pinned per row, not just collected into a set: a set
+        /// is identical whether two records keep their keys or swap them, and a swap silently
+        /// inverts what every capture says the SDK decided.
+        let ev: String
         let requiredKeys: [String]
         let run: (Logger) -> Void
     }
@@ -98,52 +102,54 @@ struct GeofenceLogTailTests {
     private var invocations: [Invocation] {
         let location = sampleLocation
         return [
-            Invocation(name: "invalidRegionDropped", requiredKeys: ["id", "why"]) { $0.geofenceInvalidRegionDropped("notl core") },
-            Invocation(name: "invalidCoordinates", requiredKeys: ["id", "why"]) { $0.geofenceInvalidCoordinatesForRegion("notl_core") },
-            Invocation(name: "monitoringFailed", requiredKeys: ["id", "ok"]) { $0.geofenceMonitoringFailed(region: "notl_core", error: GeofenceApiError.transport) },
-            Invocation(name: "streamFailed", requiredKeys: ["ok"]) { $0.geofenceMonitorEventStreamFailed(error: GeofenceApiError.transport) },
-            Invocation(name: "stoppedMonitoring", requiredKeys: ["id"]) { $0.geofenceMonitorStoppedMonitoringRegion("notl_core") },
-            Invocation(name: "regionsRegistered", requiredKeys: ["n", "ids", "mvmt"]) { $0.geofenceRegionsRegistered(identifiers: ["a", "b"], movementTrigger: "cio_movement_trigger") },
-            Invocation(name: "permissionUnavailable", requiredKeys: ["perm", "why"]) { $0.geofencePermissionUnavailable(currentStatus: .denied) },
-            Invocation(name: "backgroundUnavailable", requiredKeys: ["perm", "why"]) { $0.geofenceBackgroundDeliveryUnavailable(currentStatus: .authorizedWhenInUse) },
-            Invocation(name: "backgroundAvailable", requiredKeys: ["perm", "ok"]) { $0.geofenceBackgroundDeliveryAvailable(currentStatus: .authorizedAlways) },
-            Invocation(name: "moduleInitialized", requiredKeys: ["launch"]) { $0.geofenceModuleInitialized(launchReason: .appStart) },
-            Invocation(name: "moduleWoke", requiredKeys: ["launch"]) { $0.geofenceModuleWoke(launchReason: .locationEvent) },
-            Invocation(name: "callbackReceived", requiredKeys: ["id", "t", "buf", "fixsrc", "acc", "age", "sim", "evage"]) { $0.geofenceCallbackReceived(identifier: "notl_core", transition: .enter, fix: location, source: .managerCache, eventDate: Date(timeIntervalSinceNow: -3), buffered: false) },
-            Invocation(name: "callbackReceivedNoFix", requiredKeys: ["id", "t", "fixsrc"]) { $0.geofenceCallbackReceived(identifier: "notl_core", transition: .exit, fix: nil, source: .none) },
-            Invocation(name: "callbackDropped", requiredKeys: ["id", "t", "why"]) { $0.geofenceCallbackDropped(identifier: "notl_core", transition: .enter, reason: "movement_trigger_not_exit") },
-            Invocation(name: "fixReceived", requiredKeys: ["prov"]) { $0.geofenceFixReceived(location, source: "movement_pass") },
-            Invocation(name: "fixQuality", requiredKeys: ["fixsrc", "acc", "age"]) { $0.geofenceCallbackReceived(identifier: "q", transition: .enter, fix: location, source: .freshRequest) },
-            Invocation(name: "deliverySent", requiredKeys: ["id", "t", "via"]) { $0.geofenceDeliverySent(geofenceId: "notl_core", transition: .enter, via: "http") },
-            Invocation(name: "deliveryQueued", requiredKeys: ["id", "t", "via"]) { $0.geofenceDeliveryQueued(geofenceId: "notl_core", transition: .enter, via: "event_bus") },
-            Invocation(name: "deliveryFailed", requiredKeys: ["id", "t", "ok", "retry", "why"]) { $0.geofenceDeliveryFailed(geofenceId: "notl_core", transition: .exit, error: .transport) },
-            Invocation(name: "deliveryFailedPermanent", requiredKeys: ["id", "t", "ok", "retry", "why"]) { $0.geofenceDeliveryFailed(geofenceId: "notl_core", transition: .exit, error: .http(statusCode: 401)) },
-            Invocation(name: "transitionAccepted", requiredKeys: ["id", "t", "n"]) { $0.geofenceTransitionAccepted(geofenceId: "notl_core", transition: .enter, rows: 2) },
-            Invocation(name: "eventSuppressed", requiredKeys: ["id", "t", "why", "cd"]) { $0.geofenceEventSuppressed(geofenceId: "notl_core", transition: .enter, cooldownRemaining: 42) },
-            Invocation(name: "droppedAnonymous", requiredKeys: ["id", "t", "why"]) { $0.geofenceTransitionDroppedAnonymous(geofenceId: "notl_core", transition: .exit) },
-            Invocation(name: "pendingPersistFailed", requiredKeys: ["id", "t", "ok"]) { $0.geofencePendingPersistFailed(geofenceId: "notl_core", transition: .exit) },
-            Invocation(name: "syncSkipped", requiredKeys: ["why"]) { $0.geofenceSyncSkipped(reason: .noIdentifiedUser) },
-            Invocation(name: "syncSkippedFresh", requiredKeys: ["why"]) { $0.geofenceSyncSkippedFresh() },
-            Invocation(name: "syncFetchFailed", requiredKeys: ["ok", "why"]) { $0.geofenceSyncFetchFailed(error: .http(statusCode: 503)) },
-            Invocation(name: "apiFetchResult", requiredKeys: ["ok", "n", "ms"]) { $0.geofenceApiFetchResult(returnedCount: 30, elapsed: 0.42) },
-            Invocation(name: "syncCompleted", requiredKeys: ["n", "mvmt", "ms"]) { $0.geofenceSyncCompleted(requestedCount: 19, movementTriggerRequested: true, acceptedCount: 19, movementTriggerAccepted: true, elapsed: 1.5) },
-            Invocation(name: "registrationDiff", requiredKeys: ["nadd", "nrem", "nkeep"]) { $0.geofenceRegistrationDiff(added: 3, removed: 2, unchanged: 17) },
-            Invocation(name: "rankEvaluated", requiredKeys: ["ncand", "n", "ranked", "evicted"]) { $0.geofenceRankEvaluated(candidates: 30, selectedCount: 2, selected: ["a", "b"], evicted: ["c"], edgeDistances: ["a": 120, "b": 340]) },
-            Invocation(name: "movementTrigger", requiredKeys: ["tier"]) { $0.geofenceMovementTrigger(tier: .localRerank) },
-            Invocation(name: "movementTriggerRegistered", requiredKeys: ["rad"]) { $0.geofenceMovementTriggerRegistered(latitude: 43.2, longitude: -79.0, radius: 500) },
-            Invocation(name: "movementRearmed", requiredKeys: ["why"]) { $0.geofenceMovementRearmedAfterFailedRefresh() },
-            Invocation(name: "movementFixResolved", requiredKeys: ["age", "prov"]) { $0.geofenceMovementFixResolved(ageSeconds: 12.5, requested: true) },
-            Invocation(name: "movementFixStale", requiredKeys: ["age", "why"]) { $0.geofenceMovementFixStale(ageSeconds: 900) },
-            Invocation(name: "movementFixRequestFailed", requiredKeys: ["ok", "why", "ms"]) { $0.geofenceMovementFixRequestFailed(fallingBackToCached: true, elapsed: 5) },
-            Invocation(name: "baselineHealed", requiredKeys: ["id", "t"]) { $0.geofenceBaselineHealed(identifier: "notl_core", transition: .enter) },
-            Invocation(name: "contradictionRefused", requiredKeys: ["id", "t", "dist", "rad", "edge", "acc"]) { $0.geofenceEventRefusedByContradiction(identifier: "notl_core", transition: .enter, distanceFromCenter: 1400, radius: 1000, accuracy: 48) },
-            Invocation(name: "syncSuperseded", requiredKeys: ["why"]) { $0.geofenceSyncSupersededByUserChange() },
-            Invocation(name: "resetCompleted", requiredKeys: ["ok"]) { $0.geofenceResetCompleted() },
-            Invocation(name: "resetSuperseded", requiredKeys: ["ok", "why"]) { $0.geofenceResetSuperseded() },
-            Invocation(name: "firstRunRearm", requiredKeys: ["why"]) { $0.geofenceFirstRunRearm() },
-            Invocation(name: "regionsAdopted", requiredKeys: ["n"]) { $0.geofenceRegionsAdopted(count: 4) },
-            Invocation(name: "foregroundRearm", requiredKeys: ["n", "why"]) { $0.geofenceForegroundRearm(count: 4) },
-            Invocation(name: "storageLoaded", requiredKeys: ["n", "anchor"]) { $0.geofenceStorageLoaded(regionCount: 30, hasAnchor: true) }
+            Invocation(name: "invalidRegionDropped", ev: "registration.rejected", requiredKeys: ["id", "why"]) { $0.geofenceInvalidRegionDropped("notl core") },
+            Invocation(name: "invalidCoordinates", ev: "registration.rejected", requiredKeys: ["id", "why"]) { $0.geofenceInvalidCoordinatesForRegion("notl_core") },
+            Invocation(name: "monitoringFailed", ev: "os.monitor.failed", requiredKeys: ["id", "ok"]) { $0.geofenceMonitoringFailed(region: "notl_core", error: GeofenceApiError.transport) },
+            Invocation(name: "streamFailed", ev: "os.stream.failed", requiredKeys: ["ok"]) { $0.geofenceMonitorEventStreamFailed(error: GeofenceApiError.transport) },
+            Invocation(name: "stoppedMonitoring", ev: "os.monitor.stopped", requiredKeys: ["id"]) { $0.geofenceMonitorStoppedMonitoringRegion("notl_core") },
+            Invocation(name: "regionsRegistered", ev: "registration.applied", requiredKeys: ["n", "ids", "mvmt"]) { $0.geofenceRegionsRegistered(identifiers: ["a", "b"], movementTrigger: "cio_movement_trigger") },
+            Invocation(name: "permissionUnavailable", ev: "permission.changed", requiredKeys: ["perm", "why"]) { $0.geofencePermissionUnavailable(currentStatus: .denied) },
+            Invocation(name: "backgroundUnavailable", ev: "permission.changed", requiredKeys: ["perm", "why"]) { $0.geofenceBackgroundDeliveryUnavailable(currentStatus: .authorizedWhenInUse) },
+            Invocation(name: "backgroundAvailable", ev: "permission.changed", requiredKeys: ["perm", "ok"]) { $0.geofenceBackgroundDeliveryAvailable(currentStatus: .authorizedAlways) },
+            Invocation(name: "moduleInitialized", ev: "module.init", requiredKeys: ["launch"]) { $0.geofenceModuleInitialized(launchReason: .appStart) },
+            Invocation(name: "moduleWoke", ev: "module.wake", requiredKeys: ["launch"]) { $0.geofenceModuleWoke(launchReason: .locationEvent) },
+            Invocation(name: "callbackReceived", ev: "os.callback.received", requiredKeys: ["id", "t", "buf", "fixsrc", "acc", "age", "sim", "evage"]) { $0.geofenceCallbackReceived(identifier: "notl_core", transition: .enter, fix: location, source: .managerCache, eventDate: Date(timeIntervalSinceNow: -3), buffered: false) },
+            Invocation(name: "callbackReceivedNoFix", ev: "os.callback.received", requiredKeys: ["id", "t", "fixsrc"]) { $0.geofenceCallbackReceived(identifier: "notl_core", transition: .exit, fix: nil, source: .none) },
+            Invocation(name: "info", ev: "info", requiredKeys: ["why"]) { $0.geofenceInfo("os_state_unusable", fields: [("id", "notl_core"), ("state", "unknown")]) },
+            Invocation(name: "callbackDropped", ev: "os.callback.dropped", requiredKeys: ["id", "t", "why"]) { $0.geofenceCallbackDropped(identifier: "notl_core", transition: .enter, reason: "movement_trigger_not_exit") },
+            Invocation(name: "fixReceived", ev: "fix.received", requiredKeys: ["prov"]) { $0.geofenceFixReceived(location, source: "movement_pass") },
+            Invocation(name: "fixQuality", ev: "os.callback.received", requiredKeys: ["fixsrc", "acc", "age"]) { $0.geofenceCallbackReceived(identifier: "q", transition: .enter, fix: location, source: .freshRequest) },
+            Invocation(name: "deliverySent", ev: "delivery.sent", requiredKeys: ["id", "t", "via"]) { $0.geofenceDeliverySent(geofenceId: "notl_core", transition: .enter, via: "http") },
+            Invocation(name: "deliveryQueued", ev: "delivery.queued", requiredKeys: ["id", "t", "via"]) { $0.geofenceDeliveryQueued(geofenceId: "notl_core", transition: .enter, via: "event_bus") },
+            Invocation(name: "deliveryFailed", ev: "delivery.failed", requiredKeys: ["id", "t", "ok", "why"]) { $0.geofenceDeliveryFailed(geofenceId: "notl_core", transition: .exit, error: .transport) },
+            Invocation(name: "transitionAccepted", ev: "transition.accepted", requiredKeys: ["id", "t", "n"]) { $0.geofenceTransitionAccepted(geofenceId: "notl_core", transition: .enter, rows: 2) },
+            Invocation(name: "transitionSynthesized", ev: "transition.synthesized", requiredKeys: ["id", "t", "why"]) { $0.geofenceTransitionSynthesized(geofenceId: "notl_core", transition: .enter) },
+            Invocation(name: "baselineRefused", ev: "baseline.refused", requiredKeys: ["id", "t", "why"]) { $0.geofenceBaselineRefused(identifier: "notl_core", transition: .enter, reason: "newer_baseline") },
+            Invocation(name: "eventSuppressed", ev: "transition.suppressed", requiredKeys: ["id", "t", "why", "cd"]) { $0.geofenceEventSuppressed(geofenceId: "notl_core", transition: .enter, cooldownRemaining: 42) },
+            Invocation(name: "droppedAnonymous", ev: "transition.dropped", requiredKeys: ["id", "t", "why"]) { $0.geofenceTransitionDroppedAnonymous(geofenceId: "notl_core", transition: .exit) },
+            Invocation(name: "pendingPersistFailed", ev: "storage.write.failed", requiredKeys: ["id", "t", "ok"]) { $0.geofencePendingPersistFailed(geofenceId: "notl_core", transition: .exit) },
+            Invocation(name: "syncSkipped", ev: "sync.skipped", requiredKeys: ["why"]) { $0.geofenceSyncSkipped(reason: .noIdentifiedUser) },
+            Invocation(name: "syncSkippedFresh", ev: "sync.skipped", requiredKeys: ["why"]) { $0.geofenceSyncSkippedFresh() },
+            Invocation(name: "syncFetchFailed", ev: "api.fetch.result", requiredKeys: ["ok", "why"]) { $0.geofenceSyncFetchFailed(error: .http(statusCode: 503)) },
+            Invocation(name: "apiFetchResult", ev: "api.fetch.result", requiredKeys: ["ok", "n", "ms"]) { $0.geofenceApiFetchResult(returnedCount: 30, elapsed: 0.42) },
+            Invocation(name: "syncCompleted", ev: "sync.completed", requiredKeys: ["n", "mvmt", "ms"]) { $0.geofenceSyncCompleted(requestedCount: 19, movementTriggerRequested: true, acceptedCount: 19, movementTriggerAccepted: true, elapsed: 1.5) },
+            Invocation(name: "registrationDiff", ev: "registration.diff", requiredKeys: ["nadd", "nrem", "nkeep"]) { $0.geofenceRegistrationDiff(added: 3, removed: 2, unchanged: 17) },
+            Invocation(name: "rankEvaluated", ev: "rank.evaluated", requiredKeys: ["ncand", "n", "ranked", "evicted"]) { $0.geofenceRankEvaluated(candidates: 30, selectedCount: 2, selected: ["a", "b"], evicted: ["c"], edgeDistances: ["a": 120, "b": 340]) },
+            Invocation(name: "movementTrigger", ev: "movement.exit", requiredKeys: ["tier"]) { $0.geofenceMovementTrigger(tier: .localRerank) },
+            Invocation(name: "movementTriggerRegistered", ev: "movement.registered", requiredKeys: ["rad"]) { $0.geofenceMovementTriggerRegistered(latitude: 43.2, longitude: -79.0, radius: 500) },
+            Invocation(name: "movementRearmed", ev: "movement.rearmed", requiredKeys: ["why"]) { $0.geofenceMovementRearmedAfterFailedRefresh() },
+            Invocation(name: "movementFixResolved", ev: "movement.fix.resolved", requiredKeys: ["age", "prov"]) { $0.geofenceMovementFixResolved(ageSeconds: 12.5, requested: true) },
+            Invocation(name: "movementFixStale", ev: "movement.fix.requested", requiredKeys: ["age", "why"]) { $0.geofenceMovementFixStale(ageSeconds: 900) },
+            Invocation(name: "movementFixRequestFailed", ev: "movement.fix.failed", requiredKeys: ["ok", "why", "ms"]) { $0.geofenceMovementFixRequestFailed(fallingBackToCached: true, elapsed: 5) },
+            Invocation(name: "baselineHealed", ev: "baseline.healed", requiredKeys: ["id", "t"]) { $0.geofenceBaselineHealed(identifier: "notl_core", transition: .enter) },
+            Invocation(name: "contradictionRefused", ev: "contradiction.refused", requiredKeys: ["id", "t", "dist", "rad", "edge", "acc"]) { $0.geofenceEventRefusedByContradiction(identifier: "notl_core", transition: .enter, distanceFromCenter: 1400, radius: 1000, accuracy: 48) },
+            Invocation(name: "syncSuperseded", ev: "sync.superseded", requiredKeys: ["why"]) { $0.geofenceSyncSupersededByUserChange() },
+            Invocation(name: "resetCompleted", ev: "module.reset", requiredKeys: ["ok"]) { $0.geofenceResetCompleted() },
+            Invocation(name: "resetSuperseded", ev: "module.reset", requiredKeys: ["ok", "why"]) { $0.geofenceResetSuperseded() },
+            Invocation(name: "firstRunRearm", ev: "movement.rearmed", requiredKeys: ["why"]) { $0.geofenceFirstRunRearm() },
+            Invocation(name: "regionsAdopted", ev: "registration.adopted", requiredKeys: ["n"]) { $0.geofenceRegionsAdopted(count: 4) },
+            Invocation(name: "foregroundRearm", ev: "registration.rearmed", requiredKeys: ["n", "why"]) { $0.geofenceForegroundRearm(count: 4) },
+            Invocation(name: "storageLoaded", ev: "storage.loaded", requiredKeys: ["n", "anchor"]) { $0.geofenceStorageLoaded(regionCount: 30, hasAnchor: true) }
         ]
     }
 
@@ -173,7 +179,10 @@ struct GeofenceLogTailTests {
                     Issue.record("\(invocation.name): no parseable tail in '\(logger.messages.last ?? "<nothing logged>")'")
                     continue
                 }
-                #expect(fields["ev"] != nil, "\(invocation.name): missing ev=")
+                #expect(
+                    fields["ev"] == invocation.ev,
+                    "\(invocation.name): expected ev=\(invocation.ev), got '\(fields["ev"] ?? "<absent>")'"
+                )
                 #expect(
                     ["in", "out", "obs"].contains(fields["io"] ?? ""),
                     "\(invocation.name): io= must be in/out/obs, got '\(fields["io"] ?? "<absent>")'"
@@ -186,27 +195,84 @@ struct GeofenceLogTailTests {
     }
 
     @Test
-    func deliveryFailure_expectPermanentErrorsReportedNotRetryable() {
-        // Reporting a permanent failure as retryable made a misconfiguration read as flaky
-        // network off-device, which are opposite diagnoses: one needs a fix, one needs waiting.
-        let permanent: [BackgroundDeliveryHttpError] = [
-            .missingApiHost, .missingCdpApiKey, .invalidRequest,
-            .http(statusCode: 400), .http(statusCode: 401), .http(statusCode: 404)
+    func deliveryFailure_expectDistinctReasonTokenPerCause() {
+        // The token is the whole value of this record now that it carries no verdict: it is what
+        // separates an offline device from a misconfigured one when someone reads a drive.
+        let errors: [BackgroundDeliveryHttpError] = [
+            .missingApiHost, .missingCdpApiKey, .invalidRequest, .transport,
+            .http(statusCode: 401), .http(statusCode: 503)
         ]
-        let retryable: [BackgroundDeliveryHttpError] = [
-            .transport, .http(statusCode: 408), .http(statusCode: 429),
-            .http(statusCode: 500), .http(statusCode: 503)
-        ]
-        for error in permanent {
-            #expect(error.isRetryable == false, "\(error) should not be reported as retryable")
-        }
-        for error in retryable {
-            #expect(error.isRetryable == true, "\(error) should be reported as retryable")
-        }
-        // Tokens ride a whitespace-split tail and must tell the cases apart.
-        let tokens = (permanent + retryable).map(\.diagnosticReason)
+        let tokens = errors.map(\.diagnosticReason)
+        #expect(Set(tokens).count == tokens.count, "two causes share a token: \(tokens)")
+        // Tokens ride a whitespace-split tail.
         #expect(tokens.allSatisfy { !$0.contains(" ") }, "a reason token contains whitespace")
-        #expect(Set(tokens).count == tokens.count, "duplicate reason tokens: \(tokens)")
+        // 0 is synthesized when there was no response at all; reporting it as a status invites
+        // the reader to believe the backend answered.
+        #expect(BackgroundDeliveryHttpError.http(statusCode: 0).diagnosticReason == "no_response")
+        #expect(BackgroundDeliveryHttpError.http(statusCode: 503).diagnosticReason == "http_503")
+    }
+
+    @Test
+    func everyRecord_expectTheDeclaredVocabulary() {
+        // Companion to the per-row `ev` pin above, catching what a per-row check cannot: a key
+        // removed from the module entirely, or a row added to the table without being declared
+        // here. It does NOT see a record that exists in the module but was never added to the
+        // table — `seen` is built from the table, not from the source. `fence.cataloged` is the
+        // standing proof of that limit.
+        //
+        // `fence.cataloged` is absent on purpose: it is emitted by a private helper driven through
+        // `api.fetch.result`, so it cannot be a row here. It carries its own `ev` assertion in
+        // `fenceCatalog_...` below. Every other key the module emits is listed.
+        let expected: Set = [
+            "api.fetch.result",
+            "baseline.healed",
+            "baseline.refused",
+            "contradiction.refused",
+            "delivery.failed",
+            "delivery.queued",
+            "delivery.sent",
+            "fix.received",
+            "info",
+            "module.init",
+            "module.reset",
+            "module.wake",
+            "movement.exit",
+            "movement.fix.failed",
+            "movement.fix.requested",
+            "movement.fix.resolved",
+            "movement.rearmed",
+            "movement.registered",
+            "os.callback.dropped",
+            "os.callback.received",
+            "os.monitor.failed",
+            "os.monitor.stopped",
+            "os.stream.failed",
+            "permission.changed",
+            "rank.evaluated",
+            "registration.adopted",
+            "registration.applied",
+            "registration.diff",
+            "registration.rearmed",
+            "registration.rejected",
+            "storage.loaded",
+            "storage.write.failed",
+            "sync.completed",
+            "sync.skipped",
+            "sync.superseded",
+            "transition.accepted",
+            "transition.dropped",
+            "transition.suppressed",
+            "transition.synthesized"
+        ]
+        var seen: Set<String> = []
+        withDiagnostics(true) {
+            for invocation in invocations {
+                let logger = CapturingLogger()
+                invocation.run(logger)
+                if let ev = parseTail(logger.messages.last ?? "")?["ev"] { seen.insert(ev) }
+            }
+        }
+        #expect(seen == expected, "vocabulary drift.\n  added:   \(seen.subtracting(expected).sorted())\n  missing: \(expected.subtracting(seen).sorted())")
     }
 
     @Test
