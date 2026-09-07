@@ -59,7 +59,12 @@ extension GeofenceSyncCoordinatorImpl {
     func evaluatePolygonsAfterMovement(expectedUserId: String) {
         Task { @MainActor [contextStore] in
             guard contextStore.currentUserId == expectedUserId else { return }
-            await DIGraphShared.shared.polygonMembershipResolver.evaluateAllPolygons(requiresFreshFix: true)
+            // Re-checked inside, after the fix resolves and again before the emit: a forced-fresh
+            // request is the longest await in the feature, and the polygon set was read before it.
+            await DIGraphShared.shared.polygonMembershipResolver.evaluateAllPolygons(
+                requiresFreshFix: true,
+                isStillCurrent: { contextStore.currentUserId == expectedUserId }
+            )
         }
     }
 

@@ -174,13 +174,11 @@ final class PolygonMembershipResolver {
     /// moved, and any pass already in flight is working from a fix requested before that movement —
     /// so no wake yields, not even to another wake, and nothing else would retry it if it did.
     ///
-    /// What running actually buys the second wake is bounded, and worth stating so it is not
-    /// over-read: concurrent requests COALESCE inside `MovementFixResolver`, so a wake arriving
-    /// while a request is in flight is answered by that request rather than one of its own. It
-    /// gains a delivered fix it would otherwise never have seen, but not one that postdates its own
-    /// crossing, and if the shared request fails both wakes end undecided rather than one of them
-    /// skipped. Giving the second wake a fix of its own means a request per wake — a design change,
-    /// not a comment fix.
+    /// What running buys the second wake is bounded: concurrent requests COALESCE inside
+    /// `MovementFixResolver`, so a wake arriving while one is in flight is answered by that request
+    /// — a fix it would otherwise never have seen, but not one that postdates its own crossing. If
+    /// the shared request fails both wakes end undecided. Giving the second wake a fix of its own
+    /// means a request per wake: a design change, not a comment fix.
     func evaluateAllPolygons(
         requiresFreshFix: Bool = false,
         isStillCurrent: (@Sendable () -> Bool)? = nil
@@ -361,25 +359,21 @@ final class PolygonMembershipResolver {
     /// resolution: the completion's coordinates are discarded in favour of `latestFix`, which
     /// carries the accuracy and timestamp the decision needs.
     ///
-    /// "Fresh" here is a fix this resolver received in answer to THIS request, and strictly newer
-    /// than the last one it delivered. Once it has delivered anything that is stricter than the
-    /// within-`movementFixMaxAge` test the movement trigger is sized against
-    /// (`GeofenceSyncCoordinatorImpl.wakeRadius`): a verdict may not be re-affirmed by the very fix
-    /// the wake exists to revisit, whereas a trigger only needs an anchor roughly where the device
-    /// is.
+    /// "Fresh" here is a fix received in answer to THIS request and strictly newer than the last
+    /// one delivered — stricter than the `movementFixMaxAge` test the movement trigger is sized
+    /// against (`GeofenceSyncCoordinatorImpl.wakeRadius`), which only needs an anchor roughly where
+    /// the device is. The two are not interchangeable; neither may be relaxed to the other.
     ///
-    /// On the FIRST pass of a process the two collapse into one. Nothing has been delivered to be
-    /// newer than, and CoreLocation may echo its cached fix as a new manager's first delivery — an
-    /// echo inside `movementFixMaxAge` is accepted — so a cold wake can be answered by a fix up to
-    /// that much older than the wake, several hundred metres at speed. That is the same bound
-    /// `PolygonMembershipDecision` already applies, so `requiringFresh` adds nothing on a cold
-    /// process, and every cold-process wake is a first pass. Tightening it needs an assumed-speed
-    /// constant — the same one the ≤17 wake radius wants — so it belongs with that work. The
-    /// verdict line logs fix age, which is what makes a stale-echo verdict identifiable in a field log.
+    /// On the FIRST pass of a process the two collapse into one: nothing has been delivered to be
+    /// newer than, and CoreLocation may echo its cached fix as a new manager's first delivery, so a
+    /// cold wake can be answered by a fix up to `movementFixMaxAge` older than itself — several
+    /// hundred metres at speed. Every cold-process wake is a first pass, so `requiringFresh` adds
+    /// nothing there; tightening it needs the assumed-speed constant the ≤17 wake radius also
+    /// wants. The verdict line logs fix age, which is what makes such a verdict identifiable.
     ///
     /// When a fresh fix is REQUIRED, a request that fails or times out still resumes with the fix
-    /// already held. That one predates the wake and can sit inside `movementFixMaxAge`, so it would
-    /// re-affirm the very verdict the wake exists to revisit — report no fix instead.
+    /// already held — it predates the wake and would re-affirm the verdict the wake exists to
+    /// revisit, so report no fix instead.
     private func resolveFix(requiringFresh: Bool = false) async -> CLLocation? {
         // What this resolver has already DELIVERED, which is what a forced request must improve on.
         // Deliberately not `cachedFix`: that reports the newest fix obtainable from either source,
@@ -410,16 +404,13 @@ final class PolygonMembershipResolver {
                     return
                 }
                 // Newest of whatever exists, which is what a pass content with a held fix wants.
-                // Not `latestFix` first: `resolve` answers from the caller's cached fix without
-                // requesting when that fix is young enough, and takes that fast path WITHOUT
-                // recording it — so `latestFix` can still be a much older delivered fix while the
-                // fresh system fix is the very thing that let this pass proceed. Fix it HERE and
-                // not by recording on that fast path: letting `latestFix` absorb the system cache
-                // would make the forced-fresh baseline above unbeatable again, which is the defect
-                // this whole path was repaired from. It also covers the
-                // cold process whose request failed, where CoreLocation's cache is the only
-                // evidence there is and the monitor has already advanced its dedup baseline, so
-                // declining would lose the crossing for good.
+                // Not `latestFix` first: `resolve` answers from the caller's cached fix WITHOUT
+                // recording it when that fix is young enough, so `latestFix` can be much older than
+                // the system fix that let this pass proceed. Fixed here and not by recording on
+                // that fast path — letting `latestFix` absorb the system cache would make the
+                // forced-fresh baseline above unbeatable again, the defect this path was repaired
+                // from. It also covers a cold process whose request failed, where CoreLocation's
+                // cache is the only evidence and the monitor's dedup baseline has already advanced.
                 continuation.resume(returning: fixResolver.cachedFix)
             }
         }
