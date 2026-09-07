@@ -409,10 +409,15 @@ final class PolygonMembershipResolver {
                     continuation.resume(returning: resolved)
                     return
                 }
-                // Cold process: nothing delivered and the request failed, so CoreLocation's own
-                // cached fix is the only evidence there is. The monitor has already advanced its
-                // dedup baseline, so declining here loses the crossing for good.
-                continuation.resume(returning: resolved ?? fixResolver.cachedFix)
+                // Newest of whatever exists, which is what a pass content with a held fix wants.
+                // Not `latestFix` first: `resolve` answers from the caller's cached fix without
+                // requesting when that fix is young enough, and takes that fast path WITHOUT
+                // recording it — so `latestFix` can still be a much older delivered fix while the
+                // fresh system fix is the very thing that let this pass proceed. It also covers the
+                // cold process whose request failed, where CoreLocation's cache is the only
+                // evidence there is and the monitor has already advanced its dedup baseline, so
+                // declining would lose the crossing for good.
+                continuation.resume(returning: fixResolver.cachedFix)
             }
         }
     }

@@ -440,6 +440,38 @@ struct PolygonMembershipResolverTests {
         #expect(await setup.storage.getPolygonMembership()["1"]?.membership == .inside)
     }
 
+    /// A pass that does NOT require a fresh fix must act on the newest position available, not on
+    /// the last one this resolver happened to deliver. `resolve` answers from the caller's cached
+    /// fix without requesting when that fix is young enough, and takes that fast path without
+    /// recording it — so `latestFix` can still be an old delivered fix while the fresh system fix
+    /// is the very thing that let the pass proceed. Reading `latestFix` first evaluated foreground
+    /// passes at the stale position.
+    @Test
+    func evaluateAllPolygons_givenStaleDeliveredFixAndFreshSystemCache_expectTheFreshOneDecides() async {
+        let setup = await makeSetup(fix: nil)
+        // Delivered a while ago and ~1.1 km away: outside the polygon.
+        setup.fixResolver.handleResolvedFix(CLLocation(
+            coordinate: CLLocationCoordinate2D(latitude: 0.01, longitude: 0.01),
+            altitude: 0, horizontalAccuracy: 5, verticalAccuracy: 5,
+            timestamp: Date(timeIntervalSinceNow: -600)
+        ))
+        // The system cache has moved on and sits inside the polygon, well within the age gate.
+        setup.fixResolver.systemCachedFix = {
+            CLLocation(
+                coordinate: CLLocationCoordinate2D(latitude: 0, longitude: 0),
+                altitude: 0, horizontalAccuracy: 5, verticalAccuracy: 5, timestamp: Date()
+            )
+        }
+        await setup.storage.setCachedGeofences([polygonGeofence()])
+
+        await setup.resolver.evaluateAllPolygons()
+
+        let delivered = await setup.emitter.snapshot()
+        #expect(delivered.count == 1, "decided from the stale delivered fix; got \(delivered)")
+        #expect(delivered.first?.transition == .enter)
+        #expect(await setup.storage.getPolygonMembership()["1"]?.membership == .inside)
+    }
+
     /// A wake fires BECAUSE the device moved, so the fix it already holds describes where it was.
     /// When the forced request fails, falling back to that fix re-affirms the stale verdict — the
     /// exact silent miss the fresh-fix rule exists to prevent — so no verdict must be reached.
