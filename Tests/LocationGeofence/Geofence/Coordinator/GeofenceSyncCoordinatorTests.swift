@@ -560,7 +560,7 @@ struct GeofenceSyncCoordinatorTests {
         api.fetchNearbyGeofencesClosure = { _, _, completion in completion(.success(response)) }
 
         let setup = makeCoordinator(api: api, storage: storage)
-        let result = await setup.coordinator.refresh(latitude: 37.7749, longitude: -122.4194)
+        let result = await setup.coordinator.refresh(latitude: 37.7749, longitude: -122.4194, anchorIsLiveFix: true)
 
         #expect(result.errorOrNil == .fetchFailed(.decoding))
         #expect(await storage.getCachedGeofences().map(\.id) == ["kept"])
