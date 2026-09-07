@@ -28,6 +28,13 @@ extension GeofenceStorage {
     /// requires the belief to be true, so a stamp advanced past that exit's date means the device
     /// was inside the polygon — and polygon ⊆ circle, so inside the circle too, which makes the
     /// older exit genuinely superseded rather than lost.
+    ///
+    /// A confirming OUTSIDE is the case that needs the refresh most. It drops a later evaluation
+    /// carrying an older INSIDE reading — correctly: the device was proven outside at the newer
+    /// instant, so that reading describes a visit already over, and delivering its enter would park
+    /// the belief at inside with no exit owed to bring it back. Without the refresh that stale
+    /// enter clears the guard against the last CHANGE, and the polygon stays believed-inside until
+    /// something else contradicts it.
     func recordPolygonMembership(
         _ membership: PolygonMembership,
         forIdentifier identifier: String,
