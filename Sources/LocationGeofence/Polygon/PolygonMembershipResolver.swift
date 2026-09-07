@@ -30,6 +30,8 @@ final class PolygonMembershipResolver {
     private let transitionEmitter: GeofenceTransitionEmitting
     private let fixResolver: MovementFixResolver
     private let logger: Logger
+    private let contextStore: BackgroundDeliveryContextStore
+    private let notificationCenter: NotificationCenter
     private var foregroundObserverToken: NSObjectProtocol?
     private var isEvaluatingAllPolygons = false
 
@@ -37,11 +39,15 @@ final class PolygonMembershipResolver {
         storage: GeofenceStorage,
         transitionEmitter: GeofenceTransitionEmitting,
         logger: Logger,
-        fixResolver: MovementFixResolver? = nil
+        contextStore: BackgroundDeliveryContextStore,
+        fixResolver: MovementFixResolver? = nil,
+        notificationCenter: NotificationCenter = .default
     ) {
         self.storage = storage
         self.transitionEmitter = transitionEmitter
         self.logger = logger
+        self.contextStore = contextStore
+        self.notificationCenter = notificationCenter
         // Ten metres, not the hundred the circle path uses: a verdict needs the device farther from
         // the boundary than the fix is accurate, so a hundred-metre fix cannot decide anything for a
         // polygon near the minimum monitored size.
@@ -55,7 +61,7 @@ final class PolygonMembershipResolver {
 
     deinit {
         if let foregroundObserverToken {
-            NotificationCenter.default.removeObserver(foregroundObserverToken)
+            notificationCenter.removeObserver(foregroundObserverToken)
         }
     }
 
@@ -81,13 +87,13 @@ final class PolygonMembershipResolver {
             // while it sits inside.
             await apply(.outside, to: geofence, evidence: occurredAt, confirmedByFix: false)
         case .enter:
-            guard let polygon = geofence.polygonRegion else {
+            guard geofence.polygonRegion != nil else {
                 // A stored ring that no longer builds is NOT a circle — forwarding it would fire a
                 // customer enter anywhere inside the covering circle.
                 logger.geofencePolygonUndecided(identifier: identifier, reason: "stored ring no longer builds")
                 return
             }
-            await evaluate(geofence: geofence, polygon: polygon)
+            await evaluate(geofenceId: identifier)
         }
     }
 
@@ -100,7 +106,7 @@ final class PolygonMembershipResolver {
     ///
     /// Foregrounds arrive in bursts, so a pass already running wins: a second concurrent scan reads
     /// the same storage and the same fix and can only duplicate the location work.
-    func evaluateAllPolygons() async {
+    func evaluateAllPolygons(isStillCurrent: (@Sendable () -> Bool)? = nil) async {
         guard !isEvaluatingAllPolygons else {
             logger.geofencePolygonPassSkipped(reason: "a pass is already running")
             return
@@ -121,37 +127,73 @@ final class PolygonMembershipResolver {
             return
         }
         for geofence in polygons {
-            guard let polygon = geofence.polygonRegion else { continue }
-            await evaluate(geofence: geofence, polygon: polygon, fix: fix)
+            await evaluate(geofenceId: geofence.id, fix: fix, isStillCurrent: isStillCurrent)
         }
     }
 
     private func registerForegroundEvaluation() {
         #if canImport(UIKit)
-        foregroundObserverToken = NotificationCenter.default.addObserver(
+        foregroundObserverToken = notificationCenter.addObserver(
             forName: UIApplication.willEnterForegroundNotification,
             object: nil,
             queue: .main
         ) { [weak self] _ in
             MainActor.assumeIsolated {
                 guard let self else { return }
-                Task { await self.evaluateAllPolygons() }
+                // Sampled here, not read at emit time: the pass resolves a fix first, and a
+                // foregrounding app's cached fix is normally stale — the app was suspended — so
+                // that request really does suspend. No caller supplies an expected user on this
+                // path, so the observer takes its own.
+                //
+                // Anonymous at both ends compares nil to nil and proceeds; that is safe only
+                // because a signed-out process has no `monitoredGeofenceIds`, so the pass returns
+                // empty before it resolves anything. Registration while anonymous would break it.
+                let expectedUserId = self.contextStore.currentUserId
+                Task { [contextStore = self.contextStore] in
+                    await self.evaluateAllPolygons(
+                        isStillCurrent: { contextStore.currentUserId == expectedUserId }
+                    )
+                }
             }
         }
         #endif
     }
 
-    private func evaluate(geofence: Geofence, polygon: PolygonRegion) async {
+    private func evaluate(geofenceId: String, isStillCurrent: (@Sendable () -> Bool)? = nil) async {
         guard let fix = await resolveFix() else {
-            logger.geofencePolygonUndecided(identifier: geofence.id, reason: "no usable fix")
+            logger.geofencePolygonUndecided(identifier: geofenceId, reason: "no usable fix")
             return
         }
-        await evaluate(geofence: geofence, polygon: polygon, fix: fix)
+        await evaluate(geofenceId: geofenceId, fix: fix, isStillCurrent: isStillCurrent)
     }
 
-    private func evaluate(geofence: Geofence, polygon: PolygonRegion, fix: CLLocation) async {
+    /// Takes an id, never a caller's `PolygonRegion`: resolving a fix suspends, and a refresh can
+    /// replace the fence under the same id while it does. A ring captured before the await would
+    /// decide against geometry the workspace has already moved off — no user switch required — so
+    /// the current one is read here and the stale copy is never in scope to be used by mistake.
+    ///
+    /// Registration is re-read with it, from the same load: a fence unregistered during the fix
+    /// must not be judged either, and sampling one before the await and the other after is how the
+    /// two come to disagree. Costs one state decode per polygon, which is the price of the pass's
+    /// verdicts being at most one hop stale rather than a whole location request stale — do not
+    /// trade it back for a single snapshot without knowing that is what is being traded.
+    private func evaluate(
+        geofenceId: String,
+        fix: CLLocation,
+        isStillCurrent: (@Sendable () -> Bool)? = nil
+    ) async {
         guard CLLocationCoordinate2DIsValid(fix.coordinate) else {
-            logger.geofencePolygonUndecided(identifier: geofence.id, reason: "no usable fix")
+            logger.geofencePolygonUndecided(identifier: geofenceId, reason: "no usable fix")
+            return
+        }
+        if let isStillCurrent, !isStillCurrent() {
+            logger.geofencePolygonUndecided(identifier: geofenceId, reason: "user changed while resolving the fix")
+            return
+        }
+        guard let geofence = await storage.getRegisteredGeofence(id: geofenceId),
+              let polygon = geofence.polygonRegion
+        else {
+            logger.geofencePolygonUndecided(identifier: geofenceId, reason: "no longer a registered polygon")
             return
         }
         let point = LocationData(latitude: fix.coordinate.latitude, longitude: fix.coordinate.longitude)
@@ -167,7 +209,10 @@ final class PolygonMembershipResolver {
             )
             return
         }
-        await apply(membership, to: geofence, evidence: fix.timestamp, confirmedByFix: true)
+        await apply(
+            membership, to: geofence, evidence: fix.timestamp,
+            confirmedByFix: true, isStillCurrent: isStillCurrent
+        )
     }
 
     /// Applies a membership verdict and delivers the crossing when it changes the stored belief.
@@ -176,11 +221,17 @@ final class PolygonMembershipResolver {
     /// belief, and a caller allowed to omit it could silently write an unordered one. `confirmedByFix`
     /// says which of the two it was, since both carry a date and the date alone cannot tell the log
     /// how membership was decided.
+    ///
+    /// `isStillCurrent` is re-checked here, immediately before the emit and with no await after it:
+    /// the tracker stamps whoever is current when it is entered, and the write below is an await of
+    /// its own. The write is left unguarded deliberately — a belief states geometry, true whoever
+    /// is signed in; an emit is an ATTRIBUTION, and attribution is what a switch invalidates.
     private func apply(
         _ membership: PolygonMembership,
         to geofence: Geofence,
         evidence: Date,
-        confirmedByFix: Bool
+        confirmedByFix: Bool,
+        isStillCurrent: (@Sendable () -> Bool)? = nil
     ) async {
         let outcome = await storage.recordPolygonMembership(
             membership,
@@ -190,6 +241,10 @@ final class PolygonMembershipResolver {
         guard case .deliver(let transition) = outcome,
               geofence.transitionTypes.contains(transition)
         else { return }
+        if let isStillCurrent, !isStillCurrent() {
+            logger.geofencePolygonUndecided(identifier: geofence.id, reason: "user changed before delivery")
+            return
+        }
         logger.geofencePolygonTransition(
             identifier: geofence.id,
             transition: transition,
@@ -215,28 +270,4 @@ final class PolygonMembershipResolver {
             }
         }
     }
-}
-
-// MARK: - DI
-
-extension DIGraphShared {
-    /// Hand-written + `@MainActor`-isolated for the same reason as `geofenceMonitor`: the resolver
-    /// owns a `MovementFixResolver`, which owns a `CLLocationManager`. Override-check mirrors the
-    /// generated accessors so tests can substitute via `di.override(value:forType:)`.
-    @MainActor
-    var polygonMembershipResolver: PolygonMembershipResolver {
-        let overridden: PolygonMembershipResolver? = getOverriddenInstance()
-        return overridden ?? PolygonMembershipResolver.shared
-    }
-}
-
-extension PolygonMembershipResolver {
-    /// Process-wide singleton so one `CLLocationManager` serves every evaluation; the resolver
-    /// itself is stateless, all belief lives in `GeofenceStorage`.
-    @MainActor
-    static let shared = PolygonMembershipResolver(
-        storage: DIGraphShared.shared.geofenceStorage,
-        transitionEmitter: DIGraphShared.shared.geofenceEventTracker,
-        logger: DIGraphShared.shared.logger
-    )
 }

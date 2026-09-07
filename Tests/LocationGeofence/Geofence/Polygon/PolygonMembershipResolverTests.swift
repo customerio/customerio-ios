@@ -6,6 +6,9 @@ import CoreLocation
 import Foundation
 import SharedTests
 import Testing
+#if canImport(UIKit)
+import UIKit
+#endif
 
 @Suite("PolygonMembershipResolver")
 @MainActor
@@ -51,9 +54,25 @@ struct PolygonMembershipResolverTests {
         let storage: GeofenceStorage
         let emitter: EmitterSpy
         let fixResolver: MovementFixResolver
+        let contextStore: BackgroundDeliveryContextStore
+        let notificationCenter: NotificationCenter
+        let logger: LoggerMock
     }
 
-    private func makeSetup(fix: CLLocation?) async -> Setup {
+    private func makeSetup(
+        fix: CLLocation?,
+        logger: LoggerMock = LoggerMock(),
+        contextStore: BackgroundDeliveryContextStore? = nil,
+        onFixDelivered: (@Sendable () -> Void)? = nil
+    ) async -> Setup {
+        // Its own centre: `willEnterForeground` posted on the default one reaches every other
+        // test's live resolver, whose pass then consumes their fix requests and writes their beliefs.
+        let notificationCenter = NotificationCenter()
+        let contextStore = contextStore ?? BackgroundDeliveryContextStore(
+            fileManager: .default,
+            directoryURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        )
+        if contextStore.currentUserId == nil { contextStore.setUserId("user-1") }
         let storage = GeofenceStorage(
             fileManager: .default,
             directoryURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
@@ -68,17 +87,23 @@ struct PolygonMembershipResolverTests {
         fixResolver.requestFreshFix = { [weak fixResolver] in
             guard let fix else { return fixResolver?.handleRequestFailure() ?? () }
             fixResolver?.handleResolvedFix(fix)
+            onFixDelivered?()
         }
         return Setup(
             resolver: PolygonMembershipResolver(
                 storage: storage,
                 transitionEmitter: emitter,
-                logger: LoggerMock(),
-                fixResolver: fixResolver
+                logger: logger,
+                contextStore: contextStore,
+                fixResolver: fixResolver,
+                notificationCenter: notificationCenter
             ),
             storage: storage,
             emitter: emitter,
-            fixResolver: fixResolver
+            fixResolver: fixResolver,
+            contextStore: contextStore,
+            notificationCenter: notificationCenter,
+            logger: logger
         )
     }
 
@@ -93,8 +118,35 @@ struct PolygonMembershipResolverTests {
     }
 
     /// Counts location requests so a pass that says it shares one fix can be held to it.
-    private final class RequestCounter {
+    private final class RequestCounter: @unchecked Sendable {
         var count = 0
+    }
+
+    /// A latch the fix seam flips, so a test can place an event inside the resolve window.
+    private final class Flag: @unchecked Sendable {
+        var value = false
+    }
+
+    private func logged(_ logger: LoggerMock, _ needle: String) -> Bool {
+        logger.debugReceivedInvocations.contains { $0.message.contains(needle) }
+    }
+
+    private func yieldUntil(_ condition: () -> Bool) async {
+        for _ in 0 ..< 1000 where !condition() {
+            await Task.yield()
+        }
+    }
+
+    /// The same ring shifted a degree away, so a point decisive INSIDE the original is decisively
+    /// outside this one.
+    private func movedPolygonGeofence(id: String = "1") -> Geofence {
+        Geofence(
+            id: id, latitude: 1, longitude: 1, radius: 300, name: "poly",
+            transitionTypes: [.enter, .exit], lastUpdated: Date(),
+            vertices: Self.squareVertices.map {
+                LocationData(latitude: $0.latitude + 1, longitude: $0.longitude + 1)
+            }
+        )
     }
 
     private func countingRequests(_ setup: Setup) -> RequestCounter {
@@ -308,6 +360,207 @@ struct PolygonMembershipResolverTests {
     // MARK: - Foreground evaluation
 
     /// The case no OS event reaches: a device already standing inside a polygon when monitoring
+    /// A refresh can replace the fence under the same id while the fix is pending. The ring the
+    /// pass started with is then geometry the workspace has already moved off, and deciding from it
+    /// delivers a crossing for a shape we no longer monitor. No user switch is involved.
+    @Test
+    func evaluateAllPolygons_givenPolygonReplacedWhileFixPending_expectVerdictFromTheCurrentRing() async {
+        let setup = await makeSetup(fix: nil)
+        await registerPolygons(setup, ids: ["1"])
+        // Hold the pass inside its request so the swap lands strictly between the read and the verdict.
+        let requested = Flag()
+        setup.fixResolver.requestFreshFix = { requested.value = true }
+
+        async let pass: Void = setup.resolver.evaluateAllPolygons()
+        await yieldUntil { requested.value }
+        await setup.storage.setCachedGeofences([movedPolygonGeofence()])
+        setup.fixResolver.handleResolvedFix(fix(latitude: 0, longitude: 0))
+        await pass
+
+        // The device is inside the ring the pass started with and outside the one that replaced it.
+        #expect(await setup.emitter.snapshot().isEmpty)
+        #expect(await setup.storage.getPolygonMembership()["1"]?.membership == .outside)
+    }
+
+    /// Control: the same interleaving with the catalog left alone must still deliver, so the guard
+    /// above is not passing by refusing anything that arrives late.
+    @Test
+    func evaluateAllPolygons_givenCatalogUnchangedWhileFixPending_expectEnterDelivered() async {
+        let setup = await makeSetup(fix: nil)
+        await registerPolygons(setup, ids: ["1"])
+        let requested = Flag()
+        setup.fixResolver.requestFreshFix = { requested.value = true }
+
+        async let pass: Void = setup.resolver.evaluateAllPolygons()
+        await yieldUntil { requested.value }
+        setup.fixResolver.handleResolvedFix(fix(latitude: 0, longitude: 0))
+        await pass
+
+        #expect(await setup.storage.getPolygonMembership()["1"]?.membership == .inside)
+        #expect(await setup.emitter.snapshot().map(\.transition) == [.enter])
+    }
+
+    /// Registration is the other thing sampled before the fix. A polygon unregistered while the
+    /// request is out must not be judged either — the pass would otherwise decide for a fence the
+    /// device is no longer monitoring.
+    ///
+    /// Pins the OUTCOME, not the mechanism, and passes without the resolver's registration re-read:
+    /// `recordRegistration` prunes the belief with the set, so the write becomes a create and
+    /// storage refuses it as unmonitored. That is a second guard, not this one — the re-read is
+    /// what stops the resolver depending on a storage rule that only covers the create path.
+    @Test
+    func evaluateAllPolygons_givenPolygonUnregisteredWhileFixPending_expectNoVerdict() async {
+        let setup = await makeSetup(fix: nil)
+        await registerPolygons(setup, ids: ["1"])
+        let requested = Flag()
+        setup.fixResolver.requestFreshFix = { requested.value = true }
+
+        async let pass: Void = setup.resolver.evaluateAllPolygons()
+        await yieldUntil { requested.value }
+        await setup.storage.recordRegistration(center: LocationData(latitude: 0, longitude: 0), businessIds: [])
+        setup.fixResolver.handleResolvedFix(fix(latitude: 0, longitude: 0))
+        await pass
+
+        #expect(await setup.emitter.snapshot().isEmpty)
+        #expect(await setup.storage.getPolygonMembership()["1"] == nil)
+    }
+
+    /// A polygon dropped from the catalog entirely while the fix resolved has nothing left to
+    /// decide against, and must not be judged by the copy the pass is still holding.
+    @Test
+    func evaluateAllPolygons_givenPolygonDroppedWhileFixPending_expectNoVerdict() async {
+        let setup = await makeSetup(fix: nil)
+        await registerPolygons(setup, ids: ["1"])
+        let requested = Flag()
+        setup.fixResolver.requestFreshFix = { requested.value = true }
+
+        async let pass: Void = setup.resolver.evaluateAllPolygons()
+        await yieldUntil { requested.value }
+        await setup.storage.setCachedGeofences([])
+        setup.fixResolver.handleResolvedFix(fix(latitude: 0, longitude: 0))
+        await pass
+
+        #expect(await setup.emitter.snapshot().isEmpty)
+        #expect(await setup.storage.getPolygonMembership()["1"] == nil)
+    }
+
+    /// Foregrounding resolves a fix like any other pass, and a foregrounding app's cached fix is
+    /// normally stale — the app was suspended — so the request suspends for real. The observer has
+    /// no caller to take an expected user from, so it samples one itself.
+    ///
+    /// The switch lands at fix delivery, so this pins the check that runs after the fix; the one on
+    /// the emit's own stretch is pinned separately below. They are not duplicates.
+    @Test
+    func foreground_givenUserChangesWhileResolving_expectNoEvent() async {
+        let contextStore = BackgroundDeliveryContextStore(
+            fileManager: .default,
+            directoryURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        )
+        contextStore.setUserId("user-1")
+        let switched = Flag()
+        let setup = await makeSetup(
+            fix: fix(latitude: 0, longitude: 0),
+            contextStore: contextStore,
+            onFixDelivered: {
+                contextStore.setUserId("user-2")
+                switched.value = true
+            }
+        )
+        await registerPolygons(setup, ids: ["1"])
+
+        setup.notificationCenter.post(name: UIApplication.willEnterForegroundNotification, object: nil)
+        await yieldUntil { switched.value }
+        // Waits for the refusal to be RECORDED, not for a fixed number of yields: an expect-nothing
+        // test with a fixed wait goes vacuous the moment this path gains another await.
+        await yieldUntil { logged(setup.logger, "user changed while resolving the fix") }
+
+        #expect(await setup.emitter.snapshot().isEmpty)
+        #expect(await setup.storage.getPolygonMembership()["1"] == nil)
+    }
+
+    /// The verdict is only half the path: the membership write and the emit are two more awaits,
+    /// and the tracker stamps whoever is current when it is entered. A switch landing after the
+    /// write must still not deliver — while the write itself may stand, since a belief states
+    /// geometry rather than attribution.
+    ///
+    /// A belief already exists, so the write takes the CHANGE path — the one
+    /// `monitoredGeofenceIds` does not guard.
+    @Test
+    func evaluateAllPolygons_givenUserChangesAfterTheWrite_expectNoEvent() async {
+        let setup = await makeSetup(fix: fix(latitude: 0, longitude: 0))
+        await registerPolygons(setup, ids: ["1"])
+        _ = await setup.storage.recordPolygonMembership(
+            .outside, forIdentifier: "1", onlyIfBeliefPredates: Date(timeIntervalSince1970: 0)
+        )
+        // True while the verdict is formed, false by the time the delivery boundary asks.
+        let asked = RequestCounter()
+
+        await setup.resolver.evaluateAllPolygons(isStillCurrent: {
+            asked.count += 1
+            return asked.count == 1
+        })
+
+        #expect(asked.count == 2)
+        #expect(await setup.emitter.snapshot().isEmpty)
+        #expect(await setup.storage.getPolygonMembership()["1"]?.membership == .inside)
+    }
+
+    /// Control: the same foregrounding with nobody switching must still deliver, so the guard above
+    /// is not passing by refusing every foreground pass.
+    @Test
+    func foreground_givenUserUnchanged_expectVerdictRecorded() async {
+        let setup = await makeSetup(fix: fix(latitude: 0, longitude: 0))
+        await registerPolygons(setup, ids: ["1"])
+
+        setup.notificationCenter.post(name: UIApplication.willEnterForegroundNotification, object: nil)
+        for _ in 0 ..< 1000 where await setup.emitter.snapshot().isEmpty {
+            await Task.yield()
+        }
+
+        #expect(await setup.storage.getPolygonMembership()["1"]?.membership == .inside)
+        #expect(await setup.emitter.snapshot().map(\.transition) == [.enter])
+    }
+
+    /// The default centre is what production observes, and every other test here injects a private
+    /// one — so without this nothing would notice if that default broke and foreground evaluation
+    /// died in the field. Safe only while no other test posts to `.default` or builds the DI
+    /// singleton; if that changes, this is the test that will start cross-talking.
+    @Test
+    func foreground_givenTheDefaultNotificationCentre_expectPassRuns() async {
+        let storage = GeofenceStorage(
+            fileManager: .default,
+            directoryURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        )
+        await storage.recordRegistration(center: LocationData(latitude: 0, longitude: 0), businessIds: ["1"])
+        await storage.setCachedGeofences([polygonGeofence()])
+        let contextStore = BackgroundDeliveryContextStore(
+            fileManager: .default,
+            directoryURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        )
+        contextStore.setUserId("user-1")
+        let emitter = EmitterSpy()
+        let fixResolver = MovementFixResolver(logger: LoggerMock())
+        fixResolver.systemCachedFix = { nil }
+        fixResolver.requestFreshFix = { [weak fixResolver] in
+            fixResolver?.handleResolvedFix(CLLocation(
+                coordinate: CLLocationCoordinate2D(latitude: 0, longitude: 0),
+                altitude: 0, horizontalAccuracy: 5, verticalAccuracy: 5, timestamp: Date()
+            ))
+        }
+        let resolver = PolygonMembershipResolver(
+            storage: storage, transitionEmitter: emitter,
+            logger: LoggerMock(), contextStore: contextStore, fixResolver: fixResolver
+        )
+
+        NotificationCenter.default.post(name: UIApplication.willEnterForegroundNotification, object: nil)
+        for _ in 0 ..< 1000 where await emitter.snapshot().isEmpty {
+            await Task.yield()
+        }
+
+        #expect(await emitter.snapshot().map(\.transition) == [.enter])
+        _ = resolver
+    }
+
     /// begins has crossed nothing, and standing still produces no movement pass either.
     /// Foregrounding is the remaining signal.
     @Test

@@ -80,6 +80,15 @@ extension GeofenceStorage {
         return .deliver(membership == .inside ? .enter : .exit)
     }
 
+    /// The cached fence for `id`, but only while it is still registered — both read from one load,
+    /// so the geometry and the registration a verdict rests on cannot disagree with each other.
+    /// A pass that sampled either before awaiting a fix must re-read through here afterwards.
+    func getRegisteredGeofence(id: String) -> Geofence? {
+        guard let state = loadFromDisk(), state.monitoredGeofenceIds?.contains(id) == true
+        else { return nil }
+        return state.cachedGeofences?.first { $0.id == id }
+    }
+
     /// Snapshot of every polygon membership belief.
     func getPolygonMembership() -> [String: PolygonMembershipRecord] {
         loadFromDisk()?.polygonMembership ?? [:]
