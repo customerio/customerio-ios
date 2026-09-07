@@ -254,7 +254,7 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preco
         case .unsatisfied:
             transition = .exit
         case .unknown:
-            return
+            return logger.geofenceInfo("os_state_unusable", fields: [("id", identifier), ("state", "unknown")])
         case .unmonitored:
             // CLMonitor gave up on the condition (e.g. condition budget exceeded). Drop the mirror
             // entry and the recorded circle so the next sync re-registers it. The stored baseline
@@ -289,7 +289,7 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preco
             }
             return
         @unknown default:
-            return
+            return logger.geofenceInfo("os_state_unusable", fields: [("id", identifier), ("state", "unhandled")])
         }
         // Logged before the gate and the dedup baseline: an event refused or deduped is still an
         // event the OS delivered, and the drives worth explaining are usually the ones where
@@ -301,7 +301,11 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preco
            await isEventContradictedByFreshFix(identifier: identifier, transition: transition, eventDate: event.date) {
             return
         }
-        guard case .deliver = await storage.recordMonitorEvent(transition, forIdentifier: identifier) else { return }
+        let outcome = await storage.recordMonitorEvent(transition, forIdentifier: identifier)
+        guard case .deliver = outcome else {
+            logDiscardedCallback(identifier: identifier, transition: transition, outcome: outcome)
+            return
+        }
         // No ownership re-check after the await: the baseline already advanced, so dropping here
         // loses the transition permanently — a sync's stop-all + re-add swap would eat a genuine
         // crossing that raced it. A region truly removed in that window delivers one last gated event.

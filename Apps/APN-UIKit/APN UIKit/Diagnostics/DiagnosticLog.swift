@@ -81,7 +81,7 @@ final class DiagnosticLog: @unchecked Sendable {
         startMono = DiagnosticClock.monotonicNanos()
 
         // The SDK's diagnostic tail is enabled by the CIOGeofenceDiagnostics Info.plist key.
-        writer.open(header: fileHeaderLine())
+        openWriter()
         deviceState.start(onChange: makeDeviceStateHandler())
         installDispatcher()
 
@@ -93,6 +93,16 @@ final class DiagnosticLog: @unchecked Sendable {
                 + "ev=session.start io=obs schema=\(DiagnosticLogSchema.version) "
                 + "dir=\(DiagnosticLog.directory.lastPathComponent)"
         )
+    }
+
+    /// `nonisolated` for the same reason as `installDispatcher` below: the writer calls this
+    /// closure from `openCurrentFile`, which runs on whichever thread emitted the record that
+    /// rotated the file — never guaranteed to be main. Formed inside `@MainActor start()` the
+    /// closure would inherit that isolation and hard-trap under Swift 6 on the first day rollover
+    /// that happens off the main thread. Nothing it reads is main-actor state, so hoisting it here
+    /// costs nothing and matches the fix already applied to the dispatcher.
+    private nonisolated func openWriter() {
+        writer.open { [weak self] in self?.fileHeaderLine() ?? "" }
     }
 
     /// `nonisolated` on purpose: a closure formed inside a `@MainActor` method inherits that
@@ -205,7 +215,8 @@ final class DiagnosticLog: @unchecked Sendable {
 
     /// First line of every file. `boot` matters: `mono` values are only comparable to each other
     /// within a single boot, so a file that does not name its boot cannot be aligned with another.
-    private func fileHeaderLine() -> String {
+    /// `nonisolated`: called from the writer's thread on every file rotation, not just at start.
+    private nonisolated func fileHeaderLine() -> String {
         let bundle = Bundle.main
         let appVersion = bundle.infoDictionary?["CFBundleShortVersionString"] as? String ?? "unknown"
         let appBuild = bundle.infoDictionary?["CFBundleVersion"] as? String ?? "unknown"
