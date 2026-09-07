@@ -376,19 +376,19 @@ struct GeofenceLogTailTests {
         // field, but it must not be applied to a value that composed those separators on purpose.
         // Folding them turned `ids=a,b` into `ids=a_b` and `ranked=x:120` into `ranked=x_120`,
         // which no unit test noticed and a device capture did.
-        GeofenceDiagnostics.overrideForTesting = true
-        defer { GeofenceDiagnostics.overrideForTesting = nil }
-        let logger = CapturingLogger()
-        logger.geofenceRankEvaluated(
-            candidates: 3,
-            selectedCount: 2,
-            selected: ["alpha", "beta"],
-            evicted: ["gamma"],
-            edgeDistances: ["alpha": 120, "beta": 340]
-        )
-        let message = logger.messages.last ?? ""
-        #expect(message.contains("ranked=alpha:120,beta:340"), "ranked lost its separators: \(message)")
-        #expect(message.contains("evicted=gamma"), "evicted malformed: \(message)")
+        withDiagnostics(true) {
+            let logger = CapturingLogger()
+            logger.geofenceRankEvaluated(
+                candidates: 3,
+                selectedCount: 2,
+                selected: ["alpha", "beta"],
+                evicted: ["gamma"],
+                edgeDistances: ["alpha": 120, "beta": 340]
+            )
+            let message = logger.messages.last ?? ""
+            #expect(message.contains("ranked=alpha:120,beta:340"), "ranked lost its separators: \(message)")
+            #expect(message.contains("evicted=gamma"), "evicted malformed: \(message)")
+        }
     }
 
     @Test
@@ -458,15 +458,15 @@ struct GeofenceLogTailTests {
         // The whitespace test elsewhere passes whether or not token fields are sanitized, because
         // `tail` folds whitespace for every value. It never covered the characters the format
         // itself uses, and every `id` call site went unprotected behind it.
-        GeofenceDiagnostics.overrideForTesting = true
-        defer { GeofenceDiagnostics.overrideForTesting = nil }
-        for raw in ["store,north", "a=b", "aisle:3", "wing|west"] {
-            let logger = CapturingLogger()
-            logger.geofenceTransitionAccepted(geofenceId: raw, transition: .enter, rows: 1)
-            let tail = parseTail(logger.messages.last ?? "")
-            #expect(tail?["id"] != nil, "no id for \(raw)")
-            let id = tail?["id"] ?? ""
-            #expect(!id.contains(where: { "=,:|".contains($0) }), "id kept a separator: \(id)")
+        withDiagnostics(true) {
+            for raw in ["store,north", "a=b", "aisle:3", "wing|west"] {
+                let logger = CapturingLogger()
+                logger.geofenceTransitionAccepted(geofenceId: raw, transition: .enter, rows: 1)
+                let tail = parseTail(logger.messages.last ?? "")
+                #expect(tail?["id"] != nil, "no id for \(raw)")
+                let id = tail?["id"] ?? ""
+                #expect(!id.contains(where: { "=,:|".contains($0) }), "id kept a separator: \(id)")
+            }
         }
     }
 
