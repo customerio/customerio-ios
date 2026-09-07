@@ -8,6 +8,13 @@ import Foundation
 ///
 /// Every test that touches the gate takes this lock for the whole of its body, which serializes
 /// them across suite boundaries without restructuring either suite.
+///
+/// **Synchronous only, deliberately.** An `async` variant existed and deadlocked: a lock held
+/// across an `await` can be released on a different cooperative-pool thread than took it, so
+/// `unlock()` fails with EPERM and every later caller blocks forever. It hung the whole target
+/// intermittently. No lock can be held across a suspension point, so the fix is not a better lock
+/// — a test that needs the gate must not await inside it. The one test that did now asserts on
+/// prose instead, which needs no gate at all.
 enum DiagnosticsGateTesting {
     private static let lock = NSRecursiveLock()
 
@@ -19,15 +26,5 @@ enum DiagnosticsGateTesting {
         GeofenceDiagnostics.overrideForTesting = enabled
         defer { GeofenceDiagnostics.overrideForTesting = previous }
         return try body()
-    }
-
-    /// Async variant, for tests that must await inside the guarded region.
-    static func withDiagnostics<T>(_ enabled: Bool, _ body: () async throws -> T) async rethrows -> T {
-        lock.lock()
-        defer { lock.unlock() }
-        let previous = GeofenceDiagnostics.overrideForTesting
-        GeofenceDiagnostics.overrideForTesting = enabled
-        defer { GeofenceDiagnostics.overrideForTesting = previous }
-        return try await body()
     }
 }

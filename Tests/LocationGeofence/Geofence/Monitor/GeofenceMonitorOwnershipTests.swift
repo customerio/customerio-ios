@@ -106,19 +106,21 @@ struct GeofenceMonitorOwnershipTests {
     /// the queue drains. Nothing may be recorded in the meantime.
     @Test
     func regionEvent_givenBufferedAndNotOurs_expectNothingRecorded() async {
-        await DiagnosticsGateTesting.withDiagnostics(true) {
-            let logger = CapturingLogger()
-            let monitor = CoreLocationGeofenceMonitor(logger: logger)
+        let logger = CapturingLogger()
+        let monitor = CoreLocationGeofenceMonitor(logger: logger)
 
-            monitor.locationManager(CLLocationManager(), didEnterRegion: hostRegion())
-            monitor.setOnTransition { _, _, _ in }
-            // Let the drain task run; it is dispatched onto the main actor.
-            await Task.yield()
+        monitor.locationManager(CLLocationManager(), didEnterRegion: hostRegion())
+        monitor.setOnTransition { _, _, _ in }
+        // Let the drain task run; it is dispatched onto the main actor.
+        await Task.yield()
 
-            #expect(
-                logger.messages.allSatisfy { !$0.contains("os.callback.received") },
-                "drained a buffered crossing for a region we do not own: \(logger.messages)"
-            )
-        }
+        // Asserted on the identifier, like the unbuffered sibling above, rather than on the tail's
+        // `ev=`. The identifier rides in the prose, which is emitted whatever the diagnostics gate
+        // says, so this needs no gate — and it is the stronger check: it fails whether or not the
+        // tail happens to be on, where an `ev=` assertion passes vacuously with the gate off.
+        #expect(
+            logger.messages.allSatisfy { !$0.contains(Self.hostIdentifier) },
+            "drained a buffered crossing for a region we do not own: \(logger.messages)"
+        )
     }
 }
