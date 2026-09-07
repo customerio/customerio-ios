@@ -358,6 +358,36 @@ struct PolygonMembershipResolverTests {
         #expect(await setup.storage.getPolygonMembership()["3"] == nil)
     }
 
+    /// The regression a simulator drive caught and no unit test could see. CoreLocation's own cache
+    /// advances on its own, so a system fix is always about as fresh as anything a request can
+    /// return. Taking the forced-fresh baseline from `cachedFix` — which reports the newest of both
+    /// sources — made that baseline unbeatable, and every polygon verdict came back "no usable fix".
+    ///
+    /// The seam is LIVE here on purpose. Every other test in this suite stubs `systemCachedFix` to
+    /// nil so it never touches CoreLocation, and that is exactly why the bug was invisible: the one
+    /// input that caused it was switched off everywhere.
+    @Test
+    func handleTransition_givenSystemCacheAlwaysCurrent_expectEnterStillDelivered() async {
+        let setup = await makeSetup(fix: fix(latitude: 0, longitude: 0))
+        // Stands in for a cache the OS keeps refreshing: every read is "now", so it is never older
+        // than the fix the request delivers.
+        setup.fixResolver.systemCachedFix = { [weak fixResolver = setup.fixResolver] in
+            _ = fixResolver
+            return CLLocation(
+                coordinate: CLLocationCoordinate2D(latitude: 0, longitude: 0),
+                altitude: 0, horizontalAccuracy: 5, verticalAccuracy: 5, timestamp: Date()
+            )
+        }
+        await setup.storage.setCachedGeofences([polygonGeofence()])
+
+        await setup.resolver.handleTransition(identifier: "1", transition: .enter, occurredAt: Date())
+
+        let delivered = await setup.emitter.snapshot()
+        #expect(delivered.count == 1, "verdict was refused; got \(delivered)")
+        #expect(delivered.first?.transition == .enter)
+        #expect(await setup.storage.getPolygonMembership()["1"]?.membership == .inside)
+    }
+
     /// A wake fires BECAUSE the device moved, so the fix it already holds describes where it was.
     /// When the forced request fails, falling back to that fix re-affirms the stale verdict — the
     /// exact silent miss the fresh-fix rule exists to prevent — so no verdict must be reached.

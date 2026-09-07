@@ -46,6 +46,11 @@ final class MovementFixResolver: NSObject, @preconcurrency CLLocationManagerDele
     /// Only the system fix is checked for a valid coordinate. `latestFix` reaches this class
     /// through a delegate callback that already rejects invalid ones — which a test feeding
     /// `handleResolvedFix` directly does not.
+    ///
+    /// This is a FALLBACK VALUE — the best position to act on when no request is made — and newest
+    /// is what makes it best. It is not a freshness baseline: a caller asking "is the answer newer
+    /// than what I had" must compare against `latestFix`, because this property tracks a cache that
+    /// advances on its own and would leave nothing able to beat it.
     var cachedFix: CLLocation? {
         let systemFix = (systemCachedFix.map { $0() } ?? manager.location)
             .flatMap { CLLocationCoordinate2DIsValid($0.coordinate) ? $0 : nil }

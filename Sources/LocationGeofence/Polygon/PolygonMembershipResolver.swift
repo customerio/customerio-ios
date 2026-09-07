@@ -354,8 +354,9 @@ final class PolygonMembershipResolver {
     /// resolution: the completion's coordinates are discarded in favour of `latestFix`, which
     /// carries the accuracy and timestamp the decision needs.
     ///
-    /// "Fresh" here is strictly newer than anything held before the request — a deliberately
-    /// stricter test than the within-`movementFixMaxAge` one the movement trigger is sized against
+    /// "Fresh" here is a fix this resolver received in answer to THIS request, and strictly newer
+    /// than the last one it delivered — a deliberately stricter test than the
+    /// within-`movementFixMaxAge` one the movement trigger is sized against
     /// (`GeofenceSyncCoordinatorImpl.wakeRadius`). A verdict may not be re-affirmed by the very fix
     /// the wake exists to revisit, whereas a trigger only needs an anchor roughly where the device
     /// is. The two are not interchangeable and neither should be relaxed to the other.
@@ -364,18 +365,27 @@ final class PolygonMembershipResolver {
     /// already held. That one predates the wake and can sit inside `movementFixMaxAge`, so it would
     /// re-affirm the very verdict the wake exists to revisit — report no fix instead.
     private func resolveFix(requiringFresh: Bool = false) async -> CLLocation? {
-        // Everything obtainable without asking, which is exactly what a forced request must beat.
-        // Reading only `latestFix` would leave the first wake of a process — which has none — with
-        // nothing to compare against, and CoreLocation's own cached fix would pass as fresh.
-        let priorTimestamp = fixResolver.cachedFix?.timestamp
+        // What this resolver has already DELIVERED, which is what a forced request must improve on.
+        // Deliberately not `cachedFix`: that reports the newest fix obtainable from either source,
+        // and CoreLocation's own cache advances on its own, so using it here makes the baseline as
+        // current as any answer a request can return and the guard below can never pass.
+        let priorTimestamp = fixResolver.latestFix?.timestamp
         return await withCheckedContinuation { continuation in
-            fixResolver.resolve(cached: requiringFresh ? nil : fixResolver.cachedFix) { [weak self] _, _ in
+            fixResolver.resolve(cached: requiringFresh ? nil : fixResolver.cachedFix) { [weak self] _, isFresh in
                 guard let self else { return continuation.resume(returning: nil) }
                 let resolved = fixResolver.latestFix
                 if requiringFresh {
+                    // `isFresh` is the resolver's own account of what it answered with: true only
+                    // for a fix it received in response to this request. It is what stops the first
+                    // wake of a process — which has delivered nothing, so has no baseline — from
+                    // being answered out of CoreLocation's pre-movement cache. The timestamp
+                    // comparison then keeps each later wake strictly ahead of the one before.
+                    //
                     // No fallback to the held fix here, on any branch: a wake fires BECAUSE the
                     // device moved, so anything predating the request describes where it was.
-                    guard let resolved, priorTimestamp.map({ resolved.timestamp > $0 }) ?? true else {
+                    guard isFresh, let resolved,
+                          priorTimestamp.map({ resolved.timestamp > $0 }) ?? true
+                    else {
                         continuation.resume(returning: nil)
                         return
                     }
