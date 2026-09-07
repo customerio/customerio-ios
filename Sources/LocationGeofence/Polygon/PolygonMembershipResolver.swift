@@ -370,8 +370,8 @@ final class PolygonMembershipResolver {
     ///
     /// On the FIRST pass of a process the two collapse into one. Nothing has been delivered to be
     /// newer than, and CoreLocation may echo its cached fix as a new manager's first delivery — an
-    /// echo inside `movementFixMaxAge` is accepted — so a cold wake can be answered by a fix that
-    /// much older than the wake, several hundred metres at speed. That is the same bound
+    /// echo inside `movementFixMaxAge` is accepted — so a cold wake can be answered by a fix up to
+    /// that much older than the wake, several hundred metres at speed. That is the same bound
     /// `PolygonMembershipDecision` already applies, so `requiringFresh` adds nothing on a cold
     /// process, and every cold-process wake is a first pass. Tightening it needs an assumed-speed
     /// constant — the same one the ≤17 wake radius wants — so it belongs with that work. The
@@ -413,7 +413,10 @@ final class PolygonMembershipResolver {
                 // Not `latestFix` first: `resolve` answers from the caller's cached fix without
                 // requesting when that fix is young enough, and takes that fast path WITHOUT
                 // recording it — so `latestFix` can still be a much older delivered fix while the
-                // fresh system fix is the very thing that let this pass proceed. It also covers the
+                // fresh system fix is the very thing that let this pass proceed. Fix it HERE and
+                // not by recording on that fast path: letting `latestFix` absorb the system cache
+                // would make the forced-fresh baseline above unbeatable again, which is the defect
+                // this whole path was repaired from. It also covers the
                 // cold process whose request failed, where CoreLocation's cache is the only
                 // evidence there is and the monitor has already advanced its dedup baseline, so
                 // declining would lose the crossing for good.

@@ -449,11 +449,14 @@ struct PolygonMembershipResolverTests {
     @Test
     func evaluateAllPolygons_givenStaleDeliveredFixAndFreshSystemCache_expectTheFreshOneDecides() async {
         let setup = await makeSetup(fix: nil)
-        // Delivered a while ago and ~1.1 km away: outside the polygon.
+        // Delivered ~1.1 km away, outside the polygon, and only 20 s old — deliberately INSIDE
+        // `movementFixMaxAge`. A fix old enough for the decision's own age gate to reject would
+        // make this test pass on that gate rather than on the defect, and the defect's whole range
+        // is inside the gate.
         setup.fixResolver.handleResolvedFix(CLLocation(
             coordinate: CLLocationCoordinate2D(latitude: 0.01, longitude: 0.01),
             altitude: 0, horizontalAccuracy: 5, verticalAccuracy: 5,
-            timestamp: Date(timeIntervalSinceNow: -600)
+            timestamp: Date(timeIntervalSinceNow: -20)
         ))
         // The system cache has moved on and sits inside the polygon, well within the age gate.
         setup.fixResolver.systemCachedFix = {
@@ -470,6 +473,29 @@ struct PolygonMembershipResolverTests {
         #expect(delivered.count == 1, "decided from the stale delivered fix; got \(delivered)")
         #expect(delivered.first?.transition == .enter)
         #expect(await setup.storage.getPolygonMembership()["1"]?.membership == .inside)
+    }
+
+    /// Pins the coupling the forced-fresh branch rests on. `isFresh` can be true while `latestFix`
+    /// is arbitrarily stale — `resolve` sets it for a young enough CALLER-SUPPLIED fix without
+    /// requesting or recording. The forced-fresh path is only safe from that because it passes
+    /// `cached: nil` and so can never take the fast path. Nothing in the type system enforces it,
+    /// and an obvious-looking "avoid a request" optimisation there would hand a stale fix a fresh
+    /// flag. If this test fails, that is what happened.
+    @Test
+    func handleTransition_givenFreshRequiredAndStaleHeldFix_expectNoVerdictFromIt() async {
+        let setup = await makeSetup(fix: nil) // the forced request fails
+        // Held, inside the polygon, and young enough that the fast path WOULD accept it as fresh.
+        setup.fixResolver.handleResolvedFix(CLLocation(
+            coordinate: CLLocationCoordinate2D(latitude: 0, longitude: 0),
+            altitude: 0, horizontalAccuracy: 5, verticalAccuracy: 5,
+            timestamp: Date(timeIntervalSinceNow: -20)
+        ))
+        await setup.storage.setCachedGeofences([polygonGeofence()])
+
+        await setup.resolver.handleTransition(identifier: "1", transition: .enter, occurredAt: Date())
+
+        #expect(await setup.emitter.snapshot().isEmpty)
+        #expect(await setup.storage.getPolygonMembership()["1"] == nil)
     }
 
     /// A wake fires BECAUSE the device moved, so the fix it already holds describes where it was.
