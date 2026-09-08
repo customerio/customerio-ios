@@ -68,6 +68,12 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preco
     /// first pass re-register it; when the bootstrap adopts instead, `adoptExistingRegions` seeds it
     /// from the persisted records the re-arm then imposes at the OS.
     var registeredConditions: [String: RegisteredCondition] = [:]
+    /// One generation back, per id. `CLMonitor` events are read off an async stream, so an event
+    /// the daemon raised against the previous circle can be dequeued after a refresh replaced it —
+    /// reading only the current map would report the new circle and hide exactly the staleness the
+    /// consumer is checking for. One deep is enough: a second replacement means the OS re-evaluated
+    /// in between, so anything still queued from two generations back is already superseded.
+    var previousConditions: [String: RegisteredCondition] = [:]
     /// Conditions the OS stopped monitoring since their last registration. The next registration
     /// reseeds their stored baseline instead of preserving it — see `recordMonitorRegistration`.
     var conditionsNeedingBaselineReseed: Set<String> = []
@@ -84,12 +90,6 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preco
     var gateFixRequestFailedAt: Date?
 
     /// The circle a condition was added with.
-    struct RegisteredCondition: Equatable {
-        let center: LocationData
-        let radius: Double
-        let transitionTypes: Set<GeofenceTransition>
-    }
-
     /// Memoized `CLMonitor` creation so every caller shares one instance — creating a second
     /// monitor with the same name throws "Monitor named ... is already in use".
     private var monitorTask: Task<CLMonitor, Never>?
@@ -307,13 +307,13 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preco
             // Fire-and-forget so a slow fix can't stall the pending-event drain behind it.
             movementFixResolver.resolve(cached: bestKnownFix()) { [weak self] location, isFresh in
                 self?.logger.geofenceOsTransitionReceived(identifier: identifier, transition: transition)
-                self?.onTransition?(identifier, transition, location, event.date, isFresh, self?.eventCircle(for: identifier))
+                self?.onTransition?(identifier, transition, location, event.date, isFresh, self?.eventCircle(for: identifier, raisedAt: event.date))
             }
             return
         }
         logger.geofenceOsTransitionReceived(identifier: identifier, transition: transition)
         // Business events carry the captured location for context only; nothing sizes to it.
-        onTransition?(identifier, transition, currentLocationData(), event.date, false, eventCircle(for: identifier))
+        onTransition?(identifier, transition, currentLocationData(), event.date, false, eventCircle(for: identifier, raisedAt: event.date))
     }
 
     // MARK: - GeofenceRegionMonitoring

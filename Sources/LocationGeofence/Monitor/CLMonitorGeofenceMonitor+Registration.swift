@@ -7,6 +7,38 @@ import Foundation
 /// file from their state; they remain monitor implementation detail.
 @available(iOS 17.0, *)
 extension CLMonitorGeofenceMonitor {
+    /// A condition as this monitor registered it. Lives here rather than on the type so the core
+    /// file stays under the line cap; registration is what writes it.
+    struct RegisteredCondition: Equatable {
+        let center: LocationData
+        let radius: Double
+        let transitionTypes: Set<GeofenceTransition>
+        /// When this condition replaced whatever was registered under the same id. Lets an event be
+        /// attributed to the circle that was live when the daemon raised it, rather than to
+        /// whatever is live when we get round to reading it.
+        var registeredAt: Date = .distantPast
+
+        /// Geometry only. `registeredAt` is bookkeeping about WHEN, and the baseline heal compares
+        /// conditions to ask whether the circle still matches — a re-registration of the same
+        /// circle must not read as a change there.
+        static func == (lhs: Self, rhs: Self) -> Bool {
+            lhs.center == rhs.center && lhs.radius == rhs.radius
+                && lhs.transitionTypes == rhs.transitionTypes
+        }
+
+        /// Which generation an event raised at `raisedAt` belongs to. Split out as a pure function
+        /// because the monitor around it cannot be built in a unit test — a real one creates a
+        /// `CLLocationManager` and destabilises the test process — and this choice is the whole of
+        /// the staleness signal.
+        ///
+        /// Nil when nothing is registered, or when the event predates the current registration and
+        /// no previous generation is held; a consumer reads nil as "cannot say".
+        static func raisedAgainst(current: Self?, previous: Self?, raisedAt: Date) -> Self? {
+            guard let current else { return nil }
+            return raisedAt < current.registeredAt ? previous : current
+        }
+    }
+
     func adoptExistingRegions(matching identifiers: Set<String>, records: [String: MonitorRegionRecord]) {
         let adopted = identifiers.intersection(knownConditionIdentifiers)
         guard !adopted.isEmpty else { return }
@@ -221,18 +253,33 @@ extension CLMonitorGeofenceMonitor {
 
     /// Records the circle a condition now holds.
     private func noteRegisteredCondition(identifier: String, center: LocationData, radius: Double, transitionTypes: Set<GeofenceTransition>) {
+        if let superseded = registeredConditions[identifier] {
+            previousConditions[identifier] = superseded
+        }
         registeredConditions[identifier] = RegisteredCondition(
             center: center,
             radius: radius,
-            transitionTypes: transitionTypes
+            transitionTypes: transitionTypes,
+            registeredAt: Date()
         )
     }
 
-    /// The circle this monitor registered for `identifier`, which is the one the OS raised the
-    /// event against. Nil before adoption repopulates the map on a cold wake — the consumer then
-    /// cannot tell a replaced circle from the current one, and treats the event as current.
-    func eventCircle(for identifier: String) -> MonitoredCircle? {
-        registeredConditions[identifier].map {
+    /// The circle the OS raised an event against, chosen by the event's own date rather than by
+    /// what is registered now: `CLMonitor` events are read off an async stream, so a refresh can
+    /// replace the condition between the daemon raising an event and this monitor dequeuing it.
+    /// Reading only the current map would report the replacement and let a stale event look
+    /// current — the one case a consumer comparing circles is trying to catch.
+    ///
+    /// Nil when nothing is known for the id, or when the event predates the current registration
+    /// and no previous generation is held (a cold wake, where adoption has not repopulated the
+    /// map). Nil means "cannot say", and a consumer treats such an event as current.
+    func eventCircle(for identifier: String, raisedAt: Date) -> MonitoredCircle? {
+        let condition = RegisteredCondition.raisedAgainst(
+            current: registeredConditions[identifier],
+            previous: previousConditions[identifier],
+            raisedAt: raisedAt
+        )
+        return condition.map {
             MonitoredCircle(
                 center: $0.center, radius: $0.radius,
                 maximumRadius: authManager.maximumRegionMonitoringDistance

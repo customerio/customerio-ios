@@ -18,10 +18,11 @@ import Foundation
 /// times out, and that fix is by definition the stale one that prompted the request — a consumer
 /// sizing anything to those coordinates has to know the difference.
 ///
-/// The last parameter is the circle the OS was monitoring when it raised this event, `nil` when the
-/// monitor cannot say which one it was (a cold wake whose adoption has not populated its record
-/// yet). A consumer reasoning about what the crossing PROVES needs it: a refresh can replace a
-/// fence under the same id, and the guarantee a covering circle gives only holds for its own ring.
+/// The last parameter is the circle the OS was monitoring when it RAISED this event — not the one
+/// registered now, which a refresh may already have replaced. `nil` when the monitor cannot say
+/// which it was: a cold wake before adoption has repopulated its record, or an event older than
+/// every generation still held. A consumer reasoning about what the crossing PROVES needs it, since
+/// the guarantee a covering circle gives only holds for its own ring.
 typealias GeofenceTransitionHandler = @Sendable (String, GeofenceTransition, LocationData?, Date, Bool, MonitoredCircle?) -> Void
 
 /// Callback when iOS reports a change to the location authorization status.
