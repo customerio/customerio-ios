@@ -292,6 +292,12 @@ struct PolygonMembershipResolverTests {
         return gate
     }
 
+    private func yieldUntil(_ condition: () -> Bool) async {
+        for _ in 0 ..< 1000 where !condition() {
+            await Task.yield()
+        }
+    }
+
     /// Lets a just-started task reach its first suspension point.
     private func settle() async {
         for _ in 0 ..< 20 {

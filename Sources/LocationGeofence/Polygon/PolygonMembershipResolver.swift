@@ -30,9 +30,9 @@ final class PolygonMembershipResolver {
     private let transitionEmitter: GeofenceTransitionEmitting
     private let fixResolver: MovementFixResolver
     private let logger: Logger
-    private let contextStore: BackgroundDeliveryContextStore
-    private let notificationCenter: NotificationCenter
-    private var foregroundObserverToken: NSObjectProtocol?
+    let contextStore: BackgroundDeliveryContextStore
+    let notificationCenter: NotificationCenter
+    var foregroundObserverToken: NSObjectProtocol?
     private var passesInFlight = 0
 
     init(
@@ -206,34 +206,6 @@ final class PolygonMembershipResolver {
         for geofence in polygons {
             await evaluate(geofenceId: geofence.id, fix: fix, isStillCurrent: isStillCurrent)
         }
-    }
-
-    private func registerForegroundEvaluation() {
-        #if canImport(UIKit)
-        foregroundObserverToken = notificationCenter.addObserver(
-            forName: UIApplication.willEnterForegroundNotification,
-            object: nil,
-            queue: .main
-        ) { [weak self] _ in
-            MainActor.assumeIsolated {
-                guard let self else { return }
-                // Sampled here, not read at emit time: the pass resolves a fix first, and a
-                // foregrounding app's cached fix is normally stale — the app was suspended — so
-                // that request really does suspend. No caller supplies an expected user on this
-                // path, so the observer takes its own.
-                //
-                // Anonymous at both ends compares nil to nil and proceeds; that is safe only
-                // because a signed-out process has no `monitoredGeofenceIds`, so the pass returns
-                // empty before it resolves anything. Registration while anonymous would break it.
-                let expectedUserId = self.contextStore.currentUserId
-                Task { [contextStore = self.contextStore] in
-                    await self.evaluateAllPolygons(
-                        isStillCurrent: { contextStore.currentUserId == expectedUserId }
-                    )
-                }
-            }
-        }
-        #endif
     }
 
     private func evaluate(
