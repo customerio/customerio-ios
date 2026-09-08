@@ -1,3 +1,9 @@
+## [4.7.9](https://github.com/customerio/customerio-ios/compare/4.7.8...4.7.9) (2026-09-08)
+
+### Bug Fixes
+
+* **deps:** update Faraday security pin to 1.10.6 ([#1257](https://github.com/customerio/customerio-ios/issues/1257)) ([b24741e](https://github.com/customerio/customerio-ios/commit/b24741e94bb88314c85ba7d5a68ae0c2e9ebce83))
+
 ## [4.7.8](https://github.com/customerio/customerio-ios/compare/4.7.7...4.7.8) (2026-09-04)
 
 ### Bug Fixes
