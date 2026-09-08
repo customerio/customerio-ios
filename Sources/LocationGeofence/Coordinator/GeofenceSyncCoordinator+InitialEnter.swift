@@ -42,7 +42,9 @@ extension GeofenceSyncCoordinatorImpl {
         // Deliver off the refresh gate (like the binder does for real crossings) so a slow send can't
         // stall the next refresh; `trackTransition` persists first, so an interrupted send is retried.
         // Nothing crossed anything — the fence was registered around a device already inside it —
-        // so the moment we noticed is the only honest event time. Sampled once for the batch.
+        // so the moment we noticed is the only honest event time. Read out here rather than inside
+        // the Task because `DateUtil` is a non-Sendable protocol with a non-final implementation,
+        // and the Swift 5 language mode does not diagnose capturing one into a @Sendable closure.
         let discoveredAt = dateUtil.now
         Task { [transitionEmitter, contextStore, logger] in
             for region in newInside {
