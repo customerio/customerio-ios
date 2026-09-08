@@ -190,7 +190,8 @@ final class CoreLocationGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @pr
         guard let circular = region as? CLCircularRegion else { return }
         let circle = MonitoredCircle(
             center: LocationData(latitude: circular.center.latitude, longitude: circular.center.longitude),
-            radius: circular.radius
+            radius: circular.radius,
+            maximumRadius: manager.maximumRegionMonitoringDistance
         )
         if onTransition == nil || !pendingEvents.isEmpty || isDrainingPendingEvents {
             pendingEvents.append(PendingRegionEvent(

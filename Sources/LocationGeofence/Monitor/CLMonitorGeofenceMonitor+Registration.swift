@@ -227,4 +227,16 @@ extension CLMonitorGeofenceMonitor {
             transitionTypes: transitionTypes
         )
     }
+
+    /// The circle this monitor registered for `identifier`, which is the one the OS raised the
+    /// event against. Nil before adoption repopulates the map on a cold wake — the consumer then
+    /// cannot tell a replaced circle from the current one, and treats the event as current.
+    func eventCircle(for identifier: String) -> MonitoredCircle? {
+        registeredConditions[identifier].map {
+            MonitoredCircle(
+                center: $0.center, radius: $0.radius,
+                maximumRadius: authManager.maximumRegionMonitoringDistance
+            )
+        }
+    }
 }

@@ -68,7 +68,10 @@ extension CLMonitorGeofenceMonitor {
                     transition,
                     LocationData(latitude: fix.coordinate.latitude, longitude: fix.coordinate.longitude),
                     fix.timestamp,
-                    MonitoredCircle(center: condition.center, radius: condition.radius)
+                    MonitoredCircle(
+                        center: condition.center, radius: condition.radius,
+                        maximumRadius: self.authManager.maximumRegionMonitoringDistance
+                    )
                 )
             }
         }
