@@ -307,12 +307,19 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preco
             // Fire-and-forget so a slow fix can't stall the pending-event drain behind it.
             movementFixResolver.resolve(cached: bestKnownFix()) { [weak self] location in
                 self?.logger.geofenceOsTransitionReceived(identifier: identifier, transition: transition)
-                self?.onTransition?(identifier, transition, location, event.date)
+                self?.onTransition?(identifier, transition, location, event.date, self?.eventCircle(for: identifier))
             }
             return
         }
         logger.geofenceOsTransitionReceived(identifier: identifier, transition: transition)
-        onTransition?(identifier, transition, currentLocationData(), event.date)
+        onTransition?(identifier, transition, currentLocationData(), event.date, eventCircle(for: identifier))
+    }
+
+    /// The circle this monitor registered for `identifier`, which is the one the OS raised the
+    /// event against. Nil before adoption repopulates the map on a cold wake — the consumer then
+    /// cannot tell a replaced circle from the current one, and treats the event as current.
+    private func eventCircle(for identifier: String) -> MonitoredCircle? {
+        registeredConditions[identifier].map { MonitoredCircle(center: $0.center, radius: $0.radius) }
     }
 
     // MARK: - GeofenceRegionMonitoring
