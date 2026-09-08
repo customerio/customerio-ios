@@ -19,6 +19,14 @@ typealias GeofenceAuthorizationChangedHandler = @MainActor () -> Void
 /// Invoked on the main actor.
 typealias GeofenceReconciledHandler = @MainActor () -> Void
 
+/// The circle the OS was monitoring when it raised an event. Carried with the event because a
+/// refresh can replace a fence under the same id, and a consumer reasoning about what the crossing
+/// PROVES has to know which circle it crossed — the current fence's circle may be a different one.
+struct MonitoredCircle: Equatable, Sendable {
+    let center: LocationData
+    let radius: Double
+}
+
 /// A circular region the caller wants monitored, as handed to `setMonitoredRegions`.
 struct GeofenceRegionRequest: Equatable, Sendable {
     let identifier: String

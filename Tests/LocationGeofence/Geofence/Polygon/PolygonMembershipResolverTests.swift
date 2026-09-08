@@ -42,6 +42,18 @@ struct PolygonMembershipResolverTests {
         )
     }
 
+    /// The same fence after a refresh replaced it: the server recomputes the enclosing circle from
+    /// the new ring, so the covering circle moves with the geometry.
+    private func replacedPolygonGeofence(id: String = "1") -> Geofence {
+        Geofence(
+            id: id, latitude: 0, longitude: 0.005, radius: 300, name: "poly",
+            transitionTypes: [.enter, .exit], lastUpdated: Date(),
+            vertices: Self.squareVertices.map {
+                LocationData(latitude: $0.latitude, longitude: $0.longitude + 0.005)
+            }
+        )
+    }
+
     private func circleGeofence(id: String = "2") -> Geofence {
         Geofence(
             id: id, latitude: 0, longitude: 0, radius: 300, name: "circle",
@@ -344,6 +356,44 @@ struct PolygonMembershipResolverTests {
         let delivered = await setup.emitter.snapshot()
         #expect(delivered.count == 1)
         #expect(delivered.first?.transition == .exit)
+    }
+
+    /// Leaving a circle only proves leaving the ring that circle encloses. A refresh moves both, so
+    /// an exit raised for the old circle says nothing about the new ring — the device can be
+    /// standing inside it. Writing `outside` here would also stamp a date that then refuses the
+    /// very fix that would correct it, so the belief sticks rather than self-heals.
+    @Test
+    func handleTransition_givenExitRaisedForAReplacedCircle_expectRefusedAndBeliefKept() async {
+        let setup = await makeSetup(fix: nil)
+        let original = polygonGeofence()
+        await setup.storage.setCachedGeofences([original])
+        _ = await setup.storage.recordPolygonMembership(.inside, forIdentifier: "1")
+        await setup.storage.setCachedGeofences([replacedPolygonGeofence()])
+
+        await setup.resolver.handleTransition(
+            identifier: "1", transition: .exit, occurredAt: Date(),
+            eventCircle: original.monitoredCircle
+        )
+
+        #expect(await setup.emitter.snapshot().isEmpty)
+        #expect(await setup.storage.getPolygonMembership()["1"]?.membership == .inside)
+    }
+
+    /// Control: an exit for the circle the fence still has is the case the containment argument
+    /// covers, and must still deliver without a fix.
+    @Test
+    func handleTransition_givenExitRaisedForTheCurrentCircle_expectExitDelivered() async {
+        let setup = await makeSetup(fix: nil)
+        let geofence = polygonGeofence()
+        await setup.storage.setCachedGeofences([geofence])
+        _ = await setup.storage.recordPolygonMembership(.inside, forIdentifier: "1")
+
+        await setup.resolver.handleTransition(
+            identifier: "1", transition: .exit, occurredAt: Date(),
+            eventCircle: geofence.monitoredCircle
+        )
+
+        #expect(await setup.emitter.snapshot().first?.transition == .exit)
     }
 
     @Test

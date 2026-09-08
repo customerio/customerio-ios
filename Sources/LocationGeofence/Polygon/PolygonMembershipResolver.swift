@@ -72,7 +72,12 @@ final class PolygonMembershipResolver {
     /// condition the cache has dropped) is forwarded rather than dropped: treating it as a circle
     /// is the behaviour that predates polygons, and losing a real crossing is worse than a
     /// covering-circle-shaped one.
-    func handleTransition(identifier: String, transition: GeofenceTransition, occurredAt: Date) async {
+    func handleTransition(
+        identifier: String,
+        transition: GeofenceTransition,
+        occurredAt: Date,
+        eventCircle: MonitoredCircle? = nil
+    ) async {
         guard let geofence = await cachedGeofence(id: identifier), geofence.vertices != nil else {
             // Uncached, or a genuine circle: forward untouched, the behaviour that predates polygons.
             await transitionEmitter.trackTransition(geofenceId: identifier, transition: transition)
@@ -80,11 +85,18 @@ final class PolygonMembershipResolver {
         }
         switch transition {
         case .exit:
-            // polygon ⊆ covering circle, so leaving the circle is geometric certainty: it needs no
-            // fix, and no ring either — which is why this runs before the geometry is built. It is
-            // still ORDERED against the stored belief: a synthesized or replayed exit arriving
-            // after a newer enter would otherwise swallow it and leave the device believed outside
-            // while it sits inside.
+            // The certainty is polygon ⊆ ITS OWN covering circle, so it only transfers when the
+            // circle crossed is the one this fence still has. A refresh replaces the ring and the
+            // circle together, and leaving the old circle says nothing about the new ring — the
+            // device can stand inside it. Refusing leaves the belief for a fix to decide; writing
+            // `outside` here would also stamp a date no older fix can then correct.
+            if let eventCircle, eventCircle != geofence.monitoredCircle {
+                logger.geofencePolygonUndecided(identifier: identifier, reason: "exit was for a replaced circle")
+                return
+            }
+            // No ring needed — which is why this runs before the geometry is built. Still ORDERED
+            // against the stored belief: a synthesized or replayed exit arriving after a newer
+            // enter would otherwise swallow it and leave the device believed outside while inside.
             await apply(.outside, to: geofence, evidence: occurredAt, confirmedByFix: false)
         case .enter:
             guard geofence.polygonRegion != nil else {

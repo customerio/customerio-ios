@@ -56,6 +56,12 @@ struct Geofence: Codable, Equatable, Sendable {
     /// `nil` means EITHER a circle or a polygon whose stored ring no longer builds, so it must not
     /// be read as "this is a circle": check `vertices` for that. The two differ if `init?` ever
     /// tightens, since cached rings decode without re-validation.
+    /// The circle this fence is monitored by, for comparison against the circle an OS event was
+    /// raised for. Same pair the OS was handed at registration.
+    var monitoredCircle: MonitoredCircle {
+        MonitoredCircle(center: LocationData(latitude: latitude, longitude: longitude), radius: radius)
+    }
+
     var polygonRegion: PolygonRegion? {
         vertices.flatMap(PolygonRegion.init(vertices:))
     }

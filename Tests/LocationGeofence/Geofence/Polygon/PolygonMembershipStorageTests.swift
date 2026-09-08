@@ -289,11 +289,13 @@ struct PolygonMembershipStorageTests {
         #expect(outcome == .suppressedGeometryChanged)
     }
 
-    /// The covering-circle exit passes no ring, deliberately: polygon ⊆ circle holds for whatever
-    /// ring is current, so leaving the circle is a verdict a replacement cannot invalidate. It must
-    /// still be delivered after the exact replacement that refuses a fix-derived verdict.
+    /// Storage gates a ring-derived verdict and nothing else: a caller that supplies no ring is
+    /// stating the verdict does not rest on one, and gets no geometry check. Whether a
+    /// covering-circle exit still applies after a replacement is decided a layer up, by comparing
+    /// the circle the event was raised for — see
+    /// `handleTransition_givenExitRaisedForAReplacedCircle_expectRefusedAndBeliefKept`.
     @Test
-    func recordPolygonMembership_givenNoRingSuppliedAndTheRingReplaced_expectExitStillDelivered() async {
+    func recordPolygonMembership_givenNoRingSuppliedAndTheRingReplaced_expectTheGeometryCheckSkipped() async {
         let storage = await makeStorage()
         await storage.setCachedGeofences([polygon(ring: Self.ringA)])
         _ = await storage.recordPolygonMembership(.inside, forIdentifier: "1", onlyIfRingMatches: Self.ringA)
