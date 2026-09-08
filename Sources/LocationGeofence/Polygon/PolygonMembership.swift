@@ -45,4 +45,7 @@ enum PolygonMembershipOutcome: Equatable {
     /// The polygon is not in the registered set — an evaluation that raced a prune. Creating a
     /// belief here would deliver an enter for a fence the OS is no longer watching.
     case suppressedUnmonitored
+    /// The ring the verdict was computed from is no longer the workspace's — a refresh replaced the
+    /// fence under the same id between the evaluation reading geometry and this write.
+    case suppressedGeometryChanged
 }

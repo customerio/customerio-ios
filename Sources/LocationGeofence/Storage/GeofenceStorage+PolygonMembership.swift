@@ -39,9 +39,19 @@ extension GeofenceStorage {
         _ membership: PolygonMembership,
         forIdentifier identifier: String,
         onlyIfBeliefPredates evidenceTimestamp: Date? = nil,
+        onlyIfRingMatches evaluatedRing: [LocationData]? = nil,
         now: Date = Date()
     ) -> PolygonMembershipOutcome {
         var state = loadFromDisk() ?? GeofenceState()
+        // Read and compared inside the same actor call that writes, because that is the only place
+        // the two cannot be separated. The evaluation's own re-read closes the location request;
+        // this closes what is left — deciding on the main actor and then hopping here to write, a
+        // gap a refresh can land in. The ring itself, not `lastUpdated`: the server owns that field
+        // and a replacement that failed to bump it would pass a check written against it.
+        if let evaluatedRing {
+            let currentRing = state.cachedGeofences?.first { $0.id == identifier }?.vertices
+            guard currentRing == evaluatedRing else { return .suppressedGeometryChanged }
+        }
         var records = state.polygonMembership ?? [:]
         let existing = records[identifier]
         if let evidenceTimestamp, let existing, existing.lastChangedAt > evidenceTimestamp {

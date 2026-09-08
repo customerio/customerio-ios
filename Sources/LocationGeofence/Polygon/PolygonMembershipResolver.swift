@@ -211,7 +211,7 @@ final class PolygonMembershipResolver {
         }
         await apply(
             membership, to: geofence, evidence: fix.timestamp,
-            confirmedByFix: true, isStillCurrent: isStillCurrent
+            confirmedByFix: true, evaluatedRing: geofence.vertices, isStillCurrent: isStillCurrent
         )
     }
 
@@ -226,17 +226,24 @@ final class PolygonMembershipResolver {
     /// the tracker stamps whoever is current when it is entered, and the write below is an await of
     /// its own. The write is left unguarded deliberately — a belief states geometry, true whoever
     /// is signed in; an emit is an ATTRIBUTION, and attribution is what a switch invalidates.
+    ///
+    /// `evaluatedRing` is the geometry the verdict was computed from, and the write is refused if
+    /// the workspace has moved off it since. Nil from the covering-circle exit, and that is not an
+    /// omission: polygon ⊆ circle holds for whatever ring is current, so leaving the circle is a
+    /// verdict no replacement can invalidate. Only a ring-derived verdict can go stale with the ring.
     private func apply(
         _ membership: PolygonMembership,
         to geofence: Geofence,
         evidence: Date,
         confirmedByFix: Bool,
+        evaluatedRing: [LocationData]? = nil,
         isStillCurrent: (@Sendable () -> Bool)? = nil
     ) async {
         let outcome = await storage.recordPolygonMembership(
             membership,
             forIdentifier: geofence.id,
-            onlyIfBeliefPredates: evidence
+            onlyIfBeliefPredates: evidence,
+            onlyIfRingMatches: evaluatedRing
         )
         guard case .deliver(let transition) = outcome,
               geofence.transitionTypes.contains(transition)

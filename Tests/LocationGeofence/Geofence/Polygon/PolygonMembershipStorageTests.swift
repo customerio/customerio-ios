@@ -225,4 +225,82 @@ struct PolygonMembershipStorageTests {
         #expect(outcome == .suppressedUnmonitored)
         #expect(await storage.getPolygonMembership()["1"] == nil)
     }
+
+    // MARK: - Geometry boundary on the write
+
+    private static let ringA = [
+        LocationData(latitude: 0, longitude: 0),
+        LocationData(latitude: 0, longitude: 1),
+        LocationData(latitude: 1, longitude: 1)
+    ]
+    private static let ringB = [
+        LocationData(latitude: 5, longitude: 5),
+        LocationData(latitude: 5, longitude: 6),
+        LocationData(latitude: 6, longitude: 6)
+    ]
+
+    private func polygon(id: String = "1", ring: [LocationData]) -> Geofence {
+        Geofence(
+            id: id, latitude: 0, longitude: 0, radius: 300, name: nil,
+            transitionTypes: [.enter, .exit], lastUpdated: Date(), vertices: ring
+        )
+    }
+
+    /// The evaluation re-reads the ring after its location request, but it then decides on the main
+    /// actor and hops back here to write — a refresh can replace the fence under the same id in
+    /// that gap. The verdict belongs to the ring it was computed from, so the write is refused.
+    @Test
+    func recordPolygonMembership_givenTheRingReplacedSinceEvaluation_expectSuppressedAndNoBelief() async {
+        let storage = await makeStorage()
+        await storage.setCachedGeofences([polygon(ring: Self.ringB)])
+
+        let outcome = await storage.recordPolygonMembership(
+            .inside, forIdentifier: "1", onlyIfRingMatches: Self.ringA
+        )
+
+        #expect(outcome == .suppressedGeometryChanged)
+        #expect(await storage.getPolygonMembership()["1"] == nil)
+    }
+
+    /// Control: the same call against an unchanged catalog must still deliver, or the guard above
+    /// would be indistinguishable from one that refuses everything.
+    @Test
+    func recordPolygonMembership_givenTheRingUnchanged_expectEnterDelivered() async {
+        let storage = await makeStorage()
+        await storage.setCachedGeofences([polygon(ring: Self.ringA)])
+
+        let outcome = await storage.recordPolygonMembership(
+            .inside, forIdentifier: "1", onlyIfRingMatches: Self.ringA
+        )
+
+        #expect(outcome == .deliver(.enter))
+    }
+
+    /// A fence dropped from the cache entirely is the same failure as a replaced one: there is no
+    /// current ring for the verdict to belong to.
+    @Test
+    func recordPolygonMembership_givenTheFenceLeftTheCacheSinceEvaluation_expectSuppressed() async {
+        let storage = await makeStorage()
+
+        let outcome = await storage.recordPolygonMembership(
+            .inside, forIdentifier: "1", onlyIfRingMatches: Self.ringA
+        )
+
+        #expect(outcome == .suppressedGeometryChanged)
+    }
+
+    /// The covering-circle exit passes no ring, deliberately: polygon ⊆ circle holds for whatever
+    /// ring is current, so leaving the circle is a verdict a replacement cannot invalidate. It must
+    /// still be delivered after the exact replacement that refuses a fix-derived verdict.
+    @Test
+    func recordPolygonMembership_givenNoRingSuppliedAndTheRingReplaced_expectExitStillDelivered() async {
+        let storage = await makeStorage()
+        await storage.setCachedGeofences([polygon(ring: Self.ringA)])
+        _ = await storage.recordPolygonMembership(.inside, forIdentifier: "1", onlyIfRingMatches: Self.ringA)
+        await storage.setCachedGeofences([polygon(ring: Self.ringB)])
+
+        let outcome = await storage.recordPolygonMembership(.outside, forIdentifier: "1")
+
+        #expect(outcome == .deliver(.exit))
+    }
 }
