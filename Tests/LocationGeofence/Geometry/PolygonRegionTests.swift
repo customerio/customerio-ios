@@ -276,6 +276,75 @@ struct PolygonRegionTests {
         }
         #expect(signFlips == 1)
     }
+
+    /// A ring on the antimeridian may legally close with the opposite sign to the one it opened
+    /// with — +180 and -180 are one meridian. Compared raw, the closing vertex survives as a
+    /// zero-length edge, `selfIntersects` reads that as a crossing, and the fence drops at decode.
+    /// Android canonicalises the same case away, so an unfixed iOS silently loses fences there.
+    @Test
+    func init_givenRingClosedWithTheOppositeSign_expectClosureCollapsed() throws {
+        let ring = [
+            LocationData(latitude: -16.80, longitude: 180.0),
+            LocationData(latitude: -16.80, longitude: -179.95),
+            LocationData(latitude: -16.90, longitude: -179.95),
+            LocationData(latitude: -16.90, longitude: 180.0),
+            LocationData(latitude: -16.80, longitude: -180.0)
+        ]
+
+        let region = try #require(PolygonRegion(validating: ring))
+
+        #expect(region.vertices.count == 4)
+        #expect(PolygonRegion(vertices: ring)?.vertices.count == 4)
+    }
+
+    /// Control: the same ring closed with the SAME sign must still collapse to four, so the fix is
+    /// recognising the meridian rather than dropping any trailing vertex.
+    @Test
+    func init_givenRingClosedWithTheSameSign_expectClosureCollapsed() throws {
+        let ring = [
+            LocationData(latitude: -16.80, longitude: 180.0),
+            LocationData(latitude: -16.80, longitude: -179.95),
+            LocationData(latitude: -16.90, longitude: -179.95),
+            LocationData(latitude: -16.90, longitude: 180.0),
+            LocationData(latitude: -16.80, longitude: 180.0)
+        ]
+
+        let region = try #require(PolygonRegion(validating: ring))
+
+        #expect(region.vertices.count == 4)
+    }
+
+    /// An out-of-range longitude must reject the ring, not be collapsed away. 360 unwraps onto 0,
+    /// so testing "same meridian" before validating would let exactly this vertex vanish and the
+    /// ring build as if the server had never sent it.
+    @Test
+    func init_givenOutOfRangeLongitudeAfterAMatchingVertex_expectRejected() {
+        let ring = [
+            LocationData(latitude: 0, longitude: 0),
+            LocationData(latitude: 0, longitude: 360),
+            LocationData(latitude: 0.001, longitude: 0.001),
+            LocationData(latitude: 0.001, longitude: 0)
+        ]
+
+        #expect(PolygonRegion(vertices: ring) == nil)
+        #expect(PolygonRegion(validating: ring) == nil)
+    }
+
+    /// Negative control: two positions a real distance apart on either side of the meridian are NOT
+    /// the same place, so an open ring keeps every vertex it was sent.
+    @Test
+    func init_givenDistinctPositionsNearTheMeridian_expectNoneCollapsed() throws {
+        let ring = [
+            LocationData(latitude: -16.80, longitude: 179.98),
+            LocationData(latitude: -16.80, longitude: -179.98),
+            LocationData(latitude: -16.90, longitude: -179.98),
+            LocationData(latitude: -16.90, longitude: 179.98)
+        ]
+
+        let region = try #require(PolygonRegion(validating: ring))
+
+        #expect(region.vertices.count == 4)
+    }
 }
 
 private extension Double {
