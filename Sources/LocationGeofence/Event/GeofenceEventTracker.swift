@@ -57,14 +57,23 @@ final class GeofenceEventTracker: @unchecked Sendable {
     /// metric without a geosetId when it belongs to none), persists every row, then delivers.
     /// The cooldown is evaluated once per geofence, before fan-out, so all rows of one
     /// transition are suppressed or emitted together.
+    ///
+    /// - Parameter occurredAt: when the crossing happened — an OS event's date, or the timestamp of
+    ///   the fix that decided a polygon verdict. It becomes the row's `timestamp`, the event time
+    ///   the customer sees, so it is required rather than defaulted: a caller allowed to omit it
+    ///   would report the moment of delivery, which trails the crossing by a whole wake-to-verdict
+    ///   pipeline on a polygon and by a whole suspension on a replayed one.
     func trackTransition(
         geofenceId: String,
-        transition: GeofenceTransition
+        transition: GeofenceTransition,
+        occurredAt: Date
     ) async {
         // Persist and send the current crossing before any backlog work: the monitor's dedup
         // baseline has already advanced, so a crossing suspended away un-persisted can never
         // re-emit — its durability must not wait on a slow replay.
-        let freshKeys = await deliverCurrentCrossing(geofenceId: geofenceId, transition: transition)
+        let freshKeys = await deliverCurrentCrossing(
+            geofenceId: geofenceId, transition: transition, occurredAt: occurredAt
+        )
         // Then retry the backlog: queued rows are self-contained (stamped userId), so this
         // crossing's gates don't apply. Excluding the rows just written keeps a failed fresh
         // send on disk for the next trigger instead of re-attempting it on the same network.
@@ -75,7 +84,8 @@ final class GeofenceEventTracker: @unchecked Sendable {
     /// persisted keys (empty when gated) so the caller can exclude them from the backlog flush.
     private func deliverCurrentCrossing(
         geofenceId: String,
-        transition: GeofenceTransition
+        transition: GeofenceTransition,
+        occurredAt: Date
     ) async -> Set<String> {
         // Identified-only: the backend rejects anonymous geofence tracks, so drop before cooldown or
         // persist. Snapshot the userId so a later sign-out/sign-in can't reattribute the row.
@@ -87,6 +97,8 @@ final class GeofenceEventTracker: @unchecked Sendable {
         // Cooldown is scoped per user: a re-login must not be suppressed by the previous user's
         // recent transition, even when a fast re-login skips the async sign-out cleanup.
         let cooldownKey = "\(stampedUserId):\(geofenceId):\(transition.rawValue)"
+        // Wall-clock, deliberately not `occurredAt`: the window asks how long since this fence
+        // last SENT, so a crossing replayed after a long suspension must not read as outside it.
         let now = dateUtil.now
         // Cached config wins when present so a workspace can tune the dedup window without
         // an SDK release; constructor default applies otherwise.
@@ -114,7 +126,7 @@ final class GeofenceEventTracker: @unchecked Sendable {
             PendingGeofenceMetric(
                 geofenceId: geofenceId,
                 transition: transition,
-                timestamp: now,
+                timestamp: occurredAt,
                 userId: stampedUserId,
                 name: geofenceName,
                 transitionId: transitionId,
@@ -294,8 +306,8 @@ final class GeofenceEventTracker: @unchecked Sendable {
 /// Lets a caller such as `GeofenceSyncCoordinator` fire a synthetic initial ENTER for a newly
 /// registered geofence the device is already inside, without depending on the concrete tracker.
 protocol GeofenceTransitionEmitting: Sendable {
-    /// See `GeofenceEventTracker.trackTransition(geofenceId:transition:)`.
-    func trackTransition(geofenceId: String, transition: GeofenceTransition) async
+    /// See `GeofenceEventTracker.trackTransition(geofenceId:transition:occurredAt:)`.
+    func trackTransition(geofenceId: String, transition: GeofenceTransition, occurredAt: Date) async
 }
 
 extension GeofenceEventTracker: GeofenceTransitionEmitting {}

@@ -80,7 +80,7 @@ final class PolygonMembershipResolver {
     ) async {
         guard let geofence = await cachedGeofence(id: identifier), geofence.vertices != nil else {
             // Uncached, or a genuine circle: forward untouched, the behaviour that predates polygons.
-            await transitionEmitter.trackTransition(geofenceId: identifier, transition: transition)
+            await transitionEmitter.trackTransition(geofenceId: identifier, transition: transition, occurredAt: occurredAt)
             return
         }
         switch transition {
@@ -288,10 +288,10 @@ final class PolygonMembershipResolver {
 
     /// Applies a membership verdict and delivers the crossing when it changes the stored belief.
     /// `evidence` is when the crossing happened — a fix's timestamp, or the OS event's date for a
-    /// covering-circle exit. Required, not optional: it is what orders the write against the stored
-    /// belief, and a caller allowed to omit it could silently write an unordered one. `confirmedByFix`
-    /// says which of the two it was, since both carry a date and the date alone cannot tell the log
-    /// how membership was decided.
+    /// covering-circle exit. Required, not optional: it both orders the write against the stored
+    /// belief and stamps the event, so omitting it would write an unordered belief AND report the
+    /// delivery time as the crossing — here a whole forced-fresh fix request later. `confirmedByFix`
+    /// says which of the two dates it was; the date alone cannot tell the log how it was decided.
     ///
     /// `isStillCurrent` is re-checked here, immediately before the emit and with no await after it:
     /// the tracker stamps whoever is current when it is entered, and the write below is an await of
@@ -335,7 +335,7 @@ final class PolygonMembershipResolver {
             transition: transition,
             confirmedByFix: confirmedByFix
         )
-        await transitionEmitter.trackTransition(geofenceId: geofence.id, transition: transition)
+        await transitionEmitter.trackTransition(geofenceId: geofence.id, transition: transition, occurredAt: evidence)
     }
 
     private func cachedGeofence(id: String) async -> Geofence? {
