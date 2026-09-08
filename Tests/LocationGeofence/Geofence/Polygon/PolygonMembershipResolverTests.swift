@@ -35,9 +35,13 @@ struct PolygonMembershipResolverTests {
         LocationData(latitude: 0.0016, longitude: -0.0016)
     ]
 
-    private func polygonGeofence(id: String = "1", transitionTypes: Set<GeofenceTransition> = [.enter, .exit]) -> Geofence {
+    private func polygonGeofence(
+        id: String = "1",
+        transitionTypes: Set<GeofenceTransition> = [.enter, .exit],
+        radius: Double = 300
+    ) -> Geofence {
         Geofence(
-            id: id, latitude: 0, longitude: 0, radius: 300, name: "poly",
+            id: id, latitude: 0, longitude: 0, radius: radius, name: "poly",
             transitionTypes: transitionTypes, lastUpdated: Date(), vertices: Self.squareVertices
         )
     }
@@ -372,7 +376,10 @@ struct PolygonMembershipResolverTests {
 
         await setup.resolver.handleTransition(
             identifier: "1", transition: .exit, occurredAt: Date(),
-            eventCircle: original.monitoredCircle
+            eventCircle: MonitoredCircle(
+                center: LocationData(latitude: original.latitude, longitude: original.longitude),
+                radius: original.radius, maximumRadius: 1000
+            )
         )
 
         #expect(await setup.emitter.snapshot().isEmpty)
@@ -390,7 +397,31 @@ struct PolygonMembershipResolverTests {
 
         await setup.resolver.handleTransition(
             identifier: "1", transition: .exit, occurredAt: Date(),
-            eventCircle: geofence.monitoredCircle
+            eventCircle: MonitoredCircle(
+                center: LocationData(latitude: geofence.latitude, longitude: geofence.longitude),
+                radius: geofence.radius, maximumRadius: 1000
+            )
+        )
+
+        #expect(await setup.emitter.snapshot().first?.transition == .exit)
+    }
+
+    /// The OS registers `min(radius, maximumRegionMonitoringDistance)`, so an over-cap fence is
+    /// monitored by a smaller circle than it declares. Comparing the event against the fence's own
+    /// radius would read every such fence as replaced and refuse its exits for good.
+    @Test
+    func handleTransition_givenExitForAnOverCapFence_expectExitDelivered() async {
+        let setup = await makeSetup(fix: nil)
+        let geofence = polygonGeofence(radius: 5000)
+        await setup.storage.setCachedGeofences([geofence])
+        _ = await setup.storage.recordPolygonMembership(.inside, forIdentifier: "1")
+
+        await setup.resolver.handleTransition(
+            identifier: "1", transition: .exit, occurredAt: Date(),
+            eventCircle: MonitoredCircle(
+                center: LocationData(latitude: 0, longitude: 0),
+                radius: min(5000, 1000), maximumRadius: 1000
+            )
         )
 
         #expect(await setup.emitter.snapshot().first?.transition == .exit)

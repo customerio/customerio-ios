@@ -90,7 +90,7 @@ final class PolygonMembershipResolver {
             // circle together, and leaving the old circle says nothing about the new ring — the
             // device can stand inside it. Refusing leaves the belief for a fix to decide; writing
             // `outside` here would also stamp a date no older fix can then correct.
-            if let eventCircle, eventCircle != geofence.monitoredCircle {
+            if let eventCircle, !eventCircle.matches(geofence) {
                 logger.geofencePolygonUndecided(identifier: identifier, reason: "exit was for a replaced circle")
                 return
             }

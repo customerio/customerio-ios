@@ -24,7 +24,27 @@ typealias GeofenceReconciledHandler = @MainActor () -> Void
 /// PROVES has to know which circle it crossed — the current fence's circle may be a different one.
 struct MonitoredCircle: Equatable, Sendable {
     let center: LocationData
+    /// As REGISTERED, so already clamped to `maximumRadius`. Comparing it to a fence's own radius
+    /// without clamping that too reads every over-cap fence as changed, forever.
     let radius: Double
+    /// The cap the producer clamped against, carried so a consumer can reconstruct what the OS
+    /// would hold for a given fence.
+    let maximumRadius: Double
+
+    /// Whether this is the circle `geofence` is currently monitored by. Same comparison
+    /// `GeofenceRegionRequest.matchesRegistered` makes, and for the same reasons: clamp the fence's
+    /// radius to what the OS would actually hold, and allow for the float round trip through
+    /// CoreLocation rather than assuming it is exact.
+    func matches(_ geofence: Geofence) -> Bool {
+        abs(center.latitude - geofence.latitude) < Self.coordinateTolerance
+            && abs(center.longitude - geofence.longitude) < Self.coordinateTolerance
+            && abs(radius - min(geofence.radius, maximumRadius)) < Self.radiusTolerance
+    }
+
+    /// Same slack as `GeofenceRegionRequest`; kept in step with it deliberately — the two answer the
+    /// same question about the same round trip.
+    private static let coordinateTolerance = 1e-7
+    private static let radiusTolerance = 0.5
 }
 
 /// A circular region the caller wants monitored, as handed to `setMonitoredRegions`.
