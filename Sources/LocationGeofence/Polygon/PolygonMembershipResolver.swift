@@ -355,25 +355,18 @@ final class PolygonMembershipResolver {
         await storage.getCachedGeofences().first { $0.id == id }
     }
 
-    /// Freshest fix obtainable, requesting one when the cache is stale. Mirrors the gate's
-    /// resolution: the completion's coordinates are discarded in favour of `latestFix`, which
-    /// carries the accuracy and timestamp the decision needs.
+    /// Freshest fix obtainable, requesting one when the cache is stale. Mirrors the gate: the
+    /// completion's coordinates are discarded for `latestFix`, which carries accuracy and timestamp.
     ///
     /// "Fresh" here is a fix received in answer to THIS request and strictly newer than the last
-    /// one delivered — stricter than the `movementFixMaxAge` test the movement trigger is sized
-    /// against (`GeofenceSyncCoordinatorImpl.wakeRadius`), which only needs an anchor roughly where
-    /// the device is. The two are not interchangeable; neither may be relaxed to the other.
+    /// one delivered — stricter than the `movementFixMaxAge` test `wakeRadius` is sized against,
+    /// which only needs an anchor roughly where the device is. Neither may be relaxed to the other.
     ///
-    /// On the FIRST pass of a process the two collapse into one: nothing has been delivered to be
-    /// newer than, and CoreLocation may echo its cached fix as a new manager's first delivery, so a
-    /// cold wake can be answered by a fix up to `movementFixMaxAge` older than itself — several
-    /// hundred metres at speed. Every cold-process wake is a first pass, so `requiringFresh` adds
-    /// nothing there; tightening it needs the assumed-speed constant the ≤17 wake radius also
-    /// wants. The verdict line logs fix age, which is what makes such a verdict identifiable.
-    ///
-    /// When a fresh fix is REQUIRED, a request that fails or times out still resumes with the fix
-    /// already held — it predates the wake and would re-affirm the verdict the wake exists to
-    /// revisit, so report no fix instead.
+    /// On the FIRST pass of a process the two collapse: nothing has been delivered to be newer
+    /// than, and CoreLocation may echo its cached fix as a manager's first delivery, so a cold wake
+    /// can be answered by a fix up to `movementFixMaxAge` older than itself — hundreds of metres at
+    /// speed. Tightening it needs the ≤17 wake radius's assumed-speed constant; the verdict line
+    /// logs fix age, which is what makes such a verdict identifiable.
     private func resolveFix(requiringFresh: Bool = false) async -> CLLocation? {
         // What this resolver has already DELIVERED, which is what a forced request must improve on.
         // Deliberately not `cachedFix`: that reports the newest fix obtainable from either source,
