@@ -97,8 +97,9 @@ final class GeofenceEventTracker: @unchecked Sendable {
         // Cooldown is scoped per user: a re-login must not be suppressed by the previous user's
         // recent transition, even when a fast re-login skips the async sign-out cleanup.
         let cooldownKey = "\(stampedUserId):\(geofenceId):\(transition.rawValue)"
-        // Wall-clock, deliberately not `occurredAt`: the window asks how long since this fence
-        // last SENT, so a crossing replayed after a long suspension must not read as outside it.
+        // Wall-clock, deliberately not `occurredAt`: this base is shared with
+        // `purgeExpiredCooldowns` below, so a record written at a past crossing time would be
+        // purge-eligible the moment it lands and would suppress nothing.
         let now = dateUtil.now
         // Cached config wins when present so a workspace can tune the dedup window without
         // an SDK release; constructor default applies otherwise.

@@ -271,7 +271,7 @@ struct PendingGeofenceMetricStoreTests {
         let metric = try decoder.decode(PendingGeofenceMetric.self, from: Data(legacyJson.utf8))
 
         #expect(metric.geosetId == nil)
-        #expect(metric.key == "geo_1_enter_1700000000")
+        #expect(metric.key == "geo_1_enter_1700000000_user_1")
     }
 
     // MARK: - Persistence across instances

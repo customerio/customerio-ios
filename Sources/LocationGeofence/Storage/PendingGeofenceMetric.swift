@@ -22,14 +22,20 @@ struct PendingGeofenceMetric: Codable, Equatable, Sendable, GeofenceMetric {
     /// cache at send. Optional so rows persisted before metadata still decode.
     let metadata: [String: GeofenceMetadataValue]?
 
-    /// Composite key over `(geofenceId, transition, timestamp_sec, geosetId)` used for
-    /// storage-layer dedup. Matches Android's `PendingGeofenceDelivery.key`.
-    /// Seconds (not ms) — cooldown gate dedups by `(geofenceId, transition)`
-    /// upstream, so finer precision adds nothing. The geoset suffix keeps the
-    /// fan-out rows of one transition from colliding with each other.
+    /// Composite key over `(geofenceId, transition, timestamp_sec, userId, geosetId)` used for
+    /// storage-layer dedup. Seconds (not ms) — the cooldown gate dedups by
+    /// `(geofenceId, transition)` upstream, so finer precision adds nothing. The geoset suffix
+    /// keeps the fan-out rows of one transition from colliding with each other.
+    ///
+    /// `userId` is load-bearing. `timestamp` is the CROSSING time, and one crossing's evidence can
+    /// be applied twice under different users: the cooldown is per user and sign-out clears it,
+    /// while this queue deliberately survives sign-out. Keyed without the userId, the second user's
+    /// row is dropped as a duplicate and its successful send then removes the first user's — one
+    /// event lost, the other misattributed. Diverges from Android's `PendingGeofenceDelivery.key`,
+    /// which carries a userId on the row but not in the key and so still has that gap.
     var key: String {
         let sec = Int(timestamp.timeIntervalSince1970)
-        let base = "\(geofenceId)_\(transition.rawValue)_\(sec)"
+        let base = "\(geofenceId)_\(transition.rawValue)_\(sec)_\(userId)"
         guard let geosetId else { return base }
         return "\(base)_\(geosetId)"
     }

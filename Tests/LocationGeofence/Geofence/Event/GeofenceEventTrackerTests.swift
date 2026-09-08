@@ -1313,6 +1313,69 @@ struct GeofenceEventTrackerTests {
 
     // MARK: - Crossing time
 
+    /// The queue outlives sign-out by design — rows are self-contained and stamped with the userId
+    /// that earned them. Two users can therefore hold rows for the same crossing instant: the
+    /// cooldown that would suppress a repeat is per user and cleared on sign-out, while an
+    /// unchanged cached fix hands the second user the first one's timestamp. Both rows must survive.
+    ///
+    /// A cdpApiKey is set on both so the post-send flush routes over direct HTTP: without one it
+    /// drains the queue to EventBus, which is a legitimate handoff and would mask the drop.
+    @Test
+    func trackTransition_givenTwoUsersAtTheSameCrossingTime_expectBothRowsDurable() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let storage = makeStorage(directory: dir)
+        let pending = makePendingStore(directory: dir)
+        let delivery = GeofenceDeliveryTrackerMock()
+        delivery.trackMetricClosure = { _, _, onComplete in onComplete(.failure(.transport)) }
+        let occurredAt = Date(timeIntervalSince1970: 1700000000)
+        let trackerA = makeTracker(
+            storage: storage, pendingStore: pending, deliveryTracker: delivery,
+            contextStore: makeContextStore(userId: "user_A", cdpApiKey: "key_123")
+        )
+        let trackerB = makeTracker(
+            storage: storage, pendingStore: pending, deliveryTracker: delivery,
+            contextStore: makeContextStore(userId: "user_B", cdpApiKey: "key_123")
+        )
+
+        await trackerA.trackTransition(geofenceId: "geo_1", transition: .enter, occurredAt: occurredAt)
+        await trackerB.trackTransition(geofenceId: "geo_1", transition: .enter, occurredAt: occurredAt)
+
+        // Keyed without the userId this is one row, user_A's: B's append is a no-op, and B's flush
+        // excludes the key it thinks it just wrote — which is A's.
+        #expect(Set(await pending.loadAll().map(\.userId)) == ["user_A", "user_B"])
+    }
+
+    /// The other half: a successful send removes its own row by key, so a key shared across users
+    /// would have the second user's delivery drain the first user's undelivered row. Delivery is
+    /// per-user here — B succeeds, A never does — so the only thing that can remove A's row is a
+    /// key collision, not a legitimate replay.
+    @Test
+    func trackTransition_givenAnotherUserSucceedsAtTheSameCrossingTime_expectTheQueuedRowKept() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let storage = makeStorage(directory: dir)
+        let pending = makePendingStore(directory: dir)
+        let delivery = GeofenceDeliveryTrackerMock()
+        delivery.trackMetricClosure = { _, userId, onComplete in
+            onComplete(userId == "user_B" ? .success(()) : .failure(.transport))
+        }
+        let occurredAt = Date(timeIntervalSince1970: 1700000000)
+        let trackerA = makeTracker(
+            storage: storage, pendingStore: pending, deliveryTracker: delivery,
+            contextStore: makeContextStore(userId: "user_A", cdpApiKey: "key_123")
+        )
+        let trackerB = makeTracker(
+            storage: storage, pendingStore: pending, deliveryTracker: delivery,
+            contextStore: makeContextStore(userId: "user_B", cdpApiKey: "key_123")
+        )
+
+        await trackerA.trackTransition(geofenceId: "geo_1", transition: .enter, occurredAt: occurredAt)
+        await trackerB.trackTransition(geofenceId: "geo_1", transition: .enter, occurredAt: occurredAt)
+
+        #expect(await pending.loadAll().map(\.userId) == ["user_A"])
+    }
+
     /// The row's timestamp is the event time the customer sees. It must be when the crossing
     /// happened, not when we got round to sending it — the two differ by the wake-to-verdict
     /// pipeline on a polygon, and by the whole suspension on a crossing replayed after one.
@@ -1391,7 +1454,7 @@ struct GeofenceEventTrackerTests {
         )
 
         await tracker.trackTransition(
-            geofenceId: "geo_1", transition: .enter, occurredAt: sentAt.addingTimeInterval(-cooldownInterval)
+            geofenceId: "geo_1", transition: .enter, occurredAt: sentAt.addingTimeInterval(-2 * cooldownInterval)
         )
         await tracker.trackTransition(geofenceId: "geo_1", transition: .enter, occurredAt: sentAt)
 
