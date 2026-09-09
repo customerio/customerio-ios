@@ -21,7 +21,7 @@ extension CLMonitorGeofenceMonitor {
     ///
     /// Each candidate's registered circle is CAPTURED here, synchronously with the calling sync's
     /// unchanged-diff, and re-verified when the operation drains: a later sync can stage a reshape
-    /// (updating `registeredConditions` synchronously) while its storage rewrite is still queued
+    /// (updating the ledger synchronously) while its storage rewrite is still queued
     /// behind this heal, and judging the old baseline against the new circle would synthesize a
     /// wrong transition. A candidate whose staged geometry or stored record no longer matches the
     /// capture is skipped — the reshape reseeds its baseline anyway.
@@ -31,10 +31,10 @@ extension CLMonitorGeofenceMonitor {
     /// or within the fix's own age — must win over a decision made from an older position, which
     /// would otherwise synthesize the reverse transition and dedup away the real one.
     func enqueueBaselineHeal(candidates: [String]) {
-        // Captured before the enqueue: `registeredConditions` at this instant is what the calling
+        // Captured before the enqueue: the ledger at this instant is what the calling
         // sync just diffed as unchanged.
         let expectedConditions = candidates.reduce(into: [String: RegisteredCondition]()) {
-            $0[$1] = registeredConditions[$1]
+            $0[$1] = conditionLedger.condition(for: $1)
         }
         guard !expectedConditions.isEmpty else { return }
         enqueueMonitorOperation { [weak self] _ in
@@ -43,7 +43,7 @@ extension CLMonitorGeofenceMonitor {
             let records = await self.storage.getMonitorRegionRecords()
             for (identifier, condition) in expectedConditions.sorted(by: { $0.key < $1.key }) {
                 guard self.ownedRegionIdentifiers.contains(identifier),
-                      self.registeredConditions[identifier] == condition,
+                      self.conditionLedger.condition(for: identifier) == condition,
                       let record = records[identifier],
                       record.center == condition.center, record.radius == condition.radius
                 else { continue }

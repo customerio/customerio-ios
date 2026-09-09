@@ -7,38 +7,6 @@ import Foundation
 /// file from their state; they remain monitor implementation detail.
 @available(iOS 17.0, *)
 extension CLMonitorGeofenceMonitor {
-    /// A condition as this monitor registered it. Lives here rather than on the type so the core
-    /// file stays under the line cap; registration is what writes it.
-    struct RegisteredCondition: Equatable {
-        let center: LocationData
-        let radius: Double
-        let transitionTypes: Set<GeofenceTransition>
-        /// When this condition replaced whatever was registered under the same id. Lets an event be
-        /// attributed to the circle that was live when the daemon raised it, rather than to
-        /// whatever is live when we get round to reading it.
-        var registeredAt: Date = .distantPast
-
-        /// Geometry only. `registeredAt` is bookkeeping about WHEN, and the baseline heal compares
-        /// conditions to ask whether the circle still matches — a re-registration of the same
-        /// circle must not read as a change there.
-        static func == (lhs: Self, rhs: Self) -> Bool {
-            lhs.center == rhs.center && lhs.radius == rhs.radius
-                && lhs.transitionTypes == rhs.transitionTypes
-        }
-
-        /// Which generation an event raised at `raisedAt` belongs to. Split out as a pure function
-        /// because the monitor around it cannot be built in a unit test — a real one creates a
-        /// `CLLocationManager` and destabilises the test process — and this choice is the whole of
-        /// the staleness signal.
-        ///
-        /// Nil when nothing is registered, or when the event predates the current registration and
-        /// no previous generation is held; a consumer reads nil as "cannot say".
-        static func raisedAgainst(current: Self?, previous: Self?, raisedAt: Date) -> Self? {
-            guard let current else { return nil }
-            return raisedAt < current.registeredAt ? previous : current
-        }
-    }
-
     func adoptExistingRegions(matching identifiers: Set<String>, records: [String: MonitorRegionRecord]) {
         let adopted = identifiers.intersection(knownConditionIdentifiers)
         guard !adopted.isEmpty else { return }
@@ -51,11 +19,14 @@ extension CLMonitorGeofenceMonitor {
         // unseeded and the next sync re-registers it, matching `rearmConditions`.
         for identifier in adopted {
             guard let record = records[identifier], let center = record.center, let radius = record.radius else { continue }
+            // `.distantPast`: an adopted condition predates this process, so every event it will
+            // see postdates it and resolves to the current circle rather than through a nil.
             noteRegisteredCondition(
                 identifier: identifier,
                 center: center,
                 radius: radius,
-                transitionTypes: record.transitionTypes
+                transitionTypes: record.transitionTypes,
+                at: .distantPast
             )
         }
         rearmConditions(adopted, records: records)
@@ -148,7 +119,7 @@ extension CLMonitorGeofenceMonitor {
     /// Drops this process's claim on a condition without touching the OS.
     private func releaseOwnership(_ identifier: String) {
         ownedRegionIdentifiers.remove(identifier)
-        registeredConditions.removeValue(forKey: identifier)
+        conditionLedger.retire(identifier)
     }
 
     /// Drops the condition at the OS.
@@ -166,7 +137,7 @@ extension CLMonitorGeofenceMonitor {
 
     func stopMonitoringAll() {
         ownedRegionIdentifiers.removeAll()
-        registeredConditions.removeAll()
+        conditionLedger.forgetAll()
         // Teardown clears the stored records too (sign-out), so nothing is left to reseed.
         conditionsNeedingBaselineReseed.removeAll()
         // Clear against CLMonitor's LIVE identifiers, not the owned/mirror snapshot: an empty owned
@@ -241,7 +212,7 @@ extension CLMonitorGeofenceMonitor {
     /// the OS already holds or is about to.
     private func isRegisteredUnchanged(_ region: GeofenceRegionRequest) -> Bool {
         guard ownedRegionIdentifiers.contains(region.identifier),
-              let existing = registeredConditions[region.identifier]
+              let existing = conditionLedger.condition(for: region.identifier)
         else { return false }
         return region.matchesRegistered(
             center: existing.center,
@@ -252,15 +223,13 @@ extension CLMonitorGeofenceMonitor {
     }
 
     /// Records the circle a condition now holds.
-    private func noteRegisteredCondition(identifier: String, center: LocationData, radius: Double, transitionTypes: Set<GeofenceTransition>) {
-        if let superseded = registeredConditions[identifier] {
-            previousConditions[identifier] = superseded
-        }
-        registeredConditions[identifier] = RegisteredCondition(
-            center: center,
-            radius: radius,
-            transitionTypes: transitionTypes,
-            registeredAt: Date()
+    private func noteRegisteredCondition(
+        identifier: String, center: LocationData, radius: Double,
+        transitionTypes: Set<GeofenceTransition>, at registeredAt: Date = Date()
+    ) {
+        conditionLedger.note(
+            identifier: identifier, center: center, radius: radius,
+            transitionTypes: transitionTypes, at: registeredAt
         )
     }
 
@@ -274,12 +243,7 @@ extension CLMonitorGeofenceMonitor {
     /// and no previous generation is held (a cold wake, where adoption has not repopulated the
     /// map). Nil means "cannot say", and a consumer treats such an event as current.
     func eventCircle(for identifier: String, raisedAt: Date) -> MonitoredCircle? {
-        let condition = RegisteredCondition.raisedAgainst(
-            current: registeredConditions[identifier],
-            previous: previousConditions[identifier],
-            raisedAt: raisedAt
-        )
-        return condition.map {
+        conditionLedger.circle(for: identifier, raisedAt: raisedAt).map {
             MonitoredCircle(
                 center: $0.center, radius: $0.radius,
                 maximumRadius: authManager.maximumRegionMonitoringDistance

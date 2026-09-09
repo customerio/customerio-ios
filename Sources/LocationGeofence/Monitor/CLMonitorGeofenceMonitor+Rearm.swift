@@ -92,7 +92,7 @@ extension CLMonitorGeofenceMonitor {
             for identifier in self.ownedRegionIdentifiers.sorted() {
                 guard let record = records[identifier],
                       let center = record.center, let radius = record.radius,
-                      self.registeredConditions[identifier] == RegisteredCondition(
+                      self.conditionLedger.condition(for: identifier) == RegisteredCondition(
                           center: center,
                           radius: radius,
                           transitionTypes: record.transitionTypes

@@ -67,20 +67,14 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preco
     /// (see `rearmConditions`) — and only re-adding revives it. Leaving it absent here makes the
     /// first pass re-register it; when the bootstrap adopts instead, `adoptExistingRegions` seeds it
     /// from the persisted records the re-arm then imposes at the OS.
-    var registeredConditions: [String: RegisteredCondition] = [:]
-    /// One generation back, per id. `CLMonitor` events are read off an async stream, so an event
-    /// the daemon raised against the previous circle can be dequeued after a refresh replaced it —
-    /// reading only the current map would report the new circle and hide exactly the staleness the
-    /// consumer is checking for. One deep is enough: a second replacement means the OS re-evaluated
-    /// in between, so anything still queued from two generations back is already superseded.
-    var previousConditions: [String: RegisteredCondition] = [:]
+    var conditionLedger = RegisteredConditionLedger()
     /// Conditions the OS stopped monitoring since their last registration. The next registration
     /// reseeds their stored baseline instead of preserving it — see `recordMonitorRegistration`.
     var conditionsNeedingBaselineReseed: Set<String> = []
     /// When each condition was last (re)added at the OS and the circle that add imposed, stamped
     /// at the add's drain time. The contradiction gate only vets events landing shortly after an
     /// add — the daemon's belief replays — and judges them against this geometry, NOT the staged
-    /// `registeredConditions` entry: a reshape updates that map synchronously, so during its
+    /// ledger entry: a reshape updates the ledger synchronously, so during its
     /// staging→drain gap an event computed on the old circle would otherwise be judged against
     /// the new one (see `+ContradictionGate`).
     var conditionReadds: [String: ConditionReadd] = [:]
@@ -184,7 +178,7 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preco
         let drifted = persisted != knownConditionIdentifiers
         knownConditionIdentifiers = persisted
         ownedRegionIdentifiers.formUnion(persisted)
-        // `registeredConditions` is deliberately not filtered against `persisted`. It starts empty
+        // The ledger is deliberately not filtered against `persisted`. It starts empty
         // each process, so its only entries are ones staged while CLMonitor was still loading,
         // whose adds are queued behind this operation — exactly the identifiers `persisted` lacks.
         persistConditionMirror()
@@ -270,7 +264,7 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preco
             // removes the only thing that would restore it before the process restarts.
             logger.geofenceMonitorStoppedMonitoringRegion(identifier)
             knownConditionIdentifiers.remove(identifier)
-            registeredConditions.removeValue(forKey: identifier)
+            conditionLedger.forget(identifier)
             conditionReadds.removeValue(forKey: identifier)
             // Whichever registration comes next must reseed the baseline rather than preserve it.
             // The clear below only covers the case where none comes: a re-registration with the same

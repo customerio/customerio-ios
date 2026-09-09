@@ -45,7 +45,7 @@ extension CLMonitorGeofenceMonitor {
     /// True when the event lands inside the identifier's replay window AND a trustworthy fix
     /// confidently contradicts it (`BaselineHealDecision` with `lastState` = the incoming
     /// transition — a non-nil result means the fix says the opposite of what the OS delivered).
-    /// Geometry comes from the drained add's stamp, not `registeredConditions`: that map updates
+    /// Geometry comes from the drained add's stamp, not the ledger: the ledger updates
     /// synchronously when a reshape is staged, so during its staging→drain gap an event the OS
     /// computed on the old circle must still be judged against the old circle.
     /// The window compares the EVENT's date to the add, not the processing time: an event can sit
