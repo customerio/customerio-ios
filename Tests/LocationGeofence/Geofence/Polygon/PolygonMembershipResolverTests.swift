@@ -35,6 +35,13 @@ struct PolygonMembershipResolverTests {
         LocationData(latitude: 0.0016, longitude: -0.0016)
     ]
 
+    /// An age that predates the wake yet stays inside `movementFixMaxAge`. Deliberately far from
+    /// that 30 s cap rather than just under it: the gate is `-timestamp.timeIntervalSinceNow`
+    /// evaluated at decision time, so the offset is really a wall-clock budget for everything
+    /// between the stamp and the decision. A 20 s stamp aged past the cap on a loaded CI runner and
+    /// the pass emitted nothing.
+    private static let ageInsideGate: TimeInterval = 5
+
     private func polygonGeofence(
         id: String = "1",
         transitionTypes: Set<GeofenceTransition> = [.enter, .exit],
@@ -426,14 +433,15 @@ struct PolygonMembershipResolverTests {
     /// On the first pass of a process there is no delivered fix to be newer than, so that echo
     /// reaches a verdict: a cold wake can be decided by a fix up to `movementFixMaxAge` older than
     /// the wake — several hundred metres at speed. Narrowing it needs an assumed-speed constant and
-    /// belongs with the ≤17 work; if this test starts failing, someone has done that deliberately.
+    /// belongs with the ≤17 work; if this test starts failing, rule out `ageInsideGate` before
+    /// concluding someone narrowed it deliberately.
     @Test
     func handleTransition_givenColdProcessAndEchoedPreWakeFix_expectVerdictFromTheStaleEcho() async {
         let setup = await makeSetup(fix: nil) // cold: nothing delivered, no system cache
         let preWakeFix = CLLocation(
             coordinate: CLLocationCoordinate2D(latitude: 0, longitude: 0),
             altitude: 0, horizontalAccuracy: 5, verticalAccuracy: 5,
-            timestamp: Date(timeIntervalSinceNow: -20) // stale, but inside movementFixMaxAge
+            timestamp: Date(timeIntervalSinceNow: -Self.ageInsideGate)
         )
         setup.fixResolver.requestFreshFix = { [weak fixResolver = setup.fixResolver] in
             fixResolver?.locationManager(CLLocationManager(), didUpdateLocations: [preWakeFix])
@@ -455,14 +463,14 @@ struct PolygonMembershipResolverTests {
     @Test
     func evaluateAllPolygons_givenStaleDeliveredFixAndFreshSystemCache_expectTheFreshOneDecides() async {
         let setup = await makeSetup(fix: nil)
-        // Delivered ~1.1 km away, outside the polygon, and only 20 s old — deliberately INSIDE
+        // Delivered ~1.1 km away, outside the polygon, and deliberately INSIDE
         // `movementFixMaxAge`. A fix old enough for the decision's own age gate to reject would
         // make this test pass on that gate rather than on the defect, and the defect's whole range
         // is inside the gate.
         setup.fixResolver.handleResolvedFix(CLLocation(
             coordinate: CLLocationCoordinate2D(latitude: 0.01, longitude: 0.01),
             altitude: 0, horizontalAccuracy: 5, verticalAccuracy: 5,
-            timestamp: Date(timeIntervalSinceNow: -20)
+            timestamp: Date(timeIntervalSinceNow: -Self.ageInsideGate)
         ))
         // The system cache has moved on and sits inside the polygon, well within the age gate.
         setup.fixResolver.systemCachedFix = {
@@ -494,7 +502,7 @@ struct PolygonMembershipResolverTests {
         setup.fixResolver.handleResolvedFix(CLLocation(
             coordinate: CLLocationCoordinate2D(latitude: 0, longitude: 0),
             altitude: 0, horizontalAccuracy: 5, verticalAccuracy: 5,
-            timestamp: Date(timeIntervalSinceNow: -20)
+            timestamp: Date(timeIntervalSinceNow: -Self.ageInsideGate)
         ))
         await setup.storage.setCachedGeofences([polygonGeofence()])
 
