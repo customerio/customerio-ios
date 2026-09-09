@@ -16,8 +16,8 @@ extension GeofenceStorage {
     ///
     /// `onlyIfBeliefPredates` makes the write conditional on the belief's age, atomically with the
     /// compare-and-store: an evaluation whose fix predates a belief written since must not
-    /// overwrite it with an older reading. The stored `lastChangedAt` is that same evidence time,
-    /// not the moment of the write — the comparison is evidence against evidence, and a write time
+    /// overwrite it with an older reading. The stored `lastChangedAt` is that same evidence
+    /// time, never later than the write — the comparison is evidence against evidence, and a write time
     /// always postdates the fix that justified it, so storing it would reject verdicts whose
     /// evidence is genuinely newer than the previous verdict's.
     ///
@@ -43,6 +43,9 @@ extension GeofenceStorage {
         onlyIfCircleMatches evaluatedCircle: MonitoredCircle? = nil,
         now: Date = Date()
     ) -> PolygonMembershipOutcome {
+        // A crossing cannot postdate the moment we learn of it. Unclamped, a clock set backwards
+        // stamps the belief in the future and every correcting write is refused until it catches up.
+        let evidenceTimestamp = evidenceTimestamp.map { min($0, now) }
         var state = loadFromDisk() ?? GeofenceState()
         // Read and compared inside the same actor call that writes, because that is the only place
         // the two cannot be separated. The evaluation's own re-read closes the location request;

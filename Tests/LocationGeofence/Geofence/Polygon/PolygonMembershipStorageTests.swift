@@ -84,6 +84,30 @@ struct PolygonMembershipStorageTests {
         #expect(outcome == .deliver(.exit))
     }
 
+    /// A clock set backwards makes an evidence time postdate the write. Stored unclamped it would
+    /// refuse every correcting write until the clock caught up, stranding the belief.
+    @Test
+    func recordPolygonMembership_givenEvidenceInTheFuture_expectLaterEvidenceStillDecides() async {
+        let storage = await makeStorage()
+        let writtenAt = Date()
+        _ = await storage.recordPolygonMembership(
+            .inside,
+            forIdentifier: "1",
+            onlyIfBeliefPredates: writtenAt.addingTimeInterval(3600),
+            now: writtenAt
+        )
+
+        let outcome = await storage.recordPolygonMembership(
+            .outside,
+            forIdentifier: "1",
+            onlyIfBeliefPredates: writtenAt.addingTimeInterval(1),
+            now: writtenAt.addingTimeInterval(1)
+        )
+
+        #expect(outcome == .deliver(.exit))
+        #expect(await storage.getPolygonMembership()["1"]?.membership == .outside)
+    }
+
     /// Membership survives re-registration, which is what keeps a wholesale re-register silent
     /// without needing the registered-ids diff the circle path uses.
     @Test
