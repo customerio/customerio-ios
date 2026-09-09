@@ -239,10 +239,20 @@ struct PolygonMembershipStorageTests {
         LocationData(latitude: 6, longitude: 6)
     ]
 
-    private func polygon(id: String = "1", ring: [LocationData]) -> Geofence {
+    private func polygon(
+        id: String = "1", ring: [LocationData], latitude: Double = 0, longitude: Double = 0,
+        radius: Double = 300
+    ) -> Geofence {
         Geofence(
-            id: id, latitude: 0, longitude: 0, radius: 300, name: nil,
+            id: id, latitude: latitude, longitude: longitude, radius: radius, name: nil,
             transitionTypes: [.enter, .exit], lastUpdated: Date(), vertices: ring
+        )
+    }
+
+    private func circle(latitude: Double = 0, longitude: Double = 0, radius: Double = 300) -> MonitoredCircle {
+        MonitoredCircle(
+            center: LocationData(latitude: latitude, longitude: longitude),
+            radius: radius, maximumRadius: 1000
         )
     }
 
@@ -289,11 +299,8 @@ struct PolygonMembershipStorageTests {
         #expect(outcome == .suppressedGeometryChanged)
     }
 
-    /// Storage gates a ring-derived verdict and nothing else: a caller that supplies no ring is
-    /// stating the verdict does not rest on one, and gets no geometry check. Whether a
-    /// covering-circle exit still applies after a replacement is decided a layer up, by comparing
-    /// the circle the event was raised for — see
-    /// `handleTransition_givenExitRaisedForAReplacedCircle_expectRefusedAndBeliefKept`.
+    /// Supplying no ring states the verdict does not rest on one, so it gets no ring check. The
+    /// covering exit is the caller that does this, and is gated on its circle instead.
     @Test
     func recordPolygonMembership_givenNoRingSuppliedAndTheRingReplaced_expectTheGeometryCheckSkipped() async {
         let storage = await makeStorage()
@@ -302,6 +309,72 @@ struct PolygonMembershipStorageTests {
         await storage.setCachedGeofences([polygon(ring: Self.ringB)])
 
         let outcome = await storage.recordPolygonMembership(.outside, forIdentifier: "1")
+
+        #expect(outcome == .deliver(.exit))
+    }
+
+    /// The covering exit's window, and why the circle is compared inside the write rather than
+    /// before the hop: the resolver matched the event's circle against the fence it loaded, then a
+    /// refresh replaced ring and circle together before the store landed. Recording `outside` here
+    /// would assert the device left a polygon it may be standing inside, stamped with a date no
+    /// older fix can then correct.
+    @Test
+    func recordPolygonMembership_givenTheCircleReplacedSinceTheEventWasRaised_expectSuppressed() async {
+        let storage = await makeStorage()
+        await storage.setCachedGeofences([polygon(ring: Self.ringA)])
+        _ = await storage.recordPolygonMembership(.inside, forIdentifier: "1")
+        await storage.setCachedGeofences([polygon(ring: Self.ringB, longitude: 0.005)])
+
+        let outcome = await storage.recordPolygonMembership(
+            .outside, forIdentifier: "1", onlyIfCircleMatches: circle()
+        )
+
+        #expect(outcome == .suppressedGeometryChanged)
+        #expect(await storage.getPolygonMembership()["1"]?.membership == .inside)
+    }
+
+    /// Control: the circle the fence still has is the case the containment argument covers and must
+    /// deliver, or the guard above is indistinguishable from one that refuses every exit.
+    @Test
+    func recordPolygonMembership_givenTheCircleUnchanged_expectExitDelivered() async {
+        let storage = await makeStorage()
+        await storage.setCachedGeofences([polygon(ring: Self.ringA)])
+        _ = await storage.recordPolygonMembership(.inside, forIdentifier: "1")
+
+        let outcome = await storage.recordPolygonMembership(
+            .outside, forIdentifier: "1", onlyIfCircleMatches: circle()
+        )
+
+        #expect(outcome == .deliver(.exit))
+    }
+
+    /// A fence gone from the cache has no circle for the event to still match, so the exit is
+    /// refused on the same rule rather than falling through the guard.
+    @Test
+    func recordPolygonMembership_givenTheFenceLeftTheCacheAndACircleSupplied_expectSuppressed() async {
+        let storage = await makeStorage()
+        await storage.setCachedGeofences([polygon(ring: Self.ringA)])
+        _ = await storage.recordPolygonMembership(.inside, forIdentifier: "1")
+        await storage.setCachedGeofences([])
+
+        let outcome = await storage.recordPolygonMembership(
+            .outside, forIdentifier: "1", onlyIfCircleMatches: circle()
+        )
+
+        #expect(outcome == .suppressedGeometryChanged)
+    }
+
+    /// An over-cap fence is monitored by `min(radius, cap)`, so comparing the event against the
+    /// fence's declared radius would read it as replaced and refuse its exits for good.
+    @Test
+    func recordPolygonMembership_givenAnOverCapFenceAndItsClampedCircle_expectExitDelivered() async {
+        let storage = await makeStorage()
+        await storage.setCachedGeofences([polygon(ring: Self.ringA, radius: 5000)])
+        _ = await storage.recordPolygonMembership(.inside, forIdentifier: "1")
+
+        let outcome = await storage.recordPolygonMembership(
+            .outside, forIdentifier: "1", onlyIfCircleMatches: circle(radius: 1000)
+        )
 
         #expect(outcome == .deliver(.exit))
     }

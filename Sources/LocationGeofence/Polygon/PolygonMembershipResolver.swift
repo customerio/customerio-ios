@@ -85,19 +85,16 @@ final class PolygonMembershipResolver {
         }
         switch transition {
         case .exit:
-            // The certainty is polygon ⊆ ITS OWN covering circle, so it only transfers when the
-            // circle crossed is the one this fence still has. A refresh replaces the ring and the
-            // circle together, and leaving the old circle says nothing about the new ring — the
-            // device can stand inside it. Refusing leaves the belief for a fix to decide; writing
-            // `outside` here would also stamp a date no older fix can then correct.
-            if let eventCircle, !eventCircle.matches(geofence) {
-                logger.geofencePolygonUndecided(identifier: identifier, reason: "exit was for a replaced circle")
-                return
-            }
-            // No ring needed — which is why this runs before the geometry is built. Still ORDERED
-            // against the stored belief: a synthesized or replayed exit arriving after a newer
-            // enter would otherwise swallow it and leave the device believed outside while inside.
-            await apply(.outside, to: geofence, evidence: occurredAt, confirmedByFix: false)
+            // No ring needed — leaving a circle says nothing about a ring — but the certainty is
+            // polygon ⊆ ITS OWN covering circle, so the crossed circle has to still be the fence's.
+            // That is checked inside the write, not here: a refresh landing between this hop and
+            // the store would otherwise leave `outside` recorded for a device inside the
+            // replacement polygon, stamped with a date no older fix can correct. A nil circle means
+            // the producer could not say which one was crossed, and is treated as current.
+            await apply(
+                .outside, to: geofence, evidence: occurredAt,
+                confirmedByFix: false, evaluatedCircle: eventCircle
+            )
         case .enter:
             guard geofence.polygonRegion != nil else {
                 // A stored ring that no longer builds is NOT a circle — forwarding it would fire a
@@ -249,13 +246,15 @@ final class PolygonMembershipResolver {
         evidence: Date,
         confirmedByFix: Bool,
         evaluatedRing: [LocationData]? = nil,
+        evaluatedCircle: MonitoredCircle? = nil,
         isStillCurrent: (@Sendable () -> Bool)? = nil
     ) async {
         let outcome = await storage.recordPolygonMembership(
             membership,
             forIdentifier: geofence.id,
             onlyIfBeliefPredates: evidence,
-            onlyIfRingMatches: evaluatedRing
+            onlyIfRingMatches: evaluatedRing,
+            onlyIfCircleMatches: evaluatedCircle
         )
         guard case .deliver(let transition) = outcome,
               geofence.transitionTypes.contains(transition)

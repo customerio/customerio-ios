@@ -40,6 +40,7 @@ extension GeofenceStorage {
         forIdentifier identifier: String,
         onlyIfBeliefPredates evidenceTimestamp: Date? = nil,
         onlyIfRingMatches evaluatedRing: [LocationData]? = nil,
+        onlyIfCircleMatches evaluatedCircle: MonitoredCircle? = nil,
         now: Date = Date()
     ) -> PolygonMembershipOutcome {
         var state = loadFromDisk() ?? GeofenceState()
@@ -51,6 +52,16 @@ extension GeofenceStorage {
         if let evaluatedRing {
             let currentRing = state.cachedGeofences?.first { $0.id == identifier }?.vertices
             guard currentRing == evaluatedRing else { return .suppressedGeometryChanged }
+        }
+        // The covering exit's equivalent. It carries no ring — leaving a circle says nothing about
+        // a ring — but the certainty it rests on is polygon ⊆ ITS OWN circle, so it holds only
+        // while the fence still has the circle that was crossed. Checked here rather than before
+        // the hop for the same reason as the ring: a refresh landing in between would otherwise
+        // store `outside` for a device inside the replacement polygon.
+        if let evaluatedCircle {
+            guard let current = state.cachedGeofences?.first(where: { $0.id == identifier }),
+                  evaluatedCircle.matches(current)
+            else { return .suppressedGeometryChanged }
         }
         var records = state.polygonMembership ?? [:]
         let existing = records[identifier]
