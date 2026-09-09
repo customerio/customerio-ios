@@ -169,6 +169,7 @@ public final class CioMessagingInApp.MessagingInApp {
 public final class CioMessagingInApp.MessagingInAppConfigBuilder {
 	public fun init(siteId: String, region: Region);
 	public fun func setColorScheme(_ colorScheme: ColorScheme) -> MessagingInAppConfigBuilder;
+	public fun func setNotificationInboxAccessibilityLabels(_ labels: NotificationInboxAccessibilityLabels) -> MessagingInAppConfigBuilder;
 	public fun func build() -> MessagingInAppConfigOptions;
 }
 public enum CioMessagingInApp.MessagingInAppConfigBuilderError {
@@ -177,6 +178,7 @@ public final class CioMessagingInApp.MessagingInAppConfigOptions {
 	public final val siteId: String;
 	public final val region: Region;
 	public final val colorScheme: ColorScheme;
+	public final val notificationInboxAccessibilityLabels: NotificationInboxAccessibilityLabels;
 }
 public interface CioMessagingInApp.MessagingInAppInstance {
 	public var inbox: any NotificationInbox;
@@ -203,6 +205,13 @@ public interface CioMessagingInApp.NotificationInbox {
 	public fun func notifyMessageActionTaken(message: InboxMessage, actionValue: String, actionName: String) -> Boolean;
 	public fun func notifyMessageShown(message: InboxMessage);
 	public fun func messages(topic: String?) -> AsyncStream<List<InboxMessage>>;
+}
+public final class CioMessagingInApp.NotificationInboxAccessibilityLabels {
+	public final val bell: String?;
+	public final val bellWithUnreadCount: ((Int) -> String)?;
+	public final val loadingIndicator: String?;
+	public final val emptyState: String?;
+	public fun init(bell: String? = nil, bellWithUnreadCount: ((Int) -> String)? = nil, loadingIndicator: String? = nil, emptyState: String? = nil);
 }
 public interface CioMessagingInApp.NotificationInboxChangeListener {
 	public fun func onMessagesChanged(messages: List<InboxMessage>);
@@ -251,6 +260,7 @@ public interface CioMessagingInApp.VisualInboxProvider {
 	public fun func templatesJSON() async -> List<String: Any>?;
 	public fun func themeJSON() async -> List<String: Any>?;
 	public fun func brandingChrome() async -> VisualInboxChrome?;
+	public fun func accessibilityLabels() -> NotificationInboxAccessibilityLabels;
 	public fun func markOpened(messageId: String) async -> Boolean;
 	public fun func dismiss(messageId: String) async -> Boolean;
 	public fun func handleMessageAction(messageId: String, actionName: String, actionValue: String) async -> VisualInboxActionOutcome;

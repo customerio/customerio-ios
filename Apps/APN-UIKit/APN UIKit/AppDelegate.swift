@@ -97,16 +97,35 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
                 .build()
         )
         MessagingInApp
-            .initialize(withConfig: MessagingInAppConfigBuilder(
-                siteId: settings.inApp.siteId,
-                region: settings.inApp.region.toCIORegion()
-            ).build())
+            .initialize(
+                withConfig: MessagingInAppConfigBuilder(
+                    siteId: settings.inApp.siteId,
+                    region: settings.inApp.region.toCIORegion()
+                )
+                .setNotificationInboxAccessibilityLabels(Self.inboxAccessibilityLabels)
+                .build()
+            )
             .setEventListener(self)
 
         // Visual Notification Inbox action listener. Observational here (logs each callback and
         // returns `false` so the SDK runs its default action handling). A host that wants to
         // intercept an action returns `true` from `messageActionTaken`.
         MessagingInApp.shared.setInboxEventListener(inboxEventListener)
+    }
+
+    /// VoiceOver labels for the Visual Notification Inbox. The SDK ships none of its own, so no English
+    /// leaks into a localized app; the host supplies them in its language. `bellWithUnreadCount` is a
+    /// closure so the app can apply its own plural rules. A real app would read these from
+    /// `Localizable.strings` rather than hardcoding them.
+    private static var inboxAccessibilityLabels: NotificationInboxAccessibilityLabels {
+        NotificationInboxAccessibilityLabels(
+            bell: "Notifications",
+            bellWithUnreadCount: { count in
+                count == 1 ? "Notifications, 1 unread" : "Notifications, \(count) unread"
+            },
+            loadingIndicator: "Loading inbox",
+            emptyState: "No notifications"
+        )
     }
 
     // Register Live Activities as an SDK-managed module. It initializes during
