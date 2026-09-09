@@ -1164,10 +1164,17 @@ struct PolygonMembershipResolverTests {
     /// What the OS reporting a covering circle unmonitored actually does to storage: the deferred
     /// clear, then the next registration reseeding the circle baseline.
     private func evictCoveringCircle(_ setup: Setup, id: String) async {
+        let center = LocationData(latitude: 0, longitude: 0)
+        // Seeded first: the clear only removes a monitor record that exists, so without this the
+        // `.unmonitored` half is a no-op and only the reseed would be under test.
+        await setup.storage.recordMonitorRegistration(
+            identifier: id, transitionTypes: [.enter, .exit], initialState: .enter,
+            center: center, radius: 300
+        )
         await setup.storage.clearMonitorRegionRecord(identifier: id)
         await setup.storage.recordMonitorRegistration(
             identifier: id, transitionTypes: [.enter, .exit], initialState: .exit,
-            center: LocationData(latitude: 0, longitude: 0), radius: 300, forceReseed: true
+            center: center, radius: 300, forceReseed: true
         )
     }
 }
