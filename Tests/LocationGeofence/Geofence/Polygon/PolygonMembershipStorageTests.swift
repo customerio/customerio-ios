@@ -119,13 +119,31 @@ struct PolygonMembershipStorageTests {
     @Test
     func clearMonitorRegionRecord_expectPolygonBeliefKept() async {
         let storage = await makeStorage()
+        let center = LocationData(latitude: 0, longitude: 0)
+        // A monitor record has to exist for its removal to be observable; without one the
+        // "record is gone" assertion below would pass whatever the method did.
+        await storage.recordMonitorRegistration(
+            identifier: "1", transitionTypes: [.enter, .exit], initialState: .exit,
+            center: center, radius: 100
+        )
         _ = await storage.recordPolygonMembership(.inside, forIdentifier: "1")
 
         await storage.clearMonitorRegionRecord(identifier: "1")
 
         #expect(await storage.getPolygonMembership()["1"]?.membership == .inside)
-        // The circle baseline really was reseeded — this is not a no-op that happens to keep belief.
         #expect(await storage.getMonitorRegionRecords()["1"] == nil)
+    }
+
+    /// The clear now keys off the monitor record alone, so with no record there is nothing to
+    /// persist. A belief written by a wake pass during the gap must not be collateral of that.
+    @Test
+    func clearMonitorRegionRecord_givenNoMonitorRecord_expectBeliefUntouched() async {
+        let storage = await makeStorage()
+        _ = await storage.recordPolygonMembership(.inside, forIdentifier: "1")
+
+        await storage.clearMonitorRegionRecord(identifier: "1")
+
+        #expect(await storage.getPolygonMembership()["1"]?.membership == .inside)
     }
 
     /// Device left during the gap. The retained `inside` belief is what makes the verdict a

@@ -1116,4 +1116,58 @@ struct PolygonMembershipResolverTests {
         #expect(await setup.emitter.snapshot().map(\.transition) == [.enter])
         #expect(await setup.storage.getPolygonMembership()["1"]?.membership == .inside)
     }
+
+    // MARK: - Belief across an OS eviction
+
+    /// The eviction sequence end to end: the `.unmonitored` clear, then the re-registration that
+    /// reseeds the circle baseline, then a pass. The device never left, so the surviving belief
+    /// makes this a no-change and the customer gets no second enter for a visit already reported.
+    @Test
+    func evaluateAllPolygons_givenEvictionWhileStillInside_expectNoDuplicateEnter() async {
+        let setup = await makeSetup(fix: fix(latitude: 0, longitude: 0))
+        await registerPolygons(setup, ids: ["1"])
+        // Dated behind the fix: `makeSetup` builds the CLLocation first, so a belief stamped now
+        // would postdate it and the pass would be refused as a newer decision without evaluating.
+        let before = Date().addingTimeInterval(-60)
+        _ = await setup.storage.recordPolygonMembership(
+            .inside, forIdentifier: "1", onlyIfBeliefPredates: before
+        )
+        await evictCoveringCircle(setup, id: "1")
+
+        await setup.resolver.evaluateAllPolygons()
+
+        #expect(await setup.emitter.snapshot().isEmpty)
+        #expect(await setup.storage.getPolygonMembership()["1"]?.membership == .inside)
+        // Proves the pass actually decided: a confirming evaluation refreshes the evidence stamp,
+        // so without this the assertions above also hold when nothing was evaluated at all.
+        let stamp = await setup.storage.getPolygonMembership()["1"]?.lastChangedAt
+        #expect(stamp.map { $0 > before } == true)
+    }
+
+    /// Same eviction, but the device left during the gap. The retained `inside` belief is what
+    /// makes the verdict a change; dropped, this lands on the create path and the exit is lost.
+    @Test
+    func evaluateAllPolygons_givenEvictionThenDeviceLeft_expectExitDelivered() async {
+        let setup = await makeSetup(fix: fix(latitude: 0.0020, longitude: 0))
+        await registerPolygons(setup, ids: ["1"])
+        _ = await setup.storage.recordPolygonMembership(
+            .inside, forIdentifier: "1", onlyIfBeliefPredates: Date().addingTimeInterval(-60)
+        )
+        await evictCoveringCircle(setup, id: "1")
+
+        await setup.resolver.evaluateAllPolygons()
+
+        #expect(await setup.emitter.snapshot().map(\.transition) == [.exit])
+        #expect(await setup.storage.getPolygonMembership()["1"]?.membership == .outside)
+    }
+
+    /// What the OS reporting a covering circle unmonitored actually does to storage: the deferred
+    /// clear, then the next registration reseeding the circle baseline.
+    private func evictCoveringCircle(_ setup: Setup, id: String) async {
+        await setup.storage.clearMonitorRegionRecord(identifier: id)
+        await setup.storage.recordMonitorRegistration(
+            identifier: id, transitionTypes: [.enter, .exit], initialState: .exit,
+            center: LocationData(latitude: 0, longitude: 0), radius: 300, forceReseed: true
+        )
+    }
 }
