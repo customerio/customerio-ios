@@ -35,6 +35,7 @@ struct NiagaraFixtureTests {
             enclosingCircle: GeofenceApiEnclosingCircle(
                 latitude: covering.latitude, longitude: covering.longitude, baseRadiusM: coveringRadius
             ),
+            carriesPolygonFields: true,
             externalId: nil, transitionTypes: nil, lastUpdated: nil, geosetIds: nil, metadata: nil
         )
     }

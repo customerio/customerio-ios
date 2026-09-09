@@ -89,7 +89,7 @@ struct GeofenceApiRegion: Decodable {
     /// Whether the payload carried a non-null `geometry` or `enclosing_circle` at all, which is not
     /// the same as either having decoded: both use `try?`, so a malformed value becomes `nil` and
     /// would otherwise be indistinguishable from a v1 circle.
-    var carriesPolygonFields: Bool = false
+    let carriesPolygonFields: Bool
     let externalId: String?
     let transitionTypes: [String]?
     /// Wire format is milliseconds since epoch.

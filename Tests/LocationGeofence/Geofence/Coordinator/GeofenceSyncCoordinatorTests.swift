@@ -96,6 +96,7 @@ struct GeofenceSyncCoordinatorTests {
                     longitude: region.longitude,
                     baseRadiusM: region.radius
                 ),
+                carriesPolygonFields: region.vertices != nil,
                 externalId: nil,
                 transitionTypes: region.transitionTypes.map(\.rawValue),
                 lastUpdated: region.lastUpdated.timeIntervalSince1970,
@@ -500,7 +501,7 @@ struct GeofenceSyncCoordinatorTests {
         let unusable = GeofenceApiRegion(
             id: "broken", name: nil, shape: "circle",
             latitude: 91, longitude: 2, radius: 100,
-            geometry: nil, enclosingCircle: nil, externalId: nil,
+            geometry: nil, enclosingCircle: nil, carriesPolygonFields: false, externalId: nil,
             transitionTypes: nil, lastUpdated: nil, geosetIds: nil, metadata: nil
         )
         let api = GeofenceApiServiceMock()
@@ -576,7 +577,7 @@ struct GeofenceSyncCoordinatorTests {
         let futureShape = GeofenceApiRegion(
             id: "future", name: nil, shape: "corridor",
             latitude: 37.7749, longitude: -122.4194, radius: 100,
-            geometry: nil, enclosingCircle: nil, externalId: nil,
+            geometry: nil, enclosingCircle: nil, carriesPolygonFields: false, externalId: nil,
             transitionTypes: nil, lastUpdated: nil, geosetIds: nil, metadata: nil
         )
         let api = GeofenceApiServiceMock()
