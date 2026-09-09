@@ -36,10 +36,12 @@ struct PolygonMembershipResolverTests {
     ]
 
     /// An age that predates the wake yet stays inside `movementFixMaxAge`. Deliberately far from
-    /// that 30 s cap rather than just under it: the gate is `-timestamp.timeIntervalSinceNow`
-    /// evaluated at decision time, so the offset is really a wall-clock budget for everything
-    /// between the stamp and the decision. A 20 s stamp aged past the cap on a loaded CI runner and
-    /// the pass emitted nothing.
+    /// that 30 s cap rather than just under it: the binding check is at DELIVERY, in
+    /// `MovementFixResolver.locationManager(_:didUpdateLocations:)`, which refuses a fix past the
+    /// cap WITHOUT resuming the request — so the offset is a wall-clock budget for everything
+    /// between the stamp and the delivery hook. A 20 s stamp overran it on a loaded runner: the
+    /// echo was refused, the forced request ran to its 10 s timeout, and the pass emitted nothing.
+    /// A failure here therefore reads as a slow test, not as an undecided verdict.
     private static let ageInsideGate: TimeInterval = 5
 
     private func polygonGeofence(
@@ -489,12 +491,15 @@ struct PolygonMembershipResolverTests {
         #expect(await setup.storage.getPolygonMembership()["1"]?.membership == .inside)
     }
 
-    /// Pins the coupling the forced-fresh branch rests on. `isFresh` can be true while `latestFix`
-    /// is arbitrarily stale — `resolve` sets it for a young enough CALLER-SUPPLIED fix without
-    /// requesting or recording. The forced-fresh path is only safe from that because it passes
-    /// `cached: nil` and so can never take the fast path. Nothing in the type system enforces it,
-    /// and an obvious-looking "avoid a request" optimisation there would hand a stale fix a fresh
-    /// flag. If this test fails, that is what happened.
+    /// Pins that a failed forced request never falls back to the held fix.
+    ///
+    /// What refuses it is the timestamp comparison, NOT the `cached: nil` coupling: `resolve`'s fast
+    /// path completes synchronously without recording, so `resolved` and `priorTimestamp` are both
+    /// read from the same `latestFix` and the strict `>` can never hold. The coupling earns its
+    /// place against the opposite failure — a current system cache short-circuiting the request,
+    /// leaving that same comparison to refuse a fix that was genuinely fresh — and
+    /// `handleTransition_givenSystemCacheAlwaysCurrent_expectEnterStillDelivered` is what fails if
+    /// it is removed.
     @Test
     func handleTransition_givenFreshRequiredAndStaleHeldFix_expectNoVerdictFromIt() async {
         let setup = await makeSetup(fix: nil) // the forced request fails
