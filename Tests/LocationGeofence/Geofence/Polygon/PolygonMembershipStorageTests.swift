@@ -128,21 +128,9 @@ struct PolygonMembershipStorageTests {
         #expect(await storage.getMonitorRegionRecords()["1"] == nil)
     }
 
-    /// Column 1 of the eviction trade: the device never left. The belief survives, so the
-    /// re-evaluation after re-registration is a no-change and no duplicate enter is delivered.
-    @Test
-    func clearMonitorRegionRecord_givenDeviceStillInside_expectNoDuplicateEnter() async {
-        let storage = await makeStorage()
-        _ = await storage.recordPolygonMembership(.inside, forIdentifier: "1")
-
-        await storage.clearMonitorRegionRecord(identifier: "1")
-
-        #expect(await storage.recordPolygonMembership(.inside, forIdentifier: "1") == .suppressedNoChange)
-    }
-
-    /// Column 2: the device left during the gap. The retained `inside` belief is what makes the
-    /// verdict a change, so the exit is delivered. Dropped, this became `.suppressedInitialOutside`
-    /// and the customer kept an enter with no exit.
+    /// Device left during the gap. The retained `inside` belief is what makes the verdict a
+    /// change; without it the exit lands on the create path and is swallowed as an initial
+    /// outside, leaving the customer with an enter and no exit.
     @Test
     func clearMonitorRegionRecord_givenDeviceLeftDuringGap_expectExitDelivered() async {
         let storage = await makeStorage()
@@ -153,17 +141,18 @@ struct PolygonMembershipStorageTests {
         #expect(await storage.recordPolygonMembership(.outside, forIdentifier: "1") == .deliver(.exit))
     }
 
-    /// Column 3, the case this trade gives up and the one the #1244 review asked for: the device
-    /// left and came back while nothing was watching. Both edges are missed. Pinned deliberately so
-    /// the loss is visible rather than discovered in the field.
+    /// A verdict of `inside` after the gap is a no-change, which is both the win and the loss of
+    /// keeping the belief. A device that never left gets no duplicate enter — the point of the
+    /// change. A device that left and returned unseen gets neither its exit nor its re-enter, and
+    /// the two are indistinguishable here because the OS was not evaluating: nothing local can tell
+    /// them apart. The accepted loss is pinned rather than left to be discovered in the field.
     @Test
-    func clearMonitorRegionRecord_givenDeviceLeftAndReturnedDuringGap_expectBothEdgesMissed() async {
+    func clearMonitorRegionRecord_givenInsideVerdictAfterGap_expectNoChangeEitherWay() async {
         let storage = await makeStorage()
         _ = await storage.recordPolygonMembership(.inside, forIdentifier: "1")
 
         await storage.clearMonitorRegionRecord(identifier: "1")
 
-        // Nothing observed the departure or the return; the next verdict simply agrees with belief.
         #expect(await storage.recordPolygonMembership(.inside, forIdentifier: "1") == .suppressedNoChange)
     }
 
