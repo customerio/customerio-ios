@@ -7,7 +7,7 @@ private let geofenceTag = "Geofence"
 extension Logger {
     func geofenceInvalidRegionDropped(_ identifier: String, reason: GeofenceRegionDropReason) {
         error(
-            "Geofence '\(identifier)' dropped — \(reason.rawValue), not registerable with the OS",
+            "Geofence '\(identifier)' dropped — \(reason.rawValue)",
             geofenceTag,
             nil
         )
