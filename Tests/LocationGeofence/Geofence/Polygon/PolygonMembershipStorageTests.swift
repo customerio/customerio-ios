@@ -113,25 +113,64 @@ struct PolygonMembershipStorageTests {
         #expect(await storage.recordPolygonMembership(.inside, forIdentifier: "1") == .deliver(.enter))
     }
 
-    /// The OS reporting the covering circle unmonitored reseeds the circle baseline; the polygon
-    /// belief has to go with it. Kept, it would suppress the next real enter as no-change if the
-    /// device left the polygon while nothing was watching.
+    /// The OS reporting the covering circle unmonitored reseeds the CIRCLE baseline only. Dropping
+    /// the belief too would make a device that never moved look like a brand-new polygon, and a
+    /// brand-new polygon found inside delivers an enter — a second one the customer already had.
     @Test
-    func clearMonitorRegionRecord_expectPolygonBeliefClearedToo() async {
+    func clearMonitorRegionRecord_expectPolygonBeliefKept() async {
         let storage = await makeStorage()
         _ = await storage.recordPolygonMembership(.inside, forIdentifier: "1")
 
         await storage.clearMonitorRegionRecord(identifier: "1")
 
-        #expect(await storage.getPolygonMembership()["1"] == nil)
-        #expect(await storage.recordPolygonMembership(.inside, forIdentifier: "1") == .deliver(.enter))
+        #expect(await storage.getPolygonMembership()["1"]?.membership == .inside)
+        // The circle baseline really was reseeded — this is not a no-op that happens to keep belief.
+        #expect(await storage.getMonitorRegionRecords()["1"] == nil)
     }
 
-    /// The deferred clear can be skipped when a re-registration overtakes it, and then `forceReseed`
-    /// is the only thing standing between an unmonitored gap and a swallowed enter. It reseeds the
-    /// circle baseline, so it has to reseed the belief too.
+    /// Column 1 of the eviction trade: the device never left. The belief survives, so the
+    /// re-evaluation after re-registration is a no-change and no duplicate enter is delivered.
     @Test
-    func recordMonitorRegistration_givenForceReseed_expectPolygonBeliefCleared() async {
+    func clearMonitorRegionRecord_givenDeviceStillInside_expectNoDuplicateEnter() async {
+        let storage = await makeStorage()
+        _ = await storage.recordPolygonMembership(.inside, forIdentifier: "1")
+
+        await storage.clearMonitorRegionRecord(identifier: "1")
+
+        #expect(await storage.recordPolygonMembership(.inside, forIdentifier: "1") == .suppressedNoChange)
+    }
+
+    /// Column 2: the device left during the gap. The retained `inside` belief is what makes the
+    /// verdict a change, so the exit is delivered. Dropped, this became `.suppressedInitialOutside`
+    /// and the customer kept an enter with no exit.
+    @Test
+    func clearMonitorRegionRecord_givenDeviceLeftDuringGap_expectExitDelivered() async {
+        let storage = await makeStorage()
+        _ = await storage.recordPolygonMembership(.inside, forIdentifier: "1")
+
+        await storage.clearMonitorRegionRecord(identifier: "1")
+
+        #expect(await storage.recordPolygonMembership(.outside, forIdentifier: "1") == .deliver(.exit))
+    }
+
+    /// Column 3, the case this trade gives up and the one the #1244 review asked for: the device
+    /// left and came back while nothing was watching. Both edges are missed. Pinned deliberately so
+    /// the loss is visible rather than discovered in the field.
+    @Test
+    func clearMonitorRegionRecord_givenDeviceLeftAndReturnedDuringGap_expectBothEdgesMissed() async {
+        let storage = await makeStorage()
+        _ = await storage.recordPolygonMembership(.inside, forIdentifier: "1")
+
+        await storage.clearMonitorRegionRecord(identifier: "1")
+
+        // Nothing observed the departure or the return; the next verdict simply agrees with belief.
+        #expect(await storage.recordPolygonMembership(.inside, forIdentifier: "1") == .suppressedNoChange)
+    }
+
+    /// `forceReseed` reseeds the circle baseline for the same eviction, and parts company with the
+    /// belief for the same reason `clearMonitorRegionRecord` does.
+    @Test
+    func recordMonitorRegistration_givenForceReseed_expectPolygonBeliefKept() async {
         let storage = await makeStorage()
         let center = LocationData(latitude: 0, longitude: 0)
         _ = await storage.recordPolygonMembership(.inside, forIdentifier: "1")
@@ -141,8 +180,8 @@ struct PolygonMembershipStorageTests {
             center: center, radius: 100, forceReseed: true
         )
 
-        #expect(await storage.getPolygonMembership()["1"] == nil)
-        #expect(await storage.recordPolygonMembership(.inside, forIdentifier: "1") == .deliver(.enter))
+        #expect(await storage.getPolygonMembership()["1"]?.membership == .inside)
+        #expect(await storage.recordPolygonMembership(.inside, forIdentifier: "1") == .suppressedNoChange)
     }
 
     /// The ordinary sync path re-registers every identifier. Dropping belief there would re-fire an
