@@ -16,7 +16,7 @@ struct RegisteredConditionLedgerTests {
         let firstAt = Date().addingTimeInterval(-60)
         ledger.note(
             identifier: "1", center: LocationData(latitude: 0, longitude: 0),
-            radius: 300, transitionTypes: [.enter, .exit], at: firstAt
+            radius: 300, transitionTypes: [.enter, .exit], at: firstAt, liveFrom: firstAt
         )
         let replacedAt = Date()
         // `setMonitoredRegions` releases ownership before re-registering a changed region; the
@@ -26,6 +26,7 @@ struct RegisteredConditionLedgerTests {
             identifier: "1", center: LocationData(latitude: 0, longitude: 0.005),
             radius: 300, transitionTypes: [.enter, .exit], at: replacedAt
         )
+        ledger.confirm("1", stagedAt: replacedAt, at: replacedAt)
         return (ledger, replacedAt)
     }
 
@@ -100,7 +101,7 @@ struct RegisteredConditionLedgerTests {
         var ledger = RegisteredConditionLedger()
         ledger.note(
             identifier: "1", center: LocationData(latitude: 0, longitude: 0),
-            radius: 300, transitionTypes: [.enter, .exit], at: .distantPast
+            radius: 300, transitionTypes: [.enter, .exit], at: .distantPast, liveFrom: .distantPast
         )
 
         let resolved = ledger.circle(for: "1", raisedAt: Date().addingTimeInterval(-3600))
@@ -123,5 +124,67 @@ struct RegisteredConditionLedgerTests {
         )
 
         #expect(a == b)
+    }
+
+    /// The staging→drain window, and the reason `liveFrom` exists. Registration records geometry
+    /// synchronously but the OS keeps evaluating the old circle until the queued remove+add drains,
+    /// so an event raised in between postdates the new registration yet belongs to the old circle.
+    @Test
+    func circle_givenEventBetweenStagingAndDrain_expectTheOldCircle() {
+        var ledger = RegisteredConditionLedger()
+        let firstAt = Date().addingTimeInterval(-60)
+        ledger.note(
+            identifier: "1", center: LocationData(latitude: 0, longitude: 0),
+            radius: 300, transitionTypes: [.enter, .exit], at: firstAt, liveFrom: firstAt
+        )
+        let stagedAt = Date()
+        ledger.retire("1")
+        ledger.note(
+            identifier: "1", center: LocationData(latitude: 0, longitude: 0.005),
+            radius: 300, transitionTypes: [.enter, .exit], at: stagedAt
+        )
+
+        // Staged but not drained: the OS is still on the old circle.
+        let resolved = ledger.circle(for: "1", raisedAt: stagedAt.addingTimeInterval(1))
+
+        #expect(resolved?.center.longitude == 0)
+    }
+
+    /// Once the add drains the new circle is the one events belong to.
+    @Test
+    func circle_givenEventAfterTheDrain_expectTheNewCircle() {
+        var ledger = RegisteredConditionLedger()
+        let stagedAt = Date()
+        ledger.note(
+            identifier: "1", center: LocationData(latitude: 0, longitude: 0.005),
+            radius: 300, transitionTypes: [.enter, .exit], at: stagedAt
+        )
+        let drainedAt = stagedAt.addingTimeInterval(2)
+        ledger.confirm("1", stagedAt: stagedAt, at: drainedAt)
+
+        #expect(ledger.circle(for: "1", raisedAt: drainedAt.addingTimeInterval(1))?.center.longitude == 0.005)
+    }
+
+    /// A drain can only confirm the generation it belongs to. Two registrations can stage before
+    /// the first add drains, and confirming by identifier alone would mark the newer circle live
+    /// from the older add — reopening the window in the other direction.
+    @Test
+    func confirm_givenAStaleDrainForASupersededGeneration_expectIgnored() {
+        var ledger = RegisteredConditionLedger()
+        let firstStagedAt = Date().addingTimeInterval(-10)
+        ledger.note(
+            identifier: "1", center: LocationData(latitude: 0, longitude: 0),
+            radius: 300, transitionTypes: [.enter, .exit], at: firstStagedAt
+        )
+        let secondStagedAt = Date()
+        ledger.note(
+            identifier: "1", center: LocationData(latitude: 0, longitude: 0.005),
+            radius: 300, transitionTypes: [.enter, .exit], at: secondStagedAt
+        )
+
+        ledger.confirm("1", stagedAt: firstStagedAt, at: Date())
+
+        // Still unconfirmed, so events resolve to the generation the OS is actually evaluating.
+        #expect(ledger.circle(for: "1", raisedAt: Date())?.center.longitude == 0)
     }
 }

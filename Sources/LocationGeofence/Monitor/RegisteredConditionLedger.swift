@@ -6,10 +6,13 @@ struct RegisteredCondition: Equatable {
     let center: LocationData
     let radius: Double
     let transitionTypes: Set<GeofenceTransition>
-    /// When this condition replaced whatever was registered under the same id. Lets an event be
-    /// attributed to the circle that was live when the daemon raised it, rather than to whatever is
-    /// live when we get round to reading it.
+    /// When this condition was STAGED. Registration records geometry synchronously so a sync
+    /// landing before the queued add drains still diffs against it.
     var registeredAt: Date = .distantPast
+    /// When the OS actually began evaluating this circle — the moment the queued remove+add
+    /// drained. Nil until then, and until then the OS is still evaluating the circle this one
+    /// replaced, so an event raised now belongs to the previous generation and not to this.
+    var liveFrom: Date?
 
     /// Geometry only. `registeredAt` is bookkeeping about WHEN, and the baseline heal compares
     /// conditions to ask whether the circle still matches — a re-registration of the same circle
@@ -45,12 +48,25 @@ struct RegisteredConditionLedger {
         center: LocationData,
         radius: Double,
         transitionTypes: Set<GeofenceTransition>,
-        at registeredAt: Date
+        at registeredAt: Date,
+        liveFrom: Date? = nil
     ) {
         if let superseded = current[identifier] { previous[identifier] = superseded }
         current[identifier] = RegisteredCondition(
-            center: center, radius: radius, transitionTypes: transitionTypes, registeredAt: registeredAt
+            center: center, radius: radius, transitionTypes: transitionTypes,
+            registeredAt: registeredAt, liveFrom: liveFrom
         )
+    }
+
+    /// Records that the OS has taken this circle, which is what makes it the one events belong to.
+    ///
+    /// Keyed on `stagedAt` so a drain can only confirm the generation it belongs to: registrations
+    /// stage synchronously but drain later, so a second staging can land before the first add
+    /// drains, and an unkeyed confirm would mark the newer circle live from the older add.
+    mutating func confirm(_ identifier: String, stagedAt: Date, at liveFrom: Date) {
+        guard var live = current[identifier], live.registeredAt == stagedAt, live.liveFrom == nil else { return }
+        live.liveFrom = liveFrom
+        current[identifier] = live
     }
 
     /// Gives up the claim on a condition while keeping its circle for attribution: an event the
@@ -59,8 +75,10 @@ struct RegisteredConditionLedger {
         if let released = current.removeValue(forKey: identifier) { previous[identifier] = released }
     }
 
-    /// The OS gave the condition up, so nothing queued for it should be attributed to this process
-    /// afterwards — both generations go, rather than the current one retiring into the previous.
+    /// The OS gave the condition up. `.unmonitored` arrives on the same sequential event stream as
+    /// the crossings, so every earlier event for this id has already been dequeued and none can be
+    /// in flight — and dropping both generations is also what stops a stale circle surviving a
+    /// teardown to misattribute the next session's events.
     mutating func forget(_ identifier: String) {
         current.removeValue(forKey: identifier)
         previous.removeValue(forKey: identifier)
@@ -80,12 +98,17 @@ struct RegisteredConditionLedger {
     /// so a refresh can replace the condition between the daemon raising an event and this process
     /// dequeuing it.
     ///
-    /// Nil when nothing is registered, or when the event predates the current registration and no
-    /// previous generation is held. A consumer reads nil as "cannot say" and treats the event as
-    /// current, which is why adoption seeds `.distantPast`: a condition inherited from before this
-    /// process started predates every event it will see.
+    /// Compared against `liveFrom`, not the staging time: between staging and drain the OS is still
+    /// evaluating the circle being replaced, so an event raised in that window belongs to the
+    /// previous generation even though it postdates the new registration.
+    ///
+    /// Nil when nothing is registered, or when the event belongs to a previous generation that is
+    /// not held. A consumer reads nil as "cannot say" and treats the event as current, which is why
+    /// adoption passes `liveFrom: .distantPast`: the OS was already evaluating that circle before
+    /// this process existed.
     func circle(for identifier: String, raisedAt: Date) -> RegisteredCondition? {
         guard let live = current[identifier] else { return nil }
-        return raisedAt < live.registeredAt ? previous[identifier] : live
+        guard let liveFrom = live.liveFrom, raisedAt >= liveFrom else { return previous[identifier] }
+        return live
     }
 }

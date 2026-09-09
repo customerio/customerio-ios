@@ -19,14 +19,15 @@ extension CLMonitorGeofenceMonitor {
         // unseeded and the next sync re-registers it, matching `rearmConditions`.
         for identifier in adopted {
             guard let record = records[identifier], let center = record.center, let radius = record.radius else { continue }
-            // `.distantPast`: an adopted condition predates this process, so every event it will
-            // see postdates it and resolves to the current circle rather than through a nil.
+            // Already live at the OS — adoption is the case where the condition outlived the
+            // process — so it is confirmed from `.distantPast` rather than awaiting a drain.
             noteRegisteredCondition(
                 identifier: identifier,
                 center: center,
                 radius: radius,
                 transitionTypes: record.transitionTypes,
-                at: .distantPast
+                at: .distantPast,
+                liveFrom: .distantPast
             )
         }
         rearmConditions(adopted, records: records)
@@ -63,11 +64,13 @@ extension CLMonitorGeofenceMonitor {
         // (see `recordMonitorRegistration`: registration stays silent, the first real crossing
         // delivers). No fix → geometric expectation: trigger is device-centered (inside),
         // business geofences outside.
+        let stagedAt = Date()
         noteRegisteredCondition(
             identifier: identifier,
             center: LocationData(latitude: coordinate.latitude, longitude: coordinate.longitude),
             radius: clampedRadius,
-            transitionTypes: transitionTypes
+            transitionTypes: transitionTypes,
+            at: stagedAt
         )
 
         let isMovementTrigger = identifier == GeofenceConstants.movementTriggerIdentifier
@@ -99,6 +102,9 @@ extension CLMonitorGeofenceMonitor {
             await monitor.remove(identifier)
             let condition = CLMonitor.CircularGeographicCondition(center: coordinate, radius: clampedRadius)
             await monitor.add(condition, identifier: identifier, assuming: assumedState)
+            // The OS only starts evaluating the new circle here, so this is the instant an event
+            // stops belonging to the circle it replaced.
+            self.conditionLedger.confirm(identifier, stagedAt: stagedAt, at: Date())
             self.conditionReadds[identifier] = ConditionReadd(
                 start: readdStart,
                 added: Date(),
@@ -225,11 +231,11 @@ extension CLMonitorGeofenceMonitor {
     /// Records the circle a condition now holds.
     private func noteRegisteredCondition(
         identifier: String, center: LocationData, radius: Double,
-        transitionTypes: Set<GeofenceTransition>, at registeredAt: Date = Date()
+        transitionTypes: Set<GeofenceTransition>, at registeredAt: Date, liveFrom: Date? = nil
     ) {
         conditionLedger.note(
             identifier: identifier, center: center, radius: radius,
-            transitionTypes: transitionTypes, at: registeredAt
+            transitionTypes: transitionTypes, at: registeredAt, liveFrom: liveFrom
         )
     }
 
