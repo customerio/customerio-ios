@@ -33,7 +33,11 @@ extension GeofenceSyncCoordinatorImpl {
         }
 
         let parsedConfig = response.toDomainConfig()
-        let regions = response.toDomainRegions(onInvalidRegion: { logger.geofenceInvalidRegionDropped($0) })
+        let regions: [Geofence]
+        switch readableRegions(from: response) {
+        case .success(let value): regions = value
+        case .failure(let error): return .failure(error)
+        }
         let effectiveConfig = parsedConfig ?? cachedConfig ?? .fallback
         let anchor = LocationData(latitude: latitude, longitude: longitude)
         let nearest = distanceFilter.nearest(regions, to: anchor, limit: effectiveConfig.maxBusinessGeofences, maxDistance: effectiveConfig.maxMonitoringDistance)
@@ -104,6 +108,33 @@ extension GeofenceSyncCoordinatorImpl {
         )
         logger.geofenceSyncCompleted(registeredCount: nearest.count, movementTriggerRegistered: registerMovementTrigger)
         return .success(())
+    }
+
+    /// Decodes the response's regions, or fails when the payload turns out to be unreadable rather
+    /// than empty. A response whose regions we could not READ is a broken payload, not "this user
+    /// has no geofences": reading it as the latter wipes the cache and deregisters everything. A
+    /// workspace that has moved entirely to a shape this SDK does not support is the opposite case
+    /// — the response read fine and nothing in it is monitorable, so failing forever would freeze
+    /// stale fences behind a refresh that can never succeed. An actually empty list applies
+    /// normally.
+    private func readableRegions(from response: GeofenceApiResponse) -> Result<[Geofence], GeofenceSyncError> {
+        var unreadableCount = 0
+        let regions = response.toDomainRegions(onInvalidRegion: { id, reason in
+            logger.geofenceInvalidRegionDropped(id, reason: reason)
+            // A shape the server NAMED and this version does not implement is not a payload we
+            // failed to read — the workspace moved on and the stale monitors should go with it.
+            // Everything else counts, `undescribedShape` included: polygon fields with no
+            // discriminator is a malformed response, and letting it clear the cache is the same
+            // defect as letting a decode failure clear it.
+            if reason != .unknownShape { unreadableCount += 1 }
+        })
+        // Regions lost at JSON decode never reach `toDomainRegions` — it maps over what survived —
+        // so they have to be counted from the arrival tally instead. A wrong-typed radius or
+        // timestamp lands here, and it is unreadable in exactly the sense that matters.
+        let decodeLosses = response.receivedRegionCount - response.geofences.count
+        guard regions.isEmpty, unreadableCount + decodeLosses > 0 else { return .success(regions) }
+        logger.geofenceAllRegionsDropped(count: response.receivedRegionCount)
+        return .failure(.fetchFailed(.decoding))
     }
 
     /// A sign-out/switch can land anywhere inside a gated operation, and the `reset()` it triggers
