@@ -238,12 +238,9 @@ struct SynchronizedEquatableTests {
     }
 
     // Calls a == b and b == a concurrently. Without the ObjectIdentifier lock-ordering in ==,
-    // this reliably deadlocks. The timeout converts a hang into a test failure.
-    //
-    // MBL-1706: Bumped from 30s to 60s. Shared CI runners under load can take >30s to complete
-    // 2000 concurrent DispatchGroup operations, causing flaky failures (~25 in 77 test.yml runs
-    // since Jul 2026). A genuine deadlock still trips 60s; the extra headroom avoids false
-    // positives on busy runners.
+    // this reliably deadlocks. The timeout converts a hang into a test failure. 60s instead of
+    // 30s: busy CI runners can exceed 30s for the 2000 concurrent operations; a genuine deadlock
+    // still trips 60s.
     @Test func equalsConcurrentlyDoesNotDeadlock() {
         let a = Synchronized(1)
         let b = Synchronized(1)
