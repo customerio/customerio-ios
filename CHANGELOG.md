@@ -1,3 +1,9 @@
+## [4.8.0](https://github.com/customerio/customerio-ios/compare/4.7.9...4.8.0) (2026-09-09)
+
+### Features
+
+* **inbox:** replace visual inbox empty-state text with a dimmed bell ([#1251](https://github.com/customerio/customerio-ios/issues/1251)) ([d5f46dd](https://github.com/customerio/customerio-ios/commit/d5f46dd8eeab98209842cbf6a66bc915c88da3fa))
+
 ## [4.7.9](https://github.com/customerio/customerio-ios/compare/4.7.8...4.7.9) (2026-09-08)
 
 ### Bug Fixes
