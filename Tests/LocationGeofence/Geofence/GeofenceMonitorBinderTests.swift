@@ -30,6 +30,26 @@ struct GeofenceMonitorBinderTests {
         )
     }
 
+    /// The binder holds the resolver weakly (the production instance is a DI singleton), so every
+    /// test must keep its own strong reference or the dispatch silently never fires.
+    private func makeResolver(
+        tracker: GeofenceEventTracker,
+        storage: GeofenceStorage = GeofenceStorage(
+            fileManager: .default,
+            directoryURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        )
+    ) -> PolygonMembershipResolver {
+        PolygonMembershipResolver(
+            storage: storage,
+            transitionEmitter: tracker,
+            logger: LoggerMock(),
+            contextStore: BackgroundDeliveryContextStore(
+                fileManager: .default,
+                directoryURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+            )
+        )
+    }
+
     private func makeCoordinatorMock() -> GeofenceSyncCoordinatorMock {
         let mock = GeofenceSyncCoordinatorMock()
         mock.refreshReturnValue = .success(())
@@ -58,7 +78,8 @@ struct GeofenceMonitorBinderTests {
         let coordinator = makeCoordinatorMock()
         let tracker = makeTracker(deliveryTracker: makeDeliveryMock())
 
-        GeofenceMonitorBinder.bind(monitor: monitor, tracker: tracker, coordinator: coordinator)
+        let resolver = makeResolver(tracker: tracker)
+        GeofenceMonitorBinder.bind(monitor: monitor, resolver: resolver, coordinator: coordinator)
         monitor.simulateTransition(
             identifier: GeofenceConstants.movementTriggerIdentifier,
             transition: .exit,
@@ -80,7 +101,8 @@ struct GeofenceMonitorBinderTests {
         let delivery = makeDeliveryMock()
         let tracker = makeTracker(deliveryTracker: delivery)
 
-        GeofenceMonitorBinder.bind(monitor: monitor, tracker: tracker, coordinator: coordinator)
+        let resolver = makeResolver(tracker: tracker)
+        GeofenceMonitorBinder.bind(monitor: monitor, resolver: resolver, coordinator: coordinator)
         monitor.simulateTransition(
             identifier: GeofenceConstants.movementTriggerIdentifier,
             transition: .enter,
@@ -102,7 +124,8 @@ struct GeofenceMonitorBinderTests {
         let coordinator = makeCoordinatorMock()
         let tracker = makeTracker(deliveryTracker: makeDeliveryMock())
 
-        GeofenceMonitorBinder.bind(monitor: monitor, tracker: tracker, coordinator: coordinator)
+        let resolver = makeResolver(tracker: tracker)
+        GeofenceMonitorBinder.bind(monitor: monitor, resolver: resolver, coordinator: coordinator)
         monitor.simulateTransition(
             identifier: GeofenceConstants.movementTriggerIdentifier,
             transition: .exit,
@@ -122,7 +145,8 @@ struct GeofenceMonitorBinderTests {
         let delivery = makeDeliveryMock()
         let tracker = makeTracker(deliveryTracker: delivery)
 
-        GeofenceMonitorBinder.bind(monitor: monitor, tracker: tracker, coordinator: coordinator)
+        let resolver = makeResolver(tracker: tracker)
+        GeofenceMonitorBinder.bind(monitor: monitor, resolver: resolver, coordinator: coordinator)
         monitor.simulateTransition(
             identifier: "business-region-1",
             transition: .enter,
@@ -133,5 +157,41 @@ struct GeofenceMonitorBinderTests {
 
         #expect(delivery.trackMetricCallsCount == 1)
         #expect(coordinator.handleMovementCallsCount == 0)
+    }
+
+    /// The circle an event was raised for has to survive the binder hop, or the resolver's
+    /// staleness check is fed nil on every real crossing and silently never fires.
+    @Test
+    func bind_givenExitForAReplacedCircle_expectResolverRefusesIt() async {
+        let monitor = MockGeofenceRegionMonitor()
+        let delivery = makeDeliveryMock()
+        let tracker = makeTracker(deliveryTracker: delivery)
+        let storage = GeofenceStorage(
+            fileManager: .default,
+            directoryURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        )
+        let ring = [
+            LocationData(latitude: -0.0016, longitude: -0.0016),
+            LocationData(latitude: -0.0016, longitude: 0.0016),
+            LocationData(latitude: 0.0016, longitude: 0.0016)
+        ]
+        // Cached fence sits at the replacement's circle; the event names the one it replaced.
+        await storage.recordRegistration(center: LocationData(latitude: 0, longitude: 0), businessIds: ["poly-1"])
+        await storage.setCachedGeofences([Geofence(
+            id: "poly-1", latitude: 0, longitude: 0.005, radius: 300, name: nil,
+            transitionTypes: [.enter, .exit], lastUpdated: Date(), vertices: ring
+        )])
+        _ = await storage.recordPolygonMembership(.inside, forIdentifier: "poly-1")
+
+        let resolver = makeResolver(tracker: tracker, storage: storage)
+        GeofenceMonitorBinder.bind(monitor: monitor, resolver: resolver, coordinator: makeCoordinatorMock())
+        monitor.simulateTransition(
+            identifier: "poly-1", transition: .exit, location: nil,
+            eventCircle: MonitoredCircle(center: LocationData(latitude: 0, longitude: 0), radius: 300, maximumRadius: 1000)
+        )
+        await awaitDispatch(delivery.trackMetricCallsCount > 0)
+
+        #expect(delivery.trackMetricCallsCount == 0)
+        #expect(await storage.getPolygonMembership()["poly-1"]?.membership == .inside)
     }
 }

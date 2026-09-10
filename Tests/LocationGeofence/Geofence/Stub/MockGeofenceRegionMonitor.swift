@@ -230,7 +230,18 @@ final class MockGeofenceRegionMonitor: GeofenceRegionMonitoring {
         )
     }
 
-    func simulateTransition(identifier: String, transition: GeofenceTransition, location: LocationData?) {
-        onTransition?(identifier, transition, location)
+    /// `eventCircle` defaults to the circle this mock has registered for `identifier`, so a test
+    /// that does not care gets a self-consistent event rather than an accidentally stale one.
+    func simulateTransition(
+        identifier: String,
+        transition: GeofenceTransition,
+        location: LocationData?,
+        occurredAt: Date = Date(),
+        eventCircle: MonitoredCircle? = nil
+    ) {
+        let circle = eventCircle ?? registeredGeometry[identifier].map {
+            MonitoredCircle(center: $0.center, radius: $0.radius, maximumRadius: maximumMonitoringRadius)
+        }
+        onTransition?(identifier, transition, location, occurredAt, circle)
     }
 }

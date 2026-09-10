@@ -309,6 +309,87 @@ struct PolygonMembershipResolverTests {
         #expect(await setup.emitter.snapshot().map(\.transition) == [.enter])
     }
 
+    /// The fix resolves across a suspension point. If the user switches in that window, cleanup has
+    /// already cleared user-scoped state, so resuming would rewrite the old user's belief and stamp
+    /// any event to whoever signed in.
+    @Test
+    func evaluateMembership_givenUserChangesWhileResolving_expectNoBeliefAndNoEvent() async {
+        let setup = await makeSetup(fix: fix(latitude: 0, longitude: 0))
+        await setup.storage.setCachedGeofences([polygonGeofence()])
+
+        await setup.resolver.evaluateMembership(
+            geofenceIds: ["1"], reason: "test", isStillCurrent: { false }
+        )
+
+        #expect(await setup.emitter.snapshot().isEmpty)
+        #expect(await setup.storage.getPolygonMembership()["1"] == nil)
+    }
+
+    /// Control: the same call with the user unchanged must still decide, so the guard above is not
+    /// passing by refusing everything.
+    @Test
+    func evaluateMembership_givenUserUnchanged_expectVerdictRecorded() async {
+        let setup = await makeSetup(fix: fix(latitude: 0, longitude: 0))
+        await setup.storage.setCachedGeofences([polygonGeofence()])
+
+        await setup.resolver.evaluateMembership(
+            geofenceIds: ["1"], reason: "test", isStillCurrent: { true }
+        )
+
+        #expect(await setup.storage.getPolygonMembership()["1"]?.membership == .inside)
+    }
+
+    /// The batch shares one fix, so every polygon in it spans the same request — and a refresh
+    /// landing inside that request replaces rings under the ids the batch is holding. Each verdict
+    /// must come from the ring current when it is decided, not the one the batch was built from.
+    @Test
+    func evaluateMembership_givenPolygonReplacedWhileFixPending_expectVerdictFromTheCurrentRing() async {
+        let setup = await makeSetup(fix: nil)
+        await registerPolygons(setup, ids: ["1"])
+        let requested = Flag()
+        setup.fixResolver.requestFreshFix = { requested.value = true }
+
+        async let pass: Void = setup.resolver.evaluateMembership(geofenceIds: ["1"], reason: "test")
+        await yieldUntil { requested.value }
+        await setup.storage.setCachedGeofences([movedPolygonGeofence()])
+        setup.fixResolver.handleResolvedFix(fix(latitude: 0, longitude: 0))
+        await pass
+
+        #expect(await setup.emitter.snapshot().isEmpty)
+        #expect(await setup.storage.getPolygonMembership()["1"]?.membership == .outside)
+    }
+
+    /// Control: the same interleaving with the catalog left alone must still deliver.
+    @Test
+    func evaluateMembership_givenCatalogUnchangedWhileFixPending_expectEnterDelivered() async {
+        let setup = await makeSetup(fix: nil)
+        await registerPolygons(setup, ids: ["1"])
+        let requested = Flag()
+        setup.fixResolver.requestFreshFix = { requested.value = true }
+
+        async let pass: Void = setup.resolver.evaluateMembership(geofenceIds: ["1"], reason: "test")
+        await yieldUntil { requested.value }
+        setup.fixResolver.handleResolvedFix(fix(latitude: 0, longitude: 0))
+        await pass
+
+        #expect(await setup.storage.getPolygonMembership()["1"]?.membership == .inside)
+        #expect(await setup.emitter.snapshot().map(\.transition) == [.enter])
+    }
+
+    /// A registration carrying several new polygons must cost one location request, not one each:
+    /// with no fix obtainable, per-polygon resolution spends the full request timeout N times over
+    /// on the main actor and still decides nothing.
+    @Test
+    func evaluateMembership_givenSeveralNewPolygons_expectOneRequestForTheBatch() async {
+        let setup = await makeSetup(fix: nil)
+        await registerPolygons(setup, ids: ["1", "2", "3"])
+        let counter = countingRequests(setup)
+
+        await setup.resolver.evaluateMembership(geofenceIds: ["1", "2", "3"], reason: "test")
+
+        #expect(counter.count == 1)
+    }
+
     /// The annulus: inside the covering circle, outside the polygon. The OS thinks we arrived;
     /// geometry says otherwise, so nothing is delivered and the belief records `outside`.
     @Test

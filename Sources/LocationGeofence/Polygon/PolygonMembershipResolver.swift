@@ -102,7 +102,59 @@ final class PolygonMembershipResolver {
                 logger.geofencePolygonUndecided(identifier: identifier, reason: "stored ring no longer builds")
                 return
             }
+            // No user boundary across the fix, unlike `evaluateMembership`, and none exists to
+            // carry: the binder dispatches this with no expected user captured anywhere. Accepted
+            // on the trade this file makes elsewhere — the crossing is geometrically real, and
+            // declining it loses it for good because the dedup baseline has already advanced. The
+            // cost is real: a switch inside the fix window attributes it to a user who may not
+            // monitor this polygon at all.
             await evaluate(geofenceId: identifier)
+        }
+    }
+
+    /// Re-evaluates membership for polygons that have just been registered, where the device may
+    /// already be standing inside and no crossing will ever be delivered. A geofence that is no
+    /// longer cached or no longer a polygon has nothing to decide.
+    ///
+    /// One fix serves the whole batch, for the same reason the foreground pass shares one: resolving
+    /// per geofence issues a fresh timed request each time the cache stays empty, and a registration
+    /// carrying several new polygons would spend that timeout once per polygon on the main actor.
+    ///
+    /// Logged because this path bypasses `handleTransition`, so nothing else records that we were
+    /// asked to re-check. Reading the absence of a log line as an absence of evaluations led to
+    /// exactly the wrong conclusion once already.
+    ///
+    /// `isStillCurrent` is re-checked after the fix resolves. Resolving suspends, and a user switch
+    /// in that window clears user-scoped state — without the re-check this task would resume and
+    /// rewrite the old user's belief, stamping any resulting event to whoever signed in.
+    func evaluateMembership(
+        geofenceIds: [String],
+        reason: String,
+        isStillCurrent: (@Sendable () -> Bool)? = nil
+    ) async {
+        for geofenceId in geofenceIds {
+            logger.geofencePolygonEvaluationRequested(identifier: geofenceId, reason: reason)
+        }
+        // Ids, never rings: one fix serves the batch, and the ring each verdict uses is read after
+        // that fix inside `evaluate`, so a refresh landing mid-request cannot be decided against.
+        var pending: [String] = []
+        for geofenceId in geofenceIds {
+            // Builds the ring and discards it, unlike the foreground pass's cheaper `vertices`
+            // test: this one runs before the request, so an unbuildable ring is worth catching
+            // here rather than spending a whole fix request to reject it after.
+            guard let geofence = await cachedGeofence(id: geofenceId), geofence.polygonRegion != nil
+            else { continue }
+            pending.append(geofenceId)
+        }
+        guard !pending.isEmpty else { return }
+        guard let fix = await resolveFix() else {
+            for geofenceId in pending {
+                logger.geofencePolygonUndecided(identifier: geofenceId, reason: "no usable fix")
+            }
+            return
+        }
+        for geofenceId in pending {
+            await evaluate(geofenceId: geofenceId, fix: fix, isStillCurrent: isStillCurrent)
         }
     }
 
