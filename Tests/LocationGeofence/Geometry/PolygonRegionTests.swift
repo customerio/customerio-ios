@@ -197,6 +197,62 @@ struct PolygonRegionTests {
         #expect(!region.contains(LocationData(latitude: maxLat, longitude: maxLon))) // NE vertex
     }
 
+    /// Translation invariance: the same shape must behave identically wherever it sits. Before the
+    /// unwrap, a fix mid-island on an antimeridian ring read `contains=false` at -4256 m — decisive
+    /// enough to clear the ambiguity gate, so the fence silently never fired.
+    @Test
+    func contains_givenRingCrossingAntimeridian_expectSameVerdictsAsAwayFromIt() throws {
+        // Taveuni, Fiji — a real island on the antimeridian.
+        let onDateline = [
+            LocationData(latitude: -16.80, longitude: 179.95),
+            LocationData(latitude: -16.80, longitude: -179.95),
+            LocationData(latitude: -16.90, longitude: -179.95),
+            LocationData(latitude: -16.90, longitude: 179.95)
+        ]
+        // The identical 0.1-degree-wide shape, moved so nothing wraps.
+        let atGreenwich = onDateline.map {
+            LocationData(latitude: $0.latitude, longitude: $0.longitude > 0 ? $0.longitude - 180 : $0.longitude + 180)
+        }
+        let dateline = try #require(PolygonRegion(vertices: onDateline))
+        let control = try #require(PolygonRegion(vertices: atGreenwich))
+
+        for (offset, expectedInside) in [(0.0, true), (0.04, true), (0.08, false)] {
+            let datelinePoint = LocationData(latitude: -16.85, longitude: (180.0 - offset).normalizedLongitude)
+            let controlPoint = LocationData(latitude: -16.85, longitude: -offset)
+            #expect(dateline.contains(datelinePoint) == expectedInside, "offset \(offset)")
+            #expect(control.contains(controlPoint) == expectedInside, "control offset \(offset)")
+            let a = dateline.signedEdgeDistance(to: datelinePoint)
+            let b = control.signedEdgeDistance(to: controlPoint)
+            #expect(abs(a - b) < 0.001, "offset \(offset): dateline \(a) vs control \(b)")
+        }
+    }
+
+    /// The unwrap's reference is the first vertex, so rotating the ring must not change the fence.
+    @Test
+    func contains_givenAntimeridianRingRotated_expectIdenticalGeometry() throws {
+        let ring = [
+            LocationData(latitude: -16.80, longitude: 179.95),
+            LocationData(latitude: -16.80, longitude: -179.95),
+            LocationData(latitude: -16.90, longitude: -179.95),
+            LocationData(latitude: -16.90, longitude: 179.95)
+        ]
+        let base = try #require(PolygonRegion(vertices: ring))
+        for rotation in 1 ..< ring.count {
+            let rotated = try #require(PolygonRegion(vertices: Array(ring[rotation...] + ring[..<rotation])))
+            for point in [
+                LocationData(latitude: -16.85, longitude: 179.99),
+                LocationData(latitude: -16.85, longitude: -179.99),
+                LocationData(latitude: -16.85, longitude: 179.80)
+            ] {
+                #expect(rotated.contains(point) == base.contains(point), "rotation \(rotation)")
+                #expect(
+                    abs(rotated.signedEdgeDistance(to: point) - base.signedEdgeDistance(to: point)) < 0.001,
+                    "rotation \(rotation)"
+                )
+            }
+        }
+    }
+
     @Test
     func signedEdgeDistance_givenSignFlipAcrossEdge_expectContinuousMagnitude() throws {
         // Walk a straight line across the square's eastern edge; the signed distance must
@@ -219,5 +275,88 @@ struct PolygonRegionTests {
             previous = sd
         }
         #expect(signFlips == 1)
+    }
+
+    /// A ring on the antimeridian may legally close with the opposite sign to the one it opened
+    /// with — +180 and -180 are one meridian. Compared raw, the closing vertex survives as a
+    /// zero-length edge, `selfIntersects` reads that as a crossing, and the fence drops at decode.
+    /// Android canonicalises the same case away, so an unfixed iOS silently loses fences there.
+    @Test
+    func init_givenRingClosedWithTheOppositeSign_expectClosureCollapsed() throws {
+        let ring = [
+            LocationData(latitude: -16.80, longitude: 180.0),
+            LocationData(latitude: -16.80, longitude: -179.95),
+            LocationData(latitude: -16.90, longitude: -179.95),
+            LocationData(latitude: -16.90, longitude: 180.0),
+            LocationData(latitude: -16.80, longitude: -180.0)
+        ]
+
+        let region = try #require(PolygonRegion(validating: ring))
+
+        #expect(region.vertices.count == 4)
+        #expect(PolygonRegion(vertices: ring)?.vertices.count == 4)
+    }
+
+    /// Control: the same ring closed with the SAME sign must still collapse to four, so the fix is
+    /// recognising the meridian rather than dropping any trailing vertex.
+    @Test
+    func init_givenRingClosedWithTheSameSign_expectClosureCollapsed() throws {
+        let ring = [
+            LocationData(latitude: -16.80, longitude: 180.0),
+            LocationData(latitude: -16.80, longitude: -179.95),
+            LocationData(latitude: -16.90, longitude: -179.95),
+            LocationData(latitude: -16.90, longitude: 180.0),
+            LocationData(latitude: -16.80, longitude: 180.0)
+        ]
+
+        let region = try #require(PolygonRegion(validating: ring))
+
+        #expect(region.vertices.count == 4)
+    }
+
+    /// An out-of-range longitude must reject the ring, not be collapsed away. 360 unwraps onto 0,
+    /// so testing "same meridian" before validating would let exactly this vertex vanish and the
+    /// ring build as if the server had never sent it.
+    @Test
+    func init_givenOutOfRangeLongitudeAfterAMatchingVertex_expectRejected() {
+        let ring = [
+            LocationData(latitude: 0, longitude: 0),
+            LocationData(latitude: 0, longitude: 360),
+            LocationData(latitude: 0.001, longitude: 0.001),
+            LocationData(latitude: 0.001, longitude: 0)
+        ]
+
+        #expect(PolygonRegion(vertices: ring) == nil)
+        #expect(PolygonRegion(validating: ring) == nil)
+    }
+
+    /// Negative control: two positions a real distance apart on either side of the meridian are NOT
+    /// the same place, so an open ring keeps every vertex it was sent.
+    @Test
+    func init_givenDistinctPositionsNearTheMeridian_expectNoneCollapsed() throws {
+        let ring = [
+            LocationData(latitude: -16.80, longitude: 179.98),
+            LocationData(latitude: -16.80, longitude: -179.98),
+            LocationData(latitude: -16.90, longitude: -179.98),
+            LocationData(latitude: -16.90, longitude: 179.98)
+        ]
+
+        let region = try #require(PolygonRegion(validating: ring))
+
+        #expect(region.vertices.count == 4)
+    }
+}
+
+private extension Double {
+    /// Wraps a longitude built by arithmetic (e.g. `180 - offset`) back into [-180, 180].
+    var normalizedLongitude: Double {
+        var value = self
+        while value > 180 {
+            value -= 360
+        }
+        while value < -180 {
+            value += 360
+        }
+        return value
     }
 }

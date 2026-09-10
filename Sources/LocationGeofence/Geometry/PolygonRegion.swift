@@ -51,23 +51,30 @@ struct PolygonRegion {
     init?(vertices: [LocationData]) {
         var open: [LocationData] = []
         open.reserveCapacity(vertices.count)
-        for vertex in vertices where vertex != open.last {
+        for vertex in vertices {
+            // Validity first: `samePosition` unwraps, and an out-of-range longitude can unwrap onto
+            // a legitimate one — 360 lands on 0 — so testing it before this guard would let an
+            // invalid position be silently collapsed away instead of rejecting the ring.
             guard CLLocationCoordinate2DIsValid(
                 CLLocationCoordinate2D(latitude: vertex.latitude, longitude: vertex.longitude)
             ) else { return nil }
+            if let last = open.last, Self.samePosition(vertex, last) { continue }
             open.append(vertex)
         }
-        if let first = open.first, let last = open.last, open.count > 1, first == last {
+        if let first = open.first, let last = open.last, open.count > 1, Self.samePosition(first, last) {
             open.removeLast()
         }
         guard open.count >= 3 else { return nil }
 
-        let lat0 = open.map(\.latitude).reduce(0, +) / Double(open.count)
-        let lon0 = open.map(\.longitude).reduce(0, +) / Double(open.count)
+        // Unwrap before averaging: a ring spanning the antimeridian holds values near both +180
+        // and -180, whose mean is Greenwich, and the fence then projects a hemisphere wide.
+        let unwrapped = Self.unwrapLongitudes(open)
+        let lat0 = unwrapped.map(\.latitude).reduce(0, +) / Double(unwrapped.count)
+        let lon0 = unwrapped.map(\.longitude).reduce(0, +) / Double(unwrapped.count)
         let latitudeRadians = lat0 * Self.degreesToRadians
         let longitudeRadians = lon0 * Self.degreesToRadians
         let cosLatitude = cos(latitudeRadians)
-        let planar = open.map {
+        let planar = unwrapped.map {
             Self.project(
                 $0,
                 referenceLatitudeRadians: latitudeRadians,
@@ -82,6 +89,21 @@ struct PolygonRegion {
         self.projected = planar
     }
 
+    /// Same place, not same numbers: +180 and -180 name one meridian, and a ring may legally close
+    /// with the opposite sign to the one it opened with. Compared raw, that closing vertex survives
+    /// canonicalisation as a zero-length edge, which `selfIntersects` then reads as a crossing and
+    /// the whole fence drops. Android canonicalises the same way.
+    ///
+    /// Only sound for positions already known to be in range, which is why the caller validates
+    /// first: subtracting 360 is exact at ±180 but not in general, so this must not be reused as a
+    /// wrapping equality for arbitrary longitudes.
+    private static func samePosition(_ a: LocationData, _ b: LocationData) -> Bool {
+        a.latitude == b.latitude && unwrapLongitude(a.longitude, near: b.longitude) == b.longitude
+    }
+
+    /// This is the only writer of `Geofence.vertices`: a ring from any other source has not been
+    /// through the checks below and may not satisfy them.
+    ///
     /// Decode-time construction: additionally rejects rings that cannot be monitored sensibly —
     /// zero area, or self-intersecting. Separate from `init(vertices:)` because that one runs on
     /// hot paths (once per polygon per wake and per evaluation) while these checks are O(n²), so
@@ -175,9 +197,39 @@ struct PolygonRegion {
         return isInside(p) ? minDistance : -minDistance
     }
 
+    /// Shifts longitudes into the ±180° window around the first vertex so a ring crossing the
+    /// antimeridian is continuous. Part of the projection contract shared with Android.
+    private static func unwrapLongitudes(_ ring: [LocationData]) -> [LocationData] {
+        guard let reference = ring.first?.longitude else { return ring }
+        return ring.map {
+            LocationData(latitude: $0.latitude, longitude: unwrapLongitude($0.longitude, near: reference))
+        }
+    }
+
+    /// The walk is bounded by its inputs: `init?(vertices:)` refuses out-of-range ring positions and
+    /// `evaluate` refuses an invalid fix, so both sides arrive inside ±180°. The guard keeps that a
+    /// property of this function rather than of its callers — a value far enough out of range stops
+    /// changing when 360 is subtracted from it, and the loop would never end.
+    private static func unwrapLongitude(_ longitude: Double, near reference: Double) -> Double {
+        guard longitude.isFinite, abs(longitude) <= 360, reference.isFinite else { return longitude }
+        var value = longitude
+        while value - reference > 180 {
+            value -= 360
+        }
+        while value - reference < -180 {
+            value += 360
+        }
+        return value
+    }
+
     private func project(_ location: LocationData) -> Point {
-        Self.project(
-            location,
+        // Onto the ring's line: a fix at -179.99 belongs beside a ring unwrapped to +180.01.
+        let aligned = LocationData(
+            latitude: location.latitude,
+            longitude: Self.unwrapLongitude(location.longitude, near: referenceLongitudeRadians * 180 / .pi)
+        )
+        return Self.project(
+            aligned,
             referenceLatitudeRadians: referenceLatitudeRadians,
             referenceLongitudeRadians: referenceLongitudeRadians,
             cosReferenceLatitude: cosReferenceLatitude
