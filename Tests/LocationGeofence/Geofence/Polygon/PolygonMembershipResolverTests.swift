@@ -795,15 +795,40 @@ struct PolygonMembershipResolverTests {
     /// is no longer held. It must not arrive as `unknown`, which is the cold-wake case and is taken
     /// as current — that stores `outside` for a device standing inside the polygon that replaced
     /// the one crossed, stamped with a date no later fix can correct.
+    ///
+    /// Driven from a real ledger history through the production mapping rather than by handing
+    /// `.expired` in: the monitor owning that lookup cannot be built in a unit test, so this is the
+    /// only thing that fails if the ledger's output or the mapping stops lining up with what the
+    /// exit path expects. The belief is stamped OLDER than the event on purpose — a newer belief
+    /// would refuse it on evidence order and the geometry guard would never be reached.
     @Test
-    func handleTransition_givenExpiredEventCircle_expectRefusedAndBeliefKept() async {
+    func handleTransition_givenAnExitOlderThanEveryHeldGeneration_expectRefusedAndBeliefKept() async {
         let setup = await makeSetup(fix: nil)
+        var ledger = RegisteredConditionLedger()
+        let raisedAt = Date().addingTimeInterval(-90)
+        let firstLiveAt = Date().addingTimeInterval(-60)
+        ledger.note(
+            identifier: "1", center: LocationData(latitude: 0, longitude: 0),
+            radius: 300, transitionTypes: [.enter, .exit], at: firstLiveAt, liveFrom: firstLiveAt
+        )
+        let secondStagedAt = Date().addingTimeInterval(-30)
+        ledger.note(
+            identifier: "1", center: LocationData(latitude: 0, longitude: 0.005),
+            radius: 300, transitionTypes: [.enter, .exit], at: secondStagedAt
+        )
+        ledger.confirm("1", stagedAt: secondStagedAt, at: Date().addingTimeInterval(-20))
+
         await setup.storage.setCachedGeofences([polygonGeofence()])
-        _ = await setup.storage.recordPolygonMembership(.inside, forIdentifier: "1")
+        _ = await setup.storage.recordPolygonMembership(
+            .inside, forIdentifier: "1", onlyIfBeliefPredates: Date().addingTimeInterval(-120)
+        )
         await setup.storage.setCachedGeofences([replacedPolygonGeofence()])
 
         await setup.resolver.handleTransition(
-            identifier: "1", transition: .exit, occurredAt: Date(), eventCircle: .expired
+            identifier: "1", transition: .exit, occurredAt: raisedAt,
+            eventCircle: GeofenceEventCircle(
+                ledger.attribution(for: "1", raisedAt: raisedAt), maximumRadius: 1000
+            )
         )
 
         #expect(await setup.emitter.snapshot().isEmpty)

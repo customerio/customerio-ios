@@ -41,6 +41,23 @@ enum GeofenceEventCircle: Equatable, Sendable {
     case circle(MonitoredCircle)
     case unknown
     case expired
+
+    /// Maps what the ledger holds onto what a consumer is told. Here rather than at the lookup so
+    /// it can be exercised: the monitor owning that lookup cannot be built in a unit test, and a
+    /// mapping living inside it leaves the ledger's output and the consumer's input pinned only in
+    /// isolation, with nothing failing if the chain between them breaks.
+    init(_ attribution: EventAttribution, maximumRadius: Double) {
+        switch attribution {
+        case .generation(let condition):
+            self = .circle(MonitoredCircle(
+                center: condition.center, radius: condition.radius, maximumRadius: maximumRadius
+            ))
+        case .noneHeld:
+            self = .unknown
+        case .expired:
+            self = .expired
+        }
+    }
 }
 
 /// The circle the OS was monitoring when it raised an event. Carried with the event because a

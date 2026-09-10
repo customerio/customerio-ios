@@ -245,16 +245,9 @@ extension CLMonitorGeofenceMonitor {
     /// Reading only the current map would report the replacement and let a stale event look
     /// current — the one case a consumer comparing circles is trying to catch.
     func eventCircle(for identifier: String, raisedAt: Date) -> GeofenceEventCircle {
-        switch conditionLedger.attribution(for: identifier, raisedAt: raisedAt) {
-        case .generation(let condition):
-            return .circle(MonitoredCircle(
-                center: condition.center, radius: condition.radius,
-                maximumRadius: authManager.maximumRegionMonitoringDistance
-            ))
-        case .noneHeld:
-            return .unknown
-        case .expired:
-            return .expired
-        }
+        GeofenceEventCircle(
+            conditionLedger.attribution(for: identifier, raisedAt: raisedAt),
+            maximumRadius: authManager.maximumRegionMonitoringDistance
+        )
     }
 }
