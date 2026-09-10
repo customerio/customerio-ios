@@ -132,13 +132,18 @@ struct PolygonMembershipResolverTests {
         )
     }
 
-    private func fix(latitude: Double, longitude: Double, accuracy: Double = 5) -> CLLocation {
+    private func fix(
+        latitude: Double,
+        longitude: Double,
+        accuracy: Double = 5,
+        at timestamp: Date = Date()
+    ) -> CLLocation {
         CLLocation(
             coordinate: CLLocationCoordinate2D(latitude: latitude, longitude: longitude),
             altitude: 0,
             horizontalAccuracy: accuracy,
             verticalAccuracy: 5,
-            timestamp: Date()
+            timestamp: timestamp
         )
     }
 
@@ -1083,12 +1088,16 @@ struct PolygonMembershipResolverTests {
     /// enter from a position up to `movementFixMaxAge` old and then its own correcting exit.
     @Test
     func evaluateNewlyRegistered_givenCachedInsideAndFreshOutside_expectOnlyTheFreshVerdict() async {
-        let setup = await makeSetup(fix: fix(latitude: 0.01, longitude: 0.01))
+        // Both fixes are stamped from one instant. Stamping them at their own call sites makes
+        // their ORDER depend on how long `makeSetup` takes, and the forced request is refused
+        // unless its answer is strictly newer than the held fix — so on a loaded runner they invert.
+        let now = Date()
+        let setup = await makeSetup(fix: fix(latitude: 0.01, longitude: 0.01, at: now))
         // Held, inside, and young enough that the cached path would have accepted it.
         setup.fixResolver.handleResolvedFix(CLLocation(
             coordinate: CLLocationCoordinate2D(latitude: 0, longitude: 0),
             altitude: 0, horizontalAccuracy: 5, verticalAccuracy: 5,
-            timestamp: Date(timeIntervalSinceNow: -Self.ageInsideGate)
+            timestamp: now.addingTimeInterval(-Self.ageInsideGate)
         ))
         await setup.storage.setCachedGeofences([polygonGeofence()])
 
