@@ -11,4 +11,5 @@ concurrency:
 
 jobs:
   lint:
-    uses: customerio/mobile-ci-tools/.github/workflows/ios-lint.yml@main
+    # Branch pin, not @main, until mobile-ci-tools#17 merges. Flip it then.
+    uses: customerio/mobile-ci-tools/.github/workflows/ios-lint-linux.yml@ci/ios-lint-ubuntu
