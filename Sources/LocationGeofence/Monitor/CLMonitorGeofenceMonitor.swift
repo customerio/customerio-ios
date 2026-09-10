@@ -305,14 +305,15 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preco
             // The movement pass re-centers the trigger and measures displacement at these coords, so
             // a frozen cached fix pins the whole pipeline to a stale point — freshen it first.
             // Fire-and-forget so a slow fix can't stall the pending-event drain behind it.
-            movementFixResolver.resolve(cached: bestKnownFix()) { [weak self] location in
+            movementFixResolver.resolve(cached: bestKnownFix()) { [weak self] location, isFresh in
                 self?.logger.geofenceOsTransitionReceived(identifier: identifier, transition: transition)
-                self?.onTransition?(identifier, transition, location, event.date, self?.eventCircle(for: identifier))
+                self?.onTransition?(identifier, transition, location, event.date, isFresh, self?.eventCircle(for: identifier))
             }
             return
         }
         logger.geofenceOsTransitionReceived(identifier: identifier, transition: transition)
-        onTransition?(identifier, transition, currentLocationData(), event.date, eventCircle(for: identifier))
+        // Business events carry the captured location for context only; nothing sizes to it.
+        onTransition?(identifier, transition, currentLocationData(), event.date, false, eventCircle(for: identifier))
     }
 
     // MARK: - GeofenceRegionMonitoring

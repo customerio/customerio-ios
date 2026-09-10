@@ -24,6 +24,14 @@ extension GeofenceSyncCoordinatorImpl {
         return .skip
     }
 
+    /// True once the device has moved far enough from the last registration centre to re-rank.
+    /// Measured from that centre, never from the trigger: the trigger moves on every polygon wake,
+    /// so anchoring to it would reset the distance each time and re-ranking would never come due.
+    func movedBeyondRerankRadius(to location: LocationData, config: GeofenceConfig) async -> Bool {
+        guard let center = await storage.getLastRegistrationCenter() else { return true }
+        return distance(from: center, to: location) >= config.localRefreshTriggerRadius
+    }
+
     /// True once the device has moved beyond the refetch radius from the fetch anchor — the cached
     /// set was ranked around that anchor and no longer covers the area. False when there's no anchor
     /// to measure from.

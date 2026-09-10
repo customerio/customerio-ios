@@ -48,7 +48,7 @@ struct GeofenceModuleSetupTests {
         defer { f.cleanup() }
 
         let (refreshSignal, refreshContinuation) = AsyncStream<Void>.makeStream()
-        f.spyCoordinator.refreshClosure = { _, _ in
+        f.spyCoordinator.refreshClosure = { _, _, _ in
             refreshContinuation.yield()
             return .success(())
         }
@@ -89,7 +89,7 @@ struct GeofenceModuleSetupTests {
         defer { f.cleanup() }
 
         let (refreshSignal, refreshContinuation) = AsyncStream<(Double, Double)>.makeStream()
-        f.spyCoordinator.refreshClosure = { lat, lon in
+        f.spyCoordinator.refreshClosure = { lat, lon, _ in
             refreshContinuation.yield((lat, lon))
             return .success(())
         }
@@ -116,7 +116,7 @@ struct GeofenceModuleSetupTests {
         await f.di.geofenceStorage.recordRegistration(center: LocationData(latitude: 10, longitude: 20), businessIds: ["g1"])
 
         let (refreshSignal, refreshContinuation) = AsyncStream<(Double, Double)>.makeStream()
-        f.spyCoordinator.refreshClosure = { lat, lon in
+        f.spyCoordinator.refreshClosure = { lat, lon, _ in
             refreshContinuation.yield((lat, lon))
             return .success(())
         }
@@ -137,7 +137,7 @@ struct GeofenceModuleSetupTests {
         let f = Fixture(cachedLocation: LocationData(latitude: 7, longitude: 8), identifiedUserId: nil)
         defer { f.cleanup() }
 
-        f.spyCoordinator.refreshClosure = { _, _ in .success(()) }
+        f.spyCoordinator.refreshClosure = { _, _, _ in .success(()) }
 
         f.wire()
         // The user gate is synchronous (no Task spawned), so nothing can have run.
@@ -174,7 +174,7 @@ struct GeofenceModuleSetupTests {
         f.stub.onGetLastKnown = { readContinuation.yield() }
 
         let (refreshSignal, refreshContinuation) = AsyncStream<(Double, Double)>.makeStream()
-        f.spyCoordinator.refreshClosure = { lat, lon in
+        f.spyCoordinator.refreshClosure = { lat, lon, _ in
             refreshContinuation.yield((lat, lon))
             return .success(())
         }
@@ -210,7 +210,7 @@ struct GeofenceModuleSetupTests {
         f.stub.onGetLastKnown = { readContinuation.yield() }
 
         let (refreshSignal, refreshContinuation) = AsyncStream<(Double, Double)>.makeStream()
-        f.spyCoordinator.refreshClosure = { lat, lon in
+        f.spyCoordinator.refreshClosure = { lat, lon, _ in
             refreshContinuation.yield((lat, lon))
             return .success(())
         }
@@ -243,7 +243,7 @@ struct GeofenceModuleSetupTests {
         defer { f.cleanup() }
 
         let (refreshSignal, refreshContinuation) = AsyncStream<(Double, Double)>.makeStream()
-        f.spyCoordinator.refreshClosure = { lat, lon in
+        f.spyCoordinator.refreshClosure = { lat, lon, _ in
             refreshContinuation.yield((lat, lon))
             return .success(())
         }
@@ -274,7 +274,7 @@ struct GeofenceModuleSetupTests {
         defer { f.cleanup() }
 
         let (refreshSignal, refreshContinuation) = AsyncStream<Void>.makeStream()
-        f.spyCoordinator.refreshClosure = { _, _ in
+        f.spyCoordinator.refreshClosure = { _, _, _ in
             refreshContinuation.yield()
             return .success(())
         }

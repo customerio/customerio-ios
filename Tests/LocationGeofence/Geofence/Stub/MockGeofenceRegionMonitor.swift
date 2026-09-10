@@ -237,11 +237,12 @@ final class MockGeofenceRegionMonitor: GeofenceRegionMonitoring {
         transition: GeofenceTransition,
         location: LocationData?,
         occurredAt: Date = Date(),
+        locationIsFresh: Bool = true,
         eventCircle: MonitoredCircle? = nil
     ) {
         let circle = eventCircle ?? registeredGeometry[identifier].map {
             MonitoredCircle(center: $0.center, radius: $0.radius, maximumRadius: maximumMonitoringRadius)
         }
-        onTransition?(identifier, transition, location, occurredAt, circle)
+        onTransition?(identifier, transition, location, occurredAt, locationIsFresh, circle)
     }
 }
