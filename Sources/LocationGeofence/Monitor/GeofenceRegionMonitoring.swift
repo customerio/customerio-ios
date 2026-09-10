@@ -18,11 +18,10 @@ import Foundation
 /// times out, and that fix is by definition the stale one that prompted the request — a consumer
 /// sizing anything to those coordinates has to know the difference.
 ///
-/// The last parameter is the circle the OS was monitoring when it raised this event, `nil` when the
-/// monitor cannot say which one it was (a cold wake whose adoption has not populated its record
-/// yet). A consumer reasoning about what the crossing PROVES needs it: a refresh can replace a
-/// fence under the same id, and the guarantee a covering circle gives only holds for its own ring.
-typealias GeofenceTransitionHandler = @Sendable (String, GeofenceTransition, LocationData?, Date, Bool, MonitoredCircle?) -> Void
+/// The last parameter is the circle the OS was monitoring when it RAISED this event — not the one
+/// registered now, which a refresh may already have replaced. A consumer reasoning about what the
+/// crossing PROVES needs it, since the guarantee a covering circle gives only holds for its own ring.
+typealias GeofenceTransitionHandler = @Sendable (String, GeofenceTransition, LocationData?, Date, Bool, GeofenceEventCircle) -> Void
 
 /// Callback when iOS reports a change to the location authorization status.
 /// Invoked on the main actor — same isolation domain as `CLLocationManagerDelegate`.
@@ -31,6 +30,35 @@ typealias GeofenceAuthorizationChangedHandler = @MainActor () -> Void
 /// Callback once the monitor has reconciled its owned set against the OS's live truth.
 /// Invoked on the main actor.
 typealias GeofenceReconciledHandler = @MainActor () -> Void
+
+/// What the monitor can say about the circle an event was raised against.
+///
+/// `unknown` and `expired` must not collapse into one "no circle" case. `unknown` is a cold wake:
+/// the OS is evaluating a condition this process never recorded, so the event has to be taken as
+/// current or real crossings are dropped. `expired` is the monitor knowing the circle is gone, and
+/// an event that cannot name its own circle proves nothing about the fence's geometry now.
+enum GeofenceEventCircle: Equatable, Sendable {
+    case circle(MonitoredCircle)
+    case unknown
+    case expired
+
+    /// Maps what the ledger holds onto what a consumer is told. Here rather than at the lookup so
+    /// it can be exercised: the monitor owning that lookup cannot be built in a unit test, and a
+    /// mapping living inside it leaves the ledger's output and the consumer's input pinned only in
+    /// isolation, with nothing failing if the chain between them breaks.
+    init(_ attribution: EventAttribution, maximumRadius: Double) {
+        switch attribution {
+        case .generation(let condition):
+            self = .circle(MonitoredCircle(
+                center: condition.center, radius: condition.radius, maximumRadius: maximumRadius
+            ))
+        case .noneHeld:
+            self = .unknown
+        case .expired:
+            self = .expired
+        }
+    }
+}
 
 /// The circle the OS was monitoring when it raised an event. Carried with the event because a
 /// refresh can replace a fence under the same id, and a consumer reasoning about what the crossing

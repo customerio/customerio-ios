@@ -76,7 +76,7 @@ final class PolygonMembershipResolver {
         identifier: String,
         transition: GeofenceTransition,
         occurredAt: Date,
-        eventCircle: MonitoredCircle? = nil
+        eventCircle: GeofenceEventCircle = .unknown
     ) async {
         guard let geofence = await cachedGeofence(id: identifier), geofence.vertices != nil else {
             // Uncached, or a genuine circle: forward untouched, the behaviour that predates polygons.
@@ -89,12 +89,19 @@ final class PolygonMembershipResolver {
             // polygon ⊆ ITS OWN covering circle, so the crossed circle has to still be the fence's.
             // That is checked inside the write, not here: a refresh landing between this hop and
             // the store would otherwise leave `outside` recorded for a device inside the
-            // replacement polygon, stamped with a date no older fix can correct. A nil circle means
-            // the producer could not say which one was crossed, and is treated as current.
-            await apply(
-                .outside, to: geofence, evidence: occurredAt,
-                confirmedByFix: false, evaluatedCircle: eventCircle
-            )
+            // replacement polygon, stamped with a date no older fix can correct.
+            //
+            // `expired` is refused rather than forwarded: the circle crossed is gone, so the write
+            // has nothing to check the ring against, and "cannot say" would store `outside` for a
+            // device inside the replacement polygon. The next pass re-derives it.
+            switch eventCircle {
+            case .circle(let crossed):
+                await apply(.outside, to: geofence, evidence: occurredAt, confirmedByFix: false, evaluatedCircle: crossed)
+            case .unknown:
+                await apply(.outside, to: geofence, evidence: occurredAt, confirmedByFix: false, evaluatedCircle: nil)
+            case .expired:
+                logger.geofencePolygonUndecided(identifier: identifier, reason: "event circle expired")
+            }
         case .enter:
             guard geofence.polygonRegion != nil else {
                 // A stored ring that no longer builds is NOT a circle — forwarding it would fire a

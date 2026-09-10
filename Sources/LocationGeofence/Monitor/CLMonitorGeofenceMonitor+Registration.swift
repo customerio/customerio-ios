@@ -19,11 +19,15 @@ extension CLMonitorGeofenceMonitor {
         // unseeded and the next sync re-registers it, matching `rearmConditions`.
         for identifier in adopted {
             guard let record = records[identifier], let center = record.center, let radius = record.radius else { continue }
+            // Already live at the OS — adoption is the case where the condition outlived the
+            // process — so it is confirmed from `.distantPast` rather than awaiting a drain.
             noteRegisteredCondition(
                 identifier: identifier,
                 center: center,
                 radius: radius,
-                transitionTypes: record.transitionTypes
+                transitionTypes: record.transitionTypes,
+                at: .distantPast,
+                liveFrom: .distantPast
             )
         }
         rearmConditions(adopted, records: records)
@@ -60,11 +64,13 @@ extension CLMonitorGeofenceMonitor {
         // (see `recordMonitorRegistration`: registration stays silent, the first real crossing
         // delivers). No fix → geometric expectation: trigger is device-centered (inside),
         // business geofences outside.
+        let stagedAt = Date()
         noteRegisteredCondition(
             identifier: identifier,
             center: LocationData(latitude: coordinate.latitude, longitude: coordinate.longitude),
             radius: clampedRadius,
-            transitionTypes: transitionTypes
+            transitionTypes: transitionTypes,
+            at: stagedAt
         )
 
         let isMovementTrigger = identifier == GeofenceConstants.movementTriggerIdentifier
@@ -94,8 +100,14 @@ extension CLMonitorGeofenceMonitor {
             // holds. Removing one the OS does not hold is a no-op.
             let readdStart = Date()
             await monitor.remove(identifier)
-            let condition = CLMonitor.CircularGeographicCondition(center: coordinate, radius: clampedRadius)
-            await monitor.add(condition, identifier: identifier, assuming: assumedState)
+            // Stamped BEFORE the add, not after it returns. The OS begins evaluating when the add
+            // lands and dates its corrective event then, so a stamp taken afterwards puts every
+            // corrective event BEFORE the generation that produced it — attributing it to the
+            // circle just replaced, which the consumer's geometry guard then refuses. This is the
+            // same window `ConditionReadd` keeps `start` and `added` apart for.
+            let liveFrom = Date()
+            await monitor.add(CLMonitor.CircularGeographicCondition(center: coordinate, radius: clampedRadius), identifier: identifier, assuming: assumedState)
+            self.conditionLedger.confirm(identifier, stagedAt: stagedAt, at: liveFrom)
             self.conditionReadds[identifier] = ConditionReadd(
                 start: readdStart,
                 added: Date(),
@@ -116,7 +128,7 @@ extension CLMonitorGeofenceMonitor {
     /// Drops this process's claim on a condition without touching the OS.
     private func releaseOwnership(_ identifier: String) {
         ownedRegionIdentifiers.remove(identifier)
-        registeredConditions.removeValue(forKey: identifier)
+        conditionLedger.retire(identifier)
     }
 
     /// Drops the condition at the OS.
@@ -134,7 +146,7 @@ extension CLMonitorGeofenceMonitor {
 
     func stopMonitoringAll() {
         ownedRegionIdentifiers.removeAll()
-        registeredConditions.removeAll()
+        conditionLedger.forgetAll()
         // Teardown clears the stored records too (sign-out), so nothing is left to reseed.
         conditionsNeedingBaselineReseed.removeAll()
         // Clear against CLMonitor's LIVE identifiers, not the owned/mirror snapshot: an empty owned
@@ -209,7 +221,7 @@ extension CLMonitorGeofenceMonitor {
     /// the OS already holds or is about to.
     private func isRegisteredUnchanged(_ region: GeofenceRegionRequest) -> Bool {
         guard ownedRegionIdentifiers.contains(region.identifier),
-              let existing = registeredConditions[region.identifier]
+              let existing = conditionLedger.condition(for: region.identifier)
         else { return false }
         return region.matchesRegistered(
             center: existing.center,
@@ -220,23 +232,25 @@ extension CLMonitorGeofenceMonitor {
     }
 
     /// Records the circle a condition now holds.
-    private func noteRegisteredCondition(identifier: String, center: LocationData, radius: Double, transitionTypes: Set<GeofenceTransition>) {
-        registeredConditions[identifier] = RegisteredCondition(
-            center: center,
-            radius: radius,
-            transitionTypes: transitionTypes
+    private func noteRegisteredCondition(
+        identifier: String, center: LocationData, radius: Double,
+        transitionTypes: Set<GeofenceTransition>, at registeredAt: Date, liveFrom: Date? = nil
+    ) {
+        conditionLedger.note(
+            identifier: identifier, center: center, radius: radius,
+            transitionTypes: transitionTypes, at: registeredAt, liveFrom: liveFrom
         )
     }
 
-    /// The circle this monitor registered for `identifier`, which is the one the OS raised the
-    /// event against. Nil before adoption repopulates the map on a cold wake — the consumer then
-    /// cannot tell a replaced circle from the current one, and treats the event as current.
-    func eventCircle(for identifier: String) -> MonitoredCircle? {
-        registeredConditions[identifier].map {
-            MonitoredCircle(
-                center: $0.center, radius: $0.radius,
-                maximumRadius: authManager.maximumRegionMonitoringDistance
-            )
-        }
+    /// The circle the OS raised an event against, chosen by the event's own date rather than by
+    /// what is registered now: `CLMonitor` events are read off an async stream, so a refresh can
+    /// replace the condition between the daemon raising an event and this monitor dequeuing it.
+    /// Reading only the current map would report the replacement and let a stale event look
+    /// current — the one case a consumer comparing circles is trying to catch.
+    func eventCircle(for identifier: String, raisedAt: Date) -> GeofenceEventCircle {
+        GeofenceEventCircle(
+            conditionLedger.attribution(for: identifier, raisedAt: raisedAt),
+            maximumRadius: authManager.maximumRegionMonitoringDistance
+        )
     }
 }

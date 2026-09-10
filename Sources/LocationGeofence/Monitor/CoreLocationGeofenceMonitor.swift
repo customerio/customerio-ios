@@ -41,7 +41,7 @@ final class CoreLocationGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @pr
         let receivedAt: Date
         /// The circle the OS raised this against, captured at intake — by drain time the region may
         /// have been replaced under the same identifier.
-        let circle: MonitoredCircle?
+        let circle: MonitoredCircle
     }
 
     /// Region events received before the bootstrap bound `onTransition` (see `handleRegionEvent`).
@@ -235,7 +235,9 @@ final class CoreLocationGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @pr
         transition: GeofenceTransition,
         capturedLocation: LocationData?,
         occurredAt: Date,
-        circle: MonitoredCircle?
+        // The classic path reads the circle off the `CLCircularRegion` the OS hands it, so it is
+        // always known outright — there is no generation to look up and nothing to expire.
+        circle: MonitoredCircle
     ) {
         if identifier == GeofenceConstants.movementTriggerIdentifier, transition == .exit {
             movementFixResolver.resolve(cached: bestKnownFix()) { [weak self] location, isFresh in
@@ -244,13 +246,13 @@ final class CoreLocationGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @pr
                 // failed request, so it can never be reported as current.
                 self?.onTransition?(
                     identifier, transition, location ?? capturedLocation, occurredAt,
-                    isFresh && location != nil, circle
+                    isFresh && location != nil, .circle(circle)
                 )
             }
             return
         }
         logger.geofenceOsTransitionReceived(identifier: identifier, transition: transition)
-        onTransition?(identifier, transition, capturedLocation, occurredAt, false, circle)
+        onTransition?(identifier, transition, capturedLocation, occurredAt, false, .circle(circle))
     }
 
     func locationManager(_ manager: CLLocationManager, monitoringDidFailFor region: CLRegion?, withError error: Error) {

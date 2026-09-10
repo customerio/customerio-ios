@@ -210,7 +210,7 @@ struct GeofenceMonitorBinderTests {
         GeofenceMonitorBinder.bind(monitor: monitor, resolver: resolver, coordinator: makeCoordinatorMock())
         monitor.simulateTransition(
             identifier: "poly-1", transition: .exit, location: nil,
-            eventCircle: MonitoredCircle(center: LocationData(latitude: 0, longitude: 0), radius: 300, maximumRadius: 1000)
+            eventCircle: .circle(MonitoredCircle(center: LocationData(latitude: 0, longitude: 0), radius: 300, maximumRadius: 1000))
         )
         await awaitDispatch(delivery.trackMetricCallsCount > 0)
 

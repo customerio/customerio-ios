@@ -132,13 +132,18 @@ struct PolygonMembershipResolverTests {
         )
     }
 
-    private func fix(latitude: Double, longitude: Double, accuracy: Double = 5) -> CLLocation {
+    private func fix(
+        latitude: Double,
+        longitude: Double,
+        accuracy: Double = 5,
+        at timestamp: Date = Date()
+    ) -> CLLocation {
         CLLocation(
             coordinate: CLLocationCoordinate2D(latitude: latitude, longitude: longitude),
             altitude: 0,
             horizontalAccuracy: accuracy,
             verticalAccuracy: 5,
-            timestamp: Date()
+            timestamp: timestamp
         )
     }
 
@@ -755,10 +760,10 @@ struct PolygonMembershipResolverTests {
 
         await setup.resolver.handleTransition(
             identifier: "1", transition: .exit, occurredAt: Date(),
-            eventCircle: MonitoredCircle(
+            eventCircle: .circle(MonitoredCircle(
                 center: LocationData(latitude: original.latitude, longitude: original.longitude),
                 radius: original.radius, maximumRadius: 1000
-            )
+            ))
         )
 
         #expect(await setup.emitter.snapshot().isEmpty)
@@ -776,13 +781,58 @@ struct PolygonMembershipResolverTests {
 
         await setup.resolver.handleTransition(
             identifier: "1", transition: .exit, occurredAt: Date(),
-            eventCircle: MonitoredCircle(
+            eventCircle: .circle(MonitoredCircle(
                 center: LocationData(latitude: geofence.latitude, longitude: geofence.longitude),
                 radius: geofence.radius, maximumRadius: 1000
-            )
+            ))
         )
 
         #expect(await setup.emitter.snapshot().first?.transition == .exit)
+    }
+
+    /// The same refusal when the producer cannot name the circle at all: further replacements
+    /// drained while this exit sat in the handler's own awaits, so the circle it was raised against
+    /// is no longer held. It must not arrive as `unknown`, which is the cold-wake case and is taken
+    /// as current — that stores `outside` for a device standing inside the polygon that replaced
+    /// the one crossed, stamped with a date no later fix can correct.
+    ///
+    /// Driven from a real ledger history through the production mapping rather than by handing
+    /// `.expired` in: the monitor owning that lookup cannot be built in a unit test, so this is the
+    /// only thing that fails if the ledger's output or the mapping stops lining up with what the
+    /// exit path expects. The belief is stamped OLDER than the event on purpose — a newer belief
+    /// would refuse it on evidence order and the geometry guard would never be reached.
+    @Test
+    func handleTransition_givenAnExitOlderThanEveryHeldGeneration_expectRefusedAndBeliefKept() async {
+        let setup = await makeSetup(fix: nil)
+        var ledger = RegisteredConditionLedger()
+        let raisedAt = Date().addingTimeInterval(-90)
+        let firstLiveAt = Date().addingTimeInterval(-60)
+        ledger.note(
+            identifier: "1", center: LocationData(latitude: 0, longitude: 0),
+            radius: 300, transitionTypes: [.enter, .exit], at: firstLiveAt, liveFrom: firstLiveAt
+        )
+        let secondStagedAt = Date().addingTimeInterval(-30)
+        ledger.note(
+            identifier: "1", center: LocationData(latitude: 0, longitude: 0.005),
+            radius: 300, transitionTypes: [.enter, .exit], at: secondStagedAt
+        )
+        ledger.confirm("1", stagedAt: secondStagedAt, at: Date().addingTimeInterval(-20))
+
+        await setup.storage.setCachedGeofences([polygonGeofence()])
+        _ = await setup.storage.recordPolygonMembership(
+            .inside, forIdentifier: "1", onlyIfBeliefPredates: Date().addingTimeInterval(-120)
+        )
+        await setup.storage.setCachedGeofences([replacedPolygonGeofence()])
+
+        await setup.resolver.handleTransition(
+            identifier: "1", transition: .exit, occurredAt: raisedAt,
+            eventCircle: GeofenceEventCircle(
+                ledger.attribution(for: "1", raisedAt: raisedAt), maximumRadius: 1000
+            )
+        )
+
+        #expect(await setup.emitter.snapshot().isEmpty)
+        #expect(await setup.storage.getPolygonMembership()["1"]?.membership == .inside)
     }
 
     /// The OS registers `min(radius, maximumRegionMonitoringDistance)`, so an over-cap fence is
@@ -797,10 +847,10 @@ struct PolygonMembershipResolverTests {
 
         await setup.resolver.handleTransition(
             identifier: "1", transition: .exit, occurredAt: Date(),
-            eventCircle: MonitoredCircle(
+            eventCircle: .circle(MonitoredCircle(
                 center: LocationData(latitude: 0, longitude: 0),
                 radius: min(5000, 1000), maximumRadius: 1000
-            )
+            ))
         )
 
         #expect(await setup.emitter.snapshot().first?.transition == .exit)
@@ -1083,12 +1133,16 @@ struct PolygonMembershipResolverTests {
     /// enter from a position up to `movementFixMaxAge` old and then its own correcting exit.
     @Test
     func evaluateNewlyRegistered_givenCachedInsideAndFreshOutside_expectOnlyTheFreshVerdict() async {
-        let setup = await makeSetup(fix: fix(latitude: 0.01, longitude: 0.01))
+        // Both fixes are stamped from one instant. Stamping them at their own call sites makes
+        // their ORDER depend on how long `makeSetup` takes, and the forced request is refused
+        // unless its answer is strictly newer than the held fix — so on a loaded runner they invert.
+        let now = Date()
+        let setup = await makeSetup(fix: fix(latitude: 0.01, longitude: 0.01, at: now))
         // Held, inside, and young enough that the cached path would have accepted it.
         setup.fixResolver.handleResolvedFix(CLLocation(
             coordinate: CLLocationCoordinate2D(latitude: 0, longitude: 0),
             altitude: 0, horizontalAccuracy: 5, verticalAccuracy: 5,
-            timestamp: Date(timeIntervalSinceNow: -Self.ageInsideGate)
+            timestamp: now.addingTimeInterval(-Self.ageInsideGate)
         ))
         await setup.storage.setCachedGeofences([polygonGeofence()])
 
