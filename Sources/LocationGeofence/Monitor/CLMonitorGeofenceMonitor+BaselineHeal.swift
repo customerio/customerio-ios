@@ -70,10 +70,12 @@ extension CLMonitorGeofenceMonitor {
                     fix.timestamp,
                     // A heal only synthesizes off a fix it just gated as fresh.
                     true,
-                    MonitoredCircle(
+                    // Synthesized against the condition in hand, so the circle is known outright
+                    // rather than looked up by date.
+                    .circle(MonitoredCircle(
                         center: condition.center, radius: condition.radius,
                         maximumRadius: self.authManager.maximumRegionMonitoringDistance
-                    )
+                    ))
                 )
             }
         }

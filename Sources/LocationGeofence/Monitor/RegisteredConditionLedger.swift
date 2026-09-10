@@ -23,6 +23,23 @@ struct RegisteredCondition: Equatable {
     }
 }
 
+/// What the ledger can say about the circle an event was raised against.
+///
+/// `noneHeld` and `expired` are kept apart because a consumer must answer them differently, and
+/// collapsing both to nil is what let a stale exit be treated as current.
+enum EventAttribution: Equatable {
+    /// The circle the OS was evaluating when the event was raised.
+    case generation(RegisteredCondition)
+    /// Nothing this ledger holds covers the event, and nothing ever went live for the identifier —
+    /// a cold wake, where the OS evaluates a condition this process never recorded. The event has
+    /// to be taken as current: refusing every one of them would drop real crossings.
+    case noneHeld
+    /// Generations went live for this identifier and the event predates all of them, so the circle
+    /// it was raised against is one the ledger no longer holds. The opposite of `noneHeld`: here
+    /// the staleness is known, and any claim the event makes about the fence's geometry is void.
+    case expired
+}
+
 /// What this process has asked the OS to monitor, and what the OS is actually monitoring.
 ///
 /// Those are different things, and attribution depends on the second: registrations are recorded
@@ -122,28 +139,24 @@ struct RegisteredConditionLedger {
     }
 
     /// The circle an event raised at `raisedAt` was evaluated against, chosen by the event's own
-    /// date rather than by what is registered now: `CLMonitor` events are read off an async stream,
-    /// so a refresh can replace the condition between the daemon raising an event and this process
-    /// dequeuing it.
+    /// date rather than by what is registered now: `CLMonitor` events are read off an async stream
+    /// and the handler awaits a fix request and a storage write before asking, so registrations can
+    /// drain in between and the current one need not be the one the event crossed.
     ///
     /// Read from the live generations only. A staged circle the OS has not taken yet has never
     /// produced an event, so attributing one to it is the mistake this exists to prevent.
-    ///
-    /// Nil when nothing is known for the id, or when the event predates every generation held. A
-    /// consumer reads nil as "cannot say" and treats the event as current, which is why adoption
-    /// stamps `.distantPast`: the OS was already evaluating that circle before this process existed.
-    func circle(for identifier: String, raisedAt: Date) -> RegisteredCondition? {
-        guard let entry = entries[identifier] else { return nil }
+    func attribution(for identifier: String, raisedAt: Date) -> EventAttribution {
+        guard let entry = entries[identifier] else { return .noneHeld }
         if let live = entry.live, let liveFrom = live.liveFrom, raisedAt >= liveFrom {
-            return live
+            return .generation(live)
         }
-        // Older than the generation before the current one too. Nil is fail-open — a consumer
-        // treats it as current and accepts the event — where naming the oldest circle held would
-        // fail its geometry guard instead. Neither is reachable while events dequeue in order, so
-        // the documented contract decides it rather than a safety argument.
-        guard let previous = entry.previouslyLive, let previousFrom = previous.liveFrom,
-              raisedAt >= previousFrom
-        else { return nil }
-        return previous
+        if let previous = entry.previouslyLive, let previousFrom = previous.liveFrom,
+           raisedAt >= previousFrom {
+            return .generation(previous)
+        }
+        // Nothing has drained yet, so this ledger has never known what the OS is evaluating and
+        // cannot call the event stale — only a generation that WENT live can expire.
+        guard entry.live != nil else { return .noneHeld }
+        return .expired
     }
 }

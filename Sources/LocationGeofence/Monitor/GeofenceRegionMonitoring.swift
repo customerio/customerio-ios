@@ -19,11 +19,9 @@ import Foundation
 /// sizing anything to those coordinates has to know the difference.
 ///
 /// The last parameter is the circle the OS was monitoring when it RAISED this event — not the one
-/// registered now, which a refresh may already have replaced. `nil` when the monitor cannot say
-/// which it was: a cold wake before adoption has repopulated its record, or an event older than
-/// every generation still held. A consumer reasoning about what the crossing PROVES needs it, since
-/// the guarantee a covering circle gives only holds for its own ring.
-typealias GeofenceTransitionHandler = @Sendable (String, GeofenceTransition, LocationData?, Date, Bool, MonitoredCircle?) -> Void
+/// registered now, which a refresh may already have replaced. A consumer reasoning about what the
+/// crossing PROVES needs it, since the guarantee a covering circle gives only holds for its own ring.
+typealias GeofenceTransitionHandler = @Sendable (String, GeofenceTransition, LocationData?, Date, Bool, GeofenceEventCircle) -> Void
 
 /// Callback when iOS reports a change to the location authorization status.
 /// Invoked on the main actor — same isolation domain as `CLLocationManagerDelegate`.
@@ -32,6 +30,18 @@ typealias GeofenceAuthorizationChangedHandler = @MainActor () -> Void
 /// Callback once the monitor has reconciled its owned set against the OS's live truth.
 /// Invoked on the main actor.
 typealias GeofenceReconciledHandler = @MainActor () -> Void
+
+/// What the monitor can say about the circle an event was raised against.
+///
+/// `unknown` and `expired` must not collapse into one "no circle" case. `unknown` is a cold wake:
+/// the OS is evaluating a condition this process never recorded, so the event has to be taken as
+/// current or real crossings are dropped. `expired` is the monitor knowing the circle is gone, and
+/// an event that cannot name its own circle proves nothing about the fence's geometry now.
+enum GeofenceEventCircle: Equatable, Sendable {
+    case circle(MonitoredCircle)
+    case unknown
+    case expired
+}
 
 /// The circle the OS was monitoring when it raised an event. Carried with the event because a
 /// refresh can replace a fence under the same id, and a consumer reasoning about what the crossing

@@ -244,16 +244,17 @@ extension CLMonitorGeofenceMonitor {
     /// replace the condition between the daemon raising an event and this monitor dequeuing it.
     /// Reading only the current map would report the replacement and let a stale event look
     /// current — the one case a consumer comparing circles is trying to catch.
-    ///
-    /// Nil when nothing is known for the id, or when the event predates the current registration
-    /// and no previous generation is held (a cold wake, where adoption has not repopulated the
-    /// map). Nil means "cannot say", and a consumer treats such an event as current.
-    func eventCircle(for identifier: String, raisedAt: Date) -> MonitoredCircle? {
-        conditionLedger.circle(for: identifier, raisedAt: raisedAt).map {
-            MonitoredCircle(
-                center: $0.center, radius: $0.radius,
+    func eventCircle(for identifier: String, raisedAt: Date) -> GeofenceEventCircle {
+        switch conditionLedger.attribution(for: identifier, raisedAt: raisedAt) {
+        case .generation(let condition):
+            return .circle(MonitoredCircle(
+                center: condition.center, radius: condition.radius,
                 maximumRadius: authManager.maximumRegionMonitoringDistance
-            )
+            ))
+        case .noneHeld:
+            return .unknown
+        case .expired:
+            return .expired
         }
     }
 }
