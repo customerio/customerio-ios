@@ -154,6 +154,29 @@ extension Logger {
         info("Synthesized \(transition.rawValue) for region \(identifier): fresh fix contradicts stored baseline (OS never delivered the crossing)", geofenceTag)
     }
 
+    /// Positive record of an OS-delivered business transition. Without it a native delivery is
+    /// only identifiable by the ABSENCE of a synthesized line, which makes the OS promotion rate
+    /// inferred rather than measured. Logged at the monitors' dispatch sites, where provenance is
+    /// known: the resolver's entry point also receives synthesized heals, which would inflate it.
+    func geofenceOsTransitionReceived(identifier: String, transition: GeofenceTransition) {
+        debug("OS delivered \(transition.rawValue) for region \(identifier)", geofenceTag)
+    }
+
+    func geofencePolygonTransition(identifier: String, transition: GeofenceTransition, confirmedByFix: Bool) {
+        let basis = confirmedByFix ? "a gated fix" : "the covering-circle exit"
+        info("Polygon \(transition.rawValue) for region \(identifier), confirmed by \(basis)", geofenceTag)
+    }
+
+    /// A whole-set pass declined because one is already running. Logged so a foreground that
+    /// produced no verdicts is distinguishable from one that never ran.
+    func geofencePolygonPassSkipped(reason: String) {
+        debug("Skipped polygon evaluation pass: \(reason)", geofenceTag)
+    }
+
+    func geofencePolygonUndecided(identifier: String, reason: String) {
+        debug("Polygon membership undecided for region \(identifier): \(reason)", geofenceTag)
+    }
+
     func geofenceEventRefusedByContradiction(identifier: String, transition: GeofenceTransition, distanceFromCenter: Double, radius: Double, accuracy: Double) {
         info("Refused OS \(transition.rawValue) for region \(identifier): a fresh fix contradicts it (distance \(Int(distanceFromCenter)) m, radius \(Int(radius)) m, accuracy \(Int(accuracy)) m)", geofenceTag)
     }

@@ -213,10 +213,12 @@ final class CoreLocationGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @pr
     private func dispatchTransition(identifier: String, transition: GeofenceTransition, capturedLocation: LocationData?) {
         if identifier == GeofenceConstants.movementTriggerIdentifier, transition == .exit {
             movementFixResolver.resolve(cached: bestKnownFix()) { [weak self] location in
+                self?.logger.geofenceOsTransitionReceived(identifier: identifier, transition: transition)
                 self?.onTransition?(identifier, transition, location ?? capturedLocation)
             }
             return
         }
+        logger.geofenceOsTransitionReceived(identifier: identifier, transition: transition)
         onTransition?(identifier, transition, capturedLocation)
     }
 

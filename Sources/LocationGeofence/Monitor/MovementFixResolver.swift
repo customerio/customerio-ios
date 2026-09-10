@@ -20,14 +20,39 @@ final class MovementFixResolver: NSObject, @preconcurrency CLLocationManagerDele
     private let maxAge: TimeInterval
     private let requestTimeout: TimeInterval
     private let backgroundTaskRunner: BackgroundTaskRunner
+    private let desiredAccuracy: CLLocationAccuracy
 
     /// Created lazily so tests using the `requestFreshFix` seam never touch CoreLocation.
     private lazy var manager: CLLocationManager = {
         let manager = CLLocationManager()
-        manager.desiredAccuracy = kCLLocationAccuracyHundredMeters
+        manager.desiredAccuracy = desiredAccuracy
         manager.delegate = self
         return manager
     }()
+
+    /// Test seam mirroring `requestFreshFix`: where the pre-request fix comes from when this
+    /// resolver has delivered none itself. Unset, it reads CoreLocation's own cached fix — so any
+    /// test that reads `cachedFix` must set this, or the read instantiates a real
+    /// `CLLocationManager`. A seam returning nil answers nil; it does not fall through.
+    var systemCachedFix: (() -> CLLocation?)?
+
+    /// Freshest usable fix obtainable without issuing a request: the newer of the two sources, not
+    /// whichever this resolver happens to have produced, which is how the monitors' `bestKnownFix`
+    /// reads too. On a cold process this resolver has delivered nothing, so CoreLocation's cached
+    /// fix is the only evidence available, and the decision's age gate is what keeps it honest.
+    /// That cache also moves on its own between passes, driven by other clients in the process, so
+    /// preferring `latestFix` by source would hand a stale fallback to a request that then fails.
+    ///
+    /// Only the system fix is checked for a valid coordinate. `latestFix` reaches this class
+    /// through a delegate callback that already rejects invalid ones — which a test feeding
+    /// `handleResolvedFix` directly does not.
+    var cachedFix: CLLocation? {
+        let systemFix = (systemCachedFix.map { $0() } ?? manager.location)
+            .flatMap { CLLocationCoordinate2DIsValid($0.coordinate) ? $0 : nil }
+        guard let latestFix else { return systemFix }
+        guard let systemFix, systemFix.timestamp > latestFix.timestamp else { return latestFix }
+        return systemFix
+    }
 
     /// Freshest fix this resolver has received, retained even when it arrives after a timeout.
     private(set) var latestFix: CLLocation?
@@ -47,12 +72,14 @@ final class MovementFixResolver: NSObject, @preconcurrency CLLocationManagerDele
         logger: Logger,
         maxAge: TimeInterval = GeofenceConstants.movementFixMaxAge,
         requestTimeout: TimeInterval = GeofenceConstants.movementFixRequestTimeout,
-        backgroundTaskRunner: BackgroundTaskRunner = NoBackgroundTaskRunner()
+        backgroundTaskRunner: BackgroundTaskRunner = NoBackgroundTaskRunner(),
+        desiredAccuracy: CLLocationAccuracy = kCLLocationAccuracyHundredMeters
     ) {
         self.logger = logger
         self.maxAge = maxAge
         self.requestTimeout = requestTimeout
         self.backgroundTaskRunner = backgroundTaskRunner
+        self.desiredAccuracy = desiredAccuracy
     }
 
     deinit {

@@ -39,9 +39,30 @@ extension GeofenceStorage {
         _ membership: PolygonMembership,
         forIdentifier identifier: String,
         onlyIfBeliefPredates evidenceTimestamp: Date? = nil,
+        onlyIfRingMatches evaluatedRing: [LocationData]? = nil,
+        onlyIfCircleMatches evaluatedCircle: MonitoredCircle? = nil,
         now: Date = Date()
     ) -> PolygonMembershipOutcome {
         var state = loadFromDisk() ?? GeofenceState()
+        // Read and compared inside the same actor call that writes, because that is the only place
+        // the two cannot be separated. The evaluation's own re-read closes the location request;
+        // this closes what is left — deciding on the main actor and then hopping here to write, a
+        // gap a refresh can land in. The ring itself, not `lastUpdated`: the server owns that field
+        // and a replacement that failed to bump it would pass a check written against it.
+        if let evaluatedRing {
+            let currentRing = state.cachedGeofences?.first { $0.id == identifier }?.vertices
+            guard currentRing == evaluatedRing else { return .suppressedGeometryChanged }
+        }
+        // The covering exit's equivalent. It carries no ring — leaving a circle says nothing about
+        // a ring — but the certainty it rests on is polygon ⊆ ITS OWN circle, so it holds only
+        // while the fence still has the circle that was crossed. Checked here rather than before
+        // the hop for the same reason as the ring: a refresh landing in between would otherwise
+        // store `outside` for a device inside the replacement polygon.
+        if let evaluatedCircle {
+            guard let current = state.cachedGeofences?.first(where: { $0.id == identifier }),
+                  evaluatedCircle.matches(current)
+            else { return .suppressedGeometryChanged }
+        }
         var records = state.polygonMembership ?? [:]
         let existing = records[identifier]
         if let evidenceTimestamp, let existing, existing.lastChangedAt > evidenceTimestamp {
@@ -78,6 +99,15 @@ extension GeofenceStorage {
         state.polygonMembership = records
         saveToDisk(state)
         return .deliver(membership == .inside ? .enter : .exit)
+    }
+
+    /// The cached fence for `id`, but only while it is still registered — both read from one load,
+    /// so the geometry and the registration a verdict rests on cannot disagree with each other.
+    /// A pass that sampled either before awaiting a fix must re-read through here afterwards.
+    func getRegisteredGeofence(id: String) -> Geofence? {
+        guard let state = loadFromDisk(), state.monitoredGeofenceIds?.contains(id) == true
+        else { return nil }
+        return state.cachedGeofences?.first { $0.id == id }
     }
 
     /// Snapshot of every polygon membership belief.
