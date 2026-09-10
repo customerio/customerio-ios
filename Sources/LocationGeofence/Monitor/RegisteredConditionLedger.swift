@@ -137,6 +137,11 @@ struct RegisteredConditionLedger {
         if let live = entry.live, let liveFrom = live.liveFrom, raisedAt >= liveFrom {
             return live
         }
-        return entry.previouslyLive
+        // Older than the generation before the current one too: the circle it was raised against
+        // is one this ledger no longer holds, and naming the wrong one is worse than saying so.
+        guard let previous = entry.previouslyLive, let previousFrom = previous.liveFrom,
+              raisedAt >= previousFrom
+        else { return nil }
+        return previous
     }
 }

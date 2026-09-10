@@ -262,4 +262,29 @@ struct RegisteredConditionLedgerTests {
         #expect(ledger.condition(for: "1") == nil)
         #expect(ledger.circle(for: "1", raisedAt: Date())?.center.longitude == 0)
     }
+
+    /// An event older than BOTH held generations belongs to a circle this ledger no longer has.
+    /// Naming the older-but-still-held one would hand the consumer's geometry guard a circle that
+    /// was not live when the event was raised, refusing a genuine exit; nil means "cannot say" and
+    /// the consumer treats the event as current.
+    @Test
+    func circle_givenAnEventOlderThanEveryHeldGeneration_expectNil() {
+        var ledger = RegisteredConditionLedger()
+        let firstLiveAt = Date().addingTimeInterval(-60)
+        ledger.note(
+            identifier: "1", center: LocationData(latitude: 0, longitude: 0),
+            radius: 300, transitionTypes: [.enter, .exit], at: firstLiveAt, liveFrom: firstLiveAt
+        )
+        let secondStagedAt = Date().addingTimeInterval(-30)
+        ledger.note(
+            identifier: "1", center: LocationData(latitude: 0, longitude: 0.005),
+            radius: 300, transitionTypes: [.enter, .exit], at: secondStagedAt
+        )
+        ledger.confirm("1", stagedAt: secondStagedAt, at: Date().addingTimeInterval(-20))
+
+        // Between the two generations resolves to the first, which WAS live then.
+        #expect(ledger.circle(for: "1", raisedAt: firstLiveAt.addingTimeInterval(1))?.center.longitude == 0)
+        // Before either went live, nothing held can answer for it.
+        #expect(ledger.circle(for: "1", raisedAt: firstLiveAt.addingTimeInterval(-1)) == nil)
+    }
 }
