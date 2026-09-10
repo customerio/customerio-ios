@@ -137,8 +137,10 @@ struct RegisteredConditionLedger {
         if let live = entry.live, let liveFrom = live.liveFrom, raisedAt >= liveFrom {
             return live
         }
-        // Older than the generation before the current one too: the circle it was raised against
-        // is one this ledger no longer holds, and naming the wrong one is worse than saying so.
+        // Older than the generation before the current one too. Nil is fail-open — a consumer
+        // treats it as current and accepts the event — where naming the oldest circle held would
+        // fail its geometry guard instead. Neither is reachable while events dequeue in order, so
+        // the documented contract decides it rather than a safety argument.
         guard let previous = entry.previouslyLive, let previousFrom = previous.liveFrom,
               raisedAt >= previousFrom
         else { return nil }
