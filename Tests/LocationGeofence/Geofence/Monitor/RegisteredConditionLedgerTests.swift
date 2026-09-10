@@ -128,8 +128,8 @@ struct RegisteredConditionLedgerTests {
     }
 
     /// The staging→drain window, and the reason `liveFrom` exists. Registration records geometry
-    /// synchronously but the OS keeps evaluating the old circle until the queued remove+add drains,
-    /// so an event raised in between postdates the new registration yet belongs to the old circle.
+    /// synchronously but the OS keeps evaluating the old circle until the queued add is issued, so
+    /// an event raised in between postdates the new registration yet belongs to the old circle.
     @Test
     func attribution_givenEventBetweenStagingAndDrain_expectTheOldCircle() {
         var ledger = RegisteredConditionLedger()
@@ -292,19 +292,24 @@ struct RegisteredConditionLedgerTests {
         #expect(ledger.attribution(for: "1", raisedAt: firstLiveAt.addingTimeInterval(-1)) == .expired)
     }
 
-    /// The other half of the split, and the case a plain fall-through to the previous generation
-    /// cannot reach: only ONE generation has ever gone live and the event predates it. Still
-    /// `expired` — a generation went live, so the ledger can tell the event is stale.
+    /// The first-add boundary, which must NOT expire. `liveFrom` is stamped just before the OS add
+    /// is issued, so an event dated earlier than it was raised before this process registered
+    /// anything — a condition the OS already held. Its circle may well be the same one, so
+    /// refusing it would lose a genuine crossing; the honest answer is that nothing held covers it.
+    /// Expiry needs a generation to have been REPLACED, which is what separates an event this
+    /// ledger knows is stale from one it simply never saw the circle for.
     @Test
-    func attribution_givenOneLiveGenerationAndAnOlderEvent_expectExpired() {
+    func attribution_givenAFirstAddAndAnEventBeforeItWasIssued_expectNoneHeld() {
         var ledger = RegisteredConditionLedger()
-        let liveAt = Date().addingTimeInterval(-60)
+        let stagedAt = Date().addingTimeInterval(-60)
         ledger.note(
             identifier: "1", center: LocationData(latitude: 0, longitude: 0),
-            radius: 300, transitionTypes: [.enter, .exit], at: liveAt, liveFrom: liveAt
+            radius: 300, transitionTypes: [.enter, .exit], at: stagedAt
         )
+        let liveFrom = stagedAt.addingTimeInterval(2)
+        ledger.confirm("1", stagedAt: stagedAt, at: liveFrom)
 
-        #expect(ledger.attribution(for: "1", raisedAt: liveAt.addingTimeInterval(-1)) == .expired)
+        #expect(ledger.attribution(for: "1", raisedAt: liveFrom.addingTimeInterval(-1)) == .noneHeld)
     }
 
     /// Staged but never drained: nothing has gone live, so the ledger has never known what the OS
@@ -318,6 +323,62 @@ struct RegisteredConditionLedgerTests {
         )
 
         #expect(ledger.attribution(for: "1", raisedAt: Date()) == .noneHeld)
+    }
+
+    /// The corrective event the OS raises for an add is dated as the add lands, so it arrives at
+    /// the earliest instant the new circle can be live. `liveFrom` is stamped just before the add
+    /// for that reason, and this pins the boundary the stamp relies on: an event AT `liveFrom`
+    /// belongs to the generation that add created, not to the one it replaced. Attributing it
+    /// backwards hands the consumer the old circle, whose geometry no longer matches the fence, and
+    /// the corrective crossing is refused — the loss the staged `assuming:` snapshot exists to
+    /// prevent.
+    @Test
+    func attribution_givenAnEventAtTheInstantTheAddWasIssued_expectTheNewGeneration() {
+        var ledger = RegisteredConditionLedger()
+        let firstLiveAt = Date().addingTimeInterval(-60)
+        ledger.note(
+            identifier: "1", center: LocationData(latitude: 0, longitude: 0),
+            radius: 300, transitionTypes: [.enter, .exit], at: firstLiveAt, liveFrom: firstLiveAt
+        )
+        let stagedAt = Date().addingTimeInterval(-30)
+        ledger.note(
+            identifier: "1", center: LocationData(latitude: 0, longitude: 0.01),
+            radius: 300, transitionTypes: [.enter, .exit], at: stagedAt
+        )
+        let liveFrom = Date().addingTimeInterval(-20)
+        ledger.confirm("1", stagedAt: stagedAt, at: liveFrom)
+
+        #expect(generation(ledger, at: liveFrom)?.center.longitude == 0.01)
+        // One instant earlier still belongs to the circle being replaced.
+        #expect(generation(ledger, at: liveFrom.addingTimeInterval(-0.001))?.center.longitude == 0)
+    }
+
+    /// A confirmation for a generation the identifier no longer holds must not promote whatever
+    /// replaced it. The OS gives the id up, a new registration stages under the same id, and the
+    /// dropped generation's add drains after that — `confirm` is keyed on staging time, so it
+    /// matches nothing and the replacement waits for its own drain instead of being marked live by
+    /// someone else's callback.
+    @Test
+    func confirm_givenTheIdentifierWasForgottenBeforeTheDrain_expectTheReplacementStaysQueued() {
+        var ledger = RegisteredConditionLedger()
+        let firstStagedAt = Date().addingTimeInterval(-60)
+        ledger.note(
+            identifier: "1", center: LocationData(latitude: 0, longitude: 0),
+            radius: 300, transitionTypes: [.enter, .exit], at: firstStagedAt
+        )
+        ledger.forget("1")
+        let secondStagedAt = Date().addingTimeInterval(-30)
+        ledger.note(
+            identifier: "1", center: LocationData(latitude: 0, longitude: 0.005),
+            radius: 300, transitionTypes: [.enter, .exit], at: secondStagedAt
+        )
+
+        ledger.confirm("1", stagedAt: firstStagedAt, at: Date().addingTimeInterval(-10))
+
+        // Nothing is live: the replacement's own add has not drained.
+        #expect(ledger.attribution(for: "1", raisedAt: Date()) == .noneHeld)
+        // ...and it is still what a sync diffs its geometry against.
+        #expect(ledger.condition(for: "1")?.center.longitude == 0.005)
     }
 
     /// The condition an attribution names, for assertions that only care about which circle.

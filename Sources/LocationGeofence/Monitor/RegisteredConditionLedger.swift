@@ -9,9 +9,11 @@ struct RegisteredCondition: Equatable {
     /// When this condition was STAGED. Registration records geometry synchronously so a sync
     /// landing before the queued add drains still diffs against it.
     var registeredAt: Date = .distantPast
-    /// When the OS actually began evaluating this circle — the moment the queued remove+add
-    /// drained. Nil until then, and until then the OS is still evaluating the circle this one
-    /// replaced, so an event raised now belongs to that one and not to this.
+    /// When the OS began evaluating this circle — the instant its queued add was issued, not when
+    /// that add returned. The daemon starts evaluating as the add lands and dates its corrective
+    /// event then, so the later stamp would put that event before the generation that produced it.
+    /// Nil until the add is reached; until then the OS still holds the circle this one replaces,
+    /// so an event raised in between belongs to that one and not to this.
     var liveFrom: Date?
 
     /// Geometry only. `registeredAt` is bookkeeping about WHEN, and the baseline heal compares
@@ -154,9 +156,11 @@ struct RegisteredConditionLedger {
            raisedAt >= previousFrom {
             return .generation(previous)
         }
-        // Nothing has drained yet, so this ledger has never known what the OS is evaluating and
-        // cannot call the event stale — only a generation that WENT live can expire.
-        guard entry.live != nil else { return .noneHeld }
+        // Only a generation that has been REPLACED can be known stale. With no previous one, an
+        // event predating `liveFrom` was raised against a condition the OS held before this
+        // process registered anything — a re-register where adoption did not run. Its circle may
+        // well be the one in force now, so refusing it would drop a genuine crossing.
+        guard entry.previouslyLive != nil else { return .noneHeld }
         return .expired
     }
 }

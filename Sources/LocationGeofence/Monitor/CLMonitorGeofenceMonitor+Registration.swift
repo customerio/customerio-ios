@@ -100,11 +100,14 @@ extension CLMonitorGeofenceMonitor {
             // holds. Removing one the OS does not hold is a no-op.
             let readdStart = Date()
             await monitor.remove(identifier)
-            let condition = CLMonitor.CircularGeographicCondition(center: coordinate, radius: clampedRadius)
-            await monitor.add(condition, identifier: identifier, assuming: assumedState)
-            // The OS only starts evaluating the new circle here, so this is the instant an event
-            // stops belonging to the circle it replaced.
-            self.conditionLedger.confirm(identifier, stagedAt: stagedAt, at: Date())
+            // Stamped BEFORE the add, not after it returns. The OS begins evaluating when the add
+            // lands and dates its corrective event then, so a stamp taken afterwards puts every
+            // corrective event BEFORE the generation that produced it — attributing it to the
+            // circle just replaced, which the consumer's geometry guard then refuses. This is the
+            // same window `ConditionReadd` keeps `start` and `added` apart for.
+            let liveFrom = Date()
+            await monitor.add(CLMonitor.CircularGeographicCondition(center: coordinate, radius: clampedRadius), identifier: identifier, assuming: assumedState)
+            self.conditionLedger.confirm(identifier, stagedAt: stagedAt, at: liveFrom)
             self.conditionReadds[identifier] = ConditionReadd(
                 start: readdStart,
                 added: Date(),
