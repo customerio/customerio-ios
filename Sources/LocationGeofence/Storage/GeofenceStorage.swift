@@ -110,7 +110,7 @@ actor GeofenceStorage {
     /// `forceReseed` overrides that preservation. The caller sets it when the OS stopped monitoring
     /// the condition since the last registration: the device can cross while unmonitored, so the
     /// persisted state is no longer known to match reality and keeping it would suppress the next
-    /// genuine crossing. Polygon belief reseeds with it, for the same reason.
+    /// genuine crossing. Polygon belief is NOT reseeded with it — see `clearMonitorRegionRecord`.
     func recordMonitorRegistration(
         identifier: String,
         transitionTypes: Set<GeofenceTransition>,
@@ -133,7 +133,6 @@ actor GeofenceStorage {
             lastStateChangedAt: preserved ? existing?.lastStateChangedAt : now
         )
         state.monitorRegionRecords = records
-        if forceReseed { state.dropPolygonBelief(for: identifier) }
         saveToDisk(state)
     }
 
@@ -184,14 +183,14 @@ actor GeofenceStorage {
     /// Drops the baseline for a condition the OS stopped monitoring, so the next registration
     /// reseeds from the device's real position rather than carrying a state it may have left while
     /// unmonitored — an unchanged-geometry re-register would preserve that stale value.
-    /// Drops both the OS-facing baseline and the polygon belief: the region is no longer monitored,
-    /// so a belief kept across the gap would suppress the next real enter as no-change if the device
-    /// left the polygon while nothing was watching.
+    ///
+    /// Polygon belief deliberately SURVIVES: a crossing during the gap is unknowable, so every rule
+    /// guesses, and dropping guesses "it left" — a device that stayed then looks brand new, and a
+    /// brand-new polygon found inside delivers an enter the customer already had. Keeping still
+    /// yields the exit when it did leave; it loses only left-AND-returned, the rarest case.
     func clearMonitorRegionRecord(identifier: String) {
         var state = loadFromDisk() ?? GeofenceState()
-        let hadRecord = state.monitorRegionRecords?.removeValue(forKey: identifier) != nil
-        let hadBelief = state.polygonMembership?.removeValue(forKey: identifier) != nil
-        guard hadRecord || hadBelief else { return }
+        guard state.monitorRegionRecords?.removeValue(forKey: identifier) != nil else { return }
         saveToDisk(state)
     }
 
