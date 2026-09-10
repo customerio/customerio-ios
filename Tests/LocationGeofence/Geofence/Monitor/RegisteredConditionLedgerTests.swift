@@ -165,26 +165,101 @@ struct RegisteredConditionLedgerTests {
         #expect(ledger.circle(for: "1", raisedAt: drainedAt.addingTimeInterval(1))?.center.longitude == 0.005)
     }
 
-    /// A drain can only confirm the generation it belongs to. Two registrations can stage before
-    /// the first add drains, and confirming by identifier alone would mark the newer circle live
-    /// from the older add — reopening the window in the other direction.
+    /// A drain promotes the generation it belongs to, not the newest staged one. Three can be
+    /// queued at once, and the queue is serial, so the circle the OS takes next is the oldest
+    /// queued — reading the newest instead attributes events to a circle the OS has not reached.
     @Test
-    func confirm_givenAStaleDrainForASupersededGeneration_expectIgnored() {
+    func confirm_givenThreeStagedAndTheyDrainInTurn_expectEachBecomesLiveInOrder() {
         var ledger = RegisteredConditionLedger()
-        let firstStagedAt = Date().addingTimeInterval(-10)
+        let firstStagedAt = Date().addingTimeInterval(-40)
         ledger.note(
             identifier: "1", center: LocationData(latitude: 0, longitude: 0),
             radius: 300, transitionTypes: [.enter, .exit], at: firstStagedAt
         )
-        let secondStagedAt = Date()
+        let secondStagedAt = Date().addingTimeInterval(-35)
         ledger.note(
             identifier: "1", center: LocationData(latitude: 0, longitude: 0.005),
             radius: 300, transitionTypes: [.enter, .exit], at: secondStagedAt
         )
+        ledger.note(
+            identifier: "1", center: LocationData(latitude: 0, longitude: 0.01),
+            radius: 300, transitionTypes: [.enter, .exit], at: Date().addingTimeInterval(-30)
+        )
 
-        ledger.confirm("1", stagedAt: firstStagedAt, at: Date())
+        let firstDrainedAt = Date().addingTimeInterval(-20)
+        ledger.confirm("1", stagedAt: firstStagedAt, at: firstDrainedAt)
 
-        // Still unconfirmed, so events resolve to the generation the OS is actually evaluating.
+        #expect(ledger.circle(for: "1", raisedAt: firstDrainedAt.addingTimeInterval(1))?.center.longitude == 0)
+
+        let secondDrainedAt = Date().addingTimeInterval(-10)
+        ledger.confirm("1", stagedAt: secondStagedAt, at: secondDrainedAt)
+
+        #expect(ledger.circle(for: "1", raisedAt: secondDrainedAt.addingTimeInterval(1))?.center.longitude == 0.005)
+        // The window between the two drains still belongs to the first circle.
+        #expect(ledger.circle(for: "1", raisedAt: secondDrainedAt.addingTimeInterval(-1))?.center.longitude == 0)
+    }
+
+    /// Two replacements staged before either add drains — a second refresh landing while the first
+    /// is still queued. The OS is on the original circle throughout, so an exit raised in that
+    /// window belongs to it. Attributing it to a circle the OS never took gets the exit refused by
+    /// the consumer's geometry guard and leaves the device believed inside.
+    @Test
+    func circle_givenTwoReplacementsStagedBeforeEitherDrains_expectTheCircleTheOsHolds() {
+        var ledger = RegisteredConditionLedger()
+        let liveAt = Date().addingTimeInterval(-60)
+        ledger.note(
+            identifier: "1", center: LocationData(latitude: 0, longitude: 0),
+            radius: 300, transitionTypes: [.enter, .exit], at: liveAt, liveFrom: liveAt
+        )
+        ledger.retire("1")
+        ledger.note(
+            identifier: "1", center: LocationData(latitude: 0, longitude: 0.005),
+            radius: 300, transitionTypes: [.enter, .exit], at: Date().addingTimeInterval(-30)
+        )
+        ledger.retire("1")
+        ledger.note(
+            identifier: "1", center: LocationData(latitude: 0, longitude: 0.01),
+            radius: 300, transitionTypes: [.enter, .exit], at: Date().addingTimeInterval(-10)
+        )
+
+        #expect(ledger.circle(for: "1", raisedAt: Date())?.center.longitude == 0)
+    }
+
+    /// The split the two kinds of consumer depend on: a sync diffing geometry must see the circle
+    /// just staged, while attribution must still see the one the OS is evaluating. Asserted
+    /// together because reading either from the other's source is the whole bug class here.
+    @Test
+    func stagedAndLive_givenAReplacementNotYetDrained_expectEachReadsItsOwnGeneration() {
+        var ledger = RegisteredConditionLedger()
+        let liveAt = Date().addingTimeInterval(-60)
+        ledger.note(
+            identifier: "1", center: LocationData(latitude: 0, longitude: 0),
+            radius: 300, transitionTypes: [.enter, .exit], at: liveAt, liveFrom: liveAt
+        )
+        ledger.retire("1")
+        ledger.note(
+            identifier: "1", center: LocationData(latitude: 0, longitude: 0.005),
+            radius: 300, transitionTypes: [.enter, .exit], at: Date().addingTimeInterval(-10)
+        )
+
+        #expect(ledger.condition(for: "1")?.center.longitude == 0.005)
+        #expect(ledger.circle(for: "1", raisedAt: Date())?.center.longitude == 0)
+    }
+
+    /// Retiring drops the claim, so geometry comparisons stop matching, but the OS keeps evaluating
+    /// the circle until a queued removal drains and an event already raised can still arrive.
+    @Test
+    func retire_expectClaimDroppedAndAttributionKept() {
+        var ledger = RegisteredConditionLedger()
+        let liveAt = Date().addingTimeInterval(-60)
+        ledger.note(
+            identifier: "1", center: LocationData(latitude: 0, longitude: 0),
+            radius: 300, transitionTypes: [.enter, .exit], at: liveAt, liveFrom: liveAt
+        )
+
+        ledger.retire("1")
+
+        #expect(ledger.condition(for: "1") == nil)
         #expect(ledger.circle(for: "1", raisedAt: Date())?.center.longitude == 0)
     }
 }
