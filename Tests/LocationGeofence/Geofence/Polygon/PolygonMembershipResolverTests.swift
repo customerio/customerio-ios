@@ -647,11 +647,11 @@ struct PolygonMembershipResolverTests {
         let requested = Flag()
         setup.fixResolver.requestFreshFix = { requested.value = true }
 
-        async let pass: Void = setup.resolver.evaluateMembership(geofenceIds: ["1"], reason: "test")
+        async let pass: Bool = setup.resolver.evaluateMembership(geofenceIds: ["1"], reason: "test")
         await yieldUntil { requested.value }
         await setup.storage.setCachedGeofences([movedPolygonGeofence()])
         setup.fixResolver.handleResolvedFix(fix(latitude: 0, longitude: 0))
-        await pass
+        _ = await pass
 
         #expect(await setup.emitter.snapshot().isEmpty)
         #expect(await setup.storage.getPolygonMembership()["1"]?.membership == .outside)
@@ -665,10 +665,10 @@ struct PolygonMembershipResolverTests {
         let requested = Flag()
         setup.fixResolver.requestFreshFix = { requested.value = true }
 
-        async let pass: Void = setup.resolver.evaluateMembership(geofenceIds: ["1"], reason: "test")
+        async let pass: Bool = setup.resolver.evaluateMembership(geofenceIds: ["1"], reason: "test")
         await yieldUntil { requested.value }
         setup.fixResolver.handleResolvedFix(fix(latitude: 0, longitude: 0))
-        await pass
+        _ = await pass
 
         #expect(await setup.storage.getPolygonMembership()["1"]?.membership == .inside)
         #expect(await setup.emitter.snapshot().map(\.transition) == [.enter])
@@ -1074,5 +1074,46 @@ struct PolygonMembershipResolverTests {
 
         #expect(await setup.emitter.snapshot().isEmpty)
         #expect(await setup.storage.getPolygonMembership()["1"]?.membership == .outside)
+    }
+
+    // MARK: - Newly registered polygons
+
+    /// The two passes a refresh starts must not disagree. `evaluatePolygonsAfterMovement` forces a
+    /// fresh fix; while this pass decided from the cached one, a single refresh could deliver an
+    /// enter from a position up to `movementFixMaxAge` old and then its own correcting exit.
+    @Test
+    func evaluateNewlyRegistered_givenCachedInsideAndFreshOutside_expectOnlyTheFreshVerdict() async {
+        let setup = await makeSetup(fix: fix(latitude: 0.01, longitude: 0.01))
+        // Held, inside, and young enough that the cached path would have accepted it.
+        setup.fixResolver.handleResolvedFix(CLLocation(
+            coordinate: CLLocationCoordinate2D(latitude: 0, longitude: 0),
+            altitude: 0, horizontalAccuracy: 5, verticalAccuracy: 5,
+            timestamp: Date(timeIntervalSinceNow: -Self.ageInsideGate)
+        ))
+        await setup.storage.setCachedGeofences([polygonGeofence()])
+
+        await setup.resolver.evaluateNewlyRegistered(geofenceIds: ["1"])
+
+        #expect(await setup.emitter.snapshot().isEmpty, "decided from the cached fix and emitted an enter")
+        #expect(await setup.storage.getPolygonMembership()["1"]?.membership == .outside)
+    }
+
+    /// The fallback the forced request needs: enter-when-inside is owed for a polygon the device is
+    /// standing in, and the movement pass fails on the same request, so a failed request must not
+    /// cost the enter outright.
+    @Test
+    func evaluateNewlyRegistered_givenTheForcedRequestFails_expectTheCachedFixStillDecides() async {
+        let setup = await makeSetup(fix: nil) // the forced request fails
+        setup.fixResolver.handleResolvedFix(CLLocation(
+            coordinate: CLLocationCoordinate2D(latitude: 0, longitude: 0),
+            altitude: 0, horizontalAccuracy: 5, verticalAccuracy: 5,
+            timestamp: Date(timeIntervalSinceNow: -Self.ageInsideGate)
+        ))
+        await setup.storage.setCachedGeofences([polygonGeofence()])
+
+        await setup.resolver.evaluateNewlyRegistered(geofenceIds: ["1"])
+
+        #expect(await setup.emitter.snapshot().map(\.transition) == [.enter])
+        #expect(await setup.storage.getPolygonMembership()["1"]?.membership == .inside)
     }
 }

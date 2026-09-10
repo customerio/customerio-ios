@@ -129,12 +129,15 @@ final class PolygonMembershipResolver {
     /// `isStillCurrent` is re-checked after the fix resolves. Resolving suspends, and a user switch
     /// in that window clears user-scoped state — without the re-check this task would resume and
     /// rewrite the old user's belief, stamping any resulting event to whoever signed in.
+    /// - Returns: whether a usable fix was obtained, so a caller that owes a verdict can retry on
+    /// other terms. True when there was nothing to evaluate — nothing is owed then.
+    @discardableResult
     func evaluateMembership(
         geofenceIds: [String],
         reason: String,
         requiresFreshFix: Bool = false,
         isStillCurrent: (@Sendable () -> Bool)? = nil
-    ) async {
+    ) async -> Bool {
         for geofenceId in geofenceIds {
             logger.geofencePolygonEvaluationRequested(identifier: geofenceId, reason: reason)
         }
@@ -149,16 +152,17 @@ final class PolygonMembershipResolver {
             else { continue }
             pending.append(geofenceId)
         }
-        guard !pending.isEmpty else { return }
+        guard !pending.isEmpty else { return true }
         guard let fix = await resolveFix(requiringFresh: requiresFreshFix) else {
             for geofenceId in pending {
                 logger.geofencePolygonUndecided(identifier: geofenceId, reason: "no usable fix")
             }
-            return
+            return false
         }
         for geofenceId in pending {
             await evaluate(geofenceId: geofenceId, fix: fix, isStillCurrent: isStillCurrent)
         }
+        return true
     }
 
     /// Re-evaluates every registered polygon when the app comes to the foreground.

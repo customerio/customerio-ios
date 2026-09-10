@@ -73,9 +73,8 @@ extension GeofenceSyncCoordinatorImpl {
             guard contextStore.currentUserId == expectedUserId else { return }
             // Also re-checked inside, per polygon, after the fix resolves: that await is the window
             // where a user switch would otherwise land an event on the wrong profile.
-            await DIGraphShared.shared.polygonMembershipResolver.evaluateMembership(
+            await DIGraphShared.shared.polygonMembershipResolver.evaluateNewlyRegistered(
                 geofenceIds: polygons.map(\.id),
-                reason: "new polygon",
                 isStillCurrent: { contextStore.currentUserId == expectedUserId }
             )
         }
