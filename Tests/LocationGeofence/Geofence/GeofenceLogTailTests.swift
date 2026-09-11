@@ -682,6 +682,34 @@ struct GeofenceLogTailTests {
         }
     }
 
+    /// A position with fewer than two coordinates used to be dropped, leaving `nv` counting
+    /// vertices the ring never showed — `nv=0` with no ring reads as "polygon with no vertices"
+    /// rather than "ring unusable".
+    @Test
+    func fenceCatalog_givenMalformedPositions_expectCountAndRingAgree() {
+        withDiagnostics(true) {
+            let logger = CapturingLogger()
+            let region = GeofenceApiRegion(
+                id: "44480", name: nil, shape: "polygon",
+                latitude: nil, longitude: nil, radius: nil,
+                geometry: GeofenceApiGeometry(type: "Polygon", coordinates: [[[1.0], [2.0]]]),
+                enclosingCircle: GeofenceApiEnclosingCircle(latitude: 25.1, longitude: 55.18, baseRadiusM: 400),
+                carriesPolygonFields: true, externalId: nil,
+                transitionTypes: ["enter"], lastUpdated: 0, geosetIds: nil, metadata: nil
+            )
+            logger.geofenceApiFetchResult(returnedCount: 1, elapsed: 0.4, regions: [region])
+
+            guard let message = logger.messages.last, let fields = parseTail(message) else {
+                Issue.record("no parseable tail in '\(logger.messages.last ?? "<nothing>")'")
+                return
+            }
+            #expect(fields["nv"] == "2")
+            #expect(fields["ring"] == "bad_bad,bad_bad")
+            // Still placeable by its circle, which is the point of recording it at all.
+            #expect(fields["lat"] == "25.10000")
+        }
+    }
+
     @Test
     func fenceCatalog_givenNameWithSeparators_expectSanitizedButReadable() {
         withDiagnostics(true) {

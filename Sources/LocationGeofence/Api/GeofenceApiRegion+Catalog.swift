@@ -22,11 +22,11 @@ extension GeofenceApiRegion {
     /// element before joining, so it is the only intra-pair character that survives the pipeline.
     var catalogRing: [String]? {
         guard let ring = geometry?.coordinates.first, !ring.isEmpty else { return nil }
-        return ring.compactMap { position in
-            guard position.count >= 2 else { return nil }
-            // Rendered before `usableRegion` drops invalid coordinates, so a malformed payload can
-            // reach this. `%.5f` turns 1e300 into 309 digits, and a ring of those is tens of KB in
-            // one line — that the server sent garbage is the useful record, not the garbage.
+        // Rendered before `usableRegion` drops invalid coordinates, so a malformed payload reaches
+        // this. Every position is kept, bad ones as `bad`: `%.5f` turns 1e300 into 309 digits, and
+        // dropping them instead would leave `nv` counting vertices the ring does not show.
+        return ring.map { position in
+            guard position.count >= 2 else { return "bad_bad" }
             return "\(Self.catalogCoordinate(position[1], max: 90))_\(Self.catalogCoordinate(position[0], max: 180))"
         }
     }
