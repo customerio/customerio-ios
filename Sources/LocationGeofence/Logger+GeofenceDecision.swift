@@ -43,7 +43,7 @@ extension Logger {
     func geofenceBaselineHealed(identifier: String, transition: GeofenceTransition) {
         info(
             "Synthesized \(transition.rawValue) for region \(identifier): fresh fix contradicts stored baseline (OS never delivered the crossing)"
-                + geofenceTail("baseline.healed", .output, [
+                + geofenceTail("baseline.healed", .observation, [
                     ("id", identifier),
                     ("t", transition.rawValue)
                 ]),
@@ -54,7 +54,7 @@ extension Logger {
     func geofenceEventRefusedByContradiction(identifier: String, transition: GeofenceTransition, distanceFromCenter: Double, radius: Double, accuracy: Double) {
         info(
             "Refused OS \(transition.rawValue) for region \(identifier): a fresh fix contradicts it (distance \(Int(distanceFromCenter)) m, radius \(Int(radius)) m, accuracy \(Int(accuracy)) m)"
-                + geofenceTail("contradiction.refused", .output, [
+                + geofenceTail("contradiction.refused", .observation, [
                     ("id", identifier),
                     ("t", transition.rawValue),
                     ("dist", GeofenceLog.num(distanceFromCenter, 0)),
@@ -76,7 +76,7 @@ extension Logger {
     func geofenceBaselineRefused(identifier: String, transition: GeofenceTransition, reason: String) {
         debug(
             "Baseline heal for region \(identifier) refused: \(reason)"
-                + geofenceTail("baseline.refused", .output, [
+                + geofenceTail("baseline.refused", .observation, [
                     ("id", identifier),
                     ("t", transition.rawValue),
                     ("why", reason)
@@ -95,7 +95,7 @@ extension Logger {
     func geofenceTransitionSynthesized(geofenceId: String, transition: GeofenceTransition) {
         debug(
             "Geofence '\(geofenceId)': device already inside a newly-registered fence — synthesizing \(transition.rawValue)"
-                + geofenceTail("transition.synthesized", .output, [
+                + geofenceTail("transition.synthesized", .observation, [
                     ("id", geofenceId),
                     ("t", transition.rawValue),
                     ("why", "initial_enter_inside")

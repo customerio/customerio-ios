@@ -214,7 +214,8 @@ final class CoreLocationGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @pr
             transition: transition,
             fix: receivedFix?.fix,
             source: receivedFix?.source ?? .none,
-            buffered: false
+            buffered: false,
+            now: Date()
         )
         dispatchTransition(identifier: region.identifier, transition: transition, capturedLocation: currentLocationData())
     }
@@ -235,7 +236,8 @@ final class CoreLocationGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @pr
                     transition: next.transition,
                     fix: next.fix,
                     source: next.fixSource,
-                    buffered: true
+                    buffered: true,
+                    now: Date()
                 )
                 self.dispatchTransition(identifier: next.identifier, transition: next.transition, capturedLocation: next.location)
             }

@@ -21,7 +21,7 @@ extension Logger {
     func geofenceDeliverySent(geofenceId: String, transition: GeofenceTransition, via: String) {
         debug(
             "Geofence '\(geofenceId)' \(transition.rawValue): delivered (\(via)); removed from pending store"
-                + geofenceTail("delivery.sent", .output, [
+                + geofenceTail("delivery.sent", .observation, [
                     ("id", geofenceId),
                     ("t", transition.rawValue),
                     ("via", via)
@@ -37,7 +37,7 @@ extension Logger {
     func geofenceDeliveryQueued(geofenceId: String, transition: GeofenceTransition, via: String) {
         debug(
             "Geofence '\(geofenceId)' \(transition.rawValue): handed to \(via), which owns delivery and retry from here"
-                + geofenceTail("delivery.queued", .output, [
+                + geofenceTail("delivery.queued", .observation, [
                     ("id", geofenceId),
                     ("t", transition.rawValue),
                     ("via", via)
@@ -59,7 +59,7 @@ extension Logger {
     func geofenceDeliveryFailed(geofenceId: String, transition: GeofenceTransition, error: BackgroundDeliveryHttpError) {
         debug(
             "Geofence '\(geofenceId)' \(transition.rawValue): delivery failed (\(error.diagnosticReason)); row stays queued"
-                + geofenceTail("delivery.failed", .output, [
+                + geofenceTail("delivery.failed", .observation, [
                     ("id", geofenceId),
                     ("t", transition.rawValue),
                     ("ok", GeofenceLog.bool(false)),
