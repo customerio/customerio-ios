@@ -65,11 +65,16 @@ enum PolygonUndeliveredReason {
     case outcome(PolygonMembershipOutcome)
     /// The identified user changed between the membership write and the emit.
     case userChanged
+    /// The write said deliver, but the workspace does not want this transition for this fence —
+    /// an enter-only polygon reaching an outside decision. Its own reason because sharing the
+    /// write's outcome reports `why=deliver` on a record that exists because nothing was.
+    case transitionNotRegistered
 
     var logToken: String {
         switch self {
         case .outcome(let outcome): return outcome.logToken
         case .userChanged: return "user_changed"
+        case .transitionNotRegistered: return "transition_type_not_registered"
         }
     }
 }

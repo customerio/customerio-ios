@@ -318,10 +318,12 @@ final class PolygonMembershipResolver {
             onlyIfRingMatches: evaluatedRing,
             onlyIfCircleMatches: evaluatedCircle
         )
-        guard case .deliver(let transition) = outcome,
-              geofence.transitionTypes.contains(transition)
-        else {
+        guard case .deliver(let transition) = outcome else {
             logger.geofencePolygonNotDelivered(identifier: geofence.id, reason: .outcome(outcome))
+            return
+        }
+        guard geofence.transitionTypes.contains(transition) else {
+            logger.geofencePolygonNotDelivered(identifier: geofence.id, reason: .transitionNotRegistered)
             return
         }
         if let isStillCurrent, !isStillCurrent() {

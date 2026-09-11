@@ -1020,6 +1020,30 @@ struct PolygonMembershipResolverTests {
         #expect(await setup.storage.getPolygonMembership()["1"]?.membership == .inside)
     }
 
+    /// An enter-only polygon decided OUTSIDE reaches the delivery boundary as `.deliver(.exit)`,
+    /// and the workspace's transition filter refuses it. The write said deliver, so sharing the
+    /// write's outcome reported `why=deliver` on a record that exists because nothing was sent.
+    @Test
+    func evaluateAllPolygons_givenEnterOnlyPolygonDecidedOutside_expectTheFilterNamed() async {
+        // Outside the ring, decisively — the square is around the origin.
+        let setup = await makeSetup(fix: fix(latitude: 5, longitude: 5))
+        await setup.storage.recordRegistration(
+            center: LocationData(latitude: 0, longitude: 0), businessIds: ["1"]
+        )
+        await setup.storage.setCachedGeofences([polygonGeofence(id: "1", transitionTypes: [.enter])])
+        // A belief already exists, so the write takes the CHANGE path and returns .deliver(.exit)
+        // rather than suppressing as an initial outside.
+        _ = await setup.storage.recordPolygonMembership(
+            .inside, forIdentifier: "1", onlyIfBeliefPredates: Date(timeIntervalSince1970: 0)
+        )
+
+        await setup.resolver.evaluateAllPolygons()
+
+        #expect(await setup.emitter.snapshot().isEmpty)
+        #expect(logged(setup.logger, "delivered nothing: transition_type_not_registered"))
+        #expect(!logged(setup.logger, "delivered nothing: deliver"))
+    }
+
     /// Control: the same foregrounding with nobody switching must still deliver, so the guard above
     /// is not passing by refusing every foreground pass.
     @Test
