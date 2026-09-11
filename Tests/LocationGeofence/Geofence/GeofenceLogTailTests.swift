@@ -138,7 +138,7 @@ struct GeofenceLogTailTests {
             Invocation(name: "movementTrigger", ev: "movement.exit", requiredKeys: ["tier"]) { $0.geofenceMovementTrigger(tier: .localRerank) },
             Invocation(name: "movementTriggerRegistered", ev: "movement.registered", requiredKeys: ["rad"]) { $0.geofenceMovementTriggerRegistered(latitude: 43.2, longitude: -79.0, radius: 500) },
             Invocation(name: "movementRearmed", ev: "movement.rearmed", requiredKeys: ["why"]) { $0.geofenceMovementRearmedAfterFailedRefresh() },
-            Invocation(name: "movementFixResolved", ev: "movement.fix.resolved", requiredKeys: ["age", "prov", "spd"]) { $0.geofenceMovementFixResolved(ageSeconds: 12.5, requested: true, speed: 13.4) },
+            Invocation(name: "movementFixResolved", ev: "movement.fix.resolved", requiredKeys: ["age", "prov", "spd", "for"]) { $0.geofenceMovementFixResolved(ageSeconds: 12.5, requested: true, speed: 13.4, purpose: .movement) },
             Invocation(name: "movementFixStale", ev: "movement.fix.requested", requiredKeys: ["age", "why"]) { $0.geofenceMovementFixStale(ageSeconds: 900) },
             Invocation(name: "movementFixRequestFailed", ev: "movement.fix.failed", requiredKeys: ["ok", "why", "ms"]) { $0.geofenceMovementFixRequestFailed(fallingBackToCached: true, elapsed: 5) },
             Invocation(name: "baselineHealed", ev: "baseline.healed", requiredKeys: ["id", "t"]) { $0.geofenceBaselineHealed(identifier: "notl_core", transition: .enter) },
@@ -195,6 +195,21 @@ struct GeofenceLogTailTests {
                     #expect(fields[key] != nil, "\(invocation.name): missing \(key)= in '\(message)'")
                 }
             }
+        }
+    }
+
+    /// One resolver serves five decisions, so a speed sample is only usable once you can tell
+    /// which asked for it — the wake margin is calibrated from the movement caller alone.
+    @Test
+    func movementFixResolved_expectTheAskingDecisionNamed() {
+        withDiagnostics(true) {
+            for purpose in [GeofenceFixPurpose.movement, .contradictionGate, .baselineHeal, .pendingEvents, .polygon] {
+                let logger = CapturingLogger()
+                logger.geofenceMovementFixResolved(ageSeconds: 1, requested: false, speed: 5, purpose: purpose)
+                #expect(parseTail(logger.messages.last ?? "")?["for"] == purpose.rawValue)
+            }
+            // Distinct tokens, or the split says nothing.
+            #expect(Set([GeofenceFixPurpose.movement, .contradictionGate, .baselineHeal, .pendingEvents, .polygon].map(\.rawValue)).count == 5)
         }
     }
 

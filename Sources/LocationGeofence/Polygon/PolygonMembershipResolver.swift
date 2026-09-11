@@ -357,7 +357,7 @@ final class PolygonMembershipResolver {
         // current as any answer a request can return and the guard below can never pass.
         let priorTimestamp = fixResolver.latestFix?.timestamp
         return await withCheckedContinuation { continuation in
-            fixResolver.resolve(cached: requiringFresh ? nil : fixResolver.cachedFix) { [weak self] _, isFresh in
+            fixResolver.resolve(cached: requiringFresh ? nil : fixResolver.cachedFix, purpose: .polygon) { [weak self] _, isFresh in
                 guard let self else { return continuation.resume(returning: nil) }
                 let resolved = fixResolver.latestFix
                 if requiringFresh {

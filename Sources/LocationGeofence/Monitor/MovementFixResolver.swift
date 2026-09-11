@@ -4,6 +4,18 @@ import Foundation
 
 /// Ensures the fix attached to a movement-trigger EXIT is fresh before it drives a sync pass.
 ///
+/// Which decision asked for a fix. One resolver serves five call sites, so without this every
+/// `movement.fix.resolved` record joins one population — and the wake margin is calibrated from
+/// the movement one alone. No default: a new call site must say which it is, or it silently
+/// contaminates the sample.
+enum GeofenceFixPurpose: String {
+    case movement
+    case contradictionGate = "gate"
+    case baselineHeal = "heal"
+    case pendingEvents = "pending"
+    case polygon
+}
+
 /// `CLLocationManager.location` on a long-suspended process can stay frozen at the fix cached
 /// around process start, anchoring every movement pass (re-rank point, trigger re-center, the
 /// moved-beyond check) to a stale position for a whole trip. A cached fix older than
@@ -64,6 +76,8 @@ final class MovementFixResolver: NSObject, @preconcurrency CLLocationManagerDele
     private var pendingCompletions: [(LocationData?, Bool) -> Void] = []
     /// Newest cached fix seen while a request is in flight — the fallback on failure/timeout.
     private var fallbackFix: CLLocation?
+    /// Purpose of the caller that started the in-flight request; see `resolve`.
+    private var pendingPurpose: GeofenceFixPurpose?
     private var timeoutTask: Task<Void, Never>?
     /// Monotonic start of the in-flight request, so a failure can report how long it waited —
     /// "timed out after 10s" and "failed immediately" are different faults.
@@ -103,10 +117,10 @@ final class MovementFixResolver: NSObject, @preconcurrency CLLocationManagerDele
     /// is `fallbackFix` — which is by definition the stale fix that prompted the request. A caller
     /// that sizes anything to the coordinates needs that apart, and deriving it from the fix's age
     /// at the call site would put this rule in two more places to get wrong.
-    func resolve(cached: CLLocation?, completion: @escaping (LocationData?, Bool) -> Void) {
+    func resolve(cached: CLLocation?, purpose: GeofenceFixPurpose, completion: @escaping (LocationData?, Bool) -> Void) {
         let age = cached.map { -$0.timestamp.timeIntervalSinceNow }
         if let cached, let age, age <= maxAge {
-            logger.geofenceMovementFixResolved(ageSeconds: age, requested: false, speed: cached.speed)
+            logger.geofenceMovementFixResolved(ageSeconds: age, requested: false, speed: cached.speed, purpose: purpose)
             completion(locationData(from: cached), true)
             return
         }
@@ -116,6 +130,9 @@ final class MovementFixResolver: NSObject, @preconcurrency CLLocationManagerDele
         }
         pendingCompletions.append(completion)
         guard pendingCompletions.count == 1 else { return }
+        // The initiator labels the record. Later callers coalesce onto this request and return
+        // through `completeAll` without logging, so one request still yields exactly one record.
+        pendingPurpose = purpose
         requestStartedAt = GeofenceLog.monotonicNow()
         startTimeout()
         holdBackgroundTimeUntilCompletion()
@@ -151,7 +168,7 @@ final class MovementFixResolver: NSObject, @preconcurrency CLLocationManagerDele
     func handleResolvedFix(_ fix: CLLocation) {
         recordDeliveredFix(fix)
         guard !pendingCompletions.isEmpty else { return }
-        logger.geofenceMovementFixResolved(ageSeconds: -fix.timestamp.timeIntervalSinceNow, requested: true, speed: fix.speed)
+        logger.geofenceMovementFixResolved(ageSeconds: -fix.timestamp.timeIntervalSinceNow, requested: true, speed: fix.speed, purpose: pendingPurpose)
         completeAll(with: locationData(from: fix), isFresh: true)
     }
 
@@ -199,6 +216,7 @@ final class MovementFixResolver: NSObject, @preconcurrency CLLocationManagerDele
         timeoutTask = nil
         fallbackFix = nil
         requestStartedAt = nil
+        pendingPurpose = nil
         currentRequestSignal?.complete()
         currentRequestSignal = nil
         let completions = pendingCompletions
