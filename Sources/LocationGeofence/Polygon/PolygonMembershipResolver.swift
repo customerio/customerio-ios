@@ -100,13 +100,13 @@ final class PolygonMembershipResolver {
             case .unknown:
                 await apply(.outside, to: geofence, evidence: occurredAt, confirmedByFix: false, evaluatedCircle: nil)
             case .expired:
-                logger.geofencePolygonUndecided(identifier: identifier, reason: "event circle expired")
+                logger.geofencePolygonUndecided(identifier: identifier, reason: .circleExpired)
             }
         case .enter:
             guard geofence.polygonRegion != nil else {
                 // A stored ring that no longer builds is NOT a circle — forwarding it would fire a
                 // customer enter anywhere inside the covering circle.
-                logger.geofencePolygonUndecided(identifier: identifier, reason: "stored ring no longer builds")
+                logger.geofencePolygonUndecided(identifier: identifier, reason: .ringUnbuildable)
                 return
             }
             // Also a movement event, so the same staleness rule applies as on a wake.
@@ -141,7 +141,7 @@ final class PolygonMembershipResolver {
     @discardableResult
     func evaluateMembership(
         geofenceIds: [String],
-        reason: String,
+        reason: PolygonEvaluationReason,
         requiresFreshFix: Bool = false,
         isStillCurrent: (@Sendable () -> Bool)? = nil
     ) async -> Bool {
@@ -162,7 +162,7 @@ final class PolygonMembershipResolver {
         guard !pending.isEmpty else { return true }
         guard let fix = await resolveFix(requiringFresh: requiresFreshFix) else {
             for geofenceId in pending {
-                logger.geofencePolygonUndecided(identifier: geofenceId, reason: "no usable fix")
+                logger.geofencePolygonUndecided(identifier: geofenceId, reason: .noUsableFix)
             }
             return false
         }
@@ -195,7 +195,7 @@ final class PolygonMembershipResolver {
         isStillCurrent: (@Sendable () -> Bool)? = nil
     ) async {
         if passesInFlight > 0, !requiresFreshFix {
-            logger.geofencePolygonPassSkipped(reason: "a pass is already running")
+            logger.geofencePolygonPassSkipped(reason: .passInFlight)
             return
         }
         passesInFlight += 1
@@ -210,7 +210,7 @@ final class PolygonMembershipResolver {
         // polygon after the first to the pre-wake fix.
         guard let fix = await resolveFix(requiringFresh: requiresFreshFix) else {
             for geofence in polygons {
-                logger.geofencePolygonUndecided(identifier: geofence.id, reason: "no usable fix")
+                logger.geofencePolygonUndecided(identifier: geofence.id, reason: .noUsableFix)
             }
             return
         }
@@ -225,7 +225,7 @@ final class PolygonMembershipResolver {
         isStillCurrent: (@Sendable () -> Bool)? = nil
     ) async {
         guard let fix = await resolveFix(requiringFresh: requiresFreshFix) else {
-            logger.geofencePolygonUndecided(identifier: geofenceId, reason: "no usable fix")
+            logger.geofencePolygonUndecided(identifier: geofenceId, reason: .noUsableFix)
             return
         }
         await evaluate(geofenceId: geofenceId, fix: fix, isStillCurrent: isStillCurrent)
@@ -247,17 +247,17 @@ final class PolygonMembershipResolver {
         isStillCurrent: (@Sendable () -> Bool)? = nil
     ) async {
         guard CLLocationCoordinate2DIsValid(fix.coordinate) else {
-            logger.geofencePolygonUndecided(identifier: geofenceId, reason: "no usable fix")
+            logger.geofencePolygonUndecided(identifier: geofenceId, reason: .noUsableFix)
             return
         }
         if let isStillCurrent, !isStillCurrent() {
-            logger.geofencePolygonUndecided(identifier: geofenceId, reason: "user changed while resolving the fix")
+            logger.geofencePolygonUndecided(identifier: geofenceId, reason: .userChanged)
             return
         }
         guard let geofence = await storage.getRegisteredGeofence(id: geofenceId),
               let polygon = geofence.polygonRegion
         else {
-            logger.geofencePolygonUndecided(identifier: geofenceId, reason: "no longer a registered polygon")
+            logger.geofencePolygonUndecided(identifier: geofenceId, reason: .unregistered)
             return
         }
         let point = LocationData(latitude: fix.coordinate.latitude, longitude: fix.coordinate.longitude)
@@ -269,7 +269,9 @@ final class PolygonMembershipResolver {
         ) else {
             logger.geofencePolygonUndecided(
                 identifier: geofence.id,
-                reason: "edge distance \(Int(signedEdgeDistance)) m within accuracy \(Int(fix.horizontalAccuracy)) m"
+                reason: .withinAccuracy,
+                signedEdgeDistance: signedEdgeDistance,
+                horizontalAccuracy: fix.horizontalAccuracy
             )
             return
         }
@@ -316,14 +318,16 @@ final class PolygonMembershipResolver {
             onlyIfRingMatches: evaluatedRing,
             onlyIfCircleMatches: evaluatedCircle
         )
-        guard case .deliver(let transition) = outcome,
-              geofence.transitionTypes.contains(transition)
-        else {
-            logger.geofencePolygonNotDelivered(identifier: geofence.id, outcome: "\(outcome)")
+        guard case .deliver(let transition) = outcome else {
+            logger.geofencePolygonNotDelivered(identifier: geofence.id, reason: .outcome(outcome))
+            return
+        }
+        guard geofence.transitionTypes.contains(transition) else {
+            logger.geofencePolygonNotDelivered(identifier: geofence.id, reason: .transitionNotRegistered)
             return
         }
         if let isStillCurrent, !isStillCurrent() {
-            logger.geofencePolygonNotDelivered(identifier: geofence.id, outcome: "user changed before delivery")
+            logger.geofencePolygonNotDelivered(identifier: geofence.id, reason: .userChanged)
             return
         }
         logger.geofencePolygonTransition(

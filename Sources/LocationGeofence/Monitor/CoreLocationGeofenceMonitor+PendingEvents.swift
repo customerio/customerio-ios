@@ -118,7 +118,7 @@ extension CoreLocationGeofenceMonitor {
     ) {
         if identifier == GeofenceConstants.movementTriggerIdentifier, transition == .exit {
             movementFixResolver.resolve(cached: bestKnownFix(), purpose: .pendingEvents) { [weak self] location, isFresh in
-                self?.logger.geofenceOsTransitionReceived(identifier: identifier, transition: transition)
+                self?.logger.geofenceCallbackDispatched(identifier: identifier, transition: transition)
                 // Falling back to the captured location is a second layer of staleness on top of a
                 // failed request, so it can never be reported as current.
                 self?.onTransition?(
@@ -128,7 +128,7 @@ extension CoreLocationGeofenceMonitor {
             }
             return
         }
-        logger.geofenceOsTransitionReceived(identifier: identifier, transition: transition)
+        logger.geofenceCallbackDispatched(identifier: identifier, transition: transition)
         onTransition?(identifier, transition, capturedLocation, occurredAt, false, .circle(circle))
     }
 }

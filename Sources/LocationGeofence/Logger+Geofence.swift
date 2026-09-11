@@ -37,17 +37,16 @@ enum GeofenceLaunchReason: String {
 }
 
 extension Logger {
-    func geofenceInvalidRegionDropped(_ identifier: String, reason: GeofenceRegionDropReason) {
-        error(
-            "Geofence '\(identifier)' dropped — \(reason.rawValue)",
-            geofenceTag,
-            nil
-        )
-    }
-
+    /// Not "the workspace has no fences": every region was unreadable, so the response is treated
+    /// as a fetch failure and the cache survives. The tail is what tells those two apart on replay.
     func geofenceAllRegionsDropped(count: Int) {
         error(
-            "All \(count) region(s) in the response were unusable — treating as a fetch failure so the cache survives",
+            "All \(count) region(s) in the response were unusable — treating as a fetch failure so the cache survives"
+                + geofenceTail("api.fetch.unreadable", .input, [
+                    ("ok", GeofenceLog.bool(false)),
+                    ("n", GeofenceLog.int(count)),
+                    ("why", "all_regions_unusable")
+                ]),
             geofenceTag,
             nil
         )
@@ -275,12 +274,23 @@ extension Logger {
         )
     }
 
-    /// Positive record of an OS-delivered business transition. Without it a native delivery is
-    /// only identifiable by the ABSENCE of a synthesized line, which makes the OS promotion rate
-    /// inferred rather than measured. Logged at the monitors' dispatch sites, where provenance is
-    /// known: the resolver's entry point also receives synthesized heals, which would inflate it.
-    func geofenceOsTransitionReceived(identifier: String, transition: GeofenceTransition) {
-        debug("OS delivered \(transition.rawValue) for region \(identifier)", geofenceTag)
+    /// The event survived the contradiction gate and the monitor's dedup baseline and is being
+    /// handed to the consumer.
+    ///
+    /// Not a duplicate of `os.callback.received`, which fires earlier for EVERY delivered event:
+    /// the difference between the two is what the gate and the dedup discarded. For a polygon the
+    /// `polygon.*` records cover the same span, but for a circle fence nothing else does — the
+    /// next record is `transition.accepted`, after the cooldown, so without this a crossing killed
+    /// at the monitor looks like one the OS never delivered.
+    func geofenceCallbackDispatched(identifier: String, transition: GeofenceTransition) {
+        debug(
+            "OS delivered \(transition.rawValue) for region \(identifier)"
+                + geofenceTail("os.callback.dispatched", .output, [
+                    ("id", identifier),
+                    ("t", transition.rawValue)
+                ]),
+            geofenceTag
+        )
     }
 
     // MARK: - Module state

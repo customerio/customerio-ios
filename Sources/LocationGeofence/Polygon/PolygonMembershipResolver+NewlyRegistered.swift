@@ -22,12 +22,12 @@ extension PolygonMembershipResolver {
         isStillCurrent: (@Sendable () -> Bool)? = nil
     ) async {
         let decided = await evaluateMembership(
-            geofenceIds: geofenceIds, reason: "new polygon",
+            geofenceIds: geofenceIds, reason: .newPolygon,
             requiresFreshFix: true, isStillCurrent: isStillCurrent
         )
         guard !decided else { return }
         await evaluateMembership(
-            geofenceIds: geofenceIds, reason: "new polygon, forced request failed",
+            geofenceIds: geofenceIds, reason: .newPolygonForcedRequestFailed,
             isStillCurrent: isStillCurrent
         )
     }

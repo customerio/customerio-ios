@@ -42,18 +42,6 @@ private struct LenientRegion: Decodable {
     }
 }
 
-/// Why a region on the wire never became a monitorable fence.
-enum GeofenceRegionDropReason: String, Error {
-    /// A shape the server NAMED that this version cannot monitor. The workspace moved on, so this
-    /// is the one reason exempt from the all-dropped guard: stale monitors should go with it.
-    case unknownShape = "unrecognized shape"
-    /// No shape named, but polygon fields present — a malformed payload, so it counts as unreadable
-    /// and the cache survives.
-    case undescribedShape = "shape missing but polygon fields present"
-    case unusableCircle = "invalid coordinates or radius"
-    case unusablePolygon = "missing or undecodable polygon geometry"
-}
-
 struct GeofenceApiConfig: Decodable {
     let localRefreshTriggerRadius: Double?
     let remoteFetchRefreshTriggerRadius: Double?

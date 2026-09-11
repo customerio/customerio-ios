@@ -621,7 +621,7 @@ struct PolygonMembershipResolverTests {
         await setup.storage.setCachedGeofences([polygonGeofence()])
 
         await setup.resolver.evaluateMembership(
-            geofenceIds: ["1"], reason: "test", isStillCurrent: { false }
+            geofenceIds: ["1"], reason: .foreground, isStillCurrent: { false }
         )
 
         #expect(await setup.emitter.snapshot().isEmpty)
@@ -636,7 +636,7 @@ struct PolygonMembershipResolverTests {
         await setup.storage.setCachedGeofences([polygonGeofence()])
 
         await setup.resolver.evaluateMembership(
-            geofenceIds: ["1"], reason: "test", isStillCurrent: { true }
+            geofenceIds: ["1"], reason: .foreground, isStillCurrent: { true }
         )
 
         #expect(await setup.storage.getPolygonMembership()["1"]?.membership == .inside)
@@ -652,7 +652,7 @@ struct PolygonMembershipResolverTests {
         let requested = Flag()
         setup.fixResolver.requestFreshFix = { requested.value = true }
 
-        async let pass: Bool = setup.resolver.evaluateMembership(geofenceIds: ["1"], reason: "test")
+        async let pass: Bool = setup.resolver.evaluateMembership(geofenceIds: ["1"], reason: .foreground)
         await yieldUntil { requested.value }
         await setup.storage.setCachedGeofences([movedPolygonGeofence()])
         setup.fixResolver.handleResolvedFix(fix(latitude: 0, longitude: 0))
@@ -670,7 +670,7 @@ struct PolygonMembershipResolverTests {
         let requested = Flag()
         setup.fixResolver.requestFreshFix = { requested.value = true }
 
-        async let pass: Bool = setup.resolver.evaluateMembership(geofenceIds: ["1"], reason: "test")
+        async let pass: Bool = setup.resolver.evaluateMembership(geofenceIds: ["1"], reason: .foreground)
         await yieldUntil { requested.value }
         setup.fixResolver.handleResolvedFix(fix(latitude: 0, longitude: 0))
         _ = await pass
@@ -688,7 +688,7 @@ struct PolygonMembershipResolverTests {
         await registerPolygons(setup, ids: ["1", "2", "3"])
         let counter = countingRequests(setup)
 
-        await setup.resolver.evaluateMembership(geofenceIds: ["1", "2", "3"], reason: "test")
+        await setup.resolver.evaluateMembership(geofenceIds: ["1", "2", "3"], reason: .foreground)
 
         #expect(counter.count == 1)
     }
@@ -982,8 +982,11 @@ struct PolygonMembershipResolverTests {
         await yieldUntil { switched.value }
         // Waits for the refusal to be RECORDED, not for a fixed number of yields: an expect-nothing
         // test with a fixed wait goes vacuous the moment this path gains another await.
-        await yieldUntil { logged(setup.logger, "user changed while resolving the fix") }
+        await yieldUntil { logged(setup.logger, PolygonUndecidedReason.userChanged.prose) }
 
+        // `yieldUntil` gives up silently, so without this the expect-nothing assertions below pass
+        // whether the refusal ran or the wait simply timed out.
+        #expect(logged(setup.logger, PolygonUndecidedReason.userChanged.prose))
         #expect(await setup.emitter.snapshot().isEmpty)
         #expect(await setup.storage.getPolygonMembership()["1"] == nil)
     }
@@ -1011,8 +1014,34 @@ struct PolygonMembershipResolverTests {
         })
 
         #expect(asked.count == 2)
+        // The write said deliver, so the refusal is the switch and not an unchanged belief.
+        #expect(logged(setup.logger, "delivered nothing: user_changed"))
         #expect(await setup.emitter.snapshot().isEmpty)
         #expect(await setup.storage.getPolygonMembership()["1"]?.membership == .inside)
+    }
+
+    /// An enter-only polygon decided OUTSIDE reaches the delivery boundary as `.deliver(.exit)`,
+    /// and the workspace's transition filter refuses it. The write said deliver, so sharing the
+    /// write's outcome reported `why=deliver` on a record that exists because nothing was sent.
+    @Test
+    func evaluateAllPolygons_givenEnterOnlyPolygonDecidedOutside_expectTheFilterNamed() async {
+        // Outside the ring, decisively — the square is around the origin.
+        let setup = await makeSetup(fix: fix(latitude: 5, longitude: 5))
+        await setup.storage.recordRegistration(
+            center: LocationData(latitude: 0, longitude: 0), businessIds: ["1"]
+        )
+        await setup.storage.setCachedGeofences([polygonGeofence(id: "1", transitionTypes: [.enter])])
+        // A belief already exists, so the write takes the CHANGE path and returns .deliver(.exit)
+        // rather than suppressing as an initial outside.
+        _ = await setup.storage.recordPolygonMembership(
+            .inside, forIdentifier: "1", onlyIfBeliefPredates: Date(timeIntervalSince1970: 0)
+        )
+
+        await setup.resolver.evaluateAllPolygons()
+
+        #expect(await setup.emitter.snapshot().isEmpty)
+        #expect(logged(setup.logger, "delivered nothing: transition_type_not_registered"))
+        #expect(!logged(setup.logger, "delivered nothing: deliver"))
     }
 
     /// Control: the same foregrounding with nobody switching must still deliver, so the guard above

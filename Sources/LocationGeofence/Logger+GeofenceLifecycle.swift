@@ -12,12 +12,14 @@ private let geofenceTag = "Geofence"
 extension Logger {
     // MARK: - Registration
 
-    func geofenceInvalidRegionDropped(_ identifier: String) {
+    /// `reason` distinguishes a shape this version cannot monitor from a payload it could not read
+    /// — the difference decides whether the cache is cleared, so a drive has to show which it was.
+    func geofenceInvalidRegionDropped(_ identifier: String, reason: GeofenceRegionDropReason) {
         error(
-            "Geofence '\(identifier)' dropped — invalid coordinates or radius, not registerable with the OS"
+            "Geofence '\(identifier)' dropped — \(reason.rawValue)"
                 + geofenceTail("registration.rejected", .output, [
                     ("id", identifier),
-                    ("why", "invalid_geometry")
+                    ("why", reason.logToken)
                 ]),
             geofenceTag,
             nil
