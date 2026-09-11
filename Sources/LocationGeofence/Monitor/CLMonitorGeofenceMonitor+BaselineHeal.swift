@@ -54,7 +54,7 @@ extension CLMonitorGeofenceMonitor {
                     horizontalAccuracy: fix.horizontalAccuracy,
                     // Age at drain time, so a delayed drain disqualifies the fix instead of
                     // trusting a snapshot that has gone stale in the queue.
-                    fixAge: -fix.timestamp.timeIntervalSinceNow,
+                    fixAge: self.dateUtil.now.timeIntervalSince(fix.timestamp),
                     lastState: record.lastState
                 ) else { continue }
                 // A heal that decides a crossing is real and is then refused by the baseline used
