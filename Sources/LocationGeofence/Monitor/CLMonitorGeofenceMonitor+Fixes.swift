@@ -21,12 +21,12 @@ extension CLMonitorGeofenceMonitor {
     func bestKnownFixDetail() -> (fix: CLLocation, source: GeofenceLog.FixSource)? {
         let selected = selectFix()
         // Every cache read is an input and is logged, repeated or not.
-        logger.geofenceLocationFix(selected?.fix, source: selected?.source ?? .none, now: Date())
+        logger.geofenceLocationFix(selected?.fix, source: selected?.source ?? .none, now: dateUtil.now)
         return selected
     }
 
     private func selectFix() -> (fix: CLLocation, source: GeofenceLog.FixSource)? {
-        let cached = authManager.location.flatMap { CLLocationCoordinate2DIsValid($0.coordinate) ? $0 : nil }
+        let cached = authManager.currentLocation.flatMap { CLLocationCoordinate2DIsValid($0.coordinate) ? $0 : nil }
         guard let resolved = movementFixResolver.latestFix else {
             return cached.map { ($0, .managerCache) }
         }
@@ -47,7 +47,7 @@ extension CLMonitorGeofenceMonitor {
             fix: detail?.fix,
             source: detail?.source ?? .none,
             eventDate: eventDate,
-            now: Date()
+            now: dateUtil.now
         )
     }
 
