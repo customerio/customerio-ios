@@ -57,7 +57,7 @@ extension CLMonitorGeofenceMonitor {
               readd.replayWindowCovers(eventDate)
         else { return false }
         let gateFix = await resolveGateFix()
-        guard let gateFix else { return false }
+        guard let gateFix, CLLocationCoordinate2DIsValid(gateFix.coordinate) else { return false }
         let distanceFromCenter = gateFix.distance(
             from: CLLocation(latitude: readd.center.latitude, longitude: readd.center.longitude)
         )
