@@ -273,37 +273,8 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring {
         case .unknown:
             return logger.geofenceInfo("os_state_unusable", fields: [("id", identifier), ("state", "unknown")])
         case .unmonitored:
-            // CLMonitor gave up on the condition (e.g. condition budget exceeded). Drop the mirror
-            // entry and the recorded circle so the next sync re-registers it. The stored baseline
-            // goes too — the region stays in the desired set, so nothing else prunes it, and the
-            // device can cross while it is unmonitored.
-            //
-            // Ownership is deliberately KEPT. It only gates which events this process accepts, and
-            // the OS sends events solely for conditions it monitors, so keeping it can't admit a
-            // spurious one. Dropping it strands the region instead: an add already queued here
-            // revives the condition without restoring ownership, and a condition the OS gave up on
-            // stays listed and revives on its own once budget frees (measured). Worst case is the
-            // movement trigger — its events are what drive the next sync, so dropping its ownership
-            // removes the only thing that would restore it before the process restarts.
-            logger.geofenceMonitorStoppedMonitoringRegion(identifier)
-            knownConditionIdentifiers.remove(identifier)
-            registeredConditions.removeValue(forKey: identifier)
-            conditionReadds.removeValue(forKey: identifier)
-            // Whichever registration comes next must reseed the baseline rather than preserve it.
-            // The clear below only covers the case where none comes: a re-registration with the same
-            // circle preserves the stored state by design, and after the OS gave up that state is no
-            // longer known to match reality.
-            conditionsNeedingBaselineReseed.insert(identifier)
-            persistConditionMirror()
-            // On the pipeline, and skipped if a registration has re-added the identifier since the
-            // line above cleared it — deleting a baseline that add just wrote would cost the next
-            // crossing. Keyed on this monitor's own record of completed adds rather than on
-            // `CLMonitor.identifiers`: a condition the OS gave up on stays listed there (measured),
-            // so reading that would make this clear permanently inert.
-            enqueueMonitorOperation { [weak self] _ in
-                guard let self, !self.knownConditionIdentifiers.contains(identifier) else { return }
-                await self.storage.clearMonitorRegionRecord(identifier: identifier)
-            }
+            // CLMonitor gave up on the condition. See `handleConditionUnmonitored` (+Registration).
+            handleConditionUnmonitored(identifier)
             return
         @unknown default:
             return logger.geofenceInfo("os_state_unusable", fields: [("id", identifier), ("state", "unhandled")])
