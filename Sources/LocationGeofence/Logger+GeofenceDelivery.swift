@@ -70,6 +70,57 @@ extension Logger {
     }
 }
 
+// MARK: - Pending queue reads
+
+//
+// Classified `in`: the queue file is an input the SDK reads back, and a replay that fed these
+// forward as outputs would invent deliveries. Both records exist because a shrinking backlog and
+// a vanished one used to look identical — one undecodable row discarded the whole queue silently.
+
+/// Why the pending queue file could not be turned into rows.
+enum GeofenceQueueReadFailure: String {
+    /// The bytes could not be obtained — Data Protection before first unlock, or an I/O error.
+    /// The rows are intact on disk, so nothing may be written over them.
+    case readFailed = "read_failed"
+    /// The bytes came back but are not a row array, so there is nothing left to preserve.
+    case notARowArray = "not_a_row_array"
+
+    var prose: String {
+        switch self {
+        case .readFailed: return "the file could not be read"
+        case .notARowArray: return "the file is not a row array"
+        }
+    }
+}
+
+extension Logger {
+    /// Rows skipped because they did not decode. The count travels because it is the only thing
+    /// that separates a backlog that shrank from one that was thrown away.
+    func geofenceQueueRowsDropped(count: Int, of total: Int) {
+        error(
+            "Pending geofence queue: skipped \(count) of \(total) row(s) that did not decode"
+                + geofenceTail("queue.rows_dropped", .input, [
+                    ("why", "decode_failed"),
+                    ("n", GeofenceLog.int(count)),
+                    ("total", GeofenceLog.int(total))
+                ]),
+            geofenceTag,
+            nil
+        )
+    }
+
+    /// The queue could not be read at all. `why` decides whether the rows survive: a read failure
+    /// leaves them on disk untouched, an unparseable file has already lost them.
+    func geofenceQueueUnreadable(reason: GeofenceQueueReadFailure) {
+        error(
+            "Pending geofence queue unreadable: \(reason.prose)"
+                + geofenceTail("queue.unreadable", .input, [("why", reason.rawValue)]),
+            geofenceTag,
+            nil
+        )
+    }
+}
+
 extension BackgroundDeliveryHttpError {
     /// Stable token for the tail, so a reader can tell an offline device from a misconfigured one.
     ///

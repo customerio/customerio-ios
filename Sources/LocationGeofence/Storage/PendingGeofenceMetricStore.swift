@@ -1,6 +1,19 @@
 import CioInternalCommon
 import Foundation
 
+/// What a read of the queue file found.
+///
+/// `unreadable` is a case of its own rather than an empty list because the two demand opposite
+/// handling. The file carries `completeUntilFirstUserAuthentication`, so a geofence wake before
+/// the first unlock after a reboot cannot read it — and a read failure reported as "no rows" lets
+/// the next append overwrite a queue that was never actually lost.
+enum PendingGeofenceQueueRead: Equatable {
+    /// The file was read. `droppedRows` counts rows that did not decode and were skipped.
+    case rows([PendingGeofenceMetric], droppedRows: Int)
+    /// The bytes could not be obtained. Nothing may be written over them.
+    case unreadable
+}
+
 /// File-backed queue of geofence transition events awaiting direct-HTTP delivery.
 ///
 /// Same persistence shape as `PendingPushDeliveryStore` but in the app's container
@@ -20,14 +33,18 @@ actor PendingGeofenceMetricStore {
 
     private let fileManager: FileManager
     private let directoryURL: URL?
+    private let logger: Logger
 
     /// - Parameters:
+    ///   - logger: Reports rows skipped on read; the store is the only place that knows the count.
     ///   - fileManager: File manager used for I/O. Defaults to `.default`.
     ///   - directoryURL: Directory for the queue file. If `nil`, uses Application Support in the app container.
     init(
+        logger: Logger,
         fileManager: FileManager = .default,
         directoryURL: URL? = nil
     ) {
+        self.logger = logger
         self.fileManager = fileManager
         self.directoryURL = directoryURL
     }
@@ -35,10 +52,13 @@ actor PendingGeofenceMetricStore {
     /// Appends metrics in one read-modify-write so a transition's fan-out persists atomically —
     /// a crash can't save some rows and lose the rest. Rows whose `key` already exists (on disk
     /// or earlier in `metrics`) are a no-op. When over capacity, drops the **oldest** first.
-    /// Returns `false` if the file could not be persisted.
+    /// Returns `false` if the file could not be read or persisted.
+    ///
+    /// Refuses to write over an unreadable file: the append would otherwise replace a queue whose
+    /// rows are intact on disk and merely out of reach, which is the pre-first-unlock case.
     func append(_ metrics: [PendingGeofenceMetric]) -> Bool {
         guard !metrics.isEmpty else { return true }
-        var items = loadFromDisk()
+        guard case .rows(var items, _) = read() else { return false }
         var keys = Set(items.map(\.key))
         for metric in metrics where keys.insert(metric.key).inserted {
             items.append(metric)
@@ -49,14 +69,16 @@ actor PendingGeofenceMetricStore {
         return saveToDisk(items)
     }
 
-    /// All pending metrics, oldest first.
-    func loadAll() -> [PendingGeofenceMetric] {
+    /// The pending queue, oldest first, or `unreadable`. Callers must handle the two apart —
+    /// a caller that treats `unreadable` as an empty queue reintroduces the bug this returns for.
+    func read() -> PendingGeofenceQueueRead {
         loadFromDisk()
     }
 
-    /// Removes one pending entry by key. Returns `true` when the entry was found and removed.
+    /// Removes one pending entry by key. Returns `true` when the entry was found and removed,
+    /// `false` when it was absent, the file was unreadable, or the write failed.
     func remove(key: String) -> Bool {
-        var items = loadFromDisk()
+        guard case .rows(var items, _) = read() else { return false }
         let originalCount = items.count
         items.removeAll { $0.key == key }
         guard items.count != originalCount else { return false }
@@ -65,15 +87,38 @@ actor PendingGeofenceMetricStore {
 
     // MARK: - Private (file persistence)
 
-    private func loadFromDisk() -> [PendingGeofenceMetric] {
-        guard let url = fileURL(),
-              fileManager.fileExists(atPath: url.path),
-              let data = try? Data(contentsOf: url)
-        else {
-            return []
+    private func loadFromDisk() -> PendingGeofenceQueueRead {
+        // A nil URL means Application Support could not be resolved, so no write ever landed.
+        // Reported as unreadable rather than empty because `saveToDisk` cannot succeed either.
+        guard let url = fileURL() else { return .unreadable }
+        guard fileManager.fileExists(atPath: url.path) else { return .rows([], droppedRows: 0) }
+        guard let data = try? Data(contentsOf: url) else {
+            logger.geofenceQueueUnreadable(reason: .readFailed)
+            return .unreadable
         }
-        // Corrupted or unreadable JSON returns empty so the next write overwrites it.
-        return (try? Self.makeDecoder().decode([PendingGeofenceMetric].self, from: data)) ?? []
+        guard let rows = try? Self.makeDecoder().decode([DecodedRow].self, from: data) else {
+            // The bytes came back but are not a row array. Unlike a read failure there is nothing
+            // to preserve, so the queue reads as empty and the next write reclaims the file.
+            logger.geofenceQueueUnreadable(reason: .notARowArray)
+            return .rows([], droppedRows: 0)
+        }
+        let decoded = rows.compactMap(\.metric)
+        let dropped = rows.count - decoded.count
+        if dropped > 0 {
+            logger.geofenceQueueRowsDropped(count: dropped, of: rows.count)
+        }
+        return .rows(decoded, droppedRows: dropped)
+    }
+
+    /// Decodes one row without failing the array. A row the current schema cannot read is skipped
+    /// and counted; a single `try?` around the whole array discarded every other row with it, and
+    /// `userId`/`transitionId` are non-optional, so schema evolution alone can trigger it.
+    private struct DecodedRow: Decodable {
+        let metric: PendingGeofenceMetric?
+
+        init(from decoder: Decoder) throws {
+            self.metric = try? PendingGeofenceMetric(from: decoder)
+        }
     }
 
     private func saveToDisk(_ items: [PendingGeofenceMetric]) -> Bool {

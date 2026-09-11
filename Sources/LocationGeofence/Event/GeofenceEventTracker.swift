@@ -165,7 +165,11 @@ final class GeofenceEventTracker: @unchecked Sendable {
     ///
     /// `excluding` skips rows the caller just persisted and already attempted itself.
     func flushPending(excluding excludedKeys: Set<String> = []) async {
-        let metrics = await pendingStore.loadAll().filter { !excludedKeys.contains($0.key) }
+        // An unreadable queue is not an empty one. Both end this call without sending, but only
+        // the first leaves rows on disk that a later trigger must come back for — so it must not
+        // read as "nothing to flush" to anything added here later. The store logs which it was.
+        guard case .rows(let rows, _) = await pendingStore.read() else { return }
+        let metrics = rows.filter { !excludedKeys.contains($0.key) }
         guard !metrics.isEmpty else { return }
         let persistedKey = contextStore.currentCdpApiKey
         if !contextStore.hasLiveCdpApiKeyProvider, let persistedKey, !persistedKey.isEmpty {
@@ -302,7 +306,7 @@ extension GeofenceEventTracker {
             )
             let tracker = GeofenceEventTracker(
                 storage: di.geofenceStorage,
-                pendingStore: PendingGeofenceMetricStore(),
+                pendingStore: PendingGeofenceMetricStore(logger: di.logger),
                 deliveryTracker: deliveryTracker,
                 contextStore: di.backgroundDeliveryContextStore,
                 eventBusHandler: di.eventBusHandler,

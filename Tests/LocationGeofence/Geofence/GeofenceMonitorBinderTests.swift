@@ -21,7 +21,7 @@ struct GeofenceMonitorBinderTests {
         )
         return GeofenceEventTracker(
             storage: storage,
-            pendingStore: PendingGeofenceMetricStore(),
+            pendingStore: PendingGeofenceMetricStore(logger: LoggerMock()),
             deliveryTracker: deliveryTracker,
             contextStore: contextStore,
             eventBusHandler: EventBusHandlerMock(),

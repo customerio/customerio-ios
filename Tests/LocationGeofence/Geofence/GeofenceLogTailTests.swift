@@ -149,7 +149,9 @@ struct GeofenceLogTailTests {
             Invocation(name: "firstRunRearm", ev: "movement.rearmed", requiredKeys: ["why"]) { $0.geofenceFirstRunRearm() },
             Invocation(name: "regionsAdopted", ev: "registration.adopted", requiredKeys: ["n"]) { $0.geofenceRegionsAdopted(count: 4) },
             Invocation(name: "foregroundRearm", ev: "registration.rearmed", requiredKeys: ["n", "why"]) { $0.geofenceForegroundRearm(count: 4) },
-            Invocation(name: "storageLoaded", ev: "storage.loaded", requiredKeys: ["n", "anchor"]) { $0.geofenceStorageLoaded(regionCount: 30, hasAnchor: true) }
+            Invocation(name: "storageLoaded", ev: "storage.loaded", requiredKeys: ["n", "anchor"]) { $0.geofenceStorageLoaded(regionCount: 30, hasAnchor: true) },
+            Invocation(name: "queueRowsDropped", ev: "queue.rows_dropped", requiredKeys: ["why", "n", "total"]) { $0.geofenceQueueRowsDropped(count: 1, of: 3) },
+            Invocation(name: "queueUnreadable", ev: "queue.unreadable", requiredKeys: ["why"]) { $0.geofenceQueueUnreadable(reason: .readFailed) }
         ]
     }
 
@@ -212,6 +214,52 @@ struct GeofenceLogTailTests {
         #expect(BackgroundDeliveryHttpError.http(statusCode: 503).diagnosticReason == "http_503")
     }
 
+    /// The module's whole diagnostic vocabulary, hoisted out of the test so the assertion stays
+    /// readable as rows are added.
+    private static let declaredVocabulary: Set<String> = [
+        "api.fetch.result",
+        "baseline.healed",
+        "baseline.refused",
+        "contradiction.refused",
+        "delivery.failed",
+        "delivery.queued",
+        "delivery.sent",
+        "fix.received",
+        "info",
+        "module.init",
+        "module.reset",
+        "module.wake",
+        "movement.exit",
+        "movement.fix.failed",
+        "movement.fix.requested",
+        "movement.fix.resolved",
+        "movement.rearmed",
+        "movement.registered",
+        "os.callback.dropped",
+        "os.callback.received",
+        "os.monitor.failed",
+        "os.monitor.stopped",
+        "os.stream.failed",
+        "permission.changed",
+        "queue.rows_dropped",
+        "queue.unreadable",
+        "rank.evaluated",
+        "registration.adopted",
+        "registration.applied",
+        "registration.diff",
+        "registration.rearmed",
+        "registration.rejected",
+        "storage.loaded",
+        "storage.write.failed",
+        "sync.completed",
+        "sync.skipped",
+        "sync.superseded",
+        "transition.accepted",
+        "transition.dropped",
+        "transition.suppressed",
+        "transition.synthesized"
+    ]
+
     @Test
     func everyRecord_expectTheDeclaredVocabulary() {
         // Companion to the per-row `ev` pin above, catching what a per-row check cannot: a key
@@ -223,47 +271,7 @@ struct GeofenceLogTailTests {
         // `fence.cataloged` is absent on purpose: it is emitted by a private helper driven through
         // `api.fetch.result`, so it cannot be a row here. It carries its own `ev` assertion in
         // `fenceCatalog_...` below. Every other key the module emits is listed.
-        let expected: Set = [
-            "api.fetch.result",
-            "baseline.healed",
-            "baseline.refused",
-            "contradiction.refused",
-            "delivery.failed",
-            "delivery.queued",
-            "delivery.sent",
-            "fix.received",
-            "info",
-            "module.init",
-            "module.reset",
-            "module.wake",
-            "movement.exit",
-            "movement.fix.failed",
-            "movement.fix.requested",
-            "movement.fix.resolved",
-            "movement.rearmed",
-            "movement.registered",
-            "os.callback.dropped",
-            "os.callback.received",
-            "os.monitor.failed",
-            "os.monitor.stopped",
-            "os.stream.failed",
-            "permission.changed",
-            "rank.evaluated",
-            "registration.adopted",
-            "registration.applied",
-            "registration.diff",
-            "registration.rearmed",
-            "registration.rejected",
-            "storage.loaded",
-            "storage.write.failed",
-            "sync.completed",
-            "sync.skipped",
-            "sync.superseded",
-            "transition.accepted",
-            "transition.dropped",
-            "transition.suppressed",
-            "transition.synthesized"
-        ]
+        let expected = Self.declaredVocabulary
         var seen: Set<String> = []
         withDiagnostics(true) {
             for invocation in invocations {
