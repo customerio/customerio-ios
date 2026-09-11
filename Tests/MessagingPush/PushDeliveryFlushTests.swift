@@ -51,16 +51,16 @@ final class MessagingPushPendingPushFlushTests: UnitTest {
         nil
     }
 
-    func test_initialize_flushesPendingMetrics_loadAllThenRemoveAllAfterEnqueue() {
+    func test_initialize_flushesPendingMetrics_readThenRemoveAllAfterEnqueue() {
         let metric = pendingMetric
-        pendingStoreMock.loadAllReturnValue = [metric]
+        pendingStoreMock.readReturnValue = .rows([metric], droppedRows: 0)
         pendingStoreMock.removeAllReturnValue = true
 
         MessagingPush.initialize(withConfig: messagingPushConfigOptions)
         // Deterministically drain the scheduled flush instead of racing a 2s timeout.
         MessagingPush.awaitPendingMetricsFlushForTests()
 
-        XCTAssertEqual(pendingStoreMock.loadAllCallsCount, 1, "startup should read pending list from app group store")
+        XCTAssertEqual(pendingStoreMock.readCallsCount, 1, "startup should read pending list from app group store")
         XCTAssertEqual(pendingStoreMock.removeAllCallsCount, 1, "flushed rows should be batch-removed via removeAll(ids:)")
         XCTAssertEqual(pendingStoreMock.removeAllReceivedArguments, Set([metric.id]))
         XCTAssertEqual(pipelineMock.trackDeliveryEventCallsCount, 1, "each pending metric should be forwarded to DataPipeline")
@@ -69,25 +69,25 @@ final class MessagingPushPendingPushFlushTests: UnitTest {
         XCTAssertEqual(pipelineMock.trackDeliveryEventInvocations.first?.event, metric.event.rawValue)
     }
 
-    func test_initialize_whenNoPendingMetrics_expectLoadAllOnlyNoRemoves() {
-        pendingStoreMock.loadAllReturnValue = []
+    func test_initialize_whenNoPendingMetrics_expectReadOnlyNoRemoves() {
+        pendingStoreMock.readReturnValue = .rows([], droppedRows: 0)
 
         MessagingPush.initialize(withConfig: messagingPushConfigOptions)
         // Deterministically drain the scheduled flush so a leaked flush from a prior test cannot land here.
         MessagingPush.awaitPendingMetricsFlushForTests()
 
-        XCTAssertEqual(pendingStoreMock.loadAllCallsCount, 1)
+        XCTAssertEqual(pendingStoreMock.readCallsCount, 1)
         XCTAssertEqual(pendingStoreMock.removeAllCallsCount, 0, "removeAll should not be called when store is empty")
         XCTAssertEqual(pipelineMock.trackDeliveryEventCallsCount, 0, "no metrics should be forwarded when store is empty")
     }
 
-    func test_initialize_whenDataPipelineNotInitialized_expectLoadAllButNoTracking() {
+    func test_initialize_whenDataPipelineNotInitialized_expectReadButNoTracking() {
         // Simulate DataPipeline not being initialized — no DataPipelineTracking registered
         diGraphShared.reset()
         diGraphShared.override(value: pendingStoreMock, forType: PendingPushDeliveryStore.self)
 
         let metric = pendingMetric
-        pendingStoreMock.loadAllReturnValue = [metric]
+        pendingStoreMock.readReturnValue = .rows([metric], droppedRows: 0)
         pendingStoreMock.removeAllReturnValue = true
 
         MessagingPush.initialize(withConfig: messagingPushConfigOptions)
@@ -104,7 +104,7 @@ final class MessagingPushPendingPushFlushTests: UnitTest {
     /// for the old `wait(for:timeout:)` race.
     func test_initialize_retainsFlushTaskHandle_soTeardownCanDrainIt() {
         let metric = pendingMetric
-        pendingStoreMock.loadAllReturnValue = [metric]
+        pendingStoreMock.readReturnValue = .rows([metric], droppedRows: 0)
         pendingStoreMock.removeAllReturnValue = true
 
         MessagingPush.initialize(withConfig: messagingPushConfigOptions)
@@ -126,5 +126,19 @@ final class MessagingPushPendingPushFlushTests: UnitTest {
             1,
             "the retained flush should have forwarded the pending metric before teardown returns"
         )
+    }
+
+    /// An unreadable store is not an empty one. Reporting it as flushed is how a backlog that is
+    /// still on disk gets written off; the rows must be left for a later launch.
+    func test_initialize_whenStoreUnreadable_expectNothingTrackedOrRemoved() {
+        pendingStoreMock.readReturnValue = .unreadable
+        pendingStoreMock.removeAllReturnValue = true
+
+        MessagingPush.initialize(withConfig: messagingPushConfigOptions)
+        MessagingPush.awaitPendingMetricsFlushForTests()
+
+        XCTAssertEqual(pendingStoreMock.readCallsCount, 1)
+        XCTAssertEqual(pipelineMock.trackDeliveryEventCallsCount, 0, "an unreadable queue must not be reported as flushed")
+        XCTAssertEqual(pendingStoreMock.removeAllCallsCount, 0, "rows still on disk must be left for a later launch")
     }
 }
