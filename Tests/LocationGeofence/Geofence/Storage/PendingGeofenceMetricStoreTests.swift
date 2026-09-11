@@ -5,6 +5,14 @@ import Foundation
 import SharedTests
 import Testing
 
+/// No Application Support directory, so the store can resolve no file at all — the state a
+/// sandbox failure produces and the only one that reaches the no-location branch.
+private final class NoApplicationSupportFileManager: FileManager {
+    override func urls(for directory: FileManager.SearchPathDirectory, in domainMask: FileManager.SearchPathDomainMask) -> [URL] {
+        []
+    }
+}
+
 @Suite("PendingGeofenceMetricStore")
 struct PendingGeofenceMetricStoreTests {
     private func makeTempDirectory() -> URL {
@@ -53,7 +61,7 @@ struct PendingGeofenceMetricStoreTests {
         let appended = await store.append([metric])
         let items = await store.rows()
 
-        #expect(appended == true)
+        #expect(appended == .persisted)
         #expect(items.count == 1)
         #expect(items.first == metric)
     }
@@ -206,7 +214,7 @@ struct PendingGeofenceMetricStoreTests {
         let appended = await store.append(batch)
         let items = await store.rows()
 
-        #expect(appended == true)
+        #expect(appended == .persisted)
         #expect(items.count == 2)
         #expect(Set(items.map(\.geofenceId)) == ["geo_1", "geo_2"])
     }
@@ -231,7 +239,7 @@ struct PendingGeofenceMetricStoreTests {
         let appended = await store.append([rowY, rowZ])
         let items = await store.rows()
 
-        #expect(appended == true)
+        #expect(appended == .persisted)
         #expect(rowY.key != rowZ.key) // geoset suffix keeps fan-out rows distinct
         #expect(items.count == 2)
         #expect(Set(items.compactMap(\.geosetId)) == ["set_y", "set_z"])
@@ -247,7 +255,7 @@ struct PendingGeofenceMetricStoreTests {
         let appended = await store.append([])
         let items = await store.rows()
 
-        #expect(appended == true)
+        #expect(appended == .persisted)
         #expect(items.count == 1)
     }
 
@@ -342,6 +350,22 @@ struct PendingGeofenceMetricStoreTests {
     ]
     """
 
+    /// The one branch that returns `unreadable` without touching a file. It was silent, which in
+    /// this state means every append and every flush fails for the life of the process with
+    /// nothing in the log to say why.
+    @Test
+    func read_givenNoResolvableFileLocation_expectUnreadableAndLogged() async {
+        let logger = LoggerMock()
+        let store = PendingGeofenceMetricStore(
+            logger: logger,
+            fileManager: NoApplicationSupportFileManager(),
+            directoryURL: nil
+        )
+
+        #expect(await store.read() == .unreadable)
+        #expect(logger.errorReceivedInvocations.contains { $0.message.contains("the file location could not be resolved") })
+    }
+
     @Test
     func read_givenOneUndecodableRow_expectTheOtherRowSurvives() async throws {
         let dir = makeTempDirectory()
@@ -351,7 +375,7 @@ struct PendingGeofenceMetricStoreTests {
 
         let result = await store.read()
 
-        #expect(result == .rows([makeMetric()], droppedRows: 1))
+        #expect(result == .rows([makeMetric()]))
     }
 
     @Test
@@ -376,7 +400,7 @@ struct PendingGeofenceMetricStoreTests {
         try plant(Self.oneGoodOneBadRow, in: dir)
         let store = makeStore(directory: dir)
 
-        #expect(await store.append([makeMetric(geofenceId: "geo_3", transitionId: "txn_3")]))
+        #expect(await store.append([makeMetric(geofenceId: "geo_3", transitionId: "txn_3")]) == .persisted)
 
         #expect(await store.rows().map(\.geofenceId) == ["geo_1", "geo_3"])
     }
@@ -394,13 +418,13 @@ struct PendingGeofenceMetricStoreTests {
             try? FileManager.default.removeItem(at: dir)
         }
         let store = makeStore(directory: dir)
-        #expect(await store.append([makeMetric()]))
+        #expect(await store.append([makeMetric()]) == .persisted)
         let before = try Data(contentsOf: queueFile(in: dir))
         try FileManager.default.setAttributes([.posixPermissions: 0o000], ofItemAtPath: queueFile(in: dir).path)
 
         let appended = await store.append([makeMetric(geofenceId: "geo_new", transitionId: "txn_new")])
 
-        #expect(appended == false)
+        #expect(appended == .refusedUnreadable)
         try FileManager.default.setAttributes([.posixPermissions: 0o644], ofItemAtPath: queueFile(in: dir).path)
         #expect(try Data(contentsOf: queueFile(in: dir)) == before)
     }
@@ -446,7 +470,7 @@ struct PendingGeofenceMetricStoreTests {
         let logger = LoggerMock()
         let store = makeStore(directory: dir, logger: logger)
 
-        #expect(await store.append([makeMetric()]))
+        #expect(await store.append([makeMetric()]) == .persisted)
 
         #expect(await store.rows() == [makeMetric()])
         #expect(logger.errorReceivedInvocations.contains { $0.message.contains("unreadable: the file is not a row array") })

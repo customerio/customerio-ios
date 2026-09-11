@@ -84,11 +84,14 @@ enum GeofenceQueueReadFailure: String {
     case readFailed = "read_failed"
     /// The bytes came back but are not a row array, so there is nothing left to preserve.
     case notARowArray = "not_a_row_array"
+    /// The file's location could not be resolved at all, so no read or write can ever succeed.
+    case noFileLocation = "no_file_location"
 
     var prose: String {
         switch self {
         case .readFailed: return "the file could not be read"
         case .notARowArray: return "the file is not a row array"
+        case .noFileLocation: return "the file location could not be resolved"
         }
     }
 }

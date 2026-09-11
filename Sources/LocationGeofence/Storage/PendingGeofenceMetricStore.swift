@@ -4,14 +4,26 @@ import Foundation
 /// What a read of the queue file found.
 ///
 /// `unreadable` is a case of its own rather than an empty list because the two demand opposite
-/// handling. The file carries `completeUntilFirstUserAuthentication`, so a geofence wake before
-/// the first unlock after a reboot cannot read it — and a read failure reported as "no rows" lets
-/// the next append overwrite a queue that was never actually lost.
+/// handling: reported as "no rows", it lets the next append replace a queue that is intact on
+/// disk. The state that does the damage is a read that fails while a write would still succeed —
+/// measured, since `Data.write(options: .atomic)` renames a temp file into place and needs
+/// permission on the directory, not on the target. Data Protection is the suspected way the
+/// device reaches it, but that chain is unverified: if the target's protection class also blocks
+/// the write, the old code failed safe by accident.
 enum PendingGeofenceQueueRead: Equatable {
-    /// The file was read. `droppedRows` counts rows that did not decode and were skipped.
-    case rows([PendingGeofenceMetric], droppedRows: Int)
+    /// The file was read. Rows that did not decode are skipped, counted, and logged by the store.
+    case rows([PendingGeofenceMetric])
     /// The bytes could not be obtained. Nothing may be written over them.
     case unreadable
+}
+
+/// The outcome of a write, kept apart because the caller reports them differently: nothing was
+/// written in either case, but only one of them is a write that failed.
+enum PendingGeofenceQueueWrite: Equatable {
+    case persisted
+    /// Refused before writing, because the existing queue could not be read.
+    case refusedUnreadable
+    case writeFailed
 }
 
 /// File-backed queue of geofence transition events awaiting direct-HTTP delivery.
@@ -52,13 +64,12 @@ actor PendingGeofenceMetricStore {
     /// Appends metrics in one read-modify-write so a transition's fan-out persists atomically —
     /// a crash can't save some rows and lose the rest. Rows whose `key` already exists (on disk
     /// or earlier in `metrics`) are a no-op. When over capacity, drops the **oldest** first.
-    /// Returns `false` if the file could not be read or persisted.
     ///
     /// Refuses to write over an unreadable file: the append would otherwise replace a queue whose
-    /// rows are intact on disk and merely out of reach, which is the pre-first-unlock case.
-    func append(_ metrics: [PendingGeofenceMetric]) -> Bool {
-        guard !metrics.isEmpty else { return true }
-        guard case .rows(var items, _) = read() else { return false }
+    /// rows are intact on disk and merely out of reach.
+    func append(_ metrics: [PendingGeofenceMetric]) -> PendingGeofenceQueueWrite {
+        guard !metrics.isEmpty else { return .persisted }
+        guard case .rows(var items) = read() else { return .refusedUnreadable }
         var keys = Set(items.map(\.key))
         for metric in metrics where keys.insert(metric.key).inserted {
             items.append(metric)
@@ -66,11 +77,11 @@ actor PendingGeofenceMetricStore {
         if items.count > Self.maxEntries {
             items = Array(items.suffix(Self.maxEntries))
         }
-        return saveToDisk(items)
+        return saveToDisk(items) ? .persisted : .writeFailed
     }
 
     /// The pending queue, oldest first, or `unreadable`. Callers must handle the two apart —
-    /// a caller that treats `unreadable` as an empty queue reintroduces the bug this returns for.
+    /// a caller that treats `unreadable` as an empty queue reintroduces the bug this exists for.
     func read() -> PendingGeofenceQueueRead {
         loadFromDisk()
     }
@@ -78,7 +89,7 @@ actor PendingGeofenceMetricStore {
     /// Removes one pending entry by key. Returns `true` when the entry was found and removed,
     /// `false` when it was absent, the file was unreadable, or the write failed.
     func remove(key: String) -> Bool {
-        guard case .rows(var items, _) = read() else { return false }
+        guard case .rows(var items) = read() else { return false }
         let originalCount = items.count
         items.removeAll { $0.key == key }
         guard items.count != originalCount else { return false }
@@ -89,9 +100,13 @@ actor PendingGeofenceMetricStore {
 
     private func loadFromDisk() -> PendingGeofenceQueueRead {
         // A nil URL means Application Support could not be resolved, so no write ever landed.
-        // Reported as unreadable rather than empty because `saveToDisk` cannot succeed either.
-        guard let url = fileURL() else { return .unreadable }
-        guard fileManager.fileExists(atPath: url.path) else { return .rows([], droppedRows: 0) }
+        // Reported as unreadable rather than empty because `saveToDisk` cannot succeed either —
+        // and logged, because every append and every flush then fails for the life of the process.
+        guard let url = fileURL() else {
+            logger.geofenceQueueUnreadable(reason: .noFileLocation)
+            return .unreadable
+        }
+        guard fileManager.fileExists(atPath: url.path) else { return .rows([]) }
         guard let data = try? Data(contentsOf: url) else {
             logger.geofenceQueueUnreadable(reason: .readFailed)
             return .unreadable
@@ -100,14 +115,13 @@ actor PendingGeofenceMetricStore {
             // The bytes came back but are not a row array. Unlike a read failure there is nothing
             // to preserve, so the queue reads as empty and the next write reclaims the file.
             logger.geofenceQueueUnreadable(reason: .notARowArray)
-            return .rows([], droppedRows: 0)
+            return .rows([])
         }
         let decoded = rows.compactMap(\.metric)
-        let dropped = rows.count - decoded.count
-        if dropped > 0 {
-            logger.geofenceQueueRowsDropped(count: dropped, of: rows.count)
+        if decoded.count < rows.count {
+            logger.geofenceQueueRowsDropped(count: rows.count - decoded.count, of: rows.count)
         }
-        return .rows(decoded, droppedRows: dropped)
+        return .rows(decoded)
     }
 
     /// Decodes one row without failing the array. A row the current schema cannot read is skipped

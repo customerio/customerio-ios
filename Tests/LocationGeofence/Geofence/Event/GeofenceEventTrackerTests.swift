@@ -39,6 +39,7 @@ struct GeofenceEventTrackerTests {
         contextStore: BackgroundDeliveryContextStore,
         eventBus: EventBusHandlerMock = EventBusHandlerMock(),
         dateUtil: DateUtil = DateUtilStub(),
+        logger: Logger = LoggerMock(),
         backgroundTaskRunner: BackgroundTaskRunner = NoBackgroundTaskRunner()
     ) -> GeofenceEventTracker {
         GeofenceEventTracker(
@@ -48,7 +49,7 @@ struct GeofenceEventTrackerTests {
             contextStore: contextStore,
             eventBusHandler: eventBus,
             dateUtil: dateUtil,
-            logger: LoggerMock(),
+            logger: logger,
             cooldownInterval: cooldownInterval,
             backgroundTaskRunner: backgroundTaskRunner
         )
@@ -136,6 +137,53 @@ struct GeofenceEventTrackerTests {
         #expect(delivery.trackMetricCallsCount == 0)
         // The cooldown claimed for this crossing was released, so the next crossing retries from a
         // clean state instead of being suppressed. A held cooldown would make this claim return false.
+        let remaining = await storage.tryAcquireCooldown(key: "user_42:geo_1:enter", now: dateUtil.now, interval: cooldownInterval)
+        #expect(remaining == nil)
+    }
+
+    /// The sibling of the test above, and the distinction the queue's read/write split exists for:
+    /// nothing was written here either, but no write was ever attempted. Reporting it as a failed
+    /// write would put an `io=out` `storage.write.failed` on a read that never touched the file.
+    @Test
+    func trackTransition_givenQueueUnreadable_expectRefusalNotAWriteFailure() async {
+        let dir = makeTempDirectory()
+        let queueFile = dir.appendingPathComponent("pending_geofence_metrics.json")
+        defer {
+            try? FileManager.default.setAttributes([.posixPermissions: 0o644], ofItemAtPath: queueFile.path)
+            try? FileManager.default.removeItem(at: dir)
+        }
+        let pending = makePendingStore(directory: dir)
+        #expect(await pending.append([PendingGeofenceMetric(
+            geofenceId: "geo_old", transition: .enter, timestamp: Date(timeIntervalSince1970: 1),
+            userId: "user_42", name: nil, transitionId: "txn_old"
+        )]) == .persisted)
+        let before = try? Data(contentsOf: queueFile)
+        try? FileManager.default.setAttributes([.posixPermissions: 0o000], ofItemAtPath: queueFile.path)
+
+        let storage = makeStorage(directory: makeTempDirectory())
+        let dateUtil = DateUtilStub()
+        let logger = LoggerMock()
+        let delivery = GeofenceDeliveryTrackerMock()
+        delivery.trackMetricClosure = { _, _, onComplete in onComplete(.success(())) }
+        let tracker = makeTracker(
+            storage: storage,
+            pendingStore: pending,
+            deliveryTracker: delivery,
+            contextStore: makeContextStore(userId: "user_42"),
+            dateUtil: dateUtil,
+            logger: logger
+        )
+
+        await tracker.trackTransition(geofenceId: "geo_1", transition: .enter)
+
+        let messages = logger.errorReceivedInvocations.map(\.message)
+        #expect(messages.contains { $0.contains("the pending queue could not be read") })
+        #expect(!messages.contains { $0.contains("Failed to persist") })
+        #expect(delivery.trackMetricCallsCount == 0)
+        // The backlog it refused to write over is still byte-for-byte on disk.
+        try? FileManager.default.setAttributes([.posixPermissions: 0o644], ofItemAtPath: queueFile.path)
+        #expect((try? Data(contentsOf: queueFile)) == before)
+        // Same cooldown release as the write-failure path: the next crossing must not be suppressed.
         let remaining = await storage.tryAcquireCooldown(key: "user_42:geo_1:enter", now: dateUtil.now, interval: cooldownInterval)
         #expect(remaining == nil)
     }

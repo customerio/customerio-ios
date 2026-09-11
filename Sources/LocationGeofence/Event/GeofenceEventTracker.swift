@@ -126,14 +126,9 @@ final class GeofenceEventTracker: @unchecked Sendable {
         // Persist all rows in one atomic write: a per-row loop could save some and lose the rest on
         // an app kill, and the cooldown is already spent so the lost ones would never retry. Done
         // before requesting background time so durability never depends on the assertion.
-        let persisted = await pendingStore.append(metrics)
-        if !persisted {
-            // Persist-first failed (disk error): release the just-claimed cooldown so the next
-            // crossing retries from a clean state instead of being suppressed. Skip delivery — a row
-            // that never reached disk has nothing to retry, and sending it anyway would let its
-            // success-path remove(key:) drop a later same-second crossing's row (keys omit transitionId).
-            logger.geofencePendingPersistFailed(geofenceId: geofenceId, transition: transition)
-            await storage.releaseCooldown(key: cooldownKey)
+        let write = await pendingStore.append(metrics)
+        guard write == .persisted else {
+            await abandonUnpersisted(write, geofenceId: geofenceId, transition: transition, cooldownKey: cooldownKey)
             return []
         }
         // The SDK has accepted the crossing and written it down; that is the fact replay asserts
@@ -168,7 +163,7 @@ final class GeofenceEventTracker: @unchecked Sendable {
         // An unreadable queue is not an empty one. Both end this call without sending, but only
         // the first leaves rows on disk that a later trigger must come back for — so it must not
         // read as "nothing to flush" to anything added here later. The store logs which it was.
-        guard case .rows(let rows, _) = await pendingStore.read() else { return }
+        guard case .rows(let rows) = await pendingStore.read() else { return }
         let metrics = rows.filter { !excludedKeys.contains($0.key) }
         guard !metrics.isEmpty else { return }
         let persistedKey = contextStore.currentCdpApiKey
@@ -189,6 +184,35 @@ final class GeofenceEventTracker: @unchecked Sendable {
     }
 
     // MARK: - Private
+
+    /// Gives up a crossing whose rows never reached disk.
+    ///
+    /// Nothing was written in either case, but they are not the same event and must not share a
+    /// record: one is a write that failed, the other a write refused before it was tried, so an
+    /// unreadable queue survives. Both release the just-claimed cooldown so the next crossing
+    /// retries from a clean state instead of being suppressed.
+    ///
+    /// Both also skip delivery, for different reasons. On a failed write, sending anyway would let
+    /// the success-path `remove(key:)` drop a later same-second crossing's row (keys omit
+    /// transitionId). That hazard does NOT apply to a refusal — `remove` takes nothing out of a
+    /// file it cannot read — so this crossing is dropped by choice: the backlog we declined to
+    /// overwrite is worth more than one fresh row, and delivering un-persisted would make a failed
+    /// send unretryable and silent. The cost is real when the queue was in fact empty.
+    private func abandonUnpersisted(
+        _ write: PendingGeofenceQueueWrite,
+        geofenceId: String,
+        transition: GeofenceTransition,
+        cooldownKey: String
+    ) async {
+        switch write {
+        case .persisted: return
+        case .writeFailed:
+            logger.geofencePendingPersistFailed(geofenceId: geofenceId, transition: transition)
+        case .refusedUnreadable:
+            logger.geofenceTransitionDroppedQueueUnreadable(geofenceId: geofenceId, transition: transition)
+        }
+        await storage.releaseCooldown(key: cooldownKey)
+    }
 
     /// Fresh-transition delivery via direct HTTP. Failure leaves the row for `flushPending`.
     private func deliverFresh(metric: PendingGeofenceMetric) async {
