@@ -23,6 +23,8 @@ struct GeofenceModuleSetupTests {
         defer { f.cleanup() }
 
         let (resetSignal, resetContinuation) = AsyncStream<Void>.makeStream()
+        let resetContinuationWatchdog = bounded(resetContinuation)
+        defer { resetContinuationWatchdog.cancel() }
         f.spyCoordinator.resetClosure = {
             resetContinuation.yield()
             return .success(())
@@ -48,6 +50,8 @@ struct GeofenceModuleSetupTests {
         defer { f.cleanup() }
 
         let (refreshSignal, refreshContinuation) = AsyncStream<Void>.makeStream()
+        let refreshContinuationWatchdog = bounded(refreshContinuation)
+        defer { refreshContinuationWatchdog.cancel() }
         f.spyCoordinator.refreshClosure = { _, _ in
             refreshContinuation.yield()
             return .success(())
@@ -89,6 +93,8 @@ struct GeofenceModuleSetupTests {
         defer { f.cleanup() }
 
         let (refreshSignal, refreshContinuation) = AsyncStream<(Double, Double)>.makeStream()
+        let refreshContinuationWatchdog = bounded(refreshContinuation)
+        defer { refreshContinuationWatchdog.cancel() }
         f.spyCoordinator.refreshClosure = { lat, lon in
             refreshContinuation.yield((lat, lon))
             return .success(())
@@ -116,6 +122,8 @@ struct GeofenceModuleSetupTests {
         await f.di.geofenceStorage.recordRegistration(center: LocationData(latitude: 10, longitude: 20), businessIds: ["g1"])
 
         let (refreshSignal, refreshContinuation) = AsyncStream<(Double, Double)>.makeStream()
+        let refreshContinuationWatchdog = bounded(refreshContinuation)
+        defer { refreshContinuationWatchdog.cancel() }
         f.spyCoordinator.refreshClosure = { lat, lon in
             refreshContinuation.yield((lat, lon))
             return .success(())
@@ -152,6 +160,8 @@ struct GeofenceModuleSetupTests {
         defer { f.cleanup() }
 
         let (signal, continuation) = AsyncStream<Void>.makeStream()
+        let continuationWatchdog = bounded(continuation)
+        defer { continuationWatchdog.cancel() }
         f.stub.onRequestSilently = { continuation.yield() }
 
         f.wire()
@@ -171,9 +181,13 @@ struct GeofenceModuleSetupTests {
         defer { f.cleanup() }
 
         let (readSignal, readContinuation) = AsyncStream<Void>.makeStream()
+        let readContinuationWatchdog = bounded(readContinuation)
+        defer { readContinuationWatchdog.cancel() }
         f.stub.onGetLastKnown = { readContinuation.yield() }
 
         let (refreshSignal, refreshContinuation) = AsyncStream<(Double, Double)>.makeStream()
+        let refreshContinuationWatchdog = bounded(refreshContinuation)
+        defer { refreshContinuationWatchdog.cancel() }
         f.spyCoordinator.refreshClosure = { lat, lon in
             refreshContinuation.yield((lat, lon))
             return .success(())
@@ -207,13 +221,11 @@ struct GeofenceModuleSetupTests {
         // The anchor read is the last await before the no-anchor branch runs, so awaiting it as a
         // barrier guarantees the launch arm + acquire-gate decision has executed before we assert.
         let (readSignal, readContinuation) = AsyncStream<Void>.makeStream()
+        let readContinuationWatchdog = bounded(readContinuation)
+        defer { readContinuationWatchdog.cancel() }
         f.stub.onGetLastKnown = { readContinuation.yield() }
 
-        let (refreshSignal, refreshContinuation) = AsyncStream<(Double, Double)>.makeStream()
-        f.spyCoordinator.refreshClosure = { lat, lon in
-            refreshContinuation.yield((lat, lon))
-            return .success(())
-        }
+        f.spyCoordinator.refreshClosure = { _, _ in .success(()) }
 
         f.wire()
 
@@ -224,13 +236,18 @@ struct GeofenceModuleSetupTests {
         #expect(f.stub.requestSilentlyCount.wrappedValue == 0)
 
         // But launch still armed the first-run refresh, so a host-driven fix drives the sync.
+        // The arm is written after the read above returns and, in manual mode, has no observable
+        // of its own; a fix delivered before it is a no-op. So deliver until one is consumed.
         let locAcquired = try #require(f.bus.observers[LocationAcquiredEvent.key], "LocationAcquiredEvent observer must be registered")
-        locAcquired(LocationAcquiredEvent(location: LocationData(latitude: 9, longitude: 10)))
-
-        var refreshIter = refreshSignal.makeAsyncIterator()
-        let received = await refreshIter.next()
-        #expect(received?.0 == 9)
-        #expect(received?.1 == 10)
+        let refreshed = await settle {
+            if f.spyCoordinator.refreshCallsCount == 0 {
+                locAcquired(LocationAcquiredEvent(location: LocationData(latitude: 9, longitude: 10)))
+            }
+            return f.spyCoordinator.refreshCallsCount >= 1
+        }
+        #expect(refreshed, "the armed first-run refresh never consumed the host's fix")
+        #expect(f.spyCoordinator.refreshReceivedArguments?.latitude == 9)
+        #expect(f.spyCoordinator.refreshReceivedArguments?.longitude == 10)
         #expect(f.stub.requestSilentlyCount.wrappedValue == 0)
     }
 
@@ -243,6 +260,8 @@ struct GeofenceModuleSetupTests {
         defer { f.cleanup() }
 
         let (refreshSignal, refreshContinuation) = AsyncStream<(Double, Double)>.makeStream()
+        let refreshContinuationWatchdog = bounded(refreshContinuation)
+        defer { refreshContinuationWatchdog.cancel() }
         f.spyCoordinator.refreshClosure = { lat, lon in
             refreshContinuation.yield((lat, lon))
             return .success(())
@@ -274,6 +293,8 @@ struct GeofenceModuleSetupTests {
         defer { f.cleanup() }
 
         let (refreshSignal, refreshContinuation) = AsyncStream<Void>.makeStream()
+        let refreshContinuationWatchdog = bounded(refreshContinuation)
+        defer { refreshContinuationWatchdog.cancel() }
         f.spyCoordinator.refreshClosure = { _, _ in
             refreshContinuation.yield()
             return .success(())
@@ -388,4 +409,13 @@ private final class CapturingEventBusHandler: EventBusHandler, @unchecked Sendab
     func loadEventsFromStorage() async {}
     func removeFromStorage<E: EventRepresentable>(_ event: E) async {}
     func removeAllObservers() {}
+}
+
+/// Bounds a signal the test awaits: if the SDK never sends it, the stream finishes and the await
+/// returns `nil`, so the test fails instead of hanging the whole run.
+private func bounded<T>(_ continuation: AsyncStream<T>.Continuation, seconds: TimeInterval = 5) -> Task<Void, Never> {
+    Task {
+        try? await Task.sleep(nanoseconds: UInt64(seconds * 1000000000))
+        continuation.finish()
+    }
 }
