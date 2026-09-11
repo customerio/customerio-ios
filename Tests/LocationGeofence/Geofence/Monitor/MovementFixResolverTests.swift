@@ -45,7 +45,7 @@ struct MovementFixResolverTests {
         let warm = MovementFixResolver(logger: LoggerMock())
         warm.systemCachedFix = { nil }
         warm.requestFreshFix = {}
-        warm.resolve(cached: makeFix(ageSeconds: 5)) { _, isFresh in freshness.append(isFresh) }
+        warm.resolve(cached: makeFix(ageSeconds: 5), purpose: .movement) { _, isFresh in freshness.append(isFresh) }
         #expect(freshness == [true]) // inside maxAge, answered without a request
 
         let delivered = MovementFixResolver(logger: LoggerMock())
@@ -53,13 +53,13 @@ struct MovementFixResolverTests {
         delivered.requestFreshFix = { [weak delivered] in
             delivered?.handleResolvedFix(makeFix(ageSeconds: 0))
         }
-        delivered.resolve(cached: makeFix(ageSeconds: 120)) { _, isFresh in freshness.append(isFresh) }
+        delivered.resolve(cached: makeFix(ageSeconds: 120), purpose: .movement) { _, isFresh in freshness.append(isFresh) }
         #expect(freshness == [true, true])
 
         let failed = MovementFixResolver(logger: LoggerMock())
         failed.systemCachedFix = { nil }
         failed.requestFreshFix = { [weak failed] in failed?.handleRequestFailure() }
-        failed.resolve(cached: makeFix(ageSeconds: 120)) { _, isFresh in freshness.append(isFresh) }
+        failed.resolve(cached: makeFix(ageSeconds: 120), purpose: .movement) { _, isFresh in freshness.append(isFresh) }
         #expect(freshness == [true, true, false]) // fell back to the fix that prompted the request
 
         // A fix landing after that failure must not retroactively make the answer fresh.
@@ -73,7 +73,7 @@ struct MovementFixResolverTests {
         let resolver = makeResolver(onRequest: { requestCount += 1 })
         var received: [LocationData?] = []
 
-        resolver.resolve(cached: makeFix(latitude: 31.5, ageSeconds: 5)) { location, _ in received.append(location) }
+        resolver.resolve(cached: makeFix(latitude: 31.5, ageSeconds: 5), purpose: .movement) { location, _ in received.append(location) }
 
         #expect(received.map(\.?.latitude) == [31.5])
         #expect(requestCount == 0)
@@ -85,7 +85,7 @@ struct MovementFixResolverTests {
         let resolver = makeResolver(onRequest: { requestCount += 1 })
         var received: [LocationData?] = []
 
-        resolver.resolve(cached: makeFix(latitude: 31.1, ageSeconds: 120)) { location, _ in received.append(location) }
+        resolver.resolve(cached: makeFix(latitude: 31.1, ageSeconds: 120), purpose: .movement) { location, _ in received.append(location) }
         #expect(received.isEmpty)
         #expect(requestCount == 1)
 
@@ -99,7 +99,7 @@ struct MovementFixResolverTests {
         let resolver = makeResolver(onRequest: { requestCount += 1 })
         var received: [LocationData?] = []
 
-        resolver.resolve(cached: nil) { location, _ in received.append(location) }
+        resolver.resolve(cached: nil, purpose: .movement) { location, _ in received.append(location) }
         #expect(requestCount == 1)
 
         resolver.handleRequestFailure()
@@ -112,7 +112,7 @@ struct MovementFixResolverTests {
         let resolver = makeResolver()
         var received: [LocationData?] = []
 
-        resolver.resolve(cached: makeFix(latitude: 31.2, ageSeconds: 120)) { location, _ in received.append(location) }
+        resolver.resolve(cached: makeFix(latitude: 31.2, ageSeconds: 120), purpose: .movement) { location, _ in received.append(location) }
         resolver.handleRequestFailure()
 
         #expect(received.map(\.?.latitude) == [31.2])
@@ -125,8 +125,8 @@ struct MovementFixResolverTests {
         var first: [LocationData?] = []
         var second: [LocationData?] = []
 
-        resolver.resolve(cached: makeFix(ageSeconds: 120)) { location, _ in first.append(location) }
-        resolver.resolve(cached: makeFix(ageSeconds: 90)) { location, _ in second.append(location) }
+        resolver.resolve(cached: makeFix(ageSeconds: 120), purpose: .movement) { location, _ in first.append(location) }
+        resolver.resolve(cached: makeFix(ageSeconds: 90), purpose: .movement) { location, _ in second.append(location) }
         #expect(requestCount == 1)
 
         resolver.handleResolvedFix(makeFix(latitude: 32.0, ageSeconds: 0))
@@ -139,7 +139,7 @@ struct MovementFixResolverTests {
         let resolver = makeResolver(requestTimeout: 0.05)
         var received: [LocationData?] = []
 
-        resolver.resolve(cached: makeFix(latitude: 31.3, ageSeconds: 120)) { location, _ in received.append(location) }
+        resolver.resolve(cached: makeFix(latitude: 31.3, ageSeconds: 120), purpose: .movement) { location, _ in received.append(location) }
 
         for _ in 0 ..< 200 {
             if !received.isEmpty { break }
@@ -159,8 +159,8 @@ struct MovementFixResolverTests {
         var first: [LocationData?] = []
         var second: [LocationData?] = []
 
-        resolver.resolve(cached: makeFix(latitude: 31.6, ageSeconds: 120)) { location, _ in first.append(location) }
-        resolver.resolve(cached: makeFix(latitude: 31.7, ageSeconds: 90)) { location, _ in second.append(location) }
+        resolver.resolve(cached: makeFix(latitude: 31.6, ageSeconds: 120), purpose: .movement) { location, _ in first.append(location) }
+        resolver.resolve(cached: makeFix(latitude: 31.7, ageSeconds: 90), purpose: .movement) { location, _ in second.append(location) }
         resolver.handleRequestFailure()
 
         #expect(first.map(\.?.latitude) == [31.7])
@@ -172,7 +172,7 @@ struct MovementFixResolverTests {
         let resolver = makeResolver()
         var received: [LocationData?] = []
 
-        resolver.resolve(cached: nil) { location, _ in received.append(location) }
+        resolver.resolve(cached: nil, purpose: .movement) { location, _ in received.append(location) }
         resolver.locationManager(CLLocationManager(), didUpdateLocations: [
             makeFix(latitude: 200.0, longitude: 200.0, ageSeconds: 0)
         ])
@@ -200,10 +200,10 @@ struct MovementFixResolverTests {
         let resolver = makeResolver(onRequest: { requestCount += 1 })
         var received: [LocationData?] = []
 
-        resolver.resolve(cached: makeFix(ageSeconds: 120)) { location, _ in received.append(location) }
+        resolver.resolve(cached: makeFix(ageSeconds: 120), purpose: .movement) { location, _ in received.append(location) }
         resolver.handleResolvedFix(makeFix(latitude: 32.1, ageSeconds: 0))
 
-        resolver.resolve(cached: makeFix(ageSeconds: 120)) { location, _ in received.append(location) }
+        resolver.resolve(cached: makeFix(ageSeconds: 120), purpose: .movement) { location, _ in received.append(location) }
         #expect(requestCount == 2)
 
         resolver.handleResolvedFix(makeFix(latitude: 32.2, ageSeconds: 0))
@@ -215,7 +215,7 @@ struct MovementFixResolverTests {
         let resolver = makeResolver()
         var received: [LocationData?] = []
 
-        resolver.resolve(cached: nil) { location, _ in received.append(location) }
+        resolver.resolve(cached: nil, purpose: .movement) { location, _ in received.append(location) }
         // Core Location echoing a cached (stale) location must not complete the pass...
         resolver.locationManager(CLLocationManager(), didUpdateLocations: [
             makeFix(latitude: 31.9, ageSeconds: 120)
@@ -235,7 +235,7 @@ struct MovementFixResolverTests {
         let resolver = makeResolver()
         var received: [LocationData?] = []
 
-        resolver.resolve(cached: nil) { location, _ in received.append(location) }
+        resolver.resolve(cached: nil, purpose: .movement) { location, _ in received.append(location) }
         resolver.locationManager(CLLocationManager(), didUpdateLocations: [
             makeFix(latitude: 31.9, ageSeconds: 0, accuracy: -1)
         ])
@@ -254,7 +254,7 @@ struct MovementFixResolverTests {
         let resolver = makeResolver(backgroundTaskRunner: runner)
         var received: [LocationData?] = []
 
-        resolver.resolve(cached: makeFix(ageSeconds: 120)) { location, _ in received.append(location) }
+        resolver.resolve(cached: makeFix(ageSeconds: 120), purpose: .movement) { location, _ in received.append(location) }
         for _ in 0 ..< 200 {
             if runner.started.wrappedValue == 1 { break }
             try? await Task.sleep(nanoseconds: 5000000)

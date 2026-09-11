@@ -268,82 +268,12 @@ extension Logger {
         )
     }
 
-    // MARK: - Movement trigger
-
-    func geofenceMovementTrigger(tier: HandleMovementTier) {
-        debug(
-            "Movement trigger EXIT: \(tier.rawValue)"
-                + geofenceTail("movement.exit", .input, [("tier", tier.rawValue)]),
-            geofenceTag
-        )
-    }
-
-    /// The re-centred bubble's own geometry. Region geometry is ungated — it is workspace
-    /// configuration, not user data — but this one is derived from the device's position, so it
-    /// travels with the same switch as a coordinate.
-    func geofenceMovementTriggerRegistered(latitude: Double, longitude: Double, radius: Double) {
-        let geometry: [(String, String?)] = [
-            ("rlat", GeofenceLog.num(latitude, 5)),
-            ("rlon", GeofenceLog.num(longitude, 5))
-        ]
-        debug(
-            "Movement trigger registered with radius \(Int(radius)) m"
-                + geofenceTail("movement.registered", .output, geometry + [("rad", GeofenceLog.num(radius, 0))]),
-            geofenceTag
-        )
-    }
-
-    func geofenceMovementRearmedAfterFailedRefresh() {
-        debug(
-            "Movement refresh failed; re-ranking from cache to re-arm the movement trigger"
-                + geofenceTail("movement.rearmed", .output, [("why", "refresh_failed")]),
-            geofenceTag
-        )
-    }
-
-    func geofenceMovementFixResolved(ageSeconds: TimeInterval, requested: Bool) {
-        let source = requested ? "freshly requested" : "cached"
-        debug(
-            "Movement pass using \(source) fix, age \(String(format: "%.1f", ageSeconds))s"
-                + geofenceTail("movement.fix.resolved", .input, [
-                    ("age", GeofenceLog.num(ageSeconds)),
-                    ("prov", requested ? "requested" : "cached")
-                ]),
-            geofenceTag
-        )
-    }
-
-    func geofenceMovementFixStale(ageSeconds: TimeInterval?) {
-        let age = ageSeconds.map { "\(String(format: "%.1f", $0))s old" } ?? "missing"
-        info(
-            "Cached fix is \(age); requesting a fresh fix for the movement pass"
-                + geofenceTail("movement.fix.requested", .output, [
-                    ("age", GeofenceLog.num(ageSeconds)),
-                    ("why", ageSeconds == nil ? "no_cached_fix" : "stale_cached_fix")
-                ]),
-            geofenceTag
-        )
-    }
-
     /// Positive record of an OS-delivered business transition. Without it a native delivery is
     /// only identifiable by the ABSENCE of a synthesized line, which makes the OS promotion rate
     /// inferred rather than measured. Logged at the monitors' dispatch sites, where provenance is
     /// known: the resolver's entry point also receives synthesized heals, which would inflate it.
     func geofenceOsTransitionReceived(identifier: String, transition: GeofenceTransition) {
         debug("OS delivered \(transition.rawValue) for region \(identifier)", geofenceTag)
-    }
-
-    func geofenceMovementFixRequestFailed(fallingBackToCached: Bool, elapsed: TimeInterval? = nil) {
-        let outcome = fallingBackToCached ? "falling back to the stale cached fix" : "no cached fix to fall back to"
-        info(
-            "Fresh-fix request failed or timed out; \(outcome)"
-                + geofenceTail("movement.fix.failed", .input, [
-                    ("ok", GeofenceLog.bool(false)),
-                    ("why", fallingBackToCached ? "fallback_cached" : "no_fallback"),
-                    ("ms", GeofenceLog.num(elapsed.map { $0 * 1000 }, 0))
-                ]),
-            geofenceTag
-        )
     }
 
     // MARK: - Module state

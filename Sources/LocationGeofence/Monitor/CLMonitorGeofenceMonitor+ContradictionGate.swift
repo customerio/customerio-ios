@@ -53,9 +53,15 @@ extension CLMonitorGeofenceMonitor {
     /// gated no matter how late it drains — while a real crossing dated outside the window, before
     /// the add or minutes after it, stays ungated no matter when it is processed.
     func isEventContradictedByFreshFix(identifier: String, transition: GeofenceTransition, eventDate: Date) async -> Bool {
-        guard let readd = conditionReadds[identifier],
-              readd.replayWindowCovers(eventDate)
-        else { return false }
+        guard let readd = conditionReadds[identifier] else { return false }
+        let insideWindow = readd.replayWindowCovers(eventDate)
+        logger.geofenceContradictionEvaluated(
+            identifier: identifier,
+            transition: transition,
+            delaySinceAdd: eventDate.timeIntervalSince(readd.added),
+            insideWindow: insideWindow
+        )
+        guard insideWindow else { return false }
         let gateFix = await resolveGateFix()
         guard let gateFix, CLLocationCoordinate2DIsValid(gateFix.coordinate) else { return false }
         let center = CLLocation(latitude: readd.center.latitude, longitude: readd.center.longitude)
@@ -95,7 +101,7 @@ extension CLMonitorGeofenceMonitor {
             return bestKnownFix()
         }
         let fix: CLLocation? = await withCheckedContinuation { continuation in
-            movementFixResolver.resolve(cached: bestKnownFix()) { [weak self] _, _ in
+            movementFixResolver.resolve(cached: bestKnownFix(), purpose: .contradictionGate) { [weak self] _, _ in
                 continuation.resume(returning: self?.bestKnownFix())
             }
         }

@@ -103,7 +103,7 @@ extension CLMonitorGeofenceMonitor {
     /// wins; the decision's fix-age guard applies to the result.
     private func resolveHealFix() async -> CLLocation? {
         await withCheckedContinuation { continuation in
-            movementFixResolver.resolve(cached: bestKnownFix()) { [weak self] _, _ in
+            movementFixResolver.resolve(cached: bestKnownFix(), purpose: .baselineHeal) { [weak self] _, _ in
                 continuation.resume(returning: self?.bestKnownFix())
             }
         }
