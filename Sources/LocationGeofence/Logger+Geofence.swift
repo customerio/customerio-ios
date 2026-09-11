@@ -277,13 +277,18 @@ extension Logger {
         )
     }
 
-    func geofenceMovementFixResolved(ageSeconds: TimeInterval, requested: Bool) {
+    /// `spd` rides here and not only on `os.callback.received`: the wake margin is sized from how
+    /// far the device travels between passes, and this is the fix a pass actually uses. Speed at
+    /// OS-callback time is a different population — it only samples moments the OS chose to wake us.
+    func geofenceMovementFixResolved(ageSeconds: TimeInterval, requested: Bool, speed: CLLocationSpeed? = nil) {
         let source = requested ? "freshly requested" : "cached"
         debug(
             "Movement pass using \(source) fix, age \(String(format: "%.1f", ageSeconds))s"
                 + geofenceTail("movement.fix.resolved", .input, [
                     ("age", GeofenceLog.num(ageSeconds)),
-                    ("prov", requested ? "requested" : "cached")
+                    ("prov", requested ? "requested" : "cached"),
+                    // Negative means the fix carries no speed, which is not the same as stationary.
+                    ("spd", speed.flatMap { $0 >= 0 ? GeofenceLog.num($0) : nil })
                 ]),
             geofenceTag
         )

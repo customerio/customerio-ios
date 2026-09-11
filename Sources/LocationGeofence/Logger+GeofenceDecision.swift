@@ -51,6 +51,25 @@ extension Logger {
         )
     }
 
+    /// Every event arriving while a re-add record is held, with its distance in TIME from that add.
+    ///
+    /// The gate records only refusals, so `contradictionGateReplayWindow` could not be calibrated
+    /// from a drive: an event just outside the window and an event that was never a replay both
+    /// logged nothing. `dly` is the event's date minus the add, `win` whether the current bound
+    /// covered it — together, the distribution the constant is currently guessing at.
+    func geofenceContradictionEvaluated(identifier: String, transition: GeofenceTransition, delaySinceAdd: TimeInterval, insideWindow: Bool) {
+        debug(
+            "Event for region \(identifier) landed \(String(format: "%.3f", delaySinceAdd))s after its re-add"
+                + geofenceTail("contradiction.evaluated", .output, [
+                    ("id", identifier),
+                    ("t", transition.rawValue),
+                    ("dly", GeofenceLog.num(delaySinceAdd, 3)),
+                    ("win", GeofenceLog.bool(insideWindow))
+                ]),
+            geofenceTag
+        )
+    }
+
     func geofenceEventRefusedByContradiction(identifier: String, transition: GeofenceTransition, distanceFromCenter: Double, radius: Double, accuracy: Double) {
         info(
             "Refused OS \(transition.rawValue) for region \(identifier): a fresh fix contradicts it (distance \(Int(distanceFromCenter)) m, radius \(Int(radius)) m, accuracy \(Int(accuracy)) m)"

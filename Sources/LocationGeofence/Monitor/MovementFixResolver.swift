@@ -106,7 +106,7 @@ final class MovementFixResolver: NSObject, @preconcurrency CLLocationManagerDele
     func resolve(cached: CLLocation?, completion: @escaping (LocationData?, Bool) -> Void) {
         let age = cached.map { -$0.timestamp.timeIntervalSinceNow }
         if let cached, let age, age <= maxAge {
-            logger.geofenceMovementFixResolved(ageSeconds: age, requested: false)
+            logger.geofenceMovementFixResolved(ageSeconds: age, requested: false, speed: cached.speed)
             completion(locationData(from: cached), true)
             return
         }
@@ -151,7 +151,7 @@ final class MovementFixResolver: NSObject, @preconcurrency CLLocationManagerDele
     func handleResolvedFix(_ fix: CLLocation) {
         recordDeliveredFix(fix)
         guard !pendingCompletions.isEmpty else { return }
-        logger.geofenceMovementFixResolved(ageSeconds: -fix.timestamp.timeIntervalSinceNow, requested: true)
+        logger.geofenceMovementFixResolved(ageSeconds: -fix.timestamp.timeIntervalSinceNow, requested: true, speed: fix.speed)
         completeAll(with: locationData(from: fix), isFresh: true)
     }
 
