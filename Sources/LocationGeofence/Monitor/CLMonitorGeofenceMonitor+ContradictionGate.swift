@@ -57,14 +57,15 @@ extension CLMonitorGeofenceMonitor {
               readd.replayWindowCovers(eventDate)
         else { return false }
         let gateFix = await resolveGateFix()
-        guard let gateFix, CLLocationCoordinate2DIsValid(gateFix.coordinate) else { return false }
-        let center = CLLocation(latitude: readd.center.latitude, longitude: readd.center.longitude)
-        let distanceFromCenter = gateFix.distance(from: center)
+        guard let gateFix else { return false }
+        let distanceFromCenter = gateFix.distance(
+            from: CLLocation(latitude: readd.center.latitude, longitude: readd.center.longitude)
+        )
         guard BaselineHealDecision.synthesizedTransition(
             distanceFromCenter: distanceFromCenter,
             radius: readd.radius,
             horizontalAccuracy: gateFix.horizontalAccuracy,
-            fixAge: -gateFix.timestamp.timeIntervalSinceNow,
+            fixAge: dateUtil.now.timeIntervalSince(gateFix.timestamp),
             lastState: transition
         ) != nil else { return false }
         logger.geofenceEventRefusedByContradiction(
@@ -91,7 +92,7 @@ extension CLMonitorGeofenceMonitor {
     /// event claims. Returns via `bestKnownFix()` so the freshest of the cache and the request
     /// wins; the caller's decision applies the fix-age guard to the result.
     private func resolveGateFix() async -> CLLocation? {
-        if Self.gateFixRequestBlocked(failedAt: gateFixRequestFailedAt, now: Date()) {
+        if Self.gateFixRequestBlocked(failedAt: gateFixRequestFailedAt, now: dateUtil.now) {
             return bestKnownFix()
         }
         let fix: CLLocation? = await withCheckedContinuation { continuation in
@@ -99,8 +100,8 @@ extension CLMonitorGeofenceMonitor {
                 continuation.resume(returning: self?.bestKnownFix())
             }
         }
-        let isFresh = fix.map { -$0.timestamp.timeIntervalSinceNow <= GeofenceConstants.movementFixMaxAge } ?? false
-        gateFixRequestFailedAt = isFresh ? nil : Date()
+        let isFresh = fix.map { dateUtil.now.timeIntervalSince($0.timestamp) <= GeofenceConstants.movementFixMaxAge } ?? false
+        gateFixRequestFailedAt = isFresh ? nil : dateUtil.now
         return fix
     }
 

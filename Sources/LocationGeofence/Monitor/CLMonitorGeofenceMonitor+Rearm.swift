@@ -31,14 +31,15 @@ extension CLMonitorGeofenceMonitor {
                 guard let record = records[identifier],
                       let center = record.center, let radius = record.radius
                 else { continue }
-                let readdStart = Date()
+                let readdStart = self.dateUtil.now
                 await monitor.remove(identifier)
-                let condition = CLMonitor.CircularGeographicCondition(
-                    center: CLLocationCoordinate2D(latitude: center.latitude, longitude: center.longitude),
-                    radius: radius
+                await monitor.add(
+                    center: center,
+                    radius: radius,
+                    identifier: identifier,
+                    assuming: record.lastState == .enter ? .satisfied : .unsatisfied
                 )
-                await monitor.add(condition, identifier: identifier, assuming: record.lastState == .enter ? .satisfied : .unsatisfied)
-                self.conditionReadds[identifier] = ConditionReadd(start: readdStart, added: Date(), center: center, radius: radius)
+                self.conditionReadds[identifier] = ConditionReadd(start: readdStart, added: self.dateUtil.now, center: center, radius: radius)
                 // Recorded per identifier rather than in one pass at the end: an `.unmonitored` for
                 // one of these can land between two iterations, and it must be able to take the
                 // identifier back out.
@@ -81,10 +82,10 @@ extension CLMonitorGeofenceMonitor {
     /// layer doesn't know about — the state-space model (v6) shows the sync layer then skips it as
     /// unchanged forever, so the OS never converges back to the desired set.
     func rearmOnForegroundIfStale() {
-        guard Date().timeIntervalSince(lastRearmAt) >= GeofenceConstants.foregroundRearmInterval else { return }
+        guard dateUtil.now.timeIntervalSince(lastRearmAt) >= GeofenceConstants.foregroundRearmInterval else { return }
         guard !ownedRegionIdentifiers.isEmpty else { return }
         // Stamped at enqueue so rapid foreground cycles can't queue a second rebuild behind this one.
-        lastRearmAt = Date()
+        lastRearmAt = dateUtil.now
         enqueueMonitorOperation { [weak self] monitor in
             guard let self else { return }
             let records = await self.storage.getMonitorRegionRecords()
@@ -98,14 +99,15 @@ extension CLMonitorGeofenceMonitor {
                           transitionTypes: record.transitionTypes
                       )
                 else { continue }
-                let readdStart = Date()
+                let readdStart = self.dateUtil.now
                 await monitor.remove(identifier)
-                let condition = CLMonitor.CircularGeographicCondition(
-                    center: CLLocationCoordinate2D(latitude: center.latitude, longitude: center.longitude),
-                    radius: radius
+                await monitor.add(
+                    center: center,
+                    radius: radius,
+                    identifier: identifier,
+                    assuming: record.lastState == .enter ? .satisfied : .unsatisfied
                 )
-                await monitor.add(condition, identifier: identifier, assuming: record.lastState == .enter ? .satisfied : .unsatisfied)
-                self.conditionReadds[identifier] = ConditionReadd(start: readdStart, added: Date(), center: center, radius: radius)
+                self.conditionReadds[identifier] = ConditionReadd(start: readdStart, added: self.dateUtil.now, center: center, radius: radius)
                 self.knownConditionIdentifiers.insert(identifier)
                 rearmed += 1
             }
