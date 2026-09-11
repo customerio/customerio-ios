@@ -6,6 +6,9 @@ import Foundation
 import SharedTests
 import Testing
 
+// Nested for serialization only; the body keeps top-level indentation so the file's history stays readable.
+// swiftformat:disable indent
+extension SharedDIGraphSuites {
 @Suite("GeofenceBootstrap", .serialized)
 @MainActor
 struct GeofenceBootstrapTests {
@@ -435,11 +438,11 @@ struct GeofenceBootstrapTests {
         #expect(coordinator.applyCachedRegistrationCallsCount == 1)
 
         // Simulate iOS reporting a permission change. The handler spawns a Task to re-run
-        // wireMonitor; the sleep gives that Task time to schedule and complete.
+        // wireMonitor; wait for that re-run by its outcome. Waiting a fixed 100 ms let the re-run
+        // land after this test's `di.reset()`, inside the next test's overrides, under load.
         monitor.onAuthorizationChanged?()
-        try? await Task.sleep(nanoseconds: 100000000)
 
-        #expect(coordinator.applyCachedRegistrationCallsCount == 2)
+        #expect(await settle { coordinator.applyCachedRegistrationCallsCount == 2 })
     }
 
     @Test
@@ -457,11 +460,10 @@ struct GeofenceBootstrapTests {
 
         // The CLMonitor path calls this once it has reconciled the mirror against the OS's live set.
         // It must re-run wireMonitor so the adopt/re-register decision is re-made against live truth;
-        // the sleep gives the spawned Task time to complete.
+        // waited for by outcome so the re-run cannot outlive this test.
         monitor.onReconciled?()
-        try? await Task.sleep(nanoseconds: 100000000)
 
-        #expect(coordinator.applyCachedRegistrationCallsCount == 2)
+        #expect(await settle { coordinator.applyCachedRegistrationCallsCount == 2 })
     }
 
     @Test
@@ -495,3 +497,6 @@ private final class StubProvider: BackgroundDeliveryCdpApiKeyProvider {
 
     var cdpApiKey: String? { value }
 }
+}
+
+// swiftformat:enable indent
