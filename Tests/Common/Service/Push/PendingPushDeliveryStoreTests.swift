@@ -128,6 +128,20 @@ final class CioAppGroupPendingPushDeliveryStoreTests: UnitTest {
         XCTAssertTrue(logged("could not be read, leaving it intact"))
     }
 
+    /// `remove(id:)` is the NSE success path, so it is the one that runs on every delivered push.
+    func test_remove_givenAnUnreadableFile_expectRefusedAndTheQueueUntouched() throws {
+        let store = makeStore()
+        let metric = makeMetric()
+        XCTAssertTrue(store.append(metric))
+        let before = try Data(contentsOf: metricsFile)
+        try FileManager.default.setAttributes([.posixPermissions: 0o000], ofItemAtPath: metricsFile.path)
+
+        XCTAssertFalse(store.remove(id: metric.id))
+
+        try FileManager.default.setAttributes([.posixPermissions: 0o644], ofItemAtPath: metricsFile.path)
+        XCTAssertEqual(try Data(contentsOf: metricsFile), before)
+    }
+
     func test_removeAll_givenAnUnreadableFile_expectRefusedAndTheQueueUntouched() throws {
         let store = makeStore()
         let metric = makeMetric()

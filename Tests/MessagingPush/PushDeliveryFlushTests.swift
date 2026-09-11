@@ -17,6 +17,7 @@ import XCTest
 final class MessagingPushPendingPushFlushTests: UnitTest {
     private var pendingStoreMock: PendingPushDeliveryStoreMock!
     private var pipelineMock: DataPipelineTrackingMock!
+    private var loggerMock: LoggerMock!
 
     private let pendingMetric = PendingPushDeliveryMetric(
         deliveryId: "pend-launch-1",
@@ -36,6 +37,11 @@ final class MessagingPushPendingPushFlushTests: UnitTest {
         pendingStoreMock = PendingPushDeliveryStoreMock()
         pendingStoreMock.underlyingAppGroupSuiteName = "group.test.app.cio"
         pipelineMock = DataPipelineTrackingMock()
+        // The empty and unreadable arms both track nothing and remove nothing, so the log line is
+        // the ONLY thing that tells them apart — without it the unreadable test asserts nothing
+        // the empty-queue test does not already assert.
+        loggerMock = LoggerMock()
+        diGraphShared.override(value: loggerMock, forType: Logger.self)
 
         // Override pipeline mock so it is scoped to this test and cleaned up between tests,
         // preventing a stale Task.detached from a prior test resolving the wrong mock instance.
@@ -128,17 +134,37 @@ final class MessagingPushPendingPushFlushTests: UnitTest {
         )
     }
 
+    private func debugLogged(_ needle: String) -> Bool {
+        loggerMock.debugReceivedInvocations.contains { $0.message.contains(needle) }
+    }
+
     /// An unreadable store is not an empty one. Reporting it as flushed is how a backlog that is
-    /// still on disk gets written off; the rows must be left for a later launch.
-    func test_initialize_whenStoreUnreadable_expectNothingTrackedOrRemoved() {
+    /// still on disk gets written off.
+    ///
+    /// The two negative assertions below are true of an empty queue as well, so the log
+    /// assertions are what make this test distinguish the arms at all.
+    func test_initialize_whenStoreUnreadable_expectNotTreatedAsEmpty() {
         pendingStoreMock.readReturnValue = .unreadable
         pendingStoreMock.removeAllReturnValue = true
 
         MessagingPush.initialize(withConfig: messagingPushConfigOptions)
         MessagingPush.awaitPendingMetricsFlushForTests()
 
+        XCTAssertTrue(debugLogged("could not be read"), "an unreadable queue must not be reported as an empty one")
+        XCTAssertFalse(debugLogged("nothing to flush"))
         XCTAssertEqual(pendingStoreMock.readCallsCount, 1)
-        XCTAssertEqual(pipelineMock.trackDeliveryEventCallsCount, 0, "an unreadable queue must not be reported as flushed")
-        XCTAssertEqual(pendingStoreMock.removeAllCallsCount, 0, "rows still on disk must be left for a later launch")
+        XCTAssertEqual(pipelineMock.trackDeliveryEventCallsCount, 0)
+        XCTAssertEqual(pendingStoreMock.removeAllCallsCount, 0)
+    }
+
+    /// The negative control for the test above: the empty arm must take the other branch.
+    func test_initialize_whenNoPendingMetrics_expectReportedAsEmptyNotUnreadable() {
+        pendingStoreMock.readReturnValue = .rows([])
+
+        MessagingPush.initialize(withConfig: messagingPushConfigOptions)
+        MessagingPush.awaitPendingMetricsFlushForTests()
+
+        XCTAssertTrue(debugLogged("nothing to flush"))
+        XCTAssertFalse(debugLogged("could not be read"))
     }
 }

@@ -91,6 +91,7 @@ public final class CioInternalCommon.CioAppGroupPendingPushDeliveryStore {
 	public final val appGroupSuiteName: String?;
 	public fun func append(_ metric: PendingPushDeliveryMetric) -> Boolean;
 	public fun func loadAll() -> List<PendingPushDeliveryMetric>;
+	public fun func read() -> PendingPushDeliveryQueueRead;
 	public fun func remove(id: UUID) -> Boolean;
 	public fun func removeAll(ids: Set<UUID>) -> Boolean;
 }
@@ -435,10 +436,13 @@ public final class CioInternalCommon.PendingPushDeliveryMetric {
 	public final val timestamp: Date;
 	public fun init(id: UUID = UUID(), deliveryId: String, deviceToken: String, event: Metric, timestamp: Date);
 }
+public enum CioInternalCommon.PendingPushDeliveryQueueRead {
+}
 public interface CioInternalCommon.PendingPushDeliveryStore {
 	public var appGroupSuiteName: String?;
 	public fun func append(_ metric: PendingPushDeliveryMetric) -> Boolean;
 	public fun func loadAll() -> List<PendingPushDeliveryMetric>;
+	public fun func read() -> PendingPushDeliveryQueueRead;
 	public fun func remove(id: UUID) -> Boolean;
 	public fun func removeAll(ids: Set<UUID>) -> Boolean;
 }
