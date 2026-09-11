@@ -502,11 +502,13 @@ struct GeofenceLogTailTests {
 
     // MARK: - Fence catalog
 
-    /// A square ring, GeoJSON order (longitude first) as the wire sends it.
+    /// A ring in GeoJSON order (longitude first) and CLOSED, as the wire sends it — the closing
+    /// position repeats the first, which the catalog must drop.
     private func catalogPolygonRegion(id: String = "22250", vertices: Int = 4) -> GeofenceApiRegion {
-        let ring = (0 ..< vertices).map { i -> [Double] in
+        var ring = (0 ..< vertices).map { i -> [Double] in
             [55.18 + Double(i) / 10000, 25.10 + Double(i) / 10000]
         }
+        if let first = ring.first { ring.append(first) }
         return GeofenceApiRegion(
             id: id,
             name: "Polygon Test",
@@ -707,6 +709,26 @@ struct GeofenceLogTailTests {
             #expect(fields["ring"] == "bad_bad,bad_bad")
             // Still placeable by its circle, which is the point of recording it at all.
             #expect(fields["lat"] == "25.10000")
+        }
+    }
+
+    /// `nv` counts the canonical ring, not the wire ring. A GeoJSON ring closes on itself, so
+    /// counting what arrived would report one extra vertex for every polygon — and a consumer
+    /// applying "fewer pairs than nv means truncated" would refuse every correct Android polygon.
+    /// Agreed with the Android side; both platforms count the unclosed ring.
+    @Test
+    func fenceCatalog_givenClosedWireRing_expectClosingVertexDropped() {
+        withDiagnostics(true) {
+            let logger = CapturingLogger()
+            logger.geofenceApiFetchResult(returnedCount: 1, elapsed: 0.4, regions: [catalogPolygonRegion(vertices: 4)])
+
+            guard let message = logger.messages.last, let fields = parseTail(message) else {
+                Issue.record("no parseable tail in '\(logger.messages.last ?? "<nothing>")'")
+                return
+            }
+            // The wire carried 5 positions; the canonical ring is 4.
+            #expect(fields["nv"] == "4")
+            #expect(fields["ring"]?.split(separator: ",").count == 4)
         }
     }
 
