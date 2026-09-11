@@ -28,15 +28,11 @@ private enum PendingPushDeliveryAppGroupStorage {
 
 /// What a read of the pending-metrics file found.
 ///
-/// `unreadable` is a case of its own rather than an empty list because the two demand opposite
-/// handling: reported as "no rows", it lets the next append replace rows that are intact on disk.
-/// The state that does the damage is a read that fails while a write would still succeed —
-/// measured, since `Data.write(options: .atomic)` renames a temp file into place and needs
-/// permission on the directory, not on the target. Data Protection on the app group file is the
-/// suspected way a device reaches it, and the NSE is where it would bite, since a push can arrive
-/// before the first unlock after a reboot — but that chain is unverified.
+/// `unreadable` is separate from an empty list because reporting it as "no rows" lets the next
+/// append replace rows that are intact on disk. Reachable when a read fails but a write still
+/// succeeds — an atomic write renames a temp file, so it needs permission on the directory.
 public enum PendingPushDeliveryQueueRead: Equatable {
-    /// The file was read. Rows that did not decode are skipped, counted, and logged by the store.
+    /// Rows that did not decode are skipped and logged.
     case rows([PendingPushDeliveryMetric])
     /// The bytes could not be obtained. Nothing may be written over them.
     case unreadable
@@ -52,8 +48,8 @@ public protocol PendingPushDeliveryStore: AutoMockable {
     /// Appends a metric. When over capacity, drops the **oldest** entries. Returns `false` if the list could not be persisted.
     func append(_ metric: PendingPushDeliveryMetric) -> Bool
 
-    /// All pending metrics, oldest first. Returns an empty array when the file could not be read,
-    /// so a caller that must tell "no rows" from "could not tell" has to use ``read()`` instead.
+    /// All pending metrics, oldest first. Empty when the file could not be read — use ``read()``
+    /// where that difference matters.
     func loadAll() -> [PendingPushDeliveryMetric]
 
     /// The pending queue, or `unreadable` when the bytes could not be obtained.
@@ -80,8 +76,7 @@ public final class CioAppGroupPendingPushDeliveryStore: PendingPushDeliveryStore
 
     /// Designated initializer. When `appGroupId` is non-nil it is used directly; otherwise the identifier
     /// is inferred from `processBundleIdentifier` using the format `group.{bundleId}.cio`.
-    /// - Parameter fileManager: Seam for tests — the app group container does not exist in a unit
-    ///   test host, so the concrete store is otherwise unreachable. Production always passes the default.
+    /// - Parameter fileManager: Test seam; the app group container does not exist in a test host.
     init(
         appGroupId: String?,
         processBundleIdentifier: String?,
@@ -128,8 +123,7 @@ public final class CioAppGroupPendingPushDeliveryStore: PendingPushDeliveryStore
         var success = false
 
         NSFileCoordinator().coordinate(readingItemAt: fileURL, options: [], writingItemAt: fileURL, options: .forReplacing, error: &coordError) { readURL, writeURL in
-            // Refuses to write over an unreadable file. The alternative is to treat it as empty,
-            // which replaces a queue whose rows are intact on disk — the pre-first-unlock case.
+            // Never write over a file we could not read: treating it as empty replaces intact rows.
             guard case .rows(var items) = readItems(from: readURL) else { return }
             items.append(metric)
             if items.count > maxEntries {
@@ -155,8 +149,7 @@ public final class CioAppGroupPendingPushDeliveryStore: PendingPushDeliveryStore
     }
 
     public func read() -> PendingPushDeliveryQueueRead {
-        // No resolved file means the app group is unavailable, so no write ever landed and none
-        // can. Reported as unreadable rather than empty so an append cannot be built on it.
+        // No app group, so no write can land either. Unreadable, so no append is built on it.
         guard let fileURL = metricsFileURL else { return .unreadable }
 
         var coordError: NSError?
@@ -228,9 +221,8 @@ public final class CioAppGroupPendingPushDeliveryStore: PendingPushDeliveryStore
         return success
     }
 
-    /// Decodes one row without failing the array. A row the current schema cannot read is skipped
-    /// and counted; a single `try?` around the whole array discarded every other row with it, and
-    /// every field here is non-optional, so schema evolution alone can trigger it.
+    /// Decodes one row without failing the array. Every field is non-optional, so schema
+    /// evolution alone can drop a row — and one `try?` around the array dropped the rest with it.
     private struct DecodedRow: Decodable {
         let metric: PendingPushDeliveryMetric?
 
@@ -253,15 +245,12 @@ public final class CioAppGroupPendingPushDeliveryStore: PendingPushDeliveryStore
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
         guard let rows = try? decoder.decode([DecodedRow].self, from: data) else {
-            // The bytes came back but are not a row array. Unlike a read failure there is nothing
-            // to preserve, so the queue reads as empty and the next write reclaims the file.
+            // Read fine but not a row array: nothing to preserve, so the next write reclaims it.
             logger.error("Pending push delivery store: file is not a row array, starting fresh")
             return .rows([])
         }
         let decoded = rows.compactMap(\.metric)
         if decoded.count < rows.count {
-            // The count is the record: a backlog that shrank and one that was thrown away are the
-            // same observation without it.
             logger.error("Pending push delivery store: skipped \(rows.count - decoded.count) of \(rows.count) row(s) that did not decode")
         }
         return .rows(decoded)
