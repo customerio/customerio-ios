@@ -59,9 +59,8 @@ extension CLMonitorGeofenceMonitor {
                 ) else { continue }
                 // A heal that decides a crossing is real and is then refused by the baseline used
                 // to vanish. Reported as `baseline.refused`, not `os.callback.dropped`: nothing
-                // arrived from the OS on this path. This is also the only site that can return
-                // `.suppressedNewerBaseline` — the OS path passes no evidence timestamp — so
-                // without this the token exists but can never print.
+                // arrived from the OS on this path. Both writers pass their evidence time as the
+                // bound; the OS path passes the event's date, this one the fix's.
                 // Stamped with the fix's time, not the drain time: OS events are judged against this
                 // stamp by their own date, so both writers must record evidence time.
                 let outcome = await self.storage.recordMonitorEvent(
