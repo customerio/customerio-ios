@@ -186,9 +186,16 @@ extension Logger {
                         // spaces, commas and `=`, all of which would break the parser's split.
                         ("name", region.name),
                         ("gs", GeofenceLog.list(region.geosetIds ?? [])),
-                        ("lat", GeofenceLog.num(region.latitude, 5)),
-                        ("lon", GeofenceLog.num(region.longitude, 5)),
-                        ("rad", GeofenceLog.num(region.radius, 0)),
+                        ("sh", region.catalogShape.rawValue),
+                        // A polygon has no lat/lon/radius on the wire; these fall back to its
+                        // enclosing circle, which is the circle the OS monitors.
+                        ("lat", GeofenceLog.num(region.catalogCenter?.latitude, 5)),
+                        ("lon", GeofenceLog.num(region.catalogCenter?.longitude, 5)),
+                        ("rad", GeofenceLog.num(region.catalogRadius, 0)),
+                        // `nv` is authoritative: `ring` truncates, so it is for placement only and
+                        // never a membership input.
+                        ("nv", GeofenceLog.int(region.catalogRing?.count)),
+                        ("ring", GeofenceLog.list(region.catalogRing ?? [], limit: 64)),
                         ("tt", GeofenceLog.list(region.transitionTypes ?? []))
                     ]),
                 geofenceTag

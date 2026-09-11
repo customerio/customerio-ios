@@ -547,6 +547,35 @@ struct GeofenceLogTailTests {
 
     // MARK: - Fence catalog
 
+    /// A ring in GeoJSON order (longitude first) and CLOSED, as the wire sends it — the closing
+    /// position repeats the first, which the catalog must drop.
+    private func catalogPolygonRegion(id: String = "22250", vertices: Int = 4) -> GeofenceApiRegion {
+        // A regular ring, NOT a diagonal. Collinear points enclose no area, so the kernel rejects
+        // them and every catalog assertion silently exercises the fallback instead of the branch
+        // that reads the kernel's own list.
+        var ring = (0 ..< vertices).map { i -> [Double] in
+            let angle = 2 * Double.pi * Double(i) / Double(vertices)
+            return [55.184004 + 0.0015 * cos(angle), 25.109908 + 0.0015 * sin(angle)]
+        }
+        if let first = ring.first { ring.append(first) }
+        return GeofenceApiRegion(
+            id: id,
+            name: "Polygon Test",
+            shape: "polygon",
+            latitude: nil,
+            longitude: nil,
+            radius: nil,
+            geometry: GeofenceApiGeometry(type: "Polygon", coordinates: [ring]),
+            enclosingCircle: GeofenceApiEnclosingCircle(latitude: 25.109908, longitude: 55.184004, baseRadiusM: 625),
+            carriesPolygonFields: true,
+            externalId: nil,
+            transitionTypes: ["enter", "exit"],
+            lastUpdated: 0,
+            geosetIds: ["4471"],
+            metadata: nil
+        )
+    }
+
     private func catalogRegion(id: String = "11125", name: String? = "Momo Dubai Test") -> GeofenceApiRegion {
         GeofenceApiRegion(
             id: id,
@@ -588,6 +617,242 @@ struct GeofenceLogTailTests {
             for key in ["id", "name", "gs", "lat", "lon", "rad", "tt"] {
                 #expect(fields[key] != nil, "missing \(key)= in '\(message)'")
             }
+        }
+    }
+
+    /// A polygon carries no lat/lon/radius on the wire. Before this, all three were dropped and the
+    /// fence catalogued unplaceable — the one thing the catalog exists to prevent.
+    @Test
+    func fenceCatalog_givenPolygon_expectEnclosingCircleAndRing() {
+        withDiagnostics(true) {
+            let logger = CapturingLogger()
+            logger.geofenceApiFetchResult(returnedCount: 1, elapsed: 0.4, regions: [catalogPolygonRegion()])
+
+            guard let message = logger.messages.last, let fields = parseTail(message) else {
+                Issue.record("no parseable tail in '\(logger.messages.last ?? "<nothing>")'")
+                return
+            }
+            #expect(fields["sh"] == "polygon")
+            #expect(fields["lat"] == "25.10991")
+            #expect(fields["lon"] == "55.18400")
+            #expect(fields["rad"] == "625")
+            #expect(fields["nv"] == "4")
+            // `lat_lon`, the SDK's order — the wire sends `lon,lat`. First vertex is at angle 0,
+            // so its longitude is the offset one and its latitude the centre's.
+            #expect(fields["ring"]?.hasPrefix("25.10991_55.18550") == true)
+        }
+    }
+
+    @Test
+    func fenceCatalog_givenCircle_expectShapeAndNoRing() {
+        withDiagnostics(true) {
+            let logger = CapturingLogger()
+            logger.geofenceApiFetchResult(returnedCount: 1, elapsed: 0.4, regions: [catalogRegion()])
+
+            guard let message = logger.messages.last, let fields = parseTail(message) else {
+                Issue.record("no parseable tail in '\(logger.messages.last ?? "<nothing>")'")
+                return
+            }
+            #expect(fields["sh"] == "circle")
+            #expect(fields["rad"] == "150")
+            #expect(fields["nv"] == nil)
+            #expect(fields["ring"] == nil)
+        }
+    }
+
+    /// `ring` truncates. `nv` is what lets a consumer notice and refuse, rather than compute
+    /// membership against a partial ring that still looks like a valid polygon.
+    /// Pins the branch that reads the geometry kernel's own vertex list rather than re-deriving
+    /// canonicalisation here. The two only disagree across the antimeridian: the kernel's
+    /// `samePosition` unwraps longitude, so a ring closing at +180 that opened at -180 loses its
+    /// closing vertex, while an exact comparison keeps it. `nv` is therefore 4 through the kernel
+    /// and 5 through the fallback — the one input that tells which path ran.
+    /// The mixed-field cases. `carriesPolygonFields` alone made the catalog disagree with the
+    /// mapper about what is monitored — the one thing a capture has to get right.
+    @Test
+    func fenceCatalog_givenMixedFields_expectTheShapeTheMapperMonitors() {
+        withDiagnostics(true) {
+            func fields(shape: String?, flat: Bool, geometry: Bool) -> [String: String]? {
+                let ring: [[Double]] = [[55.1, 25.1], [55.2, 25.1], [55.2, 25.2], [55.1, 25.1]]
+                let region = GeofenceApiRegion(
+                    id: "mix", name: nil, shape: shape,
+                    latitude: flat ? 10.0 : nil, longitude: flat ? 20.0 : nil, radius: flat ? 300 : nil,
+                    geometry: geometry ? GeofenceApiGeometry(type: "Polygon", coordinates: [ring]) : nil,
+                    enclosingCircle: GeofenceApiEnclosingCircle(latitude: 25.15, longitude: 55.15, baseRadiusM: 900),
+                    carriesPolygonFields: geometry, externalId: nil,
+                    transitionTypes: ["enter"], lastUpdated: 0, geosetIds: nil, metadata: nil
+                )
+                let logger = CapturingLogger()
+                logger.geofenceApiFetchResult(returnedCount: 1, elapsed: 0.1, regions: [region])
+                return parseTail(logger.messages.last ?? "")
+            }
+
+            // Explicit circle carrying stray geometry: monitored as a circle, by its flat fields.
+            let strayGeometry = fields(shape: "circle", flat: true, geometry: true)
+            #expect(strayGeometry?["sh"] == "circle")
+            #expect(strayGeometry?["rad"] == "300")
+
+            // Explicit polygon carrying flat fields: monitored by its enclosing circle.
+            let flatPolygon = fields(shape: "polygon", flat: true, geometry: true)
+            #expect(flatPolygon?["sh"] == "polygon")
+            #expect(flatPolygon?["rad"] == "900")
+
+            // Normalization matches the mapper's: padded and mixed case are the same shape.
+            #expect(fields(shape: "  Polygon ", flat: false, geometry: true)?["sh"] == "polygon")
+            // Blank is not a shape the server named.
+            #expect(fields(shape: "   ", flat: true, geometry: false)?["sh"] == "circle")
+            // Polygon fields, no discriminator — the mapper drops this; the catalog names it.
+            #expect(fields(shape: nil, flat: false, geometry: true)?["sh"] == "undescribed")
+            // A shape this version cannot monitor.
+            #expect(fields(shape: "hexagon", flat: true, geometry: false)?["sh"] == "unknown")
+        }
+    }
+
+    @Test
+    func fenceCatalog_givenRingClosingAcrossTheAntimeridian_expectTheKernelsRing() {
+        withDiagnostics(true) {
+            let logger = CapturingLogger()
+            let ring: [[Double]] = [
+                [-180.0, 25.00], [-179.99, 25.00], [-179.99, 25.01], [-180.0, 25.01],
+                // Same meridian as the first position, opposite sign.
+                [180.0, 25.00]
+            ]
+            let region = GeofenceApiRegion(
+                id: "22251", name: "Antimeridian", shape: "polygon",
+                latitude: nil, longitude: nil, radius: nil,
+                geometry: GeofenceApiGeometry(type: "Polygon", coordinates: [ring]),
+                enclosingCircle: GeofenceApiEnclosingCircle(latitude: 25.005, longitude: -179.995, baseRadiusM: 700),
+                carriesPolygonFields: true, externalId: nil,
+                transitionTypes: ["enter"], lastUpdated: 0, geosetIds: nil, metadata: nil
+            )
+            logger.geofenceApiFetchResult(returnedCount: 1, elapsed: 0.4, regions: [region])
+
+            guard let message = logger.messages.last, let fields = parseTail(message) else {
+                Issue.record("no parseable tail in '\(logger.messages.last ?? "<nothing>")'")
+                return
+            }
+            #expect(fields["nv"] == "4", "5 means the fallback ran and kept the wrapped closing vertex")
+            #expect(fields["ring"]?.split(separator: ",").count == 4)
+        }
+    }
+
+    @Test
+    func fenceCatalog_givenRingBeyondTheLimit_expectCountStaysAuthoritative() {
+        withDiagnostics(true) {
+            let logger = CapturingLogger()
+            logger.geofenceApiFetchResult(
+                returnedCount: 1, elapsed: 0.4, regions: [catalogPolygonRegion(vertices: 70)]
+            )
+
+            guard let message = logger.messages.last, let fields = parseTail(message) else {
+                Issue.record("no parseable tail in '\(logger.messages.last ?? "<nothing>")'")
+                return
+            }
+            #expect(fields["nv"] == "70")
+            #expect(fields["ring"]?.hasSuffix(",+6") == true, "expected a truncation marker in '\(message)'")
+        }
+    }
+
+    /// The malformed-but-placeable case, and the catalog's whole reason to exist: the ring failed
+    /// to decode, so the fence is still worth recording by the circle the OS was given.
+    @Test
+    func fenceCatalog_givenPolygonWhoseRingDidNotDecode_expectPlaceableWithoutRing() {
+        withDiagnostics(true) {
+            let logger = CapturingLogger()
+            var region = catalogPolygonRegion()
+            region = GeofenceApiRegion(
+                id: region.id, name: region.name, shape: "polygon",
+                latitude: nil, longitude: nil, radius: nil,
+                geometry: nil,
+                enclosingCircle: GeofenceApiEnclosingCircle(latitude: 25.109908, longitude: 55.184004, baseRadiusM: 625),
+                carriesPolygonFields: true, externalId: nil,
+                transitionTypes: ["enter"], lastUpdated: 0, geosetIds: nil, metadata: nil
+            )
+            logger.geofenceApiFetchResult(returnedCount: 1, elapsed: 0.4, regions: [region])
+
+            guard let message = logger.messages.last, let fields = parseTail(message) else {
+                Issue.record("no parseable tail in '\(logger.messages.last ?? "<nothing>")'")
+                return
+            }
+            #expect(fields["sh"] == "polygon")
+            #expect(fields["lat"] == "25.10991")
+            #expect(fields["rad"] == "625")
+            #expect(fields["ring"] == nil)
+            #expect(fields["nv"] == nil)
+        }
+    }
+
+    /// A coordinate off the wire is rendered before anything drops invalid regions. `%.5f` on 1e300
+    /// is 309 digits, so the record says the server sent garbage instead of carrying it.
+    @Test
+    func fenceCatalog_givenAbsurdCoordinate_expectItRecordedAsBad() {
+        withDiagnostics(true) {
+            let logger = CapturingLogger()
+            let region = GeofenceApiRegion(
+                id: "33375", name: nil, shape: "polygon",
+                latitude: nil, longitude: nil, radius: nil,
+                geometry: GeofenceApiGeometry(type: "Polygon", coordinates: [[[1e300, 25.1], [55.18, 25.11]]]),
+                enclosingCircle: GeofenceApiEnclosingCircle(latitude: 25.1, longitude: 55.18, baseRadiusM: 400),
+                carriesPolygonFields: true, externalId: nil,
+                transitionTypes: ["enter"], lastUpdated: 0, geosetIds: nil, metadata: nil
+            )
+            logger.geofenceApiFetchResult(returnedCount: 1, elapsed: 0.4, regions: [region])
+
+            guard let message = logger.messages.last, let fields = parseTail(message) else {
+                Issue.record("no parseable tail in '\(logger.messages.last ?? "<nothing>")'")
+                return
+            }
+            #expect(fields["nv"] == "2", "a bad vertex still counts")
+            #expect(fields["ring"]?.hasPrefix("25.10000_bad") == true, "got '\(fields["ring"] ?? "")'")
+            #expect(message.count < 500, "one absurd coordinate should not blow up the line")
+        }
+    }
+
+    /// A position with fewer than two coordinates used to be dropped, leaving `nv` counting
+    /// vertices the ring never showed — `nv=0` with no ring reads as "polygon with no vertices"
+    /// rather than "ring unusable".
+    @Test
+    func fenceCatalog_givenMalformedPositions_expectCountAndRingAgree() {
+        withDiagnostics(true) {
+            let logger = CapturingLogger()
+            let region = GeofenceApiRegion(
+                id: "44480", name: nil, shape: "polygon",
+                latitude: nil, longitude: nil, radius: nil,
+                geometry: GeofenceApiGeometry(type: "Polygon", coordinates: [[[1.0], [2.0]]]),
+                enclosingCircle: GeofenceApiEnclosingCircle(latitude: 25.1, longitude: 55.18, baseRadiusM: 400),
+                carriesPolygonFields: true, externalId: nil,
+                transitionTypes: ["enter"], lastUpdated: 0, geosetIds: nil, metadata: nil
+            )
+            logger.geofenceApiFetchResult(returnedCount: 1, elapsed: 0.4, regions: [region])
+
+            guard let message = logger.messages.last, let fields = parseTail(message) else {
+                Issue.record("no parseable tail in '\(logger.messages.last ?? "<nothing>")'")
+                return
+            }
+            #expect(fields["nv"] == "2")
+            #expect(fields["ring"] == "bad_bad,bad_bad")
+            // Still placeable by its circle, which is the point of recording it at all.
+            #expect(fields["lat"] == "25.10000")
+        }
+    }
+
+    /// `nv` counts the canonical ring, not the wire ring. A GeoJSON ring closes on itself, so
+    /// counting what arrived would report one extra vertex for every polygon — and a consumer
+    /// applying "fewer pairs than nv means truncated" would refuse every correct Android polygon.
+    /// Agreed with the Android side; both platforms count the unclosed ring.
+    @Test
+    func fenceCatalog_givenClosedWireRing_expectClosingVertexDropped() {
+        withDiagnostics(true) {
+            let logger = CapturingLogger()
+            logger.geofenceApiFetchResult(returnedCount: 1, elapsed: 0.4, regions: [catalogPolygonRegion(vertices: 4)])
+
+            guard let message = logger.messages.last, let fields = parseTail(message) else {
+                Issue.record("no parseable tail in '\(logger.messages.last ?? "<nothing>")'")
+                return
+            }
+            // The wire carried 5 positions; the canonical ring is 4.
+            #expect(fields["nv"] == "4")
+            #expect(fields["ring"]?.split(separator: ",").count == 4)
         }
     }
 
