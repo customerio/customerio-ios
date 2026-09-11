@@ -982,8 +982,11 @@ struct PolygonMembershipResolverTests {
         await yieldUntil { switched.value }
         // Waits for the refusal to be RECORDED, not for a fixed number of yields: an expect-nothing
         // test with a fixed wait goes vacuous the moment this path gains another await.
-        await yieldUntil { logged(setup.logger, "user changed while resolving the fix") }
+        await yieldUntil { logged(setup.logger, PolygonUndecidedReason.userChanged.prose) }
 
+        // `yieldUntil` gives up silently, so without this the expect-nothing assertions below pass
+        // whether the refusal ran or the wait simply timed out.
+        #expect(logged(setup.logger, PolygonUndecidedReason.userChanged.prose))
         #expect(await setup.emitter.snapshot().isEmpty)
         #expect(await setup.storage.getPolygonMembership()["1"] == nil)
     }
@@ -1011,6 +1014,8 @@ struct PolygonMembershipResolverTests {
         })
 
         #expect(asked.count == 2)
+        // The write said deliver, so the refusal is the switch and not an unchanged belief.
+        #expect(logged(setup.logger, "delivered nothing: user_changed"))
         #expect(await setup.emitter.snapshot().isEmpty)
         #expect(await setup.storage.getPolygonMembership()["1"]?.membership == .inside)
     }

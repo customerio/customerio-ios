@@ -94,12 +94,12 @@ extension Logger {
         )
     }
 
-    func geofencePolygonNotDelivered(identifier: String, outcome: PolygonMembershipOutcome) {
+    func geofencePolygonNotDelivered(identifier: String, reason: PolygonUndeliveredReason) {
         debug(
-            "Polygon verdict for region \(identifier) delivered nothing: \(outcome.logToken)"
+            "Polygon verdict for region \(identifier) delivered nothing: \(reason.logToken)"
                 + geofenceTail("polygon.undelivered", .output, [
                     ("id", identifier),
-                    ("why", outcome.logToken)
+                    ("why", reason.logToken)
                 ]),
             geofenceTag
         )

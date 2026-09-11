@@ -321,11 +321,11 @@ final class PolygonMembershipResolver {
         guard case .deliver(let transition) = outcome,
               geofence.transitionTypes.contains(transition)
         else {
-            logger.geofencePolygonNotDelivered(identifier: geofence.id, outcome: outcome)
+            logger.geofencePolygonNotDelivered(identifier: geofence.id, reason: .outcome(outcome))
             return
         }
         if let isStillCurrent, !isStillCurrent() {
-            logger.geofencePolygonNotDelivered(identifier: geofence.id, outcome: .suppressedNoChange)
+            logger.geofencePolygonNotDelivered(identifier: geofence.id, reason: .userChanged)
             return
         }
         logger.geofencePolygonTransition(

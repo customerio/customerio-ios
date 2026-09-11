@@ -56,6 +56,24 @@ enum PolygonEvaluationReason: String {
     }
 }
 
+/// Why a verdict that the storage write accepted still delivered nothing.
+///
+/// Mostly the write's own outcome, plus the one refusal that happens after it. Those are not the
+/// same thing: `no_change` says the belief did not move, and reusing it for a user switch would
+/// report a delivery that was refused as one that was never owed.
+enum PolygonUndeliveredReason {
+    case outcome(PolygonMembershipOutcome)
+    /// The identified user changed between the membership write and the emit.
+    case userChanged
+
+    var logToken: String {
+        switch self {
+        case .outcome(let outcome): return outcome.logToken
+        case .userChanged: return "user_changed"
+        }
+    }
+}
+
 extension PolygonMembershipOutcome {
     /// snake_case like every other `why` in the module; the synthesized case name is camelCase.
     var logToken: String {
