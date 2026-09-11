@@ -138,10 +138,11 @@ struct GeofenceLogTailTests {
             Invocation(name: "movementTrigger", ev: "movement.exit", requiredKeys: ["tier"]) { $0.geofenceMovementTrigger(tier: .localRerank) },
             Invocation(name: "movementTriggerRegistered", ev: "movement.registered", requiredKeys: ["rad"]) { $0.geofenceMovementTriggerRegistered(latitude: 43.2, longitude: -79.0, radius: 500) },
             Invocation(name: "movementRearmed", ev: "movement.rearmed", requiredKeys: ["why"]) { $0.geofenceMovementRearmedAfterFailedRefresh() },
-            Invocation(name: "movementFixResolved", ev: "movement.fix.resolved", requiredKeys: ["age", "prov"]) { $0.geofenceMovementFixResolved(ageSeconds: 12.5, requested: true) },
+            Invocation(name: "movementFixResolved", ev: "movement.fix.resolved", requiredKeys: ["age", "prov", "spd", "for"]) { $0.geofenceMovementFixResolved(ageSeconds: 12.5, requested: true, speed: 13.4, purpose: .movement) },
             Invocation(name: "movementFixStale", ev: "movement.fix.requested", requiredKeys: ["age", "why"]) { $0.geofenceMovementFixStale(ageSeconds: 900) },
             Invocation(name: "movementFixRequestFailed", ev: "movement.fix.failed", requiredKeys: ["ok", "why", "ms"]) { $0.geofenceMovementFixRequestFailed(fallingBackToCached: true, elapsed: 5) },
             Invocation(name: "baselineHealed", ev: "baseline.healed", requiredKeys: ["id", "t"]) { $0.geofenceBaselineHealed(identifier: "notl_core", transition: .enter) },
+            Invocation(name: "contradictionEvaluated", ev: "contradiction.evaluated", requiredKeys: ["id", "t", "dly", "win"]) { $0.geofenceContradictionEvaluated(identifier: "notl_core", transition: .enter, delaySinceAdd: 1.25, insideWindow: true) },
             Invocation(name: "contradictionRefused", ev: "contradiction.refused", requiredKeys: ["id", "t", "dist", "rad", "edge", "acc"]) { $0.geofenceEventRefusedByContradiction(identifier: "notl_core", transition: .enter, distanceFromCenter: 1400, radius: 1000, accuracy: 48) },
             Invocation(name: "syncSuperseded", ev: "sync.superseded", requiredKeys: ["why"]) { $0.geofenceSyncSupersededByUserChange() },
             Invocation(name: "resetCompleted", ev: "module.reset", requiredKeys: ["ok"]) { $0.geofenceResetCompleted() },
@@ -149,7 +150,10 @@ struct GeofenceLogTailTests {
             Invocation(name: "firstRunRearm", ev: "movement.rearmed", requiredKeys: ["why"]) { $0.geofenceFirstRunRearm() },
             Invocation(name: "regionsAdopted", ev: "registration.adopted", requiredKeys: ["n"]) { $0.geofenceRegionsAdopted(count: 4) },
             Invocation(name: "foregroundRearm", ev: "registration.rearmed", requiredKeys: ["n", "why"]) { $0.geofenceForegroundRearm(count: 4) },
-            Invocation(name: "storageLoaded", ev: "storage.loaded", requiredKeys: ["n", "anchor"]) { $0.geofenceStorageLoaded(regionCount: 30, hasAnchor: true) }
+            Invocation(name: "storageLoaded", ev: "storage.loaded", requiredKeys: ["n", "anchor"]) { $0.geofenceStorageLoaded(regionCount: 30, hasAnchor: true) },
+            Invocation(name: "queueRowsDropped", ev: "queue.rows_dropped", requiredKeys: ["why", "n", "total"]) { $0.geofenceQueueRowsDropped(count: 1, of: 3) },
+            Invocation(name: "queueUnreadable", ev: "queue.unreadable", requiredKeys: ["why"]) { $0.geofenceQueueUnreadable(reason: .readFailed) },
+            Invocation(name: "droppedQueueUnreadable", ev: "transition.dropped", requiredKeys: ["id", "t", "why"]) { $0.geofenceTransitionDroppedQueueUnreadable(geofenceId: "notl_core", transition: .enter) }
         ]
     }
 
@@ -194,6 +198,40 @@ struct GeofenceLogTailTests {
         }
     }
 
+    /// One resolver serves five decisions, so a speed sample is only usable once you can tell
+    /// which asked for it — the wake margin is calibrated from the movement caller alone.
+    @Test
+    func movementFixResolved_expectTheAskingDecisionNamed() {
+        withDiagnostics(true) {
+            for purpose in [GeofenceFixPurpose.movement, .contradictionGate, .baselineHeal, .pendingEvents, .polygon] {
+                let logger = CapturingLogger()
+                logger.geofenceMovementFixResolved(ageSeconds: 1, requested: false, speed: 5, purpose: purpose)
+                #expect(parseTail(logger.messages.last ?? "")?["for"] == purpose.rawValue)
+            }
+            // Distinct tokens, or the split says nothing.
+            #expect(Set([GeofenceFixPurpose.movement, .contradictionGate, .baselineHeal, .pendingEvents, .polygon].map(\.rawValue)).count == 5)
+        }
+    }
+
+    /// CoreLocation reports -1 for "no speed", which is not the same as stationary. Carrying it
+    /// through would put a fabricated -1.0 into a calibration sample that averages speeds.
+    @Test
+    func movementFixResolved_givenNoSpeedOnTheFix_expectTheKeyOmitted() {
+        withDiagnostics(true) {
+            let stationary = CapturingLogger()
+            stationary.geofenceMovementFixResolved(ageSeconds: 1, requested: false, speed: 0)
+            #expect(parseTail(stationary.messages.last ?? "")?["spd"] == "0.0")
+
+            let unknown = CapturingLogger()
+            unknown.geofenceMovementFixResolved(ageSeconds: 1, requested: false, speed: -1)
+            #expect(parseTail(unknown.messages.last ?? "")?["spd"] == nil)
+
+            let absent = CapturingLogger()
+            absent.geofenceMovementFixResolved(ageSeconds: 1, requested: false)
+            #expect(parseTail(absent.messages.last ?? "")?["spd"] == nil)
+        }
+    }
+
     @Test
     func deliveryFailure_expectDistinctReasonTokenPerCause() {
         // The token is the whole value of this record now that it carries no verdict: it is what
@@ -212,6 +250,53 @@ struct GeofenceLogTailTests {
         #expect(BackgroundDeliveryHttpError.http(statusCode: 503).diagnosticReason == "http_503")
     }
 
+    /// The module's whole diagnostic vocabulary, hoisted out of the test so the assertion stays
+    /// readable as rows are added.
+    private static let declaredVocabulary: Set<String> = [
+        "api.fetch.result",
+        "baseline.healed",
+        "baseline.refused",
+        "contradiction.evaluated",
+        "contradiction.refused",
+        "delivery.failed",
+        "delivery.queued",
+        "delivery.sent",
+        "fix.received",
+        "info",
+        "module.init",
+        "module.reset",
+        "module.wake",
+        "movement.exit",
+        "movement.fix.failed",
+        "movement.fix.requested",
+        "movement.fix.resolved",
+        "movement.rearmed",
+        "movement.registered",
+        "os.callback.dropped",
+        "os.callback.received",
+        "os.monitor.failed",
+        "os.monitor.stopped",
+        "os.stream.failed",
+        "permission.changed",
+        "queue.rows_dropped",
+        "queue.unreadable",
+        "rank.evaluated",
+        "registration.adopted",
+        "registration.applied",
+        "registration.diff",
+        "registration.rearmed",
+        "registration.rejected",
+        "storage.loaded",
+        "storage.write.failed",
+        "sync.completed",
+        "sync.skipped",
+        "sync.superseded",
+        "transition.accepted",
+        "transition.dropped",
+        "transition.suppressed",
+        "transition.synthesized"
+    ]
+
     @Test
     func everyRecord_expectTheDeclaredVocabulary() {
         // Companion to the per-row `ev` pin above, catching what a per-row check cannot: a key
@@ -223,47 +308,7 @@ struct GeofenceLogTailTests {
         // `fence.cataloged` is absent on purpose: it is emitted by a private helper driven through
         // `api.fetch.result`, so it cannot be a row here. It carries its own `ev` assertion in
         // `fenceCatalog_...` below. Every other key the module emits is listed.
-        let expected: Set = [
-            "api.fetch.result",
-            "baseline.healed",
-            "baseline.refused",
-            "contradiction.refused",
-            "delivery.failed",
-            "delivery.queued",
-            "delivery.sent",
-            "fix.received",
-            "info",
-            "module.init",
-            "module.reset",
-            "module.wake",
-            "movement.exit",
-            "movement.fix.failed",
-            "movement.fix.requested",
-            "movement.fix.resolved",
-            "movement.rearmed",
-            "movement.registered",
-            "os.callback.dropped",
-            "os.callback.received",
-            "os.monitor.failed",
-            "os.monitor.stopped",
-            "os.stream.failed",
-            "permission.changed",
-            "rank.evaluated",
-            "registration.adopted",
-            "registration.applied",
-            "registration.diff",
-            "registration.rearmed",
-            "registration.rejected",
-            "storage.loaded",
-            "storage.write.failed",
-            "sync.completed",
-            "sync.skipped",
-            "sync.superseded",
-            "transition.accepted",
-            "transition.dropped",
-            "transition.suppressed",
-            "transition.synthesized"
-        ]
+        let expected = Self.declaredVocabulary
         var seen: Set<String> = []
         withDiagnostics(true) {
             for invocation in invocations {

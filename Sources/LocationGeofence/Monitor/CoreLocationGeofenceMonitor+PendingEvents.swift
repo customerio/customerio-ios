@@ -117,7 +117,7 @@ extension CoreLocationGeofenceMonitor {
         circle: MonitoredCircle
     ) {
         if identifier == GeofenceConstants.movementTriggerIdentifier, transition == .exit {
-            movementFixResolver.resolve(cached: bestKnownFix()) { [weak self] location, isFresh in
+            movementFixResolver.resolve(cached: bestKnownFix(), purpose: .pendingEvents) { [weak self] location, isFresh in
                 self?.logger.geofenceOsTransitionReceived(identifier: identifier, transition: transition)
                 // Falling back to the captured location is a second layer of staleness on top of a
                 // failed request, so it can never be reported as current.
