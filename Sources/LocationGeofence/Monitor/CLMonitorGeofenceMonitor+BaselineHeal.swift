@@ -62,10 +62,13 @@ extension CLMonitorGeofenceMonitor {
                 // arrived from the OS on this path. This is also the only site that can return
                 // `.suppressedNewerBaseline` — the OS path passes no evidence timestamp — so
                 // without this the token exists but can never print.
+                // Stamped with the fix's time, not the drain time: OS events are judged against this
+                // stamp by their own date, so both writers must record evidence time.
                 let outcome = await self.storage.recordMonitorEvent(
                     transition,
                     forIdentifier: identifier,
-                    onlyIfBaselinePredates: fix.timestamp
+                    onlyIfBaselinePredates: fix.timestamp,
+                    now: fix.timestamp
                 )
                 guard case .deliver = outcome else {
                     if let reason = outcome.diagnosticReason {
