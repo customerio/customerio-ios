@@ -205,6 +205,9 @@ final class GeofenceEventTracker: @unchecked Sendable {
         cooldownKey: String
     ) async {
         switch write {
+        // Unreachable: the one call site guards on `.persisted`. Kept total rather than narrowed
+        // so the compiler still lists the arms, but it must stay a no-op only while that guard
+        // holds — reaching here would release no cooldown and log nothing.
         case .persisted: return
         case .writeFailed:
             logger.geofencePendingPersistFailed(geofenceId: geofenceId, transition: transition)

@@ -177,7 +177,7 @@ struct GeofenceEventTrackerTests {
         await tracker.trackTransition(geofenceId: "geo_1", transition: .enter)
 
         let messages = logger.errorReceivedInvocations.map(\.message)
-        #expect(messages.contains { $0.contains("the pending queue could not be read") })
+        #expect(messages.contains { $0.contains("the pending queue could not be read, so no write was attempted") })
         #expect(!messages.contains { $0.contains("Failed to persist") })
         #expect(delivery.trackMetricCallsCount == 0)
         // The backlog it refused to write over is still byte-for-byte on disk.
