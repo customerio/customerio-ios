@@ -53,7 +53,7 @@ final class MessagingPushPendingPushFlushTests: UnitTest {
 
     func test_initialize_flushesPendingMetrics_readThenRemoveAllAfterEnqueue() {
         let metric = pendingMetric
-        pendingStoreMock.readReturnValue = .rows([metric], droppedRows: 0)
+        pendingStoreMock.readReturnValue = .rows([metric])
         pendingStoreMock.removeAllReturnValue = true
 
         MessagingPush.initialize(withConfig: messagingPushConfigOptions)
@@ -70,7 +70,7 @@ final class MessagingPushPendingPushFlushTests: UnitTest {
     }
 
     func test_initialize_whenNoPendingMetrics_expectReadOnlyNoRemoves() {
-        pendingStoreMock.readReturnValue = .rows([], droppedRows: 0)
+        pendingStoreMock.readReturnValue = .rows([])
 
         MessagingPush.initialize(withConfig: messagingPushConfigOptions)
         // Deterministically drain the scheduled flush so a leaked flush from a prior test cannot land here.
@@ -87,7 +87,7 @@ final class MessagingPushPendingPushFlushTests: UnitTest {
         diGraphShared.override(value: pendingStoreMock, forType: PendingPushDeliveryStore.self)
 
         let metric = pendingMetric
-        pendingStoreMock.readReturnValue = .rows([metric], droppedRows: 0)
+        pendingStoreMock.readReturnValue = .rows([metric])
         pendingStoreMock.removeAllReturnValue = true
 
         MessagingPush.initialize(withConfig: messagingPushConfigOptions)
@@ -104,7 +104,7 @@ final class MessagingPushPendingPushFlushTests: UnitTest {
     /// for the old `wait(for:timeout:)` race.
     func test_initialize_retainsFlushTaskHandle_soTeardownCanDrainIt() {
         let metric = pendingMetric
-        pendingStoreMock.readReturnValue = .rows([metric], droppedRows: 0)
+        pendingStoreMock.readReturnValue = .rows([metric])
         pendingStoreMock.removeAllReturnValue = true
 
         MessagingPush.initialize(withConfig: messagingPushConfigOptions)

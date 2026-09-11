@@ -256,7 +256,7 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
             // An unreadable file is not an empty queue: the rows are still there and a later
             // launch will find them, so saying "nothing to flush" here would report the backlog
             // as cleared. The store logs why it could not be read.
-            guard case .rows(let pending, _) = store.read() else {
+            guard case .rows(let pending) = store.read() else {
                 logger.debug(
                     "Pending push delivery store: could not be read on MessagingPush startup, leaving it for a later launch"
                 )

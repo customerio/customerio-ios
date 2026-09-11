@@ -87,12 +87,11 @@ final class CioAppGroupPendingPushDeliveryStoreTests: UnitTest {
     func test_read_givenOneUndecodableRow_expectTheOtherRowSurvives() throws {
         try plant(Self.oneGoodOneBadRow)
 
-        guard case .rows(let rows, let dropped) = makeStore().read() else {
+        guard case .rows(let rows) = makeStore().read() else {
             return XCTFail("expected rows, got unreadable")
         }
 
         XCTAssertEqual(rows.map(\.deliveryId), ["d1"])
-        XCTAssertEqual(dropped, 1)
         XCTAssertTrue(logged("skipped 1 of 2 row(s)"))
     }
 
@@ -155,6 +154,6 @@ final class CioAppGroupPendingPushDeliveryStoreTests: UnitTest {
     }
 
     func test_read_givenNoFile_expectEmptyNotUnreadable() {
-        XCTAssertEqual(makeStore().read(), .rows([], droppedRows: 0))
+        XCTAssertEqual(makeStore().read(), .rows([]))
     }
 }

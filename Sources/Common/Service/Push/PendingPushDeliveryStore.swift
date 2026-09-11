@@ -29,12 +29,15 @@ private enum PendingPushDeliveryAppGroupStorage {
 /// What a read of the pending-metrics file found.
 ///
 /// `unreadable` is a case of its own rather than an empty list because the two demand opposite
-/// handling: an append that treats an unreadable file as an empty queue replaces rows that are
-/// intact on disk and merely out of reach. The NSE meets that case — it runs on a push that can
-/// arrive before the first unlock after a reboot, when the app group file is still protected.
+/// handling: reported as "no rows", it lets the next append replace rows that are intact on disk.
+/// The state that does the damage is a read that fails while a write would still succeed —
+/// measured, since `Data.write(options: .atomic)` renames a temp file into place and needs
+/// permission on the directory, not on the target. Data Protection on the app group file is the
+/// suspected way a device reaches it, and the NSE is where it would bite, since a push can arrive
+/// before the first unlock after a reboot — but that chain is unverified.
 public enum PendingPushDeliveryQueueRead: Equatable {
-    /// The file was read. `droppedRows` counts rows that did not decode and were skipped.
-    case rows([PendingPushDeliveryMetric], droppedRows: Int)
+    /// The file was read. Rows that did not decode are skipped, counted, and logged by the store.
+    case rows([PendingPushDeliveryMetric])
     /// The bytes could not be obtained. Nothing may be written over them.
     case unreadable
 }
@@ -127,7 +130,7 @@ public final class CioAppGroupPendingPushDeliveryStore: PendingPushDeliveryStore
         NSFileCoordinator().coordinate(readingItemAt: fileURL, options: [], writingItemAt: fileURL, options: .forReplacing, error: &coordError) { readURL, writeURL in
             // Refuses to write over an unreadable file. The alternative is to treat it as empty,
             // which replaces a queue whose rows are intact on disk — the pre-first-unlock case.
-            guard case .rows(var items, _) = readItems(from: readURL) else { return }
+            guard case .rows(var items) = readItems(from: readURL) else { return }
             items.append(metric)
             if items.count > maxEntries {
                 items = Array(items.suffix(maxEntries))
@@ -147,7 +150,7 @@ public final class CioAppGroupPendingPushDeliveryStore: PendingPushDeliveryStore
     }
 
     public func loadAll() -> [PendingPushDeliveryMetric] {
-        guard case .rows(let rows, _) = read() else { return [] }
+        guard case .rows(let rows) = read() else { return [] }
         return rows
     }
 
@@ -177,7 +180,7 @@ public final class CioAppGroupPendingPushDeliveryStore: PendingPushDeliveryStore
         var wasRemoved = false
 
         NSFileCoordinator().coordinate(readingItemAt: fileURL, options: [], writingItemAt: fileURL, options: .forReplacing, error: &coordError) { readURL, writeURL in
-            guard case .rows(let items, _) = readItems(from: readURL) else { return }
+            guard case .rows(let items) = readItems(from: readURL) else { return }
             let filtered = items.filter { $0.id != id }
             guard filtered.count != items.count else {
                 // Entry not found — nothing to write.
@@ -205,7 +208,7 @@ public final class CioAppGroupPendingPushDeliveryStore: PendingPushDeliveryStore
         var success = false
 
         NSFileCoordinator().coordinate(readingItemAt: fileURL, options: [], writingItemAt: fileURL, options: .forReplacing, error: &coordError) { readURL, writeURL in
-            guard case .rows(let items, _) = readItems(from: readURL) else { return }
+            guard case .rows(let items) = readItems(from: readURL) else { return }
             let filtered = items.filter { !ids.contains($0.id) }
             guard filtered.count != items.count else {
                 // None of the ids were present — nothing to write, but the requested ids were not removed.
@@ -241,7 +244,7 @@ public final class CioAppGroupPendingPushDeliveryStore: PendingPushDeliveryStore
         do {
             data = try Data(contentsOf: fileURL)
         } catch let error as NSError where error.domain == NSCocoaErrorDomain && error.code == NSFileReadNoSuchFileError {
-            return .rows([], droppedRows: 0)
+            return .rows([])
         } catch {
             logger.error("Pending push delivery store: file could not be read, leaving it intact — \(error.localizedDescription)")
             return .unreadable
@@ -253,16 +256,15 @@ public final class CioAppGroupPendingPushDeliveryStore: PendingPushDeliveryStore
             // The bytes came back but are not a row array. Unlike a read failure there is nothing
             // to preserve, so the queue reads as empty and the next write reclaims the file.
             logger.error("Pending push delivery store: file is not a row array, starting fresh")
-            return .rows([], droppedRows: 0)
+            return .rows([])
         }
         let decoded = rows.compactMap(\.metric)
-        let dropped = rows.count - decoded.count
-        if dropped > 0 {
+        if decoded.count < rows.count {
             // The count is the record: a backlog that shrank and one that was thrown away are the
             // same observation without it.
-            logger.error("Pending push delivery store: skipped \(dropped) of \(rows.count) row(s) that did not decode")
+            logger.error("Pending push delivery store: skipped \(rows.count - decoded.count) of \(rows.count) row(s) that did not decode")
         }
-        return .rows(decoded, droppedRows: dropped)
+        return .rows(decoded)
     }
 
     private func save(_ items: [PendingPushDeliveryMetric], to fileURL: URL) -> Bool {
