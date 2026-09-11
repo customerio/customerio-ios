@@ -505,8 +505,12 @@ struct GeofenceLogTailTests {
     /// A ring in GeoJSON order (longitude first) and CLOSED, as the wire sends it — the closing
     /// position repeats the first, which the catalog must drop.
     private func catalogPolygonRegion(id: String = "22250", vertices: Int = 4) -> GeofenceApiRegion {
+        // A regular ring, NOT a diagonal. Collinear points enclose no area, so the kernel rejects
+        // them and every catalog assertion silently exercises the fallback instead of the branch
+        // that reads the kernel's own list.
         var ring = (0 ..< vertices).map { i -> [Double] in
-            [55.18 + Double(i) / 10000, 25.10 + Double(i) / 10000]
+            let angle = 2 * Double.pi * Double(i) / Double(vertices)
+            return [55.184004 + 0.0015 * cos(angle), 25.109908 + 0.0015 * sin(angle)]
         }
         if let first = ring.first { ring.append(first) }
         return GeofenceApiRegion(
@@ -588,8 +592,9 @@ struct GeofenceLogTailTests {
             #expect(fields["lon"] == "55.18400")
             #expect(fields["rad"] == "625")
             #expect(fields["nv"] == "4")
-            // `lat_lon`, the SDK's order — the wire's is reversed.
-            #expect(fields["ring"]?.hasPrefix("25.10000_55.18000") == true)
+            // `lat_lon`, the SDK's order — the wire sends `lon,lat`. First vertex is at angle 0,
+            // so its longitude is the offset one and its latitude the centre's.
+            #expect(fields["ring"]?.hasPrefix("25.10991_55.18550") == true)
         }
     }
 
@@ -612,6 +617,39 @@ struct GeofenceLogTailTests {
 
     /// `ring` truncates. `nv` is what lets a consumer notice and refuse, rather than compute
     /// membership against a partial ring that still looks like a valid polygon.
+    /// Pins the branch that reads the geometry kernel's own vertex list rather than re-deriving
+    /// canonicalisation here. The two only disagree across the antimeridian: the kernel's
+    /// `samePosition` unwraps longitude, so a ring closing at +180 that opened at -180 loses its
+    /// closing vertex, while an exact comparison keeps it. `nv` is therefore 4 through the kernel
+    /// and 5 through the fallback — the one input that tells which path ran.
+    @Test
+    func fenceCatalog_givenRingClosingAcrossTheAntimeridian_expectTheKernelsRing() {
+        withDiagnostics(true) {
+            let logger = CapturingLogger()
+            let ring: [[Double]] = [
+                [-180.0, 25.00], [-179.99, 25.00], [-179.99, 25.01], [-180.0, 25.01],
+                // Same meridian as the first position, opposite sign.
+                [180.0, 25.00]
+            ]
+            let region = GeofenceApiRegion(
+                id: "22251", name: "Antimeridian", shape: "polygon",
+                latitude: nil, longitude: nil, radius: nil,
+                geometry: GeofenceApiGeometry(type: "Polygon", coordinates: [ring]),
+                enclosingCircle: GeofenceApiEnclosingCircle(latitude: 25.005, longitude: -179.995, baseRadiusM: 700),
+                carriesPolygonFields: true, externalId: nil,
+                transitionTypes: ["enter"], lastUpdated: 0, geosetIds: nil, metadata: nil
+            )
+            logger.geofenceApiFetchResult(returnedCount: 1, elapsed: 0.4, regions: [region])
+
+            guard let message = logger.messages.last, let fields = parseTail(message) else {
+                Issue.record("no parseable tail in '\(logger.messages.last ?? "<nothing>")'")
+                return
+            }
+            #expect(fields["nv"] == "4", "5 means the fallback ran and kept the wrapped closing vertex")
+            #expect(fields["ring"]?.split(separator: ",").count == 4)
+        }
+    }
+
     @Test
     func fenceCatalog_givenRingBeyondTheLimit_expectCountStaysAuthoritative() {
         withDiagnostics(true) {

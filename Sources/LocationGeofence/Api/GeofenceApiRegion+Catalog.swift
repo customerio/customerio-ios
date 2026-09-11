@@ -47,8 +47,10 @@ extension GeofenceApiRegion {
     /// the SDK will not monitor is exactly the one worth recording.
     ///
     /// Compares the positions rather than the rendered pairs, so two different unreadable
-    /// positions stay two. Its exact-equality comparison cannot disagree with the kernel about a
-    /// fence the kernel accepted, because an accepted fence never reaches here.
+    /// positions stay two. Its exact equality DOES disagree with the kernel's wrap-tolerant
+    /// `samePosition` — a ring closing at +180 that opened at -180 keeps its closing vertex here
+    /// and loses it there. That is safe only because an accepted fence takes the kernel's list
+    /// above and never reaches this function; it is not a property of the comparison.
     private static func canonicalised(_ ring: [[Double]]) -> [[Double]] {
         var open: [[Double]] = []
         open.reserveCapacity(ring.count)
