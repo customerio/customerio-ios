@@ -29,7 +29,7 @@ struct GeofenceApiServiceTests {
     }
 
     private func makeOkResponse(statusCode: Int = 200) -> HTTPURLResponse {
-        HTTPURLResponse(url: URL(string: "https://cdp.customer.io/v1/geofences/nearest")!, statusCode: statusCode, httpVersion: nil, headerFields: nil)!
+        HTTPURLResponse(url: URL(string: "https://cdp.customer.io/v2/geofences/nearest")!, statusCode: statusCode, httpVersion: nil, headerFields: nil)!
     }
 
     // MARK: - Request shaping
@@ -48,7 +48,7 @@ struct GeofenceApiServiceTests {
 
         let params = runner.requestReceivedArguments?.params
         #expect(params?.method == "POST")
-        #expect(params?.url.absoluteString == "https://cdp.customer.io/v1/geofences/nearest")
+        #expect(params?.url.absoluteString == "https://cdp.customer.io/v2/geofences/nearest")
         #expect(params?.headers?["Content-Type"] == "application/json")
         #expect(params?.headers?["Accept"] == "application/json")
         #expect(params?.headers?["Authorization"] == "Basic c2tfdGVzdF9hYmM6")
@@ -73,7 +73,7 @@ struct GeofenceApiServiceTests {
         }
 
         let urlString = runner.requestReceivedArguments?.params.url.absoluteString
-        #expect(urlString?.hasPrefix("https://cdp.customer.io/v1/geofences/nearest") == true)
+        #expect(urlString?.hasPrefix("https://cdp.customer.io/v2/geofences/nearest") == true)
         #expect(urlString?.contains("https://https://") == false)
     }
 
@@ -200,5 +200,27 @@ struct GeofenceApiServiceTests {
         #expect(regions.first?.id == "g1")
         #expect(regions.first?.name == "Test Region")
         #expect(regions.first?.transitionTypes == [.enter, .exit])
+    }
+
+    // MARK: - Endpoint version
+
+    /// The endpoint carries its own version and the host's is dropped, because `apiHost` is shared
+    /// with `/track` — which is still v1 — so it cannot be moved to reach this one.
+    @Test(arguments: [
+        ("cdp.customer.io/v1", "https://cdp.customer.io/v2/geofences/nearest"),
+        ("cdp-eu.customer.io/v1", "https://cdp-eu.customer.io/v2/geofences/nearest"),
+        // Trailing slash, and a host already qualified with a scheme.
+        ("cdp.customer.io/v1/", "https://cdp.customer.io/v2/geofences/nearest"),
+        ("https://cdp.customer.io/v1", "https://cdp.customer.io/v2/geofences/nearest"),
+        // A self-hosted or overridden host may carry no version segment at all.
+        ("cdp.customer.io", "https://cdp.customer.io/v2/geofences/nearest"),
+        ("http://localhost:8080/v1", "http://localhost:8080/v2/geofences/nearest"),
+        // Only a trailing version is a version. A host whose NAME contains one keeps it.
+        ("v1.example.com/v1", "https://v1.example.com/v2/geofences/nearest")
+    ])
+    func composeUrl_givenAnyHostVersion_expectTheEndpointsOwn(host: String, expected: String) {
+        let url = GeofenceApiServiceImpl.composeUrl(apiHost: host, path: GeofenceApiServiceImpl.nearestPath)
+
+        #expect(url?.absoluteString == expected)
     }
 }

@@ -41,7 +41,10 @@ protocol GeofenceApiService: AutoMockable, Sendable {
 /// inside the injected stores/runner (already thread-safe). Lets callers invoke this from
 /// a `Task` without an isolation hop.
 final class GeofenceApiServiceImpl: GeofenceApiService, @unchecked Sendable {
-    private static let nearestPath = "/geofences/nearest"
+    /// Carries its own version. `apiHost` ends in `/v1` (region-derived, e.g.
+    /// `cdp.customer.io/v1`) and is shared with `/track`, which is still v1 — so the version here
+    /// cannot come from the host. Polygon regions are only returned by v2.
+    static let nearestPath = "/v2/geofences/nearest"
 
     private let contextStore: BackgroundDeliveryContextStore
     private let requestRunner: HttpRequestRunner
@@ -121,9 +124,17 @@ final class GeofenceApiServiceImpl: GeofenceApiService, @unchecked Sendable {
         }
     }
 
-    /// Composes `https://{apiHost}{path}`. URLComponents normalizes the host + path.
+    /// Composes `https://{apiHost}{path}` with any version segment taken off the host, because
+    /// `path` supplies its own. Accepts a host with `/v1`, with some other version, or with none
+    /// — a self-hosted or overridden host may legitimately have no version segment at all.
     static func composeUrl(apiHost: String, path: String) -> URL? {
-        URLComponents(string: BackgroundDeliveryHttp.absoluteHost(apiHost) + path)?.url
+        let host = BackgroundDeliveryHttp.absoluteHost(apiHost)
+        let versionless = host.replacingOccurrences(
+            of: "/v[0-9]+/?$",
+            with: "",
+            options: .regularExpression
+        )
+        return URLComponents(string: versionless + path)?.url
     }
 }
 
