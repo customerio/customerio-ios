@@ -21,16 +21,20 @@ actor GeofenceStorage {
 
     private let fileManager: FileManager
     private let directoryURL: URL?
-
+    /// Clock for stored timestamps. `lastStateChangedAt` is evidence — `recordMonitorEvent` weighs
+    /// it against a fix's timestamp — so it must come from the clock the fixes come from.
+    private let dateUtil: DateUtil
     /// - Parameters:
     ///   - fileManager: File manager used for I/O. Defaults to `.default`.
     ///   - directoryURL: Directory for the state file. If `nil`, uses Application Support in the app container.
     init(
         fileManager: FileManager = .default,
-        directoryURL: URL? = nil
+        directoryURL: URL? = nil,
+        dateUtil: DateUtil = DIGraphShared.shared.dateUtil
     ) {
         self.fileManager = fileManager
         self.directoryURL = directoryURL
+        self.dateUtil = dateUtil
     }
 
     // MARK: - Event Cooldowns
@@ -122,7 +126,7 @@ actor GeofenceStorage {
         center: LocationData,
         radius: Double,
         forceReseed: Bool = false,
-        now: Date = Date()
+        now: Date? = nil // nil rather than `Date()`: a default expression cannot reach `dateUtil`.
     ) {
         var state = loadFromDisk() ?? GeofenceState()
         var records = state.monitorRegionRecords ?? [:]
@@ -134,7 +138,7 @@ actor GeofenceStorage {
             transitionTypes: transitionTypes,
             center: center,
             radius: radius,
-            lastStateChangedAt: preserved ? existing?.lastStateChangedAt : now
+            lastStateChangedAt: preserved ? existing?.lastStateChangedAt : (now ?? dateUtil.now)
         )
         state.monitorRegionRecords = records
         saveToDisk(state)
@@ -154,14 +158,14 @@ actor GeofenceStorage {
         _ transition: GeofenceTransition,
         forIdentifier identifier: String,
         onlyIfBaselinePredates evidenceTimestamp: Date? = nil,
-        now: Date = Date()
+        now: Date? = nil
     ) -> GeofenceMonitorEventOutcome {
         var state = loadFromDisk() ?? GeofenceState()
         var records = state.monitorRegionRecords ?? [:]
         guard var record = records[identifier] else {
             // No registration record (condition predates this bookkeeping). Establish the baseline
             // without delivering — mirrors classic registration, which is silent about the initial state.
-            records[identifier] = MonitorRegionRecord(lastState: transition, transitionTypes: [.enter, .exit], lastStateChangedAt: now)
+            records[identifier] = MonitorRegionRecord(lastState: transition, transitionTypes: [.enter, .exit], lastStateChangedAt: now ?? dateUtil.now)
             state.monitorRegionRecords = records
             saveToDisk(state)
             return .suppressedNoBaseline
@@ -171,7 +175,7 @@ actor GeofenceStorage {
         }
         guard record.lastState != transition else { return .suppressedNoChange }
         record.lastState = transition
-        record.lastStateChangedAt = now
+        record.lastStateChangedAt = now ?? dateUtil.now
         records[identifier] = record
         state.monitorRegionRecords = records
         saveToDisk(state)

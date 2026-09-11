@@ -27,7 +27,7 @@ extension CLMonitorGeofenceMonitor {
             )
         }
         rearmConditions(adopted, records: records)
-        lastRearmAt = Date()
+        lastRearmAt = dateUtil.now
         logger.geofenceRegionsAdopted(count: adopted.count)
     }
 
@@ -70,7 +70,7 @@ extension CLMonitorGeofenceMonitor {
         let isMovementTrigger = identifier == GeofenceConstants.movementTriggerIdentifier
         let isInside = isDeviceInside(center: coordinate, radius: clampedRadius) ?? isMovementTrigger
         let initialTransition: GeofenceTransition = isInside ? .enter : .exit
-        let assumedState: CLMonitor.Event.State = isInside ? .satisfied : .unsatisfied
+        let assumedState: GeofenceConditionState = isInside ? .satisfied : .unsatisfied
 
         enqueueMonitorOperation { [weak self] monitor in
             guard let self else { return }
@@ -92,13 +92,13 @@ extension CLMonitorGeofenceMonitor {
             // and reporting no error, so the identifier is cleared first. Keyed on the OS rather
             // than on this process's bookkeeping, which can be missing an identifier the OS still
             // holds. Removing one the OS does not hold is a no-op.
-            let readdStart = Date()
+            let readdStart = self.dateUtil.now
             await monitor.remove(identifier)
-            let condition = CLMonitor.CircularGeographicCondition(center: coordinate, radius: clampedRadius)
-            await monitor.add(condition, identifier: identifier, assuming: assumedState)
+            let center = LocationData(latitude: coordinate.latitude, longitude: coordinate.longitude)
+            await monitor.add(center: center, radius: clampedRadius, identifier: identifier, assuming: assumedState)
             self.conditionReadds[identifier] = ConditionReadd(
                 start: readdStart,
-                added: Date(),
+                added: self.dateUtil.now,
                 center: LocationData(latitude: coordinate.latitude, longitude: coordinate.longitude),
                 radius: clampedRadius
             )

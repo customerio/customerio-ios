@@ -230,6 +230,13 @@ final class MockGeofenceRegionMonitor: GeofenceRegionMonitoring {
         )
     }
 
+    /// Hands back the installed handler and clears it, so a composition can insert something
+    /// between the monitor and whatever the binder wired up.
+    func takeOnTransition() -> GeofenceTransitionHandler? {
+        defer { onTransition = nil }
+        return onTransition
+    }
+
     func simulateTransition(identifier: String, transition: GeofenceTransition, location: LocationData?) {
         onTransition?(identifier, transition, location)
     }

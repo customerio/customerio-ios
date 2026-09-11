@@ -16,15 +16,17 @@ import Foundation
 /// — a test that needs the gate must not await inside it. The one test that did now asserts on
 /// prose instead, which needs no gate at all.
 enum DiagnosticsGateTesting {
-    private static let lock = NSRecursiveLock()
-
-    /// Runs `body` with the gate forced on or off, restoring the previous value after.
+    /// Runs `body` with the gate forced on or off.
+    ///
+    /// No lock: the binding is task-local, so concurrent suites cannot see each other's value and
+    /// there is nothing to serialize. The previous locking version could not cover an async body —
+    /// a lock released after an `await` can unlock on a different cooperative-pool thread and fail.
     static func withDiagnostics<T>(_ enabled: Bool, _ body: () throws -> T) rethrows -> T {
-        lock.lock()
-        defer { lock.unlock() }
-        let previous = GeofenceDiagnostics.overrideForTesting
-        GeofenceDiagnostics.overrideForTesting = enabled
-        defer { GeofenceDiagnostics.overrideForTesting = previous }
-        return try body()
+        try GeofenceDiagnostics.$overrideForTesting.withValue(enabled, operation: body)
+    }
+
+    /// Async counterpart, for a body that awaits.
+    static func withDiagnostics<T>(_ enabled: Bool, _ body: () async throws -> T) async rethrows -> T {
+        try await GeofenceDiagnostics.$overrideForTesting.withValue(enabled, operation: body)
     }
 }

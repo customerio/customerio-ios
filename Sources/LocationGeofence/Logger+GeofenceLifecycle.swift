@@ -15,7 +15,7 @@ extension Logger {
     func geofenceInvalidRegionDropped(_ identifier: String) {
         error(
             "Geofence '\(identifier)' dropped — invalid coordinates or radius, not registerable with the OS"
-                + geofenceTail("registration.rejected", .output, [
+                + geofenceTail("registration.rejected", .observation, [
                     ("id", identifier),
                     ("why", "invalid_geometry")
                 ]),
@@ -27,7 +27,7 @@ extension Logger {
     func geofenceInvalidCoordinatesForRegion(_ identifier: String) {
         error(
             "Invalid coordinates for region \(identifier), skipping"
-                + geofenceTail("registration.rejected", .output, [
+                + geofenceTail("registration.rejected", .observation, [
                     ("id", identifier),
                     ("why", "invalid_coordinates")
                 ]),
@@ -96,7 +96,7 @@ extension Logger {
     func geofencePermissionUnavailable(currentStatus: CLAuthorizationStatus) {
         info(
             "Geofence registration skipped: location permission not granted (current status: \(currentStatus.rawValue)). The host app controls when and which permission to request."
-                + geofenceTail("permission.changed", .observation, [
+                + geofenceTail("permission.changed", .input, [
                     ("perm", GeofenceLog.permission(currentStatus)),
                     ("why", "not_granted")
                 ]),
@@ -107,7 +107,7 @@ extension Logger {
     func geofenceBackgroundDeliveryUnavailable(currentStatus: CLAuthorizationStatus) {
         info(
             "Geofence registered for foreground delivery only: WhenInUse authorization granted (current status: \(currentStatus.rawValue)). Background transitions require Always authorization."
-                + geofenceTail("permission.changed", .observation, [
+                + geofenceTail("permission.changed", .input, [
                     ("perm", GeofenceLog.permission(currentStatus)),
                     ("why", "foreground_only")
                 ]),
@@ -118,7 +118,7 @@ extension Logger {
     func geofenceBackgroundDeliveryAvailable(currentStatus: CLAuthorizationStatus) {
         info(
             "Geofence background delivery active: Always authorization granted (current status: \(currentStatus.rawValue))."
-                + geofenceTail("permission.changed", .observation, [
+                + geofenceTail("permission.changed", .input, [
                     ("perm", GeofenceLog.permission(currentStatus)),
                     ("ok", GeofenceLog.bool(true))
                 ]),
@@ -133,7 +133,7 @@ extension Logger {
     func geofenceModuleInitialized(launchReason: GeofenceLaunchReason) {
         info(
             "Geofence module initialized (\(launchReason.rawValue))"
-                + geofenceTail("module.init", .observation, [("launch", launchReason.rawValue)]),
+                + geofenceTail("module.init", .input, [("launch", launchReason.rawValue)]),
             geofenceTag
         )
     }
@@ -143,7 +143,7 @@ extension Logger {
     func geofenceModuleWoke(launchReason: GeofenceLaunchReason) {
         info(
             "Geofence module woken (\(launchReason.rawValue))"
-                + geofenceTail("module.wake", .observation, [("launch", launchReason.rawValue)]),
+                + geofenceTail("module.wake", .input, [("launch", launchReason.rawValue)]),
             geofenceTag
         )
     }
@@ -171,7 +171,8 @@ extension Logger {
         fix: CLLocation?,
         source: GeofenceLog.FixSource,
         eventDate: Date? = nil,
-        buffered: Bool = false
+        buffered: Bool = false,
+        now: Date
     ) {
         debug(
             "OS reported \(transition.rawValue) for region \(identifier)"
@@ -183,8 +184,8 @@ extension Logger {
                         ("t", transition.rawValue),
                         ("buf", GeofenceLog.bool(buffered))
                     ]
-                        + GeofenceLog.fixQuality(fix, source: source)
-                        + GeofenceLog.eventTiming(eventDate)
+                        + GeofenceLog.fixQuality(fix, source: source, now: now)
+                        + GeofenceLog.eventTiming(eventDate, now: now)
                         + GeofenceLog.position(fix)
                 ),
             geofenceTag
@@ -216,10 +217,70 @@ extension Logger {
     func geofenceCallbackDropped(identifier: String, transition: GeofenceTransition, reason: String) {
         debug(
             "OS \(transition.rawValue) for region \(identifier) not routed: \(reason)"
-                + geofenceTail("os.callback.dropped", .input, [
+                + geofenceTail("os.callback.dropped", .observation, [
                     ("id", identifier),
                     ("t", transition.rawValue),
                     ("why", reason)
+                ]),
+            geofenceTag
+        )
+    }
+
+    /// A sign-in or sign-out reaching the geofence module.
+    ///
+    /// Everything identity-gated turns on this — every `sync.skipped why=no_identified_user` ends
+    /// the moment it arrives — and nothing recorded it, so a capture shows the effect with no cause.
+    /// The identifier itself is never written.
+    func geofenceIdentityChanged(identified: Bool) {
+        debug(
+            "Geofence identity \(identified ? "identified" : "reset")"
+                + geofenceTail("identity.changed", .input, [("ok", GeofenceLog.bool(identified))]),
+            geofenceTag
+        )
+    }
+
+    /// A position the Location module delivered — the one `location.fix` that is an arrival.
+    ///
+    /// Same `ev` as the pull below, distinguished by `prov=bus`, because to a replay they are the
+    /// same kind of fact: where the device was at that moment. What differs is whether the SDK was
+    /// told or asked, and only being told is an event that can drive a sync.
+    ///
+    /// No `acc` or `age`: `LocationAcquiredEvent` carries coordinates only.
+    func geofenceLocationArrived(_ location: LocationData) {
+        debug(
+            "Location fix delivered to geofencing"
+                + geofenceTail("location.fix", .input, GeofenceLog.position(location) + [
+                    ("prov", GeofenceLog.FixSource.bus.rawValue)
+                ]),
+            geofenceTag
+        )
+    }
+
+    /// A position the SDK took from the OS.
+    ///
+    /// `io=in`: `CLLocationManager.location` is a cache the OS fills and the SDK pulls, so the read
+    /// is the moment the data crosses in. The one input a replay cannot reconstruct from outputs —
+    /// everything else carrying coordinates carries them as part of reporting a decision.
+    func geofenceLocationFix(_ location: CLLocation?, source: GeofenceLog.FixSource, now: Date) {
+        // A pull that found nothing is still a pull, and a replay has to be able to answer it the
+        // same way. `prov=none` is the existing vocabulary for "no fix behind this record".
+        guard let location else {
+            debug(
+                "Deciding from no fix"
+                    + geofenceTail("location.fix", .input, [("prov", GeofenceLog.FixSource.none.rawValue)]),
+                geofenceTag
+            )
+            return
+        }
+        debug(
+            "Deciding from \(source.rawValue) fix"
+                + geofenceTail("location.fix", .input, GeofenceLog.position(location) + [
+                    // 1 dp and full-precision age, matching `GeofenceLog.fixQuality` — the same two
+                    // quantities were being written at two different precisions depending on which
+                    // record carried them.
+                    ("acc", GeofenceLog.num(location.horizontalAccuracy, 1)),
+                    ("age", GeofenceLog.num(now.timeIntervalSince(location.timestamp), 6)),
+                    ("prov", source.rawValue)
                 ]),
             geofenceTag
         )
@@ -230,7 +291,7 @@ extension Logger {
     func geofenceFixReceived(_ location: CLLocation, source: String) {
         debug(
             "Location fix received (\(source))"
-                + geofenceTail("fix.received", .input, [
+                + geofenceTail("fix.received", .observation, [
                     ("prov", source)
                 ] + GeofenceLog.position(location)),
             geofenceTag
@@ -241,10 +302,14 @@ extension Logger {
 
     /// What survived a cold start. Answers whether a background wake had anything to work from at
     /// all, which is otherwise guesswork.
+    ///
+    /// `io=out`: the disk is an input, but this line is the SDK reporting what it made of it. A
+    /// replay that reaches the same count from the same fetches has reproduced the persistence,
+    /// which is worth asserting; feeding the count back in would assert nothing.
     func geofenceStorageLoaded(regionCount: Int, hasAnchor: Bool) {
         debug(
             "Loaded \(regionCount) cached region(s) from storage"
-                + geofenceTail("storage.loaded", .input, [
+                + geofenceTail("storage.loaded", .observation, [
                     ("n", GeofenceLog.int(regionCount)),
                     ("anchor", GeofenceLog.bool(hasAnchor))
                 ]),

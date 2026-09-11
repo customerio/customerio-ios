@@ -18,58 +18,10 @@ import Testing
 struct GeofenceLogTailTests {
     // MARK: - Test double
 
-    /// Captures formatted messages. Deliberately not `LoggerMock`: the generated mock records
-    /// invocation counts, and what these tests need is the exact string.
-    private final class CapturingLogger: Logger, @unchecked Sendable {
-        private let lock = NSLock()
-        private var captured: [String] = []
-
-        var messages: [String] {
-            lock.lock()
-            defer { lock.unlock() }
-            return captured
-        }
-
-        var logLevel: CioLogLevel = .debug
-        func setLogDispatcher(_: ((CioLogLevel, String) -> Void)?) {}
-        func setLogLevel(_ level: CioLogLevel) {
-            logLevel = level
-        }
-
-        func debug(_ message: String, _ tag: String?) {
-            record(message, tag)
-        }
-
-        func info(_ message: String, _ tag: String?) {
-            record(message, tag)
-        }
-
-        /// Mirrors `LoggerImpl.formatMessage`, which appends the description to the **whole**
-        /// message. A double that quietly dropped the error let a record ship whose tail was no
-        /// longer last, and every assertion here passed anyway.
-        func error(_ message: String, _ tag: String?, _ error: Error?) {
-            record(error.map { "\(message) Error: \($0.localizedDescription)" } ?? message, tag)
-        }
-
-        private func record(_ message: String, _ tag: String?) {
-            lock.lock()
-            defer { lock.unlock() }
-            captured.append(tag.map { "[\($0)] \(message)" } ?? message)
-        }
-    }
-
-    /// Mirrors what the off-device parser does: split on the **last** delimiter, then accept the
-    /// remainder only if every token is a `key=value` pair.
+    /// Shared with the scenario replay harness — see `Stub/GeofenceTailCapture.swift`. One parser
+    /// for one contract: a second reading here would drift from what replay asserts.
     private func parseTail(_ message: String) -> [String: String]? {
-        guard let range = message.range(of: GeofenceLog.delimiter, options: .backwards) else { return nil }
-        let tail = String(message[range.upperBound...])
-        var fields: [String: String] = [:]
-        for token in tail.split(separator: " ") {
-            let parts = token.split(separator: "=", maxSplits: 1)
-            guard parts.count == 2 else { return nil }
-            fields[String(parts[0])] = String(parts[1])
-        }
-        return fields.isEmpty ? nil : fields
+        GeofenceTail.parse(message)
     }
 
     /// One entry per geofence logger method, paired with the keys its record must carry.
@@ -113,12 +65,14 @@ struct GeofenceLogTailTests {
             Invocation(name: "backgroundAvailable", ev: "permission.changed", requiredKeys: ["perm", "ok"]) { $0.geofenceBackgroundDeliveryAvailable(currentStatus: .authorizedAlways) },
             Invocation(name: "moduleInitialized", ev: "module.init", requiredKeys: ["launch"]) { $0.geofenceModuleInitialized(launchReason: .appStart) },
             Invocation(name: "moduleWoke", ev: "module.wake", requiredKeys: ["launch"]) { $0.geofenceModuleWoke(launchReason: .locationEvent) },
-            Invocation(name: "callbackReceived", ev: "os.callback.received", requiredKeys: ["id", "t", "buf", "fixsrc", "acc", "age", "sim", "evage"]) { $0.geofenceCallbackReceived(identifier: "notl_core", transition: .enter, fix: location, source: .managerCache, eventDate: Date(timeIntervalSinceNow: -3), buffered: false) },
-            Invocation(name: "callbackReceivedNoFix", ev: "os.callback.received", requiredKeys: ["id", "t", "fixsrc"]) { $0.geofenceCallbackReceived(identifier: "notl_core", transition: .exit, fix: nil, source: .none) },
+            Invocation(name: "callbackReceived", ev: "os.callback.received", requiredKeys: ["id", "t", "buf", "fixsrc", "acc", "age", "sim", "evage"]) { $0.geofenceCallbackReceived(identifier: "notl_core", transition: .enter, fix: location, source: .managerCache, eventDate: Date(timeIntervalSinceNow: -3), buffered: false, now: Date()) },
+            Invocation(name: "callbackReceivedNoFix", ev: "os.callback.received", requiredKeys: ["id", "t", "fixsrc"]) { $0.geofenceCallbackReceived(identifier: "notl_core", transition: .exit, fix: nil, source: .none, now: Date()) },
             Invocation(name: "info", ev: "info", requiredKeys: ["why"]) { $0.geofenceInfo("os_state_unusable", fields: [("id", "notl_core"), ("state", "unknown")]) },
             Invocation(name: "callbackDropped", ev: "os.callback.dropped", requiredKeys: ["id", "t", "why"]) { $0.geofenceCallbackDropped(identifier: "notl_core", transition: .enter, reason: "movement_trigger_not_exit") },
             Invocation(name: "fixReceived", ev: "fix.received", requiredKeys: ["prov"]) { $0.geofenceFixReceived(location, source: "movement_pass") },
-            Invocation(name: "fixQuality", ev: "os.callback.received", requiredKeys: ["fixsrc", "acc", "age"]) { $0.geofenceCallbackReceived(identifier: "q", transition: .enter, fix: location, source: .freshRequest) },
+            Invocation(name: "locationFix", ev: "location.fix", requiredKeys: ["lat", "lon", "acc", "age", "prov"]) { $0.geofenceLocationFix(location, source: .managerCache, now: Date()) },
+            Invocation(name: "identityChanged", ev: "identity.changed", requiredKeys: ["ok"]) { $0.geofenceIdentityChanged(identified: true) },
+            Invocation(name: "fixQuality", ev: "os.callback.received", requiredKeys: ["fixsrc", "acc", "age"]) { $0.geofenceCallbackReceived(identifier: "q", transition: .enter, fix: location, source: .freshRequest, now: Date()) },
             Invocation(name: "deliverySent", ev: "delivery.sent", requiredKeys: ["id", "t", "via"]) { $0.geofenceDeliverySent(geofenceId: "notl_core", transition: .enter, via: "http") },
             Invocation(name: "deliveryQueued", ev: "delivery.queued", requiredKeys: ["id", "t", "via"]) { $0.geofenceDeliveryQueued(geofenceId: "notl_core", transition: .enter, via: "event_bus") },
             Invocation(name: "deliveryFailed", ev: "delivery.failed", requiredKeys: ["id", "t", "ok", "why"]) { $0.geofenceDeliveryFailed(geofenceId: "notl_core", transition: .exit, error: .transport) },
@@ -144,6 +98,7 @@ struct GeofenceLogTailTests {
             Invocation(name: "baselineHealed", ev: "baseline.healed", requiredKeys: ["id", "t"]) { $0.geofenceBaselineHealed(identifier: "notl_core", transition: .enter) },
             Invocation(name: "contradictionRefused", ev: "contradiction.refused", requiredKeys: ["id", "t", "dist", "rad", "edge", "acc"]) { $0.geofenceEventRefusedByContradiction(identifier: "notl_core", transition: .enter, distanceFromCenter: 1400, radius: 1000, accuracy: 48) },
             Invocation(name: "syncSuperseded", ev: "sync.superseded", requiredKeys: ["why"]) { $0.geofenceSyncSupersededByUserChange() },
+            Invocation(name: "locationArrived", ev: "location.fix", requiredKeys: ["lat", "lon", "prov"]) { $0.geofenceLocationArrived(LocationData(latitude: 43.2, longitude: -79.0)) },
             Invocation(name: "resetCompleted", ev: "module.reset", requiredKeys: ["ok"]) { $0.geofenceResetCompleted() },
             Invocation(name: "resetSuperseded", ev: "module.reset", requiredKeys: ["ok", "why"]) { $0.geofenceResetSuperseded() },
             Invocation(name: "firstRunRearm", ev: "movement.rearmed", requiredKeys: ["why"]) { $0.geofenceFirstRunRearm() },
@@ -183,9 +138,14 @@ struct GeofenceLogTailTests {
                     fields["ev"] == invocation.ev,
                     "\(invocation.name): expected ev=\(invocation.ev), got '\(fields["ev"] ?? "<absent>")'"
                 )
+                // Which one, not merely that it is one of the three. The weaker check is how the
+                // Android side drifted to 24 outputs against this module's seven without a single
+                // test noticing — every one of them would have become a hard expectation in a
+                // generated scenario.
+                let expectedIo = Self.declaredIo[invocation.ev] ?? "obs"
                 #expect(
-                    ["in", "out", "obs"].contains(fields["io"] ?? ""),
-                    "\(invocation.name): io= must be in/out/obs, got '\(fields["io"] ?? "<absent>")'"
+                    fields["io"] == expectedIo,
+                    "\(invocation.name): ev=\(invocation.ev) is declared io=\(expectedIo), emitted io=\(fields["io"] ?? "<absent>")"
                 )
                 for key in invocation.requiredKeys {
                     #expect(fields[key] != nil, "\(invocation.name): missing \(key)= in '\(message)'")
@@ -212,6 +172,115 @@ struct GeofenceLogTailTests {
         #expect(BackgroundDeliveryHttpError.http(statusCode: 503).diagnosticReason == "http_503")
     }
 
+    /// The frozen replay contract: what a scenario may inject, and what it may assert.
+    ///
+    /// `out` is the entire assertion surface. Anything absent here is `obs` — readable in a
+    /// capture, never graded. Pinned per `ev`, not per call site, because the key is what a parser
+    /// dispatches on: two `module.reset` sites that classified themselves differently would make
+    /// the key mean whichever one happened to fire.
+    ///
+    /// Kept in step with Android's `GeofenceLogTailTest.declaredIo` deliberately — the keys are
+    /// shared, so a divergence here is a divergence in what the two platforms' scenarios assert.
+    private static let declaredIo: [String: String] = [
+        "api.fetch.result": "in",
+        "fence.cataloged": "in",
+        "identity.changed": "in",
+        "location.fix": "in",
+        "module.init": "in",
+        "module.wake": "in",
+        "os.callback.received": "in",
+        "os.monitor.failed": "in",
+        "os.monitor.stopped": "in",
+        "os.stream.failed": "in",
+        "permission.changed": "in",
+        "contradiction.refused": "obs",
+        "module.reset": "out",
+        "os.callback.dropped": "obs",
+        "registration.applied": "out",
+        "transition.accepted": "out",
+        "transition.dropped": "obs",
+        "transition.suppressed": "obs",
+        "transition.synthesized": "obs"
+    ]
+
+    /// Named separately from `declaredIo` so the size of the assertion surface is visible.
+    ///
+    /// Three, since 2026-09-11. An output is a decision that crosses back out of the SDK — a region
+    /// set handed to the OS, a transition handed to delivery. A callback deduplicated, a transition
+    /// refused or an enter synthesised are decisions about *inputs*: their only visible consequence
+    /// is a transition that is or is not accepted, which is already here. Asserting them pinned every
+    /// drive to one implementation's internals, and two iOS drives failed on nothing else.
+    private static let frozenOutputs: Set<String> = [
+        "module.reset",
+        "registration.applied",
+        "transition.accepted"
+    ]
+
+    /// Reads what the logger *emitted*, not what `declaredIo` says it should — otherwise the check
+    /// is circular and a mistake in the map validates itself.
+    ///
+    /// The number is the point. A scenario asserts exactly this set, so a ninth output silently
+    /// widens every recorded drive's expectations and a missing one silently narrows them.
+    @Test
+    func assertionSurface_expectExactlyTheFrozenOutputs() {
+        GeofenceDiagnostics.$overrideForTesting.withValue(true) {
+            var emitted: Set<String> = []
+            for invocation in invocations {
+                let logger = CapturingLogger()
+                invocation.run(logger)
+                guard let message = logger.messages.last, let fields = parseTail(message) else { continue }
+                if fields["io"] == "out" { emitted.insert(fields["ev"] ?? invocation.ev) }
+            }
+            #expect(emitted == Self.frozenOutputs, "assertion surface drifted: \(emitted.symmetricDifference(Self.frozenOutputs).sorted())")
+        }
+    }
+
+    /// The complete set of `ev=` keys the module is allowed to emit. Data, not logic — kept
+    /// at type level so the check below reads as one assertion.
+    private static let declaredVocabulary: Set<String> = [
+        "api.fetch.result",
+        "baseline.healed",
+        "baseline.refused",
+        "contradiction.refused",
+        "delivery.failed",
+        "delivery.queued",
+        "delivery.sent",
+        "fix.received",
+        "identity.changed",
+        "info",
+        "location.fix",
+        "module.init",
+        "module.reset",
+        "module.wake",
+        "movement.exit",
+        "movement.fix.failed",
+        "movement.fix.requested",
+        "movement.fix.resolved",
+        "movement.rearmed",
+        "movement.registered",
+        "os.callback.dropped",
+        "os.callback.received",
+        "os.monitor.failed",
+        "os.monitor.stopped",
+        "os.stream.failed",
+        "permission.changed",
+        "rank.evaluated",
+        "registration.adopted",
+        "registration.applied",
+        "registration.diff",
+        "registration.rearmed",
+        "registration.rejected",
+        "storage.loaded",
+        "storage.write.failed",
+        "sync.completed",
+        "sync.skipped",
+        "sync.superseded",
+        "transition.accepted",
+        "transition.dropped",
+        "transition.suppressed",
+        "transition.synthesized"
+    ]
+
     @Test
     func everyRecord_expectTheDeclaredVocabulary() {
         // Companion to the per-row `ev` pin above, catching what a per-row check cannot: a key
@@ -223,47 +292,7 @@ struct GeofenceLogTailTests {
         // `fence.cataloged` is absent on purpose: it is emitted by a private helper driven through
         // `api.fetch.result`, so it cannot be a row here. It carries its own `ev` assertion in
         // `fenceCatalog_...` below. Every other key the module emits is listed.
-        let expected: Set = [
-            "api.fetch.result",
-            "baseline.healed",
-            "baseline.refused",
-            "contradiction.refused",
-            "delivery.failed",
-            "delivery.queued",
-            "delivery.sent",
-            "fix.received",
-            "info",
-            "module.init",
-            "module.reset",
-            "module.wake",
-            "movement.exit",
-            "movement.fix.failed",
-            "movement.fix.requested",
-            "movement.fix.resolved",
-            "movement.rearmed",
-            "movement.registered",
-            "os.callback.dropped",
-            "os.callback.received",
-            "os.monitor.failed",
-            "os.monitor.stopped",
-            "os.stream.failed",
-            "permission.changed",
-            "rank.evaluated",
-            "registration.adopted",
-            "registration.applied",
-            "registration.diff",
-            "registration.rearmed",
-            "registration.rejected",
-            "storage.loaded",
-            "storage.write.failed",
-            "sync.completed",
-            "sync.skipped",
-            "sync.superseded",
-            "transition.accepted",
-            "transition.dropped",
-            "transition.suppressed",
-            "transition.synthesized"
-        ]
+        let expected = Self.declaredVocabulary
         var seen: Set<String> = []
         withDiagnostics(true) {
             for invocation in invocations {

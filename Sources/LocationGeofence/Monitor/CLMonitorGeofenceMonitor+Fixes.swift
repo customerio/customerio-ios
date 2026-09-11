@@ -19,7 +19,17 @@ extension CLMonitorGeofenceMonitor {
     /// manager's cache is whatever the OS last happened to have — and on a long-suspended process
     /// that can be hours old. Both produce a coordinate; only one of them means anything.
     func bestKnownFixDetail() -> (fix: CLLocation, source: GeofenceLog.FixSource)? {
-        let cached = authManager.location.flatMap { CLLocationCoordinate2DIsValid($0.coordinate) ? $0 : nil }
+        let selected = selectFix()
+        // Logged here because this is where the SDK takes a position from the OS — the manager's
+        // cache is a pull, so the read *is* the arrival. Every read is recorded; a repeated read of
+        // an unchanged cache is a real repeated read, not noise to be folded away. A pull is the
+        // one input a replay cannot reconstruct from outputs.
+        logger.geofenceLocationFix(selected?.fix, source: selected?.source ?? .none, now: dateUtil.now)
+        return selected
+    }
+
+    private func selectFix() -> (fix: CLLocation, source: GeofenceLog.FixSource)? {
+        let cached = authManager.currentLocation.flatMap { CLLocationCoordinate2DIsValid($0.coordinate) ? $0 : nil }
         guard let resolved = movementFixResolver.latestFix else {
             return cached.map { ($0, .managerCache) }
         }
@@ -39,7 +49,8 @@ extension CLMonitorGeofenceMonitor {
             transition: transition,
             fix: detail?.fix,
             source: detail?.source ?? .none,
-            eventDate: eventDate
+            eventDate: eventDate,
+            now: dateUtil.now
         )
     }
 

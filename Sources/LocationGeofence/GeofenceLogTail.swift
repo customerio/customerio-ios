@@ -23,7 +23,13 @@ enum GeofenceDiagnostics {
     private static let gate = DiagnosticsGate()
 
     /// Test-only. The one concession to testability in this file; production reads the bundle.
-    static var overrideForTesting: Bool?
+    ///
+    /// Task-local rather than a plain `static var`: as process-global state it was shared by every
+    /// concurrently-running suite, so one test's write could be observed — or restored away — by
+    /// another running at the same time. A task-local binds for the dynamic extent of one
+    /// `withValue` call and is inherited by child tasks, so a suite that awaits keeps its own
+    /// value. It is not inherited across `Task.detached` or a queue hop.
+    @TaskLocal static var overrideForTesting: Bool?
 
     static var isEnabled: Bool { overrideForTesting ?? gate.isEnabled }
 }
@@ -193,6 +199,11 @@ enum GeofenceLog {
         case freshRequest = "fresh_request"
         /// The contradiction gate's fix, taken inside a re-add replay window.
         case gate
+        /// Delivered to the SDK by the Location module — a fix that *arrived*, not one the SDK
+        /// went and read. The only source that represents an event rather than a query, and the
+        /// only one that fires `LocationAcquiredEvent`. Named to match Android's `prov=bus`, which
+        /// is the same channel.
+        case bus
         /// A synthesized transition, not an OS-delivered one.
         case synthetic
         case none
@@ -202,12 +213,15 @@ enum GeofenceLog {
     ///
     /// `age` is the one to notice: `bestKnownFix()` can be hours old on a long-suspended process,
     /// and an overshoot computed from one of those looks identical to a real measurement.
-    static func fixQuality(_ location: CLLocation?, source: FixSource) -> [(String, String?)] {
+    /// - Parameter now: the moment `age` is measured against. Passed rather than read here: a
+    ///   replayed drive's fixes are stamped on the recording's timeline, and a wall-clock read
+    ///   reports every one of them as decades old.
+    static func fixQuality(_ location: CLLocation?, source: FixSource, now: Date) -> [(String, String?)] {
         var fields: [(String, String?)] = [("fixsrc", source.rawValue)]
         guard let location else { return fields }
 
         fields.append(("acc", num(location.horizontalAccuracy)))
-        fields.append(("age", num(-location.timestamp.timeIntervalSinceNow)))
+        fields.append(("age", num(now.timeIntervalSince(location.timestamp), 6)))
         if location.verticalAccuracy > 0 {
             fields.append(("vacc", num(location.verticalAccuracy)))
         }
@@ -225,9 +239,19 @@ enum GeofenceLog {
 
     /// How long an OS-dated event waited before the SDK processed it — "observed late" and
     /// "observed on time, delivered late" are different faults that otherwise look the same.
-    static func eventTiming(_ eventDate: Date?) -> [(String, String?)] {
+    static func eventTiming(_ eventDate: Date?, now: Date) -> [(String, String?)] {
         guard let eventDate else { return [] }
-        return [("evage", num(-eventDate.timeIntervalSinceNow))]
+        return [
+            ("evage", num(now.timeIntervalSince(eventDate), 6)),
+            // The OS's own timestamp, absolute and unrounded.
+            //
+            // `evage` alone cannot identify an event. CoreLocation re-delivers the *same* event —
+            // byte-identical, `date` equal to the microsecond — and a replay reconstructing the date
+            // as `now - evage` gives each copy a different one, because the copies arrive at
+            // different moments. At 0.1 s rounding the two were indistinguishable from two events
+            // 90 ms apart. This is the only field that says "these are the same observation".
+            ("edate", num(eventDate.timeIntervalSince1970, 6))
+        ]
     }
 
     // MARK: - Device position
