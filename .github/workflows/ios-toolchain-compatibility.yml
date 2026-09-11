@@ -2,8 +2,17 @@ name: Xcode 27 preview compatibility
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened]
     paths:
       - '.github/workflows/ios-toolchain-compatibility.yml'
+      - 'Apps/APN-UIKit/**'
+      - 'Apps/CocoaPods-FCM/**'
+      - 'Apps/Common/**'
+      - 'Sources/**'
+      - 'Package.swift'
+      - 'Package.resolved'
+      - '*.podspec'
+      - 'scripts/cocoapods_deployment_target.rb'
   schedule:
     # Stagger preview demand across repositories instead of competing for the
     # hosted macOS pool at the top of the hour.
@@ -23,18 +32,86 @@ env:
   LAUNCH_SURVIVAL_SECONDS: '10'
 
 jobs:
+  select-fixtures:
+    name: Select Xcode 27 fixtures
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.select.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+        if: github.event_name == 'pull_request'
+        with:
+          fetch-depth: 0
+
+      - name: Select affected fixtures
+        id: select
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          apn=false
+          fcm=false
+
+          if [[ "$EVENT_NAME" != 'pull_request' ]]; then
+            apn=true
+            fcm=true
+          else
+            changed_paths="$RUNNER_TEMP/xcode-27-changed-paths"
+            git cat-file -e "$BASE_SHA^{commit}"
+            git cat-file -e "$HEAD_SHA^{commit}"
+            git diff --no-renames --name-only -z "$BASE_SHA...$HEAD_SHA" > "$changed_paths"
+            while IFS= read -r -d '' path; do
+              case "$path" in
+                *.md)
+                  ;;
+                Apps/APN-UIKit/*)
+                  apn=true
+                  ;;
+                Apps/CocoaPods-FCM/*|*.podspec|scripts/cocoapods_deployment_target.rb)
+                  fcm=true
+                  ;;
+                # The APN SwiftPM fixture compiles the shared SDK graph,
+                # including Migration. FCM sources require the CocoaPods FCM
+                # fixture because they are not part of the APN package graph.
+                Sources/MessagingPushFCM/*)
+                  fcm=true
+                  ;;
+                Sources/*)
+                  apn=true
+                  ;;
+                Apps/Common/*|Package.swift|Package.resolved|.github/workflows/ios-toolchain-compatibility.yml)
+                  apn=true
+                  fcm=true
+                  ;;
+              esac
+            done < "$changed_paths"
+          fi
+
+          matrix='[]'
+          if [[ "$apn" == 'true' ]]; then
+            matrix=$(jq -c '. + [{"fixture":"native-apn","app-name":"APN UIKit.app"}]' <<< "$matrix")
+          fi
+          if [[ "$fcm" == 'true' ]]; then
+            matrix=$(jq -c '. + [{"fixture":"customerio-ios-fcm","app-name":"test cocoapods.app"}]' <<< "$matrix")
+          fi
+          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
+
   compile:
+    # Source changes use one representative fixture selected by module. Changes
+    # to integration or packaging inputs still select every affected fixture,
+    # and nightly/manual runs exercise both fixtures together.
+    needs: select-fixtures
+    if: needs.select-fixtures.outputs.matrix != '[]'
     name: Xcode 27 preview (${{ matrix.fixture }})
     runs-on: xcode-27
     timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - fixture: native-apn
-            app-name: APN UIKit.app
-          - fixture: customerio-ios-fcm
-            app-name: test cocoapods.app
+        include: ${{ fromJSON(needs.select-fixtures.outputs.matrix) }}
 
     steps:
       - name: Check out iOS SDK

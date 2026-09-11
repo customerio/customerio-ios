@@ -1,3 +1,27 @@
+## [4.8.0](https://github.com/customerio/customerio-ios/compare/4.7.9...4.8.0) (2026-09-09)
+
+### Features
+
+* **inbox:** replace visual inbox empty-state text with a dimmed bell ([#1251](https://github.com/customerio/customerio-ios/issues/1251)) ([d5f46dd](https://github.com/customerio/customerio-ios/commit/d5f46dd8eeab98209842cbf6a66bc915c88da3fa))
+
+## [4.7.9](https://github.com/customerio/customerio-ios/compare/4.7.8...4.7.9) (2026-09-08)
+
+### Bug Fixes
+
+* **deps:** update Faraday security pin to 1.10.6 ([#1257](https://github.com/customerio/customerio-ios/issues/1257)) ([b24741e](https://github.com/customerio/customerio-ios/commit/b24741e94bb88314c85ba7d5a68ae0c2e9ebce83))
+
+## [4.7.8](https://github.com/customerio/customerio-ios/compare/4.7.7...4.7.8) (2026-09-04)
+
+### Bug Fixes
+
+* surface the failure reason on in-app error callback ([#1238](https://github.com/customerio/customerio-ios/issues/1238)) ([3733867](https://github.com/customerio/customerio-ios/commit/37338679d33d1f7a76e3d0fb209f5993b44fc7b4))
+
+## [4.7.7](https://github.com/customerio/customerio-ios/compare/4.7.6...4.7.7) (2026-08-31)
+
+### Bug Fixes
+
+* call BaseNetwork completion handler once on transport error ([#1233](https://github.com/customerio/customerio-ios/issues/1233)) ([2a36ef2](https://github.com/customerio/customerio-ios/commit/2a36ef227e39402d85aaf31f7d2abdb9455d9598))
+
 ## [4.7.6](https://github.com/customerio/customerio-ios/compare/4.7.5...4.7.6) (2026-08-24)
 
 ### Bug Fixes

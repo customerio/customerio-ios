@@ -376,8 +376,8 @@ func messageEventCallbacksMiddleware(delegate: GistDelegate) -> InAppMessageMidd
             case .tap(let message, let route, let name, let action):
                 delegate.action(message: message, currentRoute: route, action: action, name: name)
 
-            case .messageLoadingFailed(let message):
-                delegate.messageError(message: message)
+            case .messageLoadingFailed(let message, let error):
+                delegate.messageError(message: message, error: error)
             }
 
         default:

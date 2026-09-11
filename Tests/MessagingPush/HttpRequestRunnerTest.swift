@@ -10,7 +10,8 @@ import XCTest
  Test that performs a real HTTP request to Customer.io API. This is a convenient way to test the
  networking layer of the SDK.
 
- These tests are meant to run on your local machine, not CI server.
+ These tests are meant to run on your local machine, not CI server. Set the
+ `CIO_RUN_NETWORK_TESTS` environment variable to `true` to enable public network tests.
  */
 class HttpRequestRunnerTest: HttpTest {
     func test_getAccountRegion() throws {
@@ -40,7 +41,12 @@ class HttpRequestRunnerTest: HttpTest {
         waitForExpectations()
     }
 
-    func testParallelDownloadFileCreatesUniquePaths() {
+    func testParallelDownloadFileCreatesUniquePaths() throws {
+        try XCTSkipIf(
+            ProcessInfo.processInfo.environment["CIO_RUN_NETWORK_TESTS"] != "true",
+            "This local-only integration test depends on the public picsum.photos service."
+        )
+
         let expectation1 = expectation(description: "Parallel download file 1")
         let expectation2 = expectation(description: "Parallel download file 2")
 

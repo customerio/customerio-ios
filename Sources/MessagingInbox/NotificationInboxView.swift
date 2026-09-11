@@ -10,8 +10,9 @@ import UIKit
 ///
 /// Embed it directly in a host screen (a sheet, a tab, a dedicated inbox screen) to render the
 /// inbox's messages natively via **Jist** from the server-provided templates + branding theme. It
-/// shows a loading spinner while fetching, an empty "all caught up" state when there are no messages,
-/// and the rendered list otherwise.
+/// shows a loading spinner while fetching, a dimmed inbox bell when there are no messages, and the
+/// rendered list otherwise. Neither state contains text, so nothing needs localizing; VoiceOver labels
+/// come from the host via `MessagingInAppConfigBuilder.setNotificationInboxAccessibilityLabels`.
 ///
 /// Behavior preserved from ``NotificationInboxOverlay``: tap-to-dismiss (web parity), relative dates,
 /// no-template skip, host action callback + default navigation, mark-opened, and shown reporting.
@@ -123,7 +124,7 @@ struct InboxListView: View {
     }
 
     /// Panel body driven by load state: nothing when the inbox is hidden, spinner while loading,
-    /// empty placeholder when visible-but-empty, otherwise the Jist-rendered list.
+    /// dimmed bell when visible-but-empty, otherwise the Jist-rendered list.
     @ViewBuilder
     private var content: some View {
         if case .hidden = model.state {
@@ -135,11 +136,17 @@ struct InboxListView: View {
             // Genuinely caught up: visible with NO messages at all. Keyed off the full message list
             // (not `renderableMessages`) so messages that merely lack a template don't read as
             // "caught up". (When embedded standalone; the overlay hides chrome entirely in that case.)
+            // Rendered as the workspace's own bell, dimmed — no text: the SDK cannot know the host's
+            // language, and a faint glyph reads as "nothing here" without words. The alpha is
+            // deliberate: fainter reads as a rendering failure, stronger reads as a tappable control.
+            // Decorative for VoiceOver unless the host supplied an `emptyState` label.
             VStack {
                 Spacer()
-                Text("You're all caught up")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
+                InboxBellGlyphView(glyph: model.bellGlyph, tint: .secondary)
+                    .frame(width: Self.emptyStateGlyphSize, height: Self.emptyStateGlyphSize)
+                    .opacity(Self.emptyStateGlyphOpacity)
+                    .accessibility(hidden: model.accessibilityLabels.emptyState == nil)
+                    .inboxAccessibilityLabel(model.accessibilityLabels.emptyState)
                 Spacer()
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -149,7 +156,7 @@ struct InboxListView: View {
             // this view is public on iOS 13.
             VStack {
                 Spacer()
-                InboxLoadingSpinner()
+                InboxLoadingSpinner(accessibilityLabel: model.accessibilityLabels.loadingIndicator)
                 Spacer()
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -161,6 +168,10 @@ struct InboxListView: View {
     /// Top inset above the first message row so it doesn't hug the sheet grabber (MBL-2122), matching
     /// the comfortable top margin of the web inbox. Single, easily-tunable value.
     private static let listTopInset: CGFloat = 16
+
+    /// Empty-state bell size and dimming. Kept in sync with the Android inbox (50dp, 0.22 alpha).
+    private static let emptyStateGlyphSize: CGFloat = 50
+    private static let emptyStateGlyphOpacity: Double = 0.22
 
     private var messageList: some View {
         // Branding-first row divider (falls back to the system separator color).
@@ -280,14 +291,31 @@ struct InboxListView: View {
 
 /// iOS 13-compatible loading spinner. SwiftUI's `ProgressView` is iOS 14+, but ``NotificationInboxView``
 /// is public on iOS 13, so the loading state wraps UIKit's `UIActivityIndicatorView` instead.
+///
+/// `accessibilityLabel` is the host-configured `loadingIndicator` label. When nil the spinner is not an
+/// accessibility element at all, so VoiceOver skips it rather than focusing an unnamed control.
 @available(iOS 13.0, *)
 private struct InboxLoadingSpinner: UIViewRepresentable {
+    let accessibilityLabel: String?
+
     func makeUIView(context: Context) -> UIActivityIndicatorView {
         let indicator = UIActivityIndicatorView(style: .medium)
         indicator.startAnimating()
+        apply(to: indicator)
         return indicator
     }
 
-    func updateUIView(_ uiView: UIActivityIndicatorView, context: Context) {}
+    func updateUIView(_ uiView: UIActivityIndicatorView, context: Context) {
+        apply(to: uiView)
+    }
+
+    private func apply(to indicator: UIActivityIndicatorView) {
+        // Assigning a label alone does not make a `UIView` an accessibility element, so the flag has to
+        // be set explicitly — and cleared again when the host supplies no label, so VoiceOver never
+        // focuses a nameless spinner.
+        indicator.isAccessibilityElement = accessibilityLabel != nil
+        indicator.accessibilityLabel = accessibilityLabel
+        indicator.accessibilityTraits = accessibilityLabel == nil ? .none : .updatesFrequently
+    }
 }
 #endif

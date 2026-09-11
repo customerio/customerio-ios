@@ -14,14 +14,11 @@ extension GeofenceSyncCoordinatorImpl {
         cachedConfig: GeofenceConfig?,
         anchorIsLiveFix: Bool
     ) async -> Result<Void, GeofenceSyncError> {
-        let fetchResult = await awaitApiFetch(latitude: anchor.latitude, longitude: anchor.longitude)
+        let syncStartedAt = GeofenceLog.monotonicNow()
         let response: GeofenceApiResponse
-        switch fetchResult {
-        case .success(let value):
-            response = value
-        case .failure(let error):
-            logger.geofenceSyncFetchFailed(error: error)
-            return .failure(.fetchFailed(error))
+        switch await fetchForRefresh(anchor: anchor, startedAt: syncStartedAt) {
+        case .success(let value): response = value
+        case .failure(let error): return .failure(error)
         }
 
         // If the user signed out / changed during the API call, drop the result —
@@ -46,6 +43,7 @@ extension GeofenceSyncCoordinatorImpl {
         let previouslyRegisteredIds = await storage.getRegisteredBusinessIds()
         let nearestIds = Set(nearest.map(\.id))
         let wakeRadius = wakeRadius(at: anchor, polygons: nearest, config: effectiveConfig, anchorIsLiveFix: anchorIsLiveFix)
+        logRanking(candidates: regions, nearest: nearest, nearestIds: nearestIds, anchor: anchor)
         let osRegistration = await MainActor.run {
             registerWithOsSync(
                 businessRegions: nearest,
@@ -54,7 +52,52 @@ extension GeofenceSyncCoordinatorImpl {
                 registerMovementTrigger: registerMovementTrigger
             )
         }
+        let registration = logRegistration(registeredIds: osRegistration.registeredIds, anchor: anchor, registerMovementTrigger: registerMovementTrigger, triggerRadius: wakeRadius)
 
+        await persistRemoteRefresh(
+            regions: regions, parsedConfig: parsedConfig, anchor: anchor,
+            registeredIds: nearestIds.intersection(osRegistration.registeredIds)
+        )
+        emitInitialEnters(
+            candidates: nearest,
+            osRegistration: osRegistration,
+            previouslyRegisteredIds: previouslyRegisteredIds,
+            expectedUserId: expectedUserId,
+            anchor: anchor
+        )
+        logSyncCompleted(registration, requested: (nearest.count, registerMovementTrigger), startedAt: syncStartedAt)
+        evaluatePolygonsAfterMovement(expectedUserId: expectedUserId)
+        return .success(())
+    }
+
+    /// The fetch and its outcome record, split out so the refresh body stays readable.
+    private func fetchForRefresh(
+        anchor: LocationData,
+        startedAt: TimeInterval
+    ) async -> Result<GeofenceApiResponse, GeofenceSyncError> {
+        switch await awaitApiFetch(latitude: anchor.latitude, longitude: anchor.longitude) {
+        case .success(let value):
+            // The count off the wire, before local filtering — the difference between what the
+            // server offered and what survived ranking is the thing worth being able to see.
+            logger.geofenceApiFetchResult(
+                returnedCount: value.geofences.count,
+                elapsed: GeofenceLog.monotonicNow() - startedAt,
+                regions: value.geofences
+            )
+            return .success(value)
+        case .failure(let error):
+            logger.geofenceSyncFetchFailed(error: error)
+            return .failure(.fetchFailed(error))
+        }
+    }
+
+    /// The remote refresh's four writes, in one place so the refresh itself stays readable.
+    private func persistRemoteRefresh(
+        regions: [Geofence],
+        parsedConfig: GeofenceConfig?,
+        anchor: LocationData,
+        registeredIds: Set<String>
+    ) async {
         await storage.setCachedGeofences(regions)
         // Skip overwriting when the response did not ship a config — a previously cached
         // value must not be clobbered by a null parse from a partial-rollout backend.
@@ -65,17 +108,7 @@ extension GeofenceSyncCoordinatorImpl {
         // Only what the OS accepted: an oversized polygon is deliberately not registered, and
         // recording it anyway would have the membership resolver evaluate a fence with no wake
         // behind it — delivering an enter that nothing can ever balance with an exit.
-        await storage.recordRegistration(center: anchor, businessIds: nearestIds.intersection(osRegistration.registeredIds))
-        emitInitialEnters(
-            candidates: nearest,
-            osRegistration: osRegistration,
-            previouslyRegisteredIds: previouslyRegisteredIds,
-            expectedUserId: expectedUserId,
-            anchor: anchor
-        )
-        logger.geofenceSyncCompleted(registeredCount: nearest.count, movementTriggerRegistered: registerMovementTrigger)
-        evaluatePolygonsAfterMovement(expectedUserId: expectedUserId)
-        return .success(())
+        await storage.recordRegistration(center: anchor, businessIds: registeredIds)
     }
 
     /// Re-rank cached regions for the new location and re-register with the OS. No API call and no
@@ -89,22 +122,24 @@ extension GeofenceSyncCoordinatorImpl {
         cachedRegions: [Geofence],
         anchorIsLiveFix: Bool
     ) async -> Result<Void, GeofenceSyncError> {
+        let syncStartedAt = GeofenceLog.monotonicNow()
         let monitorable = await MainActor.run { monitorableRegions(cachedRegions) }
         let nearest = distanceFilter.nearest(monitorable, to: anchor, limit: config.maxBusinessGeofences, maxDistance: config.maxMonitoringDistance)
         let registerMovementTrigger = config.maxBusinessGeofences > 0
         // Read before `recordRegistration` overwrites it — the diff decides which registrations are new.
         let previouslyRegisteredIds = await storage.getRegisteredBusinessIds()
         let nearestIds = Set(nearest.map(\.id))
+        logRanking(candidates: cachedRegions, nearest: nearest, nearestIds: nearestIds, anchor: anchor)
+        let wakeRadius = wakeRadius(at: anchor, polygons: nearest, config: config, anchorIsLiveFix: anchorIsLiveFix)
         let osRegistration = await MainActor.run {
             registerWithOsSync(
                 businessRegions: nearest,
                 movementTriggerLocation: anchor,
-                movementTriggerRadius: wakeRadius(
-                    at: anchor, polygons: nearest, config: config, anchorIsLiveFix: anchorIsLiveFix
-                ),
+                movementTriggerRadius: wakeRadius,
                 registerMovementTrigger: registerMovementTrigger
             )
         }
+        let registration = logRegistration(registeredIds: osRegistration.registeredIds, anchor: anchor, registerMovementTrigger: registerMovementTrigger, triggerRadius: wakeRadius)
         // Only what the OS accepted: an oversized polygon is deliberately not registered, and
         // recording it anyway would have the membership resolver evaluate a fence with no wake
         // behind it — delivering an enter that nothing can ever balance with an exit.
@@ -116,7 +151,7 @@ extension GeofenceSyncCoordinatorImpl {
             expectedUserId: expectedUserId,
             anchor: anchor
         )
-        logger.geofenceSyncCompleted(registeredCount: nearest.count, movementTriggerRegistered: registerMovementTrigger)
+        logSyncCompleted(registration, requested: (nearest.count, registerMovementTrigger), startedAt: syncStartedAt)
         evaluatePolygonsAfterMovement(expectedUserId: expectedUserId)
         return .success(())
     }
@@ -216,5 +251,55 @@ extension GeofenceSyncCoordinatorImpl {
         await storage.clearUserScopedState()
         logger.geofenceSyncSupersededByUserChange()
         return true
+    }
+
+    // MARK: - Diagnostics
+
+    /// The 19-of-N selection, which is otherwise invisible: a geofence that never registered
+    /// because it ranked 20th looks exactly like one that registered and never fired.
+    func logSyncCompleted(
+        _ registration: (accepted: [String], movementTrigger: Bool),
+        requested: (count: Int, movementTrigger: Bool),
+        startedAt: TimeInterval
+    ) {
+        logger.geofenceSyncCompleted(
+            requestedCount: requested.count,
+            movementTriggerRequested: requested.movementTrigger,
+            acceptedCount: registration.accepted.count,
+            movementTriggerAccepted: registration.movementTrigger,
+            elapsed: GeofenceLog.monotonicNow() - startedAt
+        )
+    }
+
+    func logRanking(candidates: [Geofence], nearest: [Geofence], nearestIds: Set<String>, anchor: LocationData) {
+        logger.geofenceRankEvaluated(
+            candidates: candidates.count,
+            selectedCount: nearest.count,
+            selected: nearest.map(\.id),
+            evicted: candidates.map(\.id).filter { !nearestIds.contains($0) },
+            edgeDistances: Dictionary(nearest.map { ($0.id, $0.edgeDistanceTo(anchor)) }, uniquingKeysWith: { first, _ in first })
+        )
+    }
+
+    /// What the OS is actually monitoring now, by identifier, plus the movement bubble's geometry.
+    /// Reports what the OS is holding, not what was asked for. A region the monitor rejected — or a
+    /// movement trigger starved out of the shared 20-region budget — is exactly what this record
+    /// exists to surface, and `nearest` would hide both. Sorted so replay output is stable.
+    @discardableResult
+    func logRegistration(registeredIds: Set<String>, anchor: LocationData, registerMovementTrigger: Bool, triggerRadius: Double) -> (accepted: [String], movementTrigger: Bool) {
+        let movementTriggerId = GeofenceConstants.movementTriggerIdentifier
+        let accepted = registeredIds.subtracting([movementTriggerId]).sorted()
+        let movementTriggerAccepted = registeredIds.contains(movementTriggerId)
+        logger.geofenceRegionsRegistered(
+            identifiers: accepted,
+            movementTrigger: movementTriggerAccepted ? movementTriggerId : nil
+        )
+        guard movementTriggerAccepted else { return (accepted, false) }
+        logger.geofenceMovementTriggerRegistered(
+            latitude: anchor.latitude,
+            longitude: anchor.longitude,
+            radius: triggerRadius
+        )
+        return (accepted, true)
     }
 }

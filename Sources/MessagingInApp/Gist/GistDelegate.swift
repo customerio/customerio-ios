@@ -7,8 +7,16 @@ public protocol GistDelegate: AnyObject {
     func messageShown(message: Message)
     func messageDismissed(message: Message)
     func messageError(message: Message)
+    func messageError(message: Message, error: InAppMessageError)
     func action(message: Message, currentRoute: String, action: String, name: String)
     func setEventListener(_ eventListener: InAppEventListener?)
+}
+
+public extension GistDelegate {
+    /// Defaulted so conformers written against the reason-less callback keep compiling.
+    func messageError(message: Message, error: InAppMessageError) {
+        messageError(message: message)
+    }
 }
 
 // sourcery: InjectRegisterShared = "GistDelegate"
@@ -58,9 +66,14 @@ class GistDelegateImpl: GistDelegate {
     }
 
     public func messageError(message: Message) {
-        logger.logWithModuleTag("Message error: \(message.describeForLogs)", level: .debug)
+        messageError(message: message, error: InAppMessageError(reason: .internalError))
+    }
 
-        eventListener?.errorWithMessage(message: InAppMessage(gistMessage: message))
+    public func messageError(message: Message, error: InAppMessageError) {
+        logger.logWithModuleTag("Message error: \(message.describeForLogs) — \(error.describeForLogs)", level: .debug)
+
+        let inAppMessage = InAppMessage(gistMessage: message)
+        eventListener?.errorWithMessage(message: inAppMessage, error: error)
     }
 
     public func action(message: Message, currentRoute: String, action: String, name: String) {

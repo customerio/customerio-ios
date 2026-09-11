@@ -1,6 +1,16 @@
 name: Check for API Breaking Changes
 
-on: [pull_request]
+on:
+  pull_request:
+    paths:
+      - 'Sources/**'
+      - 'Package.swift'
+      - 'Package.resolved'
+      - 'api-docs/**'
+      - 'scripts/check-api-changes.rb'
+      - 'scripts/generate-api-docs.sh'
+      - 'scripts/format-api-docs.rb'
+      - '.github/workflows/check-api-breaking-changes.yml'
 
 concurrency: # cancel previous workflow run if one exists
   group: ${{ github.workflow }}-${{ github.ref }}

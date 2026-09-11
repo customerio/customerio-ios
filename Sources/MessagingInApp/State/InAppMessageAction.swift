@@ -26,7 +26,7 @@ enum InAppMessageAction: Equatable {
     /// It only contains actions that are related to Gist engine view.
     enum EngineAction: Equatable {
         case tap(message: Message, route: String, name: String, action: String)
-        case messageLoadingFailed(message: Message)
+        case messageLoadingFailed(message: Message, error: InAppMessageError)
     }
 
     /// Represents an action that can be dispatched to InAppMessage store.

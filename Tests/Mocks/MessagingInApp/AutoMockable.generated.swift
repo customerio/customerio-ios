@@ -1081,6 +1081,11 @@ public class InAppEventListenerMock: @unchecked Sendable, InAppEventListener, Mo
         _errorWithMessageReceivedInvocations.wrappedValue = []
 
         mockCalled = false // do last as resetting properties above can make this true
+        _errorWithMessageAndErrorCallsCount.wrappedValue = 0
+        _errorWithMessageAndErrorReceivedArguments.wrappedValue = nil
+        _errorWithMessageAndErrorReceivedInvocations.wrappedValue = []
+
+        mockCalled = false // do last as resetting properties above can make this true
         _messageActionTakenCallsCount.wrappedValue = 0
         _messageActionTakenReceivedArguments.wrappedValue = nil
         _messageActionTakenReceivedInvocations.wrappedValue = []
@@ -1203,6 +1208,45 @@ public class InAppEventListenerMock: @unchecked Sendable, InAppEventListener, Mo
         _errorWithMessageReceivedArguments.wrappedValue = message
         _errorWithMessageReceivedInvocations.append(message)
         errorWithMessageClosure?(message)
+    }
+
+    // MARK: - errorWithMessage
+
+    /// Number of times the function was called.
+    private let _errorWithMessageAndErrorCallsCount: CioInternalCommon.Synchronized<Int> = .init(0)
+    public var errorWithMessageAndErrorCallsCount: Int {
+        _errorWithMessageAndErrorCallsCount.wrappedValue
+    }
+
+    /// `true` if the function was ever called.
+    public var errorWithMessageAndErrorCalled: Bool {
+        errorWithMessageAndErrorCallsCount > 0
+    }
+
+    /// The arguments from the *last* time the function was called.
+    private let _errorWithMessageAndErrorReceivedArguments: CioInternalCommon.Synchronized<(message: InAppMessage, error: InAppMessageError)?> = .init(nil)
+    public var errorWithMessageAndErrorReceivedArguments: (message: InAppMessage, error: InAppMessageError)? {
+        _errorWithMessageAndErrorReceivedArguments.wrappedValue
+    }
+
+    /// Arguments from *all* of the times that the function was called.
+    private let _errorWithMessageAndErrorReceivedInvocations: CioInternalCommon.Synchronized<[(message: InAppMessage, error: InAppMessageError)]> = .init([])
+    public var errorWithMessageAndErrorReceivedInvocations: [(message: InAppMessage, error: InAppMessageError)] {
+        _errorWithMessageAndErrorReceivedInvocations.wrappedValue
+    }
+
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     */
+    public var errorWithMessageAndErrorClosure: ((InAppMessage, InAppMessageError) -> Void)?
+
+    /// Mocked function for `errorWithMessage(message: InAppMessage, error: InAppMessageError)`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func errorWithMessage(message: InAppMessage, error: InAppMessageError) {
+        mockCalled = true
+        _errorWithMessageAndErrorCallsCount += 1
+        _errorWithMessageAndErrorReceivedArguments.wrappedValue = (message: message, error: error)
+        _errorWithMessageAndErrorReceivedInvocations.append((message: message, error: error))
+        errorWithMessageAndErrorClosure?(message, error)
     }
 
     // MARK: - messageActionTaken

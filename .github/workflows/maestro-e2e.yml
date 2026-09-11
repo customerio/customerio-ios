@@ -2,6 +2,7 @@ name: Maestro SDK E2E
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, labeled]
     paths-ignore:
       - '**/*.md'
   workflow_dispatch:
@@ -33,12 +34,26 @@ on:
     - cron: "41 6 * * 1-5"
 
 concurrency:
-  group: maestro-ios-${{ github.ref }}
-  cancel-in-progress: true
+  # Unrelated label events skip E2E and cannot cancel a requested ci:full run.
+  group: >-
+    maestro-ios-${{ github.ref }}-${{
+      github.event_name == 'pull_request' &&
+      github.event.action == 'labeled' &&
+      github.event.label.name != 'ci:full' &&
+      'metadata' || 'validation'
+    }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   prepare:
     name: Select iOS suites
+    if: >-
+      (vars.MOBILE_E2E_ENABLED == 'true' || github.event_name == 'workflow_dispatch') &&
+      (github.event_name != 'pull_request' ||
+      (contains(github.event.pull_request.labels.*.name, 'ci:full') &&
+      (github.event.action != 'labeled' || github.event.label.name == 'ci:full') &&
+      github.event.pull_request.user.login != 'dependabot[bot]' &&
+      github.event.pull_request.head.repo.full_name == github.repository))
     runs-on: ubuntu-latest
     outputs:
       suites: ${{ steps.select.outputs.suites }}
@@ -70,11 +85,11 @@ jobs:
   e2e:
     name: iOS ${{ matrix.suite }}
     needs: prepare
+    # Intentionally omit always(): a skipped or failed prepare job must keep
+    # secret-dependent E2E from running.
     if: >-
-      (vars.MOBILE_E2E_ENABLED == 'true' || github.event_name == 'workflow_dispatch') &&
-      github.actor != 'dependabot[bot]' &&
-      (github.event_name != 'pull_request' ||
-      github.event.pull_request.head.repo.full_name == github.repository)
+      vars.MOBILE_E2E_ENABLED == 'true' ||
+      github.event_name == 'workflow_dispatch'
     runs-on: macos-26
     timeout-minutes: 60
     env:

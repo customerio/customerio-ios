@@ -561,6 +561,10 @@ jobs:
     uses: ./.github/workflows/reusable_build_sample_apps.yml
     with:
       use_latest_sdk_version: true
+      # Pass the version that was just published. The sample app job cannot work it out on its
+      # own: it checks out the commit that triggered this run, and semantic-release puts the new
+      # tag on a child of that commit, so `git describe` there resolves to the previous release.
+      sdk_version: ${{ needs.deploy-cocoapods.outputs.version }}
     secrets:
       GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64: ${{ secrets.GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64 }}
       FIREBASE_APP_DISTRIBUTION_SERVICE_ACCOUNT_CREDS_B64: ${{ secrets.FIREBASE_APP_DISTRIBUTION_SERVICE_ACCOUNT_CREDS_B64 }}

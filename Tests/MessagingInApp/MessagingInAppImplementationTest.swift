@@ -191,6 +191,7 @@ class MessagingInAppImplementationTest: IntegrationTest {
 
         // error with message
         XCTAssertFalse(eventListenerMock.errorWithMessageCalled)
+        XCTAssertFalse(eventListenerMock.errorWithMessageAndErrorCalled)
 
         // message action taken
         XCTAssertFalse(eventListenerMock.messageActionTakenCalled)

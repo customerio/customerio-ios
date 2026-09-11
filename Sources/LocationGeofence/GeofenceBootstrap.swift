@@ -51,6 +51,7 @@ enum GeofenceBootstrap {
         // — expected-owned mirrors the register condition, so a kill-switched account reclaims
         // nothing. Compared against the OS-retained set below.
         let lastRegisteredBusinessIds = await di.geofenceStorage.getRegisteredBusinessIds()
+        di.logger.geofenceStorageLoaded(regionCount: cachedRegions.count, hasAnchor: restoreAnchor != nil)
         let expectedOwnedRegions = (cachedConfig ?? .fallback).maxBusinessGeofences > 0
             ? lastRegisteredBusinessIds.union([GeofenceConstants.movementTriggerIdentifier])
             : []
@@ -62,7 +63,7 @@ enum GeofenceBootstrap {
         // before any new delegate call can land.
         let monitor = di.geofenceMonitor
         let coordinator = di.geofenceSyncCoordinator
-        GeofenceMonitorBinder.bind(monitor: monitor, resolver: di.polygonMembershipResolver, coordinator: coordinator)
+        GeofenceMonitorBinder.bind(monitor: monitor, resolver: di.polygonMembershipResolver, coordinator: coordinator, logger: di.logger)
 
         // Install both re-run handlers BEFORE the adopt/re-register decision so the CLMonitor path's
         // first reconciliation — which can fire right after this synchronous phase yields — finds a
@@ -87,7 +88,7 @@ enum GeofenceBootstrap {
             // Identity changed during the reads above: adopting or registering now could resurrect
             // regions a sign-out reset just tore down (adopt's FIFO'd re-adds land after the
             // reset's queued removes). The next identify-driven refresh registers instead.
-            di.logger.geofenceSyncSkipped(reason: "identified user changed during bootstrap")
+            di.logger.geofenceSyncSkipped(reason: .userChangedDuringBootstrap)
         } else if !expectedOwnedRegions.isEmpty, expectedOwnedRegions.isSubset(of: monitor.osMonitoredRegionIdentifiers) {
             monitor.adoptExistingRegions(matching: expectedOwnedRegions, records: monitorRecords)
         } else {

@@ -9,6 +9,19 @@ enum GeofenceApiError: Error, Equatable {
     case http(statusCode: Int)
     case transport
     case decoding
+
+    /// A stable machine token. `String(describing:)` would change with the case name, the
+    /// associated value, or a future `CustomStringConvertible`, and these end up in `why=`.
+    var diagnosticToken: String {
+        switch self {
+        case .missingApiHost: return "missing_api_host"
+        case .missingCdpApiKey: return "missing_cdp_api_key"
+        case .invalidRequest: return "invalid_request"
+        case .http(let statusCode): return "http_\(statusCode)"
+        case .transport: return "transport"
+        case .decoding: return "decoding"
+        }
+    }
 }
 
 /// Fetches geofences + workspace config from the CDP API.

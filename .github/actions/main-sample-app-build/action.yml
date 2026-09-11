@@ -5,18 +5,19 @@ inputs:
   # If you want to save a new build, pass in this input. If you want to get the latest build, leave this input out.
   set-latest-main-build:
     description: 'The name of the xcarchive for the APN sample app to save. Example: "App.xcarchive"'
-    type: string
     required: false 
     default: ''
   GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64:
     description: 'Maps to the secret, GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64. Used for code signing. See the Fastlane config files to learn more.'
-    type: string
     required: true
   xcode-version:
     description: 'Xcode version used for the main build (e.g. "26.6"). The main build and cache key use this version so size diffs compare the same toolchain.'
-    type: string
     required: false
     default: '26.6'
+  baseline-ref:
+    description: 'Exact commit used as the comparison baseline. PR callers should pass github.event.pull_request.base.sha.'
+    required: false
+    default: ''
 
 outputs:
   apn-app-xcarchive-path:
@@ -31,14 +32,19 @@ runs:
   steps:
     - name: Setting environment variables for convenience in future steps 
       shell: bash
+      env:
+        REQUESTED_BASELINE_REF: ${{ inputs.baseline-ref }}
+        FALLBACK_BASELINE_REF: main
       # Use each of the set variables in future steps like: ${{ env.APN_SAMPLE_APP_BUILD_PATH }}      
       run: |
         echo "APN_SAMPLE_APP_BUILD_PATH=Apps/APN-UIKit/build" >> $GITHUB_ENV
         echo "BUILD_FILE_NAME=MainBranchApp.xcarchive" >> $GITHUB_ENV
+        baseline_ref="${REQUESTED_BASELINE_REF:-$FALLBACK_BASELINE_REF}"
+        echo "BASELINE_REF=$baseline_ref" >> $GITHUB_ENV
         if [ -n "${{ inputs.xcode-version }}" ]; then
-          echo "CACHE_KEY_BASE=APN-UIKit-build-main-${{ inputs.xcode-version }}-" >> $GITHUB_ENV
+          echo "CACHE_KEY_BASE=APN-UIKit-build-${baseline_ref}-${{ inputs.xcode-version }}-" >> $GITHUB_ENV
         else
-          echo "CACHE_KEY_BASE=APN-UIKit-build-main-" >> $GITHUB_ENV
+          echo "CACHE_KEY_BASE=APN-UIKit-build-${baseline_ref}-" >> $GITHUB_ENV
         fi
 
     - name: Download latest main sample app build to compare against 
@@ -77,11 +83,11 @@ runs:
 
     # If the cache is not found, we need to build the sample app for main branch.
     # So we checkout the main branch and build the sample app.
-    - name: Checkout main branch
+    - name: Checkout exact baseline commit
       if: ${{ env.BUILD_CACHE_HIT == 'false' }}
       uses: actions/checkout@v4
       with:
-        ref: main
+        ref: ${{ env.BASELINE_REF }}
 
     # Build the sample app for main branch if the cache is not found.
     - name: Make a build of the sample app to generate report for 

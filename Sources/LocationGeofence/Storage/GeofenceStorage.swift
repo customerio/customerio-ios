@@ -52,16 +52,20 @@ actor GeofenceStorage {
     /// cooldown), `false` when the event should be suppressed. The whole check-and-record
     /// runs inside the actor with no `await` between steps, so concurrent callers cannot
     /// both observe an expired window and both fire the event.
-    func tryAcquireCooldown(key: String, now: Date, interval: TimeInterval) -> Bool {
+    /// `nil` when the cooldown was acquired. Otherwise the seconds still left on it — a value the
+    /// check already computes, returned rather than recomputed, so reporting it costs no second
+    /// load of the store on a background wake.
+    func tryAcquireCooldown(key: String, now: Date, interval: TimeInterval) -> TimeInterval? {
         var state = loadFromDisk() ?? GeofenceState()
         var cooldowns = state.eventCooldowns ?? [:]
-        if let last = cooldowns[key], now.timeIntervalSince(last) < interval {
-            return false
+        if let last = cooldowns[key] {
+            let elapsed = now.timeIntervalSince(last)
+            if elapsed < interval { return interval - elapsed }
         }
         cooldowns[key] = now
         state.eventCooldowns = cooldowns
         saveToDisk(state)
-        return true
+        return nil
     }
 
     /// Atomically removes cooldown entries whose recorded timestamp is older than `interval`
@@ -260,46 +264,6 @@ actor GeofenceStorage {
         saveToDisk(state)
     }
 
-    // MARK: - Last Registration
-
-    /// Center of the most recent OS registration (the movement-trigger center). The sync
-    /// decision measures distance from here to detect a stale ranking — the device moved
-    /// beyond the trigger radius while the app was dead, so the registered nearest-set is
-    /// no longer the closest geofences and needs a local re-rank.
-    func getLastRegistrationCenter() -> LocationData? {
-        loadFromDisk()?.movementTriggerCenter
-    }
-
-    /// Business geofence IDs registered with the OS at the last registration. Lets the sync
-    /// decision spot a cache that holds regions while nothing is registered (e.g. regs lost
-    /// on sign-out) and re-register instead of skipping.
-    func getRegisteredBusinessIds() -> Set<String> {
-        loadFromDisk()?.monitoredGeofenceIds ?? []
-    }
-
-    /// Records the registration anchor + business IDs in one load-modify-save. Updated on every
-    /// registration, including a local re-rank, so the ranking-staleness reference follows the
-    /// device. Distinct from `recordSync` (the API-fetch anchor), which a local re-rank leaves intact.
-    func recordRegistration(center: LocationData, businessIds: Set<String>) {
-        var state = loadFromDisk() ?? GeofenceState()
-        state.movementTriggerCenter = center
-        state.monitoredGeofenceIds = businessIds
-        // Drop per-condition baselines for regions this registration no longer covers. A record
-        // survives `stopMonitoring` on purpose, so an unchanged re-register keeps its baseline and
-        // CLMonitor's re-evaluation stays silent — but a region *evicted* from the set is a
-        // different case. It goes unmonitored, so no EXIT ever balances a `.enter` baseline, and a
-        // later re-registration with the same circle keeps that stale value instead of the state
-        // the device is actually in. The next genuine arrival then reads as no change and is
-        // dropped. Retaining exactly the registered set bounds the records the same way
-        // `monitoredGeofenceIds` is bounded, and clears anything a previous version stranded.
-        if let records = state.monitorRegionRecords {
-            let retained = businessIds.union([GeofenceConstants.movementTriggerIdentifier])
-            state.monitorRegionRecords = records.filter { retained.contains($0.key) }
-        }
-        state.prunePolygonState(retaining: businessIds)
-        saveToDisk(state)
-    }
-
     // MARK: - Private (file persistence)
 
     // Internal (not private): reached by the `+PolygonMembership` extension in its own file.
@@ -372,7 +336,7 @@ actor GeofenceStorage {
 
 /// Disposition of a state observed off `CLMonitor.events`, decided by
 /// `GeofenceStorage.recordMonitorEvent(_:forIdentifier:)`.
-enum GeofenceMonitorEventOutcome: Equatable, Sendable {
+enum GeofenceMonitorEventOutcome: Equatable, Sendable, CaseIterable {
     /// Genuine state change of a registered transition type — deliver it.
     case deliver
     /// Same state as the baseline — a CLMonitor re-emission (relaunch/unlock/foreground), not a crossing.

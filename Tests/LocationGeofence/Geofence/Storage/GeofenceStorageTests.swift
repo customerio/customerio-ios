@@ -93,9 +93,9 @@ struct GeofenceStorageTests {
         let storage = makeStorage(directory: dir)
         let now = Date(timeIntervalSince1970: 1700000000)
 
-        let acquired = await storage.tryAcquireCooldown(key: "geo_1:enter", now: now, interval: 3600)
+        let remaining = await storage.tryAcquireCooldown(key: "geo_1:enter", now: now, interval: 3600)
 
-        #expect(acquired == true)
+        #expect(remaining == nil)
         let cooldowns = await storage.getEventCooldowns()
         #expect(cooldowns["geo_1:enter"] == now)
     }
@@ -109,9 +109,10 @@ struct GeofenceStorageTests {
         let secondAttempt = firstAttempt.addingTimeInterval(1800)
 
         _ = await storage.tryAcquireCooldown(key: "geo_1:enter", now: firstAttempt, interval: 3600)
-        let acquired = await storage.tryAcquireCooldown(key: "geo_1:enter", now: secondAttempt, interval: 3600)
+        let remaining = await storage.tryAcquireCooldown(key: "geo_1:enter", now: secondAttempt, interval: 3600)
 
-        #expect(acquired == false)
+        // Half the interval has passed, so half of it is what is left to report.
+        #expect(remaining == 1800)
         let cooldowns = await storage.getEventCooldowns()
         #expect(cooldowns["geo_1:enter"] == firstAttempt)
     }
@@ -125,9 +126,9 @@ struct GeofenceStorageTests {
         let secondAttempt = firstAttempt.addingTimeInterval(3600)
 
         _ = await storage.tryAcquireCooldown(key: "geo_1:enter", now: firstAttempt, interval: 3600)
-        let acquired = await storage.tryAcquireCooldown(key: "geo_1:enter", now: secondAttempt, interval: 3600)
+        let remaining = await storage.tryAcquireCooldown(key: "geo_1:enter", now: secondAttempt, interval: 3600)
 
-        #expect(acquired == true)
+        #expect(remaining == nil)
         let cooldowns = await storage.getEventCooldowns()
         #expect(cooldowns["geo_1:enter"] == secondAttempt)
     }
@@ -140,9 +141,9 @@ struct GeofenceStorageTests {
         let now = Date(timeIntervalSince1970: 1700000000)
 
         _ = await storage.tryAcquireCooldown(key: "geo_1:enter", now: now, interval: 3600)
-        let acquired = await storage.tryAcquireCooldown(key: "geo_2:enter", now: now, interval: 3600)
+        let remaining = await storage.tryAcquireCooldown(key: "geo_2:enter", now: now, interval: 3600)
 
-        #expect(acquired == true)
+        #expect(remaining == nil)
     }
 
     @Test
@@ -908,5 +909,30 @@ struct GeofenceStorageTests {
         await storage.recordMonitorRegistration(identifier: "g1", transitionTypes: [.enter, .exit], initialState: .exit, center: centre, radius: 500)
 
         #expect(await storage.recordMonitorEvent(.enter, forIdentifier: "g1") == .suppressedNoChange)
+    }
+
+    @Test
+    func diagnosticReason_expectEverySuppressionNamedAndDeliverSilent() {
+        // The monitor logs this token when it discards a callback.
+        //
+        // A case added with no token at all is already a compile error — `diagnosticReason`
+        // switches exhaustively with no `default`. What the compiler cannot catch is a case wired
+        // to `nil`, which the caller's `if let` then swallows silently. Driven off `allCases` so
+        // that a newly added case is covered too; a hand-written list would simply not mention it.
+        // An unattributable disappearance is indistinguishable from the OS never delivering at all.
+        let cases = GeofenceMonitorEventOutcome.allCases
+        for outcome in cases {
+            if case .deliver = outcome {
+                #expect(outcome.diagnosticReason == nil, "deliver is not a discard and must log nothing")
+            } else {
+                let reason = outcome.diagnosticReason
+                #expect(reason != nil, "\(outcome) has no diagnostic token")
+                // Tokens ride in a whitespace-split tail, so a space would break the parser.
+                #expect(!(reason ?? " ").contains(" "), "\(outcome): token must not contain whitespace")
+            }
+        }
+        // Distinct reasons, or two different discards read as the same thing off-device.
+        let tokens = cases.compactMap(\.diagnosticReason)
+        #expect(Set(tokens).count == tokens.count, "duplicate tokens: \(tokens)")
     }
 }

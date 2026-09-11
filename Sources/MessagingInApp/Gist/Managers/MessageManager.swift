@@ -280,19 +280,29 @@ extension BaseMessageManager: EngineWebDelegate {
     }
 
     public func routeError(route: String) {
-        logger.logWithModuleTag("Error loading message with route: \(route)", level: .error)
-        inAppMessageManager.dispatch(
-            action: .engineAction(
-                action: .messageLoadingFailed(message: currentMessage)
-            )
+        // The renderer has not emitted `routeError` since the 3.0 bundle, so this path is
+        // effectively unreachable today. Classified anyway so it behaves like the live sites if a
+        // future renderer brings it back.
+        let error = InAppMessageError(reason: .renderFailed, detail: "Failed to load route: \(route)")
+        logger.logWithModuleTag(
+            "Message \(currentMessage.describeForLogs) failed: \(error.describeForLogs)",
+            level: .error
         )
+        self.error(error)
     }
 
     public func error() {
+        // Only reachable from a conformer that predates the classified callback. `EngineWeb` always
+        // classifies, so treat an unlabelled failure as an SDK-side gap rather than inventing a cause.
+        // Logged here because, unlike the classified sites, nothing upstream has logged this one.
         logger.logWithModuleTag("Error loading message with id: \(currentMessage.describeForLogs)", level: .error)
+        error(InAppMessageError(reason: .internalError, detail: "Engine reported a failure with no reason"))
+    }
+
+    public func error(_ error: InAppMessageError) {
         inAppMessageManager.dispatch(
             action: .engineAction(
-                action: .messageLoadingFailed(message: currentMessage)
+                action: .messageLoadingFailed(message: currentMessage, error: error)
             )
         )
     }

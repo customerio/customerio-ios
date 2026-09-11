@@ -426,13 +426,15 @@ class InAppMessageStateTests: IntegrationTest {
         let message = Message(queueId: "1")
 
         await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: .random))
-        await inAppMessageManager.dispatchAsync(action: .engineAction(action: .messageLoadingFailed(message: message)))
+        await inAppMessageManager.dispatchAsync(action: .engineAction(action: .messageLoadingFailed(message: message, error: InAppMessageError(reason: .renderFailed))))
 
         let state = await inAppMessageManager.state
         XCTAssertEqual(state.modalMessageState, .dismissed(message: message))
 
-        XCTAssertTrue(globalEventListener.errorWithMessageCalled)
-        XCTAssertEqual(globalEventListener.errorWithMessageReceivedArguments?.deliveryId, message.gistProperties.campaignId)
+        XCTAssertTrue(globalEventListener.errorWithMessageAndErrorCalled)
+        XCTAssertEqual(globalEventListener.errorWithMessageAndErrorReceivedArguments?.message.deliveryId, message.gistProperties.campaignId)
+        // The reason now travels with the failure instead of being lost between the engine and the host.
+        XCTAssertEqual(globalEventListener.errorWithMessageAndErrorReceivedArguments?.error.reason, .renderFailed)
     }
 
     func test_processMessageQueue_givenDismissedMessage_expectMessageNotDisplayedAgain() async {
@@ -471,6 +473,7 @@ class InAppMessageStateTests: IntegrationTest {
         XCTAssertFalse(globalEventListener.messageShownCalled)
         XCTAssertFalse(globalEventListener.messageDismissedCalled)
         XCTAssertFalse(globalEventListener.errorWithMessageCalled)
+        XCTAssertFalse(globalEventListener.errorWithMessageAndErrorCalled)
         XCTAssertFalse(globalEventListener.messageActionTakenCalled)
     }
 
@@ -562,10 +565,11 @@ class InAppMessageStateTests: IntegrationTest {
         let message = Message(queueId: "1")
 
         await inAppMessageManager.dispatchAsync(action: .setUserIdentifier(user: .random))
-        await inAppMessageManager.dispatchAsync(action: .engineAction(action: .messageLoadingFailed(message: message)))
+        await inAppMessageManager.dispatchAsync(action: .engineAction(action: .messageLoadingFailed(message: message, error: InAppMessageError(reason: .renderFailed))))
 
-        XCTAssertTrue(globalEventListener.errorWithMessageCalled)
-        XCTAssertEqual(globalEventListener.errorWithMessageReceivedArguments?.deliveryId, message.gistProperties.campaignId)
+        XCTAssertTrue(globalEventListener.errorWithMessageAndErrorCalled)
+        XCTAssertEqual(globalEventListener.errorWithMessageAndErrorReceivedArguments?.message.deliveryId, message.gistProperties.campaignId)
+        XCTAssertEqual(globalEventListener.errorWithMessageAndErrorReceivedArguments?.error.reason, .renderFailed)
     }
 
     func test_engineAction_givenTapAction_expectMessageActionTakenCallbackCalled() async {

@@ -24,30 +24,19 @@ final class CoreLocationGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @pr
         case blocked
     }
 
-    private let manager: CLLocationManager
-    private let logger: Logger
+    let manager: CLLocationManager
+    let logger: Logger
     /// Freshens the fix behind movement-trigger EXIT dispatches (see `MovementFixResolver`).
-    private let movementFixResolver: MovementFixResolver
-    private var onTransition: GeofenceTransitionHandler?
+    let movementFixResolver: MovementFixResolver
+    var onTransition: GeofenceTransitionHandler?
     private var onAuthorizationChanged: GeofenceAuthorizationChangedHandler?
     private var lastLoggedPermissionTier: PermissionTier?
-    private var ownedRegionIdentifiers: Set<String> = []
-    private struct PendingRegionEvent {
-        let identifier: String
-        let transition: GeofenceTransition
-        let location: LocationData?
-        /// CoreLocation's region callbacks carry no date, so this is when we received it — which is
-        /// what a queued event needs so a drain minutes later is not read as happening now.
-        let receivedAt: Date
-        /// The circle the OS raised this against, captured at intake — by drain time the region may
-        /// have been replaced under the same identifier.
-        let circle: MonitoredCircle
-    }
+    var ownedRegionIdentifiers: Set<String> = []
 
     /// Region events received before the bootstrap bound `onTransition` (see `handleRegionEvent`).
-    private var pendingEvents: [PendingRegionEvent] = []
-    private var isDrainingPendingEvents = false
-    private static let maxPendingEvents = 64
+    var pendingEvents: [PendingRegionEvent] = []
+    var isDrainingPendingEvents = false
+    static let maxPendingEvents = 64
 
     init(logger: Logger) {
         self.manager = CLLocationManager()
@@ -179,82 +168,6 @@ final class CoreLocationGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @pr
         handleRegionEvent(region, transition: .exit)
     }
 
-    /// Delivers a region event, holding it until the bootstrap binds `onTransition`: on a cold wake
-    /// the delegate can go live before bind/adopt run (any DI path constructing the monitor), and a
-    /// crossing delivered then would be dropped with no re-emission. Ownership is checked at drain —
-    /// after adopt populated it — which still filters buffered host-app events. New arrivals queue
-    /// behind any backlog and behind an in-flight drain, so per-region order holds. Capped against a
-    /// process that never binds; unlike CLMonitor there is no re-emission, but overflowing the cap
-    /// requires bind to never run, and then every buffered event is undeliverable anyway.
-    private func handleRegionEvent(_ region: CLRegion, transition: GeofenceTransition) {
-        guard let circular = region as? CLCircularRegion else { return }
-        let circle = MonitoredCircle(
-            center: LocationData(latitude: circular.center.latitude, longitude: circular.center.longitude),
-            radius: circular.radius,
-            maximumRadius: manager.maximumRegionMonitoringDistance
-        )
-        if onTransition == nil || !pendingEvents.isEmpty || isDrainingPendingEvents {
-            pendingEvents.append(PendingRegionEvent(
-                identifier: region.identifier, transition: transition,
-                location: currentLocationData(), receivedAt: Date(), circle: circle
-            ))
-            if pendingEvents.count > Self.maxPendingEvents { pendingEvents.removeFirst() }
-            drainPendingEventsIfReady()
-            return
-        }
-        guard ownedRegionIdentifiers.contains(region.identifier) else { return }
-        dispatchTransition(
-            identifier: region.identifier, transition: transition,
-            capturedLocation: currentLocationData(), occurredAt: Date(), circle: circle
-        )
-    }
-
-    private func drainPendingEventsIfReady() {
-        guard onTransition != nil, !isDrainingPendingEvents, !pendingEvents.isEmpty else { return }
-        isDrainingPendingEvents = true
-        Task { @MainActor [weak self] in
-            guard let self else { return }
-            while self.onTransition != nil, !self.pendingEvents.isEmpty {
-                let next = self.pendingEvents.removeFirst()
-                guard self.ownedRegionIdentifiers.contains(next.identifier) else { continue }
-                self.dispatchTransition(
-                    identifier: next.identifier, transition: next.transition,
-                    capturedLocation: next.location, occurredAt: next.receivedAt, circle: next.circle
-                )
-            }
-            self.isDrainingPendingEvents = false
-        }
-    }
-
-    /// Movement-trigger EXITs re-center the trigger and measure displacement at the attached
-    /// coords, so a frozen cached fix pins the whole pipeline to a stale point — freshen it first,
-    /// keeping the captured location only as the fallback. Fire-and-forget so a slow fix can't
-    /// stall the pending-event drain behind it. Business events keep the captured location.
-    private func dispatchTransition(
-        identifier: String,
-        transition: GeofenceTransition,
-        capturedLocation: LocationData?,
-        occurredAt: Date,
-        // The classic path reads the circle off the `CLCircularRegion` the OS hands it, so it is
-        // always known outright — there is no generation to look up and nothing to expire.
-        circle: MonitoredCircle
-    ) {
-        if identifier == GeofenceConstants.movementTriggerIdentifier, transition == .exit {
-            movementFixResolver.resolve(cached: bestKnownFix()) { [weak self] location, isFresh in
-                self?.logger.geofenceOsTransitionReceived(identifier: identifier, transition: transition)
-                // Falling back to the captured location is a second layer of staleness on top of a
-                // failed request, so it can never be reported as current.
-                self?.onTransition?(
-                    identifier, transition, location ?? capturedLocation, occurredAt,
-                    isFresh && location != nil, .circle(circle)
-                )
-            }
-            return
-        }
-        logger.geofenceOsTransitionReceived(identifier: identifier, transition: transition)
-        onTransition?(identifier, transition, capturedLocation, occurredAt, false, .circle(circle))
-    }
-
     func locationManager(_ manager: CLLocationManager, monitoringDidFailFor region: CLRegion?, withError error: Error) {
         guard let identifier = region?.identifier,
               ownedRegionIdentifiers.remove(identifier) != nil
@@ -310,14 +223,21 @@ final class CoreLocationGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @pr
 
     /// Newest usable fix across the manager's cache and the resolver's requested fixes — the
     /// manager's cache can freeze at process start on a long-suspended process.
-    private func bestKnownFix() -> CLLocation? {
-        let cached = manager.location.flatMap { CLLocationCoordinate2DIsValid($0.coordinate) ? $0 : nil }
-        guard let resolved = movementFixResolver.latestFix else { return cached }
-        guard let cached else { return resolved }
-        return resolved.timestamp > cached.timestamp ? resolved : cached
+    func bestKnownFix() -> CLLocation? {
+        bestKnownFixDetail()?.fix
     }
 
-    private func currentLocationData() -> LocationData? {
+    /// The same choice, reporting which source won — see the CLMonitor twin for why it matters.
+    func bestKnownFixDetail() -> (fix: CLLocation, source: GeofenceLog.FixSource)? {
+        let cached = manager.location.flatMap { CLLocationCoordinate2DIsValid($0.coordinate) ? $0 : nil }
+        guard let resolved = movementFixResolver.latestFix else {
+            return cached.map { ($0, .managerCache) }
+        }
+        guard let cached else { return (resolved, .resolver) }
+        return resolved.timestamp > cached.timestamp ? (resolved, .resolver) : (cached, .managerCache)
+    }
+
+    func currentLocationData() -> LocationData? {
         guard let location = bestKnownFix() else { return nil }
         return LocationData(latitude: location.coordinate.latitude, longitude: location.coordinate.longitude)
     }

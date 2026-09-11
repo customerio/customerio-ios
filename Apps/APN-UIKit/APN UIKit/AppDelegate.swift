@@ -19,6 +19,18 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     private let inboxEventListener = SampleInboxEventListener()
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
+        // Field-drive diagnostics sink, installed before anything else runs.
+        //
+        // A cold background wake — the geofence case we care most about — reaches SDK code within
+        // milliseconds of process start. Anything installed after SDK initialization, or from a
+        // scene delegate, misses the wake it was meant to observe.
+        DiagnosticLog.shared.start()
+
+        // Geofence cold-wake delivery: iOS can launch the app into the background for a transition,
+        // so region monitoring is wired here rather than relying on CustomerIO.initialize. Matches
+        // the React Native and Flutter samples; safe alongside normal init.
+        GeofenceModule.bootstrapForBackgroundDelivery(launchOptions: launchOptions)
+
         // Override point for customization after application launch.
         initializeCioAndInAppListeners()
 
@@ -48,7 +60,12 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             .autoTrackDeviceAttributes(settings.dataPipelines.autoTrackDeviceAttributes)
             .trackApplicationLifecycleEvents(settings.dataPipelines.trackApplicationLifecycleEvents)
             .screenViewUse(screenView: settings.dataPipelines.screenViewUse.toCIOScreenViewUse())
-            .logLevel(settings.dataPipelines.logLevel.toCIOLogLevel())
+            // Forced to `.debug` rather than taking the stored setting. The SDK filters by level
+            // *before* the dispatcher runs, and `CustomerIO.initialize` re-applies the configured
+            // level over whatever the sink set at install time — so a stored level of ERROR would
+            // produce an empty file after a three-hour drive. Diagnostics win over the setting;
+            // the Location Test screen says so on screen.
+            .logLevel(.debug)
             .migrationSiteId(settings.dataPipelines.siteId)
             .deepLinkCallback { [deepLinkHandler] url in deepLinkHandler.handleCustomerIODestination(url) }
 
@@ -80,16 +97,35 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
                 .build()
         )
         MessagingInApp
-            .initialize(withConfig: MessagingInAppConfigBuilder(
-                siteId: settings.inApp.siteId,
-                region: settings.inApp.region.toCIORegion()
-            ).build())
+            .initialize(
+                withConfig: MessagingInAppConfigBuilder(
+                    siteId: settings.inApp.siteId,
+                    region: settings.inApp.region.toCIORegion()
+                )
+                .setNotificationInboxAccessibilityLabels(Self.inboxAccessibilityLabels)
+                .build()
+            )
             .setEventListener(self)
 
         // Visual Notification Inbox action listener. Observational here (logs each callback and
         // returns `false` so the SDK runs its default action handling). A host that wants to
         // intercept an action returns `true` from `messageActionTaken`.
         MessagingInApp.shared.setInboxEventListener(inboxEventListener)
+    }
+
+    /// VoiceOver labels for the Visual Notification Inbox. The SDK ships none of its own, so no English
+    /// leaks into a localized app; the host supplies them in its language. `bellWithUnreadCount` is a
+    /// closure so the app can apply its own plural rules. A real app would read these from
+    /// `Localizable.strings` rather than hardcoding them.
+    private static var inboxAccessibilityLabels: NotificationInboxAccessibilityLabels {
+        NotificationInboxAccessibilityLabels(
+            bell: "Notifications",
+            bellWithUnreadCount: { count in
+                count == 1 ? "Notifications, 1 unread" : "Notifications, \(count) unread"
+            },
+            loadingIndicator: "Loading inbox",
+            emptyState: "No notifications"
+        )
     }
 
     // Register Live Activities as an SDK-managed module. It initializes during
@@ -170,11 +206,27 @@ extension AppDelegate: InAppEventListener {
         )
     }
 
-    // In-app message produces an error - preventing message from appearing to the user
+    // In-app message produces an error - preventing message from appearing to the user.
+    // Still a requirement of the protocol; the SDK calls the overload below, which carries the reason.
     nonisolated func errorWithMessage(message: InAppMessage) {
         CustomerIO.shared.track(
             name: "inapp error",
             properties: ["delivery-id": message.deliveryId ?? "(none)", "message-id": message.messageId]
+        )
+    }
+
+    nonisolated func errorWithMessage(message: InAppMessage, error: InAppMessageError) {
+        // `detail` is deliberately logged but not tracked: it is diagnostic text, partly supplied
+        // by the renderer, and not something to forward verbatim to analytics.
+        print("in-app message failed: \(error.reason.rawValue) — \(error.detail ?? "(no detail)")")
+        CustomerIO.shared.track(
+            name: "inapp error",
+            properties: [
+                "delivery-id": message.deliveryId ?? "(none)",
+                "message-id": message.messageId,
+                "error-reason": error.reason.rawValue,
+                "error-code": error.code.map(String.init) ?? "(none)"
+            ]
         )
     }
 

@@ -35,6 +35,7 @@ extension LocationTestViewController {
         descriptionLabel.text = description
         descriptionLabel.font = .systemFont(ofSize: 12)
         descriptionLabel.textColor = .gray
+        descriptionLabel.numberOfLines = 0
         stackView.addArrangedSubview(descriptionLabel)
 
         return container
@@ -90,6 +91,54 @@ extension LocationTestViewController {
         grantBackgroundStatusLabel.textColor = .darkGray
         grantBackgroundStatusLabel.numberOfLines = 0
         stackView.addArrangedSubview(grantBackgroundStatusLabel)
+
+        return stackView
+    }
+
+    func createDiagnosticLogSection() -> UIView {
+        let stackView = UIStackView()
+        stackView.axis = .vertical
+        stackView.spacing = 8
+
+        let filterRow = UIStackView()
+        filterRow.axis = .horizontal
+        filterRow.alignment = .center
+        filterRow.spacing = 8
+
+        let filterLabel = UILabel()
+        filterLabel.text = "Filter noisy modules"
+        filterLabel.font = .systemFont(ofSize: 14)
+        filterLabel.numberOfLines = 0
+        filterRow.addArrangedSubview(filterLabel)
+
+        diagnosticFilterSwitch = UISwitch()
+        diagnosticFilterSwitch.accessibilityIdentifier = "diagnostic_filter_switch"
+        diagnosticFilterSwitch.isOn = DiagnosticFilter.isEnabled
+        diagnosticFilterSwitch.addTarget(self, action: #selector(diagnosticFilterToggled), for: .valueChanged)
+        filterRow.addArrangedSubview(diagnosticFilterSwitch)
+        stackView.addArrangedSubview(filterRow)
+
+        let filterHint = UILabel()
+        filterHint.text = "On: keeps location and geofence records, drops in-app, inbox and SSE chatter. "
+            + "Turn off to capture everything."
+        filterHint.font = .systemFont(ofSize: 12)
+        filterHint.textColor = .tertiaryLabel
+        filterHint.numberOfLines = 0
+        stackView.addArrangedSubview(filterHint)
+
+        shareDiagnosticLogsButton = ThemeButton()
+        shareDiagnosticLogsButton.setTitle("Share diagnostic logs", for: .normal)
+        shareDiagnosticLogsButton.accessibilityIdentifier = "share_diagnostic_logs"
+        shareDiagnosticLogsButton.titleLabel?.font = .systemFont(ofSize: 14)
+        shareDiagnosticLogsButton.heightAnchor.constraint(equalToConstant: 50).isActive = true
+        shareDiagnosticLogsButton.addTarget(self, action: #selector(shareDiagnosticLogsTapped), for: .touchUpInside)
+        stackView.addArrangedSubview(shareDiagnosticLogsButton)
+
+        diagnosticLogStatusLabel = UILabel()
+        diagnosticLogStatusLabel.font = .systemFont(ofSize: 12)
+        diagnosticLogStatusLabel.textColor = .darkGray
+        diagnosticLogStatusLabel.numberOfLines = 0
+        stackView.addArrangedSubview(diagnosticLogStatusLabel)
 
         return stackView
     }
