@@ -622,6 +622,47 @@ struct GeofenceLogTailTests {
     /// `samePosition` unwraps longitude, so a ring closing at +180 that opened at -180 loses its
     /// closing vertex, while an exact comparison keeps it. `nv` is therefore 4 through the kernel
     /// and 5 through the fallback — the one input that tells which path ran.
+    /// The mixed-field cases. `carriesPolygonFields` alone made the catalog disagree with the
+    /// mapper about what is monitored — the one thing a capture has to get right.
+    @Test
+    func fenceCatalog_givenMixedFields_expectTheShapeTheMapperMonitors() {
+        withDiagnostics(true) {
+            func fields(shape: String?, flat: Bool, geometry: Bool) -> [String: String]? {
+                let ring: [[Double]] = [[55.1, 25.1], [55.2, 25.1], [55.2, 25.2], [55.1, 25.1]]
+                let region = GeofenceApiRegion(
+                    id: "mix", name: nil, shape: shape,
+                    latitude: flat ? 10.0 : nil, longitude: flat ? 20.0 : nil, radius: flat ? 300 : nil,
+                    geometry: geometry ? GeofenceApiGeometry(type: "Polygon", coordinates: [ring]) : nil,
+                    enclosingCircle: GeofenceApiEnclosingCircle(latitude: 25.15, longitude: 55.15, baseRadiusM: 900),
+                    carriesPolygonFields: geometry, externalId: nil,
+                    transitionTypes: ["enter"], lastUpdated: 0, geosetIds: nil, metadata: nil
+                )
+                let logger = CapturingLogger()
+                logger.geofenceApiFetchResult(returnedCount: 1, elapsed: 0.1, regions: [region])
+                return parseTail(logger.messages.last ?? "")
+            }
+
+            // Explicit circle carrying stray geometry: monitored as a circle, by its flat fields.
+            let strayGeometry = fields(shape: "circle", flat: true, geometry: true)
+            #expect(strayGeometry?["sh"] == "circle")
+            #expect(strayGeometry?["rad"] == "300")
+
+            // Explicit polygon carrying flat fields: monitored by its enclosing circle.
+            let flatPolygon = fields(shape: "polygon", flat: true, geometry: true)
+            #expect(flatPolygon?["sh"] == "polygon")
+            #expect(flatPolygon?["rad"] == "900")
+
+            // Normalization matches the mapper's: padded and mixed case are the same shape.
+            #expect(fields(shape: "  Polygon ", flat: false, geometry: true)?["sh"] == "polygon")
+            // Blank is not a shape the server named.
+            #expect(fields(shape: "   ", flat: true, geometry: false)?["sh"] == "circle")
+            // Polygon fields, no discriminator — the mapper drops this; the catalog names it.
+            #expect(fields(shape: nil, flat: false, geometry: true)?["sh"] == "undescribed")
+            // A shape this version cannot monitor.
+            #expect(fields(shape: "hexagon", flat: true, geometry: false)?["sh"] == "unknown")
+        }
+    }
+
     @Test
     func fenceCatalog_givenRingClosingAcrossTheAntimeridian_expectTheKernelsRing() {
         withDiagnostics(true) {
