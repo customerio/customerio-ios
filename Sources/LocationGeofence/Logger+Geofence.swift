@@ -80,6 +80,30 @@ extension Logger {
         )
     }
 
+    /// The crossing was given up because the pending queue could not be READ, so nothing was
+    /// written and nothing failed to write. Deliberately not `storage.write.failed`: that record
+    /// is `io=out` and says a write was attempted, and reporting a refusal as a failed write is
+    /// the collapse the queue's own read/write split exists to prevent.
+    ///
+    /// Says no write was ATTEMPTED rather than that the queue was left intact: the same refusal
+    /// arises when the file's location cannot be resolved, where there is no queue to leave.
+    ///
+    /// Logged at `error` while the sibling anonymous drop logs at `debug` — one is an anomaly, the
+    /// other routine — so `transition.dropped` spans two levels. Anything filtering by level
+    /// before parsing the tail sees only part of the family.
+    func geofenceTransitionDroppedQueueUnreadable(geofenceId: String, transition: GeofenceTransition) {
+        error(
+            "Dropped \(transition.rawValue) for geofence \(geofenceId): the pending queue could not be read, so no write was attempted; cooldown released so the next crossing can retry"
+                + geofenceTail("transition.dropped", .output, [
+                    ("id", geofenceId),
+                    ("t", transition.rawValue),
+                    ("why", "queue_unreadable")
+                ]),
+            geofenceTag,
+            nil
+        )
+    }
+
     func geofencePendingPersistFailed(geofenceId: String, transition: GeofenceTransition) {
         error(
             "Failed to persist \(transition.rawValue) event for geofence \(geofenceId) before send; cooldown released so the next crossing can retry"
