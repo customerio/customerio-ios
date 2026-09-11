@@ -621,7 +621,7 @@ struct PolygonMembershipResolverTests {
         await setup.storage.setCachedGeofences([polygonGeofence()])
 
         await setup.resolver.evaluateMembership(
-            geofenceIds: ["1"], reason: "test", isStillCurrent: { false }
+            geofenceIds: ["1"], reason: .foreground, isStillCurrent: { false }
         )
 
         #expect(await setup.emitter.snapshot().isEmpty)
@@ -636,7 +636,7 @@ struct PolygonMembershipResolverTests {
         await setup.storage.setCachedGeofences([polygonGeofence()])
 
         await setup.resolver.evaluateMembership(
-            geofenceIds: ["1"], reason: "test", isStillCurrent: { true }
+            geofenceIds: ["1"], reason: .foreground, isStillCurrent: { true }
         )
 
         #expect(await setup.storage.getPolygonMembership()["1"]?.membership == .inside)
@@ -652,7 +652,7 @@ struct PolygonMembershipResolverTests {
         let requested = Flag()
         setup.fixResolver.requestFreshFix = { requested.value = true }
 
-        async let pass: Bool = setup.resolver.evaluateMembership(geofenceIds: ["1"], reason: "test")
+        async let pass: Bool = setup.resolver.evaluateMembership(geofenceIds: ["1"], reason: .foreground)
         await yieldUntil { requested.value }
         await setup.storage.setCachedGeofences([movedPolygonGeofence()])
         setup.fixResolver.handleResolvedFix(fix(latitude: 0, longitude: 0))
@@ -670,7 +670,7 @@ struct PolygonMembershipResolverTests {
         let requested = Flag()
         setup.fixResolver.requestFreshFix = { requested.value = true }
 
-        async let pass: Bool = setup.resolver.evaluateMembership(geofenceIds: ["1"], reason: "test")
+        async let pass: Bool = setup.resolver.evaluateMembership(geofenceIds: ["1"], reason: .foreground)
         await yieldUntil { requested.value }
         setup.fixResolver.handleResolvedFix(fix(latitude: 0, longitude: 0))
         _ = await pass
@@ -688,7 +688,7 @@ struct PolygonMembershipResolverTests {
         await registerPolygons(setup, ids: ["1", "2", "3"])
         let counter = countingRequests(setup)
 
-        await setup.resolver.evaluateMembership(geofenceIds: ["1", "2", "3"], reason: "test")
+        await setup.resolver.evaluateMembership(geofenceIds: ["1", "2", "3"], reason: .foreground)
 
         #expect(counter.count == 1)
     }
