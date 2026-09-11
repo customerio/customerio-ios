@@ -75,17 +75,22 @@ final class CioAppGroupPendingPushDeliveryStoreTests: UnitTest {
         logger.errorReceivedInvocations.contains { $0.message.contains(needle) }
     }
 
-    /// The second row has no `device_id`. Every field on the metric is non-optional, so schema
-    /// evolution alone reaches this — and one of them used to discard the other rows with it.
-    private static let oneGoodOneBadRow = """
-    [
-      {"id":"6C7E1B2A-0000-4000-8000-000000000001","delivery_id":"d1","device_id":"token","event":"delivered","timestamp":"2023-11-14T22:13:20.000Z"},
-      {"id":"6C7E1B2A-0000-4000-8000-000000000002","delivery_id":"d2","event":"delivered","timestamp":"2023-11-14T22:13:21.000Z"}
-    ]
-    """
+    /// Written with the store's own encoder, then stripped of `device_id` on the second row, so the
+    /// rows differ from what it writes in exactly that one way. Every field on the metric is
+    /// non-optional, so schema evolution alone reaches this — and one bad row used to discard the rest.
+    private func plantOneGoodOneBadRow() throws {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.sortedKeys]
+        encoder.dateEncodingStrategy = .iso8601
+        let encoded = try encoder.encode([makeMetric(deliveryId: "d1"), makeMetric(deliveryId: "d2")])
+        var rows = try XCTUnwrap(JSONSerialization.jsonObject(with: encoded) as? [[String: Any]])
+        XCTAssertEqual(rows.count, 2)
+        rows[1].removeValue(forKey: "device_id")
+        try plant(String(decoding: JSONSerialization.data(withJSONObject: rows), as: UTF8.self))
+    }
 
     func test_read_givenOneUndecodableRow_expectTheOtherRowSurvives() throws {
-        try plant(Self.oneGoodOneBadRow)
+        try plantOneGoodOneBadRow()
 
         guard case .rows(let rows) = makeStore().read() else {
             return XCTFail("expected rows, got unreadable")
@@ -96,7 +101,7 @@ final class CioAppGroupPendingPushDeliveryStoreTests: UnitTest {
     }
 
     func test_append_givenOneUndecodableRow_expectTheGoodRowKept() throws {
-        try plant(Self.oneGoodOneBadRow)
+        try plantOneGoodOneBadRow()
         let store = makeStore()
 
         XCTAssertTrue(store.append(makeMetric(deliveryId: "d3")))
