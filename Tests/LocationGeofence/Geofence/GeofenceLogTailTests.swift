@@ -150,7 +150,10 @@ struct GeofenceLogTailTests {
             Invocation(name: "firstRunRearm", ev: "movement.rearmed", requiredKeys: ["why"]) { $0.geofenceFirstRunRearm() },
             Invocation(name: "regionsAdopted", ev: "registration.adopted", requiredKeys: ["n"]) { $0.geofenceRegionsAdopted(count: 4) },
             Invocation(name: "foregroundRearm", ev: "registration.rearmed", requiredKeys: ["n", "why"]) { $0.geofenceForegroundRearm(count: 4) },
-            Invocation(name: "storageLoaded", ev: "storage.loaded", requiredKeys: ["n", "anchor"]) { $0.geofenceStorageLoaded(regionCount: 30, hasAnchor: true) }
+            Invocation(name: "storageLoaded", ev: "storage.loaded", requiredKeys: ["n", "anchor"]) { $0.geofenceStorageLoaded(regionCount: 30, hasAnchor: true) },
+            Invocation(name: "queueRowsDropped", ev: "queue.rows_dropped", requiredKeys: ["why", "n", "total"]) { $0.geofenceQueueRowsDropped(count: 1, of: 3) },
+            Invocation(name: "queueUnreadable", ev: "queue.unreadable", requiredKeys: ["why"]) { $0.geofenceQueueUnreadable(reason: .readFailed) },
+            Invocation(name: "droppedQueueUnreadable", ev: "transition.dropped", requiredKeys: ["id", "t", "why"]) { $0.geofenceTransitionDroppedQueueUnreadable(geofenceId: "notl_core", transition: .enter) }
         ]
     }
 
@@ -260,6 +263,8 @@ struct GeofenceLogTailTests {
         "os.monitor.stopped",
         "os.stream.failed",
         "permission.changed",
+        "queue.rows_dropped",
+        "queue.unreadable",
         "rank.evaluated",
         "registration.adopted",
         "registration.applied",
