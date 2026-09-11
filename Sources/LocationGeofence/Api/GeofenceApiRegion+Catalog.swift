@@ -27,9 +27,15 @@ extension GeofenceApiRegion {
     /// element before joining, so it is the only intra-pair character that survives the pipeline.
     var catalogRing: [String]? {
         guard let ring = geometry?.coordinates.first, !ring.isEmpty else { return nil }
-        // Rendered before `usableRegion` drops invalid coordinates, so a malformed payload reaches
-        // this. Every position is kept, bad ones as `bad`: `%.5f` turns 1e300 into 309 digits, and
-        // dropping them instead would leave `nv` counting vertices the ring does not show.
+        // The geometry kernel's own list when the region resolves, so the catalog can never report
+        // a different ring from the one membership is computed against — including at the
+        // antimeridian, where the kernel tolerates longitude wrap and the fallback below does not.
+        if case .success(let geofence) = toDomain(), let vertices = geofence.vertices {
+            return vertices.map { "\(Self.catalogCoordinate($0.latitude, max: 90))_\(Self.catalogCoordinate($0.longitude, max: 180))" }
+        }
+        // Reached only for a ring the kernel REJECTED, which is the case worth recording and the
+        // one it cannot answer. Bad positions are kept as `bad`: `%.5f` turns 1e300 into 309
+        // digits, and dropping them would leave `nv` counting vertices the ring does not show.
         return Self.canonicalised(ring).map { position in
             guard position.count >= 2 else { return "bad_bad" }
             return "\(Self.catalogCoordinate(position[1], max: 90))_\(Self.catalogCoordinate(position[0], max: 180))"
@@ -41,9 +47,8 @@ extension GeofenceApiRegion {
     /// the SDK will not monitor is exactly the one worth recording.
     ///
     /// Compares the positions rather than the rendered pairs, so two different unreadable
-    /// positions stay two. Exact equality where `PolygonRegion` allows longitude wrap, so a ring
-    /// closing on +180/-180 counts one higher here; GeoJSON requires the closing position to
-    /// repeat the first exactly, and such a fence records a `bad` pair anyway.
+    /// positions stay two. Its exact-equality comparison cannot disagree with the kernel about a
+    /// fence the kernel accepted, because an accepted fence never reaches here.
     private static func canonicalised(_ ring: [[Double]]) -> [[Double]] {
         var open: [[Double]] = []
         open.reserveCapacity(ring.count)
