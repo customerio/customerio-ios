@@ -62,7 +62,6 @@ extension GeofenceConditionState {
     }
 
     /// `CLMonitor.add(assuming:)` accepts only satisfied/unsatisfied; anything else seeds as outside.
-    @available(iOS 17.0, *)
     var assumedCLState: CLMonitor.Event.State {
         self == .satisfied ? .satisfied : .unsatisfied
     }

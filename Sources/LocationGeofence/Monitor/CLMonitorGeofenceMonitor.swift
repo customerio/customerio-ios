@@ -89,8 +89,8 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring {
         let transitionTypes: Set<GeofenceTransition>
     }
 
-    /// Memoized `CLMonitor` creation so every caller shares one instance — creating a second
-    /// monitor with the same name throws "Monitor named ... is already in use".
+    /// The one condition monitor, created once and shared by every caller: a second `CLMonitor`
+    /// with the same name throws "Monitor named ... is already in use".
     private var monitorTask: Task<GeofenceConditionMonitoring, Never>?
     /// Single long-lived consumer of `monitor.events`. Never cancelled or recreated: a second
     /// subscription steals events from the first rather than duplicating them.
