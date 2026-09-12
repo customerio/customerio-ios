@@ -94,8 +94,10 @@ extension CLMonitorGeofenceMonitor {
             // holds. Removing one the OS does not hold is a no-op.
             let readdStart = self.dateUtil.now
             await monitor.remove(identifier)
+            self.logger.geofenceConditionRemoved(identifier: identifier, op: .readd)
             let center = LocationData(latitude: coordinate.latitude, longitude: coordinate.longitude)
             await monitor.add(center: center, radius: clampedRadius, identifier: identifier, assuming: assumedState)
+            self.logger.geofenceConditionAdded(identifier: identifier)
             self.conditionReadds[identifier] = ConditionReadd(
                 start: readdStart,
                 added: self.dateUtil.now,
@@ -127,6 +129,7 @@ extension CLMonitorGeofenceMonitor {
         enqueueMonitorOperation { [weak self] monitor in
             guard let self else { return }
             await monitor.remove(identifier)
+            self.logger.geofenceConditionRemoved(identifier: identifier, op: .drop)
             self.knownConditionIdentifiers.remove(identifier)
             self.persistConditionMirror()
         }
@@ -143,6 +146,7 @@ extension CLMonitorGeofenceMonitor {
             guard let self else { return }
             for identifier in await monitor.identifiers {
                 await monitor.remove(identifier)
+                self.logger.geofenceConditionRemoved(identifier: identifier, op: .drop)
             }
             self.knownConditionIdentifiers.removeAll()
             self.persistConditionMirror()
@@ -164,6 +168,7 @@ extension CLMonitorGeofenceMonitor {
             guard let self else { return }
             for identifier in await monitor.identifiers where !desiredIdentifiers.contains(identifier) {
                 await monitor.remove(identifier)
+                self.logger.geofenceConditionRemoved(identifier: identifier, op: .drop)
                 self.knownConditionIdentifiers.remove(identifier)
             }
             self.persistConditionMirror()

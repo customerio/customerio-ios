@@ -33,12 +33,14 @@ extension CLMonitorGeofenceMonitor {
                 else { continue }
                 let readdStart = self.dateUtil.now
                 await monitor.remove(identifier)
+                self.logger.geofenceConditionRemoved(identifier: identifier, op: .readd)
                 await monitor.add(
                     center: center,
                     radius: radius,
                     identifier: identifier,
                     assuming: record.lastState == .enter ? .satisfied : .unsatisfied
                 )
+                self.logger.geofenceConditionAdded(identifier: identifier)
                 self.conditionReadds[identifier] = ConditionReadd(start: readdStart, added: self.dateUtil.now, center: center, radius: radius)
                 // Recorded per identifier rather than in one pass at the end: an `.unmonitored` for
                 // one of these can land between two iterations, and it must be able to take the
@@ -101,12 +103,14 @@ extension CLMonitorGeofenceMonitor {
                 else { continue }
                 let readdStart = self.dateUtil.now
                 await monitor.remove(identifier)
+                self.logger.geofenceConditionRemoved(identifier: identifier, op: .readd)
                 await monitor.add(
                     center: center,
                     radius: radius,
                     identifier: identifier,
                     assuming: record.lastState == .enter ? .satisfied : .unsatisfied
                 )
+                self.logger.geofenceConditionAdded(identifier: identifier)
                 self.conditionReadds[identifier] = ConditionReadd(start: readdStart, added: self.dateUtil.now, center: center, radius: radius)
                 self.knownConditionIdentifiers.insert(identifier)
                 rearmed += 1

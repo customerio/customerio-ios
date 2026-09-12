@@ -299,4 +299,46 @@ extension Logger {
             geofenceTag
         )
     }
+
+    /// The moment one condition actually landed at the OS — one record per `CLMonitor.add`.
+    ///
+    /// **The boundary a replay has to park on.** Every add runs inside `enqueueMonitorOperation`,
+    /// so a sync's conditions reach CoreLocation one at a time behind whatever the queue already
+    /// held — and the storage write that reseeds a condition's dedup baseline sits at the head of
+    /// each add's own operation. On the 2026-09-12 iPhone relaunch that queue was still draining
+    /// 170 ms after `registration.applied` was logged, so two callbacks landing inside the window
+    /// compared against a baseline the phone had not written yet and a third arrived before an
+    /// `.unmonitored`'s queued clear could run. Nothing recorded when any of those calls returned,
+    /// so a replay answered them all instantly and decided differently — twice.
+    ///
+    /// Per identifier rather than per batch, unlike Android's count-carrying pair: CLMonitor takes
+    /// one condition at a time, so the identifier is free and it pairs a recorded moment with the
+    /// exact call a replay has to hold.
+    ///
+    /// `registration.applied` still reports the resulting set and is still the only assertion; this
+    /// is the mechanism underneath it, the same relation `registration.diff` already has.
+    func geofenceConditionAdded(identifier: String) {
+        debug(
+            "Condition \(identifier) added at the OS"
+                + geofenceTail("registration.added", .observation, [("id", identifier)]),
+            geofenceTag
+        )
+    }
+
+    /// The moment one condition left the OS.
+    ///
+    /// `op` separates the two callers, which a reader cannot otherwise tell apart: CLMonitor
+    /// silently ignores an add over a live identifier and keeps the original circle, so every
+    /// re-registration removes first — a `readd` here is a condition on its way back in, not one
+    /// going away. Counterpart to `geofenceConditionAdded`; see its note for why both exist.
+    func geofenceConditionRemoved(identifier: String, op: GeofenceLog.RemovalOp) {
+        debug(
+            "Condition \(identifier) removed at the OS (\(op.rawValue))"
+                + geofenceTail("registration.removed", .observation, [
+                    ("id", identifier),
+                    ("op", op.rawValue)
+                ]),
+            geofenceTag
+        )
+    }
 }
