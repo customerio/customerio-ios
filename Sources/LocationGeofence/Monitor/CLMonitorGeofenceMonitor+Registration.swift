@@ -8,9 +8,18 @@ import Foundation
 @available(iOS 17.0, *)
 extension CLMonitorGeofenceMonitor {
     func adoptExistingRegions(matching identifiers: Set<String>, records: [String: MonitorRegionRecord]) {
-        let adopted = identifiers.intersection(knownConditionIdentifiers)
+        // Only conditions this process still owns and has not already staged. The bootstrap re-runs
+        // this on reconcile drift and on permission changes, from storage read before in-flight work
+        // has landed. On the 2026-09-12 relaunch that second run re-armed the previous session's
+        // twenty conditions — two of them a sync had just evicted, their removes still queued ahead —
+        // put the OS over its condition budget, and CoreLocation gave all twenty up. A condition
+        // released by `stopMonitoring` is no longer owned; one adopted or registered in this process
+        // already has a geometry entry. Either way a second adopt has nothing left to do.
+        let adopted = identifiers
+            .intersection(knownConditionIdentifiers)
+            .intersection(ownedRegionIdentifiers)
+            .filter { registeredConditions[$0] == nil }
         guard !adopted.isEmpty else { return }
-        ownedRegionIdentifiers.formUnion(adopted)
         // Seed the geometry map synchronously, before the queued re-arm drains: a sync landing in
         // that window would otherwise read every adopted region as changed (no recorded circle)
         // and remove + re-add them all — absorbing any crossing the OS has detected but not yet
@@ -26,7 +35,7 @@ extension CLMonitorGeofenceMonitor {
                 transitionTypes: record.transitionTypes
             )
         }
-        rearmConditions(adopted, records: records)
+        rearmConditions(adopted)
         lastRearmAt = dateUtil.now
         logger.geofenceRegionsAdopted(count: adopted.count)
     }
@@ -267,8 +276,15 @@ extension CLMonitorGeofenceMonitor {
         )
     }
 
-    /// CLMonitor gave up on the condition: drop the mirror entry, circle and baseline so the next
-    /// sync re-registers it. Ownership is kept on purpose; dropping it would strand the region.
+    /// CLMonitor gave up on the condition: drop the mirror entry, circle and baseline so it is
+    /// re-registered. Ownership is kept on purpose; dropping it would strand the region.
+    ///
+    /// Two halves run on different timelines, which is why events for the condition are refused
+    /// outright until it is re-registered (`isAwaitingReregistration`): the baseline clear below is
+    /// queued behind every pending OS op, while the gate stamp goes synchronously, so a daemon
+    /// replay landing in that gap would be judged against a stale baseline with no gate. And the
+    /// re-registration is scheduled here rather than left to "the next sync", because syncs are
+    /// driven by the movement trigger, which may itself be among the conditions given up.
     func handleConditionUnmonitored(_ identifier: String) {
         logger.geofenceMonitorStoppedMonitoringRegion(identifier)
         knownConditionIdentifiers.remove(identifier)
@@ -282,6 +298,36 @@ extension CLMonitorGeofenceMonitor {
         enqueueMonitorOperation { [weak self] _ in
             guard let self, !self.knownConditionIdentifiers.contains(identifier) else { return }
             await self.storage.clearMonitorRegionRecord(identifier: identifier)
+        }
+        scheduleUnmonitoredRecovery()
+    }
+
+    /// Re-registers what the OS gave up on, without waiting for a movement pass.
+    ///
+    /// The handler above used to leave recovery to "the next sync", and the next sync is driven by
+    /// the movement trigger. On the 2026-09-12 relaunch the trigger was among the conditions given
+    /// up, so no sync could come: the phone drove 4.2 km over the next 66 minutes with the module
+    /// frozen, and two fences' enters and exits were lost, until a sign-out reset it. This queues one
+    /// re-run of the bootstrap behind the ops already in flight — the route a mirror drift already
+    /// takes — which finds the given-up identifiers missing from the OS set and re-registers exactly
+    /// those, with a reseeded baseline. One per burst: a storm of twenty schedules one run. And rate
+    /// limited, so a condition the OS refuses to hold (a host app over the budget) cannot loop.
+    func scheduleUnmonitoredRecovery() {
+        guard !isUnmonitoredRecoveryScheduled else { return }
+        if let last = lastUnmonitoredRecoveryAt,
+           dateUtil.now.timeIntervalSince(last) < GeofenceConstants.unmonitoredRecoveryInterval {
+            return
+        }
+        isUnmonitoredRecoveryScheduled = true
+        enqueueMonitorOperation { [weak self] _ in
+            guard let self else { return }
+            self.isUnmonitoredRecoveryScheduled = false
+            self.lastUnmonitoredRecoveryAt = self.dateUtil.now
+            // A registration that drained meanwhile has already consumed the flags.
+            let pending = self.conditionsNeedingBaselineReseed.count
+            guard pending > 0 else { return }
+            self.logger.geofenceUnmonitoredRecovery(count: pending)
+            self.onReconciled?()
         }
     }
 }

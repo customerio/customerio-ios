@@ -214,6 +214,19 @@ extension Logger {
         )
     }
 
+    /// The SDK re-registering conditions CoreLocation gave up on, instead of waiting for a
+    /// movement pass that — when the trigger is among them — can never come.
+    func geofenceUnmonitoredRecovery(count: Int) {
+        info(
+            "CoreLocation gave up \(count) condition(s); re-registering them now"
+                + geofenceTail("registration.recovery", .observation, [
+                    ("n", GeofenceLog.int(count)),
+                    ("why", "os_unmonitored")
+                ]),
+            geofenceTag
+        )
+    }
+
     func geofenceCallbackDropped(identifier: String, transition: GeofenceTransition, reason: String) {
         debug(
             "OS \(transition.rawValue) for region \(identifier) not routed: \(reason)"

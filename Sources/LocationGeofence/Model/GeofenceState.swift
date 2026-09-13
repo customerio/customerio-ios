@@ -52,4 +52,14 @@ struct MonitorRegionRecord: Codable, Equatable, Sendable {
     /// an older fix judging a newer baseline would synthesize the reverse of the crossing that set
     /// it. Optional so records persisted before this field decode; `nil` never blocks a heal.
     var lastStateChangedAt: Date?
+    /// When the circle this record describes was installed at the OS — set on a new identifier, a
+    /// changed circle or a forced reseed, preserved on an unchanged re-registration. An OS event
+    /// dated before it was computed against a circle that no longer exists and is refused, whatever
+    /// its state says. Optional for records persisted before the field; `nil` refuses nothing.
+    var registeredAt: Date?
+    /// The OS date of the last event processed for this condition. CoreLocation delivers one event
+    /// two to three times, not always in date order and not always with an identical date; an event
+    /// dated at or before this one has already been seen. Optional for records persisted before the
+    /// field; `nil` refuses nothing.
+    var lastEventDate: Date?
 }

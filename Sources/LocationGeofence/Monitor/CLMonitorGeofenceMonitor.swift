@@ -49,7 +49,9 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring {
     /// Internal (not private) for the `+BaselineHeal` extension's synthesized deliveries.
     var onTransition: GeofenceTransitionHandler?
     private var onAuthorizationChanged: GeofenceAuthorizationChangedHandler?
-    private var onReconciled: GeofenceReconciledHandler?
+    /// Internal (not private) for `+Registration`, which re-runs the bootstrap through it when the
+    /// OS gives conditions up (`scheduleUnmonitoredRecovery`).
+    var onReconciled: GeofenceReconciledHandler?
     private var lastLoggedPermissionTier: CoreLocationGeofenceMonitor.PermissionTier?
 
     /// In-memory ownership filter, mirrors `ownedRegionIdentifiers` in the classic monitor.
@@ -70,6 +72,10 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring {
     /// Conditions the OS stopped monitoring since their last registration. The next registration
     /// reseeds their stored baseline instead of preserving it — see `recordMonitorRegistration`.
     var conditionsNeedingBaselineReseed: Set<String> = []
+    /// Whether a re-registration of conditions the OS gave up on is already queued (`+Registration`).
+    var isUnmonitoredRecoveryScheduled = false
+    /// When the last such recovery ran; another is refused inside `unmonitoredRecoveryInterval`.
+    var lastUnmonitoredRecoveryAt: Date?
     /// When each condition was last (re)added at the OS and the circle that add imposed, stamped
     /// at the add's drain time. The contradiction gate only vets events landing shortly after an
     /// add — the daemon's belief replays — and judges them against this geometry, NOT the staged
@@ -277,16 +283,22 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring {
         // event the OS delivered, and the drives worth explaining are usually the ones where
         // something arrived and was then discarded.
         logReceivedCallback(identifier: identifier, transition: transition, eventDate: event.date)
+        // The OS gave this condition up and nothing has re-registered it yet: until then whatever it
+        // reports is a replay of a dead incarnation, not a crossing (see `handleConditionUnmonitored`).
+        if isAwaitingReregistration(identifier: identifier, transition: transition) { return }
         // Runs BEFORE the baseline advance below: a refused event must leave the stored baseline
         // untouched so the daemon's own re-evaluation dedups against it (see `+ContradictionGate`).
-        if identifier != GeofenceConstants.movementTriggerIdentifier,
-           await isEventContradictedByFreshFix(identifier: identifier, transition: transition, eventDate: event.date) {
+        // The movement trigger is gated too: it is added centred on the device, so an exit dated
+        // within seconds of that add is a belief replay, never a kilometre of displacement.
+        if await isEventContradictedByFreshFix(identifier: identifier, transition: transition, eventDate: event.date) {
             return
         }
-        // Dated by the OS, not by receipt: CoreLocation re-delivers the same event, and a copy landing
-        // after its first copy's movement pass re-seeded this baseline must read as stale, not new.
+        // Dated by the OS, not by receipt. The record keeps the date of the last event it processed
+        // and when its current circle was installed; a copy already seen, or one computed against a
+        // circle that no longer exists, is refused on those alone — never by comparing our own write
+        // time with the OS's clock, which made the outcome depend on how far the queue had drained.
         let outcome = await storage.recordMonitorEvent(
-            transition, forIdentifier: identifier, onlyIfBaselinePredates: event.date, now: event.date
+            transition, forIdentifier: identifier, osEventDate: event.date, now: event.date
         )
         guard case .deliver = outcome else {
             logDiscardedCallback(identifier: identifier, transition: transition, outcome: outcome)

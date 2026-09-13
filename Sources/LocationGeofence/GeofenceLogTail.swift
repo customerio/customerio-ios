@@ -295,6 +295,8 @@ extension GeofenceMonitorEventOutcome {
         case .suppressedFilteredType: return "transition_type_not_registered"
         case .suppressedNoBaseline: return "baseline_established"
         case .suppressedNewerBaseline: return "newer_baseline"
+        case .suppressedRedelivery: return "redelivered"
+        case .suppressedPredatesRegistration: return "predates_registration"
         }
     }
 }

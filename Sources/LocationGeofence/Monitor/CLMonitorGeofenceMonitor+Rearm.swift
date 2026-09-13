@@ -14,22 +14,33 @@ extension CLMonitorGeofenceMonitor {
     /// baseline, so CLMonitor emits only transitions that happened while unmonitored — genuine
     /// catch-up, which the baseline comparison then delivers.
     ///
-    /// `records` comes from the caller (`adoptExistingRegions`), which has already seeded the
-    /// geometry bookkeeping from it synchronously — noting it again at drain time would clobber
-    /// a newer circle a sync staged while this operation was still queued.
+    /// Records are read when the operation DRAINS, not when it was staged, and a condition is
+    /// skipped unless its record still matches the staged geometry — the same two rules as
+    /// `rearmOnForegroundIfStale`. A crossing accepted while this waited in the queue has moved the
+    /// baseline, and asserting the staged snapshot to the OS makes the daemon answer with a
+    /// corrective the dedup then has to absorb: on the 2026-09-12 relaunch the trigger was re-added
+    /// `satisfied` after its exit had been accepted, 30 ms earlier. A sync that reshaped a condition
+    /// meanwhile has its own add queued behind this, and re-imposing the old circle here would leave
+    /// the OS and the bookkeeping disagreeing — the case the geometry check skips.
     ///
     /// Each successful add is recorded in `knownConditionIdentifiers` and the mirror persisted, the
     /// same bookkeeping `startMonitoring` does. Without it the mirror under-reports a condition this
     /// re-add revived, and the next process seeds ownership from that mirror — so a cold-wake event
     /// for the revived condition would be dropped by the ownership gate.
-    func rearmConditions(_ identifiers: Set<String>, records: [String: MonitorRegionRecord]) {
+    func rearmConditions(_ identifiers: Set<String>) {
         enqueueMonitorOperation { [weak self] monitor in
             guard let self else { return }
+            let records = await self.storage.getMonitorRegionRecords()
             var revived = false
-            for identifier in identifiers {
+            for identifier in identifiers.sorted() {
                 // A record without geometry can't be rebuilt; the next sync re-registers it.
                 guard let record = records[identifier],
-                      let center = record.center, let radius = record.radius
+                      let center = record.center, let radius = record.radius,
+                      self.registeredConditions[identifier] == RegisteredCondition(
+                          center: center,
+                          radius: radius,
+                          transitionTypes: record.transitionTypes
+                      )
                 else { continue }
                 let readdStart = self.dateUtil.now
                 await monitor.remove(identifier)

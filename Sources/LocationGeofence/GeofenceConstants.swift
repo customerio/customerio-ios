@@ -59,6 +59,11 @@ enum GeofenceConstants {
     /// never gated, so a normal crossing is never delayed by a fix request nor at any risk of refusal.
     static let contradictionGateReplayWindow: TimeInterval = 10
 
+    /// Minimum time between re-registrations prompted by the OS giving conditions up
+    /// (`CLMonitorGeofenceMonitor.scheduleUnmonitoredRecovery`): one re-run per burst, none inside
+    /// this window, so a condition the OS refuses to hold cannot make the SDK loop on it.
+    static let unmonitoredRecoveryInterval: TimeInterval = 60
+
     // Sane bounds the SDK coerces server config into, so a misconfigured backend can't push
     // monitoring into a pathological state: a positive out-of-range value clamps to the nearest
     // bound; a non-positive value falls back. (`maxMonitoringDistance` needs no upper bound — a
