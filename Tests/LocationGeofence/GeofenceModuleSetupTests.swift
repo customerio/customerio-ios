@@ -415,7 +415,14 @@ private final class CapturingEventBusHandler: EventBusHandler, @unchecked Sendab
 /// returns `nil`, so the test fails instead of hanging the whole run.
 private func bounded<T>(_ continuation: AsyncStream<T>.Continuation, seconds: TimeInterval = 5) -> Task<Void, Never> {
     Task {
-        try? await Task.sleep(nanoseconds: UInt64(seconds * 1000000000))
+        do {
+            try await Task.sleep(nanoseconds: UInt64(seconds * 1000000000))
+        } catch {
+            // Cancelled, which is how a test disarms this watchdog once the signal it was guarding
+            // has arrived. `try?` here swallowed the cancellation and fell through to `finish()`,
+            // so cancelling the watchdog closed the stream instead of standing it down.
+            return
+        }
         continuation.finish()
     }
 }

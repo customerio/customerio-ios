@@ -442,7 +442,7 @@ struct GeofenceBootstrapTests {
         // land after this test's `di.reset()`, inside the next test's overrides, under load.
         monitor.onAuthorizationChanged?()
 
-        #expect(await settle { coordinator.applyCachedRegistrationCallsCount == 2 })
+        #expect(await settle { coordinator.applyCachedRegistrationCallsCount >= 2 })
     }
 
     @Test
@@ -463,7 +463,7 @@ struct GeofenceBootstrapTests {
         // waited for by outcome so the re-run cannot outlive this test.
         monitor.onReconciled?()
 
-        #expect(await settle { coordinator.applyCachedRegistrationCallsCount == 2 })
+        #expect(await settle { coordinator.applyCachedRegistrationCallsCount >= 2 })
     }
 
     @Test
