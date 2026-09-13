@@ -6,6 +6,17 @@ import Foundation
 import SharedTests
 import Testing
 
+/// Bound for every wait below.
+///
+/// The default two seconds is enough on a quiet machine and not enough on CI, where the whole
+/// package's suites run in parallel and this one's decisions have to reach the main actor through
+/// that contention. It is not a stuck-versus-working question: on one CI run the refresh landed
+/// *after* its wait had given up and the mock had been reset, which is how
+/// `onLocationAcquired_givenNothingArmed_expectNoRefresh` came to see the call it asserts is absent.
+/// These are eventually-assertions, so the bound only decides how long a genuine failure takes to
+/// report — a passing wait returns as soon as the condition holds.
+private let waitForDetachedWork: TimeInterval = 10
+
 @Suite("GeofenceRefreshTrigger")
 struct GeofenceRefreshTriggerTests {
     private final class Harness {
@@ -13,9 +24,26 @@ struct GeofenceRefreshTriggerTests {
         let contextStore: BackgroundDeliveryContextStore
         let storage: GeofenceStorage
         let explicitRefreshRequested = Synchronized<Bool>(false)
-        var acquireCount = 0
         var lastKnown: LocationData?
         private let root: URL
+
+        /// `acquireFix` is called from the trigger's decision task, not from the test's thread, and
+        /// every wait below polls this from a third. A plain `var` read and written across those is
+        /// a race whose usual symptom is a neighbouring read going wrong, not this counter.
+        private let acquireCounter = Synchronized<Int>(0)
+        var acquireCount: Int { acquireCounter.wrappedValue }
+
+        /// Triggers this harness has built, held for its lifetime.
+        ///
+        /// `refreshIfPossible` does its work in `Task { @MainActor [weak self] }`, so a trigger owned
+        /// only by a local `let` can be released once a test makes its last direct use of it, before
+        /// that task's first hop resumes — the decision then finds `self` nil and silently returns.
+        /// Not what the CI failures in this file were: there the work arrived late, not never. The
+        /// hazard is real all the same, and one test used to guard against it by hand.
+        ///
+        /// Production ownership is exactly this — module state holds the trigger for the process —
+        /// so holding it here is the realistic arrangement, not a prop for the test.
+        private var triggers: [GeofenceRefreshTrigger] = []
 
         init() {
             // An unstubbed generated mock force-unwraps and takes the whole process down.
@@ -32,7 +60,7 @@ struct GeofenceRefreshTriggerTests {
         deinit { try? FileManager.default.removeItem(at: root) }
 
         func makeTrigger(locationMode: GeofenceLocationMode = .automatic) -> GeofenceRefreshTrigger {
-            GeofenceRefreshTrigger(
+            let trigger = GeofenceRefreshTrigger(
                 storage: storage,
                 contextStore: contextStore,
                 coordinator: { [coordinator] in coordinator },
@@ -40,8 +68,10 @@ struct GeofenceRefreshTriggerTests {
                 locationMode: locationMode,
                 explicitRefreshRequested: explicitRefreshRequested,
                 lastKnownLocation: { [weak self] in self?.lastKnown },
-                acquireFix: { [weak self] in self?.acquireCount += 1 }
+                acquireFix: { [weak self] in self?.acquireCounter.mutating { $0 += 1 } }
             )
+            triggers.append(trigger)
+            return trigger
         }
     }
 
@@ -67,7 +97,7 @@ struct GeofenceRefreshTriggerTests {
 
         let trigger = harness.makeTrigger()
         trigger.onIdentified()
-        #expect(await settle { harness.coordinator.refreshCallsCount == 1 })
+        #expect(await settle(timeout: waitForDetachedWork) { harness.coordinator.refreshCallsCount == 1 })
 
         #expect(harness.coordinator.refreshReceivedArguments?.latitude == 55)
         #expect(harness.coordinator.refreshReceivedArguments?.longitude == 66)
@@ -81,7 +111,7 @@ struct GeofenceRefreshTriggerTests {
 
         let trigger = harness.makeTrigger()
         trigger.onIdentified()
-        #expect(await settle { harness.coordinator.refreshCallsCount == 1 })
+        #expect(await settle(timeout: waitForDetachedWork) { harness.coordinator.refreshCallsCount == 1 })
 
         #expect(harness.coordinator.refreshReceivedArguments?.latitude == 10)
         #expect(harness.acquireCount == 0, "an anchor existed, so no fix should have been requested")
@@ -94,11 +124,11 @@ struct GeofenceRefreshTriggerTests {
         let trigger = harness.makeTrigger(locationMode: .automatic)
 
         trigger.onIdentified()
-        #expect(await settle { harness.acquireCount == 1 })
+        #expect(await settle(timeout: waitForDetachedWork) { harness.acquireCount == 1 })
         #expect(harness.coordinator.refreshCallsCount == 0)
 
         trigger.onLocationAcquired(LocationData(latitude: 31, longitude: 74))
-        #expect(await settle { harness.coordinator.refreshCallsCount == 1 })
+        #expect(await settle(timeout: waitForDetachedWork) { harness.coordinator.refreshCallsCount == 1 })
         #expect(harness.coordinator.refreshReceivedArguments?.latitude == 31)
     }
 
@@ -112,8 +142,6 @@ struct GeofenceRefreshTriggerTests {
         await settleQuietly()
 
         #expect(harness.acquireCount == 0, "manual mode waits for the host to supply a fix")
-        // Held to here: the decision captures the trigger weakly, so a temporary would deallocate.
-        _ = trigger
     }
 
     @Test
@@ -123,10 +151,10 @@ struct GeofenceRefreshTriggerTests {
         let trigger = harness.makeTrigger()
 
         trigger.onIdentified()
-        #expect(await settle { harness.acquireCount == 1 })
+        #expect(await settle(timeout: waitForDetachedWork) { harness.acquireCount == 1 })
 
         trigger.onLocationAcquired(LocationData(latitude: 31, longitude: 74))
-        #expect(await settle { harness.coordinator.refreshCallsCount == 1 })
+        #expect(await settle(timeout: waitForDetachedWork) { harness.coordinator.refreshCallsCount == 1 })
         trigger.onLocationAcquired(LocationData(latitude: 32, longitude: 75))
         await settleQuietly()
 
@@ -141,7 +169,7 @@ struct GeofenceRefreshTriggerTests {
         let trigger = harness.makeTrigger()
 
         trigger.onModuleInit()
-        #expect(await settle { harness.coordinator.refreshCallsCount == 1 })
+        #expect(await settle(timeout: waitForDetachedWork) { harness.coordinator.refreshCallsCount == 1 })
         harness.coordinator.resetMock()
 
         trigger.onLocationAcquired(LocationData(latitude: 9, longitude: 9))
@@ -158,7 +186,7 @@ struct GeofenceRefreshTriggerTests {
 
         let trigger = harness.makeTrigger()
         trigger.onLocationAcquired(LocationData(latitude: 44, longitude: 45))
-        #expect(await settle { harness.coordinator.refreshCallsCount == 1 })
+        #expect(await settle(timeout: waitForDetachedWork) { harness.coordinator.refreshCallsCount == 1 })
 
         #expect(harness.coordinator.refreshReceivedArguments?.latitude == 44)
     }
@@ -171,7 +199,7 @@ struct GeofenceRefreshTriggerTests {
         let trigger = harness.makeTrigger()
 
         trigger.onReset()
-        #expect(await settle { harness.coordinator.resetCallsCount == 1 })
+        #expect(await settle(timeout: waitForDetachedWork) { harness.coordinator.resetCallsCount == 1 })
         #expect(harness.coordinator.resetCallsCount == 1)
 
         trigger.onLocationAcquired(LocationData(latitude: 44, longitude: 45))
