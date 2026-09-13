@@ -147,6 +147,39 @@ struct CLMonitorRelaunchTests {
         }
     }
 
+    /// A relaunch that adopts and re-arms has to say what the OS ended up holding.
+    ///
+    /// `registration.applied` is the only record that answers "was this fence being watched", and
+    /// it used to be emitted solely by the sync coordinator — which the adopt path never reaches.
+    /// A relaunch that adopted twenty conditions and did nothing else produced no output record at
+    /// all, so a replay of it graded nothing. That is why the second-adopt defect above was
+    /// invisible to the harness until it was written as a direct test.
+    ///
+    /// Read from the OS, not from the set we asked for: the re-arm skips any condition whose stored
+    /// geometry no longer matches, so the two can differ.
+    @Test
+    @available(iOS 17.0, *)
+    func adoptExistingRegions_expectTheHeldSetReported() async {
+        await withFixture(preloaded: ["f1": .unsatisfied, "f2": .unsatisfied]) { fixture in
+            for identifier in ["f1", "f2"] {
+                await fixture.storage.recordMonitorRegistration(
+                    identifier: identifier, transitionTypes: [.enter, .exit],
+                    initialState: .exit, center: Self.center, radius: Self.radius
+                )
+            }
+            let records = await fixture.storage.getMonitorRegionRecords()
+
+            fixture.monitor.adoptExistingRegions(matching: ["f1", "f2"], records: records)
+            _ = await settleOnMain { !tails(fixture, ev: "registration.applied").isEmpty }
+            await settleQuietly()
+
+            let applied = tails(fixture, ev: "registration.applied")
+            #expect(applied.count == 1, "adopt emitted \(applied.count) registration.applied records")
+            #expect(applied.last?["ids"] == "f1,f2", "reported ids: \(applied.last?["ids"] ?? "none")")
+            #expect(applied.last?["n"] == "2")
+        }
+    }
+
     /// Adoption is also refused for a condition this process no longer owns — a sync that dropped
     /// it has its remove queued, and re-adding it here would resurrect the region behind that.
     @Test

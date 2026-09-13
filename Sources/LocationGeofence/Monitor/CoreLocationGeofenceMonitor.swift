@@ -78,7 +78,7 @@ final class CoreLocationGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @pr
         let adopted = identifiers.intersection(osMonitoredRegionIdentifiers)
         guard !adopted.isEmpty else { return }
         ownedRegionIdentifiers.formUnion(adopted)
-        logger.geofenceRegionsAdopted(count: adopted.count)
+        logger.geofenceRegionsAdopted(identifiers: Array(adopted))
     }
 
     func setOnTransition(_ handler: GeofenceTransitionHandler?) {

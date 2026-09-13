@@ -37,7 +37,7 @@ extension CLMonitorGeofenceMonitor {
         }
         rearmConditions(adopted)
         lastRearmAt = dateUtil.now
-        logger.geofenceRegionsAdopted(count: adopted.count)
+        logger.geofenceRegionsAdopted(identifiers: Array(adopted))
     }
 
     func startMonitoring(identifier: String, center: LocationData, radius: Double, transitionTypes: Set<GeofenceTransition>) {

@@ -65,7 +65,31 @@ extension CLMonitorGeofenceMonitor {
             }
             guard revived else { return }
             self.persistConditionMirror()
+            await self.reportRegisteredConditions(on: monitor)
         }
+    }
+
+    /// Reports the OS's live condition set as `registration.applied`, from inside the operation
+    /// that changed it.
+    ///
+    /// Adopt and re-arm both alter which fences the OS is holding for us, and until now neither
+    /// said so: `registration.applied` is emitted by the sync coordinator, and neither path goes
+    /// through it. A relaunch that adopted twenty conditions, re-armed them and did nothing else
+    /// therefore produced no output record at all — which is why replay could not catch the
+    /// second-adopt defect, and why a reader could not answer "was this fence being watched" for
+    /// the one session where the answer changed.
+    ///
+    /// Read from `monitor.identifiers`, not from the set we asked for. That is the contract the
+    /// record already carries — "what the OS is holding, not what was asked for" — and it matters
+    /// here more than at a sync: the loops above skip any condition whose record lost its geometry
+    /// or whose staged circle no longer matches, so the requested set overstates the result.
+    private func reportRegisteredConditions(on monitor: GeofenceConditionMonitoring) async {
+        let held = Set(await monitor.identifiers)
+        let movementTriggerId = GeofenceConstants.movementTriggerIdentifier
+        logger.geofenceRegionsRegistered(
+            identifiers: held.subtracting([movementTriggerId]).sorted(),
+            movementTrigger: held.contains(movementTriggerId) ? movementTriggerId : nil
+        )
     }
 
     /// Runs `rearmOnForegroundIfStale` when the app enters the foreground.
@@ -137,6 +161,7 @@ extension CLMonitorGeofenceMonitor {
             guard rearmed > 0 else { return }
             self.persistConditionMirror()
             self.logger.geofenceForegroundRearm(count: rearmed)
+            await self.reportRegisteredConditions(on: monitor)
         }
     }
 }
