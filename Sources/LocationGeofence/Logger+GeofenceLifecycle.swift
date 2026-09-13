@@ -320,7 +320,7 @@ extension Logger {
     func geofenceConditionAdded(identifier: String) {
         debug(
             "Condition \(identifier) added at the OS"
-                + geofenceTail("registration.added", .observation, [("id", identifier)]),
+                + geofenceTail("condition.added", .observation, [("id", identifier)]),
             geofenceTag
         )
     }
@@ -334,7 +334,7 @@ extension Logger {
     func geofenceConditionRemoved(identifier: String, op: GeofenceLog.RemovalOp) {
         debug(
             "Condition \(identifier) removed at the OS (\(op.rawValue))"
-                + geofenceTail("registration.removed", .observation, [
+                + geofenceTail("condition.removed", .observation, [
                     ("id", identifier),
                     ("op", op.rawValue)
                 ]),
