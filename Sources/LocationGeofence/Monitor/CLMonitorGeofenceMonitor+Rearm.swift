@@ -33,15 +33,19 @@ extension CLMonitorGeofenceMonitor {
                 else { continue }
                 let readdStart = self.dateUtil.now
                 await monitor.remove(identifier)
-                self.logger.geofenceConditionRemoved(identifier: identifier, op: .readd)
                 await monitor.add(
                     center: center,
                     radius: radius,
                     identifier: identifier,
                     assuming: record.lastState == .enter ? .satisfied : .unsatisfied
                 )
+                // Stamped straight off the `add`, before anything else runs. The contradiction
+                // gate replays events against this instant, and a log dispatched between the two
+                // pushes the anchor later than the OS actually accepted the circle.
+                let addedAt = self.dateUtil.now
+                self.conditionReadds[identifier] = ConditionReadd(start: readdStart, added: addedAt, center: center, radius: radius)
+                self.logger.geofenceConditionRemoved(identifier: identifier, op: .readd)
                 self.logger.geofenceConditionAdded(identifier: identifier)
-                self.conditionReadds[identifier] = ConditionReadd(start: readdStart, added: self.dateUtil.now, center: center, radius: radius)
                 // Recorded per identifier rather than in one pass at the end: an `.unmonitored` for
                 // one of these can land between two iterations, and it must be able to take the
                 // identifier back out.
@@ -103,15 +107,19 @@ extension CLMonitorGeofenceMonitor {
                 else { continue }
                 let readdStart = self.dateUtil.now
                 await monitor.remove(identifier)
-                self.logger.geofenceConditionRemoved(identifier: identifier, op: .readd)
                 await monitor.add(
                     center: center,
                     radius: radius,
                     identifier: identifier,
                     assuming: record.lastState == .enter ? .satisfied : .unsatisfied
                 )
+                // Stamped straight off the `add`, before anything else runs. The contradiction
+                // gate replays events against this instant, and a log dispatched between the two
+                // pushes the anchor later than the OS actually accepted the circle.
+                let addedAt = self.dateUtil.now
+                self.conditionReadds[identifier] = ConditionReadd(start: readdStart, added: addedAt, center: center, radius: radius)
+                self.logger.geofenceConditionRemoved(identifier: identifier, op: .readd)
                 self.logger.geofenceConditionAdded(identifier: identifier)
-                self.conditionReadds[identifier] = ConditionReadd(start: readdStart, added: self.dateUtil.now, center: center, radius: radius)
                 self.knownConditionIdentifiers.insert(identifier)
                 rearmed += 1
             }
