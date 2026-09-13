@@ -247,7 +247,13 @@ extension Logger {
     }
 
     /// A position the SDK read from the OS cache. `io=in`: the read is when the data crosses in.
+    ///
+    /// Gated whole, not just in its tail. This fires on every cache read — 55 of them in nine
+    /// minutes on the 2026-09-14 drive, against 11 OS callbacks — and with diagnostics off
+    /// `geofenceTail` returns nothing, so the line that survived carried no position, accuracy, age
+    /// or provenance. Volume with nothing in it, on a path this PR describes as logging-only.
     func geofenceLocationFix(_ location: CLLocation?, source: GeofenceLog.FixSource, now: Date) {
+        guard GeofenceDiagnostics.isEnabled else { return }
         guard let location else {
             debug(
                 "Deciding from no fix"
