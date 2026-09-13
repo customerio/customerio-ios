@@ -63,21 +63,3 @@ struct MonitorRegionRecord: Codable, Equatable, Sendable {
     /// field; `nil` refuses nothing.
     var lastEventDate: Date?
 }
-
-extension MonitorRegionRecord {
-    /// Whether an OS event dated `date` is a copy of one this record has already accounted for.
-    ///
-    /// CoreLocation re-delivers a crossing two or three times on device and the copies carry an
-    /// identical date, so the exact match is the mechanism and `osEventRedeliveryTolerance` is only
-    /// margin around it.
-    ///
-    /// Deliberately not "at or before the newest date seen", which is what this replaced. That made
-    /// `lastEventDate` an unbounded watermark: one event arriving late with a fresher date put every
-    /// genuine crossing dated before it permanently out of reach, and CoreLocation does not promise
-    /// to deliver in date order.
-    func hasAlreadySeenOSEvent(dated date: Date) -> Bool {
-        guard let lastEventDate else { return false }
-        let olderBy = lastEventDate.timeIntervalSince(date)
-        return olderBy >= 0 && olderBy <= GeofenceConstants.osEventRedeliveryTolerance
-    }
-}

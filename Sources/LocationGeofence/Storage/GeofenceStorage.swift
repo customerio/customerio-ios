@@ -186,9 +186,8 @@ actor GeofenceStorage {
         }
         if let osEventDate {
             if let registeredAt = record.registeredAt, osEventDate < registeredAt { return .suppressedPredatesRegistration }
-            if record.hasAlreadySeenOSEvent(dated: osEventDate) { return .suppressedRedelivery }
-            // Forward only: an accepted out-of-order event must not reopen a newer one's window.
-            record.lastEventDate = max(osEventDate, record.lastEventDate ?? osEventDate)
+            if let lastEventDate = record.lastEventDate, osEventDate <= lastEventDate { return .suppressedRedelivery }
+            record.lastEventDate = osEventDate
         }
         if let evidenceTimestamp, let changedAt = record.lastStateChangedAt, changedAt > evidenceTimestamp {
             return .suppressedNewerBaseline

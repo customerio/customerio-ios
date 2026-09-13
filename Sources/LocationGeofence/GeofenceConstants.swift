@@ -64,15 +64,6 @@ enum GeofenceConstants {
     /// this window, so a condition the OS refuses to hold cannot make the SDK loop on it.
     static let unmonitoredRecoveryInterval: TimeInterval = 60
 
-    /// How close to an already-seen OS event date a later event must be to count as the same event.
-    ///
-    /// CoreLocation re-delivers a crossing two or three times on device, and the copies carry an
-    /// identical `date` — that exact match is the mechanism; this is margin around it. Deliberately
-    /// small: the rule it replaced refused every event dated at or before the newest one seen, which
-    /// made any genuinely out-of-order crossing permanently unreachable, and CoreLocation does not
-    /// promise to deliver in date order.
-    static let osEventRedeliveryTolerance: TimeInterval = 1
-
     /// How long `isAwaitingReregistration` may refuse a condition's events after the OS gave it up.
     ///
     /// The refusal exists to cover the gap between the synchronous flag and the queued baseline
