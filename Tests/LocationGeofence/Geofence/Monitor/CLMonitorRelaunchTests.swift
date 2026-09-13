@@ -104,19 +104,6 @@ struct CLMonitorRelaunchTests {
         }
     }
 
-    /// Polls `condition` **on the main actor**, unlike the shared `settle`, whose escaping closure
-    /// runs on whatever thread the poll loop is on. Everything these tests wait for — the doubles,
-    /// the wrapper's own bookkeeping — lives on the main actor.
-    @discardableResult
-    private func settleOnMain(timeout: TimeInterval = 2, until condition: () -> Bool) async -> Bool {
-        let deadline = Date().addingTimeInterval(timeout)
-        while Date() < deadline {
-            if condition() { return true }
-            try? await Task.sleep(nanoseconds: 10000000)
-        }
-        return condition()
-    }
-
     @available(iOS 17.0, *)
     private func tails(_ fixture: Fixture, ev: String) -> [[String: String]] {
         GeofenceTail.parseAll(fixture.logger.messages).filter { $0["ev"] == ev }
