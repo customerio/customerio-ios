@@ -28,9 +28,12 @@ struct GeofenceConditionEvent: Sendable, Equatable {
 protocol GeofenceConditionMonitoring: AnyObject, Sendable {
     /// Every condition the OS holds under the SDK's monitor name, including ones it has given up on.
     var identifiers: [String] { get async }
+    /// Every state report for every held condition. Single-consumer: a second live iteration
+    /// splits the events between the two rather than each seeing all of them.
     var events: AsyncThrowingStream<GeofenceConditionEvent, Error> { get async }
     /// `assuming` seeds the OS's belief so a fresh add does not immediately report that state.
     func add(center: LocationData, radius: Double, identifier: String, assuming: GeofenceConditionState) async
+    /// Stops monitoring one condition. A no-op for an identifier the OS is not holding.
     func remove(_ identifier: String) async
 }
 
@@ -38,10 +41,19 @@ protocol GeofenceConditionMonitoring: AnyObject, Sendable {
 
 /// The `CLLocationManager` reads the CLMonitor path makes.
 protocol GeofenceLocationAuthority: AnyObject {
+    /// The tier currently granted, read synchronously. Never prompts.
     var authorizationStatus: CLAuthorizationStatus { get }
+    /// The OS's cap on a monitored radius; a larger request is clamped to it before registration.
     var maximumRegionMonitoringDistance: CLLocationDistance { get }
     /// The OS's cached position, a pull.
     var currentLocation: CLLocation? { get }
+    /// Fired when the granted tier changes.
+    ///
+    /// **Must be invoked on the main actor.** `CLMonitorGeofenceMonitor` installs a handler that
+    /// calls `MainActor.assumeIsolated`, which traps rather than hops if the contract is broken.
+    /// The live implementation satisfies it because `CLLocationManagerDelegate` callbacks arrive on
+    /// the thread the manager was created on, and the manager is created on the main thread; a
+    /// double standing in for it has to honour the same rule.
     var onAuthorizationChange: (() -> Void)? { get set }
     /// Holds a `CLServiceSession` while Always is granted (iOS 18+). Must never prompt.
     func updateServiceSession(isAlwaysAuthorized: Bool)
@@ -89,13 +101,19 @@ final class CoreLocationConditionMonitor: GeofenceConditionMonitoring, @unchecke
                 let task = Task {
                     do {
                         for try await event in underlying {
-                            continuation.yield(
+                            let delivered = continuation.yield(
                                 GeofenceConditionEvent(
                                     identifier: event.identifier,
                                     state: GeofenceConditionState(event.state),
                                     date: event.date
                                 )
                             )
+                            // The downstream stream is gone. `onTermination` cancels this task, but
+                            // that relies on the cancellation reaching `CLMonitor.Events`, which is
+                            // Apple's code; leaving the loop on the yield's own answer does not.
+                            // Without it a pump that outlives its consumer is a second live reader
+                            // of `monitor.events`, which the class comment says must never happen.
+                            if case .terminated = delivered { break }
                         }
                         continuation.finish()
                     } catch {

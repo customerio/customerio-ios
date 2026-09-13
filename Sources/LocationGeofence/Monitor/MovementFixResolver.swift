@@ -48,18 +48,26 @@ final class MovementFixResolver: NSObject, @preconcurrency CLLocationManagerDele
     /// `handleResolvedFix` / `handleRequestFailure` directly.
     var requestFreshFix: (() -> Void)?
 
+    /// How the timeout waits. The OS clock is the default; a caller driving a recorded timeline
+    /// supplies its own so the wait costs what the timeline says rather than real seconds.
+    private let waitForTimeout: (TimeInterval) async -> Void
+
     init(
         logger: Logger,
         maxAge: TimeInterval = GeofenceConstants.movementFixMaxAge,
         requestTimeout: TimeInterval = GeofenceConstants.movementFixRequestTimeout,
         backgroundTaskRunner: BackgroundTaskRunner = NoBackgroundTaskRunner(),
-        dateUtil: DateUtil = DIGraphShared.shared.dateUtil
+        dateUtil: DateUtil = DIGraphShared.shared.dateUtil,
+        waitForTimeout: @escaping (TimeInterval) async -> Void = { seconds in
+            try? await Task.sleep(nanoseconds: UInt64(seconds * 1000000000))
+        }
     ) {
         self.logger = logger
         self.maxAge = maxAge
         self.requestTimeout = requestTimeout
         self.backgroundTaskRunner = backgroundTaskRunner
         self.dateUtil = dateUtil
+        self.waitForTimeout = waitForTimeout
     }
 
     deinit {
@@ -147,8 +155,8 @@ final class MovementFixResolver: NSObject, @preconcurrency CLLocationManagerDele
 
     private func startTimeout() {
         timeoutTask?.cancel()
-        timeoutTask = Task { @MainActor [weak self, requestTimeout] in
-            try? await Task.sleep(nanoseconds: UInt64(requestTimeout * 1000000000))
+        timeoutTask = Task { @MainActor [weak self, requestTimeout, waitForTimeout] in
+            await waitForTimeout(requestTimeout)
             guard !Task.isCancelled else { return }
             self?.handleRequestFailure()
         }
