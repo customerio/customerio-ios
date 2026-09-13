@@ -125,7 +125,6 @@ extension CLMonitorGeofenceMonitor {
         // than on this process's bookkeeping, which can be missing an identifier the OS still
         // holds. Removing one the OS does not hold is a no-op.
         let readdStart = dateUtil.now
-        let wasHeldBeforeReadd = knownConditionIdentifiers.contains(identifier)
         await monitor.remove(identifier)
         await monitor.add(center: center, radius: radius, identifier: identifier, assuming: staged.assumedState)
         // Stamped straight off the `add`, before anything else runs. The contradiction gate replays
@@ -138,11 +137,7 @@ extension CLMonitorGeofenceMonitor {
             center: center,
             radius: radius
         )
-        // Speculative by design — CLMonitor silently ignores an add over a live identifier — so on
-        // a first-ever add there was nothing to remove and no removal to report.
-        if wasHeldBeforeReadd {
-            logger.geofenceConditionRemoved(identifier: identifier, op: .readd)
-        }
+        logger.geofenceConditionRemoved(identifier: identifier, op: .readd)
         logger.geofenceConditionAdded(identifier: identifier)
         knownConditionIdentifiers.insert(identifier)
         persistConditionMirror()
@@ -167,18 +162,8 @@ extension CLMonitorGeofenceMonitor {
     private func enqueueConditionRemoval(_ identifier: String) {
         enqueueMonitorOperation { [weak self] monitor in
             guard let self else { return }
-            // Before the remove, because the remove is what makes it false.
-            let wasHeld = self.knownConditionIdentifiers.contains(identifier)
             await monitor.remove(identifier)
-            // Only when something was there to remove. Both callers above reach here for a
-            // registration that was *refused* — blocked permission, invalid coordinates — where the
-            // identifier has usually never been registered at all, and a `registration.removed` for
-            // it makes added and removed impossible to pair or count, which is what they are for.
-            // Keyed on this monitor's own mirror, so the failure mode of a lossy mirror is a missing
-            // line rather than a removal recorded for a condition that never existed.
-            if wasHeld {
-                self.logger.geofenceConditionRemoved(identifier: identifier, op: .drop)
-            }
+            self.logger.geofenceConditionRemoved(identifier: identifier, op: .drop)
             self.knownConditionIdentifiers.remove(identifier)
             self.persistConditionMirror()
         }
@@ -286,10 +271,6 @@ extension CLMonitorGeofenceMonitor {
     /// sync re-registers it. Ownership is kept on purpose; dropping it would strand the region.
     func handleConditionUnmonitored(_ identifier: String) {
         logger.geofenceMonitorStoppedMonitoringRegion(identifier)
-        // The condition leaves the registered set here as surely as it does under `stopMonitoring`,
-        // and this is the one exit that had no `registration.removed`. Without it a reader
-        // reconstructing the live set from added minus removed still believes it is registered.
-        logger.geofenceConditionRemoved(identifier: identifier, op: .drop)
         knownConditionIdentifiers.remove(identifier)
         registeredConditions.removeValue(forKey: identifier)
         conditionReadds.removeValue(forKey: identifier)
