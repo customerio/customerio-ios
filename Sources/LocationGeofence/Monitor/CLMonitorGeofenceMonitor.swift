@@ -69,12 +69,16 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring {
     /// first pass re-register it; when the bootstrap adopts instead, `adoptExistingRegions` seeds it
     /// from the persisted records the re-arm then imposes at the OS.
     var registeredConditions: [String: RegisteredCondition] = [:]
-    /// Conditions the OS stopped monitoring since their last registration. The next registration
-    /// reseeds their stored baseline instead of preserving it — see `recordMonitorRegistration`.
-    var conditionsNeedingBaselineReseed: Set<String> = []
-    /// Whether a re-registration of conditions the OS gave up on is already queued (`+Registration`).
+    /// Conditions the OS stopped monitoring since their last registration, and when it gave each up.
+    /// The next registration reseeds their stored baseline rather than preserving it — see
+    /// `recordMonitorRegistration`. Dated so the refusal they drive expires; see `unmonitoredGateMaxAge`.
+    var conditionsNeedingBaselineReseed: [String: Date] = [:]
+    /// Whether a re-registration of conditions the OS gave up on is already queued, and whether one
+    /// waits out the rate-limit window before re-asking. Both from `+Registration`.
     var isUnmonitoredRecoveryScheduled = false
-    /// When the last such recovery ran; another is refused inside `unmonitoredRecoveryInterval`.
+    var isUnmonitoredRecoveryDeferred = false
+    /// When the last recovery that did something ran; another defers inside
+    /// `unmonitoredRecoveryInterval`. A run finding nothing pending does not stamp it.
     var lastUnmonitoredRecoveryAt: Date?
     /// When each condition was last (re)added at the OS and the circle that add imposed, stamped
     /// at the add's drain time. The contradiction gate only vets events landing shortly after an
@@ -118,6 +122,9 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring {
     let dateUtil: DateUtil
 
     private let makeConditionMonitor: @Sendable (String) async -> GeofenceConditionMonitoring
+    /// How a deferred recovery (`+Registration`) waits out its window: the OS clock by default, a
+    /// caller's own when it is driving a recorded timeline rather than paying 60 real seconds.
+    let waitForRecoveryWindow: (TimeInterval) async -> Void
 
     init(
         logger: Logger,
@@ -127,6 +134,9 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring {
         authority: GeofenceLocationAuthority = CoreLocationAuthority(),
         makeConditionMonitor: @escaping @Sendable (String) async -> GeofenceConditionMonitoring = { name in
             await CoreLocationConditionMonitor(monitor: CLMonitor(name))
+        },
+        waitForRecoveryWindow: @escaping (TimeInterval) async -> Void = { seconds in
+            try? await Task.sleep(nanoseconds: UInt64(seconds * 1000000000))
         }
     ) {
         self.logger = logger
@@ -136,6 +146,7 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring {
         self.lastRearmAt = dateUtil.now
         self.authManager = authority
         self.makeConditionMonitor = makeConditionMonitor
+        self.waitForRecoveryWindow = waitForRecoveryWindow
         self.movementFixResolver = MovementFixResolver(
             logger: logger,
             backgroundTaskRunner: GeofenceBackgroundTime.runner(name: "io.customer.geofence.movement-fix"),

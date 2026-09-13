@@ -92,8 +92,8 @@ extension CLMonitorGeofenceMonitor {
     /// event-silent when nothing changed. Cold launch already rebuilds via adopt; a process that
     /// lives suspended for days never cold-launches.
     ///
-    /// Unlike `rearmConditions`, ownership and records are read at DRAIN time, and a condition is
-    /// skipped unless its record matches the staged registration: a mid-transition condition (e.g.
+    /// Ownership and records are read at DRAIN time, and a condition is skipped unless its record
+    /// matches the staged registration — `rearmConditions` now applies the same rule: a mid-transition condition (e.g.
     /// adopt racing an in-flight reshape leaves the two temporarily disagreeing) will be settled by
     /// the queued ops, and re-arming it from either snapshot imposes geometry the other bookkeeping
     /// layer doesn't know about — the state-space model (v6) shows the sync layer then skips it as

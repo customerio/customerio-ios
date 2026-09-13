@@ -74,7 +74,15 @@ extension CLMonitorGeofenceMonitor {
     /// the 2026-09-12 relaunch a far fence's replay landed 1 ms after its own `.unmonitored`, found
     /// the stale record, and was delivered as a customer event four times over.
     func isAwaitingReregistration(identifier: String, transition: GeofenceTransition) -> Bool {
-        guard conditionsNeedingBaselineReseed.contains(identifier) else { return false }
+        guard let flaggedAt = conditionsNeedingBaselineReseed[identifier] else { return false }
+        // Bounded on purpose. If the re-registration never lands — a host app already at the OS's
+        // condition budget, say — an unbounded refusal turns a transient gap into a permanent one,
+        // which is the same outage this PR exists to end, only without an end. Past the bound the
+        // events are believed again; the reseed flag stays, so the eventual registration still
+        // replaces the stale baseline.
+        guard dateUtil.now.timeIntervalSince(flaggedAt) < GeofenceConstants.unmonitoredGateMaxAge else {
+            return false
+        }
         logger.geofenceCallbackDropped(identifier: identifier, transition: transition, reason: "awaiting_reregistration")
         return true
     }

@@ -64,6 +64,24 @@ enum GeofenceConstants {
     /// this window, so a condition the OS refuses to hold cannot make the SDK loop on it.
     static let unmonitoredRecoveryInterval: TimeInterval = 60
 
+    /// How close to an already-seen OS event date a later event must be to count as the same event.
+    ///
+    /// CoreLocation re-delivers a crossing two or three times on device, and the copies carry an
+    /// identical `date` — that exact match is the mechanism; this is margin around it. Deliberately
+    /// small: the rule it replaced refused every event dated at or before the newest one seen, which
+    /// made any genuinely out-of-order crossing permanently unreachable, and CoreLocation does not
+    /// promise to deliver in date order.
+    static let osEventRedeliveryTolerance: TimeInterval = 1
+
+    /// How long `isAwaitingReregistration` may refuse a condition's events after the OS gave it up.
+    ///
+    /// The refusal exists to cover the gap between the synchronous flag and the queued baseline
+    /// clear. If the re-registration never succeeds — a host app over the OS budget, say — an
+    /// unbounded refusal is a permanent version of the outage the recovery exists to end, so past
+    /// this point the events are believed again. The reseed flag itself does not expire: a
+    /// condition registered an hour later still needs its stale baseline replaced.
+    static let unmonitoredGateMaxAge: TimeInterval = 300
+
     // Sane bounds the SDK coerces server config into, so a misconfigured backend can't push
     // monitoring into a pathological state: a positive out-of-range value clamps to the nearest
     // bound; a non-positive value falls back. (`maxMonitoringDistance` needs no upper bound — a
