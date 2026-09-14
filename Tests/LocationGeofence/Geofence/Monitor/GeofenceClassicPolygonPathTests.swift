@@ -31,6 +31,40 @@ struct GeofenceClassicPolygonPathTests {
         func error(_: String, _: String?, _: Error?) {}
     }
 
+    private final class CapturingLogger: Logger, @unchecked Sendable {
+        private let lock = NSLock()
+        private var captured: [String] = []
+        var messages: [String] {
+            lock.lock()
+            defer { lock.unlock() }
+            return captured
+        }
+
+        var logLevel: CioLogLevel = .debug
+        func setLogDispatcher(_: ((CioLogLevel, String) -> Void)?) {}
+        func setLogLevel(_ level: CioLogLevel) {
+            logLevel = level
+        }
+
+        private func record(_ message: String) {
+            lock.lock()
+            defer { lock.unlock() }
+            captured.append(message)
+        }
+
+        func debug(_ message: String, _: String?) {
+            record(message)
+        }
+
+        func info(_ message: String, _: String?) {
+            record(message)
+        }
+
+        func error(_ message: String, _: String?, _: Error?) {
+            record(message)
+        }
+    }
+
     private struct Delivered {
         let identifier: String
         let transition: GeofenceTransition
@@ -136,5 +170,22 @@ struct GeofenceClassicPolygonPathTests {
             await Task.yield()
         }
         return condition()
+    }
+
+    /// The gate analysis for iOS 13-17 rests on "registering 9 regions produced ZERO
+    /// `os.callback.received`", which is only evidence if this path emits that record at all. An
+    /// owned crossing must produce one — see the absence-of-a-log-line trap.
+    @Test
+    func ownedCrossing_expectAReceivedCallbackRecord() throws {
+        try DiagnosticsGateTesting.withDiagnostics(true) {
+            let logger = CapturingLogger()
+            let monitor = CoreLocationGeofenceMonitor(logger: logger)
+            monitor.setOnTransition { _, _, _, _, _, _ in }
+            monitor.ownedRegionIdentifiers.insert(Self.polygonId)
+
+            monitor.locationManager(CLLocationManager(), didEnterRegion: coveringRegion())
+
+            #expect(logger.messages.contains { $0.contains("ev=os.callback.received") && $0.contains("id=\(Self.polygonId)") })
+        }
     }
 }
