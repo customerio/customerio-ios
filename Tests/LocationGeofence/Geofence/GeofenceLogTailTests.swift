@@ -369,6 +369,32 @@ struct GeofenceLogTailTests {
         expectUsableTokens(statuses.map(GeofenceLog.permission))
     }
 
+    /// A case with no explicit raw value takes its Swift identifier as the wire token, so a
+    /// rename silently rewrites the log contract and nothing fails. Pinning the whole set catches
+    /// both a rename and a case added without one.
+    @Test
+    func rawValueTokens_expectThePinnedSetPerEnum() {
+        expectTokens(HandleMovementTier.self, ["localRerank", "remoteRefresh"])
+        expectTokens(PolygonPassSkipReason.self, ["pass_in_flight"])
+        expectTokens(PolygonEvaluationReason.self, ["new_polygon", "new_polygon_forced_request_failed", "movement", "foreground"])
+        expectTokens(PolygonUndecidedReason.self, [
+            "no_usable_fix", "user_changed", "ring_unbuildable", "unregistered", "circle_expired", "within_accuracy"
+        ])
+        expectTokens(GeofenceFixPurpose.self, ["movement", "gate", "heal", "pending", "polygon"])
+        expectTokens(GeofenceCatalogShape.self, ["circle", "polygon", "undescribed", "unknown"])
+        expectTokens(GeofenceLog.FixSource.self, ["manager_cache", "resolver", "fresh_request", "gate", "synthetic", "none"])
+    }
+
+    private func expectTokens<T: RawRepresentable & CaseIterable>(
+        _: T.Type,
+        _ expected: Set<String>,
+        sourceLocation: SourceLocation = #_sourceLocation
+    ) where T.RawValue == String {
+        let actual = Set(T.allCases.map(\.rawValue))
+        #expect(actual == expected, "\(T.self) tokens changed: \(actual.symmetricDifference(expected))", sourceLocation: sourceLocation)
+        expectUsableTokens(Array(actual), sourceLocation: sourceLocation)
+    }
+
     /// The literals in these tests are the wire contract, not a copy of the switch: a replay keys
     /// off them, so a duplicate merges two causes into one bucket and a separator is rewritten by
     /// `sanitize` into a token nobody is looking for.

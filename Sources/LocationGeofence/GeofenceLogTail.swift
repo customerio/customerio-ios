@@ -183,7 +183,7 @@ enum GeofenceLog {
     // MARK: - Fix quality and provenance (ungated)
 
     /// Where a fix came from; the log previously said only that *a* position existed.
-    enum FixSource: String {
+    enum FixSource: String, CaseIterable {
         /// `CLLocationManager.location` — the OS's cached fix. Can freeze at process start on a
         /// long-suspended process, so this is the one that silently goes stale.
         case managerCache = "manager_cache"

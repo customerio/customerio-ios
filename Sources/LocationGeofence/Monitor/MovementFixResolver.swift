@@ -8,7 +8,7 @@ import Foundation
 /// `movement.fix.resolved` record joins one population — and the wake margin is calibrated from
 /// the movement one alone. No default: a new call site must say which it is, or it silently
 /// contaminates the sample.
-enum GeofenceFixPurpose: String {
+enum GeofenceFixPurpose: String, CaseIterable {
     case movement
     case contradictionGate = "gate"
     case baselineHeal = "heal"
