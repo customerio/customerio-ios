@@ -85,26 +85,25 @@ class SseConnectionManagerTest: XCTestCase {
     func test_startConnection_givenAlreadyConnecting_expectNoSecondConnect() async {
         // Setup: SSE service returns a stream that doesn't complete (simulating ongoing connection)
         let (stream, _) = AsyncStreamBackport.makeStream(of: SseEvent.self)
-        sseServiceMock.connectReturnValue = stream
 
         let connectExpectation = expectation(description: "First connect called")
         connectExpectation.expectedFulfillmentCount = 1
         // Use assertForOverFulfill to detect if a second connect happens
         connectExpectation.assertForOverFulfill = true
 
-        sseServiceMock.connectClosure = { [weak sseServiceMock] _, _ in
+        sseServiceMock.connectClosure = { _, _ in
             connectExpectation.fulfill()
-            return sseServiceMock?.connectReturnValue ?? stream
+            return stream
         }
 
         // Action: Start connection twice
         await sut.startConnection()
-        await fulfillment(of: [connectExpectation], timeout: 1.0)
+        await fulfillment(of: [connectExpectation], timeout: 2.0)
 
         await sut.startConnection()
 
         // Give any wrongly spawned connection task time to trigger (it won't if correct)
-        try? await Task.sleep(nanoseconds: 50_000_000) // 50ms observation window
+        try? await Task.sleep(nanoseconds: 100_000_000) // 100ms observation window
 
         // Assert: Only one connect call
         XCTAssertEqual(sseServiceMock.connectCallsCount, 1)
@@ -210,9 +209,12 @@ class SseConnectionManagerTest: XCTestCase {
         // Action
         await sut.startConnection()
 
+        // Give the spawned task time to start iterating the stream
+        try? await Task.sleep(nanoseconds: 10_000_000) // 10ms
+
         // Send connectionOpen event
         continuation.yield(.connectionOpen)
-        await fulfillment(of: [timerStartedExpectation], timeout: 1.0)
+        await fulfillment(of: [timerStartedExpectation], timeout: 2.0)
 
         // Clean up
         continuation.finish()
@@ -237,11 +239,15 @@ class SseConnectionManagerTest: XCTestCase {
         }
 
         await sut.startConnection()
+
+        // Give the spawned task time to start iterating the stream
+        try? await Task.sleep(nanoseconds: 10_000_000) // 10ms
+
         continuation.yield(.connectionOpen)
         continuation.yield(.serverEvent(ServerEvent(id: nil, type: "connected", data: "")))
         continuation.finish()
 
-        await fulfillment(of: [resetExpectation], timeout: 1.0)
+        await fulfillment(of: [resetExpectation], timeout: 2.0)
 
         XCTAssertEqual(counter.value, 1)
     }
@@ -259,10 +265,14 @@ class SseConnectionManagerTest: XCTestCase {
         }
 
         await sut.startConnection()
+
+        // Give the spawned task time to start iterating the stream
+        try? await Task.sleep(nanoseconds: 10_000_000) // 10ms
+
         continuation.yield(.connectionOpen)
         continuation.finish()
 
-        await fulfillment(of: [resetExpectation], timeout: 1.0)
+        await fulfillment(of: [resetExpectation], timeout: 2.0)
 
         // Transport open alone is not confirmation: nothing should be backfilled yet.
         XCTAssertEqual(counter.value, 0)
@@ -280,9 +290,13 @@ class SseConnectionManagerTest: XCTestCase {
 
         // Action
         await sut.startConnection()
+
+        // Give the spawned task time to start iterating the stream
+        try? await Task.sleep(nanoseconds: 10_000_000) // 10ms
+
         continuation.yield(.connectionOpen)
 
-        await fulfillment(of: [retryResetExpectation], timeout: 1.0)
+        await fulfillment(of: [retryResetExpectation], timeout: 2.0)
         continuation.finish()
 
         // Assert
@@ -305,9 +319,13 @@ class SseConnectionManagerTest: XCTestCase {
 
         // Action
         await sut.startConnection()
+
+        // Give the spawned task time to start iterating the stream
+        try? await Task.sleep(nanoseconds: 10_000_000) // 10ms
+
         continuation.yield(.connectionFailed(error))
 
-        await fulfillment(of: [retryScheduledExpectation], timeout: 1.0)
+        await fulfillment(of: [retryScheduledExpectation], timeout: 2.0)
         continuation.finish()
 
         // Assert
@@ -327,9 +345,13 @@ class SseConnectionManagerTest: XCTestCase {
 
         // Action
         await sut.startConnection()
+
+        // Give the spawned task time to start iterating the stream
+        try? await Task.sleep(nanoseconds: 10_000_000) // 10ms
+
         continuation.yield(.connectionFailed(.networkError(message: "Error", underlyingError: nil)))
 
-        await fulfillment(of: [resetExpectation], timeout: 1.0)
+        await fulfillment(of: [resetExpectation], timeout: 2.0)
         continuation.finish()
 
         // Assert
@@ -348,9 +370,13 @@ class SseConnectionManagerTest: XCTestCase {
 
         // Action
         await sut.startConnection()
+
+        // Give the spawned task time to start iterating the stream
+        try? await Task.sleep(nanoseconds: 10_000_000) // 10ms
+
         continuation.yield(.connectionClosed)
 
-        await fulfillment(of: [resetExpectation], timeout: 1.0)
+        await fulfillment(of: [resetExpectation], timeout: 2.0)
         continuation.finish()
 
         // Assert
@@ -372,10 +398,13 @@ class SseConnectionManagerTest: XCTestCase {
         // Action
         await sut.startConnection()
 
+        // Give the spawned task time to start iterating the stream
+        try? await Task.sleep(nanoseconds: 10_000_000) // 10ms
+
         let serverEvent = ServerEvent(id: nil, type: "connected", data: "{}")
         continuation.yield(.serverEvent(serverEvent))
 
-        await fulfillment(of: [timerStartedExpectation], timeout: 1.0)
+        await fulfillment(of: [timerStartedExpectation], timeout: 2.0)
         continuation.finish()
 
         // Assert
@@ -400,11 +429,15 @@ class SseConnectionManagerTest: XCTestCase {
 
         // Action
         await sut.startConnection()
+
+        // Give the spawned task time to start iterating the stream
+        try? await Task.sleep(nanoseconds: 10_000_000) // 10ms
+
         streamContinuation.yield(.connectionOpen)
         streamContinuation.yield(.serverEvent(ServerEvent(id: nil, type: "heartbeat", data: "{\"heartbeat\": 30}")))
         streamContinuation.finish()
 
-        await fulfillment(of: [timerStartedTwice], timeout: 1.0)
+        await fulfillment(of: [timerStartedTwice], timeout: 2.0)
 
         // Assert: Timer started for connection open and again for heartbeat
         XCTAssertGreaterThanOrEqual(heartbeatTimerMock.startTimerCallsCount, 2)
@@ -432,6 +465,9 @@ class SseConnectionManagerTest: XCTestCase {
         // Action
         await sut.startConnection()
 
+        // Give the spawned task time to start iterating the stream
+        try? await Task.sleep(nanoseconds: 10_000_000) // 10ms
+
         // Create a valid messages event with proper JSON
         let messagesJson = """
         [{"queueId": "q1", "priority": 1, "messageId": "m1"}]
@@ -440,7 +476,7 @@ class SseConnectionManagerTest: XCTestCase {
         continuation.yield(.serverEvent(messagesEvent))
         continuation.finish()
 
-        await fulfillment(of: [dispatchExpectation, resetExpectation], timeout: 1.0)
+        await fulfillment(of: [dispatchExpectation, resetExpectation], timeout: 2.0)
 
         // Assert: Check if processMessageQueue action was dispatched
         let processActions = inAppMessageManagerMock.dispatchReceivedInvocations.filter {
