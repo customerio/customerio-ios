@@ -253,7 +253,14 @@ public class MessagingPush: ModuleTopLevelObject<MessagingPushInstance>, Messagi
         // Retain the task handle so tests can await it deterministically and teardown can drain it, preventing a
         // leaked flush from outliving its test. Production behavior is otherwise unchanged.
         pendingMetricsFlushTask = Task.detached(priority: .utility) {
-            let pending = store.loadAll()
+            // Unreadable is not empty: "nothing to flush" would report a backlog as cleared. No
+            // later-launch promise either — an unresolvable app group gives the same result.
+            guard case .rows(let pending) = store.read() else {
+                logger.debug(
+                    "Pending push delivery store: could not be read on MessagingPush startup; nothing was flushed and nothing was discarded"
+                )
+                return
+            }
             guard !pending.isEmpty else {
                 logger.debug(
                     "Pending push delivery store: nothing to flush on MessagingPush startup"

@@ -2831,6 +2831,9 @@ public class PendingPushDeliveryStoreMock: @unchecked Sendable, PendingPushDeliv
         _loadAllCallsCount.wrappedValue = 0
 
         mockCalled = false // do last as resetting properties above can make this true
+        _readCallsCount.wrappedValue = 0
+
+        mockCalled = false // do last as resetting properties above can make this true
         _removeCallsCount.wrappedValue = 0
         _removeReceivedArguments.wrappedValue = nil
         _removeReceivedInvocations.wrappedValue = []
@@ -2923,6 +2926,40 @@ public class PendingPushDeliveryStoreMock: @unchecked Sendable, PendingPushDeliv
         mockCalled = true
         _loadAllCallsCount += 1
         return loadAllClosure.map { $0() } ?? loadAllReturnValue
+    }
+
+    // MARK: - read
+
+    /// Number of times the function was called.
+    private let _readCallsCount: CioInternalCommon.Synchronized<Int> = .init(0)
+    public var readCallsCount: Int {
+        _readCallsCount.wrappedValue
+    }
+
+    /// `true` if the function was ever called.
+    public var readCalled: Bool {
+        readCallsCount > 0
+    }
+
+    /// Value to return from the mocked function.
+    private let _readReturnValue: CioInternalCommon.Synchronized<PendingPushDeliveryQueueRead?> = .init(nil)
+    public var readReturnValue: PendingPushDeliveryQueueRead! {
+        get { _readReturnValue.wrappedValue }
+        set { _readReturnValue.wrappedValue = newValue }
+    }
+
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     The closure has first priority to return a value for the mocked function. If the closure returns `nil`,
+     then the mock will attempt to return the value for `readReturnValue`
+     */
+    public var readClosure: (() -> PendingPushDeliveryQueueRead)?
+
+    /// Mocked function for `read()`. Your opportunity to return a mocked value and check result of mock in test code.
+    public func read() -> PendingPushDeliveryQueueRead {
+        mockCalled = true
+        _readCallsCount += 1
+        return readClosure.map { $0() } ?? readReturnValue
     }
 
     // MARK: - remove
