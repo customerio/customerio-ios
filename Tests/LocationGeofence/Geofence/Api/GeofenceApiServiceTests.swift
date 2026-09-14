@@ -216,7 +216,19 @@ struct GeofenceApiServiceTests {
         ("cdp.customer.io", "https://cdp.customer.io/v2/geofences/nearest"),
         ("http://localhost:8080/v1", "http://localhost:8080/v2/geofences/nearest"),
         // Only a trailing version is a version. A host whose NAME contains one keeps it.
-        ("v1.example.com/v1", "https://v1.example.com/v2/geofences/nearest")
+        ("v1.example.com/v1", "https://v1.example.com/v2/geofences/nearest"),
+        // Regression: `apiHost` is customer-supplied and a pasted trailing slash is ordinary.
+        // Splicing the path onto the host string produced a `//` here.
+        ("cdp.customer.io/", "https://cdp.customer.io/v2/geofences/nearest"),
+        ("https://cdp.customer.io/", "https://cdp.customer.io/v2/geofences/nearest"),
+        ("proxy.example.com/cio/", "https://proxy.example.com/cio/v2/geofences/nearest"),
+        // Empty segments anywhere, including ones that hid the version from a trailing-anchored match.
+        ("cdp.customer.io/v1//", "https://cdp.customer.io/v2/geofences/nearest"),
+        ("cdp.customer.io//v1", "https://cdp.customer.io/v2/geofences/nearest"),
+        // A query on the host survives instead of swallowing the path after it.
+        ("cdp.customer.io/v1?x=1", "https://cdp.customer.io/v2/geofences/nearest?x=1"),
+        // `v` alone is not a version, so the segment stays.
+        ("cdp.customer.io/v", "https://cdp.customer.io/v/v2/geofences/nearest")
     ])
     func composeUrl_givenAnyHostVersion_expectTheEndpointsOwn(host: String, expected: String) {
         let url = GeofenceApiServiceImpl.composeUrl(apiHost: host, path: GeofenceApiServiceImpl.nearestPath)

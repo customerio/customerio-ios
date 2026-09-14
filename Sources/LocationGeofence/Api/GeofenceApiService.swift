@@ -124,17 +124,32 @@ final class GeofenceApiServiceImpl: GeofenceApiService, @unchecked Sendable {
         }
     }
 
-    /// Composes `https://{apiHost}{path}`, stripping a trailing version segment off the host
-    /// because `path` supplies its own. Handles `/v1`, another version, or no version at all —
-    /// a self-hosted or overridden host may legitimately carry none.
+    /// Composes `{apiHost}{path}`, dropping a trailing version segment off the host because `path`
+    /// supplies its own. Handles `/v1`, another version, or no version at all — a self-hosted or
+    /// overridden host may legitimately carry none.
+    ///
+    /// Rebuilt from parsed components rather than spliced onto the host string: `apiHost` is
+    /// customer-supplied, and a trailing slash on it concatenates into a `//` the server does not
+    /// route. Splitting also drops empty segments, and confining the edit to the path leaves a
+    /// query or port on the host intact instead of appending into it.
     static func composeUrl(apiHost: String, path: String) -> URL? {
-        let host = BackgroundDeliveryHttp.absoluteHost(apiHost)
-        let versionless = host.replacingOccurrences(
-            of: "/v[0-9]+/?$",
-            with: "",
-            options: .regularExpression
-        )
-        return URLComponents(string: versionless + path)?.url
+        guard var components = URLComponents(string: BackgroundDeliveryHttp.absoluteHost(apiHost))
+        else { return nil }
+        // `percentEncodedPath`, not `path`: reading and writing the decoded form would re-encode
+        // an already-escaped segment on an overridden host.
+        var segments = components.percentEncodedPath.split(separator: "/").map(String.init)
+        if let last = segments.last, isVersionSegment(last) {
+            segments.removeLast()
+        }
+        segments.append(contentsOf: path.split(separator: "/").map(String.init))
+        components.percentEncodedPath = "/" + segments.joined(separator: "/")
+        return components.url
+    }
+
+    /// `v` followed by digits and nothing else, so a path segment that merely starts with `v`
+    /// (`/v`, `/venues`) is left alone.
+    private static func isVersionSegment(_ segment: String) -> Bool {
+        segment.count >= 2 && segment.hasPrefix("v") && segment.dropFirst().allSatisfy(\.isNumber)
     }
 }
 
