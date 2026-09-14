@@ -4,7 +4,7 @@ import Foundation
 /// The shape the catalog reports, one branch per outcome of the mapper's own `shape` switch.
 /// A closed set, so `sh` stays groupable even when the server sends something unrecognized —
 /// the token it actually sent is already on `registration.rejected`.
-enum GeofenceCatalogShape: String {
+enum GeofenceCatalogShape: String, CaseIterable {
     case circle
     case polygon
     /// Polygon fields with no discriminator. Dropped by the mapper as `undescribedShape`.

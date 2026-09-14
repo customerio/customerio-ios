@@ -1,7 +1,7 @@
 import Foundation
 
 /// Why a region on the wire never became a monitorable fence.
-enum GeofenceRegionDropReason: String, Error {
+enum GeofenceRegionDropReason: String, Error, CaseIterable {
     /// A shape the server NAMED that this version cannot monitor. The workspace moved on, so this
     /// is the one reason exempt from the all-dropped guard: stale monitors should go with it.
     case unknownShape = "unrecognized shape"
