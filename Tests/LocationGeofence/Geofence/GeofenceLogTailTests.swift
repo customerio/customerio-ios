@@ -261,6 +261,168 @@ struct GeofenceLogTailTests {
         #expect(BackgroundDeliveryHttpError.http(statusCode: 503).diagnosticReason == "http_503")
     }
 
+    /// `ev` alone does not identify these records, and the contract table only checks `why=` is
+    /// present — so swapping two cases in either switch passes every other assertion in this file.
+    @Test
+    func regionDropReason_expectDistinctPinnedTokenPerCause() {
+        let cases = GeofenceRegionDropReason.allCases
+        for reason in cases {
+            switch reason {
+            case .unknownShape: #expect(reason.logToken == "unknown_shape")
+            case .undescribedShape: #expect(reason.logToken == "undescribed_shape")
+            case .unusableCircle: #expect(reason.logToken == "unusable_circle")
+            case .unusablePolygon: #expect(reason.logToken == "unusable_polygon")
+            }
+        }
+        expectUsableTokens(cases.map(\.logToken))
+    }
+
+    @Test
+    func polygonOutcome_expectDistinctPinnedTokenPerCause() {
+        let cases: [PolygonMembershipOutcome] = [
+            .deliver(.enter), .suppressedNoChange, .suppressedNewerDecision,
+            .suppressedInitialOutside, .suppressedUnmonitored, .suppressedGeometryChanged
+        ]
+        for outcome in cases {
+            switch outcome {
+            case .deliver: #expect(outcome.logToken == "deliver")
+            case .suppressedNoChange: #expect(outcome.logToken == "no_change")
+            case .suppressedNewerDecision: #expect(outcome.logToken == "newer_decision")
+            case .suppressedInitialOutside: #expect(outcome.logToken == "initial_outside")
+            case .suppressedUnmonitored: #expect(outcome.logToken == "unmonitored")
+            case .suppressedGeometryChanged: #expect(outcome.logToken == "geometry_changed")
+            }
+        }
+        expectUsableTokens(cases.map(\.logToken))
+    }
+
+    /// The two refusals that are NOT the write's outcome are the whole reason this enum exists:
+    /// reusing `no_change` for either reports a delivery that was refused as one never owed.
+    @Test
+    func polygonUndeliveredReason_expectRefusalsDistinctFromOutcomes() {
+        let outcomes: [PolygonMembershipOutcome] = [
+            .deliver(.enter), .suppressedNoChange, .suppressedNewerDecision,
+            .suppressedInitialOutside, .suppressedUnmonitored, .suppressedGeometryChanged
+        ]
+        // Every outcome, so the two refusals are checked against all of them and not just one.
+        let cases: [PolygonUndeliveredReason] = outcomes.map { .outcome($0) } + [.userChanged, .transitionNotRegistered]
+        for reason in cases {
+            switch reason {
+            case .outcome(let outcome): #expect(reason.logToken == outcome.logToken)
+            case .userChanged: #expect(reason.logToken == "user_changed")
+            case .transitionNotRegistered: #expect(reason.logToken == "transition_type_not_registered")
+            }
+        }
+        expectUsableTokens(cases.map(\.logToken))
+    }
+
+    @Test
+    func monitorEventOutcome_expectDistinctPinnedTokenPerCause() {
+        for outcome in GeofenceMonitorEventOutcome.allCases {
+            switch outcome {
+            case .deliver: #expect(outcome.diagnosticReason == nil, "deliver is not a discard and must log nothing")
+            case .suppressedNoChange: #expect(outcome.diagnosticReason == "no_state_change")
+            case .suppressedFilteredType: #expect(outcome.diagnosticReason == "transition_type_not_registered")
+            case .suppressedNoBaseline: #expect(outcome.diagnosticReason == "baseline_established")
+            case .suppressedNewerBaseline: #expect(outcome.diagnosticReason == "newer_baseline")
+            }
+        }
+        expectUsableTokens(GeofenceMonitorEventOutcome.allCases.compactMap(\.diagnosticReason))
+    }
+
+    @Test
+    func apiError_expectDistinctPinnedTokenPerCause() {
+        let cases: [GeofenceApiError] = [
+            .missingApiHost, .missingCdpApiKey, .invalidRequest, .http(statusCode: 503), .transport, .decoding
+        ]
+        for error in cases {
+            switch error {
+            case .missingApiHost: #expect(error.diagnosticToken == "missing_api_host")
+            case .missingCdpApiKey: #expect(error.diagnosticToken == "missing_cdp_api_key")
+            case .invalidRequest: #expect(error.diagnosticToken == "invalid_request")
+            case .http(let statusCode): #expect(error.diagnosticToken == "http_\(statusCode)")
+            case .transport: #expect(error.diagnosticToken == "transport")
+            case .decoding: #expect(error.diagnosticToken == "decoding")
+            }
+        }
+        // The status rides the token, so two different failures must not collapse into one bucket.
+        #expect(GeofenceApiError.http(statusCode: 401).diagnosticToken == "http_401")
+        #expect(GeofenceApiError.http(statusCode: 503).diagnosticToken == "http_503")
+        expectUsableTokens(cases.map(\.diagnosticToken))
+    }
+
+    /// `@unknown default` means a future status silently reports `unknown`; pinning the five we
+    /// handle is what keeps that from swallowing one we already understand.
+    @Test
+    func permissionToken_expectDistinctPinnedTokenPerStatus() {
+        let statuses: [CLAuthorizationStatus] = [.notDetermined, .restricted, .denied, .authorizedAlways, .authorizedWhenInUse]
+        for status in statuses {
+            switch status {
+            case .notDetermined: #expect(GeofenceLog.permission(status) == "not_determined")
+            case .restricted: #expect(GeofenceLog.permission(status) == "restricted")
+            case .denied: #expect(GeofenceLog.permission(status) == "denied")
+            case .authorizedAlways: #expect(GeofenceLog.permission(status) == "always")
+            case .authorizedWhenInUse: #expect(GeofenceLog.permission(status) == "when_in_use")
+            @unknown default: Issue.record("unhandled CLAuthorizationStatus in the test table")
+            }
+        }
+        expectUsableTokens(statuses.map(GeofenceLog.permission))
+    }
+
+    /// A case with no explicit raw value takes its Swift identifier as the wire token, so a
+    /// rename silently rewrites the log contract and nothing fails. Pinning the whole set catches
+    /// both a rename and a case added without one.
+    /// The tail's separator set is itself the contract: every token assertion reads it from
+    /// production, so narrowing it would relax those tests and `sanitize` together while the
+    /// off-device parser, which keys on these literals, silently breaks.
+    @Test
+    func separators_expectThePinnedSet() {
+        #expect(GeofenceLog.separators == ["=", ",", ":", "|"])
+    }
+
+    @Test
+    func rawValueTokens_expectThePinnedSetPerEnum() {
+        // Not only a log token: this raw value is the tracked event's `transition` property, the
+        // Codable form of a persisted pending row, and part of the pending and cooldown keys.
+        expectTokens(GeofenceTransition.self, ["enter", "exit"])
+        // The only camelCase tokens in the vocabulary, pinned as they are on purpose: Android
+        // emits neither, so there is nothing to diverge from and renaming them buys nothing.
+        expectTokens(HandleMovementTier.self, ["localRerank", "remoteRefresh"])
+        expectTokens(PolygonPassSkipReason.self, ["pass_in_flight"])
+        expectTokens(PolygonEvaluationReason.self, ["new_polygon", "new_polygon_forced_request_failed", "movement", "foreground"])
+        expectTokens(PolygonUndecidedReason.self, [
+            "no_usable_fix", "user_changed", "ring_unbuildable", "unregistered", "circle_expired", "within_accuracy"
+        ])
+        expectTokens(GeofenceFixPurpose.self, ["movement", "gate", "heal", "pending", "polygon"])
+        expectTokens(GeofenceCatalogShape.self, ["circle", "polygon", "undescribed", "unknown"])
+        expectTokens(GeofenceLog.FixSource.self, ["manager_cache", "resolver", "fresh_request", "gate", "synthetic", "none"])
+    }
+
+    private func expectTokens<T: RawRepresentable & CaseIterable>(
+        _: T.Type,
+        _ expected: Set<String>,
+        sourceLocation: SourceLocation = #_sourceLocation
+    ) where T.RawValue == String {
+        let actual = Set(T.allCases.map(\.rawValue))
+        #expect(actual == expected, "\(T.self) tokens changed: \(actual.symmetricDifference(expected))", sourceLocation: sourceLocation)
+        expectUsableTokens(Array(actual), sourceLocation: sourceLocation)
+    }
+
+    /// The literals in these tests are the wire contract, not a copy of the switch: a replay keys
+    /// off them, so a duplicate merges two causes into one bucket and a separator is rewritten by
+    /// `sanitize` into a token nobody is looking for.
+    private func expectUsableTokens(_ tokens: [String], sourceLocation: SourceLocation = #_sourceLocation) {
+        #expect(Set(tokens).count == tokens.count, "two causes share a token: \(tokens)", sourceLocation: sourceLocation)
+        #expect(tokens.allSatisfy { !$0.isEmpty }, "a reason token is empty", sourceLocation: sourceLocation)
+        for token in tokens {
+            #expect(
+                !token.contains(where: { $0.isWhitespace || GeofenceLog.separators.contains($0) }),
+                "token '\(token)' holds whitespace or a tail separator",
+                sourceLocation: sourceLocation
+            )
+        }
+    }
+
     /// The module's whole diagnostic vocabulary, hoisted out of the test so the assertion stays
     /// readable as rows are added.
     private static let declaredVocabulary: Set<String> = [

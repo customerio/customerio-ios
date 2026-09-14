@@ -41,7 +41,10 @@ protocol GeofenceApiService: AutoMockable, Sendable {
 /// inside the injected stores/runner (already thread-safe). Lets callers invoke this from
 /// a `Task` without an isolation hop.
 final class GeofenceApiServiceImpl: GeofenceApiService, @unchecked Sendable {
-    private static let nearestPath = "/geofences/nearest"
+    /// Carries its own version. `apiHost` ends in `/v1` (region-derived, e.g.
+    /// `cdp.customer.io/v1`) and is shared with `/track`, which is still v1 — so the version here
+    /// cannot come from the host. Polygon regions are only returned by v2.
+    static let nearestPath = "/v2/geofences/nearest"
 
     private let contextStore: BackgroundDeliveryContextStore
     private let requestRunner: HttpRequestRunner
@@ -121,9 +124,32 @@ final class GeofenceApiServiceImpl: GeofenceApiService, @unchecked Sendable {
         }
     }
 
-    /// Composes `https://{apiHost}{path}`. URLComponents normalizes the host + path.
+    /// Composes `{apiHost}{path}`, dropping a trailing version segment off the host because `path`
+    /// supplies its own. Handles `/v1`, another version, or no version at all — a self-hosted or
+    /// overridden host may legitimately carry none.
+    ///
+    /// Rebuilt from parsed components rather than spliced onto the host string: `apiHost` is
+    /// customer-supplied, and a trailing slash on it concatenates into a `//` the server does not
+    /// route. Splitting also drops empty segments, and confining the edit to the path leaves a
+    /// query or port on the host intact instead of appending into it.
     static func composeUrl(apiHost: String, path: String) -> URL? {
-        URLComponents(string: BackgroundDeliveryHttp.absoluteHost(apiHost) + path)?.url
+        guard var components = URLComponents(string: BackgroundDeliveryHttp.absoluteHost(apiHost))
+        else { return nil }
+        // `percentEncodedPath`, not `path`: reading and writing the decoded form would re-encode
+        // an already-escaped segment on an overridden host.
+        var segments = components.percentEncodedPath.split(separator: "/").map(String.init)
+        if let last = segments.last, isVersionSegment(last) {
+            segments.removeLast()
+        }
+        segments.append(contentsOf: path.split(separator: "/").map(String.init))
+        components.percentEncodedPath = "/" + segments.joined(separator: "/")
+        return components.url
+    }
+
+    /// `v` followed by digits and nothing else, so a path segment that merely starts with `v`
+    /// (`/v`, `/venues`) is left alone.
+    private static func isVersionSegment(_ segment: String) -> Bool {
+        segment.count >= 2 && segment.hasPrefix("v") && segment.dropFirst().allSatisfy(\.isNumber)
     }
 }
 

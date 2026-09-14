@@ -9,7 +9,7 @@ private let geofenceTag = "Geofence"
 /// Carries both the prose and a stable token so the human-readable message stays byte-identical to
 /// what it was before enrichment while `why=` gives a script something that will not change when
 /// someone rewords the sentence.
-enum GeofenceSyncSkipReason: String {
+enum GeofenceSyncSkipReason: String, CaseIterable {
     case refreshInProgress = "refresh_in_progress"
     case noIdentifiedUser = "no_identified_user"
     case noLastSyncAnchor = "no_last_sync_anchor"
@@ -31,7 +31,7 @@ enum GeofenceSyncSkipReason: String {
 ///
 /// Nothing marks a cold background wake today, which makes it impossible to tell "the SDK was
 /// never running" apart from "the SDK ran and decided not to act" when reading a drive afterwards.
-enum GeofenceLaunchReason: String {
+enum GeofenceLaunchReason: String, CaseIterable {
     case appStart = "app_start"
     case locationEvent = "location_event"
 }

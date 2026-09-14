@@ -10,7 +10,7 @@ enum GeofenceSyncError: Error, Equatable {
 }
 
 /// Which branch `handleMovement` took for the current EXIT.
-enum HandleMovementTier: String, Sendable {
+enum HandleMovementTier: String, Sendable, CaseIterable {
     /// Re-rank cached regions for the new location; no API call.
     case localRerank
     /// Refetch from the server — when no anchor exists yet (first EXIT after install / clearAll /
