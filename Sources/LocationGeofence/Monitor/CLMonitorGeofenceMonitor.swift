@@ -304,12 +304,12 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring {
         if await isEventContradictedByFreshFix(identifier: identifier, transition: transition, eventDate: event.date) {
             return
         }
-        // Dated by the OS, not by receipt. The record keeps the date of the last event it processed
-        // and when its current circle was installed; a copy already seen, or one computed against a
-        // circle that no longer exists, is refused on those alone — never by comparing our own write
-        // time with the OS's clock, which made the outcome depend on how far the queue had drained.
+        // Dated by the OS, not by receipt: every guard below weighs OS dates, never the instant
+        // the SDK wrote, which made the old rule follow the queue's drain speed (drive 5). The
+        // evidence guard covers what the other two cannot see — see `enqueueBaselineHeal`.
         let outcome = await storage.recordMonitorEvent(
-            transition, forIdentifier: identifier, osEventDate: event.date, now: event.date
+            transition, forIdentifier: identifier,
+            onlyIfBaselinePredates: event.date, osEventDate: event.date, now: event.date
         )
         guard case .deliver = outcome else {
             logDiscardedCallback(identifier: identifier, transition: transition, outcome: outcome)
