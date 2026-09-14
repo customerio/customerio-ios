@@ -265,7 +265,7 @@ struct GeofenceLogTailTests {
     /// present — so swapping two cases in either switch passes every other assertion in this file.
     @Test
     func regionDropReason_expectDistinctPinnedTokenPerCause() {
-        let cases: [GeofenceRegionDropReason] = [.unknownShape, .undescribedShape, .unusableCircle, .unusablePolygon]
+        let cases = GeofenceRegionDropReason.allCases
         for reason in cases {
             switch reason {
             case .unknownShape: #expect(reason.logToken == "unknown_shape")
@@ -300,9 +300,12 @@ struct GeofenceLogTailTests {
     /// reusing `no_change` for either reports a delivery that was refused as one never owed.
     @Test
     func polygonUndeliveredReason_expectRefusalsDistinctFromOutcomes() {
-        let cases: [PolygonUndeliveredReason] = [
-            .outcome(.suppressedNoChange), .userChanged, .transitionNotRegistered
+        let outcomes: [PolygonMembershipOutcome] = [
+            .deliver(.enter), .suppressedNoChange, .suppressedNewerDecision,
+            .suppressedInitialOutside, .suppressedUnmonitored, .suppressedGeometryChanged
         ]
+        // Every outcome, so the two refusals are checked against all of them and not just one.
+        let cases: [PolygonUndeliveredReason] = outcomes.map { .outcome($0) } + [.userChanged, .transitionNotRegistered]
         for reason in cases {
             switch reason {
             case .outcome(let outcome): #expect(reason.logToken == outcome.logToken)
@@ -313,12 +316,72 @@ struct GeofenceLogTailTests {
         expectUsableTokens(cases.map(\.logToken))
     }
 
-    /// Tokens ride a whitespace-split tail and are what a replay keys off, so a duplicate silently
-    /// merges two causes into one bucket.
+    @Test
+    func monitorEventOutcome_expectDistinctPinnedTokenPerCause() {
+        for outcome in GeofenceMonitorEventOutcome.allCases {
+            switch outcome {
+            case .deliver: #expect(outcome.diagnosticReason == nil, "deliver is not a discard and must log nothing")
+            case .suppressedNoChange: #expect(outcome.diagnosticReason == "no_state_change")
+            case .suppressedFilteredType: #expect(outcome.diagnosticReason == "transition_type_not_registered")
+            case .suppressedNoBaseline: #expect(outcome.diagnosticReason == "baseline_established")
+            case .suppressedNewerBaseline: #expect(outcome.diagnosticReason == "newer_baseline")
+            }
+        }
+        expectUsableTokens(GeofenceMonitorEventOutcome.allCases.compactMap(\.diagnosticReason))
+    }
+
+    @Test
+    func apiError_expectDistinctPinnedTokenPerCause() {
+        let cases: [GeofenceApiError] = [
+            .missingApiHost, .missingCdpApiKey, .invalidRequest, .http(statusCode: 503), .transport, .decoding
+        ]
+        for error in cases {
+            switch error {
+            case .missingApiHost: #expect(error.diagnosticToken == "missing_api_host")
+            case .missingCdpApiKey: #expect(error.diagnosticToken == "missing_cdp_api_key")
+            case .invalidRequest: #expect(error.diagnosticToken == "invalid_request")
+            case .http(let statusCode): #expect(error.diagnosticToken == "http_\(statusCode)")
+            case .transport: #expect(error.diagnosticToken == "transport")
+            case .decoding: #expect(error.diagnosticToken == "decoding")
+            }
+        }
+        // The status rides the token, so two different failures must not collapse into one bucket.
+        #expect(GeofenceApiError.http(statusCode: 401).diagnosticToken == "http_401")
+        #expect(GeofenceApiError.http(statusCode: 503).diagnosticToken == "http_503")
+        expectUsableTokens(cases.map(\.diagnosticToken))
+    }
+
+    /// `@unknown default` means a future status silently reports `unknown`; pinning the five we
+    /// handle is what keeps that from swallowing one we already understand.
+    @Test
+    func permissionToken_expectDistinctPinnedTokenPerStatus() {
+        let statuses: [CLAuthorizationStatus] = [.notDetermined, .restricted, .denied, .authorizedAlways, .authorizedWhenInUse]
+        for status in statuses {
+            switch status {
+            case .notDetermined: #expect(GeofenceLog.permission(status) == "not_determined")
+            case .restricted: #expect(GeofenceLog.permission(status) == "restricted")
+            case .denied: #expect(GeofenceLog.permission(status) == "denied")
+            case .authorizedAlways: #expect(GeofenceLog.permission(status) == "always")
+            case .authorizedWhenInUse: #expect(GeofenceLog.permission(status) == "when_in_use")
+            @unknown default: Issue.record("unhandled CLAuthorizationStatus in the test table")
+            }
+        }
+        expectUsableTokens(statuses.map(GeofenceLog.permission))
+    }
+
+    /// The literals in these tests are the wire contract, not a copy of the switch: a replay keys
+    /// off them, so a duplicate merges two causes into one bucket and a separator is rewritten by
+    /// `sanitize` into a token nobody is looking for.
     private func expectUsableTokens(_ tokens: [String], sourceLocation: SourceLocation = #_sourceLocation) {
         #expect(Set(tokens).count == tokens.count, "two causes share a token: \(tokens)", sourceLocation: sourceLocation)
-        #expect(tokens.allSatisfy { !$0.contains(" ") }, "a reason token contains whitespace: \(tokens)", sourceLocation: sourceLocation)
         #expect(tokens.allSatisfy { !$0.isEmpty }, "a reason token is empty", sourceLocation: sourceLocation)
+        for token in tokens {
+            #expect(
+                !token.contains(where: { $0.isWhitespace || GeofenceLog.separators.contains($0) }),
+                "token '\(token)' holds whitespace or a tail separator",
+                sourceLocation: sourceLocation
+            )
+        }
     }
 
     /// The module's whole diagnostic vocabulary, hoisted out of the test so the assertion stays

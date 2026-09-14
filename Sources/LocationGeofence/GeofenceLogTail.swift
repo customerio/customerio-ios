@@ -83,7 +83,7 @@ enum GeofenceLog {
     ///
     /// Deliberately not applied to a finished value: `list` and `ranked` compose their separators
     /// on purpose, and folding those turns `a,b` into `a_b`.
-    private static let separators: Set<Character> = ["=", ",", ":", "|"]
+    static let separators: Set<Character> = ["=", ",", ":", "|"]
 
     /// The only values that compose the format's separators on purpose. Everything else is an
     /// untrusted token — region identifiers are workspace-authored and can hold anything.
