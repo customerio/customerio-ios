@@ -374,6 +374,9 @@ struct GeofenceLogTailTests {
     /// both a rename and a case added without one.
     @Test
     func rawValueTokens_expectThePinnedSetPerEnum() {
+        // Not only a log token: this raw value is the tracked event's `transition` property, the
+        // Codable form of a persisted pending row, and part of the pending and cooldown keys.
+        expectTokens(GeofenceTransition.self, ["enter", "exit"])
         expectTokens(HandleMovementTier.self, ["localRerank", "remoteRefresh"])
         expectTokens(PolygonPassSkipReason.self, ["pass_in_flight"])
         expectTokens(PolygonEvaluationReason.self, ["new_polygon", "new_polygon_forced_request_failed", "movement", "foreground"])
