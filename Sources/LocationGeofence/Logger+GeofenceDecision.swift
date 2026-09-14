@@ -68,7 +68,7 @@ extension Logger {
 
     /// A heal decided a crossing was real and the dedup baseline refused it.
     ///
-    /// `io=out` and its own key, deliberately not `os.callback.dropped`: nothing arrived from the
+    /// `io=obs` and its own key, deliberately not `os.callback.dropped`: nothing arrived from the
     /// OS here. A heal synthesizes the transition from a fix, so reporting it as a dropped callback
     /// invents an OS delivery that never happened and inflates the received-vs-dropped count —
     /// the count that distinguishes "the OS never reported it" from "we discarded it", which is
