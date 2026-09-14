@@ -157,13 +157,24 @@ actor SseConnectionManager: SseConnectionManagerProtocol {
         // Ensure retry decision collector is running with fresh stream
         await subscribeToRetryDecisions()
 
-        // Start the connection
+        // Start the connection with readiness synchronization.
+        // The continuation ensures startConnection() doesn't return until the spawned Task
+        // has started and is ready to process events. This eliminates a race where callers
+        // could yield events before the event loop subscription was live.
         var newTask: Task<Void, Never>?
 
-        newTask = Task { [weak self, generation] in
-            guard let self = self else { return }
-            guard let task = newTask else { return }
-            await self.executeConnectionAttempt(task: task, generation: generation)
+        await withCheckedContinuation { (readyContinuation: CheckedContinuation<Void, Never>) in
+            newTask = Task { [weak self, generation] in
+                guard let self = self else {
+                    readyContinuation.resume()
+                    return
+                }
+                guard let task = newTask else {
+                    readyContinuation.resume()
+                    return
+                }
+                await self.executeConnectionAttempt(task: task, generation: generation, readyContinuation: readyContinuation)
+            }
         }
 
         streamTask = newTask
@@ -215,12 +226,19 @@ actor SseConnectionManager: SseConnectionManagerProtocol {
     /// - Parameters:
     ///   - task: The task reference for this connection attempt
     ///   - generation: The connection generation this attempt belongs to
-    private func executeConnectionAttempt(task: Task<Void, Never>, generation: UInt64) async {
+    ///   - readyContinuation: Continuation to resume once the event loop is ready to receive events
+    private func executeConnectionAttempt(task: Task<Void, Never>, generation: UInt64, readyContinuation: CheckedContinuation<Void, Never>) async {
         // Verify generation is still current before connecting
         guard generation == activeConnectionGeneration else {
             logger.logWithModuleTag("SSE Manager: Stale connection attempt (generation \(generation) vs \(activeConnectionGeneration)), aborting", level: .debug)
+            readyContinuation.resume()
             return
         }
+
+        // Signal readiness: the event subscription is about to go live.
+        // startConnection() can now return, and any events yielded after it returns
+        // will be processed by this task.
+        readyContinuation.resume()
 
         // Fetch current state from manager
         let state = await inAppMessageManager.state
@@ -506,13 +524,23 @@ actor SseConnectionManager: SseConnectionManagerProtocol {
             // Update state and start new connection (will fetch fresh state from manager)
             updateConnectionState(.connecting)
 
-            // Start new connection attempt with same generation
+            // Start new connection attempt with same generation.
+            // For retries, we use a no-op continuation since the original caller already
+            // received the readiness signal from the first connection attempt.
             var newTask: Task<Void, Never>?
 
-            newTask = Task { [weak self, generation] in
-                guard let self = self else { return }
-                guard let task = newTask else { return }
-                await self.executeConnectionAttempt(task: task, generation: generation)
+            await withCheckedContinuation { (readyContinuation: CheckedContinuation<Void, Never>) in
+                newTask = Task { [weak self, generation] in
+                    guard let self = self else {
+                        readyContinuation.resume()
+                        return
+                    }
+                    guard let task = newTask else {
+                        readyContinuation.resume()
+                        return
+                    }
+                    await self.executeConnectionAttempt(task: task, generation: generation, readyContinuation: readyContinuation)
+                }
             }
 
             streamTask = newTask
