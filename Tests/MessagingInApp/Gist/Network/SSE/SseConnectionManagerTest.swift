@@ -7,8 +7,7 @@ import SharedTests
 import XCTest
 
 /// Tests for `SseConnectionManager` actor.
-/// All tests use the March a49b5437 pattern: arm listener Task + withCheckedContinuation BEFORE
-/// triggering SUT, then await the latched signal after triggering.
+/// Tests use XCTestExpectation for reliable async synchronization.
 class SseConnectionManagerTest: XCTestCase {
     private var loggerMock: LoggerMock!
     private var inAppMessageManagerMock: InAppMessageManagerMock!
@@ -66,57 +65,43 @@ class SseConnectionManagerTest: XCTestCase {
                 return
             }
             await Task.yield()
-            try? await Task.sleep(nanoseconds: 5000000) // 0.005 seconds
+            try? await Task.sleep(nanoseconds: 5000000)
         }
     }
 
     // MARK: - Start Connection Tests
 
     func test_startConnection_expectSseServiceConnectCalled() async {
-        // Setup
         let (stream, streamContinuation) = AsyncStreamBackport.makeStream(of: SseEvent.self)
         streamContinuation.finish()
 
-        // ARM listener (March pattern)
-        let connectReceived = Task {
-            await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
-                sseServiceMock.connectClosure = { [stream] _, _ in
-                    cont.resume()
-                    return stream
-                }
-            }
+        let exp = expectation(description: "connect called")
+        sseServiceMock.connectClosure = { [stream] _, _ in
+            exp.fulfill()
+            return stream
         }
 
-        // Action
         await sut.startConnection()
-        await connectReceived.value
+        await fulfillment(of: [exp], timeout: 10.0)
 
-        // Assert
         XCTAssertTrue(sseServiceMock.connectCalled)
         XCTAssertEqual(sseServiceMock.connectCallsCount, 1)
     }
 
     func test_startConnection_givenAlreadyConnecting_expectNoSecondConnect() async {
-        // Setup
         let (stream, _) = AsyncStreamBackport.makeStream(of: SseEvent.self)
 
-        // ARM listener for first connect
-        let firstConnect = Task {
-            await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
-                sseServiceMock.connectClosure = { [stream] _, _ in
-                    cont.resume()
-                    return stream
-                }
-            }
+        let exp = expectation(description: "first connect")
+        sseServiceMock.connectClosure = { [stream] _, _ in
+            exp.fulfill()
+            return stream
         }
 
-        // Action: Start connection twice
         await sut.startConnection()
-        await firstConnect.value
+        await fulfillment(of: [exp], timeout: 10.0)
 
         await sut.startConnection()
 
-        // Assert: Give any wrongly spawned connection task a bounded window to become visible.
         await assertRemainsTrue("Starting an active connection scheduled a second SSE connection") {
             sseServiceMock.connectCallsCount == 1
         }
@@ -124,124 +109,91 @@ class SseConnectionManagerTest: XCTestCase {
     }
 
     func test_startConnection_expectHeartbeatCallbackSet() async {
-        // Setup
         let (stream, continuation) = AsyncStreamBackport.makeStream(of: SseEvent.self)
         sseServiceMock.connectReturnValue = stream
         continuation.finish()
 
-        // ARM listener
-        let callbackSet = Task {
-            await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
-                heartbeatTimerMock.setCallbackClosure = { _ in
-                    cont.resume()
-                }
-            }
+        let exp = expectation(description: "callback set")
+        heartbeatTimerMock.setCallbackClosure = { _ in
+            exp.fulfill()
         }
 
-        // Action
         await sut.startConnection()
-        await callbackSet.value
+        await fulfillment(of: [exp], timeout: 10.0)
 
-        // Assert
         XCTAssertTrue(heartbeatTimerMock.setCallbackCalled)
     }
 
     // MARK: - Stop Connection Tests
 
     func test_stopConnection_expectSseServiceDisconnectCalled() async {
-        // Setup
         let (stream, _) = AsyncStreamBackport.makeStream(of: SseEvent.self)
 
-        // ARM listener for connect
-        let connected = Task {
-            await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
-                sseServiceMock.connectClosure = { [stream] _, _ in
-                    cont.resume()
-                    return stream
-                }
-            }
+        let connectedExp = expectation(description: "connected")
+        sseServiceMock.connectClosure = { [stream] _, _ in
+            connectedExp.fulfill()
+            return stream
         }
 
         await sut.startConnection()
-        await connected.value
+        await fulfillment(of: [connectedExp], timeout: 10.0)
 
-        // Action
         await sut.stopConnection()
 
-        // Assert
         XCTAssertTrue(sseServiceMock.disconnectCalled)
     }
 
     func test_stopConnection_expectRetryStateReset() async {
-        // Setup
         let (stream, _) = AsyncStreamBackport.makeStream(of: SseEvent.self)
 
-        let connected = Task {
-            await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
-                sseServiceMock.connectClosure = { [stream] _, _ in
-                    cont.resume()
-                    return stream
-                }
-            }
+        let connectedExp = expectation(description: "connected")
+        sseServiceMock.connectClosure = { [stream] _, _ in
+            connectedExp.fulfill()
+            return stream
         }
 
         await sut.startConnection()
-        await connected.value
+        await fulfillment(of: [connectedExp], timeout: 10.0)
 
-        // Action
         await sut.stopConnection()
 
-        // Assert
         XCTAssertTrue(retryHelperMock.resetRetryStateCalled)
     }
 
     func test_stopConnection_expectHeartbeatTimerReset() async {
-        // Setup
         let (stream, _) = AsyncStreamBackport.makeStream(of: SseEvent.self)
 
-        let connected = Task {
-            await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
-                sseServiceMock.connectClosure = { [stream] _, _ in
-                    cont.resume()
-                    return stream
-                }
-            }
+        let connectedExp = expectation(description: "connected")
+        sseServiceMock.connectClosure = { [stream] _, _ in
+            connectedExp.fulfill()
+            return stream
         }
 
         await sut.startConnection()
-        await connected.value
+        await fulfillment(of: [connectedExp], timeout: 10.0)
 
-        // Action
         await sut.stopConnection()
 
-        // Assert
         XCTAssertTrue(heartbeatTimerMock.resetCalled)
     }
 
     // MARK: - Connection Events Tests
 
     func test_connectionOpen_expectHeartbeatTimerStarted() async {
-        // Setup
         let (stream, continuation) = AsyncStreamBackport.makeStream(of: SseEvent.self)
         sseServiceMock.connectReturnValue = stream
 
-        // ARM listener
-        let timerStarted = Task {
-            await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
-                heartbeatTimerMock.startTimerClosure = { _, _ in
-                    cont.resume()
-                }
-            }
+        let timerExp = expectation(description: "timer started")
+        heartbeatTimerMock.startTimerClosure = { _, _ in
+            timerExp.fulfill()
         }
 
-        // Action
         await sut.startConnection()
         continuation.yield(.connectionOpen)
 
-        await timerStarted.value
+        await fulfillment(of: [timerExp], timeout: 10.0)
         continuation.finish()
 
-        // Assert
         XCTAssertTrue(heartbeatTimerMock.startTimerCalled)
     }
 
@@ -252,13 +204,12 @@ class SseConnectionManagerTest: XCTestCase {
         let counter = ConfirmationCounter()
         await sut.setOnConnectionConfirmed { counter.increment() }
 
-        // ARM listener for stream finish (reset is called when stream ends)
-        let streamFinished = Task {
-            await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
-                heartbeatTimerMock.resetClosure = { _ in
-                    cont.resume()
-                }
-            }
+        let streamFinishedExp = expectation(description: "stream finished")
+        var fulfilled = false
+        heartbeatTimerMock.resetClosure = { _ in
+            guard !fulfilled else { return }
+            fulfilled = true
+            streamFinishedExp.fulfill()
         }
 
         await sut.startConnection()
@@ -266,7 +217,7 @@ class SseConnectionManagerTest: XCTestCase {
         continuation.yield(.serverEvent(ServerEvent(id: nil, type: "connected", data: "")))
         continuation.finish()
 
-        await streamFinished.value
+        await fulfillment(of: [streamFinishedExp], timeout: 10.0)
 
         XCTAssertEqual(counter.value, 1)
     }
@@ -278,202 +229,166 @@ class SseConnectionManagerTest: XCTestCase {
         let counter = ConfirmationCounter()
         await sut.setOnConnectionConfirmed { counter.increment() }
 
-        let streamFinished = Task {
-            await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
-                heartbeatTimerMock.resetClosure = { _ in
-                    cont.resume()
-                }
-            }
+        let streamFinishedExp = expectation(description: "stream finished")
+        var fulfilled = false
+        heartbeatTimerMock.resetClosure = { _ in
+            guard !fulfilled else { return }
+            fulfilled = true
+            streamFinishedExp.fulfill()
         }
 
         await sut.startConnection()
         continuation.yield(.connectionOpen)
         continuation.finish()
 
-        await streamFinished.value
+        await fulfillment(of: [streamFinishedExp], timeout: 10.0)
 
-        // Transport open alone is not confirmation
         XCTAssertEqual(counter.value, 0)
     }
 
     func test_connectionOpen_expectRetryStateReset() async {
-        // Setup
         let (stream, continuation) = AsyncStreamBackport.makeStream(of: SseEvent.self)
         sseServiceMock.connectReturnValue = stream
 
-        let retryReset = Task {
-            await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
-                retryHelperMock.resetRetryStateClosure = { _ in
-                    cont.resume()
-                }
-            }
+        let exp = expectation(description: "retry reset")
+        retryHelperMock.resetRetryStateClosure = { _ in
+            exp.fulfill()
         }
 
-        // Action
         await sut.startConnection()
         continuation.yield(.connectionOpen)
 
-        await retryReset.value
+        await fulfillment(of: [exp], timeout: 10.0)
         continuation.finish()
 
-        // Assert
         XCTAssertTrue(retryHelperMock.resetRetryStateCalled)
     }
 
     func test_connectionFailed_givenRetryableError_expectRetryScheduled() async {
-        // Setup
         let (stream, continuation) = AsyncStreamBackport.makeStream(of: SseEvent.self)
         sseServiceMock.connectReturnValue = stream
 
         let error = SseError.networkError(message: "Connection failed", underlyingError: nil)
 
-        let retryScheduled = Task {
-            await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
-                retryHelperMock.scheduleRetryClosure = { _, _ in
-                    cont.resume()
-                }
-            }
+        let exp = expectation(description: "retry scheduled")
+        retryHelperMock.scheduleRetryClosure = { _, _ in
+            exp.fulfill()
         }
 
-        // Action
         await sut.startConnection()
         continuation.yield(.connectionFailed(error))
 
-        await retryScheduled.value
+        await fulfillment(of: [exp], timeout: 10.0)
         continuation.finish()
 
-        // Assert
         XCTAssertTrue(retryHelperMock.scheduleRetryCalled)
         XCTAssertEqual(retryHelperMock.scheduleRetryReceivedArguments?.error, error)
     }
 
     func test_connectionFailed_expectHeartbeatTimerReset() async {
-        // Setup
         let (stream, continuation) = AsyncStreamBackport.makeStream(of: SseEvent.self)
         sseServiceMock.connectReturnValue = stream
 
-        let timerReset = Task {
-            await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
-                heartbeatTimerMock.resetClosure = { _ in
-                    cont.resume()
-                }
-            }
+        let exp = expectation(description: "timer reset")
+        var fulfilled = false
+        heartbeatTimerMock.resetClosure = { _ in
+            guard !fulfilled else { return }
+            fulfilled = true
+            exp.fulfill()
         }
 
-        // Action
         await sut.startConnection()
         continuation.yield(.connectionFailed(.networkError(message: "Error", underlyingError: nil)))
 
-        await timerReset.value
+        await fulfillment(of: [exp], timeout: 10.0)
         continuation.finish()
 
-        // Assert
         XCTAssertTrue(heartbeatTimerMock.resetCalled)
     }
 
     func test_connectionClosed_expectHeartbeatTimerReset() async {
-        // Setup
         let (stream, continuation) = AsyncStreamBackport.makeStream(of: SseEvent.self)
         sseServiceMock.connectReturnValue = stream
 
-        let timerReset = Task {
-            await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
-                heartbeatTimerMock.resetClosure = { _ in
-                    cont.resume()
-                }
-            }
+        let exp = expectation(description: "timer reset")
+        var fulfilled = false
+        heartbeatTimerMock.resetClosure = { _ in
+            guard !fulfilled else { return }
+            fulfilled = true
+            exp.fulfill()
         }
 
-        // Action
         await sut.startConnection()
         continuation.yield(.connectionClosed)
 
-        await timerReset.value
+        await fulfillment(of: [exp], timeout: 10.0)
         continuation.finish()
 
-        // Assert
         XCTAssertTrue(heartbeatTimerMock.resetCalled)
     }
 
     // MARK: - Server Event Tests
 
     func test_serverEvent_givenConnectedEvent_expectHeartbeatTimerStarted() async {
-        // Setup
         let (stream, continuation) = AsyncStreamBackport.makeStream(of: SseEvent.self)
         sseServiceMock.connectReturnValue = stream
 
-        let timerStarted = Task {
-            await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
-                heartbeatTimerMock.startTimerClosure = { _, _ in
-                    cont.resume()
-                }
-            }
+        let exp = expectation(description: "timer started")
+        heartbeatTimerMock.startTimerClosure = { _, _ in
+            exp.fulfill()
         }
 
-        // Action
         await sut.startConnection()
         continuation.yield(.serverEvent(ServerEvent(id: nil, type: "connected", data: "{}")))
 
-        await timerStarted.value
+        await fulfillment(of: [exp], timeout: 10.0)
         continuation.finish()
 
-        // Assert
         XCTAssertTrue(heartbeatTimerMock.startTimerCalled)
     }
 
     func test_serverEvent_givenHeartbeatEvent_expectHeartbeatTimerRestarted() async {
-        // Setup: resume when startTimer is called the second time
+        // Setup: resume when startTimer is called the second time (March pattern)
         let (stream, streamContinuation) = AsyncStreamBackport.makeStream(of: SseEvent.self)
         sseServiceMock.connectReturnValue = stream
 
-        let secondStartTimerReceived = Task {
-            await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
-                heartbeatTimerMock.startTimerClosure = { [weak heartbeatTimerMock] _, _ in
-                    guard let mock = heartbeatTimerMock, mock.startTimerCallsCount == 2 else { return }
-                    cont.resume()
-                }
-            }
+        let secondTimerExp = expectation(description: "timer started second time")
+        heartbeatTimerMock.startTimerClosure = { [weak heartbeatTimerMock] _, _ in
+            guard let mock = heartbeatTimerMock, mock.startTimerCallsCount == 2 else { return }
+            secondTimerExp.fulfill()
         }
 
-        // Action
         await sut.startConnection()
         streamContinuation.yield(.connectionOpen)
         streamContinuation.yield(.serverEvent(ServerEvent(id: nil, type: "heartbeat", data: "{\"heartbeat\": 30}")))
         streamContinuation.finish()
 
-        await secondStartTimerReceived.value
+        await fulfillment(of: [secondTimerExp], timeout: 10.0)
 
-        // Assert
         XCTAssertGreaterThanOrEqual(heartbeatTimerMock.startTimerCallsCount, 2)
     }
 
     func test_serverEvent_givenMessagesEvent_expectMessagesDispatched() async {
-        // Setup
         let (stream, continuation) = AsyncStreamBackport.makeStream(of: SseEvent.self)
         sseServiceMock.connectReturnValue = stream
 
-        let messagesDispatched = Task {
-            await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
-                inAppMessageManagerMock.dispatchClosure = { action, _ in
-                    if case .processMessageQueue = action {
-                        cont.resume()
-                    }
-                    return Task {}
-                }
+        let exp = expectation(description: "messages dispatched")
+        inAppMessageManagerMock.dispatchClosure = { action, _ in
+            if case .processMessageQueue = action {
+                exp.fulfill()
             }
+            return Task {}
         }
 
-        // Action
         await sut.startConnection()
         let messagesJson = """
         [{"queueId": "q1", "priority": 1, "messageId": "m1"}]
         """
         continuation.yield(.serverEvent(ServerEvent(id: nil, type: "messages", data: messagesJson)))
 
-        await messagesDispatched.value
+        await fulfillment(of: [exp], timeout: 10.0)
         continuation.finish()
 
-        // Assert
         let processActions = inAppMessageManagerMock.dispatchReceivedInvocations.filter {
             if case .processMessageQueue = $0.action { return true }
             return false
@@ -484,7 +399,6 @@ class SseConnectionManagerTest: XCTestCase {
     // MARK: - Retry Decision Tests
 
     func test_retryDecision_givenMaxRetriesReached_expectFallbackToPolling() async {
-        // Setup
         let (retryStream, retryContinuation) = AsyncStreamBackport.makeStream(of: (RetryDecision, UInt64).self)
         retryHelperMock.createNewRetryStreamReturnValue = retryStream
 
@@ -499,30 +413,27 @@ class SseConnectionManagerTest: XCTestCase {
             heartbeatTimer: heartbeatTimerMock
         )
 
-        let sseDisabled = Task {
-            await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
-                inAppMessageManagerMock.dispatchClosure = { action, _ in
-                    if case .setSseEnabled(enabled: false) = action {
-                        cont.resume()
-                    }
-                    return Task {}
-                }
+        let exp = expectation(description: "SSE disabled")
+        var fulfilled = false
+        inAppMessageManagerMock.dispatchClosure = { action, _ in
+            if case .setSseEnabled(enabled: false) = action {
+                guard !fulfilled else { return Task {} }
+                fulfilled = true
+                exp.fulfill()
             }
+            return Task {}
         }
 
-        // Action
         await sut.startConnection()
         retryContinuation.yield((.maxRetriesReached, 1))
 
-        await sseDisabled.value
+        await fulfillment(of: [exp], timeout: 10.0)
 
-        // Give a brief window for any duplicate dispatches
         try? await Task.sleep(nanoseconds: 50_000_000)
 
         sseContinuation.finish()
         retryContinuation.finish()
 
-        // Assert
         let sseDisabledActions = inAppMessageManagerMock.dispatchReceivedInvocations.filter {
             if case .setSseEnabled(enabled: false) = $0.action { return true }
             return false
@@ -531,7 +442,6 @@ class SseConnectionManagerTest: XCTestCase {
     }
 
     func test_retryDecision_givenRetryNotPossible_expectFallbackToPolling() async {
-        // Setup
         let (retryStream, retryContinuation) = AsyncStreamBackport.makeStream(of: (RetryDecision, UInt64).self)
         retryHelperMock.createNewRetryStreamReturnValue = retryStream
 
@@ -546,29 +456,27 @@ class SseConnectionManagerTest: XCTestCase {
             heartbeatTimer: heartbeatTimerMock
         )
 
-        let sseDisabled = Task {
-            await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
-                inAppMessageManagerMock.dispatchClosure = { action, _ in
-                    if case .setSseEnabled(enabled: false) = action {
-                        cont.resume()
-                    }
-                    return Task {}
-                }
+        let exp = expectation(description: "SSE disabled")
+        var fulfilled = false
+        inAppMessageManagerMock.dispatchClosure = { action, _ in
+            if case .setSseEnabled(enabled: false) = action {
+                guard !fulfilled else { return Task {} }
+                fulfilled = true
+                exp.fulfill()
             }
+            return Task {}
         }
 
-        // Action
         await sut.startConnection()
         retryContinuation.yield((.retryNotPossible, 1))
 
-        await sseDisabled.value
+        await fulfillment(of: [exp], timeout: 10.0)
 
         try? await Task.sleep(nanoseconds: 50_000_000)
 
         sseContinuation.finish()
         retryContinuation.finish()
 
-        // Assert
         let sseDisabledActions = inAppMessageManagerMock.dispatchReceivedInvocations.filter {
             if case .setSseEnabled(enabled: false) = $0.action { return true }
             return false
