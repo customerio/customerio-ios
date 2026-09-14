@@ -124,9 +124,9 @@ final class GeofenceApiServiceImpl: GeofenceApiService, @unchecked Sendable {
         }
     }
 
-    /// Composes `https://{apiHost}{path}` with any version segment taken off the host, because
-    /// `path` supplies its own. Accepts a host with `/v1`, with some other version, or with none
-    /// — a self-hosted or overridden host may legitimately have no version segment at all.
+    /// Composes `https://{apiHost}{path}`, stripping a trailing version segment off the host
+    /// because `path` supplies its own. Handles `/v1`, another version, or no version at all —
+    /// a self-hosted or overridden host may legitimately carry none.
     static func composeUrl(apiHost: String, path: String) -> URL? {
         let host = BackgroundDeliveryHttp.absoluteHost(apiHost)
         let versionless = host.replacingOccurrences(
