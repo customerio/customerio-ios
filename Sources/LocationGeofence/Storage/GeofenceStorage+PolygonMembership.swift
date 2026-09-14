@@ -68,7 +68,11 @@ extension GeofenceStorage {
         }
         var records = state.polygonMembership ?? [:]
         let existing = records[identifier]
-        if let evidenceTimestamp, let existing, existing.lastChangedAt > evidenceTimestamp {
+        // Clamped on READ as well as write: a belief persisted by a build that predates the clamp
+        // above, or written while the clock was ahead, otherwise wins every comparison below and
+        // no later fix can repair it until the wall clock catches up.
+        let existingStamp = existing.map { min($0.lastChangedAt, now) }
+        if let evidenceTimestamp, let existingStamp, existingStamp > evidenceTimestamp {
             return .suppressedNewerDecision
         }
         guard let existing else {
@@ -87,7 +91,7 @@ extension GeofenceStorage {
             return membership == .inside ? .deliver(.enter) : .suppressedInitialOutside
         }
         guard existing.membership != membership else {
-            if let evidenceTimestamp, evidenceTimestamp > existing.lastChangedAt {
+            if let evidenceTimestamp, let existingStamp, evidenceTimestamp > existingStamp {
                 records[identifier] = PolygonMembershipRecord(
                     membership: membership, lastChangedAt: evidenceTimestamp
                 )

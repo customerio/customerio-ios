@@ -108,6 +108,27 @@ struct PolygonMembershipStorageTests {
         #expect(await storage.getPolygonMembership()["1"]?.membership == .outside)
     }
 
+    /// The clamp on write protects new beliefs; this is the recovery path for one already on disk
+    /// with a future stamp, left by a build that predates that clamp. Read unclamped it wins every
+    /// comparison, so no later fix can repair the belief until the wall clock catches up.
+    @Test
+    func recordPolygonMembership_givenPersistedBeliefStampedInTheFuture_expectLaterFixStillDecides() async {
+        let storage = await makeStorage()
+        let now = Date()
+        var state = await storage.loadFromDisk() ?? GeofenceState()
+        state.polygonMembership = [
+            "1": PolygonMembershipRecord(membership: .inside, lastChangedAt: now.addingTimeInterval(3600))
+        ]
+        await storage.saveToDisk(state)
+
+        let outcome = await storage.recordPolygonMembership(
+            .outside, forIdentifier: "1", onlyIfBeliefPredates: now, now: now
+        )
+
+        #expect(outcome == .deliver(.exit))
+        #expect(await storage.getPolygonMembership()["1"]?.membership == .outside)
+    }
+
     /// Membership survives re-registration, which is what keeps a wholesale re-register silent
     /// without needing the registered-ids diff the circle path uses.
     @Test
