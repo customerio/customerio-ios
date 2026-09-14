@@ -228,7 +228,11 @@ struct GeofenceApiServiceTests {
         // A query on the host survives instead of swallowing the path after it.
         ("cdp.customer.io/v1?x=1", "https://cdp.customer.io/v2/geofences/nearest?x=1"),
         // `v` alone is not a version, so the segment stays.
-        ("cdp.customer.io/v", "https://cdp.customer.io/v/v2/geofences/nearest")
+        ("cdp.customer.io/v", "https://cdp.customer.io/v/v2/geofences/nearest"),
+        // Any version is replaced, not just the one the host happens to be on today. Every other
+        // case here is v1, so without these a strip narrowed to a literal `/v1` would still pass.
+        ("cdp.customer.io/v3", "https://cdp.customer.io/v2/geofences/nearest"),
+        ("cdp.customer.io/v10", "https://cdp.customer.io/v2/geofences/nearest")
     ])
     func composeUrl_givenAnyHostVersion_expectTheEndpointsOwn(host: String, expected: String) {
         let url = GeofenceApiServiceImpl.composeUrl(apiHost: host, path: GeofenceApiServiceImpl.nearestPath)
