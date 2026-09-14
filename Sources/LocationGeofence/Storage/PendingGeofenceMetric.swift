@@ -33,11 +33,23 @@ struct PendingGeofenceMetric: Codable, Equatable, Sendable, GeofenceMetric {
     /// row is dropped as a duplicate and its successful send then removes the first user's — one
     /// event lost, the other misattributed. Diverges from Android's `PendingGeofenceDelivery.key`,
     /// which carries a userId on the row but not in the key and so still has that gap.
+    ///
+    /// Components are escaped before joining, so a value holding the separator cannot imitate a
+    /// component boundary: user `a_42` with no geoset and user `a` in geoset `42` would otherwise
+    /// key the same, and one row's successful send would remove the other's. The key is always
+    /// recomputed, never persisted, so the escaping needs no migration.
     var key: String {
         let sec = Int(timestamp.timeIntervalSince1970)
-        let base = "\(geofenceId)_\(transition.rawValue)_\(sec)_\(userId)"
-        guard let geosetId else { return base }
-        return "\(base)_\(geosetId)"
+        var components = [geofenceId, transition.rawValue, "\(sec)", userId]
+        if let geosetId { components.append(geosetId) }
+        return components.map(Self.escapedForKey).joined(separator: "_")
+    }
+
+    /// `%` first, so an escape this introduces is not escaped again by the next replacement.
+    private static func escapedForKey(_ component: String) -> String {
+        component
+            .replacingOccurrences(of: "%", with: "%25")
+            .replacingOccurrences(of: "_", with: "%5F")
     }
 
     init(
