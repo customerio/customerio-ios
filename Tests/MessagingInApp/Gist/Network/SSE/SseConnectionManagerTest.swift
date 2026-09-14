@@ -250,7 +250,7 @@ class SseConnectionManagerTest: XCTestCase {
         // ARM listener for heartbeat reset (signals stream finished processing)
         let streamFinished = Task {
             await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
-                heartbeatTimerMock.resetClosure = {
+                heartbeatTimerMock.resetClosure = { _ in
                     cont.resume()
                 }
             }
@@ -276,7 +276,7 @@ class SseConnectionManagerTest: XCTestCase {
         // ARM listener for heartbeat reset (signals stream finished processing)
         let streamFinished = Task {
             await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
-                heartbeatTimerMock.resetClosure = {
+                heartbeatTimerMock.resetClosure = { _ in
                     cont.resume()
                 }
             }
@@ -300,7 +300,7 @@ class SseConnectionManagerTest: XCTestCase {
         // ARM listener for retry state reset
         let retryReset = Task {
             await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
-                retryHelperMock.resetRetryStateClosure = {
+                retryHelperMock.resetRetryStateClosure = { _ in
                     cont.resume()
                 }
             }
@@ -353,7 +353,7 @@ class SseConnectionManagerTest: XCTestCase {
         // ARM listener for heartbeat reset
         let timerReset = Task {
             await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
-                heartbeatTimerMock.resetClosure = {
+                heartbeatTimerMock.resetClosure = { _ in
                     cont.resume()
                 }
             }
@@ -378,7 +378,7 @@ class SseConnectionManagerTest: XCTestCase {
         // ARM listener for heartbeat reset
         let timerReset = Task {
             await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
-                heartbeatTimerMock.resetClosure = {
+                heartbeatTimerMock.resetClosure = { _ in
                     cont.resume()
                 }
             }
