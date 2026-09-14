@@ -1343,7 +1343,7 @@ struct GeofenceEventTrackerTests {
 
         // Keyed without the userId this is one row, user_A's: B's append is a no-op, and B's flush
         // excludes the key it thinks it just wrote — which is A's.
-        #expect(Set(await pending.loadAll().map(\.userId)) == ["user_A", "user_B"])
+        #expect(Set(await pending.rows().map(\.userId)) == ["user_A", "user_B"])
     }
 
     /// The other half: a successful send removes its own row by key, so a key shared across users
@@ -1373,7 +1373,7 @@ struct GeofenceEventTrackerTests {
         await trackerA.trackTransition(geofenceId: "geo_1", transition: .enter, occurredAt: occurredAt)
         await trackerB.trackTransition(geofenceId: "geo_1", transition: .enter, occurredAt: occurredAt)
 
-        #expect(await pending.loadAll().map(\.userId) == ["user_A"])
+        #expect(await pending.rows().map(\.userId) == ["user_A"])
     }
 
     /// The row's timestamp is the event time the customer sees. It must be when the crossing
