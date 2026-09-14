@@ -242,9 +242,12 @@ class SseConnectionManagerTest: XCTestCase {
         let counter = ConfirmationCounter()
         await sut.setOnConnectionConfirmed { counter.increment() }
 
-        // Use XCTestExpectation since resetClosure may be called when stream finishes
+        // Use XCTestExpectation with guard since resetClosure may be called multiple times
         let streamFinishedExp = expectation(description: "stream finished")
+        var streamFinishedFulfilled = false
         heartbeatTimerMock.resetClosure = { _ in
+            guard !streamFinishedFulfilled else { return }
+            streamFinishedFulfilled = true
             streamFinishedExp.fulfill()
         }
 
@@ -265,9 +268,12 @@ class SseConnectionManagerTest: XCTestCase {
         let counter = ConfirmationCounter()
         await sut.setOnConnectionConfirmed { counter.increment() }
 
-        // Use XCTestExpectation since resetClosure may be called when stream finishes
+        // Use XCTestExpectation with guard since resetClosure may be called multiple times
         let streamFinishedExp = expectation(description: "stream finished")
+        var streamFinishedFulfilled = false
         heartbeatTimerMock.resetClosure = { _ in
+            guard !streamFinishedFulfilled else { return }
+            streamFinishedFulfilled = true
             streamFinishedExp.fulfill()
         }
 
@@ -339,9 +345,12 @@ class SseConnectionManagerTest: XCTestCase {
         let (stream, continuation) = AsyncStreamBackport.makeStream(of: SseEvent.self)
         sseServiceMock.connectReturnValue = stream
 
-        // Use XCTestExpectation since resetClosure can be called multiple times
+        // Use XCTestExpectation with guard since resetClosure can be called multiple times
         let timerResetExp = expectation(description: "heartbeat timer reset")
+        var timerResetFulfilled = false
         heartbeatTimerMock.resetClosure = { _ in
+            guard !timerResetFulfilled else { return }
+            timerResetFulfilled = true
             timerResetExp.fulfill()
         }
 
@@ -361,9 +370,12 @@ class SseConnectionManagerTest: XCTestCase {
         let (stream, continuation) = AsyncStreamBackport.makeStream(of: SseEvent.self)
         sseServiceMock.connectReturnValue = stream
 
-        // Use XCTestExpectation since resetClosure can be called multiple times
+        // Use XCTestExpectation with guard since resetClosure can be called multiple times
         let timerResetExp = expectation(description: "heartbeat timer reset")
+        var timerResetFulfilled = false
         heartbeatTimerMock.resetClosure = { _ in
+            guard !timerResetFulfilled else { return }
+            timerResetFulfilled = true
             timerResetExp.fulfill()
         }
 
