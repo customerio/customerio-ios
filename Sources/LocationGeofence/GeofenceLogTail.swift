@@ -52,6 +52,17 @@ enum GeofenceLog {
     /// A parser splits on the **last** occurrence, and only if the remainder is all `key=value`.
     static let delimiter = " || "
 
+    /// Why a condition was removed from `CLMonitor`, on `condition.removed`.
+    ///
+    /// A token rather than a bare string at the call sites: the two are read as a pair by anyone
+    /// timing the OS queue, and a third spelling of either would silently split the count.
+    enum RemovalOp: String {
+        /// Clearing the way for an immediate re-add of the same identifier.
+        case readd
+        /// The condition is leaving the registered set.
+        case drop
+    }
+
     /// The single gate for every diagnostic value; returns nothing when diagnostics are off.
     ///
     /// - Parameters:

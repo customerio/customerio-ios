@@ -74,37 +74,73 @@ extension CLMonitorGeofenceMonitor {
 
         enqueueMonitorOperation { [weak self] monitor in
             guard let self else { return }
-            // Persist before the OS add: storage keys off recorded geometry to preserve the baseline
-            // on an unchanged re-register and reseed on a new/changed circle. The decision lives in
-            // storage because this runs after stop-all, when CLMonitor's own record is already gone.
-            // Consumed here rather than at staging time: an add already queued when `.unmonitored`
-            // arrived still drains after it, so it is the one that must reseed.
-            let forceReseed = self.conditionsNeedingBaselineReseed.remove(identifier) != nil
-            await self.storage.recordMonitorRegistration(
-                identifier: identifier,
-                transitionTypes: transitionTypes,
-                initialState: initialTransition,
-                center: LocationData(latitude: coordinate.latitude, longitude: coordinate.longitude),
-                radius: clampedRadius,
-                forceReseed: forceReseed
+            await self.installCondition(
+                StagedCondition(
+                    identifier: identifier,
+                    center: LocationData(latitude: coordinate.latitude, longitude: coordinate.longitude),
+                    radius: clampedRadius,
+                    transitionTypes: transitionTypes,
+                    initialTransition: initialTransition,
+                    assumedState: assumedState
+                ),
+                on: monitor
             )
-            // CLMonitor SILENTLY IGNORES an add over a live identifier, keeping the original circle
-            // and reporting no error, so the identifier is cleared first. Keyed on the OS rather
-            // than on this process's bookkeeping, which can be missing an identifier the OS still
-            // holds. Removing one the OS does not hold is a no-op.
-            let readdStart = self.dateUtil.now
-            await monitor.remove(identifier)
-            let center = LocationData(latitude: coordinate.latitude, longitude: coordinate.longitude)
-            await monitor.add(center: center, radius: clampedRadius, identifier: identifier, assuming: assumedState)
-            self.conditionReadds[identifier] = ConditionReadd(
-                start: readdStart,
-                added: self.dateUtil.now,
-                center: LocationData(latitude: coordinate.latitude, longitude: coordinate.longitude),
-                radius: clampedRadius
-            )
-            self.knownConditionIdentifiers.insert(identifier)
-            self.persistConditionMirror()
         }
+    }
+
+    /// One condition as `startMonitoring` resolved it: clamped, with its assumed state decided.
+    private struct StagedCondition {
+        let identifier: String
+        let center: LocationData
+        let radius: Double
+        let transitionTypes: Set<GeofenceTransition>
+        let initialTransition: GeofenceTransition
+        let assumedState: GeofenceConditionState
+    }
+
+    /// Persists the record and puts the circle at the OS, on the monitor pipeline.
+    ///
+    /// Extracted from `startMonitoring` only to keep that function readable; it has no other caller
+    /// and no meaning outside the enqueued operation it runs in.
+    private func installCondition(_ staged: StagedCondition, on monitor: GeofenceConditionMonitoring) async {
+        let identifier = staged.identifier
+        let center = staged.center
+        let radius = staged.radius
+        // Persist before the OS add: storage keys off recorded geometry to preserve the baseline
+        // on an unchanged re-register and reseed on a new/changed circle. The decision lives in
+        // storage because this runs after stop-all, when CLMonitor's own record is already gone.
+        // Consumed here rather than at staging time: an add already queued when `.unmonitored`
+        // arrived still drains after it, so it is the one that must reseed.
+        let forceReseed = conditionsNeedingBaselineReseed.remove(identifier) != nil
+        await storage.recordMonitorRegistration(
+            identifier: identifier,
+            transitionTypes: staged.transitionTypes,
+            initialState: staged.initialTransition,
+            center: center,
+            radius: radius,
+            forceReseed: forceReseed
+        )
+        // CLMonitor SILENTLY IGNORES an add over a live identifier, keeping the original circle
+        // and reporting no error, so the identifier is cleared first. Keyed on the OS rather
+        // than on this process's bookkeeping, which can be missing an identifier the OS still
+        // holds. Removing one the OS does not hold is a no-op.
+        let readdStart = dateUtil.now
+        await monitor.remove(identifier)
+        await monitor.add(center: center, radius: radius, identifier: identifier, assuming: staged.assumedState)
+        // Stamped straight off the `add`, before anything else runs. The contradiction gate replays
+        // events against this instant, and a log dispatched between the two pushes the anchor later
+        // than the OS actually accepted the circle.
+        let addedAt = dateUtil.now
+        conditionReadds[identifier] = ConditionReadd(
+            start: readdStart,
+            added: addedAt,
+            center: center,
+            radius: radius
+        )
+        logger.geofenceConditionRemoved(identifier: identifier, op: .readd)
+        logger.geofenceConditionAdded(identifier: identifier)
+        knownConditionIdentifiers.insert(identifier)
+        persistConditionMirror()
     }
 
     func stopMonitoring(identifier: String) {
@@ -127,6 +163,7 @@ extension CLMonitorGeofenceMonitor {
         enqueueMonitorOperation { [weak self] monitor in
             guard let self else { return }
             await monitor.remove(identifier)
+            self.logger.geofenceConditionRemoved(identifier: identifier, op: .drop)
             self.knownConditionIdentifiers.remove(identifier)
             self.persistConditionMirror()
         }
@@ -143,6 +180,7 @@ extension CLMonitorGeofenceMonitor {
             guard let self else { return }
             for identifier in await monitor.identifiers {
                 await monitor.remove(identifier)
+                self.logger.geofenceConditionRemoved(identifier: identifier, op: .drop)
             }
             self.knownConditionIdentifiers.removeAll()
             self.persistConditionMirror()
@@ -164,6 +202,7 @@ extension CLMonitorGeofenceMonitor {
             guard let self else { return }
             for identifier in await monitor.identifiers where !desiredIdentifiers.contains(identifier) {
                 await monitor.remove(identifier)
+                self.logger.geofenceConditionRemoved(identifier: identifier, op: .drop)
                 self.knownConditionIdentifiers.remove(identifier)
             }
             self.persistConditionMirror()
