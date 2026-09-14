@@ -87,14 +87,24 @@ class SseConnectionManagerTest: XCTestCase {
 
     func test_startConnection_expectSseServiceConnectCalled() async {
         // Setup: SSE service returns a stream that completes immediately
-        let (stream, continuation) = AsyncStreamBackport.makeStream(of: SseEvent.self)
-        sseServiceMock.connectReturnValue = stream
-        continuation.finish()
+        let (stream, streamContinuation) = AsyncStreamBackport.makeStream(of: SseEvent.self)
+        streamContinuation.finish()
 
-        // Action
+        // ARM listener as Task BEFORE triggering SUT (March a49b5437 pattern)
+        let connectReceived = Task {
+            await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
+                sseServiceMock.connectClosure = { [stream] _, _ in
+                    cont.resume()
+                    return stream
+                }
+            }
+        }
+
+        // Action: trigger SUT
         await sut.startConnection()
 
-        await waitUntil("the SSE service to connect") { sseServiceMock.connectCalled }
+        // Await the latched signal
+        await connectReceived.value
 
         // Assert
         XCTAssertTrue(sseServiceMock.connectCalled)
