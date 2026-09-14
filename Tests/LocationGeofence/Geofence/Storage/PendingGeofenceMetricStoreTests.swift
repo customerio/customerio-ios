@@ -271,7 +271,25 @@ struct PendingGeofenceMetricStoreTests {
         let metric = try decoder.decode(PendingGeofenceMetric.self, from: Data(legacyJson.utf8))
 
         #expect(metric.geosetId == nil)
-        #expect(metric.key == "geo_1_enter_1700000000")
+        #expect(metric.key == "geo%5F1_enter_1700000000_user%5F1")
+    }
+
+    /// The separator is escaped inside each component, so two rows whose components differ only in
+    /// where the boundary falls cannot key the same. Unescaped, `a_42` with no geoset and `a` in
+    /// geoset `42` both produce `..._a_42`, and the first row to send removes the other's.
+    @Test
+    func key_givenAComponentHoldingTheSeparator_expectNoCollisionAcrossTheBoundary() {
+        let timestamp = Date(timeIntervalSince1970: 1700000000)
+        let underscoreInUserId = PendingGeofenceMetric(
+            geofenceId: "geo", transition: .enter, timestamp: timestamp,
+            userId: "a_42", name: nil, transitionId: "txn"
+        )
+        let userInGeoset = PendingGeofenceMetric(
+            geofenceId: "geo", transition: .enter, timestamp: timestamp,
+            userId: "a", name: nil, transitionId: "txn", geosetId: "42"
+        )
+
+        #expect(underscoreInUserId.key != userInGeoset.key)
     }
 
     // MARK: - Persistence across instances

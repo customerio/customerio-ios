@@ -15,13 +15,19 @@ import UIKit
 struct PolygonMembershipResolverTests {
     /// Records what reached the event tracker, standing in for the real one.
     private actor EmitterSpy: GeofenceTransitionEmitting {
-        private(set) var delivered: [(id: String, transition: GeofenceTransition)] = []
-
-        func trackTransition(geofenceId: String, transition: GeofenceTransition) async {
-            delivered.append((geofenceId, transition))
+        struct Delivered: Equatable, Sendable {
+            let id: String
+            let transition: GeofenceTransition
+            let occurredAt: Date
         }
 
-        func snapshot() -> [(id: String, transition: GeofenceTransition)] {
+        private(set) var delivered: [Delivered] = []
+
+        func trackTransition(geofenceId: String, transition: GeofenceTransition, occurredAt: Date) async {
+            delivered.append(Delivered(id: geofenceId, transition: transition, occurredAt: occurredAt))
+        }
+
+        func snapshot() -> [Delivered] {
             delivered
         }
     }
@@ -1259,5 +1265,53 @@ struct PolygonMembershipResolverTests {
             identifier: id, transitionTypes: [.enter, .exit], initialState: .exit,
             center: center, radius: 300, forceReseed: true
         )
+    }
+
+    // MARK: - Crossing time
+
+    /// The event time is when the device crossed, not when the verdict was reached. Those differ by
+    /// the whole wake-to-fix-to-verdict pipeline, and the OS event's own date is a third value —
+    /// so the assertion names the fix's timestamp exactly rather than a tolerance around now.
+    @Test
+    func handleTransition_givenEnterDecidedFromAFix_expectStampedWithTheFixNotTheVerdict() async {
+        let takenAt = Date().addingTimeInterval(-12)
+        let setup = await makeSetup(fix: fix(latitude: 0, longitude: 0, at: takenAt))
+        await setup.storage.setCachedGeofences([polygonGeofence()])
+
+        // A deliberately different date on the OS event, so a stamp taken from the wrong one shows.
+        await setup.resolver.handleTransition(identifier: "1", transition: .enter, occurredAt: Date())
+
+        let delivered = await setup.emitter.snapshot()
+        #expect(delivered.count == 1)
+        #expect(delivered.first?.occurredAt == takenAt)
+    }
+
+    /// A covering-circle exit needs no fix, so its evidence is the OS event's own date — which on a
+    /// crossing replayed to a long-suspended process is nowhere near the moment we handle it.
+    @Test
+    func handleTransition_givenCoveringCircleExit_expectStampedWithTheOsEventDate() async {
+        let setup = await makeSetup(fix: nil)
+        await setup.storage.setCachedGeofences([polygonGeofence()])
+        let leftAt = Date().addingTimeInterval(-300)
+        _ = await setup.storage.recordPolygonMembership(
+            .inside, forIdentifier: "1", onlyIfBeliefPredates: leftAt.addingTimeInterval(-60)
+        )
+
+        await setup.resolver.handleTransition(identifier: "1", transition: .exit, occurredAt: leftAt)
+
+        let delivered = await setup.emitter.snapshot()
+        #expect(delivered.count == 1)
+        #expect(delivered.first?.occurredAt == leftAt)
+    }
+
+    @Test
+    func handleTransition_givenCircleGeofence_expectStampedWithTheOsEventDate() async {
+        let setup = await makeSetup(fix: nil)
+        await setup.storage.setCachedGeofences([circleGeofence()])
+        let crossedAt = Date().addingTimeInterval(-300)
+
+        await setup.resolver.handleTransition(identifier: "2", transition: .enter, occurredAt: crossedAt)
+
+        #expect(await setup.emitter.snapshot().first?.occurredAt == crossedAt)
     }
 }

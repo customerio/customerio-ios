@@ -2370,6 +2370,31 @@ struct GeofenceSyncCoordinatorTests {
         #expect(setup.emitter.calls.wrappedValue.isEmpty)
     }
 
+    /// Nothing crossed anything on this path, so the event time is when the sync noticed — read
+    /// from the injected clock, not the wall clock the tracker used to stamp with.
+    @Test
+    func refresh_givenNewInsideFences_expectStampedFromTheInjectedClock() async {
+        let anchor = LocationData(latitude: 1.0, longitude: 2.0)
+        let storage = makeStorage()
+        let dateUtil = DateUtilStub()
+        await storage.recordSync(timestamp: dateUtil.givenNow.addingTimeInterval(-25 * 60 * 60), location: LocationData(latitude: 0, longitude: 0))
+        let api = GeofenceApiServiceMock()
+        api.fetchNearbyGeofencesClosure = { _, _, completion in
+            completion(.success(makeApiResponse(regions: [
+                makeRegion(id: "g1", latitude: 1.0, longitude: 2.0),
+                makeRegion(id: "g2", latitude: 1.0, longitude: 2.0)
+            ])))
+        }
+        let setup = makeCoordinator(api: api, storage: storage, dateUtil: dateUtil)
+
+        _ = await setup.coordinator.refresh(latitude: anchor.latitude, longitude: anchor.longitude, anchorIsLiveFix: true)
+
+        await awaitEmits(setup.emitter, count: 2)
+        let stamps = setup.emitter.calls.wrappedValue.map(\.occurredAt)
+        #expect(stamps.count == 2)
+        #expect(stamps.allSatisfy { $0 == dateUtil.givenNow })
+    }
+
     @Test
     func refresh_givenUserChangesMidInitialEnterBatch_expectRemainingSuppressed() async {
         // Two new-inside fences. The identity changes while the first enter is being delivered; the
@@ -2661,14 +2686,20 @@ private actor SpyGeofenceSyncStorage: GeofenceSyncStorage {
 
 /// Records the synthetic transitions the coordinator fires for initial enter-when-inside.
 private final class TransitionEmitterSpy: GeofenceTransitionEmitting, @unchecked Sendable {
-    let calls = Synchronized<[(geofenceId: String, transition: GeofenceTransition)]>([])
+    struct Emit: Equatable, Sendable {
+        let geofenceId: String
+        let transition: GeofenceTransition
+        let occurredAt: Date
+    }
+
+    let calls = Synchronized<[Emit]>([])
     /// Invoked after each recorded emit with its 0-based index — lets a test mutate state mid-batch
     /// (e.g. change the identified user) to exercise the per-iteration guard.
     var onEmit: (@Sendable (Int) -> Void)?
 
-    func trackTransition(geofenceId: String, transition: GeofenceTransition) async {
+    func trackTransition(geofenceId: String, transition: GeofenceTransition, occurredAt: Date) async {
         let index = calls.mutating { calls -> Int in
-            calls.append((geofenceId, transition))
+            calls.append(Emit(geofenceId: geofenceId, transition: transition, occurredAt: occurredAt))
             return calls.count - 1
         }
         onEmit?(index)
