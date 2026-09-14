@@ -67,7 +67,7 @@ extension Logger {
     // third-party subsystems, so a field report would not carry them.
     func geofenceMonitorStoppedMonitoringRegion(_ identifier: String) {
         error(
-            "CoreLocation stopped monitoring region \(identifier); its transitions are not delivered until the next sync re-registers it"
+            "CoreLocation stopped monitoring region \(identifier); its transitions are not delivered until it is re-registered, which is now scheduled rather than left to the next sync"
                 + geofenceTail("os.monitor.stopped", .input, [("id", identifier)]),
             geofenceTag,
             nil
@@ -211,6 +211,24 @@ extension Logger {
             "Geofence note: \(reason.replacingOccurrences(of: "_", with: " "))"
                 + geofenceTail("info", .observation, [("why", reason)] + fields),
             geofenceTag
+        )
+    }
+
+    /// The SDK re-registering conditions CoreLocation gave up on, instead of waiting for a
+    /// movement pass that — when the trigger is among them — can never come.
+    ///
+    /// Error level for the same reason as `os.monitor.stopped` above, and it is the other half of
+    /// that pair: `info` is not persisted to the log store for third-party subsystems, so a field
+    /// report carried the outage and not the recovery, which reads as an outage that never ended.
+    func geofenceUnmonitoredRecovery(count: Int) {
+        error(
+            "CoreLocation gave up \(count) condition(s); re-registering them now"
+                + geofenceTail("registration.recovery", .observation, [
+                    ("n", GeofenceLog.int(count)),
+                    ("why", "os_unmonitored")
+                ]),
+            geofenceTag,
+            nil
         )
     }
 

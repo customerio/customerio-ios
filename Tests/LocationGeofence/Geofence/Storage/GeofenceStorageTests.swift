@@ -664,6 +664,111 @@ struct GeofenceStorageTests {
         #expect(await storage.recordMonitorEvent(.enter, forIdentifier: "geo_1", onlyIfBaselinePredates: Date(timeIntervalSince1970: 0)) == .deliver)
     }
 
+    // MARK: - OS event identity (`osEventDate`)
+
+    @Test
+    func recordMonitorEvent_givenSameOsEventDateTwice_expectRedelivered() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let storage = makeStorage(directory: dir)
+        let center = LocationData(latitude: 10, longitude: 20)
+        let eventAt = Date(timeIntervalSince1970: 1789215260.147529)
+        await storage.recordMonitorRegistration(identifier: "geo_1", transitionTypes: [.enter, .exit], initialState: .exit, center: center, radius: 100, now: eventAt.addingTimeInterval(-600))
+        #expect(await storage.recordMonitorEvent(.enter, forIdentifier: "geo_1", osEventDate: eventAt) == .deliver)
+        // CoreLocation hands the same event over again. Refused by identity, before any state compare.
+        #expect(await storage.recordMonitorEvent(.enter, forIdentifier: "geo_1", osEventDate: eventAt) == .suppressedRedelivery)
+    }
+
+    @Test
+    func recordMonitorEvent_givenCopyDatedFractionallyEarlier_expectRedelivered() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let storage = makeStorage(directory: dir)
+        let center = LocationData(latitude: 10, longitude: 20)
+        let eventAt = Date(timeIntervalSince1970: 1789215260.147529)
+        await storage.recordMonitorRegistration(identifier: "geo_1", transitionTypes: [.enter, .exit], initialState: .exit, center: center, radius: 100, now: eventAt.addingTimeInterval(-600))
+        #expect(await storage.recordMonitorEvent(.enter, forIdentifier: "geo_1", osEventDate: eventAt) == .deliver)
+        // Copies are not always date-identical and not always delivered in date order (measured on
+        // device: sub-microsecond apart). An earlier-dated copy is still a copy.
+        #expect(await storage.recordMonitorEvent(.enter, forIdentifier: "geo_1", osEventDate: eventAt.addingTimeInterval(-0.000001)) == .suppressedRedelivery)
+        // And a genuinely later event of the other state still delivers.
+        #expect(await storage.recordMonitorEvent(.exit, forIdentifier: "geo_1", osEventDate: eventAt.addingTimeInterval(60)) == .deliver)
+    }
+
+    @Test
+    func recordMonitorEvent_givenNoChangeWithOsEventDate_expectDateRememberedForLaterCopy() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let storage = makeStorage(directory: dir)
+        let center = LocationData(latitude: 10, longitude: 20)
+        let eventAt = Date(timeIntervalSince1970: 1789215260.147529)
+        await storage.recordMonitorRegistration(identifier: "geo_1", transitionTypes: [.enter, .exit], initialState: .exit, center: center, radius: 100, now: eventAt.addingTimeInterval(-600))
+        // The daemon replaying the state we seeded: nothing to deliver, but now seen.
+        #expect(await storage.recordMonitorEvent(.exit, forIdentifier: "geo_1", osEventDate: eventAt) == .suppressedNoChange)
+        #expect(await storage.recordMonitorEvent(.exit, forIdentifier: "geo_1", osEventDate: eventAt) == .suppressedRedelivery)
+    }
+
+    @Test
+    func recordMonitorEvent_givenOsEventDatedBeforeChangedCircle_expectPredatesRegistration() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let storage = makeStorage(directory: dir)
+        let reshapedAt = Date(timeIntervalSince1970: 1789215260.748)
+        await storage.recordMonitorRegistration(identifier: "trigger", transitionTypes: [.exit], initialState: .enter, center: LocationData(latitude: 10, longitude: 20), radius: 1000, now: reshapedAt.addingTimeInterval(-3600))
+        // The device exits the old circle; a movement pass re-centres the trigger on it.
+        #expect(await storage.recordMonitorEvent(.exit, forIdentifier: "trigger", osEventDate: reshapedAt.addingTimeInterval(-0.2)) == .deliver)
+        await storage.recordMonitorRegistration(identifier: "trigger", transitionTypes: [.exit], initialState: .enter, center: LocationData(latitude: 10.02, longitude: 20), radius: 1000, now: reshapedAt)
+        // A corrective the daemon computed against the OLD circle, dated 42 ms before the new one
+        // was installed (drive 5). Its state differs from the fresh seed, so by state alone it is a
+        // crossing — and the phone only absorbed it because its queue happened to drain later.
+        #expect(await storage.recordMonitorEvent(.exit, forIdentifier: "trigger", osEventDate: reshapedAt.addingTimeInterval(-0.042)) == .suppressedPredatesRegistration)
+        // The record is untouched: a real exit of the new circle still delivers.
+        #expect(await storage.recordMonitorEvent(.exit, forIdentifier: "trigger", osEventDate: reshapedAt.addingTimeInterval(300)) == .deliver)
+    }
+
+    @Test
+    func recordMonitorRegistration_givenUnchangedReRegistration_expectIncarnationPreserved() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let storage = makeStorage(directory: dir)
+        let center = LocationData(latitude: 10, longitude: 20)
+        let registeredAt = Date(timeIntervalSince1970: 1789215000)
+        await storage.recordMonitorRegistration(identifier: "geo_1", transitionTypes: [.enter, .exit], initialState: .exit, center: center, radius: 100, now: registeredAt)
+        // A process restart re-registers the same circle. Not a new incarnation: a crossing the OS
+        // detected while the app was dead, dated across the re-register, is a catch-up, not a replay.
+        await storage.recordMonitorRegistration(identifier: "geo_1", transitionTypes: [.enter, .exit], initialState: .exit, center: center, radius: 100, now: registeredAt.addingTimeInterval(600))
+        #expect(await storage.recordMonitorEvent(.enter, forIdentifier: "geo_1", osEventDate: registeredAt.addingTimeInterval(300)) == .deliver)
+    }
+
+    @Test
+    func recordMonitorRegistration_givenForceReseed_expectNewIncarnation() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let storage = makeStorage(directory: dir)
+        let center = LocationData(latitude: 10, longitude: 20)
+        let registeredAt = Date(timeIntervalSince1970: 1789215000)
+        await storage.recordMonitorRegistration(identifier: "geo_1", transitionTypes: [.enter, .exit], initialState: .exit, center: center, radius: 100, now: registeredAt)
+        // The OS gave the condition up and the SDK re-registered it, same circle. Events the daemon
+        // held from the dead incarnation (drive 5 delivered fifteen of them 49 minutes late) predate it.
+        await storage.recordMonitorRegistration(identifier: "geo_1", transitionTypes: [.enter, .exit], initialState: .exit, center: center, radius: 100, forceReseed: true, now: registeredAt.addingTimeInterval(600))
+        #expect(await storage.recordMonitorEvent(.enter, forIdentifier: "geo_1", osEventDate: registeredAt.addingTimeInterval(300)) == .suppressedPredatesRegistration)
+    }
+
+    @Test
+    func recordMonitorEvent_givenLegacyRecordWithoutIdentityFields_expectDeliver() async throws {
+        // A state file persisted before `registeredAt` / `lastEventDate` existed: both decode nil,
+        // and nil refuses nothing (fail open, as `lastStateChangedAt` already does).
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let legacyState = """
+        {"monitorRegionRecords":{"geo_1":{"lastState":"exit","transitionTypes":["enter","exit"],"center":{"latitude":10,"longitude":20},"radius":100}}}
+        """
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        try legacyState.write(to: dir.appendingPathComponent("geofenceState.json"), atomically: true, encoding: .utf8)
+        let storage = makeStorage(directory: dir)
+        #expect(await storage.recordMonitorEvent(.enter, forIdentifier: "geo_1", osEventDate: Date(timeIntervalSince1970: 1789215260)) == .deliver)
+    }
+
     @Test
     func recordMonitorRegistration_givenUnchangedReRegistration_expectStampPreserved() async {
         let dir = makeTempDirectory()

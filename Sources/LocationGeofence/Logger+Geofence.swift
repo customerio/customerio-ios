@@ -337,11 +337,20 @@ extension Logger {
         )
     }
 
-    func geofenceRegionsAdopted(count: Int) {
+    /// Which OS-persisted conditions this process claimed on launch.
+    ///
+    /// The identifiers were always in hand — `adoptExistingRegions` computes a `Set<String>` and
+    /// used to log only its size. They are the *claimed* set, which is why this stays an
+    /// observation: the re-arm behind it skips any condition whose stored geometry no longer
+    /// matches, so the authoritative answer is the `registration.applied` the re-arm emits once it
+    /// has read the OS back. This record says what the SDK decided to take; that one says what it got.
+    func geofenceRegionsAdopted(identifiers: [String]) {
         debug(
-            "Adopted \(count) OS-persisted region(s) on launch; re-armed in place"
-                // An observation: `registration.applied` already asserts the resulting set.
-                + geofenceTail("registration.adopted", .observation, [("n", GeofenceLog.int(count))]),
+            "Adopted \(identifiers.count) OS-persisted region(s) on launch; re-arming in place"
+                + geofenceTail("registration.adopted", .observation, [
+                    ("n", GeofenceLog.int(identifiers.count)),
+                    ("ids", GeofenceLog.list(identifiers.sorted()))
+                ]),
             geofenceTag
         )
     }

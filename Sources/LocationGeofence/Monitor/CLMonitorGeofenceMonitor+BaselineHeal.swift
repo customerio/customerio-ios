@@ -30,6 +30,14 @@ extension CLMonitorGeofenceMonitor {
     /// genuine OS crossing recorded after the fix was taken — while the heal waited in the queue,
     /// or within the fix's own age — must win over a decision made from an older position, which
     /// would otherwise synthesize the reverse transition and dedup away the real one.
+    ///
+    /// **The OS event path passes the same guard, for the mirror of this reason.** A heal writes a
+    /// baseline without advancing `registeredAt` or `lastEventDate`, so the two OS-dated checks in
+    /// `recordMonitorEvent` cannot see it: an event dated BEFORE a heal that already synthesized
+    /// the opposite state clears both and reverses newer evidence. That path passes the event's
+    /// own date — and stamps the baseline with it via `now:` — so the comparison stays on the OS
+    /// clock at both ends and does not reintroduce the drain-order dependence drive 5 measured,
+    /// which came from weighing a reseed's wall-clock write time against an event's OS date.
     func enqueueBaselineHeal(candidates: [String]) {
         // Captured before the enqueue: `registeredConditions` at this instant is what the calling
         // sync just diffed as unchanged.
@@ -59,10 +67,12 @@ extension CLMonitorGeofenceMonitor {
                 ) else { continue }
                 // A heal that decides a crossing is real and is then refused by the baseline used
                 // to vanish. Reported as `baseline.refused`, not `os.callback.dropped`: nothing
-                // arrived from the OS on this path. Both writers pass their evidence time as the
-                // bound; the OS path passes the event's date, this one the fix's.
-                // Stamped with the fix's time, not the drain time: OS events are judged against this
-                // stamp by their own date, so both writers must record evidence time.
+                // arrived from the OS on this path. The OS path passes an evidence timestamp too,
+                // so `.suppressedNewerBaseline` can print from either side: there it means a heal
+                // outran an older OS copy, here that a genuine crossing outran this heal.
+                // Stamped with the fix's time, not the drain time, so the baseline records when the
+                // evidence was taken rather than when the queue reached it. Only this path reads
+                // that stamp back.
                 let outcome = await self.storage.recordMonitorEvent(
                     transition,
                     forIdentifier: identifier,

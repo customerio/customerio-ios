@@ -103,8 +103,9 @@ struct GeofenceLogTailTests {
             Invocation(name: "resetCompleted", ev: "module.reset", requiredKeys: ["ok"]) { $0.geofenceResetCompleted() },
             Invocation(name: "resetSuperseded", ev: "module.reset", requiredKeys: ["ok", "why"]) { $0.geofenceResetSuperseded() },
             Invocation(name: "firstRunRearm", ev: "movement.rearmed", requiredKeys: ["why"]) { $0.geofenceFirstRunRearm() },
-            Invocation(name: "regionsAdopted", ev: "registration.adopted", requiredKeys: ["n"]) { $0.geofenceRegionsAdopted(count: 4) },
+            Invocation(name: "regionsAdopted", ev: "registration.adopted", requiredKeys: ["n", "ids"]) { $0.geofenceRegionsAdopted(identifiers: ["a", "b", "c", "d"]) },
             Invocation(name: "foregroundRearm", ev: "registration.rearmed", requiredKeys: ["n", "why"]) { $0.geofenceForegroundRearm(count: 4) },
+            Invocation(name: "unmonitoredRecovery", ev: "registration.recovery", requiredKeys: ["n", "why"]) { $0.geofenceUnmonitoredRecovery(count: 4) },
             Invocation(name: "storageLoaded", ev: "storage.loaded", requiredKeys: ["n", "anchor"]) { $0.geofenceStorageLoaded(regionCount: 30, hasAnchor: true) }
         ]
     }
@@ -251,6 +252,7 @@ struct GeofenceLogTailTests {
         "registration.applied",
         "registration.diff",
         "registration.rearmed",
+        "registration.recovery",
         "registration.rejected",
         "storage.loaded",
         "storage.write.failed",

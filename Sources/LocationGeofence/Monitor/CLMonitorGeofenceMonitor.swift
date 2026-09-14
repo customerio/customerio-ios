@@ -49,7 +49,9 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring {
     /// Internal (not private) for the `+BaselineHeal` extension's synthesized deliveries.
     var onTransition: GeofenceTransitionHandler?
     private var onAuthorizationChanged: GeofenceAuthorizationChangedHandler?
-    private var onReconciled: GeofenceReconciledHandler?
+    /// Internal (not private) for `+Registration`, which re-runs the bootstrap through it when the
+    /// OS gives conditions up (`scheduleUnmonitoredRecovery`).
+    var onReconciled: GeofenceReconciledHandler?
     private var lastLoggedPermissionTier: CoreLocationGeofenceMonitor.PermissionTier?
 
     /// In-memory ownership filter, mirrors `ownedRegionIdentifiers` in the classic monitor.
@@ -67,9 +69,17 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring {
     /// first pass re-register it; when the bootstrap adopts instead, `adoptExistingRegions` seeds it
     /// from the persisted records the re-arm then imposes at the OS.
     var registeredConditions: [String: RegisteredCondition] = [:]
-    /// Conditions the OS stopped monitoring since their last registration. The next registration
-    /// reseeds their stored baseline instead of preserving it — see `recordMonitorRegistration`.
-    var conditionsNeedingBaselineReseed: Set<String> = []
+    /// Conditions the OS stopped monitoring since their last registration, and when it gave each up.
+    /// The next registration reseeds their stored baseline rather than preserving it — see
+    /// `recordMonitorRegistration`. Dated so the refusal they drive expires; see `unmonitoredGateMaxAge`.
+    var conditionsNeedingBaselineReseed: [String: Date] = [:]
+    /// Whether a re-registration of conditions the OS gave up on is already queued, and whether one
+    /// waits out the rate-limit window before re-asking. Both from `+Registration`.
+    var isUnmonitoredRecoveryScheduled = false
+    var isUnmonitoredRecoveryDeferred = false
+    /// When the last recovery that did something ran; another defers inside
+    /// `unmonitoredRecoveryInterval`. A run finding nothing pending does not stamp it.
+    var lastUnmonitoredRecoveryAt: Date?
     /// When each condition was last (re)added at the OS and the circle that add imposed, stamped
     /// at the add's drain time. The contradiction gate only vets events landing shortly after an
     /// add — the daemon's belief replays — and judges them against this geometry, NOT the staged
@@ -112,6 +122,9 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring {
     let dateUtil: DateUtil
 
     private let makeConditionMonitor: @Sendable (String) async -> GeofenceConditionMonitoring
+    /// How a deferred recovery (`+Registration`) waits out its window: the OS clock by default, a
+    /// caller's own when it is driving a recorded timeline rather than paying 60 real seconds.
+    let waitForRecoveryWindow: (TimeInterval) async -> Void
 
     init(
         logger: Logger,
@@ -121,6 +134,9 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring {
         authority: GeofenceLocationAuthority = CoreLocationAuthority(),
         makeConditionMonitor: @escaping @Sendable (String) async -> GeofenceConditionMonitoring = { name in
             await CoreLocationConditionMonitor(monitor: CLMonitor(name))
+        },
+        waitForRecoveryWindow: @escaping (TimeInterval) async -> Void = { seconds in
+            try? await Task.sleep(nanoseconds: UInt64(seconds * 1000000000))
         }
     ) {
         self.logger = logger
@@ -130,6 +146,7 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring {
         self.lastRearmAt = dateUtil.now
         self.authManager = authority
         self.makeConditionMonitor = makeConditionMonitor
+        self.waitForRecoveryWindow = waitForRecoveryWindow
         self.movementFixResolver = MovementFixResolver(
             logger: logger,
             backgroundTaskRunner: GeofenceBackgroundTime.runner(name: "io.customer.geofence.movement-fix"),
@@ -277,16 +294,22 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring {
         // event the OS delivered, and the drives worth explaining are usually the ones where
         // something arrived and was then discarded.
         logReceivedCallback(identifier: identifier, transition: transition, eventDate: event.date)
+        // The OS gave this condition up and nothing has re-registered it yet: until then whatever it
+        // reports is a replay of a dead incarnation, not a crossing (see `handleConditionUnmonitored`).
+        if isAwaitingReregistration(identifier: identifier, transition: transition) { return }
         // Runs BEFORE the baseline advance below: a refused event must leave the stored baseline
         // untouched so the daemon's own re-evaluation dedups against it (see `+ContradictionGate`).
-        if identifier != GeofenceConstants.movementTriggerIdentifier,
-           await isEventContradictedByFreshFix(identifier: identifier, transition: transition, eventDate: event.date) {
+        // The movement trigger is gated too: it is added centred on the device, so an exit dated
+        // within seconds of that add is a belief replay, never a kilometre of displacement.
+        if await isEventContradictedByFreshFix(identifier: identifier, transition: transition, eventDate: event.date) {
             return
         }
-        // Dated by the OS, not by receipt: CoreLocation re-delivers the same event, and a copy landing
-        // after its first copy's movement pass re-seeded this baseline must read as stale, not new.
+        // Dated by the OS, not by receipt: every guard below weighs OS dates, never the instant
+        // the SDK wrote, which made the old rule follow the queue's drain speed (drive 5). The
+        // evidence guard covers what the other two cannot see — see `enqueueBaselineHeal`.
         let outcome = await storage.recordMonitorEvent(
-            transition, forIdentifier: identifier, onlyIfBaselinePredates: event.date, now: event.date
+            transition, forIdentifier: identifier,
+            onlyIfBaselinePredates: event.date, osEventDate: event.date, now: event.date
         )
         guard case .deliver = outcome else {
             logDiscardedCallback(identifier: identifier, transition: transition, outcome: outcome)

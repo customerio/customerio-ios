@@ -56,7 +56,14 @@ extension CLMonitorGeofenceMonitor {
         guard let readd = conditionReadds[identifier],
               readd.replayWindowCovers(eventDate)
         else { return false }
-        let gateFix = await resolveGateFix()
+        // The movement trigger is judged on the cache alone. It is the one condition whose gate sits
+        // on the path that drives every sync, and this runs on the single serialized event consumer,
+        // so a one-shot request here stalls every later event behind it for up to
+        // `movementFixRequestTimeout`. It also has the least to gain: the trigger was added centred
+        // on the device from that same cache moments earlier, so the cached fix is the reference the
+        // staging already used. No cached fix means no judgement, and the gate fails open as always.
+        let isMovementTrigger = identifier == GeofenceConstants.movementTriggerIdentifier
+        let gateFix = isMovementTrigger ? bestKnownFix() : await resolveGateFix()
         guard let gateFix, CLLocationCoordinate2DIsValid(gateFix.coordinate) else { return false }
         let distanceFromCenter = gateFix.distance(
             from: CLLocation(latitude: readd.center.latitude, longitude: readd.center.longitude)
