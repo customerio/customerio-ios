@@ -8,6 +8,14 @@ extension LocationTestViewController {
         handleGrantBackgroundLocationTap()
     }
 
+    @objc func diagnosticFilterToggled() {
+        DiagnosticFilter.isEnabled = diagnosticFilterSwitch.isOn
+        // Recorded in the file so a capture says which way the switch was set while it ran.
+        DiagnosticLog.shared.note(
+            "Diagnostic filter \(diagnosticFilterSwitch.isOn ? "enabled" : "disabled") from the location screen"
+        )
+    }
+
     @objc func shareDiagnosticLogsTapped() {
         DiagnosticLogExport.presentShareSheet(from: self, sourceView: shareDiagnosticLogsButton)
     }

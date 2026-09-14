@@ -14,6 +14,87 @@ class MessagingInAppConfigBuilderTest: UnitTest {
         XCTAssertEqual(config.region, givenRegion)
     }
 
+    func test_build_givenNoNotificationInboxAccessibilityLabels_expectAllNil() {
+        let config = MessagingInAppConfigBuilder(siteId: String.random, region: .US).build()
+
+        XCTAssertNil(config.notificationInboxAccessibilityLabels.bell)
+        XCTAssertNil(config.notificationInboxAccessibilityLabels.bellWithUnreadCount)
+        XCTAssertNil(config.notificationInboxAccessibilityLabels.loadingIndicator)
+        XCTAssertNil(config.notificationInboxAccessibilityLabels.emptyState)
+    }
+
+    func test_setNotificationInboxAccessibilityLabels_expectLabelsOnConfig() {
+        let config = MessagingInAppConfigBuilder(siteId: String.random, region: .US)
+            .setNotificationInboxAccessibilityLabels(NotificationInboxAccessibilityLabels(
+                bell: "Aviseringar",
+                bellWithUnreadCount: { count in count == 1 ? "1 oläst avisering" : "\(count) olästa aviseringar" },
+                loadingIndicator: "Laddar",
+                emptyState: "Inga aviseringar"
+            ))
+            .build()
+
+        XCTAssertEqual(config.notificationInboxAccessibilityLabels.bell, "Aviseringar")
+        XCTAssertEqual(config.notificationInboxAccessibilityLabels.bellWithUnreadCount?(1), "1 oläst avisering")
+        XCTAssertEqual(config.notificationInboxAccessibilityLabels.bellWithUnreadCount?(4), "4 olästa aviseringar")
+        XCTAssertEqual(config.notificationInboxAccessibilityLabels.loadingIndicator, "Laddar")
+        XCTAssertEqual(config.notificationInboxAccessibilityLabels.emptyState, "Inga aviseringar")
+    }
+
+    func test_initializeFromDictionaryWithNotificationInboxAccessibilityLabels_expectLabelsAndTemplate() throws {
+        let givenDict: [String: Any] = [
+            "inApp": [
+                "siteId": String.random,
+                "notificationInboxAccessibilityLabels": [
+                    "bell": "Aviseringar",
+                    "bellWithUnreadCount": "{count} olästa aviseringar",
+                    "loadingIndicator": "Laddar",
+                    "emptyState": "Inga aviseringar"
+                ]
+            ]
+        ]
+
+        let config = try XCTUnwrap(MessagingInAppConfigBuilder.build(from: givenDict))
+
+        XCTAssertEqual(config.notificationInboxAccessibilityLabels.bell, "Aviseringar")
+        XCTAssertEqual(config.notificationInboxAccessibilityLabels.bellWithUnreadCount?(2), "2 olästa aviseringar")
+        XCTAssertEqual(config.notificationInboxAccessibilityLabels.loadingIndicator, "Laddar")
+        XCTAssertEqual(config.notificationInboxAccessibilityLabels.emptyState, "Inga aviseringar")
+    }
+
+    func test_initializeFromDictionaryWithPartialNotificationInboxAccessibilityLabels_expectMissingAndNonStringNil() throws {
+        let givenDict: [String: Any] = [
+            "inApp": [
+                "siteId": String.random,
+                "notificationInboxAccessibilityLabels": [
+                    "emptyState": "Inga aviseringar",
+                    "bell": 42
+                ]
+            ]
+        ]
+
+        let config = try XCTUnwrap(MessagingInAppConfigBuilder.build(from: givenDict))
+
+        XCTAssertNil(config.notificationInboxAccessibilityLabels.bell)
+        XCTAssertNil(config.notificationInboxAccessibilityLabels.bellWithUnreadCount)
+        XCTAssertNil(config.notificationInboxAccessibilityLabels.loadingIndicator)
+        XCTAssertEqual(config.notificationInboxAccessibilityLabels.emptyState, "Inga aviseringar")
+    }
+
+    func test_initializeFromDictionaryWithoutNotificationInboxAccessibilityLabels_expectAllNil() throws {
+        let givenDict: [String: Any] = [
+            "inApp": [
+                "siteId": String.random
+            ]
+        ]
+
+        let config = try XCTUnwrap(MessagingInAppConfigBuilder.build(from: givenDict))
+
+        XCTAssertNil(config.notificationInboxAccessibilityLabels.bell)
+        XCTAssertNil(config.notificationInboxAccessibilityLabels.bellWithUnreadCount)
+        XCTAssertNil(config.notificationInboxAccessibilityLabels.loadingIndicator)
+        XCTAssertNil(config.notificationInboxAccessibilityLabels.emptyState)
+    }
+
     func test_initializeFromDictionaryWithCustomValues_expectCorrectValues() {
         let givenSiteId = String.random
         let givenRegion = "EU"

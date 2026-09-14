@@ -43,6 +43,21 @@ extension CLMonitorGeofenceMonitor {
         )
     }
 
+    /// Records a crossing the dedup baseline discarded, and why.
+    ///
+    /// Same reason `logReceivedCallback` lives here: the handler is at the file-length limit. And
+    /// the same reason it exists at all — CLMonitor delivers a crossing more than once (a field
+    /// drive saw every one arrive twice, 8-10 ms apart with identical fixes), and the duplicate is
+    /// absorbed by the baseline. Without this the discard is invisible, so `os.callback.received`
+    /// reads as a crossing count when it is really twice that, and a callback that vanishes here
+    /// cannot be told apart from the OS never delivering one.
+    ///
+    /// `.deliver` logs nothing: it is not a discard.
+    func logDiscardedCallback(identifier: String, transition: GeofenceTransition, outcome: GeofenceMonitorEventOutcome) {
+        guard let reason = outcome.diagnosticReason else { return }
+        logger.geofenceCallbackDropped(identifier: identifier, transition: transition, reason: reason)
+    }
+
     /// Internal (not private) only because it lives in a separate file from its callers.
     func currentLocationData() -> LocationData? {
         guard let location = bestKnownFix() else { return nil }

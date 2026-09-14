@@ -52,10 +52,7 @@ struct GeofenceMonitorOwnershipTests {
     /// nothing and pass against the very bug they are meant to catch — verified by running them
     /// against the unfixed monitor.
     private func withDiagnostics<T>(_ enabled: Bool, _ body: () throws -> T) rethrows -> T {
-        let previous = GeofenceDiagnostics.overrideForTesting
-        GeofenceDiagnostics.overrideForTesting = enabled
-        defer { GeofenceDiagnostics.overrideForTesting = previous }
-        return try body()
+        try DiagnosticsGateTesting.withDiagnostics(enabled, body)
     }
 
     private func hostRegion() -> CLCircularRegion {
@@ -109,10 +106,6 @@ struct GeofenceMonitorOwnershipTests {
     /// the queue drains. Nothing may be recorded in the meantime.
     @Test
     func regionEvent_givenBufferedAndNotOurs_expectNothingRecorded() async {
-        let previous = GeofenceDiagnostics.overrideForTesting
-        GeofenceDiagnostics.overrideForTesting = true
-        defer { GeofenceDiagnostics.overrideForTesting = previous }
-
         let logger = CapturingLogger()
         let monitor = CoreLocationGeofenceMonitor(logger: logger)
 
@@ -121,8 +114,12 @@ struct GeofenceMonitorOwnershipTests {
         // Let the drain task run; it is dispatched onto the main actor.
         await Task.yield()
 
+        // Asserted on the identifier, like the unbuffered sibling above, rather than on the tail's
+        // `ev=`. The identifier rides in the prose, which is emitted whatever the diagnostics gate
+        // says, so this needs no gate — and it is the stronger check: it fails whether or not the
+        // tail happens to be on, where an `ev=` assertion passes vacuously with the gate off.
         #expect(
-            logger.messages.allSatisfy { !$0.contains("os.callback.received") },
+            logger.messages.allSatisfy { !$0.contains(Self.hostIdentifier) },
             "drained a buffered crossing for a region we do not own: \(logger.messages)"
         )
     }

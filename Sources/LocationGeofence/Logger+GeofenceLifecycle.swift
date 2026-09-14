@@ -191,6 +191,28 @@ extension Logger {
         )
     }
 
+    /// Something worth reading in a log, deliberately outside the asserted vocabulary.
+    ///
+    /// `ev=info` is the bucket for records a human wants when explaining a capture but a scenario
+    /// must never assert on. Two reasons it exists rather than reusing a semantic key:
+    ///
+    /// - Unexpected cases do not deserve invented semantics. Minting `os.callback.unusable` for
+    ///   every oddity grows the vocabulary faster than anyone can keep it aligned across platforms.
+    /// - More importantly, the obvious reuse is actively wrong. Filing these under
+    ///   `os.callback.dropped` would inflate the received-vs-dropped count — the count that
+    ///   separates "the OS never reported it" from "we discarded it", which is the question a
+    ///   paired drive exists to answer. Every real `os.callback.dropped` nets against an
+    ///   `os.callback.received`; these have no receipt to net against.
+    ///
+    /// `io=obs`, so the off-device transform drops the whole family rather than replaying it.
+    func geofenceInfo(_ reason: String, fields: [(String, String?)] = []) {
+        debug(
+            "Geofence note: \(reason.replacingOccurrences(of: "_", with: " "))"
+                + geofenceTail("info", .observation, [("why", reason)] + fields),
+            geofenceTag
+        )
+    }
+
     func geofenceCallbackDropped(identifier: String, transition: GeofenceTransition, reason: String) {
         debug(
             "OS \(transition.rawValue) for region \(identifier) not routed: \(reason)"

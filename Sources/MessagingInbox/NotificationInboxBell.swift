@@ -80,9 +80,18 @@ struct InboxBellView: View {
         // visible badge and the accessibility label key off this, so VoiceOver never announces a count
         // the workspace chose to hide.
         let showsUnreadCount = model.unopenedCount > 0 && (model.chrome?.showUnreadBadge ?? true)
+        // The SDK ships no strings of its own: the label comes from the host's
+        // `NotificationInboxAccessibilityLabels` — the count-aware closure while the badge shows
+        // (falling back to the plain bell label), the plain bell label otherwise, or none at all when
+        // unconfigured, leaving an unnamed-but-reachable button. VoiceOver never announces a count the
+        // workspace chose to hide, because `showsUnreadCount` gates both.
+        let labels = model.accessibilityLabels
+        let accessibilityLabel = showsUnreadCount
+            ? labels.bellWithUnreadCount?(model.unopenedCount) ?? labels.bell
+            : labels.bell
         return Button(action: onTap, label: {
             ZStack(alignment: .topTrailing) {
-                bellGlyph(colors: colors)
+                InboxBellGlyphView(glyph: model.bellGlyph, tint: colors.bellIcon)
                     .frame(width: 26, height: 26)
                     .frame(width: 56, height: 56)
                     .background(colors.bellBackground)
@@ -104,35 +113,15 @@ struct InboxBellView: View {
                         .background(colors.badge)
                         .clipShape(Capsule())
                         .offset(x: 4, y: -4)
+                        // The badge is decorative: a button folds its children's text into its own
+                        // label, so leaving the digits visible to VoiceOver would append a bare number
+                        // to an otherwise unnamed bell. The count reaches VoiceOver only through the
+                        // host's `bellWithUnreadCount` label.
+                        .accessibility(hidden: true)
                 }
             }
         })
-        // `.accessibility(label:)` is the iOS 13-safe form; `.accessibilityLabel` is iOS 14+.
-        .accessibility(label: Text(showsUnreadCount ? "Notifications, \(model.unopenedCount) unread" : "Notifications"))
-    }
-
-    /// The bell glyph: the workspace's branding SVG (`floatingIcon.svg`) when present and parseable
-    /// (pre-built once by the model), otherwise the bundled default bell asset. Both are tinted with
-    /// the branding glyph color.
-    @ViewBuilder
-    private func bellGlyph(colors: ResolvedInboxColors) -> some View {
-        if let glyph = model.bellGlyph {
-            // Fill each <path> INDEPENDENTLY (like the browser) with its OWN declared fill rule so
-            // overlapping paths don't flip each other's winding parity (MBL-2123). Uniform tint → the
-            // stack reads as one glyph.
-            ZStack {
-                ForEach(Array(glyph.subpaths.enumerated()), id: \.offset) { _, subpath in
-                    InboxBellIcon(subpath: subpath.path, viewBox: glyph.viewBox)
-                        .fill(colors.bellIcon, style: FillStyle(eoFill: subpath.usesEvenOddFill))
-                }
-            }
-        } else {
-            Image("cio-inbox-bell", bundle: .cioInboxResources)
-                .renderingMode(.template)
-                .resizable()
-                .aspectRatio(contentMode: .fit)
-                .foregroundColor(colors.bellIcon)
-        }
+        .inboxAccessibilityLabel(accessibilityLabel)
     }
 }
 

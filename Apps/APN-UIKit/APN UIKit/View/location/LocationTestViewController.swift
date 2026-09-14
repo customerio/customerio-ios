@@ -29,6 +29,7 @@ class LocationTestViewController: BaseViewController {
     var grantBackgroundLocationButton: ThemeButton!
     var grantBackgroundStatusLabel: UILabel!
     var shareDiagnosticLogsButton: ThemeButton!
+    var diagnosticFilterSwitch: UISwitch!
     var diagnosticLogStatusLabel: UILabel!
 
     /// Tracks if we're mid-Always-upgrade so the auth-change callback knows to skip

@@ -369,7 +369,7 @@ actor GeofenceStorage {
 
 /// Disposition of a state observed off `CLMonitor.events`, decided by
 /// `GeofenceStorage.recordMonitorEvent(_:forIdentifier:)`.
-enum GeofenceMonitorEventOutcome: Equatable, Sendable {
+enum GeofenceMonitorEventOutcome: Equatable, Sendable, CaseIterable {
     /// Genuine state change of a registered transition type — deliver it.
     case deliver
     /// Same state as the baseline — a CLMonitor re-emission (relaunch/unlock/foreground), not a crossing.

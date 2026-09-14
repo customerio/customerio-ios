@@ -100,6 +100,32 @@ extension LocationTestViewController {
         stackView.axis = .vertical
         stackView.spacing = 8
 
+        let filterRow = UIStackView()
+        filterRow.axis = .horizontal
+        filterRow.alignment = .center
+        filterRow.spacing = 8
+
+        let filterLabel = UILabel()
+        filterLabel.text = "Filter noisy modules"
+        filterLabel.font = .systemFont(ofSize: 14)
+        filterLabel.numberOfLines = 0
+        filterRow.addArrangedSubview(filterLabel)
+
+        diagnosticFilterSwitch = UISwitch()
+        diagnosticFilterSwitch.accessibilityIdentifier = "diagnostic_filter_switch"
+        diagnosticFilterSwitch.isOn = DiagnosticFilter.isEnabled
+        diagnosticFilterSwitch.addTarget(self, action: #selector(diagnosticFilterToggled), for: .valueChanged)
+        filterRow.addArrangedSubview(diagnosticFilterSwitch)
+        stackView.addArrangedSubview(filterRow)
+
+        let filterHint = UILabel()
+        filterHint.text = "On: keeps location and geofence records, drops in-app, inbox and SSE chatter. "
+            + "Turn off to capture everything."
+        filterHint.font = .systemFont(ofSize: 12)
+        filterHint.textColor = .tertiaryLabel
+        filterHint.numberOfLines = 0
+        stackView.addArrangedSubview(filterHint)
+
         shareDiagnosticLogsButton = ThemeButton()
         shareDiagnosticLogsButton.setTitle("Share diagnostic logs", for: .normal)
         shareDiagnosticLogsButton.accessibilityIdentifier = "share_diagnostic_logs"

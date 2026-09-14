@@ -30,6 +30,13 @@ class MessagingInAppAPITest: UnitTest {
         try skipRunningTest()
 
         _ = MessagingInAppConfigBuilder(siteId: "", region: .US)
+            .setColorScheme(.auto)
+            .setNotificationInboxAccessibilityLabels(NotificationInboxAccessibilityLabels(
+                bell: "",
+                bellWithUnreadCount: { count in "\(count)" },
+                loadingIndicator: "",
+                emptyState: ""
+            ))
             .build()
 
         let configOptions: [String: Any] = [:]

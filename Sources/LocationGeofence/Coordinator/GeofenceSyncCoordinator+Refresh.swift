@@ -24,7 +24,7 @@ extension GeofenceSyncCoordinatorImpl {
             response = value
             // The count off the wire, before local filtering — the difference between what the
             // server offered and what survived ranking is the thing worth being able to see.
-            logger.geofenceApiFetchResult(returnedCount: value.geofences.count, elapsed: fetchElapsed)
+            logger.geofenceApiFetchResult(returnedCount: value.geofences.count, elapsed: fetchElapsed, regions: value.geofences)
         case .failure(let error):
             logger.geofenceSyncFetchFailed(error: error)
             return .failure(.fetchFailed(error))

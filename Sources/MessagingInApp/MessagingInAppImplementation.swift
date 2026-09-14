@@ -8,6 +8,12 @@ class MessagingInAppImplementation: MessagingInAppInstance {
     // for subscribers; this static provides the immediate value for rendering.
     @Atomic static var currentColorScheme: ColorScheme = .auto
 
+    /// Host-configured Visual Inbox accessibility labels, published for the inbox UI module (via the
+    /// `VisualInboxProvider` SPI) the same way `currentColorScheme` is: the UI module has no access to
+    /// this module's config instance, only to the shared DI graph. Read at render time rather than
+    /// captured, so inbox UI constructed before `initialize(withConfig:)` still sees the host's labels.
+    @Atomic static var currentNotificationInboxAccessibilityLabels = NotificationInboxAccessibilityLabels()
+
     private let moduleConfig: MessagingInAppConfigOptions
 
     private let logger: Logger
@@ -27,6 +33,7 @@ class MessagingInAppImplementation: MessagingInAppInstance {
         self.notificationInbox = diGraph.notificationInbox
 
         Self.currentColorScheme = moduleConfig.colorScheme
+        Self.currentNotificationInboxAccessibilityLabels = moduleConfig.notificationInboxAccessibilityLabels
         subscribeToInAppMessageState()
     }
 

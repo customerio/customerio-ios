@@ -46,7 +46,7 @@ private final class DiagnosticsGate: @unchecked Sendable {
 /// is gated.
 ///
 /// ```
-/// [Geofence] Tracked enter event for geofence notl_core || ev=transition.emitted io=out id=notl_core t=enter
+/// [Geofence] Accepted enter for geofence notl_core, queued 1 row(s) || ev=transition.accepted io=out id=notl_core t=enter n=1
 /// ```
 enum GeofenceLog {
     /// A parser splits on the **last** occurrence, and only if the remainder is all `key=value`.
@@ -87,7 +87,7 @@ enum GeofenceLog {
 
     /// The only values that compose the format's separators on purpose. Everything else is an
     /// untrusted token — region identifiers are workspace-authored and can hold anything.
-    private static let composedKeys: Set<String> = ["ranked", "evicted", "ids"]
+    private static let composedKeys: Set<String> = ["ranked", "evicted", "ids", "gs", "tt"]
 
     /// Applied to every finished value. Only whitespace, which is what separates one `key=value`
     /// from the next — the value's own structure is already the caller's business.
@@ -262,5 +262,22 @@ extension Logger {
         _ fields: @autoclosure () -> [(String, String?)] = []
     ) -> String {
         GeofenceLog.tail(ev, io, fields())
+    }
+}
+
+/// Diagnostic vocabulary for the monitor's dedup decision. Lives with the rest of the tail
+/// rather than on the storage type: the token is a log contract, and `GeofenceStorage` is already
+/// at the module's file-length limit.
+extension GeofenceMonitorEventOutcome {
+    /// Stable token for the diagnostic tail. Without it every suppression here is indistinguishable
+    /// from the others — and from the OS never having delivered anything at all.
+    var diagnosticReason: String? {
+        switch self {
+        case .deliver: return nil
+        case .suppressedNoChange: return "no_state_change"
+        case .suppressedFilteredType: return "transition_type_not_registered"
+        case .suppressedNoBaseline: return "baseline_established"
+        case .suppressedNewerBaseline: return "newer_baseline"
+        }
     }
 }

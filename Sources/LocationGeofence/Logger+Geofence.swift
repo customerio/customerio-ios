@@ -39,17 +39,6 @@ enum GeofenceLaunchReason: String {
 extension Logger {
     // MARK: - Event tracking
 
-    func geofenceEventTracked(geofenceId: String, transition: GeofenceTransition) {
-        debug(
-            "Tracked \(transition.rawValue) event for geofence \(geofenceId)"
-                + geofenceTail("transition.emitted", .output, [
-                    ("id", geofenceId),
-                    ("t", transition.rawValue)
-                ]),
-            geofenceTag
-        )
-    }
-
     func geofenceEventSuppressed(geofenceId: String, transition: GeofenceTransition, cooldownRemaining: TimeInterval? = nil) {
         debug(
             "Suppressed duplicate \(transition.rawValue) event for geofence \(geofenceId), within cooldown"
@@ -120,7 +109,11 @@ extension Logger {
 
     /// Outcome of a nearby-geofence fetch. Classified as an **input**: replay feeds the response
     /// back rather than re-issuing the request.
-    func geofenceApiFetchResult(returnedCount: Int, elapsed: TimeInterval?) {
+    func geofenceApiFetchResult(
+        returnedCount: Int,
+        elapsed: TimeInterval?,
+        regions: [GeofenceApiRegion] = []
+    ) {
         debug(
             "Fetched \(returnedCount) nearby geofence(s) from the server"
                 + geofenceTail("api.fetch.result", .input, [
@@ -130,6 +123,37 @@ extension Logger {
                 ]),
             geofenceTag
         )
+        geofenceFenceCatalog(regions)
+    }
+
+    /// One record per fetched fence, describing the circle the server sent.
+    ///
+    /// Without it a capture names fences only by opaque id: a replay cannot place them, and nobody
+    /// reading the log can tell which geoset a crossing belonged to. Re-fetching the geometry from
+    /// the workspace later is not equivalent — fences move, so a drive replayed months on would
+    /// silently run against today's circles, and a capture from a customer has no workspace to ask.
+    ///
+    /// Gated whole rather than gated-tail: these records carry no prose worth emitting on their
+    /// own, so with diagnostics off they must not exist at all.
+    private func geofenceFenceCatalog(_ regions: [GeofenceApiRegion]) {
+        guard !regions.isEmpty, GeofenceDiagnostics.isEnabled else { return }
+        for region in regions {
+            debug(
+                "Geofence '\(region.id)' catalogued"
+                    + geofenceTail("fence.cataloged", .input, [
+                        ("id", region.id),
+                        // Sanitized like any other value: a workspace-authored name can contain
+                        // spaces, commas and `=`, all of which would break the parser's split.
+                        ("name", region.name),
+                        ("gs", GeofenceLog.list(region.geosetIds ?? [])),
+                        ("lat", GeofenceLog.num(region.latitude, 5)),
+                        ("lon", GeofenceLog.num(region.longitude, 5)),
+                        ("rad", GeofenceLog.num(region.radius, 0)),
+                        ("tt", GeofenceLog.list(region.transitionTypes ?? []))
+                    ]),
+                geofenceTag
+            )
+        }
     }
 
     /// Prose reports what was *requested* and reads exactly as it did before this instrumentation
@@ -269,34 +293,6 @@ extension Logger {
                     ("ok", GeofenceLog.bool(false)),
                     ("why", fallingBackToCached ? "fallback_cached" : "no_fallback"),
                     ("ms", GeofenceLog.num(elapsed.map { $0 * 1000 }, 0))
-                ]),
-            geofenceTag
-        )
-    }
-
-    // MARK: - Baseline healing and contradiction
-
-    func geofenceBaselineHealed(identifier: String, transition: GeofenceTransition) {
-        info(
-            "Synthesized \(transition.rawValue) for region \(identifier): fresh fix contradicts stored baseline (OS never delivered the crossing)"
-                + geofenceTail("baseline.healed", .output, [
-                    ("id", identifier),
-                    ("t", transition.rawValue)
-                ]),
-            geofenceTag
-        )
-    }
-
-    func geofenceEventRefusedByContradiction(identifier: String, transition: GeofenceTransition, distanceFromCenter: Double, radius: Double, accuracy: Double) {
-        info(
-            "Refused OS \(transition.rawValue) for region \(identifier): a fresh fix contradicts it (distance \(Int(distanceFromCenter)) m, radius \(Int(radius)) m, accuracy \(Int(accuracy)) m)"
-                + geofenceTail("contradiction.refused", .output, [
-                    ("id", identifier),
-                    ("t", transition.rawValue),
-                    ("dist", GeofenceLog.num(distanceFromCenter, 0)),
-                    ("rad", GeofenceLog.num(radius, 0)),
-                    ("edge", GeofenceLog.num(max(0, distanceFromCenter - radius), 0)),
-                    ("acc", GeofenceLog.num(accuracy))
                 ]),
             geofenceTag
         )
