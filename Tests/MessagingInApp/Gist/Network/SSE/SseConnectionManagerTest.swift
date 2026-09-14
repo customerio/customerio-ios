@@ -112,22 +112,17 @@ class SseConnectionManagerTest: XCTestCase {
         // Setup
         let (stream, streamContinuation) = AsyncStreamBackport.makeStream(of: SseEvent.self)
         streamContinuation.finish()
+        sseServiceMock.connectReturnValue = stream
 
-        // ARM listener for setCallback
-        let callbackSet = Task {
-            await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
-                heartbeatTimerMock.setCallbackClosure = { _ in
-                    cont.resume()
-                }
-            }
+        // ARM listener for setCallback using XCTestExpectation with await fulfillment
+        let callbackSetExp = expectation(description: "setCallback called")
+        heartbeatTimerMock.setCallbackClosure = { _ in
+            callbackSetExp.fulfill()
         }
-
-        // ARM connect to return the stream
-        sseServiceMock.connectClosure = { [stream] _, _ in stream }
 
         // Action
         await sut.startConnection()
-        await callbackSet.value
+        await fulfillment(of: [callbackSetExp], timeout: 1.0)
 
         // Assert
         XCTAssertTrue(heartbeatTimerMock.setCallbackCalled)
