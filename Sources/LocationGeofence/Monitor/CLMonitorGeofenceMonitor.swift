@@ -301,7 +301,8 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preco
            await isEventContradictedByFreshFix(identifier: identifier, transition: transition, eventDate: event.date) {
             return
         }
-        let outcome = await storage.recordMonitorEvent(transition, forIdentifier: identifier)
+        // Dated by the OS, not by receipt: a re-delivered copy landing after its own movement pass re-seeded this baseline reads as stale, not new.
+        let outcome = await storage.recordMonitorEvent(transition, forIdentifier: identifier, onlyIfBaselinePredates: event.date, now: event.date)
         guard case .deliver = outcome else {
             logDiscardedCallback(identifier: identifier, transition: transition, outcome: outcome)
             return

@@ -935,4 +935,54 @@ struct GeofenceStorageTests {
         let tokens = cases.compactMap(\.diagnosticReason)
         #expect(Set(tokens).count == tokens.count, "duplicate tokens: \(tokens)")
     }
+
+    // MARK: - Re-delivered OS events
+
+    /// CoreLocation re-delivers the same crossing; every copy carries the original event `date`.
+    private static let trigger = GeofenceConstants.movementTriggerIdentifier
+    private static let eventDate = Date(timeIntervalSince1970: 1000060.107)
+    private static let reseedAt = Date(timeIntervalSince1970: 1000060.238)
+
+    private func registerTrigger(_ storage: GeofenceStorage, longitude: Double, at now: Date) async {
+        await storage.recordMonitorRegistration(
+            identifier: Self.trigger, transitionTypes: [.enter, .exit], initialState: .enter,
+            center: LocationData(latitude: 10, longitude: longitude), radius: 1000, now: now
+        )
+    }
+
+    @Test
+    func recordMonitorEvent_givenCopyBeforeReseed_expectNoStateChange() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let storage = makeStorage(directory: dir)
+        await registerTrigger(storage, longitude: 20, at: Date(timeIntervalSince1970: 1000000))
+
+        #expect(await storage.recordMonitorEvent(.exit, forIdentifier: Self.trigger, onlyIfBaselinePredates: Self.eventDate, now: Self.eventDate) == .deliver)
+        #expect(await storage.recordMonitorEvent(.exit, forIdentifier: Self.trigger, onlyIfBaselinePredates: Self.eventDate, now: Self.eventDate) == .suppressedNoChange)
+    }
+
+    @Test
+    func recordMonitorEvent_givenCopyAfterReseed_expectRefusedAsStale() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let storage = makeStorage(directory: dir)
+        await registerTrigger(storage, longitude: 20, at: Date(timeIntervalSince1970: 1000000))
+
+        #expect(await storage.recordMonitorEvent(.exit, forIdentifier: Self.trigger, onlyIfBaselinePredates: Self.eventDate, now: Self.eventDate) == .deliver)
+        await registerTrigger(storage, longitude: 20.01, at: Self.reseedAt)
+        #expect(await storage.recordMonitorEvent(.exit, forIdentifier: Self.trigger, onlyIfBaselinePredates: Self.eventDate, now: Self.eventDate) == .suppressedNewerBaseline)
+    }
+
+    @Test
+    func recordMonitorEvent_givenLaterEventAfterReseed_expectDelivered() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let storage = makeStorage(directory: dir)
+        await registerTrigger(storage, longitude: 20, at: Date(timeIntervalSince1970: 1000000))
+
+        #expect(await storage.recordMonitorEvent(.exit, forIdentifier: Self.trigger, onlyIfBaselinePredates: Self.eventDate, now: Self.eventDate) == .deliver)
+        await registerTrigger(storage, longitude: 20.01, at: Self.reseedAt)
+        let later = Self.reseedAt.addingTimeInterval(300)
+        #expect(await storage.recordMonitorEvent(.exit, forIdentifier: Self.trigger, onlyIfBaselinePredates: later, now: later) == .deliver)
+    }
 }
