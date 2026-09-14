@@ -11,4 +11,4 @@ concurrency:
 
 jobs:
   lint:
-    uses: customerio/mobile-ci-tools/.github/workflows/ios-lint.yml@main
+    uses: customerio/mobile-ci-tools/.github/workflows/ios-lint-linux.yml@main
