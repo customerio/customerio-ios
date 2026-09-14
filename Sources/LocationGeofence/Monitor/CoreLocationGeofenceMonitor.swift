@@ -229,12 +229,10 @@ final class CoreLocationGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @pr
 
     /// The same choice, reporting which source won — see the CLMonitor twin for why it matters.
     func bestKnownFixDetail() -> (fix: CLLocation, source: GeofenceLog.FixSource)? {
-        let cached = manager.location.flatMap { CLLocationCoordinate2DIsValid($0.coordinate) ? $0 : nil }
-        guard let resolved = movementFixResolver.latestFix else {
-            return cached.map { ($0, .managerCache) }
-        }
-        guard let cached else { return (resolved, .resolver) }
-        return resolved.timestamp > cached.timestamp ? (resolved, .resolver) : (cached, .managerCache)
+        FixSelection.newest(
+            cached: FixSelection.usable(manager.location),
+            delivered: movementFixResolver.latestFix
+        )
     }
 
     func currentLocationData() -> LocationData? {

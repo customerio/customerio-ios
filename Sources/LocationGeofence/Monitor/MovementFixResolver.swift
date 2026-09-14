@@ -64,11 +64,10 @@ final class MovementFixResolver: NSObject, @preconcurrency CLLocationManagerDele
     /// than what I had" must compare against `latestFix`, because this property tracks a cache that
     /// advances on its own and would leave nothing able to beat it.
     var cachedFix: CLLocation? {
-        let systemFix = (systemCachedFix.map { $0() } ?? manager.location)
-            .flatMap { CLLocationCoordinate2DIsValid($0.coordinate) ? $0 : nil }
-        guard let latestFix else { return systemFix }
-        guard let systemFix, systemFix.timestamp > latestFix.timestamp else { return latestFix }
-        return systemFix
+        FixSelection.newest(
+            cached: FixSelection.usable(systemCachedFix.map { $0() } ?? manager.location),
+            delivered: latestFix
+        )?.fix
     }
 
     /// Freshest fix this resolver has received, retained even when it arrives after a timeout.

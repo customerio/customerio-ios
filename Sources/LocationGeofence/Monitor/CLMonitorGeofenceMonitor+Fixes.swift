@@ -19,12 +19,10 @@ extension CLMonitorGeofenceMonitor {
     /// manager's cache is whatever the OS last happened to have — and on a long-suspended process
     /// that can be hours old. Both produce a coordinate; only one of them means anything.
     func bestKnownFixDetail() -> (fix: CLLocation, source: GeofenceLog.FixSource)? {
-        let cached = authManager.location.flatMap { CLLocationCoordinate2DIsValid($0.coordinate) ? $0 : nil }
-        guard let resolved = movementFixResolver.latestFix else {
-            return cached.map { ($0, .managerCache) }
-        }
-        guard let cached else { return (resolved, .resolver) }
-        return resolved.timestamp > cached.timestamp ? (resolved, .resolver) : (cached, .managerCache)
+        FixSelection.newest(
+            cached: FixSelection.usable(authManager.location),
+            delivered: movementFixResolver.latestFix
+        )
     }
 
     /// Records an OS-delivered crossing together with the fix the SDK will attach to it.
