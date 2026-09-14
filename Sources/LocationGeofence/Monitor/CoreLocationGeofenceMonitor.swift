@@ -221,21 +221,8 @@ final class CoreLocationGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @pr
         }
     }
 
-    /// Newest usable fix across the manager's cache and the resolver's requested fixes — the
-    /// manager's cache can freeze at process start on a long-suspended process.
-    func bestKnownFix() -> CLLocation? {
-        bestKnownFixDetail()?.fix
-    }
-
-    /// The same choice, reporting which source won — see the CLMonitor twin for why it matters.
-    func bestKnownFixDetail() -> (fix: CLLocation, source: GeofenceLog.FixSource)? {
-        let cached = manager.location.flatMap { CLLocationCoordinate2DIsValid($0.coordinate) ? $0 : nil }
-        guard let resolved = movementFixResolver.latestFix else {
-            return cached.map { ($0, .managerCache) }
-        }
-        guard let cached else { return (resolved, .resolver) }
-        return resolved.timestamp > cached.timestamp ? (resolved, .resolver) : (cached, .managerCache)
-    }
+    /// `GeofenceFixSelecting`; `bestKnownFix()` and `bestKnownFixDetail()` come from its default.
+    var osCachedFix: CLLocation? { manager.location }
 
     func currentLocationData() -> LocationData? {
         guard let location = bestKnownFix() else { return nil }
@@ -270,7 +257,7 @@ extension DIGraphShared {
     }
 }
 
-extension CoreLocationGeofenceMonitor {
+extension CoreLocationGeofenceMonitor: GeofenceFixSelecting {
     @MainActor
     static let shared = CoreLocationGeofenceMonitor(logger: DIGraphShared.shared.logger)
 }

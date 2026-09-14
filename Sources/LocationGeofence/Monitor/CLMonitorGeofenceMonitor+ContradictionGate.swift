@@ -100,14 +100,17 @@ extension CLMonitorGeofenceMonitor {
         if Self.gateFixRequestBlocked(failedAt: gateFixRequestFailedAt, now: Date()) {
             return bestKnownFix()
         }
-        let fix: CLLocation? = await withCheckedContinuation { continuation in
-            movementFixResolver.resolve(cached: bestKnownFix(), purpose: .contradictionGate) { [weak self] _, _ in
-                continuation.resume(returning: self?.bestKnownFix())
+        let isFresh: Bool = await withCheckedContinuation { continuation in
+            movementFixResolver.resolve(cached: bestKnownFix(), purpose: .contradictionGate) { _, isFresh in
+                continuation.resume(returning: isFresh)
             }
         }
-        let isFresh = fix.map { -$0.timestamp.timeIntervalSinceNow <= GeofenceConstants.movementFixMaxAge } ?? false
+        // The resolver's own verdict, not one recomputed from the age of whatever `bestKnownFix()`
+        // returns afterwards: a request that FAILED still leaves an OS cache that can be under
+        // `movementFixMaxAge`, and recomputing then read that as success and left the block unarmed
+        // — so every later event in the burst paid another full timeout.
         gateFixRequestFailedAt = isFresh ? nil : Date()
-        return fix
+        return bestKnownFix()
     }
 
     /// Whether a new gate-fix request is skipped because the last one recently came back without
