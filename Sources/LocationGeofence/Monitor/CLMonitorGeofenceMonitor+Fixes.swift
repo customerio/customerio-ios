@@ -5,27 +5,9 @@ import Foundation
 /// Cached-fix reads for the CLMonitor path, split out to keep the monitor's event and lifecycle
 /// plumbing readable (same convention as `+Registration`).
 @available(iOS 17.0, *)
-extension CLMonitorGeofenceMonitor {
-    /// Newest usable fix across the auth manager's cache and the resolver's requested fixes.
-    /// The manager's cache can freeze at process start on a long-suspended process, so a fresher
-    /// resolver fix must win wherever cached position is read.
-    func bestKnownFix() -> CLLocation? {
-        bestKnownFixDetail()?.fix
-    }
-
-    /// The same choice, but reporting which source won.
-    ///
-    /// Worth carrying into diagnostics: a resolver fix was requested and delivered, while the
-    /// manager's cache is whatever the OS last happened to have — and on a long-suspended process
-    /// that can be hours old. Both produce a coordinate; only one of them means anything.
-    func bestKnownFixDetail() -> (fix: CLLocation, source: GeofenceLog.FixSource)? {
-        let cached = authManager.location.flatMap { CLLocationCoordinate2DIsValid($0.coordinate) ? $0 : nil }
-        guard let resolved = movementFixResolver.latestFix else {
-            return cached.map { ($0, .managerCache) }
-        }
-        guard let cached else { return (resolved, .resolver) }
-        return resolved.timestamp > cached.timestamp ? (resolved, .resolver) : (cached, .managerCache)
-    }
+extension CLMonitorGeofenceMonitor: GeofenceFixSelecting {
+    /// `GeofenceFixSelecting`; `bestKnownFix()` and `bestKnownFixDetail()` come from its default.
+    var osCachedFix: CLLocation? { authManager.location }
 
     /// Records an OS-delivered crossing together with the fix the SDK will attach to it.
     ///

@@ -6,7 +6,7 @@ import Foundation
 /// is for a human reading the log, the token is what a script keys off. Free strings at the call
 /// sites meant a reworded sentence silently changed the token — and one of them interpolated two
 /// measurements, so no two records shared a `why` at all.
-enum PolygonUndecidedReason: String {
+enum PolygonUndecidedReason: String, CaseIterable {
     case noUsableFix = "no_usable_fix"
     case userChanged = "user_changed"
     case ringUnbuildable = "ring_unbuildable"
@@ -29,7 +29,7 @@ enum PolygonUndecidedReason: String {
 }
 
 /// Why a whole-set pass did not run.
-enum PolygonPassSkipReason: String {
+enum PolygonPassSkipReason: String, CaseIterable {
     case passInFlight = "pass_in_flight"
 
     var prose: String {
@@ -40,7 +40,7 @@ enum PolygonPassSkipReason: String {
 }
 
 /// What prompted a re-evaluation.
-enum PolygonEvaluationReason: String {
+enum PolygonEvaluationReason: String, CaseIterable {
     case newPolygon = "new_polygon"
     case newPolygonForcedRequestFailed = "new_polygon_forced_request_failed"
     case movement

@@ -8,7 +8,7 @@ import Foundation
 /// `movement.fix.resolved` record joins one population — and the wake margin is calibrated from
 /// the movement one alone. No default: a new call site must say which it is, or it silently
 /// contaminates the sample.
-enum GeofenceFixPurpose: String {
+enum GeofenceFixPurpose: String, CaseIterable {
     case movement
     case contradictionGate = "gate"
     case baselineHeal = "heal"
@@ -64,11 +64,10 @@ final class MovementFixResolver: NSObject, @preconcurrency CLLocationManagerDele
     /// than what I had" must compare against `latestFix`, because this property tracks a cache that
     /// advances on its own and would leave nothing able to beat it.
     var cachedFix: CLLocation? {
-        let systemFix = (systemCachedFix.map { $0() } ?? manager.location)
-            .flatMap { CLLocationCoordinate2DIsValid($0.coordinate) ? $0 : nil }
-        guard let latestFix else { return systemFix }
-        guard let systemFix, systemFix.timestamp > latestFix.timestamp else { return latestFix }
-        return systemFix
+        FixSelection.newest(
+            cached: FixSelection.usable(systemCachedFix.map { $0() } ?? manager.location),
+            delivered: latestFix
+        )?.fix
     }
 
     /// Freshest fix this resolver has received, retained even when it arrives after a timeout.
@@ -125,9 +124,9 @@ final class MovementFixResolver: NSObject, @preconcurrency CLLocationManagerDele
             return
         }
         logger.geofenceMovementFixStale(ageSeconds: age)
-        if let cached, fallbackFix.map({ cached.timestamp > $0.timestamp }) ?? true {
-            fallbackFix = cached
-        }
+        // Same newest-of-two rule, and the same tie (the held fallback keeps it); provenance is
+        // not tracked here because this value never reaches a diagnostic.
+        fallbackFix = FixSelection.newest(cached: cached, delivered: fallbackFix)?.fix
         pendingCompletions.append(completion)
         guard pendingCompletions.count == 1 else { return }
         // The initiator labels the record. Later callers coalesce onto this request and return
