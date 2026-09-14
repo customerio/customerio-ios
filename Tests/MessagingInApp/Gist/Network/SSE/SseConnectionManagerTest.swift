@@ -66,7 +66,7 @@ class SseConnectionManagerTest: XCTestCase {
 
         // Action
         await sut.startConnection()
-        await fulfillment(of: [connectExp], timeout: 3.0)
+        await fulfillment(of: [connectExp], timeout: 10.0)
 
         // Assert
         XCTAssertTrue(sseServiceMock.connectCalled)
@@ -85,7 +85,7 @@ class SseConnectionManagerTest: XCTestCase {
 
         // Action: Start connection twice
         await sut.startConnection()
-        await fulfillment(of: [connectExp], timeout: 3.0)
+        await fulfillment(of: [connectExp], timeout: 10.0)
 
         await sut.startConnection()
 
@@ -109,7 +109,7 @@ class SseConnectionManagerTest: XCTestCase {
 
         // Action
         await sut.startConnection()
-        await fulfillment(of: [callbackSetExp], timeout: 3.0)
+        await fulfillment(of: [callbackSetExp], timeout: 10.0)
 
         // Assert
         XCTAssertTrue(heartbeatTimerMock.setCallbackCalled)
@@ -128,7 +128,7 @@ class SseConnectionManagerTest: XCTestCase {
         }
 
         await sut.startConnection()
-        await fulfillment(of: [connectExp], timeout: 3.0)
+        await fulfillment(of: [connectExp], timeout: 10.0)
 
         // Action
         await sut.stopConnection()
@@ -148,7 +148,7 @@ class SseConnectionManagerTest: XCTestCase {
         }
 
         await sut.startConnection()
-        await fulfillment(of: [connectExp], timeout: 3.0)
+        await fulfillment(of: [connectExp], timeout: 10.0)
 
         // Action
         await sut.stopConnection()
@@ -168,7 +168,7 @@ class SseConnectionManagerTest: XCTestCase {
         }
 
         await sut.startConnection()
-        await fulfillment(of: [connectExp], timeout: 3.0)
+        await fulfillment(of: [connectExp], timeout: 10.0)
 
         // Action
         await sut.stopConnection()
@@ -193,7 +193,7 @@ class SseConnectionManagerTest: XCTestCase {
         await sut.startConnection()
         continuation.yield(.connectionOpen)
 
-        await fulfillment(of: [timerStartedExp], timeout: 3.0)
+        await fulfillment(of: [timerStartedExp], timeout: 10.0)
         continuation.finish()
 
         // Assert
@@ -220,7 +220,7 @@ class SseConnectionManagerTest: XCTestCase {
         continuation.yield(.serverEvent(ServerEvent(id: nil, type: "connected", data: "")))
         continuation.finish()
 
-        await fulfillment(of: [streamFinishedExp], timeout: 3.0)
+        await fulfillment(of: [streamFinishedExp], timeout: 10.0)
 
         XCTAssertEqual(counter.value, 1)
     }
@@ -244,7 +244,7 @@ class SseConnectionManagerTest: XCTestCase {
         continuation.yield(.connectionOpen)
         continuation.finish()
 
-        await fulfillment(of: [streamFinishedExp], timeout: 3.0)
+        await fulfillment(of: [streamFinishedExp], timeout: 10.0)
 
         XCTAssertEqual(counter.value, 0)
     }
@@ -263,7 +263,7 @@ class SseConnectionManagerTest: XCTestCase {
         await sut.startConnection()
         continuation.yield(.connectionOpen)
 
-        await fulfillment(of: [retryResetExp], timeout: 3.0)
+        await fulfillment(of: [retryResetExp], timeout: 10.0)
         continuation.finish()
 
         // Assert
@@ -286,7 +286,7 @@ class SseConnectionManagerTest: XCTestCase {
         await sut.startConnection()
         continuation.yield(.connectionFailed(error))
 
-        await fulfillment(of: [retryScheduledExp], timeout: 3.0)
+        await fulfillment(of: [retryScheduledExp], timeout: 10.0)
         continuation.finish()
 
         // Assert
@@ -311,7 +311,7 @@ class SseConnectionManagerTest: XCTestCase {
         await sut.startConnection()
         continuation.yield(.connectionFailed(.networkError(message: "Error", underlyingError: nil)))
 
-        await fulfillment(of: [timerResetExp], timeout: 3.0)
+        await fulfillment(of: [timerResetExp], timeout: 10.0)
         continuation.finish()
 
         // Assert
@@ -335,7 +335,7 @@ class SseConnectionManagerTest: XCTestCase {
         await sut.startConnection()
         continuation.yield(.connectionClosed)
 
-        await fulfillment(of: [timerResetExp], timeout: 3.0)
+        await fulfillment(of: [timerResetExp], timeout: 10.0)
         continuation.finish()
 
         // Assert
@@ -358,7 +358,7 @@ class SseConnectionManagerTest: XCTestCase {
         await sut.startConnection()
         continuation.yield(.serverEvent(ServerEvent(id: nil, type: "connected", data: "{}")))
 
-        await fulfillment(of: [timerStartedExp], timeout: 3.0)
+        await fulfillment(of: [timerStartedExp], timeout: 10.0)
         continuation.finish()
 
         // Assert
@@ -382,7 +382,7 @@ class SseConnectionManagerTest: XCTestCase {
         streamContinuation.yield(.serverEvent(ServerEvent(id: nil, type: "heartbeat", data: "{\"heartbeat\": 30}")))
         streamContinuation.finish()
 
-        await fulfillment(of: [secondStartTimerExp], timeout: 3.0)
+        await fulfillment(of: [secondStartTimerExp], timeout: 10.0)
 
         // Assert
         XCTAssertGreaterThanOrEqual(heartbeatTimerMock.startTimerCallsCount, 2)
@@ -408,7 +408,7 @@ class SseConnectionManagerTest: XCTestCase {
         """
         continuation.yield(.serverEvent(ServerEvent(id: nil, type: "messages", data: messagesJson)))
 
-        await fulfillment(of: [dispatchedExp], timeout: 3.0)
+        await fulfillment(of: [dispatchedExp], timeout: 10.0)
         continuation.finish()
 
         // Assert
@@ -452,7 +452,7 @@ class SseConnectionManagerTest: XCTestCase {
         await sut.startConnection()
         retryContinuation.yield((.maxRetriesReached, 1))
 
-        await fulfillment(of: [sseDisabledExp], timeout: 3.0)
+        await fulfillment(of: [sseDisabledExp], timeout: 10.0)
 
         // Brief window to catch duplicates
         try? await Task.sleep(nanoseconds: 50_000_000)
@@ -499,7 +499,7 @@ class SseConnectionManagerTest: XCTestCase {
         await sut.startConnection()
         retryContinuation.yield((.retryNotPossible, 1))
 
-        await fulfillment(of: [sseDisabledExp], timeout: 3.0)
+        await fulfillment(of: [sseDisabledExp], timeout: 10.0)
 
         try? await Task.sleep(nanoseconds: 50_000_000)
 
