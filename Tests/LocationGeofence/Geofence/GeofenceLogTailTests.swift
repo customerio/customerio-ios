@@ -261,6 +261,66 @@ struct GeofenceLogTailTests {
         #expect(BackgroundDeliveryHttpError.http(statusCode: 503).diagnosticReason == "http_503")
     }
 
+    /// `ev` alone does not identify these records, and the contract table only checks `why=` is
+    /// present — so swapping two cases in either switch passes every other assertion in this file.
+    @Test
+    func regionDropReason_expectDistinctPinnedTokenPerCause() {
+        let cases: [GeofenceRegionDropReason] = [.unknownShape, .undescribedShape, .unusableCircle, .unusablePolygon]
+        for reason in cases {
+            switch reason {
+            case .unknownShape: #expect(reason.logToken == "unknown_shape")
+            case .undescribedShape: #expect(reason.logToken == "undescribed_shape")
+            case .unusableCircle: #expect(reason.logToken == "unusable_circle")
+            case .unusablePolygon: #expect(reason.logToken == "unusable_polygon")
+            }
+        }
+        expectUsableTokens(cases.map(\.logToken))
+    }
+
+    @Test
+    func polygonOutcome_expectDistinctPinnedTokenPerCause() {
+        let cases: [PolygonMembershipOutcome] = [
+            .deliver(.enter), .suppressedNoChange, .suppressedNewerDecision,
+            .suppressedInitialOutside, .suppressedUnmonitored, .suppressedGeometryChanged
+        ]
+        for outcome in cases {
+            switch outcome {
+            case .deliver: #expect(outcome.logToken == "deliver")
+            case .suppressedNoChange: #expect(outcome.logToken == "no_change")
+            case .suppressedNewerDecision: #expect(outcome.logToken == "newer_decision")
+            case .suppressedInitialOutside: #expect(outcome.logToken == "initial_outside")
+            case .suppressedUnmonitored: #expect(outcome.logToken == "unmonitored")
+            case .suppressedGeometryChanged: #expect(outcome.logToken == "geometry_changed")
+            }
+        }
+        expectUsableTokens(cases.map(\.logToken))
+    }
+
+    /// The two refusals that are NOT the write's outcome are the whole reason this enum exists:
+    /// reusing `no_change` for either reports a delivery that was refused as one never owed.
+    @Test
+    func polygonUndeliveredReason_expectRefusalsDistinctFromOutcomes() {
+        let cases: [PolygonUndeliveredReason] = [
+            .outcome(.suppressedNoChange), .userChanged, .transitionNotRegistered
+        ]
+        for reason in cases {
+            switch reason {
+            case .outcome(let outcome): #expect(reason.logToken == outcome.logToken)
+            case .userChanged: #expect(reason.logToken == "user_changed")
+            case .transitionNotRegistered: #expect(reason.logToken == "transition_type_not_registered")
+            }
+        }
+        expectUsableTokens(cases.map(\.logToken))
+    }
+
+    /// Tokens ride a whitespace-split tail and are what a replay keys off, so a duplicate silently
+    /// merges two causes into one bucket.
+    private func expectUsableTokens(_ tokens: [String], sourceLocation: SourceLocation = #_sourceLocation) {
+        #expect(Set(tokens).count == tokens.count, "two causes share a token: \(tokens)", sourceLocation: sourceLocation)
+        #expect(tokens.allSatisfy { !$0.contains(" ") }, "a reason token contains whitespace: \(tokens)", sourceLocation: sourceLocation)
+        #expect(tokens.allSatisfy { !$0.isEmpty }, "a reason token is empty", sourceLocation: sourceLocation)
+    }
+
     /// The module's whole diagnostic vocabulary, hoisted out of the test so the assertion stays
     /// readable as rows are added.
     private static let declaredVocabulary: Set<String> = [
