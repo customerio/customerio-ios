@@ -327,7 +327,7 @@ class SseConnectionManagerTest: XCTestCase {
         // ARM listener for scheduleRetry
         let retryScheduled = Task {
             await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
-                retryHelperMock.scheduleRetryClosure = { _ in
+                retryHelperMock.scheduleRetryClosure = { _, _ in
                     cont.resume()
                 }
             }
