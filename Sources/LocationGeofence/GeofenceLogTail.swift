@@ -83,7 +83,7 @@ enum GeofenceLog {
     ///
     /// Deliberately not applied to a finished value: `list` and `ranked` compose their separators
     /// on purpose, and folding those turns `a,b` into `a_b`.
-    private static let separators: Set<Character> = ["=", ",", ":", "|"]
+    static let separators: Set<Character> = ["=", ",", ":", "|"]
 
     /// The only values that compose the format's separators on purpose. Everything else is an
     /// untrusted token — region identifiers are workspace-authored and can hold anything.
@@ -183,7 +183,7 @@ enum GeofenceLog {
     // MARK: - Fix quality and provenance (ungated)
 
     /// Where a fix came from; the log previously said only that *a* position existed.
-    enum FixSource: String {
+    enum FixSource: String, CaseIterable {
         /// `CLLocationManager.location` — the OS's cached fix. Can freeze at process start on a
         /// long-suspended process, so this is the one that silently goes stale.
         case managerCache = "manager_cache"
