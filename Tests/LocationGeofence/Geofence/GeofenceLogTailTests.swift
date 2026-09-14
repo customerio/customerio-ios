@@ -372,11 +372,21 @@ struct GeofenceLogTailTests {
     /// A case with no explicit raw value takes its Swift identifier as the wire token, so a
     /// rename silently rewrites the log contract and nothing fails. Pinning the whole set catches
     /// both a rename and a case added without one.
+    /// The tail's separator set is itself the contract: every token assertion reads it from
+    /// production, so narrowing it would relax those tests and `sanitize` together while the
+    /// off-device parser, which keys on these literals, silently breaks.
+    @Test
+    func separators_expectThePinnedSet() {
+        #expect(GeofenceLog.separators == ["=", ",", ":", "|"])
+    }
+
     @Test
     func rawValueTokens_expectThePinnedSetPerEnum() {
         // Not only a log token: this raw value is the tracked event's `transition` property, the
         // Codable form of a persisted pending row, and part of the pending and cooldown keys.
         expectTokens(GeofenceTransition.self, ["enter", "exit"])
+        // The only camelCase tokens in the vocabulary, pinned as they are on purpose: Android
+        // emits neither, so there is nothing to diverge from and renaming them buys nothing.
         expectTokens(HandleMovementTier.self, ["localRerank", "remoteRefresh"])
         expectTokens(PolygonPassSkipReason.self, ["pass_in_flight"])
         expectTokens(PolygonEvaluationReason.self, ["new_polygon", "new_polygon_forced_request_failed", "movement", "foreground"])
