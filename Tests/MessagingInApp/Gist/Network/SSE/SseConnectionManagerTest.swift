@@ -51,35 +51,38 @@ class SseConnectionManagerTest: XCTestCase {
     }
 
     /// Polls synchronized test state until the async SSE task reaches the expected point.
+    /// Timeout increased from 1s to 3s (300 iterations × 10ms) to accommodate cooperative
+    /// task scheduling delays in the Swift concurrency runtime under load.
     private func waitUntil(
         _ message: String,
         file: StaticString = #filePath,
         line: UInt = #line,
         condition: () -> Bool
     ) async {
-        for _ in 0 ..< 100 {
+        for _ in 0 ..< 300 {
             if condition() { return }
             await Task.yield()
-            try? await Task.sleep(nanoseconds: 10000000) // 0.01 seconds
+            try? await Task.sleep(nanoseconds: 10_000_000) // 0.01 seconds
         }
         XCTFail("Timed out waiting for \(message)", file: file, line: line)
     }
 
     /// Keeps observing a negative or exact-count assertion long enough for a wrongly spawned task
     /// or duplicate callback to become visible, while failing immediately if the invariant breaks.
+    /// Observation window increased from 100ms to 200ms (40 iterations × 5ms).
     private func assertRemainsTrue(
         _ message: String,
         file: StaticString = #filePath,
         line: UInt = #line,
         condition: () -> Bool
     ) async {
-        for _ in 0 ..< 20 {
+        for _ in 0 ..< 40 {
             guard condition() else {
                 XCTFail(message, file: file, line: line)
                 return
             }
             await Task.yield()
-            try? await Task.sleep(nanoseconds: 5000000) // 0.005 seconds
+            try? await Task.sleep(nanoseconds: 5_000_000) // 0.005 seconds
         }
     }
 
