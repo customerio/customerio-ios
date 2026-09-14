@@ -68,10 +68,11 @@ extension GeofenceStorage {
         }
         var records = state.polygonMembership ?? [:]
         let existing = records[identifier]
-        // Clamped on READ as well as write: a belief persisted by a build that predates the clamp
-        // above, or written while the clock was ahead, otherwise wins every comparison below and
-        // no later fix can repair it until the wall clock catches up.
-        let existingStamp = existing.map { min($0.lastChangedAt, now) }
+        // A stamp ahead of `now` is impossible evidence — persisted by a build that predates the
+        // clamp above, or written while the clock was ahead. Discarded, not capped: a real fix
+        // always carries some age, so a stamp capped at `now` still outranks every one of them and
+        // the belief stays unrepairable until the wall clock catches up.
+        let existingStamp = existing.map { $0.lastChangedAt > now ? Date.distantPast : $0.lastChangedAt }
         if let evidenceTimestamp, let existingStamp, existingStamp > evidenceTimestamp {
             return .suppressedNewerDecision
         }

@@ -129,6 +129,26 @@ struct PolygonMembershipStorageTests {
         #expect(await storage.getPolygonMembership()["1"]?.membership == .outside)
     }
 
+    /// The realistic shape of the recovery: a real fix is always a little BEHIND `now`, never
+    /// exactly on it. Clamping the poisoned stamp to `now` leaves it outranking every such fix,
+    /// so recovery has to discard the stamp, not cap it.
+    @Test
+    func recordPolygonMembership_givenPersistedFutureStampAndAFixWithRealAge_expectRecovery() async {
+        let storage = await makeStorage()
+        let now = Date()
+        var state = await storage.loadFromDisk() ?? GeofenceState()
+        state.polygonMembership = [
+            "1": PolygonMembershipRecord(membership: .inside, lastChangedAt: now.addingTimeInterval(3600))
+        ]
+        await storage.saveToDisk(state)
+
+        let outcome = await storage.recordPolygonMembership(
+            .outside, forIdentifier: "1", onlyIfBeliefPredates: now.addingTimeInterval(-5), now: now
+        )
+
+        #expect(outcome == .deliver(.exit))
+    }
+
     /// Membership survives re-registration, which is what keeps a wholesale re-register silent
     /// without needing the registered-ids diff the circle path uses.
     @Test
