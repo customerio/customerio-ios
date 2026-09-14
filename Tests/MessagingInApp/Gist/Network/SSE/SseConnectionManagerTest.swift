@@ -114,17 +114,25 @@ class SseConnectionManagerTest: XCTestCase {
         let (stream, _) = AsyncStreamBackport.makeStream(of: SseEvent.self)
         sseServiceMock.connectReturnValue = stream
 
+        // ARM: Expect exactly one connect call. Over-fulfill will fail the test if a second call happens.
+        let connectCalled = expectation(description: "First connect called")
+        connectCalled.expectedFulfillmentCount = 1
+        connectCalled.assertForOverFulfill = true
+        sseServiceMock.connectClosure = { _, _ in
+            connectCalled.fulfill()
+            return stream
+        }
+
         // Action: Start connection twice
         await sut.startConnection()
-
-        await waitUntil("the first SSE connection") { sseServiceMock.connectCallsCount == 1 }
+        await fulfillment(of: [connectCalled], timeout: 3.0)
 
         await sut.startConnection()
 
-        // Assert: Give any wrongly spawned connection task a bounded window to become visible.
-        await assertRemainsTrue("Starting an active connection scheduled a second SSE connection") {
-            sseServiceMock.connectCallsCount == 1
-        }
+        // Give any wrongly spawned second connection task time to trigger (if incorrect)
+        try? await Task.sleep(nanoseconds: 100_000_000) // 100ms observation window
+
+        // Assert: Only one connect call should have happened
         XCTAssertEqual(sseServiceMock.connectCallsCount, 1)
     }
 
@@ -134,9 +142,15 @@ class SseConnectionManagerTest: XCTestCase {
         sseServiceMock.connectReturnValue = stream
         continuation.finish()
 
+        // ARM expectation before triggering SUT
+        let callbackSet = expectation(description: "Heartbeat callback set")
+        heartbeatTimerMock.setCallbackClosure = { _ in
+            callbackSet.fulfill()
+        }
+
         // Action
         await sut.startConnection()
-        await waitUntil("the heartbeat callback") { heartbeatTimerMock.setCallbackCalled }
+        await fulfillment(of: [callbackSet], timeout: 3.0)
 
         // Assert
         XCTAssertTrue(heartbeatTimerMock.setCallbackCalled)
