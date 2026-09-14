@@ -242,13 +242,10 @@ class SseConnectionManagerTest: XCTestCase {
         let counter = ConfirmationCounter()
         await sut.setOnConnectionConfirmed { counter.increment() }
 
-        // ARM listener for heartbeat reset (signals stream finished processing)
-        let streamFinished = Task {
-            await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
-                heartbeatTimerMock.resetClosure = { _ in
-                    cont.resume()
-                }
-            }
+        // Use XCTestExpectation since resetClosure may be called when stream finishes
+        let streamFinishedExp = expectation(description: "stream finished")
+        heartbeatTimerMock.resetClosure = { _ in
+            streamFinishedExp.fulfill()
         }
 
         await sut.startConnection()
@@ -256,7 +253,7 @@ class SseConnectionManagerTest: XCTestCase {
         continuation.yield(.serverEvent(ServerEvent(id: nil, type: "connected", data: "")))
         continuation.finish()
 
-        await streamFinished.value
+        await fulfillment(of: [streamFinishedExp], timeout: 1.0)
 
         XCTAssertEqual(counter.value, 1)
     }
@@ -268,20 +265,17 @@ class SseConnectionManagerTest: XCTestCase {
         let counter = ConfirmationCounter()
         await sut.setOnConnectionConfirmed { counter.increment() }
 
-        // ARM listener for heartbeat reset (signals stream finished processing)
-        let streamFinished = Task {
-            await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
-                heartbeatTimerMock.resetClosure = { _ in
-                    cont.resume()
-                }
-            }
+        // Use XCTestExpectation since resetClosure may be called when stream finishes
+        let streamFinishedExp = expectation(description: "stream finished")
+        heartbeatTimerMock.resetClosure = { _ in
+            streamFinishedExp.fulfill()
         }
 
         await sut.startConnection()
         continuation.yield(.connectionOpen)
         continuation.finish()
 
-        await streamFinished.value
+        await fulfillment(of: [streamFinishedExp], timeout: 1.0)
 
         // Transport open alone is not confirmation: nothing should be backfilled yet.
         XCTAssertEqual(counter.value, 0)
@@ -345,20 +339,17 @@ class SseConnectionManagerTest: XCTestCase {
         let (stream, continuation) = AsyncStreamBackport.makeStream(of: SseEvent.self)
         sseServiceMock.connectReturnValue = stream
 
-        // ARM listener for heartbeat reset
-        let timerReset = Task {
-            await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
-                heartbeatTimerMock.resetClosure = { _ in
-                    cont.resume()
-                }
-            }
+        // Use XCTestExpectation since resetClosure can be called multiple times
+        let timerResetExp = expectation(description: "heartbeat timer reset")
+        heartbeatTimerMock.resetClosure = { _ in
+            timerResetExp.fulfill()
         }
 
         // Action
         await sut.startConnection()
         continuation.yield(.connectionFailed(.networkError(message: "Error", underlyingError: nil)))
 
-        await timerReset.value
+        await fulfillment(of: [timerResetExp], timeout: 1.0)
         continuation.finish()
 
         // Assert
@@ -370,20 +361,17 @@ class SseConnectionManagerTest: XCTestCase {
         let (stream, continuation) = AsyncStreamBackport.makeStream(of: SseEvent.self)
         sseServiceMock.connectReturnValue = stream
 
-        // ARM listener for heartbeat reset
-        let timerReset = Task {
-            await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
-                heartbeatTimerMock.resetClosure = { _ in
-                    cont.resume()
-                }
-            }
+        // Use XCTestExpectation since resetClosure can be called multiple times
+        let timerResetExp = expectation(description: "heartbeat timer reset")
+        heartbeatTimerMock.resetClosure = { _ in
+            timerResetExp.fulfill()
         }
 
         // Action
         await sut.startConnection()
         continuation.yield(.connectionClosed)
 
-        await timerReset.value
+        await fulfillment(of: [timerResetExp], timeout: 1.0)
         continuation.finish()
 
         // Assert
