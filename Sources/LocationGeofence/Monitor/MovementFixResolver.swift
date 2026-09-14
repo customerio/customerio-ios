@@ -124,9 +124,9 @@ final class MovementFixResolver: NSObject, @preconcurrency CLLocationManagerDele
             return
         }
         logger.geofenceMovementFixStale(ageSeconds: age)
-        if let cached, fallbackFix.map({ cached.timestamp > $0.timestamp }) ?? true {
-            fallbackFix = cached
-        }
+        // Same newest-of-two rule, and the same tie (the held fallback keeps it); provenance is
+        // not tracked here because this value never reaches a diagnostic.
+        fallbackFix = FixSelection.newest(cached: cached, delivered: fallbackFix)?.fix
         pendingCompletions.append(completion)
         guard pendingCompletions.count == 1 else { return }
         // The initiator labels the record. Later callers coalesce onto this request and return
