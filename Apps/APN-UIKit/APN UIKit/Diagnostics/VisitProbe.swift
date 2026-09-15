@@ -36,9 +36,18 @@ final class VisitProbe: NSObject, CLLocationManagerDelegate, @unchecked Sendable
     }
 
     func startIfEnabled() {
-        guard Self.isEnabled, !started else { return }
-        started = true
+        guard Self.isEnabled else { return }
+        // Delegate first and unconditionally: visit monitoring needs Always, the SDK asks for it
+        // after launch, and without this delegate the grant arrives with nothing listening — the
+        // probe would then sit dead for the whole process on any device not already authorized.
         manager.delegate = self
+        startIfAuthorized()
+    }
+
+    /// Idempotent, because it runs from launch AND from every authorization change.
+    private func startIfAuthorized() {
+        guard !started, manager.authorizationStatus == .authorizedAlways else { return }
+        started = true
         // No `requestAlwaysAuthorization` here: the SDK owns the prompt, and asking twice changes
         // the very authorization state the probe is meant to observe.
         manager.startMonitoringVisits()
@@ -46,6 +55,19 @@ final class VisitProbe: NSObject, CLLocationManagerDelegate, @unchecked Sendable
             "Visit probe started\(DiagnosticLog.delimiter)ev=probe.visit.started io=obs",
             level: .info
         )
+    }
+
+    func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+        // Reported whether or not the probe is waiting, so a capture that produced no visit can be
+        // told apart from one where Always was never granted.
+        DiagnosticLog.shared.note(
+            "Visit probe saw authorization \(manager.authorizationStatus.rawValue)"
+                + DiagnosticLog.delimiter
+                + "ev=probe.visit.auth io=obs status=\(manager.authorizationStatus.rawValue)"
+                + " armed=\(started)",
+            level: .info
+        )
+        startIfAuthorized()
     }
 
     func locationManager(_: CLLocationManager, didVisit visit: CLVisit) {
