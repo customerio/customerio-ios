@@ -78,7 +78,10 @@ extension Logger {
     /// decisively outside, belief unchanged — writes nothing, and a correct silence is
     /// indistinguishable from an evaluator that never ran.
     ///
-    /// `edge` is signed: negative is inside. `acc` is the ambiguity margin, not a quality score —
+    /// `edge` is signed: **positive is inside**, the polygon convention set by
+    /// `PolygonRegion.signedEdgeDistance` and fixed by the cross-SDK geometry fixtures. The circle
+    /// records (`contradiction.allowed`) use the same key with the opposite sign, so a parser must
+    /// read `edge` against the record's `ev`. `acc` is the ambiguity margin, not a quality score —
     /// iOS has no accuracy ceiling, so a verdict holds only while `|edge|` exceeds it.
     func geofencePolygonVerdict(identifier: String, membership: PolygonMembership, signedEdgeDistance: Double, horizontalAccuracy: Double, fixAge: TimeInterval) {
         debug(
