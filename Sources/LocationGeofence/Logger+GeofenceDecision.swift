@@ -70,6 +70,64 @@ extension Logger {
         )
     }
 
+    /// The gate consulted a fix and did NOT refuse — the counterpart to `contradiction.refused`,
+    /// without which "the gate allowed this event" and "the gate could not have refused anything"
+    /// are the same silence. Below a radius the fix accuracy can resolve, the second case is the
+    /// norm, so a drive on small fences cannot otherwise tell whether the gate still protects
+    /// anything.
+    ///
+    /// `edge` is signed here, unlike the refusal's, because which side the fix fell on is the
+    /// question. Negative is inside — the CIRCLE path's convention, matching
+    /// `BaselineHealDecision`. The polygon records use the same key with the opposite sign
+    /// (`PolygonRegion.signedEdgeDistance` is positive inside), so a parser must read `edge`
+    /// against the record's `ev`. The measurements ride as their own keys and no `why` token
+    /// classifies them: which guard declined is derivable from `edge`, `acc` and `age`, and a
+    /// token would need a second copy of `BaselineHealDecision`'s guard sequence to produce.
+    func geofenceContradictionAllowed(
+        identifier: String,
+        transition: GeofenceTransition,
+        geometry: GateFixGeometry
+    ) {
+        debug(
+            "Allowed OS \(transition.rawValue) for region \(identifier): the gate did not refuse it (distance \(Int(geometry.distanceFromCenter)) m, radius \(Int(geometry.radius)) m, accuracy \(Int(geometry.accuracy)) m, fix age \(String(format: "%.1f", geometry.fixAge))s)"
+                + geofenceTail("contradiction.allowed", .output, [
+                    ("id", identifier),
+                    ("t", transition.rawValue),
+                    ("dist", GeofenceLog.num(geometry.distanceFromCenter, 0)),
+                    ("rad", GeofenceLog.num(geometry.radius, 0)),
+                    ("edge", GeofenceLog.num(geometry.signedEdgeDistance, 0)),
+                    ("acc", GeofenceLog.num(geometry.accuracy)),
+                    ("age", GeofenceLog.num(geometry.fixAge))
+                ]),
+            geofenceTag
+        )
+    }
+
+    /// The gate reached an in-window event with no fix to judge it against, so it failed open.
+    /// Silent before this, which made it indistinguishable from a gate that ran and allowed the
+    /// event.
+    ///
+    /// This is NOT what a blocked fix request produces. The blocked path still returns
+    /// `bestKnownFix()`, and the usable-fix filter rejects only an invalid coordinate, never age —
+    /// so whenever any fix exists the gate reaches the decision and fails open on the age guard,
+    /// emitting `contradiction.allowed` with a large `age`. Counting blocked bursts by this record
+    /// would find none and read that as the resolver working.
+    func geofenceContradictionNoFix(
+        identifier: String,
+        transition: GeofenceTransition,
+        reason: ContradictionGateNoFixReason
+    ) {
+        debug(
+            "Allowed OS \(transition.rawValue) for region \(identifier): \(reason.prose)"
+                + geofenceTail("contradiction.no_fix", .output, [
+                    ("id", identifier),
+                    ("t", transition.rawValue),
+                    ("why", reason.rawValue)
+                ]),
+            geofenceTag
+        )
+    }
+
     func geofenceEventRefusedByContradiction(identifier: String, transition: GeofenceTransition, distanceFromCenter: Double, radius: Double, accuracy: Double) {
         info(
             "Refused OS \(transition.rawValue) for region \(identifier): a fresh fix contradicts it (distance \(Int(distanceFromCenter)) m, radius \(Int(radius)) m, accuracy \(Int(accuracy)) m)"

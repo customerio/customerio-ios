@@ -145,7 +145,7 @@ struct GeofenceLogTailTests {
             Invocation(name: "polygonEvaluationRequested", ev: "polygon.evaluation.requested", requiredKeys: ["id", "why"]) { $0.geofencePolygonEvaluationRequested(identifier: "notl_core", reason: .newPolygon) },
             Invocation(name: "polygonDropped", ev: "registration.rejected", requiredKeys: ["id", "why", "rad", "lim"]) { $0.geofencePolygonExceedsMonitoringLimit(identifier: "notl_core", radius: 12000, limit: 10000) },
             Invocation(name: "polygonWakePass", ev: "polygon.wake.pass", requiredKeys: ["rad", "n"]) { $0.geofencePolygonWakePass(radius: 420, polygonCount: 3) },
-            Invocation(name: "polygonVerdict", ev: "polygon.verdict", requiredKeys: ["id", "m", "edge", "acc", "age"]) { $0.geofencePolygonVerdict(identifier: "notl_core", membership: .inside, signedEdgeDistance: -80, horizontalAccuracy: 12, fixAge: 3.5) },
+            Invocation(name: "polygonVerdict", ev: "polygon.verdict", requiredKeys: ["id", "m", "edge", "acc", "age"]) { $0.geofencePolygonVerdict(identifier: "notl_core", membership: .inside, signedEdgeDistance: 80, horizontalAccuracy: 12, fixAge: 3.5) },
             Invocation(name: "polygonUndelivered", ev: "polygon.undelivered", requiredKeys: ["id", "why"]) { $0.geofencePolygonNotDelivered(identifier: "notl_core", reason: .outcome(.suppressedInitialOutside)) },
             Invocation(name: "polygonUndecided", ev: "polygon.undecided", requiredKeys: ["id", "why", "edge", "acc"]) { $0.geofencePolygonUndecided(identifier: "notl_core", reason: .withinAccuracy, signedEdgeDistance: -4, horizontalAccuracy: 12) },
             Invocation(name: "wakeRadiusChosen", ev: "movement.radius.chosen", requiredKeys: ["rad", "from"]) { $0.geofenceWakeRadiusChosen(radius: 640, anchorIsLiveFix: true) },
@@ -155,6 +155,8 @@ struct GeofenceLogTailTests {
             Invocation(name: "baselineHealed", ev: "baseline.healed", requiredKeys: ["id", "t"]) { $0.geofenceBaselineHealed(identifier: "notl_core", transition: .enter) },
             Invocation(name: "contradictionEvaluated", ev: "contradiction.evaluated", requiredKeys: ["id", "t", "dly", "win"]) { $0.geofenceContradictionEvaluated(identifier: "notl_core", transition: .enter, delaySinceAdd: 1.25, insideWindow: true) },
             Invocation(name: "contradictionRefused", ev: "contradiction.refused", requiredKeys: ["id", "t", "dist", "rad", "edge", "acc"]) { $0.geofenceEventRefusedByContradiction(identifier: "notl_core", transition: .enter, distanceFromCenter: 1400, radius: 1000, accuracy: 48) },
+            Invocation(name: "contradictionAllowed", ev: "contradiction.allowed", requiredKeys: ["id", "t", "dist", "rad", "edge", "acc", "age"]) { $0.geofenceContradictionAllowed(identifier: "notl_core", transition: .enter, geometry: GateFixGeometry(distanceFromCenter: 980, radius: 1000, accuracy: 48, fixAge: 3.5)) },
+            Invocation(name: "contradictionNoFix", ev: "contradiction.no_fix", requiredKeys: ["id", "t", "why"]) { $0.geofenceContradictionNoFix(identifier: "notl_core", transition: .exit, reason: .noFixAvailable) },
             Invocation(name: "syncSuperseded", ev: "sync.superseded", requiredKeys: ["why"]) { $0.geofenceSyncSupersededByUserChange() },
             Invocation(name: "resetCompleted", ev: "module.reset", requiredKeys: ["ok"]) { $0.geofenceResetCompleted() },
             Invocation(name: "resetSuperseded", ev: "module.reset", requiredKeys: ["ok", "why"]) { $0.geofenceResetSuperseded() },
@@ -430,7 +432,9 @@ struct GeofenceLogTailTests {
         "api.fetch.unreadable",
         "baseline.healed",
         "baseline.refused",
+        "contradiction.allowed",
         "contradiction.evaluated",
+        "contradiction.no_fix",
         "contradiction.refused",
         "delivery.failed",
         "delivery.queued",
@@ -479,6 +483,43 @@ struct GeofenceLogTailTests {
         "transition.suppressed",
         "transition.synthesized"
     ]
+
+    /// `contradiction.allowed` carries a SIGNED edge, unlike `contradiction.refused` which floors
+    /// it at zero. The sign is the whole point of the record — which side of the fence the gated
+    /// fix fell on — and an off-device parser keying on `edge` cannot recover it if this flips.
+    ///
+    /// Asserted from POSITION rather than from the formula's output, the form
+    /// `SignConventionTests` uses: a fix physically inside must log a negative `edge` AND make the
+    /// gate's own decision read `.enter`. A test that only pinned `980 - 1000 == -20` would stay
+    /// green through an inversion of what "inside" means.
+    @Test
+    func contradictionAllowed_givenAFixInsideTheFence_expectANegativeEdgeMatchingTheDecision() {
+        let radius: Double = 1000
+        // 900, not 980: at 980 the edge is exactly `baselineHealMinEdgeMargin`, and the rule needs
+        // `abs(edge) > margin`, so that position is undecidable rather than inside.
+        let insideDistance: Double = 900
+        let geometry = GateFixGeometry(
+            distanceFromCenter: insideDistance, radius: radius, accuracy: 48, fixAge: 3.5
+        )
+        let logger = CapturingLogger()
+        withDiagnostics(true) {
+            logger.geofenceContradictionAllowed(
+                identifier: "notl_core", transition: .enter, geometry: geometry
+            )
+        }
+        let tail = parseTail(logger.messages.last ?? "")
+
+        // The decision agrees this position is inside: asked with `lastState: .exit`, a fix inside
+        // contradicts it and yields `.enter`.
+        #expect(BaselineHealDecision.synthesizedTransition(
+            distanceFromCenter: insideDistance, radius: radius,
+            horizontalAccuracy: 5, fixAge: 1, lastState: .exit
+        ) == .enter, "fixture is not physically inside by the gate's own rule")
+        #expect(geometry.signedEdgeDistance < 0, "circle convention: negative inside")
+        #expect(tail?["edge"] == "-100", "edge lost its sign: \(String(describing: tail?["edge"]))")
+        #expect(tail?["age"] == "3.5")
+        #expect(tail?["acc"] == "48.0")
+    }
 
     @Test
     func everyRecord_expectTheDeclaredVocabulary() {
