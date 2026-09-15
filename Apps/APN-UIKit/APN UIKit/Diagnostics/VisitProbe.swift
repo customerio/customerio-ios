@@ -43,6 +43,10 @@ final class VisitProbe: NSObject, @preconcurrency CLLocationManagerDelegate {
     /// reboots and relaunches into that window, so the read-only path is what keeps a lost window
     /// from becoming a lost capture.
     ///
+    /// An explicit value is honoured whatever it says: `CIO_VISIT_PROBE=0`, an empty one, or
+    /// `-cio_visit_probe NO` all persist `false` over a stored `true`. That is the intended way
+    /// to turn the probe off, and it is a stated choice rather than an unreadable domain.
+    ///
     /// Read once at launch, so flipping it takes a relaunch.
     private static func resolveAndPersistGate() -> Bool {
         if let fromEnvironment = ProcessInfo.processInfo.environment["CIO_VISIT_PROBE"] {
@@ -141,6 +145,9 @@ final class VisitProbe: NSObject, @preconcurrency CLLocationManagerDelegate {
                 // Live delivery or an OS relaunch — the relaunch is the case the ticket is about,
                 // and the two are otherwise indistinguishable in the log.
                 + " state=\(stateToken())"
+                // A CoreLocation wake, NOT proof that CLVisit caused it: `.location` is set for any
+                // of them, the SDK's own geofence wake included. Read it as "the OS relaunched us
+                // for location" and take the latency, not the cause, from the visit dates.
                 + " launch=\(launchedByLocation ? "location" : "app_start")",
             level: .info
         )
