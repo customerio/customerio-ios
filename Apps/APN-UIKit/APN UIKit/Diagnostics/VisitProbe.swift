@@ -27,26 +27,38 @@ final class VisitProbe: NSObject, @preconcurrency CLLocationManagerDelegate {
     private var sawUnauthorized = false
     private var launchedByLocation = false
 
-    /// Resolves the gate and PERSISTS it, which is the whole point.
+    /// Resolves the gate, persisting only an EXPLICIT choice.
     ///
     /// `UserDefaults.bool` already resolves the launch-argument domain over the stored value, but
     /// that domain is volatile: `-cio_visit_probe YES` applies to one process and never reaches
     /// disk. The capture this probe exists for spans an OS relaunch — device still, app killed,
     /// CoreLocation relaunches it to deliver the visit — and the relaunched process gets no
-    /// arguments and no environment. Without this write it reads `false`, the probe stays off, and
-    /// the visit that woke the app is lost: an outcome indistinguishable from "CLVisit never fired".
+    /// arguments and no environment. Without a write it reads `false`, the probe stays off, and the
+    /// visit that woke the app is lost: an outcome indistinguishable from "CLVisit never fired".
     ///
-    /// Read once at launch, so flipping it takes a relaunch. One window it cannot cover: before
-    /// the first unlock after a reboot, `UserDefaults.standard` is unreadable under data
-    /// protection and reads empty — the same window the SDK itself cannot work in, and a realistic
-    /// one for an overnight stationary capture.
+    /// A launch carrying neither only READS. Before the first unlock after a reboot
+    /// `UserDefaults.standard` is unreadable under data protection and reports `false` for a key
+    /// stored as `true`; writing that reading back would erase the stored `true` and leave the
+    /// probe off for every later launch. An overnight stationary capture is exactly when a device
+    /// reboots and relaunches into that window, so the read-only path is what keeps a lost window
+    /// from becoming a lost capture.
+    ///
+    /// Read once at launch, so flipping it takes a relaunch.
     private static func resolveAndPersistGate() -> Bool {
-        let enabled: Bool
-        if let fromEnv = ProcessInfo.processInfo.environment["CIO_VISIT_PROBE"] {
-            enabled = fromEnv == "1"
-        } else {
-            enabled = UserDefaults.standard.bool(forKey: defaultsKey)
+        if let fromEnvironment = ProcessInfo.processInfo.environment["CIO_VISIT_PROBE"] {
+            return persistGate(fromEnvironment == "1")
         }
+        // The argument domain is read directly rather than through `bool(forKey:)`, which cannot
+        // say whether the value it returned came from this launch's arguments or from disk.
+        let arguments = UserDefaults.standard.volatileDomain(forName: UserDefaults.argumentDomain)
+        if let fromArgument = arguments[defaultsKey] {
+            let token = String(describing: fromArgument).lowercased()
+            return persistGate(["1", "yes", "true"].contains(token))
+        }
+        return UserDefaults.standard.bool(forKey: defaultsKey)
+    }
+
+    private static func persistGate(_ enabled: Bool) -> Bool {
         UserDefaults.standard.set(enabled, forKey: defaultsKey)
         return enabled
     }
