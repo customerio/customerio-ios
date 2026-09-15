@@ -84,6 +84,71 @@ struct PolygonMembershipStorageTests {
         #expect(outcome == .deliver(.exit))
     }
 
+    /// A clock set backwards makes an evidence time postdate the write. Stored unclamped it would
+    /// refuse every correcting write until the clock caught up, stranding the belief.
+    @Test
+    func recordPolygonMembership_givenEvidenceInTheFuture_expectLaterEvidenceStillDecides() async {
+        let storage = await makeStorage()
+        let writtenAt = Date()
+        _ = await storage.recordPolygonMembership(
+            .inside,
+            forIdentifier: "1",
+            onlyIfBeliefPredates: writtenAt.addingTimeInterval(3600),
+            now: writtenAt
+        )
+
+        let outcome = await storage.recordPolygonMembership(
+            .outside,
+            forIdentifier: "1",
+            onlyIfBeliefPredates: writtenAt.addingTimeInterval(1),
+            now: writtenAt.addingTimeInterval(1)
+        )
+
+        #expect(outcome == .deliver(.exit))
+        #expect(await storage.getPolygonMembership()["1"]?.membership == .outside)
+    }
+
+    /// The clamp on write protects new beliefs; this is the recovery path for one already on disk
+    /// with a future stamp, left by a build that predates that clamp. Read unclamped it wins every
+    /// comparison, so no later fix can repair the belief until the wall clock catches up.
+    @Test
+    func recordPolygonMembership_givenPersistedBeliefStampedInTheFuture_expectLaterFixStillDecides() async {
+        let storage = await makeStorage()
+        let now = Date()
+        var state = await storage.loadFromDisk() ?? GeofenceState()
+        state.polygonMembership = [
+            "1": PolygonMembershipRecord(membership: .inside, lastChangedAt: now.addingTimeInterval(3600))
+        ]
+        await storage.saveToDisk(state)
+
+        let outcome = await storage.recordPolygonMembership(
+            .outside, forIdentifier: "1", onlyIfBeliefPredates: now, now: now
+        )
+
+        #expect(outcome == .deliver(.exit))
+        #expect(await storage.getPolygonMembership()["1"]?.membership == .outside)
+    }
+
+    /// The realistic shape of the recovery: a real fix is always a little BEHIND `now`, never
+    /// exactly on it. Clamping the poisoned stamp to `now` leaves it outranking every such fix,
+    /// so recovery has to discard the stamp, not cap it.
+    @Test
+    func recordPolygonMembership_givenPersistedFutureStampAndAFixWithRealAge_expectRecovery() async {
+        let storage = await makeStorage()
+        let now = Date()
+        var state = await storage.loadFromDisk() ?? GeofenceState()
+        state.polygonMembership = [
+            "1": PolygonMembershipRecord(membership: .inside, lastChangedAt: now.addingTimeInterval(3600))
+        ]
+        await storage.saveToDisk(state)
+
+        let outcome = await storage.recordPolygonMembership(
+            .outside, forIdentifier: "1", onlyIfBeliefPredates: now.addingTimeInterval(-5), now: now
+        )
+
+        #expect(outcome == .deliver(.exit))
+    }
+
     /// Membership survives re-registration, which is what keeps a wholesale re-register silent
     /// without needing the registered-ids diff the circle path uses.
     @Test

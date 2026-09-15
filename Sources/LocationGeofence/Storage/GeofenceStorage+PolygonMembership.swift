@@ -16,8 +16,8 @@ extension GeofenceStorage {
     ///
     /// `onlyIfBeliefPredates` makes the write conditional on the belief's age, atomically with the
     /// compare-and-store: an evaluation whose fix predates a belief written since must not
-    /// overwrite it with an older reading. The stored `lastChangedAt` is that same evidence time,
-    /// not the moment of the write — the comparison is evidence against evidence, and a write time
+    /// overwrite it with an older reading. The stored `lastChangedAt` is that same evidence
+    /// time, never later than the write — the comparison is evidence against evidence, and a write time
     /// always postdates the fix that justified it, so storing it would reject verdicts whose
     /// evidence is genuinely newer than the previous verdict's.
     ///
@@ -43,6 +43,9 @@ extension GeofenceStorage {
         onlyIfCircleMatches evaluatedCircle: MonitoredCircle? = nil,
         now: Date = Date()
     ) -> PolygonMembershipOutcome {
+        // A crossing cannot postdate the moment we learn of it. Unclamped, a clock set backwards
+        // stamps the belief in the future and every correcting write is refused until it catches up.
+        let evidenceTimestamp = evidenceTimestamp.map { min($0, now) }
         var state = loadFromDisk() ?? GeofenceState()
         // Read and compared inside the same actor call that writes, because that is the only place
         // the two cannot be separated. The evaluation's own re-read closes the location request;
@@ -65,7 +68,12 @@ extension GeofenceStorage {
         }
         var records = state.polygonMembership ?? [:]
         let existing = records[identifier]
-        if let evidenceTimestamp, let existing, existing.lastChangedAt > evidenceTimestamp {
+        // A stamp ahead of `now` is impossible evidence — persisted by a build that predates the
+        // clamp above, or written while the clock was ahead. Discarded, not capped: a real fix
+        // always carries some age, so a stamp capped at `now` still outranks every one of them and
+        // the belief stays unrepairable until the wall clock catches up.
+        let existingStamp = existing.map { $0.lastChangedAt > now ? Date.distantPast : $0.lastChangedAt }
+        if let evidenceTimestamp, let existingStamp, existingStamp > evidenceTimestamp {
             return .suppressedNewerDecision
         }
         guard let existing else {
@@ -84,7 +92,7 @@ extension GeofenceStorage {
             return membership == .inside ? .deliver(.enter) : .suppressedInitialOutside
         }
         guard existing.membership != membership else {
-            if let evidenceTimestamp, evidenceTimestamp > existing.lastChangedAt {
+            if let evidenceTimestamp, let existingStamp, evidenceTimestamp > existingStamp {
                 records[identifier] = PolygonMembershipRecord(
                     membership: membership, lastChangedAt: evidenceTimestamp
                 )
