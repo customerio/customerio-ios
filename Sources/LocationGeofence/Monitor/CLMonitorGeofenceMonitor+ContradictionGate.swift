@@ -63,16 +63,32 @@ extension CLMonitorGeofenceMonitor {
         )
         guard insideWindow else { return false }
         let gateFix = await resolveGateFix()
-        guard let gateFix, CLLocationCoordinate2DIsValid(gateFix.coordinate) else { return false }
+        guard let gateFix, CLLocationCoordinate2DIsValid(gateFix.coordinate) else {
+            logger.geofenceContradictionNoFix(identifier: identifier, transition: transition)
+            return false
+        }
         let center = CLLocation(latitude: readd.center.latitude, longitude: readd.center.longitude)
         let distanceFromCenter = gateFix.distance(from: center)
+        let fixAge = -gateFix.timestamp.timeIntervalSinceNow
         guard BaselineHealDecision.synthesizedTransition(
             distanceFromCenter: distanceFromCenter,
             radius: readd.radius,
             horizontalAccuracy: gateFix.horizontalAccuracy,
-            fixAge: -gateFix.timestamp.timeIntervalSinceNow,
+            fixAge: fixAge,
             lastState: transition
-        ) != nil else { return false }
+        ) != nil else {
+            logger.geofenceContradictionAllowed(
+                identifier: identifier,
+                transition: transition,
+                geometry: GateFixGeometry(
+                    distanceFromCenter: distanceFromCenter,
+                    radius: readd.radius,
+                    accuracy: gateFix.horizontalAccuracy,
+                    fixAge: fixAge
+                )
+            )
+            return false
+        }
         logger.geofenceEventRefusedByContradiction(
             identifier: identifier,
             transition: transition,

@@ -155,6 +155,8 @@ struct GeofenceLogTailTests {
             Invocation(name: "baselineHealed", ev: "baseline.healed", requiredKeys: ["id", "t"]) { $0.geofenceBaselineHealed(identifier: "notl_core", transition: .enter) },
             Invocation(name: "contradictionEvaluated", ev: "contradiction.evaluated", requiredKeys: ["id", "t", "dly", "win"]) { $0.geofenceContradictionEvaluated(identifier: "notl_core", transition: .enter, delaySinceAdd: 1.25, insideWindow: true) },
             Invocation(name: "contradictionRefused", ev: "contradiction.refused", requiredKeys: ["id", "t", "dist", "rad", "edge", "acc"]) { $0.geofenceEventRefusedByContradiction(identifier: "notl_core", transition: .enter, distanceFromCenter: 1400, radius: 1000, accuracy: 48) },
+            Invocation(name: "contradictionAllowed", ev: "contradiction.allowed", requiredKeys: ["id", "t", "dist", "rad", "edge", "acc", "age"]) { $0.geofenceContradictionAllowed(identifier: "notl_core", transition: .enter, geometry: GateFixGeometry(distanceFromCenter: 980, radius: 1000, accuracy: 48, fixAge: 3.5)) },
+            Invocation(name: "contradictionNoFix", ev: "contradiction.nofix", requiredKeys: ["id", "t"]) { $0.geofenceContradictionNoFix(identifier: "notl_core", transition: .exit) },
             Invocation(name: "syncSuperseded", ev: "sync.superseded", requiredKeys: ["why"]) { $0.geofenceSyncSupersededByUserChange() },
             Invocation(name: "resetCompleted", ev: "module.reset", requiredKeys: ["ok"]) { $0.geofenceResetCompleted() },
             Invocation(name: "resetSuperseded", ev: "module.reset", requiredKeys: ["ok", "why"]) { $0.geofenceResetSuperseded() },
@@ -430,7 +432,9 @@ struct GeofenceLogTailTests {
         "api.fetch.unreadable",
         "baseline.healed",
         "baseline.refused",
+        "contradiction.allowed",
         "contradiction.evaluated",
+        "contradiction.nofix",
         "contradiction.refused",
         "delivery.failed",
         "delivery.queued",
@@ -479,6 +483,25 @@ struct GeofenceLogTailTests {
         "transition.suppressed",
         "transition.synthesized"
     ]
+
+    /// `contradiction.allowed` carries a SIGNED edge, unlike `contradiction.refused` which floors
+    /// it at zero. The sign is the whole point of the record — which side of the fence the gated
+    /// fix fell on — and an off-device parser keying on `edge` cannot recover it if this flips.
+    @Test
+    func contradictionAllowed_expectASignedEdgeAndTheFixAge() {
+        let logger = CapturingLogger()
+        withDiagnostics(true) {
+            logger.geofenceContradictionAllowed(
+                identifier: "notl_core", transition: .enter,
+                geometry: GateFixGeometry(distanceFromCenter: 980, radius: 1000, accuracy: 48, fixAge: 3.5)
+            )
+        }
+        let tail = parseTail(logger.messages.last ?? "")
+
+        #expect(tail?["edge"] == "-20", "edge lost its sign: \(String(describing: tail?["edge"]))")
+        #expect(tail?["age"] == "3.5")
+        #expect(tail?["acc"] == "48.0")
+    }
 
     @Test
     func everyRecord_expectTheDeclaredVocabulary() {
