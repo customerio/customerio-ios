@@ -64,7 +64,13 @@ extension CLMonitorGeofenceMonitor {
         guard insideWindow else { return false }
         let gateFix = await resolveGateFix()
         guard let gateFix, CLLocationCoordinate2DIsValid(gateFix.coordinate) else {
-            logger.geofenceContradictionNoFix(identifier: identifier, transition: transition)
+            // `gateFix` is the unbound optional in this branch, so the two causes stay
+            // distinguishable without a second guard.
+            logger.geofenceContradictionNoFix(
+                identifier: identifier,
+                transition: transition,
+                reason: gateFix == nil ? .noFixAvailable : .invalidCoordinate
+            )
             return false
         }
         let center = CLLocation(latitude: readd.center.latitude, longitude: readd.center.longitude)

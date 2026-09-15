@@ -156,7 +156,7 @@ struct GeofenceLogTailTests {
             Invocation(name: "contradictionEvaluated", ev: "contradiction.evaluated", requiredKeys: ["id", "t", "dly", "win"]) { $0.geofenceContradictionEvaluated(identifier: "notl_core", transition: .enter, delaySinceAdd: 1.25, insideWindow: true) },
             Invocation(name: "contradictionRefused", ev: "contradiction.refused", requiredKeys: ["id", "t", "dist", "rad", "edge", "acc"]) { $0.geofenceEventRefusedByContradiction(identifier: "notl_core", transition: .enter, distanceFromCenter: 1400, radius: 1000, accuracy: 48) },
             Invocation(name: "contradictionAllowed", ev: "contradiction.allowed", requiredKeys: ["id", "t", "dist", "rad", "edge", "acc", "age"]) { $0.geofenceContradictionAllowed(identifier: "notl_core", transition: .enter, geometry: GateFixGeometry(distanceFromCenter: 980, radius: 1000, accuracy: 48, fixAge: 3.5)) },
-            Invocation(name: "contradictionNoFix", ev: "contradiction.nofix", requiredKeys: ["id", "t"]) { $0.geofenceContradictionNoFix(identifier: "notl_core", transition: .exit) },
+            Invocation(name: "contradictionNoFix", ev: "contradiction.no_fix", requiredKeys: ["id", "t", "why"]) { $0.geofenceContradictionNoFix(identifier: "notl_core", transition: .exit, reason: .noFixAvailable) },
             Invocation(name: "syncSuperseded", ev: "sync.superseded", requiredKeys: ["why"]) { $0.geofenceSyncSupersededByUserChange() },
             Invocation(name: "resetCompleted", ev: "module.reset", requiredKeys: ["ok"]) { $0.geofenceResetCompleted() },
             Invocation(name: "resetSuperseded", ev: "module.reset", requiredKeys: ["ok", "why"]) { $0.geofenceResetSuperseded() },
@@ -434,7 +434,7 @@ struct GeofenceLogTailTests {
         "baseline.refused",
         "contradiction.allowed",
         "contradiction.evaluated",
-        "contradiction.nofix",
+        "contradiction.no_fix",
         "contradiction.refused",
         "delivery.failed",
         "delivery.queued",
@@ -487,18 +487,36 @@ struct GeofenceLogTailTests {
     /// `contradiction.allowed` carries a SIGNED edge, unlike `contradiction.refused` which floors
     /// it at zero. The sign is the whole point of the record — which side of the fence the gated
     /// fix fell on — and an off-device parser keying on `edge` cannot recover it if this flips.
+    ///
+    /// Asserted from POSITION rather than from the formula's output, the form
+    /// `SignConventionTests` uses: a fix physically inside must log a negative `edge` AND make the
+    /// gate's own decision read `.enter`. A test that only pinned `980 - 1000 == -20` would stay
+    /// green through an inversion of what "inside" means.
     @Test
-    func contradictionAllowed_expectASignedEdgeAndTheFixAge() {
+    func contradictionAllowed_givenAFixInsideTheFence_expectANegativeEdgeMatchingTheDecision() {
+        let radius: Double = 1000
+        // 900, not 980: at 980 the edge is exactly `baselineHealMinEdgeMargin`, and the rule needs
+        // `abs(edge) > margin`, so that position is undecidable rather than inside.
+        let insideDistance: Double = 900
+        let geometry = GateFixGeometry(
+            distanceFromCenter: insideDistance, radius: radius, accuracy: 48, fixAge: 3.5
+        )
         let logger = CapturingLogger()
         withDiagnostics(true) {
             logger.geofenceContradictionAllowed(
-                identifier: "notl_core", transition: .enter,
-                geometry: GateFixGeometry(distanceFromCenter: 980, radius: 1000, accuracy: 48, fixAge: 3.5)
+                identifier: "notl_core", transition: .enter, geometry: geometry
             )
         }
         let tail = parseTail(logger.messages.last ?? "")
 
-        #expect(tail?["edge"] == "-20", "edge lost its sign: \(String(describing: tail?["edge"]))")
+        // The decision agrees this position is inside: asked with `lastState: .exit`, a fix inside
+        // contradicts it and yields `.enter`.
+        #expect(BaselineHealDecision.synthesizedTransition(
+            distanceFromCenter: insideDistance, radius: radius,
+            horizontalAccuracy: 5, fixAge: 1, lastState: .exit
+        ) == .enter, "fixture is not physically inside by the gate's own rule")
+        #expect(geometry.signedEdgeDistance < 0, "circle convention: negative inside")
+        #expect(tail?["edge"] == "-100", "edge lost its sign: \(String(describing: tail?["edge"]))")
         #expect(tail?["age"] == "3.5")
         #expect(tail?["acc"] == "48.0")
     }

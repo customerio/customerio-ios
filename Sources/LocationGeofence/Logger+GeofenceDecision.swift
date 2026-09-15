@@ -76,8 +76,11 @@ extension Logger {
     /// norm, so a drive on small fences cannot otherwise tell whether the gate still protects
     /// anything.
     ///
-    /// `edge` is signed here (negative is inside), unlike the refusal's, because which side the
-    /// fix fell on is the question. The measurements ride as their own keys and no `why` token
+    /// `edge` is signed here, unlike the refusal's, because which side the fix fell on is the
+    /// question. Negative is inside — the CIRCLE path's convention, matching
+    /// `BaselineHealDecision`. The polygon records use the same key with the opposite sign
+    /// (`PolygonRegion.signedEdgeDistance` is positive inside), so a parser must read `edge`
+    /// against the record's `ev`. The measurements ride as their own keys and no `why` token
     /// classifies them: which guard declined is derivable from `edge`, `acc` and `age`, and a
     /// token would need a second copy of `BaselineHealDecision`'s guard sequence to produce.
     func geofenceContradictionAllowed(
@@ -100,15 +103,26 @@ extension Logger {
         )
     }
 
-    /// The gate reached an in-window event but had no usable fix, so it failed open. Silent
-    /// before this, which made it indistinguishable from a gate that ran and allowed the event —
-    /// and it is the outcome a blocked request path produces, so it is the one a burst repeats.
-    func geofenceContradictionNoFix(identifier: String, transition: GeofenceTransition) {
+    /// The gate reached an in-window event with no fix to judge it against, so it failed open.
+    /// Silent before this, which made it indistinguishable from a gate that ran and allowed the
+    /// event.
+    ///
+    /// This is NOT what a blocked fix request produces. The blocked path still returns
+    /// `bestKnownFix()`, and the usable-fix filter rejects only an invalid coordinate, never age —
+    /// so whenever any fix exists the gate reaches the decision and fails open on the age guard,
+    /// emitting `contradiction.allowed` with a large `age`. Counting blocked bursts by this record
+    /// would find none and read that as the resolver working.
+    func geofenceContradictionNoFix(
+        identifier: String,
+        transition: GeofenceTransition,
+        reason: ContradictionGateNoFixReason
+    ) {
         debug(
-            "Allowed OS \(transition.rawValue) for region \(identifier): no usable fix to judge it against"
-                + geofenceTail("contradiction.nofix", .output, [
+            "Allowed OS \(transition.rawValue) for region \(identifier): \(reason.prose)"
+                + geofenceTail("contradiction.no_fix", .output, [
                     ("id", identifier),
-                    ("t", transition.rawValue)
+                    ("t", transition.rawValue),
+                    ("why", reason.rawValue)
                 ]),
             geofenceTag
         )
