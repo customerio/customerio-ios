@@ -89,7 +89,7 @@ extension Logger {
         geometry: GateFixGeometry
     ) {
         debug(
-            "Allowed OS \(transition.rawValue) for region \(identifier): the fix does not contradict it (distance \(Int(geometry.distanceFromCenter)) m, radius \(Int(geometry.radius)) m, accuracy \(Int(geometry.accuracy)) m, fix age \(String(format: "%.1f", geometry.fixAge))s)"
+            "Allowed OS \(transition.rawValue) for region \(identifier): the gate did not refuse it (distance \(Int(geometry.distanceFromCenter)) m, radius \(Int(geometry.radius)) m, accuracy \(Int(geometry.accuracy)) m, fix age \(String(format: "%.1f", geometry.fixAge))s)"
                 + geofenceTail("contradiction.allowed", .output, [
                     ("id", identifier),
                     ("t", transition.rawValue),
