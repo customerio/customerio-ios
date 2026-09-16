@@ -50,7 +50,12 @@ final class MovementFixResolver: NSObject, @preconcurrency CLLocationManagerDele
 
     /// How the timeout waits. The OS clock is the default; a caller driving a recorded timeline
     /// supplies its own so the wait costs what the timeline says rather than real seconds.
-    private let waitForTimeout: (TimeInterval) async -> Void
+    ///
+    /// Settable rather than init-only, for the same reason as `requestFreshFix`: this resolver is
+    /// constructed inside `CLMonitorGeofenceMonitor`, so a caller has no way to reach the
+    /// initialiser. Without it the fallback fires ten real seconds after a replay that finished in
+    /// milliseconds of virtual time — long after the run it belonged to.
+    var waitForTimeout: (TimeInterval) async -> Void
 
     init(
         logger: Logger,

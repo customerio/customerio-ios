@@ -215,6 +215,21 @@ final class ReplayHarness {
         // Where CoreLocation would be asked for one position. The SDK's own seam for it: a request
         // is counted here and satisfied by the next recorded fix in `feedFix`.
         monitor.movementFixResolver.requestFreshFix = { [weak self] in self?.fixRequestCount += 1 }
+        // The resolver's fallback is a real ten-second sleep, which a replay finishing in
+        // milliseconds of wall time would resolve long after the runner had moved on — or after
+        // the test ended. Substituted so it lands inside the run.
+        //
+        // **Known limitation, deliberately left.** A yield costs no virtual time, and `resolve()`
+        // arms this timeout *before* calling `requestFreshFix` — so in replay the timeout always
+        // wins, and every fresh-fix request resolves as fallback-to-cache rather than as the
+        // recorded fix arriving. Parking on the gate at `now + requestTimeout` is the shape that
+        // would let the recording win the race honestly, and it is not done here because the same
+        // substitution on the recovery window produced an endless re-park ladder that
+        // `fatalError`ed the test process. No drive in the corpus reaches this path (every
+        // recorded `movement.fix.*` is `prov=cached`), and `movement.fix.*` is note-only, never
+        // graded — so the first drive captured with a stale cache will replay the fallback branch
+        // and nothing will say so. Tracked rather than guessed at.
+        monitor.movementFixResolver.waitForTimeout = { _ in await Task.yield() }
         return monitor
     }
 
