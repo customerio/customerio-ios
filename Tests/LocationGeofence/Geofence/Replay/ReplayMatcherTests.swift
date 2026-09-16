@@ -3,8 +3,8 @@
 import Foundation
 import Testing
 
-/// Step 5 of the spike: a green replay is worthless until it has been shown to go red for the right
-/// reason. Each of these breaks one thing and asserts the matcher notices *that* thing.
+/// A green replay is worthless until it has been shown to go red for the right reason. Each of
+/// these breaks one thing and asserts the matcher notices *that* thing.
 ///
 /// These run against a small synthetic scenario rather than a recorded drive, so they keep working
 /// when the drives are not on the machine, and so a failure names one rule rather than one drive.
