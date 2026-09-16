@@ -1,0 +1,100 @@
+import Foundation
+
+/// The recorded drives, which live outside this repo.
+///
+/// `geofence-scenarios/` is a separate private checkout — the captures carry real coordinates and
+/// real business fence names. Leave it beside this repo, or point `CIO_GEOFENCE_SCENARIOS` at it.
+///
+/// **Under `xcodebuild`, prefix the variable with `TEST_RUNNER_`.** Simulator tests do not inherit
+/// the shell environment; only variables with that prefix are forwarded to the test process. A bare
+/// `CIO_GEOFENCE_SCENARIOS=… xcodebuild …` is silently ignored and the sibling checkout is used
+/// instead — which looks exactly like the override working, because the tests still run and still
+/// pass. It cost a bogus isolation check and a negative control that appeared to prove the matcher
+/// was asserting nothing.
+///
+///     TEST_RUNNER_CIO_GEOFENCE_SCENARIOS=/path/to/scenarios xcodebuild … test
+///
+/// Tests that need it are gated on `isAvailable` with `.enabled(if:)` so they report as **skipped**
+/// when absent. Returning early instead reports as *passed* — green tests that asserted nothing.
+enum Scenarios {
+    static let root: URL? = {
+        if let override = ProcessInfo.processInfo.environment["CIO_GEOFENCE_SCENARIOS"] {
+            let url = URL(fileURLWithPath: override)
+            return FileManager.default.fileExists(atPath: url.path) ? url : nil
+        }
+        // Resolved from this file rather than the working directory, which differs between
+        // `xcodebuild` and a bare `swift test`.
+        var dir = URL(fileURLWithPath: #filePath)
+        for _ in 0 ..< 6 {
+            dir.deleteLastPathComponent()
+        }
+        let sibling = dir.appendingPathComponent("geofence-scenarios/recorded")
+        return FileManager.default.fileExists(atPath: sibling.path) ? sibling : nil
+    }()
+
+    static var isAvailable: Bool { root != nil }
+
+    /// Authored scenarios, beside `recorded/` rather than in it.
+    ///
+    /// EXPERIMENTAL. A recorded drive belongs to the OS that produced it — the same crossing fired
+    /// nine minutes apart across the 2026-09-11 fleet — so a shared file can only ever be one
+    /// somebody wrote. These are written against the vocabulary both platforms already share and
+    /// run on both, unfiltered by the header's `platform`.
+    static let conformanceRoot: URL? = {
+        guard let root else { return nil }
+        let sibling = root.deletingLastPathComponent().appendingPathComponent("conformance")
+        return FileManager.default.fileExists(atPath: sibling.path) ? sibling : nil
+    }()
+
+    static func path(_ name: String) -> String? {
+        for directory in [root, conformanceRoot].compactMap({ $0 }) {
+            let candidate = directory.appendingPathComponent("\(name).scenario.ndjson")
+            if FileManager.default.fileExists(atPath: candidate.path) { return candidate.path }
+        }
+        return nil
+    }
+
+    /// The authored scenarios, which carry no platform of their own.
+    ///
+    /// `expect` is checked rather than the directory: a file that has not opted in stays out, so
+    /// dropping a recorded drive in here by mistake cannot silently run against the wrong OS.
+    static let conformance: [String] = {
+        guard let directory = conformanceRoot else { return [] }
+        let files = (try? FileManager.default.contentsOfDirectory(atPath: directory.path)) ?? []
+        return files
+            .filter { $0.hasSuffix(".scenario.ndjson") }
+            .map { String($0.dropLast(".scenario.ndjson".count)) }
+            .filter { name in
+                guard let path = path(name), let scenario = try? ScenarioLoader.load(path: path) else { return false }
+                return scenario.isConformance
+            }
+            .sorted()
+    }()
+
+    /// Every drive this harness can replay, discovered from disk.
+    ///
+    /// Enumerated rather than listed so adding a drive is dropping in a file.
+    static let replayable: [String] = {
+        guard let root else { return [] }
+        let files = (try? FileManager.default.contentsOfDirectory(atPath: root.path)) ?? []
+        return files
+            .filter { $0.hasSuffix(".scenario.ndjson") }
+            .map { String($0.dropLast(".scenario.ndjson".count)) }
+            .compactMap { name -> (String, Scenario)? in
+                guard let path = path(name), let scenario = try? ScenarioLoader.load(path: path) else { return nil }
+                return (name, scenario)
+            }
+            // The platform filter reads each header rather than trusting the filename: this harness
+            // is the iOS composition, and Android batches several fences onto one callback.
+            .filter { $0.1.platform == "ios" }
+            // TEMPORARY. Hides the drives captured before `location.fix` shipped, which can never
+            // pass: the SDK would decide from a position the drive never recorded. It buys quiet
+            // while the flow is being proven, at the cost of a scenario disappearing silently —
+            // the opposite of how everything else here fails. Delete this filter, and the stale
+            // drives with it, once the flow is trusted end to end.
+            .filter { scenario in scenario.1.when.contains { $0.ev == "location.fix" } }
+            .map(\.0)
+            .sorted()
+            + conformance
+    }()
+}
