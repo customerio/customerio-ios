@@ -129,8 +129,11 @@ enum ReplayRunner {
         }
     }
 
+    /// Cancellation is swallowed here and nowhere else: a runner walking a drive should stop
+    /// pacing when the test task is cancelled, not abort the drive mid-record and report the
+    /// remaining expectations as missing.
     private static func settle(_ harness: ReplayHarness) async {
-        await ReplayHarness.letAsyncWorkRun()
+        try? await ReplayHarness.letAsyncWorkRun()
     }
 
     /// Records in time order, ties broken by the order the capture wrote them.

@@ -38,6 +38,12 @@ struct ScenarioReplayTests {
             let harness = ReplayHarness()
             return (harness, await ReplayRunner.run(scenario, on: harness))
         }
+        // The composition outlives this scope otherwise: the reconcile handler the bootstrap
+        // installs captures the graph, and the graph holds the monitor. Every drive would leave a
+        // live monitor behind, still observing the foreground notification, so a later drive's
+        // `app.foreground` would wake all of its predecessors. Released after the run rather than
+        // before the assertions, which read the log and the OS double, not the SDK graph.
+        defer { harness.releaseSDK() }
 
         // An input the harness cannot drive means the run never earned its expectations, so this is
         // checked before the match rather than after.
@@ -87,6 +93,27 @@ struct ScenarioReplayTests {
             \(mismatches.prefix(8).map { "  • \($0)" }.joined(separator: "\n"))
 
             \(ReplayMatcher.diff(expected: expected, actual: result.emitted))
+            """
+        )
+    }
+
+    /// Every scenario file on disk was readable.
+    ///
+    /// Discovery drops what it cannot parse, because a `@Test` argument list is built before any
+    /// test runs and cannot throw. Without this case that drop is invisible: the suite reports a
+    /// clean pass over the drives it *could* read and says nothing about the ones it could not.
+    ///
+    /// Enabled on `isAvailable` alone — a corpus that is present but entirely unreadable must fail
+    /// here rather than skip, which is exactly the case a `replayable`-gated trait would miss.
+    @Test(.enabled(if: Scenarios.isAvailable))
+    func discover_givenScenarioFilesOnDisk_expectEveryOneReadable() {
+        // `unreadable` is populated as a side effect of discovery, so touch it first.
+        _ = Scenarios.replayable
+        #expect(
+            Scenarios.unreadable.isEmpty,
+            """
+            \(Scenarios.unreadable.count) scenario file(s) could not be read and were dropped from the run:
+            \(Scenarios.unreadable.map { "  • \($0)" }.joined(separator: "\n"))
             """
         )
     }
