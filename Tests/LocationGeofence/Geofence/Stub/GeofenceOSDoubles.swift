@@ -68,6 +68,11 @@ final class FakeConditionMonitor: GeofenceConditionMonitoring {
 
     /// A fresh stream per subscriber, and only the newest one is fed. `AsyncThrowingStream` is
     /// single-consumer: two live iterations split the events rather than each seeing all of them.
+    ///
+    /// Superseding matters to replay specifically. A replayed `process.start` builds a second
+    /// wrapper whose consume task subscribes again while the dead process's task is still parked
+    /// on the old stream. Handing the new subscriber the stream and leaving the old one quiet is
+    /// what a dead process looks like from the OS side.
     var events: AsyncThrowingStream<GeofenceConditionEvent, Error> {
         get async {
             AsyncThrowingStream { self.continuation = $0 }
@@ -150,10 +155,24 @@ final class FakeConditionMonitor: GeofenceConditionMonitoring {
     }
 
     /// Between runs: conditions one left behind are not held by the next.
+    ///
+    /// The hold state is released rather than merely cleared. A run that failed between
+    /// `holdOperations()` and `releaseOperations()` leaves continuations parked and `isHeld` set;
+    /// resetting without resuming them would wedge the next run's first `add` on a continuation
+    /// nobody is left to resume. The stream continuation goes too, so `hasSubscriber` does not
+    /// keep reporting the previous run's subscriber.
     func reset() {
         held.removeAll()
         operations.removeAll()
         deliveredWithNoSubscriber = 0
+        isHeld = false
+        let waiting = parked
+        parked.removeAll()
+        for continuation in waiting {
+            continuation.resume()
+        }
+        continuation?.finish()
+        continuation = nil
     }
 }
 
