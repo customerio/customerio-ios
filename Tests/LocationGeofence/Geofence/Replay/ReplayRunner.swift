@@ -27,7 +27,7 @@ enum ReplayRunner {
         let stimuli: [TimeInterval]
     }
 
-    static func run(_ scenario: Scenario, on harness: ReplayHarness) async -> Result {
+    static func run(_ scenario: Scenario, on harness: ReplayHarness) async throws -> Result {
         var unsupported: [String] = []
         var seen: Set<String> = []
 
@@ -103,7 +103,7 @@ enum ReplayRunner {
 
         // The recording stops but the SDK does not: a capture can end with a sync in flight. Let
         // the outstanding boundaries answer so those decisions are graded rather than lost.
-        await harness.settleBoundaries()
+        try await harness.settleBoundaries()
         return Result(emitted: harness.emitted, unsupported: unsupported, stimuli: stimuli)
     }
 

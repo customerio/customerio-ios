@@ -93,7 +93,13 @@ enum Scenarios {
     /// Every drive this harness can replay, discovered from disk.
     ///
     /// Enumerated rather than listed so adding a drive is dropping in a file.
-    static let replayable: [String] = {
+    /// The recorded drives alone, without the authored conformance scenarios.
+    ///
+    /// Separate from `replayable` because the two answer different questions. A guard asking "did
+    /// discovery find anything" against the combined list is satisfied by the two authored files,
+    /// which resolve from `root.parent/conformance` — so an override pointing at any drive-less
+    /// sibling of `recorded/` still looks healthy while grading zero drives.
+    static let recorded: [String] = {
         guard let root else { return [] }
         let files = (try? FileManager.default.contentsOfDirectory(atPath: root.path)) ?? []
         return files
@@ -113,7 +119,18 @@ enum Scenarios {
             }
             // The platform filter reads each header rather than trusting the filename: this harness
             // is the iOS composition, and Android batches several fences onto one callback.
-            .filter { $0.1.platform == "ios" }
+            //
+            // A header naming neither platform is a broken file, not somebody else's drive, so it
+            // is reported rather than filtered away. Only a *load* failure was recorded before,
+            // which left a misspelled `"platfrom"` key — or a stray `"iOS"` — parsing cleanly,
+            // defaulting to `unknown`, and vanishing from the run with nothing said.
+            .filter { name, scenario in
+                guard ["ios", "android"].contains(scenario.platform) else {
+                    unreadable.append("\(name): header platform is \"\(scenario.platform)\", expected \"ios\" or \"android\"")
+                    return false
+                }
+                return scenario.platform == "ios"
+            }
             // TEMPORARY. Hides the drives captured before `location.fix` shipped, which can never
             // pass: the SDK would decide from a position the drive never recorded. It buys quiet
             // while the flow is being proven, at the cost of a scenario disappearing silently —
@@ -122,6 +139,8 @@ enum Scenarios {
             .filter { scenario in scenario.1.when.contains { $0.ev == "location.fix" } }
             .map(\.0)
             .sorted()
-            + conformance
     }()
+
+    /// Everything a run grades: the recorded drives plus the authored scenarios.
+    static let replayable: [String] = recorded + conformance
 }
