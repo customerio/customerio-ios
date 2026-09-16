@@ -70,10 +70,12 @@ final class ReplayHarness {
     /// write in the first place.
     private let di = DIGraphShared()
 
-    /// What production's `lastKnownLocation` answers. Nil, deliberately: see `feedFix`.
+    /// What production's `lastKnownLocation` answers. Nil, deliberately — a bus fix is routed to
+    /// the trigger rather than cached here, so the SDK cannot be handed an anchor it never had.
     private let moduleLastKnownLocation: LocationData? = nil
 
-    /// The drive's recorded API answers, consumed in order. See `enqueueFetch`.
+    /// The drive's recorded API answers, consumed in order, as the inputs side of the harness
+    /// enqueues them.
     var fetchQueue: [Result<GeofenceApiResponse, GeofenceApiError>] = []
     /// Fetches the SDK attempted, whether or not a fixture was waiting.
     private(set) var fetchCount = 0
@@ -164,6 +166,33 @@ final class ReplayHarness {
     /// Split out of `init` so `reenterProcess()` can run it again. Everything it creates is state a
     /// process loses when it dies; everything it closes over — the stores, the OS doubles, the
     /// recording — is state that survives one.
+    /// The shipping wrapper, on the OS doubles. Everything it decides runs for real.
+    ///
+    /// Its own function so `composeSDK` stays readable, and so the two seams the replay has to
+    /// close are in one place rather than buried in a long constructor call.
+    private func makeMonitor() -> CLMonitorGeofenceMonitor {
+        let monitor = CLMonitorGeofenceMonitor(
+            logger: logger,
+            storage: storage,
+            userDefaults: defaults,
+            dateUtil: clock,
+            authority: authority,
+            // One condition monitor for the life of the drive: CoreLocation keeps monitoring while
+            // the app is dead, which is the whole reason a crossing relaunches it.
+            makeConditionMonitor: { [conditionMonitor] _ in conditionMonitor },
+            // The recovery window is a real 60-second sleep by default. A replay finishes a whole
+            // drive in milliseconds of wall time, so left alone the re-registration the SDK
+            // schedules after the OS gives conditions up never lands inside the run — and the drive
+            // reports a missing `registration.applied` that the phone actually produced. The SDK
+            // exposes this seam for exactly this case; yielding is the replay's "waited".
+            waitForRecoveryWindow: { _ in await Task.yield() }
+        )
+        // Where CoreLocation would be asked for one position. The SDK's own seam for it: a request
+        // is counted here and satisfied by the next recorded fix in `feedFix`.
+        monitor.movementFixResolver.requestFreshFix = { [weak self] in self?.fixRequestCount += 1 }
+        return monitor
+    }
+
     private func composeSDK() {
         tracker = GeofenceEventTracker(
             storage: storage,
@@ -175,20 +204,7 @@ final class ReplayHarness {
             logger: logger
         )
 
-        // The shipping wrapper, on the OS doubles. Everything it decides runs for real.
-        monitor = CLMonitorGeofenceMonitor(
-            logger: logger,
-            storage: storage,
-            userDefaults: defaults,
-            dateUtil: clock,
-            authority: authority,
-            // One condition monitor for the life of the drive: CoreLocation keeps monitoring while
-            // the app is dead, which is the whole reason a crossing relaunches it.
-            makeConditionMonitor: { [conditionMonitor] _ in conditionMonitor }
-        )
-        // Where CoreLocation would be asked for one position. The SDK's own seam for it: a request
-        // is counted here and satisfied by the next recorded fix in `feedFix`.
-        monitor.movementFixResolver.requestFreshFix = { [weak self] in self?.fixRequestCount += 1 }
+        monitor = makeMonitor()
 
         coordinator = GeofenceSyncCoordinatorImpl(
             apiService: api,
@@ -283,7 +299,26 @@ final class ReplayHarness {
         // subscribed to; `FakeConditionMonitor` supersedes that subscription when the new wrapper
         // asks for one, which is what a dead process looks like from the OS's side.
         monitor.setOnTransition(nil)
+        // And it stops holding the graph. Without this the outgoing monitor is retained by the
+        // cycle `releaseSDK` exists to break, so a drive that relaunches twice leaves two live
+        // monitors behind, each still observing the foreground notification.
+        releaseSDK()
         composeSDK()
+    }
+
+    /// Drops the reconcile handler the bootstrap installed, releasing the composition.
+    ///
+    /// **Call this when a harness is finished with**, and before replacing its composition. Not
+    /// `deinit`: the cycle below is exactly what stops `deinit` from ever running, so a clean-up
+    /// that lives there can never fire.
+    ///
+    /// `GeofenceBootstrap` hands the monitor a closure that captures the DI graph, and the graph
+    /// holds the monitor — a cycle. Production never notices, because the graph there is the
+    /// process-wide singleton and nothing is expected to be freed. Here each harness owns its own
+    /// graph, so without this every monitor a drive built stays alive, still observing the
+    /// foreground notification, and the next drive's `enterForeground()` wakes all of them.
+    func releaseSDK() {
+        monitor.setOnReconciled(nil)
     }
 
     deinit {
