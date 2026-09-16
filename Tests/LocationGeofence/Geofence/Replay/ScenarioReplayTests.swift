@@ -34,16 +34,16 @@ struct ScenarioReplayTests {
         // harness constructed out here leaves that one task writing untagged prose: the whole
         // registration path still matched, every OS callback silently produced nothing, and the
         // drive read as "the SDK stopped reacting" rather than "the log lost its tail".
-        let (harness, result) = await ReplayHarness.withTail { () -> (ReplayHarness, ReplayRunner.Result) in
+        let (harness, result) = try await ReplayHarness.withTail { () -> (ReplayHarness, ReplayRunner.Result) in
             let harness = ReplayHarness()
-            return (harness, await ReplayRunner.run(scenario, on: harness))
+            return try (harness, await ReplayRunner.run(scenario, on: harness))
         }
-        // The composition outlives this scope otherwise: the reconcile handler the bootstrap
-        // installs captures the graph, and the graph holds the monitor. Every drive would leave a
-        // live monitor behind, still observing the foreground notification, so a later drive's
-        // `app.foreground` would wake all of its predecessors. Released after the run rather than
-        // before the assertions, which read the log and the OS double, not the SDK graph.
-        defer { harness.releaseSDK() }
+        // Detached after the run, so a composition nobody is reading any more stops answering the
+        // bootstrap on a late reconcile or authorization change. It does not free the monitor —
+        // see `detachFromBootstrap` for why that needs an SDK-side cancel — so dead monitors from
+        // earlier drives still react to `enterForeground()`. Harmless to a live drive's
+        // assertions, which read this harness's own logger and OS double.
+        defer { harness.detachFromBootstrap() }
 
         // An input the harness cannot drive means the run never earned its expectations, so this is
         // checked before the match rather than after.
@@ -107,8 +107,20 @@ struct ScenarioReplayTests {
     /// here rather than skip, which is exactly the case a `replayable`-gated trait would miss.
     @Test(.enabled(if: Scenarios.isAvailable))
     func discover_givenScenarioFilesOnDisk_expectEveryOneReadable() {
-        // `unreadable` is populated as a side effect of discovery, so touch it first.
+        // `unreadable` is populated as a side effect of discovery, and both halves contribute, so
+        // force the full list before reading it.
         _ = Scenarios.replayable
+        let found = Scenarios.recorded
+
+        // A corpus that resolves to a directory holding no drives is the failure mode this whole
+        // test exists to refuse, and asserting only on `unreadable` misses it: point the override
+        // one level too high — `geofence-scenarios` instead of `geofence-scenarios/recorded`, the
+        // exact mistake this file's own documentation warns about — and every check below passes
+        // over zero drives. `isAvailable` is true because the parent is a directory.
+        #expect(
+            !found.isEmpty,
+            "the corpus at \(Scenarios.root?.path ?? "?") holds no recorded drive — check the path points at the directory containing the .scenario.ndjson files. Asserted on recorded drives alone: the authored conformance scenarios resolve from a sibling directory, so they would satisfy this guard while zero drives were graded."
+        )
         #expect(
             Scenarios.unreadable.isEmpty,
             """
