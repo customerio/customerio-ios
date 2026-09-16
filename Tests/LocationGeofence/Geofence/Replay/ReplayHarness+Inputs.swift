@@ -148,29 +148,38 @@ extension ReplayHarness {
 
     private func installFetchQueue() {
         api.fetchNearbyGeofencesClosure = { [weak self] _, _, completion in
-            // Everything here reads or writes main-actor state — the queue, the two counters, the
-            // clock and the gate. The coordinator awaits this closure from its own executor, so
-            // `MainActor.assumeIsolated` would trap the whole test process; the hop has to happen
-            // first and then *all* of it runs inside. Counting and dequeuing outside the hop, as
-            // this did, raced two overlapping syncs against one another on a plain Array.
+            guard let self else {
+                // Reachable only once the harness is gone, i.e. after the test. Answered anyway:
+                // an unanswered completion suspends the coordinator's `withCheckedContinuation`
+                // forever, and the generated mock retains the closure so the runtime never even
+                // reports a leaked continuation.
+                completion(.failure(.transport))
+                return
+            }
+            // Sampled here, before the hop, because it must be the moment the SDK *asked*.
+            // `DateUtilStub` guards its storage, so an off-actor read is safe. Read after the hop
+            // instead, it samples a clock the main actor may already have stepped forward, and
+            // `nextAnswer` then discards every recorded answer behind that inflated moment — the
+            // drive's real round trip silently collapses to the modelled fallback, with the
+            // fixture still consumed in order so `fetchAccounting()` reports nothing wrong.
+            let askedAt = self.clock.givenNow.timeIntervalSince(self.epoch)
+            // Everything else touches main-actor state: the queue, both counters, the gate. The
+            // coordinator awaits this closure from its own executor, so `assumeIsolated` would
+            // trap the test process — the hop is required, and counting and dequeuing outside it
+            // raced two overlapping syncs on a plain Array.
             Task { @MainActor in
-                guard let self else { return }
                 self.fetchCount += 1
                 guard !self.fetchQueue.isEmpty else {
                     self.starvedFetchCount += 1
-                    // Answered, not dropped. Leaving `completion` uncalled suspends the
-                    // coordinator's `withCheckedContinuation` forever, and because the generated
-                    // mock retains the closure the runtime never even reports a leaked
-                    // continuation — the sync just stops, silently, mid-drive. A starved fetch is
-                    // a finding `fetchAccounting()` already reports; it must not also be a hang.
+                    // A starved fetch is a finding `fetchAccounting()` already reports. It must
+                    // not also be a hang, so it is answered rather than dropped.
                     completion(.failure(.transport))
                     return
                 }
                 let answer = self.fetchQueue.removeFirst()
                 // Parked, not answered. The response arrives when the drive recorded it arriving,
                 // and the SDK spends that round trip mid-sync exactly as the phone did.
-                let now = self.clock.givenNow.timeIntervalSince(self.epoch)
-                await self.gate.park(at: self.gate.fetchAnswerTime(after: now), what: "api.fetch") {
+                await self.gate.park(at: self.gate.fetchAnswerTime(after: askedAt), what: "api.fetch") {
                     completion(answer)
                 }
             }

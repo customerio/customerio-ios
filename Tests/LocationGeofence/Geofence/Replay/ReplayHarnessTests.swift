@@ -69,7 +69,7 @@ struct ReplayHarnessTests {
         // by caching bus fixes as the module's last-known, which gave the Task an anchor it should
         // not have had (see `feedFix`).
         #expect(
-            await settle { harness.acquireFixCallCount >= 1 },
+            await settleOnMain { harness.acquireFixCallCount >= 1 },
             "identify did not arm for a fix"
         )
         // What actually drives the sync: a fix *arriving* from the Location module. The pull above
@@ -85,9 +85,9 @@ struct ReplayHarnessTests {
         )
         // The fetch and the baseline write are boundaries now: they answer when the drive says
         // they did, and a hand-written setup has no drive behind it. See `settleBoundaries`.
-        await harness.settleBoundaries()
+        try await harness.settleBoundaries()
         #expect(
-            await settle { harness.emitted(ev: "registration.applied").count == 1 },
+            await settleOnMain { harness.emitted(ev: "registration.applied").count == 1 },
             "setup did not reach a registered state: \(harness.emitted.map { $0["ev"] ?? "?" })"
         )
         // The drive in. Until now the fence is registered and the device is outside it; from here
@@ -106,7 +106,7 @@ struct ReplayHarnessTests {
 
             harness.deliverCrossing(fence: "A", transition: .enter)
             await Task.yield()
-            await settle { harness.emitted(ev: "transition.accepted").count == 1 }
+            await settleOnMain { harness.emitted(ev: "transition.accepted").count == 1 }
 
             let accepted = harness.emitted(ev: "transition.accepted")
             #expect(accepted.count == 1, "emitted: \(harness.emitted.map { $0["ev"] ?? "?" })")
@@ -149,8 +149,8 @@ struct ReplayHarnessTests {
                 // follows is a boundary now. A replayed drive opens it from the recording; this
                 // test has no recording, so it says so explicitly. Without it the write stays owed
                 // and the next crossing is judged against the previous centre.
-                await harness.settleBoundaries()
-                await settle { harness.emitted(ev: "transition.accepted").count > accepted }
+                try await harness.settleBoundaries()
+                await settleOnMain { harness.emitted(ev: "transition.accepted").count > accepted }
             }
 
             try await cross(.enter, at: Self.arrivalAt + 1)
@@ -194,8 +194,8 @@ struct ReplayHarnessTests {
 
             harness.deliverCrossing(fence: "A", transition: .enter)
             harness.deliverCrossing(fence: "A", transition: .enter)
-            await harness.settleBoundaries()
-            await settle { harness.emitted(ev: "os.callback.dropped").count == 1 }
+            try await harness.settleBoundaries()
+            await settleOnMain { harness.emitted(ev: "os.callback.dropped").count == 1 }
 
             #expect(harness.emitted(ev: "transition.accepted").count == 1)
             let dropped = harness.emitted(ev: "os.callback.dropped")
@@ -214,12 +214,12 @@ struct ReplayHarnessTests {
             try await registered(harness, fenceId: "A")
 
             harness.deliverCrossing(fence: "A", transition: .enter)
-            await harness.settleBoundaries()
-            await settle { harness.emitted(ev: "transition.accepted").count == 1 }
+            try await harness.settleBoundaries()
+            await settleOnMain { harness.emitted(ev: "transition.accepted").count == 1 }
             await harness.advance(to: Self.arrivalAt + 120)
             harness.deliverCrossing(fence: "A", transition: .exit)
-            await harness.settleBoundaries()
-            await settle { harness.emitted(ev: "transition.accepted").count == 2 }
+            try await harness.settleBoundaries()
+            await settleOnMain { harness.emitted(ev: "transition.accepted").count == 2 }
 
             #expect(harness.emitted(ev: "os.callback.dropped").isEmpty)
             #expect(harness.emitted(ev: "transition.accepted").count == 2)
@@ -240,16 +240,16 @@ struct ReplayHarnessTests {
             try await registered(harness, fenceId: "A")
 
             harness.deliverCrossing(fence: "A", transition: .enter, identity: Self.arrivalAt)
-            await harness.settleBoundaries()
-            await settle { harness.emitted(ev: "transition.accepted").count == 1 }
+            try await harness.settleBoundaries()
+            await settleOnMain { harness.emitted(ev: "transition.accepted").count == 1 }
             await harness.advance(to: Self.arrivalAt + 60)
             harness.deliverCrossing(fence: "A", transition: .exit, identity: Self.arrivalAt + 60)
-            await harness.settleBoundaries()
-            await settle { harness.emitted(ev: "transition.accepted").count == 2 }
+            try await harness.settleBoundaries()
+            await settleOnMain { harness.emitted(ev: "transition.accepted").count == 2 }
             // The OS hands the first event over again, unchanged.
             harness.deliverCrossing(fence: "A", transition: .enter, identity: Self.arrivalAt)
-            await harness.settleBoundaries()
-            await settle { harness.emitted(ev: "os.callback.dropped").count == 1 }
+            try await harness.settleBoundaries()
+            await settleOnMain { harness.emitted(ev: "os.callback.dropped").count == 1 }
 
             #expect(harness.emitted(ev: "transition.accepted").count == 2)
             let dropped = harness.emitted(ev: "os.callback.dropped")
@@ -265,7 +265,7 @@ struct ReplayHarnessTests {
             let harness = ReplayHarness()
             try await registered(harness, fenceId: "A")
             harness.deliverCrossing(fence: "A", transition: .enter)
-            await settle { !harness.emitted.isEmpty }
+            _ = await settleOnMain { !harness.emitted.isEmpty }
 
             #expect(!harness.emitted.isEmpty)
             // Every captured record must carry the replay classification, or the matcher has nothing
@@ -292,14 +292,14 @@ struct ReplayHarnessTests {
             // Production runs it at module init; the recorded suite runs it on `module.init`; a
             // hand-driven test has to run it once. The run itself adopts nothing new.
             await harness.wireMonitor()
-            await harness.settleBoundaries()
+            try await harness.settleBoundaries()
             harness.resetOutput()
 
             harness.deliverMonitorStopped(fence: "A")
             // The replay of a dead incarnation, landing right behind the `.unmonitored`.
             harness.deliverCrossing(fence: "A", transition: .enter)
-            await harness.settleBoundaries()
-            await settle { harness.emitted(ev: "registration.applied").count == 1 }
+            try await harness.settleBoundaries()
+            await settleOnMain { harness.emitted(ev: "registration.applied").count == 1 }
 
             #expect(harness.emitted(ev: "transition.accepted").isEmpty, "a dead condition's replay was delivered")
             let dropped = harness.emitted(ev: "os.callback.dropped")
@@ -338,8 +338,8 @@ struct ReplayHarnessTests {
 
             // Dated seconds after the trigger's add at t≈0: inside the replay window.
             harness.deliverCrossing(fence: GeofenceConstants.movementTriggerIdentifier, transition: .exit, identity: 5)
-            await harness.settleBoundaries()
-            await settle { harness.emitted(ev: "contradiction.refused").count == 1 }
+            try await harness.settleBoundaries()
+            await settleOnMain { harness.emitted(ev: "contradiction.refused").count == 1 }
 
             #expect(harness.emitted(ev: "contradiction.refused").first?["id"] == GeofenceConstants.movementTriggerIdentifier)
             #expect(harness.emitted(ev: "movement.exit").isEmpty, "a refused replay started a movement pass")
@@ -361,17 +361,22 @@ struct ReplayHarnessTests {
             let harness = ReplayHarness()
             try await registered(harness, fenceId: "A")
 
+            // Counted before the relaunch: `registered()` has already driven the OS, and the double
+            // is deliberately kept across `reenterProcess()`, so measuring after the adopt counts
+            // setup's own operations and passes however little the adopt did.
+            let armedBeforeRelaunch = harness.conditionMonitor.operations.count
+
             // The OS relaunches the app: the mirror says both conditions survived, so the bootstrap adopts.
             harness.reenterProcess()
             await harness.wireMonitor()
-            await harness.settleBoundaries()
-            await settle { harness.emitted(ev: "registration.adopted").count == 1 }
+            try await harness.settleBoundaries()
+            _ = await settleOnMain { harness.emitted(ev: "registration.adopted").count == 1 }
             let armedOnce = harness.conditionMonitor.operations.count
-            #expect(armedOnce > 0, "the first adopt re-armed nothing")
+            #expect(armedOnce > armedBeforeRelaunch, "the first adopt re-armed nothing")
 
             // Reconcile drift, a permission change — any second run in the same process.
             await harness.wireMonitor()
-            await harness.settleBoundaries()
+            try await harness.settleBoundaries()
 
             #expect(harness.emitted(ev: "registration.adopted").count == 1, "the second run adopted again")
             #expect(harness.conditionMonitor.operations.count == armedOnce, "the second run drove the OS: \(harness.conditionMonitor.operations[armedOnce...])")
