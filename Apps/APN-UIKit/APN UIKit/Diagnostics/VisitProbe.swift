@@ -21,7 +21,8 @@ final class VisitProbe: NSObject, @preconcurrency CLLocationManagerDelegate {
 
     private static let defaultsKey = "cio_visit_probe"
 
-    /// Lazy so the probe costs nothing when off — not even a manager allocation.
+    /// Lazy so a launch that says nothing about the probe costs nothing — not even a manager
+    /// allocation. An explicit disable does allocate, because stopping needs a manager.
     private lazy var manager = CLLocationManager()
     private var armed = false
     private var sawUnauthorized = false
@@ -48,7 +49,16 @@ final class VisitProbe: NSObject, @preconcurrency CLLocationManagerDelegate {
     /// to turn the probe off, and it is a stated choice rather than an unreadable domain.
     ///
     /// Read once at launch, so flipping it takes a relaunch.
-    private static func resolveAndPersistGate() -> Bool {
+    ///
+    /// Three outcomes, not two: `off` and `disabled` both mean "do not record", but only the
+    /// second is a launch SAYING so, and only the second may stop the OS registration.
+    private enum Gate {
+        case enabled
+        case disabled
+        case off
+    }
+
+    private static func resolveGate() -> Gate {
         if let fromEnvironment = ProcessInfo.processInfo.environment["CIO_VISIT_PROBE"] {
             return persistGate(fromEnvironment == "1")
         }
@@ -59,17 +69,21 @@ final class VisitProbe: NSObject, @preconcurrency CLLocationManagerDelegate {
             let token = String(describing: fromArgument).lowercased()
             return persistGate(["1", "yes", "true"].contains(token))
         }
-        return UserDefaults.standard.bool(forKey: defaultsKey)
+        return UserDefaults.standard.bool(forKey: defaultsKey) ? .enabled : .off
     }
 
-    private static func persistGate(_ enabled: Bool) -> Bool {
+    private static func persistGate(_ enabled: Bool) -> Gate {
         UserDefaults.standard.set(enabled, forKey: defaultsKey)
-        return enabled
+        return enabled ? .enabled : .disabled
     }
 
     func startIfEnabled(launchOptions: [UIApplication.LaunchOptionsKey: Any]?) {
         launchedByLocation = launchOptions?[.location] != nil
-        guard Self.resolveAndPersistGate() else { return }
+        switch Self.resolveGate() {
+        case .enabled: break
+        case .disabled: stopMonitoring()
+        case .off: return
+        }
         // Delegate first and unconditionally: visit monitoring needs Always, the SDK asks for it
         // after launch, and without this delegate the grant arrives with nothing listening — the
         // probe would then sit dead for the whole process on any device not already authorized.
@@ -106,6 +120,24 @@ final class VisitProbe: NSObject, @preconcurrency CLLocationManagerDelegate {
         }
         armed = true
         sawUnauthorized = false
+    }
+
+    /// `startMonitoringVisits` survives process death: the OS keeps relaunching the app for
+    /// visits until something stops it. So turning the probe off has to turn the registration off
+    /// too — otherwise an "off" capture is still being woken for visits it does not record, which
+    /// is not an off state, just an unlogged one. Only an explicit disable reaches here; a launch
+    /// that merely reads `false` (including an unreadable defaults domain before first unlock)
+    /// must leave a running registration alone.
+    private func stopMonitoring() {
+        manager.stopMonitoringVisits()
+        armed = false
+        DiagnosticLog.shared.note(
+            "Visit probe stopped"
+                + DiagnosticLog.delimiter
+                + "ev=probe.visit.stopped io=obs"
+                + " launch=\(launchedByLocation ? "location" : "app_start")",
+            level: .info
+        )
     }
 
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
