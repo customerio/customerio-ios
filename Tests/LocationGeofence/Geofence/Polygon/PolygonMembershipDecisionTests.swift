@@ -168,4 +168,71 @@ struct PolygonMembershipDecisionTests {
             signedEdgeDistance: 3, horizontalAccuracy: 10, fixAge: freshAge
         ) == nil)
     }
+
+    // MARK: - PolygonRegion.scale (the per-fence ceiling)
+
+    /// Metres-per-degree at the equator, close enough for a shape test: these assert ratios and
+    /// tolerances, not absolute geodesy.
+    private func square(sideDegrees: Double) -> PolygonRegion? {
+        PolygonRegion(vertices: [
+            LocationData(latitude: 0, longitude: 0),
+            LocationData(latitude: 0, longitude: sideDegrees),
+            LocationData(latitude: sideDegrees, longitude: sideDegrees),
+            LocationData(latitude: sideDegrees, longitude: 0)
+        ])
+    }
+
+    /// For a square, `2A/P` is exactly half the side — which is also its true inradius, so the
+    /// approximation is exact for the shape retail rings most resemble.
+    @Test
+    func scale_givenASquare_expectHalfTheSide() throws {
+        let region = try #require(square(sideDegrees: 0.001))
+        let side = 0.001 * 111320.0
+        #expect(abs(region.scale - side / 2) < side * 0.02)
+    }
+
+    /// A ring whose last vertex repeats the first must measure the same: the closing edge has zero
+    /// length and contributes nothing to either sum.
+    @Test
+    func scale_givenAnExplicitlyClosedRing_expectTheSameAsItsOpenTwin() throws {
+        let open = try #require(square(sideDegrees: 0.001))
+        let closed = try #require(PolygonRegion(vertices: [
+            LocationData(latitude: 0, longitude: 0),
+            LocationData(latitude: 0, longitude: 0.001),
+            LocationData(latitude: 0.001, longitude: 0.001),
+            LocationData(latitude: 0.001, longitude: 0),
+            LocationData(latitude: 0, longitude: 0)
+        ]))
+        #expect(abs(open.scale - closed.scale) < 0.5)
+    }
+
+    /// A degenerate ring measures 0, so every fix reads `accuracyTooLow` and the fence is
+    /// permanently undecidable rather than accidentally wide open. Asserted because the ceiling
+    /// failing OPEN here would be the dangerous direction.
+    @Test
+    func scale_givenCollinearVertices_expectZeroSoNothingDecides() throws {
+        let sliver = try #require(PolygonRegion(vertices: [
+            LocationData(latitude: 0, longitude: 0),
+            LocationData(latitude: 0, longitude: 0.001),
+            LocationData(latitude: 0, longitude: 0.002)
+        ]))
+        #expect(sliver.scale < 1)
+        #expect(PolygonMembershipDecision.resolvedOutcome(
+            signedEdgeDistance: 5, horizontalAccuracy: 5, fixAge: freshAge, venueScale: sliver.scale
+        ) == .undecided(.accuracyTooLow))
+    }
+
+    /// A long thin ring is where `2A/P` is least like the inradius, and it still errs HIGH rather
+    /// than low — it widens what we accept instead of silently refusing a real venue.
+    @Test
+    func scale_givenAThinRectangle_expectAtLeastHalfTheShortSide() throws {
+        let region = try #require(PolygonRegion(vertices: [
+            LocationData(latitude: 0, longitude: 0),
+            LocationData(latitude: 0, longitude: 0.01),
+            LocationData(latitude: 0.0002, longitude: 0.01),
+            LocationData(latitude: 0.0002, longitude: 0)
+        ]))
+        let shortSide = 0.0002 * 111320.0
+        #expect(region.scale >= shortSide / 2 * 0.95)
+    }
 }

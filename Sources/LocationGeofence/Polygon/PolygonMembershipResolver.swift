@@ -26,7 +26,7 @@ import UIKit
 /// `CustomerIO.initialize` has not run — the same reasoning that gives each monitor its own.
 @MainActor
 final class PolygonMembershipResolver {
-    private let storage: GeofenceStorage
+    let storage: GeofenceStorage
     private let transitionEmitter: GeofenceTransitionEmitting
     private let fixResolver: MovementFixResolver
     // `internal`, not `private`, only because the split extension files use them.
@@ -34,6 +34,11 @@ final class PolygonMembershipResolver {
     let contextStore: BackgroundDeliveryContextStore
     let notificationCenter: NotificationCenter
     var foregroundObserverToken: NSObjectProtocol?
+
+    /// The corroboration fix for the pass currently running, so N marginal polygons cost one
+    /// request rather than N. Cleared at each pass boundary — a fix held across passes would stop
+    /// being strictly newer than the next pass's own fix, which is the whole independence property.
+    var passCorroborationFix: CLLocation?
     private var passesInFlight = 0
 
     init(
@@ -200,7 +205,11 @@ final class PolygonMembershipResolver {
             return
         }
         passesInFlight += 1
-        defer { passesInFlight -= 1 }
+        passCorroborationFix = nil
+        defer {
+            passesInFlight -= 1
+            passCorroborationFix = nil
+        }
         let registered = await storage.getRegisteredBusinessIds()
         let polygons = await storage.getCachedGeofences()
             .filter { registered.contains($0.id) && $0.vertices != nil }

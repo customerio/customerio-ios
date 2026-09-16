@@ -25,8 +25,9 @@ enum PolygonMembershipDecision {
 
     /// The membership a single fix establishes, or `nil` when it cannot decide alone.
     ///
-    /// Kept as the narrow entry point for callers that cannot corroborate (and for the tests that
-    /// pin the sign convention). `resolvedOutcome` is the full rule.
+    /// No production caller: `resolvedOutcome` is the rule the resolver uses. Kept because the
+    /// cross-SDK sign-convention fixtures assert against it, and a single-fix answer is the form
+    /// those fixtures are written in on both platforms.
     static func resolvedMembership(
         signedEdgeDistance: Double,
         horizontalAccuracy: Double,
@@ -52,9 +53,12 @@ enum PolygonMembershipDecision {
     /// corrects the belief. So an ambiguous fix that says INSIDE is worth a second look, while an
     /// ambiguous fix that says outside is simply not a verdict.
     ///
-    /// That also makes departures strict for free, with no reference to the stored belief: an exit
-    /// needs `.decided(.outside)`, which requires clearance beyond the accuracy, so an ambiguous
-    /// fix can never end a visit early.
+    /// That also makes a FIX-DERIVED departure strict for free, with no reference to the stored
+    /// belief: it needs `.decided(.outside)`, which requires clearance beyond the accuracy, so an
+    /// ambiguous fix can never end a visit early. It says nothing about the covering-circle exit
+    /// path, which applies `.outside` with `confirmedByFix: false` and consults no fix at all —
+    /// deliberately, since polygon ⊆ circle makes leaving the circle a verdict no ring can
+    /// contradict.
     ///
     /// - Parameter venueScale: `PolygonRegion.scale` — roughly how deep the venue is. Once the
     ///   accuracy circle is that wide it can contain the whole ring, so "inside" stops carrying

@@ -31,6 +31,16 @@ extension PolygonMembershipResolver {
             )
             return nil
         case .needsCorroboration(let proposed):
+            // Cheapest test first: an ambiguous INSIDE cannot move a belief that already says
+            // inside, so a second fix would cost a forced request (up to `movementFixRequestTimeout`)
+            // to reach `no_change`. A device standing near a boundary hits this on every pass.
+            guard await storage.getPolygonMembership()[geofence.id]?.membership != .inside else {
+                logger.geofencePolygonUndecided(
+                    identifier: geofence.id, reason: PolygonUndecidedReason.corroborationUnnecessary,
+                    signedEdgeDistance: signedEdgeDistance, horizontalAccuracy: fix.horizontalAccuracy
+                )
+                return nil
+            }
             guard await corroborate(
                 proposed, geofence: geofence, polygon: polygon,
                 firstEdge: signedEdgeDistance, firstAccuracy: fix.horizontalAccuracy
@@ -56,7 +66,7 @@ extension PolygonMembershipResolver {
         firstAccuracy: Double
     ) async -> Bool {
         guard proposed == .inside else { return false }
-        guard let second = await resolveFix(requiringFresh: true) else {
+        guard let second = await corroborationFix() else {
             logger.geofencePolygonUndecided(
                 identifier: geofence.id, reason: PolygonUndecidedReason.noUsableFix,
                 signedEdgeDistance: firstEdge, horizontalAccuracy: firstAccuracy
@@ -74,11 +84,31 @@ extension PolygonMembershipResolver {
               second.horizontalAccuracy < polygon.scale
         else {
             logger.geofencePolygonUndecided(
-                identifier: geofence.id, reason: PolygonUndecidedReason.withinAccuracy,
+                identifier: geofence.id,
+                // Two distinct failures, and the token has to tell them apart: the second fix
+                // disagreed about the side, or it was too coarse for this venue at all.
+                reason: second.horizontalAccuracy < polygon.scale
+                    ? PolygonUndecidedReason.withinAccuracy
+                    : PolygonUndecidedReason.accuracyTooLow,
                 signedEdgeDistance: secondEdge, horizontalAccuracy: second.horizontalAccuracy
             )
             return false
         }
         return true
+    }
+
+    /// One corroboration fix per pass, resolved on first need and reused.
+    ///
+    /// Without this, N marginal polygons in one pass issue N sequential forced requests, each able
+    /// to run to `movementFixRequestTimeout` — a pass under the movement wake's background-time
+    /// assertion could then spend most of its budget re-asking the same question. Reuse is sound
+    /// because the property corroboration needs is that the second fix is STRICTLY NEWER than the
+    /// pass's own fix, which `resolveFix(requiringFresh:)` already guarantees; it does not need to
+    /// be per-polygon.
+    func corroborationFix() async -> CLLocation? {
+        if let cached = passCorroborationFix { return cached }
+        let resolved = await resolveFix(requiringFresh: true)
+        passCorroborationFix = resolved
+        return resolved
     }
 }

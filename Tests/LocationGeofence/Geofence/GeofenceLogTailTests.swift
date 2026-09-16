@@ -394,7 +394,7 @@ struct GeofenceLogTailTests {
         expectTokens(PolygonEvaluationReason.self, ["new_polygon", "new_polygon_forced_request_failed", "movement", "foreground"])
         expectTokens(PolygonUndecidedReason.self, [
             "no_usable_fix", "user_changed", "ring_unbuildable", "unregistered", "circle_expired",
-            "within_accuracy", "fix_too_old", "accuracy_too_low"
+            "within_accuracy", "fix_too_old", "accuracy_too_low", "corroboration_unnecessary"
         ])
         expectTokens(GeofenceFixPurpose.self, ["movement", "gate", "heal", "pending", "polygon"])
         expectTokens(GeofenceCatalogShape.self, ["circle", "polygon", "undescribed", "unknown"])

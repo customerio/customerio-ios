@@ -20,6 +20,10 @@ enum PolygonUndecidedReason: String, CaseIterable {
     /// The accuracy circle is as wide as the venue is deep, so `inside` carries no information.
     /// Distinct from `withinAccuracy`, which is a fix that could decide for a larger venue.
     case accuracyTooLow = "accuracy_too_low"
+    /// Ambiguous, reads inside, and the stored belief is ALREADY inside — a second fix could not
+    /// change the outcome, so none was requested. Distinct from a corroboration that was tried and
+    /// failed: this one spent nothing.
+    case corroborationUnnecessary = "corroboration_unnecessary"
 
     var prose: String {
         switch self {
@@ -31,6 +35,7 @@ enum PolygonUndecidedReason: String, CaseIterable {
         case .withinAccuracy: return "edge distance within the fix's accuracy"
         case .fixTooOld: return "fix too old"
         case .accuracyTooLow: return "accuracy too low for a venue this size"
+        case .corroborationUnnecessary: return "already believed inside, so no second fix was needed"
         }
     }
 }
