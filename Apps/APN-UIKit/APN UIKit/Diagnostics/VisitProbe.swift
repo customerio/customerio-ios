@@ -80,9 +80,16 @@ final class VisitProbe: NSObject, @preconcurrency CLLocationManagerDelegate {
     func startIfEnabled(launchOptions: [UIApplication.LaunchOptionsKey: Any]?) {
         launchedByLocation = launchOptions?[.location] != nil
         switch Self.resolveGate() {
-        case .enabled: break
-        case .disabled: stopMonitoring()
-        case .off: return
+        case .enabled:
+            break
+        case .disabled:
+            // Returns, and must: everything below re-registers, so without this the stop is undone
+            // by `startIfAuthorized()` on the same launch and the log reads `stopped` then
+            // `started` — an explicit disable leaving the OS registration exactly as it found it.
+            stopMonitoring()
+            return
+        case .off:
+            return
         }
         // Delegate first and unconditionally: visit monitoring needs Always, the SDK asks for it
         // after launch, and without this delegate the grant arrives with nothing listening — the
