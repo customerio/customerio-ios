@@ -129,10 +129,17 @@ extension ReplayHarness {
     /// `why` is the capture's own token, so a drive that lost the network mid-route replays as the
     /// same failure the SDK actually saw rather than a generic one.
     func enqueueFetchFailure(why: String?) {
+        // Every token `diagnosticToken` can emit, mapped back. Defaulting the unhandled ones onto
+        // `.transport` made a drive that recorded `why=http_500` replay as `why=transport`, and the
+        // mismatch reads as an SDK behaviour change rather than a gap in this switch.
         let error: GeofenceApiError = switch why {
         case "transport": .transport
         case "decoding": .decoding
         case "invalid_request": .invalidRequest
+        case "missing_api_host": .missingApiHost
+        case "missing_cdp_api_key": .missingCdpApiKey
+        case let token? where token.hasPrefix("http_"):
+            .http(statusCode: Int(token.dropFirst("http_".count)) ?? 0)
         default: .transport
         }
         fetchQueue.append(.failure(error))
@@ -141,23 +148,29 @@ extension ReplayHarness {
 
     private func installFetchQueue() {
         api.fetchNearbyGeofencesClosure = { [weak self] _, _, completion in
-            guard let self else { return }
-            fetchCount += 1
-            guard !fetchQueue.isEmpty else {
-                starvedFetchCount += 1
-                return
-            }
-            let answer = fetchQueue.removeFirst()
-            // Parked, not answered. The response arrives when the drive recorded it arriving, and
-            // the SDK spends that round trip mid-sync exactly as the phone did.
-            //
-            // Hopped onto the main actor rather than asserted onto it: the coordinator awaits this
-            // from its own executor, so `MainActor.assumeIsolated` here traps the whole test
-            // process. The gate is main-actor state and has to be reached, not assumed.
-            let now = clock.givenNow.timeIntervalSince(epoch)
-            let gate = gate
+            // Everything here reads or writes main-actor state — the queue, the two counters, the
+            // clock and the gate. The coordinator awaits this closure from its own executor, so
+            // `MainActor.assumeIsolated` would trap the whole test process; the hop has to happen
+            // first and then *all* of it runs inside. Counting and dequeuing outside the hop, as
+            // this did, raced two overlapping syncs against one another on a plain Array.
             Task { @MainActor in
-                await gate.park(at: gate.fetchAnswerTime(after: now), what: "api.fetch") {
+                guard let self else { return }
+                self.fetchCount += 1
+                guard !self.fetchQueue.isEmpty else {
+                    self.starvedFetchCount += 1
+                    // Answered, not dropped. Leaving `completion` uncalled suspends the
+                    // coordinator's `withCheckedContinuation` forever, and because the generated
+                    // mock retains the closure the runtime never even reports a leaked
+                    // continuation — the sync just stops, silently, mid-drive. A starved fetch is
+                    // a finding `fetchAccounting()` already reports; it must not also be a hang.
+                    completion(.failure(.transport))
+                    return
+                }
+                let answer = self.fetchQueue.removeFirst()
+                // Parked, not answered. The response arrives when the drive recorded it arriving,
+                // and the SDK spends that round trip mid-sync exactly as the phone did.
+                let now = self.clock.givenNow.timeIntervalSince(self.epoch)
+                await self.gate.park(at: self.gate.fetchAnswerTime(after: now), what: "api.fetch") {
                     completion(answer)
                 }
             }
@@ -170,6 +183,12 @@ extension ReplayHarness {
     /// number of times still gets plausible-looking answers and diverges quietly. This is the
     /// signal that the divergence is upstream of any decision the matcher grades.
     func fetchAccounting() -> String? {
+        // The stub only exists once a fixture has been enqueued, so a scenario with none leaves
+        // the mock's own default in place: the SDK's fetches are recorded by the mock but none of
+        // the counters here move, and every check below reads clean. Ask the mock instead.
+        if fetchQueue.isEmpty, fetchCount == 0, api.fetchNearbyGeofencesCallsCount > 0 {
+            return "\(api.fetchNearbyGeofencesCallsCount) fetch(es) with no recorded fixture — the drive captured no response for them"
+        }
         if starvedFetchCount > 0 {
             return "\(fetchCount) fetches, \(starvedFetchCount) unanswered — replay synced more often than the drive"
         }

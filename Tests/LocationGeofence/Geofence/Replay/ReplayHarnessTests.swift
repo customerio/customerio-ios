@@ -30,7 +30,7 @@ struct ReplayHarnessTests {
     /// One fence, as the API would return it.
     private func catalogue(_ fenceId: String) -> String {
         """
-        [{"id":"\(fenceId)","name":"F","latitude":\(Self.latitude),"longitude":\(Self.longitude),        "radius":250,"transitionTypes":["enter","exit"],"geosetIds":["1"]}]
+        [{"id":"\(fenceId)","name":"F","latitude":\(Self.latitude),"longitude":\(Self.longitude),"radius":250,"transitionTypes":["enter","exit"],"geosetIds":["7"]}]
         """
     }
 
@@ -271,6 +271,110 @@ struct ReplayHarnessTests {
             // Every captured record must carry the replay classification, or the matcher has nothing
             // to align on.
             #expect(harness.emitted.allSatisfy { $0["ev"] != nil })
+        }
+    }
+
+    /// **The OS giving a condition up, end to end.** (drive 5, 2026-09-12)
+    ///
+    /// Two things must hold from the instant `.unmonitored` arrives, not from whenever the queue
+    /// gets round to it. An event for the condition is refused outright — the phone judged one
+    /// against the stale baseline 1 ms after the `.unmonitored`, with the queued clear still in
+    /// flight, and delivered a fence 4.5 km away four times over. And a re-registration is
+    /// scheduled by the SDK itself — the phone waited for "the next sync", which is driven by the
+    /// movement trigger, which was among the conditions given up, and stayed frozen for an hour.
+    @Test
+    @available(iOS 17.0, *)
+    func deliverMonitorStopped_givenArmedFence_expectEventsRefusedUntilReregistered() async throws {
+        try await ReplayHarness.withTail {
+            let harness = ReplayHarness()
+            try await registered(harness, fenceId: "A")
+            // The recovery route is the bootstrap's own re-run handler, which the bootstrap installs.
+            // Production runs it at module init; the recorded suite runs it on `module.init`; a
+            // hand-driven test has to run it once. The run itself adopts nothing new.
+            await harness.wireMonitor()
+            await harness.settleBoundaries()
+            harness.resetOutput()
+
+            harness.deliverMonitorStopped(fence: "A")
+            // The replay of a dead incarnation, landing right behind the `.unmonitored`.
+            harness.deliverCrossing(fence: "A", transition: .enter)
+            await harness.settleBoundaries()
+            await settle { harness.emitted(ev: "registration.applied").count == 1 }
+
+            #expect(harness.emitted(ev: "transition.accepted").isEmpty, "a dead condition's replay was delivered")
+            let dropped = harness.emitted(ev: "os.callback.dropped")
+            #expect(dropped.count == 1)
+            #expect(dropped.first?["why"] == "awaiting_reregistration")
+            // The SDK re-registered the condition on its own, and only that one.
+            #expect(harness.emitted(ev: "registration.recovery").count == 1)
+            let diff = harness.emitted(ev: "registration.diff").first
+            #expect(diff?["nadd"] == "1" && diff?["nrem"] == "0", "diff: \(String(describing: diff))")
+            #expect(harness.conditionMonitor.held["A"] != nil, "the OS was not handed the condition back")
+        }
+    }
+
+    /// **The movement trigger is gated like any other condition.** (drive 5, 2026-09-12)
+    ///
+    /// It is added centred on the device, so an exit the daemon dates within seconds of that add
+    /// is its stale belief replayed, not a kilometre of displacement — the phone absorbed one such
+    /// replay only because its queue happened to drain after the daemon dated it. The gate reads a
+    /// fresh position, finds the device at the centre, and refuses the exit before any baseline is
+    /// consulted, so no movement pass starts.
+    @Test
+    @available(iOS 17.0, *)
+    func deliverCrossing_givenTriggerExitReplayedRightAfterItsAdd_expectRefused() async throws {
+        try await ReplayHarness.withTail {
+            let harness = ReplayHarness()
+            try await registered(harness, fenceId: "A")
+            // The device is back at the trigger's centre when the gate reads a position.
+            let later = Self.arrivalAt + 10
+            harness.loadPulledFixes(stimuli: [0, Self.arrivalAt, later], samples: [
+                harness.pulledFix(latitude: Self.awayLatitude, longitude: Self.longitude, accuracy: 10, age: 0, at: 0),
+                harness.pulledFix(latitude: Self.latitude, longitude: Self.longitude, accuracy: 10, age: 0, at: Self.arrivalAt),
+                harness.pulledFix(latitude: Self.awayLatitude, longitude: Self.longitude, accuracy: 10, age: 0, at: later)
+            ])
+            await harness.advance(to: later)
+            harness.resetOutput()
+
+            // Dated seconds after the trigger's add at t≈0: inside the replay window.
+            harness.deliverCrossing(fence: GeofenceConstants.movementTriggerIdentifier, transition: .exit, identity: 5)
+            await harness.settleBoundaries()
+            await settle { harness.emitted(ev: "contradiction.refused").count == 1 }
+
+            #expect(harness.emitted(ev: "contradiction.refused").first?["id"] == GeofenceConstants.movementTriggerIdentifier)
+            #expect(harness.emitted(ev: "movement.exit").isEmpty, "a refused replay started a movement pass")
+            #expect(harness.emitted(ev: "registration.applied").isEmpty)
+        }
+    }
+
+    /// **A second adopt in one process re-arms nothing.** (drive 5, 2026-09-12)
+    ///
+    /// The bootstrap re-runs on reconcile drift and on permission changes, and adopts again from
+    /// storage read before in-flight work has landed. On the phone that second run re-armed the
+    /// previous session's twenty conditions — two of them just evicted, their removes still queued
+    /// ahead — put the OS over its budget, and CoreLocation gave every one of them up. Everything
+    /// the first run adopted already has a geometry entry, so the second has nothing left to do.
+    @Test
+    @available(iOS 17.0, *)
+    func wireMonitor_givenAlreadyAdopted_expectSecondRunRearmsNothing() async throws {
+        try await ReplayHarness.withTail {
+            let harness = ReplayHarness()
+            try await registered(harness, fenceId: "A")
+
+            // The OS relaunches the app: the mirror says both conditions survived, so the bootstrap adopts.
+            harness.reenterProcess()
+            await harness.wireMonitor()
+            await harness.settleBoundaries()
+            await settle { harness.emitted(ev: "registration.adopted").count == 1 }
+            let armedOnce = harness.conditionMonitor.operations.count
+            #expect(armedOnce > 0, "the first adopt re-armed nothing")
+
+            // Reconcile drift, a permission change — any second run in the same process.
+            await harness.wireMonitor()
+            await harness.settleBoundaries()
+
+            #expect(harness.emitted(ev: "registration.adopted").count == 1, "the second run adopted again")
+            #expect(harness.conditionMonitor.operations.count == armedOnce, "the second run drove the OS: \(harness.conditionMonitor.operations[armedOnce...])")
         }
     }
 }
