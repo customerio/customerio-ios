@@ -24,6 +24,9 @@ enum PolygonUndecidedReason: String, CaseIterable {
     /// change the outcome, so none was requested. Distinct from a corroboration that was tried and
     /// failed: this one spent nothing.
     case corroborationUnnecessary = "corroboration_unnecessary"
+    /// A second fix was obtained and read OUTSIDE, so the two disagreed about the side. Distinct
+    /// from `withinAccuracy`, which is one fix that could not separate the sides at all.
+    case corroborationDisagreed = "corroboration_disagreed"
 
     var prose: String {
         switch self {
@@ -36,6 +39,7 @@ enum PolygonUndecidedReason: String, CaseIterable {
         case .fixTooOld: return "fix too old"
         case .accuracyTooLow: return "accuracy too low for a venue this size"
         case .corroborationUnnecessary: return "already believed inside, so no second fix was needed"
+        case .corroborationDisagreed: return "the second fix read outside"
         }
     }
 }

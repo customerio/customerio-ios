@@ -43,7 +43,7 @@ extension PolygonMembershipResolver {
             }
             guard await corroborate(
                 proposed, geofence: geofence, polygon: polygon,
-                firstEdge: signedEdgeDistance, firstAccuracy: fix.horizontalAccuracy
+                firstFix: fix, firstEdge: signedEdgeDistance
             ) else { return nil }
             return (proposed, true)
         }
@@ -62,14 +62,19 @@ extension PolygonMembershipResolver {
         _ proposed: PolygonMembership,
         geofence: Geofence,
         polygon: PolygonRegion,
-        firstEdge: Double,
-        firstAccuracy: Double
+        firstFix: CLLocation,
+        firstEdge: Double
     ) async -> Bool {
         guard proposed == .inside else { return false }
-        guard let second = await corroborationFix() else {
+        // Newer than the fix being corroborated, which is the only baseline that makes the second
+        // fix independent evidence. `resolveFix(requiringFresh:)` alone does NOT give this: it
+        // compares against what this resolver last DELIVERED, and a pass answered from
+        // `cachedFix` never records there — so CoreLocation echoing that same fix would clear its
+        // guard and confirm an arrival against itself.
+        guard let second = await corroborationFix(newerThan: firstFix.timestamp) else {
             logger.geofencePolygonUndecided(
                 identifier: geofence.id, reason: PolygonUndecidedReason.noUsableFix,
-                signedEdgeDistance: firstEdge, horizontalAccuracy: firstAccuracy
+                signedEdgeDistance: firstEdge, horizontalAccuracy: firstFix.horizontalAccuracy
             )
             return false
         }
@@ -77,38 +82,41 @@ extension PolygonMembershipResolver {
             latitude: second.coordinate.latitude, longitude: second.coordinate.longitude
         )
         let secondEdge = polygon.signedEdgeDistance(to: secondPoint)
-        // Agreement on the SIDE, not on the distance. Two fixes metres apart near a boundary will
-        // not agree on an edge, and requiring that would refuse everything this path is for.
-        // The second fix must clear the same ceiling, or it adds no information to the first.
-        guard secondEdge > 0, second.horizontalAccuracy > 0,
-              second.horizontalAccuracy < polygon.scale
-        else {
+        // Three distinct failures, each with its own token. Collapsing them logs a refusal under a
+        // reason that did not happen, and these records are how we measure what the rule refuses.
+        func refuse(_ reason: PolygonUndecidedReason) -> Bool {
             logger.geofencePolygonUndecided(
-                identifier: geofence.id,
-                // Two distinct failures, and the token has to tell them apart: the second fix
-                // disagreed about the side, or it was too coarse for this venue at all.
-                reason: second.horizontalAccuracy < polygon.scale
-                    ? PolygonUndecidedReason.withinAccuracy
-                    : PolygonUndecidedReason.accuracyTooLow,
+                identifier: geofence.id, reason: reason,
                 signedEdgeDistance: secondEdge, horizontalAccuracy: second.horizontalAccuracy
             )
             return false
         }
+        guard second.horizontalAccuracy > 0 else { return refuse(.noUsableFix) }
+        // The second fix must clear the same ceiling, or it adds no information to the first.
+        guard second.horizontalAccuracy < polygon.scale else { return refuse(.accuracyTooLow) }
+        // Agreement on the SIDE, not on the distance. Two fixes metres apart near a boundary will
+        // not agree on an edge, and requiring that would refuse everything this path is for.
+        guard secondEdge > 0 else { return refuse(.corroborationDisagreed) }
         return true
     }
 
-    /// One corroboration fix per pass, resolved on first need and reused.
+    /// One corroboration attempt per judged fix, made on first need and reused.
     ///
-    /// Without this, N marginal polygons in one pass issue N sequential forced requests, each able
-    /// to run to `movementFixRequestTimeout` — a pass under the movement wake's background-time
-    /// assertion could then spend most of its budget re-asking the same question. Reuse is sound
-    /// because the property corroboration needs is that the second fix is STRICTLY NEWER than the
-    /// pass's own fix, which `resolveFix(requiringFresh:)` already guarantees; it does not need to
-    /// be per-polygon.
-    func corroborationFix() async -> CLLocation? {
-        if let cached = passCorroborationFix { return cached }
+    /// Without this, N marginal polygons decided from one fix issue N sequential forced requests,
+    /// each able to run to `movementFixRequestTimeout` — a pass under the movement wake's
+    /// background-time assertion could then spend most of its budget re-asking the same question.
+    /// Reuse is sound only between polygons judged from the SAME fix, which is why the cache is
+    /// keyed on `basis` rather than cleared at pass boundaries.
+    ///
+    /// - Parameter basis: timestamp of the fix being corroborated. The answer must strictly
+    ///   postdate it; anything at or before it is the first fix over again, not a second opinion.
+    func corroborationFix(newerThan basis: Date) async -> CLLocation? {
+        if let attempt = passCorroboration, attempt.basis == basis { return attempt.fix }
         let resolved = await resolveFix(requiringFresh: true)
-        passCorroborationFix = resolved
-        return resolved
+        let independent = resolved.flatMap { $0.timestamp > basis ? $0 : nil }
+        // The failed attempt is cached too, so a pass that cannot get a newer fix spends one
+        // request rather than one per marginal polygon.
+        passCorroboration = (basis, independent)
+        return independent
     }
 }

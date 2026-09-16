@@ -35,10 +35,12 @@ final class PolygonMembershipResolver {
     let notificationCenter: NotificationCenter
     var foregroundObserverToken: NSObjectProtocol?
 
-    /// The corroboration fix for the pass currently running, so N marginal polygons cost one
-    /// request rather than N. Cleared at each pass boundary — a fix held across passes would stop
-    /// being strictly newer than the next pass's own fix, which is the whole independence property.
-    var passCorroborationFix: CLLocation?
+    /// The one corroboration attempt made against the fix currently being judged, so N marginal
+    /// polygons sharing that fix cost one request rather than N — a failed attempt included, so a
+    /// failure costs one too. KEYED by that fix's timestamp rather than cleared at pass boundaries:
+    /// reuse is only sound between polygons judged from the SAME fix, and a key makes a later pass
+    /// miss it instead of relying on all three entry points remembering to clear.
+    var passCorroboration: (basis: Date, fix: CLLocation?)?
     private var passesInFlight = 0
 
     init(
@@ -205,11 +207,7 @@ final class PolygonMembershipResolver {
             return
         }
         passesInFlight += 1
-        passCorroborationFix = nil
-        defer {
-            passesInFlight -= 1
-            passCorroborationFix = nil
-        }
+        defer { passesInFlight -= 1 }
         let registered = await storage.getRegisteredBusinessIds()
         let polygons = await storage.getCachedGeofences()
             .filter { registered.contains($0.id) && $0.vertices != nil }

@@ -1314,4 +1314,80 @@ struct PolygonMembershipResolverTests {
 
         #expect(await setup.emitter.snapshot().first?.occurredAt == crossedAt)
     }
+
+    // MARK: - Corroboration independence
+
+    /// A latitude `metres` INSIDE the square's northern edge, so `signedEdgeDistance` is that many
+    /// metres positive and a 5 m fix there is marginal rather than decisive.
+    private static func latitudeInsideNorthEdge(by metres: Double) -> Double {
+        0.0016 - metres / 111320
+    }
+
+    /// The high-severity case: the pass fix came from the SYSTEM cache, which
+    /// `MovementFixResolver` answers with but never records in `latestFix`. The forced
+    /// corroboration request then only had to beat `latestFix` — still nil — so CoreLocation
+    /// echoing that very same fix cleared the guard and an ambiguous arrival confirmed itself.
+    @Test
+    func evaluateMembership_givenCorroborationEchoesThePassFix_expectNoEnter() async {
+        let marginal = fix(
+            latitude: Self.latitudeInsideNorthEdge(by: 3),
+            longitude: 0,
+            accuracy: 5,
+            at: Date().addingTimeInterval(-Self.ageInsideGate)
+        )
+        let setup = await makeSetup(fix: marginal)
+        // The pass answers from here without recording it, which is what opened the gap.
+        setup.fixResolver.systemCachedFix = { marginal }
+        await registerPolygons(setup, ids: ["1"])
+
+        await setup.resolver.evaluateMembership(geofenceIds: ["1"], reason: .newPolygon)
+
+        #expect(await setup.emitter.snapshot().isEmpty)
+        #expect(await setup.storage.getPolygonMembership()["1"]?.membership != .inside)
+    }
+
+    /// The same fix judged twice still costs one request — the batching the pass depends on.
+    @Test
+    func corroborationFix_givenTheSameBasisTwice_expectOneRequest() async {
+        let setup = await makeSetup(fix: nil)
+        let counter = countingRequests(setup)
+        let basis = Date().addingTimeInterval(-Self.ageInsideGate)
+
+        _ = await setup.resolver.corroborationFix(newerThan: basis)
+        _ = await setup.resolver.corroborationFix(newerThan: basis)
+
+        #expect(counter.count == 1)
+    }
+
+    /// A SUCCEEDED attempt must not answer for a fix it predates. Clearing at pass boundaries
+    /// missed `evaluateMembership` and the single-fence path entirely, so a held fix answered
+    /// passes it had never seen; the basis key covers all three entry points.
+    @Test
+    func corroborationFix_givenADifferentBasis_expectAFreshRequest() async {
+        let delivered = fix(
+            latitude: 0, longitude: 0, at: Date().addingTimeInterval(-Self.ageInsideGate)
+        )
+        let setup = await makeSetup(fix: delivered)
+        let counter = RequestCounter()
+        setup.fixResolver.requestFreshFix = { [weak fixResolver = setup.fixResolver] in
+            counter.count += 1
+            fixResolver?.handleResolvedFix(delivered)
+        }
+        let first = Date().addingTimeInterval(-20)
+
+        // Succeeds and is cached, which is the state the stale reuse needed.
+        #expect(await setup.resolver.corroborationFix(newerThan: first) != nil)
+        _ = await setup.resolver.corroborationFix(newerThan: first.addingTimeInterval(1))
+
+        #expect(counter.count == 2)
+    }
+
+    /// A fix at or before the basis is the first fix over again, not a second opinion.
+    @Test
+    func corroborationFix_givenAnAnswerNotNewerThanTheBasis_expectNil() async {
+        let basis = Date().addingTimeInterval(-Self.ageInsideGate)
+        let setup = await makeSetup(fix: fix(latitude: 0, longitude: 0, at: basis))
+
+        #expect(await setup.resolver.corroborationFix(newerThan: basis) == nil)
+    }
 }
