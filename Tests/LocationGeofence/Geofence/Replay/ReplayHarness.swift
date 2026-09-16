@@ -180,11 +180,31 @@ final class ReplayHarness {
             // One condition monitor for the life of the drive: CoreLocation keeps monitoring while
             // the app is dead, which is the whole reason a crossing relaunches it.
             makeConditionMonitor: { [conditionMonitor] _ in conditionMonitor },
-            // The recovery window is a real 60-second sleep by default. A replay finishes a whole
-            // drive in milliseconds of wall time, so left alone the re-registration the SDK
-            // schedules after the OS gives conditions up never lands inside the run — and the drive
-            // reports a missing `registration.applied` that the phone actually produced. The SDK
-            // exposes this seam for exactly this case; yielding is the replay's "waited".
+            // The recovery window is a real 60-second sleep by default, which a replay finishing in
+            // milliseconds of wall time would never come back from inside the run.
+            //
+            // **Yielding is not a faithful substitute, and parking on the gate is worse.** A yield
+            // costs no virtual time, so the SDK re-checks a rate limit measured on the virtual
+            // clock the instant the wait returns, is refused, defers and asks again — a spin that
+            // ends only when the runner next advances the clock. Parking at `now + seconds`
+            // instead looks right and is not: releasing the boundary moves the clock forward by
+            // the window, the SDK re-stamps `lastUnmonitoredRecoveryAt`, the next check is inside
+            // the window again, and it parks again — an endless ladder that trips the gate's
+            // 512-round guard and `fatalError`s the whole test process. Measured, not theorised.
+            //
+            // So the spin stays, as the lesser of two failures — but it is **not bounded**, and
+            // nothing here can bound it. `deferUnmonitoredRecovery` re-arms from inside its own
+            // `Task`, so the only exit is virtual time crossing the window; once the runner stops
+            // advancing the clock after the last stimulus, the chain keeps allocating and draining
+            // `Task`s on the main actor for the rest of the test *process* — `detachFromBootstrap`
+            // cannot stop it, because the monitor is never freed. A crash is still worse than a
+            // livelock, which is why this is the shape that ships.
+            //
+            // Reached by a drive with two `.unmonitored` bursts inside 60 virtual seconds. The
+            // corpus has a near miss: `drive5` carries 21 `os.monitor.stopped` in two bursts, and
+            // escapes only because they are ~4000 s apart. The honest fix is for the recovery to
+            // be driven by the recording rather than by a wall-clock wait, which is an SDK change.
+            // Tracked.
             waitForRecoveryWindow: { _ in await Task.yield() }
         )
         // Where CoreLocation would be asked for one position. The SDK's own seam for it: a request
@@ -299,26 +319,31 @@ final class ReplayHarness {
         // subscribed to; `FakeConditionMonitor` supersedes that subscription when the new wrapper
         // asks for one, which is what a dead process looks like from the OS's side.
         monitor.setOnTransition(nil)
-        // And it stops holding the graph. Without this the outgoing monitor is retained by the
-        // cycle `releaseSDK` exists to break, so a drive that relaunches twice leaves two live
-        // monitors behind, each still observing the foreground notification.
-        releaseSDK()
+        // And it stops answering the bootstrap. Left attached, the outgoing monitor re-runs
+        // `wireMonitor` on a reconcile or an authorization change that belongs to its successor.
+        detachFromBootstrap()
         composeSDK()
     }
 
-    /// Drops the reconcile handler the bootstrap installed, releasing the composition.
+    /// Stops a discarded composition from re-entering the bootstrap.
     ///
-    /// **Call this when a harness is finished with**, and before replacing its composition. Not
-    /// `deinit`: the cycle below is exactly what stops `deinit` from ever running, so a clean-up
-    /// that lives there can never fire.
+    /// **Call this when a harness is finished with, and before replacing its composition.**
+    /// `GeofenceBootstrap` installs one graph-capturing closure on *two* handlers — reconcile and
+    /// authorization-changed — and either will re-run `wireMonitor` on a composition nobody is
+    /// reading any more. Both are cleared here.
     ///
-    /// `GeofenceBootstrap` hands the monitor a closure that captures the DI graph, and the graph
-    /// holds the monitor — a cycle. Production never notices, because the graph there is the
-    /// process-wide singleton and nothing is expected to be freed. Here each harness owns its own
-    /// graph, so without this every monitor a drive built stays alive, still observing the
-    /// foreground notification, and the next drive's `enterForeground()` wakes all of them.
-    func releaseSDK() {
+    /// **It does not free the monitor, and is not named as though it does.** The monitor's
+    /// `consumeTask` captures a strong `self` and is never cancelled; it stays parked inside
+    /// `for try await` for the life of the process, so every monitor the harness builds is
+    /// unreachable-but-alive regardless of what the DI graph holds. Its `deinit` therefore never
+    /// runs and its `willEnterForegroundNotification` observer is never removed, so dead monitors
+    /// still react to `enterForeground()` — which is process-global. The harm is second-order
+    /// (each writes to its own logger and its own OS double, so a live drive's assertions cannot be
+    /// corrupted) but it is real, and it grows with the corpus. Fixing it needs a cancel on the
+    /// SDK side; tracked separately rather than papered over here.
+    func detachFromBootstrap() {
         monitor.setOnReconciled(nil)
+        monitor.setOnAuthorizationChanged(nil)
     }
 
     deinit {

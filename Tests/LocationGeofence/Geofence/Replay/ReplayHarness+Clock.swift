@@ -5,6 +5,7 @@
 import CoreLocation
 import Foundation
 import SharedTests
+import Testing
 #if canImport(UIKit)
 import UIKit
 #endif
@@ -22,8 +23,8 @@ extension ReplayHarness {
     }
 
     /// Ends the drive: answers whatever the recording left outstanding.
-    func releaseRemainingBoundaries(settle: () async -> Void) async {
-        await gate.releaseAll(setClock: { [weak self] moment in self?.setClock(moment) }, settle: settle)
+    func releaseRemainingBoundaries(settle: () async throws -> Void) async rethrows {
+        try await gate.releaseAll(setClock: { [weak self] moment in self?.setClock(moment) }, settle: settle)
     }
 
     /// Moves virtual time, letting the SDK's own async work run between releases.
@@ -31,6 +32,8 @@ extension ReplayHarness {
     /// The convenience form, for tests that drive the harness by hand. The recorded suite passes
     /// its own `settle` so the runner owns the pacing in one place.
     func advance(to at: TimeInterval) async {
+        // Cancellation is swallowed here only: this convenience form is used by hand-driven
+        // tests, where unwinding mid-advance would leave the clock half-moved.
         await advance(to: at) { try? await ReplayHarness.letAsyncWorkRun() }
     }
 
@@ -43,16 +46,36 @@ extension ReplayHarness {
     /// reaches a boundary asynchronously — the fetch is issued from the coordinator's own executor
     /// and parks a hop later — so releasing the instant a stimulus is fed finds nothing parked yet,
     /// returns, and leaves the fetch owed forever.
-    func settleBoundaries() async {
+    /// The most rounds `settleBoundaries` will take before giving up.
+    ///
+    /// `quietRounds` resets every time the gate has something parked, so without a global bound a
+    /// composition where answering one boundary reliably parks another never terminates — the test
+    /// hangs rather than failing, which is the worst way for a harness to break. Generous enough
+    /// that no recorded drive approaches it.
+    static let maxSettleRounds = 256
+
+    /// - Throws: `CancellationError` if the test task is cancelled while settling. Deliberately not
+    ///   swallowed: this is the one unbounded loop in the harness, and a `try?` here spins it at
+    ///   full speed through the SDK instead of unwinding, which is exactly what `Settle.swift`
+    ///   refuses for the same reason.
+    func settleBoundaries() async throws {
         var quietRounds = 0
+        var totalRounds = 0
         while quietRounds < 3 {
-            try? await ReplayHarness.letAsyncWorkRun()
+            totalRounds += 1
+            guard totalRounds <= Self.maxSettleRounds else {
+                Issue.record(
+                    "settleBoundaries gave up after \(Self.maxSettleRounds) rounds — answering a boundary keeps parking another"
+                )
+                return
+            }
+            try await ReplayHarness.letAsyncWorkRun()
             guard gate.hasParked else {
                 quietRounds += 1
                 continue
             }
             quietRounds = 0
-            await releaseRemainingBoundaries { try? await ReplayHarness.letAsyncWorkRun() }
+            try await releaseRemainingBoundaries { try await ReplayHarness.letAsyncWorkRun() }
         }
     }
 
