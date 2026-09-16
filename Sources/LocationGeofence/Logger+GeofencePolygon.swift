@@ -83,7 +83,14 @@ extension Logger {
     /// records (`contradiction.allowed`) use the same key with the opposite sign, so a parser must
     /// read `edge` against the record's `ev`. `acc` is the ambiguity margin, not a quality score —
     /// iOS has no accuracy ceiling, so a verdict holds only while `|edge|` exceeds it.
-    func geofencePolygonVerdict(identifier: String, membership: PolygonMembership, signedEdgeDistance: Double, horizontalAccuracy: Double, fixAge: TimeInterval) {
+    func geofencePolygonVerdict(
+        identifier: String,
+        membership: PolygonMembership,
+        signedEdgeDistance: Double,
+        horizontalAccuracy: Double,
+        fixAge: TimeInterval,
+        corroborated: Bool = false
+    ) {
         debug(
             "Polygon membership \(membership) for region \(identifier): edge \(Int(signedEdgeDistance)) m, accuracy \(Int(horizontalAccuracy)) m, fix age \(String(format: "%.1f", fixAge))s"
                 + geofenceTail("polygon.verdict", .output, [
@@ -91,7 +98,10 @@ extension Logger {
                     ("m", "\(membership)"),
                     ("edge", GeofenceLog.num(signedEdgeDistance, 0)),
                     ("acc", GeofenceLog.num(horizontalAccuracy)),
-                    ("age", GeofenceLog.num(fixAge))
+                    ("age", GeofenceLog.num(fixAge)),
+                    // Matches Android's `cor` key: whether a marginal arrival needed a second
+                    // agreeing fix. Always false for a departure, which never corroborates.
+                    ("cor", corroborated ? "true" : "false")
                 ]),
             geofenceTag
         )

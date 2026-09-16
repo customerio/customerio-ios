@@ -29,7 +29,8 @@ final class PolygonMembershipResolver {
     private let storage: GeofenceStorage
     private let transitionEmitter: GeofenceTransitionEmitting
     private let fixResolver: MovementFixResolver
-    private let logger: Logger
+    // `internal`, not `private`, only because the split extension files use them.
+    let logger: Logger
     let contextStore: BackgroundDeliveryContextStore
     let notificationCenter: NotificationCenter
     var foregroundObserverToken: NSObjectProtocol?
@@ -262,23 +263,14 @@ final class PolygonMembershipResolver {
         }
         let point = LocationData(latitude: fix.coordinate.latitude, longitude: fix.coordinate.longitude)
         let signedEdgeDistance = polygon.signedEdgeDistance(to: point)
-        guard let membership = PolygonMembershipDecision.resolvedMembership(
-            signedEdgeDistance: signedEdgeDistance,
-            horizontalAccuracy: fix.horizontalAccuracy,
-            fixAge: -fix.timestamp.timeIntervalSinceNow
-        ) else {
-            logger.geofencePolygonUndecided(
-                identifier: geofence.id,
-                reason: .withinAccuracy,
-                signedEdgeDistance: signedEdgeDistance,
-                horizontalAccuracy: fix.horizontalAccuracy
-            )
-            return
-        }
+        guard let (membership, corroborated) = await settleMembership(
+            fix: fix, geofence: geofence, polygon: polygon, signedEdgeDistance: signedEdgeDistance
+        ) else { return }
         logger.geofencePolygonVerdict(
             identifier: geofence.id, membership: membership,
             signedEdgeDistance: signedEdgeDistance, horizontalAccuracy: fix.horizontalAccuracy,
-            fixAge: -fix.timestamp.timeIntervalSinceNow
+            fixAge: -fix.timestamp.timeIntervalSinceNow,
+            corroborated: corroborated
         )
         await apply(
             membership, to: geofence, evidence: fix.timestamp,
@@ -354,7 +346,7 @@ final class PolygonMembershipResolver {
     /// can be answered by a fix up to `movementFixMaxAge` older than itself — hundreds of metres at
     /// speed. Tightening it needs the ≤17 wake radius's assumed-speed constant; the verdict line
     /// logs fix age, which is what makes such a verdict identifiable.
-    private func resolveFix(requiringFresh: Bool = false) async -> CLLocation? {
+    func resolveFix(requiringFresh: Bool = false) async -> CLLocation? {
         // What this resolver has already DELIVERED, which is what a forced request must improve on.
         // Deliberately not `cachedFix`: that reports the newest fix obtainable from either source,
         // and CoreLocation's own cache advances on its own, so using it here makes the baseline as

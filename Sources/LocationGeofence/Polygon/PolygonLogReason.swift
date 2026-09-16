@@ -15,6 +15,11 @@ enum PolygonUndecidedReason: String, CaseIterable {
     /// The fix cannot separate inside from outside: `|edge|` is within its accuracy. The two
     /// measurements ride as their own keys rather than in the token.
     case withinAccuracy = "within_accuracy"
+    /// The fix was too old to describe where the device is now.
+    case fixTooOld = "fix_too_old"
+    /// The accuracy circle is as wide as the venue is deep, so `inside` carries no information.
+    /// Distinct from `withinAccuracy`, which is a fix that could decide for a larger venue.
+    case accuracyTooLow = "accuracy_too_low"
 
     var prose: String {
         switch self {
@@ -24,6 +29,8 @@ enum PolygonUndecidedReason: String, CaseIterable {
         case .unregistered: return "no longer a registered polygon"
         case .circleExpired: return "the circle the event was raised against is gone"
         case .withinAccuracy: return "edge distance within the fix's accuracy"
+        case .fixTooOld: return "fix too old"
+        case .accuracyTooLow: return "accuracy too low for a venue this size"
         }
     }
 }
