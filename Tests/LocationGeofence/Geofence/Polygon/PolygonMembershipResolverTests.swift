@@ -1392,6 +1392,58 @@ struct PolygonMembershipResolverTests {
         #expect(await setup.resolver.corroborationFix(newerThan: basis) == .notIndependent)
     }
 
+    /// Answers the corroboration request with a fix of its own, so the SECOND fix's properties
+    /// decide the refusal rather than the one the pass judged.
+    private func deliveringSecondFix(_ setup: Setup, _ second: CLLocation) {
+        setup.fixResolver.requestFreshFix = { [weak fixResolver = setup.fixResolver] in
+            fixResolver?.handleResolvedFix(second)
+        }
+    }
+
+    /// Sets up a marginal inside — `edge` +3 against 5 m accuracy — resolved from the system
+    /// cache, which is the state corroboration runs from.
+    private func marginalPass(_ setup: Setup) {
+        let passFix = fix(
+            latitude: Self.latitudeInsideNorthEdge(by: 3), longitude: 0, accuracy: 5,
+            at: Date().addingTimeInterval(-Self.ageInsideGate)
+        )
+        setup.fixResolver.systemCachedFix = { passFix }
+    }
+
+    /// Side disagreement is its own record. It used to log `within_accuracy`, which describes a
+    /// fix that could not pick a side — not two fixes that picked different ones.
+    @Test
+    func evaluateMembership_givenSecondFixReadsOutside_expectCorroborationDisagreed() async {
+        let logger = LoggerMock()
+        let setup = await makeSetup(fix: nil, logger: logger)
+        marginalPass(setup)
+        deliveringSecondFix(setup, fix(latitude: 1, longitude: 1, accuracy: 5))
+        await registerPolygons(setup, ids: ["1"])
+
+        await setup.resolver.evaluateMembership(geofenceIds: ["1"], reason: .newPolygon)
+
+        // The mock sees prose; the token is pinned in `GeofenceLogTailTests`.
+        #expect(logged(logger, "the second fix read outside"))
+        #expect(await setup.emitter.snapshot().isEmpty)
+    }
+
+    /// A second fix too coarse for this venue adds no information, and says so under its own
+    /// token — the one case the old ternary did get right, pinned so the split cannot regress it.
+    @Test
+    func evaluateMembership_givenSecondFixCoarserThanTheVenue_expectAccuracyTooLow() async {
+        let logger = LoggerMock()
+        let setup = await makeSetup(fix: nil, logger: logger)
+        marginalPass(setup)
+        // Inside the ring, but the accuracy circle is wider than the venue is deep (~178 m).
+        deliveringSecondFix(setup, fix(latitude: 0, longitude: 0, accuracy: 200))
+        await registerPolygons(setup, ids: ["1"])
+
+        await setup.resolver.evaluateMembership(geofenceIds: ["1"], reason: .newPolygon)
+
+        #expect(logged(logger, "accuracy too low for a venue this size"))
+        #expect(await setup.emitter.snapshot().isEmpty)
+    }
+
     /// No fix at all is a different record from an echo.
     @Test
     func corroborationFix_givenNoFix_expectUnavailable() async {
