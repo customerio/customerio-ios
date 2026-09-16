@@ -2,6 +2,22 @@ import CioInternalCommon
 import CoreLocation
 import Foundation
 
+/// What a corroboration attempt yielded. Three cases, not an optional: a capture has to tell an
+/// echo of the first fix apart from no fix at all, and that is the difference between "the rule
+/// refused" and "location was unavailable".
+enum CorroborationOutcome: Equatable {
+    case obtained(CLLocation)
+    /// A fix came back, but not newer than the one being corroborated — the first fix over again.
+    case notIndependent
+    case unavailable
+
+    /// The fix when there was one, for callers that do not branch on the refusal.
+    var fix: CLLocation? {
+        if case .obtained(let fix) = self { return fix }
+        return nil
+    }
+}
+
 /// The second-fix confirmation for a marginal arrival, split from the resolver's core so both stay
 /// under the file cap. `corroborate` is `internal` rather than `private` only because of this
 /// split; it remains implementation detail of the resolver.
@@ -71,12 +87,16 @@ extension PolygonMembershipResolver {
         // compares against what this resolver last DELIVERED, and a pass answered from
         // `cachedFix` never records there — so CoreLocation echoing that same fix would clear its
         // guard and confirm an arrival against itself.
-        guard let second = await corroborationFix(newerThan: firstFix.timestamp) else {
-            logger.geofencePolygonUndecided(
-                identifier: geofence.id, reason: PolygonUndecidedReason.noUsableFix,
-                signedEdgeDistance: firstEdge, horizontalAccuracy: firstFix.horizontalAccuracy
-            )
-            return false
+        let second: CLLocation
+        switch await corroborationFix(newerThan: firstFix.timestamp) {
+        case .obtained(let fix):
+            second = fix
+        // Two tokens, not one: an echo means the rule refused to count one fix twice, a timeout
+        // means location never answered at all. A capture has to separate them.
+        case .notIndependent:
+            return refuseFirst(.corroborationNotIndependent, geofence, firstEdge, firstFix)
+        case .unavailable:
+            return refuseFirst(.noUsableFix, geofence, firstEdge, firstFix)
         }
         let secondPoint = LocationData(
             latitude: second.coordinate.latitude, longitude: second.coordinate.longitude
@@ -108,15 +128,33 @@ extension PolygonMembershipResolver {
     /// Reuse is sound only between polygons judged from the SAME fix, which is why the cache is
     /// keyed on `basis` rather than cleared at pass boundaries.
     ///
+    /// Logs a corroboration refusal against the FIRST fix's measurements, which are the ones the
+    /// caller was judging. Separate from the second-fix refusals below, which carry the second's.
+    private func refuseFirst(
+        _ reason: PolygonUndecidedReason, _ geofence: Geofence, _ edge: Double, _ fix: CLLocation
+    ) -> Bool {
+        logger.geofencePolygonUndecided(
+            identifier: geofence.id, reason: reason,
+            signedEdgeDistance: edge, horizontalAccuracy: fix.horizontalAccuracy
+        )
+        return false
+    }
+
+    /// A refusal is cached alongside a success, including one caused by the resolver TIMING OUT:
+    /// a late fix landing in `latestFix` seconds later does not retry this pass. That is
+    /// deliberate — the next pass judges a different fix, carries a new basis and asks again — so
+    /// do not "fix" this into a retry loop inside a single pass.
+    ///
     /// - Parameter basis: timestamp of the fix being corroborated. The answer must strictly
     ///   postdate it; anything at or before it is the first fix over again, not a second opinion.
-    func corroborationFix(newerThan basis: Date) async -> CLLocation? {
-        if let attempt = passCorroboration, attempt.basis == basis { return attempt.fix }
-        let resolved = await resolveFix(requiringFresh: true)
-        let independent = resolved.flatMap { $0.timestamp > basis ? $0 : nil }
-        // The failed attempt is cached too, so a pass that cannot get a newer fix spends one
-        // request rather than one per marginal polygon.
-        passCorroboration = (basis, independent)
-        return independent
+    func corroborationFix(newerThan basis: Date) async -> CorroborationOutcome {
+        if let attempt = passCorroboration, attempt.basis == basis { return attempt.outcome }
+        let outcome: CorroborationOutcome
+        switch await resolveFix(requiringFresh: true) {
+        case .none: outcome = .unavailable
+        case .some(let fix): outcome = fix.timestamp > basis ? .obtained(fix) : .notIndependent
+        }
+        passCorroboration = (basis, outcome)
+        return outcome
     }
 }

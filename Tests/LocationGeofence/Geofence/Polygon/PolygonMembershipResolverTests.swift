@@ -1376,18 +1376,27 @@ struct PolygonMembershipResolverTests {
         let first = Date().addingTimeInterval(-20)
 
         // Succeeds and is cached, which is the state the stale reuse needed.
-        #expect(await setup.resolver.corroborationFix(newerThan: first) != nil)
+        #expect(await setup.resolver.corroborationFix(newerThan: first).fix != nil)
         _ = await setup.resolver.corroborationFix(newerThan: first.addingTimeInterval(1))
 
         #expect(counter.count == 2)
     }
 
-    /// A fix at or before the basis is the first fix over again, not a second opinion.
+    /// A fix at or before the basis is the first fix over again, not a second opinion — and it
+    /// reports as its own outcome, so a capture can tell an echo from location not answering.
     @Test
-    func corroborationFix_givenAnAnswerNotNewerThanTheBasis_expectNil() async {
+    func corroborationFix_givenAnAnswerNotNewerThanTheBasis_expectNotIndependent() async {
         let basis = Date().addingTimeInterval(-Self.ageInsideGate)
         let setup = await makeSetup(fix: fix(latitude: 0, longitude: 0, at: basis))
 
-        #expect(await setup.resolver.corroborationFix(newerThan: basis) == nil)
+        #expect(await setup.resolver.corroborationFix(newerThan: basis) == .notIndependent)
+    }
+
+    /// No fix at all is a different record from an echo.
+    @Test
+    func corroborationFix_givenNoFix_expectUnavailable() async {
+        let setup = await makeSetup(fix: nil)
+
+        #expect(await setup.resolver.corroborationFix(newerThan: Date()) == .unavailable)
     }
 }

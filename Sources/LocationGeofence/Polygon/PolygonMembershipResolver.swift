@@ -40,7 +40,7 @@ final class PolygonMembershipResolver {
     /// failure costs one too. KEYED by that fix's timestamp rather than cleared at pass boundaries:
     /// reuse is only sound between polygons judged from the SAME fix, and a key makes a later pass
     /// miss it instead of relying on all three entry points remembering to clear.
-    var passCorroboration: (basis: Date, fix: CLLocation?)?
+    var passCorroboration: (basis: Date, outcome: CorroborationOutcome)?
     private var passesInFlight = 0
 
     init(
