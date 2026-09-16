@@ -147,7 +147,7 @@ final class ReplayBoundaryGate {
     }
 
     /// Ends the drive: answers whatever is still outstanding so the run finishes rather than stalls.
-    func releaseAll(setClock: (TimeInterval) -> Void, settle: () async -> Void) async {
+    func releaseAll(setClock: (TimeInterval) -> Void, settle: () async throws -> Void) async rethrows {
         var abandoned: [String] = []
         var guardCount = 0
         while let next = parked.min(by: { ($0.at, $0.id) < ($1.at, $1.id) }) {
@@ -157,7 +157,7 @@ final class ReplayBoundaryGate {
             abandoned.append(next.what)
             moveClock(to: next.at, setClock)
             await next.answer()
-            await settle()
+            try await settle()
         }
         // Whatever the round limit cut short is still owed, and saying so is the whole point of
         // this list: a break that reported only what it released would read as a clean end of drive.
