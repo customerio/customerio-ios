@@ -32,6 +32,13 @@ struct ReplayCompositionTests {
             harness.conditionMonitor.hasSubscriber,
             "the SDK never subscribed to the OS condition stream — every replayed crossing would go nowhere"
         )
-        #expect(harness.conditionMonitor.deliveredWithNoSubscriber == 0)
+        // Delivered *after* the subscription is asserted, so this can actually fail: if the
+        // wrapper's consume task is not attached yet, the monitor counts the event as dropped.
+        // Asserting the counter without first delivering anything was checking nothing at all.
+        harness.conditionMonitor.deliver(identifier: "A", state: .satisfied, at: Date())
+        #expect(
+            harness.conditionMonitor.deliveredWithNoSubscriber == 0,
+            "a crossing delivered after wiring went nowhere — the SDK was not listening yet"
+        )
     }
 }

@@ -31,7 +31,7 @@ extension ReplayHarness {
     /// The convenience form, for tests that drive the harness by hand. The recorded suite passes
     /// its own `settle` so the runner owns the pacing in one place.
     func advance(to at: TimeInterval) async {
-        await advance(to: at) { await ReplayHarness.letAsyncWorkRun() }
+        await advance(to: at) { try? await ReplayHarness.letAsyncWorkRun() }
     }
 
     /// Answers every outstanding boundary, and every boundary answering one leads to.
@@ -46,24 +46,37 @@ extension ReplayHarness {
     func settleBoundaries() async {
         var quietRounds = 0
         while quietRounds < 3 {
-            await ReplayHarness.letAsyncWorkRun()
+            try? await ReplayHarness.letAsyncWorkRun()
             guard gate.hasParked else {
                 quietRounds += 1
                 continue
             }
             quietRounds = 0
-            await releaseRemainingBoundaries { await ReplayHarness.letAsyncWorkRun() }
+            await releaseRemainingBoundaries { try? await ReplayHarness.letAsyncWorkRun() }
         }
     }
+
+    /// How long a round of `letAsyncWorkRun` waits for the SDK's tasks to get going.
+    ///
+    /// Real time, and the one place the harness spends any. The virtual clock decides *what the
+    /// SDK sees*; this decides *how long we wait for Swift to run work we have already started*,
+    /// which no amount of virtual time can substitute for. Long enough that a storage read and a
+    /// dispatcher hop land on a loaded machine, short enough that a long drive is not dominated by
+    /// it. If a scenario ever diverges only under load, this is the number to suspect.
+    static let asyncWorkGrace: Duration = .milliseconds(50)
 
     /// Gives the `Task`s the SDK started a chance to execute.
     ///
     /// Not "run to stillness" — that is what the boundaries are for. Work the SDK starts still
     /// reaches a parked network call and stops there; this only lets it get that far, because Swift
     /// concurrency will not run those tasks otherwise.
-    static func letAsyncWorkRun() async {
+    ///
+    /// Cancellation is propagated rather than swallowed, for the reason `Settle.swift` gives: a
+    /// `try?` here drops the `CancellationError` and every bounded loop built on this spins at full
+    /// speed through the SDK instead of unwinding.
+    static func letAsyncWorkRun() async throws {
         await Task.yield()
-        try? await Task.sleep(nanoseconds: 50000000)
+        try await Task.sleep(for: asyncWorkGrace)
     }
 
     /// Virtual time, in the one place that writes it.

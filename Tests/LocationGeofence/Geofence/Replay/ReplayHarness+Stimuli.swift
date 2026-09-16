@@ -19,7 +19,6 @@ extension ReplayHarness {
     /// The `lat`/`lon` on a recorded `os.callback` are that read, not something the OS handed over,
     /// so they belong to the cache the drive also recorded — and passing them in here would hand
     /// the SDK an answer it is supposed to fetch.
-    /// Delivers one recorded OS event.
     ///
     /// **`identity` wins when the capture has it, and R10 does not apply to it.** Everywhere else
     /// the harness converts a recorded absolute into a duration, because the recording's clock and
