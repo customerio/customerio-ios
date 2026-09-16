@@ -196,6 +196,7 @@ final class PolygonMembershipResolver {
     /// fix it would never have seen, but not one postdating its own crossing. Giving each wake its
     /// own fix means a request per wake: a design change, not a comment fix.
     func evaluateAllPolygons(
+        reason: PolygonEvaluationReason,
         requiresFreshFix: Bool = false,
         isStillCurrent: (@Sendable () -> Bool)? = nil
     ) async {
@@ -208,7 +209,10 @@ final class PolygonMembershipResolver {
         let registered = await storage.getRegisteredBusinessIds()
         let polygons = await storage.getCachedGeofences()
             .filter { registered.contains($0.id) && $0.vertices != nil }
-        guard !polygons.isEmpty else { return }
+        // Before the empty guard on purpose: `n=0` is the record that a pass ran and had nothing
+        // to judge, which is otherwise a silent return.
+        logger.geofencePolygonPassStarted(reason: reason, count: polygons.count)
+        guard polygons.isEmpty == false else { return }
         // One request for the whole pass. Resolving per polygon would issue a fresh timed request
         // for every one of them whenever the cache stays empty, holding the main actor for minutes
         // and still deciding nothing — and a failed fresh request would silently downgrade every

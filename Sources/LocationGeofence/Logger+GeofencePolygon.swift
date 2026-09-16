@@ -38,6 +38,23 @@ extension Logger {
         )
     }
 
+    /// A whole-set pass ran. The counterpart to `polygon.pass.skipped`, without which a pass that
+    /// produced no verdicts is indistinguishable from one that never started — and `n=0` says the
+    /// pass ran against nothing registered, which used to return in silence.
+    ///
+    /// Pass-level rather than one record per polygon: a long stationary capture is read by asking
+    /// "did anything evaluate while I stood here", and N lines per pass buries that.
+    func geofencePolygonPassStarted(reason: PolygonEvaluationReason, count: Int) {
+        debug(
+            "Evaluating \(count) polygon(s) (\(reason.prose))"
+                + geofenceTail("polygon.pass.started", .output, [
+                    ("why", reason.rawValue),
+                    ("n", String(count))
+                ]),
+            geofenceTag
+        )
+    }
+
     func geofencePolygonEvaluationRequested(identifier: String, reason: PolygonEvaluationReason) {
         debug(
             "Re-evaluating polygon membership for region \(identifier) (\(reason.prose))"
