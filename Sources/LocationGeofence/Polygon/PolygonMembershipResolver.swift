@@ -28,7 +28,7 @@ import UIKit
 final class PolygonMembershipResolver {
     let storage: GeofenceStorage
     private let transitionEmitter: GeofenceTransitionEmitting
-    private let fixResolver: MovementFixResolver
+    let fixResolver: MovementFixResolver
     // `internal`, not `private`, only because the split extension files use them.
     let logger: Logger
     let contextStore: BackgroundDeliveryContextStore
@@ -36,10 +36,10 @@ final class PolygonMembershipResolver {
     var foregroundObserverToken: NSObjectProtocol?
 
     /// The one corroboration attempt made against the fix currently being judged, so N marginal
-    /// polygons sharing that fix cost one request rather than N — a failed attempt included, so a
-    /// failure costs one too. KEYED by that fix's timestamp rather than cleared at pass boundaries:
-    /// reuse is only sound between polygons judged from the SAME fix, and a key makes a later pass
-    /// miss it instead of relying on all three entry points remembering to clear.
+    /// polygons sharing that fix cost one request rather than N — a failed attempt included.
+    /// Keyed by that fix's timestamp for CORRECTNESS (never answer for a fix it predates) and
+    /// cleared by `resolvePassFix` for LIVENESS (a cached failure must not outlive its pass). Both
+    /// are needed: a stationary device's next pass often reuses the very same cached fix.
     var passCorroboration: (basis: Date, outcome: CorroborationOutcome)?
     private var passesInFlight = 0
 
@@ -168,7 +168,7 @@ final class PolygonMembershipResolver {
             pending.append(geofenceId)
         }
         guard !pending.isEmpty else { return true }
-        guard let fix = await resolveFix(requiringFresh: requiresFreshFix) else {
+        guard let fix = await resolvePassFix(requiringFresh: requiresFreshFix) else {
             for geofenceId in pending {
                 logger.geofencePolygonUndecided(identifier: geofenceId, reason: .noUsableFix)
             }
@@ -188,16 +188,13 @@ final class PolygonMembershipResolver {
     /// serves the whole pass.
     ///
     /// Foregrounds arrive in bursts, so a pass already running wins: a second concurrent scan reads
-    /// the same storage and the same fix and can only duplicate the location work. That reasoning
-    /// covers only a pass content with the fix already in hand. A wake runs BECAUSE the device
-    /// moved, and any pass already in flight is working from a fix requested before that movement —
-    /// so no wake yields, not even to another wake, and nothing else would retry it if it did.
-    ///
-    /// What running buys the second wake is bounded: concurrent requests COALESCE inside
-    /// `MovementFixResolver`, so a wake arriving while one is in flight is answered by that request
-    /// — a fix it would otherwise never have seen, but not one that postdates its own crossing. If
-    /// the shared request fails both wakes end undecided. Giving the second wake a fix of its own
-    /// means a request per wake: a design change, not a comment fix.
+    /// the same storage and the same fix and can only duplicate the location work. That covers only
+    /// a pass content with the fix in hand — a wake runs BECAUSE the device moved, and any pass in
+    /// flight works from a fix requested before that movement, so no wake yields, not even to
+    /// another wake, and nothing else would retry it. What running buys the second wake is bounded:
+    /// requests COALESCE inside `MovementFixResolver`, so it is answered by the in-flight one — a
+    /// fix it would never have seen, but not one postdating its own crossing. Giving each wake its
+    /// own fix means a request per wake: a design change, not a comment fix.
     func evaluateAllPolygons(
         requiresFreshFix: Bool = false,
         isStillCurrent: (@Sendable () -> Bool)? = nil
@@ -216,7 +213,7 @@ final class PolygonMembershipResolver {
         // for every one of them whenever the cache stays empty, holding the main actor for minutes
         // and still deciding nothing — and a failed fresh request would silently downgrade every
         // polygon after the first to the pre-wake fix.
-        guard let fix = await resolveFix(requiringFresh: requiresFreshFix) else {
+        guard let fix = await resolvePassFix(requiringFresh: requiresFreshFix) else {
             for geofence in polygons {
                 logger.geofencePolygonUndecided(identifier: geofence.id, reason: .noUsableFix)
             }
@@ -232,7 +229,7 @@ final class PolygonMembershipResolver {
         requiresFreshFix: Bool = false,
         isStillCurrent: (@Sendable () -> Bool)? = nil
     ) async {
-        guard let fix = await resolveFix(requiringFresh: requiresFreshFix) else {
+        guard let fix = await resolvePassFix(requiringFresh: requiresFreshFix) else {
             logger.geofencePolygonUndecided(identifier: geofenceId, reason: .noUsableFix)
             return
         }
@@ -353,45 +350,4 @@ final class PolygonMembershipResolver {
     /// can be answered by a fix up to `movementFixMaxAge` older than itself — hundreds of metres at
     /// speed. Tightening it needs the ≤17 wake radius's assumed-speed constant; the verdict line
     /// logs fix age, which is what makes such a verdict identifiable.
-    func resolveFix(requiringFresh: Bool = false) async -> CLLocation? {
-        // What this resolver has already DELIVERED, which is what a forced request must improve on.
-        // Deliberately not `cachedFix`: that reports the newest fix obtainable from either source,
-        // and CoreLocation's own cache advances on its own, so using it here makes the baseline as
-        // current as any answer a request can return and the guard below can never pass.
-        let priorTimestamp = fixResolver.latestFix?.timestamp
-        return await withCheckedContinuation { continuation in
-            fixResolver.resolve(cached: requiringFresh ? nil : fixResolver.cachedFix, purpose: .polygon) { [weak self] _, isFresh in
-                guard let self else { return continuation.resume(returning: nil) }
-                let resolved = fixResolver.latestFix
-                if requiringFresh {
-                    // `isFresh` is the resolver's own account of what it answered with: true only
-                    // for a fix it received in response to this request, which is what keeps a
-                    // failed or timed-out request from resuming on the held fix. It does NOT prove
-                    // the fix postdates the wake — an echoed cache fix inside `movementFixMaxAge`
-                    // clears it — so on a cold process the age gate is the whole bound. The
-                    // timestamp comparison then keeps each later wake strictly ahead of the one before.
-                    //
-                    // No fallback to the held fix here, on any branch: a wake fires BECAUSE the
-                    // device moved, so anything predating the request describes where it was.
-                    guard isFresh, let resolved,
-                          priorTimestamp.map({ resolved.timestamp > $0 }) ?? true
-                    else {
-                        continuation.resume(returning: nil)
-                        return
-                    }
-                    continuation.resume(returning: resolved)
-                    return
-                }
-                // Newest of whatever exists, which is what a pass content with a held fix wants.
-                // Not `latestFix` first: `resolve` answers from the caller's cached fix WITHOUT
-                // recording it when that fix is young enough, so `latestFix` can be much older than
-                // the system fix that let this pass proceed. Fixed here and not by recording on
-                // that fast path — letting `latestFix` absorb the system cache would make the
-                // forced-fresh baseline above unbeatable again, the defect this path was repaired
-                // from. It also covers a cold process whose request failed, where CoreLocation's
-                // cache is the only evidence and the monitor's dedup baseline has already advanced.
-                continuation.resume(returning: fixResolver.cachedFix)
-            }
-        }
-    }
 }

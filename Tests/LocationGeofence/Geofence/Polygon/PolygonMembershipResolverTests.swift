@@ -1410,6 +1410,23 @@ struct PolygonMembershipResolverTests {
         setup.fixResolver.systemCachedFix = { passFix }
     }
 
+    /// A timed-out corroboration must not outlive the pass that made it. A stationary device's
+    /// next pass usually resolves the very SAME cached fix, so a cache keyed on timestamp alone
+    /// answers it with the stale failure and blocks the arrival until CoreLocation's cache moves —
+    /// which is precisely the case corroboration exists to rescue.
+    @Test
+    func evaluateMembership_givenCorroborationFailedInAnEarlierPass_expectRetried() async {
+        let setup = await makeSetup(fix: nil)
+        marginalPass(setup)
+        let counter = countingRequests(setup)
+        await registerPolygons(setup, ids: ["1"])
+
+        await setup.resolver.evaluateMembership(geofenceIds: ["1"], reason: .newPolygon)
+        await setup.resolver.evaluateMembership(geofenceIds: ["1"], reason: .newPolygon)
+
+        #expect(counter.count == 2)
+    }
+
     /// Side disagreement is its own record. It used to log `within_accuracy`, which describes a
     /// fix that could not pick a side — not two fixes that picked different ones.
     @Test
