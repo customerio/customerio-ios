@@ -76,20 +76,20 @@ extension PolygonMembershipResolver {
     /// - Returns: `true` when a second fix independently places the device inside. `false` after
     ///   logging why it did not, so the caller only has to bail out.
     func corroborate(
-        _ proposed: PolygonMembership,
-        geofence: Geofence,
-        polygon: PolygonRegion,
+        _ pending: DeferredCorroboration,
         firstFix: CLLocation,
-        firstEdge: Double
+        cache: PassCorroboration
     ) async -> Bool {
-        guard proposed == .inside else { return false }
+        let geofence = pending.geofence
+        let firstEdge = pending.signedEdgeDistance
+        guard pending.proposed == .inside else { return false }
         // Newer than the fix being corroborated, which is the only baseline that makes the second
         // fix independent evidence. `resolveFix(requiringFresh:)` alone does NOT give this: it
         // compares against what this resolver last DELIVERED, and a pass answered from
         // `cachedFix` never records there — so CoreLocation echoing that same fix would clear its
         // guard and confirm an arrival against itself.
         let second: CLLocation
-        switch await corroborationFix(newerThan: firstFix.timestamp) {
+        switch await corroborationFix(newerThan: firstFix.timestamp, cache: cache) {
         case .obtained(let fix):
             second = fix
         // Two tokens, not one: an echo means the rule refused to count one fix twice, a timeout
@@ -102,7 +102,7 @@ extension PolygonMembershipResolver {
         let secondPoint = LocationData(
             latitude: second.coordinate.latitude, longitude: second.coordinate.longitude
         )
-        let secondEdge = polygon.signedEdgeDistance(to: secondPoint)
+        let secondEdge = pending.polygon.signedEdgeDistance(to: secondPoint)
         // Three distinct failures, each with its own token. Collapsing them logs a refusal under a
         // reason that did not happen, and these records are how we measure what the rule refuses.
         func refuse(_ reason: PolygonUndecidedReason) -> Bool {
@@ -114,7 +114,7 @@ extension PolygonMembershipResolver {
         }
         guard second.horizontalAccuracy > 0 else { return refuse(.noUsableFix) }
         // The second fix must clear the same ceiling, or it adds no information to the first.
-        guard second.horizontalAccuracy < polygon.scale else { return refuse(.accuracyTooLow) }
+        guard second.horizontalAccuracy < pending.polygon.scale else { return refuse(.accuracyTooLow) }
         // Agreement on the SIDE, not on the distance. Two fixes metres apart near a boundary will
         // not agree on an edge, and requiring that would refuse everything this path is for.
         guard secondEdge > 0 else { return refuse(.corroborationDisagreed) }
@@ -148,15 +148,39 @@ extension PolygonMembershipResolver {
     ///
     /// - Parameter basis: timestamp of the fix being corroborated. The answer must strictly
     ///   postdate it; anything at or before it is the first fix over again, not a second opinion.
-    func corroborationFix(newerThan basis: Date) async -> CorroborationOutcome {
-        if let attempt = passCorroboration, attempt.basis == basis { return attempt.outcome }
+    func corroborationFix(newerThan basis: Date, cache: PassCorroboration) async -> CorroborationOutcome {
+        if let existing = cache.attempt(for: basis) { return existing }
         let outcome: CorroborationOutcome
         switch await resolveFix(requiringFresh: true) {
         case .none: outcome = .unavailable
         case .some(let fix): outcome = fix.timestamp > basis ? .obtained(fix) : .notIndependent
         }
-        passCorroboration = (basis, outcome)
+        cache.record(outcome, for: basis)
         return outcome
+    }
+}
+
+/// One corroboration attempt per pass, so N marginal polygons sharing a fix cost one request.
+///
+/// Owned by the pass rather than the resolver, and that is the whole point. Two `requiresFreshFix`
+/// passes overlap by design — one refresh starts both `evaluateNewlyRegistered` and the movement
+/// pass, and the in-flight guard deliberately lets a fresh pass through. Resolver-level state keyed
+/// only on the fix timestamp therefore let ONE pass's timed-out request answer the OTHER pass
+/// judging that same fix, which never then made an attempt of its own: a transient timeout
+/// suppressed an arrival. A pass cannot reuse an attempt it did not make.
+///
+/// The basis key is kept for correctness within the pass — an attempt must never answer for a fix
+/// it predates — but it is no longer load-bearing for liveness.
+final class PassCorroboration {
+    private var attempt: (basis: Date, outcome: CorroborationOutcome)?
+
+    func attempt(for basis: Date) -> CorroborationOutcome? {
+        guard let attempt, attempt.basis == basis else { return nil }
+        return attempt.outcome
+    }
+
+    func record(_ outcome: CorroborationOutcome, for basis: Date) {
+        attempt = (basis, outcome)
     }
 }
 

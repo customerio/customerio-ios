@@ -1430,8 +1430,9 @@ struct PolygonMembershipResolverTests {
         let counter = countingRequests(setup)
         let basis = Date().addingTimeInterval(-Self.ageInsideGate)
 
-        _ = await setup.resolver.corroborationFix(newerThan: basis)
-        _ = await setup.resolver.corroborationFix(newerThan: basis)
+        let cache = PassCorroboration()
+        _ = await setup.resolver.corroborationFix(newerThan: basis, cache: cache)
+        _ = await setup.resolver.corroborationFix(newerThan: basis, cache: cache)
 
         #expect(counter.count == 1)
     }
@@ -1453,8 +1454,9 @@ struct PolygonMembershipResolverTests {
         let first = Date().addingTimeInterval(-20)
 
         // Succeeds and is cached, which is the state the stale reuse needed.
-        #expect(await setup.resolver.corroborationFix(newerThan: first).fix != nil)
-        _ = await setup.resolver.corroborationFix(newerThan: first.addingTimeInterval(1))
+        let cache = PassCorroboration()
+        #expect(await setup.resolver.corroborationFix(newerThan: first, cache: cache).fix != nil)
+        _ = await setup.resolver.corroborationFix(newerThan: first.addingTimeInterval(1), cache: cache)
 
         #expect(counter.count == 2)
     }
@@ -1466,7 +1468,7 @@ struct PolygonMembershipResolverTests {
         let basis = Date().addingTimeInterval(-Self.ageInsideGate)
         let setup = await makeSetup(fix: fix(latitude: 0, longitude: 0, at: basis))
 
-        #expect(await setup.resolver.corroborationFix(newerThan: basis) == .notIndependent)
+        #expect(await setup.resolver.corroborationFix(newerThan: basis, cache: PassCorroboration()) == .notIndependent)
     }
 
     /// Answers the corroboration request with a fix of its own, so the SECOND fix's properties
@@ -1500,6 +1502,32 @@ struct PolygonMembershipResolverTests {
 
         await setup.resolver.evaluateMembership(geofenceIds: ["1"], reason: .newPolygon)
         await setup.resolver.evaluateMembership(geofenceIds: ["1"], reason: .newPolygon)
+
+        #expect(counter.count == 2)
+    }
+
+    /// One refresh starts BOTH `evaluateNewlyRegistered` and the movement pass, both are
+    /// `requiresFreshFix`, and the in-flight guard deliberately lets a fresh pass through — so two
+    /// passes routinely judge the same fix at the same time. When the corroboration attempt lived
+    /// on the resolver, the first pass's TIMEOUT answered the second pass without it ever asking,
+    /// and a transient failure suppressed an arrival that a retry would have delivered.
+    ///
+    /// Driven through `runPass` twice against one fix rather than through concurrent entry points:
+    /// that is the same shared-basis condition the overlap produces, and it is deterministic. The
+    /// old code cleared only in `resolvePassFix`, which a pass never called for itself, so the
+    /// second pass here reused the first's failure and made no request.
+    @Test
+    func runPass_givenASecondPassOnTheSameFix_expectItMakesItsOwnAttempt() async {
+        let setup = await makeSetup(fix: nil)
+        let passFix = fix(
+            latitude: Self.latitudeInsideNorthEdge(by: 3), longitude: 0, accuracy: 5,
+            at: Date().addingTimeInterval(-Self.ageInsideGate)
+        )
+        let counter = countingRequests(setup)
+        await registerPolygons(setup, ids: ["1"])
+
+        await setup.resolver.runPass(geofenceIds: ["1"], fix: passFix)
+        await setup.resolver.runPass(geofenceIds: ["1"], fix: passFix)
 
         #expect(counter.count == 2)
     }
@@ -1565,6 +1593,6 @@ struct PolygonMembershipResolverTests {
     func corroborationFix_givenNoFix_expectUnavailable() async {
         let setup = await makeSetup(fix: nil)
 
-        #expect(await setup.resolver.corroborationFix(newerThan: Date()) == .unavailable)
+        #expect(await setup.resolver.corroborationFix(newerThan: Date(), cache: PassCorroboration()) == .unavailable)
     }
 }

@@ -35,12 +35,6 @@ final class PolygonMembershipResolver {
     let notificationCenter: NotificationCenter
     var foregroundObserverToken: NSObjectProtocol?
 
-    /// The one corroboration attempt made against the fix currently being judged, so N marginal
-    /// polygons sharing that fix cost one request rather than N — a failed attempt included.
-    /// Keyed by that fix's timestamp for CORRECTNESS (never answer for a fix it predates) and
-    /// cleared by `resolvePassFix` for LIVENESS (a cached failure must not outlive its pass). Both
-    /// are needed: a stationary device's next pass often reuses the very same cached fix.
-    var passCorroboration: (basis: Date, outcome: CorroborationOutcome)?
     private var passesInFlight = 0
 
     init(
@@ -168,7 +162,7 @@ final class PolygonMembershipResolver {
             pending.append(geofenceId)
         }
         guard !pending.isEmpty else { return true }
-        guard let fix = await resolvePassFix(requiringFresh: requiresFreshFix) else {
+        guard let fix = await resolveFix(requiringFresh: requiresFreshFix) else {
             for geofenceId in pending {
                 logger.geofencePolygonUndecided(identifier: geofenceId, reason: .noUsableFix)
             }
@@ -211,7 +205,7 @@ final class PolygonMembershipResolver {
         // for every one of them whenever the cache stays empty, holding the main actor for minutes
         // and still deciding nothing — and a failed fresh request would silently downgrade every
         // polygon after the first to the pre-wake fix.
-        guard let fix = await resolvePassFix(requiringFresh: requiresFreshFix) else {
+        guard let fix = await resolveFix(requiringFresh: requiresFreshFix) else {
             for geofence in polygons {
                 logger.geofencePolygonUndecided(identifier: geofence.id, reason: .noUsableFix)
             }
@@ -225,7 +219,7 @@ final class PolygonMembershipResolver {
         requiresFreshFix: Bool = false,
         isStillCurrent: (@Sendable () -> Bool)? = nil
     ) async {
-        guard let fix = await resolvePassFix(requiringFresh: requiresFreshFix) else {
+        guard let fix = await resolveFix(requiringFresh: requiresFreshFix) else {
             logger.geofencePolygonUndecided(identifier: geofenceId, reason: .noUsableFix)
             return
         }

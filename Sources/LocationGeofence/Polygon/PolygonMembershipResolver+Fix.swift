@@ -3,19 +3,9 @@ import CoreLocation
 import Foundation
 
 /// How the resolver gets a position to judge against, split from its core so both stay under the
-/// file cap. Both methods are `internal` rather than `private` only because of that split; they
-/// remain implementation detail of the resolver.
+/// file cap. `internal` rather than `private` only because of that split; it remains
+/// implementation detail of the resolver.
 extension PolygonMembershipResolver {
-    /// The fix a pass judges every polygon against, resolved once and opening a fresh
-    /// corroboration scope for it. The scope matters as much as the fix: a held attempt keyed only
-    /// by timestamp would answer a LATER pass that happens to reuse the same cached fix, so one
-    /// timed-out request could block a marginal arrival until CoreLocation's cache advanced —
-    /// exactly the stationary case corroboration exists to rescue.
-    func resolvePassFix(requiringFresh: Bool) async -> CLLocation? {
-        passCorroboration = nil
-        return await resolveFix(requiringFresh: requiringFresh)
-    }
-
     func resolveFix(requiringFresh: Bool = false) async -> CLLocation? {
         // What this resolver has already DELIVERED, which is what a forced request must improve on.
         // Deliberately not `cachedFix`: that reports the newest fix obtainable from either source,

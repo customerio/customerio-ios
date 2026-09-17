@@ -19,6 +19,9 @@ extension PolygonMembershipResolver {
         fix: CLLocation,
         isStillCurrent: (@Sendable () -> Bool)? = nil
     ) async {
+        // Created here, so the pass owns it: see `PassCorroboration` for why resolver-level state
+        // let overlapping fresh passes answer each other's corroboration requests.
+        let cache = PassCorroboration()
         var deferred: [DeferredCorroboration] = []
         for geofenceId in geofenceIds {
             if let pending = await evaluate(
@@ -43,10 +46,7 @@ extension PolygonMembershipResolver {
                 )
                 continue
             }
-            guard await corroborate(
-                pending.proposed, geofence: pending.geofence, polygon: pending.polygon,
-                firstFix: fix, firstEdge: pending.signedEdgeDistance
-            ) else { continue }
+            guard await corroborate(pending, firstFix: fix, cache: cache) else { continue }
             await record(
                 PolygonVerdict(
                     membership: pending.proposed, corroborated: true,
