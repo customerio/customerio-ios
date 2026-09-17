@@ -206,59 +206,45 @@ extension CLMonitorGeofenceMonitor {
         }
         // Enqueued after the adds above so the heal drains behind this sync's own ops.
         enqueueBaselineHeal(candidates: healCandidates)
-        logConditionMirrorDrift()
+        logConditionMirrorDrift(desired: desiredIdentifiers)
         return GeofenceRegionDiff(added: added, removed: removed)
     }
 
-    /// Records what CLMonitor itself holds against what this monitor believes it owns.
+    /// Records what CLMonitor itself holds against what THIS sync asked it to hold.
     ///
     /// Every registration record until now asserted our own belief: `monitoredRegionIdentifiers`
     /// returns `ownedRegionIdentifiers`, so `registration.adopted n=13` means "we think thirteen",
     /// never "the OS holds thirteen".
     ///
-    /// `missing` is precisely "owned, and CLMonitor does not list it" — an add that never landed,
-    /// or an identifier the OS dropped outright. It is deliberately NOT the general "monitored by
-    /// nobody" test, and must not be read as one: a condition the OS GAVE UP on stays listed in
-    /// `CLMonitor.identifiers` (measured) and this monitor keeps ownership of it on purpose, so it
-    /// sits in both sets and `missing` stays empty. That case has its own record, emitted by the
-    /// `.unmonitored` branch in `process(event:)`; read the two together.
+    /// Scoped to one sync generation on purpose, and that is what makes the fields truthful.
+    /// Ownership is the wrong side to compare: it is mutated synchronously by any later
+    /// `setMonitoredRegions` whose OS work is still queued behind this record, and unioned into by
+    /// `reconcileKnownConditions` on the first pipeline operation — so an ownership-based
+    /// comparison reports healthy staged changes as drift in one direction or the other,
+    /// whichever end it is read from. `desired` is this call's own set and cannot move.
     ///
-    /// Observes only what `setMonitoredRegions` does. Adoption and the cold-start union happen
-    /// elsewhere and never reach this record.
-    ///
-    /// Enqueued rather than read inline so it observes the adds this sync just queued instead of
-    /// the state before them, and so it cannot block the caller on the monitor actor.
-    func logConditionMirrorDrift() {
+    /// `missing` is therefore precisely "this sync asked the OS for it and the OS does not list
+    /// it". It is NOT a general "monitored by nobody" test: a condition the OS GAVE UP on stays
+    /// listed in `CLMonitor.identifiers` (measured) and so never appears here. That case has its
+    /// own record, from the `.unmonitored` branch in `process(event:)`; read the two together.
+    func logConditionMirrorDrift(desired: Set<String>) {
         // Diagnostics-only work must cost normal users nothing. `geofenceInfo` drops the tail when
         // diagnostics are off, but the actor hop and set arithmetic below would still be queued on
         // the registration FIFO ahead of real monitor operations.
         guard GeofenceDiagnostics.isEnabled else { return }
         enqueueMonitorOperation { [weak self] monitor in
             guard let self else { return }
-            // Both sides read HERE, in the same turn. Snapshotting ownership before the enqueue
-            // looked safer and is not: `reconcileKnownConditions` is the first pipeline operation
-            // and unions CLMonitor's persisted identifiers into ownership, so on any sync that
-            // lands before it drains — every early sync after launch — a pre-enqueue snapshot is
-            // compared against post-reconcile OS state and every reconciled condition reads as
-            // `extra`.
-            //
-            // The residual, which `known` exposes rather than hides: ownership is applied
-            // synchronously while the matching OS work is queued, so a LATER sync arriving while
-            // this operation waits has already changed ownership but not yet the OS. `known` is
-            // this monitor's record of adds that have actually drained, so `owned` > `known`
-            // means a sync is in flight and a `missing` here may be that, not real drift.
-            let atOs = Set(await monitor.identifiers)
-            let owned = self.ownedRegionIdentifiers
+            // Drains after this sync's own adds and removes, so the OS should hold exactly
+            // `desired` by now.
+            let drift = ConditionMirror.drift(desired: desired, atOs: Set(await monitor.identifiers))
             self.logger.geofenceInfo("condition_mirror", fields: [
-                ("os", String(atOs.count)),
-                ("owned", String(owned.count)),
-                ("known", String(self.osMonitoredRegionIdentifiers.count)),
-                // `GeofenceLog.list`, not a plain join: `missing` and `extra` are composed values,
-                // and an identifier is workspace-authored. The helper sanitizes each one and caps
-                // the list, where a raw join would have the tail fold its own commas into
-                // underscores and turn two identifiers into one ambiguous token.
-                ("missing", GeofenceLog.list(owned.subtracting(atOs).sorted())),
-                ("extra", GeofenceLog.list(atOs.subtracting(owned).sorted()))
+                ("want", String(desired.count)),
+                ("os", String(drift.atOsCount)),
+                // `GeofenceLog.list`, not a plain join: these name conditions, and an identifier is
+                // workspace-authored. The helper sanitizes each one and caps the list, where a raw
+                // join would have the tail fold its own commas and turn two into one token.
+                ("missing", GeofenceLog.list(drift.missing)),
+                ("extra", GeofenceLog.list(drift.extra))
             ])
         }
     }
@@ -305,6 +291,25 @@ extension CLMonitorGeofenceMonitor {
         GeofenceEventCircle(
             conditionLedger.attribution(for: identifier, raisedAt: raisedAt),
             maximumRadius: authManager.maximumRegionMonitoringDistance
+        )
+    }
+}
+
+/// The `condition_mirror` comparison, kept off the monitor so it carries no `@available` gate and
+/// can be tested without a `CLMonitor` — which cannot be instantiated in a unit test.
+enum ConditionMirror {
+    /// Sorted so a capture diffs cleanly across passes.
+    struct Drift: Equatable {
+        let missing: [String]
+        let extra: [String]
+        let atOsCount: Int
+    }
+
+    static func drift(desired: Set<String>, atOs: Set<String>) -> Drift {
+        Drift(
+            missing: desired.subtracting(atOs).sorted(),
+            extra: atOs.subtracting(desired).sorted(),
+            atOsCount: atOs.count
         )
     }
 }
