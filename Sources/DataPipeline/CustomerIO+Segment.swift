@@ -79,6 +79,16 @@ extension DataPipelineConfigOptions {
         result.apiHost(apiHost)
         result.cdnHost(cdnHost)
         result.flushPolicies(flushPolicies)
+        // SPIKE: inject a wrapping storage so we can verify on-disk bytes never
+        // contain the original plaintext. Throwaway branch only.
+        let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        let wrappedStorage = docs.appendingPathComponent("spike-wrapping-storage/\(cdpApiKey)/", isDirectory: true)
+        let wrapping = WrappingDataStore(configuration: WrappingDataStore.Configuration(
+            writeKey: cdpApiKey,
+            storageLocation: wrappedStorage,
+            maxFetchSize: 475_000
+        ))
+        result.storageMode(.custom(wrapping))
         return result
     }
 }
