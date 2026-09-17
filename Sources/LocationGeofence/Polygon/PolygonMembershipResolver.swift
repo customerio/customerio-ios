@@ -174,9 +174,7 @@ final class PolygonMembershipResolver {
             }
             return false
         }
-        for geofenceId in pending {
-            await evaluate(geofenceId: geofenceId, fix: fix, isStillCurrent: isStillCurrent)
-        }
+        await runPass(geofenceIds: pending, fix: fix, isStillCurrent: isStillCurrent)
         return true
     }
 
@@ -219,9 +217,7 @@ final class PolygonMembershipResolver {
             }
             return
         }
-        for geofence in polygons {
-            await evaluate(geofenceId: geofence.id, fix: fix, isStillCurrent: isStillCurrent)
-        }
+        await runPass(geofenceIds: polygons.map(\.id), fix: fix, isStillCurrent: isStillCurrent)
     }
 
     private func evaluate(
@@ -233,7 +229,7 @@ final class PolygonMembershipResolver {
             logger.geofencePolygonUndecided(identifier: geofenceId, reason: .noUsableFix)
             return
         }
-        await evaluate(geofenceId: geofenceId, fix: fix, isStillCurrent: isStillCurrent)
+        await runPass(geofenceIds: [geofenceId], fix: fix, isStillCurrent: isStillCurrent)
     }
 
     /// Takes an id, never a caller's `PolygonRegion`: resolving a fix suspends, and a refresh can
@@ -246,40 +242,49 @@ final class PolygonMembershipResolver {
     /// two come to disagree. Costs one state decode per polygon, which is the price of the pass's
     /// verdicts being at most one hop stale rather than a whole location request stale — do not
     /// trade it back for a single snapshot without knowing that is what is being traded.
-    private func evaluate(
+    /// - Returns: a marginal arrival to corroborate in the pass's second phase, or nil when the
+    ///   fix settled it or settled nothing.
+    func evaluate(
         geofenceId: String,
         fix: CLLocation,
         isStillCurrent: (@Sendable () -> Bool)? = nil
-    ) async {
+    ) async -> DeferredCorroboration? {
         guard CLLocationCoordinate2DIsValid(fix.coordinate) else {
             logger.geofencePolygonUndecided(identifier: geofenceId, reason: .noUsableFix)
-            return
+            return nil
         }
         if let isStillCurrent, !isStillCurrent() {
             logger.geofencePolygonUndecided(identifier: geofenceId, reason: .userChanged)
-            return
+            return nil
         }
         guard let geofence = await storage.getRegisteredGeofence(id: geofenceId),
               let polygon = geofence.polygonRegion
         else {
             logger.geofencePolygonUndecided(identifier: geofenceId, reason: .unregistered)
-            return
+            return nil
         }
         let point = LocationData(latitude: fix.coordinate.latitude, longitude: fix.coordinate.longitude)
         let signedEdgeDistance = polygon.signedEdgeDistance(to: point)
-        guard let (membership, corroborated) = await settleMembership(
+        switch await classifyMembership(
             fix: fix, geofence: geofence, polygon: polygon, signedEdgeDistance: signedEdgeDistance
-        ) else { return }
-        logger.geofencePolygonVerdict(
-            identifier: geofence.id, membership: membership,
-            signedEdgeDistance: signedEdgeDistance, horizontalAccuracy: fix.horizontalAccuracy,
-            fixAge: -fix.timestamp.timeIntervalSinceNow,
-            corroborated: corroborated
-        )
-        await apply(
-            membership, to: geofence, evidence: fix.timestamp,
-            confirmedByFix: true, evaluatedRing: geofence.vertices, isStillCurrent: isStillCurrent
-        )
+        ) {
+        case .none:
+            return nil
+        case .deferred(let proposed):
+            return DeferredCorroboration(
+                geofence: geofence, polygon: polygon,
+                signedEdgeDistance: signedEdgeDistance, proposed: proposed
+            )
+        case .decided(let membership):
+            await record(
+                PolygonVerdict(
+                    membership: membership, corroborated: false,
+                    signedEdgeDistance: signedEdgeDistance
+                ),
+                for: geofence, fix: fix, isStillCurrent: isStillCurrent
+            )
+            return nil
+        }
     }
 
     /// Applies a membership verdict and delivers the crossing when it changes the stored belief.
@@ -294,11 +299,13 @@ final class PolygonMembershipResolver {
     /// its own. The write is left unguarded deliberately — a belief states geometry, true whoever
     /// is signed in; an emit is an ATTRIBUTION, and attribution is what a switch invalidates.
     ///
+    /// `internal` rather than `private` only because the pass runner lives in a split file.
+    ///
     /// `evaluatedRing` is the geometry the verdict was computed from, and the write is refused if
     /// the workspace has moved off it since. Nil from the covering-circle exit, and that is not an
     /// omission: polygon ⊆ circle holds for whatever ring is current, so leaving the circle is a
     /// verdict no replacement can invalidate. Only a ring-derived verdict can go stale with the ring.
-    private func apply(
+    func apply(
         _ membership: PolygonMembership,
         to geofence: Geofence,
         evidence: Date,

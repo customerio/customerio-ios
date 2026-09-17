@@ -1315,6 +1315,57 @@ struct PolygonMembershipResolverTests {
         #expect(await setup.emitter.snapshot().first?.occurredAt == crossedAt)
     }
 
+    // MARK: - Pass phase ordering
+
+    /// A ring shifted north so a fix 3 m inside the standard square's north edge sits deep inside
+    /// this one — marginal for `1`, decisive for `2`, from the same fix.
+    private func deepPolygonGeofence(id: String) -> Geofence {
+        Geofence(
+            id: id, latitude: 0.0016, longitude: 0, radius: 300, name: "deep",
+            transitionTypes: [.enter, .exit], lastUpdated: Date(),
+            vertices: Self.squareVertices.map {
+                LocationData(latitude: $0.latitude + 0.0016, longitude: $0.longitude)
+            }
+        )
+    }
+
+    /// Shahroz's second finding. Corroborating inline let one marginal polygon's request burn its
+    /// timeout mid-loop, handing every later polygon the same fix ten seconds older — enough to
+    /// push a fix that was decisive at the start of the pass past `movementFixMaxAge`. Asserted as
+    /// the ordering invariant that removes it: every decisive verdict is recorded BEFORE any
+    /// corroboration request is issued, so no arrival can depend on another venue being marginal.
+    private func expectDecisiveVerdictBeforeCorroboration(order ids: [String]) async {
+        let logger = LoggerMock()
+        let setup = await makeSetup(fix: nil, logger: logger)
+        marginalPass(setup)
+        await setup.storage.recordRegistration(
+            center: LocationData(latitude: 0, longitude: 0), businessIds: Set(ids)
+        )
+        await setup.storage.setCachedGeofences([polygonGeofence(id: "1"), deepPolygonGeofence(id: "2")])
+        let decisiveSeenAtRequest = RequestCounter()
+        setup.fixResolver.requestFreshFix = { [weak fixResolver = setup.fixResolver] in
+            decisiveSeenAtRequest.count = logger.debugReceivedInvocations
+                .filter { $0.message.contains("Polygon membership inside for region 2") }.count
+            fixResolver?.handleRequestFailure()
+        }
+
+        await setup.resolver.evaluateMembership(geofenceIds: ids, reason: .newPolygon)
+
+        // The decisive verdict for 2 was already in when 1's corroboration request went out.
+        #expect(decisiveSeenAtRequest.count == 1)
+    }
+
+    @Test
+    func evaluateMembership_givenMarginalPolygonFirst_expectDecisiveOneSettledBeforeCorroboration() async {
+        await expectDecisiveVerdictBeforeCorroboration(order: ["1", "2"])
+    }
+
+    /// The reversed order Shahroz asked for: the property must not come from catalog order.
+    @Test
+    func evaluateMembership_givenMarginalPolygonLast_expectDecisiveOneSettledBeforeCorroboration() async {
+        await expectDecisiveVerdictBeforeCorroboration(order: ["2", "1"])
+    }
+
     // MARK: - Corroboration independence
 
     /// A latitude `metres` INSIDE the square's northern edge, so `signedEdgeDistance` is that many

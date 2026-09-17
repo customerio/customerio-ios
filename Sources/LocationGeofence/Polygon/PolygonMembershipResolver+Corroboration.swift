@@ -2,6 +2,15 @@ import CioInternalCommon
 import CoreLocation
 import Foundation
 
+/// What one fix alone established about a polygon, before any second fix is spent.
+enum MembershipClassification: Equatable {
+    case decided(PolygonMembership)
+    /// A marginal inside, worth a second fix — held back until the pass's decisive verdicts are in.
+    case deferred(PolygonMembership)
+    /// Nothing, and the reason is already logged.
+    case none
+}
+
 /// What a corroboration attempt yielded. Three cases, not an optional: a capture has to tell an
 /// echo of the first fix apart from no fix at all, and that is the difference between "the rule
 /// refused" and "location was unavailable".
@@ -22,16 +31,20 @@ enum CorroborationOutcome: Equatable {
 /// under the file cap. `corroborate` is `internal` rather than `private` only because of this
 /// split; it remains implementation detail of the resolver.
 extension PolygonMembershipResolver {
-    /// Applies the arrival rule to one fix, corroborating a marginal inside when needed.
+    /// Applies the arrival rule to one fix WITHOUT spending a second one.
     ///
-    /// - Returns: the membership and whether it took a second fix, or `nil` after logging why no
-    ///   verdict was reached.
-    func settleMembership(
+    /// A marginal inside is RETURNED rather than corroborated here: a corroboration request can
+    /// burn its full `movementFixRequestTimeout` mid-pass, and every polygon judged after it would
+    /// get the same fix that much older. The caller decides everything the fix alone can settle
+    /// first and corroborates afterwards.
+    ///
+    /// - Returns: what the fix alone establishes, after logging why it established nothing.
+    func classifyMembership(
         fix: CLLocation,
         geofence: Geofence,
         polygon: PolygonRegion,
         signedEdgeDistance: Double
-    ) async -> (PolygonMembership, Bool)? {
+    ) async -> MembershipClassification {
         switch PolygonMembershipDecision.resolvedOutcome(
             signedEdgeDistance: signedEdgeDistance,
             horizontalAccuracy: fix.horizontalAccuracy,
@@ -39,29 +52,26 @@ extension PolygonMembershipResolver {
             venueScale: polygon.scale
         ) {
         case .decided(let decided):
-            return (decided, false)
+            return .decided(decided)
         case .undecided(let reason):
             logger.geofencePolygonUndecided(
                 identifier: geofence.id, reason: reason,
                 signedEdgeDistance: signedEdgeDistance, horizontalAccuracy: fix.horizontalAccuracy
             )
-            return nil
+            return .none
         case .needsCorroboration(let proposed):
-            // Cheapest test first: an ambiguous INSIDE cannot move a belief that already says
-            // inside, so a second fix would cost a forced request (up to `movementFixRequestTimeout`)
-            // to reach `no_change`. A device standing near a boundary hits this on every pass.
+            // Cheapest test first, and it stays in this phase because it costs no request: an
+            // ambiguous INSIDE cannot move a belief that already says inside, so deferring it
+            // would buy a forced request only to reach `no_change`. A device standing near a
+            // boundary hits this on every pass.
             guard await storage.getPolygonMembership()[geofence.id]?.membership != .inside else {
                 logger.geofencePolygonUndecided(
                     identifier: geofence.id, reason: PolygonUndecidedReason.corroborationUnnecessary,
                     signedEdgeDistance: signedEdgeDistance, horizontalAccuracy: fix.horizontalAccuracy
                 )
-                return nil
+                return .none
             }
-            guard await corroborate(
-                proposed, geofence: geofence, polygon: polygon,
-                firstFix: fix, firstEdge: signedEdgeDistance
-            ) else { return nil }
-            return (proposed, true)
+            return .deferred(proposed)
         }
     }
 
@@ -157,4 +167,12 @@ extension PolygonMembershipResolver {
         passCorroboration = (basis, outcome)
         return outcome
     }
+}
+
+/// A marginal arrival held back until every polygon the pass fix could decide on its own has been.
+struct DeferredCorroboration {
+    let geofence: Geofence
+    let polygon: PolygonRegion
+    let signedEdgeDistance: Double
+    let proposed: PolygonMembership
 }

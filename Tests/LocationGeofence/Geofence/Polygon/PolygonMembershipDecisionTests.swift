@@ -142,6 +142,38 @@ struct PolygonMembershipDecisionTests {
         ) == .undecided(.accuracyTooLow))
     }
 
+    /// The ceiling gates ARRIVALS only. Shahroz's case: a 400 m x 20 m ring has a scale of about
+    /// 19 m, so a fix 30 m clear of the long edge with 25 m accuracy used to be refused as
+    /// `accuracyTooLow` despite being decisively outside. The point still sits inside the far
+    /// larger covering circle, so no circle exit closes the visit either, and the next return
+    /// misses its enter.
+    @Test
+    func resolvedOutcome_givenClearOfAThinVenueByMoreThanAccuracy_expectDecidedOutside() {
+        #expect(PolygonMembershipDecision.resolvedOutcome(
+            signedEdgeDistance: -30, horizontalAccuracy: 25, fixAge: freshAge, venueScale: 19.05
+        ) == .decided(.outside))
+    }
+
+    /// The other side of that split: clearance is measured against the fix's own accuracy, so a
+    /// fix that does NOT clear the ring is still refused on a thin venue rather than called
+    /// outside. Without this, the fix above would pass for a rule that skipped the ceiling
+    /// entirely for anything negative.
+    @Test
+    func resolvedOutcome_givenInsideAThinVenuesAccuracyBand_expectStillRefused() {
+        #expect(PolygonMembershipDecision.resolvedOutcome(
+            signedEdgeDistance: -20, horizontalAccuracy: 25, fixAge: freshAge, venueScale: 19.05
+        ) == .undecided(.accuracyTooLow))
+    }
+
+    /// An ARRIVAL on the same thin venue stays refused: being within a 25 m circle of a ring only
+    /// 19 m deep says nothing about being in it.
+    @Test
+    func resolvedOutcome_givenInsideAThinVenue_expectAccuracyTooLow() {
+        #expect(PolygonMembershipDecision.resolvedOutcome(
+            signedEdgeDistance: 8, horizontalAccuracy: 25, fixAge: freshAge, venueScale: 19.05
+        ) == .undecided(.accuracyTooLow))
+    }
+
     /// Negative control for the ceiling: the SAME fix against a venue big enough to resolve is
     /// corroborated, not refused. Without this the test above would pass for a rule that simply
     /// rejected 30 m accuracy everywhere.

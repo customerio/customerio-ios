@@ -64,7 +64,8 @@ enum PolygonMembershipDecision {
     ///   accuracy circle is that wide it can contain the whole ring, so "inside" stops carrying
     ///   information and no number of agreeing fixes fixes that. This is the ceiling, and it is
     ///   per-fence rather than a global constant precisely because the venues differ by an order
-    ///   of magnitude (24 m to 229 m across the four rings measured 2026-09-16).
+    ///   of magnitude (24 m to 229 m across the four rings measured 2026-09-16). Gates ARRIVALS
+    ///   only — see the decisive-outside branch, which runs ahead of it.
     static func resolvedOutcome(
         signedEdgeDistance: Double,
         horizontalAccuracy: Double,
@@ -75,10 +76,17 @@ enum PolygonMembershipDecision {
             return .undecided(.fixTooOld)
         }
         guard horizontalAccuracy > 0 else { return .undecided(.noUsableFix) }
-        guard horizontalAccuracy < venueScale else { return .undecided(.accuracyTooLow) }
-        if abs(signedEdgeDistance) > horizontalAccuracy {
-            return .decided(signedEdgeDistance > 0 ? .inside : .outside)
+        // Ahead of the ceiling, and it must be. The ceiling asks whether the venue is deep enough
+        // to be confidently INSIDE; a device clear of the ring by more than its own accuracy is
+        // outside no matter how thin the venue is, and that argument does not weaken as the venue
+        // narrows — it strengthens. Behind the ceiling, a 20 m-deep ring refused every departure
+        // a coarse fix could prove, leaving the visit open inside the far larger covering circle
+        // where no circle exit will close it either, so the next return misses its enter.
+        if signedEdgeDistance < 0, -signedEdgeDistance > horizontalAccuracy {
+            return .decided(.outside)
         }
+        guard horizontalAccuracy < venueScale else { return .undecided(.accuracyTooLow) }
+        if signedEdgeDistance > horizontalAccuracy { return .decided(.inside) }
         // Ambiguous. Inside is worth corroborating; outside is not a verdict.
         return signedEdgeDistance > 0 ? .needsCorroboration(.inside) : .undecided(.withinAccuracy)
     }
