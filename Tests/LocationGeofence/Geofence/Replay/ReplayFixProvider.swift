@@ -87,6 +87,11 @@ final class ReplayFixProvider {
         samplesByWindow = [:]
         cursorByWindow = [:]
         carriedByWindow = [:]
+        // Accounting belongs to the drive being loaded. Left standing, a second `load` on the same
+        // provider reports the previous drive's reads — and `pullAccounting` is diagnostic output,
+        // so it would be believed.
+        pullCount = 0
+        unansweredWindows = []
         for sample in samples.sorted(by: { $0.at < $1.at }) {
             samplesByWindow[window(at: sample.at), default: []].append(sample)
         }
