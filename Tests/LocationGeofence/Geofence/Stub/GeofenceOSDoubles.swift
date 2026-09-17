@@ -68,6 +68,11 @@ final class FakeConditionMonitor: GeofenceConditionMonitoring {
 
     /// A fresh stream per subscriber, and only the newest one is fed. `AsyncThrowingStream` is
     /// single-consumer: two live iterations split the events rather than each seeing all of them.
+    ///
+    /// Superseding matters to replay specifically. A replayed `process.start` builds a second
+    /// wrapper whose consume task subscribes again while the dead process's task is still parked
+    /// on the old stream. Handing the new subscriber the stream and leaving the old one quiet is
+    /// what a dead process looks like from the OS side.
     var events: AsyncThrowingStream<GeofenceConditionEvent, Error> {
         get async {
             AsyncThrowingStream { self.continuation = $0 }
@@ -100,8 +105,18 @@ final class FakeConditionMonitor: GeofenceConditionMonitoring {
     /// by the one door the OS uses — including the wrapper's pending-event queue, its ownership
     /// filter and its `.unmonitored` handling.
     func deliver(identifier: String, state: GeofenceConditionState, at date: Date) {
-        continuation?.yield(GeofenceConditionEvent(identifier: identifier, state: state, date: date))
+        guard let continuation else {
+            deliveredWithNoSubscriber += 1
+            return
+        }
+        continuation.yield(GeofenceConditionEvent(identifier: identifier, state: state, date: date))
     }
+
+    /// Events pushed in with nobody listening. The wrapper subscribes asynchronously at init, so a
+    /// crossing that arrives before that would deliver into nothing — counted rather than silently
+    /// lost, because downstream it reads as the SDK ignoring a callback rather than as one that
+    /// never arrived.
+    private(set) var deliveredWithNoSubscriber = 0
 
     var hasSubscriber: Bool { continuation != nil }
 
@@ -138,6 +153,27 @@ final class FakeConditionMonitor: GeofenceConditionMonitoring {
     func resetOperations() {
         operations.removeAll()
     }
+
+    /// Between runs: conditions one left behind are not held by the next.
+    ///
+    /// The hold state is released rather than merely cleared. A run that failed between
+    /// `holdOperations()` and `releaseOperations()` leaves continuations parked and `isHeld` set;
+    /// resetting without resuming them would wedge the next run's first `add` on a continuation
+    /// nobody is left to resume. The stream continuation goes too, so `hasSubscriber` does not
+    /// keep reporting the previous run's subscriber.
+    func reset() {
+        held.removeAll()
+        operations.removeAll()
+        deliveredWithNoSubscriber = 0
+        isHeld = false
+        let waiting = parked
+        parked.removeAll()
+        for continuation in waiting {
+            continuation.resume()
+        }
+        continuation?.finish()
+        continuation = nil
+    }
 }
 
 /// Authorization, the OS radius cap, and the cached position.
@@ -162,7 +198,14 @@ final class FakeLocationAuthority: GeofenceLocationAuthority {
     /// assert interest to, and the SDK's only requirement is that it asks at the right times.
     private(set) var isHoldingServiceSession = false
 
-    var currentLocation: CLLocation? { answerCachedLocation?() }
+    /// How many times the SDK read the cache. Counted, never asserted: how often a position is
+    /// consulted is implementation, not behaviour.
+    private(set) var cacheReadCount = 0
+
+    var currentLocation: CLLocation? {
+        cacheReadCount += 1
+        return answerCachedLocation?()
+    }
 
     func updateServiceSession(isAlwaysAuthorized: Bool) {
         isHoldingServiceSession = isAlwaysAuthorized
@@ -172,5 +215,11 @@ final class FakeLocationAuthority: GeofenceLocationAuthority {
     func setAuthorization(_ status: CLAuthorizationStatus) {
         authorizationStatus = status
         onAuthorizationChange?()
+    }
+
+    func reset() {
+        authorizationStatus = .authorizedAlways
+        cacheReadCount = 0
+        isHoldingServiceSession = false
     }
 }
