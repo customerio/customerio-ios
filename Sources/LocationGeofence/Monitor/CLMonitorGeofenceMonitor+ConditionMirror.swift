@@ -97,15 +97,22 @@ extension CLMonitorGeofenceMonitor {
     ///
     /// Read the gap with `at`, because the two occasions differ. On `at=poll` it is the
     /// process-start divergence above. On `at=sync` the two are equal by construction — the
-    /// caller passes `ConditionMirror.accepted`, which is `desired` intersected with ownership —
-    /// so a divergence there is not a finding about the OS but a broken invariant in this file.
-    /// Refused registrations are why that scoping exists, and they have their own records.
+    /// caller passes `ConditionMirror.target(desired:owned:)`, whose `accepted` is `desired`
+    /// intersected with ownership — so a divergence there is not a finding about the OS but a
+    /// broken invariant in this file.
+    ///
+    /// Refused registrations are why that scoping exists, and `refused` counts them here rather
+    /// than leaving them to records elsewhere, because nothing else states the number. Unusable
+    /// coordinates log `geofenceInvalidCoordinatesForRegion` per identifier; blocked permission
+    /// logs an edge-triggered tier record that names no region and stays silent on every later
+    /// sync; and `geofenceRegistrationDiff` counts a refused region in neither `added` nor
+    /// `removed`, by its own design comment. So the count has to ride here or nowhere.
     ///
     /// `missing` is therefore precisely "this sync asked the OS for it and the OS does not list
     /// it". It is NOT a general "monitored by nobody" test: a condition the OS GAVE UP on stays
     /// listed in `CLMonitor.identifiers` (measured) and so never appears here. That case has its
     /// own record, from the `.unmonitored` branch in `process(event:)`; read the two together.
-    func logConditionMirrorDrift(desired: Set<String>, at occasion: ConditionMirrorOccasion) {
+    func logConditionMirrorDrift(desired: Set<String>, refused: Int = 0, at occasion: ConditionMirrorOccasion) {
         // Diagnostics-only work must cost normal users nothing. `geofenceInfo` drops the tail when
         // diagnostics are off, but the actor hop and set arithmetic below would still be queued on
         // the registration FIFO ahead of real monitor operations.
@@ -122,6 +129,10 @@ extension CLMonitorGeofenceMonitor {
             self.logger.geofenceInfo("condition_mirror", fields: [
                 ("at", occasion.token),
                 ("want", String(desired.count)),
+                // Quiet when nothing was turned down, like `missing` and `extra`, so the ordinary
+                // record is unchanged and the key's presence is itself the signal. Always absent
+                // on a sample: the sampler asks the ledger what it wants and refuses nothing.
+                ("refused", refused > 0 ? String(refused) : nil),
                 ("owned", String(owned)),
                 ("os", String(drift.atOsCount)),
                 // `GeofenceLog.list`, not a plain join: these name conditions, and an identifier is
@@ -141,21 +152,33 @@ extension CLMonitorGeofenceMonitor {
 /// The `condition_mirror` comparison, kept off the monitor so it carries no `@available` gate and
 /// can be tested without a `CLMonitor` — which cannot be instantiated in a unit test.
 enum ConditionMirror {
-    /// What a sync actually asked the OS to hold: its desired set minus everything
-    /// `startMonitoring` refused.
+    /// What a sync actually asked the OS to hold, and how much of its request was refused.
     ///
-    /// Ownership is the record of acceptance — it is inserted only once both guards pass, and
-    /// `setMonitoredRegions` has already released it for every identifier it no longer wants, so
-    /// at the end of that loop ownership is exactly the accepted subset of `desired`. Intersecting
-    /// rather than reading ownership directly keeps that a stated relationship instead of a
-    /// coincidence, and keeps a refusal out of `missing` even if ownership later grows a member
-    /// the desired set never had.
+    /// Ownership is the record of acceptance — it is inserted only once both of `startMonitoring`'s
+    /// guards pass, and `setMonitoredRegions` has already released it for every identifier it no
+    /// longer wants, so at the end of that loop ownership is exactly the accepted subset of
+    /// `desired`. Intersecting rather than reading ownership directly keeps that a stated
+    /// relationship instead of a coincidence, and keeps a refusal out of `missing` even if
+    /// ownership later grows a member the desired set never had.
     ///
-    /// The sampler needs no equivalent: `startMonitoring` returns before `noteRegisteredCondition`
-    /// on both refusal paths, so a refused identifier never enters the ledger and `stagedIdentifiers`
-    /// has always been the accepted set.
-    static func accepted(desired: Set<String>, owned: Set<String>) -> Set<String> {
-        desired.intersection(owned)
+    /// `refused` is carried because scoping the comparison would otherwise hide those
+    /// registrations completely: N regions turned down by a blocked permission would produce a
+    /// perfectly clean record, which is a worse failure than the wrong attribution it replaced
+    /// because it is a silent one.
+    ///
+    /// The sampler needs no equivalent, on either path a refusal can take. A region never
+    /// registered is never noted: both of `startMonitoring`'s refusal returns come before
+    /// `noteRegisteredCondition`. A region that WAS staged and is refused on re-registration is
+    /// also clean, because `releaseOwnership` retires its ledger entry before `startMonitoring`
+    /// runs. So `stagedIdentifiers` has always been the accepted set.
+    struct Target: Equatable {
+        let accepted: Set<String>
+        let refused: Int
+    }
+
+    static func target(desired: Set<String>, owned: Set<String>) -> Target {
+        let accepted = desired.intersection(owned)
+        return Target(accepted: accepted, refused: desired.count - accepted.count)
     }
 
     /// Sorted so a capture diffs cleanly across passes.

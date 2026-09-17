@@ -211,10 +211,8 @@ extension CLMonitorGeofenceMonitor {
         // coordinates — by removing the condition and returning before it takes ownership. Those
         // identifiers never reach the OS, so reporting them as `missing` blames the OS for a
         // refusal this SDK made, in the record whose whole purpose is separating the two.
-        logConditionMirrorDrift(
-            desired: ConditionMirror.accepted(desired: desiredIdentifiers, owned: ownedRegionIdentifiers),
-            at: .sync
-        )
+        let target = ConditionMirror.target(desired: desiredIdentifiers, owned: ownedRegionIdentifiers)
+        logConditionMirrorDrift(desired: target.accepted, refused: target.refused, at: .sync)
         return GeofenceRegionDiff(added: added, removed: removed)
     }
 
