@@ -174,6 +174,10 @@ final class ReplayBoundaryGate {
         nextId = 0
         fetchAnswers.removeAll()
         abandonedAtEnd = []
+        // The clock goes back to the start with everything else. Left standing, the next drive's
+        // early boundaries would measure against the previous drive's final moment, read as
+        // already past, and answer immediately instead of parking.
+        virtualNow = 0
     }
 
     // MARK: - Fallbacks
