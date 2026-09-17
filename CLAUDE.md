@@ -18,7 +18,7 @@ After making changes to Unit Tests, ALWAYS test the changed test classes. Avoid 
   - After `make generate`, always run `make format` first and then `make lint`
 
 ## Code Style
-- Swift 5.3+ with protocol-oriented design
+- Swift 5.9+ with protocol-oriented design
 - Naming: CamelCase for types, camelCase for properties/methods
 - Descriptive method names (e.g., `identify`, `registerDeviceToken`)
 - Always use a constructor-based dependency injection pattern, and use `DIGraphShared` only for top-level module initialization
