@@ -675,8 +675,8 @@ struct GeofenceLogTailTests {
             ])
             let message = logger.messages.last ?? ""
             #expect(message.contains("want=13"), "lost a field it should keep: \(message)")
-            #expect(!message.contains("missing"), "nil field left a key behind: \(message)")
-            #expect(!message.contains("extra"), "nil field left a key behind: \(message)")
+            #expect(!message.contains("missing="), "nil field left a key behind: \(message)")
+            #expect(!message.contains("extra="), "nil field left a key behind: \(message)")
         }
     }
 

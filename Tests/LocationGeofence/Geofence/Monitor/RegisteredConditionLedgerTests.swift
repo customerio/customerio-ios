@@ -387,7 +387,7 @@ struct RegisteredConditionLedgerTests {
     /// attributed. Keyed on the live generations instead, a removed fence would be reported as
     /// missing from the OS for the rest of the process.
     @Test
-    func stagedIdentifiers_givenOneConditionRetired_expectOnlyTheOtherIsStillWanted() {
+    func stagedIdentifiers_givenOneRetiredAndOneUnconfirmed_expectOnlyTheWantedOnesListed() {
         var ledger = RegisteredConditionLedger()
         let at = Date()
         for identifier in ["1", "2"] {
