@@ -218,7 +218,7 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preco
         // dropping oldest is safe because CLMonitor re-emits current state.
         if onTransition == nil || !pendingEvents.isEmpty || isDrainingPendingEvents {
             pendingEvents.append(event)
-            if pendingEvents.count > Self.maxPendingEvents { pendingEvents.removeFirst() }
+            if pendingEvents.count > Self.maxPendingEvents { logOverflowedEvent(pendingEvents.removeFirst()) }
             drainPendingEventsIfReady()
             return
         }
@@ -240,7 +240,7 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preco
 
     private func process(event: CLMonitor.Event) async {
         let identifier = event.identifier
-        guard ownedRegionIdentifiers.contains(identifier) else { return }
+        guard ownedRegionIdentifiers.contains(identifier) else { return logUnownedEvent(event) }
         let transition: GeofenceTransition
         switch event.state {
         case .satisfied:

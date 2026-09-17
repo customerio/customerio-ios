@@ -40,6 +40,27 @@ extension CLMonitorGeofenceMonitor: GeofenceFixSelecting {
         logger.geofenceCallbackDropped(identifier: identifier, transition: transition, reason: reason)
     }
 
+    /// An event CLMonitor delivered for a condition this process does not own.
+    ///
+    /// Logged, and logged as `info` rather than `os.callback.dropped`: the drop happens BEFORE
+    /// `logReceivedCallback`, so there is no receipt for it to net against and filing it as a drop
+    /// would inflate the received-vs-dropped count. Until now this path returned in silence, which
+    /// makes "the OS never delivered it" and "we refused to look at it" the same empty capture —
+    /// exactly the ambiguity a paired drive exists to resolve.
+    func logUnownedEvent(_ event: CLMonitor.Event) {
+        logger.geofenceInfo("callback_for_unowned_condition", fields: [
+            ("id", event.identifier),
+            ("state", String(describing: event.state))
+        ])
+    }
+
+    /// The oldest queued event, discarded because the bootstrap has not bound `onTransition` and
+    /// the queue is at its cap. Safe by design — CLMonitor re-emits current state — but it was
+    /// invisible, so a lost crossing here looked identical to one that never arrived.
+    func logOverflowedEvent(_ event: CLMonitor.Event) {
+        logger.geofenceInfo("pending_event_overflow", fields: [("id", event.identifier)])
+    }
+
     /// Internal (not private) only because it lives in a separate file from its callers.
     func currentLocationData() -> LocationData? {
         guard let location = bestKnownFix() else { return nil }

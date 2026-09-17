@@ -206,7 +206,39 @@ extension CLMonitorGeofenceMonitor {
         }
         // Enqueued after the adds above so the heal drains behind this sync's own ops.
         enqueueBaselineHeal(candidates: healCandidates)
+        logConditionMirrorDrift()
         return GeofenceRegionDiff(added: added, removed: removed)
+    }
+
+    /// Records what CLMonitor itself holds against what this monitor believes it owns.
+    ///
+    /// Every registration record until now asserted our own belief: `monitoredRegionIdentifiers`
+    /// returns `ownedRegionIdentifiers`, so `registration.adopted n=13` means "we think thirteen",
+    /// never "the OS holds thirteen". A condition we own but CLMonitor does not hold is monitored
+    /// by nobody while every log says it is registered — and in a capture that is indistinguishable
+    /// from the OS holding it and never promoting a crossing. `missing` is the field that separates
+    /// those two, which is the whole reason this exists.
+    ///
+    /// Enqueued rather than read inline so it observes the adds this sync just queued instead of
+    /// the state before them, and so it cannot block the caller on the monitor actor.
+    func logConditionMirrorDrift() {
+        enqueueMonitorOperation { [weak self] monitor in
+            guard let self else { return }
+            let atOs = Set(await monitor.identifiers)
+            let owned = self.ownedRegionIdentifiers
+            self.logger.geofenceInfo("condition_mirror", fields: [
+                ("os", String(atOs.count)),
+                ("owned", String(owned.count)),
+                ("missing", Self.identifierList(owned.subtracting(atOs))),
+                ("extra", Self.identifierList(atOs.subtracting(owned)))
+            ])
+        }
+    }
+
+    /// `nil` when empty, so the common no-drift case costs two keys rather than four. Sorted so a
+    /// capture diffs cleanly across passes.
+    private static func identifierList(_ identifiers: Set<String>) -> String? {
+        identifiers.isEmpty ? nil : identifiers.sorted().joined(separator: ",")
     }
 
     /// True when this monitor owns the condition and registered it with the same circle, so
