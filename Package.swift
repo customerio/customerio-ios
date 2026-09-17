@@ -53,8 +53,11 @@ let package = Package(
         // Make sure the version number is same for DataPipelines cocoapods.
         .package(name: "CioAnalytics", url: "https://github.com/customerio/cdp-analytics-swift.git", .exact("1.7.3+cio.1")),
         
-        // SSE (Server-Sent Events) client for real-time in-app messaging
-        .package(url: "https://github.com/LaunchDarkly/swift-eventsource.git", .upToNextMajor(from: "3.3.0")),
+        // SSE (Server-Sent Events) client for real-time in-app messaging.
+        // Pinned exactly: 3.3.1 raised the package's iOS floor to 15.0, which this package (iOS 13)
+        // cannot build against. Unpin once our own iOS minimum reaches 15.0, or if LaunchDarkly
+        // restores iOS 13 support in a later release.
+        .package(url: "https://github.com/LaunchDarkly/swift-eventsource.git", .exact("3.3.0")),
 
         // Jist SwiftUI renderer used by the Visual Inbox overlay (`CioMessagingInbox`).
         // Published release from the Jist monorepo (its root Package.swift exposes the `Jist` product;
