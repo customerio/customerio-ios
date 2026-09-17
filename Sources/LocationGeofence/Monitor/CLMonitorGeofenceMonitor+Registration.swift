@@ -206,8 +206,35 @@ extension CLMonitorGeofenceMonitor {
         }
         // Enqueued after the adds above so the heal drains behind this sync's own ops.
         enqueueBaselineHeal(candidates: healCandidates)
-        logConditionMirrorDrift(desired: desiredIdentifiers)
+        logConditionMirrorDrift(desired: desiredIdentifiers, at: .sync)
         return GeofenceRegionDiff(added: added, removed: removed)
+    }
+
+    /// Samples the mirror on a slow timer as well, because the sync-time record cannot observe
+    /// the failure it was written for: a record is only emitted by `setMonitoredRegions`, a sync
+    /// only runs off a wake, and the failure IS the absence of wakes. Measured 09-17: the last
+    /// reading landed ten seconds before region callbacks stopped and the next came two hours
+    /// later, across a window where the process was demonstrably alive and taking visit callbacks.
+    ///
+    /// A sleep rather than a `Timer`: neither runs while the process is suspended, but an overdue
+    /// sleep resumes on the next slice of runtime something else earns us — which is exactly when a
+    /// sample is worth taking, and the only time one is possible. So the cadence below is a floor
+    /// on the interval, never a guarantee, and a silent window yields as many samples as the
+    /// process happened to be woken for.
+    ///
+    /// Self-retained on purpose: the loop ends when the monitor goes away, which leaves no task
+    /// handle to store on a type already at its file's line cap.
+    func startConditionMirrorSampling() {
+        guard GeofenceDiagnostics.isEnabled else { return }
+        Task { [weak self] in
+            while true {
+                try? await Task.sleep(nanoseconds: Self.conditionMirrorSampleNanos)
+                guard let self else { return }
+                // The ledger, not the last `desired` set: a sample belongs to no sync generation,
+                // and `stagedIdentifiers` is the standing answer to what this process wants held.
+                self.logConditionMirrorDrift(desired: self.conditionLedger.stagedIdentifiers, at: .poll)
+            }
+        }
     }
 
     /// Records what CLMonitor itself holds against what THIS sync asked it to hold.
@@ -227,7 +254,7 @@ extension CLMonitorGeofenceMonitor {
     /// it". It is NOT a general "monitored by nobody" test: a condition the OS GAVE UP on stays
     /// listed in `CLMonitor.identifiers` (measured) and so never appears here. That case has its
     /// own record, from the `.unmonitored` branch in `process(event:)`; read the two together.
-    func logConditionMirrorDrift(desired: Set<String>) {
+    func logConditionMirrorDrift(desired: Set<String>, at occasion: ConditionMirrorOccasion) {
         // Diagnostics-only work must cost normal users nothing. `geofenceInfo` drops the tail when
         // diagnostics are off, but the actor hop and set arithmetic below would still be queued on
         // the registration FIFO ahead of real monitor operations.
@@ -238,6 +265,7 @@ extension CLMonitorGeofenceMonitor {
             // `desired` by now.
             let drift = ConditionMirror.drift(desired: desired, atOs: Set(await monitor.identifiers))
             self.logger.geofenceInfo("condition_mirror", fields: [
+                ("at", occasion.rawValue),
                 ("want", String(desired.count)),
                 ("os", String(drift.atOsCount)),
                 // `GeofenceLog.list`, not a plain join: these name conditions, and an identifier is
@@ -312,4 +340,19 @@ enum ConditionMirror {
             atOsCount: atOs.count
         )
     }
+}
+
+@available(iOS 17.0, *)
+extension CLMonitorGeofenceMonitor {
+    /// Floor on the sampling interval. Long enough that a drive costs a handful of records rather
+    /// than one per fix, short enough that an 18-minute silent window is sampled repeatedly.
+    static var conditionMirrorSampleNanos: UInt64 { 120000000000 }
+}
+
+/// Which occasion produced a `condition_mirror` record, so a reader can tell a sync's own
+/// post-registration check from a sample taken while nothing was happening. Absent it, a clean
+/// record during a silent window is indistinguishable from one emitted by a sync that had just run.
+enum ConditionMirrorOccasion: String {
+    case sync
+    case poll
 }

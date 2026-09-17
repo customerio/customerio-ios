@@ -381,6 +381,30 @@ struct RegisteredConditionLedgerTests {
         #expect(ledger.condition(for: "1")?.center.longitude == 0.005)
     }
 
+    /// What the diagnostics sampler asks the ledger for, and the one distinction that makes the
+    /// answer usable: a condition removed on purpose must stop reading as wanted immediately, even
+    /// though `retire` deliberately keeps its live generation so late events can still be
+    /// attributed. Keyed on the live generations instead, a removed fence would be reported as
+    /// missing from the OS for the rest of the process.
+    @Test
+    func stagedIdentifiers_givenOneConditionRetired_expectOnlyTheOtherIsStillWanted() {
+        var ledger = RegisteredConditionLedger()
+        let at = Date()
+        for identifier in ["1", "2"] {
+            ledger.note(
+                identifier: identifier, center: LocationData(latitude: 0, longitude: 0),
+                radius: 300, transitionTypes: [.enter, .exit], at: at, liveFrom: at
+            )
+        }
+        #expect(ledger.stagedIdentifiers == ["1", "2"])
+
+        ledger.retire("1")
+
+        #expect(ledger.stagedIdentifiers == ["2"])
+        // The live generation outlives the claim, which is why `staged` is the field to read.
+        #expect(ledger.attribution(for: "1", raisedAt: at) != .noneHeld)
+    }
+
     /// The condition an attribution names, for assertions that only care about which circle.
     /// The `noneHeld` / `expired` split is asserted directly by the tests that turn on it.
     private func generation(_ ledger: RegisteredConditionLedger, at raisedAt: Date) -> RegisteredCondition? {
