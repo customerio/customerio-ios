@@ -44,12 +44,13 @@ extension Logger {
     ///
     /// Pass-level rather than one record per polygon: a long stationary capture is read by asking
     /// "did anything evaluate while I stood here", and N lines per pass buries that.
-    func geofencePolygonPassStarted(reason: PolygonEvaluationReason, count: Int) {
+    func geofencePolygonPassStarted(reason: PolygonEvaluationReason, count: Int, pass: Int) {
         debug(
             "Evaluating \(count) polygon(s) (\(reason.prose))"
                 + geofenceTail("polygon.pass.started", .output, [
                     ("why", reason.rawValue),
-                    ("n", String(count))
+                    ("n", String(count)),
+                    ("pass", String(pass))
                 ]),
             geofenceTag
         )
@@ -102,12 +103,12 @@ extension Logger {
     /// iOS has no accuracy ceiling, so a verdict holds only while `|edge|` exceeds it.
     func geofencePolygonVerdict(
         identifier: String,
-        membership: PolygonMembership,
-        signedEdgeDistance: Double,
+        verdict: PolygonVerdict,
         horizontalAccuracy: Double,
-        fixAge: TimeInterval,
-        corroborated: Bool = false
+        fixAge: TimeInterval
     ) {
+        let membership = verdict.membership
+        let signedEdgeDistance = verdict.signedEdgeDistance
         debug(
             "Polygon membership \(membership) for region \(identifier): edge \(Int(signedEdgeDistance)) m, accuracy \(Int(horizontalAccuracy)) m, fix age \(String(format: "%.1f", fixAge))s"
                 + geofenceTail("polygon.verdict", .output, [
@@ -116,9 +117,13 @@ extension Logger {
                     ("edge", GeofenceLog.num(signedEdgeDistance, 0)),
                     ("acc", GeofenceLog.num(horizontalAccuracy)),
                     ("age", GeofenceLog.num(fixAge)),
+                    // Ties this verdict to its `polygon.pass.started` row. A movement wake does
+                    // not yield to an in-flight foreground pass, so two passes can interleave
+                    // their verdicts and the pass-level record alone cannot attribute them.
+                    ("pass", String(verdict.pass)),
                     // Matches Android's `cor` key: whether a marginal arrival needed a second
                     // agreeing fix. Always false for a departure, which never corroborates.
-                    ("cor", corroborated ? "true" : "false")
+                    ("cor", verdict.corroborated ? "true" : "false")
                 ]),
             geofenceTag
         )

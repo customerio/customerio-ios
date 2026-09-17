@@ -65,6 +65,8 @@ enum PolygonEvaluationReason: String, CaseIterable {
     case newPolygonForcedRequestFailed = "new_polygon_forced_request_failed"
     case movement
     case foreground
+    /// A covering-circle ENTER the OS delivered, which judges that one fence.
+    case osTransition = "os_transition"
 
     var prose: String {
         switch self {
@@ -72,6 +74,7 @@ enum PolygonEvaluationReason: String, CaseIterable {
         case .newPolygonForcedRequestFailed: return "newly registered, forced request failed"
         case .movement: return "movement"
         case .foreground: return "foreground"
+        case .osTransition: return "os circle enter"
         }
     }
 }

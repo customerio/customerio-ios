@@ -142,11 +142,11 @@ struct GeofenceLogTailTests {
             Invocation(name: "callbackDispatched", ev: "os.callback.dispatched", requiredKeys: ["id", "t"]) { $0.geofenceCallbackDispatched(identifier: "notl_core", transition: .enter) },
             Invocation(name: "polygonTransition", ev: "polygon.transition", requiredKeys: ["id", "t", "by"]) { $0.geofencePolygonTransition(identifier: "notl_core", transition: .enter, confirmedByFix: true) },
             Invocation(name: "polygonPassSkipped", ev: "polygon.pass.skipped", requiredKeys: ["why"]) { $0.geofencePolygonPassSkipped(reason: .passInFlight) },
-            Invocation(name: "polygonPassStarted", ev: "polygon.pass.started", requiredKeys: ["why", "n"]) { $0.geofencePolygonPassStarted(reason: .foreground, count: 3) },
+            Invocation(name: "polygonPassStarted", ev: "polygon.pass.started", requiredKeys: ["why", "n", "pass"]) { $0.geofencePolygonPassStarted(reason: .foreground, count: 3, pass: 7) },
             Invocation(name: "polygonEvaluationRequested", ev: "polygon.evaluation.requested", requiredKeys: ["id", "why"]) { $0.geofencePolygonEvaluationRequested(identifier: "notl_core", reason: .newPolygon) },
             Invocation(name: "polygonDropped", ev: "registration.rejected", requiredKeys: ["id", "why", "rad", "lim"]) { $0.geofencePolygonExceedsMonitoringLimit(identifier: "notl_core", radius: 12000, limit: 10000) },
             Invocation(name: "polygonWakePass", ev: "polygon.wake.pass", requiredKeys: ["rad", "n"]) { $0.geofencePolygonWakePass(radius: 420, polygonCount: 3) },
-            Invocation(name: "polygonVerdict", ev: "polygon.verdict", requiredKeys: ["id", "m", "edge", "acc", "age"]) { $0.geofencePolygonVerdict(identifier: "notl_core", membership: .inside, signedEdgeDistance: 80, horizontalAccuracy: 12, fixAge: 3.5) },
+            Invocation(name: "polygonVerdict", ev: "polygon.verdict", requiredKeys: ["id", "m", "edge", "acc", "age", "pass"]) { $0.geofencePolygonVerdict(identifier: "notl_core", verdict: PolygonVerdict(membership: .inside, corroborated: false, signedEdgeDistance: 80, pass: 7), horizontalAccuracy: 12, fixAge: 3.5) },
             Invocation(name: "polygonUndelivered", ev: "polygon.undelivered", requiredKeys: ["id", "why"]) { $0.geofencePolygonNotDelivered(identifier: "notl_core", reason: .outcome(.suppressedInitialOutside)) },
             Invocation(name: "polygonUndecided", ev: "polygon.undecided", requiredKeys: ["id", "why", "edge", "acc"]) { $0.geofencePolygonUndecided(identifier: "notl_core", reason: .withinAccuracy, signedEdgeDistance: -4, horizontalAccuracy: 12) },
             Invocation(name: "wakeRadiusChosen", ev: "movement.radius.chosen", requiredKeys: ["rad", "from"]) { $0.geofenceWakeRadiusChosen(radius: 640, anchorIsLiveFix: true) },
@@ -392,7 +392,8 @@ struct GeofenceLogTailTests {
         // emits neither, so there is nothing to diverge from and renaming them buys nothing.
         expectTokens(HandleMovementTier.self, ["localRerank", "remoteRefresh"])
         expectTokens(PolygonPassSkipReason.self, ["pass_in_flight"])
-        expectTokens(PolygonEvaluationReason.self, ["new_polygon", "new_polygon_forced_request_failed", "movement", "foreground"])
+        expectTokens(PolygonEvaluationReason.self, ["new_polygon", "new_polygon_forced_request_failed", "movement", "foreground",
+                                                    "os_transition"])
         expectTokens(PolygonUndecidedReason.self, [
             "no_usable_fix", "user_changed", "ring_unbuildable", "unregistered", "circle_expired",
             "within_accuracy", "fix_too_old", "accuracy_too_low", "corroboration_unnecessary",

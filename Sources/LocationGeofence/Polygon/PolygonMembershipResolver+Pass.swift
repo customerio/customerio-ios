@@ -17,12 +17,13 @@ extension PolygonMembershipResolver {
     func runPass(
         geofenceIds: [String],
         fix: CLLocation,
+        pass: Int,
         isStillCurrent: (@Sendable () -> Bool)? = nil
     ) async {
         var deferred: [DeferredCorroboration] = []
         for geofenceId in geofenceIds {
             if let pending = await evaluate(
-                geofenceId: geofenceId, fix: fix, isStillCurrent: isStillCurrent
+                geofenceId: geofenceId, fix: fix, pass: pass, isStillCurrent: isStillCurrent
             ) {
                 deferred.append(pending)
             }
@@ -50,7 +51,7 @@ extension PolygonMembershipResolver {
             await record(
                 PolygonVerdict(
                     membership: pending.proposed, corroborated: true,
-                    signedEdgeDistance: pending.signedEdgeDistance
+                    signedEdgeDistance: pending.signedEdgeDistance, pass: pass
                 ),
                 for: pending.geofence, fix: fix, isStillCurrent: isStillCurrent
             )
@@ -71,11 +72,9 @@ extension PolygonMembershipResolver {
         isStillCurrent: (@Sendable () -> Bool)?
     ) async {
         logger.geofencePolygonVerdict(
-            identifier: geofence.id, membership: verdict.membership,
-            signedEdgeDistance: verdict.signedEdgeDistance,
+            identifier: geofence.id, verdict: verdict,
             horizontalAccuracy: fix.horizontalAccuracy,
-            fixAge: -fix.timestamp.timeIntervalSinceNow,
-            corroborated: verdict.corroborated
+            fixAge: -fix.timestamp.timeIntervalSinceNow
         )
         await apply(
             verdict.membership, to: geofence, evidence: fix.timestamp,
@@ -89,4 +88,6 @@ struct PolygonVerdict {
     let membership: PolygonMembership
     let corroborated: Bool
     let signedEdgeDistance: Double
+    /// Which pass produced it; see `geofencePolygonVerdict`'s `pass` key.
+    let pass: Int
 }
