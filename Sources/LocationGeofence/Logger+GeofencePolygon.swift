@@ -107,6 +107,10 @@ extension Logger {
                     // committed without confirmation. Without it an unconfirmed arrival is
                     // indistinguishable in a capture from a decisive one, which is the whole
                     // difference this change introduced.
+                    //
+                    // Reuses `PolygonUndecidedReason` tokens on a record that DID decide, so read
+                    // every one of them as being about the SECOND fix: `corwhy=no_usable_fix`
+                    // means no usable second fix was obtained, not that the judged fix was bad.
                     ("corwhy", corroboration.unconfirmedReason)
                 ]),
             geofenceTag

@@ -48,10 +48,8 @@ extension PolygonMembershipResolver {
             }
             // Only a second fix that positively reads OUTSIDE blocks the arrival. Everything
             // else commits, carrying on the verdict why it could not be confirmed.
-            let outcome = await corroborate(pending, firstFix: fix, cache: cache)
-            guard outcome != .contradicted else { continue }
             let corroboration: VerdictCorroboration
-            switch outcome {
+            switch await corroborate(pending, firstFix: fix, cache: cache) {
             case .confirmed: corroboration = .confirmed
             case .unconfirmed(let reason): corroboration = .unconfirmed(reason)
             case .contradicted: continue
