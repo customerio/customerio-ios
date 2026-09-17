@@ -214,10 +214,17 @@ extension CLMonitorGeofenceMonitor {
     ///
     /// Every registration record until now asserted our own belief: `monitoredRegionIdentifiers`
     /// returns `ownedRegionIdentifiers`, so `registration.adopted n=13` means "we think thirteen",
-    /// never "the OS holds thirteen". A condition we own but CLMonitor does not hold is monitored
-    /// by nobody while every log says it is registered — and in a capture that is indistinguishable
-    /// from the OS holding it and never promoting a crossing. `missing` is the field that separates
-    /// those two, which is the whole reason this exists.
+    /// never "the OS holds thirteen".
+    ///
+    /// `missing` is precisely "owned, and CLMonitor does not list it" — an add that never landed,
+    /// or an identifier the OS dropped outright. It is deliberately NOT the general "monitored by
+    /// nobody" test, and must not be read as one: a condition the OS GAVE UP on stays listed in
+    /// `CLMonitor.identifiers` (measured) and this monitor keeps ownership of it on purpose, so it
+    /// sits in both sets and `missing` stays empty. That case has its own record, emitted by the
+    /// `.unmonitored` branch in `process(event:)`; read the two together.
+    ///
+    /// Observes only what `setMonitoredRegions` does. Adoption and the cold-start union happen
+    /// elsewhere and never reach this record.
     ///
     /// Enqueued rather than read inline so it observes the adds this sync just queued instead of
     /// the state before them, and so it cannot block the caller on the monitor actor.
