@@ -661,6 +661,26 @@ struct GeofenceLogTailTests {
     }
 
     @Test
+    func conditionMirror_expectAnAbsentFieldLeavesNoKeyBehind() {
+        // `missing`, `extra` and the sampler's own optional fields are nil whenever they have
+        // nothing to say. A key printed with an empty value would read in a capture as a measured
+        // zero, and the records these appear on are the ones read by grep during a field trip.
+        withDiagnostics(true) {
+            let logger = CapturingLogger()
+            logger.geofenceInfo("condition_mirror", fields: [
+                ("at", "poll"),
+                ("want", "13"),
+                ("missing", nil),
+                ("extra", nil)
+            ])
+            let message = logger.messages.last ?? ""
+            #expect(message.contains("want=13"), "lost a field it should keep: \(message)")
+            #expect(!message.contains("missing"), "nil field left a key behind: \(message)")
+            #expect(!message.contains("extra"), "nil field left a key behind: \(message)")
+        }
+    }
+
+    @Test
     func conditionMirror_expectIdentifierListsKeepTheirSeparators() {
         // `missing` and `extra` name conditions, so they are composed values like `ids`. Without
         // being declared as such the tail folds their commas and two identifiers read as one — in

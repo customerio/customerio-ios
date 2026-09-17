@@ -222,25 +222,38 @@ extension CLMonitorGeofenceMonitor {
     /// on the interval, never a guarantee, and a silent window yields as many samples as the
     /// process happened to be woken for.
     ///
-    /// Self-retained on purpose: the loop ends when the monitor goes away, which leaves no task
-    /// handle to store on a type already at its file's line cap.
+    /// Each sample emits TWO records, and the split is the point. The beat is written synchronously
+    /// here; the comparison against the OS has to run on the monitor pipeline, because
+    /// `CLMonitor.identifiers` is only reachable from there. That pipeline is strictly serial, so
+    /// one operation that never returns — or a `CLMonitor` that never finishes loading — silences
+    /// every operation behind it, samples included. Region callbacks are read off the same actor,
+    /// which makes "the pipeline is wedged" a candidate explanation for the exact 09-17 signature:
+    /// process alive, visit callbacks arriving, region callbacks stopped. Beats without
+    /// comparisons is that diagnosis; a probe reporting only through the pipeline could never
+    /// make it.
+    ///
+    /// The task is process-lifetime by construction — the monitor is held in a `static let`, so
+    /// `[weak self]` is the correct capture but never actually fires outside tests.
     func startConditionMirrorSampling() {
         guard GeofenceDiagnostics.isEnabled else { return }
         Task { [weak self] in
-            // Held in the loop rather than on the monitor: the elapsed reading belongs to this
-            // loop's own history, and a stored property would be one more line on a file at its cap.
-            var previousSampleAt = Date()
-            while true {
+            // Monotonic, like every other elapsed value in the module: `Date()` steps under NTP
+            // and would print a negative or wildly inflated gap in the one record whose entire job
+            // is to be trusted about a gap. On Darwin it also counts while the process is
+            // suspended, which is the interval being measured.
+            var previousBeatAt = GeofenceLog.monotonicNow()
+            while !Task.isCancelled {
                 try? await Task.sleep(nanoseconds: Self.conditionMirrorSampleNanos)
                 guard let self else { return }
-                let sampledAt = Date()
+                let beatAt = GeofenceLog.monotonicNow()
+                self.logger.geofenceInfo("condition_mirror_beat", fields: [
+                    ("since", String(Int((beatAt - previousBeatAt).rounded()))),
+                    ("want", String(self.conditionLedger.stagedIdentifiers.count))
+                ])
+                previousBeatAt = beatAt
                 // The ledger, not the last `desired` set: a sample belongs to no sync generation,
                 // and `stagedIdentifiers` is the standing answer to what this process wants held.
-                self.logConditionMirrorDrift(
-                    desired: self.conditionLedger.stagedIdentifiers,
-                    at: .poll(since: sampledAt.timeIntervalSince(previousSampleAt))
-                )
-                previousSampleAt = sampledAt
+                self.logConditionMirrorDrift(desired: self.conditionLedger.stagedIdentifiers, at: .poll)
             }
         }
     }
@@ -251,12 +264,21 @@ extension CLMonitorGeofenceMonitor {
     /// returns `ownedRegionIdentifiers`, so `registration.adopted n=13` means "we think thirteen",
     /// never "the OS holds thirteen".
     ///
-    /// Scoped to one sync generation on purpose, and that is what makes the fields truthful.
-    /// Ownership is the wrong side to compare: it is mutated synchronously by any later
-    /// `setMonitoredRegions` whose OS work is still queued behind this record, and unioned into by
-    /// `reconcileKnownConditions` on the first pipeline operation — so an ownership-based
-    /// comparison reports healthy staged changes as drift in one direction or the other,
-    /// whichever end it is read from. `desired` is this call's own set and cannot move.
+    /// `desired` is a captured value, never ownership. Ownership is the wrong side to compare: it
+    /// is mutated synchronously by any later `setMonitoredRegions` whose OS work is still queued
+    /// behind this record, and unioned into by `reconcileKnownConditions` on the first pipeline
+    /// operation — so an ownership-based comparison reports healthy staged changes as drift in one
+    /// direction or the other, whichever end it is read from. A sync passes its own set; the
+    /// sampler passes the ledger's staged identifiers, which is the standing form of the same
+    /// question. Both are read in the same synchronous turn that enqueues the OS work they
+    /// describe, so the comparison below drains behind that work either way.
+    ///
+    /// `owned` rides alongside `want` because the two baselines disagree at process start and the
+    /// difference is diagnostic, not noise: the ledger begins each process empty while ownership
+    /// does not, so a condition the OS holds and we own, but which this process never staged —
+    /// an adopted record with no geometry, or the `userChangedDuringBootstrap` branch — reads as
+    /// `extra` on every sample until a sync re-registers it. With `owned` present a reader can
+    /// tell that from "the OS is holding something nobody wants".
     ///
     /// `missing` is therefore precisely "this sync asked the OS for it and the OS does not list
     /// it". It is NOT a general "monitored by nobody" test: a condition the OS GAVE UP on stays
@@ -274,8 +296,8 @@ extension CLMonitorGeofenceMonitor {
             let drift = ConditionMirror.drift(desired: desired, atOs: Set(await monitor.identifiers))
             self.logger.geofenceInfo("condition_mirror", fields: [
                 ("at", occasion.token),
-                ("since", occasion.sinceSeconds),
                 ("want", String(desired.count)),
+                ("owned", String(self.ownedRegionIdentifiers.count)),
                 ("os", String(drift.atOsCount)),
                 // `GeofenceLog.list`, not a plain join: these name conditions, and an identifier is
                 // workspace-authored. The helper sanitizes each one and caps the list, where a raw
@@ -355,7 +377,7 @@ enum ConditionMirror {
 extension CLMonitorGeofenceMonitor {
     /// Floor on the sampling interval. Long enough that a drive costs a handful of records rather
     /// than one per fix, short enough that an 18-minute silent window is sampled repeatedly.
-    static var conditionMirrorSampleNanos: UInt64 { 120000000000 }
+    static let conditionMirrorSampleNanos: UInt64 = 120000000000
 }
 
 /// Which occasion produced a `condition_mirror` record, so a reader can tell a sync's own
@@ -363,23 +385,15 @@ extension CLMonitorGeofenceMonitor {
 /// record during a silent window is indistinguishable from one emitted by a sync that had just run.
 enum ConditionMirrorOccasion {
     case sync
-    /// Carries the wall-clock gap since the previous sample, which is the field that makes a
-    /// silent window readable. Without it, no poll records over an interval has two causes that
-    /// look identical in a capture: the process was suspended the whole time and the loop is fine,
-    /// or the loop is dead and will never sample again. A sample reporting `since=1080` proves the
-    /// first. Wall clock on purpose — suspended time is exactly what it needs to count.
-    case poll(since: TimeInterval)
+    case poll
 
+    /// Literals rather than a `String` raw value: a case rename then cannot silently change the
+    /// emitted token, and the raw-value spelling is unwritable here anyway — SwiftFormat and
+    /// SwiftLint both strip `case sync = "sync"`.
     var token: String {
         switch self {
         case .sync: return "sync"
         case .poll: return "poll"
         }
-    }
-
-    /// `nil` on a sync, so the key is absent there rather than carrying a meaningless zero.
-    var sinceSeconds: String? {
-        guard case .poll(let since) = self else { return nil }
-        return String(Int(since.rounded()))
     }
 }

@@ -403,6 +403,18 @@ struct RegisteredConditionLedgerTests {
         #expect(ledger.stagedIdentifiers == ["2"])
         // The live generation outlives the claim, which is why `staged` is the field to read.
         #expect(ledger.attribution(for: "1", raisedAt: at) != .noneHeld)
+
+        // And the case the sampler actually leans on: staged with its add still queued, which is
+        // every ordinary registration before its drain. Nothing is live yet, so a baseline keyed
+        // on the live generations would report a condition we have just asked the OS to hold as
+        // one nobody wants.
+        ledger.note(
+            identifier: "3", center: LocationData(latitude: 0, longitude: 0),
+            radius: 300, transitionTypes: [.enter, .exit], at: at
+        )
+
+        #expect(ledger.stagedIdentifiers == ["2", "3"])
+        #expect(ledger.attribution(for: "3", raisedAt: at) == .noneHeld)
     }
 
     /// The condition an attribution names, for assertions that only care about which circle.
