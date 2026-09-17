@@ -89,7 +89,7 @@ extension Logger {
         signedEdgeDistance: Double,
         horizontalAccuracy: Double,
         fixAge: TimeInterval,
-        corroborated: Bool = false
+        corroboration: VerdictCorroboration = .notNeeded
     ) {
         debug(
             "Polygon membership \(membership) for region \(identifier): edge \(Int(signedEdgeDistance)) m, accuracy \(Int(horizontalAccuracy)) m, fix age \(String(format: "%.1f", fixAge))s"
@@ -99,9 +99,11 @@ extension Logger {
                     ("edge", GeofenceLog.num(signedEdgeDistance, 0)),
                     ("acc", GeofenceLog.num(horizontalAccuracy)),
                     ("age", GeofenceLog.num(fixAge)),
-                    // Matches Android's `cor` key: whether a marginal arrival needed a second
-                    // agreeing fix. Always false for a departure, which never corroborates.
-                    ("cor", corroborated ? "true" : "false")
+                    // Matches Android's `cor` key, widened: `false` when one fix was decisive,
+                    // `true` when a second agreed, and otherwise the reason the arrival committed
+                    // without one. A capture must not read an unconfirmed marginal arrival as a
+                    // decisive one. Always `false` for a departure, which never corroborates.
+                    ("cor", corroboration.logToken)
                 ]),
             geofenceTag
         )

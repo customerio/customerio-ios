@@ -66,23 +66,23 @@ extension PolygonMembershipResolver {
         }
     }
 
-    /// Confirms an arrival that a single fix could not separate from the boundary.
+    /// Seeks a second opinion on an arrival that a single fix could not separate from the
+    /// boundary — and can only ever BLOCK it, never gate it.
     ///
     /// Requested immediately rather than deferred to a later evaluation: while the device is
     /// stationary there is no later wake, and a pending arrival waiting for one would expire
     /// unresolved in exactly the case this exists to rescue. The process is already awake running
     /// the pass, so the cost is one extra request.
     ///
-    /// - Returns: `true` when a second fix independently places the device inside. `false` after
-    ///   logging why it did not, so the caller only has to bail out.
+    /// - Returns: whether a second fix confirmed the arrival, could not be obtained, or
+    ///   contradicted it. Only the last blocks delivery.
     func corroborate(
         _ pending: DeferredCorroboration,
         firstFix: CLLocation,
         cache: PassCorroboration
-    ) async -> Bool {
-        let geofence = pending.geofence
-        let firstEdge = pending.signedEdgeDistance
-        guard pending.proposed == .inside else { return false }
+    ) async -> CorroborationResult {
+        // Defensive: only a marginal INSIDE is ever deferred, and nothing else may commit here.
+        guard pending.proposed == .inside else { return .contradicted }
         // Newer than the fix being corroborated, which is the only baseline that makes the second
         // fix independent evidence. `resolveFix(requiringFresh:)` alone does NOT give this: it
         // compares against what this resolver last DELIVERED, and a pass answered from
@@ -92,33 +92,37 @@ extension PolygonMembershipResolver {
         switch await corroborationFix(newerThan: firstFix.timestamp, cache: cache) {
         case .obtained(let fix):
             second = fix
-        // Two tokens, not one: an echo means the rule refused to count one fix twice, a timeout
-        // means location never answered at all. A capture has to separate them.
+        // Two tokens, not one: an echo means the rule declined to count one fix twice, a timeout
+        // means location never answered at all. A capture has to separate them. Neither is
+        // evidence the device is outside, so both commit.
         case .notIndependent:
-            return refuseFirst(.corroborationNotIndependent, geofence, firstEdge, firstFix)
+            return .unconfirmed(.corroborationNotIndependent)
         case .unavailable:
-            return refuseFirst(.noUsableFix, geofence, firstEdge, firstFix)
+            return .unconfirmed(.noUsableFix)
         }
         let secondPoint = LocationData(
             latitude: second.coordinate.latitude, longitude: second.coordinate.longitude
         )
         let secondEdge = pending.polygon.signedEdgeDistance(to: secondPoint)
-        // Three distinct failures, each with its own token. Collapsing them logs a refusal under a
-        // reason that did not happen, and these records are how we measure what the rule refuses.
-        func refuse(_ reason: PolygonUndecidedReason) -> Bool {
-            logger.geofencePolygonUndecided(
-                identifier: geofence.id, reason: reason,
-                signedEdgeDistance: secondEdge, horizontalAccuracy: second.horizontalAccuracy
-            )
-            return false
+        // A fix that cannot judge this venue adds nothing to the first, which is not the same as
+        // arguing against it — so these commit, carrying the reason onto the verdict.
+        guard second.horizontalAccuracy > 0 else { return .unconfirmed(.noUsableFix) }
+        guard second.horizontalAccuracy < pending.polygon.scale else {
+            return .unconfirmed(.accuracyTooLow)
         }
-        guard second.horizontalAccuracy > 0 else { return refuse(.noUsableFix) }
-        // The second fix must clear the same ceiling, or it adds no information to the first.
-        guard second.horizontalAccuracy < pending.polygon.scale else { return refuse(.accuracyTooLow) }
         // Agreement on the SIDE, not on the distance. Two fixes metres apart near a boundary will
         // not agree on an edge, and requiring that would refuse everything this path is for.
-        guard secondEdge > 0 else { return refuse(.corroborationDisagreed) }
-        return true
+        //
+        // The one blocking outcome: a usable second fix that reads the other side. Logged here
+        // because it is the only branch that produces no verdict of its own.
+        guard secondEdge > 0 else {
+            logger.geofencePolygonUndecided(
+                identifier: pending.geofence.id, reason: .corroborationDisagreed,
+                signedEdgeDistance: secondEdge, horizontalAccuracy: second.horizontalAccuracy
+            )
+            return .contradicted
+        }
+        return .confirmed
     }
 
     /// One corroboration attempt per judged fix, made on first need and reused.
@@ -129,22 +133,10 @@ extension PolygonMembershipResolver {
     /// Reuse is sound only between polygons judged from the SAME fix, which is why the cache is
     /// keyed on `basis` rather than cleared at pass boundaries.
     ///
-    /// Logs a corroboration refusal against the FIRST fix's measurements, which are the ones the
-    /// caller was judging. Separate from the second-fix refusals below, which carry the second's.
-    private func refuseFirst(
-        _ reason: PolygonUndecidedReason, _ geofence: Geofence, _ edge: Double, _ fix: CLLocation
-    ) -> Bool {
-        logger.geofencePolygonUndecided(
-            identifier: geofence.id, reason: reason,
-            signedEdgeDistance: edge, horizontalAccuracy: fix.horizontalAccuracy
-        )
-        return false
-    }
-
-    /// A refusal is cached alongside a success, including one caused by the resolver TIMING OUT:
-    /// a late fix landing in `latestFix` seconds later does not retry this pass. That is
-    /// deliberate — the next pass judges a different fix, carries a new basis and asks again — so
-    /// do not "fix" this into a retry loop inside a single pass.
+    /// A failure is cached alongside a success, including one caused by the resolver TIMING OUT:
+    /// a late fix landing in `latestFix` seconds later does not retry within this pass. Cheap,
+    /// because an unanswered attempt no longer refuses the arrival — it commits it as
+    /// `unconfirmed` — so the cached failure costs a confirmation, never a visit.
     ///
     /// - Parameter basis: timestamp of the fix being corroborated. The answer must strictly
     ///   postdate it; anything at or before it is the first fix over again, not a second opinion.
@@ -158,6 +150,21 @@ extension PolygonMembershipResolver {
         cache.record(outcome, for: basis)
         return outcome
     }
+}
+
+/// What a corroboration attempt settled for a marginal arrival.
+///
+/// Absence of a second opinion is NOT an argument against the first fix. While the device stands
+/// still nothing re-derives a missed arrival, so refusing one loses the visit outright; a spurious
+/// arrival is corrected by the next decisive fix. Only a second fix that positively reads OUTSIDE
+/// blocks — every other outcome commits and records why it could not be confirmed.
+enum CorroborationResult: Equatable {
+    /// A second, independent fix agreed.
+    case confirmed
+    /// No usable second opinion. The arrival still commits; the reason rides on the verdict.
+    case unconfirmed(PolygonUndecidedReason)
+    /// A second fix placed the device on the other side of the boundary.
+    case contradicted
 }
 
 /// One corroboration attempt per pass, so N marginal polygons sharing a fix cost one request.

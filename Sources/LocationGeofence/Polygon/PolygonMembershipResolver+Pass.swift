@@ -46,10 +46,19 @@ extension PolygonMembershipResolver {
                 )
                 continue
             }
-            guard await corroborate(pending, firstFix: fix, cache: cache) else { continue }
+            // Only a second fix that positively reads OUTSIDE blocks the arrival. Everything
+            // else commits, carrying on the verdict why it could not be confirmed.
+            let outcome = await corroborate(pending, firstFix: fix, cache: cache)
+            guard outcome != .contradicted else { continue }
+            let corroboration: VerdictCorroboration
+            switch outcome {
+            case .confirmed: corroboration = .confirmed
+            case .unconfirmed(let reason): corroboration = .unconfirmed(reason)
+            case .contradicted: continue
+            }
             await record(
                 PolygonVerdict(
-                    membership: pending.proposed, corroborated: true,
+                    membership: pending.proposed, corroboration: corroboration,
                     signedEdgeDistance: pending.signedEdgeDistance
                 ),
                 for: pending.geofence, fix: fix, isStillCurrent: isStillCurrent
@@ -75,7 +84,7 @@ extension PolygonMembershipResolver {
             signedEdgeDistance: verdict.signedEdgeDistance,
             horizontalAccuracy: fix.horizontalAccuracy,
             fixAge: -fix.timestamp.timeIntervalSinceNow,
-            corroborated: verdict.corroborated
+            corroboration: verdict.corroboration
         )
         await apply(
             verdict.membership, to: geofence, evidence: fix.timestamp,
@@ -87,6 +96,26 @@ extension PolygonMembershipResolver {
 /// A settled verdict and how it was reached, carried together so both pass phases record one.
 struct PolygonVerdict {
     let membership: PolygonMembership
-    let corroborated: Bool
+    let corroboration: VerdictCorroboration
     let signedEdgeDistance: Double
+}
+
+/// How a recorded verdict stands with respect to a second fix, widened from a Bool because
+/// "committed without confirmation" is a third state and folding it into `false` would report an
+/// uncorroborated marginal arrival as though no second fix had ever been wanted.
+enum VerdictCorroboration: Equatable {
+    /// Decisive on one fix; no second was asked for.
+    case notNeeded
+    /// A second, independent fix agreed.
+    case confirmed
+    /// Marginal, and committed anyway because no second opinion could be had.
+    case unconfirmed(PolygonUndecidedReason)
+
+    var logToken: String {
+        switch self {
+        case .notNeeded: return "false"
+        case .confirmed: return "true"
+        case .unconfirmed(let reason): return reason.rawValue
+        }
+    }
 }

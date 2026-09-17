@@ -272,7 +272,7 @@ final class PolygonMembershipResolver {
         case .decided(let membership):
             await record(
                 PolygonVerdict(
-                    membership: membership, corroborated: false,
+                    membership: membership, corroboration: .notNeeded,
                     signedEdgeDistance: signedEdgeDistance
                 ),
                 for: geofence, fix: fix, isStillCurrent: isStillCurrent
