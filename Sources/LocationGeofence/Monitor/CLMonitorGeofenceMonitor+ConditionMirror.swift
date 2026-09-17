@@ -95,11 +95,11 @@ extension CLMonitorGeofenceMonitor {
     /// `extra` on every sample until a sync re-registers it. With `owned` present a reader can
     /// tell that from "the OS is holding something nobody wants".
     ///
-    /// The gap means different things on the two occasions, so read it with `at`. On `at=poll` it
-    /// is the process-start divergence above. On `at=sync` it is refused registrations:
-    /// `startMonitoring` bails to `enqueueConditionRemoval` ahead of its ownership insert when
-    /// permission is blocked or coordinates are unusable, so the region stays in `desired` and
-    /// never enters ownership — `want` over `owned` there counts exactly what the OS turned down.
+    /// Read the gap with `at`, because the two occasions differ. On `at=poll` it is the
+    /// process-start divergence above. On `at=sync` the two are equal by construction — the
+    /// caller passes `ConditionMirror.accepted`, which is `desired` intersected with ownership —
+    /// so a divergence there is not a finding about the OS but a broken invariant in this file.
+    /// Refused registrations are why that scoping exists, and they have their own records.
     ///
     /// `missing` is therefore precisely "this sync asked the OS for it and the OS does not list
     /// it". It is NOT a general "monitored by nobody" test: a condition the OS GAVE UP on stays
@@ -141,6 +141,23 @@ extension CLMonitorGeofenceMonitor {
 /// The `condition_mirror` comparison, kept off the monitor so it carries no `@available` gate and
 /// can be tested without a `CLMonitor` — which cannot be instantiated in a unit test.
 enum ConditionMirror {
+    /// What a sync actually asked the OS to hold: its desired set minus everything
+    /// `startMonitoring` refused.
+    ///
+    /// Ownership is the record of acceptance — it is inserted only once both guards pass, and
+    /// `setMonitoredRegions` has already released it for every identifier it no longer wants, so
+    /// at the end of that loop ownership is exactly the accepted subset of `desired`. Intersecting
+    /// rather than reading ownership directly keeps that a stated relationship instead of a
+    /// coincidence, and keeps a refusal out of `missing` even if ownership later grows a member
+    /// the desired set never had.
+    ///
+    /// The sampler needs no equivalent: `startMonitoring` returns before `noteRegisteredCondition`
+    /// on both refusal paths, so a refused identifier never enters the ledger and `stagedIdentifiers`
+    /// has always been the accepted set.
+    static func accepted(desired: Set<String>, owned: Set<String>) -> Set<String> {
+        desired.intersection(owned)
+    }
+
     /// Sorted so a capture diffs cleanly across passes.
     struct Drift: Equatable {
         let missing: [String]

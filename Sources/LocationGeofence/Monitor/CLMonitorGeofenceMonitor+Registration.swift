@@ -206,7 +206,15 @@ extension CLMonitorGeofenceMonitor {
         }
         // Enqueued after the adds above so the heal drains behind this sync's own ops.
         enqueueBaselineHeal(candidates: healCandidates)
-        logConditionMirrorDrift(desired: desiredIdentifiers, at: .sync)
+        // Scoped to what the OS was actually asked for. `desiredIdentifiers` is the caller's
+        // request, and `startMonitoring` refuses part of it — blocked permission, unusable
+        // coordinates — by removing the condition and returning before it takes ownership. Those
+        // identifiers never reach the OS, so reporting them as `missing` blames the OS for a
+        // refusal this SDK made, in the record whose whole purpose is separating the two.
+        logConditionMirrorDrift(
+            desired: ConditionMirror.accepted(desired: desiredIdentifiers, owned: ownedRegionIdentifiers),
+            at: .sync
+        )
         return GeofenceRegionDiff(added: added, removed: removed)
     }
 
