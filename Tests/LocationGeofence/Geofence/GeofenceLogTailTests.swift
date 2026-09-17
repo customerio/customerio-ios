@@ -661,6 +661,25 @@ struct GeofenceLogTailTests {
     }
 
     @Test
+    func conditionMirror_expectIdentifierListsKeepTheirSeparators() {
+        // `missing` and `extra` name conditions, so they are composed values like `ids`. Without
+        // being declared as such the tail folds their commas and two identifiers read as one — in
+        // the record whose entire job is to say WHICH condition the OS is missing.
+        withDiagnostics(true) {
+            let logger = CapturingLogger()
+            logger.geofenceInfo("condition_mirror", fields: [
+                ("os", "12"),
+                ("owned", "13"),
+                ("missing", GeofenceLog.list(["alpha", "beta"])),
+                ("extra", GeofenceLog.list(["gamma"]))
+            ])
+            let message = logger.messages.last ?? ""
+            #expect(message.contains("missing=alpha,beta"), "missing lost its separators: \(message)")
+            #expect(message.contains("extra=gamma"), "extra malformed: \(message)")
+        }
+    }
+
+    @Test
     func proseHalf_expectIdenticalWhicheverWayTheGateIsSet() {
         // The prose is what a customer reads and what existing tests assert on. Enabling
         // diagnostics must append to it and never rewrite it.

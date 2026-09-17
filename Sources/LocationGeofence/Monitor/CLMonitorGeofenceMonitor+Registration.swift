@@ -222,23 +222,29 @@ extension CLMonitorGeofenceMonitor {
     /// Enqueued rather than read inline so it observes the adds this sync just queued instead of
     /// the state before them, and so it cannot block the caller on the monitor actor.
     func logConditionMirrorDrift() {
+        // Diagnostics-only work must cost normal users nothing. `geofenceInfo` drops the tail when
+        // diagnostics are off, but the actor hop and set arithmetic below would still be queued on
+        // the registration FIFO ahead of real monitor operations.
+        guard GeofenceDiagnostics.isEnabled else { return }
+        // Snapshot NOW, not inside the closure. Ownership mutates synchronously, so a second
+        // `setMonitoredRegions` landing while this sits queued behind the first sync's OS work
+        // would have the closure compare the second sync's desired set against the first sync's
+        // OS state and report drift that never existed.
+        let owned = ownedRegionIdentifiers
         enqueueMonitorOperation { [weak self] monitor in
             guard let self else { return }
             let atOs = Set(await monitor.identifiers)
-            let owned = self.ownedRegionIdentifiers
             self.logger.geofenceInfo("condition_mirror", fields: [
                 ("os", String(atOs.count)),
                 ("owned", String(owned.count)),
-                ("missing", Self.identifierList(owned.subtracting(atOs))),
-                ("extra", Self.identifierList(atOs.subtracting(owned)))
+                // `GeofenceLog.list`, not a plain join: `missing` and `extra` are composed values,
+                // and an identifier is workspace-authored. The helper sanitizes each one and caps
+                // the list, where a raw join would have the tail fold its own commas into
+                // underscores and turn two identifiers into one ambiguous token.
+                ("missing", GeofenceLog.list(owned.subtracting(atOs).sorted())),
+                ("extra", GeofenceLog.list(atOs.subtracting(owned).sorted()))
             ])
         }
-    }
-
-    /// `nil` when empty, so the common no-drift case costs two keys rather than four. Sorted so a
-    /// capture diffs cleanly across passes.
-    private static func identifierList(_ identifiers: Set<String>) -> String? {
-        identifiers.isEmpty ? nil : identifiers.sorted().joined(separator: ",")
     }
 
     /// True when this monitor owns the condition and registered it with the same circle, so
