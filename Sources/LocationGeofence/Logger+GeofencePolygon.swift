@@ -81,8 +81,15 @@ extension Logger {
     /// `edge` is signed: **positive is inside**, the polygon convention set by
     /// `PolygonRegion.signedEdgeDistance` and fixed by the cross-SDK geometry fixtures. The circle
     /// records (`contradiction.allowed`) use the same key with the opposite sign, so a parser must
-    /// read `edge` against the record's `ev`. `acc` is the ambiguity margin, not a quality score —
-    /// iOS has no accuracy ceiling, so a verdict holds only while `|edge|` exceeds it.
+    /// read `edge` against the record's `ev`. `acc` is the ambiguity margin, not a quality score:
+    /// a verdict holds while `|edge|` exceeds it. There is also a per-fence ceiling, and it gates
+    /// verdicts of INSIDE only — a fix at or beyond `PolygonRegion.scale` decides nothing and is
+    /// logged `accuracy_too_low`. A device clear of the ring by more than its own accuracy is
+    /// outside however thin the venue is, so a departure is settled before the ceiling is read.
+    /// A capture can still show `accuracy_too_low` beside a NEGATIVE edge: an outside-reading fix
+    /// that is not clear by its own accuracy decides nothing either way, and once accuracy passes
+    /// the venue scale that is the reason it carries instead of `within_accuracy`. No departure
+    /// was blocked by the ceiling there.
     func geofencePolygonVerdict(
         identifier: String,
         membership: PolygonMembership,
