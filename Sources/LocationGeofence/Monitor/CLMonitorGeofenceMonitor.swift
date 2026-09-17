@@ -203,6 +203,9 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preco
                 } catch {
                     self.logger.geofenceMonitorEventStreamFailed(error: error)
                 }
+                // A sequence that ENDS rather than throws took this path in silence, and that is
+                // indistinguishable in a capture from the OS having nothing to report.
+                self.logger.geofenceInfo("event_stream_resubscribing", fields: [("s", String(backoffNanos / 1000000000))])
                 try? await Task.sleep(nanoseconds: backoffNanos)
                 backoffNanos = min(backoffNanos * 2, maxBackoffNanos)
             }
