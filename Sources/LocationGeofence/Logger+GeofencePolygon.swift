@@ -99,11 +99,15 @@ extension Logger {
                     ("edge", GeofenceLog.num(signedEdgeDistance, 0)),
                     ("acc", GeofenceLog.num(horizontalAccuracy)),
                     ("age", GeofenceLog.num(fixAge)),
-                    // Matches Android's `cor` key, widened: `false` when one fix was decisive,
-                    // `true` when a second agreed, and otherwise the reason the arrival committed
-                    // without one. A capture must not read an unconfirmed marginal arrival as a
-                    // decisive one. Always `false` for a departure, which never corroborates.
-                    ("cor", corroboration.logToken)
+                    // `cor` stays the shared cross-SDK boolean: true only when a second fix
+                    // agreed. Widening it to reason tokens would silently break Android's pinned
+                    // contract and every consumer reading it.
+                    ("cor", corroboration.confirmed ? "true" : "false"),
+                    // iOS-only and additive, absent unless it applies: WHY a marginal arrival
+                    // committed without confirmation. Without it an unconfirmed arrival is
+                    // indistinguishable in a capture from a decisive one, which is the whole
+                    // difference this change introduced.
+                    ("corwhy", corroboration.unconfirmedReason)
                 ]),
             geofenceTag
         )

@@ -111,11 +111,13 @@ enum VerdictCorroboration: Equatable {
     /// Marginal, and committed anyway because no second opinion could be had.
     case unconfirmed(PolygonUndecidedReason)
 
-    var logToken: String {
-        switch self {
-        case .notNeeded: return "false"
-        case .confirmed: return "true"
-        case .unconfirmed(let reason): return reason.rawValue
-        }
+    /// The shared `cor` boolean: a second fix agreed, or it did not.
+    var confirmed: Bool { self == .confirmed }
+
+    /// `nil` unless the arrival committed without confirmation, so the key is absent on every
+    /// decisive verdict rather than carrying a placeholder.
+    var unconfirmedReason: String? {
+        guard case .unconfirmed(let reason) = self else { return nil }
+        return reason.rawValue
     }
 }

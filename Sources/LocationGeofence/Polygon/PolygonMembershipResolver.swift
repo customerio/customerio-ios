@@ -18,8 +18,15 @@ import UIKit
 /// - an EXIT requires either a covering-circle exit — polygon ⊆ circle, so leaving the circle
 ///   provably leaves the polygon — or a gated fix placing the device outside.
 ///
-/// Everything else is silent. That is what "no event without gated geometric confirmation" means
-/// in code, and why an undecidable fix leaves the stored belief untouched rather than guessing.
+/// Everything else is silent, and a fix that cannot decide leaves the stored belief untouched
+/// rather than guessing.
+///
+/// One asymmetry inside the ENTER invariant, and it is deliberate: a fix that places the device
+/// inside but by LESS than its own accuracy is accepted unless a usable second fix positively
+/// places it outside. It is not held pending confirmation. While the device stands still nothing
+/// re-derives a missed arrival, so refusing one loses the visit; a spurious one is corrected by
+/// the next decisive fix. Such a verdict records `cor=false` with a `corwhy` reason, so a capture
+/// never reads it as decisive.
 ///
 /// Owns its own `MovementFixResolver` rather than reading the monitor's: the transition handler
 /// carries only coordinates, while the gate needs accuracy and age, and on a wrapper cold wake
