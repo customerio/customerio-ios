@@ -206,7 +206,14 @@ extension CLMonitorGeofenceMonitor {
         }
         // Enqueued after the adds above so the heal drains behind this sync's own ops.
         enqueueBaselineHeal(candidates: healCandidates)
-        logConditionMirrorDrift(desired: desiredIdentifiers)
+        // Scoped to what the OS was actually asked for. `desiredIdentifiers` is the caller's
+        // request, and `startMonitoring` refuses part of it — blocked permission, unusable
+        // coordinates — by removing the condition and returning before it takes ownership. Those
+        // identifiers never reach the OS, so reporting them as `missing` blames the OS for a
+        // refusal this SDK made, in the record whose whole purpose is separating the two.
+        logConditionMirrorDrift(
+            desired: ConditionMirror.accepted(desired: desiredIdentifiers, owned: ownedRegionIdentifiers)
+        )
         return GeofenceRegionDiff(added: added, removed: removed)
     }
 
@@ -298,6 +305,19 @@ extension CLMonitorGeofenceMonitor {
 /// The `condition_mirror` comparison, kept off the monitor so it carries no `@available` gate and
 /// can be tested without a `CLMonitor` — which cannot be instantiated in a unit test.
 enum ConditionMirror {
+    /// What a sync actually asked the OS to hold: its desired set minus everything
+    /// `startMonitoring` refused.
+    ///
+    /// Ownership is the record of acceptance — it is inserted only once both guards pass, and
+    /// `setMonitoredRegions` has already released it for every identifier it no longer wants, so
+    /// at the end of that loop ownership is exactly the accepted subset of `desired`. Intersecting
+    /// rather than reading ownership directly keeps that a stated relationship instead of a
+    /// coincidence, and keeps a refusal out of `missing` even if ownership later grows a member
+    /// the desired set never had.
+    static func accepted(desired: Set<String>, owned: Set<String>) -> Set<String> {
+        desired.intersection(owned)
+    }
+
     /// Sorted so a capture diffs cleanly across passes.
     struct Drift: Equatable {
         let missing: [String]

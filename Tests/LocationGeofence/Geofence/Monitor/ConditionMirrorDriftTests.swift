@@ -53,4 +53,23 @@ struct ConditionMirrorDriftTests {
         #expect(drift.missing == ["b", "d"])
         #expect(drift.extra == ["m", "z"])
     }
+
+    /// A registration the SDK itself refused must not be reported as OS drift. `startMonitoring`
+    /// removes the condition and returns before taking ownership when permission is blocked or
+    /// the coordinates are unusable, so the identifier is in the caller's desired set and was
+    /// never asked of the OS. Both halves are asserted: the scoped set clears it, and the raw
+    /// desired set is shown to produce exactly the false reading this exists to prevent.
+    @Test
+    func accepted_givenOneRegistrationRefused_expectItIsNotReportedMissing() {
+        let requested: Set = ["kept", "refused"]
+        // Ownership is the record of acceptance, and the refused identifier never enters it.
+        let owned: Set = ["kept"]
+        let atOs: Set = ["kept"]
+
+        let accepted = ConditionMirror.accepted(desired: requested, owned: owned)
+
+        #expect(accepted == ["kept"])
+        #expect(ConditionMirror.drift(desired: accepted, atOs: atOs).missing.isEmpty)
+        #expect(ConditionMirror.drift(desired: requested, atOs: atOs).missing == ["refused"])
+    }
 }
