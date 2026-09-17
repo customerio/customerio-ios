@@ -60,17 +60,8 @@ extension PolygonMembershipResolver {
             )
             return .none
         case .needsCorroboration(let proposed):
-            // Cheapest test first, and it stays in this phase because it costs no request: an
-            // ambiguous INSIDE cannot move a belief that already says inside, so deferring it
-            // would buy a forced request only to reach `no_change`. A device standing near a
-            // boundary hits this on every pass.
-            guard await storage.getPolygonMembership()[geofence.id]?.membership != .inside else {
-                logger.geofencePolygonUndecided(
-                    identifier: geofence.id, reason: PolygonUndecidedReason.corroborationUnnecessary,
-                    signedEdgeDistance: signedEdgeDistance, horizontalAccuracy: fix.horizontalAccuracy
-                )
-                return .none
-            }
+            // The already-inside short-circuit is NOT applied here. It has to be read immediately
+            // before the request it saves, and phase one can move a belief after this point.
             return .deferred(proposed)
         }
     }

@@ -28,6 +28,21 @@ extension PolygonMembershipResolver {
             }
         }
         for pending in deferred {
+            // Re-read per polygon, immediately before the request, and not once for the batch:
+            // an ambiguous INSIDE cannot move a belief that already says inside, so a second fix
+            // would buy a forced request (up to `movementFixRequestTimeout`) only to reach
+            // `no_change`. Phase one, and phase two's own awaits, can both land that belief after
+            // this polygon was classified — so a value read any earlier is the wrong value.
+            guard await storage.getPolygonMembership()[pending.geofence.id]?.membership != .inside
+            else {
+                logger.geofencePolygonUndecided(
+                    identifier: pending.geofence.id,
+                    reason: PolygonUndecidedReason.corroborationUnnecessary,
+                    signedEdgeDistance: pending.signedEdgeDistance,
+                    horizontalAccuracy: fix.horizontalAccuracy
+                )
+                continue
+            }
             guard await corroborate(
                 pending.proposed, geofence: pending.geofence, polygon: pending.polygon,
                 firstFix: fix, firstEdge: pending.signedEdgeDistance

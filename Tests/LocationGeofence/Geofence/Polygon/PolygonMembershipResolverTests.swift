@@ -1366,6 +1366,32 @@ struct PolygonMembershipResolverTests {
         await expectDecisiveVerdictBeforeCorroboration(order: ["2", "1"])
     }
 
+    /// The guard has to sit immediately before the request it saves. Splitting corroboration into
+    /// a second phase moved it away from that point, so a belief that turned inside during phase
+    /// one still bought a forced fix. Asserted where it bites: the belief is written after the
+    /// deferred polygon was classified, and no corroboration request may follow.
+    @Test
+    func runPass_givenBeliefTurnsInsideAfterClassification_expectNoCorroborationRequest() async {
+        let logger = LoggerMock()
+        let setup = await makeSetup(fix: nil, logger: logger)
+        marginalPass(setup)
+        await registerPolygons(setup, ids: ["1"])
+        let requested = Flag()
+        setup.fixResolver.requestFreshFix = { [weak fixResolver = setup.fixResolver] in
+            requested.value = true
+            fixResolver?.handleRequestFailure()
+        }
+        // Stands in for phase one landing this belief after "1" was classified as deferred.
+        _ = await setup.storage.recordPolygonMembership(
+            .inside, forIdentifier: "1", onlyIfBeliefPredates: Date(timeIntervalSince1970: 0)
+        )
+
+        await setup.resolver.evaluateMembership(geofenceIds: ["1"], reason: .newPolygon)
+
+        #expect(requested.value == false)
+        #expect(logged(logger, "already believed inside, so no second fix was needed"))
+    }
+
     // MARK: - Pass provenance
 
     /// A capture has to say which pass produced a verdict. `.movement` and `.foreground` existed
