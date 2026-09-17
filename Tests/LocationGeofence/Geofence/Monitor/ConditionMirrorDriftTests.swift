@@ -54,6 +54,16 @@ struct ConditionMirrorDriftTests {
         #expect(drift.extra == ["m", "z"])
     }
 
+    /// Nothing refused is the ordinary case, and it must leave the count at zero so the field
+    /// stays absent rather than printing a measured `refused=0` on every healthy sync.
+    @Test
+    func target_givenEverythingAccepted_expectNothingCountedRefused() {
+        let target = ConditionMirror.target(desired: ["a", "b"], owned: ["a", "b"])
+
+        #expect(target.accepted == ["a", "b"])
+        #expect(target.refused == 0)
+    }
+
     /// A registration the SDK itself refused must not be reported as OS drift. `startMonitoring`
     /// removes the condition and returns before taking ownership when permission is blocked or
     /// the coordinates are unusable, so the identifier is in the caller's desired set and was
@@ -66,10 +76,13 @@ struct ConditionMirrorDriftTests {
         let owned: Set = ["kept"]
         let atOs: Set = ["kept"]
 
-        let accepted = ConditionMirror.accepted(desired: requested, owned: owned)
+        let target = ConditionMirror.target(desired: requested, owned: owned)
 
-        #expect(accepted == ["kept"])
-        #expect(ConditionMirror.drift(desired: accepted, atOs: atOs).missing.isEmpty)
+        #expect(target.accepted == ["kept"])
+        #expect(ConditionMirror.drift(desired: target.accepted, atOs: atOs).missing.isEmpty)
         #expect(ConditionMirror.drift(desired: requested, atOs: atOs).missing == ["refused"])
+        // Counted, not just excluded. Scoping the comparison without this turns a wrong
+        // attribution into no record at all, and a blocked permission says nothing elsewhere.
+        #expect(target.refused == 1)
     }
 }

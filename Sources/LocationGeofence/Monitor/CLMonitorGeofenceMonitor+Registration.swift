@@ -211,9 +211,8 @@ extension CLMonitorGeofenceMonitor {
         // coordinates — by removing the condition and returning before it takes ownership. Those
         // identifiers never reach the OS, so reporting them as `missing` blames the OS for a
         // refusal this SDK made, in the record whose whole purpose is separating the two.
-        logConditionMirrorDrift(
-            desired: ConditionMirror.accepted(desired: desiredIdentifiers, owned: ownedRegionIdentifiers)
-        )
+        let target = ConditionMirror.target(desired: desiredIdentifiers, owned: ownedRegionIdentifiers)
+        logConditionMirrorDrift(desired: target.accepted, refused: target.refused)
         return GeofenceRegionDiff(added: added, removed: removed)
     }
 
@@ -234,7 +233,7 @@ extension CLMonitorGeofenceMonitor {
     /// it". It is NOT a general "monitored by nobody" test: a condition the OS GAVE UP on stays
     /// listed in `CLMonitor.identifiers` (measured) and so never appears here. That case has its
     /// own record, from the `.unmonitored` branch in `process(event:)`; read the two together.
-    func logConditionMirrorDrift(desired: Set<String>) {
+    func logConditionMirrorDrift(desired: Set<String>, refused: Int) {
         // Diagnostics-only work must cost normal users nothing. `geofenceInfo` drops the tail when
         // diagnostics are off, but the actor hop and set arithmetic below would still be queued on
         // the registration FIFO ahead of real monitor operations.
@@ -246,6 +245,9 @@ extension CLMonitorGeofenceMonitor {
             let drift = ConditionMirror.drift(desired: desired, atOs: Set(await monitor.identifiers))
             self.logger.geofenceInfo("condition_mirror", fields: [
                 ("want", String(desired.count)),
+                // Quiet when nothing was turned down, like `missing` and `extra`, so the ordinary
+                // record is unchanged and the key's presence is itself the signal.
+                ("refused", refused > 0 ? String(refused) : nil),
                 ("os", String(drift.atOsCount)),
                 // `GeofenceLog.list`, not a plain join: these name conditions, and an identifier is
                 // workspace-authored. The helper sanitizes each one and caps the list, where a raw
@@ -305,17 +307,31 @@ extension CLMonitorGeofenceMonitor {
 /// The `condition_mirror` comparison, kept off the monitor so it carries no `@available` gate and
 /// can be tested without a `CLMonitor` — which cannot be instantiated in a unit test.
 enum ConditionMirror {
-    /// What a sync actually asked the OS to hold: its desired set minus everything
-    /// `startMonitoring` refused.
+    /// What a sync actually asked the OS to hold, and how much of its request was refused.
     ///
-    /// Ownership is the record of acceptance — it is inserted only once both guards pass, and
-    /// `setMonitoredRegions` has already released it for every identifier it no longer wants, so
-    /// at the end of that loop ownership is exactly the accepted subset of `desired`. Intersecting
-    /// rather than reading ownership directly keeps that a stated relationship instead of a
-    /// coincidence, and keeps a refusal out of `missing` even if ownership later grows a member
-    /// the desired set never had.
-    static func accepted(desired: Set<String>, owned: Set<String>) -> Set<String> {
-        desired.intersection(owned)
+    /// Ownership is the record of acceptance — it is inserted only once both of `startMonitoring`'s
+    /// guards pass, and `setMonitoredRegions` has already released it for every identifier it no
+    /// longer wants, so at the end of that loop ownership is exactly the accepted subset of
+    /// `desired`. Intersecting rather than reading ownership directly keeps that a stated
+    /// relationship instead of a coincidence, and keeps a refusal out of `missing` even if
+    /// ownership later grows a member the desired set never had.
+    ///
+    /// `refused` is reported because scoping the comparison would otherwise hide those
+    /// registrations completely, and only one of the two refusal paths says anything elsewhere.
+    /// Unusable coordinates log `geofenceInvalidCoordinatesForRegion` per identifier; blocked
+    /// permission logs an edge-triggered tier record that names no region and says nothing at all
+    /// on a later sync while the tier is unchanged, and the registration diff counts a refused
+    /// region in neither `added` nor `removed`. Without this field, N regions turned down by a
+    /// blocked permission produce a perfectly clean record — which is a worse failure than the
+    /// wrong attribution it replaced, because it is a silent one.
+    struct Target: Equatable {
+        let accepted: Set<String>
+        let refused: Int
+    }
+
+    static func target(desired: Set<String>, owned: Set<String>) -> Target {
+        let accepted = desired.intersection(owned)
+        return Target(accepted: accepted, refused: desired.count - accepted.count)
     }
 
     /// Sorted so a capture diffs cleanly across passes.
