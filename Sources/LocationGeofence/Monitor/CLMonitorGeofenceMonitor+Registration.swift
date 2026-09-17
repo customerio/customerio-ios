@@ -233,17 +233,26 @@ extension CLMonitorGeofenceMonitor {
         // diagnostics are off, but the actor hop and set arithmetic below would still be queued on
         // the registration FIFO ahead of real monitor operations.
         guard GeofenceDiagnostics.isEnabled else { return }
-        // Snapshot NOW, not inside the closure. Ownership mutates synchronously, so a second
-        // `setMonitoredRegions` landing while this sits queued behind the first sync's OS work
-        // would have the closure compare the second sync's desired set against the first sync's
-        // OS state and report drift that never existed.
-        let owned = ownedRegionIdentifiers
         enqueueMonitorOperation { [weak self] monitor in
             guard let self else { return }
+            // Both sides read HERE, in the same turn. Snapshotting ownership before the enqueue
+            // looked safer and is not: `reconcileKnownConditions` is the first pipeline operation
+            // and unions CLMonitor's persisted identifiers into ownership, so on any sync that
+            // lands before it drains — every early sync after launch — a pre-enqueue snapshot is
+            // compared against post-reconcile OS state and every reconciled condition reads as
+            // `extra`.
+            //
+            // The residual, which `known` exposes rather than hides: ownership is applied
+            // synchronously while the matching OS work is queued, so a LATER sync arriving while
+            // this operation waits has already changed ownership but not yet the OS. `known` is
+            // this monitor's record of adds that have actually drained, so `owned` > `known`
+            // means a sync is in flight and a `missing` here may be that, not real drift.
             let atOs = Set(await monitor.identifiers)
+            let owned = self.ownedRegionIdentifiers
             self.logger.geofenceInfo("condition_mirror", fields: [
                 ("os", String(atOs.count)),
                 ("owned", String(owned.count)),
+                ("known", String(self.osMonitoredRegionIdentifiers.count)),
                 // `GeofenceLog.list`, not a plain join: `missing` and `extra` are composed values,
                 // and an identifier is workspace-authored. The helper sanitizes each one and caps
                 // the list, where a raw join would have the tail fold its own commas into
