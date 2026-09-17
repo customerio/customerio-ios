@@ -1504,6 +1504,28 @@ struct PolygonMembershipResolverTests {
         #expect(counter.count == 2)
     }
 
+    /// The positive half of the contract. Every other case here asserts a REFUSAL, so inverting
+    /// the branch that accepts a second fix would leave the whole suite green — the enter this
+    /// path exists to deliver is asserted nowhere else.
+    @Test
+    func evaluateMembership_givenSecondFixReadsInside_expectEnterDelivered() async {
+        let setup = await makeSetup(fix: nil)
+        marginalPass(setup)
+        // Default timestamp, so it strictly postdates the pass fix by `ageInsideGate`.
+        deliveringSecondFix(
+            setup,
+            fix(latitude: Self.latitudeInsideNorthEdge(by: 10), longitude: 0, accuracy: 5)
+        )
+        await registerPolygons(setup, ids: ["1"])
+
+        await setup.resolver.evaluateMembership(geofenceIds: ["1"], reason: .newPolygon)
+
+        let delivered = await setup.emitter.snapshot()
+        #expect(delivered.count == 1)
+        #expect(delivered.first?.transition == .enter)
+        #expect(await setup.storage.getPolygonMembership()["1"]?.membership == .inside)
+    }
+
     /// Side disagreement is its own record. It used to log `within_accuracy`, which describes a
     /// fix that could not pick a side — not two fixes that picked different ones.
     @Test
