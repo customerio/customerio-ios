@@ -1,3 +1,9 @@
+## [4.8.1](https://github.com/customerio/customerio-ios/compare/4.8.0...4.8.1) (2026-09-16)
+
+### Bug Fixes
+
+* **deps:** pin LDSwiftEventSource to 3.3.0 ([#1292](https://github.com/customerio/customerio-ios/issues/1292)) ([cc19396](https://github.com/customerio/customerio-ios/commit/cc193963a4af96c79370cd9eb09f8499cb4af78c))
+
 ## [4.8.0](https://github.com/customerio/customerio-ios/compare/4.7.9...4.8.0) (2026-09-09)
 
 ### Features
