@@ -53,4 +53,18 @@ struct ConditionMirrorDriftTests {
         #expect(drift.missing == ["b", "d"])
         #expect(drift.extra == ["m", "z"])
     }
+
+    /// The elapsed reading is the only thing separating "the loop is alive and the process was
+    /// asleep" from "the loop is dead", so it must be present on every sample and absent from a
+    /// sync's own check — a zero there would read as a sample taken no time after the previous one.
+    @Test
+    func occasion_expectElapsedOnSamplesAndNothingOnSyncs() {
+        #expect(ConditionMirrorOccasion.sync.token == "sync")
+        #expect(ConditionMirrorOccasion.sync.sinceSeconds == nil)
+
+        let sample = ConditionMirrorOccasion.poll(since: 1079.6)
+
+        #expect(sample.token == "poll")
+        #expect(sample.sinceSeconds == "1080")
+    }
 }

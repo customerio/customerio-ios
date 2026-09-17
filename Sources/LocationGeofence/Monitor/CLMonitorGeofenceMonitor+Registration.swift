@@ -227,12 +227,20 @@ extension CLMonitorGeofenceMonitor {
     func startConditionMirrorSampling() {
         guard GeofenceDiagnostics.isEnabled else { return }
         Task { [weak self] in
+            // Held in the loop rather than on the monitor: the elapsed reading belongs to this
+            // loop's own history, and a stored property would be one more line on a file at its cap.
+            var previousSampleAt = Date()
             while true {
                 try? await Task.sleep(nanoseconds: Self.conditionMirrorSampleNanos)
                 guard let self else { return }
+                let sampledAt = Date()
                 // The ledger, not the last `desired` set: a sample belongs to no sync generation,
                 // and `stagedIdentifiers` is the standing answer to what this process wants held.
-                self.logConditionMirrorDrift(desired: self.conditionLedger.stagedIdentifiers, at: .poll)
+                self.logConditionMirrorDrift(
+                    desired: self.conditionLedger.stagedIdentifiers,
+                    at: .poll(since: sampledAt.timeIntervalSince(previousSampleAt))
+                )
+                previousSampleAt = sampledAt
             }
         }
     }
@@ -265,7 +273,8 @@ extension CLMonitorGeofenceMonitor {
             // `desired` by now.
             let drift = ConditionMirror.drift(desired: desired, atOs: Set(await monitor.identifiers))
             self.logger.geofenceInfo("condition_mirror", fields: [
-                ("at", occasion.rawValue),
+                ("at", occasion.token),
+                ("since", occasion.sinceSeconds),
                 ("want", String(desired.count)),
                 ("os", String(drift.atOsCount)),
                 // `GeofenceLog.list`, not a plain join: these name conditions, and an identifier is
@@ -352,7 +361,25 @@ extension CLMonitorGeofenceMonitor {
 /// Which occasion produced a `condition_mirror` record, so a reader can tell a sync's own
 /// post-registration check from a sample taken while nothing was happening. Absent it, a clean
 /// record during a silent window is indistinguishable from one emitted by a sync that had just run.
-enum ConditionMirrorOccasion: String {
+enum ConditionMirrorOccasion {
     case sync
-    case poll
+    /// Carries the wall-clock gap since the previous sample, which is the field that makes a
+    /// silent window readable. Without it, no poll records over an interval has two causes that
+    /// look identical in a capture: the process was suspended the whole time and the loop is fine,
+    /// or the loop is dead and will never sample again. A sample reporting `since=1080` proves the
+    /// first. Wall clock on purpose — suspended time is exactly what it needs to count.
+    case poll(since: TimeInterval)
+
+    var token: String {
+        switch self {
+        case .sync: return "sync"
+        case .poll: return "poll"
+        }
+    }
+
+    /// `nil` on a sync, so the key is absent there rather than carrying a meaningless zero.
+    var sinceSeconds: String? {
+        guard case .poll(let since) = self else { return nil }
+        return String(Int(since.rounded()))
+    }
 }
