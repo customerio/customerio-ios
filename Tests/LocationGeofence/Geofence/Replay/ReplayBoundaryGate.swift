@@ -42,6 +42,12 @@ final class ReplayBoundaryGate {
     private var parked: [Parked] = []
     private var nextId = 0
 
+    /// The moment this gate last moved the clock to.
+    ///
+    /// Held here so `park` can tell a future boundary from one whose moment has already passed.
+    /// Clamped the way `setClock` clamps, because that is the value the clock actually took.
+    private var virtualNow: TimeInterval = 0
+
     /// Boundaries the scenario ended while still waiting on. Diagnostic, not a failure: a capture
     /// can legitimately stop mid-sync.
     private(set) var abandonedAtEnd: [String] = []
@@ -93,8 +99,23 @@ final class ReplayBoundaryGate {
     /// A boundary whose moment has already passed answers immediately rather than parking, which is
     /// also what keeps `advance` from looping: work resumed inside it can only park in the future.
     func park(at: TimeInterval, what: String, answer: @escaping () async -> Void) async {
+        // The invariant `advance` leans on: everything owed is owed in the *future*, so answering a
+        // boundary can never re-offer the moment the clock already stands on. Unreachable from the
+        // one caller today — it takes its moment from `fetchAnswerTime`, which never looks back —
+        // but the round limit in `advance` is a backstop, not the reason it terminates.
+        guard at > virtualNow else {
+            await answer()
+            return
+        }
         nextId += 1
         parked.append(Parked(id: nextId, at: at, what: what, answer: answer))
+    }
+
+    /// Moves the clock and remembers where it went. `setClock` clamps so time never runs backwards;
+    /// this clamps identically, or `park` would compare against a moment the clock never took.
+    private func moveClock(to moment: TimeInterval, _ setClock: (TimeInterval) -> Void) {
+        virtualNow = max(moment, virtualNow)
+        setClock(moment)
     }
 
     /// Runs the clock forward to `target`, answering each boundary **at its own moment** on the way.
@@ -118,11 +139,11 @@ final class ReplayBoundaryGate {
             parked.removeAll { $0.id == next.id }
             // Never backwards: two boundaries can answer at the same recorded moment, and a
             // recorded time can sit fractionally behind where the clock already stands.
-            setClock(next.at)
+            moveClock(to: next.at, setClock)
             await next.answer()
             await settle()
         }
-        setClock(target)
+        moveClock(to: target, setClock)
     }
 
     /// Ends the drive: answers whatever is still outstanding so the run finishes rather than stalls.
@@ -134,11 +155,13 @@ final class ReplayBoundaryGate {
             guardCount += 1
             parked.removeAll { $0.id == next.id }
             abandoned.append(next.what)
-            setClock(next.at)
+            moveClock(to: next.at, setClock)
             await next.answer()
             await settle()
         }
-        abandonedAtEnd = abandoned
+        // Whatever the round limit cut short is still owed, and saying so is the whole point of
+        // this list: a break that reported only what it released would read as a clean end of drive.
+        abandonedAtEnd = abandoned + parked.map(\.what)
     }
 
     /// Whether anything is owed. The SDK reaches its boundaries asynchronously, so a caller that
