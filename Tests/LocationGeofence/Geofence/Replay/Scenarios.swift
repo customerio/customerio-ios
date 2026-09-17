@@ -131,12 +131,6 @@ enum Scenarios {
                 }
                 return scenario.platform == "ios"
             }
-            // TEMPORARY. Hides the drives captured before `location.fix` shipped, which can never
-            // pass: the SDK would decide from a position the drive never recorded. It buys quiet
-            // while the flow is being proven, at the cost of a scenario disappearing silently —
-            // the opposite of how everything else here fails. Delete this filter, and the stale
-            // drives with it, once the flow is trusted end to end.
-            .filter { scenario in scenario.1.when.contains { $0.ev == "location.fix" } }
             .map(\.0)
             .sorted()
     }()

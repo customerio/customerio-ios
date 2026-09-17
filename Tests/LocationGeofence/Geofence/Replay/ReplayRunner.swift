@@ -59,7 +59,12 @@ enum ReplayRunner {
         // The stimuli that actually drive work. Pull records are excluded deliberately: they are
         // no-ops here, and letting them define window boundaries would fragment the very windows
         // they belong inside.
-        let stimuli = scenario.when
+        //
+        // Ordered the same way they are *delivered*. `ReplayMatcher.groups` finds a decision's
+        // stimulus with `lastIndex { $0 <= record.at }`, which assumes the list ascends; handing it
+        // raw file order while the runner drove `stableByTime` meant a capture whose lines were not
+        // already sorted would be graded against boundaries that never happened in that order.
+        let stimuli = Self.stableByTime(scenario.when)
             .filter { record in
                 guard record.ev == "location.fix",
                       let source = record.fields["prov"].flatMap(GeofenceLog.FixSource.init(rawValue:))
