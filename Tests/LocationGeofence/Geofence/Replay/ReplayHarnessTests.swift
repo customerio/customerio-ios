@@ -97,6 +97,62 @@ struct ReplayHarnessTests {
         harness.resetOutput()
     }
 
+    /// A `prov=resolver` record is the SDK *reading* its own cache, not a position arriving.
+    ///
+    /// `bestKnownFixDetail()` writes one whenever the resolver's fix is newer than
+    /// `CLLocationManager`'s, and nothing about that read reaches `GeofenceRefreshTrigger` — only
+    /// the Location module's bus event does. Replaying it as a delivery consumed the rearm flag
+    /// identify had just set and started a sync the drive never ran.
+    ///
+    /// The bus fix at the end is the control. Without it a harness that had stopped delivering
+    /// *any* fix would pass the first half of this test having proved nothing.
+    @Test
+    @available(iOS 17.0, *)
+    func feedFix_givenResolverSourcedRead_expectInertUntilBusFixArrives() async throws {
+        try await ReplayHarness.withTail {
+            let harness = ReplayHarness()
+            try harness.enqueueFetch(bodyJSON: catalogue("A"))
+            harness.loadPulledFixes(stimuli: [0], samples: [
+                harness.pulledFix(
+                    latitude: Self.awayLatitude,
+                    longitude: Self.longitude,
+                    accuracy: 10,
+                    age: 0,
+                    at: 0
+                )
+            ])
+            harness.setIdentified(true)
+            #expect(
+                await settleOnMain { harness.acquireFixCallCount >= 1 },
+                "identify did not arm for a fix"
+            )
+
+            harness.feedFix(
+                latitude: Self.awayLatitude,
+                longitude: Self.longitude,
+                accuracy: 10,
+                age: 0,
+                source: .resolver
+            )
+            try await harness.settleBoundaries()
+            #expect(harness.fetchCount == 0, "a cache read started a sync")
+            #expect(harness.emitted(ev: "registration.applied").isEmpty)
+
+            harness.feedFix(
+                latitude: Self.awayLatitude,
+                longitude: Self.longitude,
+                accuracy: nil,
+                age: 0,
+                source: .bus
+            )
+            try await harness.settleBoundaries()
+            #expect(
+                await settleOnMain { harness.emitted(ev: "registration.applied").count == 1 },
+                "the bus fix did not drive the sync: \(harness.emitted.map { $0["ev"] ?? "?" })"
+            )
+        }
+    }
+
     @Test
     @available(iOS 17.0, *)
     func deliverCrossing_givenArmedFence_expectTransitionAccepted() async throws {
