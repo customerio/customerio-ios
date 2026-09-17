@@ -15,6 +15,35 @@ import Testing
 @Suite("Scenario replay", .serialized)
 @MainActor
 struct ScenarioReplayTests {
+    /// The runner's stimulus list must be ordered the way the runner *delivered*, not the way the
+    /// file happened to be written.
+    ///
+    /// `ReplayMatcher.groups` locates a decision's stimulus with `lastIndex { $0 <= record.at }`,
+    /// which is only meaningful on an ascending list. Inputs go through `stableByTime`, so a
+    /// capture whose lines are not already sorted was being graded against boundaries that never
+    /// happened in that order. No recorded drive is out of order today, which is exactly why this
+    /// case is written rather than waited for.
+    @Test(.enabled(if: ReplayRuntime.isMonitorAvailable))
+    @available(iOS 17.0, *)
+    func run_givenScenarioLinesOutOfOrder_expectStimuliAscending() async throws {
+        let scenario = try ScenarioLoader.parse("""
+        {"k":"scenario","v":1,"name":"out-of-order","platform":"ios","t0":"t"}
+        {"k":"when","at":0.0,"ev":"process.start","session":1}
+        {"k":"when","at":3.0,"ev":"app.background"}
+        {"k":"when","at":1.0,"ev":"app.foreground"}
+        {"k":"when","at":2.0,"ev":"identity.changed","ok":true}
+        """)
+        let (harness, result) = try await ReplayHarness.withTail { () -> (ReplayHarness, ReplayRunner.Result) in
+            let harness = ReplayHarness()
+            return try (harness, await ReplayRunner.run(scenario, on: harness))
+        }
+        defer { harness.detachFromBootstrap() }
+
+        #expect(result.unsupported.isEmpty, "unsupported: \(result.unsupported)")
+        #expect(result.stimuli == result.stimuli.sorted(), "stimuli not ascending: \(result.stimuli)")
+        #expect(result.stimuli == [0.0, 1.0, 2.0, 3.0])
+    }
+
     @Test(
         .enabled(if: Scenarios.isAvailable && ReplayRuntime.isMonitorAvailable),
         arguments: Scenarios.replayable
