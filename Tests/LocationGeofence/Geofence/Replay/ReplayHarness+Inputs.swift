@@ -2,7 +2,6 @@
 @testable import CioInternalCommonMocks
 @testable import CioLocationGeofence
 @testable import CioLocationGeofenceMocks
-import CoreLocation
 import Foundation
 import SharedTests
 
@@ -55,25 +54,10 @@ extension ReplayHarness {
             return
         }
 
-        // Pulled fixes are pre-loaded as a timeline (see `ReplayFixProvider`), so replaying one as
-        // a stimulus would double-count it. The read answers from the timeline on its own.
-        guard source.isArrival else { return }
-
-        let fix = CLLocation(
-            coordinate: CLLocationCoordinate2D(latitude: latitude, longitude: longitude),
-            altitude: 0,
-            horizontalAccuracy: accuracy ?? -1,
-            verticalAccuracy: -1,
-            timestamp: clock.givenNow.addingTimeInterval(-age)
-        )
-
-        // Satisfies a pending one-shot request the way a returning CoreLocation fix would, and is
-        // retained by the real resolver — which is what makes it win over a staler cache read at
-        // the SDK's own `bestKnownFix()`, rather than the harness deciding that.
-        monitor.movementFixResolver.handleDeliveredFix(fix)
-        // What fires `LocationAcquiredEvent` in production; the trigger consumes it only when
-        // something armed for it.
-        trigger.onLocationAcquired(location)
+        // Everything else is a read, and a read is already on the pull timeline (see
+        // `ReplayFixProvider`) — answered when the SDK looks, not delivered as an event. Handing
+        // one to the trigger here is what invented arrivals the drive never had; `accuracy` and
+        // `age` describe the position a read returns, and the timeline is what carries them.
     }
 
     /// Loads every fix the SDK *pulled* during the drive, before the first stimulus runs.
@@ -216,16 +200,20 @@ extension ReplayHarness {
 extension GeofenceLog.FixSource {
     /// Whether a recorded fix reached the SDK because it arrived, or because the SDK went and read it.
     ///
-    /// Only the first is an event. `managerCache` and `gate` are reads of a position the OS already
-    /// held — the SDK pulled them, nothing was delivered — so replaying them as deliveries invents
-    /// arrivals the drive never had. `synthetic` and `none` describe a record with no fix behind it
-    /// at all.
+    /// Only the first is an event, and on iOS there is exactly one of them. Every `location.fix`
+    /// record except `bus` is written by `bestKnownFixDetail()`, which is the SDK *reading* — the
+    /// module's own comment puts it plainly: "The only place a position arrives on this platform;
+    /// every other `location.fix` is a read."
+    ///
+    /// `resolver` counted as an arrival until now, and it is the one that hurt: it is a cache read
+    /// that happened to find the resolver's fix newer than `CLLocationManager`'s, so replaying it
+    /// as a delivery called `onLocationAcquired` where production calls nothing — consuming a rearm
+    /// flag and starting a sync the drive never ran. `freshRequest` is the same read by a different
+    /// name. Both belong on the pull timeline with `managerCache` and `gate`.
     var isArrival: Bool {
         switch self {
-        // `.bus` never reaches this: `feedFix` routes it to the trigger and returns. Left `true`
-        // because it *is* an arrival — it simply arrives somewhere else.
-        case .bus, .resolver, .freshRequest: return true
-        case .managerCache, .gate, .synthetic, .none: return false
+        case .bus: return true
+        case .managerCache, .resolver, .freshRequest, .gate, .synthetic, .none: return false
         }
     }
 }
