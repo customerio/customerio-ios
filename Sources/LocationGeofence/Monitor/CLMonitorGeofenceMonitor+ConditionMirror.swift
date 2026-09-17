@@ -95,6 +95,12 @@ extension CLMonitorGeofenceMonitor {
     /// `extra` on every sample until a sync re-registers it. With `owned` present a reader can
     /// tell that from "the OS is holding something nobody wants".
     ///
+    /// The gap means different things on the two occasions, so read it with `at`. On `at=poll` it
+    /// is the process-start divergence above. On `at=sync` it is refused registrations:
+    /// `startMonitoring` bails to `enqueueConditionRemoval` ahead of its ownership insert when
+    /// permission is blocked or coordinates are unusable, so the region stays in `desired` and
+    /// never enters ownership — `want` over `owned` there counts exactly what the OS turned down.
+    ///
     /// `missing` is therefore precisely "this sync asked the OS for it and the OS does not list
     /// it". It is NOT a general "monitored by nobody" test: a condition the OS GAVE UP on stays
     /// listed in `CLMonitor.identifiers` (measured) and so never appears here. That case has its
