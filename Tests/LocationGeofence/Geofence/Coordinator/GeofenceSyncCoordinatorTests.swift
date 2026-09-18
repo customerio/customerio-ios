@@ -1858,6 +1858,49 @@ struct GeofenceSyncCoordinatorTests {
         #expect(movement.errorOrNil == .alreadyInProgress)
     }
 
+    /// The recovery half of `handleMovement_givenInFlightRefresh_expectAlreadyInProgress`.
+    ///
+    /// Short-circuiting on the gate is correct; LOSING the pass is not. A business crossing and a
+    /// trigger EXIT routinely arrive from the same movement, and the movement pass is the only
+    /// thing that re-centres the trigger — dropped, the trigger stays on the circle the device
+    /// just left, where no further EXIT can ever fire. So the loser must be replayed once the
+    /// holder releases.
+    @Test
+    func handleMovement_givenItLostTheGateToARefresh_expectItIsReplayedAfterwards() async {
+        let storage = makeStorage()
+        let api = GeofenceApiServiceMock()
+        let suspendUntil = AsyncSignal()
+        let arrived = AsyncSignal()
+        api.fetchNearbyGeofencesClosure = { _, _, completion in
+            Task {
+                await arrived.fire()
+                await suspendUntil.wait()
+                completion(.success(makeApiResponse(regions: [])))
+            }
+        }
+        let setup = makeCoordinator(api: api, storage: storage)
+
+        async let firstRefresh = setup.coordinator.refresh(latitude: 0, longitude: 0, anchorIsLiveFix: true)
+        await arrived.wait()
+        // Deliberately elsewhere, so a trigger re-armed at these coordinates can only have come
+        // from the replay and not from the refresh that beat it.
+        let movement = await setup.coordinator.handleMovement(latitude: 0, longitude: 0.05, anchorIsLiveFix: true)
+        await suspendUntil.fire()
+        _ = await firstRefresh
+
+        #expect(movement.errorOrNil == .alreadyInProgress)
+
+        let movedTo = LocationData(latitude: 0, longitude: 0.05)
+        for _ in 0 ..< 200 {
+            if setup.monitor.startedRegions.contains(where: {
+                $0.identifier == GeofenceConstants.movementTriggerIdentifier && $0.center == movedTo
+            }) { break }
+            try? await Task.sleep(nanoseconds: 10000000)
+        }
+        let triggerStarts = setup.monitor.startedRegions.filter { $0.identifier == GeofenceConstants.movementTriggerIdentifier }
+        #expect(triggerStarts.last?.center == movedTo)
+    }
+
     // MARK: - reset
 
     @Test

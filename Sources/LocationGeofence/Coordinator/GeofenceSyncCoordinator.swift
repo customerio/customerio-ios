@@ -64,7 +64,22 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
     let dateUtil: DateUtil
     let transitionEmitter: GeofenceTransitionEmitting
     let contextStore: BackgroundDeliveryContextStore
-    private let refreshInProgress = Synchronized<Bool>(false)
+    // `internal`, not `private`, only because the gate helpers live in a split extension file.
+    let refreshInProgress = Synchronized<Bool>(false)
+
+    /// A movement pass that lost the gate, replayed when the holder releases it.
+    ///
+    /// Only movement is deferred, and the asymmetry is the point. A refresh that loses the gate is
+    /// redundant — whoever holds it is refreshing the same catalog from a fix of the same moment.
+    /// A movement pass that loses it is not: it is the only path that re-centres the movement
+    /// trigger, and nothing else re-arms it. A business crossing and a trigger EXIT routinely
+    /// arrive from the SAME movement, so the two race, and without this the EXIT can be dropped
+    /// with `alreadyInProgress` and no retry — leaving the trigger on the circle the device just
+    /// left, where no further EXIT can fire.
+    ///
+    /// Last writer wins: two movements queued behind one holder describe the same journey, and the
+    /// newer coordinates are the ones worth re-arming against.
+    let deferredMovement = Synchronized<DeferredMovement?>(nil)
 
     init(
         apiService: GeofenceApiService,
@@ -101,6 +116,7 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
         // would be dropped exactly like the refresh it compensates for.
         releaseGate()
         if cleaned { retryForCurrentUser(latitude: latitude, longitude: longitude, anchorIsLiveFix: anchorIsLiveFix) }
+        drainDeferredMovement(userChanged: cleaned)
         return result
     }
 
@@ -146,6 +162,10 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
 
     func handleMovement(latitude: Double, longitude: Double, anchorIsLiveFix: Bool) async -> Result<Void, GeofenceSyncError> {
         guard acquireGate() else {
+            // Recorded, not dropped — see `deferredMovement`.
+            deferredMovement.wrappedValue = DeferredMovement(
+                latitude: latitude, longitude: longitude, anchorIsLiveFix: anchorIsLiveFix
+            )
             logger.geofenceSyncSkipped(reason: .refreshInProgress)
             return .failure(.alreadyInProgress)
         }
@@ -157,6 +177,7 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
         let cleaned = await cleanupIfUserChanged(expectedUserId: expectedUserId)
         releaseGate()
         if cleaned { retryForCurrentUser(latitude: latitude, longitude: longitude, anchorIsLiveFix: anchorIsLiveFix) }
+        drainDeferredMovement(userChanged: cleaned)
         return result
     }
 
@@ -297,37 +318,11 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
         return GeofenceRegistration(center: anchor, businessIds: nearestIds.intersection(osRegistration.registeredIds))
     }
 
+    // `internal`, not `private`, only because the gate helpers live in a split extension file.
     /// The identified user a gated operation runs for (`nil` when signed out); the exit cleanup compares against it.
-    private var identifiedUserId: String? {
+    var identifiedUserId: String? {
         guard let userId = contextStore.currentUserId, !userId.isEmpty else { return nil }
         return userId
-    }
-
-    /// After a cleanup for an identity change, the device monitors nothing — and the new user's own
-    /// refresh may already have been dropped on the gate this operation held. Re-run for whoever is
-    /// signed in now, with this operation's seconds-old coordinates, so a user switch converges to a
-    /// registered state instead of an outage lasting until the next launch. Loop-safe: a retry only
-    /// re-fires if the identity changes yet again during the retry itself.
-    private func retryForCurrentUser(latitude: Double, longitude: Double, anchorIsLiveFix: Bool) {
-        guard identifiedUserId != nil else { return }
-        Task { [weak self] in
-            _ = await self?.refresh(
-                latitude: latitude, longitude: longitude, anchorIsLiveFix: anchorIsLiveFix
-            )
-        }
-    }
-
-    /// Returns false when another call already holds the gate; the caller short-circuits.
-    private func acquireGate() -> Bool {
-        refreshInProgress.mutating { inProgress in
-            if inProgress { return false }
-            inProgress = true
-            return true
-        }
-    }
-
-    private func releaseGate() {
-        refreshInProgress.wrappedValue = false
     }
 }
 
