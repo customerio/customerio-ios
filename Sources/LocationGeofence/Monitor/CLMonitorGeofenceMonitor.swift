@@ -134,6 +134,7 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preco
         }
         startConsuming()
         registerForegroundRearm()
+        startConditionMirrorSampling()
     }
 
     deinit {

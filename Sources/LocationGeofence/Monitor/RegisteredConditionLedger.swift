@@ -140,6 +140,15 @@ struct RegisteredConditionLedger {
         entries[identifier]?.staged
     }
 
+    /// Every condition this process currently wants the OS to hold.
+    ///
+    /// Keyed on `staged`, not `live`: `retire` clears the claim but deliberately keeps the live
+    /// generations, so a condition removed on purpose would otherwise keep reading as wanted long
+    /// after its remove drained.
+    var stagedIdentifiers: Set<String> {
+        Set(entries.filter { $0.value.staged != nil }.keys)
+    }
+
     /// The circle an event raised at `raisedAt` was evaluated against, chosen by the event's own
     /// date rather than by what is registered now: `CLMonitor` events are read off an async stream
     /// and the handler awaits a fix request and a storage write before asking, so registrations can

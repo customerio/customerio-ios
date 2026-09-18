@@ -212,50 +212,8 @@ extension CLMonitorGeofenceMonitor {
         // identifiers never reach the OS, so reporting them as `missing` blames the OS for a
         // refusal this SDK made, in the record whose whole purpose is separating the two.
         let target = ConditionMirror.target(desired: desiredIdentifiers, owned: ownedRegionIdentifiers)
-        logConditionMirrorDrift(desired: target.accepted, refused: target.refused)
+        logConditionMirrorDrift(desired: target.accepted, refused: target.refused, at: .sync)
         return GeofenceRegionDiff(added: added, removed: removed)
-    }
-
-    /// Records what CLMonitor itself holds against what THIS sync asked it to hold.
-    ///
-    /// Every registration record until now asserted our own belief: `monitoredRegionIdentifiers`
-    /// returns `ownedRegionIdentifiers`, so `registration.adopted n=13` means "we think thirteen",
-    /// never "the OS holds thirteen".
-    ///
-    /// Scoped to one sync generation on purpose, and that is what makes the fields truthful.
-    /// Ownership is the wrong side to compare: it is mutated synchronously by any later
-    /// `setMonitoredRegions` whose OS work is still queued behind this record, and unioned into by
-    /// `reconcileKnownConditions` on the first pipeline operation — so an ownership-based
-    /// comparison reports healthy staged changes as drift in one direction or the other,
-    /// whichever end it is read from. `desired` is this call's own set and cannot move.
-    ///
-    /// `missing` is therefore precisely "this sync asked the OS for it and the OS does not list
-    /// it". It is NOT a general "monitored by nobody" test: a condition the OS GAVE UP on stays
-    /// listed in `CLMonitor.identifiers` (measured) and so never appears here. That case has its
-    /// own record, from the `.unmonitored` branch in `process(event:)`; read the two together.
-    func logConditionMirrorDrift(desired: Set<String>, refused: Int) {
-        // Diagnostics-only work must cost normal users nothing. `geofenceInfo` drops the tail when
-        // diagnostics are off, but the actor hop and set arithmetic below would still be queued on
-        // the registration FIFO ahead of real monitor operations.
-        guard GeofenceDiagnostics.isEnabled else { return }
-        enqueueMonitorOperation { [weak self] monitor in
-            guard let self else { return }
-            // Drains after this sync's own adds and removes, so the OS should hold exactly
-            // `desired` by now.
-            let drift = ConditionMirror.drift(desired: desired, atOs: Set(await monitor.identifiers))
-            self.logger.geofenceInfo("condition_mirror", fields: [
-                ("want", String(desired.count)),
-                // Quiet when nothing was turned down, like `missing` and `extra`, so the ordinary
-                // record is unchanged and the key's presence is itself the signal.
-                ("refused", refused > 0 ? String(refused) : nil),
-                ("os", String(drift.atOsCount)),
-                // `GeofenceLog.list`, not a plain join: these name conditions, and an identifier is
-                // workspace-authored. The helper sanitizes each one and caps the list, where a raw
-                // join would have the tail fold its own commas and turn two into one token.
-                ("missing", GeofenceLog.list(drift.missing)),
-                ("extra", GeofenceLog.list(drift.extra))
-            ])
-        }
     }
 
     /// True when this monitor owns the condition and registered it with the same circle, so
@@ -300,52 +258,6 @@ extension CLMonitorGeofenceMonitor {
         GeofenceEventCircle(
             conditionLedger.attribution(for: identifier, raisedAt: raisedAt),
             maximumRadius: authManager.maximumRegionMonitoringDistance
-        )
-    }
-}
-
-/// The `condition_mirror` comparison, kept off the monitor so it carries no `@available` gate and
-/// can be tested without a `CLMonitor` — which cannot be instantiated in a unit test.
-enum ConditionMirror {
-    /// What a sync actually asked the OS to hold, and how much of its request was refused.
-    ///
-    /// Ownership is the record of acceptance — it is inserted only once both of `startMonitoring`'s
-    /// guards pass, and `setMonitoredRegions` has already released it for every identifier it no
-    /// longer wants, so at the end of that loop ownership is exactly the accepted subset of
-    /// `desired`. Intersecting rather than reading ownership directly keeps that a stated
-    /// relationship instead of a coincidence, and keeps a refusal out of `missing` even if
-    /// ownership later grows a member the desired set never had.
-    ///
-    /// `refused` is reported because scoping the comparison would otherwise hide those
-    /// registrations completely, and only one of the two refusal paths says anything elsewhere.
-    /// Unusable coordinates log `geofenceInvalidCoordinatesForRegion` per identifier; blocked
-    /// permission logs an edge-triggered tier record that names no region and says nothing at all
-    /// on a later sync while the tier is unchanged, and the registration diff counts a refused
-    /// region in neither `added` nor `removed`. Without this field, N regions turned down by a
-    /// blocked permission produce a perfectly clean record — which is a worse failure than the
-    /// wrong attribution it replaced, because it is a silent one.
-    struct Target: Equatable {
-        let accepted: Set<String>
-        let refused: Int
-    }
-
-    static func target(desired: Set<String>, owned: Set<String>) -> Target {
-        let accepted = desired.intersection(owned)
-        return Target(accepted: accepted, refused: desired.count - accepted.count)
-    }
-
-    /// Sorted so a capture diffs cleanly across passes.
-    struct Drift: Equatable {
-        let missing: [String]
-        let extra: [String]
-        let atOsCount: Int
-    }
-
-    static func drift(desired: Set<String>, atOs: Set<String>) -> Drift {
-        Drift(
-            missing: desired.subtracting(atOs).sorted(),
-            extra: atOs.subtracting(desired).sorted(),
-            atOsCount: atOs.count
         )
     }
 }

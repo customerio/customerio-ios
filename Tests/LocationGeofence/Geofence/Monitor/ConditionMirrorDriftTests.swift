@@ -54,6 +54,15 @@ struct ConditionMirrorDriftTests {
         #expect(drift.extra == ["m", "z"])
     }
 
+    /// The emitted tokens, pinned. They are literals rather than enum raw values precisely so a
+    /// case rename cannot change what a field capture greps for, and this is what stops someone
+    /// simplifying them back into a raw-value enum that SwiftFormat would then rewrite.
+    @Test
+    func occasion_expectTheTokensStayWhatCapturesGrepFor() {
+        #expect(ConditionMirrorOccasion.sync.token == "sync")
+        #expect(ConditionMirrorOccasion.poll.token == "poll")
+    }
+
     /// Nothing refused is the ordinary case, and it must leave the count at zero so the field
     /// stays absent rather than printing a measured `refused=0` on every healthy sync.
     @Test
