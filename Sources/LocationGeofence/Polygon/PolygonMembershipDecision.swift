@@ -87,7 +87,9 @@ enum PolygonMembershipDecision {
         }
         guard horizontalAccuracy < venueScale else { return .undecided(.accuracyTooLow) }
         if signedEdgeDistance > horizontalAccuracy { return .decided(.inside) }
-        // Ambiguous. Inside is worth corroborating; outside is not a verdict.
+        // Ambiguous. Inside is worth a second look, but only so a fix that positively reads
+        // OUTSIDE can block it — an unanswered second opinion still commits. Outside is not a
+        // verdict either way.
         return signedEdgeDistance > 0 ? .needsCorroboration(.inside) : .undecided(.withinAccuracy)
     }
 }

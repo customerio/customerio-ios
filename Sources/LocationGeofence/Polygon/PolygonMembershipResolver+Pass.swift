@@ -17,13 +17,15 @@ extension PolygonMembershipResolver {
     func runPass(
         geofenceIds: [String],
         fix: CLLocation,
-        pass: Int,
         isStillCurrent: (@Sendable () -> Bool)? = nil
     ) async {
+        // Created here, so the pass owns it: see `PassCorroboration` for why resolver-level state
+        // let overlapping fresh passes answer each other's corroboration requests.
+        let cache = PassCorroboration()
         var deferred: [DeferredCorroboration] = []
         for geofenceId in geofenceIds {
             if let pending = await evaluate(
-                geofenceId: geofenceId, fix: fix, pass: pass, isStillCurrent: isStillCurrent
+                geofenceId: geofenceId, fix: fix, isStillCurrent: isStillCurrent
             ) {
                 deferred.append(pending)
             }
@@ -44,14 +46,18 @@ extension PolygonMembershipResolver {
                 )
                 continue
             }
-            guard await corroborate(
-                pending.proposed, geofence: pending.geofence, polygon: pending.polygon,
-                firstFix: fix, firstEdge: pending.signedEdgeDistance
-            ) else { continue }
+            // Only a second fix that positively reads OUTSIDE blocks the arrival. Everything
+            // else commits, carrying on the verdict why it could not be confirmed.
+            let corroboration: VerdictCorroboration
+            switch await corroborate(pending, firstFix: fix, cache: cache) {
+            case .confirmed: corroboration = .confirmed
+            case .unconfirmed(let reason): corroboration = .unconfirmed(reason)
+            case .contradicted: continue
+            }
             await record(
                 PolygonVerdict(
-                    membership: pending.proposed, corroborated: true,
-                    signedEdgeDistance: pending.signedEdgeDistance, pass: pass
+                    membership: pending.proposed, corroboration: corroboration,
+                    signedEdgeDistance: pending.signedEdgeDistance
                 ),
                 for: pending.geofence, fix: fix, isStillCurrent: isStillCurrent
             )
@@ -72,9 +78,11 @@ extension PolygonMembershipResolver {
         isStillCurrent: (@Sendable () -> Bool)?
     ) async {
         logger.geofencePolygonVerdict(
-            identifier: geofence.id, verdict: verdict,
+            identifier: geofence.id, membership: verdict.membership,
+            signedEdgeDistance: verdict.signedEdgeDistance,
             horizontalAccuracy: fix.horizontalAccuracy,
-            fixAge: -fix.timestamp.timeIntervalSinceNow
+            fixAge: -fix.timestamp.timeIntervalSinceNow,
+            corroboration: verdict.corroboration
         )
         await apply(
             verdict.membership, to: geofence, evidence: fix.timestamp,
@@ -86,8 +94,28 @@ extension PolygonMembershipResolver {
 /// A settled verdict and how it was reached, carried together so both pass phases record one.
 struct PolygonVerdict {
     let membership: PolygonMembership
-    let corroborated: Bool
+    let corroboration: VerdictCorroboration
     let signedEdgeDistance: Double
-    /// Which pass produced it; see `geofencePolygonVerdict`'s `pass` key.
-    let pass: Int
+}
+
+/// How a recorded verdict stands with respect to a second fix, widened from a Bool because
+/// "committed without confirmation" is a third state and folding it into `false` would report an
+/// uncorroborated marginal arrival as though no second fix had ever been wanted.
+enum VerdictCorroboration: Equatable {
+    /// Decisive on one fix; no second was asked for.
+    case notNeeded
+    /// A second, independent fix agreed.
+    case confirmed
+    /// Marginal, and committed anyway because no second opinion could be had.
+    case unconfirmed(PolygonUndecidedReason)
+
+    /// The shared `cor` boolean: a second fix agreed, or it did not.
+    var confirmed: Bool { self == .confirmed }
+
+    /// `nil` unless the arrival committed without confirmation, so the key is absent on every
+    /// decisive verdict rather than carrying a placeholder.
+    var unconfirmedReason: String? {
+        guard case .unconfirmed(let reason) = self else { return nil }
+        return reason.rawValue
+    }
 }

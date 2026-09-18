@@ -1392,46 +1392,6 @@ struct PolygonMembershipResolverTests {
         #expect(logged(logger, "already believed inside, so no second fix was needed"))
     }
 
-    // MARK: - Pass provenance
-
-    /// A capture has to say which pass produced a verdict. `.movement` and `.foreground` existed
-    /// as tokens but nothing emitted them, so a stationary stay's records had no provenance and
-    /// had to be attributed by guessing at timing.
-    @Test
-    func evaluateAllPolygons_givenAForegroundPass_expectTheReasonRecorded() async {
-        let logger = LoggerMock()
-        let setup = await makeSetup(fix: nil, logger: logger)
-        await registerPolygons(setup, ids: ["1", "2"])
-
-        await setup.resolver.evaluateAllPolygons(reason: .foreground)
-
-        #expect(logged(logger, "Evaluating 2 polygon(s) (foreground)"))
-    }
-
-    /// A movement wake and a foreground pass must not read alike.
-    @Test
-    func evaluateAllPolygons_givenAMovementPass_expectTheReasonRecorded() async {
-        let logger = LoggerMock()
-        let setup = await makeSetup(fix: nil, logger: logger)
-        await registerPolygons(setup, ids: ["1"])
-
-        await setup.resolver.evaluateAllPolygons(reason: .movement, requiresFreshFix: true)
-
-        #expect(logged(logger, "Evaluating 1 polygon(s) (movement)"))
-    }
-
-    /// The pass that had nothing to judge used to return in silence, so "nothing registered" and
-    /// "never ran" were the same empty capture.
-    @Test
-    func evaluateAllPolygons_givenNothingRegistered_expectAPassRecordWithZero() async {
-        let logger = LoggerMock()
-        let setup = await makeSetup(fix: nil, logger: logger)
-
-        await setup.resolver.evaluateAllPolygons(reason: .foreground)
-
-        #expect(logged(logger, "Evaluating 0 polygon(s) (foreground)"))
-    }
-
     // MARK: - Corroboration independence
 
     /// A latitude `metres` INSIDE the square's northern edge, so `signedEdgeDistance` is that many
@@ -1444,8 +1404,11 @@ struct PolygonMembershipResolverTests {
     /// `MovementFixResolver` answers with but never records in `latestFix`. The forced
     /// corroboration request then only had to beat `latestFix` — still nil — so CoreLocation
     /// echoing that very same fix cleared the guard and an ambiguous arrival confirmed itself.
+    /// An echo is not evidence the device is outside, so the arrival commits on the first fix
+    /// alone. What it must NOT do is count as confirmation — the verdict carries
+    /// `corroboration_not_independent`, not `cor=true`.
     @Test
-    func evaluateMembership_givenCorroborationEchoesThePassFix_expectNoEnter() async {
+    func evaluateMembership_givenCorroborationEchoesThePassFix_expectEnterCommittedUnconfirmed() async {
         let marginal = fix(
             latitude: Self.latitudeInsideNorthEdge(by: 3),
             longitude: 0,
@@ -1459,8 +1422,10 @@ struct PolygonMembershipResolverTests {
 
         await setup.resolver.evaluateMembership(geofenceIds: ["1"], reason: .newPolygon)
 
-        #expect(await setup.emitter.snapshot().isEmpty)
-        #expect(await setup.storage.getPolygonMembership()["1"]?.membership != .inside)
+        let delivered = await setup.emitter.snapshot()
+        #expect(delivered.count == 1)
+        #expect(delivered.first?.transition == .enter)
+        #expect(await setup.storage.getPolygonMembership()["1"]?.membership == .inside)
     }
 
     /// The same fix judged twice still costs one request — the batching the pass depends on.
@@ -1470,8 +1435,9 @@ struct PolygonMembershipResolverTests {
         let counter = countingRequests(setup)
         let basis = Date().addingTimeInterval(-Self.ageInsideGate)
 
-        _ = await setup.resolver.corroborationFix(newerThan: basis)
-        _ = await setup.resolver.corroborationFix(newerThan: basis)
+        let cache = PassCorroboration()
+        _ = await setup.resolver.corroborationFix(newerThan: basis, cache: cache)
+        _ = await setup.resolver.corroborationFix(newerThan: basis, cache: cache)
 
         #expect(counter.count == 1)
     }
@@ -1493,8 +1459,9 @@ struct PolygonMembershipResolverTests {
         let first = Date().addingTimeInterval(-20)
 
         // Succeeds and is cached, which is the state the stale reuse needed.
-        #expect(await setup.resolver.corroborationFix(newerThan: first).fix != nil)
-        _ = await setup.resolver.corroborationFix(newerThan: first.addingTimeInterval(1))
+        let cache = PassCorroboration()
+        #expect(await setup.resolver.corroborationFix(newerThan: first, cache: cache).fix != nil)
+        _ = await setup.resolver.corroborationFix(newerThan: first.addingTimeInterval(1), cache: cache)
 
         #expect(counter.count == 2)
     }
@@ -1506,7 +1473,7 @@ struct PolygonMembershipResolverTests {
         let basis = Date().addingTimeInterval(-Self.ageInsideGate)
         let setup = await makeSetup(fix: fix(latitude: 0, longitude: 0, at: basis))
 
-        #expect(await setup.resolver.corroborationFix(newerThan: basis) == .notIndependent)
+        #expect(await setup.resolver.corroborationFix(newerThan: basis, cache: PassCorroboration()) == .notIndependent)
     }
 
     /// Answers the corroboration request with a fix of its own, so the SECOND fix's properties
@@ -1527,21 +1494,63 @@ struct PolygonMembershipResolverTests {
         setup.fixResolver.systemCachedFix = { passFix }
     }
 
-    /// A timed-out corroboration must not outlive the pass that made it. A stationary device's
-    /// next pass usually resolves the very SAME cached fix, so a cache keyed on timestamp alone
-    /// answers it with the stale failure and blocks the arrival until CoreLocation's cache moves —
-    /// which is precisely the case corroboration exists to rescue.
+    /// Counts corroboration requests and answers each with a fix far OUTSIDE the ring, so the
+    /// arrival is blocked and a later pass is still owed its own attempt.
+    private func countingContradictions(_ setup: Setup) -> RequestCounter {
+        let counter = RequestCounter()
+        setup.fixResolver.requestFreshFix = { [weak fixResolver = setup.fixResolver] in
+            counter.count += 1
+            fixResolver?.handleResolvedFix(fix(latitude: 1, longitude: 1, accuracy: 5))
+        }
+        return counter
+    }
+
+    /// One refresh starts BOTH `evaluateNewlyRegistered` and the movement pass, both are
+    /// `requiresFreshFix`, and the in-flight guard deliberately lets a fresh pass through — so two
+    /// passes routinely judge the same fix at the same time. When the corroboration attempt lived
+    /// on the resolver, the first pass's TIMEOUT answered the second pass without it ever asking,
+    /// and a transient failure suppressed an arrival that a retry would have delivered.
+    ///
+    /// Driven through `runPass` twice against one fix rather than through concurrent entry points:
+    /// that is the same shared-basis condition the overlap produces, and it is deterministic. The
+    /// old code cleared only in `resolvePassFix`, which a pass never called for itself, so the
+    /// second pass here reused the first's failure and made no request.
     @Test
-    func evaluateMembership_givenCorroborationFailedInAnEarlierPass_expectRetried() async {
+    func runPass_givenASecondPassOnTheSameFix_expectItMakesItsOwnAttempt() async {
+        let setup = await makeSetup(fix: nil)
+        let passFix = fix(
+            latitude: Self.latitudeInsideNorthEdge(by: 3), longitude: 0, accuracy: 5,
+            at: Date().addingTimeInterval(-Self.ageInsideGate)
+        )
+        let counter = countingContradictions(setup)
+        await registerPolygons(setup, ids: ["1"])
+
+        await setup.resolver.runPass(geofenceIds: ["1"], fix: passFix)
+        await setup.resolver.runPass(geofenceIds: ["1"], fix: passFix)
+
+        #expect(counter.count == 2)
+    }
+
+    /// The positive half of the contract. Every other case here asserts a REFUSAL, so inverting
+    /// the branch that accepts a second fix would leave the whole suite green — the enter this
+    /// path exists to deliver is asserted nowhere else.
+    @Test
+    func evaluateMembership_givenSecondFixReadsInside_expectEnterDelivered() async {
         let setup = await makeSetup(fix: nil)
         marginalPass(setup)
-        let counter = countingRequests(setup)
+        // Default timestamp, so it strictly postdates the pass fix by `ageInsideGate`.
+        deliveringSecondFix(
+            setup,
+            fix(latitude: Self.latitudeInsideNorthEdge(by: 10), longitude: 0, accuracy: 5)
+        )
         await registerPolygons(setup, ids: ["1"])
 
         await setup.resolver.evaluateMembership(geofenceIds: ["1"], reason: .newPolygon)
-        await setup.resolver.evaluateMembership(geofenceIds: ["1"], reason: .newPolygon)
 
-        #expect(counter.count == 2)
+        let delivered = await setup.emitter.snapshot()
+        #expect(delivered.count == 1)
+        #expect(delivered.first?.transition == .enter)
+        #expect(await setup.storage.getPolygonMembership()["1"]?.membership == .inside)
     }
 
     /// Side disagreement is its own record. It used to log `within_accuracy`, which describes a
@@ -1563,10 +1572,11 @@ struct PolygonMembershipResolverTests {
 
     /// A second fix too coarse for this venue adds no information, and says so under its own
     /// token — the one case the old ternary did get right, pinned so the split cannot regress it.
+    /// A second fix too coarse to judge this venue adds nothing to the first — which is not the
+    /// same as arguing against it, so the arrival still commits.
     @Test
-    func evaluateMembership_givenSecondFixCoarserThanTheVenue_expectAccuracyTooLow() async {
-        let logger = LoggerMock()
-        let setup = await makeSetup(fix: nil, logger: logger)
+    func evaluateMembership_givenSecondFixCoarserThanTheVenue_expectEnterCommittedUnconfirmed() async {
+        let setup = await makeSetup(fix: nil)
         marginalPass(setup)
         // Inside the ring, but the accuracy circle is wider than the venue is deep (~178 m).
         deliveringSecondFix(setup, fix(latitude: 0, longitude: 0, accuracy: 200))
@@ -1574,8 +1584,9 @@ struct PolygonMembershipResolverTests {
 
         await setup.resolver.evaluateMembership(geofenceIds: ["1"], reason: .newPolygon)
 
-        #expect(logged(logger, "accuracy too low for a venue this size"))
-        #expect(await setup.emitter.snapshot().isEmpty)
+        let delivered = await setup.emitter.snapshot()
+        #expect(delivered.count == 1)
+        #expect(delivered.first?.transition == .enter)
     }
 
     /// No fix at all is a different record from an echo.
@@ -1583,6 +1594,6 @@ struct PolygonMembershipResolverTests {
     func corroborationFix_givenNoFix_expectUnavailable() async {
         let setup = await makeSetup(fix: nil)
 
-        #expect(await setup.resolver.corroborationFix(newerThan: Date()) == .unavailable)
+        #expect(await setup.resolver.corroborationFix(newerThan: Date(), cache: PassCorroboration()) == .unavailable)
     }
 }

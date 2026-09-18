@@ -18,8 +18,15 @@ import UIKit
 /// - an EXIT requires either a covering-circle exit — polygon ⊆ circle, so leaving the circle
 ///   provably leaves the polygon — or a gated fix placing the device outside.
 ///
-/// Everything else is silent. That is what "no event without gated geometric confirmation" means
-/// in code, and why an undecidable fix leaves the stored belief untouched rather than guessing.
+/// Everything else is silent, and a fix that cannot decide leaves the stored belief untouched
+/// rather than guessing.
+///
+/// One asymmetry inside the ENTER invariant, and it is deliberate: a fix that places the device
+/// inside but by LESS than its own accuracy is accepted unless a usable second fix positively
+/// places it outside. It is not held pending confirmation. While the device stands still nothing
+/// re-derives a missed arrival, so refusing one loses the visit; a spurious one is corrected by
+/// the next decisive fix. Such a verdict records `cor=false` with a `corwhy` reason, so a capture
+/// never reads it as decisive.
 ///
 /// Owns its own `MovementFixResolver` rather than reading the monitor's: the transition handler
 /// carries only coordinates, while the gate needs accuracy and age, and on a wrapper cold wake
@@ -35,12 +42,6 @@ final class PolygonMembershipResolver {
     let notificationCenter: NotificationCenter
     var foregroundObserverToken: NSObjectProtocol?
 
-    /// The one corroboration attempt made against the fix currently being judged, so N marginal
-    /// polygons sharing that fix cost one request rather than N — a failed attempt included.
-    /// Keyed by that fix's timestamp for CORRECTNESS (never answer for a fix it predates) and
-    /// cleared by `resolvePassFix` for LIVENESS (a cached failure must not outlive its pass). Both
-    /// are needed: a stationary device's next pass often reuses the very same cached fix.
-    var passCorroboration: (basis: Date, outcome: CorroborationOutcome)?
     private var passesInFlight = 0
     /// Monotonic, so two passes that overlap are distinguishable in a capture. A movement wake
     /// does not yield to an in-flight foreground pass, so their verdicts genuinely interleave.
@@ -184,7 +185,7 @@ final class PolygonMembershipResolver {
             }
             return false
         }
-        await runPass(geofenceIds: pending, fix: fix, pass: pass, isStillCurrent: isStillCurrent)
+        await runPass(geofenceIds: pending, fix: fix, isStillCurrent: isStillCurrent)
         return true
     }
 
@@ -232,7 +233,7 @@ final class PolygonMembershipResolver {
             }
             return
         }
-        await runPass(geofenceIds: polygons.map(\.id), fix: fix, pass: pass, isStillCurrent: isStillCurrent)
+        await runPass(geofenceIds: polygons.map(\.id), fix: fix, isStillCurrent: isStillCurrent)
     }
 
     private func evaluate(
@@ -246,7 +247,7 @@ final class PolygonMembershipResolver {
             logger.geofencePolygonUndecided(identifier: geofenceId, reason: .noUsableFix)
             return
         }
-        await runPass(geofenceIds: [geofenceId], fix: fix, pass: pass, isStillCurrent: isStillCurrent)
+        await runPass(geofenceIds: [geofenceId], fix: fix, isStillCurrent: isStillCurrent)
     }
 
     /// Takes an id, never a caller's `PolygonRegion`: resolving a fix suspends, and a refresh can
@@ -296,8 +297,8 @@ final class PolygonMembershipResolver {
         case .decided(let membership):
             await record(
                 PolygonVerdict(
-                    membership: membership, corroborated: false,
-                    signedEdgeDistance: signedEdgeDistance, pass: pass
+                    membership: membership, corroboration: .notNeeded,
+                    signedEdgeDistance: signedEdgeDistance
                 ),
                 for: geofence, fix: fix, isStillCurrent: isStillCurrent
             )
