@@ -203,6 +203,9 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preco
                 } catch {
                     self.logger.geofenceMonitorEventStreamFailed(error: error)
                 }
+                // A sequence that ENDS rather than throws took this path in silence, and that is
+                // indistinguishable in a capture from the OS having nothing to report.
+                self.logger.geofenceInfo("event_stream_resubscribing", fields: [("s", String(backoffNanos / 1000000000))])
                 try? await Task.sleep(nanoseconds: backoffNanos)
                 backoffNanos = min(backoffNanos * 2, maxBackoffNanos)
             }
@@ -218,7 +221,7 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preco
         // dropping oldest is safe because CLMonitor re-emits current state.
         if onTransition == nil || !pendingEvents.isEmpty || isDrainingPendingEvents {
             pendingEvents.append(event)
-            if pendingEvents.count > Self.maxPendingEvents { pendingEvents.removeFirst() }
+            if pendingEvents.count > Self.maxPendingEvents { logOverflowedEvent(pendingEvents.removeFirst()) }
             drainPendingEventsIfReady()
             return
         }
@@ -240,7 +243,7 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preco
 
     private func process(event: CLMonitor.Event) async {
         let identifier = event.identifier
-        guard ownedRegionIdentifiers.contains(identifier) else { return }
+        guard ownedRegionIdentifiers.contains(identifier) else { return logUnownedEvent(event) }
         let transition: GeofenceTransition
         switch event.state {
         case .satisfied:
