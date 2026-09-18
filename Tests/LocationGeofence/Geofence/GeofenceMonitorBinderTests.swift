@@ -341,7 +341,6 @@ struct GeofenceMonitorBinderTests {
         await awaitDispatch(coordinator.handleMovementCallsCount > 0)
 
         #expect(coordinator.handleMovementCallsCount == 1)
-        #expect(coordinator.refreshCallsCount == 0)
     }
 
     /// The re-arm must be sized against the fix the membership pass obtained, NOT the crossing's
@@ -425,5 +424,35 @@ struct GeofenceMonitorBinderTests {
 
         #expect(coordinator.handleMovementCallsCount == 0)
         #expect(coordinator.refreshCallsCount == 1)
+    }
+
+    /// Regression guard for the crossing-refresh #1296 added. `handleMovement` refetches on
+    /// distance and on a missing anchor, never on AGE, so re-arming alone would leave a
+    /// time-expired catalog stale on a circle entry made without moving a refetch radius.
+    @Test
+    func bind_givenPolygonCoveringCircleEnter_expectCatalogStillRefreshed() async {
+        let monitor = MockGeofenceRegionMonitor()
+        let coordinator = makeCoordinatorMock()
+        let tracker = makeTracker(deliveryTracker: makeDeliveryMock())
+        let storage = makeStorage()
+        await seedPolygon(in: storage)
+
+        let resolver = makeResolver(tracker: tracker, storage: storage)
+        resolver.fixResolver.requestFreshFix = { [weak resolver] in
+            resolver?.fixResolver.handleResolvedFix(Self.insideFix)
+        }
+        GeofenceMonitorBinder.bind(monitor: monitor, resolver: resolver, coordinator: coordinator, logger: LoggerMock())
+        monitor.simulateTransition(
+            identifier: "poly-1", transition: .enter,
+            location: LocationData(latitude: 37.0, longitude: -122.0),
+            eventCircle: .circle(MonitoredCircle(center: .init(latitude: 0, longitude: 0), radius: 300, maximumRadius: 1000))
+        )
+        await awaitDispatch(coordinator.refreshCallsCount > 0)
+
+        #expect(coordinator.handleMovementCallsCount == 1)
+        #expect(coordinator.refreshCallsCount == 1)
+        // Both anchored on the resolver's fix, for the same reason the re-arm is.
+        #expect(coordinator.refreshReceivedArguments?.latitude == Self.insideFix.coordinate.latitude)
+        #expect(coordinator.refreshReceivedArguments?.anchorIsLiveFix == true)
     }
 }
