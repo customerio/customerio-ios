@@ -169,11 +169,11 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
     }
 
     func handleMovement(latitude: Double, longitude: Double, anchorIsLiveFix: Bool) async -> Result<Void, GeofenceSyncError> {
-        guard acquireGate() else {
-            // Recorded, not dropped — see `deferredMovement`.
-            deferredMovement.wrappedValue = DeferredMovement(
-                latitude: latitude, longitude: longitude, anchorIsLiveFix: anchorIsLiveFix
-            )
+        // Recorded, not dropped — see `deferredMovement`. Taking the gate and recording the loss
+        // are one step on purpose: see `acquireGateOrDefer`.
+        guard acquireGateOrDefer(
+            DeferredMovement(latitude: latitude, longitude: longitude, anchorIsLiveFix: anchorIsLiveFix)
+        ) else {
             logger.geofenceSyncSkipped(reason: .refreshInProgress)
             return .failure(.alreadyInProgress)
         }
