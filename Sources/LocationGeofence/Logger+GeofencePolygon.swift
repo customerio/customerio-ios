@@ -38,6 +38,24 @@ extension Logger {
         )
     }
 
+    /// A whole-set pass ran. The counterpart to `polygon.pass.skipped`, without which a pass that
+    /// produced no verdicts is indistinguishable from one that never started — and `n=0` says the
+    /// pass ran against nothing registered, which used to return in silence.
+    ///
+    /// Pass-level rather than one record per polygon: a long stationary capture is read by asking
+    /// "did anything evaluate while I stood here", and N lines per pass buries that.
+    func geofencePolygonPassStarted(reason: PolygonEvaluationReason, count: Int, pass: Int) {
+        debug(
+            "Evaluating \(count) polygon(s) (\(reason.prose))"
+                + geofenceTail("polygon.pass.started", .output, [
+                    ("why", reason.rawValue),
+                    ("n", String(count)),
+                    ("pass", String(pass))
+                ]),
+            geofenceTag
+        )
+    }
+
     func geofencePolygonEvaluationRequested(identifier: String, reason: PolygonEvaluationReason) {
         debug(
             "Re-evaluating polygon membership for region \(identifier) (\(reason.prose))"
@@ -81,9 +99,23 @@ extension Logger {
     /// `edge` is signed: **positive is inside**, the polygon convention set by
     /// `PolygonRegion.signedEdgeDistance` and fixed by the cross-SDK geometry fixtures. The circle
     /// records (`contradiction.allowed`) use the same key with the opposite sign, so a parser must
-    /// read `edge` against the record's `ev`. `acc` is the ambiguity margin, not a quality score —
-    /// iOS has no accuracy ceiling, so a verdict holds only while `|edge|` exceeds it.
-    func geofencePolygonVerdict(identifier: String, membership: PolygonMembership, signedEdgeDistance: Double, horizontalAccuracy: Double, fixAge: TimeInterval) {
+    /// read `edge` against the record's `ev`. `acc` is the ambiguity margin, not a quality score:
+    /// a verdict holds while `|edge|` exceeds it. There is also a per-fence ceiling, and it gates
+    /// verdicts of INSIDE only — a fix at or beyond `PolygonRegion.scale` decides nothing and is
+    /// logged `accuracy_too_low`. A device clear of the ring by more than its own accuracy is
+    /// outside however thin the venue is, so a departure is settled before the ceiling is read.
+    /// A capture can still show `accuracy_too_low` beside a NEGATIVE edge: an outside-reading fix
+    /// that is not clear by its own accuracy decides nothing either way, and once accuracy passes
+    /// the venue scale that is the reason it carries instead of `within_accuracy`. No departure
+    /// was blocked by the ceiling there.
+    func geofencePolygonVerdict(
+        identifier: String,
+        verdict: PolygonVerdict,
+        horizontalAccuracy: Double,
+        fixAge: TimeInterval
+    ) {
+        let membership = verdict.membership
+        let signedEdgeDistance = verdict.signedEdgeDistance
         debug(
             "Polygon membership \(membership) for region \(identifier): edge \(Int(signedEdgeDistance)) m, accuracy \(Int(horizontalAccuracy)) m, fix age \(String(format: "%.1f", fixAge))s"
                 + geofenceTail("polygon.verdict", .output, [
@@ -91,7 +123,24 @@ extension Logger {
                     ("m", "\(membership)"),
                     ("edge", GeofenceLog.num(signedEdgeDistance, 0)),
                     ("acc", GeofenceLog.num(horizontalAccuracy)),
-                    ("age", GeofenceLog.num(fixAge))
+                    ("age", GeofenceLog.num(fixAge)),
+                    // Ties this verdict to its `polygon.pass.started` row. A movement wake does
+                    // not yield to an in-flight foreground pass, so two passes can interleave
+                    // their verdicts and the pass-level record alone cannot attribute them.
+                    ("pass", String(verdict.pass)),
+                    // `cor` stays the shared cross-SDK boolean: true only when a second fix
+                    // agreed. Widening it to reason tokens would silently break Android's pinned
+                    // contract and every consumer reading it.
+                    ("cor", verdict.corroboration.confirmed ? "true" : "false"),
+                    // iOS-only and additive, absent unless it applies: WHY a marginal arrival
+                    // committed without confirmation. Without it an unconfirmed arrival is
+                    // indistinguishable in a capture from a decisive one, which is the whole
+                    // difference this change introduced.
+                    //
+                    // Reuses `PolygonUndecidedReason` tokens on a record that DID decide, so read
+                    // every one of them as being about the SECOND fix: `corwhy=no_usable_fix`
+                    // means no usable second fix was obtained, not that the judged fix was bad.
+                    ("corwhy", verdict.corroboration.unconfirmedReason)
                 ]),
             geofenceTag
         )

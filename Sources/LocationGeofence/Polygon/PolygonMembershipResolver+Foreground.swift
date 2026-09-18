@@ -29,6 +29,7 @@ extension PolygonMembershipResolver {
                 let expectedUserId = self.contextStore.currentUserId
                 Task { [contextStore = self.contextStore] in
                     await self.evaluateAllPolygons(
+                        reason: .foreground,
                         isStillCurrent: { contextStore.currentUserId == expectedUserId }
                     )
                 }

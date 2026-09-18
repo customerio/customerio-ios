@@ -15,6 +15,21 @@ enum PolygonUndecidedReason: String, CaseIterable {
     /// The fix cannot separate inside from outside: `|edge|` is within its accuracy. The two
     /// measurements ride as their own keys rather than in the token.
     case withinAccuracy = "within_accuracy"
+    /// The fix was too old to describe where the device is now.
+    case fixTooOld = "fix_too_old"
+    /// The accuracy circle is as wide as the venue is deep, so `inside` carries no information.
+    /// Distinct from `withinAccuracy`, which is a fix that could decide for a larger venue.
+    case accuracyTooLow = "accuracy_too_low"
+    /// Ambiguous, reads inside, and the stored belief is ALREADY inside — a second fix could not
+    /// change the outcome, so none was requested. Distinct from a corroboration that was tried and
+    /// failed: this one spent nothing.
+    case corroborationUnnecessary = "corroboration_unnecessary"
+    /// A second fix was obtained and read OUTSIDE, so the two disagreed about the side. Distinct
+    /// from `withinAccuracy`, which is one fix that could not separate the sides at all.
+    case corroborationDisagreed = "corroboration_disagreed"
+    /// A second fix came back but did not postdate the first, so it is the same fix over again.
+    /// Distinct from `noUsableFix`, which is location not answering at all.
+    case corroborationNotIndependent = "corroboration_not_independent"
 
     var prose: String {
         switch self {
@@ -24,6 +39,11 @@ enum PolygonUndecidedReason: String, CaseIterable {
         case .unregistered: return "no longer a registered polygon"
         case .circleExpired: return "the circle the event was raised against is gone"
         case .withinAccuracy: return "edge distance within the fix's accuracy"
+        case .fixTooOld: return "fix too old"
+        case .accuracyTooLow: return "accuracy too low for a venue this size"
+        case .corroborationUnnecessary: return "already believed inside, so no second fix was needed"
+        case .corroborationDisagreed: return "the second fix read outside"
+        case .corroborationNotIndependent: return "the second fix did not postdate the first"
         }
     }
 }
@@ -45,6 +65,8 @@ enum PolygonEvaluationReason: String, CaseIterable {
     case newPolygonForcedRequestFailed = "new_polygon_forced_request_failed"
     case movement
     case foreground
+    /// A covering-circle ENTER the OS delivered, which judges that one fence.
+    case osTransition = "os_transition"
 
     var prose: String {
         switch self {
@@ -52,6 +74,7 @@ enum PolygonEvaluationReason: String, CaseIterable {
         case .newPolygonForcedRequestFailed: return "newly registered, forced request failed"
         case .movement: return "movement"
         case .foreground: return "foreground"
+        case .osTransition: return "os circle enter"
         }
     }
 }

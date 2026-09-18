@@ -142,10 +142,12 @@ struct GeofenceLogTailTests {
             Invocation(name: "callbackDispatched", ev: "os.callback.dispatched", requiredKeys: ["id", "t"]) { $0.geofenceCallbackDispatched(identifier: "notl_core", transition: .enter) },
             Invocation(name: "polygonTransition", ev: "polygon.transition", requiredKeys: ["id", "t", "by"]) { $0.geofencePolygonTransition(identifier: "notl_core", transition: .enter, confirmedByFix: true) },
             Invocation(name: "polygonPassSkipped", ev: "polygon.pass.skipped", requiredKeys: ["why"]) { $0.geofencePolygonPassSkipped(reason: .passInFlight) },
+            Invocation(name: "polygonPassStarted", ev: "polygon.pass.started", requiredKeys: ["why", "n", "pass"]) { $0.geofencePolygonPassStarted(reason: .foreground, count: 3, pass: 7) },
             Invocation(name: "polygonEvaluationRequested", ev: "polygon.evaluation.requested", requiredKeys: ["id", "why"]) { $0.geofencePolygonEvaluationRequested(identifier: "notl_core", reason: .newPolygon) },
             Invocation(name: "polygonDropped", ev: "registration.rejected", requiredKeys: ["id", "why", "rad", "lim"]) { $0.geofencePolygonExceedsMonitoringLimit(identifier: "notl_core", radius: 12000, limit: 10000) },
             Invocation(name: "polygonWakePass", ev: "polygon.wake.pass", requiredKeys: ["rad", "n"]) { $0.geofencePolygonWakePass(radius: 420, polygonCount: 3) },
-            Invocation(name: "polygonVerdict", ev: "polygon.verdict", requiredKeys: ["id", "m", "edge", "acc", "age"]) { $0.geofencePolygonVerdict(identifier: "notl_core", membership: .inside, signedEdgeDistance: 80, horizontalAccuracy: 12, fixAge: 3.5) },
+            Invocation(name: "polygonVerdict", ev: "polygon.verdict", requiredKeys: ["id", "m", "edge", "acc", "age", "pass", "cor"]) { $0.geofencePolygonVerdict(identifier: "notl_core", verdict: PolygonVerdict(membership: .inside, corroboration: .notNeeded, signedEdgeDistance: 80, pass: 7), horizontalAccuracy: 12, fixAge: 3.5) },
+            Invocation(name: "polygonVerdictUnconfirmed", ev: "polygon.verdict", requiredKeys: ["id", "m", "pass", "cor", "corwhy"]) { $0.geofencePolygonVerdict(identifier: "notl_core", verdict: PolygonVerdict(membership: .inside, corroboration: .unconfirmed(.noUsableFix), signedEdgeDistance: 3, pass: 2), horizontalAccuracy: 5, fixAge: 1) },
             Invocation(name: "polygonUndelivered", ev: "polygon.undelivered", requiredKeys: ["id", "why"]) { $0.geofencePolygonNotDelivered(identifier: "notl_core", reason: .outcome(.suppressedInitialOutside)) },
             Invocation(name: "polygonUndecided", ev: "polygon.undecided", requiredKeys: ["id", "why", "edge", "acc"]) { $0.geofencePolygonUndecided(identifier: "notl_core", reason: .withinAccuracy, signedEdgeDistance: -4, horizontalAccuracy: 12) },
             Invocation(name: "wakeRadiusChosen", ev: "movement.radius.chosen", requiredKeys: ["rad", "from"]) { $0.geofenceWakeRadiusChosen(radius: 640, anchorIsLiveFix: true) },
@@ -391,9 +393,12 @@ struct GeofenceLogTailTests {
         // emits neither, so there is nothing to diverge from and renaming them buys nothing.
         expectTokens(HandleMovementTier.self, ["localRerank", "remoteRefresh"])
         expectTokens(PolygonPassSkipReason.self, ["pass_in_flight"])
-        expectTokens(PolygonEvaluationReason.self, ["new_polygon", "new_polygon_forced_request_failed", "movement", "foreground"])
+        expectTokens(PolygonEvaluationReason.self, ["new_polygon", "new_polygon_forced_request_failed", "movement", "foreground",
+                                                    "os_transition"])
         expectTokens(PolygonUndecidedReason.self, [
-            "no_usable_fix", "user_changed", "ring_unbuildable", "unregistered", "circle_expired", "within_accuracy"
+            "no_usable_fix", "user_changed", "ring_unbuildable", "unregistered", "circle_expired",
+            "within_accuracy", "fix_too_old", "accuracy_too_low", "corroboration_unnecessary",
+            "corroboration_disagreed", "corroboration_not_independent"
         ])
         expectTokens(GeofenceFixPurpose.self, ["movement", "gate", "heal", "pending", "polygon"])
         expectTokens(GeofenceCatalogShape.self, ["circle", "polygon", "undescribed", "unknown"])
@@ -460,6 +465,7 @@ struct GeofenceLogTailTests {
         "permission.changed",
         "polygon.evaluation.requested",
         "polygon.pass.skipped",
+        "polygon.pass.started",
         "polygon.transition",
         "polygon.undecided",
         "polygon.undelivered",
@@ -636,6 +642,39 @@ struct GeofenceLogTailTests {
             #expect(joined.contains("lon="))
             #expect(joined.contains("acc="))
             #expect(joined.contains("fixsrc="))
+        }
+    }
+
+    /// `cor` is the cross-SDK boolean and Android pins it to `true`/`false`. An unconfirmed
+    /// arrival must not widen it — the reason goes in the additive iOS-only `corwhy`, which is
+    /// absent entirely when the verdict was decisive.
+    @Test
+    func verdictCorroboration_expectCorStaysBooleanAndTheReasonRidesSeparately() {
+        withDiagnostics(true) {
+            let logger = CapturingLogger()
+            logger.geofencePolygonVerdict(
+                identifier: "notl_core",
+                verdict: PolygonVerdict(
+                    membership: .inside, corroboration: .unconfirmed(.noUsableFix),
+                    signedEdgeDistance: 3, pass: 1
+                ),
+                horizontalAccuracy: 5, fixAge: 1
+            )
+            let unconfirmed = logger.messages.last ?? ""
+            #expect(unconfirmed.contains("cor=false"), "cor must stay boolean: \(unconfirmed)")
+            #expect(unconfirmed.contains("corwhy=no_usable_fix"), "reason missing: \(unconfirmed)")
+
+            logger.geofencePolygonVerdict(
+                identifier: "notl_core",
+                verdict: PolygonVerdict(
+                    membership: .inside, corroboration: .confirmed,
+                    signedEdgeDistance: 80, pass: 1
+                ),
+                horizontalAccuracy: 5, fixAge: 1
+            )
+            let confirmed = logger.messages.last ?? ""
+            #expect(confirmed.contains("cor=true"), "confirmed must read true: \(confirmed)")
+            #expect(!confirmed.contains("corwhy="), "corwhy must be absent: \(confirmed)")
         }
     }
 
