@@ -81,9 +81,23 @@ extension Logger {
     /// `edge` is signed: **positive is inside**, the polygon convention set by
     /// `PolygonRegion.signedEdgeDistance` and fixed by the cross-SDK geometry fixtures. The circle
     /// records (`contradiction.allowed`) use the same key with the opposite sign, so a parser must
-    /// read `edge` against the record's `ev`. `acc` is the ambiguity margin, not a quality score —
-    /// iOS has no accuracy ceiling, so a verdict holds only while `|edge|` exceeds it.
-    func geofencePolygonVerdict(identifier: String, membership: PolygonMembership, signedEdgeDistance: Double, horizontalAccuracy: Double, fixAge: TimeInterval) {
+    /// read `edge` against the record's `ev`. `acc` is the ambiguity margin, not a quality score:
+    /// a verdict holds while `|edge|` exceeds it. There is also a per-fence ceiling, and it gates
+    /// verdicts of INSIDE only — a fix at or beyond `PolygonRegion.scale` decides nothing and is
+    /// logged `accuracy_too_low`. A device clear of the ring by more than its own accuracy is
+    /// outside however thin the venue is, so a departure is settled before the ceiling is read.
+    /// A capture can still show `accuracy_too_low` beside a NEGATIVE edge: an outside-reading fix
+    /// that is not clear by its own accuracy decides nothing either way, and once accuracy passes
+    /// the venue scale that is the reason it carries instead of `within_accuracy`. No departure
+    /// was blocked by the ceiling there.
+    func geofencePolygonVerdict(
+        identifier: String,
+        membership: PolygonMembership,
+        signedEdgeDistance: Double,
+        horizontalAccuracy: Double,
+        fixAge: TimeInterval,
+        corroboration: VerdictCorroboration = .notNeeded
+    ) {
         debug(
             "Polygon membership \(membership) for region \(identifier): edge \(Int(signedEdgeDistance)) m, accuracy \(Int(horizontalAccuracy)) m, fix age \(String(format: "%.1f", fixAge))s"
                 + geofenceTail("polygon.verdict", .output, [
@@ -91,7 +105,20 @@ extension Logger {
                     ("m", "\(membership)"),
                     ("edge", GeofenceLog.num(signedEdgeDistance, 0)),
                     ("acc", GeofenceLog.num(horizontalAccuracy)),
-                    ("age", GeofenceLog.num(fixAge))
+                    ("age", GeofenceLog.num(fixAge)),
+                    // `cor` stays the shared cross-SDK boolean: true only when a second fix
+                    // agreed. Widening it to reason tokens would silently break Android's pinned
+                    // contract and every consumer reading it.
+                    ("cor", corroboration.confirmed ? "true" : "false"),
+                    // iOS-only and additive, absent unless it applies: WHY a marginal arrival
+                    // committed without confirmation. Without it an unconfirmed arrival is
+                    // indistinguishable in a capture from a decisive one, which is the whole
+                    // difference this change introduced.
+                    //
+                    // Reuses `PolygonUndecidedReason` tokens on a record that DID decide, so read
+                    // every one of them as being about the SECOND fix: `corwhy=no_usable_fix`
+                    // means no usable second fix was obtained, not that the judged fix was bad.
+                    ("corwhy", corroboration.unconfirmedReason)
                 ]),
             geofenceTag
         )

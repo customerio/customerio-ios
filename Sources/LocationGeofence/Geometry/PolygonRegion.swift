@@ -197,6 +197,33 @@ struct PolygonRegion {
         return isInside(p) ? minDistance : -minDistance
     }
 
+    /// Roughly how deep this venue is: `2 × area / perimeter`, in metres.
+    ///
+    /// Answers "can a fix of accuracy A say anything about being inside this shape at all?". When
+    /// the accuracy circle is as wide as the venue is deep, `inside` carries no information — the
+    /// circle can contain the whole ring — so a verdict there would be a coin flip rather than a
+    /// boundary case. Used as the ceiling in `PolygonMembershipDecision`.
+    ///
+    /// An approximation of the maximum inradius, deliberately: it is O(n) from the ring we already
+    /// hold, where a true inradius needs a search. It reads exact for a circle (`2πr²/2πr = r`) and
+    /// measured 1.01–1.35× the grid-computed inradius across the four real retail rings in the test
+    /// workspace (Tim Hortons 24.2 vs 24.0, Safari Homes 308.5 vs 229.3). It errs HIGH, which
+    /// widens the accuracy we accept rather than narrowing it — the safe direction here, because
+    /// refusing a real arrival is the expensive error and nothing downstream trusts this as a
+    /// distance.
+    var scale: Double {
+        var twiceArea = 0.0
+        var perimeter = 0.0
+        for i in 0 ..< projected.count {
+            let a = projected[i]
+            let b = projected[(i + 1) % projected.count]
+            twiceArea += a.x * b.y - b.x * a.y
+            perimeter += hypot(b.x - a.x, b.y - a.y)
+        }
+        guard perimeter > 0 else { return 0 }
+        return abs(twiceArea) / perimeter
+    }
+
     /// Shifts longitudes into the ±180° window around the first vertex so a ring crossing the
     /// antimeridian is continuous. Part of the projection contract shared with Android.
     private static func unwrapLongitudes(_ ring: [LocationData]) -> [LocationData] {
