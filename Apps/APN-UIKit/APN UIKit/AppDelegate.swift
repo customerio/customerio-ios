@@ -27,6 +27,10 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         DiagnosticLog.shared.start()
         // MBL-2433 probe, off unless enabled. Sample app only, no SDK dependency on CLVisit.
         VisitProbe.shared.startIfEnabled(launchOptions: launchOptions)
+        // Measures the smallest region radius iOS promotes, off unless enabled. Sample app only,
+        // and registered before the SDK so its rings are in place whatever the SDK then does with
+        // the region budget.
+        RegionRadiusProbe.shared.startIfEnabled(launchOptions: launchOptions)
 
         // Geofence cold-wake delivery: iOS can launch the app into the background for a transition,
         // so region monitoring is wired here rather than relying on CustomerIO.initialize. Matches
