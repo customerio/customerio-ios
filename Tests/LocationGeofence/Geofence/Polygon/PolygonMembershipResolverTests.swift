@@ -205,7 +205,7 @@ struct PolygonMembershipResolverTests {
         await registerPolygons(setup, ids: ["1", "2", "3"])
         let counter = countingRequests(setup)
 
-        await setup.resolver.evaluateAllPolygons()
+        await setup.resolver.evaluateAllPolygons(reason: .foreground)
 
         #expect(counter.count == 1)
     }
@@ -218,8 +218,8 @@ struct PolygonMembershipResolverTests {
         await registerPolygons(setup, ids: ["1", "2"])
         let counter = countingRequests(setup)
 
-        async let first: Void = setup.resolver.evaluateAllPolygons()
-        async let second: Void = setup.resolver.evaluateAllPolygons()
+        async let first: Void = setup.resolver.evaluateAllPolygons(reason: .foreground)
+        async let second: Void = setup.resolver.evaluateAllPolygons(reason: .foreground)
         _ = await(first, second)
 
         #expect(counter.count == 1)
@@ -239,9 +239,9 @@ struct PolygonMembershipResolverTests {
         await registerPolygons(setup, ids: ["1", "2"])
         let gate = gatingRequests(setup)
 
-        async let foreground: Void = setup.resolver.evaluateAllPolygons()
+        async let foreground: Void = setup.resolver.evaluateAllPolygons(reason: .foreground)
         await yieldUntil { !gate.releases.isEmpty }
-        async let wake: Void = setup.resolver.evaluateAllPolygons(requiresFreshFix: true)
+        async let wake: Void = setup.resolver.evaluateAllPolygons(reason: .foreground, requiresFreshFix: true)
         await settle()
         gate.releaseAll()
         _ = await(foreground, wake)
@@ -259,9 +259,9 @@ struct PolygonMembershipResolverTests {
         await registerPolygons(setup, ids: ["1", "2"])
         let gate = gatingRequests(setup)
 
-        async let firstWake: Void = setup.resolver.evaluateAllPolygons(requiresFreshFix: true)
+        async let firstWake: Void = setup.resolver.evaluateAllPolygons(reason: .foreground, requiresFreshFix: true)
         await yieldUntil { !gate.releases.isEmpty }
-        async let secondWake: Void = setup.resolver.evaluateAllPolygons(requiresFreshFix: true)
+        async let secondWake: Void = setup.resolver.evaluateAllPolygons(reason: .foreground, requiresFreshFix: true)
         await settle()
         // One entry, not two: the second wake COALESCED onto the in-flight request rather than
         // issuing its own. Pinned because it bounds what not-skipping buys — the second wake is
@@ -283,9 +283,9 @@ struct PolygonMembershipResolverTests {
         await registerPolygons(setup, ids: ["1", "2"])
         let gate = gatingRequests(setup)
 
-        async let wake: Void = setup.resolver.evaluateAllPolygons(requiresFreshFix: true)
+        async let wake: Void = setup.resolver.evaluateAllPolygons(reason: .foreground, requiresFreshFix: true)
         await yieldUntil { !gate.releases.isEmpty }
-        async let foreground: Void = setup.resolver.evaluateAllPolygons()
+        async let foreground: Void = setup.resolver.evaluateAllPolygons(reason: .foreground)
         await settle()
         gate.releaseAll()
         _ = await(wake, foreground)
@@ -383,7 +383,7 @@ struct PolygonMembershipResolverTests {
         )
         await setup.storage.setCachedGeofences([polygonGeofence(), polygonGeofence(id: "3")])
 
-        await setup.resolver.evaluateAllPolygons(requiresFreshFix: true)
+        await setup.resolver.evaluateAllPolygons(reason: .foreground, requiresFreshFix: true)
 
         #expect(await setup.emitter.snapshot().isEmpty)
         #expect(await setup.storage.getPolygonMembership()["1"] == nil)
@@ -494,7 +494,7 @@ struct PolygonMembershipResolverTests {
         }
         await setup.storage.setCachedGeofences([polygonGeofence()])
 
-        await setup.resolver.evaluateAllPolygons()
+        await setup.resolver.evaluateAllPolygons(reason: .foreground)
 
         let delivered = await setup.emitter.snapshot()
         #expect(delivered.count == 1, "decided from the stale delivered fix; got \(delivered)")
@@ -887,7 +887,7 @@ struct PolygonMembershipResolverTests {
         let requested = Flag()
         setup.fixResolver.requestFreshFix = { requested.value = true }
 
-        async let pass: Void = setup.resolver.evaluateAllPolygons()
+        async let pass: Void = setup.resolver.evaluateAllPolygons(reason: .foreground)
         await yieldUntil { requested.value }
         await setup.storage.setCachedGeofences([movedPolygonGeofence()])
         setup.fixResolver.handleResolvedFix(fix(latitude: 0, longitude: 0))
@@ -907,7 +907,7 @@ struct PolygonMembershipResolverTests {
         let requested = Flag()
         setup.fixResolver.requestFreshFix = { requested.value = true }
 
-        async let pass: Void = setup.resolver.evaluateAllPolygons()
+        async let pass: Void = setup.resolver.evaluateAllPolygons(reason: .foreground)
         await yieldUntil { requested.value }
         setup.fixResolver.handleResolvedFix(fix(latitude: 0, longitude: 0))
         await pass
@@ -931,7 +931,7 @@ struct PolygonMembershipResolverTests {
         let requested = Flag()
         setup.fixResolver.requestFreshFix = { requested.value = true }
 
-        async let pass: Void = setup.resolver.evaluateAllPolygons()
+        async let pass: Void = setup.resolver.evaluateAllPolygons(reason: .foreground)
         await yieldUntil { requested.value }
         await setup.storage.recordRegistration(center: LocationData(latitude: 0, longitude: 0), businessIds: [])
         setup.fixResolver.handleResolvedFix(fix(latitude: 0, longitude: 0))
@@ -950,7 +950,7 @@ struct PolygonMembershipResolverTests {
         let requested = Flag()
         setup.fixResolver.requestFreshFix = { requested.value = true }
 
-        async let pass: Void = setup.resolver.evaluateAllPolygons()
+        async let pass: Void = setup.resolver.evaluateAllPolygons(reason: .foreground)
         await yieldUntil { requested.value }
         await setup.storage.setCachedGeofences([])
         setup.fixResolver.handleResolvedFix(fix(latitude: 0, longitude: 0))
@@ -1014,7 +1014,7 @@ struct PolygonMembershipResolverTests {
         // True while the verdict is formed, false by the time the delivery boundary asks.
         let asked = RequestCounter()
 
-        await setup.resolver.evaluateAllPolygons(isStillCurrent: {
+        await setup.resolver.evaluateAllPolygons(reason: .foreground, isStillCurrent: {
             asked.count += 1
             return asked.count == 1
         })
@@ -1043,7 +1043,7 @@ struct PolygonMembershipResolverTests {
             .inside, forIdentifier: "1", onlyIfBeliefPredates: Date(timeIntervalSince1970: 0)
         )
 
-        await setup.resolver.evaluateAllPolygons()
+        await setup.resolver.evaluateAllPolygons(reason: .foreground)
 
         #expect(await setup.emitter.snapshot().isEmpty)
         #expect(logged(setup.logger, "delivered nothing: transition_type_not_registered"))
@@ -1123,7 +1123,7 @@ struct PolygonMembershipResolverTests {
             center: LocationData(latitude: 0, longitude: 0), businessIds: ["1", "2"]
         )
 
-        await setup.resolver.evaluateAllPolygons()
+        await setup.resolver.evaluateAllPolygons(reason: .foreground)
 
         let delivered = await setup.emitter.snapshot()
         #expect(delivered.count == 1)
@@ -1142,7 +1142,7 @@ struct PolygonMembershipResolverTests {
             center: LocationData(latitude: 0, longitude: 0), businessIds: ["other"]
         )
 
-        await setup.resolver.evaluateAllPolygons()
+        await setup.resolver.evaluateAllPolygons(reason: .foreground)
 
         #expect(await setup.emitter.snapshot().isEmpty)
     }
@@ -1223,7 +1223,7 @@ struct PolygonMembershipResolverTests {
         )
         await evictCoveringCircle(setup, id: "1")
 
-        await setup.resolver.evaluateAllPolygons()
+        await setup.resolver.evaluateAllPolygons(reason: .foreground)
 
         #expect(await setup.emitter.snapshot().isEmpty)
         #expect(await setup.storage.getPolygonMembership()["1"]?.membership == .inside)
@@ -1244,7 +1244,7 @@ struct PolygonMembershipResolverTests {
         )
         await evictCoveringCircle(setup, id: "1")
 
-        await setup.resolver.evaluateAllPolygons()
+        await setup.resolver.evaluateAllPolygons(reason: .foreground)
 
         #expect(await setup.emitter.snapshot().map(\.transition) == [.exit])
         #expect(await setup.storage.getPolygonMembership()["1"]?.membership == .outside)
@@ -1525,8 +1525,10 @@ struct PolygonMembershipResolverTests {
         let counter = countingContradictions(setup)
         await registerPolygons(setup, ids: ["1"])
 
-        await setup.resolver.runPass(geofenceIds: ["1"], fix: passFix)
-        await setup.resolver.runPass(geofenceIds: ["1"], fix: passFix)
+        // Distinct pass numbers because these ARE two passes; the point of the test is that the
+        // second does not inherit the first's corroboration attempt.
+        await setup.resolver.runPass(geofenceIds: ["1"], fix: passFix, pass: 1)
+        await setup.resolver.runPass(geofenceIds: ["1"], fix: passFix, pass: 2)
 
         #expect(counter.count == 2)
     }

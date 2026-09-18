@@ -73,6 +73,7 @@ extension GeofenceSyncCoordinatorImpl {
             // Re-checked inside, after the fix resolves and again before the emit: a forced-fresh
             // request is the longest await in the feature, and the polygon set was read before it.
             await DIGraphShared.shared.polygonMembershipResolver.evaluateAllPolygons(
+                reason: .movement,
                 requiresFreshFix: true,
                 isStillCurrent: { contextStore.currentUserId == expectedUserId }
             )

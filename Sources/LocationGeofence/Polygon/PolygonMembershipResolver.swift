@@ -43,6 +43,14 @@ final class PolygonMembershipResolver {
     var foregroundObserverToken: NSObjectProtocol?
 
     private var passesInFlight = 0
+    /// Monotonic, so two passes that overlap are distinguishable in a capture. A movement wake
+    /// does not yield to an in-flight foreground pass, so their verdicts genuinely interleave.
+    private var passSequence = 0
+
+    private func nextPass() -> Int {
+        passSequence += 1
+        return passSequence
+    }
 
     init(
         storage: GeofenceStorage,
@@ -169,13 +177,15 @@ final class PolygonMembershipResolver {
             pending.append(geofenceId)
         }
         guard !pending.isEmpty else { return true }
+        let pass = nextPass()
+        logger.geofencePolygonPassStarted(reason: reason, count: pending.count, pass: pass)
         guard let fix = await resolveFix(requiringFresh: requiresFreshFix) else {
             for geofenceId in pending {
                 logger.geofencePolygonUndecided(identifier: geofenceId, reason: .noUsableFix)
             }
             return false
         }
-        await runPass(geofenceIds: pending, fix: fix, isStillCurrent: isStillCurrent)
+        await runPass(geofenceIds: pending, fix: fix, pass: pass, isStillCurrent: isStillCurrent)
         return true
     }
 
@@ -195,6 +205,7 @@ final class PolygonMembershipResolver {
     /// fix it would never have seen, but not one postdating its own crossing. Giving each wake its
     /// own fix means a request per wake: a design change, not a comment fix.
     func evaluateAllPolygons(
+        reason: PolygonEvaluationReason,
         requiresFreshFix: Bool = false,
         isStillCurrent: (@Sendable () -> Bool)? = nil
     ) async {
@@ -207,7 +218,11 @@ final class PolygonMembershipResolver {
         let registered = await storage.getRegisteredBusinessIds()
         let polygons = await storage.getCachedGeofences()
             .filter { registered.contains($0.id) && $0.vertices != nil }
-        guard !polygons.isEmpty else { return }
+        // Before the empty guard on purpose: `n=0` is the record that a pass ran and had nothing
+        // to judge, which is otherwise a silent return.
+        let pass = nextPass()
+        logger.geofencePolygonPassStarted(reason: reason, count: polygons.count, pass: pass)
+        guard polygons.isEmpty == false else { return }
         // One request for the whole pass. Resolving per polygon would issue a fresh timed request
         // for every one of them whenever the cache stays empty, holding the main actor for minutes
         // and still deciding nothing — and a failed fresh request would silently downgrade every
@@ -218,7 +233,7 @@ final class PolygonMembershipResolver {
             }
             return
         }
-        await runPass(geofenceIds: polygons.map(\.id), fix: fix, isStillCurrent: isStillCurrent)
+        await runPass(geofenceIds: polygons.map(\.id), fix: fix, pass: pass, isStillCurrent: isStillCurrent)
     }
 
     private func evaluate(
@@ -226,11 +241,13 @@ final class PolygonMembershipResolver {
         requiresFreshFix: Bool = false,
         isStillCurrent: (@Sendable () -> Bool)? = nil
     ) async {
+        let pass = nextPass()
+        logger.geofencePolygonPassStarted(reason: .osTransition, count: 1, pass: pass)
         guard let fix = await resolveFix(requiringFresh: requiresFreshFix) else {
             logger.geofencePolygonUndecided(identifier: geofenceId, reason: .noUsableFix)
             return
         }
-        await runPass(geofenceIds: [geofenceId], fix: fix, isStillCurrent: isStillCurrent)
+        await runPass(geofenceIds: [geofenceId], fix: fix, pass: pass, isStillCurrent: isStillCurrent)
     }
 
     /// Takes an id, never a caller's `PolygonRegion`: resolving a fix suspends, and a refresh can
@@ -248,6 +265,7 @@ final class PolygonMembershipResolver {
     func evaluate(
         geofenceId: String,
         fix: CLLocation,
+        pass: Int,
         isStillCurrent: (@Sendable () -> Bool)? = nil
     ) async -> DeferredCorroboration? {
         guard CLLocationCoordinate2DIsValid(fix.coordinate) else {
@@ -280,7 +298,7 @@ final class PolygonMembershipResolver {
             await record(
                 PolygonVerdict(
                     membership: membership, corroboration: .notNeeded,
-                    signedEdgeDistance: signedEdgeDistance
+                    signedEdgeDistance: signedEdgeDistance, pass: pass
                 ),
                 for: geofence, fix: fix, isStillCurrent: isStillCurrent
             )

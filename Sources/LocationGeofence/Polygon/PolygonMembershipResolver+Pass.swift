@@ -17,6 +17,7 @@ extension PolygonMembershipResolver {
     func runPass(
         geofenceIds: [String],
         fix: CLLocation,
+        pass: Int,
         isStillCurrent: (@Sendable () -> Bool)? = nil
     ) async {
         // Created here, so the pass owns it: see `PassCorroboration` for why resolver-level state
@@ -25,7 +26,7 @@ extension PolygonMembershipResolver {
         var deferred: [DeferredCorroboration] = []
         for geofenceId in geofenceIds {
             if let pending = await evaluate(
-                geofenceId: geofenceId, fix: fix, isStillCurrent: isStillCurrent
+                geofenceId: geofenceId, fix: fix, pass: pass, isStillCurrent: isStillCurrent
             ) {
                 deferred.append(pending)
             }
@@ -57,7 +58,7 @@ extension PolygonMembershipResolver {
             await record(
                 PolygonVerdict(
                     membership: pending.proposed, corroboration: corroboration,
-                    signedEdgeDistance: pending.signedEdgeDistance
+                    signedEdgeDistance: pending.signedEdgeDistance, pass: pass
                 ),
                 for: pending.geofence, fix: fix, isStillCurrent: isStillCurrent
             )
@@ -78,11 +79,9 @@ extension PolygonMembershipResolver {
         isStillCurrent: (@Sendable () -> Bool)?
     ) async {
         logger.geofencePolygonVerdict(
-            identifier: geofence.id, membership: verdict.membership,
-            signedEdgeDistance: verdict.signedEdgeDistance,
+            identifier: geofence.id, verdict: verdict,
             horizontalAccuracy: fix.horizontalAccuracy,
-            fixAge: -fix.timestamp.timeIntervalSinceNow,
-            corroboration: verdict.corroboration
+            fixAge: -fix.timestamp.timeIntervalSinceNow
         )
         await apply(
             verdict.membership, to: geofence, evidence: fix.timestamp,
@@ -96,6 +95,8 @@ struct PolygonVerdict {
     let membership: PolygonMembership
     let corroboration: VerdictCorroboration
     let signedEdgeDistance: Double
+    /// Which pass produced it; see `geofencePolygonVerdict`'s `pass` key.
+    let pass: Int
 }
 
 /// How a recorded verdict stands with respect to a second fix, widened from a Bool because
