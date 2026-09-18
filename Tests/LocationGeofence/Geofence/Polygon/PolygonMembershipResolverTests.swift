@@ -1392,6 +1392,46 @@ struct PolygonMembershipResolverTests {
         #expect(logged(logger, "already believed inside, so no second fix was needed"))
     }
 
+    // MARK: - Pass provenance
+
+    /// A capture has to say which pass produced a verdict. `.movement` and `.foreground` existed
+    /// as tokens but nothing emitted them, so a stationary stay's records had no provenance and
+    /// had to be attributed by guessing at timing.
+    @Test
+    func evaluateAllPolygons_givenAForegroundPass_expectTheReasonRecorded() async {
+        let logger = LoggerMock()
+        let setup = await makeSetup(fix: nil, logger: logger)
+        await registerPolygons(setup, ids: ["1", "2"])
+
+        await setup.resolver.evaluateAllPolygons(reason: .foreground)
+
+        #expect(logged(logger, "Evaluating 2 polygon(s) (foreground)"))
+    }
+
+    /// A movement wake and a foreground pass must not read alike.
+    @Test
+    func evaluateAllPolygons_givenAMovementPass_expectTheReasonRecorded() async {
+        let logger = LoggerMock()
+        let setup = await makeSetup(fix: nil, logger: logger)
+        await registerPolygons(setup, ids: ["1"])
+
+        await setup.resolver.evaluateAllPolygons(reason: .movement, requiresFreshFix: true)
+
+        #expect(logged(logger, "Evaluating 1 polygon(s) (movement)"))
+    }
+
+    /// The pass that had nothing to judge used to return in silence, so "nothing registered" and
+    /// "never ran" were the same empty capture.
+    @Test
+    func evaluateAllPolygons_givenNothingRegistered_expectAPassRecordWithZero() async {
+        let logger = LoggerMock()
+        let setup = await makeSetup(fix: nil, logger: logger)
+
+        await setup.resolver.evaluateAllPolygons(reason: .foreground)
+
+        #expect(logged(logger, "Evaluating 0 polygon(s) (foreground)"))
+    }
+
     // MARK: - Corroboration independence
 
     /// A latitude `metres` INSIDE the square's northern edge, so `signedEdgeDistance` is that many
