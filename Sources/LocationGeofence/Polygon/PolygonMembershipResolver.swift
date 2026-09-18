@@ -179,13 +179,13 @@ final class PolygonMembershipResolver {
         guard !pending.isEmpty else { return true }
         let pass = nextPass()
         logger.geofencePolygonPassStarted(reason: reason, count: pending.count, pass: pass)
-        guard let fix = await resolvePassFix(requiringFresh: requiresFreshFix) else {
+        guard let fix = await resolveFix(requiringFresh: requiresFreshFix) else {
             for geofenceId in pending {
                 logger.geofencePolygonUndecided(identifier: geofenceId, reason: .noUsableFix)
             }
             return false
         }
-        await runPass(geofenceIds: pending, fix: fix, isStillCurrent: isStillCurrent)
+        await runPass(geofenceIds: pending, fix: fix, pass: pass, isStillCurrent: isStillCurrent)
         return true
     }
 
@@ -227,13 +227,13 @@ final class PolygonMembershipResolver {
         // for every one of them whenever the cache stays empty, holding the main actor for minutes
         // and still deciding nothing — and a failed fresh request would silently downgrade every
         // polygon after the first to the pre-wake fix.
-        guard let fix = await resolvePassFix(requiringFresh: requiresFreshFix) else {
+        guard let fix = await resolveFix(requiringFresh: requiresFreshFix) else {
             for geofence in polygons {
                 logger.geofencePolygonUndecided(identifier: geofence.id, reason: .noUsableFix)
             }
             return
         }
-        await runPass(geofenceIds: polygons.map(\.id), fix: fix, isStillCurrent: isStillCurrent)
+        await runPass(geofenceIds: polygons.map(\.id), fix: fix, pass: pass, isStillCurrent: isStillCurrent)
     }
 
     private func evaluate(
@@ -243,11 +243,11 @@ final class PolygonMembershipResolver {
     ) async {
         let pass = nextPass()
         logger.geofencePolygonPassStarted(reason: .osTransition, count: 1, pass: pass)
-        guard let fix = await resolvePassFix(requiringFresh: requiresFreshFix) else {
+        guard let fix = await resolveFix(requiringFresh: requiresFreshFix) else {
             logger.geofencePolygonUndecided(identifier: geofenceId, reason: .noUsableFix)
             return
         }
-        await runPass(geofenceIds: [geofenceId], fix: fix, isStillCurrent: isStillCurrent)
+        await runPass(geofenceIds: [geofenceId], fix: fix, pass: pass, isStillCurrent: isStillCurrent)
     }
 
     /// Takes an id, never a caller's `PolygonRegion`: resolving a fix suspends, and a refresh can
@@ -298,7 +298,7 @@ final class PolygonMembershipResolver {
             await record(
                 PolygonVerdict(
                     membership: membership, corroboration: .notNeeded,
-                    signedEdgeDistance: signedEdgeDistance
+                    signedEdgeDistance: signedEdgeDistance, pass: pass
                 ),
                 for: geofence, fix: fix, isStillCurrent: isStillCurrent
             )

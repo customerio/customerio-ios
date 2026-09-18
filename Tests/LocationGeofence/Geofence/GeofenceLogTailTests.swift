@@ -146,8 +146,8 @@ struct GeofenceLogTailTests {
             Invocation(name: "polygonEvaluationRequested", ev: "polygon.evaluation.requested", requiredKeys: ["id", "why"]) { $0.geofencePolygonEvaluationRequested(identifier: "notl_core", reason: .newPolygon) },
             Invocation(name: "polygonDropped", ev: "registration.rejected", requiredKeys: ["id", "why", "rad", "lim"]) { $0.geofencePolygonExceedsMonitoringLimit(identifier: "notl_core", radius: 12000, limit: 10000) },
             Invocation(name: "polygonWakePass", ev: "polygon.wake.pass", requiredKeys: ["rad", "n"]) { $0.geofencePolygonWakePass(radius: 420, polygonCount: 3) },
-            Invocation(name: "polygonVerdict", ev: "polygon.verdict", requiredKeys: ["id", "m", "edge", "acc", "age", "cor"]) { $0.geofencePolygonVerdict(identifier: "notl_core", membership: .inside, signedEdgeDistance: 80, horizontalAccuracy: 12, fixAge: 3.5) },
-            Invocation(name: "polygonVerdictUnconfirmed", ev: "polygon.verdict", requiredKeys: ["id", "m", "cor", "corwhy"]) { $0.geofencePolygonVerdict(identifier: "notl_core", membership: .inside, signedEdgeDistance: 3, horizontalAccuracy: 5, fixAge: 1, corroboration: .unconfirmed(.noUsableFix)) },
+            Invocation(name: "polygonVerdict", ev: "polygon.verdict", requiredKeys: ["id", "m", "edge", "acc", "age", "pass", "cor"]) { $0.geofencePolygonVerdict(identifier: "notl_core", verdict: PolygonVerdict(membership: .inside, corroboration: .notNeeded, signedEdgeDistance: 80, pass: 7), horizontalAccuracy: 12, fixAge: 3.5) },
+            Invocation(name: "polygonVerdictUnconfirmed", ev: "polygon.verdict", requiredKeys: ["id", "m", "pass", "cor", "corwhy"]) { $0.geofencePolygonVerdict(identifier: "notl_core", verdict: PolygonVerdict(membership: .inside, corroboration: .unconfirmed(.noUsableFix), signedEdgeDistance: 3, pass: 2), horizontalAccuracy: 5, fixAge: 1) },
             Invocation(name: "polygonUndelivered", ev: "polygon.undelivered", requiredKeys: ["id", "why"]) { $0.geofencePolygonNotDelivered(identifier: "notl_core", reason: .outcome(.suppressedInitialOutside)) },
             Invocation(name: "polygonUndecided", ev: "polygon.undecided", requiredKeys: ["id", "why", "edge", "acc"]) { $0.geofencePolygonUndecided(identifier: "notl_core", reason: .withinAccuracy, signedEdgeDistance: -4, horizontalAccuracy: 12) },
             Invocation(name: "wakeRadiusChosen", ev: "movement.radius.chosen", requiredKeys: ["rad", "from"]) { $0.geofenceWakeRadiusChosen(radius: 640, anchorIsLiveFix: true) },
@@ -653,16 +653,24 @@ struct GeofenceLogTailTests {
         withDiagnostics(true) {
             let logger = CapturingLogger()
             logger.geofencePolygonVerdict(
-                identifier: "notl_core", membership: .inside, signedEdgeDistance: 3,
-                horizontalAccuracy: 5, fixAge: 1, corroboration: .unconfirmed(.noUsableFix)
+                identifier: "notl_core",
+                verdict: PolygonVerdict(
+                    membership: .inside, corroboration: .unconfirmed(.noUsableFix),
+                    signedEdgeDistance: 3, pass: 1
+                ),
+                horizontalAccuracy: 5, fixAge: 1
             )
             let unconfirmed = logger.messages.last ?? ""
             #expect(unconfirmed.contains("cor=false"), "cor must stay boolean: \(unconfirmed)")
             #expect(unconfirmed.contains("corwhy=no_usable_fix"), "reason missing: \(unconfirmed)")
 
             logger.geofencePolygonVerdict(
-                identifier: "notl_core", membership: .inside, signedEdgeDistance: 80,
-                horizontalAccuracy: 5, fixAge: 1, corroboration: .confirmed
+                identifier: "notl_core",
+                verdict: PolygonVerdict(
+                    membership: .inside, corroboration: .confirmed,
+                    signedEdgeDistance: 80, pass: 1
+                ),
+                horizontalAccuracy: 5, fixAge: 1
             )
             let confirmed = logger.messages.last ?? ""
             #expect(confirmed.contains("cor=true"), "confirmed must read true: \(confirmed)")

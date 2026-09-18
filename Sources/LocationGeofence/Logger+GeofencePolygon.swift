@@ -110,12 +110,12 @@ extension Logger {
     /// was blocked by the ceiling there.
     func geofencePolygonVerdict(
         identifier: String,
-        membership: PolygonMembership,
-        signedEdgeDistance: Double,
+        verdict: PolygonVerdict,
         horizontalAccuracy: Double,
-        fixAge: TimeInterval,
-        corroboration: VerdictCorroboration = .notNeeded
+        fixAge: TimeInterval
     ) {
+        let membership = verdict.membership
+        let signedEdgeDistance = verdict.signedEdgeDistance
         debug(
             "Polygon membership \(membership) for region \(identifier): edge \(Int(signedEdgeDistance)) m, accuracy \(Int(horizontalAccuracy)) m, fix age \(String(format: "%.1f", fixAge))s"
                 + geofenceTail("polygon.verdict", .output, [
@@ -124,10 +124,14 @@ extension Logger {
                     ("edge", GeofenceLog.num(signedEdgeDistance, 0)),
                     ("acc", GeofenceLog.num(horizontalAccuracy)),
                     ("age", GeofenceLog.num(fixAge)),
+                    // Ties this verdict to its `polygon.pass.started` row. A movement wake does
+                    // not yield to an in-flight foreground pass, so two passes can interleave
+                    // their verdicts and the pass-level record alone cannot attribute them.
+                    ("pass", String(verdict.pass)),
                     // `cor` stays the shared cross-SDK boolean: true only when a second fix
                     // agreed. Widening it to reason tokens would silently break Android's pinned
                     // contract and every consumer reading it.
-                    ("cor", corroboration.confirmed ? "true" : "false"),
+                    ("cor", verdict.corroboration.confirmed ? "true" : "false"),
                     // iOS-only and additive, absent unless it applies: WHY a marginal arrival
                     // committed without confirmation. Without it an unconfirmed arrival is
                     // indistinguishable in a capture from a decisive one, which is the whole
@@ -136,7 +140,7 @@ extension Logger {
                     // Reuses `PolygonUndecidedReason` tokens on a record that DID decide, so read
                     // every one of them as being about the SECOND fix: `corwhy=no_usable_fix`
                     // means no usable second fix was obtained, not that the judged fix was bad.
-                    ("corwhy", corroboration.unconfirmedReason)
+                    ("corwhy", verdict.corroboration.unconfirmedReason)
                 ]),
             geofenceTag
         )

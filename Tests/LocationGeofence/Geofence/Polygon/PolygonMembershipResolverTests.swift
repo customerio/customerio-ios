@@ -1525,8 +1525,10 @@ struct PolygonMembershipResolverTests {
         let counter = countingContradictions(setup)
         await registerPolygons(setup, ids: ["1"])
 
-        await setup.resolver.runPass(geofenceIds: ["1"], fix: passFix)
-        await setup.resolver.runPass(geofenceIds: ["1"], fix: passFix)
+        // Distinct pass numbers because these ARE two passes; the point of the test is that the
+        // second does not inherit the first's corroboration attempt.
+        await setup.resolver.runPass(geofenceIds: ["1"], fix: passFix, pass: 1)
+        await setup.resolver.runPass(geofenceIds: ["1"], fix: passFix, pass: 2)
 
         #expect(counter.count == 2)
     }
