@@ -45,7 +45,10 @@ enum GeofenceMonitorBinder {
                         _ = await coordinator?.handleMovement(
                             latitude: location.latitude,
                             longitude: location.longitude,
-                            anchorIsLiveFix: locationIsFresh
+                            anchorIsLiveFix: locationIsFresh,
+                            // A trigger EXIT arrives with a callback location and no resolved fix;
+                            // the pass it starts requests its own, as it always has.
+                            heldFix: nil
                         )
                     }
                 }
@@ -99,10 +102,17 @@ enum GeofenceMonitorBinder {
             // the coordinator widen the trigger to the full refresh radius — installing the
             // widest possible wake in the one case that needs the tightest.
             await backgroundTaskRunner.withBackgroundTime {
+                //
+                // The fix travels with it: the re-arm starts a membership re-evaluation, and that
+                // pass forces a fix strictly newer than the last one the resolver delivered — which
+                // is this one. Left to request its own, it gets nothing back and records
+                // `no_usable_fix` for every polygon, so the crossing this path exists to catch goes
+                // undecided.
                 _ = await coordinator?.handleMovement(
                     latitude: fix.latitude,
                     longitude: fix.longitude,
-                    anchorIsLiveFix: true
+                    anchorIsLiveFix: true,
+                    heldFix: fix
                 )
                 // `handleMovement` covers distance, never age: it refetches on
                 // `movedBeyondRefetchRadius` or a missing anchor, while `refreshAction`

@@ -12,7 +12,8 @@ extension GeofenceSyncCoordinatorImpl {
         expectedUserId: String,
         anchor: LocationData,
         cachedConfig: GeofenceConfig?,
-        anchorIsLiveFix: Bool
+        anchorIsLiveFix: Bool,
+        heldFix: ResolvedFix? = nil
     ) async -> Result<Void, GeofenceSyncError> {
         let syncStartedAt = GeofenceLog.monotonicNow()
         let response: GeofenceApiResponse
@@ -66,7 +67,7 @@ extension GeofenceSyncCoordinatorImpl {
             anchor: anchor
         )
         logSyncCompleted(registration, requested: (nearest.count, registerMovementTrigger), startedAt: syncStartedAt)
-        evaluatePolygonsAfterMovement(expectedUserId: expectedUserId)
+        evaluatePolygonsAfterMovement(expectedUserId: expectedUserId, heldFix: heldFix)
         return .success(())
     }
 
@@ -120,7 +121,8 @@ extension GeofenceSyncCoordinatorImpl {
         anchor: LocationData,
         config: GeofenceConfig,
         cachedRegions: [Geofence],
-        anchorIsLiveFix: Bool
+        anchorIsLiveFix: Bool,
+        heldFix: ResolvedFix? = nil
     ) async -> Result<Void, GeofenceSyncError> {
         let syncStartedAt = GeofenceLog.monotonicNow()
         let monitorable = await MainActor.run { monitorableRegions(cachedRegions) }
@@ -152,7 +154,7 @@ extension GeofenceSyncCoordinatorImpl {
             anchor: anchor
         )
         logSyncCompleted(registration, requested: (nearest.count, registerMovementTrigger), startedAt: syncStartedAt)
-        evaluatePolygonsAfterMovement(expectedUserId: expectedUserId)
+        evaluatePolygonsAfterMovement(expectedUserId: expectedUserId, heldFix: heldFix)
         return .success(())
     }
 
@@ -163,7 +165,8 @@ extension GeofenceSyncCoordinatorImpl {
         expectedUserId: String,
         at location: LocationData,
         config: GeofenceConfig,
-        anchorIsLiveFix: Bool
+        anchorIsLiveFix: Bool,
+        heldFix: ResolvedFix? = nil
     ) async -> Result<Void, GeofenceSyncError> {
         let registeredIds = await storage.getRegisteredBusinessIds()
         let registered = await storage.getCachedGeofences().filter { registeredIds.contains($0.id) }
@@ -177,7 +180,7 @@ extension GeofenceSyncCoordinatorImpl {
                 registerMovementTrigger: config.maxBusinessGeofences > 0
             )
         }
-        evaluatePolygonsAfterMovement(expectedUserId: expectedUserId)
+        evaluatePolygonsAfterMovement(expectedUserId: expectedUserId, heldFix: heldFix)
         return .success(())
     }
 

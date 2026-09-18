@@ -9,6 +9,11 @@ extension GeofenceSyncCoordinatorImpl {
         let latitude: Double
         let longitude: Double
         let anchorIsLiveFix: Bool
+        /// Carried so the replay judges membership from where the crossing actually happened.
+        /// It ages while the holder runs, unbounded on a slow refetch, and a pass that had won
+        /// the gate would have REQUESTED rather than reused — so the resolver drops a held fix
+        /// past `movementFixMaxAge` and requests instead. See `heldFixUse`.
+        let heldFix: ResolvedFix?
     }
 
     /// After a cleanup for an identity change, the device monitors nothing — and the new user's own
@@ -43,7 +48,7 @@ extension GeofenceSyncCoordinatorImpl {
         Task { [weak self] in
             _ = await self?.handleMovement(
                 latitude: pending.latitude, longitude: pending.longitude,
-                anchorIsLiveFix: pending.anchorIsLiveFix
+                anchorIsLiveFix: pending.anchorIsLiveFix, heldFix: pending.heldFix
             )
         }
     }

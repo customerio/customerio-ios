@@ -1910,7 +1910,7 @@ struct GeofenceSyncCoordinatorTests {
 
         // Queue a stale movement by hand, as a losing pass would have.
         setup.coordinator.deferredMovement.wrappedValue = GeofenceSyncCoordinatorImpl.DeferredMovement(
-            latitude: 0, longitude: 0, anchorIsLiveFix: true
+            latitude: 0, longitude: 0, anchorIsLiveFix: true, heldFix: nil
         )
         let newer = LocationData(latitude: 0, longitude: 0.05)
         _ = await setup.coordinator.handleMovement(
