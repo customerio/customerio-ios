@@ -6,6 +6,41 @@ import Foundation
 /// file cap. `internal` rather than `private` only because of that split; it remains
 /// implementation detail of the resolver.
 extension PolygonMembershipResolver {
+    /// Whether a caller's fix can stand in for a request of our own. Recorded on the pass log so a
+    /// drive can tell a reuse from a fall-through.
+    enum HeldFixUse: String {
+        /// The caller held none; the pass requests its own, as it always has.
+        case none
+        case reused
+        case tooOld = "too_old"
+    }
+
+    /// A caller that already resolved a fix under the same freshness rule must not be made to ask
+    /// again, and not only to save the request. `resolveFix(requiringFresh:)` demands a fix
+    /// strictly newer than the last one this resolver delivered — which is the caller's — so the
+    /// second request is refused whenever CoreLocation echoes that fix, as it commonly does within
+    /// seconds of delivering it. Every polygon in the pass then records `no_usable_fix`: the whole
+    /// pass lost, not one request wasted.
+    ///
+    /// Age is the limit. A movement deferred at the gate replays with the fix it was recorded
+    /// with, older by however long the holder ran — a remote refetch is seconds, and unbounded on
+    /// a slow network. `PolygonMembershipDecision` refuses anything past `movementFixMaxAge` as
+    /// `fix_too_old`, so reusing one there loses the same pass by the other route. Past the cap we
+    /// request instead, which also beats the stale baseline the guard above compares against.
+    func heldFixUse(_ heldFix: ResolvedFix?) -> HeldFixUse {
+        guard let heldFix else { return .none }
+        let age = -heldFix.timestamp.timeIntervalSinceNow
+        return age <= GeofenceConstants.movementFixMaxAge ? .reused : .tooOld
+    }
+
+    /// The fix a pass judges against — see `heldFixUse` for when the caller's is taken.
+    func passFix(heldFix: ResolvedFix?, use: HeldFixUse, requiringFresh: Bool) async -> CLLocation? {
+        guard use == .reused, let heldFix else {
+            return await resolveFix(requiringFresh: requiringFresh)
+        }
+        return heldFix.location
+    }
+
     func resolveFix(requiringFresh: Bool = false) async -> CLLocation? {
         // What this resolver has already DELIVERED, which is what a forced request must improve on.
         // Deliberately not `cachedFix`: that reports the newest fix obtainable from either source,

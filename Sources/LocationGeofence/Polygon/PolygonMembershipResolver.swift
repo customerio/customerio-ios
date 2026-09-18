@@ -148,9 +148,7 @@ final class PolygonMembershipResolver {
                 // The pass already recorded why. No fix means nothing to size a trigger with.
                 return .nothingToRearm
             }
-            return .circleEntered(fix: LocationData(
-                latitude: fix.coordinate.latitude, longitude: fix.coordinate.longitude
-            ))
+            return .circleEntered(fix: ResolvedFix(fix))
         }
     }
 
@@ -223,6 +221,7 @@ final class PolygonMembershipResolver {
     func evaluateAllPolygons(
         reason: PolygonEvaluationReason,
         requiresFreshFix: Bool = false,
+        heldFix: ResolvedFix? = nil,
         isStillCurrent: (@Sendable () -> Bool)? = nil
     ) async {
         if passesInFlight > 0, !requiresFreshFix {
@@ -237,13 +236,14 @@ final class PolygonMembershipResolver {
         // Before the empty guard on purpose: `n=0` is the record that a pass ran and had nothing
         // to judge, which is otherwise a silent return.
         let pass = nextPass()
-        logger.geofencePolygonPassStarted(reason: reason, count: polygons.count, pass: pass)
+        let heldFixUse = heldFixUse(heldFix)
+        logger.geofencePolygonPassStarted(reason: reason, count: polygons.count, pass: pass, heldFix: heldFixUse)
         guard polygons.isEmpty == false else { return }
-        // One request for the whole pass. Resolving per polygon would issue a fresh timed request
-        // for every one of them whenever the cache stays empty, holding the main actor for minutes
-        // and still deciding nothing — and a failed fresh request would silently downgrade every
+        // At most one request for the whole pass. Resolving per polygon would issue a fresh timed
+        // request for each whenever the cache stays empty, holding the main actor for minutes and
+        // still deciding nothing — and a failed fresh request would silently downgrade every
         // polygon after the first to the pre-wake fix.
-        guard let fix = await resolveFix(requiringFresh: requiresFreshFix) else {
+        guard let fix = await passFix(heldFix: heldFix, use: heldFixUse, requiringFresh: requiresFreshFix) else {
             for geofence in polygons {
                 logger.geofencePolygonUndecided(identifier: geofence.id, reason: .noUsableFix)
             }

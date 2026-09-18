@@ -67,7 +67,13 @@ extension GeofenceSyncCoordinatorImpl {
     /// membership may have changed. A wake fires BECAUSE the device moved, so the cached fix
     /// describes where it was — answering from it re-affirms the old verdict and swallows the
     /// crossing outright (measured: a 26 s fix at 20 m/s is 520 m stale).
-    func evaluatePolygonsAfterMovement(expectedUserId: String) {
+    ///
+    /// `heldFix` is the exception, and the only one: a caller that has ALREADY obtained a fix under
+    /// that same rule passes it here, and the pass runs against it. Requesting again would not just
+    /// waste the request — the forced-fresh path demands a fix strictly newer than the last one this
+    /// resolver delivered, which the held fix has just advanced, so the second request answers
+    /// nothing and every polygon in the pass records `no_usable_fix`.
+    func evaluatePolygonsAfterMovement(expectedUserId: String, heldFix: ResolvedFix? = nil) {
         Task { @MainActor [contextStore] in
             guard contextStore.currentUserId == expectedUserId else { return }
             // Re-checked inside, after the fix resolves and again before the emit: a forced-fresh
@@ -75,6 +81,7 @@ extension GeofenceSyncCoordinatorImpl {
             await DIGraphShared.shared.polygonMembershipResolver.evaluateAllPolygons(
                 reason: .movement,
                 requiresFreshFix: true,
+                heldFix: heldFix,
                 isStillCurrent: { contextStore.currentUserId == expectedUserId }
             )
         }

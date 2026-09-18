@@ -135,6 +135,8 @@ struct GeofenceMonitorBinderTests {
         #expect(coordinator.handleMovementReceivedArguments?.latitude == 37.0)
         #expect(coordinator.handleMovementReceivedArguments?.longitude == -122.0)
         #expect(coordinator.handleMovementReceivedArguments?.anchorIsLiveFix == true)
+        // A trigger EXIT holds no resolved fix; the pass it starts requests its own.
+        #expect(coordinator.handleMovementReceivedArguments?.heldFix == nil)
     }
 
     /// A movement pass whose fresh-fix request failed carries the cached fix that prompted it. The
@@ -374,6 +376,43 @@ struct GeofenceMonitorBinderTests {
         #expect(arguments?.longitude == Self.insideFix.coordinate.longitude)
         // The whole point: a non-live anchor makes the coordinator widen the trigger to maximum.
         #expect(arguments?.anchorIsLiveFix == true)
+    }
+
+    /// The coordinates alone are not enough. The re-arm starts a membership pass over every
+    /// registered polygon, and that pass forces a fix strictly newer than the last one this
+    /// resolver delivered — which is the entry's own. Left to request one, it is refused and every
+    /// polygon records `no_usable_fix`, so the crossing this path exists to catch goes undecided.
+    ///
+    /// Asserted on the argument rather than on the pass: the pass runs behind `DIGraphShared`.
+    /// Accuracy and timestamp are checked too — membership judges against both, so a fix that
+    /// arrived stripped of them would be judged on different terms than the one that was taken.
+    @Test
+    func bind_givenPolygonCoveringCircleEnter_expectTheResolvedFixTravelsToTheReArm() async {
+        let monitor = MockGeofenceRegionMonitor()
+        let coordinator = makeCoordinatorMock()
+        let tracker = makeTracker(deliveryTracker: makeDeliveryMock())
+        let storage = makeStorage()
+        await seedPolygon(in: storage)
+
+        // Captured once: `insideFix` builds a new location, and a new timestamp, on every read.
+        let resolved = Self.insideFix
+        let resolver = makeResolver(tracker: tracker, storage: storage)
+        resolver.fixResolver.requestFreshFix = { [weak resolver] in
+            resolver?.fixResolver.handleResolvedFix(resolved)
+        }
+        GeofenceMonitorBinder.bind(monitor: monitor, resolver: resolver, coordinator: coordinator, logger: LoggerMock())
+        monitor.simulateTransition(
+            identifier: "poly-1", transition: .enter,
+            location: LocationData(latitude: 37.0, longitude: -122.0),
+            eventCircle: .circle(MonitoredCircle(center: .init(latitude: 0, longitude: 0), radius: 300, maximumRadius: 1000))
+        )
+        await awaitDispatch(coordinator.handleMovementCallsCount > 0)
+
+        let held = coordinator.handleMovementReceivedArguments?.heldFix
+        #expect(held?.latitude == resolved.coordinate.latitude)
+        #expect(held?.longitude == resolved.coordinate.longitude)
+        #expect(held?.horizontalAccuracy == resolved.horizontalAccuracy)
+        #expect(held?.timestamp == resolved.timestamp)
     }
 
     /// No fix means nothing to size a trigger with, so the crossing falls back to the plain

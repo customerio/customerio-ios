@@ -44,13 +44,22 @@ extension Logger {
     ///
     /// Pass-level rather than one record per polygon: a long stationary capture is read by asking
     /// "did anything evaluate while I stood here", and N lines per pass buries that.
-    func geofencePolygonPassStarted(reason: PolygonEvaluationReason, count: Int, pass: Int) {
+    /// `heldFix` records what became of a fix the caller supplied: reused, or too old to stand in
+    /// for a request. The difference between a re-evaluation that decides and one that records
+    /// `no_usable_fix` for every polygon.
+    func geofencePolygonPassStarted(
+        reason: PolygonEvaluationReason,
+        count: Int,
+        pass: Int,
+        heldFix: PolygonMembershipResolver.HeldFixUse = .none
+    ) {
         debug(
             "Evaluating \(count) polygon(s) (\(reason.prose))"
                 + geofenceTail("polygon.pass.started", .output, [
                     ("why", reason.rawValue),
                     ("n", String(count)),
-                    ("pass", String(pass))
+                    ("pass", String(pass)),
+                    ("held", heldFix.rawValue)
                 ]),
             geofenceTag
         )

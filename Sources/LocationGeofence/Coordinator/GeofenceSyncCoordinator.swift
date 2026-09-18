@@ -26,10 +26,13 @@ enum HandleMovementTier: String, Sendable, CaseIterable {
 ///   whether the coordinates describe where the device is NOW or are a stored value standing in for
 ///   it; only the caller knows, and the movement trigger cannot be sized to a polygon boundary
 ///   around a point the device may not be at.
-/// - `handleMovement(latitude:longitude:anchorIsLiveFix:)` — movement-trigger EXIT entry. Re-ranks
-///   the cached set for the new location; bootstraps from the server only when there's no anchor.
-///   Shares the same dedup gate as `refresh`. A movement pass whose fresh-fix request failed carries
-///   the cached fix that prompted it, so this entry is not automatically live either.
+/// - `handleMovement(latitude:longitude:anchorIsLiveFix:heldFix:)` — movement-trigger EXIT entry.
+///   Re-ranks the cached set for the new location; bootstraps from the server only when there's no
+///   anchor. Shares the same dedup gate as `refresh`. A movement pass whose fresh-fix request failed
+///   carries the cached fix that prompted it, so this entry is not automatically live either.
+///   `heldFix` is a fix the CALLER has already obtained and gated; the membership re-evaluation this
+///   entry starts runs against it instead of requesting one of its own. Nil for a trigger EXIT,
+///   which holds nothing.
 /// - `applyCachedRegistration(...)` — synchronously register from caller-fetched state,
 ///   used by cold-wake / boot / auth-change paths. Synchronous on the main actor so
 ///   `ownedRegionIdentifiers` is populated before the next yield — otherwise the OS may
@@ -39,7 +42,9 @@ enum HandleMovementTier: String, Sendable, CaseIterable {
 ///   state (cooldowns, last-sync). Preserves the workspace cache.
 protocol GeofenceSyncCoordinator: AutoMockable, AnyObject, Sendable {
     func refresh(latitude: Double, longitude: Double, anchorIsLiveFix: Bool) async -> Result<Void, GeofenceSyncError>
-    func handleMovement(latitude: Double, longitude: Double, anchorIsLiveFix: Bool) async -> Result<Void, GeofenceSyncError>
+    func handleMovement(
+        latitude: Double, longitude: Double, anchorIsLiveFix: Bool, heldFix: ResolvedFix?
+    ) async -> Result<Void, GeofenceSyncError>
     func reset() async -> Result<Void, GeofenceSyncError>
     @MainActor
     func applyCachedRegistration(
@@ -160,11 +165,16 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
         }
     }
 
-    func handleMovement(latitude: Double, longitude: Double, anchorIsLiveFix: Bool) async -> Result<Void, GeofenceSyncError> {
+    // Defaulted here rather than in the protocol, which cannot carry default arguments: every
+    // caller but the circle-entry re-arm holds no fix.
+    func handleMovement(
+        latitude: Double, longitude: Double, anchorIsLiveFix: Bool, heldFix: ResolvedFix? = nil
+    ) async -> Result<Void, GeofenceSyncError> {
         guard acquireGate() else {
             // Recorded, not dropped — see `deferredMovement`.
             deferredMovement.wrappedValue = DeferredMovement(
-                latitude: latitude, longitude: longitude, anchorIsLiveFix: anchorIsLiveFix
+                latitude: latitude, longitude: longitude, anchorIsLiveFix: anchorIsLiveFix,
+                heldFix: heldFix
             )
             logger.geofenceSyncSkipped(reason: .refreshInProgress)
             return .failure(.alreadyInProgress)
@@ -176,7 +186,7 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
         let expectedUserId = identifiedUserId
         let result = await performMovement(
             expectedUserId: expectedUserId, latitude: latitude, longitude: longitude,
-            anchorIsLiveFix: anchorIsLiveFix
+            anchorIsLiveFix: anchorIsLiveFix, heldFix: heldFix
         )
         let cleaned = await cleanupIfUserChanged(expectedUserId: expectedUserId)
         releaseGate()
@@ -190,7 +200,8 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
         expectedUserId: String?,
         latitude: Double,
         longitude: Double,
-        anchorIsLiveFix: Bool
+        anchorIsLiveFix: Bool,
+        heldFix: ResolvedFix?
     ) async -> Result<Void, GeofenceSyncError> {
         guard let userId = expectedUserId else {
             logger.geofenceSyncSkipped(reason: .noIdentifiedUser)
@@ -210,7 +221,8 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
                 expectedUserId: userId,
                 anchor: movement,
                 cachedConfig: cachedConfig,
-                anchorIsLiveFix: anchorIsLiveFix
+                anchorIsLiveFix: anchorIsLiveFix,
+                heldFix: heldFix
             )
             if case .failure = remote {
                 // A failed pass never re-centers the trigger, leaving it on the circle the device
@@ -221,14 +233,15 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
                     anchor: movement,
                     config: effectiveConfig,
                     cachedRegions: await storage.getCachedGeofences(),
-                    anchorIsLiveFix: anchorIsLiveFix
+                    anchorIsLiveFix: anchorIsLiveFix,
+                    heldFix: heldFix
                 )
             }
             return remote
         } else if await !movedBeyondRerankRadius(to: movement, config: effectiveConfig) {
             return await performPolygonWakePass(
                 expectedUserId: userId, at: movement, config: effectiveConfig,
-                anchorIsLiveFix: anchorIsLiveFix
+                anchorIsLiveFix: anchorIsLiveFix, heldFix: heldFix
             )
         } else {
             logger.geofenceMovementTrigger(tier: .localRerank)
@@ -238,7 +251,8 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
                 anchor: movement,
                 config: effectiveConfig,
                 cachedRegions: cachedRegions,
-                anchorIsLiveFix: anchorIsLiveFix
+                anchorIsLiveFix: anchorIsLiveFix,
+                heldFix: heldFix
             )
         }
     }
