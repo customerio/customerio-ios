@@ -1901,6 +1901,29 @@ struct GeofenceSyncCoordinatorTests {
         #expect(triggerStarts.last?.center == movedTo)
     }
 
+    /// A movement that runs must supersede an older one still queued, or the replay moves the
+    /// trigger BACK to coordinates the device has already left.
+    @Test
+    func handleMovement_givenANewerMovementRanFirst_expectTheStaleDeferralDropped() async {
+        let storage = makeStorage()
+        let setup = await makeRegisteredSetup(regions: [], config: diffConfig, storage: storage)
+
+        // Queue a stale movement by hand, as a losing pass would have.
+        setup.coordinator.deferredMovement.wrappedValue = GeofenceSyncCoordinatorImpl.DeferredMovement(
+            latitude: 0, longitude: 0, anchorIsLiveFix: true
+        )
+        let newer = LocationData(latitude: 0, longitude: 0.05)
+        _ = await setup.coordinator.handleMovement(
+            latitude: newer.latitude, longitude: newer.longitude, anchorIsLiveFix: true
+        )
+        for _ in 0 ..< 50 {
+            await Task.yield()
+        }
+
+        let triggerStarts = setup.monitor.startedRegions.filter { $0.identifier == GeofenceConstants.movementTriggerIdentifier }
+        #expect(triggerStarts.last?.center == newer)
+    }
+
     // MARK: - reset
 
     @Test

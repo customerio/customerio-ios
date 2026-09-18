@@ -169,6 +169,10 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
             logger.geofenceSyncSkipped(reason: .refreshInProgress)
             return .failure(.alreadyInProgress)
         }
+        // A movement that actually runs supersedes any older one still queued: both describe the
+        // same journey and this one's coordinates are newer. Without this, a deferral recorded
+        // before this pass would replay after it and move the trigger BACK to stale coordinates.
+        deferredMovement.wrappedValue = nil
         let expectedUserId = identifiedUserId
         let result = await performMovement(
             expectedUserId: expectedUserId, latitude: latitude, longitude: longitude,
@@ -244,7 +248,12 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
             logger.geofenceSyncSkipped(reason: .refreshInProgress)
             return .failure(.alreadyInProgress)
         }
-        defer { releaseGate() }
+        // Discarded, not drained: a movement queued behind a reset belongs to the profile this
+        // reset is clearing, and re-registering for it would undo the sign-out.
+        defer {
+            deferredMovement.wrappedValue = nil
+            releaseGate()
+        }
 
         // If a new user signed in between sign-out and this handler firing, skip — their
         // own refresh path will register the right state for them, and clearing here
@@ -284,7 +293,12 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
             logger.geofenceSyncSkipped(reason: .restoreInProgress)
             return nil
         }
-        defer { releaseGate() }
+        // Drains like every other gate holder: a movement that lost the gate to a cache restore
+        // is still the only thing that re-centres the trigger.
+        defer {
+            releaseGate()
+            drainDeferredMovement(userChanged: false)
+        }
 
         let effectiveConfig = config ?? .fallback
         let nearest = distanceFilter.nearest(monitorableRegions(cachedRegions), to: anchor, limit: effectiveConfig.maxBusinessGeofences, maxDistance: effectiveConfig.maxMonitoringDistance)
