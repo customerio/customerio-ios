@@ -1553,7 +1553,7 @@ struct PolygonMembershipResolverTests {
     ///
     /// Driven through `runPass` twice against one fix rather than through concurrent entry points:
     /// that is the same shared-basis condition the overlap produces, and it is deterministic. The
-    /// old code cleared only in `resolveFix`, which a pass never called for itself, so the
+    /// old code cleared only in `resolvePassFix`, which a pass never called for itself, so the
     /// second pass here reused the first's failure and made no request.
     @Test
     func runPass_givenASecondPassOnTheSameFix_expectItMakesItsOwnAttempt() async {
