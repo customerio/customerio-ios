@@ -1901,6 +1901,47 @@ struct GeofenceSyncCoordinatorTests {
         #expect(triggerStarts.last?.center == movedTo)
     }
 
+    /// The two-step window: `acquireGate()` answering false and the record landing were separate,
+    /// so a holder could release AND drain between them. The record then arrived with the gate
+    /// already free and nothing left due to drain it, stranding the trigger on the circle the
+    /// device had just exited.
+    ///
+    /// Asserted as an invariant rather than by racing threads. The window is microseconds wide, so
+    /// a thread race would pass against the broken code on nearly every run and prove nothing; the
+    /// invariant it violates is checkable exactly. A call that TAKES the gate must leave no
+    /// deferral behind, and a call that does not take it must leave exactly one.
+    @Test
+    func acquireGateOrDefer_givenAFreeGate_expectItIsTakenAndNothingIsDeferred() async {
+        let setup = await makeRegisteredSetup(regions: [], config: diffConfig, storage: makeStorage())
+
+        let taken = setup.coordinator.acquireGateOrDefer(
+            GeofenceSyncCoordinatorImpl.DeferredMovement(latitude: 1, longitude: 2, anchorIsLiveFix: true)
+        )
+
+        #expect(taken)
+        // A deferral recorded here would never be drained: this caller holds the gate and will
+        // release it believing it deferred nothing.
+        #expect(setup.coordinator.deferredMovement.wrappedValue?.latitude == nil)
+        setup.coordinator.releaseGate()
+    }
+
+    /// The other half: losing the gate must record, in the same critical section that observed the
+    /// gate held.
+    @Test
+    func acquireGateOrDefer_givenAHeldGate_expectTheMovementIsRecorded() async {
+        let setup = await makeRegisteredSetup(regions: [], config: diffConfig, storage: makeStorage())
+        #expect(setup.coordinator.acquireGate())
+
+        let taken = setup.coordinator.acquireGateOrDefer(
+            GeofenceSyncCoordinatorImpl.DeferredMovement(latitude: 3, longitude: 4, anchorIsLiveFix: false)
+        )
+
+        #expect(!taken)
+        #expect(setup.coordinator.deferredMovement.wrappedValue?.latitude == 3)
+        #expect(setup.coordinator.deferredMovement.wrappedValue?.anchorIsLiveFix == false)
+        setup.coordinator.releaseGate()
+    }
+
     /// A movement that runs must supersede an older one still queued, or the replay moves the
     /// trigger BACK to coordinates the device has already left.
     @Test

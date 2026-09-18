@@ -48,6 +48,32 @@ extension GeofenceSyncCoordinatorImpl {
         }
     }
 
+    /// Takes the gate, or records the movement for replay — in ONE critical section.
+    ///
+    /// Doing it in two steps loses the movement. Between `acquireGate()` answering false and the
+    /// record landing, the holder can both release AND drain; the record then arrives with the gate
+    /// already free and nothing left that will drain it, and the trigger stays on the circle the
+    /// device just exited — the exact loss `deferredMovement` exists to prevent, reached through
+    /// its own window.
+    ///
+    /// Serialising both against `refreshInProgress` closes it: either the record lands while the
+    /// holder still holds the gate, so that holder's release drains it, or the release got there
+    /// first and this call acquires the gate instead of deferring.
+    ///
+    /// Lock order is one-way. This takes `refreshInProgress` then `deferredMovement`; nothing takes
+    /// them the other way round — `drainDeferredMovement` reads `deferredMovement` alone and fires
+    /// its replay outside the critical section.
+    func acquireGateOrDefer(_ movement: DeferredMovement) -> Bool {
+        refreshInProgress.mutating { inProgress in
+            if inProgress {
+                deferredMovement.wrappedValue = movement
+                return false
+            }
+            inProgress = true
+            return true
+        }
+    }
+
     /// Returns false when another call already holds the gate; the caller short-circuits.
     func acquireGate() -> Bool {
         refreshInProgress.mutating { inProgress in
