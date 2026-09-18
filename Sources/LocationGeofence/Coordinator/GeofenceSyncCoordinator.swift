@@ -169,10 +169,6 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
             logger.geofenceSyncSkipped(reason: .refreshInProgress)
             return .failure(.alreadyInProgress)
         }
-        // A movement that actually runs supersedes any older one still queued: both describe the
-        // same journey and this one's coordinates are newer. Without this, a deferral recorded
-        // before this pass would replay after it and move the trigger BACK to stale coordinates.
-        deferredMovement.wrappedValue = nil
         let expectedUserId = identifiedUserId
         let result = await performMovement(
             expectedUserId: expectedUserId, latitude: latitude, longitude: longitude,

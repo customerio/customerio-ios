@@ -1911,16 +1911,22 @@ struct GeofenceSyncCoordinatorTests {
     /// invariant it violates is checkable exactly. A call that TAKES the gate must leave no
     /// deferral behind, and a call that does not take it must leave exactly one.
     @Test
-    func acquireGateOrDefer_givenAFreeGate_expectItIsTakenAndNothingIsDeferred() async {
+    func acquireGateOrDefer_givenAFreeGate_expectItIsTakenAndAnyQueuedMovementSuperseded() async {
         let setup = await makeRegisteredSetup(regions: [], config: diffConfig, storage: makeStorage())
+        // Seeded, not left nil: starting from nil the assertion below holds even if the supersede
+        // clear sits OUTSIDE the critical section, which is the bug this test has to be able to
+        // see. A winner must clear a queued movement in the same section that took the gate.
+        setup.coordinator.deferredMovement.wrappedValue = GeofenceSyncCoordinatorImpl.DeferredMovement(
+            latitude: 9, longitude: 9, anchorIsLiveFix: true
+        )
 
         let taken = setup.coordinator.acquireGateOrDefer(
             GeofenceSyncCoordinatorImpl.DeferredMovement(latitude: 1, longitude: 2, anchorIsLiveFix: true)
         )
 
         #expect(taken)
-        // A deferral recorded here would never be drained: this caller holds the gate and will
-        // release it believing it deferred nothing.
+        // A deferral surviving here is either never drained, or drained after this pass and so
+        // moves the trigger back to coordinates the device has already left.
         #expect(setup.coordinator.deferredMovement.wrappedValue?.latitude == nil)
         setup.coordinator.releaseGate()
     }

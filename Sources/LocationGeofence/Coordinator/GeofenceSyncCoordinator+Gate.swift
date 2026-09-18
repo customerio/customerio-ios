@@ -70,6 +70,15 @@ extension GeofenceSyncCoordinatorImpl {
                 return false
             }
             inProgress = true
+            // A movement that actually runs supersedes any older one still queued: both describe
+            // the same journey and this one's coordinates are newer. Without it, a deferral
+            // recorded before this pass replays after it and moves the trigger BACK.
+            //
+            // Cleared in here, not after the guard. Outside the section it is the same two-step
+            // shape this method exists to close: a movement that lost the gate and recorded itself
+            // correctly would then be wiped by the winner, and in that ordering the record it
+            // wipes is the NEWER one — the premise above inverted.
+            deferredMovement.wrappedValue = nil
             return true
         }
     }
