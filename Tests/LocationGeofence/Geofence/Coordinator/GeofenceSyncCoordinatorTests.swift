@@ -1858,6 +1858,119 @@ struct GeofenceSyncCoordinatorTests {
         #expect(movement.errorOrNil == .alreadyInProgress)
     }
 
+    /// The recovery half of `handleMovement_givenInFlightRefresh_expectAlreadyInProgress`.
+    ///
+    /// Short-circuiting on the gate is correct; LOSING the pass is not. A business crossing and a
+    /// trigger EXIT routinely arrive from the same movement, and the movement pass is the only
+    /// thing that re-centres the trigger — dropped, the trigger stays on the circle the device
+    /// just left, where no further EXIT can ever fire. So the loser must be replayed once the
+    /// holder releases.
+    @Test
+    func handleMovement_givenItLostTheGateToARefresh_expectItIsReplayedAfterwards() async {
+        let storage = makeStorage()
+        let api = GeofenceApiServiceMock()
+        let suspendUntil = AsyncSignal()
+        let arrived = AsyncSignal()
+        api.fetchNearbyGeofencesClosure = { _, _, completion in
+            Task {
+                await arrived.fire()
+                await suspendUntil.wait()
+                completion(.success(makeApiResponse(regions: [])))
+            }
+        }
+        let setup = makeCoordinator(api: api, storage: storage)
+
+        async let firstRefresh = setup.coordinator.refresh(latitude: 0, longitude: 0, anchorIsLiveFix: true)
+        await arrived.wait()
+        // Deliberately elsewhere, so a trigger re-armed at these coordinates can only have come
+        // from the replay and not from the refresh that beat it.
+        let movement = await setup.coordinator.handleMovement(latitude: 0, longitude: 0.05, anchorIsLiveFix: true)
+        await suspendUntil.fire()
+        _ = await firstRefresh
+
+        #expect(movement.errorOrNil == .alreadyInProgress)
+
+        let movedTo = LocationData(latitude: 0, longitude: 0.05)
+        for _ in 0 ..< 200 {
+            if setup.monitor.startedRegions.contains(where: {
+                $0.identifier == GeofenceConstants.movementTriggerIdentifier && $0.center == movedTo
+            }) { break }
+            try? await Task.sleep(nanoseconds: 10000000)
+        }
+        let triggerStarts = setup.monitor.startedRegions.filter { $0.identifier == GeofenceConstants.movementTriggerIdentifier }
+        #expect(triggerStarts.last?.center == movedTo)
+    }
+
+    /// The two-step window: `acquireGate()` answering false and the record landing were separate,
+    /// so a holder could release AND drain between them. The record then arrived with the gate
+    /// already free and nothing left due to drain it, stranding the trigger on the circle the
+    /// device had just exited.
+    ///
+    /// Asserted as an invariant rather than by racing threads. The window is microseconds wide, so
+    /// a thread race would pass against the broken code on nearly every run and prove nothing; the
+    /// invariant it violates is checkable exactly. A call that TAKES the gate must leave no
+    /// deferral behind, and a call that does not take it must leave exactly one.
+    @Test
+    func acquireGateOrDefer_givenAFreeGate_expectItIsTakenAndAnyQueuedMovementSuperseded() async {
+        let setup = await makeRegisteredSetup(regions: [], config: diffConfig, storage: makeStorage())
+        // Seeded, not left nil: starting from nil the assertion below holds even if the supersede
+        // clear sits OUTSIDE the critical section, which is the bug this test has to be able to
+        // see. A winner must clear a queued movement in the same section that took the gate.
+        setup.coordinator.deferredMovement.wrappedValue = GeofenceSyncCoordinatorImpl.DeferredMovement(
+            latitude: 9, longitude: 9, anchorIsLiveFix: true
+        )
+
+        let taken = setup.coordinator.acquireGateOrDefer(
+            GeofenceSyncCoordinatorImpl.DeferredMovement(latitude: 1, longitude: 2, anchorIsLiveFix: true)
+        )
+
+        #expect(taken)
+        // A deferral surviving here is either never drained, or drained after this pass and so
+        // moves the trigger back to coordinates the device has already left.
+        #expect(setup.coordinator.deferredMovement.wrappedValue?.latitude == nil)
+        setup.coordinator.releaseGate()
+    }
+
+    /// The other half: losing the gate must record, in the same critical section that observed the
+    /// gate held.
+    @Test
+    func acquireGateOrDefer_givenAHeldGate_expectTheMovementIsRecorded() async {
+        let setup = await makeRegisteredSetup(regions: [], config: diffConfig, storage: makeStorage())
+        #expect(setup.coordinator.acquireGate())
+
+        let taken = setup.coordinator.acquireGateOrDefer(
+            GeofenceSyncCoordinatorImpl.DeferredMovement(latitude: 3, longitude: 4, anchorIsLiveFix: false)
+        )
+
+        #expect(!taken)
+        #expect(setup.coordinator.deferredMovement.wrappedValue?.latitude == 3)
+        #expect(setup.coordinator.deferredMovement.wrappedValue?.anchorIsLiveFix == false)
+        setup.coordinator.releaseGate()
+    }
+
+    /// A movement that runs must supersede an older one still queued, or the replay moves the
+    /// trigger BACK to coordinates the device has already left.
+    @Test
+    func handleMovement_givenANewerMovementRanFirst_expectTheStaleDeferralDropped() async {
+        let storage = makeStorage()
+        let setup = await makeRegisteredSetup(regions: [], config: diffConfig, storage: storage)
+
+        // Queue a stale movement by hand, as a losing pass would have.
+        setup.coordinator.deferredMovement.wrappedValue = GeofenceSyncCoordinatorImpl.DeferredMovement(
+            latitude: 0, longitude: 0, anchorIsLiveFix: true
+        )
+        let newer = LocationData(latitude: 0, longitude: 0.05)
+        _ = await setup.coordinator.handleMovement(
+            latitude: newer.latitude, longitude: newer.longitude, anchorIsLiveFix: true
+        )
+        for _ in 0 ..< 50 {
+            await Task.yield()
+        }
+
+        let triggerStarts = setup.monitor.startedRegions.filter { $0.identifier == GeofenceConstants.movementTriggerIdentifier }
+        #expect(triggerStarts.last?.center == newer)
+    }
+
     // MARK: - reset
 
     @Test
