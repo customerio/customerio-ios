@@ -161,8 +161,11 @@ struct GeofenceMonitorBinderTests {
         #expect(coordinator.handleMovementCallsCount == 0)
     }
 
+    /// The crossing must reach the tracker AND ask the coordinator to reconsider freshness. It is
+    /// `refresh`, never `handleMovement`: the latter assumes an EXIT happened and always
+    /// re-registers, so routing crossings through it would re-arm the trigger continuously.
     @Test
-    func bind_givenBusinessGeofenceTransition_expectTrackerDispatchedAndCoordinatorIdle() async {
+    func bind_givenBusinessGeofenceTransition_expectTrackerDispatchedAndRefreshRequested() async {
         let monitor = MockGeofenceRegionMonitor()
         let coordinator = makeCoordinatorMock()
         let delivery = makeDeliveryMock()
@@ -177,9 +180,57 @@ struct GeofenceMonitorBinderTests {
         )
         // Tracker dispatch is observable via the delivery mock's call count.
         await awaitDispatch(delivery.trackMetricCallsCount > 0)
+        await awaitDispatch(coordinator.refreshCallsCount > 0)
 
         #expect(delivery.trackMetricCallsCount == 1)
         #expect(coordinator.handleMovementCallsCount == 0)
+        #expect(coordinator.refreshCallsCount == 1)
+        #expect(coordinator.refreshReceivedArguments?.latitude == 37.0)
+        #expect(coordinator.refreshReceivedArguments?.longitude == -122.0)
+    }
+
+    /// The refresh anchors on the crossing's own coordinates, so without one there is nothing to
+    /// anchor to. Returning early is correct; passing a placeholder would re-rank the whole set
+    /// around the equator.
+    @Test
+    func bind_givenBusinessGeofenceTransitionWithoutLocation_expectNoRefresh() async {
+        let monitor = MockGeofenceRegionMonitor()
+        let coordinator = makeCoordinatorMock()
+        let tracker = makeTracker(deliveryTracker: makeDeliveryMock())
+
+        let resolver = makeResolver(tracker: tracker)
+        GeofenceMonitorBinder.bind(monitor: monitor, resolver: resolver, coordinator: coordinator, logger: LoggerMock())
+        monitor.simulateTransition(identifier: "business-region-1", transition: .enter, location: nil)
+        for _ in 0 ..< 10 {
+            await Task.yield()
+        }
+
+        #expect(coordinator.refreshCallsCount == 0)
+    }
+
+    /// The trigger EXIT already refreshes through `handleMovement`. If it ALSO reached `refresh`
+    /// the two would race for the same gate and one would be dropped as `alreadyInProgress` —
+    /// which is exactly the lost refresh this change exists to prevent.
+    @Test
+    func bind_givenMovementTriggerExit_expectRefreshNotAlsoRequested() async {
+        let monitor = MockGeofenceRegionMonitor()
+        let coordinator = makeCoordinatorMock()
+        let tracker = makeTracker(deliveryTracker: makeDeliveryMock())
+
+        let resolver = makeResolver(tracker: tracker)
+        GeofenceMonitorBinder.bind(monitor: monitor, resolver: resolver, coordinator: coordinator, logger: LoggerMock())
+        monitor.simulateTransition(
+            identifier: GeofenceConstants.movementTriggerIdentifier,
+            transition: .exit,
+            location: LocationData(latitude: 37.0, longitude: -122.0)
+        )
+        await awaitDispatch(coordinator.handleMovementCallsCount > 0)
+        for _ in 0 ..< 10 {
+            await Task.yield()
+        }
+
+        #expect(coordinator.handleMovementCallsCount == 1)
+        #expect(coordinator.refreshCallsCount == 0)
     }
 
     /// The circle an event was raised for has to survive the binder hop, or the resolver's
