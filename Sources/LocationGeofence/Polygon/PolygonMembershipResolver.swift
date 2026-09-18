@@ -89,16 +89,20 @@ final class PolygonMembershipResolver {
     /// condition the cache has dropped) is forwarded rather than dropped: treating it as a circle
     /// is the behaviour that predates polygons, and losing a real crossing is worse than a
     /// covering-circle-shaped one.
+    /// - Returns: whether the caller should re-arm the wake against this crossing, and the fix to
+    ///   size it with. See ``PolygonTransitionOutcome`` for why the fix travels with the answer.
+    @discardableResult
     func handleTransition(
         identifier: String,
         transition: GeofenceTransition,
         occurredAt: Date,
         eventCircle: GeofenceEventCircle = .unknown
-    ) async {
+    ) async -> PolygonTransitionOutcome {
         guard let geofence = await cachedGeofence(id: identifier), geofence.vertices != nil else {
             // Uncached, or a genuine circle: forward untouched, the behaviour that predates polygons.
             await transitionEmitter.trackTransition(geofenceId: identifier, transition: transition, occurredAt: occurredAt)
-            return
+            // A circle fence's own event IS the answer, so there is no boundary left to wake for.
+            return .nothingToRearm
         }
         switch transition {
         case .exit:
@@ -119,12 +123,15 @@ final class PolygonMembershipResolver {
             case .expired:
                 logger.geofencePolygonUndecided(identifier: identifier, reason: .circleExpired, pass: nil)
             }
+            // Boundary now behind us; the next registration re-sizes from wherever the device is.
+            return .nothingToRearm
         case .enter:
             guard geofence.polygonRegion != nil else {
                 // A stored ring that no longer builds is NOT a circle — forwarding it would fire a
                 // customer enter anywhere inside the covering circle.
                 logger.geofencePolygonUndecided(identifier: identifier, reason: .ringUnbuildable, pass: nil)
-                return
+                // No ring means no boundary to size a trigger against either.
+                return .nothingToRearm
             }
             // Also a movement event, so the same staleness rule applies as on a wake.
             //
@@ -134,7 +141,16 @@ final class PolygonMembershipResolver {
             // declining it loses it for good because the dedup baseline has already advanced. The
             // cost is real: a switch inside the fix window attributes it to a user who may not
             // monitor this polygon at all.
-            await evaluate(geofenceId: identifier, requiresFreshFix: true)
+            //
+            // The fix travels out so the caller can re-arm the wake against the boundary the OS
+            // cannot see; without it the device keeps whatever trigger it arrived with.
+            guard let fix = await evaluate(geofenceId: identifier, requiresFreshFix: true) else {
+                // The pass already recorded why. No fix means nothing to size a trigger with.
+                return .nothingToRearm
+            }
+            return .circleEntered(fix: LocationData(
+                latitude: fix.coordinate.latitude, longitude: fix.coordinate.longitude
+            ))
         }
     }
 
@@ -236,18 +252,23 @@ final class PolygonMembershipResolver {
         await runPass(geofenceIds: polygons.map(\.id), fix: fix, pass: pass, isStillCurrent: isStillCurrent)
     }
 
+    /// - Returns: the fix the pass ran against, or nil when none could be obtained. Callers use it
+    ///   to size work against where the device actually is; the pass's own verdicts are recorded
+    ///   here and are not part of the return.
+    @discardableResult
     private func evaluate(
         geofenceId: String,
         requiresFreshFix: Bool = false,
         isStillCurrent: (@Sendable () -> Bool)? = nil
-    ) async {
+    ) async -> CLLocation? {
         let pass = nextPass()
         logger.geofencePolygonPassStarted(reason: .osTransition, count: 1, pass: pass)
         guard let fix = await resolveFix(requiringFresh: requiresFreshFix) else {
             logger.geofencePolygonUndecided(identifier: geofenceId, reason: .noUsableFix, pass: pass)
-            return
+            return nil
         }
         await runPass(geofenceIds: [geofenceId], fix: fix, pass: pass, isStillCurrent: isStillCurrent)
+        return fix
     }
 
     /// Takes an id, never a caller's `PolygonRegion`: resolving a fix suspends, and a refresh can
