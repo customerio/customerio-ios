@@ -19,7 +19,12 @@ import UIKit
 /// not a new capability — and the smallest circle the field has ever exercised is ~100 m
 /// (Le Mandarin 100, Rainbow 101, Tim Hortons 109), all of which promote. Below 100 m is
 /// unmeasured, not known-bad, and the accuracy that would have to support it is comfortable:
-/// 1640 polygon verdicts at median 5.5 m, p90 9.5 m, max 15.5 m.
+/// 538 polygon verdicts at median 5.0 m, p90 9.5 m, max 14.0 m, not one above 50 m.
+///
+/// The floor is also measurably binding: 28 of 60 `movement.radius.chosen` records sit exactly on
+/// 100, and 45 of 87 evaluation passes had a boundary nearer than 100 m. The mass of those sits
+/// between 50 and 75 m, so **50 is the ring this probe most needs to answer** — a 50 m floor would
+/// unclamp 39 of the 45, and 25 m only four more.
 ///
 /// **The 100 m ring is the control.** It is known to work, so a capture where it stayed silent
 /// says the user never moved far enough and the smaller radii prove nothing. Reading a null from
