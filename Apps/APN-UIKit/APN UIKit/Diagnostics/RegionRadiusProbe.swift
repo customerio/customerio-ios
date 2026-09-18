@@ -53,6 +53,9 @@ final class RegionRadiusProbe: NSObject, @preconcurrency CLLocationManagerDelega
     /// accepted. Bounded because `requestLocation` costs a GPS session each time and a device
     /// indoors will never produce a good one.
     private static let maxAnchorAttempts = 4
+    /// Past this, `manager.location` is treated as predating the crossing and `off=` is marked
+    /// untrustworthy. Matches the SDK's `movementFixMaxAge`, which answers the same question.
+    private static let maxTrustedFixAge: TimeInterval = 30
 
     /// Lazy so a launch that says nothing about the probe costs nothing — not even a manager
     /// allocation. An explicit disable does allocate, because stopping needs a manager.
@@ -306,7 +309,7 @@ final class RegionRadiusProbe: NSObject, @preconcurrency CLLocationManagerDelega
                 + DiagnosticLog.delimiter
                 + "ev=probe.radius.state io=in id=\(region.identifier)"
                 + " rad=\(fmt((region as? CLCircularRegion)?.radius ?? -1, 0))"
-                + " state=\(token) off=\(fmt(offsetFromAnchor(), 1))",
+                + " state=\(token)" + offsetFields(),
             level: .info
         )
     }
@@ -338,7 +341,7 @@ final class RegionRadiusProbe: NSObject, @preconcurrency CLLocationManagerDelega
                 // claims was crossed. A promotion reported far from its own radius is a LATE
                 // promotion, which is the difference between "this radius works" and "this radius
                 // eventually works" — the number the wake decision actually turns on.
-                + " off=\(fmt(offsetFromAnchor(), 1))"
+                + offsetFields()
                 + " acc=\(fmt(fix?.horizontalAccuracy ?? -1, 1))"
                 + " since=\(fmt(armedAt.map { Date().timeIntervalSince($0) } ?? -1, 1))"
                 + " state=\(stateToken())"
@@ -348,6 +351,21 @@ final class RegionRadiusProbe: NSObject, @preconcurrency CLLocationManagerDelega
     }
 
     /// Distance from the armed anchor to the manager's current fix, or -1 when either is missing.
+    /// `off=` is only evidence about the ring's radius if the fix it was measured from postdates
+    /// the crossing. On a region cold wake `manager.location` can still be the PRE-crossing cached
+    /// fix, which puts a late promotion right at the anchor and reads as a clean small-radius
+    /// result — the one mistake that would make this whole calibration wrong in the safe-looking
+    /// direction.
+    ///
+    /// The age is recorded rather than the fix re-requested: a request inside a region callback
+    /// costs time and power on the exact path being measured, and a rejected sample is enough. Any
+    /// row with `offok=0` must be dropped before reading `off=`.
+    private func offsetFields() -> String {
+        let age = manager.location.map { -$0.timestamp.timeIntervalSinceNow } ?? -1
+        let trusted = age >= 0 && age <= Self.maxTrustedFixAge
+        return " off=\(fmt(offsetFromAnchor(), 1)) age=\(fmt(age, 1)) offok=\(trusted ? "1" : "0")"
+    }
+
     private func offsetFromAnchor() -> Double {
         guard let anchor, let fix = manager.location else { return -1 }
         return CLLocation(latitude: anchor.latitude, longitude: anchor.longitude).distance(from: fix)
