@@ -65,6 +65,10 @@ final class RegionRadiusProbe: NSObject, @preconcurrency CLLocationManagerDelega
     private var armedAt: Date?
     private var anchorAttempts = 0
     private var launchedByLocation = false
+    /// Per-process, deliberately: the artefact these two catch is a callback that belongs to the
+    /// launch rather than to the device, so a value that survived the launch would hide it.
+    let probeStartedAt = Date()
+    var lastCallbackAt: Date?
 
     /// Three outcomes, not two: `off` and `disabled` both mean "do not record", but only the
     /// second is a launch SAYING so, and only the second may tear down the OS registration.
@@ -345,7 +349,8 @@ final class RegionRadiusProbe: NSObject, @preconcurrency CLLocationManagerDelega
                 + " acc=\(fmt(fix?.horizontalAccuracy ?? -1, 1))"
                 + " since=\(fmt(armedAt.map { Date().timeIntervalSince($0) } ?? -1, 1))"
                 + " state=\(stateToken())"
-                + " launch=\(launchedByLocation ? "location" : "app_start")",
+                + " launch=\(launchedByLocation ? "location" : "app_start")"
+                + timingFields(),
             level: .info
         )
     }
@@ -384,7 +389,7 @@ final class RegionRadiusProbe: NSObject, @preconcurrency CLLocationManagerDelega
         }
     }
 
-    private func fmt(_ value: Double, _ places: Int) -> String {
+    func fmt(_ value: Double, _ places: Int) -> String {
         String(format: "%.\(places)f", value)
     }
 }
