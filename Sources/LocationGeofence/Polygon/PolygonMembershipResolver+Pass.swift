@@ -43,14 +43,15 @@ extension PolygonMembershipResolver {
                     identifier: pending.geofence.id,
                     reason: PolygonUndecidedReason.corroborationUnnecessary,
                     signedEdgeDistance: pending.signedEdgeDistance,
-                    horizontalAccuracy: fix.horizontalAccuracy
+                    horizontalAccuracy: fix.horizontalAccuracy,
+                    pass: pass
                 )
                 continue
             }
             // Only a second fix that positively reads OUTSIDE blocks the arrival. Everything
             // else commits, carrying on the verdict why it could not be confirmed.
             let corroboration: VerdictCorroboration
-            switch await corroborate(pending, firstFix: fix, cache: cache) {
+            switch await corroborate(pending, firstFix: fix, cache: cache, pass: pass) {
             case .confirmed: corroboration = .confirmed
             case .unconfirmed(let reason): corroboration = .unconfirmed(reason)
             case .contradicted: continue
