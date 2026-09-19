@@ -167,7 +167,12 @@ final class MockGeofenceRegionMonitor: GeofenceRegionMonitoring {
         operationLog.append(.stop(identifier: identifier))
     }
 
+    /// Fired inside `stopMonitoringAll` so a test can place it on a shared timeline with other
+    /// teardown steps. Used to pin that the storage clear runs BEFORE the OS stop.
+    var onStopAll: (() -> Void)?
+
     func stopMonitoringAll() {
+        onStopAll?()
         stopAllCallCount += 1
         // Mirror the real monitor: only owned regions are handed to the OS for removal, so anything
         // the OS still holds that this process never adopted survives the call.

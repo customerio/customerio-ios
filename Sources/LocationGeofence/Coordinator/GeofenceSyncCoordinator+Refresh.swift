@@ -247,8 +247,9 @@ extension GeofenceSyncCoordinatorImpl {
     /// Returns true when it cleaned, so the caller can trigger the current-user retry.
     func cleanupIfUserChanged(expectedUserId: String?) async -> Bool {
         guard let expectedUserId, contextStore.currentUserId != expectedUserId else { return false }
-        await MainActor.run { monitor.stopMonitoringAll() }
+        // Clear before the OS stop — same ordering rule as `reset`, same reason.
         await storage.clearUserScopedState()
+        await MainActor.run { monitor.stopMonitoringAll() }
         logger.geofenceSyncSupersededByUserChange()
         return true
     }
