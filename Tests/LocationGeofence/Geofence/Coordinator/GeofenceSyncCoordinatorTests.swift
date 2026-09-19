@@ -1858,6 +1858,80 @@ struct GeofenceSyncCoordinatorTests {
         #expect(movement.errorOrNil == .alreadyInProgress)
     }
 
+    // MARK: - Teardown ordering
+
+    /// Teardown clears user-scoped state and stops the OS, and the two are separate awaits. A
+    /// polygon pass resuming between them reads a still-populated `monitoredGeofenceIds`, passes
+    /// the create guard in `recordPolygonMembership`, and emits an enter for a fence being torn
+    /// down. Clearing first makes such a pass fail closed.
+    ///
+    /// Asserted as an order, not by racing a pass into the gap: the gap is one suspension wide and
+    /// a racing test would pass against the wrong ordering on almost every run. Both steps record
+    /// onto one timeline because neither can observe the other — the clear is `async`, the stop is
+    /// `@MainActor`.
+    @Test
+    func reset_expectUserScopedStateClearedBeforeTheOsStop() async {
+        let recorder = TeardownOrderRecorder()
+        let backing = makeStorage()
+        let spy = SpyGeofenceSyncStorage(
+            underlying: backing,
+            onClearUserScopedState: { recorder.record("clear") }
+        )
+        let monitor = MockGeofenceRegionMonitor()
+        monitor.onStopAll = { recorder.record("stop") }
+        let contextStore = makeContextStore(userId: nil)
+        let setup = makeCoordinator(storage: spy, monitor: monitor, contextStore: contextStore)
+
+        _ = await setup.coordinator.reset()
+
+        #expect(recorder.recorded == ["clear", "stop"])
+    }
+
+    /// The same ordering at the other teardown site. A user switch landing inside a gated operation
+    /// tears down through `cleanupIfUserChanged` rather than `reset`, and the window is identical.
+    @Test
+    func handleMovement_givenUserChangedMidFlight_expectStateClearedBeforeTheOsStop() async {
+        let recorder = TeardownOrderRecorder()
+        let backing = makeStorage()
+        let contextStore = makeContextStore(userId: "user-1")
+        // Flipped inside the freshness read, so the operation completes for `user-1` and finds a
+        // different user at its single gated exit.
+        let spy = SpyGeofenceSyncStorage(
+            underlying: backing,
+            onGetLastSync: { contextStore.setUserId("user-2") },
+            onClearUserScopedState: { recorder.record("clear") }
+        )
+        let monitor = MockGeofenceRegionMonitor()
+        monitor.onStopAll = { recorder.record("stop") }
+        // The API mock never calls its completion unless given a closure, and the no-anchor path
+        // takes the remote branch — without this the pass suspends forever and hangs the suite.
+        let api = GeofenceApiServiceMock()
+        api.fetchNearbyGeofencesClosure = { _, _, completion in
+            completion(.success(makeApiResponse(regions: [], config: diffConfig)))
+        }
+        let setup = makeCoordinator(api: api, storage: spy, monitor: monitor, contextStore: contextStore)
+
+        _ = await setup.coordinator.handleMovement(latitude: 0, longitude: 0.001, anchorIsLiveFix: true)
+
+        #expect(recorder.recorded == ["clear", "stop"])
+    }
+
+    /// What the ordering buys, pinned at the layer that enforces it: once the clear has run, the
+    /// create guard refuses a belief for a fence that is no longer monitored. This is what a pass
+    /// resuming after the clear hits, and it is why clearing first fails closed.
+    @Test
+    func recordPolygonMembership_givenStateAlreadyCleared_expectSuppressedRatherThanAnEnter() async {
+        let storage = makeStorage()
+        await storage.recordRegistration(
+            center: LocationData(latitude: 0, longitude: 0), businessIds: ["poly-1"]
+        )
+        await storage.clearUserScopedState()
+
+        let outcome = await storage.recordPolygonMembership(.inside, forIdentifier: "poly-1")
+
+        #expect(outcome == .suppressedUnmonitored)
+    }
+
     // MARK: - reset
 
     @Test
@@ -2618,15 +2692,20 @@ private actor SpyGeofenceSyncStorage: GeofenceSyncStorage {
     /// Runs at the start of `getLastSync` — inside the freshness decision — so a test can flip the
     /// identified user on a refresh that will exit via the skip path.
     private let onGetLastSync: (@Sendable () -> Void)?
+    /// Runs at the start of `clearUserScopedState`, so a teardown test can put the clear on the
+    /// same timeline as the OS stop and assert their order.
+    private let onClearUserScopedState: (@Sendable () -> Void)?
 
     init(
         underlying: GeofenceStorage,
         onSetCachedGeofences: (@Sendable () -> Void)? = nil,
-        onGetLastSync: (@Sendable () -> Void)? = nil
+        onGetLastSync: (@Sendable () -> Void)? = nil,
+        onClearUserScopedState: (@Sendable () -> Void)? = nil
     ) {
         self.underlying = underlying
         self.onSetCachedGeofences = onSetCachedGeofences
         self.onGetLastSync = onGetLastSync
+        self.onClearUserScopedState = onClearUserScopedState
     }
 
     func getCachedConfig() async -> GeofenceConfig? {
@@ -2677,6 +2756,7 @@ private actor SpyGeofenceSyncStorage: GeofenceSyncStorage {
     }
 
     func clearUserScopedState() async {
+        onClearUserScopedState?()
         operations.append(.clearUserScopedState)
         await underlying.clearUserScopedState()
     }
@@ -2722,5 +2802,23 @@ private actor AsyncSignal {
         fired = true
         continuation?.resume()
         continuation = nil
+    }
+}
+
+/// Collects teardown steps from both isolation domains onto one ordered timeline.
+private final class TeardownOrderRecorder: @unchecked Sendable {
+    private let lock = NSLock()
+    private var steps: [String] = []
+
+    func record(_ step: String) {
+        lock.lock()
+        defer { lock.unlock() }
+        steps.append(step)
+    }
+
+    var recorded: [String] {
+        lock.lock()
+        defer { lock.unlock() }
+        return steps
     }
 }
