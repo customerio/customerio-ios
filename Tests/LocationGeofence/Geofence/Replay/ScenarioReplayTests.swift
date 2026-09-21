@@ -104,6 +104,55 @@ struct ScenarioReplayTests {
         )
     }
 
+    /// The read a callback carries fails closed on the same shapes a standalone pull does.
+    ///
+    /// `logReceivedCallback` reads the cache and then logs, so a callback carries the position it
+    /// read in its own fields. That read is the only answer the provider has for the window the
+    /// callback lands in, so turning an incomplete one into an empty pull handed the SDK a nil the
+    /// drive never recorded — and left `unsupported` and the pull accounting both clean, which is
+    /// the same false green the standalone path was fixed for.
+    @Test(.enabled(if: ReplayRuntime.isMonitorAvailable))
+    @available(iOS 17.0, *)
+    func run_givenCallbackCarriedReadMissingPosition_expectReportedUnsupported() async throws {
+        let scenario = try ScenarioLoader.parse("""
+        {"k":"scenario","v":1,"name":"carried-incomplete","platform":"ios","t0":"t"}
+        {"k":"when","at":0.0,"ev":"process.start","session":1}
+        {"k":"when","at":1.0,"ev":"os.callback","id":"A","t":"enter","fixsrc":"manager_cache"}
+        """)
+        let (harness, result) = try await ReplayHarness.withTail { () -> (ReplayHarness, ReplayRunner.Result) in
+            let harness = ReplayHarness()
+            return try (harness, await ReplayRunner.run(scenario, on: harness))
+        }
+        defer { harness.detachFromBootstrap() }
+
+        // The callback itself is deliverable — it names a fence and a transition — so the only
+        // finding is the read it could not carry. Tagged with `fixsrc` to say which of the two
+        // it is, since one record can fail on either.
+        #expect(
+            result.unsupported == ["when os.callback@1.0 fixsrc=manager_cache"],
+            "a callback-carried read that lost its position was not reported: \(result.unsupported)"
+        )
+    }
+
+    /// `fixsrc=none` stays legal here too, so the check above cannot be satisfied by rejecting
+    /// every callback that carries no position.
+    @Test(.enabled(if: ReplayRuntime.isMonitorAvailable))
+    @available(iOS 17.0, *)
+    func run_givenCallbackCarriedReadThatFoundNothing_expectAccepted() async throws {
+        let scenario = try ScenarioLoader.parse("""
+        {"k":"scenario","v":1,"name":"carried-empty","platform":"ios","t0":"t"}
+        {"k":"when","at":0.0,"ev":"process.start","session":1}
+        {"k":"when","at":1.0,"ev":"os.callback","id":"A","t":"enter","fixsrc":"none"}
+        """)
+        let (harness, result) = try await ReplayHarness.withTail { () -> (ReplayHarness, ReplayRunner.Result) in
+            let harness = ReplayHarness()
+            return try (harness, await ReplayRunner.run(scenario, on: harness))
+        }
+        defer { harness.detachFromBootstrap() }
+
+        #expect(result.unsupported.isEmpty, "unsupported: \(result.unsupported)")
+    }
+
     /// The empty read stays legal, so the check above cannot be satisfied by rejecting every
     /// position-less pull.
     @Test(.enabled(if: ReplayRuntime.isMonitorAvailable))
