@@ -1991,7 +1991,9 @@ struct GeofenceSyncCoordinatorTests {
             replaySequence: 2
         )
 
-        #expect(taken.isTaken)
+        // The replay's OWN sequence, not merely "taken": `handleMovement` publishes what comes
+        // back as applied, so a freshly minted one here would outrank a newer queued movement.
+        #expect(taken == .taken(sequence: 2))
         // A deferral surviving here is either never drained, or drained after this pass and so
         // moves the trigger back to coordinates the device has already left.
         #expect(setup.coordinator.deferredMovement.wrappedValue?.latitude == nil)
@@ -2109,12 +2111,13 @@ struct GeofenceSyncCoordinatorTests {
         let setup = makeCoordinator(storage: makeStorage())
         setup.coordinator.noteMovementApplied(setup.coordinator.nextMovementSequence())
 
+        let replay = setup.coordinator.nextMovementSequence()
         let outcome = setup.coordinator.acquireGateOrDefer(
             latitude: 1, longitude: 2, anchorIsLiveFix: true,
-            replaySequence: setup.coordinator.nextMovementSequence()
+            replaySequence: replay
         )
 
-        #expect(outcome.isTaken)
+        #expect(outcome == .taken(sequence: replay))
         setup.coordinator.releaseGate()
     }
 
@@ -2171,7 +2174,7 @@ struct GeofenceSyncCoordinatorTests {
             replaySequence: 1
         )
 
-        #expect(outcome.isTaken)
+        #expect(outcome == .taken(sequence: 1))
         #expect(setup.coordinator.deferredMovement.wrappedValue?.sequence == 2)
         setup.coordinator.releaseGate()
     }
@@ -2190,7 +2193,7 @@ struct GeofenceSyncCoordinatorTests {
             replaySequence: 2
         )
 
-        #expect(outcome.isTaken)
+        #expect(outcome == .taken(sequence: 2))
         #expect(setup.coordinator.deferredMovement.wrappedValue == nil)
         setup.coordinator.releaseGate()
     }
@@ -2239,7 +2242,7 @@ struct GeofenceSyncCoordinatorTests {
             latitude: 0, longitude: 0.1, anchorIsLiveFix: true,
             replaySequence: 2
         )
-        #expect(next.isTaken)
+        #expect(next == .taken(sequence: 2))
         setup.coordinator.releaseGate()
     }
 
@@ -3418,12 +3421,5 @@ private final class TeardownOrderRecorder: @unchecked Sendable {
         lock.lock()
         defer { lock.unlock() }
         return steps
-    }
-}
-
-private extension GeofenceSyncCoordinatorImpl.GateOutcome {
-    var isTaken: Bool {
-        if case .taken = self { return true }
-        return false
     }
 }
