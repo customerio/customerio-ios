@@ -2006,9 +2006,13 @@ struct GeofenceSyncCoordinatorTests {
         let setup = await makeRegisteredSetup(regions: [], config: diffConfig, storage: makeStorage())
         #expect(setup.coordinator.acquireGate())
 
+        // From the allocator, not a literal: the registration in `makeRegisteredSetup` now plants
+        // the trigger and applies a sequence of its own, so a hand-picked 1 is already spent and
+        // the call is refused as overtaken — an ordering production cannot produce.
         let taken = setup.coordinator.acquireGateOrDefer(
             GeofenceSyncCoordinatorImpl.DeferredMovement(
-                latitude: 3, longitude: 4, anchorIsLiveFix: false, sequence: 1
+                latitude: 3, longitude: 4, anchorIsLiveFix: false,
+                sequence: setup.coordinator.nextMovementSequence()
             )
         )
 
@@ -2263,6 +2267,63 @@ struct GeofenceSyncCoordinatorTests {
         #expect(setup.coordinator.deferredMovement.wrappedValue == nil)
         #expect(setup.coordinator.acquireGate())
         setup.coordinator.releaseGate()
+    }
+
+    /// A refresh re-centres the trigger too, and a replay that does not know it happened walks
+    /// the trigger back. Found in peer review: the sequence only covered `handleMovement`, so
+    /// every other entry point that plants the trigger was invisible to the overtaken check.
+    @Test
+    func refresh_givenItReCentred_expectTheReCentreRecorded() async {
+        let storage = makeStorage()
+        await storage.setCachedConfig(.fallback)
+        let api = GeofenceApiServiceMock()
+        api.fetchNearbyGeofencesClosure = { _, _, completion in
+            completion(.success(makeApiResponse(regions: [])))
+        }
+        let setup = makeCoordinator(api: api, storage: storage)
+
+        _ = await setup.coordinator.refresh(latitude: 0, longitude: 0.05, anchorIsLiveFix: true)
+
+        #expect(setup.coordinator.appliedMovementSequence.wrappedValue > 0)
+    }
+
+    /// The freshness skip moves nothing, so it must not retire a movement waiting behind it.
+    @Test
+    func refresh_givenTheFreshnessSkip_expectNoReCentreRecorded() async {
+        let storage = makeStorage()
+        await storage.setCachedConfig(.fallback)
+        // A sync at the same place moments ago puts the next refresh on the skip branch.
+        await storage.recordSync(timestamp: Date(), location: LocationData(latitude: 0, longitude: 0))
+        let setup = makeCoordinator(storage: storage)
+
+        _ = await setup.coordinator.refresh(latitude: 0, longitude: 0, anchorIsLiveFix: true)
+
+        #expect(setup.coordinator.appliedMovementSequence.wrappedValue == 0)
+    }
+
+    /// The interleaving peer review described, end to end: a refresh lands between a drain and its
+    /// replay, and the replay must not undo it.
+    @Test
+    func drainDeferredMovement_givenARefreshReCentredFirst_expectTheReplayDiscarded() async {
+        let storage = makeStorage()
+        await storage.setCachedConfig(.fallback)
+        let api = GeofenceApiServiceMock()
+        api.fetchNearbyGeofencesClosure = { _, _, completion in
+            completion(.success(makeApiResponse(regions: [])))
+        }
+        let setup = makeCoordinator(api: api, storage: storage)
+        // Queued behind work that has since finished, as a drained-but-not-yet-run replay is.
+        let stale = GeofenceSyncCoordinatorImpl.DeferredMovement(
+            latitude: 0, longitude: 0, anchorIsLiveFix: true,
+            sequence: setup.coordinator.nextMovementSequence()
+        )
+
+        _ = await setup.coordinator.refresh(latitude: 0, longitude: 0.05, anchorIsLiveFix: true)
+        setup.coordinator.deferredMovement.wrappedValue = stale
+
+        let outcome = setup.coordinator.acquireGateOrDefer(stale)
+
+        #expect(outcome == .overtaken)
     }
 
     // MARK: - Teardown ordering

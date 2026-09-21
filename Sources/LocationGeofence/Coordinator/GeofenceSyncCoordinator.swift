@@ -115,11 +115,17 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
             logger.geofenceSyncSkipped(reason: .refreshInProgress)
             return .failure(.alreadyInProgress)
         }
+        // A refresh re-centres the trigger just as a movement pass does, and a replay that does
+        // not know it happened walks the trigger back to an older point. Taken after the gate so
+        // anything deferred behind this refresh outranks it and survives.
+        let sequence = nextMovementSequence()
         let expectedUserId = identifiedUserId
-        let result = await performRefresh(
+        let outcome = await performRefresh(
             expectedUserId: expectedUserId, latitude: latitude, longitude: longitude,
             anchorIsLiveFix: anchorIsLiveFix
         )
+        let result = outcome.result
+        if outcome.reCentred { noteMovementApplied(sequence) }
         let cleaned = await cleanupIfUserChanged(expectedUserId: expectedUserId)
         // Explicit release (not defer): the self-heal retry below must find the gate free, or it
         // would be dropped exactly like the refresh it compensates for.
@@ -137,10 +143,10 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
         latitude: Double,
         longitude: Double,
         anchorIsLiveFix: Bool
-    ) async -> Result<Void, GeofenceSyncError> {
+    ) async -> MovementPassOutcome {
         guard let userId = expectedUserId else {
             logger.geofenceSyncSkipped(reason: .noIdentifiedUser)
-            return .failure(.noIdentifiedUser)
+            return MovementPassOutcome(result: .failure(.noIdentifiedUser), reCentred: false)
         }
 
         let cachedConfig = await storage.getCachedConfig()
@@ -156,24 +162,27 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
         let location = anchorIsLiveFix ? requested : (await storage.getLastRegistrationCenter() ?? requested)
         switch await refreshAction(location: location, config: effectiveConfig) {
         case .remote:
-            return await performRemoteRefresh(
+            let remote = await performRemoteRefresh(
                 expectedUserId: userId,
                 anchor: location,
                 cachedConfig: cachedConfig,
                 anchorIsLiveFix: anchorIsLiveFix
             )
+            return MovementPassOutcome(result: remote, reCentred: remote.succeeded)
         case .local:
             let cachedRegions = await storage.getCachedGeofences()
-            return await performLocalRefresh(
+            let local = await performLocalRefresh(
                 expectedUserId: userId,
                 anchor: location,
                 config: effectiveConfig,
                 cachedRegions: cachedRegions,
                 anchorIsLiveFix: anchorIsLiveFix
             )
+            return MovementPassOutcome(result: local, reCentred: local.succeeded)
+        // Moves nothing, so it must not retire a movement waiting behind it.
         case .skip:
             logger.geofenceSyncSkippedFresh()
-            return .success(())
+            return MovementPassOutcome(result: .success(()), reCentred: false)
         }
     }
 
@@ -334,6 +343,9 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
             triggerRadius: effectiveConfig.localRefreshTriggerRadius
         )
         logSyncCompleted(registration, requested: (nearest.count, registerMovementTrigger), startedAt: syncStartedAt)
+        // Same reason as `refresh`: this planted the trigger, so a replay older than it must be
+        // retired rather than allowed to move it back.
+        if registerMovementTrigger { noteMovementApplied(nextMovementSequence()) }
         // No initial-enter here: a cold-wake restore of the pre-kill set (not new registrations) off a
         // possibly-stale anchor. Genuinely-new fences come from a refresh fetch, which emits there.
         // Only what the OS took, for the same reason as the refresh paths: an oversized polygon is
