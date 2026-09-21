@@ -43,7 +43,8 @@ extension PolygonMembershipResolver {
         fix: CLLocation,
         geofence: Geofence,
         polygon: PolygonRegion,
-        signedEdgeDistance: Double
+        signedEdgeDistance: Double,
+        pass: Int
     ) async -> MembershipClassification {
         switch PolygonMembershipDecision.resolvedOutcome(
             signedEdgeDistance: signedEdgeDistance,
@@ -56,7 +57,8 @@ extension PolygonMembershipResolver {
         case .undecided(let reason):
             logger.geofencePolygonUndecided(
                 identifier: geofence.id, reason: reason,
-                signedEdgeDistance: signedEdgeDistance, horizontalAccuracy: fix.horizontalAccuracy
+                signedEdgeDistance: signedEdgeDistance, horizontalAccuracy: fix.horizontalAccuracy,
+                pass: pass
             )
             return .none
         case .needsCorroboration(let proposed):
@@ -79,7 +81,8 @@ extension PolygonMembershipResolver {
     func corroborate(
         _ pending: DeferredCorroboration,
         firstFix: CLLocation,
-        cache: PassCorroboration
+        cache: PassCorroboration,
+        pass: Int
     ) async -> CorroborationResult {
         // Defensive: only a marginal INSIDE is ever deferred, and nothing else may commit here.
         guard pending.proposed == .inside else { return .contradicted }
@@ -118,7 +121,8 @@ extension PolygonMembershipResolver {
         guard secondEdge > 0 else {
             logger.geofencePolygonUndecided(
                 identifier: pending.geofence.id, reason: .corroborationDisagreed,
-                signedEdgeDistance: secondEdge, horizontalAccuracy: second.horizontalAccuracy
+                signedEdgeDistance: secondEdge, horizontalAccuracy: second.horizontalAccuracy,
+                pass: pass
             )
             return .contradicted
         }

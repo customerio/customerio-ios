@@ -117,13 +117,13 @@ final class PolygonMembershipResolver {
             case .unknown:
                 await apply(.outside, to: geofence, evidence: occurredAt, confirmedByFix: false, evaluatedCircle: nil)
             case .expired:
-                logger.geofencePolygonUndecided(identifier: identifier, reason: .circleExpired)
+                logger.geofencePolygonUndecided(identifier: identifier, reason: .circleExpired, pass: nil)
             }
         case .enter:
             guard geofence.polygonRegion != nil else {
                 // A stored ring that no longer builds is NOT a circle — forwarding it would fire a
                 // customer enter anywhere inside the covering circle.
-                logger.geofencePolygonUndecided(identifier: identifier, reason: .ringUnbuildable)
+                logger.geofencePolygonUndecided(identifier: identifier, reason: .ringUnbuildable, pass: nil)
                 return
             }
             // Also a movement event, so the same staleness rule applies as on a wake.
@@ -181,7 +181,7 @@ final class PolygonMembershipResolver {
         logger.geofencePolygonPassStarted(reason: reason, count: pending.count, pass: pass)
         guard let fix = await resolveFix(requiringFresh: requiresFreshFix) else {
             for geofenceId in pending {
-                logger.geofencePolygonUndecided(identifier: geofenceId, reason: .noUsableFix)
+                logger.geofencePolygonUndecided(identifier: geofenceId, reason: .noUsableFix, pass: pass)
             }
             return false
         }
@@ -229,7 +229,7 @@ final class PolygonMembershipResolver {
         // polygon after the first to the pre-wake fix.
         guard let fix = await resolveFix(requiringFresh: requiresFreshFix) else {
             for geofence in polygons {
-                logger.geofencePolygonUndecided(identifier: geofence.id, reason: .noUsableFix)
+                logger.geofencePolygonUndecided(identifier: geofence.id, reason: .noUsableFix, pass: pass)
             }
             return
         }
@@ -244,7 +244,7 @@ final class PolygonMembershipResolver {
         let pass = nextPass()
         logger.geofencePolygonPassStarted(reason: .osTransition, count: 1, pass: pass)
         guard let fix = await resolveFix(requiringFresh: requiresFreshFix) else {
-            logger.geofencePolygonUndecided(identifier: geofenceId, reason: .noUsableFix)
+            logger.geofencePolygonUndecided(identifier: geofenceId, reason: .noUsableFix, pass: pass)
             return
         }
         await runPass(geofenceIds: [geofenceId], fix: fix, pass: pass, isStillCurrent: isStillCurrent)
@@ -269,23 +269,23 @@ final class PolygonMembershipResolver {
         isStillCurrent: (@Sendable () -> Bool)? = nil
     ) async -> DeferredCorroboration? {
         guard CLLocationCoordinate2DIsValid(fix.coordinate) else {
-            logger.geofencePolygonUndecided(identifier: geofenceId, reason: .noUsableFix)
+            logger.geofencePolygonUndecided(identifier: geofenceId, reason: .noUsableFix, pass: pass)
             return nil
         }
         if let isStillCurrent, !isStillCurrent() {
-            logger.geofencePolygonUndecided(identifier: geofenceId, reason: .userChanged)
+            logger.geofencePolygonUndecided(identifier: geofenceId, reason: .userChanged, pass: pass)
             return nil
         }
         guard let geofence = await storage.getRegisteredGeofence(id: geofenceId),
               let polygon = geofence.polygonRegion
         else {
-            logger.geofencePolygonUndecided(identifier: geofenceId, reason: .unregistered)
+            logger.geofencePolygonUndecided(identifier: geofenceId, reason: .unregistered, pass: pass)
             return nil
         }
         let point = LocationData(latitude: fix.coordinate.latitude, longitude: fix.coordinate.longitude)
         let signedEdgeDistance = polygon.signedEdgeDistance(to: point)
         switch await classifyMembership(
-            fix: fix, geofence: geofence, polygon: polygon, signedEdgeDistance: signedEdgeDistance
+            fix: fix, geofence: geofence, polygon: polygon, signedEdgeDistance: signedEdgeDistance, pass: pass
         ) {
         case .none:
             return nil

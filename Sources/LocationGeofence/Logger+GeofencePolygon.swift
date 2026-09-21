@@ -173,11 +173,18 @@ extension Logger {
 
     /// `edge` and `acc` ride as their own keys rather than inside `why`: putting the two
     /// measurements in the token gave every record a unique one, which is no token at all.
+    ///
+    /// `pass` has no default on purpose. A record that decided nothing is exactly the one a reader
+    /// needs to tie to its pass, and the verdict line has carried `pass` while this one did not —
+    /// so a pass announcing `n=4` and logging three verdicts read as a dropped polygon rather than
+    /// an undecided one. `none` is written out for the sites that genuinely run outside any pass,
+    /// so an absent attribution never has to be guessed at.
     func geofencePolygonUndecided(
         identifier: String,
         reason: PolygonUndecidedReason,
         signedEdgeDistance: Double? = nil,
-        horizontalAccuracy: Double? = nil
+        horizontalAccuracy: Double? = nil,
+        pass: Int?
     ) {
         debug(
             "Polygon membership undecided for region \(identifier): \(reason.prose)"
@@ -185,7 +192,8 @@ extension Logger {
                     ("id", identifier),
                     ("why", reason.rawValue),
                     ("edge", GeofenceLog.num(signedEdgeDistance, 0)),
-                    ("acc", GeofenceLog.num(horizontalAccuracy))
+                    ("acc", GeofenceLog.num(horizontalAccuracy)),
+                    ("pass", pass.map(String.init) ?? "none")
                 ]),
             geofenceTag
         )
