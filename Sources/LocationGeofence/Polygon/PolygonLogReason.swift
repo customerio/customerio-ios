@@ -67,6 +67,8 @@ enum PolygonEvaluationReason: String, CaseIterable {
     case foreground
     /// A covering-circle ENTER the OS delivered, which judges that one fence.
     case osTransition = "os_transition"
+    /// iOS reported the device settling at a place. The only wake that needs no edge crossing.
+    case visit
 
     var prose: String {
         switch self {
@@ -75,6 +77,7 @@ enum PolygonEvaluationReason: String, CaseIterable {
         case .movement: return "movement"
         case .foreground: return "foreground"
         case .osTransition: return "os circle enter"
+        case .visit: return "visit"
         }
     }
 }

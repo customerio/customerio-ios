@@ -38,13 +38,15 @@ struct GeofenceMonitorBinderTests {
         storage: GeofenceStorage = GeofenceStorage(
             fileManager: .default,
             directoryURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-        )
+        ),
+        logger: LoggerMock = LoggerMock(),
+        contextStore: BackgroundDeliveryContextStore? = nil
     ) -> PolygonMembershipResolver {
         PolygonMembershipResolver(
             storage: storage,
             transitionEmitter: tracker,
-            logger: LoggerMock(),
-            contextStore: BackgroundDeliveryContextStore(
+            logger: logger,
+            contextStore: contextStore ?? BackgroundDeliveryContextStore(
                 fileManager: .default,
                 directoryURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
             )
@@ -81,6 +83,27 @@ struct GeofenceMonitorBinderTests {
             coordinate: CLLocationCoordinate2D(latitude: 0, longitude: 0),
             altitude: 0, horizontalAccuracy: 5, verticalAccuracy: 5, timestamp: Date()
         )
+    }
+
+    /// `GeofenceStorage` is an actor, so the pass hops off the main actor and `Task.yield()` does
+    /// not advance it — yielding here asserts before the work has run and passes or fails for the
+    /// wrong reason. Poll instead.
+    private func waitForLog(_ logger: LoggerMock, containing needle: String, timeout: TimeInterval = 3) async -> Bool {
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline {
+            if logger.debugReceivedInvocations.contains(where: { $0.message.contains(needle) }) { return true }
+            try? await Task.sleep(nanoseconds: 20000000)
+        }
+        return false
+    }
+
+    private func makeContextStore(userId: String?) -> BackgroundDeliveryContextStore {
+        let store = BackgroundDeliveryContextStore(
+            fileManager: .default,
+            directoryURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        )
+        if let userId { store.setUserId(userId) }
+        return store
     }
 
     private func makeCoordinatorMock() -> GeofenceSyncCoordinatorMock {
@@ -503,5 +526,76 @@ struct GeofenceMonitorBinderTests {
         // Both anchored on the resolver's fix, for the same reason the re-arm is.
         #expect(coordinator.refreshReceivedArguments?.latitude == Self.insideFix.coordinate.latitude)
         #expect(coordinator.refreshReceivedArguments?.anchorIsLiveFix == true)
+    }
+
+    // MARK: - Visit wake
+
+    /// The in-circle dead zone has no edge to cross, so the only thing that can notice the device
+    /// is now inside a polygon is a re-evaluation. A visit has to start one.
+    ///
+    /// Asserted on the pass record rather than a verdict: with no fix available in a unit test the
+    /// pass decides nothing, and `n=0` is logged before the empty guard precisely so "a pass ran"
+    /// is observable independently of what it concluded.
+    @Test
+    func bindVisits_givenAnIdentifiedUser_expectAPolygonPassAndStaysArmed() async {
+        let visitMonitor = MockGeofenceVisitMonitor()
+        let logger = LoggerMock()
+        let contextStore = makeContextStore(userId: "user-1")
+        let tracker = makeTracker(deliveryTracker: makeDeliveryMock())
+        let resolver = makeResolver(tracker: tracker, logger: logger, contextStore: contextStore)
+
+        GeofenceMonitorBinder.bindVisits(
+            visitMonitor: visitMonitor, resolver: resolver, contextStore: contextStore
+        )
+        let stayArmed = visitMonitor.simulateVisit()
+
+        #expect(stayArmed == true)
+        #expect(await waitForLog(logger, containing: "(visit)"))
+        // `bindVisits` holds the resolver weakly, and nothing below touches it — without this
+        // ARC releases it at its last use and the pass silently never runs.
+        withExtendedLifetime(resolver) {}
+    }
+
+    /// Signed out, a visit has nothing to evaluate for. The handler must say so rather than spend
+    /// the wake, because its answer is what disarms monitoring — leaving it armed wakes the app
+    /// for a user we no longer act for.
+    @Test
+    func bindVisits_givenNoIdentifiedUser_expectNoPassAndDisarms() async {
+        let visitMonitor = MockGeofenceVisitMonitor()
+        let logger = LoggerMock()
+        let contextStore = makeContextStore(userId: nil)
+        let tracker = makeTracker(deliveryTracker: makeDeliveryMock())
+        let resolver = makeResolver(tracker: tracker, logger: logger, contextStore: contextStore)
+
+        GeofenceMonitorBinder.bindVisits(
+            visitMonitor: visitMonitor, resolver: resolver, contextStore: contextStore
+        )
+        let stayArmed = visitMonitor.simulateVisit()
+        // Fixed wait, not a poll: this asserts an ABSENCE, and a poll returning early on
+        // "not logged yet" would pass before the pass had any chance to run.
+        try? await Task.sleep(nanoseconds: 300000000)
+
+        #expect(stayArmed == false)
+        #expect(!logger.debugReceivedInvocations.contains { $0.message.contains("(visit)") })
+    }
+
+    /// A departure is as good a wake as an arrival: the device having left somewhere is equally
+    /// a reason to re-judge membership, and the handler must not filter on the edge.
+    @Test
+    func bindVisits_givenADeparture_expectAPolygonPassToo() async {
+        let visitMonitor = MockGeofenceVisitMonitor()
+        let logger = LoggerMock()
+        let contextStore = makeContextStore(userId: "user-1")
+        let tracker = makeTracker(deliveryTracker: makeDeliveryMock())
+        let resolver = makeResolver(tracker: tracker, logger: logger, contextStore: contextStore)
+
+        GeofenceMonitorBinder.bindVisits(
+            visitMonitor: visitMonitor, resolver: resolver, contextStore: contextStore
+        )
+        let stayArmed = visitMonitor.simulateVisit(isArrival: false)
+
+        #expect(stayArmed == true)
+        #expect(await waitForLog(logger, containing: "(visit)"))
+        withExtendedLifetime(resolver) {}
     }
 }

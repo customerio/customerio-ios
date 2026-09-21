@@ -253,4 +253,52 @@ extension Logger {
             geofenceTag
         )
     }
+
+    // MARK: - Visits
+
+    /// The wake source that does not need an edge crossing. Recorded at start/stop as well as on
+    /// each report, because "no visit landed" and "visits were never armed" look identical in a
+    /// capture otherwise — see the absence-of-a-log-line trap.
+    func geofenceVisitMonitoringStarted() {
+        info(
+            "Visit monitoring armed"
+                + geofenceTail("visit.monitoring", .output, [("state", "started")]),
+            geofenceTag
+        )
+    }
+
+    func geofenceVisitMonitoringStopped() {
+        info(
+            "Visit monitoring disarmed"
+                + geofenceTail("visit.monitoring", .output, [("state", "stopped")]),
+            geofenceTag
+        )
+    }
+
+    /// Not armed, and why. `status` is the raw `CLAuthorizationStatus`.
+    func geofenceVisitMonitoringSkipped(status: Int32) {
+        info(
+            "Visit monitoring needs Always authorization"
+                + geofenceTail("visit.monitoring", .output, [
+                    ("state", "skipped"),
+                    ("why", "not_always"),
+                    ("status", String(status))
+                ]),
+            geofenceTag
+        )
+    }
+
+    /// `delay` is how long after the visit edge iOS told us — routinely minutes, which is why the
+    /// visit coordinate is never used as an anchor.
+    func geofenceVisitReported(isArrival: Bool, horizontalAccuracy: Double, reportDelay: TimeInterval) {
+        debug(
+            "Visit \(isArrival ? "arrival" : "departure") reported after \(Int(reportDelay))s"
+                + geofenceTail("visit.reported", .input, [
+                    ("edge", isArrival ? "arrival" : "departure"),
+                    ("acc", GeofenceLog.num(horizontalAccuracy)),
+                    ("delay", GeofenceLog.num(reportDelay, 0))
+                ]),
+            geofenceTag
+        )
+    }
 }

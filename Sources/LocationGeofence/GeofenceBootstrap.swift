@@ -63,7 +63,16 @@ enum GeofenceBootstrap {
         // before any new delegate call can land.
         let monitor = di.geofenceMonitor
         let coordinator = di.geofenceSyncCoordinator
-        GeofenceMonitorBinder.bind(monitor: monitor, resolver: di.polygonMembershipResolver, coordinator: coordinator, logger: di.logger)
+        let resolver = di.polygonMembershipResolver
+        GeofenceMonitorBinder.bind(monitor: monitor, resolver: resolver, coordinator: coordinator, logger: di.logger)
+        // Wired here, with the transition handler, for the same reason: a cold wake can deliver a
+        // visit immediately and an unwired handler drops it. Arming is deferred to the tail of
+        // this function, once the adopt-or-register decision has settled what we actually monitor.
+        GeofenceMonitorBinder.bindVisits(
+            visitMonitor: di.geofenceVisitMonitor,
+            resolver: resolver,
+            contextStore: di.backgroundDeliveryContextStore
+        )
 
         // Install both re-run handlers BEFORE the adopt/re-register decision so the CLMonitor path's
         // first reconciliation — which can fire right after this synchronous phase yields — finds a
@@ -115,6 +124,23 @@ enum GeofenceBootstrap {
         // The adopt path above skips `startMonitoring` (the other tier-log site), so without this
         // a relaunch that re-claims OS-persisted regions would report nothing about delivery readiness.
         monitor.reportPermissionTier()
+
+        armVisitMonitoring(di: di)
+    }
+
+    /// Arms visit monitoring, but only for an identified user: visits are a wake source, and
+    /// waking a signed-out process to evaluate an empty set is cost with no possible outcome.
+    /// The handler installed by `bindVisits` disarms on the same condition if identity goes away
+    /// while monitoring is already live.
+    ///
+    /// Runs at the tail of setup, after the adopt-or-register decision has settled what we
+    /// monitor — unlike the handler, which must be wired before any await.
+    private static func armVisitMonitoring(di: DIGraphShared) {
+        if di.backgroundDeliveryContextStore.currentUserId != nil {
+            di.geofenceVisitMonitor.start()
+        } else {
+            di.geofenceVisitMonitor.stop()
+        }
     }
 
     /// Logs a one-line note when cold-wake real-time delivery is unavailable for this

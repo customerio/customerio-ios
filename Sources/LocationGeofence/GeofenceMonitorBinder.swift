@@ -152,4 +152,42 @@ enum GeofenceMonitorBinder {
             }
         }
     }
+
+    /// Wires the visit wake. A separate entry point from `bind` because the two have different
+    /// lifetimes: transitions bind once per bootstrap regardless of authorization, while visit
+    /// monitoring only arms under Always and disarms itself when there is no user to act for.
+    ///
+    /// A visit runs the same work foregrounding runs — re-judge every registered polygon against
+    /// a freshly resolved fix. That is the whole fix for the in-circle dead zone: the device is
+    /// already inside the covering circle, so no edge will be crossed and no OS callback is
+    /// coming, and a re-evaluation is the only thing that can notice it is now inside the polygon.
+    ///
+    /// Deliberately does NOT refresh the catalog. `refresh` can re-arm the movement trigger, and
+    /// a visit carries no live anchor — its coordinate is minutes old — so it would size the
+    /// trigger from a stored anchor and install the WIDEST wake in the one situation that needs
+    /// the tightest.
+    static func bindVisits(
+        visitMonitor: GeofenceVisitMonitoring,
+        resolver: PolygonMembershipResolver,
+        contextStore: BackgroundDeliveryContextStore,
+        backgroundTaskRunner: BackgroundTaskRunner = GeofenceBackgroundTime.runner(name: "io.customer.geofence.visit-pass")
+    ) {
+        visitMonitor.setOnVisit { [weak resolver] _ in
+            // Read synchronously, before the Task: this is also the disarm answer, and it has to
+            // be the identity in force at the wake rather than whatever it becomes later.
+            guard let expectedUserId = contextStore.currentUserId else { return false }
+            Task {
+                // The wake window is short and the pass resolves a fix, which suspends. Without
+                // the assertion a visit landing on a suspended app can lose the pass with no
+                // retry — same reasoning as the trigger EXIT above.
+                await backgroundTaskRunner.withBackgroundTime {
+                    await resolver?.evaluateAllPolygons(
+                        reason: .visit,
+                        isStillCurrent: { contextStore.currentUserId == expectedUserId }
+                    )
+                }
+            }
+            return true
+        }
+    }
 }
