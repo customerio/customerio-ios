@@ -2348,8 +2348,40 @@ struct GeofenceSyncCoordinatorTests {
         setup.coordinator.releaseGate()
     }
 
-    /// The same inversion through `refresh`: a movement queued while the refresh runs must
-    /// survive the refresh's own re-centre rather than be retired by it.
+    /// The inversion where it is actually reachable: the cached restore's window spans the OS
+    /// registration, so a movement arriving mid-registration is easy to place exactly.
+    ///
+    /// Allocating at the end ranks the restore ABOVE that movement and retires it, leaving the
+    /// trigger on the restore's older anchor. Allocating with the gate ranks it below.
+    @Test
+    func applyCachedRegistration_givenAMovementArrivedMidRegistration_expectItOutranksTheRestore() async {
+        let storage = makeStorage()
+        let monitor = MockGeofenceRegionMonitor()
+        let setup = makeCoordinator(storage: storage, monitor: monitor)
+        var arrival: UInt64 = 0
+        // Stands in for a movement landing while the restore is talking to the OS.
+        monitor.onStartMonitoring = { [weak coordinator = setup.coordinator] in
+            guard arrival == 0, let coordinator else { return }
+            arrival = coordinator.nextMovementSequence()
+        }
+
+        _ = await MainActor.run {
+            setup.coordinator.applyCachedRegistration(
+                cachedRegions: [makeRegion(id: "a", latitude: 0, longitude: 0)],
+                anchor: LocationData(latitude: 0, longitude: 0),
+                config: .fallback,
+                userId: "user-1"
+            )
+        }
+
+        #expect(arrival > 0)
+        #expect(arrival > setup.coordinator.appliedMovementSequence.wrappedValue)
+    }
+
+    /// The same intent through `refresh`. Stated plainly: this does NOT discriminate the fix —
+    /// `refresh`'s acquire and allocate are adjacent synchronous statements with no suspension
+    /// between them, so a test cannot land inside that window. It pins the ordering the fix
+    /// guarantees; the restore test above is the one that fails without it.
     @Test
     func refresh_givenAMovementQueuedWhileItRan_expectTheMovementOutranksIt() async {
         let storage = makeStorage()
