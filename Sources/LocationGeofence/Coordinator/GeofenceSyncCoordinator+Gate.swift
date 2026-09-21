@@ -13,6 +13,15 @@ extension GeofenceSyncCoordinatorImpl {
         let sequence: UInt64
     }
 
+    /// What a movement got when it reached the gate.
+    enum GateOutcome: Equatable {
+        case taken
+        /// Another pass holds the gate; this movement is queued if it is the newest waiting.
+        case deferred
+        /// A newer movement has already re-centred. Running would move the trigger backwards.
+        case overtaken
+    }
+
     func nextMovementSequence() -> UInt64 {
         movementSequence.mutating { value in
             value += 1
@@ -22,6 +31,10 @@ extension GeofenceSyncCoordinatorImpl {
 
     /// Records that `sequence` has re-centred the trigger. Monotonic: passes complete out of
     /// order, and an older one finishing last must not un-apply a newer one.
+    ///
+    /// Only ever called with a sequence issued by `nextMovementSequence`. That is what keeps a
+    /// fresh arrival ahead of everything applied, and so what keeps the staleness test in
+    /// `acquireGateOrDefer` from refusing real movements.
     func noteMovementApplied(_ sequence: UInt64) {
         appliedMovementSequence.mutating { value in
             value = max(value, sequence)
@@ -57,19 +70,11 @@ extension GeofenceSyncCoordinatorImpl {
             return value
         }
         guard let pending, !userChanged, identifiedUserId != nil else { return }
+        // Not checked for staleness here. Clearing the queue frees the gate before this task
+        // starts, so anything decided at this point can be false by the time the replay acquires:
+        // `acquireGateOrDefer` makes the comparison and the acquisition one step instead.
         Task { [weak self] in
-            guard let self else { return }
-            // Re-checked HERE, not at drain time. Clearing the queue frees the gate before this
-            // task starts, so a newer movement can take it and re-centre first; replaying then
-            // would move the trigger BACK to the older coordinates.
-            //
-            // A replay that loses the gate instead of being discarded is re-deferred with its
-            // original sequence, so the same comparison retires it at the next drain.
-            guard appliedMovementSequence.wrappedValue < pending.sequence else {
-                logger.geofenceSyncSkipped(reason: .movementOvertaken)
-                return
-            }
-            _ = await handleMovement(
+            _ = await self?.handleMovement(
                 latitude: pending.latitude, longitude: pending.longitude,
                 anchorIsLiveFix: pending.anchorIsLiveFix, sequence: pending.sequence
             )
@@ -82,25 +87,32 @@ extension GeofenceSyncCoordinatorImpl {
     func handleMovement(
         latitude: Double, longitude: Double, anchorIsLiveFix: Bool, sequence: UInt64
     ) async -> Result<Void, GeofenceSyncError> {
-        // Recorded, not dropped — see `deferredMovement`. Taking the gate and recording the loss
-        // are one step on purpose: see `acquireGateOrDefer`.
-        guard acquireGateOrDefer(
+        // Recorded, not dropped — see `deferredMovement`. Taking the gate, judging staleness and
+        // recording the loss are one step on purpose: see `acquireGateOrDefer`.
+        switch acquireGateOrDefer(
             DeferredMovement(
                 latitude: latitude, longitude: longitude, anchorIsLiveFix: anchorIsLiveFix,
                 sequence: sequence
             )
-        ) else {
+        ) {
+        case .overtaken:
+            logger.geofenceSyncSkipped(reason: .movementOvertaken)
+            return .failure(.alreadyInProgress)
+        case .deferred:
             logger.geofenceSyncSkipped(reason: .refreshInProgress)
             return .failure(.alreadyInProgress)
+        case .taken:
+            break
         }
         let expectedUserId = identifiedUserId
         let result = await performMovement(
             expectedUserId: expectedUserId, latitude: latitude, longitude: longitude,
             anchorIsLiveFix: anchorIsLiveFix
         )
-        // Before the release, so a replay draining off it compares against this pass rather than
-        // against the state from before it ran.
-        noteMovementApplied(sequence)
+        // Only on success, and before the release so a replay draining off it compares against
+        // this pass. A failed pass re-centred nothing, and claiming otherwise would retire a
+        // deferral that is still the best information available.
+        if case .success = result { noteMovementApplied(sequence) }
         let cleaned = await cleanupIfUserChanged(expectedUserId: expectedUserId)
         releaseGate()
         if cleaned { retryForCurrentUser(latitude: latitude, longitude: longitude, anchorIsLiveFix: anchorIsLiveFix) }
@@ -123,11 +135,21 @@ extension GeofenceSyncCoordinatorImpl {
     /// Lock order is one-way. This takes `refreshInProgress` then `deferredMovement`; nothing takes
     /// them the other way round — `drainDeferredMovement` reads `deferredMovement` alone and fires
     /// its replay outside the critical section.
-    func acquireGateOrDefer(_ movement: DeferredMovement) -> Bool {
+    func acquireGateOrDefer(_ movement: DeferredMovement) -> GateOutcome {
         refreshInProgress.mutating { inProgress in
+            // Judged in here, not by the caller. A newer movement can take the gate, re-centre and
+            // publish its sequence between a check made outside and the acquisition below — so a
+            // replay that read "not overtaken" would still run at coordinates already superseded.
+            // A fresh arrival can never lose this test: its sequence postdates every applied one.
+            if appliedMovementSequence.wrappedValue >= movement.sequence { return .overtaken }
             if inProgress {
-                deferredMovement.wrappedValue = movement
-                return false
+                // Highest sequence wins rather than last writer. A replay carries its ORIGINAL
+                // sequence and can lose the gate after a newer arrival has already queued;
+                // overwriting would put the older coordinates back in front.
+                if (deferredMovement.wrappedValue?.sequence ?? 0) < movement.sequence {
+                    deferredMovement.wrappedValue = movement
+                }
+                return .deferred
             }
             inProgress = true
             // A movement that actually runs supersedes any older one still queued: both describe
@@ -139,7 +161,7 @@ extension GeofenceSyncCoordinatorImpl {
             // correctly would then be wiped by the winner, and in that ordering the record it
             // wipes is the NEWER one — the premise above inverted.
             deferredMovement.wrappedValue = nil
-            return true
+            return .taken
         }
     }
 

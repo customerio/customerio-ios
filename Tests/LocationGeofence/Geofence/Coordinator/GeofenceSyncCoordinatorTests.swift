@@ -1992,7 +1992,7 @@ struct GeofenceSyncCoordinatorTests {
             )
         )
 
-        #expect(taken)
+        #expect(taken == .taken)
         // A deferral surviving here is either never drained, or drained after this pass and so
         // moves the trigger back to coordinates the device has already left.
         #expect(setup.coordinator.deferredMovement.wrappedValue?.latitude == nil)
@@ -2012,7 +2012,7 @@ struct GeofenceSyncCoordinatorTests {
             )
         )
 
-        #expect(!taken)
+        #expect(taken == .deferred)
         #expect(setup.coordinator.deferredMovement.wrappedValue?.latitude == 3)
         #expect(setup.coordinator.deferredMovement.wrappedValue?.anchorIsLiveFix == false)
         setup.coordinator.releaseGate()
@@ -2071,6 +2071,92 @@ struct GeofenceSyncCoordinatorTests {
 
         let triggerStarts = setup.monitor.startedRegions.filter { $0.identifier == GeofenceConstants.movementTriggerIdentifier }
         #expect(triggerStarts.last?.center == newer)
+    }
+
+    /// Built with `makeCoordinator`, not `makeRegisteredSetup`: these three drive the gate
+    /// directly, and a registration pass leaves a trailing `drainDeferredMovement` that can clear
+    /// a seeded deferral part-way through the assertions.
+    ///
+    /// The staleness test belongs INSIDE the gate's critical section.
+    ///
+    /// Checking before acquiring is the same two-step shape this gate exists to close: a newer
+    /// movement can take the gate, re-centre and publish its sequence between the check and the
+    /// acquisition, and the replay then runs at coordinates already superseded.
+    @Test
+    func acquireGateOrDefer_givenANewerMovementAlreadyApplied_expectOvertaken() {
+        let setup = makeCoordinator(storage: makeStorage())
+        setup.coordinator.noteMovementApplied(5)
+
+        let outcome = setup.coordinator.acquireGateOrDefer(
+            GeofenceSyncCoordinatorImpl.DeferredMovement(
+                latitude: 1, longitude: 2, anchorIsLiveFix: true, sequence: 3
+            )
+        )
+
+        #expect(outcome == .overtaken)
+        // Refused outright, not queued: a drain would only replay it into the same refusal.
+        #expect(setup.coordinator.deferredMovement.wrappedValue == nil)
+    }
+
+    /// A fresh arrival outranks everything applied, so the staleness test must never catch one.
+    ///
+    /// The guarantee is that every applied sequence was issued by `nextMovementSequence`, which is
+    /// monotonic — so the next issue always postdates the highest applied. Driven through the
+    /// allocator here rather than with a literal, because a hand-picked `applied` value that the
+    /// allocator has not reached tests an ordering production cannot produce.
+    @Test
+    func acquireGateOrDefer_givenAFreshArrivalAfterAnAppliedPass_expectItIsTaken() {
+        let setup = makeCoordinator(storage: makeStorage())
+        setup.coordinator.noteMovementApplied(setup.coordinator.nextMovementSequence())
+
+        let outcome = setup.coordinator.acquireGateOrDefer(
+            GeofenceSyncCoordinatorImpl.DeferredMovement(
+                latitude: 1, longitude: 2, anchorIsLiveFix: true,
+                sequence: setup.coordinator.nextMovementSequence()
+            )
+        )
+
+        #expect(outcome == .taken)
+        setup.coordinator.releaseGate()
+    }
+
+    /// Losing the gate must not demote the queue. A replay carries its ORIGINAL sequence, so it
+    /// can arrive here after a newer movement has already queued — last-writer-wins would put the
+    /// older coordinates back in front and the drain would re-centre to them.
+    @Test
+    func acquireGateOrDefer_givenAQueuedNewerMovement_expectAnOlderReplayDoesNotReplaceIt() {
+        let setup = makeCoordinator(storage: makeStorage())
+        #expect(setup.coordinator.acquireGate())
+        setup.coordinator.deferredMovement.wrappedValue = GeofenceSyncCoordinatorImpl.DeferredMovement(
+            latitude: 0, longitude: 0.05, anchorIsLiveFix: true, sequence: 2
+        )
+
+        let outcome = setup.coordinator.acquireGateOrDefer(
+            GeofenceSyncCoordinatorImpl.DeferredMovement(
+                latitude: 0, longitude: 0, anchorIsLiveFix: true, sequence: 1
+            )
+        )
+
+        #expect(outcome == .deferred)
+        #expect(setup.coordinator.deferredMovement.wrappedValue?.sequence == 2)
+        #expect(setup.coordinator.deferredMovement.wrappedValue?.longitude == 0.05)
+        setup.coordinator.releaseGate()
+    }
+
+    /// A pass that failed re-centred nothing, so it must not claim to have done so — otherwise it
+    /// retires a deferral that is still the best information available and the trigger is left
+    /// wherever it already was.
+    @Test
+    func handleMovement_givenTheMovementFailed_expectNoReCentreClaimed() async {
+        let contextStore = makeContextStore(userId: nil)
+        let setup = makeCoordinator(storage: makeStorage(), contextStore: contextStore)
+
+        let result = await setup.coordinator.handleMovement(
+            latitude: 0, longitude: 0.05, anchorIsLiveFix: true
+        )
+
+        #expect(result.errorOrNil == .noIdentifiedUser)
+        #expect(setup.coordinator.appliedMovementSequence.wrappedValue == 0)
     }
 
     // MARK: - Teardown ordering
