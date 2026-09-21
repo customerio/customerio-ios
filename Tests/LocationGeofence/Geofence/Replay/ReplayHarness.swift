@@ -78,9 +78,14 @@ final class ReplayHarness {
     /// enqueues them.
     var fetchQueue: [Result<GeofenceApiResponse, GeofenceApiError>] = []
     /// Fetches the SDK attempted, whether or not a fixture was waiting.
-    private(set) var fetchCount = 0
+    ///
+    /// Settable across the module: the fetch stub that increments it lives in the inputs extension,
+    /// and Swift's `private(set)` does not reach another file.
+    var fetchCount = 0
     /// Fetches with no fixture left to serve — the replay fetched more often than the drive did.
-    private(set) var starvedFetchCount = 0
+    ///
+    /// Settable across the module for the same reason as `fetchCount`.
+    var starvedFetchCount = 0
 
     /// Set when the SDK asked the Location module for a fix. In a replay the answer arrives as the
     /// next `location.fix` input, so there is nothing to satisfy the request with here.
