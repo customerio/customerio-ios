@@ -9,6 +9,23 @@ extension GeofenceSyncCoordinatorImpl {
         let latitude: Double
         let longitude: Double
         let anchorIsLiveFix: Bool
+        /// Arrival order, carried so a replay can be discarded once a newer movement has run.
+        let sequence: UInt64
+    }
+
+    func nextMovementSequence() -> UInt64 {
+        movementSequence.mutating { value in
+            value += 1
+            return value
+        }
+    }
+
+    /// Records that `sequence` has re-centred the trigger. Monotonic: passes complete out of
+    /// order, and an older one finishing last must not un-apply a newer one.
+    func noteMovementApplied(_ sequence: UInt64) {
+        appliedMovementSequence.mutating { value in
+            value = max(value, sequence)
+        }
     }
 
     /// After a cleanup for an identity change, the device monitors nothing — and the new user's own
@@ -41,9 +58,20 @@ extension GeofenceSyncCoordinatorImpl {
         }
         guard let pending, !userChanged, identifiedUserId != nil else { return }
         Task { [weak self] in
-            _ = await self?.handleMovement(
+            guard let self else { return }
+            // Re-checked HERE, not at drain time. Clearing the queue frees the gate before this
+            // task starts, so a newer movement can take it and re-centre first; replaying then
+            // would move the trigger BACK to the older coordinates.
+            //
+            // A replay that loses the gate instead of being discarded is re-deferred with its
+            // original sequence, so the same comparison retires it at the next drain.
+            guard appliedMovementSequence.wrappedValue < pending.sequence else {
+                logger.geofenceSyncSkipped(reason: .movementOvertaken)
+                return
+            }
+            _ = await handleMovement(
                 latitude: pending.latitude, longitude: pending.longitude,
-                anchorIsLiveFix: pending.anchorIsLiveFix
+                anchorIsLiveFix: pending.anchorIsLiveFix, sequence: pending.sequence
             )
         }
     }

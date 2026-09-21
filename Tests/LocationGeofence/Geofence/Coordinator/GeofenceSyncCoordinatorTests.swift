@@ -1983,11 +1983,13 @@ struct GeofenceSyncCoordinatorTests {
         // clear sits OUTSIDE the critical section, which is the bug this test has to be able to
         // see. A winner must clear a queued movement in the same section that took the gate.
         setup.coordinator.deferredMovement.wrappedValue = GeofenceSyncCoordinatorImpl.DeferredMovement(
-            latitude: 9, longitude: 9, anchorIsLiveFix: true
+            latitude: 9, longitude: 9, anchorIsLiveFix: true, sequence: 1
         )
 
         let taken = setup.coordinator.acquireGateOrDefer(
-            GeofenceSyncCoordinatorImpl.DeferredMovement(latitude: 1, longitude: 2, anchorIsLiveFix: true)
+            GeofenceSyncCoordinatorImpl.DeferredMovement(
+                latitude: 1, longitude: 2, anchorIsLiveFix: true, sequence: 2
+            )
         )
 
         #expect(taken)
@@ -2005,7 +2007,9 @@ struct GeofenceSyncCoordinatorTests {
         #expect(setup.coordinator.acquireGate())
 
         let taken = setup.coordinator.acquireGateOrDefer(
-            GeofenceSyncCoordinatorImpl.DeferredMovement(latitude: 3, longitude: 4, anchorIsLiveFix: false)
+            GeofenceSyncCoordinatorImpl.DeferredMovement(
+                latitude: 3, longitude: 4, anchorIsLiveFix: false, sequence: 1
+            )
         )
 
         #expect(!taken)
@@ -2023,7 +2027,7 @@ struct GeofenceSyncCoordinatorTests {
 
         // Queue a stale movement by hand, as a losing pass would have.
         setup.coordinator.deferredMovement.wrappedValue = GeofenceSyncCoordinatorImpl.DeferredMovement(
-            latitude: 0, longitude: 0, anchorIsLiveFix: true
+            latitude: 0, longitude: 0, anchorIsLiveFix: true, sequence: 1
         )
         let newer = LocationData(latitude: 0, longitude: 0.05)
         _ = await setup.coordinator.handleMovement(
@@ -2032,6 +2036,38 @@ struct GeofenceSyncCoordinatorTests {
         for _ in 0 ..< 50 {
             await Task.yield()
         }
+
+        let triggerStarts = setup.monitor.startedRegions.filter { $0.identifier == GeofenceConstants.movementTriggerIdentifier }
+        #expect(triggerStarts.last?.center == newer)
+    }
+
+    /// A drained replay must not re-centre the trigger behind a movement that already ran.
+    ///
+    /// `drainDeferredMovement` clears the queue and frees the gate BEFORE its replay task starts,
+    /// so a newer movement can take that gate and re-centre first. Replaying afterwards moved the
+    /// trigger back to the older coordinates — the exact loss the deferral exists to prevent,
+    /// reached from the other side.
+    ///
+    /// Driven through the real gate rather than by racing tasks: the replay is retired on an
+    /// arrival-order comparison, so the ordering can be set up exactly instead of hoped for.
+    @Test
+    func drainDeferredMovement_givenANewerMovementAlreadyRan_expectTheReplayDiscarded() async {
+        let setup = await makeRegisteredSetup(regions: [], config: diffConfig, storage: makeStorage())
+        let stale = GeofenceSyncCoordinatorImpl.DeferredMovement(
+            latitude: 0, longitude: 0, anchorIsLiveFix: true, sequence: 1
+        )
+
+        // The newer movement arrives and completes first, as it would by taking the freed gate.
+        let newer = LocationData(latitude: 0, longitude: 0.05)
+        _ = await setup.coordinator.handleMovement(
+            latitude: newer.latitude, longitude: newer.longitude, anchorIsLiveFix: true
+        )
+        // Queued after that pass, standing in for the copy a drain has ALREADY taken off the
+        // queue — the winner's supersede clear cannot reach it, which is why the comparison at
+        // replay time is the thing under test.
+        setup.coordinator.deferredMovement.wrappedValue = stale
+        setup.coordinator.drainDeferredMovement(userChanged: false)
+        try? await Task.sleep(nanoseconds: 300000000)
 
         let triggerStarts = setup.monitor.startedRegions.filter { $0.identifier == GeofenceConstants.movementTriggerIdentifier }
         #expect(triggerStarts.last?.center == newer)

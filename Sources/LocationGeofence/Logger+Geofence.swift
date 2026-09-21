@@ -15,6 +15,7 @@ enum GeofenceSyncSkipReason: String, CaseIterable {
     case noLastSyncAnchor = "no_last_sync_anchor"
     case restoreInProgress = "restore_in_progress"
     case userChangedDuringBootstrap = "user_changed_during_bootstrap"
+    case movementOvertaken = "movement_overtaken"
 
     var prose: String {
         switch self {
@@ -23,6 +24,7 @@ enum GeofenceSyncSkipReason: String, CaseIterable {
         case .noLastSyncAnchor: return "no last-sync anchor to restore from"
         case .restoreInProgress: return "restore already in progress"
         case .userChangedDuringBootstrap: return "identified user changed during bootstrap"
+        case .movementOvertaken: return "a newer movement already re-centred the trigger"
         }
     }
 }
