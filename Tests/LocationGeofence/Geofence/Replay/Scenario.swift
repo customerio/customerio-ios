@@ -54,7 +54,20 @@ struct Scenario {
         ///
         /// Not `ids`: on iOS that appears only on `registration.applied`, where it is the whole
         /// registered set. Android's per-callback batch needs its own accessor in an Android harness.
-        var fenceId: String? { fields["id"] }
+        /// The fence this record concerns, under either platform's spelling.
+        ///
+        /// Android writes `ids` because Play Services batches several fences onto one callback;
+        /// CoreLocation never batches, so iOS writes `id`. For a single fence the two records are
+        /// the same event spelled differently, and rejecting one of them meant an Android drive
+        /// could not be replayed on iOS at all — every callback came back unsupported.
+        ///
+        /// A genuinely batched `ids` stays unsupported. This composition cannot receive one, and
+        /// replaying only its first fence would silently grade a different drive.
+        var fenceId: String? {
+            if let id = fields["id"] { return id }
+            guard let ids = fields["ids"], !ids.contains(",") else { return nil }
+            return ids
+        }
 
         var transition: GeofenceTransition? { fields["t"].flatMap(GeofenceTransition.init(rawValue:)) }
 
