@@ -126,12 +126,12 @@ enum GeofenceMonitorBinder {
             // catalog's only other refresh input is the movement trigger's EXIT. When that
             // EXIT is lost the cache has nothing left to recover it: there is no timer and
             // no background refresh, so it stays stale until the app is next opened —
-            // measured at three hours in the field, and unbounded while the device stays
-            // still.
+            // three hours on the 2026-09-18 drive capture, and unbounded while the device
+            // stays still.
             //
             // `refresh` here because nothing needs re-arming: it consults the same decision
             // table as app launch and answers `.skip` when nothing has moved or aged, so a
-            // crossing that warrants no work costs one storage read.
+            // crossing that warrants no work costs four cached reads and no network.
             guard let location else { return }
             await backgroundTaskRunner.withBackgroundTime {
                 _ = await coordinator?.refresh(
