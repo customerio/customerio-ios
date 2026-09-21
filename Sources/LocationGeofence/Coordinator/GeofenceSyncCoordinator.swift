@@ -241,8 +241,13 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
             return .success(())
         }
 
-        await MainActor.run { monitor.stopMonitoringAll() }
+        // Clear BEFORE the OS stop, not after. They are separate awaits, and a polygon pass
+        // resuming between them would read a still-populated `monitoredGeofenceIds`, pass the
+        // create guard in `recordPolygonMembership` and emit an enter for a fence being torn down.
+        // Clearing first makes that pass fail closed; a callback arriving in the reversed gap is
+        // suppressed instead, which is the safe direction.
         await storage.clearUserScopedState()
+        await MainActor.run { monitor.stopMonitoringAll() }
         logger.geofenceResetCompleted()
         return .success(())
     }
