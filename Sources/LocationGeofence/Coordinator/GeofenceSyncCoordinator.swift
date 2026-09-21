@@ -191,10 +191,10 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
         latitude: Double,
         longitude: Double,
         anchorIsLiveFix: Bool
-    ) async -> Result<Void, GeofenceSyncError> {
+    ) async -> MovementPassOutcome {
         guard let userId = expectedUserId else {
             logger.geofenceSyncSkipped(reason: .noIdentifiedUser)
-            return .failure(.noIdentifiedUser)
+            return MovementPassOutcome(result: .failure(.noIdentifiedUser), reCentred: false)
         }
 
         let cachedConfig = await storage.getCachedConfig()
@@ -216,30 +216,37 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
                 // A failed pass never re-centers the trigger, leaving it on the circle the device
                 // just exited where no further EXIT can fire. Re-rank from cache to re-arm it.
                 logger.geofenceMovementRearmedAfterFailedRefresh()
-                _ = await performLocalRefresh(
+                let rearm = await performLocalRefresh(
                     expectedUserId: userId,
                     anchor: movement,
                     config: effectiveConfig,
                     cachedRegions: await storage.getCachedGeofences(),
                     anchorIsLiveFix: anchorIsLiveFix
                 )
+                // The fetch failed but the re-arm moved the trigger, and it is the MOVE an older
+                // replay must not undo. Reporting this as "nothing happened" is what let one
+                // through.
+                return MovementPassOutcome(result: remote, reCentred: rearm.succeeded)
             }
-            return remote
+            return MovementPassOutcome(result: remote, reCentred: true)
         } else if await !movedBeyondRerankRadius(to: movement, config: effectiveConfig) {
-            return await performPolygonWakePass(
+            // Always registers the trigger at `movement` before returning.
+            let wake = await performPolygonWakePass(
                 expectedUserId: userId, at: movement, config: effectiveConfig,
                 anchorIsLiveFix: anchorIsLiveFix
             )
+            return MovementPassOutcome(result: wake, reCentred: wake.succeeded)
         } else {
             logger.geofenceMovementTrigger(tier: .localRerank)
             let cachedRegions = await storage.getCachedGeofences()
-            return await performLocalRefresh(
+            let local = await performLocalRefresh(
                 expectedUserId: userId,
                 anchor: movement,
                 config: effectiveConfig,
                 cachedRegions: cachedRegions,
                 anchorIsLiveFix: anchorIsLiveFix
             )
+            return MovementPassOutcome(result: local, reCentred: local.succeeded)
         }
     }
 
@@ -372,4 +379,12 @@ extension GeofenceSyncCoordinatorImpl {
         dateUtil: DIGraphShared.shared.dateUtil,
         logger: DIGraphShared.shared.logger
     )
+}
+
+/// `CioInternalCommon`'s own `isSuccess` is internal to that module.
+private extension Result {
+    var succeeded: Bool {
+        if case .success = self { return true }
+        return false
+    }
 }

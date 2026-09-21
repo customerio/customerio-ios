@@ -2159,6 +2159,70 @@ struct GeofenceSyncCoordinatorTests {
         #expect(setup.coordinator.appliedMovementSequence.wrappedValue == 0)
     }
 
+    /// The mirror of the held-gate case. A replay can acquire a briefly free gate while a NEWER
+    /// arrival is already queued behind it; clearing the queue unconditionally drops that arrival
+    /// outright, and the trigger ends at the replay's older coordinates.
+    @Test
+    func acquireGateOrDefer_givenAQueuedNewerMovement_expectAFreeGateDoesNotClearIt() {
+        let setup = makeCoordinator(storage: makeStorage())
+        setup.coordinator.deferredMovement.wrappedValue = GeofenceSyncCoordinatorImpl.DeferredMovement(
+            latitude: 0, longitude: 0.05, anchorIsLiveFix: true, sequence: 2
+        )
+
+        let outcome = setup.coordinator.acquireGateOrDefer(
+            GeofenceSyncCoordinatorImpl.DeferredMovement(
+                latitude: 0, longitude: 0, anchorIsLiveFix: true, sequence: 1
+            )
+        )
+
+        #expect(outcome == .taken)
+        #expect(setup.coordinator.deferredMovement.wrappedValue?.sequence == 2)
+        setup.coordinator.releaseGate()
+    }
+
+    /// A pass this one outranks IS superseded, or every winner would leave its own loser queued
+    /// and the trigger would be walked back to it.
+    @Test
+    func acquireGateOrDefer_givenAQueuedOlderMovement_expectAFreeGateClearsIt() {
+        let setup = makeCoordinator(storage: makeStorage())
+        setup.coordinator.deferredMovement.wrappedValue = GeofenceSyncCoordinatorImpl.DeferredMovement(
+            latitude: 0, longitude: 0, anchorIsLiveFix: true, sequence: 1
+        )
+
+        let outcome = setup.coordinator.acquireGateOrDefer(
+            GeofenceSyncCoordinatorImpl.DeferredMovement(
+                latitude: 0, longitude: 0.05, anchorIsLiveFix: true, sequence: 2
+            )
+        )
+
+        #expect(outcome == .taken)
+        #expect(setup.coordinator.deferredMovement.wrappedValue == nil)
+        setup.coordinator.releaseGate()
+    }
+
+    /// Success is the wrong signal for "the trigger moved". A failed remote refresh re-arms from
+    /// cache before returning its failure, and that re-centre is exactly what an older replay must
+    /// not undo — so the pass has to claim it despite reporting failure.
+    @Test
+    func handleMovement_givenAFailedFetchThatReArmed_expectTheReCentreIsClaimed() async {
+        let storage = makeStorage()
+        await storage.setCachedGeofences([makeRegion(id: "a", latitude: 0, longitude: 0)])
+        await storage.setCachedConfig(.fallback)
+        let api = GeofenceApiServiceMock()
+        api.fetchNearbyGeofencesClosure = { _, _, completion in
+            completion(.failure(.transport))
+        }
+        // No recorded sync, so the no-anchor branch takes the remote path and then re-arms.
+        let setup = makeCoordinator(api: api, storage: storage)
+
+        let result = await setup.coordinator.handleMovement(
+            latitude: 0, longitude: 0.05, anchorIsLiveFix: true
+        )
+
+        #expect(!result.isSuccess)
+        #expect(setup.coordinator.appliedMovementSequence.wrappedValue == 1)
+    }
+
     // MARK: - Teardown ordering
 
     /// Teardown clears user-scoped state and stops the OS, and the two are separate awaits. A

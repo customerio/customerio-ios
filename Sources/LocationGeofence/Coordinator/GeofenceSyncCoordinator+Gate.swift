@@ -13,6 +13,16 @@ extension GeofenceSyncCoordinatorImpl {
         let sequence: UInt64
     }
 
+    /// What a movement pass did, kept separate from whether it succeeded.
+    ///
+    /// Not the same thing: a failed remote refresh still re-arms the trigger from cache before
+    /// returning its failure, and it is the re-centre — not the result — that an older replay
+    /// must not undo.
+    struct MovementPassOutcome {
+        let result: Result<Void, GeofenceSyncError>
+        let reCentred: Bool
+    }
+
     /// What a movement got when it reached the gate.
     enum GateOutcome: Equatable {
         case taken
@@ -105,19 +115,20 @@ extension GeofenceSyncCoordinatorImpl {
             break
         }
         let expectedUserId = identifiedUserId
-        let result = await performMovement(
+        let outcome = await performMovement(
             expectedUserId: expectedUserId, latitude: latitude, longitude: longitude,
             anchorIsLiveFix: anchorIsLiveFix
         )
-        // Only on success, and before the release so a replay draining off it compares against
-        // this pass. A failed pass re-centred nothing, and claiming otherwise would retire a
-        // deferral that is still the best information available.
-        if case .success = result { noteMovementApplied(sequence) }
+        // Keyed on the re-centre, not on success, and before the release so a replay draining off
+        // it compares against this pass. A pass that moved nothing must not retire a deferral that
+        // is still the best information available; a pass that moved the trigger must, even when
+        // it reports failure.
+        if outcome.reCentred { noteMovementApplied(sequence) }
         let cleaned = await cleanupIfUserChanged(expectedUserId: expectedUserId)
         releaseGate()
         if cleaned { retryForCurrentUser(latitude: latitude, longitude: longitude, anchorIsLiveFix: anchorIsLiveFix) }
         drainDeferredMovement(userChanged: cleaned)
-        return result
+        return outcome.result
     }
 
     /// Takes the gate, or records the movement for replay — in ONE critical section.
@@ -160,7 +171,13 @@ extension GeofenceSyncCoordinatorImpl {
             // shape this method exists to close: a movement that lost the gate and recorded itself
             // correctly would then be wiped by the winner, and in that ordering the record it
             // wipes is the NEWER one — the premise above inverted.
-            deferredMovement.wrappedValue = nil
+            //
+            // Only what this pass outranks, for the same reason the deferring branch keeps the
+            // highest: a replay can acquire a briefly free gate while a NEWER arrival waits behind
+            // it, and clearing unconditionally would drop that arrival entirely.
+            if (deferredMovement.wrappedValue?.sequence ?? 0) <= movement.sequence {
+                deferredMovement.wrappedValue = nil
+            }
             return .taken
         }
     }
