@@ -23,6 +23,10 @@ struct ScenarioReplayTests {
     /// capture whose lines are not already sorted was being graded against boundaries that never
     /// happened in that order. No recorded drive is out of order today, which is exactly why this
     /// case is written rather than waited for.
+    ///
+    /// The out-of-order pair is `identity.changed` and `app.foreground`, both stimuli. It used to
+    /// be `app.background`, which no longer bounds a window — leaving it as the unsorted line
+    /// would have kept this test green while asserting nothing about order.
     @Test(.enabled(if: ReplayRuntime.isMonitorAvailable))
     @available(iOS 17.0, *)
     func run_givenScenarioLinesOutOfOrder_expectStimuliAscending() async throws {
@@ -30,8 +34,8 @@ struct ScenarioReplayTests {
         {"k":"scenario","v":1,"name":"out-of-order","platform":"ios","t0":"t"}
         {"k":"when","at":0.0,"ev":"process.start","session":1}
         {"k":"when","at":3.0,"ev":"app.background"}
-        {"k":"when","at":1.0,"ev":"app.foreground"}
         {"k":"when","at":2.0,"ev":"identity.changed","ok":true}
+        {"k":"when","at":1.0,"ev":"app.foreground"}
         """)
         let (harness, result) = try await ReplayHarness.withTail { () -> (ReplayHarness, ReplayRunner.Result) in
             let harness = ReplayHarness()
@@ -41,7 +45,82 @@ struct ScenarioReplayTests {
 
         #expect(result.unsupported.isEmpty, "unsupported: \(result.unsupported)")
         #expect(result.stimuli == result.stimuli.sorted(), "stimuli not ascending: \(result.stimuli)")
-        #expect(result.stimuli == [0.0, 1.0, 2.0, 3.0])
+        #expect(result.stimuli == [0.0, 1.0, 2.0])
+    }
+
+    /// A record the runner accepts as a no-op must not bound a window.
+    ///
+    /// `device.state` and `app.background` change nothing the SDK decides — `deliverAppInput`
+    /// takes both and does nothing with them. They were still splitting the fix-provider's
+    /// windows and the matcher's groups, so a battery line landing inside work the previous real
+    /// input started moved that work's cache read or decision into a phase the SDK never had.
+    ///
+    /// `app.foreground` is the control: it looks like the same class of record and is not one,
+    /// because it drives the re-arm.
+    @Test(.enabled(if: ReplayRuntime.isMonitorAvailable))
+    @available(iOS 17.0, *)
+    func run_givenInertRecords_expectNoStimulusBoundary() async throws {
+        let scenario = try ScenarioLoader.parse("""
+        {"k":"scenario","v":1,"name":"inert","platform":"ios","t0":"t"}
+        {"k":"when","at":0.0,"ev":"process.start","session":1}
+        {"k":"when","at":1.0,"ev":"device.state","battery":"0.5"}
+        {"k":"when","at":2.0,"ev":"app.background"}
+        {"k":"when","at":3.0,"ev":"app.foreground"}
+        """)
+        let (harness, result) = try await ReplayHarness.withTail { () -> (ReplayHarness, ReplayRunner.Result) in
+            let harness = ReplayHarness()
+            return try (harness, await ReplayRunner.run(scenario, on: harness))
+        }
+        defer { harness.detachFromBootstrap() }
+
+        // Still delivered — they are accepted inputs, just inert ones.
+        #expect(result.unsupported.isEmpty, "unsupported: \(result.unsupported)")
+        #expect(result.stimuli == [0.0, 3.0], "inert records bounded a window: \(result.stimuli)")
+    }
+
+    /// A recorded pull whose position cannot be rebuilt fails the run instead of vanishing.
+    ///
+    /// The pull timeline dropped it and `deliverFix` returned true for the same record — a pull is
+    /// not delivered, so it has nothing to refuse — and the run stayed green one recorded cache
+    /// read short. `prov=none` is the one pull that legitimately carries no position: it is a read
+    /// that found nothing, which is an answer.
+    @Test(.enabled(if: ReplayRuntime.isMonitorAvailable))
+    @available(iOS 17.0, *)
+    func run_givenPullMissingPosition_expectReportedUnsupported() async throws {
+        let scenario = try ScenarioLoader.parse("""
+        {"k":"scenario","v":1,"name":"malformed-pull","platform":"ios","t0":"t"}
+        {"k":"when","at":0.0,"ev":"process.start","session":1}
+        {"k":"when","at":1.0,"ev":"location.fix","prov":"manager_cache"}
+        """)
+        let (harness, result) = try await ReplayHarness.withTail { () -> (ReplayHarness, ReplayRunner.Result) in
+            let harness = ReplayHarness()
+            return try (harness, await ReplayRunner.run(scenario, on: harness))
+        }
+        defer { harness.detachFromBootstrap() }
+
+        #expect(
+            result.unsupported == ["when location.fix@1.0"],
+            "a pull that lost its position was not reported: \(result.unsupported)"
+        )
+    }
+
+    /// The empty read stays legal, so the check above cannot be satisfied by rejecting every
+    /// position-less pull.
+    @Test(.enabled(if: ReplayRuntime.isMonitorAvailable))
+    @available(iOS 17.0, *)
+    func run_givenPullThatFoundNothing_expectAccepted() async throws {
+        let scenario = try ScenarioLoader.parse("""
+        {"k":"scenario","v":1,"name":"empty-pull","platform":"ios","t0":"t"}
+        {"k":"when","at":0.0,"ev":"process.start","session":1}
+        {"k":"when","at":1.0,"ev":"location.fix","prov":"none"}
+        """)
+        let (harness, result) = try await ReplayHarness.withTail { () -> (ReplayHarness, ReplayRunner.Result) in
+            let harness = ReplayHarness()
+            return try (harness, await ReplayRunner.run(scenario, on: harness))
+        }
+        defer { harness.detachFromBootstrap() }
+
+        #expect(result.unsupported.isEmpty, "unsupported: \(result.unsupported)")
     }
 
     @Test(
