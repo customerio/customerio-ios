@@ -42,10 +42,21 @@ enum ReplayRunner {
                   let source = record.fields["prov"].flatMap(GeofenceLog.FixSource.init(rawValue:)),
                   !source.isArrival, source != .bus
             else { return nil }
-            // `prov=none` is a read that found nothing — a recorded answer, not a missing record.
             guard let latitude = record.latitude, let longitude = record.longitude,
                   let accuracy = record.fields["acc"].flatMap(Double.init)
-            else { return source == .none ? harness.emptyPull(at: record.at) : nil }
+            else {
+                // `prov=none` is a read that found nothing — a recorded answer, not a missing
+                // record — so it is the one source that legitimately carries no position.
+                if source == .none { return harness.emptyPull(at: record.at) }
+                // Every other pull is a read the drive recorded an answer for, and that answer
+                // cannot be rebuilt. Dropping it left the provider one read short while
+                // `deliverFix` returned true for the same record further down — a pull is not
+                // delivered, so it has nothing to refuse — and the run went green having lost a
+                // recorded input. Reported here because this is where the loss happens:
+                // `deliverFix` never sees the missing fields.
+                unsupported.append("\(record.kind) \(record.ev)@\(record.at)")
+                return nil
+            }
             return harness.pulledFix(
                 latitude: latitude,
                 longitude: longitude,
@@ -56,26 +67,21 @@ enum ReplayRunner {
                 at: record.at
             )
         }
-        // The stimuli that actually drive work. Pull records are excluded deliberately: they are
-        // no-ops here, and letting them define window boundaries would fragment the very windows
-        // they belong inside.
+        // The stimuli that actually drive work — see `isStimulus` for what is left out and why.
         //
         // Ordered the same way they are *delivered*. `ReplayMatcher.groups` finds a decision's
         // stimulus with `lastIndex { $0 <= record.at }`, which assumes the list ascends; handing it
         // raw file order while the runner drove `stableByTime` meant a capture whose lines were not
         // already sorted would be graded against boundaries that never happened in that order.
         let stimuli = Self.stableByTime(scenario.when)
-            .filter { record in
-                guard record.ev == "location.fix",
-                      let source = record.fields["prov"].flatMap(GeofenceLog.FixSource.init(rawValue:))
-                else { return true }
-                return source.isArrival
-            }
+            .filter(Self.isStimulus)
             .map(\.at)
+        let carried = carriedReads(scenario, on: harness)
+        unsupported.append(contentsOf: carried.unsupported)
         harness.loadPulledFixes(
             stimuli: stimuli,
             samples: pulled,
-            carried: carriedReads(scenario, on: harness)
+            carried: carried.reads
         )
 
         // When the network answered, taken from the drive rather than modelled:
@@ -118,12 +124,30 @@ enum ReplayRunner {
     /// `location.fix` line for its own read are written microseconds apart — and a capture that
     /// stamps to the millisecond can put them on either side of a tick. The provider uses these
     /// only for a window the recorded reads left empty; see `ReplayFixProvider`.
-    private static func carriedReads(_ scenario: Scenario, on harness: ReplayHarness) -> [ReplayFixProvider.CachedRead] {
-        scenario.when.compactMap { record -> ReplayFixProvider.CachedRead? in
-            guard record.ev == "os.callback", record.fields["fixsrc"] != nil else { return nil }
+    /// Incomplete shapes fail closed here for the same reason they do on a standalone pull: this
+    /// read is the only answer the provider has for the window it lands in, so losing it hands the
+    /// SDK a nil the drive never recorded while `unsupported` and the pull accounting both stay
+    /// clean. `fixsrc=none` is the one shape that carries no position legitimately.
+    private static func carriedReads(
+        _ scenario: Scenario,
+        on harness: ReplayHarness
+    ) -> (reads: [ReplayFixProvider.CachedRead], unsupported: [String]) {
+        var unsupported: [String] = []
+        let reads = scenario.when.compactMap { record -> ReplayFixProvider.CachedRead? in
+            guard record.ev == "os.callback", let raw = record.fields["fixsrc"] else { return nil }
             guard let latitude = record.latitude, let longitude = record.longitude,
                   let accuracy = record.fields["acc"].flatMap(Double.init)
-            else { return harness.emptyPull(at: record.at) }
+            else {
+                // The source is read only to settle whether a *missing* position is legitimate.
+                // A complete read carries whatever it names — the conformance scenarios use
+                // `os_trigger`, which is the shared cross-platform vocabulary and not one of this
+                // SDK's own `FixSource` cases, and rejecting it here dropped three valid reads.
+                if GeofenceLog.FixSource(rawValue: raw) == GeofenceLog.FixSource.none {
+                    return harness.emptyPull(at: record.at)
+                }
+                unsupported.append("\(record.kind) \(record.ev)@\(record.at) fixsrc=\(raw)")
+                return nil
+            }
             return harness.pulledFix(
                 latitude: latitude,
                 longitude: longitude,
@@ -132,6 +156,7 @@ enum ReplayRunner {
                 at: record.at
             )
         }
+        return (reads, unsupported)
     }
 
     /// Cancellation is swallowed here and nowhere else: a runner walking a drive should stop
@@ -139,6 +164,35 @@ enum ReplayRunner {
     /// remaining expectations as missing.
     private static func settle(_ harness: ReplayHarness) async {
         try? await ReplayHarness.letAsyncWorkRun()
+    }
+
+    /// Whether a record drove SDK work, and so bounds a window.
+    ///
+    /// A boundary is load-bearing twice over: `ReplayFixProvider` serves each recorded read from
+    /// the window its stimulus opened, and `ReplayMatcher.groups` attributes each decision to the
+    /// stimulus before it. A boundary the SDK never had splits one phase in two, which can move a
+    /// cache read or a decision into a phase the drive never ran.
+    ///
+    /// Two kinds of `when` record are in the file without driving anything:
+    ///
+    /// - A **pull** is the SDK *reading* the cache, inside work an earlier stimulus started. It is
+    ///   loaded into the provider's timeline instead, and letting it bound a window would fragment
+    ///   the very window it belongs inside.
+    /// - **`device.state` and `app.background`** have no behavioural seam on iOS at all:
+    ///   `deliverAppInput` accepts both as deliberate no-ops. A battery or background line landing
+    ///   inside work the previous real input started was still splitting that work's window.
+    ///   `app.foreground` is *not* inert and stays — it drives `rearmOnForegroundIfStale`.
+    private static func isStimulus(_ record: Scenario.Record) -> Bool {
+        switch record.ev {
+        case "device.state", "app.background":
+            false
+        case "location.fix":
+            // An unreadable `prov` is not silently treated as a pull: it stays a boundary here and
+            // `deliverFix` reports it as unsupported, so the run fails rather than regrouping.
+            record.fields["prov"].flatMap(GeofenceLog.FixSource.init(rawValue:))?.isArrival ?? true
+        default:
+            true
+        }
     }
 
     /// Records in time order, ties broken by the order the capture wrote them.
