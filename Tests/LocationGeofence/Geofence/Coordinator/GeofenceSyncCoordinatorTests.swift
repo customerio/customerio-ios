@@ -280,6 +280,72 @@ struct GeofenceSyncCoordinatorTests {
         #expect(api.fetchNearbyGeofencesCallsCount == 1)
     }
 
+    /// A non-live anchor is not "an old fix near here" — `bestKnownFix` applies no age gate, so it
+    /// can be an OS cache value hours old and kilometres away. Ranking and re-planting around one
+    /// drops the fences that are actually nearby and leaves a movement trigger the device is not
+    /// inside; on the classic path that trigger never fires again.
+    ///
+    /// Anchoring on the registration centre instead keeps a time-expired catalog refetchable while
+    /// making distance-driven work impossible from a point we cannot trust.
+    @Test
+    func refresh_givenANonLiveAnchorFarFromTheRegistrationCentre_expectItDoesNotMoveAnything() async {
+        let storage = makeStorage()
+        let dateUtil = DateUtilStub()
+        let oneHour: TimeInterval = 60 * 60
+        await storage.setCachedConfig(GeofenceConfig(
+            localRefreshTriggerRadius: 1000,
+            remoteFetchRefreshTriggerRadius: 3000,
+            remoteFetchRefreshExpiry: oneHour,
+            duplicateEventsExpiry: 60,
+            maxBusinessGeofences: 10,
+            maxMonitoringDistance: GeofenceConstants.noMonitoringDistanceCap
+        ))
+        // Fresh in time and registered here, so distance is the only thing that could do work.
+        await storage.recordSync(timestamp: dateUtil.givenNow, location: LocationData(latitude: 0, longitude: 0))
+        await storage.recordRegistration(center: LocationData(latitude: 0, longitude: 0), businessIds: ["g1"])
+        let api = GeofenceApiServiceMock()
+        api.fetchNearbyGeofencesClosure = { _, _, completion in
+            completion(.success(makeApiResponse(regions: [])))
+        }
+        let setup = makeCoordinator(api: api, storage: storage, dateUtil: dateUtil)
+
+        // ~157 km away: on the raw anchor this is far past the refetch radius.
+        let result = await setup.coordinator.refresh(latitude: 1.0, longitude: 1.0, anchorIsLiveFix: false)
+
+        #expect(result.isSuccess)
+        #expect(api.fetchNearbyGeofencesCallsCount == 0)
+        #expect(await storage.getLastRegistrationCenter() == LocationData(latitude: 0, longitude: 0))
+    }
+
+    /// The other direction, so the guard above cannot degrade into "a refresh never moves anything":
+    /// a caller that really did obtain a fix for this event still re-ranks around it.
+    @Test
+    func refresh_givenALiveAnchorFarFromTheRegistrationCentre_expectItStillRefetches() async {
+        let storage = makeStorage()
+        let dateUtil = DateUtilStub()
+        let oneHour: TimeInterval = 60 * 60
+        await storage.setCachedConfig(GeofenceConfig(
+            localRefreshTriggerRadius: 1000,
+            remoteFetchRefreshTriggerRadius: 3000,
+            remoteFetchRefreshExpiry: oneHour,
+            duplicateEventsExpiry: 60,
+            maxBusinessGeofences: 10,
+            maxMonitoringDistance: GeofenceConstants.noMonitoringDistanceCap
+        ))
+        await storage.recordSync(timestamp: dateUtil.givenNow, location: LocationData(latitude: 0, longitude: 0))
+        await storage.recordRegistration(center: LocationData(latitude: 0, longitude: 0), businessIds: ["g1"])
+        let api = GeofenceApiServiceMock()
+        api.fetchNearbyGeofencesClosure = { _, _, completion in
+            completion(.success(makeApiResponse(regions: [])))
+        }
+        let setup = makeCoordinator(api: api, storage: storage, dateUtil: dateUtil)
+
+        let result = await setup.coordinator.refresh(latitude: 1.0, longitude: 1.0, anchorIsLiveFix: true)
+
+        #expect(result.isSuccess)
+        #expect(api.fetchNearbyGeofencesCallsCount == 1)
+    }
+
     @Test
     func refresh_givenStaleLastSync_expectApiCallAndPersist() async {
         let storage = makeStorage()

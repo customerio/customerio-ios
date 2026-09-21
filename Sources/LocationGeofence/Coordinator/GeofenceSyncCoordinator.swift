@@ -120,7 +120,15 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
 
         let cachedConfig = await storage.getCachedConfig()
         let effectiveConfig = cachedConfig ?? .fallback
-        let location = LocationData(latitude: latitude, longitude: longitude)
+        let requested = LocationData(latitude: latitude, longitude: longitude)
+        // A non-live anchor only means "not obtained for this event", so it can be an OS cache
+        // value hours old. Ranking, planting and persisting around one can drop the fence that
+        // just fired and leave a movement trigger the device is not inside — which on the classic
+        // path never fires again. The registration centre is the point the live registration is
+        // already built around, so anchoring there still lets a time-expired catalog refetch
+        // without moving anything. Callers holding a live fix are unaffected, and so is the
+        // launch path, which already passes this same centre.
+        let location = anchorIsLiveFix ? requested : (await storage.getLastRegistrationCenter() ?? requested)
         switch await refreshAction(location: location, config: effectiveConfig) {
         case .remote:
             return await performRemoteRefresh(
