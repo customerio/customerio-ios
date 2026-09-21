@@ -133,6 +133,13 @@ final class ReplayFixProvider {
 
     /// Whether every read the SDK made landed in a window the drive actually recorded.
     func pullAccounting() -> String? {
+        // Only a drive that *records* cache reads can be accounted against them. An Android
+        // capture has none — that platform is told its positions on the bus and never reads
+        // `CLLocationManager`, so every `location.fix` it writes is an arrival. Replaying one here
+        // still exercises the iOS composition, which does read the cache, and the callbacks' own
+        // carried positions answer most of those reads; the windows they do not cover are a gap in
+        // what the other platform can express, not a replay that wandered off the drive.
+        guard !samplesByWindow.isEmpty else { return nil }
         guard !unansweredWindows.isEmpty else { return nil }
         let stamps = unansweredWindows.sorted().map { index -> String in
             stimulusTimes.indices.contains(index)
