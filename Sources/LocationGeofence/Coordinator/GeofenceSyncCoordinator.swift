@@ -111,14 +111,13 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
     }
 
     func refresh(latitude: Double, longitude: Double, anchorIsLiveFix: Bool) async -> Result<Void, GeofenceSyncError> {
-        guard acquireGate() else {
+        // A refresh re-centres the trigger just as a movement pass does, and a replay that does
+        // not know it happened walks the trigger back to an older point. Stamped as part of
+        // taking the gate: see `acquireGateWithSequence` for why the two cannot be separate steps.
+        guard let sequence = acquireGateWithSequence() else {
             logger.geofenceSyncSkipped(reason: .refreshInProgress)
             return .failure(.alreadyInProgress)
         }
-        // A refresh re-centres the trigger just as a movement pass does, and a replay that does
-        // not know it happened walks the trigger back to an older point. Taken after the gate so
-        // anything deferred behind this refresh outranks it and survives.
-        let sequence = nextMovementSequence()
         let expectedUserId = identifiedUserId
         let outcome = await performRefresh(
             expectedUserId: expectedUserId, latitude: latitude, longitude: longitude,
@@ -308,7 +307,10 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
             logger.geofenceSyncSkipped(reason: .noLastSyncAnchor)
             return nil
         }
-        guard acquireGate() else {
+        // Stamped with the gate, not after registering: a movement arriving while this restore
+        // is talking to the OS would otherwise hold the lower sequence and be retired by the
+        // older restore coordinates.
+        guard let restoreSequence = acquireGateWithSequence() else {
             logger.geofenceSyncSkipped(reason: .restoreInProgress)
             return nil
         }
@@ -344,8 +346,10 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
         )
         logSyncCompleted(registration, requested: (nearest.count, registerMovementTrigger), startedAt: syncStartedAt)
         // Same reason as `refresh`: this planted the trigger, so a replay older than it must be
-        // retired rather than allowed to move it back.
-        if registerMovementTrigger { noteMovementApplied(nextMovementSequence()) }
+        // retired rather than allowed to move it back. The sequence is the one taken at entry, not
+        // a fresh one — allocating here would rank this restore above a movement that arrived
+        // while it was registering, and retire the newer coordinates.
+        if registerMovementTrigger { noteMovementApplied(restoreSequence) }
         // No initial-enter here: a cold-wake restore of the pre-kill set (not new registrations) off a
         // possibly-stale anchor. Genuinely-new fences come from a refresh fetch, which emits there.
         // Only what the OS took, for the same reason as the refresh paths: an oversized polygon is

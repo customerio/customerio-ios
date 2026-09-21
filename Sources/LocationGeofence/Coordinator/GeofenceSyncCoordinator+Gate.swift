@@ -196,6 +196,22 @@ extension GeofenceSyncCoordinatorImpl {
         }
     }
 
+    /// Takes the gate and stamps the pass with its arrival order, in ONE critical section.
+    ///
+    /// Allocating after the acquisition inverts the ordering it exists to express: a movement
+    /// arriving in the gap allocates FIRST and so carries a LOWER sequence than the pass that was
+    /// already holding the gate, and is then retired as overtaken by coordinates that are in fact
+    /// older. Whoever takes the gate first must hold the earlier sequence.
+    ///
+    /// - Returns: the sequence to record on completion, or nil when another call holds the gate.
+    func acquireGateWithSequence() -> UInt64? {
+        refreshInProgress.mutating { inProgress in
+            if inProgress { return nil }
+            inProgress = true
+            return nextMovementSequence()
+        }
+    }
+
     /// Returns false when another call already holds the gate; the caller short-circuits.
     func acquireGate() -> Bool {
         refreshInProgress.mutating { inProgress in

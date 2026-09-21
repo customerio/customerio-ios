@@ -2326,6 +2326,65 @@ struct GeofenceSyncCoordinatorTests {
         #expect(outcome == .overtaken)
     }
 
+    /// Whoever takes the gate first must hold the earlier sequence.
+    ///
+    /// Allocating after the acquisition inverts that: a movement arriving in the gap allocates
+    /// first, carries the LOWER sequence, and is then retired as overtaken by the refresh that was
+    /// already running — so the trigger finishes at the older coordinates.
+    @Test
+    func acquireGateWithSequence_expectTheSequenceIsTakenWithTheGate() {
+        let setup = makeCoordinator(storage: makeStorage())
+
+        guard let held = setup.coordinator.acquireGateWithSequence() else {
+            Issue.record("expected the free gate to be taken")
+            return
+        }
+        // A movement arriving while the gate is held must outrank the holder, not trail it.
+        let arrival = setup.coordinator.nextMovementSequence()
+
+        #expect(arrival > held)
+        // And the gate really is held, so that arrival defers rather than running.
+        #expect(!setup.coordinator.acquireGate())
+        setup.coordinator.releaseGate()
+    }
+
+    /// The same inversion through `refresh`: a movement queued while the refresh runs must
+    /// survive the refresh's own re-centre rather than be retired by it.
+    @Test
+    func refresh_givenAMovementQueuedWhileItRan_expectTheMovementOutranksIt() async {
+        let storage = makeStorage()
+        await storage.setCachedConfig(.fallback)
+        let api = GeofenceApiServiceMock()
+        let reachedApi = AsyncSignal()
+        let release = AsyncSignal()
+        api.fetchNearbyGeofencesClosure = { _, _, completion in
+            Task {
+                await reachedApi.fire()
+                await release.wait()
+                completion(.success(makeApiResponse(regions: [])))
+            }
+        }
+        let setup = makeCoordinator(api: api, storage: storage)
+
+        async let running = setup.coordinator.refresh(latitude: 0, longitude: 0.01, anchorIsLiveFix: true)
+        await reachedApi.wait()
+        // Arrives mid-refresh, so it is newer and must not be retired by the refresh.
+        let queued = await setup.coordinator.handleMovement(latitude: 0, longitude: 0.02, anchorIsLiveFix: true)
+        // Captured while the refresh still holds the gate: its release drains the queue.
+        let deferredSequence = setup.coordinator.deferredMovement.wrappedValue?.sequence ?? 0
+        #expect(setup.coordinator.deferredMovement.wrappedValue?.longitude == 0.02)
+        await release.fire()
+        _ = await running
+
+        #expect(queued.errorOrNil == .alreadyInProgress)
+        #expect(deferredSequence > 0)
+        // Compared after the refresh has applied its own: with the allocation split from the
+        // acquisition the refresh takes the HIGHER number and retires this movement, so the
+        // trigger keeps the refresh's older coordinates. Read from the captured sequence, not
+        // from the queue, because the refresh's release drains it on the way out.
+        #expect(deferredSequence > setup.coordinator.appliedMovementSequence.wrappedValue)
+    }
+
     // MARK: - Teardown ordering
 
     /// Teardown clears user-scoped state and stops the OS, and the two are separate awaits. A
