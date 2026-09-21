@@ -59,12 +59,12 @@ enum GeofenceMonitorBinder {
             // A business-fence crossing is also evidence the device moved, and the catalog's only
             // other refresh input is the movement trigger's EXIT. When that EXIT is lost the cache
             // has nothing left to recover it: there is no timer and no background refresh, so it
-            // stays stale until the app is next opened — measured at three hours in the field, and
-            // unbounded while the device stays still.
+            // stays stale until the app is next opened — three hours on the 2026-09-18 drive
+            // capture, and unbounded while the device stays still.
             //
             // Routed through `refresh`, not `handleMovement`: `refresh` consults the same decision
             // table as app launch and answers `.skip` when nothing has moved or aged, so a crossing
-            // that warrants no work costs one storage read. `handleMovement` assumes an EXIT
+            // that warrants no work costs four cached reads and no network. `handleMovement` assumes an EXIT
             // happened and always re-registers, which on every business crossing would re-arm the
             // trigger continuously.
             guard let location else { return }
