@@ -76,6 +76,38 @@ extension GeofenceSyncCoordinatorImpl {
         }
     }
 
+    /// - Parameter sequence: arrival order. A replay carries the sequence of the movement it is
+    ///   replaying rather than taking a new one, so being re-deferred cannot make stale
+    ///   coordinates look like the newest thing to arrive.
+    func handleMovement(
+        latitude: Double, longitude: Double, anchorIsLiveFix: Bool, sequence: UInt64
+    ) async -> Result<Void, GeofenceSyncError> {
+        // Recorded, not dropped — see `deferredMovement`. Taking the gate and recording the loss
+        // are one step on purpose: see `acquireGateOrDefer`.
+        guard acquireGateOrDefer(
+            DeferredMovement(
+                latitude: latitude, longitude: longitude, anchorIsLiveFix: anchorIsLiveFix,
+                sequence: sequence
+            )
+        ) else {
+            logger.geofenceSyncSkipped(reason: .refreshInProgress)
+            return .failure(.alreadyInProgress)
+        }
+        let expectedUserId = identifiedUserId
+        let result = await performMovement(
+            expectedUserId: expectedUserId, latitude: latitude, longitude: longitude,
+            anchorIsLiveFix: anchorIsLiveFix
+        )
+        // Before the release, so a replay draining off it compares against this pass rather than
+        // against the state from before it ran.
+        noteMovementApplied(sequence)
+        let cleaned = await cleanupIfUserChanged(expectedUserId: expectedUserId)
+        releaseGate()
+        if cleaned { retryForCurrentUser(latitude: latitude, longitude: longitude, anchorIsLiveFix: anchorIsLiveFix) }
+        drainDeferredMovement(userChanged: cleaned)
+        return result
+    }
+
     /// Takes the gate, or records the movement for replay — in ONE critical section.
     ///
     /// Doing it in two steps loses the movement. Between `acquireGate()` answering false and the
