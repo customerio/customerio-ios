@@ -285,8 +285,7 @@ final class PolygonMembershipResolver {
         let point = LocationData(latitude: fix.coordinate.latitude, longitude: fix.coordinate.longitude)
         let signedEdgeDistance = polygon.signedEdgeDistance(to: point)
         switch await classifyMembership(
-            fix: fix, geofence: geofence, polygon: polygon, signedEdgeDistance: signedEdgeDistance,
-            pass: pass
+            fix: fix, geofence: geofence, polygon: polygon, signedEdgeDistance: signedEdgeDistance, pass: pass
         ) {
         case .none:
             return nil
