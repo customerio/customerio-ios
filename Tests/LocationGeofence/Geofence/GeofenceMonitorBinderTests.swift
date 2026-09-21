@@ -49,7 +49,13 @@ struct GeofenceMonitorBinderTests {
             contextStore: contextStore ?? BackgroundDeliveryContextStore(
                 fileManager: .default,
                 directoryURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-            )
+            ),
+            // Private centre, not `.default`: the resolver subscribes to
+            // `willEnterForeground`, and the suite runs in parallel inside a real app. One
+            // foregrounding starts a pass on every live resolver, and an unrelated test's pass
+            // holds `passesInFlight` long enough for the pass under test to take the
+            // already-running short-circuit and log nothing.
+            notificationCenter: NotificationCenter()
         )
     }
 
@@ -83,18 +89,6 @@ struct GeofenceMonitorBinderTests {
             coordinate: CLLocationCoordinate2D(latitude: 0, longitude: 0),
             altitude: 0, horizontalAccuracy: 5, verticalAccuracy: 5, timestamp: Date()
         )
-    }
-
-    /// `GeofenceStorage` is an actor, so the pass hops off the main actor and `Task.yield()` does
-    /// not advance it — yielding here asserts before the work has run and passes or fails for the
-    /// wrong reason. Poll instead.
-    private func waitForLog(_ logger: LoggerMock, containing needle: String, timeout: TimeInterval = 3) async -> Bool {
-        let deadline = Date().addingTimeInterval(timeout)
-        while Date() < deadline {
-            if logger.debugReceivedInvocations.contains(where: { $0.message.contains(needle) }) { return true }
-            try? await Task.sleep(nanoseconds: 20000000)
-        }
-        return false
     }
 
     private func makeContextStore(userId: String?) -> BackgroundDeliveryContextStore {
@@ -544,13 +538,16 @@ struct GeofenceMonitorBinderTests {
         let tracker = makeTracker(deliveryTracker: makeDeliveryMock())
         let resolver = makeResolver(tracker: tracker, logger: logger, contextStore: contextStore)
 
+        let passFinished = AsyncSignal()
         GeofenceMonitorBinder.bindVisits(
-            visitMonitor: visitMonitor, resolver: resolver, contextStore: contextStore
+            visitMonitor: visitMonitor, resolver: resolver, contextStore: contextStore,
+            backgroundTaskRunner: SignalingBackgroundTaskRunner(finished: passFinished)
         )
         let stayArmed = visitMonitor.simulateVisit()
+        await passFinished.wait()
 
         #expect(stayArmed == true)
-        #expect(await waitForLog(logger, containing: "(visit)"))
+        #expect(logger.debugReceivedInvocations.contains { $0.message.contains("(visit)") })
         // `bindVisits` holds the resolver weakly, and nothing below touches it — without this
         // ARC releases it at its last use and the pass silently never runs.
         withExtendedLifetime(resolver) {}
@@ -568,7 +565,8 @@ struct GeofenceMonitorBinderTests {
         let resolver = makeResolver(tracker: tracker, logger: logger, contextStore: contextStore)
 
         GeofenceMonitorBinder.bindVisits(
-            visitMonitor: visitMonitor, resolver: resolver, contextStore: contextStore
+            visitMonitor: visitMonitor, resolver: resolver, contextStore: contextStore,
+            backgroundTaskRunner: NoBackgroundTaskRunner()
         )
         let stayArmed = visitMonitor.simulateVisit()
         // Fixed wait, not a poll: this asserts an ABSENCE, and a poll returning early on
@@ -589,13 +587,47 @@ struct GeofenceMonitorBinderTests {
         let tracker = makeTracker(deliveryTracker: makeDeliveryMock())
         let resolver = makeResolver(tracker: tracker, logger: logger, contextStore: contextStore)
 
+        let passFinished = AsyncSignal()
         GeofenceMonitorBinder.bindVisits(
-            visitMonitor: visitMonitor, resolver: resolver, contextStore: contextStore
+            visitMonitor: visitMonitor, resolver: resolver, contextStore: contextStore,
+            backgroundTaskRunner: SignalingBackgroundTaskRunner(finished: passFinished)
         )
         let stayArmed = visitMonitor.simulateVisit(isArrival: false)
+        await passFinished.wait()
 
         #expect(stayArmed == true)
-        #expect(await waitForLog(logger, containing: "(visit)"))
+        #expect(logger.debugReceivedInvocations.contains { $0.message.contains("(visit)") })
         withExtendedLifetime(resolver) {}
+    }
+}
+
+/// Lets a visit test await the pass instead of polling for it.
+///
+/// `bindVisits` runs the pass in a `Task` the caller gets no handle on, so the only other option
+/// is a deadline — and a deadline on `@MainActor` work, under a suite that runs hundreds of tests
+/// in parallel, fails whenever the main actor stays busy past it. Measured at roughly one run in
+/// two before this.
+private struct SignalingBackgroundTaskRunner: BackgroundTaskRunner {
+    let finished: AsyncSignal
+
+    func withBackgroundTime(_ work: @Sendable () async -> Void) async {
+        await work()
+        await finished.fire()
+    }
+}
+
+private actor AsyncSignal {
+    private var continuation: CheckedContinuation<Void, Never>?
+    private var fired = false
+
+    func wait() async {
+        if fired { return }
+        await withCheckedContinuation { continuation = $0 }
+    }
+
+    func fire() {
+        fired = true
+        continuation?.resume()
+        continuation = nil
     }
 }
