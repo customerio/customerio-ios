@@ -1983,17 +1983,21 @@ struct GeofenceSyncCoordinatorTests {
         // clear sits OUTSIDE the critical section, which is the bug this test has to be able to
         // see. A winner must clear a queued movement in the same section that took the gate.
         setup.coordinator.deferredMovement.wrappedValue = GeofenceSyncCoordinatorImpl.DeferredMovement(
-            latitude: 9, longitude: 9, anchorIsLiveFix: true, sequence: 1
+            latitude: 9, longitude: 9, anchorIsLiveFix: true,
+            sequence: setup.coordinator.nextMovementSequence()
         )
+        // From the allocator, and read back BEFORE the call: a literal that happens to equal the
+        // next number the gate would mint cannot tell carrying from minting apart.
+        let replay = setup.coordinator.nextMovementSequence()
 
         let taken = setup.coordinator.acquireGateOrDefer(
             latitude: 1, longitude: 2, anchorIsLiveFix: true,
-            replaySequence: 2
+            replaySequence: replay
         )
 
         // The replay's OWN sequence, not merely "taken": `handleMovement` publishes what comes
         // back as applied, so a freshly minted one here would outrank a newer queued movement.
-        #expect(taken == .taken(sequence: 2))
+        #expect(taken == .taken(sequence: replay))
         // A deferral surviving here is either never drained, or drained after this pass and so
         // moves the trigger back to coordinates the device has already left.
         #expect(setup.coordinator.deferredMovement.wrappedValue?.latitude == nil)
@@ -2165,17 +2169,20 @@ struct GeofenceSyncCoordinatorTests {
     @Test
     func acquireGateOrDefer_givenAQueuedNewerMovement_expectAFreeGateDoesNotClearIt() {
         let setup = makeCoordinator(storage: makeStorage())
+        // Allocated in arrival order, so the replay really is the older of the two.
+        let replay = setup.coordinator.nextMovementSequence()
+        let queued = setup.coordinator.nextMovementSequence()
         setup.coordinator.deferredMovement.wrappedValue = GeofenceSyncCoordinatorImpl.DeferredMovement(
-            latitude: 0, longitude: 0.05, anchorIsLiveFix: true, sequence: 2
+            latitude: 0, longitude: 0.05, anchorIsLiveFix: true, sequence: queued
         )
 
         let outcome = setup.coordinator.acquireGateOrDefer(
             latitude: 0, longitude: 0, anchorIsLiveFix: true,
-            replaySequence: 1
+            replaySequence: replay
         )
 
-        #expect(outcome == .taken(sequence: 1))
-        #expect(setup.coordinator.deferredMovement.wrappedValue?.sequence == 2)
+        #expect(outcome == .taken(sequence: replay))
+        #expect(setup.coordinator.deferredMovement.wrappedValue?.sequence == queued)
         setup.coordinator.releaseGate()
     }
 
