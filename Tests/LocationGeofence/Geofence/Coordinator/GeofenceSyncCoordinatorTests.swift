@@ -2223,6 +2223,48 @@ struct GeofenceSyncCoordinatorTests {
         #expect(setup.coordinator.appliedMovementSequence.wrappedValue == 1)
     }
 
+    /// A reset must not leave an old profile's movement behind it.
+    ///
+    /// The discard and the release have to happen together: with two steps a movement publishes
+    /// between them, finds the gate still held, queues itself, and outlives the reset — a later
+    /// drain then re-centres the trigger to the signed-out profile's coordinates.
+    @Test
+    func discardDeferredAndReleaseGate_expectTheQueueClearedAndTheGateFree() {
+        let setup = makeCoordinator(storage: makeStorage())
+        #expect(setup.coordinator.acquireGate())
+        setup.coordinator.deferredMovement.wrappedValue = GeofenceSyncCoordinatorImpl.DeferredMovement(
+            latitude: 0, longitude: 0.01, anchorIsLiveFix: true, sequence: 1
+        )
+
+        setup.coordinator.discardDeferredAndReleaseGate()
+
+        #expect(setup.coordinator.deferredMovement.wrappedValue == nil)
+        // Free, not merely flagged: the next movement takes it instead of queueing behind it.
+        let next = setup.coordinator.acquireGateOrDefer(
+            GeofenceSyncCoordinatorImpl.DeferredMovement(
+                latitude: 0, longitude: 0.1, anchorIsLiveFix: true, sequence: 2
+            )
+        )
+        #expect(next == .taken)
+        setup.coordinator.releaseGate()
+    }
+
+    /// The same, through `reset` itself.
+    @Test
+    func reset_givenAQueuedMovement_expectItDiscardedAndTheGateFree() async {
+        let storage = makeStorage()
+        let setup = makeCoordinator(storage: storage, contextStore: makeContextStore(userId: nil))
+        setup.coordinator.deferredMovement.wrappedValue = GeofenceSyncCoordinatorImpl.DeferredMovement(
+            latitude: 0, longitude: 0.01, anchorIsLiveFix: true, sequence: 1
+        )
+
+        _ = await setup.coordinator.reset()
+
+        #expect(setup.coordinator.deferredMovement.wrappedValue == nil)
+        #expect(setup.coordinator.acquireGate())
+        setup.coordinator.releaseGate()
+    }
+
     // MARK: - Teardown ordering
 
     /// Teardown clears user-scoped state and stops the OS, and the two are separate awaits. A

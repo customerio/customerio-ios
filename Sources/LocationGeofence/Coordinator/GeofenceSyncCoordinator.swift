@@ -257,10 +257,8 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
         }
         // Discarded, not drained: a movement queued behind a reset belongs to the profile this
         // reset is clearing, and re-registering for it would undo the sign-out.
-        defer {
-            deferredMovement.wrappedValue = nil
-            releaseGate()
-        }
+        // One step, not two: see `discardDeferredAndReleaseGate`.
+        defer { discardDeferredAndReleaseGate() }
 
         // If a new user signed in between sign-out and this handler firing, skip — their
         // own refresh path will register the right state for them, and clearing here

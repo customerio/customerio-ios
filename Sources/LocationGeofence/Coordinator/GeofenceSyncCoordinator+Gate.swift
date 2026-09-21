@@ -182,6 +182,20 @@ extension GeofenceSyncCoordinatorImpl {
         }
     }
 
+    /// Drops any queued movement and frees the gate in ONE critical section.
+    ///
+    /// Two steps let a movement publish between them: it finds the gate still held, queues itself,
+    /// and the clear has already run — so a movement belonging to the profile a reset is clearing
+    /// survives it, and a later drain re-centres the trigger to that old position. Inside the
+    /// section a movement either lands before the clear and is discarded with the rest, or after
+    /// the release and takes the gate on its own terms.
+    func discardDeferredAndReleaseGate() {
+        refreshInProgress.mutating { inProgress in
+            deferredMovement.wrappedValue = nil
+            inProgress = false
+        }
+    }
+
     /// Returns false when another call already holds the gate; the caller short-circuits.
     func acquireGate() -> Bool {
         refreshInProgress.mutating { inProgress in
