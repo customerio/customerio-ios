@@ -53,8 +53,9 @@ final class ReplayFixProvider {
         let age: TimeInterval
     }
 
-    /// The stimuli that drive work, in order. Pull records are excluded: the runner treats them as
-    /// no-ops, and letting them define boundaries would fragment the windows they sit inside.
+    /// The stimuli that drive work, in order. Records the runner treats as no-ops are excluded —
+    /// pulls, and the inert app-state lines — because letting one define a boundary would split a
+    /// window the SDK ran as a single phase. See `ReplayRunner.isStimulus`.
     private var stimulusTimes: [TimeInterval] = []
     /// Recorded answers, grouped by the window they were recorded in.
     private var samplesByWindow: [Int: [CachedRead]] = [:]
@@ -79,7 +80,7 @@ final class ReplayFixProvider {
     /// Loads the drive's recorded answers, before the first stimulus runs.
     ///
     /// - Parameters:
-    ///   - stimuli: the `at` of every stimulus that drives work, pull records excluded.
+    ///   - stimuli: the `at` of every stimulus that drives work; see `ReplayRunner.isStimulus`.
     ///   - samples: every recorded read, in any order.
     ///   - carried: the read each OS callback record carries in its own fields. See `carriedByWindow`.
     func load(stimuli: [TimeInterval], samples: [CachedRead], carried: [CachedRead] = []) {
