@@ -186,9 +186,11 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
     }
 
     func handleMovement(latitude: Double, longitude: Double, anchorIsLiveFix: Bool) async -> Result<Void, GeofenceSyncError> {
+        // No sequence here: a fresh movement is stamped inside the gate, so a pass acquiring
+        // later can never hold an earlier number. See `acquireGateOrDefer`.
         await handleMovement(
             latitude: latitude, longitude: longitude, anchorIsLiveFix: anchorIsLiveFix,
-            sequence: nextMovementSequence()
+            replaySequence: nil
         )
     }
 

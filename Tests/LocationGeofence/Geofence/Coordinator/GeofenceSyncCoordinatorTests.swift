@@ -1987,12 +1987,11 @@ struct GeofenceSyncCoordinatorTests {
         )
 
         let taken = setup.coordinator.acquireGateOrDefer(
-            GeofenceSyncCoordinatorImpl.DeferredMovement(
-                latitude: 1, longitude: 2, anchorIsLiveFix: true, sequence: 2
-            )
+            latitude: 1, longitude: 2, anchorIsLiveFix: true,
+            replaySequence: 2
         )
 
-        #expect(taken == .taken)
+        #expect(taken.isTaken)
         // A deferral surviving here is either never drained, or drained after this pass and so
         // moves the trigger back to coordinates the device has already left.
         #expect(setup.coordinator.deferredMovement.wrappedValue?.latitude == nil)
@@ -2010,10 +2009,8 @@ struct GeofenceSyncCoordinatorTests {
         // the trigger and applies a sequence of its own, so a hand-picked 1 is already spent and
         // the call is refused as overtaken — an ordering production cannot produce.
         let taken = setup.coordinator.acquireGateOrDefer(
-            GeofenceSyncCoordinatorImpl.DeferredMovement(
-                latitude: 3, longitude: 4, anchorIsLiveFix: false,
-                sequence: setup.coordinator.nextMovementSequence()
-            )
+            latitude: 3, longitude: 4, anchorIsLiveFix: false,
+            replaySequence: setup.coordinator.nextMovementSequence()
         )
 
         #expect(taken == .deferred)
@@ -2092,9 +2089,8 @@ struct GeofenceSyncCoordinatorTests {
         setup.coordinator.noteMovementApplied(5)
 
         let outcome = setup.coordinator.acquireGateOrDefer(
-            GeofenceSyncCoordinatorImpl.DeferredMovement(
-                latitude: 1, longitude: 2, anchorIsLiveFix: true, sequence: 3
-            )
+            latitude: 1, longitude: 2, anchorIsLiveFix: true,
+            replaySequence: 3
         )
 
         #expect(outcome == .overtaken)
@@ -2114,13 +2110,11 @@ struct GeofenceSyncCoordinatorTests {
         setup.coordinator.noteMovementApplied(setup.coordinator.nextMovementSequence())
 
         let outcome = setup.coordinator.acquireGateOrDefer(
-            GeofenceSyncCoordinatorImpl.DeferredMovement(
-                latitude: 1, longitude: 2, anchorIsLiveFix: true,
-                sequence: setup.coordinator.nextMovementSequence()
-            )
+            latitude: 1, longitude: 2, anchorIsLiveFix: true,
+            replaySequence: setup.coordinator.nextMovementSequence()
         )
 
-        #expect(outcome == .taken)
+        #expect(outcome.isTaken)
         setup.coordinator.releaseGate()
     }
 
@@ -2136,9 +2130,8 @@ struct GeofenceSyncCoordinatorTests {
         )
 
         let outcome = setup.coordinator.acquireGateOrDefer(
-            GeofenceSyncCoordinatorImpl.DeferredMovement(
-                latitude: 0, longitude: 0, anchorIsLiveFix: true, sequence: 1
-            )
+            latitude: 0, longitude: 0, anchorIsLiveFix: true,
+            replaySequence: 1
         )
 
         #expect(outcome == .deferred)
@@ -2174,12 +2167,11 @@ struct GeofenceSyncCoordinatorTests {
         )
 
         let outcome = setup.coordinator.acquireGateOrDefer(
-            GeofenceSyncCoordinatorImpl.DeferredMovement(
-                latitude: 0, longitude: 0, anchorIsLiveFix: true, sequence: 1
-            )
+            latitude: 0, longitude: 0, anchorIsLiveFix: true,
+            replaySequence: 1
         )
 
-        #expect(outcome == .taken)
+        #expect(outcome.isTaken)
         #expect(setup.coordinator.deferredMovement.wrappedValue?.sequence == 2)
         setup.coordinator.releaseGate()
     }
@@ -2194,12 +2186,11 @@ struct GeofenceSyncCoordinatorTests {
         )
 
         let outcome = setup.coordinator.acquireGateOrDefer(
-            GeofenceSyncCoordinatorImpl.DeferredMovement(
-                latitude: 0, longitude: 0.05, anchorIsLiveFix: true, sequence: 2
-            )
+            latitude: 0, longitude: 0.05, anchorIsLiveFix: true,
+            replaySequence: 2
         )
 
-        #expect(outcome == .taken)
+        #expect(outcome.isTaken)
         #expect(setup.coordinator.deferredMovement.wrappedValue == nil)
         setup.coordinator.releaseGate()
     }
@@ -2245,11 +2236,10 @@ struct GeofenceSyncCoordinatorTests {
         #expect(setup.coordinator.deferredMovement.wrappedValue == nil)
         // Free, not merely flagged: the next movement takes it instead of queueing behind it.
         let next = setup.coordinator.acquireGateOrDefer(
-            GeofenceSyncCoordinatorImpl.DeferredMovement(
-                latitude: 0, longitude: 0.1, anchorIsLiveFix: true, sequence: 2
-            )
+            latitude: 0, longitude: 0.1, anchorIsLiveFix: true,
+            replaySequence: 2
         )
-        #expect(next == .taken)
+        #expect(next.isTaken)
         setup.coordinator.releaseGate()
     }
 
@@ -2321,7 +2311,10 @@ struct GeofenceSyncCoordinatorTests {
         _ = await setup.coordinator.refresh(latitude: 0, longitude: 0.05, anchorIsLiveFix: true)
         setup.coordinator.deferredMovement.wrappedValue = stale
 
-        let outcome = setup.coordinator.acquireGateOrDefer(stale)
+        let outcome = setup.coordinator.acquireGateOrDefer(
+            latitude: stale.latitude, longitude: stale.longitude,
+            anchorIsLiveFix: stale.anchorIsLiveFix, replaySequence: stale.sequence
+        )
 
         #expect(outcome == .overtaken)
     }
@@ -2415,6 +2408,52 @@ struct GeofenceSyncCoordinatorTests {
         // trigger keeps the refresh's older coordinates. Read from the captured sequence, not
         // from the queue, because the refresh's release drains it on the way out.
         #expect(deferredSequence > setup.coordinator.appliedMovementSequence.wrappedValue)
+    }
+
+    /// A live movement must never be refused as overtaken.
+    ///
+    /// Minting the sequence before the gate lets a pass that acquires LATER hold an earlier
+    /// number: the movement allocates, something else takes the free gate and re-centres with the
+    /// next sequence, and the movement then reaches the gate and is dropped — work the code
+    /// without any sequence would have run. Stamping inside the gate makes "took the gate later"
+    /// and "holds the later sequence" the same statement.
+    @Test
+    func acquireGateOrDefer_givenAFreshMovementAfterAnApplied_expectItIsNeverOvertaken() {
+        let setup = makeCoordinator(storage: makeStorage())
+        // Something already re-centred and published a sequence.
+        guard case .taken(let earlier) = setup.coordinator.acquireGateOrDefer(
+            latitude: 0, longitude: 0, anchorIsLiveFix: true, replaySequence: nil
+        ) else {
+            Issue.record("expected the free gate to be taken")
+            return
+        }
+        setup.coordinator.noteMovementApplied(earlier)
+        setup.coordinator.releaseGate()
+
+        let outcome = setup.coordinator.acquireGateOrDefer(
+            latitude: 0, longitude: 0.05, anchorIsLiveFix: true, replaySequence: nil
+        )
+
+        guard case .taken(let fresh) = outcome else {
+            Issue.record("a fresh movement must never be overtaken, got \(outcome)")
+            return
+        }
+        #expect(fresh > earlier)
+        setup.coordinator.releaseGate()
+    }
+
+    /// A replay, by contrast, still is retired once something newer has re-centred.
+    @Test
+    func acquireGateOrDefer_givenAReplayOlderThanTheApplied_expectOvertaken() {
+        let setup = makeCoordinator(storage: makeStorage())
+        let old = setup.coordinator.nextMovementSequence()
+        setup.coordinator.noteMovementApplied(setup.coordinator.nextMovementSequence())
+
+        let outcome = setup.coordinator.acquireGateOrDefer(
+            latitude: 0, longitude: 0, anchorIsLiveFix: true, replaySequence: old
+        )
+
+        #expect(outcome == .overtaken)
     }
 
     // MARK: - Teardown ordering
@@ -3379,5 +3418,12 @@ private final class TeardownOrderRecorder: @unchecked Sendable {
         lock.lock()
         defer { lock.unlock() }
         return steps
+    }
+}
+
+private extension GeofenceSyncCoordinatorImpl.GateOutcome {
+    var isTaken: Bool {
+        if case .taken = self { return true }
+        return false
     }
 }
