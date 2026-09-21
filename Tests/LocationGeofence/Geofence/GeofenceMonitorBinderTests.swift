@@ -176,7 +176,11 @@ struct GeofenceMonitorBinderTests {
         monitor.simulateTransition(
             identifier: "business-region-1",
             transition: .enter,
-            location: LocationData(latitude: 37.0, longitude: -122.0)
+            location: LocationData(latitude: 37.0, longitude: -122.0),
+            // The production value on both monitors: a business event carries coordinates that
+            // were not obtained for it. The mock defaults to true, which would let a binder that
+            // hardcoded `anchorIsLiveFix: true` pass.
+            locationIsFresh: false
         )
         // Tracker dispatch is observable via the delivery mock's call count.
         await awaitDispatch(delivery.trackMetricCallsCount > 0)
@@ -187,6 +191,8 @@ struct GeofenceMonitorBinderTests {
         #expect(coordinator.refreshCallsCount == 1)
         #expect(coordinator.refreshReceivedArguments?.latitude == 37.0)
         #expect(coordinator.refreshReceivedArguments?.longitude == -122.0)
+        // The flag that decides the trigger radius, so the one that matters most here.
+        #expect(coordinator.refreshReceivedArguments?.anchorIsLiveFix == false)
     }
 
     /// The refresh anchors on the crossing's own coordinates, so without one there is nothing to
@@ -196,11 +202,15 @@ struct GeofenceMonitorBinderTests {
     func bind_givenBusinessGeofenceTransitionWithoutLocation_expectNoRefresh() async {
         let monitor = MockGeofenceRegionMonitor()
         let coordinator = makeCoordinatorMock()
-        let tracker = makeTracker(deliveryTracker: makeDeliveryMock())
+        let delivery = makeDeliveryMock()
+        let tracker = makeTracker(deliveryTracker: delivery)
 
         let resolver = makeResolver(tracker: tracker)
         GeofenceMonitorBinder.bind(monitor: monitor, resolver: resolver, coordinator: coordinator, logger: LoggerMock())
         monitor.simulateTransition(identifier: "business-region-1", transition: .enter, location: nil)
+        // Anchored on a positive barrier ordered after the same handler, not on bare yields: a
+        // count that is zero because nothing has run yet proves nothing.
+        await awaitDispatch(delivery.trackMetricCallsCount > 0)
         for _ in 0 ..< 10 {
             await Task.yield()
         }
