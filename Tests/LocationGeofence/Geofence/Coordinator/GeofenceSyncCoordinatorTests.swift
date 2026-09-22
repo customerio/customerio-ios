@@ -2301,6 +2301,89 @@ struct GeofenceSyncCoordinatorTests {
         #expect(setup.coordinator.appliedMovementSequence.wrappedValue == 0)
     }
 
+    /// A refresh superseded by a user change returns success WITHOUT registering anything, so it
+    /// moved no trigger and must not retire a movement waiting behind it.
+    @Test
+    func refresh_givenTheUserChangedMidFetch_expectNoReCentreRecorded() async {
+        let contextStore = makeContextStore(userId: "user-1")
+        let api = GeofenceApiServiceMock()
+        let arrived = AsyncSignal()
+        let suspendUntil = AsyncSignal()
+        api.fetchNearbyGeofencesClosure = { _, _, completion in
+            Task {
+                await arrived.fire()
+                await suspendUntil.wait()
+                completion(.success(makeApiResponse(regions: [], config: diffConfig)))
+            }
+        }
+        let setup = makeCoordinator(api: api, storage: makeStorage(), contextStore: contextStore)
+
+        async let refreshResult = setup.coordinator.refresh(latitude: 0, longitude: 0, anchorIsLiveFix: true)
+        await arrived.wait()
+        contextStore.setUserId("user-2")
+        await suspendUntil.fire()
+        _ = await refreshResult
+
+        #expect(setup.coordinator.appliedMovementSequence.wrappedValue == 0)
+    }
+
+    /// `maxBusinessGeofences == 0` kill-switches registration, so the trigger is never planted
+    /// even though the pass reports success.
+    @Test
+    func refresh_givenGeofencingKillSwitched_expectNoReCentreRecorded() async {
+        let killSwitched = GeofenceConfig(
+            localRefreshTriggerRadius: 1000, remoteFetchRefreshTriggerRadius: 5000,
+            remoteFetchRefreshExpiry: 3600, duplicateEventsExpiry: 3600,
+            maxBusinessGeofences: 0, maxMonitoringDistance: GeofenceConstants.noMonitoringDistanceCap
+        )
+        let api = GeofenceApiServiceMock()
+        api.fetchNearbyGeofencesClosure = { _, _, completion in
+            completion(.success(makeApiResponse(regions: [], config: killSwitched)))
+        }
+        let setup = makeCoordinator(api: api, storage: makeStorage())
+
+        _ = await setup.coordinator.refresh(latitude: 0, longitude: 0, anchorIsLiveFix: true)
+
+        #expect(setup.monitor.startedRegions.isEmpty)
+        #expect(setup.coordinator.appliedMovementSequence.wrappedValue == 0)
+    }
+
+    /// Asking for the trigger is not planting it: the OS drops a region for blocked permission or
+    /// invalid coordinates, and the pass still succeeds.
+    @Test
+    func refresh_givenTheOsDroppedTheTrigger_expectNoReCentreRecorded() async {
+        let monitor = MockGeofenceRegionMonitor()
+        monitor.rejectedIdentifiers = [GeofenceConstants.movementTriggerIdentifier]
+        let api = GeofenceApiServiceMock()
+        api.fetchNearbyGeofencesClosure = { _, _, completion in
+            completion(.success(makeApiResponse(regions: [], config: diffConfig)))
+        }
+        let setup = makeCoordinator(api: api, storage: makeStorage(), monitor: monitor)
+
+        _ = await setup.coordinator.refresh(latitude: 0, longitude: 0, anchorIsLiveFix: true)
+
+        #expect(!setup.monitor.monitoredRegionIdentifiers.contains(GeofenceConstants.movementTriggerIdentifier))
+        #expect(setup.coordinator.appliedMovementSequence.wrappedValue == 0)
+    }
+
+    /// The same distinction on the restore path, which keyed on the intent to register rather than
+    /// on what the OS took.
+    @Test
+    func applyCachedRegistration_givenTheOsDroppedTheTrigger_expectNoReCentreRecorded() {
+        let monitor = MockGeofenceRegionMonitor()
+        monitor.rejectedIdentifiers = [GeofenceConstants.movementTriggerIdentifier]
+        let setup = makeCoordinator(storage: makeStorage(), monitor: monitor)
+
+        _ = setup.coordinator.applyCachedRegistration(
+            cachedRegions: [sampleRegion()],
+            anchor: LocationData(latitude: 0, longitude: 0),
+            config: .fallback,
+            userId: "user-1"
+        )
+
+        #expect(setup.coordinator.appliedMovementSequence.wrappedValue == 0)
+    }
+
     /// The interleaving peer review described, end to end: a refresh lands between a drain and its
     /// replay, and the replay must not undo it.
     @Test

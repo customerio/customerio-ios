@@ -6,6 +6,15 @@ import Foundation
 struct GeofenceOsRegistration {
     let registeredIds: Set<String>
     let maxMonitoringRadius: Double
+
+    /// Whether the OS actually holds the movement trigger, which is the only thing that makes a
+    /// pass a re-centre. Read off what the monitor reports rather than off the caller's intent:
+    /// the trigger is skipped outright when `maxBusinessGeofences` kill-switches registration, and
+    /// the OS drops it silently for blocked permission or invalid coordinates. In both cases the
+    /// pass still succeeds, so a success-derived answer claims a move that never happened.
+    var movementTriggerPlanted: Bool {
+        registeredIds.contains(GeofenceConstants.movementTriggerIdentifier)
+    }
 }
 
 /// OS registration + fetch plumbing, split out to keep the coordinator's core flow readable.
