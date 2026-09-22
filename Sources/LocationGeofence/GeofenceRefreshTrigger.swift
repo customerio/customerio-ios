@@ -106,17 +106,26 @@ final class GeofenceRefreshTrigger {
             // update the latter, so on relaunch the cache is the stale one.
             let registrationCenter = await self.storage.getLastRegistrationCenter()
             let lastKnown = await self.lastKnownLocation()
+            let anchor = registrationCenter ?? lastKnown
             // A reset landed while those two reads were in flight. This decision belongs to a user
             // who has since signed out: arming for them leaves the next user's first fix already
             // spent, and refreshing for them sends the signed-out anchor.
-            guard self.identityEpoch.wrappedValue == startedInEpoch else { return }
-            guard let anchor = registrationCenter ?? lastKnown else {
+            //
+            // Checked and written under `armingLock` rather than around it. `onReset` clears both
+            // arm flags and bumps the epoch in one critical section so a consumer sees all three or
+            // none; a guard outside that lock can pass, lose the race, and then re-arm a flag the
+            // reset has just cleared — which spends the next user's first fix.
+            let isCurrent = self.armingLock.withLock { () -> Bool in
+                guard self.identityEpoch.wrappedValue == startedInEpoch else { return false }
                 // Armed only here, after the reads, or an existing anchor would arm it falsely.
-                self.lastSkippedForNoLocation.wrappedValue = true
+                self.lastSkippedForNoLocation.wrappedValue = anchor == nil
+                return true
+            }
+            guard isCurrent else { return }
+            guard let anchor else {
                 self.autoAcquireIfNeeded()
                 return
             }
-            self.lastSkippedForNoLocation.wrappedValue = false
             // Not a live fix: `anchor` is the stored registration centre (or, before anything is
             // registered, the last-known cache), so the movement trigger must not be sized to a
             // polygon boundary around it.
