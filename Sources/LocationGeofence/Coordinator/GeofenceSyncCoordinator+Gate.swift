@@ -11,6 +11,11 @@ extension GeofenceSyncCoordinatorImpl {
         let anchorIsLiveFix: Bool
         /// Arrival order, carried so a replay can be discarded once a newer movement has run.
         let sequence: UInt64
+        /// Carried so the replay judges membership from where the crossing actually happened.
+        /// It ages while the holder runs, unbounded on a slow refetch, and a pass that had won
+        /// the gate would have REQUESTED rather than reused — so the resolver drops a held fix
+        /// past `movementFixMaxAge` and requests instead. See `heldFixUse`.
+        let heldFix: ResolvedFix?
     }
 
     /// What a movement pass did, kept separate from whether it succeeded.
@@ -87,7 +92,8 @@ extension GeofenceSyncCoordinatorImpl {
         Task { [weak self] in
             _ = await self?.handleMovement(
                 latitude: pending.latitude, longitude: pending.longitude,
-                anchorIsLiveFix: pending.anchorIsLiveFix, replaySequence: pending.sequence
+                anchorIsLiveFix: pending.anchorIsLiveFix, replaySequence: pending.sequence,
+                heldFix: pending.heldFix
             )
         }
     }
@@ -96,14 +102,15 @@ extension GeofenceSyncCoordinatorImpl {
     ///   replaying rather than taking a new one, so being re-deferred cannot make stale
     ///   coordinates look like the newest thing to arrive.
     func handleMovement(
-        latitude: Double, longitude: Double, anchorIsLiveFix: Bool, replaySequence: UInt64?
+        latitude: Double, longitude: Double, anchorIsLiveFix: Bool, replaySequence: UInt64?,
+        heldFix: ResolvedFix?
     ) async -> Result<Void, GeofenceSyncError> {
         // Recorded, not dropped — see `deferredMovement`. Taking the gate, stamping the pass,
         // judging staleness and recording the loss are one step: see `acquireGateOrDefer`.
         let sequence: UInt64
         switch acquireGateOrDefer(
             latitude: latitude, longitude: longitude,
-            anchorIsLiveFix: anchorIsLiveFix, replaySequence: replaySequence
+            anchorIsLiveFix: anchorIsLiveFix, replaySequence: replaySequence, heldFix: heldFix
         ) {
         case .overtaken:
             logger.geofenceSyncSkipped(reason: .movementOvertaken)
@@ -117,7 +124,7 @@ extension GeofenceSyncCoordinatorImpl {
         let expectedUserId = identifiedUserId
         let outcome = await performMovement(
             expectedUserId: expectedUserId, latitude: latitude, longitude: longitude,
-            anchorIsLiveFix: anchorIsLiveFix
+            anchorIsLiveFix: anchorIsLiveFix, heldFix: heldFix
         )
         // Keyed on the re-centre, not on success, and before the release so a replay draining off
         // it compares against this pass. A pass that moved nothing must not retire a deferral that
@@ -152,7 +159,8 @@ extension GeofenceSyncCoordinatorImpl {
     ///   allocation and this call is overtaken by a refresh that takes the free gate meanwhile,
     ///   and the live movement is then dropped — work the pre-sequence code would have run.
     func acquireGateOrDefer(
-        latitude: Double, longitude: Double, anchorIsLiveFix: Bool, replaySequence: UInt64?
+        latitude: Double, longitude: Double, anchorIsLiveFix: Bool, replaySequence: UInt64?,
+        heldFix: ResolvedFix?
     ) -> GateOutcome {
         refreshInProgress.mutating { inProgress in
             // Only a replay can be overtaken. A fresh arrival is by definition the newest thing to
@@ -167,7 +175,7 @@ extension GeofenceSyncCoordinatorImpl {
             let sequence = replaySequence ?? nextMovementSequence()
             let movement = DeferredMovement(
                 latitude: latitude, longitude: longitude,
-                anchorIsLiveFix: anchorIsLiveFix, sequence: sequence
+                anchorIsLiveFix: anchorIsLiveFix, sequence: sequence, heldFix: heldFix
             )
             if inProgress {
                 // Highest sequence wins rather than last writer. A replay carries its ORIGINAL

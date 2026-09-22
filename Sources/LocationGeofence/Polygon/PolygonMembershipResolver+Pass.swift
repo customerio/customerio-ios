@@ -16,13 +16,17 @@ extension PolygonMembershipResolver {
     /// depended on whether an unrelated venue happened to be marginal, and on catalog order.
     func runPass(
         geofenceIds: [String],
-        fix: CLLocation,
+        fix: PassFix,
         pass: Int,
         isStillCurrent: (@Sendable () -> Bool)? = nil
     ) async {
         // Created here, so the pass owns it: see `PassCorroboration` for why resolver-level state
         // let overlapping fresh passes answer each other's corroboration requests.
         let cache = PassCorroboration()
+        // Settled where the fix was CHOSEN and carried here — see `PassFix`. Re-reading the clock
+        // at this point is the bug this replaced: a held fix accepted just inside
+        // `movementFixMaxAge` crosses it before the loop starts, and every polygon records
+        // `fix_too_old` while the branch that would have requested a replacement never ran.
         var deferred: [DeferredCorroboration] = []
         for geofenceId in geofenceIds {
             if let pending = await evaluate(
@@ -43,7 +47,7 @@ extension PolygonMembershipResolver {
                     identifier: pending.geofence.id,
                     reason: PolygonUndecidedReason.corroborationUnnecessary,
                     signedEdgeDistance: pending.signedEdgeDistance,
-                    horizontalAccuracy: fix.horizontalAccuracy,
+                    horizontalAccuracy: fix.location.horizontalAccuracy,
                     pass: pass
                 )
                 continue
@@ -51,7 +55,7 @@ extension PolygonMembershipResolver {
             // Only a second fix that positively reads OUTSIDE blocks the arrival. Everything
             // else commits, carrying on the verdict why it could not be confirmed.
             let corroboration: VerdictCorroboration
-            switch await corroborate(pending, firstFix: fix, cache: cache, pass: pass) {
+            switch await corroborate(pending, firstFix: fix.location, cache: cache, pass: pass) {
             case .confirmed: corroboration = .confirmed
             case .unconfirmed(let reason): corroboration = .unconfirmed(reason)
             case .contradicted: continue
@@ -61,7 +65,7 @@ extension PolygonMembershipResolver {
                     membership: pending.proposed, corroboration: corroboration,
                     signedEdgeDistance: pending.signedEdgeDistance, pass: pass
                 ),
-                for: pending.geofence, fix: fix, isStillCurrent: isStillCurrent
+                for: pending.geofence, fix: fix.location, isStillCurrent: isStillCurrent
             )
         }
     }
