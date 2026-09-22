@@ -181,8 +181,20 @@ enum GeofenceMonitorBinder {
                 // the assertion a visit landing on a suspended app can lose the pass with no
                 // retry — same reasoning as the trigger EXIT above.
                 await backgroundTaskRunner.withBackgroundTime {
+                    // Forced, not the default reuse. A visit reports that the device ARRIVED, so
+                    // the cached fix is by definition from before the arrival: reproduced with a
+                    // five-second-old fix outside the ring and the device inside it, the pass
+                    // reused the stale one, made no request and emitted nothing. Forcing also
+                    // stops a visit being dropped by the already-running short-circuit, which
+                    // matters because a visit may be the only wake this crossing gets.
+                    //
+                    // The cost is the echo refusal measured on 09-18: a forced request that
+                    // CoreLocation answers with the same fix is refused and the pass decides
+                    // nothing. Deciding nothing is recoverable — the next wake re-judges — while
+                    // deciding from a pre-arrival fix emits the wrong answer and moves the belief.
                     await resolver?.evaluateAllPolygons(
                         reason: .visit,
+                        requiresFreshFix: true,
                         isStillCurrent: { contextStore.currentUserId == expectedUserId }
                     )
                 }

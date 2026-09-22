@@ -40,7 +40,8 @@ struct GeofenceMonitorBinderTests {
             directoryURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         ),
         logger: LoggerMock = LoggerMock(),
-        contextStore: BackgroundDeliveryContextStore? = nil
+        contextStore: BackgroundDeliveryContextStore? = nil,
+        fixResolver: MovementFixResolver? = nil
     ) -> PolygonMembershipResolver {
         PolygonMembershipResolver(
             storage: storage,
@@ -55,6 +56,7 @@ struct GeofenceMonitorBinderTests {
             // foregrounding starts a pass on every live resolver, and an unrelated test's pass
             // holds `passesInFlight` long enough for the pass under test to take the
             // already-running short-circuit and log nothing.
+            fixResolver: fixResolver ?? MovementFixResolver(logger: LoggerMock()),
             notificationCenter: NotificationCenter()
         )
     }
@@ -550,6 +552,45 @@ struct GeofenceMonitorBinderTests {
         #expect(logger.debugReceivedInvocations.contains { $0.message.contains("(visit)") })
         // `bindVisits` holds the resolver weakly, and nothing below touches it — without this
         // ARC releases it at its last use and the pass silently never runs.
+        withExtendedLifetime(resolver) {}
+    }
+
+    /// Shahroz's reproduction. A visit reports that the device ARRIVED, so any cached fix is from
+    /// before the arrival — reusing it decides from where the device was. Here the cached fix is
+    /// five seconds old and outside the ring while the device is inside it: the pass has to ask.
+    @Test
+    func bindVisits_givenACachedFixFromBeforeTheArrival_expectTheCurrentFixRequested() async {
+        let storage = makeStorage()
+        await seedPolygon(in: storage)
+        let contextStore = makeContextStore(userId: "user-1")
+        let fixResolver = MovementFixResolver(logger: LoggerMock())
+        // Outside the ring and predating the visit, exactly what a pre-arrival cache holds.
+        fixResolver.systemCachedFix = {
+            CLLocation(
+                coordinate: CLLocationCoordinate2D(latitude: 0.02, longitude: 0.02),
+                altitude: 0, horizontalAccuracy: 5, verticalAccuracy: 5,
+                timestamp: Date().addingTimeInterval(-5)
+            )
+        }
+        // Only a forced request reaches this, and it is the fix that decides the arrival.
+        fixResolver.requestFreshFix = { [weak fixResolver] in
+            fixResolver?.handleResolvedFix(Self.insideFix)
+        }
+        let resolver = makeResolver(
+            tracker: makeTracker(deliveryTracker: makeDeliveryMock()), storage: storage,
+            contextStore: contextStore, fixResolver: fixResolver
+        )
+        let visitMonitor = MockGeofenceVisitMonitor()
+
+        let passFinished = AsyncSignal()
+        GeofenceMonitorBinder.bindVisits(
+            visitMonitor: visitMonitor, resolver: resolver, contextStore: contextStore,
+            backgroundTaskRunner: SignalingBackgroundTaskRunner(finished: passFinished)
+        )
+        _ = visitMonitor.simulateVisit()
+        await passFinished.wait()
+
+        #expect(await storage.getPolygonMembership()["poly-1"]?.membership == .inside)
         withExtendedLifetime(resolver) {}
     }
 
