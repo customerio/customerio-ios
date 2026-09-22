@@ -1382,9 +1382,14 @@ struct PolygonMembershipResolverTests {
         await setup.resolver.handleTransition(identifier: "1", transition: .enter, occurredAt: Date())
 
         // Before the count: a stalled runner ages the fix out, and a bare `count == 1` reports
-        // that as a lost emission. Prose, not the tail — the tail needs diagnostics on.
+        // that as a lost emission. Prose, not the tail — the tail needs diagnostics on. Taken
+        // from the enum so a reworded sentence cannot silently stop this matching.
+        let tooOld = PolygonUndecidedReason.fixTooOld.prose
+        // `contains("")` is always true, which would invert the guard below into asserting the
+        // line WAS logged.
+        #expect(!tooOld.isEmpty)
         #expect(
-            !logger.debugReceivedInvocations.contains { $0.message.contains("fix too old") },
+            !logger.debugReceivedInvocations.contains { $0.message.contains(tooOld) },
             "fix aged past movementFixMaxAge before the pass read it — stalled runner, not a stamping regression"
         )
         let delivered = await setup.emitter.snapshot()
