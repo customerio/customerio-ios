@@ -119,10 +119,7 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
             return .failure(.alreadyInProgress)
         }
         let expectedUserId = identifiedUserId
-        let outcome = await performRefresh(
-            expectedUserId: expectedUserId, latitude: latitude, longitude: longitude,
-            anchorIsLiveFix: anchorIsLiveFix
-        )
+        let outcome = await performRefresh(expectedUserId: expectedUserId, latitude: latitude, longitude: longitude, anchorIsLiveFix: anchorIsLiveFix)
         let result = outcome.result
         if outcome.reCentred { noteMovementApplied(sequence) }
         let cleaned = await cleanupIfUserChanged(expectedUserId: expectedUserId)
@@ -188,10 +185,7 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
     func handleMovement(latitude: Double, longitude: Double, anchorIsLiveFix: Bool) async -> Result<Void, GeofenceSyncError> {
         // No sequence here: a fresh movement is stamped inside the gate, so a pass acquiring
         // later can never hold an earlier number. See `acquireGateOrDefer`.
-        await handleMovement(
-            latitude: latitude, longitude: longitude, anchorIsLiveFix: anchorIsLiveFix,
-            replaySequence: nil
-        )
+        await handleMovement(latitude: latitude, longitude: longitude, anchorIsLiveFix: anchorIsLiveFix, replaySequence: nil)
     }
 
     /// The movement body, extracted for a single gated exit — same rationale as `performRefresh`.
@@ -241,10 +235,7 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
             return MovementPassOutcome(result: remote, reCentred: true)
         } else if await !movedBeyondRerankRadius(to: movement, config: effectiveConfig) {
             // Always registers the trigger at `movement` before returning.
-            let wake = await performPolygonWakePass(
-                expectedUserId: userId, at: movement, config: effectiveConfig,
-                anchorIsLiveFix: anchorIsLiveFix
-            )
+            let wake = await performPolygonWakePass(expectedUserId: userId, at: movement, config: effectiveConfig, anchorIsLiveFix: anchorIsLiveFix)
             return MovementPassOutcome(result: wake, reCentred: wake.succeeded)
         } else {
             logger.geofenceMovementTrigger(tier: .localRerank)
