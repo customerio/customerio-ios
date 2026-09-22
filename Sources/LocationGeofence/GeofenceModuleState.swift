@@ -122,11 +122,6 @@ final class GeofenceModuleState {
                 longitude: anchor.longitude,
                 anchorIsLiveFix: false
             )
-            // Reconcile visit arming against the config this refresh just landed. The server kill
-            // switch reaches us only here, and setup's arming read the PREVIOUS config — so
-            // without this an account that turns registration off keeps an OS wake source armed
-            // until the next launch.
-            await GeofenceBootstrap.armVisitMonitoring(di: di)
         }
     }
 
@@ -160,9 +155,6 @@ final class GeofenceModuleState {
                 longitude: location.longitude,
                 anchorIsLiveFix: true
             )
-            // Same reconcile as the other refresh path: on a no-anchor identify THIS is the first
-            // refresh, so it can be the one that lands a kill-switched config.
-            await GeofenceBootstrap.armVisitMonitoring(di: di)
         }
     }
 }

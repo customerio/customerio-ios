@@ -82,11 +82,7 @@ enum GeofenceBootstrap {
         // authorization changes re-attempt registration when permission improves; reconciliation
         // re-decides adopt-vs-re-register off live OS truth instead of the pre-reconcile mirror
         // (no-op on classic, whose osMonitoredRegionIdentifiers is already live).
-        let rewire: @MainActor () -> Void = {
-            Task { @MainActor in await GeofenceBootstrap.wireMonitor(di: di) }
-        }
-        monitor.setOnAuthorizationChanged(rewire)
-        monitor.setOnReconciled(rewire)
+        installRerunHandlers(di: di, monitor: monitor, coordinator: coordinator)
 
         // iOS persists `monitoredRegions` across process launch and device reboot. Adopt only when the
         // OS still holds the COMPLETE set we registered last session — re-claim it instead of
@@ -127,7 +123,32 @@ enum GeofenceBootstrap {
         // a relaunch that re-claims OS-persisted regions would report nothing about delivery readiness.
         monitor.reportPermissionTier()
 
-        armVisitMonitoring(di: di, config: cachedConfig)
+        // The ASYNC form on purpose, though `cachedConfig` is in scope: that value was read in
+        // phase 1 and this run has awaited storage and OS registration since. A refresh landing a
+        // kill-switched config in that window reconciles through the chain, and arming here from
+        // the phase-1 value would overwrite the disarm. Going through the chain makes this read
+        // late and apply last.
+        await armVisitMonitoring(di: di)
+    }
+
+    /// The three handlers that re-run work after this setup, installed together and replacing any
+    /// prior ones (no stacking). Extracted only to keep `performWireMonitor` under the body-length
+    /// cap; it is called from the one place.
+    private static func installRerunHandlers(
+        di: DIGraphShared,
+        monitor: GeofenceRegionMonitoring,
+        coordinator: GeofenceSyncCoordinator
+    ) {
+        let rewire: @MainActor () -> Void = {
+            Task { @MainActor in await GeofenceBootstrap.wireMonitor(di: di) }
+        }
+        monitor.setOnAuthorizationChanged(rewire)
+        monitor.setOnReconciled(rewire)
+        // Visit arming is gated on the config, and a refresh can land a new one from a background
+        // path that never reaches `GeofenceModuleState`.
+        coordinator.setOnConfigPersisted {
+            Task { @MainActor in await GeofenceBootstrap.armVisitMonitoring(di: di) }
+        }
     }
 
     /// Arms visit monitoring, but only for an identified user: visits are a wake source, and
@@ -171,10 +192,18 @@ enum GeofenceBootstrap {
         let previous = lastArm
         let run = Task { @MainActor in
             await previous?.value
-            armVisitMonitoring(di: di, config: await di.geofenceStorage.getCachedConfig())
+            armVisitMonitoring(di: di, config: await readCachedConfig(di))
         }
         lastArm = run
         await run.value
+    }
+
+    /// How the async arm reads the config. A seam, and the only one available: the read is the
+    /// suspension point this chain exists to order, and `GeofenceStorage` is a concrete actor that
+    /// cannot be substituted or stalled. Production never reassigns it — matches the
+    /// `MovementFixResolver.requestFreshFix` arrangement.
+    static var readCachedConfig: (DIGraphShared) async -> GeofenceConfig? = {
+        await $0.geofenceStorage.getCachedConfig()
     }
 
     /// Logs a one-line note when cold-wake real-time delivery is unavailable for this

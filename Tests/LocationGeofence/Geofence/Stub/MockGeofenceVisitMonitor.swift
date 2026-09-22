@@ -12,6 +12,14 @@ final class MockGeofenceVisitMonitor: GeofenceVisitMonitoring {
     private(set) var startCallCount = 0
     private(set) var stopCallCount = 0
     private(set) var onVisit: GeofenceVisitHandler?
+    /// Call ORDER, not just counts. Two arms racing can each land once, so the counts are equal
+    /// either way and only the last call says which state the monitor was left in.
+    private(set) var calls: [Call] = []
+
+    enum Call: Equatable {
+        case start
+        case stop
+    }
 
     func setOnVisit(_ handler: GeofenceVisitHandler?) {
         onVisit = handler
@@ -19,10 +27,12 @@ final class MockGeofenceVisitMonitor: GeofenceVisitMonitoring {
 
     func start() {
         startCallCount += 1
+        calls.append(.start)
     }
 
     func stop() {
         stopCallCount += 1
+        calls.append(.stop)
     }
 
     @discardableResult

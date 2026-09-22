@@ -146,6 +146,52 @@ struct GeofenceBootstrapTests {
         #expect(visitMonitor.stopCallCount == 0)
     }
 
+    /// Two arms started from different events must not interleave. The config read is a
+    /// suspension point, so without the chain an arm that read a pre-refresh config resumes AFTER
+    /// the reconcile disarmed and re-arms a kill-switched account.
+    ///
+    /// Asserts on the LAST call, not the counts: both orderings produce one start and one stop,
+    /// and only the order says which state the monitor was left in.
+    @Test
+    func armVisitMonitoring_givenTwoArmsRace_expectTheLaterConfigToWin() async {
+        let di = DIGraphShared.shared
+        let store = BackgroundDeliveryContextStore(
+            fileManager: .default,
+            directoryURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        )
+        store.setUserId("user-1")
+        di.override(value: store, forType: BackgroundDeliveryContextStore.self)
+        let visitMonitor = MockGeofenceVisitMonitor()
+        di.override(value: visitMonitor as GeofenceVisitMonitoring, forType: GeofenceVisitMonitoring.self)
+        let realRead = GeofenceBootstrap.readCachedConfig
+        defer {
+            GeofenceBootstrap.readCachedConfig = realRead
+            di.reset()
+        }
+
+        // The first read stalls holding the PRE-refresh config; every later read sees the
+        // kill-switched one the refresh landed meanwhile.
+        let released = AsyncSignal()
+        let reads = Synchronized<Int>(0)
+        let killSwitched = Self.killSwitchedConfig
+        GeofenceBootstrap.readCachedConfig = { _ in
+            let isFirst = reads.mutating { count in
+                count += 1
+                return count == 1
+            }
+            guard isFirst else { return killSwitched }
+            await released.wait()
+            return .fallback
+        }
+
+        async let first: Void = GeofenceBootstrap.armVisitMonitoring(di: di)
+        async let second: Void = GeofenceBootstrap.armVisitMonitoring(di: di)
+        await released.fire()
+        _ = await(first, second)
+
+        #expect(visitMonitor.calls.last == .stop)
+    }
+
     // MARK: - DI singletons
 
     @Test
@@ -588,4 +634,20 @@ private final class StubProvider: BackgroundDeliveryCdpApiKeyProvider {
     }
 
     var cdpApiKey: String? { value }
+}
+
+private actor AsyncSignal {
+    private var continuation: CheckedContinuation<Void, Never>?
+    private var fired = false
+
+    func wait() async {
+        if fired { return }
+        await withCheckedContinuation { continuation = $0 }
+    }
+
+    func fire() {
+        fired = true
+        continuation?.resume()
+        continuation = nil
+    }
 }
