@@ -289,15 +289,16 @@ struct GeofenceModuleSetupTests {
 
         #expect(f.spyCoordinator.refreshCallsCount == 1)
     }
-}
 
-/// The launch order the SDK actually ships: setup runs before the host calls `identify`, so
-/// bootstrap arms against a nil user and leaves visits off. Only the identify subscription can
-/// turn them on, and without it the in-circle wake never starts for the common flow.
-@Suite("GeofenceModuleSetup visit arming", .serialized)
-@MainActor
-struct GeofenceModuleSetupVisitArmingTests {
+    // MARK: - Visit arming
+
+    /// These live in this suite rather than their own so they do not run in PARALLEL with it.
+    /// Swift Testing runs separate suites concurrently, and both use `@MainActor`; a sibling
+    /// holding the actor starved the disarm hop and timed the barrier out here while the tests
+    /// passed in isolation.
+
     @Test
+    @MainActor
     func identify_givenSetupRanBeforeIdentify_expectVisitsArmed() async throws {
         let f = Fixture(identifiedUserId: nil)
         defer { f.cleanup() }
@@ -322,6 +323,7 @@ struct GeofenceModuleSetupVisitArmingTests {
     /// Sign-out must disarm: a visit waking a signed-out process evaluates an empty set.
     /// `bindVisits` refuses the delivery but leaves the monitor running, so only this disarms.
     @Test
+    @MainActor
     func reset_givenVisitsArmed_expectDisarmed() async throws {
         let f = Fixture(identifiedUserId: "u1")
         defer { f.cleanup() }
