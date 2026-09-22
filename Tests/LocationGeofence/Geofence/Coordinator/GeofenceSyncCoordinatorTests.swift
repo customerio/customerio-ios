@@ -1984,7 +1984,7 @@ struct GeofenceSyncCoordinatorTests {
         // see. A winner must clear a queued movement in the same section that took the gate.
         setup.coordinator.deferredMovement.wrappedValue = GeofenceSyncCoordinatorImpl.DeferredMovement(
             latitude: 9, longitude: 9, anchorIsLiveFix: true,
-            sequence: setup.coordinator.nextMovementSequence()
+            sequence: setup.coordinator.nextMovementSequence(), heldFix: nil
         )
         // From the allocator, and read back BEFORE the call: a literal that happens to equal the
         // next number the gate would mint cannot tell carrying from minting apart.
@@ -1992,7 +1992,7 @@ struct GeofenceSyncCoordinatorTests {
 
         let taken = setup.coordinator.acquireGateOrDefer(
             latitude: 1, longitude: 2, anchorIsLiveFix: true,
-            replaySequence: replay
+            replaySequence: replay, heldFix: nil
         )
 
         // The replay's OWN sequence, not merely "taken": `handleMovement` publishes what comes
@@ -2016,7 +2016,7 @@ struct GeofenceSyncCoordinatorTests {
         // the call is refused as overtaken — an ordering production cannot produce.
         let taken = setup.coordinator.acquireGateOrDefer(
             latitude: 3, longitude: 4, anchorIsLiveFix: false,
-            replaySequence: setup.coordinator.nextMovementSequence()
+            replaySequence: setup.coordinator.nextMovementSequence(), heldFix: nil
         )
 
         #expect(taken == .deferred)
@@ -2034,7 +2034,7 @@ struct GeofenceSyncCoordinatorTests {
 
         // Queue a stale movement by hand, as a losing pass would have.
         setup.coordinator.deferredMovement.wrappedValue = GeofenceSyncCoordinatorImpl.DeferredMovement(
-            latitude: 0, longitude: 0, anchorIsLiveFix: true, sequence: 1
+            latitude: 0, longitude: 0, anchorIsLiveFix: true, sequence: 1, heldFix: nil
         )
         let newer = LocationData(latitude: 0, longitude: 0.05)
         _ = await setup.coordinator.handleMovement(
@@ -2061,7 +2061,7 @@ struct GeofenceSyncCoordinatorTests {
     func drainDeferredMovement_givenANewerMovementAlreadyRan_expectTheReplayDiscarded() async {
         let setup = await makeRegisteredSetup(regions: [], config: diffConfig, storage: makeStorage())
         let stale = GeofenceSyncCoordinatorImpl.DeferredMovement(
-            latitude: 0, longitude: 0, anchorIsLiveFix: true, sequence: 1
+            latitude: 0, longitude: 0, anchorIsLiveFix: true, sequence: 1, heldFix: nil
         )
 
         // The newer movement arrives and completes first, as it would by taking the freed gate.
@@ -2096,7 +2096,7 @@ struct GeofenceSyncCoordinatorTests {
 
         let outcome = setup.coordinator.acquireGateOrDefer(
             latitude: 1, longitude: 2, anchorIsLiveFix: true,
-            replaySequence: 3
+            replaySequence: 3, heldFix: nil
         )
 
         #expect(outcome == .overtaken)
@@ -2118,7 +2118,7 @@ struct GeofenceSyncCoordinatorTests {
         let replay = setup.coordinator.nextMovementSequence()
         let outcome = setup.coordinator.acquireGateOrDefer(
             latitude: 1, longitude: 2, anchorIsLiveFix: true,
-            replaySequence: replay
+            replaySequence: replay, heldFix: nil
         )
 
         #expect(outcome == .taken(sequence: replay))
@@ -2133,12 +2133,12 @@ struct GeofenceSyncCoordinatorTests {
         let setup = makeCoordinator(storage: makeStorage())
         #expect(setup.coordinator.acquireGate())
         setup.coordinator.deferredMovement.wrappedValue = GeofenceSyncCoordinatorImpl.DeferredMovement(
-            latitude: 0, longitude: 0.05, anchorIsLiveFix: true, sequence: 2
+            latitude: 0, longitude: 0.05, anchorIsLiveFix: true, sequence: 2, heldFix: nil
         )
 
         let outcome = setup.coordinator.acquireGateOrDefer(
             latitude: 0, longitude: 0, anchorIsLiveFix: true,
-            replaySequence: 1
+            replaySequence: 1, heldFix: nil
         )
 
         #expect(outcome == .deferred)
@@ -2173,12 +2173,12 @@ struct GeofenceSyncCoordinatorTests {
         let replay = setup.coordinator.nextMovementSequence()
         let queued = setup.coordinator.nextMovementSequence()
         setup.coordinator.deferredMovement.wrappedValue = GeofenceSyncCoordinatorImpl.DeferredMovement(
-            latitude: 0, longitude: 0.05, anchorIsLiveFix: true, sequence: queued
+            latitude: 0, longitude: 0.05, anchorIsLiveFix: true, sequence: queued, heldFix: nil
         )
 
         let outcome = setup.coordinator.acquireGateOrDefer(
             latitude: 0, longitude: 0, anchorIsLiveFix: true,
-            replaySequence: replay
+            replaySequence: replay, heldFix: nil
         )
 
         #expect(outcome == .taken(sequence: replay))
@@ -2192,12 +2192,12 @@ struct GeofenceSyncCoordinatorTests {
     func acquireGateOrDefer_givenAQueuedOlderMovement_expectAFreeGateClearsIt() {
         let setup = makeCoordinator(storage: makeStorage())
         setup.coordinator.deferredMovement.wrappedValue = GeofenceSyncCoordinatorImpl.DeferredMovement(
-            latitude: 0, longitude: 0, anchorIsLiveFix: true, sequence: 1
+            latitude: 0, longitude: 0, anchorIsLiveFix: true, sequence: 1, heldFix: nil
         )
 
         let outcome = setup.coordinator.acquireGateOrDefer(
             latitude: 0, longitude: 0.05, anchorIsLiveFix: true,
-            replaySequence: 2
+            replaySequence: 2, heldFix: nil
         )
 
         #expect(outcome == .taken(sequence: 2))
@@ -2238,7 +2238,7 @@ struct GeofenceSyncCoordinatorTests {
         let setup = makeCoordinator(storage: makeStorage())
         #expect(setup.coordinator.acquireGate())
         setup.coordinator.deferredMovement.wrappedValue = GeofenceSyncCoordinatorImpl.DeferredMovement(
-            latitude: 0, longitude: 0.01, anchorIsLiveFix: true, sequence: 1
+            latitude: 0, longitude: 0.01, anchorIsLiveFix: true, sequence: 1, heldFix: nil
         )
 
         setup.coordinator.discardDeferredAndReleaseGate()
@@ -2247,7 +2247,7 @@ struct GeofenceSyncCoordinatorTests {
         // Free, not merely flagged: the next movement takes it instead of queueing behind it.
         let next = setup.coordinator.acquireGateOrDefer(
             latitude: 0, longitude: 0.1, anchorIsLiveFix: true,
-            replaySequence: 2
+            replaySequence: 2, heldFix: nil
         )
         #expect(next == .taken(sequence: 2))
         setup.coordinator.releaseGate()
@@ -2259,7 +2259,7 @@ struct GeofenceSyncCoordinatorTests {
         let storage = makeStorage()
         let setup = makeCoordinator(storage: storage, contextStore: makeContextStore(userId: nil))
         setup.coordinator.deferredMovement.wrappedValue = GeofenceSyncCoordinatorImpl.DeferredMovement(
-            latitude: 0, longitude: 0.01, anchorIsLiveFix: true, sequence: 1
+            latitude: 0, longitude: 0.01, anchorIsLiveFix: true, sequence: 1, heldFix: nil
         )
 
         _ = await setup.coordinator.reset()
@@ -2398,7 +2398,7 @@ struct GeofenceSyncCoordinatorTests {
         // Queued behind work that has since finished, as a drained-but-not-yet-run replay is.
         let stale = GeofenceSyncCoordinatorImpl.DeferredMovement(
             latitude: 0, longitude: 0, anchorIsLiveFix: true,
-            sequence: setup.coordinator.nextMovementSequence()
+            sequence: setup.coordinator.nextMovementSequence(), heldFix: nil
         )
 
         _ = await setup.coordinator.refresh(latitude: 0, longitude: 0.05, anchorIsLiveFix: true)
@@ -2406,7 +2406,7 @@ struct GeofenceSyncCoordinatorTests {
 
         let outcome = setup.coordinator.acquireGateOrDefer(
             latitude: stale.latitude, longitude: stale.longitude,
-            anchorIsLiveFix: stale.anchorIsLiveFix, replaySequence: stale.sequence
+            anchorIsLiveFix: stale.anchorIsLiveFix, replaySequence: stale.sequence, heldFix: nil
         )
 
         #expect(outcome == .overtaken)
@@ -2515,7 +2515,7 @@ struct GeofenceSyncCoordinatorTests {
         let setup = makeCoordinator(storage: makeStorage())
         // Something already re-centred and published a sequence.
         guard case .taken(let earlier) = setup.coordinator.acquireGateOrDefer(
-            latitude: 0, longitude: 0, anchorIsLiveFix: true, replaySequence: nil
+            latitude: 0, longitude: 0, anchorIsLiveFix: true, replaySequence: nil, heldFix: nil
         ) else {
             Issue.record("expected the free gate to be taken")
             return
@@ -2524,7 +2524,7 @@ struct GeofenceSyncCoordinatorTests {
         setup.coordinator.releaseGate()
 
         let outcome = setup.coordinator.acquireGateOrDefer(
-            latitude: 0, longitude: 0.05, anchorIsLiveFix: true, replaySequence: nil
+            latitude: 0, longitude: 0.05, anchorIsLiveFix: true, replaySequence: nil, heldFix: nil
         )
 
         guard case .taken(let fresh) = outcome else {
@@ -2543,7 +2543,7 @@ struct GeofenceSyncCoordinatorTests {
         setup.coordinator.noteMovementApplied(setup.coordinator.nextMovementSequence())
 
         let outcome = setup.coordinator.acquireGateOrDefer(
-            latitude: 0, longitude: 0, anchorIsLiveFix: true, replaySequence: old
+            latitude: 0, longitude: 0, anchorIsLiveFix: true, replaySequence: old, heldFix: nil
         )
 
         #expect(outcome == .overtaken)

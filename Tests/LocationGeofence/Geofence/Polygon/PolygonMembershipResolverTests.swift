@@ -80,6 +80,102 @@ struct PolygonMembershipResolverTests {
         )
     }
 
+    // MARK: - Held-fix selection
+
+    /// Shahroz's case on #1299: the pass that handed this fix over already spent a corroboration
+    /// request and was answered with a NEWER fix that read outside, so it correctly refused the
+    /// enter. Reusing the held fix re-proposes that arrival, and its own corroboration is then
+    /// refused as an echo of the newer fix — committing the enter UNCONFIRMED from older evidence.
+    @Test
+    func heldFixUse_givenResolverDeliveredANewerFix_expectTheNewerFixUsed() async {
+        let setup = await makeSetup(fix: nil)
+        let held = ResolvedFix(fix(latitude: 0, longitude: 0, at: Date().addingTimeInterval(-5)))
+        // The corroboration answer that contradicted it.
+        let newer = fix(latitude: 1, longitude: 1, at: Date())
+        setup.fixResolver.handleResolvedFix(newer)
+
+        let decision = setup.resolver.heldFixUse(held)
+
+        #expect(decision.use == .newer)
+        #expect(decision.newerFix?.timestamp == newer.timestamp)
+    }
+
+    /// Bugbot's case on the first attempt at this: refusing reuse outright forced a fresh request,
+    /// which the echo guard then refused, losing every polygon in the pass to `no_usable_fix` —
+    /// the exact failure #1299 exists to remove. Substituting must spend no request at all.
+    @Test
+    func passFix_givenANewerFixIsHeld_expectItIsUsedWithoutARequest() async {
+        // `fix: nil` makes any request fail, so a pass that needs one decides nothing.
+        let setup = await makeSetup(fix: nil)
+        let held = ResolvedFix(fix(latitude: 0, longitude: 0, at: Date().addingTimeInterval(-5)))
+        let newer = fix(latitude: 1, longitude: 1, at: Date())
+        setup.fixResolver.handleResolvedFix(newer)
+        let decision = setup.resolver.heldFixUse(held)
+
+        let chosen = await setup.resolver.passFix(heldFix: held, decision: decision, requiringFresh: true)
+
+        #expect(chosen?.location.timestamp == newer.timestamp)
+    }
+
+    /// The age travels with the fix that was chosen, not with the one the caller handed over.
+    @Test
+    func heldFixUse_givenANewerFixIsHeld_expectTheNewerFixAge() async {
+        let setup = await makeSetup(fix: nil)
+        let held = ResolvedFix(fix(latitude: 0, longitude: 0, at: Date().addingTimeInterval(-20)))
+        setup.fixResolver.handleResolvedFix(fix(latitude: 1, longitude: 1, at: Date()))
+
+        let decision = setup.resolver.heldFixUse(held)
+
+        #expect(decision.age < 5)
+    }
+
+    /// A newer fix that is itself past the cap leaves nothing usable held — the caller's is older
+    /// still — so the pass must request rather than judge on either.
+    ///
+    /// The `.tooOld` verdict alone would pass either way — with the substitution removed the held
+    /// fix is past the cap too — so the age bound below is what makes this discriminate.
+    @Test
+    func heldFixUse_givenTheNewerFixIsAlsoPastTheCap_expectTooOld() async {
+        let setup = await makeSetup(fix: nil)
+        let cap = GeofenceConstants.movementFixMaxAge
+        let held = ResolvedFix(fix(latitude: 0, longitude: 0, at: Date().addingTimeInterval(-(cap + 20))))
+        setup.fixResolver.handleResolvedFix(fix(latitude: 1, longitude: 1, at: Date().addingTimeInterval(-(cap + 5))))
+
+        let decision = setup.resolver.heldFixUse(held)
+
+        #expect(decision.use == .tooOld)
+        #expect(decision.newerFix == nil)
+        // Discriminating, and the reason is the commit's own principle: the age comes from
+        // whichever fix was looked at. The newer path reports ~cap+5; without the substitution it
+        // reports the held fix's ~cap+20. The fixture separates them by 15 s so the bound bites.
+        #expect(decision.age < GeofenceConstants.movementFixMaxAge + 10)
+    }
+
+    /// The counterpart, and the whole purpose of #1299: when nothing newer has landed the held fix
+    /// is still reused, so the caller is not made to re-ask and hit the echo refusal.
+    @Test
+    func heldFixUse_givenNothingNewerDelivered_expectReused() async {
+        let setup = await makeSetup(fix: nil)
+        let delivered = fix(latitude: 0, longitude: 0, at: Date().addingTimeInterval(-5))
+        setup.fixResolver.handleResolvedFix(delivered)
+
+        let decision = setup.resolver.heldFixUse(ResolvedFix(delivered))
+
+        #expect(decision.use == .reused)
+    }
+
+    /// Age still wins over supersession: past the cap the pass must request rather than reuse,
+    /// whatever the resolver has delivered since.
+    @Test
+    func heldFixUse_givenHeldFixPastTheAgeCap_expectTooOld() async {
+        let setup = await makeSetup(fix: nil)
+        let stale = Date().addingTimeInterval(-(GeofenceConstants.movementFixMaxAge + 5))
+
+        let decision = setup.resolver.heldFixUse(ResolvedFix(fix(latitude: 0, longitude: 0, at: stale)))
+
+        #expect(decision.use == .tooOld)
+    }
+
     private struct Setup {
         let resolver: PolygonMembershipResolver
         let storage: GeofenceStorage
@@ -1432,6 +1528,145 @@ struct PolygonMembershipResolverTests {
         #expect(logged(logger, "Evaluating 0 polygon(s) (foreground)"))
     }
 
+    // MARK: - A pass running on a fix its caller already holds
+
+    /// Sets up the state a circle-entry re-arm leaves behind: one polygon already decided by a
+    /// forced pass, so this resolver's baseline now stands at that fix, and a second polygon
+    /// registered afterwards that the follow-up pass is supposed to decide.
+    private func afterAnEntryPass(_ setup: Setup) async {
+        await registerPolygons(setup, ids: ["1"])
+        await setup.resolver.evaluateAllPolygons(reason: .movement, requiresFreshFix: true)
+        await registerPolygons(setup, ids: ["1", "2"])
+    }
+
+    /// The defect the held fix exists for, asserted as a control so the fix below cannot pass
+    /// vacuously. `resolveFix(requiringFresh:)` demands a fix strictly newer than the last one
+    /// delivered, and the entry pass has just made that the current one — so the follow-up's own
+    /// request is refused and decides nothing at all.
+    @Test
+    func evaluateAllPolygons_givenAForcedPassRightAfterAnEntry_expectItDecidesNothingOnItsOwn() async {
+        let resolved = fix(latitude: 0, longitude: 0)
+        let setup = await makeSetup(fix: resolved)
+        await afterAnEntryPass(setup)
+
+        await setup.resolver.evaluateAllPolygons(reason: .movement, requiresFreshFix: true)
+
+        #expect(await setup.storage.getPolygonMembership()["2"] == nil)
+        // Prose, not the `why=` token: the `ev=` tail is only appended when diagnostics are on.
+        #expect(logged(setup.logger, "undecided for region 2: no usable fix"))
+    }
+
+    /// The same sequence with the entry's fix handed through: the pass judges against it and the
+    /// second polygon gets a verdict.
+    @Test
+    func evaluateAllPolygons_givenTheCallersFix_expectItDecidesWithoutRequestingAnother() async {
+        let resolved = fix(latitude: 0, longitude: 0)
+        let setup = await makeSetup(fix: resolved)
+        await afterAnEntryPass(setup)
+        let counter = countingRequests(setup)
+
+        await setup.resolver.evaluateAllPolygons(
+            reason: .movement, requiresFreshFix: true, heldFix: ResolvedFix(resolved)
+        )
+
+        // Read into a local: `counter.count == 0` is rewritten to `.isEmpty` by the lint autofix.
+        let requests = counter.count
+        #expect(await setup.storage.getPolygonMembership()["2"]?.membership == .inside)
+        #expect(requests == 0)
+    }
+
+    /// The pass settles its fix's age once and judges every polygon against that. Re-reading the
+    /// clock per polygon asks a question the pass already answered, and can answer it differently
+    /// part-way through: a fix taken just inside `movementFixMaxAge` crosses the cap while the
+    /// pass runs, and every polygon from that point records `fix_too_old` even though the pass
+    /// began with a fix it was entitled to use.
+    ///
+    /// Driven through `evaluate` with the age passed explicitly, because the drift itself is a
+    /// race: handing it a stale fix and a settled age proves the settled value is what gates.
+    /// The gap Shahroz reproduced with a 29.95 s held fix: `heldFixUse` accepted it, then the
+    /// pass re-read the clock, found it past `movementFixMaxAge`, and recorded `fix_too_old` for
+    /// every polygon — while `.tooOld`, the branch that would have requested a replacement, was
+    /// never taken. The age the decision was made on has to travel with the fix.
+    @Test
+    func passFix_givenAReusedHeldFix_expectTheDecisionsAgeNotAFreshReading() async {
+        let setup = await makeSetup(fix: nil)
+        // Deliberately far apart so a re-measurement is unmistakable: the fix reads ~29.95 s old
+        // by the clock, but the decision accepted it at 1 s.
+        let held = ResolvedFix(fix(
+            latitude: 0, longitude: 0,
+            at: Date().addingTimeInterval(-GeofenceConstants.movementFixMaxAge + 0.05)
+        ))
+        let decision = PolygonMembershipResolver.HeldFixDecision(use: .reused, age: 1, newerFix: nil)
+
+        let chosen = await setup.resolver.passFix(heldFix: held, decision: decision, requiringFresh: true)
+
+        #expect(chosen?.age == 1)
+    }
+
+    @Test
+    func evaluate_givenTheFixAgedPastTheCapAfterThePassSettledIt_expectItStillDecides() async {
+        let setup = await makeSetup(fix: nil)
+        await registerPolygons(setup, ids: ["1"])
+        // Older than the cap by the clock, so a recomputed age refuses it outright.
+        let stale = fix(
+            latitude: 0, longitude: 0,
+            at: Date().addingTimeInterval(-GeofenceConstants.movementFixMaxAge - 5)
+        )
+
+        _ = await setup.resolver.evaluate(
+            geofenceId: "1",
+            fix: PolygonMembershipResolver.PassFix(location: stale, age: 0),
+            pass: 1
+        )
+
+        #expect(await setup.storage.getPolygonMembership()["1"]?.membership == .inside)
+    }
+
+    /// A movement deferred at the gate replays with the fix it was recorded with, aged by however
+    /// long the holder ran. Past `movementFixMaxAge` the decision layer refuses it as
+    /// `fix_too_old` and the pass decides nothing — the same loss the held fix exists to prevent,
+    /// reached from the other side. So the resolver must drop it and request instead.
+    @Test
+    func evaluateAllPolygons_givenAHeldFixPastTheAgeCap_expectItRequestsRatherThanReuseIt() async {
+        let setup = await makeSetup(fix: fix(latitude: 0, longitude: 0))
+        await afterAnEntryPass(setup)
+        // Strictly newer than the entry's, so a request that does run is not refused by the
+        // resolver's own baseline guard.
+        let newer = fix(latitude: 0, longitude: 0)
+        setup.fixResolver.requestFreshFix = { [weak fixResolver = setup.fixResolver] in
+            fixResolver?.handleResolvedFix(newer)
+        }
+
+        await setup.resolver.evaluateAllPolygons(
+            reason: .movement, requiresFreshFix: true,
+            heldFix: ResolvedFix(fix(
+                latitude: 0, longitude: 0,
+                at: Date().addingTimeInterval(-GeofenceConstants.movementFixMaxAge - 1)
+            ))
+        )
+
+        // Reusing it instead would have left this nil, refused as `fix_too_old`.
+        #expect(await setup.storage.getPolygonMembership()["2"]?.membership == .inside)
+    }
+
+    /// The held fix is judged on its own accuracy, not waved through because a caller supplied it.
+    /// A fix too coarse to decide the ring must still come back undecided — otherwise threading it
+    /// in would quietly bypass the margin rule that every other pass obeys.
+    @Test
+    func evaluateAllPolygons_givenACoarseHeldFix_expectItIsStillJudgedOnAccuracy() async {
+        let resolved = fix(latitude: 0, longitude: 0)
+        let setup = await makeSetup(fix: resolved)
+        await afterAnEntryPass(setup)
+
+        // 500 m of uncertainty around a ~360 m square: nothing about this point is decisive.
+        await setup.resolver.evaluateAllPolygons(
+            reason: .movement, requiresFreshFix: true,
+            heldFix: ResolvedFix(fix(latitude: 0, longitude: 0, accuracy: 500))
+        )
+
+        #expect(await setup.storage.getPolygonMembership()["2"] == nil)
+    }
+
     // MARK: - Corroboration independence
 
     /// A latitude `metres` INSIDE the square's northern edge, so `signedEdgeDistance` is that many
@@ -1567,8 +1802,8 @@ struct PolygonMembershipResolverTests {
 
         // Distinct pass numbers because these ARE two passes; the point of the test is that the
         // second does not inherit the first's corroboration attempt.
-        await setup.resolver.runPass(geofenceIds: ["1"], fix: passFix, pass: 1)
-        await setup.resolver.runPass(geofenceIds: ["1"], fix: passFix, pass: 2)
+        await setup.resolver.runPass(geofenceIds: ["1"], fix: .init(location: passFix, age: -passFix.timestamp.timeIntervalSinceNow), pass: 1)
+        await setup.resolver.runPass(geofenceIds: ["1"], fix: .init(location: passFix, age: -passFix.timestamp.timeIntervalSinceNow), pass: 2)
 
         #expect(counter.count == 2)
     }

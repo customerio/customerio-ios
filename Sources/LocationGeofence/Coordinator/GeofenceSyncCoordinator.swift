@@ -26,10 +26,13 @@ enum HandleMovementTier: String, Sendable, CaseIterable {
 ///   whether the coordinates describe where the device is NOW or are a stored value standing in for
 ///   it; only the caller knows, and the movement trigger cannot be sized to a polygon boundary
 ///   around a point the device may not be at.
-/// - `handleMovement(latitude:longitude:anchorIsLiveFix:)` — movement-trigger EXIT entry. Re-ranks
-///   the cached set for the new location; bootstraps from the server only when there's no anchor.
-///   Shares the same dedup gate as `refresh`. A movement pass whose fresh-fix request failed carries
-///   the cached fix that prompted it, so this entry is not automatically live either.
+/// - `handleMovement(latitude:longitude:anchorIsLiveFix:heldFix:)` — movement-trigger EXIT entry.
+///   Re-ranks the cached set for the new location; bootstraps from the server only when there's no
+///   anchor. Shares the same dedup gate as `refresh`. A movement pass whose fresh-fix request failed
+///   carries the cached fix that prompted it, so this entry is not automatically live either.
+///   `heldFix` is a fix the CALLER has already obtained and gated; the membership re-evaluation this
+///   entry starts runs against it instead of requesting one of its own. Nil for a trigger EXIT,
+///   which holds nothing.
 /// - `applyCachedRegistration(...)` — synchronously register from caller-fetched state,
 ///   used by cold-wake / boot / auth-change paths. Synchronous on the main actor so
 ///   `ownedRegionIdentifiers` is populated before the next yield — otherwise the OS may
@@ -39,7 +42,9 @@ enum HandleMovementTier: String, Sendable, CaseIterable {
 ///   state (cooldowns, last-sync). Preserves the workspace cache.
 protocol GeofenceSyncCoordinator: AutoMockable, AnyObject, Sendable {
     func refresh(latitude: Double, longitude: Double, anchorIsLiveFix: Bool) async -> Result<Void, GeofenceSyncError>
-    func handleMovement(latitude: Double, longitude: Double, anchorIsLiveFix: Bool) async -> Result<Void, GeofenceSyncError>
+    func handleMovement(
+        latitude: Double, longitude: Double, anchorIsLiveFix: Bool, heldFix: ResolvedFix?
+    ) async -> Result<Void, GeofenceSyncError>
     func reset() async -> Result<Void, GeofenceSyncError>
     @MainActor
     func applyCachedRegistration(
@@ -180,10 +185,17 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
         }
     }
 
-    func handleMovement(latitude: Double, longitude: Double, anchorIsLiveFix: Bool) async -> Result<Void, GeofenceSyncError> {
+    // `heldFix` is defaulted here rather than in the protocol, which cannot carry default
+    // arguments: every caller but the circle-entry re-arm holds no fix.
+    func handleMovement(
+        latitude: Double, longitude: Double, anchorIsLiveFix: Bool, heldFix: ResolvedFix? = nil
+    ) async -> Result<Void, GeofenceSyncError> {
         // No sequence here: a fresh movement is stamped inside the gate, so a pass acquiring
         // later can never hold an earlier number. See `acquireGateOrDefer`.
-        await handleMovement(latitude: latitude, longitude: longitude, anchorIsLiveFix: anchorIsLiveFix, replaySequence: nil)
+        await handleMovement(
+            latitude: latitude, longitude: longitude, anchorIsLiveFix: anchorIsLiveFix,
+            replaySequence: nil, heldFix: heldFix
+        )
     }
 
     /// The movement body, extracted for a single gated exit — same rationale as `performRefresh`.
@@ -192,7 +204,8 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
         expectedUserId: String?,
         latitude: Double,
         longitude: Double,
-        anchorIsLiveFix: Bool
+        anchorIsLiveFix: Bool,
+        heldFix: ResolvedFix?
     ) async -> MovementPassOutcome {
         guard let userId = expectedUserId else {
             logger.geofenceSyncSkipped(reason: .noIdentifiedUser)
@@ -212,7 +225,8 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
                 expectedUserId: userId,
                 anchor: movement,
                 cachedConfig: cachedConfig,
-                anchorIsLiveFix: anchorIsLiveFix
+                anchorIsLiveFix: anchorIsLiveFix,
+                heldFix: heldFix
             )
             if case .failure = remote.result {
                 // A failed pass never re-centers the trigger, leaving it on the circle the device
@@ -223,7 +237,8 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
                     anchor: movement,
                     config: effectiveConfig,
                     cachedRegions: await storage.getCachedGeofences(),
-                    anchorIsLiveFix: anchorIsLiveFix
+                    anchorIsLiveFix: anchorIsLiveFix,
+                    heldFix: heldFix
                 )
                 // The fetch failed but the re-arm may still have moved the trigger, and it is the
                 // MOVE an older replay must not undo. Reporting this as "nothing happened" is what
@@ -233,7 +248,7 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
             return remote
         } else if await !movedBeyondRerankRadius(to: movement, config: effectiveConfig) {
             // Always registers the trigger at `movement` before returning.
-            return await performPolygonWakePass(expectedUserId: userId, at: movement, config: effectiveConfig, anchorIsLiveFix: anchorIsLiveFix)
+            return await performPolygonWakePass(expectedUserId: userId, at: movement, config: effectiveConfig, anchorIsLiveFix: anchorIsLiveFix, heldFix: heldFix)
         } else {
             logger.geofenceMovementTrigger(tier: .localRerank)
             let cachedRegions = await storage.getCachedGeofences()
@@ -242,7 +257,8 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
                 anchor: movement,
                 config: effectiveConfig,
                 cachedRegions: cachedRegions,
-                anchorIsLiveFix: anchorIsLiveFix
+                anchorIsLiveFix: anchorIsLiveFix,
+                heldFix: heldFix
             )
         }
     }
@@ -274,81 +290,6 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
         await MainActor.run { monitor.stopMonitoringAll() }
         logger.geofenceResetCompleted()
         return .success(())
-    }
-
-    @MainActor
-    func applyCachedRegistration(
-        cachedRegions: [Geofence],
-        anchor: LocationData?,
-        config: GeofenceConfig?,
-        userId: String?
-    ) -> GeofenceRegistration? {
-        let syncStartedAt = GeofenceLog.monotonicNow()
-        guard let userId, !userId.isEmpty else {
-            logger.geofenceSyncSkipped(reason: .noIdentifiedUser)
-            return nil
-        }
-        // No early return on an empty cache: an empty nearby response clears it while the movement
-        // trigger stays armed, so this is what re-arms the trigger if the OS dropped our regions.
-        // Need an anchor to distance-filter and to center the movement trigger. Skipping
-        // when absent is safer than re-using an arbitrary location.
-        guard let anchor else {
-            logger.geofenceSyncSkipped(reason: .noLastSyncAnchor)
-            return nil
-        }
-        // Stamped with the gate, not after registering: a movement arriving while this restore
-        // is talking to the OS would otherwise hold the lower sequence and be retired by the
-        // older restore coordinates.
-        guard let restoreSequence = acquireGateWithSequence() else {
-            logger.geofenceSyncSkipped(reason: .restoreInProgress)
-            return nil
-        }
-        // Drains like every other gate holder: a movement that lost the gate to a cache restore
-        // is still the only thing that re-centres the trigger.
-        defer {
-            releaseGate()
-            drainDeferredMovement(userChanged: false)
-        }
-
-        let effectiveConfig = config ?? .fallback
-        let nearest = distanceFilter.nearest(monitorableRegions(cachedRegions), to: anchor, limit: effectiveConfig.maxBusinessGeofences, maxDistance: effectiveConfig.maxMonitoringDistance)
-        let registerMovementTrigger = effectiveConfig.maxBusinessGeofences > 0
-        let nearestIds = Set(nearest.map(\.id))
-        logRanking(candidates: cachedRegions, nearest: nearest, nearestIds: nearestIds, anchor: anchor)
-        let osRegistration = registerWithOsSync(
-            businessRegions: nearest,
-            movementTriggerLocation: anchor,
-            // The full refresh radius, NOT a boundary-sized one: this path has no live fix. While
-            // monitoring is live the recorded centre stays within `localRefreshTriggerRadius` of
-            // the device, but this path exists precisely because the OS dropped the regions and the
-            // process died — nothing re-recorded it, so the device can be arbitrarily far away. A
-            // boundary-sized circle there would be one the device already stands outside. The first
-            // movement pass re-arms against a live fix.
-            movementTriggerRadius: effectiveConfig.localRefreshTriggerRadius,
-            registerMovementTrigger: registerMovementTrigger
-        )
-        let registration = logRegistration(
-            registeredIds: osRegistration.registeredIds,
-            anchor: anchor,
-            registerMovementTrigger: registerMovementTrigger,
-            triggerRadius: effectiveConfig.localRefreshTriggerRadius
-        )
-        logSyncCompleted(registration, requested: (nearest.count, registerMovementTrigger), startedAt: syncStartedAt)
-        // Same reason as `refresh`: this planted the trigger, so a replay older than it must be
-        // retired rather than allowed to move it back. The sequence is the one taken at entry, not
-        // a fresh one — allocating here would rank this restore above a movement that arrived
-        // while it was registering, and retire the newer coordinates.
-        //
-        // Keyed on what the OS holds, not on `registerMovementTrigger`: that flag is the intent to
-        // register, and the OS still drops the trigger for blocked permission or invalid
-        // coordinates. Retiring a replay off an intent that did not land strands the trigger.
-        if osRegistration.movementTriggerPlanted { noteMovementApplied(restoreSequence) }
-        // No initial-enter here: a cold-wake restore of the pre-kill set (not new registrations) off a
-        // possibly-stale anchor. Genuinely-new fences come from a refresh fetch, which emits there.
-        // Only what the OS took, for the same reason as the refresh paths: an oversized polygon is
-        // deliberately unregistered, and recording it would have the resolver decide membership for
-        // a fence with no wake behind it.
-        return GeofenceRegistration(center: anchor, businessIds: nearestIds.intersection(osRegistration.registeredIds))
     }
 
     // `internal`, not `private`, only because the gate helpers live in a split extension file.

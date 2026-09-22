@@ -10,7 +10,8 @@ import Foundation
 /// polygon carries whatever trigger it arrived with, which after a drive is the full refresh
 /// radius, and nothing wakes us until it moves that far again.
 ///
-/// Carries the fix rather than a bare flag because the wake radius cannot be sized without one.
+/// Carries the fix rather than a bare flag because the wake radius cannot be sized without one,
+/// and because the re-evaluation the caller starts would otherwise request the same moment again.
 /// The transition itself dispatches with `locationIsFresh == false` on both monitor paths —
 /// business events deliberately carry their coordinates "for context only" — and
 /// `GeofenceSyncCoordinator` widens the trigger to the full refresh radius for any anchor that is
@@ -19,7 +20,7 @@ import Foundation
 /// membership pass already obtained and gated, so it costs no extra request.
 enum PolygonTransitionOutcome: Equatable {
     /// A polygon's covering circle was entered and this fix decided the membership question.
-    case circleEntered(fix: LocationData)
+    case circleEntered(fix: ResolvedFix)
     /// Everything else: a circle fence, an uncached id, any exit, or an enter that produced no
     /// usable fix. Nothing here changes what the wake should be sized against.
     case nothingToRearm

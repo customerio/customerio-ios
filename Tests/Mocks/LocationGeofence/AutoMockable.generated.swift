@@ -312,14 +312,14 @@ class GeofenceSyncCoordinatorMock: @unchecked Sendable, GeofenceSyncCoordinator,
     }
 
     /// The arguments from the *last* time the function was called.
-    private let _handleMovementReceivedArguments: CioInternalCommon.Synchronized<(latitude: Double, longitude: Double, anchorIsLiveFix: Bool)?> = .init(nil)
-    var handleMovementReceivedArguments: (latitude: Double, longitude: Double, anchorIsLiveFix: Bool)? {
+    private let _handleMovementReceivedArguments: CioInternalCommon.Synchronized<(latitude: Double, longitude: Double, anchorIsLiveFix: Bool, heldFix: ResolvedFix?)?> = .init(nil)
+    var handleMovementReceivedArguments: (latitude: Double, longitude: Double, anchorIsLiveFix: Bool, heldFix: ResolvedFix?)? {
         _handleMovementReceivedArguments.wrappedValue
     }
 
     /// Arguments from *all* of the times that the function was called.
-    private let _handleMovementReceivedInvocations: CioInternalCommon.Synchronized<[(latitude: Double, longitude: Double, anchorIsLiveFix: Bool)]> = .init([])
-    var handleMovementReceivedInvocations: [(latitude: Double, longitude: Double, anchorIsLiveFix: Bool)] {
+    private let _handleMovementReceivedInvocations: CioInternalCommon.Synchronized<[(latitude: Double, longitude: Double, anchorIsLiveFix: Bool, heldFix: ResolvedFix?)]> = .init([])
+    var handleMovementReceivedInvocations: [(latitude: Double, longitude: Double, anchorIsLiveFix: Bool, heldFix: ResolvedFix?)] {
         _handleMovementReceivedInvocations.wrappedValue
     }
 
@@ -335,15 +335,15 @@ class GeofenceSyncCoordinatorMock: @unchecked Sendable, GeofenceSyncCoordinator,
      The closure has first priority to return a value for the mocked function. If the closure returns `nil`,
      then the mock will attempt to return the value for `handleMovementReturnValue`
      */
-    var handleMovementClosure: ((Double, Double, Bool) -> Result<Void, GeofenceSyncError>)?
+    var handleMovementClosure: ((Double, Double, Bool, ResolvedFix?) -> Result<Void, GeofenceSyncError>)?
 
-    /// Mocked function for `handleMovement(latitude: Double, longitude: Double, anchorIsLiveFix: Bool)`. Your opportunity to return a mocked value and check result of mock in test code.
-    func handleMovement(latitude: Double, longitude: Double, anchorIsLiveFix: Bool) -> Result<Void, GeofenceSyncError> {
+    /// Mocked function for `handleMovement(latitude: Double, longitude: Double, anchorIsLiveFix: Bool, heldFix: ResolvedFix?)`. Your opportunity to return a mocked value and check result of mock in test code.
+    func handleMovement(latitude: Double, longitude: Double, anchorIsLiveFix: Bool, heldFix: ResolvedFix?) -> Result<Void, GeofenceSyncError> {
         mockCalled = true
         _handleMovementCallsCount += 1
-        _handleMovementReceivedArguments.wrappedValue = (latitude: latitude, longitude: longitude, anchorIsLiveFix: anchorIsLiveFix)
-        _handleMovementReceivedInvocations.append((latitude: latitude, longitude: longitude, anchorIsLiveFix: anchorIsLiveFix))
-        return handleMovementClosure.map { $0(latitude, longitude, anchorIsLiveFix) } ?? handleMovementReturnValue
+        _handleMovementReceivedArguments.wrappedValue = (latitude: latitude, longitude: longitude, anchorIsLiveFix: anchorIsLiveFix, heldFix: heldFix)
+        _handleMovementReceivedInvocations.append((latitude: latitude, longitude: longitude, anchorIsLiveFix: anchorIsLiveFix, heldFix: heldFix))
+        return handleMovementClosure.map { $0(latitude, longitude, anchorIsLiveFix, heldFix) } ?? handleMovementReturnValue
     }
 
     // MARK: - reset

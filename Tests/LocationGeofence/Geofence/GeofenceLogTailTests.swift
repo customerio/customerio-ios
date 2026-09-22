@@ -400,6 +400,10 @@ struct GeofenceLogTailTests {
             "within_accuracy", "fix_too_old", "accuracy_too_low", "corroboration_unnecessary",
             "corroboration_disagreed", "corroboration_not_independent"
         ])
+        // Written under `held=`. `none`, `reused` and `newer` take the defaulted token, which a
+        // rename would silently change — the formatter strips a spelled-out raw value that matches
+        // its case name, so this pin is the only thing holding them.
+        expectTokens(PolygonMembershipResolver.HeldFixUse.self, ["none", "reused", "too_old", "newer"])
         expectTokens(GeofenceFixPurpose.self, ["movement", "gate", "heal", "pending", "polygon"])
         expectTokens(GeofenceCatalogShape.self, ["circle", "polygon", "undescribed", "unknown"])
         expectTokens(GeofenceLog.FixSource.self, ["manager_cache", "resolver", "fresh_request", "gate", "synthetic", "none"])
