@@ -129,7 +129,7 @@ struct GeofenceLogTailTests {
             Invocation(name: "visitMonitoringStarted", ev: "visit.monitoring", requiredKeys: ["state"]) { $0.geofenceVisitMonitoringStarted() },
             Invocation(name: "visitMonitoringStopped", ev: "visit.monitoring", requiredKeys: ["state"]) { $0.geofenceVisitMonitoringStopped() },
             Invocation(name: "visitMonitoringSkipped", ev: "visit.monitoring", requiredKeys: ["state", "why", "status"]) { $0.geofenceVisitMonitoringSkipped(status: CLAuthorizationStatus.authorizedWhenInUse.rawValue) },
-            Invocation(name: "visitReported", ev: "visit.reported", requiredKeys: ["edge", "acc", "delay"]) { $0.geofenceVisitReported(isArrival: true, horizontalAccuracy: 30, reportDelay: 960) }
+            Invocation(name: "visitReported", ev: "visit.reported", requiredKeys: ["edge", "lat", "lon", "acc", "delay"]) { $0.geofenceVisitReported(coordinate: LocationData(latitude: 25.1, longitude: 55.2), isArrival: true, horizontalAccuracy: 30, reportDelay: 960) }
         ]
     }
 

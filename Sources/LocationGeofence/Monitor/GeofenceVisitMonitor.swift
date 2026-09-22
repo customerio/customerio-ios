@@ -135,6 +135,7 @@ final class GeofenceVisitMonitor: NSObject, GeofenceVisitMonitoring, @preconcurr
             departureDate: visit.departureDate
         )
         logger.geofenceVisitReported(
+            coordinate: reported.coordinate,
             isArrival: reported.isArrival,
             horizontalAccuracy: reported.horizontalAccuracy,
             reportDelay: reported.isArrival

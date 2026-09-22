@@ -42,11 +42,20 @@ extension Logger {
 
     /// `delay` is how long after the visit edge iOS told us — routinely minutes, which is why the
     /// visit coordinate is never used as an anchor.
-    func geofenceVisitReported(isArrival: Bool, horizontalAccuracy: Double, reportDelay: TimeInterval) {
+    func geofenceVisitReported(
+        coordinate: LocationData,
+        isArrival: Bool,
+        horizontalAccuracy: Double,
+        reportDelay: TimeInterval
+    ) {
         debug(
             "Visit \(isArrival ? "arrival" : "departure") reported after \(Int(reportDelay))s"
                 + geofenceTail("visit.reported", .input, [
                     ("edge", isArrival ? "arrival" : "departure"),
+                    // Recorded because this is an OS-delivered input and a transcript has to carry
+                    // what the OS handed over. Never read as an anchor — see `GeofenceVisit`.
+                    ("lat", GeofenceLog.num(coordinate.latitude, 5)),
+                    ("lon", GeofenceLog.num(coordinate.longitude, 5)),
                     ("acc", GeofenceLog.num(horizontalAccuracy)),
                     ("delay", GeofenceLog.num(reportDelay, 0))
                 ]),
