@@ -52,6 +52,16 @@ struct GeofenceBootstrapTests {
         #expect(logger.infoCallsCount == 0)
     }
 
+    /// `maxBusinessGeofences == 0` — the server turning geofence registration off.
+    private static let killSwitchedConfig = GeofenceConfig(
+        localRefreshTriggerRadius: 750,
+        remoteFetchRefreshTriggerRadius: 3000,
+        remoteFetchRefreshExpiry: 86400,
+        duplicateEventsExpiry: 60,
+        maxBusinessGeofences: 0,
+        maxMonitoringDistance: GeofenceConstants.noMonitoringDistanceCap
+    )
+
     // MARK: - Visit arming
 
     /// Arming is gated on identity, and setup runs BEFORE the host calls `identify`, so both
@@ -69,7 +79,7 @@ struct GeofenceBootstrapTests {
         di.override(value: visitMonitor as GeofenceVisitMonitoring, forType: GeofenceVisitMonitoring.self)
         defer { di.reset() }
 
-        GeofenceBootstrap.armVisitMonitoring(di: di)
+        GeofenceBootstrap.armVisitMonitoring(di: di, config: nil)
 
         #expect(visitMonitor.startCallCount == 1)
         #expect(visitMonitor.stopCallCount == 0)
@@ -88,10 +98,52 @@ struct GeofenceBootstrapTests {
         di.override(value: visitMonitor as GeofenceVisitMonitoring, forType: GeofenceVisitMonitoring.self)
         defer { di.reset() }
 
-        GeofenceBootstrap.armVisitMonitoring(di: di)
+        GeofenceBootstrap.armVisitMonitoring(di: di, config: nil)
 
         #expect(visitMonitor.startCallCount == 0)
         #expect(visitMonitor.stopCallCount == 1)
+    }
+
+    /// A kill-switched account registers nothing, so a visit would wake the process to evaluate
+    /// an empty set. `bindVisits` cannot close this — it answers `true` for an identified user.
+    @Test
+    func armVisitMonitoring_givenRegistrationKillSwitched_expectStopped() {
+        let di = DIGraphShared.shared
+        let store = BackgroundDeliveryContextStore(
+            fileManager: .default,
+            directoryURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        )
+        store.setUserId("user-1")
+        di.override(value: store, forType: BackgroundDeliveryContextStore.self)
+        let visitMonitor = MockGeofenceVisitMonitor()
+        di.override(value: visitMonitor as GeofenceVisitMonitoring, forType: GeofenceVisitMonitoring.self)
+        defer { di.reset() }
+
+        GeofenceBootstrap.armVisitMonitoring(di: di, config: Self.killSwitchedConfig)
+
+        #expect(visitMonitor.startCallCount == 0)
+        #expect(visitMonitor.stopCallCount == 1)
+    }
+
+    /// The counterpart: a config that DOES allow registration still arms, so the gate above is
+    /// the kill switch and not the presence of a config.
+    @Test
+    func armVisitMonitoring_givenRegistrationEnabled_expectStarted() {
+        let di = DIGraphShared.shared
+        let store = BackgroundDeliveryContextStore(
+            fileManager: .default,
+            directoryURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        )
+        store.setUserId("user-1")
+        di.override(value: store, forType: BackgroundDeliveryContextStore.self)
+        let visitMonitor = MockGeofenceVisitMonitor()
+        di.override(value: visitMonitor as GeofenceVisitMonitoring, forType: GeofenceVisitMonitoring.self)
+        defer { di.reset() }
+
+        GeofenceBootstrap.armVisitMonitoring(di: di, config: .fallback)
+
+        #expect(visitMonitor.startCallCount == 1)
+        #expect(visitMonitor.stopCallCount == 0)
     }
 
     // MARK: - DI singletons

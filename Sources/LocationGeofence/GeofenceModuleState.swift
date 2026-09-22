@@ -62,7 +62,7 @@ final class GeofenceModuleState {
             // Setup runs before the host calls `identify`, so `wireMonitor` almost always arms
             // against a nil user and leaves visits off. Without this the in-circle wake never
             // starts on the ordinary launch order, which is the case the visit wake exists for.
-            Task { @MainActor in GeofenceBootstrap.armVisitMonitoring(di: di) }
+            Task { @MainActor in await GeofenceBootstrap.armVisitMonitoring(di: di) }
             self?.refreshGeofencesIfPossible(di: di)
         }
         di.eventBusHandler.addObserver(ResetEvent.self) { [weak self] _ in
@@ -75,7 +75,7 @@ final class GeofenceModuleState {
                 _ = await di.geofenceSyncCoordinator.reset()
                 // Disarms through the same call: a visit waking a signed-out process evaluates an
                 // empty set. `bindVisits` only refuses the delivery, it does not stop the monitor.
-                GeofenceBootstrap.armVisitMonitoring(di: di)
+                await GeofenceBootstrap.armVisitMonitoring(di: di)
             }
         }
         // Rearm first-run refresh on the first fresh fix after an identify skipped for no anchor.
@@ -122,6 +122,11 @@ final class GeofenceModuleState {
                 longitude: anchor.longitude,
                 anchorIsLiveFix: false
             )
+            // Reconcile visit arming against the config this refresh just landed. The server kill
+            // switch reaches us only here, and setup's arming read the PREVIOUS config — so
+            // without this an account that turns registration off keeps an OS wake source armed
+            // until the next launch.
+            await GeofenceBootstrap.armVisitMonitoring(di: di)
         }
     }
 

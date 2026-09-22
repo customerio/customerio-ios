@@ -125,7 +125,7 @@ enum GeofenceBootstrap {
         // a relaunch that re-claims OS-persisted regions would report nothing about delivery readiness.
         monitor.reportPermissionTier()
 
-        armVisitMonitoring(di: di)
+        armVisitMonitoring(di: di, config: cachedConfig)
     }
 
     /// Arms visit monitoring, but only for an identified user: visits are a wake source, and
@@ -139,12 +139,28 @@ enum GeofenceBootstrap {
     ///
     /// Runs at the tail of setup, after the adopt-or-register decision has settled what we
     /// monitor — unlike the handler, which must be wired before any await.
-    static func armVisitMonitoring(di: DIGraphShared) {
-        if di.backgroundDeliveryContextStore.currentUserId != nil {
+    ///
+    /// - Parameter config: the effective config, `nil` when none is cached. A kill-switched
+    ///   account (`maxBusinessGeofences == 0`) registers nothing, so a visit would wake the
+    ///   process to evaluate an empty set — an OS wake source left running after the account
+    ///   turned registration off. The `bindVisits` handler cannot close this: it answers `true`
+    ///   for an identified user, so the monitor keeps running. `nil` arms, because first launch
+    ///   has no cached config and must still set up; a refresh then reconciles.
+    ///
+    /// The empty CATALOG is deliberately not the gate — first launch is legitimately empty, and
+    /// gating on it would never arm at all.
+    static func armVisitMonitoring(di: DIGraphShared, config: GeofenceConfig?) {
+        let registrationEnabled = (config ?? .fallback).maxBusinessGeofences > 0
+        if di.backgroundDeliveryContextStore.currentUserId != nil, registrationEnabled {
             di.geofenceVisitMonitor.start()
         } else {
             di.geofenceVisitMonitor.stop()
         }
+    }
+
+    /// Reads the cached config first, for callers that do not already hold one.
+    static func armVisitMonitoring(di: DIGraphShared) async {
+        armVisitMonitoring(di: di, config: await di.geofenceStorage.getCachedConfig())
     }
 
     /// Logs a one-line note when cold-wake real-time delivery is unavailable for this
