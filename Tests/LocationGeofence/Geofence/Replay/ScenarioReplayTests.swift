@@ -15,6 +15,43 @@ import Testing
 @Suite("Scenario replay", .serialized)
 @MainActor
 struct ScenarioReplayTests {
+    /// Provenance must not default to `recorded`.
+    ///
+    /// It did, and an authored scenario whose header omitted `source` was then counted as a phone
+    /// capture — enough on its own to satisfy the "did discovery find any drives?" guard, which is
+    /// the emptiness check inverted. Reproduced by deleting `source` from an authored scenario and
+    /// running a one-file corpus: discovery and replay both passed over zero drives.
+    @Test
+    func load_givenHeaderWithoutSource_expectUnknownProvenance() throws {
+        let scenario = try ScenarioLoader.parse("""
+        {"k":"scenario","v":1,"name":"no-source","platform":"ios","t0":"t"}
+        {"k":"when","at":0.0,"ev":"process.start","session":1}
+        """)
+
+        #expect(scenario.header.sourceKind == "unknown")
+        #expect(scenario.isRecorded == false)
+    }
+
+    @Test
+    func load_givenAuthoredSource_expectNotCountedAsADrive() throws {
+        let scenario = try ScenarioLoader.parse("""
+        {"k":"scenario","v":1,"name":"authored","platform":"any","t0":"t","source":{"kind":"authored"}}
+        {"k":"when","at":0.0,"ev":"process.start","session":1}
+        """)
+
+        #expect(scenario.isRecorded == false)
+    }
+
+    @Test
+    func load_givenRecordedSource_expectCountedAsADrive() throws {
+        let scenario = try ScenarioLoader.parse("""
+        {"k":"scenario","v":1,"name":"recorded","platform":"ios","t0":"t","source":{"kind":"recorded"}}
+        {"k":"when","at":0.0,"ev":"process.start","session":1}
+        """)
+
+        #expect(scenario.isRecorded)
+    }
+
     /// The runner's stimulus list must be ordered the way the runner *delivered*, not the way the
     /// file happened to be written.
     ///
