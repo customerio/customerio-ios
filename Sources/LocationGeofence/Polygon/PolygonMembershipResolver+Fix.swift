@@ -69,6 +69,11 @@ extension PolygonMembershipResolver {
         let use: HeldFixUse
         let age: TimeInterval
         /// Set only for `.newer`: the fix the pass judges on in place of the caller's.
+        ///
+        /// A real `CLLocation`, and it must stay one. Rebuilding it as a `ResolvedFix` for
+        /// symmetry with the held path would zero the altitude and drop the vertical accuracy —
+        /// which is exactly the coarse-cell-fix signature our drive analysis reads, and which
+        /// `ResolvedFix` warns about on its own `location`.
         let newerFix: CLLocation?
     }
 

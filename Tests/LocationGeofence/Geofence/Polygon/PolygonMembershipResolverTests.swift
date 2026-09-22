@@ -132,9 +132,8 @@ struct PolygonMembershipResolverTests {
     /// A newer fix that is itself past the cap leaves nothing usable held — the caller's is older
     /// still — so the pass must request rather than judge on either.
     ///
-    /// A boundary guard, not a discriminator: with the substitution removed the held fix is past
-    /// the cap too, so this passes either way. It exists to stop a later change handing back
-    /// `.newer` for a fix that is itself too old.
+    /// The `.tooOld` verdict alone would pass either way — with the substitution removed the held
+    /// fix is past the cap too — so the age bound below is what makes this discriminate.
     @Test
     func heldFixUse_givenTheNewerFixIsAlsoPastTheCap_expectTooOld() async {
         let setup = await makeSetup(fix: nil)
@@ -146,6 +145,10 @@ struct PolygonMembershipResolverTests {
 
         #expect(decision.use == .tooOld)
         #expect(decision.newerFix == nil)
+        // Discriminating, and the reason is the commit's own principle: the age comes from
+        // whichever fix was looked at. The newer path reports ~cap+5; without the substitution it
+        // reports the held fix's ~cap+20. The fixture separates them by 15 s so the bound bites.
+        #expect(decision.age < GeofenceConstants.movementFixMaxAge + 10)
     }
 
     /// The counterpart, and the whole purpose of #1299: when nothing newer has landed the held fix
