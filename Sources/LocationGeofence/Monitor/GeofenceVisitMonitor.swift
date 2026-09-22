@@ -54,6 +54,9 @@ final class GeofenceVisitMonitor: NSObject, GeofenceVisitMonitoring, @preconcurr
     private let authorizationStatus: @MainActor () -> CLAuthorizationStatus
     private var onVisit: GeofenceVisitHandler?
     private var started = false
+    /// Whether this instance has pushed a stop to CoreLocation. Separate from `started` because
+    /// the OS state survives process death; see `stop()`.
+    private var hasRequestedStop = false
 
     /// - Parameter authorizationStatus: overridable only so a test can drive a permission change.
     ///   The real status is the process's, and no unit test can move it.
@@ -107,8 +110,15 @@ final class GeofenceVisitMonitor: NSObject, GeofenceVisitMonitoring, @preconcurr
     }
 
     func stop() {
-        guard started else { return }
+        // `started` describes THIS instance, and visit monitoring outlives the process: the OS
+        // keeps delivering to a relaunched app that never re-armed. So on a fresh instance
+        // `started == false` says nothing about whether the service is running, and the first
+        // disarm has to reach CoreLocation regardless — a cold launch that refreshes a
+        // kill-switched config before arming would otherwise leave the previous session's visit
+        // service alive with nothing to turn it off. Later no-op stops are still suppressed.
+        guard started || !hasRequestedStop else { return }
         started = false
+        hasRequestedStop = true
         manager.stopMonitoringVisits()
         logger.geofenceVisitMonitoringStopped()
     }

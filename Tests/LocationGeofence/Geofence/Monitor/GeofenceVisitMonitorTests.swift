@@ -90,6 +90,33 @@ struct GeofenceVisitMonitorTests {
 
         #expect(f.manager.startCount == 0)
         #expect(f.skippedLogCount == 1)
+        // Pinned, not incidental: a fresh instance under denied permission pushes one disarm, so
+        // a previous process's visit service does not outlive the permission that backed it.
+        #expect(f.manager.stopCount == 1)
+    }
+
+    /// Visit monitoring outlives the process. On a relaunch this instance has never armed, but
+    /// the OS service from the previous session is still running — so a disarm before any arm
+    /// must still reach CoreLocation, or a kill-switched account keeps waking.
+    @Test
+    func stop_givenARecreatedMonitorThatNeverStarted_expectCoreLocationStopped() {
+        let f = Fixture()
+
+        f.monitor.stop()
+
+        #expect(f.manager.stopCount == 1)
+    }
+
+    /// The suppression still works after that first one, so a repeated disarm is not chatty.
+    @Test
+    func stop_givenRepeatedStopsWithoutStarting_expectOnlyTheFirstReachesCoreLocation() {
+        let f = Fixture()
+
+        f.monitor.stop()
+        f.monitor.stop()
+        f.monitor.stop()
+
+        #expect(f.manager.stopCount == 1)
     }
 
     @Test
