@@ -33,14 +33,16 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring {
     /// UserDefaults mirror of the monitor's condition identifiers. `CLMonitor` only exposes them
     /// async, but the bootstrap's adopt-vs-re-register decision needs a synchronous read right
     /// after construction — without the mirror that read is empty on every cold launch.
-    private static let conditionMirrorKey = "io.customer.sdk.geofence.clmonitor.conditionIdentifiers"
+    /// `internal` for the same reason as `userDefaults`.
+    static let conditionMirrorKey = "io.customer.sdk.geofence.clmonitor.conditionIdentifiers"
 
     /// Internal for the `+Registration` extension.
     let logger: Logger
     /// Persists the per-condition dedup baseline + delivery filter (see `MonitorRegionRecord`).
     /// Internal (not private) so the `+Rearm` extension can read it; immutable injected dependency.
     let storage: GeofenceStorage
-    private let userDefaults: UserDefaults
+    /// `internal` only so `+ConditionMirror` can write the mirror it reads.
+    let userDefaults: UserDefaults
     /// Internal for the `+Registration` and `+Fixes` extensions.
     let authManager: GeofenceLocationAuthority
     /// Freshens the fix behind movement-trigger EXIT dispatches (see `MovementFixResolver`).
@@ -393,11 +395,5 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring {
     /// tier can put up a permission prompt, and prompting is the host's decision, never the SDK's.
     private func updateServiceSession() {
         authManager.updateServiceSession(isAlwaysAuthorized: authManager.authorizationStatus == .authorizedAlways)
-    }
-
-    // MARK: - Private
-
-    func persistConditionMirror() {
-        userDefaults.set(knownConditionIdentifiers.sorted(), forKey: Self.conditionMirrorKey)
     }
 }

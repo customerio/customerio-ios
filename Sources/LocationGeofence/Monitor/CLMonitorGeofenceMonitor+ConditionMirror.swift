@@ -196,3 +196,12 @@ enum ConditionMirror {
         )
     }
 }
+
+@available(iOS 17.0, *)
+extension CLMonitorGeofenceMonitor {
+    /// Writes the mirror this probe reads. Lives beside the probe rather than in the main file,
+    /// which is at the 400-line cap.
+    func persistConditionMirror() {
+        userDefaults.set(knownConditionIdentifiers.sorted(), forKey: Self.conditionMirrorKey)
+    }
+}
