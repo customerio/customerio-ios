@@ -11,6 +11,8 @@ enum GeofenceBootstrap {
     /// while a prior run may be mid-await; chaining serializes runs so they can't interleave
     /// adopt/re-register work or race the post-register persistence.
     private static var lastRun: Task<Void, Never>?
+    /// Tail of the visit-arming chain; see the async `armVisitMonitoring`.
+    private static var lastArm: Task<Void, Never>?
 
     static func wireMonitor(di: DIGraphShared) async {
         let previous = lastRun
@@ -159,8 +161,20 @@ enum GeofenceBootstrap {
     }
 
     /// Reads the cached config first, for callers that do not already hold one.
+    ///
+    /// Chained, and the config is read INSIDE the chain. Reading it is an await, so two arms
+    /// started from different events interleave: identify's arm reads a pre-refresh config,
+    /// the refresh's reconcile then disarms off the kill switch, and identify's arm resumes and
+    /// re-arms a kill-switched account. Serializing makes the later arm both read later and apply
+    /// later, so the freshest config is the one that lands.
     static func armVisitMonitoring(di: DIGraphShared) async {
-        armVisitMonitoring(di: di, config: await di.geofenceStorage.getCachedConfig())
+        let previous = lastArm
+        let run = Task { @MainActor in
+            await previous?.value
+            armVisitMonitoring(di: di, config: await di.geofenceStorage.getCachedConfig())
+        }
+        lastArm = run
+        await run.value
     }
 
     /// Logs a one-line note when cold-wake real-time delivery is unavailable for this

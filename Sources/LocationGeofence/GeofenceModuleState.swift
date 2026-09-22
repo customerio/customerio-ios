@@ -160,6 +160,9 @@ final class GeofenceModuleState {
                 longitude: location.longitude,
                 anchorIsLiveFix: true
             )
+            // Same reconcile as the other refresh path: on a no-anchor identify THIS is the first
+            // refresh, so it can be the one that lands a kill-switched config.
+            await GeofenceBootstrap.armVisitMonitoring(di: di)
         }
     }
 }
