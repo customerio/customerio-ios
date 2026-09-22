@@ -1442,6 +1442,55 @@ struct GeofenceSyncCoordinatorTests {
         #expect(!setup.monitor.startedRegions.contains { $0.identifier == GeofenceConstants.movementTriggerIdentifier })
     }
 
+    // MARK: - Config-persisted hook
+
+    /// How visit arming learns a new config landed. It sits beside the write rather than at the
+    /// callers of `refresh` precisely because of this path: the remote tier of `handleMovement`
+    /// is a trigger EXIT's refetch, the common background refresh, and it has no module-level
+    /// call site to reconcile at.
+    @Test
+    func handleMovement_givenTheRemoteTierPersistsAConfig_expectTheHookFired() async {
+        let storage = makeStorage()
+        let api = GeofenceApiServiceMock()
+        api.fetchNearbyGeofencesClosure = { _, _, completion in
+            completion(.success(makeApiResponse(
+                regions: [makeRegion(id: "g1", latitude: 0, longitude: 0)],
+                config: .fallback
+            )))
+        }
+        let setup = makeCoordinator(api: api, storage: storage)
+        let fired = Synchronized<Int>(0)
+        setup.coordinator.setOnConfigPersisted { fired.mutating { $0 += 1 } }
+
+        // No prior sync means no anchor, which is what selects the remote tier.
+        _ = await setup.coordinator.handleMovement(latitude: 1.0, longitude: 2.0, anchorIsLiveFix: true)
+
+        #expect(fired.wrappedValue == 1)
+        #expect(await storage.getCachedConfig() != nil)
+    }
+
+    /// The negative, so the test above pins the WRITE rather than merely "a remote refresh ran".
+    /// A partial-rollout backend answering without a config must not be reported as a new one —
+    /// the cached value is deliberately left alone there, so there is nothing to reconcile.
+    @Test
+    func handleMovement_givenTheRemoteTierReturnsNoConfig_expectTheHookNotFired() async {
+        let storage = makeStorage()
+        let api = GeofenceApiServiceMock()
+        api.fetchNearbyGeofencesClosure = { _, _, completion in
+            completion(.success(makeApiResponse(
+                regions: [makeRegion(id: "g1", latitude: 0, longitude: 0)],
+                config: nil
+            )))
+        }
+        let setup = makeCoordinator(api: api, storage: storage)
+        let fired = Synchronized<Int>(0)
+        setup.coordinator.setOnConfigPersisted { fired.mutating { $0 += 1 } }
+
+        _ = await setup.coordinator.handleMovement(latitude: 1.0, longitude: 2.0, anchorIsLiveFix: true)
+
+        #expect(fired.wrappedValue == 0)
+    }
+
     // MARK: unchanged-set fast path (crossing absorption)
 
     /// Shared arrangement for the registration-diff tests: an initial remote refresh registers

@@ -38,16 +38,26 @@ struct GeofenceMonitorBinderTests {
         storage: GeofenceStorage = GeofenceStorage(
             fileManager: .default,
             directoryURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-        )
+        ),
+        logger: LoggerMock = LoggerMock(),
+        contextStore: BackgroundDeliveryContextStore? = nil,
+        fixResolver: MovementFixResolver? = nil
     ) -> PolygonMembershipResolver {
         PolygonMembershipResolver(
             storage: storage,
             transitionEmitter: tracker,
-            logger: LoggerMock(),
-            contextStore: BackgroundDeliveryContextStore(
+            logger: logger,
+            contextStore: contextStore ?? BackgroundDeliveryContextStore(
                 fileManager: .default,
                 directoryURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-            )
+            ),
+            // Private centre, not `.default`: the resolver subscribes to
+            // `willEnterForeground`, and the suite runs in parallel inside a real app. One
+            // foregrounding starts a pass on every live resolver, and an unrelated test's pass
+            // holds `passesInFlight` long enough for the pass under test to take the
+            // already-running short-circuit and log nothing.
+            fixResolver: fixResolver ?? MovementFixResolver(logger: LoggerMock()),
+            notificationCenter: NotificationCenter()
         )
     }
 
@@ -81,6 +91,15 @@ struct GeofenceMonitorBinderTests {
             coordinate: CLLocationCoordinate2D(latitude: 0, longitude: 0),
             altitude: 0, horizontalAccuracy: 5, verticalAccuracy: 5, timestamp: Date()
         )
+    }
+
+    private func makeContextStore(userId: String?) -> BackgroundDeliveryContextStore {
+        let store = BackgroundDeliveryContextStore(
+            fileManager: .default,
+            directoryURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        )
+        if let userId { store.setUserId(userId) }
+        return store
     }
 
     private func makeCoordinatorMock() -> GeofenceSyncCoordinatorMock {
@@ -503,5 +522,154 @@ struct GeofenceMonitorBinderTests {
         // Both anchored on the resolver's fix, for the same reason the re-arm is.
         #expect(coordinator.refreshReceivedArguments?.latitude == Self.insideFix.coordinate.latitude)
         #expect(coordinator.refreshReceivedArguments?.anchorIsLiveFix == true)
+    }
+
+    // MARK: - Visit wake
+
+    /// The in-circle dead zone has no edge to cross, so the only thing that can notice the device
+    /// is now inside a polygon is a re-evaluation. A visit has to start one.
+    ///
+    /// Asserted on the pass record rather than a verdict: with no fix available in a unit test the
+    /// pass decides nothing, and `n=0` is logged before the empty guard precisely so "a pass ran"
+    /// is observable independently of what it concluded.
+    @Test
+    func bindVisits_givenAnIdentifiedUser_expectAPolygonPassAndStaysArmed() async {
+        let visitMonitor = MockGeofenceVisitMonitor()
+        let logger = LoggerMock()
+        let contextStore = makeContextStore(userId: "user-1")
+        let tracker = makeTracker(deliveryTracker: makeDeliveryMock())
+        let resolver = makeResolver(tracker: tracker, logger: logger, contextStore: contextStore)
+
+        let passFinished = AsyncSignal()
+        GeofenceMonitorBinder.bindVisits(
+            visitMonitor: visitMonitor, resolver: resolver, contextStore: contextStore,
+            backgroundTaskRunner: SignalingBackgroundTaskRunner(finished: passFinished)
+        )
+        let stayArmed = visitMonitor.simulateVisit()
+        await passFinished.wait()
+
+        #expect(stayArmed == true)
+        #expect(logger.debugReceivedInvocations.contains { $0.message.contains("(visit)") })
+        // `bindVisits` holds the resolver weakly, and nothing below touches it — without this
+        // ARC releases it at its last use and the pass silently never runs.
+        withExtendedLifetime(resolver) {}
+    }
+
+    /// Shahroz's reproduction. A visit reports that the device ARRIVED, so any cached fix is from
+    /// before the arrival — reusing it decides from where the device was. Here the cached fix is
+    /// five seconds old and outside the ring while the device is inside it: the pass has to ask.
+    @Test
+    func bindVisits_givenACachedFixFromBeforeTheArrival_expectTheCurrentFixRequested() async {
+        let storage = makeStorage()
+        await seedPolygon(in: storage)
+        let contextStore = makeContextStore(userId: "user-1")
+        let fixResolver = MovementFixResolver(logger: LoggerMock())
+        // Outside the ring and predating the visit, exactly what a pre-arrival cache holds.
+        fixResolver.systemCachedFix = {
+            CLLocation(
+                coordinate: CLLocationCoordinate2D(latitude: 0.02, longitude: 0.02),
+                altitude: 0, horizontalAccuracy: 5, verticalAccuracy: 5,
+                timestamp: Date().addingTimeInterval(-5)
+            )
+        }
+        // Only a forced request reaches this, and it is the fix that decides the arrival.
+        fixResolver.requestFreshFix = { [weak fixResolver] in
+            fixResolver?.handleResolvedFix(Self.insideFix)
+        }
+        let resolver = makeResolver(
+            tracker: makeTracker(deliveryTracker: makeDeliveryMock()), storage: storage,
+            contextStore: contextStore, fixResolver: fixResolver
+        )
+        let visitMonitor = MockGeofenceVisitMonitor()
+
+        let passFinished = AsyncSignal()
+        GeofenceMonitorBinder.bindVisits(
+            visitMonitor: visitMonitor, resolver: resolver, contextStore: contextStore,
+            backgroundTaskRunner: SignalingBackgroundTaskRunner(finished: passFinished)
+        )
+        _ = visitMonitor.simulateVisit()
+        await passFinished.wait()
+
+        #expect(await storage.getPolygonMembership()["poly-1"]?.membership == .inside)
+        withExtendedLifetime(resolver) {}
+    }
+
+    /// Signed out, a visit has nothing to evaluate for. The handler must say so rather than spend
+    /// the wake, because its answer is what disarms monitoring — leaving it armed wakes the app
+    /// for a user we no longer act for. That the monitor then acts on the refusal is asserted in
+    /// `GeofenceVisitMonitorTests`; here only the answer is in scope.
+    @Test
+    func bindVisits_givenNoIdentifiedUser_expectNoPassAndRefusal() async {
+        let visitMonitor = MockGeofenceVisitMonitor()
+        let logger = LoggerMock()
+        let contextStore = makeContextStore(userId: nil)
+        let tracker = makeTracker(deliveryTracker: makeDeliveryMock())
+        let resolver = makeResolver(tracker: tracker, logger: logger, contextStore: contextStore)
+
+        GeofenceMonitorBinder.bindVisits(
+            visitMonitor: visitMonitor, resolver: resolver, contextStore: contextStore,
+            backgroundTaskRunner: NoBackgroundTaskRunner()
+        )
+        let stayArmed = visitMonitor.simulateVisit()
+        // Fixed wait, not a poll: this asserts an ABSENCE, and a poll returning early on
+        // "not logged yet" would pass before the pass had any chance to run.
+        try? await Task.sleep(nanoseconds: 300000000)
+
+        #expect(stayArmed == false)
+        #expect(!logger.debugReceivedInvocations.contains { $0.message.contains("(visit)") })
+    }
+
+    /// A departure is as good a wake as an arrival: the device having left somewhere is equally
+    /// a reason to re-judge membership, and the handler must not filter on the edge.
+    @Test
+    func bindVisits_givenADeparture_expectAPolygonPassToo() async {
+        let visitMonitor = MockGeofenceVisitMonitor()
+        let logger = LoggerMock()
+        let contextStore = makeContextStore(userId: "user-1")
+        let tracker = makeTracker(deliveryTracker: makeDeliveryMock())
+        let resolver = makeResolver(tracker: tracker, logger: logger, contextStore: contextStore)
+
+        let passFinished = AsyncSignal()
+        GeofenceMonitorBinder.bindVisits(
+            visitMonitor: visitMonitor, resolver: resolver, contextStore: contextStore,
+            backgroundTaskRunner: SignalingBackgroundTaskRunner(finished: passFinished)
+        )
+        let stayArmed = visitMonitor.simulateVisit(isArrival: false)
+        await passFinished.wait()
+
+        #expect(stayArmed == true)
+        #expect(logger.debugReceivedInvocations.contains { $0.message.contains("(visit)") })
+        withExtendedLifetime(resolver) {}
+    }
+}
+
+/// Lets a visit test await the pass instead of polling for it.
+///
+/// `bindVisits` runs the pass in a `Task` the caller gets no handle on, so the only other option
+/// is a deadline — and a deadline on `@MainActor` work, under a suite that runs hundreds of tests
+/// in parallel, fails whenever the main actor stays busy past it. Measured at roughly one run in
+/// two before this.
+private struct SignalingBackgroundTaskRunner: BackgroundTaskRunner {
+    let finished: AsyncSignal
+
+    func withBackgroundTime(_ work: @Sendable () async -> Void) async {
+        await work()
+        await finished.fire()
+    }
+}
+
+private actor AsyncSignal {
+    private var continuation: CheckedContinuation<Void, Never>?
+    private var fired = false
+
+    func wait() async {
+        if fired { return }
+        await withCheckedContinuation { continuation = $0 }
+    }
+
+    func fire() {
+        fired = true
+        continuation?.resume()
+        continuation = nil
     }
 }

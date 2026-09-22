@@ -179,6 +179,11 @@ final class CoreLocationGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @pr
     // We surface it to callers so the bootstrap can re-attempt registration when permission
     // improves mid-process (the initial fire after delegate-set is harmless — the bootstrap
     // already read the current status synchronously before installing the handler).
+    //
+    // Surfaced UNFILTERED, in both directions. Improvement is not the only case that matters:
+    // `GeofenceBootstrap.armVisitMonitoring` disarms visit monitoring off this callback when
+    // Always is withdrawn, and nothing else notices a downgrade. Narrowing this to improvements
+    // would leave visits running against a permission that no longer backs them.
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         onAuthorizationChanged?()
     }

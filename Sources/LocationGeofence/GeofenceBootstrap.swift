@@ -11,6 +11,8 @@ enum GeofenceBootstrap {
     /// while a prior run may be mid-await; chaining serializes runs so they can't interleave
     /// adopt/re-register work or race the post-register persistence.
     private static var lastRun: Task<Void, Never>?
+    /// Tail of the visit-arming chain; see the async `armVisitMonitoring`.
+    private static var lastArm: Task<Void, Never>?
 
     static func wireMonitor(di: DIGraphShared) async {
         let previous = lastRun
@@ -63,7 +65,16 @@ enum GeofenceBootstrap {
         // before any new delegate call can land.
         let monitor = di.geofenceMonitor
         let coordinator = di.geofenceSyncCoordinator
-        GeofenceMonitorBinder.bind(monitor: monitor, resolver: di.polygonMembershipResolver, coordinator: coordinator, logger: di.logger)
+        let resolver = di.polygonMembershipResolver
+        GeofenceMonitorBinder.bind(monitor: monitor, resolver: resolver, coordinator: coordinator, logger: di.logger)
+        // Wired here, with the transition handler, for the same reason: a cold wake can deliver a
+        // visit immediately and an unwired handler drops it. Arming is deferred to the tail of
+        // this function, once the adopt-or-register decision has settled what we actually monitor.
+        GeofenceMonitorBinder.bindVisits(
+            visitMonitor: di.geofenceVisitMonitor,
+            resolver: resolver,
+            contextStore: di.backgroundDeliveryContextStore
+        )
 
         // Install both re-run handlers BEFORE the adopt/re-register decision so the CLMonitor path's
         // first reconciliation — which can fire right after this synchronous phase yields — finds a
@@ -71,11 +82,7 @@ enum GeofenceBootstrap {
         // authorization changes re-attempt registration when permission improves; reconciliation
         // re-decides adopt-vs-re-register off live OS truth instead of the pre-reconcile mirror
         // (no-op on classic, whose osMonitoredRegionIdentifiers is already live).
-        let rewire: @MainActor () -> Void = {
-            Task { @MainActor in await GeofenceBootstrap.wireMonitor(di: di) }
-        }
-        monitor.setOnAuthorizationChanged(rewire)
-        monitor.setOnReconciled(rewire)
+        installRerunHandlers(di: di, monitor: monitor, coordinator: coordinator)
 
         // iOS persists `monitoredRegions` across process launch and device reboot. Adopt only when the
         // OS still holds the COMPLETE set we registered last session — re-claim it instead of
@@ -115,6 +122,88 @@ enum GeofenceBootstrap {
         // The adopt path above skips `startMonitoring` (the other tier-log site), so without this
         // a relaunch that re-claims OS-persisted regions would report nothing about delivery readiness.
         monitor.reportPermissionTier()
+
+        // The ASYNC form on purpose, though `cachedConfig` is in scope: that value was read in
+        // phase 1 and this run has awaited storage and OS registration since. A refresh landing a
+        // kill-switched config in that window reconciles through the chain, and arming here from
+        // the phase-1 value would overwrite the disarm. Going through the chain makes this read
+        // late and apply last.
+        await armVisitMonitoring(di: di)
+    }
+
+    /// The three handlers that re-run work after this setup, installed together and replacing any
+    /// prior ones (no stacking). Extracted only to keep `performWireMonitor` under the body-length
+    /// cap; it is called from the one place.
+    private static func installRerunHandlers(
+        di: DIGraphShared,
+        monitor: GeofenceRegionMonitoring,
+        coordinator: GeofenceSyncCoordinator
+    ) {
+        let rewire: @MainActor () -> Void = {
+            Task { @MainActor in await GeofenceBootstrap.wireMonitor(di: di) }
+        }
+        monitor.setOnAuthorizationChanged(rewire)
+        monitor.setOnReconciled(rewire)
+        // Visit arming is gated on the config, and a refresh can land a new one from a background
+        // path that never reaches `GeofenceModuleState`.
+        coordinator.setOnConfigPersisted {
+            Task { @MainActor in await GeofenceBootstrap.armVisitMonitoring(di: di) }
+        }
+    }
+
+    /// Arms visit monitoring, but only for an identified user: visits are a wake source, and
+    /// waking a signed-out process to evaluate an empty set is cost with no possible outcome.
+    ///
+    /// Idempotent in both directions, because identity is not settled once. Setup runs before
+    /// the host calls `identify`, so the common launch order leaves this disarmed and the
+    /// identify subscription is what arms it; sign-out disarms through the same call. The
+    /// `bindVisits` handler does NOT do this — it refuses an arriving visit for the wrong user,
+    /// which stops delivery but leaves the monitor running.
+    ///
+    /// Runs at the tail of setup, after the adopt-or-register decision has settled what we
+    /// monitor — unlike the handler, which must be wired before any await.
+    ///
+    /// - Parameter config: the effective config, `nil` when none is cached. A kill-switched
+    ///   account (`maxBusinessGeofences == 0`) registers nothing, so a visit would wake the
+    ///   process to evaluate an empty set — an OS wake source left running after the account
+    ///   turned registration off. The `bindVisits` handler cannot close this: it answers `true`
+    ///   for an identified user, so the monitor keeps running. `nil` arms, because first launch
+    ///   has no cached config and must still set up; a refresh then reconciles.
+    ///
+    /// The empty CATALOG is deliberately not the gate — first launch is legitimately empty, and
+    /// gating on it would never arm at all.
+    static func armVisitMonitoring(di: DIGraphShared, config: GeofenceConfig?) {
+        let registrationEnabled = (config ?? .fallback).maxBusinessGeofences > 0
+        if di.backgroundDeliveryContextStore.currentUserId != nil, registrationEnabled {
+            di.geofenceVisitMonitor.start()
+        } else {
+            di.geofenceVisitMonitor.stop()
+        }
+    }
+
+    /// Reads the cached config first, for callers that do not already hold one.
+    ///
+    /// Chained, and the config is read INSIDE the chain. Reading it is an await, so two arms
+    /// started from different events interleave: identify's arm reads a pre-refresh config,
+    /// the refresh's reconcile then disarms off the kill switch, and identify's arm resumes and
+    /// re-arms a kill-switched account. Serializing makes the later arm both read later and apply
+    /// later, so the freshest config is the one that lands.
+    static func armVisitMonitoring(di: DIGraphShared) async {
+        let previous = lastArm
+        let run = Task { @MainActor in
+            await previous?.value
+            armVisitMonitoring(di: di, config: await readCachedConfig(di))
+        }
+        lastArm = run
+        await run.value
+    }
+
+    /// How the async arm reads the config. A seam, and the only one available: the read is the
+    /// suspension point this chain exists to order, and `GeofenceStorage` is a concrete actor that
+    /// cannot be substituted or stalled. Production never reassigns it — matches the
+    /// `MovementFixResolver.requestFreshFix` arrangement.
+    static var readCachedConfig: (DIGraphShared) async -> GeofenceConfig? = {
+        await $0.geofenceStorage.getCachedConfig()
     }
 
     /// Logs a one-line note when cold-wake real-time delivery is unavailable for this

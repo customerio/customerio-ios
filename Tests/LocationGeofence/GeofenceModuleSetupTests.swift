@@ -289,6 +289,62 @@ struct GeofenceModuleSetupTests {
 
         #expect(f.spyCoordinator.refreshCallsCount == 1)
     }
+
+    // MARK: - Visit arming
+
+    /// These live in this suite rather than their own so they do not run in PARALLEL with it.
+    /// Swift Testing runs separate suites concurrently, and both use `@MainActor`; a sibling
+    /// holding the actor starved the disarm hop and timed the barrier out here while the tests
+    /// passed in isolation.
+
+    @Test
+    @MainActor
+    func identify_givenSetupRanBeforeIdentify_expectVisitsArmed() async throws {
+        let f = Fixture(identifiedUserId: nil)
+        defer { f.cleanup() }
+        f.wire()
+
+        // Bootstrap arms on its own task and, with no user yet, disarms. Waiting for THAT to land
+        // first is what makes this test discriminating: once it has, a later `start` can only have
+        // come from the identify observer. Asserting without the barrier passes either way,
+        // because bootstrap's own arming is free to run inside the wait below.
+        try await f.settle { f.visitMonitor.stopCallCount == 1 }
+        #expect(f.visitMonitor.startCallCount == 0)
+
+        f.contextStore.setUserId("u1")
+        let identify = try #require(
+            f.bus.observers[ProfileIdentifiedEvent.key], "ProfileIdentifiedEvent observer must be registered"
+        )
+        identify(ProfileIdentifiedEvent(identifier: "u1"))
+
+        try await f.settle { f.visitMonitor.startCallCount == 1 }
+    }
+
+    /// Sign-out must disarm: a visit waking a signed-out process evaluates an empty set.
+    /// `bindVisits` refuses the delivery but leaves the monitor running, so only this disarms.
+    @Test
+    @MainActor
+    func reset_givenVisitsArmed_expectDisarmed() async throws {
+        let f = Fixture(identifiedUserId: "u1")
+        defer { f.cleanup() }
+        // The generated mock returns an implicitly-unwrapped value; unstubbed it traps and takes
+        // the whole test process with it.
+        f.spyCoordinator.resetClosure = { .success(()) }
+        f.wire()
+
+        // Same barrier as above, for the same reason: let bootstrap's own arming land before
+        // measuring, or a `stop` it issues is indistinguishable from the one reset owes us.
+        try await f.settle { f.visitMonitor.startCallCount == 1 }
+        #expect(f.visitMonitor.stopCallCount == 0)
+
+        // Cleared before the event, matching production: `commonClearIdentify` calls
+        // `clearUserId()` before `analytics.reset()`, and it is that reset which posts the event.
+        f.contextStore.setUserId(nil)
+        let reset = try #require(f.bus.observers[ResetEvent.key], "ResetEvent observer must be registered")
+        reset(ResetEvent())
+
+        try await f.settle { f.visitMonitor.stopCallCount == 1 }
+    }
 }
 
 /// Per-test setup: overrides the DI shared singleton with capturing/mocking deps and builds
@@ -303,6 +359,8 @@ private struct Fixture {
     let state: GeofenceModuleState
     let stub: StubLocationServices
     let locationMode: GeofenceLocationMode
+    let visitMonitor: MockGeofenceVisitMonitor
+    let contextStore: BackgroundDeliveryContextStore
 
     init(cachedLocation: LocationData? = nil, locationMode: GeofenceLocationMode = .automatic, identifiedUserId: String? = "test-user") {
         self.locationMode = locationMode
@@ -316,6 +374,10 @@ private struct Fixture {
         let contextStore = BackgroundDeliveryContextStore(fileManager: .default, directoryURL: tempDir)
         contextStore.setUserId(identifiedUserId)
         di.override(value: contextStore, forType: BackgroundDeliveryContextStore.self)
+        self.contextStore = contextStore
+
+        self.visitMonitor = MockGeofenceVisitMonitor()
+        di.override(value: visitMonitor as GeofenceVisitMonitoring, forType: GeofenceVisitMonitoring.self)
 
         self.spyCoordinator = GeofenceSyncCoordinatorMock()
         di.override(value: spyCoordinator as GeofenceSyncCoordinator, forType: GeofenceSyncCoordinator.self)
@@ -335,6 +397,24 @@ private struct Fixture {
 
     func wire() {
         state.setup(di: di, locationMode: locationMode)
+    }
+
+    /// Waits for a condition the module's own tasks satisfy, so a test measures the step it names
+    /// rather than whatever bootstrap happened to do inside a bare yield loop.
+    ///
+    /// `Date`/`Task.sleep(nanoseconds:)` rather than `ContinuousClock`/`Duration`: those are
+    /// iOS 16+, and this package builds against iOS 13.
+    func settle(
+        _ condition: () -> Bool,
+        within: TimeInterval = 2,
+        sourceLocation: SourceLocation = #_sourceLocation
+    ) async throws {
+        let deadline = Date().addingTimeInterval(within)
+        while Date() < deadline {
+            if condition() { return }
+            try await Task.sleep(nanoseconds: 5000000)
+        }
+        Issue.record("condition not met within \(within)s", sourceLocation: sourceLocation)
     }
 
     func cleanup() {

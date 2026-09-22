@@ -52,6 +52,150 @@ struct GeofenceBootstrapTests {
         #expect(logger.infoCallsCount == 0)
     }
 
+    /// `maxBusinessGeofences == 0` — the server turning geofence registration off.
+    private static let killSwitchedConfig = GeofenceConfig(
+        localRefreshTriggerRadius: 750,
+        remoteFetchRefreshTriggerRadius: 3000,
+        remoteFetchRefreshExpiry: 86400,
+        duplicateEventsExpiry: 60,
+        maxBusinessGeofences: 0,
+        maxMonitoringDistance: GeofenceConstants.noMonitoringDistanceCap
+    )
+
+    // MARK: - Visit arming
+
+    /// Arming is gated on identity, and setup runs BEFORE the host calls `identify`, so both
+    /// directions have to work on demand rather than once at launch.
+    @Test
+    func armVisitMonitoring_givenIdentifiedUser_expectStarted() {
+        let di = DIGraphShared.shared
+        let store = BackgroundDeliveryContextStore(
+            fileManager: .default,
+            directoryURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        )
+        store.setUserId("user-1")
+        di.override(value: store, forType: BackgroundDeliveryContextStore.self)
+        let visitMonitor = MockGeofenceVisitMonitor()
+        di.override(value: visitMonitor as GeofenceVisitMonitoring, forType: GeofenceVisitMonitoring.self)
+        defer { di.reset() }
+
+        GeofenceBootstrap.armVisitMonitoring(di: di, config: nil)
+
+        #expect(visitMonitor.startCallCount == 1)
+        #expect(visitMonitor.stopCallCount == 0)
+    }
+
+    /// A visit waking a signed-out process evaluates an empty set, so sign-out must disarm.
+    @Test
+    func armVisitMonitoring_givenNoIdentifiedUser_expectStopped() {
+        let di = DIGraphShared.shared
+        let store = BackgroundDeliveryContextStore(
+            fileManager: .default,
+            directoryURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        )
+        di.override(value: store, forType: BackgroundDeliveryContextStore.self)
+        let visitMonitor = MockGeofenceVisitMonitor()
+        di.override(value: visitMonitor as GeofenceVisitMonitoring, forType: GeofenceVisitMonitoring.self)
+        defer { di.reset() }
+
+        GeofenceBootstrap.armVisitMonitoring(di: di, config: nil)
+
+        #expect(visitMonitor.startCallCount == 0)
+        #expect(visitMonitor.stopCallCount == 1)
+    }
+
+    /// A kill-switched account registers nothing, so a visit would wake the process to evaluate
+    /// an empty set. `bindVisits` cannot close this — it answers `true` for an identified user.
+    @Test
+    func armVisitMonitoring_givenRegistrationKillSwitched_expectStopped() {
+        let di = DIGraphShared.shared
+        let store = BackgroundDeliveryContextStore(
+            fileManager: .default,
+            directoryURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        )
+        store.setUserId("user-1")
+        di.override(value: store, forType: BackgroundDeliveryContextStore.self)
+        let visitMonitor = MockGeofenceVisitMonitor()
+        di.override(value: visitMonitor as GeofenceVisitMonitoring, forType: GeofenceVisitMonitoring.self)
+        defer { di.reset() }
+
+        GeofenceBootstrap.armVisitMonitoring(di: di, config: Self.killSwitchedConfig)
+
+        #expect(visitMonitor.startCallCount == 0)
+        #expect(visitMonitor.stopCallCount == 1)
+    }
+
+    /// The counterpart: a config that DOES allow registration still arms, so the gate above is
+    /// the kill switch and not the presence of a config.
+    @Test
+    func armVisitMonitoring_givenRegistrationEnabled_expectStarted() {
+        let di = DIGraphShared.shared
+        let store = BackgroundDeliveryContextStore(
+            fileManager: .default,
+            directoryURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        )
+        store.setUserId("user-1")
+        di.override(value: store, forType: BackgroundDeliveryContextStore.self)
+        let visitMonitor = MockGeofenceVisitMonitor()
+        di.override(value: visitMonitor as GeofenceVisitMonitoring, forType: GeofenceVisitMonitoring.self)
+        defer { di.reset() }
+
+        GeofenceBootstrap.armVisitMonitoring(di: di, config: .fallback)
+
+        #expect(visitMonitor.startCallCount == 1)
+        #expect(visitMonitor.stopCallCount == 0)
+    }
+
+    /// Two arms started from different events must not interleave. The config read is a
+    /// suspension point, so without the chain an arm that read a pre-refresh config resumes AFTER
+    /// the reconcile disarmed and re-arms a kill-switched account.
+    ///
+    /// Asserts on the LAST call, not the counts: both orderings produce one start and one stop,
+    /// and only the order says which state the monitor was left in.
+    @Test
+    func armVisitMonitoring_givenTwoArmsRace_expectTheLaterConfigToWin() async {
+        let di = DIGraphShared.shared
+        let store = BackgroundDeliveryContextStore(
+            fileManager: .default,
+            directoryURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        )
+        store.setUserId("user-1")
+        di.override(value: store, forType: BackgroundDeliveryContextStore.self)
+        let visitMonitor = MockGeofenceVisitMonitor()
+        di.override(value: visitMonitor as GeofenceVisitMonitoring, forType: GeofenceVisitMonitoring.self)
+        let realRead = GeofenceBootstrap.readCachedConfig
+        defer {
+            GeofenceBootstrap.readCachedConfig = realRead
+            di.reset()
+        }
+
+        // The first read stalls holding the PRE-refresh config; every later read sees the
+        // kill-switched one the refresh landed meanwhile.
+        let released = AsyncSignal()
+        let reads = Synchronized<Int>(0)
+        let killSwitched = Self.killSwitchedConfig
+        GeofenceBootstrap.readCachedConfig = { graph in
+            // Keyed on THIS graph, because the seam is process-global while the suites are not:
+            // `GeofenceModuleSetupTests` runs on its own `DIGraphShared()` and reads the same
+            // static, and `.serialized` orders tests within a suite, never across suites.
+            guard graph === di else { return await realRead(graph) }
+            let isFirst = reads.mutating { count in
+                count += 1
+                return count == 1
+            }
+            guard isFirst else { return killSwitched }
+            await released.wait()
+            return .fallback
+        }
+
+        async let first: Void = GeofenceBootstrap.armVisitMonitoring(di: di)
+        async let second: Void = GeofenceBootstrap.armVisitMonitoring(di: di)
+        await released.fire()
+        _ = await(first, second)
+
+        #expect(visitMonitor.calls.last == .stop)
+    }
+
     // MARK: - DI singletons
 
     @Test
@@ -494,4 +638,20 @@ private final class StubProvider: BackgroundDeliveryCdpApiKeyProvider {
     }
 
     var cdpApiKey: String? { value }
+}
+
+private actor AsyncSignal {
+    private var continuation: CheckedContinuation<Void, Never>?
+    private var fired = false
+
+    func wait() async {
+        if fired { return }
+        await withCheckedContinuation { continuation = $0 }
+    }
+
+    func fire() {
+        fired = true
+        continuation?.resume()
+        continuation = nil
+    }
 }

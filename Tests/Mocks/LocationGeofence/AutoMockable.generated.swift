@@ -243,6 +243,11 @@ class GeofenceSyncCoordinatorMock: @unchecked Sendable, GeofenceSyncCoordinator,
         _resetCallsCount.wrappedValue = 0
 
         mockCalled = false // do last as resetting properties above can make this true
+        _setOnConfigPersistedCallsCount.wrappedValue = 0
+        _setOnConfigPersistedReceivedArguments.wrappedValue = nil
+        _setOnConfigPersistedReceivedInvocations.wrappedValue = []
+
+        mockCalled = false // do last as resetting properties above can make this true
         _applyCachedRegistrationCallsCount.wrappedValue = 0
         _applyCachedRegistrationReceivedArguments.wrappedValue = nil
         _applyCachedRegistrationReceivedInvocations.wrappedValue = []
@@ -378,6 +383,45 @@ class GeofenceSyncCoordinatorMock: @unchecked Sendable, GeofenceSyncCoordinator,
         mockCalled = true
         _resetCallsCount += 1
         return resetClosure.map { $0() } ?? resetReturnValue
+    }
+
+    // MARK: - setOnConfigPersisted
+
+    /// Number of times the function was called.
+    private let _setOnConfigPersistedCallsCount: CioInternalCommon.Synchronized<Int> = .init(0)
+    var setOnConfigPersistedCallsCount: Int {
+        _setOnConfigPersistedCallsCount.wrappedValue
+    }
+
+    /// `true` if the function was ever called.
+    var setOnConfigPersistedCalled: Bool {
+        setOnConfigPersistedCallsCount > 0
+    }
+
+    /// The arguments from the *last* time the function was called.
+    private let _setOnConfigPersistedReceivedArguments: CioInternalCommon.Synchronized<(() -> Void)??> = .init(nil)
+    var setOnConfigPersistedReceivedArguments: (() -> Void)?? {
+        _setOnConfigPersistedReceivedArguments.wrappedValue
+    }
+
+    /// Arguments from *all* of the times that the function was called.
+    private let _setOnConfigPersistedReceivedInvocations: CioInternalCommon.Synchronized<[(() -> Void)?]> = .init([])
+    var setOnConfigPersistedReceivedInvocations: [(() -> Void)?] {
+        _setOnConfigPersistedReceivedInvocations.wrappedValue
+    }
+
+    /**
+     Set closure to get called when function gets called. Great way to test logic or return a value for the function.
+     */
+    var setOnConfigPersistedClosure: (((() -> Void)?) -> Void)?
+
+    /// Mocked function for `setOnConfigPersisted(_ handler: (() -> Void)?)`. Your opportunity to return a mocked value and check result of mock in test code.
+    func setOnConfigPersisted(_ handler: (() -> Void)?) {
+        mockCalled = true
+        _setOnConfigPersistedCallsCount += 1
+        _setOnConfigPersistedReceivedArguments.wrappedValue = handler
+        _setOnConfigPersistedReceivedInvocations.append(handler)
+        setOnConfigPersistedClosure?(handler)
     }
 
     // MARK: - applyCachedRegistration

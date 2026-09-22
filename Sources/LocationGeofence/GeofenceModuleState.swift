@@ -59,6 +59,10 @@ final class GeofenceModuleState {
     private func registerEventSubscriptions(di: DIGraphShared) {
         di.eventBusHandler.addObserver(ProfileIdentifiedEvent.self) { [weak self] _ in
             Task { await di.geofenceEventTracker.flushPending() }
+            // Setup runs before the host calls `identify`, so `wireMonitor` almost always arms
+            // against a nil user and leaves visits off. Without this the in-circle wake never
+            // starts on the ordinary launch order, which is the case the visit wake exists for.
+            Task { @MainActor in await GeofenceBootstrap.armVisitMonitoring(di: di) }
             self?.refreshGeofencesIfPossible(di: di)
         }
         di.eventBusHandler.addObserver(ResetEvent.self) { [weak self] _ in
@@ -69,6 +73,9 @@ final class GeofenceModuleState {
             self?.lastSkippedForNoLocation.wrappedValue = false
             Task { @MainActor in
                 _ = await di.geofenceSyncCoordinator.reset()
+                // Disarms through the same call: a visit waking a signed-out process evaluates an
+                // empty set. `bindVisits` only refuses the delivery, it does not stop the monitor.
+                await GeofenceBootstrap.armVisitMonitoring(di: di)
             }
         }
         // Rearm first-run refresh on the first fresh fix after an identify skipped for no anchor.

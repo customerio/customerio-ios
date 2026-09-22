@@ -115,10 +115,7 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preco
         self.storage = storage
         self.userDefaults = userDefaults
         self.authManager = CLLocationManager()
-        self.movementFixResolver = MovementFixResolver(
-            logger: logger,
-            backgroundTaskRunner: GeofenceBackgroundTime.runner(name: "io.customer.geofence.movement-fix")
-        )
+        self.movementFixResolver = MovementFixResolver(logger: logger, backgroundTaskRunner: GeofenceBackgroundTime.runner(name: "io.customer.geofence.movement-fix"))
         super.init()
         let mirrored = Set(userDefaults.stringArray(forKey: Self.conditionMirrorKey) ?? [])
         self.knownConditionIdentifiers = mirrored
@@ -366,9 +363,11 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preco
 
     // MARK: - CLLocationManagerDelegate
 
-    // Fires once when the delegate is set (harmless — the bootstrap installs its handler after
-    // reading status synchronously) and again on every change. Keeps the service session in step
-    // with the granted tier and lets the bootstrap re-attempt registration when permission improves.
+    // Fires once when the delegate is set (harmless — the bootstrap read status synchronously
+    // first) and again on every change, keeping the service session in step with the granted tier.
+    // Surfaced UNFILTERED in BOTH directions: an improvement lets the bootstrap re-attempt
+    // registration, and a downgrade is what disarms visit monitoring in `armVisitMonitoring`.
+    // Narrowing this to improvements alone would silently leave visits running.
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         updateServiceSession()
         onAuthorizationChanged?()

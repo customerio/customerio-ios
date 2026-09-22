@@ -95,6 +95,10 @@ extension GeofenceSyncCoordinatorImpl {
         }
     }
 
+    func setOnConfigPersisted(_ handler: (@Sendable () -> Void)?) {
+        onConfigPersisted.wrappedValue = handler
+    }
+
     /// The remote refresh's four writes, in one place so the refresh itself stays readable.
     private func persistRemoteRefresh(
         regions: [Geofence],
@@ -107,6 +111,10 @@ extension GeofenceSyncCoordinatorImpl {
         // value must not be clobbered by a null parse from a partial-rollout backend.
         if let parsedConfig {
             await storage.setCachedConfig(parsedConfig)
+            // Beside the write, not at the callers of `refresh`: this is the only writer, and it is
+            // reached from `handleMovement`'s remote tier too — a trigger EXIT's refetch, which is
+            // the common background refresh and has no module-level call site to reconcile at.
+            onConfigPersisted.wrappedValue?()
         }
         await storage.recordSync(timestamp: dateUtil.now, location: anchor)
         // Only what the OS accepted: an oversized polygon is deliberately not registered, and
