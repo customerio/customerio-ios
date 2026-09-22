@@ -13,6 +13,9 @@ extension PolygonMembershipResolver {
         case none
         case reused
         case tooOld = "too_old"
+        /// This resolver has since delivered a strictly NEWER fix, so the held one is no longer
+        /// the best evidence we hold.
+        case superseded
     }
 
     /// A caller that already resolved a fix under the same freshness rule must not be made to ask
@@ -27,10 +30,23 @@ extension PolygonMembershipResolver {
     /// a slow network. `PolygonMembershipDecision` refuses anything past `movementFixMaxAge` as
     /// `fix_too_old`, so reusing one there loses the same pass by the other route. Past the cap we
     /// request instead, which also beats the stale baseline the guard above compares against.
+    /// Superseded beats reuse. The pass that handed this fix over can itself have spent a
+    /// corroboration request and been answered with a NEWER fix that contradicted it — a marginal
+    /// inside on the held fix, refused because the second fix read outside. Reusing the held fix
+    /// afterwards re-proposes exactly that arrival, and the corroboration it then asks for is
+    /// refused as an echo of the newer fix, so it commits UNCONFIRMED: the follow-up reverses a
+    /// rejection the entry pass got right, on older evidence. Falling through to a request keeps
+    /// the newer fix in play, and deciding nothing is recoverable where deciding wrongly is not.
     func heldFixUse(_ heldFix: ResolvedFix?) -> HeldFixDecision {
         guard let heldFix else { return HeldFixDecision(use: .none, age: 0) }
         let age = -heldFix.timestamp.timeIntervalSinceNow
-        return HeldFixDecision(use: age <= GeofenceConstants.movementFixMaxAge ? .reused : .tooOld, age: age)
+        guard age <= GeofenceConstants.movementFixMaxAge else {
+            return HeldFixDecision(use: .tooOld, age: age)
+        }
+        if let latest = fixResolver.latestFix?.timestamp, latest > heldFix.timestamp {
+            return HeldFixDecision(use: .superseded, age: age)
+        }
+        return HeldFixDecision(use: .reused, age: age)
     }
 
     /// The verdict on a caller's fix, carrying the age it was judged on so the pass does not ask

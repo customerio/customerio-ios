@@ -80,6 +80,49 @@ struct PolygonMembershipResolverTests {
         )
     }
 
+    // MARK: - Held-fix selection
+
+    /// Shahroz's case on #1299: the pass that handed this fix over already spent a corroboration
+    /// request and was answered with a NEWER fix that read outside, so it correctly refused the
+    /// enter. Reusing the held fix re-proposes that arrival, and its own corroboration is then
+    /// refused as an echo of the newer fix — committing the enter UNCONFIRMED from older evidence.
+    @Test
+    func heldFixUse_givenResolverDeliveredANewerFix_expectSuperseded() async {
+        let setup = await makeSetup(fix: nil)
+        let held = ResolvedFix(fix(latitude: 0, longitude: 0, at: Date().addingTimeInterval(-5)))
+        // The corroboration answer that contradicted it.
+        setup.fixResolver.handleResolvedFix(fix(latitude: 1, longitude: 1, at: Date()))
+
+        let decision = setup.resolver.heldFixUse(held)
+
+        #expect(decision.use == .superseded)
+    }
+
+    /// The counterpart, and the whole purpose of #1299: when nothing newer has landed the held fix
+    /// is still reused, so the caller is not made to re-ask and hit the echo refusal.
+    @Test
+    func heldFixUse_givenNothingNewerDelivered_expectReused() async {
+        let setup = await makeSetup(fix: nil)
+        let delivered = fix(latitude: 0, longitude: 0, at: Date().addingTimeInterval(-5))
+        setup.fixResolver.handleResolvedFix(delivered)
+
+        let decision = setup.resolver.heldFixUse(ResolvedFix(delivered))
+
+        #expect(decision.use == .reused)
+    }
+
+    /// Age still wins over supersession: past the cap the pass must request rather than reuse,
+    /// whatever the resolver has delivered since.
+    @Test
+    func heldFixUse_givenHeldFixPastTheAgeCap_expectTooOld() async {
+        let setup = await makeSetup(fix: nil)
+        let stale = Date().addingTimeInterval(-(GeofenceConstants.movementFixMaxAge + 5))
+
+        let decision = setup.resolver.heldFixUse(ResolvedFix(fix(latitude: 0, longitude: 0, at: stale)))
+
+        #expect(decision.use == .tooOld)
+    }
+
     private struct Setup {
         let resolver: PolygonMembershipResolver
         let storage: GeofenceStorage

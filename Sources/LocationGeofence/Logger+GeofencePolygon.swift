@@ -44,8 +44,8 @@ extension Logger {
     ///
     /// Pass-level rather than one record per polygon: a long stationary capture is read by asking
     /// "did anything evaluate while I stood here", and N lines per pass buries that.
-    /// `heldFix` records what became of a fix the caller supplied: reused, or too old to stand in
-    /// for a request. The difference between a re-evaluation that decides and one that records
+    /// `heldFix` records what became of a fix the caller supplied: reused, too old to stand in
+    /// for a request, or superseded by a newer one this resolver has since delivered. The difference between a re-evaluation that decides and one that records
     /// `no_usable_fix` for every polygon.
     func geofencePolygonPassStarted(
         reason: PolygonEvaluationReason,
