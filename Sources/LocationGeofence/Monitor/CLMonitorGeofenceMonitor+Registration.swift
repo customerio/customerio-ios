@@ -73,7 +73,10 @@ extension CLMonitorGeofenceMonitor {
         // (see `recordMonitorRegistration`: registration stays silent, the first real crossing
         // delivers). No fix → geometric expectation: trigger is device-centered (inside),
         // business geofences outside.
-        let stagedAt = Date()
+        // `dateUtil`, not `Date()`: the confirm side of this stage reads the injected clock, and a
+        // replay that overrides it would otherwise compare a virtual confirm against a wall-clock
+        // stage and attribute the pair to two different timelines.
+        let stagedAt = dateUtil.now
         noteRegisteredCondition(
             identifier: identifier,
             center: LocationData(latitude: coordinate.latitude, longitude: coordinate.longitude),
