@@ -303,20 +303,20 @@ struct GeofenceModuleSetupVisitArmingTests {
         defer { f.cleanup() }
         f.wire()
 
-        // The host identifies after init, which is what the observer reacts to.
+        // Bootstrap arms on its own task and, with no user yet, disarms. Waiting for THAT to land
+        // first is what makes this test discriminating: once it has, a later `start` can only have
+        // come from the identify observer. Asserting without the barrier passes either way,
+        // because bootstrap's own arming is free to run inside the wait below.
+        try await f.settle { f.visitMonitor.stopCallCount == 1 }
+        #expect(f.visitMonitor.startCallCount == 0)
+
         f.contextStore.setUserId("u1")
-        let before = f.visitMonitor.startCallCount
         let identify = try #require(
             f.bus.observers[ProfileIdentifiedEvent.key], "ProfileIdentifiedEvent observer must be registered"
         )
         identify(ProfileIdentifiedEvent(identifier: "u1"))
 
-        // The observer arms on a hop to the main actor, so the count lands a turn later.
-        for _ in 0 ..< 100 where f.visitMonitor.startCallCount == before {
-            await Task.yield()
-        }
-
-        #expect(f.visitMonitor.startCallCount == before + 1)
+        try await f.settle { f.visitMonitor.startCallCount == 1 }
     }
 
     /// Sign-out must disarm: a visit waking a signed-out process evaluates an empty set.
@@ -330,16 +330,16 @@ struct GeofenceModuleSetupVisitArmingTests {
         f.spyCoordinator.resetClosure = { .success(()) }
         f.wire()
 
+        // Same barrier as above, for the same reason: let bootstrap's own arming land before
+        // measuring, or a `stop` it issues is indistinguishable from the one reset owes us.
+        try await f.settle { f.visitMonitor.startCallCount == 1 }
+        #expect(f.visitMonitor.stopCallCount == 0)
+
         f.contextStore.setUserId(nil)
-        let before = f.visitMonitor.stopCallCount
         let reset = try #require(f.bus.observers[ResetEvent.key], "ResetEvent observer must be registered")
         reset(ResetEvent())
 
-        for _ in 0 ..< 100 where f.visitMonitor.stopCallCount == before {
-            await Task.yield()
-        }
-
-        #expect(f.visitMonitor.stopCallCount > before)
+        try await f.settle { f.visitMonitor.stopCallCount == 1 }
     }
 }
 
@@ -393,6 +393,21 @@ private struct Fixture {
 
     func wire() {
         state.setup(di: di, locationMode: locationMode)
+    }
+
+    /// Waits for a condition the module's own tasks satisfy, so a test measures the step it names
+    /// rather than whatever bootstrap happened to do inside a bare yield loop.
+    func settle(
+        _ condition: () -> Bool,
+        within: Duration = .seconds(2),
+        sourceLocation: SourceLocation = #_sourceLocation
+    ) async throws {
+        let deadline = ContinuousClock.now + within
+        while ContinuousClock.now < deadline {
+            if condition() { return }
+            try await Task.sleep(for: .milliseconds(5))
+        }
+        Issue.record("condition not met within \(within)", sourceLocation: sourceLocation)
     }
 
     func cleanup() {
