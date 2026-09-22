@@ -249,11 +249,31 @@ final class ReplayHarness {
         // Circle fences never reach it, but the binder routes every transition through it and a
         // polygon in the corpus would otherwise resolve against the production singleton — which
         // reads the real DI graph and the wall clock.
+        // Its own fix resolver, on the harness's seams. Left to the default, the resolver builds one
+        // against `DIGraphShared.shared.dateUtil` — the process graph this harness never touches —
+        // with `requestFreshFix` unset and the real ten-second timeout. The drive's epoch is decades
+        // from now, so every supplied fix would classify as `tooOld`, a live `CLLocationManager`
+        // request would be issued from a unit test, and each polygon would record `no_usable_fix`
+        // while the drive graded green. Latent only because no corpus drive has polygons yet:
+        // `evaluateAllPolygons` returns at its `polygons.isEmpty` guard before any fix work.
+        //
+        // Not a complete substitution: `PolygonMembershipResolver+Fix` and `+Pass` read
+        // `timeIntervalSinceNow` directly and have no clock seam. That is the SDK's, not the
+        // harness's, and closing it needs a change on the polygon side.
+        let polygonFixResolver = MovementFixResolver(
+            logger: logger,
+            dateUtil: clock,
+            desiredAccuracy: kCLLocationAccuracyNearestTenMeters,
+            waitForTimeout: { _ in await Task.yield() }
+        )
+        polygonFixResolver.requestFreshFix = { [weak self] in self?.fixRequestCount += 1 }
+
         resolver = PolygonMembershipResolver(
             storage: storage,
             transitionEmitter: tracker,
             logger: logger,
-            contextStore: contextStore
+            contextStore: contextStore,
+            fixResolver: polygonFixResolver
         )
 
         monitor = makeMonitor()
