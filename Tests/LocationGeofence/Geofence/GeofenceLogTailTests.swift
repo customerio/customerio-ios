@@ -168,7 +168,11 @@ struct GeofenceLogTailTests {
             Invocation(name: "storageLoaded", ev: "storage.loaded", requiredKeys: ["n", "anchor"]) { $0.geofenceStorageLoaded(regionCount: 30, hasAnchor: true) },
             Invocation(name: "queueRowsDropped", ev: "queue.rows_dropped", requiredKeys: ["why", "n", "total"]) { $0.geofenceQueueRowsDropped(count: 1, of: 3) },
             Invocation(name: "queueUnreadable", ev: "queue.unreadable", requiredKeys: ["why"]) { $0.geofenceQueueUnreadable(reason: .readFailed) },
-            Invocation(name: "droppedQueueUnreadable", ev: "transition.dropped", requiredKeys: ["id", "t", "why"]) { $0.geofenceTransitionDroppedQueueUnreadable(geofenceId: "notl_core", transition: .enter) }
+            Invocation(name: "droppedQueueUnreadable", ev: "transition.dropped", requiredKeys: ["id", "t", "why"]) { $0.geofenceTransitionDroppedQueueUnreadable(geofenceId: "notl_core", transition: .enter) },
+            Invocation(name: "visitMonitoringStarted", ev: "visit.monitoring", requiredKeys: ["state"]) { $0.geofenceVisitMonitoringStarted() },
+            Invocation(name: "visitMonitoringStopped", ev: "visit.monitoring", requiredKeys: ["state"]) { $0.geofenceVisitMonitoringStopped() },
+            Invocation(name: "visitMonitoringSkipped", ev: "visit.monitoring", requiredKeys: ["state", "why", "status"]) { $0.geofenceVisitMonitoringSkipped(status: CLAuthorizationStatus.authorizedWhenInUse.rawValue) },
+            Invocation(name: "visitReported", ev: "visit.reported", requiredKeys: ["edge", "acc", "delay"]) { $0.geofenceVisitReported(isArrival: true, horizontalAccuracy: 30, reportDelay: 960) }
         ]
     }
 
@@ -491,7 +495,9 @@ struct GeofenceLogTailTests {
         "transition.accepted",
         "transition.dropped",
         "transition.suppressed",
-        "transition.synthesized"
+        "transition.synthesized",
+        "visit.monitoring",
+        "visit.reported"
     ]
 
     /// `contradiction.allowed` carries a SIGNED edge, unlike `contradiction.refused` which floors
