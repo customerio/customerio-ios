@@ -23,17 +23,26 @@ struct Scenario {
     struct Header {
         let name: String
         let platform: String
-        /// `regression` (the default) for a recorded drive, `conformance` for an authored scenario
-        /// written against the shared vocabulary and expected to hold on every platform.
-        let expect: String
+        /// `recorded` for a drive taken off a phone, `authored` for a scenario somebody wrote.
+        /// Read from `source.kind`, which every header carries, rather than from the directory the
+        /// file sits in — the corpus is one flat directory and provenance has to travel inside it.
+        ///
+        /// Absent or unrecognised becomes `unknown` and discovery rejects it, mirroring how
+        /// `platform` is handled. It must not default to `recorded`: that let an authored scenario
+        /// with no `source` stand in for a phone capture and satisfy the guard that asks whether
+        /// any drive was found at all.
+        let sourceKind: String
         let startedAt: String
         let sdk: String?
         let device: String?
     }
 
-    /// Whether this scenario claims to be platform-independent. A recorded drive never is: it is
-    /// one OS's callback timeline, and the other OS would not have produced it.
-    var isConformance: Bool { header.expect == "conformance" }
+    /// Whether this came off a phone. Only used to keep the "did discovery find any drives" guard
+    /// honest: a corpus of authored scenarios alone must not satisfy it.
+    ///
+    /// Deliberately NOT what decides where a scenario runs. That is `platform` alone, and a
+    /// recorded drive is free to declare `any` once it is shown to hold on both compositions.
+    var isRecorded: Bool { header.sourceKind == "recorded" }
 
     /// One line of the scenario. `at` is seconds since the drive started — the virtual clock's only input.
     struct Record {
@@ -123,7 +132,7 @@ enum ScenarioLoader {
         let header = Scenario.Header(
             name: head["name"] as? String ?? "unnamed",
             platform: head["platform"] as? String ?? "unknown",
-            expect: head["expect"] as? String ?? "regression",
+            sourceKind: (head["source"] as? [String: Any])?["kind"] as? String ?? "unknown",
             startedAt: head["t0"] as? String ?? "",
             sdk: head["sdk"] as? String,
             device: head["device"] as? String

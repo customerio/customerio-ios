@@ -1,12 +1,15 @@
 import Foundation
 
-/// The recorded drives, which live outside this repo.
+/// The scenario corpus, which lives outside this repo.
 ///
-/// `geofence-scenarios/` is a separate private checkout — the captures carry real coordinates and
-/// real business fence names. Leave it beside this repo, or point `CIO_GEOFENCE_SCENARIOS` at the
-/// directory that holds the `.scenario.ndjson` files — that is `geofence-scenarios/recorded`, not
-/// `geofence-scenarios`. The sibling fallback appends `recorded` for you; the override does not,
-/// and pointing it one level too high finds no drives and reports the whole suite as skipped.
+/// `mobile-replay-harness/` is a separate private checkout — the captures carry real coordinates
+/// and real business fence names. Leave it beside this repo, or point `CIO_GEOFENCE_SCENARIOS` at
+/// the directory that holds the `.scenario.ndjson` files — that is `mobile-replay-harness/scenarios`,
+/// not `mobile-replay-harness`. The sibling fallback appends `scenarios` for you; the override does
+/// not, and pointing it one level too high finds nothing and reports the whole suite as skipped.
+///
+/// One flat directory. A scenario declares where it runs in its own header, so there is nothing to
+/// sort by hand and no second directory whose absence changes what gets graded.
 ///
 /// **Under `xcodebuild`, prefix the variable with `TEST_RUNNER_`.** Simulator tests do not inherit
 /// the shell environment; only variables with that prefix are forwarded to the test process. A bare
@@ -15,11 +18,20 @@ import Foundation
 /// pass. It cost a bogus isolation check and a negative control that appeared to prove the matcher
 /// was asserting nothing.
 ///
-///     TEST_RUNNER_CIO_GEOFENCE_SCENARIOS=/path/to/geofence-scenarios/recorded xcodebuild … test
+///     TEST_RUNNER_CIO_GEOFENCE_SCENARIOS=/path/to/mobile-replay-harness/scenarios xcodebuild … test
 ///
 /// Tests that need it are gated on `isAvailable` with `.enabled(if:)` so they report as **skipped**
 /// when absent. Returning early instead reports as *passed* — green tests that asserted nothing.
 enum Scenarios {
+    /// This composition. A scenario runs here if its header names this, or names every platform.
+    private static let platform = "ios"
+
+    /// A scenario that declares this runs on every composition, not just the one that recorded it.
+    private static let any = "any"
+
+    /// The provenance values a header may declare. Anything else is a broken file, not a default.
+    private static let kinds: Set<String> = ["recorded", "authored"]
+
     static let root: URL? = {
         if let override = ProcessInfo.processInfo.environment["CIO_GEOFENCE_SCENARIOS"] {
             let url = URL(fileURLWithPath: override)
@@ -31,58 +43,20 @@ enum Scenarios {
         for _ in 0 ..< 6 {
             dir.deleteLastPathComponent()
         }
-        let sibling = dir.appendingPathComponent("geofence-scenarios/recorded")
+        let sibling = dir.appendingPathComponent("mobile-replay-harness/scenarios")
         return FileManager.default.fileExists(atPath: sibling.path) ? sibling : nil
     }()
 
     static var isAvailable: Bool { root != nil }
 
-    /// Authored scenarios, beside `recorded/` rather than in it.
-    ///
-    /// EXPERIMENTAL. A recorded drive belongs to the OS that produced it — the same crossing fired
-    /// nine minutes apart across the 2026-09-11 fleet — so a shared file can only ever be one
-    /// somebody wrote. These are written against the vocabulary both platforms already share and
-    /// run on both, unfiltered by the header's `platform`.
-    static let conformanceRoot: URL? = {
-        guard let root else { return nil }
-        let sibling = root.deletingLastPathComponent().appendingPathComponent("conformance")
-        return FileManager.default.fileExists(atPath: sibling.path) ? sibling : nil
-    }()
-
     static func path(_ name: String) -> String? {
-        for directory in [root, conformanceRoot].compactMap({ $0 }) {
-            let candidate = directory.appendingPathComponent("\(name).scenario.ndjson")
-            if FileManager.default.fileExists(atPath: candidate.path) { return candidate.path }
-        }
-        return nil
+        guard let root else { return nil }
+        let candidate = root.appendingPathComponent("\(name).scenario.ndjson")
+        return FileManager.default.fileExists(atPath: candidate.path) ? candidate.path : nil
     }
 
-    /// The authored scenarios, which carry no platform of their own.
-    ///
-    /// `expect` is checked rather than the directory: a file that has not opted in stays out, so
-    /// dropping a recorded drive in here by mistake cannot silently run against the wrong OS.
-    static let conformance: [String] = {
-        guard let directory = conformanceRoot else { return [] }
-        let files = (try? FileManager.default.contentsOfDirectory(atPath: directory.path)) ?? []
-        return files
-            .filter { $0.hasSuffix(".scenario.ndjson") }
-            .map { String($0.dropLast(".scenario.ndjson".count)) }
-            .filter { name in
-                guard let path = path(name) else {
-                    unreadable.append(name)
-                    return false
-                }
-                do {
-                    return try ScenarioLoader.load(path: path).isConformance
-                } catch {
-                    unreadable.append("\(name): \(error)")
-                    return false
-                }
-            }
-            .sorted()
-    }()
-
-    /// Scenario files present on disk that this harness could not read.
+    /// Scenario files present on disk that this harness could not read, or that named a platform
+    /// it does not recognise.
     ///
     /// Discovery cannot throw — it feeds a `@Test` argument list, which is built before any test
     /// runs — so an unreadable drive can only be *collected* here and reported by a case that does
@@ -90,21 +64,20 @@ enum Scenarios {
     /// replayed fewer drives than exist: the precise failure this harness is built to refuse.
     private(set) static var unreadable: [String] = []
 
-    /// Every drive this harness can replay, discovered from disk.
+    /// Every scenario in the corpus whose header says it belongs on this composition, paired with
+    /// the parsed scenario so a caller can filter further without re-reading the file.
     ///
-    /// Enumerated rather than listed so adding a drive is dropping in a file.
-    /// The recorded drives alone, without the authored conformance scenarios.
-    ///
-    /// Separate from `replayable` because the two answer different questions. A guard asking "did
-    /// discovery find anything" against the combined list is satisfied by the two authored files,
-    /// which resolve from `root.parent/conformance` — so an override pointing at any drive-less
-    /// sibling of `recorded/` still looks healthy while grading zero drives.
-    static let recorded: [String] = {
+    /// A header naming neither this platform, the other one, nor `any` is a broken file rather
+    /// than somebody else's drive, so it is reported rather than quietly skipped. Only a *load*
+    /// failure was recorded before, which left a misspelled `"platfrom"` key — or a stray `"iOS"`
+    /// — parsing cleanly, defaulting to `unknown`, and vanishing from the run with nothing said.
+    private static let discovered: [(name: String, scenario: Scenario)] = {
         guard let root else { return [] }
         let files = (try? FileManager.default.contentsOfDirectory(atPath: root.path)) ?? []
         return files
             .filter { $0.hasSuffix(".scenario.ndjson") }
             .map { String($0.dropLast(".scenario.ndjson".count)) }
+            .sorted()
             .compactMap { name -> (String, Scenario)? in
                 guard let path = path(name) else {
                     unreadable.append(name)
@@ -117,24 +90,35 @@ enum Scenarios {
                     return nil
                 }
             }
-            // The platform filter reads each header rather than trusting the filename: this harness
-            // is the iOS composition, and Android batches several fences onto one callback.
-            //
-            // A header naming neither platform is a broken file, not somebody else's drive, so it
-            // is reported rather than filtered away. Only a *load* failure was recorded before,
-            // which left a misspelled `"platfrom"` key — or a stray `"iOS"` — parsing cleanly,
-            // defaulting to `unknown`, and vanishing from the run with nothing said.
             .filter { name, scenario in
-                guard ["ios", "android"].contains(scenario.platform) else {
-                    unreadable.append("\(name): header platform is \"\(scenario.platform)\", expected \"ios\" or \"android\"")
+                guard [platform, "android", any].contains(scenario.platform) else {
+                    unreadable.append(
+                        "\(name): header platform is \"\(scenario.platform)\", "
+                            + "expected \"ios\", \"android\" or \"any\""
+                    )
                     return false
                 }
-                return scenario.platform == "ios"
+                // Validated, not defaulted, for the same reason as `platform`: defaulting a
+                // missing `source.kind` to `recorded` let an authored scenario with no `source`
+                // satisfy the "did discovery find any drives?" guard on its own.
+                guard kinds.contains(scenario.header.sourceKind) else {
+                    unreadable.append(
+                        "\(name): header source.kind is \"\(scenario.header.sourceKind)\", "
+                            + "expected \"recorded\" or \"authored\""
+                    )
+                    return false
+                }
+                return scenario.platform == platform || scenario.platform == any
             }
-            .map(\.0)
-            .sorted()
     }()
 
-    /// Everything a run grades: the recorded drives plus the authored scenarios.
-    static let replayable: [String] = recorded + conformance
+    /// Everything a run grades: recorded drives and authored scenarios alike.
+    static let replayable: [String] = discovered.map(\.name)
+
+    /// The recorded drives alone, without the authored scenarios.
+    ///
+    /// Separate from `replayable` because the two answer different questions. A guard asking "did
+    /// discovery find anything" against the combined list is satisfied by the authored files, which
+    /// carry no device and cannot detect a corpus path that resolved somewhere drive-less.
+    static let recorded: [String] = discovered.filter(\.scenario.isRecorded).map(\.name)
 }
