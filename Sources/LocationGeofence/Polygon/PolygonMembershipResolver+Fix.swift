@@ -8,7 +8,7 @@ import Foundation
 extension PolygonMembershipResolver {
     /// Whether a caller's fix can stand in for a request of our own. Recorded on the pass log so a
     /// drive can tell a reuse from a fall-through.
-    enum HeldFixUse: String {
+    enum HeldFixUse: String, CaseIterable {
         /// The caller held none; the pass requests its own, as it always has.
         case none
         case reused
