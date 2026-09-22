@@ -1368,15 +1368,30 @@ struct PolygonMembershipResolverTests {
     /// The event time is when the device crossed, not when the verdict was reached. Those differ by
     /// the whole wake-to-fix-to-verdict pipeline, and the OS event's own date is a third value —
     /// so the assertion names the fix's timestamp exactly rather than a tolerance around now.
+    ///
+    /// 1 s offset, not 12: the fix ages against `movementFixMaxAge` in wall-clock time, so the
+    /// offset is a head start the test must beat. 12 s failed twice on stalled CI runners.
     @Test
     func handleTransition_givenEnterDecidedFromAFix_expectStampedWithTheFixNotTheVerdict() async {
-        let takenAt = Date().addingTimeInterval(-12)
-        let setup = await makeSetup(fix: fix(latitude: 0, longitude: 0, at: takenAt))
+        let takenAt = Date().addingTimeInterval(-1)
+        let logger = LoggerMock()
+        let setup = await makeSetup(fix: fix(latitude: 0, longitude: 0, at: takenAt), logger: logger)
         await setup.storage.setCachedGeofences([polygonGeofence()])
 
         // A deliberately different date on the OS event, so a stamp taken from the wrong one shows.
         await setup.resolver.handleTransition(identifier: "1", transition: .enter, occurredAt: Date())
 
+        // Before the count: a stalled runner ages the fix out, and a bare `count == 1` reports
+        // that as a lost emission. Prose, not the tail — the tail needs diagnostics on. Taken
+        // from the enum so a reworded sentence cannot silently stop this matching.
+        let tooOld = PolygonUndecidedReason.fixTooOld.prose
+        // `contains("")` is always true, which would invert the guard below into asserting the
+        // line WAS logged.
+        #expect(!tooOld.isEmpty)
+        #expect(
+            !logger.debugReceivedInvocations.contains { $0.message.contains(tooOld) },
+            "fix aged past movementFixMaxAge before the pass read it — stalled runner, not a stamping regression"
+        )
         let delivered = await setup.emitter.snapshot()
         #expect(delivered.count == 1)
         #expect(delivered.first?.occurredAt == takenAt)
