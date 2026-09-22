@@ -125,7 +125,11 @@ struct GeofenceLogTailTests {
             Invocation(name: "storageLoaded", ev: "storage.loaded", requiredKeys: ["n", "anchor"]) { $0.geofenceStorageLoaded(regionCount: 30, hasAnchor: true) },
             Invocation(name: "queueRowsDropped", ev: "queue.rows_dropped", requiredKeys: ["why", "n", "total"]) { $0.geofenceQueueRowsDropped(count: 1, of: 3) },
             Invocation(name: "queueUnreadable", ev: "queue.unreadable", requiredKeys: ["why"]) { $0.geofenceQueueUnreadable(reason: .readFailed) },
-            Invocation(name: "droppedQueueUnreadable", ev: "transition.dropped", requiredKeys: ["id", "t", "why"]) { $0.geofenceTransitionDroppedQueueUnreadable(geofenceId: "notl_core", transition: .enter) }
+            Invocation(name: "droppedQueueUnreadable", ev: "transition.dropped", requiredKeys: ["id", "t", "why"]) { $0.geofenceTransitionDroppedQueueUnreadable(geofenceId: "notl_core", transition: .enter) },
+            Invocation(name: "visitMonitoringStarted", ev: "visit.monitoring", requiredKeys: ["state"]) { $0.geofenceVisitMonitoringStarted() },
+            Invocation(name: "visitMonitoringStopped", ev: "visit.monitoring", requiredKeys: ["state"]) { $0.geofenceVisitMonitoringStopped() },
+            Invocation(name: "visitMonitoringSkipped", ev: "visit.monitoring", requiredKeys: ["state", "why", "status"]) { $0.geofenceVisitMonitoringSkipped(status: CLAuthorizationStatus.authorizedWhenInUse.rawValue) },
+            Invocation(name: "visitReported", ev: "visit.reported", requiredKeys: ["edge", "acc", "delay"]) { $0.geofenceVisitReported(isArrival: true, horizontalAccuracy: 30, reportDelay: 960) }
         ]
     }
 
@@ -228,6 +232,7 @@ struct GeofenceLogTailTests {
     /// `GeofenceLogTailTest.declaredIo`.
     private static let declaredIo: [String: String] = [
         "api.fetch.result": "in",
+        "visit.reported": "in",
         // Three reads polygon added: a catalogue the SDK could not parse and the two pending-queue
         // reads. All are the SDK taking something in, so they are `in` like every other read.
         "api.fetch.unreadable": "in",
@@ -277,6 +282,8 @@ struct GeofenceLogTailTests {
 
     /// Every `ev=` key the module may emit.
     private static let declaredVocabulary: Set<String> = [
+        "visit.monitoring",
+        "visit.reported",
         "api.fetch.result",
         "api.fetch.unreadable",
         "baseline.healed",
@@ -469,7 +476,7 @@ struct GeofenceLogTailTests {
         expectTokens(HandleMovementTier.self, ["localRerank", "remoteRefresh"])
         expectTokens(PolygonPassSkipReason.self, ["pass_in_flight"])
         expectTokens(PolygonEvaluationReason.self, ["new_polygon", "new_polygon_forced_request_failed", "movement", "foreground",
-                                                    "os_transition"])
+                                                    "os_transition", "visit"])
         expectTokens(PolygonUndecidedReason.self, [
             "no_usable_fix", "user_changed", "ring_unbuildable", "unregistered", "circle_expired",
             "within_accuracy", "fix_too_old", "accuracy_too_low", "corroboration_unnecessary",

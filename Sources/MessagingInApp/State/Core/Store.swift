@@ -78,8 +78,10 @@ class Store<State: Equatable> {
         // Wrap the dispatch function with all middlewares
         middleware
             .reversed()
-            .reduce({ [unowned self] action in
-                    _defaultDispatch(action: action) }, { dispatchFunction, middleware in
+            .reduce(
+                { [unowned self] action in
+                    _defaultDispatch(action: action) },
+                { dispatchFunction, middleware in
                     // If the store get's deinitialized before the middleware is complete; drop
                     // the action without dispatching.
                     let dispatch: (InAppMessageAction) -> Void = { [weak self] in self?.dispatch($0) }

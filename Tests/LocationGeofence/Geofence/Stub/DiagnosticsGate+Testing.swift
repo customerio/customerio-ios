@@ -15,6 +15,11 @@ import Foundation
 /// intermittently. No lock can be held across a suspension point, so the fix is not a better lock
 /// — a test that needs the gate must not await inside it. The one test that did now asserts on
 /// prose instead, which needs no gate at all.
+/// **A test that does not take this lock cannot assert on structured log tokens at all.**
+/// `GeofenceLog.tail` returns "" unless `GeofenceDiagnostics.isEnabled`, so `ev=`, `state=` and
+/// every other key are simply absent from the message. Assert on the log's PROSE instead — that is
+/// what `GeofenceVisitMonitorTests` does, and why. Reaching for a token and watching the count come
+/// back zero is the confusing way to discover this.
 enum DiagnosticsGateTesting {
     /// Runs `body` with the gate forced on or off. Task-local, so no lock is needed.
     static func withDiagnostics<T>(_ enabled: Bool, _ body: () throws -> T) rethrows -> T {

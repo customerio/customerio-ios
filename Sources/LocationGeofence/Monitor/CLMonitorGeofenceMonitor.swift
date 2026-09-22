@@ -379,9 +379,9 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring {
 
     // MARK: - Authorization
 
-    // Fires once when the delegate is set (harmless — the bootstrap installs its handler after
-    // reading status synchronously) and again on every change. Keeps the service session in step
-    // with the granted tier and lets the bootstrap re-attempt registration when permission improves.
+    // Fires once when the delegate is set (harmless) and again on every change, keeping the service
+    // session in step with the granted tier. Surfaced UNFILTERED in BOTH directions: an improvement
+    // lets the bootstrap re-attempt registration, and a downgrade is what disarms visit monitoring.
     private func handleAuthorizationChange() {
         updateServiceSession()
         onAuthorizationChanged?()

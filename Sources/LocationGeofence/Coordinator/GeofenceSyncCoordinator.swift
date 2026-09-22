@@ -46,6 +46,10 @@ protocol GeofenceSyncCoordinator: AutoMockable, AnyObject, Sendable {
         latitude: Double, longitude: Double, anchorIsLiveFix: Bool, heldFix: ResolvedFix?
     ) async -> Result<Void, GeofenceSyncError>
     func reset() async -> Result<Void, GeofenceSyncError>
+    /// Fired after a remote refresh writes a new config; replaces any prior handler. Beside the
+    /// writer rather than at the callers of `refresh`, because `handleMovement`'s remote tier —
+    /// a trigger EXIT's refetch, the common background refresh — has no module-level call site.
+    func setOnConfigPersisted(_ handler: (@Sendable () -> Void)?)
     @MainActor
     func applyCachedRegistration(
         cachedRegions: [Geofence],
@@ -91,6 +95,8 @@ final class GeofenceSyncCoordinatorImpl: GeofenceSyncCoordinator, @unchecked Sen
     /// Ordered by ARRIVAL, not by completion: a movement that lost the gate is NEWER than the one
     /// holding it, so a completion counter would discard exactly the replay the deferral exists to
     /// preserve.
+    /// Set by `GeofenceBootstrap` so visit arming can be reconciled against a newly landed config.
+    let onConfigPersisted = Synchronized<(@Sendable () -> Void)?>(nil)
     let movementSequence = Synchronized<UInt64>(0)
     /// Arrival sequence of the newest movement that has already re-centred the trigger.
     let appliedMovementSequence = Synchronized<UInt64>(0)
