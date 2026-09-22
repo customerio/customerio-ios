@@ -291,6 +291,58 @@ struct GeofenceModuleSetupTests {
     }
 }
 
+/// The launch order the SDK actually ships: setup runs before the host calls `identify`, so
+/// bootstrap arms against a nil user and leaves visits off. Only the identify subscription can
+/// turn them on, and without it the in-circle wake never starts for the common flow.
+@Suite("GeofenceModuleSetup visit arming", .serialized)
+@MainActor
+struct GeofenceModuleSetupVisitArmingTests {
+    @Test
+    func identify_givenSetupRanBeforeIdentify_expectVisitsArmed() async throws {
+        let f = Fixture(identifiedUserId: nil)
+        defer { f.cleanup() }
+        f.wire()
+
+        // The host identifies after init, which is what the observer reacts to.
+        f.contextStore.setUserId("u1")
+        let before = f.visitMonitor.startCallCount
+        let identify = try #require(
+            f.bus.observers[ProfileIdentifiedEvent.key], "ProfileIdentifiedEvent observer must be registered"
+        )
+        identify(ProfileIdentifiedEvent(identifier: "u1"))
+
+        // The observer arms on a hop to the main actor, so the count lands a turn later.
+        for _ in 0 ..< 100 where f.visitMonitor.startCallCount == before {
+            await Task.yield()
+        }
+
+        #expect(f.visitMonitor.startCallCount == before + 1)
+    }
+
+    /// Sign-out must disarm: a visit waking a signed-out process evaluates an empty set.
+    /// `bindVisits` refuses the delivery but leaves the monitor running, so only this disarms.
+    @Test
+    func reset_givenVisitsArmed_expectDisarmed() async throws {
+        let f = Fixture(identifiedUserId: "u1")
+        defer { f.cleanup() }
+        // The generated mock returns an implicitly-unwrapped value; unstubbed it traps and takes
+        // the whole test process with it.
+        f.spyCoordinator.resetClosure = { .success(()) }
+        f.wire()
+
+        f.contextStore.setUserId(nil)
+        let before = f.visitMonitor.stopCallCount
+        let reset = try #require(f.bus.observers[ResetEvent.key], "ResetEvent observer must be registered")
+        reset(ResetEvent())
+
+        for _ in 0 ..< 100 where f.visitMonitor.stopCallCount == before {
+            await Task.yield()
+        }
+
+        #expect(f.visitMonitor.stopCallCount > before)
+    }
+}
+
 /// Per-test setup: overrides the DI shared singleton with capturing/mocking deps and builds
 /// a fresh `GeofenceModuleState` with a stub `LocationServices`.
 @MainActor
@@ -303,6 +355,8 @@ private struct Fixture {
     let state: GeofenceModuleState
     let stub: StubLocationServices
     let locationMode: GeofenceLocationMode
+    let visitMonitor: MockGeofenceVisitMonitor
+    let contextStore: BackgroundDeliveryContextStore
 
     init(cachedLocation: LocationData? = nil, locationMode: GeofenceLocationMode = .automatic, identifiedUserId: String? = "test-user") {
         self.locationMode = locationMode
@@ -316,6 +370,10 @@ private struct Fixture {
         let contextStore = BackgroundDeliveryContextStore(fileManager: .default, directoryURL: tempDir)
         contextStore.setUserId(identifiedUserId)
         di.override(value: contextStore, forType: BackgroundDeliveryContextStore.self)
+        self.contextStore = contextStore
+
+        self.visitMonitor = MockGeofenceVisitMonitor()
+        di.override(value: visitMonitor as GeofenceVisitMonitoring, forType: GeofenceVisitMonitoring.self)
 
         self.spyCoordinator = GeofenceSyncCoordinatorMock()
         di.override(value: spyCoordinator as GeofenceSyncCoordinator, forType: GeofenceSyncCoordinator.self)

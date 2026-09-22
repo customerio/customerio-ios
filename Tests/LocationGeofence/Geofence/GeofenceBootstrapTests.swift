@@ -52,6 +52,48 @@ struct GeofenceBootstrapTests {
         #expect(logger.infoCallsCount == 0)
     }
 
+    // MARK: - Visit arming
+
+    /// Arming is gated on identity, and setup runs BEFORE the host calls `identify`, so both
+    /// directions have to work on demand rather than once at launch.
+    @Test
+    func armVisitMonitoring_givenIdentifiedUser_expectStarted() {
+        let di = DIGraphShared.shared
+        let store = BackgroundDeliveryContextStore(
+            fileManager: .default,
+            directoryURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        )
+        store.setUserId("user-1")
+        di.override(value: store, forType: BackgroundDeliveryContextStore.self)
+        let visitMonitor = MockGeofenceVisitMonitor()
+        di.override(value: visitMonitor as GeofenceVisitMonitoring, forType: GeofenceVisitMonitoring.self)
+        defer { di.reset() }
+
+        GeofenceBootstrap.armVisitMonitoring(di: di)
+
+        #expect(visitMonitor.startCallCount == 1)
+        #expect(visitMonitor.stopCallCount == 0)
+    }
+
+    /// A visit waking a signed-out process evaluates an empty set, so sign-out must disarm.
+    @Test
+    func armVisitMonitoring_givenNoIdentifiedUser_expectStopped() {
+        let di = DIGraphShared.shared
+        let store = BackgroundDeliveryContextStore(
+            fileManager: .default,
+            directoryURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        )
+        di.override(value: store, forType: BackgroundDeliveryContextStore.self)
+        let visitMonitor = MockGeofenceVisitMonitor()
+        di.override(value: visitMonitor as GeofenceVisitMonitoring, forType: GeofenceVisitMonitoring.self)
+        defer { di.reset() }
+
+        GeofenceBootstrap.armVisitMonitoring(di: di)
+
+        #expect(visitMonitor.startCallCount == 0)
+        #expect(visitMonitor.stopCallCount == 1)
+    }
+
     // MARK: - DI singletons
 
     @Test

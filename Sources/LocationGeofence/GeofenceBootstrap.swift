@@ -130,12 +130,16 @@ enum GeofenceBootstrap {
 
     /// Arms visit monitoring, but only for an identified user: visits are a wake source, and
     /// waking a signed-out process to evaluate an empty set is cost with no possible outcome.
-    /// The handler installed by `bindVisits` disarms on the same condition if identity goes away
-    /// while monitoring is already live.
+    ///
+    /// Idempotent in both directions, because identity is not settled once. Setup runs before
+    /// the host calls `identify`, so the common launch order leaves this disarmed and the
+    /// identify subscription is what arms it; sign-out disarms through the same call. The
+    /// `bindVisits` handler does NOT do this — it refuses an arriving visit for the wrong user,
+    /// which stops delivery but leaves the monitor running.
     ///
     /// Runs at the tail of setup, after the adopt-or-register decision has settled what we
     /// monitor — unlike the handler, which must be wired before any await.
-    private static func armVisitMonitoring(di: DIGraphShared) {
+    static func armVisitMonitoring(di: DIGraphShared) {
         if di.backgroundDeliveryContextStore.currentUserId != nil {
             di.geofenceVisitMonitor.start()
         } else {
