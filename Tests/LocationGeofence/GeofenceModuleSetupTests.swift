@@ -399,17 +399,20 @@ private struct Fixture {
 
     /// Waits for a condition the module's own tasks satisfy, so a test measures the step it names
     /// rather than whatever bootstrap happened to do inside a bare yield loop.
+    ///
+    /// `Date`/`Task.sleep(nanoseconds:)` rather than `ContinuousClock`/`Duration`: those are
+    /// iOS 16+, and this package builds against iOS 13.
     func settle(
         _ condition: () -> Bool,
-        within: Duration = .seconds(2),
+        within: TimeInterval = 2,
         sourceLocation: SourceLocation = #_sourceLocation
     ) async throws {
-        let deadline = ContinuousClock.now + within
-        while ContinuousClock.now < deadline {
+        let deadline = Date().addingTimeInterval(within)
+        while Date() < deadline {
             if condition() { return }
-            try await Task.sleep(for: .milliseconds(5))
+            try await Task.sleep(nanoseconds: 5000000)
         }
-        Issue.record("condition not met within \(within)", sourceLocation: sourceLocation)
+        Issue.record("condition not met within \(within)s", sourceLocation: sourceLocation)
     }
 
     func cleanup() {
