@@ -70,13 +70,25 @@ final class GeofenceVisitMonitor: NSObject, GeofenceVisitMonitoring, @preconcurr
         // Always, not whenInUse: visit delivery to a suspended or terminated app is the entire
         // point, and `whenInUse` would report only while the app is already awake — which is the
         // case that needs no help.
-        guard manager.authorizationStatus == .authorizedAlways else {
-            logger.geofenceVisitMonitoringSkipped(status: manager.authorizationStatus.rawValue)
+        // Read once: the guard and the log must report the same answer, and the status can change
+        // between two reads. The availability split mirrors `CoreLocationGeofenceMonitor` —
+        // the instance property is iOS 14+ and this package still supports iOS 13.
+        let status = currentAuthorizationStatus()
+        guard status == .authorizedAlways else {
+            logger.geofenceVisitMonitoringSkipped(status: status.rawValue)
             return
         }
         started = true
         manager.startMonitoringVisits()
         logger.geofenceVisitMonitoringStarted()
+    }
+
+    private func currentAuthorizationStatus() -> CLAuthorizationStatus {
+        if #available(iOS 14.0, *) {
+            return manager.authorizationStatus
+        } else {
+            return CLLocationManager.authorizationStatus()
+        }
     }
 
     func stop() {
