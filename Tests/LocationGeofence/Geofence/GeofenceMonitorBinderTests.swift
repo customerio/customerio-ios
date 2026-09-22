@@ -596,9 +596,10 @@ struct GeofenceMonitorBinderTests {
 
     /// Signed out, a visit has nothing to evaluate for. The handler must say so rather than spend
     /// the wake, because its answer is what disarms monitoring — leaving it armed wakes the app
-    /// for a user we no longer act for.
+    /// for a user we no longer act for. That the monitor then acts on the refusal is asserted in
+    /// `GeofenceVisitMonitorTests`; here only the answer is in scope.
     @Test
-    func bindVisits_givenNoIdentifiedUser_expectNoPassAndDisarms() async {
+    func bindVisits_givenNoIdentifiedUser_expectNoPassAndRefusal() async {
         let visitMonitor = MockGeofenceVisitMonitor()
         let logger = LoggerMock()
         let contextStore = makeContextStore(userId: nil)

@@ -337,6 +337,8 @@ struct GeofenceModuleSetupTests {
         try await f.settle { f.visitMonitor.startCallCount == 1 }
         #expect(f.visitMonitor.stopCallCount == 0)
 
+        // Cleared before the event, matching production: `commonClearIdentify` calls
+        // `clearUserId()` before `analytics.reset()`, and it is that reset which posts the event.
         f.contextStore.setUserId(nil)
         let reset = try #require(f.bus.observers[ResetEvent.key], "ResetEvent observer must be registered")
         reset(ResetEvent())

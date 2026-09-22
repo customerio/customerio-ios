@@ -26,6 +26,31 @@ private final class StatusBox {
     var value: CLAuthorizationStatus = .authorizedAlways
 }
 
+/// `CLVisit` has no public initializer, so the delegate callback is only reachable through a
+/// subclass that overrides the four properties the monitor reads.
+private final class FakeVisit: CLVisit {
+    private let coord: CLLocationCoordinate2D
+    private let arrival: Date
+    private let departure: Date
+
+    init(arrivalDate: Date = Date(), departureDate: Date = .distantFuture) {
+        self.coord = CLLocationCoordinate2D(latitude: 37.0, longitude: -122.0)
+        self.arrival = arrivalDate
+        self.departure = departureDate
+        super.init()
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError("unused")
+    }
+
+    override var coordinate: CLLocationCoordinate2D { coord }
+    override var arrivalDate: Date { arrival }
+    override var departureDate: Date { departure }
+    override var horizontalAccuracy: CLLocationAccuracy { 30 }
+}
+
 @MainActor
 @Suite("GeofenceVisitMonitor arming")
 struct GeofenceVisitMonitorTests {
@@ -81,9 +106,9 @@ struct GeofenceVisitMonitorTests {
 
     @Test
     func start_givenNeverAuthorized_expectSkipRecorded() {
-        // Asserts the skip is RECORDED, not that `stopMonitoringVisits` went uncalled: production
-        // does reach `stop()` on this branch and it is swallowed by `stop()`'s own `guard started`,
-        // so a stop-count assertion would be measuring that unrelated guard, not this branch.
+        // Asserts the skip is RECORDED, because that log is the only thing unique to this branch.
+        // The disarm below is real but not distinctive — the first `stop()` on any fresh instance
+        // reaches CoreLocation whatever brought us there.
         let f = Fixture()
         f.status.value = .denied
         f.monitor.start()
@@ -117,6 +142,56 @@ struct GeofenceVisitMonitorTests {
         f.monitor.stop()
 
         #expect(f.manager.stopCount == 1)
+    }
+
+    // MARK: - Delivery
+
+    /// The handler's answer IS the disarm decision — that is how sign-out stops the monitor
+    /// without a teardown hook. Nothing else asserts the monitor acts on it: the binder tests
+    /// check what the handler returns, not what the monitor does with it.
+    @Test
+    func didVisit_givenTheHandlerRefuses_expectDisarmed() {
+        let f = Fixture()
+        f.monitor.start()
+        f.monitor.setOnVisit { _ in false }
+
+        f.monitor.locationManager(f.manager, didVisit: FakeVisit())
+
+        #expect(f.manager.stopCount == 1)
+    }
+
+    @Test
+    func didVisit_givenTheHandlerAccepts_expectStillArmed() {
+        let f = Fixture()
+        f.monitor.start()
+        f.monitor.setOnVisit { _ in true }
+
+        f.monitor.locationManager(f.manager, didVisit: FakeVisit())
+
+        #expect(f.manager.stopCount == 0)
+    }
+
+    /// Both edges, in one test on purpose. A departure must reach the handler as well as an
+    /// arrival — the binder re-judges membership on either. Asserting only the departure passes
+    /// against a constant `isArrival` and against the two dates being carried across swapped,
+    /// because neither date on a departure is `.distantFuture`; the arrival case is what
+    /// separates them.
+    @Test
+    func didVisit_givenEitherEdge_expectTheEdgeReportedAsGiven() {
+        let f = Fixture()
+        f.monitor.start()
+        var seen: [Bool] = []
+        f.monitor.setOnVisit { visit in
+            seen.append(visit.isArrival)
+            return true
+        }
+
+        f.monitor.locationManager(f.manager, didVisit: FakeVisit())
+        f.monitor.locationManager(
+            f.manager, didVisit: FakeVisit(arrivalDate: Date().addingTimeInterval(-600), departureDate: Date())
+        )
+
+        #expect(seen == [true, false])
     }
 
     @Test

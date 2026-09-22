@@ -174,7 +174,11 @@ struct GeofenceBootstrapTests {
         let released = AsyncSignal()
         let reads = Synchronized<Int>(0)
         let killSwitched = Self.killSwitchedConfig
-        GeofenceBootstrap.readCachedConfig = { _ in
+        GeofenceBootstrap.readCachedConfig = { graph in
+            // Keyed on THIS graph, because the seam is process-global while the suites are not:
+            // `GeofenceModuleSetupTests` runs on its own `DIGraphShared()` and reads the same
+            // static, and `.serialized` orders tests within a suite, never across suites.
+            guard graph === di else { return await realRead(graph) }
             let isFirst = reads.mutating { count in
                 count += 1
                 return count == 1
