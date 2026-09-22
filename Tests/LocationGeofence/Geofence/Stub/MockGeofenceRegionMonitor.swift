@@ -117,7 +117,12 @@ final class MockGeofenceRegionMonitor: GeofenceRegionMonitoring {
         setOnReconciledCallsCount += 1
     }
 
+    /// Runs inside `startMonitoring`, so a test can land work in the window a real OS
+    /// registration occupies.
+    var onStartMonitoring: (() -> Void)?
+
     func startMonitoring(identifier: String, center: LocationData, radius: Double, transitionTypes: Set<GeofenceTransition>) {
+        onStartMonitoring?()
         // Mirror the real monitors: a rejected id is neither recorded nor owned, and any circle the
         // OS was already holding for it is cleared rather than left live.
         guard !rejectedIdentifiers.contains(identifier) else {

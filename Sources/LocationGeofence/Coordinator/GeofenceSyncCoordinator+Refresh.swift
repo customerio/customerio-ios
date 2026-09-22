@@ -13,12 +13,12 @@ extension GeofenceSyncCoordinatorImpl {
         anchor: LocationData,
         cachedConfig: GeofenceConfig?,
         anchorIsLiveFix: Bool
-    ) async -> Result<Void, GeofenceSyncError> {
+    ) async -> MovementPassOutcome {
         let syncStartedAt = GeofenceLog.monotonicNow()
         let response: GeofenceApiResponse
         switch await fetchForRefresh(anchor: anchor, startedAt: syncStartedAt) {
         case .success(let value): response = value
-        case .failure(let error): return .failure(error)
+        case .failure(let error): return MovementPassOutcome(result: .failure(error), reCentred: false)
         }
 
         // If the user signed out / changed during the API call, drop the result —
@@ -26,14 +26,17 @@ extension GeofenceSyncCoordinatorImpl {
         // events to whoever signs in next.
         if contextStore.currentUserId != expectedUserId {
             logger.geofenceSyncSupersededByUserChange()
-            return .success(())
+            // Succeeds without registering anything, so it is NOT a re-centre. Reporting one here
+            // publishes the gate sequence for a trigger that never moved, and a queued movement
+            // behind it is then discarded as overtaken.
+            return MovementPassOutcome(result: .success(()), reCentred: false)
         }
 
         let parsedConfig = response.toDomainConfig()
         let regions: [Geofence]
         switch readableRegions(from: response) {
         case .success(let value): regions = value
-        case .failure(let error): return .failure(error)
+        case .failure(let error): return MovementPassOutcome(result: .failure(error), reCentred: false)
         }
         let effectiveConfig = parsedConfig ?? cachedConfig ?? .fallback
         let monitorable = await MainActor.run { monitorableRegions(regions) }
@@ -67,7 +70,7 @@ extension GeofenceSyncCoordinatorImpl {
         )
         logSyncCompleted(registration, requested: (nearest.count, registerMovementTrigger), startedAt: syncStartedAt)
         evaluatePolygonsAfterMovement(expectedUserId: expectedUserId)
-        return .success(())
+        return MovementPassOutcome(result: .success(()), reCentred: osRegistration.movementTriggerPlanted)
     }
 
     /// The fetch and its outcome record, split out so the refresh body stays readable.
@@ -121,7 +124,7 @@ extension GeofenceSyncCoordinatorImpl {
         config: GeofenceConfig,
         cachedRegions: [Geofence],
         anchorIsLiveFix: Bool
-    ) async -> Result<Void, GeofenceSyncError> {
+    ) async -> MovementPassOutcome {
         let syncStartedAt = GeofenceLog.monotonicNow()
         let monitorable = await MainActor.run { monitorableRegions(cachedRegions) }
         let nearest = distanceFilter.nearest(monitorable, to: anchor, limit: config.maxBusinessGeofences, maxDistance: config.maxMonitoringDistance)
@@ -153,7 +156,7 @@ extension GeofenceSyncCoordinatorImpl {
         )
         logSyncCompleted(registration, requested: (nearest.count, registerMovementTrigger), startedAt: syncStartedAt)
         evaluatePolygonsAfterMovement(expectedUserId: expectedUserId)
-        return .success(())
+        return MovementPassOutcome(result: .success(()), reCentred: osRegistration.movementTriggerPlanted)
     }
 
     /// Re-arms the wake and re-evaluates membership, nothing more: the nearby set is unchanged, so
@@ -164,12 +167,12 @@ extension GeofenceSyncCoordinatorImpl {
         at location: LocationData,
         config: GeofenceConfig,
         anchorIsLiveFix: Bool
-    ) async -> Result<Void, GeofenceSyncError> {
+    ) async -> MovementPassOutcome {
         let registeredIds = await storage.getRegisteredBusinessIds()
         let registered = await storage.getCachedGeofences().filter { registeredIds.contains($0.id) }
         let radius = wakeRadius(at: location, polygons: registered, config: config, anchorIsLiveFix: anchorIsLiveFix)
         logger.geofencePolygonWakePass(radius: radius, polygonCount: registered.count { $0.vertices != nil })
-        _ = await MainActor.run {
+        let osRegistration = await MainActor.run {
             registerWithOsSync(
                 businessRegions: registered,
                 movementTriggerLocation: location,
@@ -178,7 +181,7 @@ extension GeofenceSyncCoordinatorImpl {
             )
         }
         evaluatePolygonsAfterMovement(expectedUserId: expectedUserId)
-        return .success(())
+        return MovementPassOutcome(result: .success(()), reCentred: osRegistration.movementTriggerPlanted)
     }
 
     /// The trigger radius for a registration, sized to the nearest polygon boundary only when the
