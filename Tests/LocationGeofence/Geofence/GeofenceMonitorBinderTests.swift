@@ -2,6 +2,7 @@
 @testable import CioInternalCommonMocks
 @testable import CioLocationGeofence
 @testable import CioLocationGeofenceMocks
+import CoreLocation
 import Foundation
 import SharedTests
 import Testing
@@ -50,6 +51,38 @@ struct GeofenceMonitorBinderTests {
         )
     }
 
+    private func makeStorage() -> GeofenceStorage {
+        GeofenceStorage(
+            fileManager: .default,
+            directoryURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        )
+    }
+
+    /// A registered polygon at the origin with a ring the fix below sits inside, so the enter path
+    /// reaches the membership pass rather than being refused as unbuildable or unregistered.
+    private func seedPolygon(in storage: GeofenceStorage) async {
+        let ring = [
+            LocationData(latitude: -0.0016, longitude: -0.0016),
+            LocationData(latitude: -0.0016, longitude: 0.0016),
+            LocationData(latitude: 0.0016, longitude: 0.0016),
+            LocationData(latitude: 0.0016, longitude: -0.0016)
+        ]
+        await storage.setCachedGeofences([Geofence(
+            id: "poly-1", latitude: 0, longitude: 0, radius: 300, name: nil,
+            transitionTypes: [.enter, .exit], lastUpdated: Date(), vertices: ring
+        )])
+        await storage.recordRegistration(center: LocationData(latitude: 0, longitude: 0), businessIds: ["poly-1"])
+    }
+
+    /// Accuracy well inside the venue scale and a current timestamp, so the gate can decide and
+    /// the freshness check passes.
+    private static var insideFix: CLLocation {
+        CLLocation(
+            coordinate: CLLocationCoordinate2D(latitude: 0, longitude: 0),
+            altitude: 0, horizontalAccuracy: 5, verticalAccuracy: 5, timestamp: Date()
+        )
+    }
+
     private func makeCoordinatorMock() -> GeofenceSyncCoordinatorMock {
         let mock = GeofenceSyncCoordinatorMock()
         mock.refreshReturnValue = .success(())
@@ -57,12 +90,23 @@ struct GeofenceMonitorBinderTests {
         return mock
     }
 
-    /// Polls the fire-and-forget Task created inside the transition handler. Bounded by a
-    /// finite iteration count so a regression doesn't hang the suite.
+    /// Polls the fire-and-forget Task created inside the transition handler. Bounded so a
+    /// regression doesn't hang the suite.
+    ///
+    /// Yields first, which settles the short paths in microseconds, then falls back to sleeping.
+    /// Yield-only is not enough: the polygon paths reach storage and a fix request before the
+    /// coordinator is touched, and 50 yields elapse almost instantly when this suite runs on its
+    /// own. Measured — the polygon enter tests passed only while the resolver suite ran alongside
+    /// them and failed 3/3 when this suite ran alone, so a yield-only wait makes the result depend
+    /// on which OTHER tests happen to be running.
     private func awaitDispatch(_ condition: @autoclosure () -> Bool) async {
         for _ in 0 ..< 50 {
             if condition() { return }
             await Task.yield()
+        }
+        for _ in 0 ..< 200 {
+            if condition() { return }
+            try? await Task.sleep(nanoseconds: 10000000)
         }
     }
 
@@ -277,5 +321,148 @@ struct GeofenceMonitorBinderTests {
 
         #expect(delivery.trackMetricCallsCount == 0)
         #expect(await storage.getPolygonMembership()["poly-1"]?.membership == .inside)
+    }
+
+    /// The dead-zone fix. Entering a polygon's covering circle leaves the device beside a boundary
+    /// the OS cannot report, and the wake is sized only at registration time — so the crossing that
+    /// usually follows within minutes has nothing to wake it. Measured in the field: a circle entry
+    /// 45 m from the ring, then 11 minutes of silence.
+    ///
+    /// `handleMovement`, not `refresh`: `refresh` answers `.skip` unless the device moved a full
+    /// refresh radius from the last registration centre, and `.skip` never touches the trigger.
+    @Test
+    func bind_givenPolygonCoveringCircleEnter_expectWakeReArmedNotJustRefreshed() async {
+        let monitor = MockGeofenceRegionMonitor()
+        let coordinator = makeCoordinatorMock()
+        let tracker = makeTracker(deliveryTracker: makeDeliveryMock())
+        let storage = makeStorage()
+        await seedPolygon(in: storage)
+
+        let resolver = makeResolver(tracker: tracker, storage: storage)
+        resolver.fixResolver.requestFreshFix = { [weak resolver] in
+            resolver?.fixResolver.handleResolvedFix(Self.insideFix)
+        }
+        GeofenceMonitorBinder.bind(monitor: monitor, resolver: resolver, coordinator: coordinator, logger: LoggerMock())
+        monitor.simulateTransition(
+            identifier: "poly-1", transition: .enter,
+            location: LocationData(latitude: 37.0, longitude: -122.0),
+            eventCircle: .circle(MonitoredCircle(center: .init(latitude: 0, longitude: 0), radius: 300, maximumRadius: 1000))
+        )
+        await awaitDispatch(coordinator.handleMovementCallsCount > 0)
+
+        #expect(coordinator.handleMovementCallsCount == 1)
+    }
+
+    /// The re-arm must be sized against the fix the membership pass obtained, NOT the crossing's
+    /// own coordinates. Business events dispatch with `locationIsFresh == false` on both monitor
+    /// paths, and the coordinator widens the trigger to the full refresh radius for any anchor that
+    /// is not a live fix — so passing the callback's location through would install the widest
+    /// possible wake in the one case that needs the tightest, and the test would still be green.
+    @Test
+    func bind_givenPolygonCoveringCircleEnter_expectTheResolversFixNotTheCallbacks() async {
+        let monitor = MockGeofenceRegionMonitor()
+        let coordinator = makeCoordinatorMock()
+        let tracker = makeTracker(deliveryTracker: makeDeliveryMock())
+        let storage = makeStorage()
+        await seedPolygon(in: storage)
+
+        let resolver = makeResolver(tracker: tracker, storage: storage)
+        resolver.fixResolver.requestFreshFix = { [weak resolver] in
+            resolver?.fixResolver.handleResolvedFix(Self.insideFix)
+        }
+        GeofenceMonitorBinder.bind(monitor: monitor, resolver: resolver, coordinator: coordinator, logger: LoggerMock())
+        monitor.simulateTransition(
+            identifier: "poly-1", transition: .enter,
+            // Deliberately far from the fix, so reading the wrong one is visible.
+            location: LocationData(latitude: 37.0, longitude: -122.0),
+            eventCircle: .circle(MonitoredCircle(center: .init(latitude: 0, longitude: 0), radius: 300, maximumRadius: 1000))
+        )
+        await awaitDispatch(coordinator.handleMovementCallsCount > 0)
+
+        let arguments = coordinator.handleMovementReceivedArguments
+        #expect(arguments?.latitude == Self.insideFix.coordinate.latitude)
+        #expect(arguments?.longitude == Self.insideFix.coordinate.longitude)
+        // The whole point: a non-live anchor makes the coordinator widen the trigger to maximum.
+        #expect(arguments?.anchorIsLiveFix == true)
+    }
+
+    /// No fix means nothing to size a trigger with, so the crossing falls back to the plain
+    /// catalog refresh rather than re-arming on coordinates it does not trust.
+    @Test
+    func bind_givenPolygonEnterWithNoUsableFix_expectRefreshNotReArm() async {
+        let monitor = MockGeofenceRegionMonitor()
+        let coordinator = makeCoordinatorMock()
+        let tracker = makeTracker(deliveryTracker: makeDeliveryMock())
+        let storage = makeStorage()
+        await seedPolygon(in: storage)
+
+        let resolver = makeResolver(tracker: tracker, storage: storage)
+        // Requested and never answered: the resolver times out and reports no usable fix.
+        resolver.fixResolver.requestFreshFix = { [weak resolver] in
+            resolver?.fixResolver.handleRequestFailure()
+        }
+        GeofenceMonitorBinder.bind(monitor: monitor, resolver: resolver, coordinator: coordinator, logger: LoggerMock())
+        monitor.simulateTransition(
+            identifier: "poly-1", transition: .enter,
+            location: LocationData(latitude: 37.0, longitude: -122.0),
+            eventCircle: .circle(MonitoredCircle(center: .init(latitude: 0, longitude: 0), radius: 300, maximumRadius: 1000))
+        )
+        await awaitDispatch(coordinator.refreshCallsCount > 0)
+
+        #expect(coordinator.handleMovementCallsCount == 0)
+        #expect(coordinator.refreshCallsCount == 1)
+    }
+
+    /// A polygon EXIT puts the boundary behind us and the next registration re-sizes from wherever
+    /// the device then is. Re-arming here would tighten the trigger around a venue being left.
+    @Test
+    func bind_givenPolygonCoveringCircleExit_expectRefreshNotReArm() async {
+        let monitor = MockGeofenceRegionMonitor()
+        let coordinator = makeCoordinatorMock()
+        let tracker = makeTracker(deliveryTracker: makeDeliveryMock())
+        let storage = makeStorage()
+        await seedPolygon(in: storage)
+
+        let resolver = makeResolver(tracker: tracker, storage: storage)
+        GeofenceMonitorBinder.bind(monitor: monitor, resolver: resolver, coordinator: coordinator, logger: LoggerMock())
+        monitor.simulateTransition(
+            identifier: "poly-1", transition: .exit,
+            location: LocationData(latitude: 37.0, longitude: -122.0),
+            eventCircle: .circle(MonitoredCircle(center: .init(latitude: 0, longitude: 0), radius: 300, maximumRadius: 1000))
+        )
+        await awaitDispatch(coordinator.refreshCallsCount > 0)
+
+        #expect(coordinator.handleMovementCallsCount == 0)
+        #expect(coordinator.refreshCallsCount == 1)
+    }
+
+    /// Regression guard for the crossing-refresh #1296 added. `handleMovement` refetches on
+    /// distance and on a missing anchor, never on AGE, so re-arming alone would leave a
+    /// time-expired catalog stale on a circle entry made without moving a refetch radius.
+    @Test
+    func bind_givenPolygonCoveringCircleEnter_expectCatalogStillRefreshed() async {
+        let monitor = MockGeofenceRegionMonitor()
+        let coordinator = makeCoordinatorMock()
+        let tracker = makeTracker(deliveryTracker: makeDeliveryMock())
+        let storage = makeStorage()
+        await seedPolygon(in: storage)
+
+        let resolver = makeResolver(tracker: tracker, storage: storage)
+        resolver.fixResolver.requestFreshFix = { [weak resolver] in
+            resolver?.fixResolver.handleResolvedFix(Self.insideFix)
+        }
+        GeofenceMonitorBinder.bind(monitor: monitor, resolver: resolver, coordinator: coordinator, logger: LoggerMock())
+        monitor.simulateTransition(
+            identifier: "poly-1", transition: .enter,
+            location: LocationData(latitude: 37.0, longitude: -122.0),
+            eventCircle: .circle(MonitoredCircle(center: .init(latitude: 0, longitude: 0), radius: 300, maximumRadius: 1000))
+        )
+        await awaitDispatch(coordinator.refreshCallsCount > 0)
+
+        #expect(coordinator.handleMovementCallsCount == 1)
+        #expect(coordinator.refreshCallsCount == 1)
+        // Both anchored on the resolver's fix, for the same reason the re-arm is.
+        #expect(coordinator.refreshReceivedArguments?.latitude == Self.insideFix.coordinate.latitude)
+        #expect(coordinator.refreshReceivedArguments?.anchorIsLiveFix == true)
     }
 }
