@@ -365,8 +365,9 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preco
 
     // Fires once when the delegate is set (harmless — the bootstrap read status synchronously
     // first) and again on every change, keeping the service session in step with the granted tier.
-    // Surfaced UNFILTERED in BOTH directions: a downgrade is what disarms visit monitoring in
-    // `armVisitMonitoring`, so narrowing this to improvements would silently leave visits running.
+    // Surfaced UNFILTERED in BOTH directions: an improvement lets the bootstrap re-attempt
+    // registration, and a downgrade is what disarms visit monitoring in `armVisitMonitoring`.
+    // Narrowing this to improvements alone would silently leave visits running.
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         updateServiceSession()
         onAuthorizationChanged?()
