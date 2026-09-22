@@ -45,7 +45,7 @@ extension CLMonitorGeofenceMonitor {
     /// True when the event lands inside the identifier's replay window AND a trustworthy fix
     /// confidently contradicts it (`BaselineHealDecision` with `lastState` = the incoming
     /// transition — a non-nil result means the fix says the opposite of what the OS delivered).
-    /// Geometry comes from the drained add's stamp, not `registeredConditions`: that map updates
+    /// Geometry comes from the drained add's stamp, not the ledger: the ledger updates
     /// synchronously when a reshape is staged, so during its staging→drain gap an event the OS
     /// computed on the old circle must still be judged against the old circle.
     /// The window compares the EVENT's date to the add, not the processing time: an event can sit
@@ -53,9 +53,15 @@ extension CLMonitorGeofenceMonitor {
     /// gated no matter how late it drains — while a real crossing dated outside the window, before
     /// the add or minutes after it, stays ungated no matter when it is processed.
     func isEventContradictedByFreshFix(identifier: String, transition: GeofenceTransition, eventDate: Date) async -> Bool {
-        guard let readd = conditionReadds[identifier],
-              readd.replayWindowCovers(eventDate)
-        else { return false }
+        guard let readd = conditionReadds[identifier] else { return false }
+        let insideWindow = readd.replayWindowCovers(eventDate)
+        logger.geofenceContradictionEvaluated(
+            identifier: identifier,
+            transition: transition,
+            delaySinceAdd: eventDate.timeIntervalSince(readd.added),
+            insideWindow: insideWindow
+        )
+        guard insideWindow else { return false }
         // The movement trigger is judged on the cache alone. It is the one condition whose gate sits
         // on the path that drives every sync, and this runs on the single serialized event consumer,
         // so a one-shot request here stalls every later event behind it for up to
@@ -64,17 +70,38 @@ extension CLMonitorGeofenceMonitor {
         // staging already used. No cached fix means no judgement, and the gate fails open as always.
         let isMovementTrigger = identifier == GeofenceConstants.movementTriggerIdentifier
         let gateFix = isMovementTrigger ? bestKnownFix() : await resolveGateFix()
-        guard let gateFix, CLLocationCoordinate2DIsValid(gateFix.coordinate) else { return false }
-        let distanceFromCenter = gateFix.distance(
-            from: CLLocation(latitude: readd.center.latitude, longitude: readd.center.longitude)
-        )
+        guard let gateFix, CLLocationCoordinate2DIsValid(gateFix.coordinate) else {
+            // `gateFix` is the unbound optional in this branch, so the two causes stay
+            // distinguishable without a second guard.
+            logger.geofenceContradictionNoFix(
+                identifier: identifier,
+                transition: transition,
+                reason: gateFix == nil ? .noFixAvailable : .invalidCoordinate
+            )
+            return false
+        }
+        let center = CLLocation(latitude: readd.center.latitude, longitude: readd.center.longitude)
+        let distanceFromCenter = gateFix.distance(from: center)
+        let fixAge = dateUtil.now.timeIntervalSince(gateFix.timestamp)
         guard BaselineHealDecision.synthesizedTransition(
             distanceFromCenter: distanceFromCenter,
             radius: readd.radius,
             horizontalAccuracy: gateFix.horizontalAccuracy,
-            fixAge: dateUtil.now.timeIntervalSince(gateFix.timestamp),
+            fixAge: fixAge,
             lastState: transition
-        ) != nil else { return false }
+        ) != nil else {
+            logger.geofenceContradictionAllowed(
+                identifier: identifier,
+                transition: transition,
+                geometry: GateFixGeometry(
+                    distanceFromCenter: distanceFromCenter,
+                    radius: readd.radius,
+                    accuracy: gateFix.horizontalAccuracy,
+                    fixAge: fixAge
+                )
+            )
+            return false
+        }
         logger.geofenceEventRefusedByContradiction(
             identifier: identifier,
             transition: transition,
@@ -102,14 +129,17 @@ extension CLMonitorGeofenceMonitor {
         if Self.gateFixRequestBlocked(failedAt: gateFixRequestFailedAt, now: dateUtil.now) {
             return bestKnownFix()
         }
-        let fix: CLLocation? = await withCheckedContinuation { continuation in
-            movementFixResolver.resolve(cached: bestKnownFix()) { [weak self] _ in
-                continuation.resume(returning: self?.bestKnownFix())
+        let isFresh: Bool = await withCheckedContinuation { continuation in
+            movementFixResolver.resolve(cached: bestKnownFix(), purpose: .contradictionGate) { _, isFresh in
+                continuation.resume(returning: isFresh)
             }
         }
-        let isFresh = fix.map { dateUtil.now.timeIntervalSince($0.timestamp) <= GeofenceConstants.movementFixMaxAge } ?? false
+        // The resolver's own verdict, not one recomputed from the age of whatever `bestKnownFix()`
+        // returns afterwards: a request that FAILED still leaves an OS cache that can be under
+        // `movementFixMaxAge`, and recomputing then read that as success and left the block unarmed
+        // — so every later event in the burst paid another full timeout.
         gateFixRequestFailedAt = isFresh ? nil : dateUtil.now
-        return fix
+        return bestKnownFix()
     }
 
     /// Whether a new gate-fix request is skipped because the last one recently came back without

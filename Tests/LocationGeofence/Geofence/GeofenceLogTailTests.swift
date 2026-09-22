@@ -52,7 +52,7 @@ struct GeofenceLogTailTests {
     private var invocations: [Invocation] {
         let location = sampleLocation
         return [
-            Invocation(name: "invalidRegionDropped", ev: "registration.rejected", requiredKeys: ["id", "why"]) { $0.geofenceInvalidRegionDropped("notl core") },
+            Invocation(name: "invalidRegionDropped", ev: "registration.rejected", requiredKeys: ["id", "why"]) { $0.geofenceInvalidRegionDropped("notl core", reason: .unusableCircle) },
             Invocation(name: "invalidCoordinates", ev: "registration.rejected", requiredKeys: ["id", "why"]) { $0.geofenceInvalidCoordinatesForRegion("notl_core") },
             Invocation(name: "monitoringFailed", ev: "os.monitor.failed", requiredKeys: ["id", "ok"]) { $0.geofenceMonitoringFailed(region: "notl_core", error: GeofenceApiError.transport) },
             Invocation(name: "streamFailed", ev: "os.stream.failed", requiredKeys: ["ok"]) { $0.geofenceMonitorEventStreamFailed(error: GeofenceApiError.transport) },
@@ -93,11 +93,27 @@ struct GeofenceLogTailTests {
             Invocation(name: "movementTrigger", ev: "movement.exit", requiredKeys: ["tier"]) { $0.geofenceMovementTrigger(tier: .localRerank) },
             Invocation(name: "movementTriggerRegistered", ev: "movement.registered", requiredKeys: ["rad"]) { $0.geofenceMovementTriggerRegistered(latitude: 43.2, longitude: -79.0, radius: 500) },
             Invocation(name: "movementRearmed", ev: "movement.rearmed", requiredKeys: ["why"]) { $0.geofenceMovementRearmedAfterFailedRefresh() },
-            Invocation(name: "movementFixResolved", ev: "movement.fix.resolved", requiredKeys: ["age", "prov"]) { $0.geofenceMovementFixResolved(ageSeconds: 12.5, requested: true) },
+            Invocation(name: "allRegionsDropped", ev: "api.fetch.unreadable", requiredKeys: ["ok", "n", "why"]) { $0.geofenceAllRegionsDropped(count: 4) },
+            Invocation(name: "callbackDispatched", ev: "os.callback.dispatched", requiredKeys: ["id", "t"]) { $0.geofenceCallbackDispatched(identifier: "notl_core", transition: .enter) },
+            Invocation(name: "polygonTransition", ev: "polygon.transition", requiredKeys: ["id", "t", "by"]) { $0.geofencePolygonTransition(identifier: "notl_core", transition: .enter, confirmedByFix: true) },
+            Invocation(name: "polygonPassSkipped", ev: "polygon.pass.skipped", requiredKeys: ["why"]) { $0.geofencePolygonPassSkipped(reason: .passInFlight) },
+            Invocation(name: "polygonPassStarted", ev: "polygon.pass.started", requiredKeys: ["why", "n", "pass"]) { $0.geofencePolygonPassStarted(reason: .foreground, count: 3, pass: 7) },
+            Invocation(name: "polygonEvaluationRequested", ev: "polygon.evaluation.requested", requiredKeys: ["id", "why"]) { $0.geofencePolygonEvaluationRequested(identifier: "notl_core", reason: .newPolygon) },
+            Invocation(name: "polygonDropped", ev: "registration.rejected", requiredKeys: ["id", "why", "rad", "lim"]) { $0.geofencePolygonExceedsMonitoringLimit(identifier: "notl_core", radius: 12000, limit: 10000) },
+            Invocation(name: "polygonWakePass", ev: "polygon.wake.pass", requiredKeys: ["rad", "n"]) { $0.geofencePolygonWakePass(radius: 420, polygonCount: 3) },
+            Invocation(name: "polygonVerdict", ev: "polygon.verdict", requiredKeys: ["id", "m", "edge", "acc", "age", "pass", "cor"]) { $0.geofencePolygonVerdict(identifier: "notl_core", verdict: PolygonVerdict(membership: .inside, corroboration: .notNeeded, signedEdgeDistance: 80, pass: 7), horizontalAccuracy: 12, fixAge: 3.5) },
+            Invocation(name: "polygonVerdictUnconfirmed", ev: "polygon.verdict", requiredKeys: ["id", "m", "pass", "cor", "corwhy"]) { $0.geofencePolygonVerdict(identifier: "notl_core", verdict: PolygonVerdict(membership: .inside, corroboration: .unconfirmed(.noUsableFix), signedEdgeDistance: 3, pass: 2), horizontalAccuracy: 5, fixAge: 1) },
+            Invocation(name: "polygonUndelivered", ev: "polygon.undelivered", requiredKeys: ["id", "why"]) { $0.geofencePolygonNotDelivered(identifier: "notl_core", reason: .outcome(.suppressedInitialOutside)) },
+            Invocation(name: "polygonUndecided", ev: "polygon.undecided", requiredKeys: ["id", "why", "edge", "acc", "pass"]) { $0.geofencePolygonUndecided(identifier: "notl_core", reason: .withinAccuracy, signedEdgeDistance: -4, horizontalAccuracy: 12, pass: 7) },
+            Invocation(name: "wakeRadiusChosen", ev: "movement.radius.chosen", requiredKeys: ["rad", "from"]) { $0.geofenceWakeRadiusChosen(radius: 640, anchorIsLiveFix: true) },
+            Invocation(name: "movementFixResolved", ev: "movement.fix.resolved", requiredKeys: ["age", "prov", "spd", "for"]) { $0.geofenceMovementFixResolved(ageSeconds: 12.5, requested: true, speed: 13.4, purpose: .movement) },
             Invocation(name: "movementFixStale", ev: "movement.fix.requested", requiredKeys: ["age", "why"]) { $0.geofenceMovementFixStale(ageSeconds: 900) },
             Invocation(name: "movementFixRequestFailed", ev: "movement.fix.failed", requiredKeys: ["ok", "why", "ms"]) { $0.geofenceMovementFixRequestFailed(fallingBackToCached: true, elapsed: 5) },
             Invocation(name: "baselineHealed", ev: "baseline.healed", requiredKeys: ["id", "t"]) { $0.geofenceBaselineHealed(identifier: "notl_core", transition: .enter) },
+            Invocation(name: "contradictionEvaluated", ev: "contradiction.evaluated", requiredKeys: ["id", "t", "dly", "win"]) { $0.geofenceContradictionEvaluated(identifier: "notl_core", transition: .enter, delaySinceAdd: 1.25, insideWindow: true) },
             Invocation(name: "contradictionRefused", ev: "contradiction.refused", requiredKeys: ["id", "t", "dist", "rad", "edge", "acc"]) { $0.geofenceEventRefusedByContradiction(identifier: "notl_core", transition: .enter, distanceFromCenter: 1400, radius: 1000, accuracy: 48) },
+            Invocation(name: "contradictionAllowed", ev: "contradiction.allowed", requiredKeys: ["id", "t", "dist", "rad", "edge", "acc", "age"]) { $0.geofenceContradictionAllowed(identifier: "notl_core", transition: .enter, geometry: GateFixGeometry(distanceFromCenter: 980, radius: 1000, accuracy: 48, fixAge: 3.5)) },
+            Invocation(name: "contradictionNoFix", ev: "contradiction.no_fix", requiredKeys: ["id", "t", "why"]) { $0.geofenceContradictionNoFix(identifier: "notl_core", transition: .exit, reason: .noFixAvailable) },
             Invocation(name: "syncSuperseded", ev: "sync.superseded", requiredKeys: ["why"]) { $0.geofenceSyncSupersededByUserChange() },
             Invocation(name: "locationArrived", ev: "location.fix", requiredKeys: ["lat", "lon", "prov"]) { $0.geofenceLocationArrived(LocationData(latitude: 43.2, longitude: -79.0)) },
             Invocation(name: "resetCompleted", ev: "module.reset", requiredKeys: ["ok"]) { $0.geofenceResetCompleted() },
@@ -106,7 +122,10 @@ struct GeofenceLogTailTests {
             Invocation(name: "regionsAdopted", ev: "registration.adopted", requiredKeys: ["n", "ids"]) { $0.geofenceRegionsAdopted(identifiers: ["a", "b", "c", "d"]) },
             Invocation(name: "foregroundRearm", ev: "registration.rearmed", requiredKeys: ["n", "why"]) { $0.geofenceForegroundRearm(count: 4) },
             Invocation(name: "unmonitoredRecovery", ev: "registration.recovery", requiredKeys: ["n", "why"]) { $0.geofenceUnmonitoredRecovery(count: 4) },
-            Invocation(name: "storageLoaded", ev: "storage.loaded", requiredKeys: ["n", "anchor"]) { $0.geofenceStorageLoaded(regionCount: 30, hasAnchor: true) }
+            Invocation(name: "storageLoaded", ev: "storage.loaded", requiredKeys: ["n", "anchor"]) { $0.geofenceStorageLoaded(regionCount: 30, hasAnchor: true) },
+            Invocation(name: "queueRowsDropped", ev: "queue.rows_dropped", requiredKeys: ["why", "n", "total"]) { $0.geofenceQueueRowsDropped(count: 1, of: 3) },
+            Invocation(name: "queueUnreadable", ev: "queue.unreadable", requiredKeys: ["why"]) { $0.geofenceQueueUnreadable(reason: .readFailed) },
+            Invocation(name: "droppedQueueUnreadable", ev: "transition.dropped", requiredKeys: ["id", "t", "why"]) { $0.geofenceTransitionDroppedQueueUnreadable(geofenceId: "notl_core", transition: .enter) }
         ]
     }
 
@@ -153,6 +172,40 @@ struct GeofenceLogTailTests {
         }
     }
 
+    /// One resolver serves five decisions, so a speed sample is only usable once you can tell
+    /// which asked for it — the wake margin is calibrated from the movement caller alone.
+    @Test
+    func movementFixResolved_expectTheAskingDecisionNamed() {
+        withDiagnostics(true) {
+            for purpose in [GeofenceFixPurpose.movement, .contradictionGate, .baselineHeal, .pendingEvents, .polygon] {
+                let logger = CapturingLogger()
+                logger.geofenceMovementFixResolved(ageSeconds: 1, requested: false, speed: 5, purpose: purpose)
+                #expect(parseTail(logger.messages.last ?? "")?["for"] == purpose.rawValue)
+            }
+            // Distinct tokens, or the split says nothing.
+            #expect(Set([GeofenceFixPurpose.movement, .contradictionGate, .baselineHeal, .pendingEvents, .polygon].map(\.rawValue)).count == 5)
+        }
+    }
+
+    /// CoreLocation reports -1 for "no speed", which is not the same as stationary. Carrying it
+    /// through would put a fabricated -1.0 into a calibration sample that averages speeds.
+    @Test
+    func movementFixResolved_givenNoSpeedOnTheFix_expectTheKeyOmitted() {
+        withDiagnostics(true) {
+            let stationary = CapturingLogger()
+            stationary.geofenceMovementFixResolved(ageSeconds: 1, requested: false, speed: 0)
+            #expect(parseTail(stationary.messages.last ?? "")?["spd"] == "0.0")
+
+            let unknown = CapturingLogger()
+            unknown.geofenceMovementFixResolved(ageSeconds: 1, requested: false, speed: -1)
+            #expect(parseTail(unknown.messages.last ?? "")?["spd"] == nil)
+
+            let absent = CapturingLogger()
+            absent.geofenceMovementFixResolved(ageSeconds: 1, requested: false)
+            #expect(parseTail(absent.messages.last ?? "")?["spd"] == nil)
+        }
+    }
+
     @Test
     func deliveryFailure_expectDistinctReasonTokenPerCause() {
         // The token is the whole value of this record now that it carries no verdict: it is what
@@ -175,6 +228,11 @@ struct GeofenceLogTailTests {
     /// `GeofenceLogTailTest.declaredIo`.
     private static let declaredIo: [String: String] = [
         "api.fetch.result": "in",
+        // Three reads polygon added: a catalogue the SDK could not parse and the two pending-queue
+        // reads. All are the SDK taking something in, so they are `in` like every other read.
+        "api.fetch.unreadable": "in",
+        "queue.rows_dropped": "in",
+        "queue.unreadable": "in",
         "fence.cataloged": "in",
         "identity.changed": "in",
         "location.fix": "in",
@@ -220,10 +278,14 @@ struct GeofenceLogTailTests {
     /// Every `ev=` key the module may emit.
     private static let declaredVocabulary: Set<String> = [
         "api.fetch.result",
+        "api.fetch.unreadable",
         "baseline.healed",
         "baseline.refused",
         "condition.added",
         "condition.removed",
+        "contradiction.allowed",
+        "contradiction.evaluated",
+        "contradiction.no_fix",
         "contradiction.refused",
         "delivery.failed",
         "delivery.queued",
@@ -239,14 +301,26 @@ struct GeofenceLogTailTests {
         "movement.fix.failed",
         "movement.fix.requested",
         "movement.fix.resolved",
+        "movement.radius.chosen",
         "movement.rearmed",
         "movement.registered",
+        "os.callback.dispatched",
         "os.callback.dropped",
         "os.callback.received",
         "os.monitor.failed",
         "os.monitor.stopped",
         "os.stream.failed",
         "permission.changed",
+        "polygon.evaluation.requested",
+        "polygon.pass.skipped",
+        "polygon.pass.started",
+        "polygon.transition",
+        "polygon.undecided",
+        "polygon.undelivered",
+        "polygon.verdict",
+        "polygon.wake.pass",
+        "queue.rows_dropped",
+        "queue.unreadable",
         "rank.evaluated",
         "registration.adopted",
         "registration.applied",
@@ -264,6 +338,212 @@ struct GeofenceLogTailTests {
         "transition.suppressed",
         "transition.synthesized"
     ]
+    /// `ev` alone does not identify these records, and the contract table only checks `why=` is
+    /// present — so swapping two cases in either switch passes every other assertion in this file.
+    @Test
+    func regionDropReason_expectDistinctPinnedTokenPerCause() {
+        let cases = GeofenceRegionDropReason.allCases
+        for reason in cases {
+            switch reason {
+            case .unknownShape: #expect(reason.logToken == "unknown_shape")
+            case .undescribedShape: #expect(reason.logToken == "undescribed_shape")
+            case .unusableCircle: #expect(reason.logToken == "unusable_circle")
+            case .unusablePolygon: #expect(reason.logToken == "unusable_polygon")
+            }
+        }
+        expectUsableTokens(cases.map(\.logToken))
+    }
+
+    @Test
+    func polygonOutcome_expectDistinctPinnedTokenPerCause() {
+        let cases: [PolygonMembershipOutcome] = [
+            .deliver(.enter), .suppressedNoChange, .suppressedNewerDecision,
+            .suppressedInitialOutside, .suppressedUnmonitored, .suppressedGeometryChanged
+        ]
+        for outcome in cases {
+            switch outcome {
+            case .deliver: #expect(outcome.logToken == "deliver")
+            case .suppressedNoChange: #expect(outcome.logToken == "no_change")
+            case .suppressedNewerDecision: #expect(outcome.logToken == "newer_decision")
+            case .suppressedInitialOutside: #expect(outcome.logToken == "initial_outside")
+            case .suppressedUnmonitored: #expect(outcome.logToken == "unmonitored")
+            case .suppressedGeometryChanged: #expect(outcome.logToken == "geometry_changed")
+            }
+        }
+        expectUsableTokens(cases.map(\.logToken))
+    }
+
+    /// The two refusals that are NOT the write's outcome are the whole reason this enum exists:
+    /// reusing `no_change` for either reports a delivery that was refused as one never owed.
+    @Test
+    func polygonUndeliveredReason_expectRefusalsDistinctFromOutcomes() {
+        let outcomes: [PolygonMembershipOutcome] = [
+            .deliver(.enter), .suppressedNoChange, .suppressedNewerDecision,
+            .suppressedInitialOutside, .suppressedUnmonitored, .suppressedGeometryChanged
+        ]
+        // Every outcome, so the two refusals are checked against all of them and not just one.
+        let cases: [PolygonUndeliveredReason] = outcomes.map { .outcome($0) } + [.userChanged, .transitionNotRegistered]
+        for reason in cases {
+            switch reason {
+            case .outcome(let outcome): #expect(reason.logToken == outcome.logToken)
+            case .userChanged: #expect(reason.logToken == "user_changed")
+            case .transitionNotRegistered: #expect(reason.logToken == "transition_type_not_registered")
+            }
+        }
+        expectUsableTokens(cases.map(\.logToken))
+    }
+
+    @Test
+    func monitorEventOutcome_expectDistinctPinnedTokenPerCause() {
+        for outcome in GeofenceMonitorEventOutcome.allCases {
+            switch outcome {
+            case .deliver: #expect(outcome.diagnosticReason == nil, "deliver is not a discard and must log nothing")
+            case .suppressedNoChange: #expect(outcome.diagnosticReason == "no_state_change")
+            case .suppressedFilteredType: #expect(outcome.diagnosticReason == "transition_type_not_registered")
+            case .suppressedNoBaseline: #expect(outcome.diagnosticReason == "baseline_established")
+            case .suppressedNewerBaseline: #expect(outcome.diagnosticReason == "newer_baseline")
+            case .suppressedRedelivery: #expect(outcome.diagnosticReason == "redelivered")
+            case .suppressedPredatesRegistration: #expect(outcome.diagnosticReason == "predates_registration")
+            }
+        }
+        expectUsableTokens(GeofenceMonitorEventOutcome.allCases.compactMap(\.diagnosticReason))
+    }
+
+    @Test
+    func apiError_expectDistinctPinnedTokenPerCause() {
+        let cases: [GeofenceApiError] = [
+            .missingApiHost, .missingCdpApiKey, .invalidRequest, .http(statusCode: 503), .transport, .decoding
+        ]
+        for error in cases {
+            switch error {
+            case .missingApiHost: #expect(error.diagnosticToken == "missing_api_host")
+            case .missingCdpApiKey: #expect(error.diagnosticToken == "missing_cdp_api_key")
+            case .invalidRequest: #expect(error.diagnosticToken == "invalid_request")
+            case .http(let statusCode): #expect(error.diagnosticToken == "http_\(statusCode)")
+            case .transport: #expect(error.diagnosticToken == "transport")
+            case .decoding: #expect(error.diagnosticToken == "decoding")
+            }
+        }
+        // The status rides the token, so two different failures must not collapse into one bucket.
+        #expect(GeofenceApiError.http(statusCode: 401).diagnosticToken == "http_401")
+        #expect(GeofenceApiError.http(statusCode: 503).diagnosticToken == "http_503")
+        expectUsableTokens(cases.map(\.diagnosticToken))
+    }
+
+    /// `@unknown default` means a future status silently reports `unknown`; pinning the five we
+    /// handle is what keeps that from swallowing one we already understand.
+    @Test
+    func permissionToken_expectDistinctPinnedTokenPerStatus() {
+        let statuses: [CLAuthorizationStatus] = [.notDetermined, .restricted, .denied, .authorizedAlways, .authorizedWhenInUse]
+        for status in statuses {
+            switch status {
+            case .notDetermined: #expect(GeofenceLog.permission(status) == "not_determined")
+            case .restricted: #expect(GeofenceLog.permission(status) == "restricted")
+            case .denied: #expect(GeofenceLog.permission(status) == "denied")
+            case .authorizedAlways: #expect(GeofenceLog.permission(status) == "always")
+            case .authorizedWhenInUse: #expect(GeofenceLog.permission(status) == "when_in_use")
+            @unknown default: Issue.record("unhandled CLAuthorizationStatus in the test table")
+            }
+        }
+        expectUsableTokens(statuses.map(GeofenceLog.permission))
+    }
+
+    /// A case with no explicit raw value takes its Swift identifier as the wire token, so a
+    /// rename silently rewrites the log contract and nothing fails. Pinning the whole set catches
+    /// both a rename and a case added without one.
+    /// The tail's separator set is itself the contract: every token assertion reads it from
+    /// production, so narrowing it would relax those tests and `sanitize` together while the
+    /// off-device parser, which keys on these literals, silently breaks.
+    @Test
+    func separators_expectThePinnedSet() {
+        #expect(GeofenceLog.separators == ["=", ",", ":", "|"])
+    }
+
+    @Test
+    func rawValueTokens_expectThePinnedSetPerEnum() {
+        // Not only a log token: this raw value is the tracked event's `transition` property, the
+        // Codable form of a persisted pending row, and part of the pending and cooldown keys.
+        expectTokens(GeofenceTransition.self, ["enter", "exit"])
+        // The only camelCase tokens in the vocabulary, pinned as they are on purpose: Android
+        // emits neither, so there is nothing to diverge from and renaming them buys nothing.
+        expectTokens(HandleMovementTier.self, ["localRerank", "remoteRefresh"])
+        expectTokens(PolygonPassSkipReason.self, ["pass_in_flight"])
+        expectTokens(PolygonEvaluationReason.self, ["new_polygon", "new_polygon_forced_request_failed", "movement", "foreground",
+                                                    "os_transition"])
+        expectTokens(PolygonUndecidedReason.self, [
+            "no_usable_fix", "user_changed", "ring_unbuildable", "unregistered", "circle_expired",
+            "within_accuracy", "fix_too_old", "accuracy_too_low", "corroboration_unnecessary",
+            "corroboration_disagreed", "corroboration_not_independent"
+        ])
+        expectTokens(GeofenceFixPurpose.self, ["movement", "gate", "heal", "pending", "polygon"])
+        expectTokens(GeofenceCatalogShape.self, ["circle", "polygon", "undescribed", "unknown"])
+        expectTokens(GeofenceLog.FixSource.self, ["manager_cache", "resolver", "fresh_request", "gate", "bus", "synthetic", "none"])
+    }
+
+    private func expectTokens<T: RawRepresentable & CaseIterable>(
+        _: T.Type,
+        _ expected: Set<String>,
+        sourceLocation: SourceLocation = #_sourceLocation
+    ) where T.RawValue == String {
+        let actual = Set(T.allCases.map(\.rawValue))
+        #expect(actual == expected, "\(T.self) tokens changed: \(actual.symmetricDifference(expected))", sourceLocation: sourceLocation)
+        expectUsableTokens(Array(actual), sourceLocation: sourceLocation)
+    }
+
+    /// The literals in these tests are the wire contract, not a copy of the switch: a replay keys
+    /// off them, so a duplicate merges two causes into one bucket and a separator is rewritten by
+    /// `sanitize` into a token nobody is looking for.
+    private func expectUsableTokens(_ tokens: [String], sourceLocation: SourceLocation = #_sourceLocation) {
+        #expect(Set(tokens).count == tokens.count, "two causes share a token: \(tokens)", sourceLocation: sourceLocation)
+        #expect(tokens.allSatisfy { !$0.isEmpty }, "a reason token is empty", sourceLocation: sourceLocation)
+        for token in tokens {
+            #expect(
+                !token.contains(where: { $0.isWhitespace || GeofenceLog.separators.contains($0) }),
+                "token '\(token)' holds whitespace or a tail separator",
+                sourceLocation: sourceLocation
+            )
+        }
+    }
+
+    /// The module's whole diagnostic vocabulary, hoisted out of the test so the assertion stays
+    /// readable as rows are added.
+
+    /// `contradiction.allowed` carries a SIGNED edge, unlike `contradiction.refused` which floors
+    /// it at zero. The sign is the whole point of the record — which side of the fence the gated
+    /// fix fell on — and an off-device parser keying on `edge` cannot recover it if this flips.
+    ///
+    /// Asserted from POSITION rather than from the formula's output, the form
+    /// `SignConventionTests` uses: a fix physically inside must log a negative `edge` AND make the
+    /// gate's own decision read `.enter`. A test that only pinned `980 - 1000 == -20` would stay
+    /// green through an inversion of what "inside" means.
+    @Test
+    func contradictionAllowed_givenAFixInsideTheFence_expectANegativeEdgeMatchingTheDecision() {
+        let radius: Double = 1000
+        // 900, not 980: at 980 the edge is exactly `baselineHealMinEdgeMargin`, and the rule needs
+        // `abs(edge) > margin`, so that position is undecidable rather than inside.
+        let insideDistance: Double = 900
+        let geometry = GateFixGeometry(
+            distanceFromCenter: insideDistance, radius: radius, accuracy: 48, fixAge: 3.5
+        )
+        let logger = CapturingLogger()
+        withDiagnostics(true) {
+            logger.geofenceContradictionAllowed(
+                identifier: "notl_core", transition: .enter, geometry: geometry
+            )
+        }
+        let tail = parseTail(logger.messages.last ?? "")
+
+        // The decision agrees this position is inside: asked with `lastState: .exit`, a fix inside
+        // contradicts it and yields `.enter`.
+        #expect(BaselineHealDecision.synthesizedTransition(
+            distanceFromCenter: insideDistance, radius: radius,
+            horizontalAccuracy: 5, fixAge: 1, lastState: .exit
+        ) == .enter, "fixture is not physically inside by the gate's own rule")
+        #expect(geometry.signedEdgeDistance < 0, "circle convention: negative inside")
+        #expect(tail?["edge"] == "-100", "edge lost its sign: \(String(describing: tail?["edge"]))")
+        #expect(tail?["age"] == "3.5")
+        #expect(tail?["acc"] == "48.0")
+    }
 
     @Test
     func everyRecord_expectTheDeclaredVocabulary() {
@@ -383,6 +663,39 @@ struct GeofenceLogTailTests {
         }
     }
 
+    /// `cor` is the cross-SDK boolean and Android pins it to `true`/`false`. An unconfirmed
+    /// arrival must not widen it — the reason goes in the additive iOS-only `corwhy`, which is
+    /// absent entirely when the verdict was decisive.
+    @Test
+    func verdictCorroboration_expectCorStaysBooleanAndTheReasonRidesSeparately() {
+        withDiagnostics(true) {
+            let logger = CapturingLogger()
+            logger.geofencePolygonVerdict(
+                identifier: "notl_core",
+                verdict: PolygonVerdict(
+                    membership: .inside, corroboration: .unconfirmed(.noUsableFix),
+                    signedEdgeDistance: 3, pass: 1
+                ),
+                horizontalAccuracy: 5, fixAge: 1
+            )
+            let unconfirmed = logger.messages.last ?? ""
+            #expect(unconfirmed.contains("cor=false"), "cor must stay boolean: \(unconfirmed)")
+            #expect(unconfirmed.contains("corwhy=no_usable_fix"), "reason missing: \(unconfirmed)")
+
+            logger.geofencePolygonVerdict(
+                identifier: "notl_core",
+                verdict: PolygonVerdict(
+                    membership: .inside, corroboration: .confirmed,
+                    signedEdgeDistance: 80, pass: 1
+                ),
+                horizontalAccuracy: 5, fixAge: 1
+            )
+            let confirmed = logger.messages.last ?? ""
+            #expect(confirmed.contains("cor=true"), "confirmed must read true: \(confirmed)")
+            #expect(!confirmed.contains("corwhy="), "corwhy must be absent: \(confirmed)")
+        }
+    }
+
     @Test
     func listValues_expectSeparatorsSurviveTheTailBuilder() {
         // Regression: `sanitize` folds the format's separators so an untrusted id cannot split a
@@ -401,6 +714,45 @@ struct GeofenceLogTailTests {
             let message = logger.messages.last ?? ""
             #expect(message.contains("ranked=alpha:120,beta:340"), "ranked lost its separators: \(message)")
             #expect(message.contains("evicted=gamma"), "evicted malformed: \(message)")
+        }
+    }
+
+    @Test
+    func conditionMirror_expectAnAbsentFieldLeavesNoKeyBehind() {
+        // `missing`, `extra` and the sampler's own optional fields are nil whenever they have
+        // nothing to say. A key printed with an empty value would read in a capture as a measured
+        // zero, and the records these appear on are the ones read by grep during a field trip.
+        withDiagnostics(true) {
+            let logger = CapturingLogger()
+            logger.geofenceInfo("condition_mirror", fields: [
+                ("at", "poll"),
+                ("want", "13"),
+                ("missing", nil),
+                ("extra", nil)
+            ])
+            let message = logger.messages.last ?? ""
+            #expect(message.contains("want=13"), "lost a field it should keep: \(message)")
+            #expect(!message.contains("missing="), "nil field left a key behind: \(message)")
+            #expect(!message.contains("extra="), "nil field left a key behind: \(message)")
+        }
+    }
+
+    @Test
+    func conditionMirror_expectIdentifierListsKeepTheirSeparators() {
+        // `missing` and `extra` name conditions, so they are composed values like `ids`. Without
+        // being declared as such the tail folds their commas and two identifiers read as one — in
+        // the record whose entire job is to say WHICH condition the OS is missing.
+        withDiagnostics(true) {
+            let logger = CapturingLogger()
+            logger.geofenceInfo("condition_mirror", fields: [
+                ("os", "12"),
+                ("owned", "13"),
+                ("missing", GeofenceLog.list(["alpha", "beta"])),
+                ("extra", GeofenceLog.list(["gamma"]))
+            ])
+            let message = logger.messages.last ?? ""
+            #expect(message.contains("missing=alpha,beta"), "missing lost its separators: \(message)")
+            #expect(message.contains("extra=gamma"), "extra malformed: \(message)")
         }
     }
 
@@ -515,13 +867,46 @@ struct GeofenceLogTailTests {
 
     // MARK: - Fence catalog
 
+    /// A ring in GeoJSON order (longitude first) and CLOSED, as the wire sends it — the closing
+    /// position repeats the first, which the catalog must drop.
+    private func catalogPolygonRegion(id: String = "22250", vertices: Int = 4) -> GeofenceApiRegion {
+        // A regular ring, NOT a diagonal. Collinear points enclose no area, so the kernel rejects
+        // them and every catalog assertion silently exercises the fallback instead of the branch
+        // that reads the kernel's own list.
+        var ring = (0 ..< vertices).map { i -> [Double] in
+            let angle = 2 * Double.pi * Double(i) / Double(vertices)
+            return [55.184004 + 0.0015 * cos(angle), 25.109908 + 0.0015 * sin(angle)]
+        }
+        if let first = ring.first { ring.append(first) }
+        return GeofenceApiRegion(
+            id: id,
+            name: "Polygon Test",
+            shape: "polygon",
+            latitude: nil,
+            longitude: nil,
+            radius: nil,
+            geometry: GeofenceApiGeometry(type: "Polygon", coordinates: [ring]),
+            enclosingCircle: GeofenceApiEnclosingCircle(latitude: 25.109908, longitude: 55.184004, baseRadiusM: 625),
+            carriesPolygonFields: true,
+            externalId: nil,
+            transitionTypes: ["enter", "exit"],
+            lastUpdated: 0,
+            geosetIds: ["4471"],
+            metadata: nil
+        )
+    }
+
     private func catalogRegion(id: String = "11125", name: String? = "Momo Dubai Test") -> GeofenceApiRegion {
         GeofenceApiRegion(
             id: id,
             name: name,
+            shape: "circle",
             latitude: 25.109908,
             longitude: 55.184004,
             radius: 150,
+            geometry: nil,
+            enclosingCircle: nil,
+            carriesPolygonFields: false,
             externalId: nil,
             transitionTypes: ["enter", "exit"],
             lastUpdated: 0,
@@ -552,6 +937,242 @@ struct GeofenceLogTailTests {
             for key in ["id", "name", "gs", "lat", "lon", "rad", "tt"] {
                 #expect(fields[key] != nil, "missing \(key)= in '\(message)'")
             }
+        }
+    }
+
+    /// A polygon carries no lat/lon/radius on the wire. Before this, all three were dropped and the
+    /// fence catalogued unplaceable — the one thing the catalog exists to prevent.
+    @Test
+    func fenceCatalog_givenPolygon_expectEnclosingCircleAndRing() {
+        withDiagnostics(true) {
+            let logger = CapturingLogger()
+            logger.geofenceApiFetchResult(returnedCount: 1, elapsed: 0.4, regions: [catalogPolygonRegion()])
+
+            guard let message = logger.messages.last, let fields = parseTail(message) else {
+                Issue.record("no parseable tail in '\(logger.messages.last ?? "<nothing>")'")
+                return
+            }
+            #expect(fields["sh"] == "polygon")
+            #expect(fields["lat"] == "25.10991")
+            #expect(fields["lon"] == "55.18400")
+            #expect(fields["rad"] == "625")
+            #expect(fields["nv"] == "4")
+            // `lat_lon`, the SDK's order — the wire sends `lon,lat`. First vertex is at angle 0,
+            // so its longitude is the offset one and its latitude the centre's.
+            #expect(fields["ring"]?.hasPrefix("25.10991_55.18550") == true)
+        }
+    }
+
+    @Test
+    func fenceCatalog_givenCircle_expectShapeAndNoRing() {
+        withDiagnostics(true) {
+            let logger = CapturingLogger()
+            logger.geofenceApiFetchResult(returnedCount: 1, elapsed: 0.4, regions: [catalogRegion()])
+
+            guard let message = logger.messages.last, let fields = parseTail(message) else {
+                Issue.record("no parseable tail in '\(logger.messages.last ?? "<nothing>")'")
+                return
+            }
+            #expect(fields["sh"] == "circle")
+            #expect(fields["rad"] == "150")
+            #expect(fields["nv"] == nil)
+            #expect(fields["ring"] == nil)
+        }
+    }
+
+    /// `ring` truncates. `nv` is what lets a consumer notice and refuse, rather than compute
+    /// membership against a partial ring that still looks like a valid polygon.
+    /// Pins the branch that reads the geometry kernel's own vertex list rather than re-deriving
+    /// canonicalisation here. The two only disagree across the antimeridian: the kernel's
+    /// `samePosition` unwraps longitude, so a ring closing at +180 that opened at -180 loses its
+    /// closing vertex, while an exact comparison keeps it. `nv` is therefore 4 through the kernel
+    /// and 5 through the fallback — the one input that tells which path ran.
+    /// The mixed-field cases. `carriesPolygonFields` alone made the catalog disagree with the
+    /// mapper about what is monitored — the one thing a capture has to get right.
+    @Test
+    func fenceCatalog_givenMixedFields_expectTheShapeTheMapperMonitors() {
+        withDiagnostics(true) {
+            func fields(shape: String?, flat: Bool, geometry: Bool) -> [String: String]? {
+                let ring: [[Double]] = [[55.1, 25.1], [55.2, 25.1], [55.2, 25.2], [55.1, 25.1]]
+                let region = GeofenceApiRegion(
+                    id: "mix", name: nil, shape: shape,
+                    latitude: flat ? 10.0 : nil, longitude: flat ? 20.0 : nil, radius: flat ? 300 : nil,
+                    geometry: geometry ? GeofenceApiGeometry(type: "Polygon", coordinates: [ring]) : nil,
+                    enclosingCircle: GeofenceApiEnclosingCircle(latitude: 25.15, longitude: 55.15, baseRadiusM: 900),
+                    carriesPolygonFields: geometry, externalId: nil,
+                    transitionTypes: ["enter"], lastUpdated: 0, geosetIds: nil, metadata: nil
+                )
+                let logger = CapturingLogger()
+                logger.geofenceApiFetchResult(returnedCount: 1, elapsed: 0.1, regions: [region])
+                return parseTail(logger.messages.last ?? "")
+            }
+
+            // Explicit circle carrying stray geometry: monitored as a circle, by its flat fields.
+            let strayGeometry = fields(shape: "circle", flat: true, geometry: true)
+            #expect(strayGeometry?["sh"] == "circle")
+            #expect(strayGeometry?["rad"] == "300")
+
+            // Explicit polygon carrying flat fields: monitored by its enclosing circle.
+            let flatPolygon = fields(shape: "polygon", flat: true, geometry: true)
+            #expect(flatPolygon?["sh"] == "polygon")
+            #expect(flatPolygon?["rad"] == "900")
+
+            // Normalization matches the mapper's: padded and mixed case are the same shape.
+            #expect(fields(shape: "  Polygon ", flat: false, geometry: true)?["sh"] == "polygon")
+            // Blank is not a shape the server named.
+            #expect(fields(shape: "   ", flat: true, geometry: false)?["sh"] == "circle")
+            // Polygon fields, no discriminator — the mapper drops this; the catalog names it.
+            #expect(fields(shape: nil, flat: false, geometry: true)?["sh"] == "undescribed")
+            // A shape this version cannot monitor.
+            #expect(fields(shape: "hexagon", flat: true, geometry: false)?["sh"] == "unknown")
+        }
+    }
+
+    @Test
+    func fenceCatalog_givenRingClosingAcrossTheAntimeridian_expectTheKernelsRing() {
+        withDiagnostics(true) {
+            let logger = CapturingLogger()
+            let ring: [[Double]] = [
+                [-180.0, 25.00], [-179.99, 25.00], [-179.99, 25.01], [-180.0, 25.01],
+                // Same meridian as the first position, opposite sign.
+                [180.0, 25.00]
+            ]
+            let region = GeofenceApiRegion(
+                id: "22251", name: "Antimeridian", shape: "polygon",
+                latitude: nil, longitude: nil, radius: nil,
+                geometry: GeofenceApiGeometry(type: "Polygon", coordinates: [ring]),
+                enclosingCircle: GeofenceApiEnclosingCircle(latitude: 25.005, longitude: -179.995, baseRadiusM: 700),
+                carriesPolygonFields: true, externalId: nil,
+                transitionTypes: ["enter"], lastUpdated: 0, geosetIds: nil, metadata: nil
+            )
+            logger.geofenceApiFetchResult(returnedCount: 1, elapsed: 0.4, regions: [region])
+
+            guard let message = logger.messages.last, let fields = parseTail(message) else {
+                Issue.record("no parseable tail in '\(logger.messages.last ?? "<nothing>")'")
+                return
+            }
+            #expect(fields["nv"] == "4", "5 means the fallback ran and kept the wrapped closing vertex")
+            #expect(fields["ring"]?.split(separator: ",").count == 4)
+        }
+    }
+
+    @Test
+    func fenceCatalog_givenRingBeyondTheLimit_expectCountStaysAuthoritative() {
+        withDiagnostics(true) {
+            let logger = CapturingLogger()
+            logger.geofenceApiFetchResult(
+                returnedCount: 1, elapsed: 0.4, regions: [catalogPolygonRegion(vertices: 70)]
+            )
+
+            guard let message = logger.messages.last, let fields = parseTail(message) else {
+                Issue.record("no parseable tail in '\(logger.messages.last ?? "<nothing>")'")
+                return
+            }
+            #expect(fields["nv"] == "70")
+            #expect(fields["ring"]?.hasSuffix(",+6") == true, "expected a truncation marker in '\(message)'")
+        }
+    }
+
+    /// The malformed-but-placeable case, and the catalog's whole reason to exist: the ring failed
+    /// to decode, so the fence is still worth recording by the circle the OS was given.
+    @Test
+    func fenceCatalog_givenPolygonWhoseRingDidNotDecode_expectPlaceableWithoutRing() {
+        withDiagnostics(true) {
+            let logger = CapturingLogger()
+            var region = catalogPolygonRegion()
+            region = GeofenceApiRegion(
+                id: region.id, name: region.name, shape: "polygon",
+                latitude: nil, longitude: nil, radius: nil,
+                geometry: nil,
+                enclosingCircle: GeofenceApiEnclosingCircle(latitude: 25.109908, longitude: 55.184004, baseRadiusM: 625),
+                carriesPolygonFields: true, externalId: nil,
+                transitionTypes: ["enter"], lastUpdated: 0, geosetIds: nil, metadata: nil
+            )
+            logger.geofenceApiFetchResult(returnedCount: 1, elapsed: 0.4, regions: [region])
+
+            guard let message = logger.messages.last, let fields = parseTail(message) else {
+                Issue.record("no parseable tail in '\(logger.messages.last ?? "<nothing>")'")
+                return
+            }
+            #expect(fields["sh"] == "polygon")
+            #expect(fields["lat"] == "25.10991")
+            #expect(fields["rad"] == "625")
+            #expect(fields["ring"] == nil)
+            #expect(fields["nv"] == nil)
+        }
+    }
+
+    /// A coordinate off the wire is rendered before anything drops invalid regions. `%.5f` on 1e300
+    /// is 309 digits, so the record says the server sent garbage instead of carrying it.
+    @Test
+    func fenceCatalog_givenAbsurdCoordinate_expectItRecordedAsBad() {
+        withDiagnostics(true) {
+            let logger = CapturingLogger()
+            let region = GeofenceApiRegion(
+                id: "33375", name: nil, shape: "polygon",
+                latitude: nil, longitude: nil, radius: nil,
+                geometry: GeofenceApiGeometry(type: "Polygon", coordinates: [[[1e300, 25.1], [55.18, 25.11]]]),
+                enclosingCircle: GeofenceApiEnclosingCircle(latitude: 25.1, longitude: 55.18, baseRadiusM: 400),
+                carriesPolygonFields: true, externalId: nil,
+                transitionTypes: ["enter"], lastUpdated: 0, geosetIds: nil, metadata: nil
+            )
+            logger.geofenceApiFetchResult(returnedCount: 1, elapsed: 0.4, regions: [region])
+
+            guard let message = logger.messages.last, let fields = parseTail(message) else {
+                Issue.record("no parseable tail in '\(logger.messages.last ?? "<nothing>")'")
+                return
+            }
+            #expect(fields["nv"] == "2", "a bad vertex still counts")
+            #expect(fields["ring"]?.hasPrefix("25.10000_bad") == true, "got '\(fields["ring"] ?? "")'")
+            #expect(message.count < 500, "one absurd coordinate should not blow up the line")
+        }
+    }
+
+    /// A position with fewer than two coordinates used to be dropped, leaving `nv` counting
+    /// vertices the ring never showed — `nv=0` with no ring reads as "polygon with no vertices"
+    /// rather than "ring unusable".
+    @Test
+    func fenceCatalog_givenMalformedPositions_expectCountAndRingAgree() {
+        withDiagnostics(true) {
+            let logger = CapturingLogger()
+            let region = GeofenceApiRegion(
+                id: "44480", name: nil, shape: "polygon",
+                latitude: nil, longitude: nil, radius: nil,
+                geometry: GeofenceApiGeometry(type: "Polygon", coordinates: [[[1.0], [2.0]]]),
+                enclosingCircle: GeofenceApiEnclosingCircle(latitude: 25.1, longitude: 55.18, baseRadiusM: 400),
+                carriesPolygonFields: true, externalId: nil,
+                transitionTypes: ["enter"], lastUpdated: 0, geosetIds: nil, metadata: nil
+            )
+            logger.geofenceApiFetchResult(returnedCount: 1, elapsed: 0.4, regions: [region])
+
+            guard let message = logger.messages.last, let fields = parseTail(message) else {
+                Issue.record("no parseable tail in '\(logger.messages.last ?? "<nothing>")'")
+                return
+            }
+            #expect(fields["nv"] == "2")
+            #expect(fields["ring"] == "bad_bad,bad_bad")
+            // Still placeable by its circle, which is the point of recording it at all.
+            #expect(fields["lat"] == "25.10000")
+        }
+    }
+
+    /// `nv` counts the canonical ring, not the wire ring. A GeoJSON ring closes on itself, so
+    /// counting what arrived would report one extra vertex for every polygon — and a consumer
+    /// applying "fewer pairs than nv means truncated" would refuse every correct Android polygon.
+    /// Agreed with the Android side; both platforms count the unclosed ring.
+    @Test
+    func fenceCatalog_givenClosedWireRing_expectClosingVertexDropped() {
+        withDiagnostics(true) {
+            let logger = CapturingLogger()
+            logger.geofenceApiFetchResult(returnedCount: 1, elapsed: 0.4, regions: [catalogPolygonRegion(vertices: 4)])
+
+            guard let message = logger.messages.last, let fields = parseTail(message) else {
+                Issue.record("no parseable tail in '\(logger.messages.last ?? "<nothing>")'")
+                return
+            }
+            // The wire carried 5 positions; the canonical ring is 4.
+            #expect(fields["nv"] == "4")
+            #expect(fields["ring"]?.split(separator: ",").count == 4)
         }
     }
 

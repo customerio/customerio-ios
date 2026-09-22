@@ -117,7 +117,12 @@ final class MockGeofenceRegionMonitor: GeofenceRegionMonitoring {
         setOnReconciledCallsCount += 1
     }
 
+    /// Runs inside `startMonitoring`, so a test can land work in the window a real OS
+    /// registration occupies.
+    var onStartMonitoring: (() -> Void)?
+
     func startMonitoring(identifier: String, center: LocationData, radius: Double, transitionTypes: Set<GeofenceTransition>) {
+        onStartMonitoring?()
         // Mirror the real monitors: a rejected id is neither recorded nor owned, and any circle the
         // OS was already holding for it is cleared rather than left live.
         guard !rejectedIdentifiers.contains(identifier) else {
@@ -167,7 +172,12 @@ final class MockGeofenceRegionMonitor: GeofenceRegionMonitoring {
         operationLog.append(.stop(identifier: identifier))
     }
 
+    /// Fired inside `stopMonitoringAll` so a test can place it on a shared timeline with other
+    /// teardown steps. Used to pin that the storage clear runs BEFORE the OS stop.
+    var onStopAll: (() -> Void)?
+
     func stopMonitoringAll() {
+        onStopAll?()
         stopAllCallCount += 1
         // Mirror the real monitor: only owned regions are handed to the OS for removal, so anything
         // the OS still holds that this process never adopted survives the call.
@@ -230,7 +240,21 @@ final class MockGeofenceRegionMonitor: GeofenceRegionMonitoring {
         )
     }
 
-    func simulateTransition(identifier: String, transition: GeofenceTransition, location: LocationData?) {
-        onTransition?(identifier, transition, location)
+    /// `eventCircle` defaults to the circle this mock has registered for `identifier`, so a test
+    /// that does not care gets a self-consistent event rather than an accidentally stale one.
+    func simulateTransition(
+        identifier: String,
+        transition: GeofenceTransition,
+        location: LocationData?,
+        occurredAt: Date = Date(),
+        locationIsFresh: Bool = true,
+        eventCircle: GeofenceEventCircle? = nil
+    ) {
+        let circle = eventCircle ?? registeredGeometry[identifier].map {
+            GeofenceEventCircle.circle(
+                MonitoredCircle(center: $0.center, radius: $0.radius, maximumRadius: maximumMonitoringRadius)
+            )
+        } ?? .unknown
+        onTransition?(identifier, transition, location, occurredAt, locationIsFresh, circle)
     }
 }

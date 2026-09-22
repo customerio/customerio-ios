@@ -117,7 +117,7 @@ actor GeofenceStorage {
     /// `forceReseed` overrides that preservation. The caller sets it when the OS stopped monitoring
     /// the condition since the last registration: the device can cross while unmonitored, so the
     /// persisted state is no longer known to match reality and keeping it would suppress the next
-    /// genuine crossing.
+    /// genuine crossing. Polygon belief is NOT reseeded with it — see `clearMonitorRegionRecord`.
     func recordMonitorRegistration(
         identifier: String,
         transitionTypes: Set<GeofenceTransition>,
@@ -218,15 +218,19 @@ actor GeofenceStorage {
     /// Drops the baseline for a condition the OS stopped monitoring, so the next registration
     /// reseeds from the device's real position rather than carrying a state it may have left while
     /// unmonitored — an unchanged-geometry re-register would preserve that stale value.
+    ///
+    /// Polygon belief deliberately SURVIVES: a crossing during the gap is unknowable, so every rule
+    /// guesses, and dropping guesses "it left" — a device that stayed then looks brand new, and a
+    /// brand-new polygon found inside delivers an enter the customer already had. Keeping still
+    /// yields the exit when it did leave; it loses only left-AND-returned, the rarest case.
     func clearMonitorRegionRecord(identifier: String) {
         var state = loadFromDisk() ?? GeofenceState()
-        guard var records = state.monitorRegionRecords, records.removeValue(forKey: identifier) != nil else { return }
-        state.monitorRegionRecords = records
+        guard state.monitorRegionRecords?.removeValue(forKey: identifier) != nil else { return }
         saveToDisk(state)
     }
 
-    /// Clears the cooldown map, last-sync record, registration set, and monitor baselines but
-    /// preserves the cached geofences and config. Called on sign-out: the workspace cache is shared
+    /// Clears the cooldown map, last-sync record, registration set, monitor baselines and polygon
+    /// beliefs but preserves the cached geofences and config. Called on sign-out: the workspace cache is shared
     /// across users, while cooldowns belong to the signed-out user and the last-sync anchor would
     /// otherwise let the freshness gate skip the first sync for the next signed-in user against stale
     /// state. `monitorRegionRecords` is dropped so the next session can't inherit a stale per-region
@@ -239,6 +243,7 @@ actor GeofenceStorage {
         state.movementTriggerCenter = nil
         state.monitoredGeofenceIds = nil
         state.monitorRegionRecords = nil
+        state.polygonMembership = nil
         saveToDisk(state)
     }
 
@@ -290,48 +295,10 @@ actor GeofenceStorage {
         saveToDisk(state)
     }
 
-    // MARK: - Last Registration
-
-    /// Center of the most recent OS registration (the movement-trigger center). The sync
-    /// decision measures distance from here to detect a stale ranking — the device moved
-    /// beyond the trigger radius while the app was dead, so the registered nearest-set is
-    /// no longer the closest geofences and needs a local re-rank.
-    func getLastRegistrationCenter() -> LocationData? {
-        loadFromDisk()?.movementTriggerCenter
-    }
-
-    /// Business geofence IDs registered with the OS at the last registration. Lets the sync
-    /// decision spot a cache that holds regions while nothing is registered (e.g. regs lost
-    /// on sign-out) and re-register instead of skipping.
-    func getRegisteredBusinessIds() -> Set<String> {
-        loadFromDisk()?.monitoredGeofenceIds ?? []
-    }
-
-    /// Records the registration anchor + business IDs in one load-modify-save. Updated on every
-    /// registration, including a local re-rank, so the ranking-staleness reference follows the
-    /// device. Distinct from `recordSync` (the API-fetch anchor), which a local re-rank leaves intact.
-    func recordRegistration(center: LocationData, businessIds: Set<String>) {
-        var state = loadFromDisk() ?? GeofenceState()
-        state.movementTriggerCenter = center
-        state.monitoredGeofenceIds = businessIds
-        // Drop per-condition baselines for regions this registration no longer covers. A record
-        // survives `stopMonitoring` on purpose, so an unchanged re-register keeps its baseline and
-        // CLMonitor's re-evaluation stays silent — but a region *evicted* from the set is a
-        // different case. It goes unmonitored, so no EXIT ever balances a `.enter` baseline, and a
-        // later re-registration with the same circle keeps that stale value instead of the state
-        // the device is actually in. The next genuine arrival then reads as no change and is
-        // dropped. Retaining exactly the registered set bounds the records the same way
-        // `monitoredGeofenceIds` is bounded, and clears anything a previous version stranded.
-        if let records = state.monitorRegionRecords {
-            let retained = businessIds.union([GeofenceConstants.movementTriggerIdentifier])
-            state.monitorRegionRecords = records.filter { retained.contains($0.key) }
-        }
-        saveToDisk(state)
-    }
-
     // MARK: - Private (file persistence)
 
-    private func loadFromDisk() -> GeofenceState? {
+    // Internal (not private): reached by the `+PolygonMembership` extension in its own file.
+    func loadFromDisk() -> GeofenceState? {
         guard let url = stateFileURL() else { return nil }
         guard fileManager.fileExists(atPath: url.path),
               let data = try? Data(contentsOf: url)
@@ -341,7 +308,7 @@ actor GeofenceStorage {
         return try? Self.makeDecoder().decode(GeofenceState.self, from: data)
     }
 
-    private func saveToDisk(_ state: GeofenceState) {
+    func saveToDisk(_ state: GeofenceState) {
         guard let data = try? Self.makeEncoder().encode(state),
               let url = stateFileURL()
         else {

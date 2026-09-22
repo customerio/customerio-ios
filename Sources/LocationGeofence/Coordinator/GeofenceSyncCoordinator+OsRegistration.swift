@@ -6,6 +6,15 @@ import Foundation
 struct GeofenceOsRegistration {
     let registeredIds: Set<String>
     let maxMonitoringRadius: Double
+
+    /// Whether the OS actually holds the movement trigger, which is the only thing that makes a
+    /// pass a re-centre. Read off what the monitor reports rather than off the caller's intent:
+    /// the trigger is skipped outright when `maxBusinessGeofences` kill-switches registration, and
+    /// the OS drops it silently for blocked permission or invalid coordinates. In both cases the
+    /// pass still succeeds, so a success-derived answer claims a move that never happened.
+    var movementTriggerPlanted: Bool {
+        registeredIds.contains(GeofenceConstants.movementTriggerIdentifier)
+    }
 }
 
 /// OS registration + fetch plumbing, split out to keep the coordinator's core flow readable.
@@ -48,12 +57,32 @@ extension GeofenceSyncCoordinatorImpl {
                 transitionTypes: [.exit]
             ))
         }
-        desired.append(contentsOf: businessRegions.map { region in
+        // A polygon whose covering circle exceeds the OS cap must be DROPPED, not clamped. Both
+        // monitors clamp silently, and a clamped circle no longer contains the polygon — which
+        // turns the covering-circle exit from geometric certainty into a false exit, and lets the
+        // device enter through a part of the polygon no wake covers. Circles keep clamping: for
+        // them the monitored circle IS the fence, so a smaller one only reports later.
+        // Callers drop these before ranking so the slot is reused; this is the last-line guard for
+        // anything that reached here anyway, and it logs so the skip is never silent.
+        let maximumRadius = monitor.maximumMonitoringRadius
+        let registrable = businessRegions.filter { region in
+            guard region.vertices != nil, region.radius > maximumRadius else { return true }
+            logger.geofencePolygonExceedsMonitoringLimit(
+                identifier: region.id, radius: region.radius, limit: maximumRadius
+            )
+            return false
+        }
+        desired.append(contentsOf: registrable.map { region in
             GeofenceRegionRequest(
                 identifier: region.id,
                 center: LocationData(latitude: region.latitude, longitude: region.longitude),
                 radius: region.radius,
-                transitionTypes: region.transitionTypes
+                // A polygon's covering circle is machinery, not the customer's fence: it must report
+                // BOTH edges so membership can advance. Registering it with the customer's types
+                // would starve the resolver of the filtered edge — an enter-only polygon would fire
+                // once and never again, an exit-only one never at all. The customer's filter is
+                // applied to the polygon verdict instead.
+                transitionTypes: region.vertices == nil ? region.transitionTypes : [.enter, .exit]
             )
         })
         let diff = monitor.setMonitoredRegions(desired)

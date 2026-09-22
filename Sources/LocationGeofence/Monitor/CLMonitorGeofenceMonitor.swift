@@ -68,7 +68,7 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring {
     /// (see `rearmConditions`) — and only re-adding revives it. Leaving it absent here makes the
     /// first pass re-register it; when the bootstrap adopts instead, `adoptExistingRegions` seeds it
     /// from the persisted records the re-arm then imposes at the OS.
-    var registeredConditions: [String: RegisteredCondition] = [:]
+    var conditionLedger = RegisteredConditionLedger()
     /// Conditions the OS stopped monitoring since their last registration, and when it gave each up.
     /// The next registration reseeds their stored baseline rather than preserving it — see
     /// `recordMonitorRegistration`. Dated so the refusal they drive expires; see `unmonitoredGateMaxAge`.
@@ -80,10 +80,11 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring {
     /// When the last recovery that did something ran; another defers inside
     /// `unmonitoredRecoveryInterval`. A run finding nothing pending does not stamp it.
     var lastUnmonitoredRecoveryAt: Date?
+
     /// When each condition was last (re)added at the OS and the circle that add imposed, stamped
     /// at the add's drain time. The contradiction gate only vets events landing shortly after an
     /// add — the daemon's belief replays — and judges them against this geometry, NOT the staged
-    /// `registeredConditions` entry: a reshape updates that map synchronously, so during its
+    /// ledger entry: a reshape updates the ledger synchronously, so during its
     /// staging→drain gap an event computed on the old circle would otherwise be judged against
     /// the new one (see `+ContradictionGate`).
     var conditionReadds: [String: ConditionReadd] = [:]
@@ -93,15 +94,10 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring {
     var gateFixRequestFailedAt: Date?
 
     /// The circle a condition was added with.
-    struct RegisteredCondition: Equatable {
-        let center: LocationData
-        let radius: Double
-        let transitionTypes: Set<GeofenceTransition>
-    }
-
     /// The one condition monitor, created once and shared by every caller: a second `CLMonitor`
     /// with the same name throws "Monitor named ... is already in use".
     private var monitorTask: Task<GeofenceConditionMonitoring, Never>?
+
     /// Single long-lived consumer of `monitor.events`. Never cancelled or recreated: a second
     /// subscription steals events from the first rather than duplicating them.
     private var consumeTask: Task<Void, Never>?
@@ -169,6 +165,7 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring {
         }
         startConsuming()
         registerForegroundRearm()
+        startConditionMirrorSampling()
     }
 
     deinit {
@@ -213,7 +210,7 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring {
         let drifted = persisted != knownConditionIdentifiers
         knownConditionIdentifiers = persisted
         ownedRegionIdentifiers.formUnion(persisted)
-        // `registeredConditions` is deliberately not filtered against `persisted`. It starts empty
+        // The ledger is deliberately not filtered against `persisted`. It starts empty
         // each process, so its only entries are ones staged while CLMonitor was still loading,
         // whose adds are queued behind this operation — exactly the identifiers `persisted` lacks.
         persistConditionMirror()
@@ -238,6 +235,9 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring {
                 } catch {
                     self.logger.geofenceMonitorEventStreamFailed(error: error)
                 }
+                // A sequence that ENDS rather than throws took this path in silence, and that is
+                // indistinguishable in a capture from the OS having nothing to report.
+                self.logger.geofenceInfo("event_stream_resubscribing", fields: [("s", String(backoffNanos / 1000000000))])
                 try? await Task.sleep(nanoseconds: backoffNanos)
                 backoffNanos = min(backoffNanos * 2, maxBackoffNanos)
             }
@@ -253,7 +253,7 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring {
         // dropping oldest is safe because CLMonitor re-emits current state.
         if onTransition == nil || !pendingEvents.isEmpty || isDrainingPendingEvents {
             pendingEvents.append(event)
-            if pendingEvents.count > Self.maxPendingEvents { pendingEvents.removeFirst() }
+            if pendingEvents.count > Self.maxPendingEvents { logOverflowedEvent(pendingEvents.removeFirst()) }
             drainPendingEventsIfReady()
             return
         }
@@ -275,7 +275,7 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring {
 
     private func process(event: GeofenceConditionEvent) async {
         let identifier = event.identifier
-        guard ownedRegionIdentifiers.contains(identifier) else { return }
+        guard ownedRegionIdentifiers.contains(identifier) else { return logUnownedEvent(event) }
         let transition: GeofenceTransition
         switch event.state {
         case .satisfied:
@@ -322,12 +322,15 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring {
             // The movement pass re-centers the trigger and measures displacement at these coords, so
             // a frozen cached fix pins the whole pipeline to a stale point — freshen it first.
             // Fire-and-forget so a slow fix can't stall the pending-event drain behind it.
-            movementFixResolver.resolve(cached: bestKnownFix()) { [weak self] location in
-                self?.onTransition?(identifier, transition, location)
+            movementFixResolver.resolve(cached: bestKnownFix(), purpose: .movement) { [weak self] location, isFresh in
+                self?.logger.geofenceCallbackDispatched(identifier: identifier, transition: transition)
+                self?.onTransition?(identifier, transition, location, event.date, isFresh, self?.eventCircle(for: identifier, raisedAt: event.date) ?? .unknown)
             }
             return
         }
-        onTransition?(identifier, transition, currentLocationData())
+        logger.geofenceCallbackDispatched(identifier: identifier, transition: transition)
+        // Business events carry the captured location for context only; nothing sizes to it.
+        onTransition?(identifier, transition, currentLocationData(), event.date, false, eventCircle(for: identifier, raisedAt: event.date))
     }
 
     // MARK: - GeofenceRegionMonitoring

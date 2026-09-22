@@ -20,6 +20,9 @@ struct GeofenceState: Codable, Equatable, Sendable {
     /// landed a `config` block yet — consumers fall back to `GeofenceConfig.fallback` or
     /// their component defaults.
     var cachedConfig: GeofenceConfig?
+    /// Believed device membership for each polygon geofence, keyed by geofence id. Absent for
+    /// circle fences, and absent for a polygon no fix has yet decided (see `PolygonMembership`).
+    var polygonMembership: [String: PolygonMembershipRecord]?
     /// Per-condition bookkeeping for the CLMonitor (iOS 17+) monitor, keyed by region identifier.
     /// `nil` on the classic CLLocationManager path, which needs neither: its delegate fires only on
     /// real crossings (no dedup needed) and filters transition types at the OS level.

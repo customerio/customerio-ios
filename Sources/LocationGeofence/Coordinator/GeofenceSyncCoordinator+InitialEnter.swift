@@ -21,15 +21,31 @@ extension GeofenceSyncCoordinatorImpl {
         expectedUserId: String,
         anchor: LocationData
     ) {
-        let newInside = candidates.filter { region in
+        let newlyRegistered = candidates.filter { region in
             osRegistration.registeredIds.contains(region.id)
                 && !previouslyRegisteredIds.contains(region.id)
+        }
+        // A polygon must NOT be judged by this containment test: `radius` is its covering circle, so
+        // a device in the annulus would emit an enter it never earned. Newly-registered polygons go
+        // to the resolver's gated evaluation instead, which is also the only thing that reports the
+        // device already standing inside one — there is no crossing for the OS to deliver.
+        let newPolygons = newlyRegistered.filter { $0.vertices != nil }
+        let newInside = newlyRegistered.filter { region in
+            region.vertices == nil
                 && region.transitionTypes.contains(.enter)
                 && region.distanceTo(anchor) <= min(region.radius, osRegistration.maxMonitoringRadius)
+        }
+        if !newPolygons.isEmpty {
+            evaluateNewPolygons(newPolygons, expectedUserId: expectedUserId)
         }
         guard !newInside.isEmpty else { return }
         // Deliver off the refresh gate (like the binder does for real crossings) so a slow send can't
         // stall the next refresh; `trackTransition` persists first, so an interrupted send is retried.
+        // Nothing crossed anything — the fence was registered around a device already inside it —
+        // so the moment we noticed is the only honest event time. Read out here rather than inside
+        // the Task because `DateUtil` is a non-Sendable protocol with a non-final implementation,
+        // and the Swift 5 language mode does not diagnose capturing one into a @Sendable closure.
+        let discoveredAt = dateUtil.now
         Task { [transitionEmitter, contextStore, logger] in
             for region in newInside {
                 // Re-check per iteration: the diff was computed for `expectedUserId`, and each awaited
@@ -40,8 +56,39 @@ extension GeofenceSyncCoordinatorImpl {
                 // record here nothing distinguishes an enter the SDK invented from one the person
                 // drove through.
                 logger.geofenceTransitionSynthesized(geofenceId: region.id, transition: .enter)
-                await transitionEmitter.trackTransition(geofenceId: region.id, transition: .enter)
+                await transitionEmitter.trackTransition(
+                    geofenceId: region.id, transition: .enter, occurredAt: discoveredAt
+                )
             }
+        }
+    }
+
+    /// The trigger is sized to the nearest polygon boundary, so its EXIT is the signal that some
+    /// membership may have changed. A wake fires BECAUSE the device moved, so the cached fix
+    /// describes where it was — answering from it re-affirms the old verdict and swallows the
+    /// crossing outright (measured: a 26 s fix at 20 m/s is 520 m stale).
+    func evaluatePolygonsAfterMovement(expectedUserId: String) {
+        Task { @MainActor [contextStore] in
+            guard contextStore.currentUserId == expectedUserId else { return }
+            // Re-checked inside, after the fix resolves and again before the emit: a forced-fresh
+            // request is the longest await in the feature, and the polygon set was read before it.
+            await DIGraphShared.shared.polygonMembershipResolver.evaluateAllPolygons(
+                reason: .movement,
+                requiresFreshFix: true,
+                isStillCurrent: { contextStore.currentUserId == expectedUserId }
+            )
+        }
+    }
+
+    private func evaluateNewPolygons(_ polygons: [Geofence], expectedUserId: String) {
+        Task { @MainActor [contextStore] in
+            guard contextStore.currentUserId == expectedUserId else { return }
+            // Also re-checked inside, per polygon, after the fix resolves: that await is the window
+            // where a user switch would otherwise land an event on the wrong profile.
+            await DIGraphShared.shared.polygonMembershipResolver.evaluateNewlyRegistered(
+                geofenceIds: polygons.map(\.id),
+                isStillCurrent: { contextStore.currentUserId == expectedUserId }
+            )
         }
     }
 }

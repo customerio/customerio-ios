@@ -9,6 +9,9 @@ import Testing
 @Suite("GeofenceEventTracker")
 struct GeofenceEventTrackerTests {
     private let cooldownInterval: TimeInterval = 3600
+    /// Crossing time for tests that assert on something else. Fixed, so a row's dedup key — which
+    /// includes the timestamp's second — is stable across runs.
+    private let crossedAt = Date(timeIntervalSince1970: 1700000000)
 
     private func makeTempDirectory() -> URL {
         FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
@@ -19,7 +22,7 @@ struct GeofenceEventTrackerTests {
     }
 
     private func makePendingStore(directory: URL) -> PendingGeofenceMetricStore {
-        PendingGeofenceMetricStore(fileManager: .default, directoryURL: directory)
+        PendingGeofenceMetricStore(logger: LoggerMock(), fileManager: .default, directoryURL: directory)
     }
 
     private func makeContextStore(userId: String? = nil, cdpApiKey: String? = nil) -> BackgroundDeliveryContextStore {
@@ -39,6 +42,7 @@ struct GeofenceEventTrackerTests {
         contextStore: BackgroundDeliveryContextStore,
         eventBus: EventBusHandlerMock = EventBusHandlerMock(),
         dateUtil: DateUtil = DateUtilStub(),
+        logger: Logger = LoggerMock(),
         backgroundTaskRunner: BackgroundTaskRunner = NoBackgroundTaskRunner()
     ) -> GeofenceEventTracker {
         GeofenceEventTracker(
@@ -48,7 +52,7 @@ struct GeofenceEventTrackerTests {
             contextStore: contextStore,
             eventBusHandler: eventBus,
             dateUtil: dateUtil,
-            logger: LoggerMock(),
+            logger: logger,
             cooldownInterval: cooldownInterval,
             backgroundTaskRunner: backgroundTaskRunner
         )
@@ -76,13 +80,13 @@ struct GeofenceEventTrackerTests {
             eventBus: bus
         )
 
-        await tracker.trackTransition(geofenceId: "geo_1", transition: .enter)
+        await tracker.trackTransition(geofenceId: "geo_1", transition: .enter, occurredAt: crossedAt)
 
         // Fresh transition goes out over HTTP only — the EventBus channel is for replay.
         #expect(delivery.trackMetricCallsCount == 1)
         #expect(delivery.trackMetricReceivedArguments?.userId == "user_42")
         #expect(postedGeofenceEvents(from: bus).isEmpty)
-        #expect(await pending.loadAll().isEmpty)
+        #expect(await pending.rows().isEmpty)
     }
 
     @Test
@@ -101,9 +105,9 @@ struct GeofenceEventTrackerTests {
             contextStore: makeContextStore(userId: "user_42")
         )
 
-        await tracker.trackTransition(geofenceId: "geo_1", transition: .enter)
+        await tracker.trackTransition(geofenceId: "geo_1", transition: .enter, occurredAt: crossedAt)
 
-        #expect(await pending.loadAll().count == 1)
+        #expect(await pending.rows().count == 1)
     }
 
     @Test
@@ -129,13 +133,60 @@ struct GeofenceEventTrackerTests {
             dateUtil: dateUtil
         )
 
-        await tracker.trackTransition(geofenceId: "geo_1", transition: .enter)
+        await tracker.trackTransition(geofenceId: "geo_1", transition: .enter, occurredAt: crossedAt)
 
         // Delivery is skipped for a row that never reached disk: sending it and then draining on
         // success could remove a later same-second crossing's row (keys omit transitionId).
         #expect(delivery.trackMetricCallsCount == 0)
         // The cooldown claimed for this crossing was released, so the next crossing retries from a
         // clean state instead of being suppressed. A held cooldown would make this claim return false.
+        let remaining = await storage.tryAcquireCooldown(key: "user_42:geo_1:enter", now: dateUtil.now, interval: cooldownInterval)
+        #expect(remaining == nil)
+    }
+
+    /// The sibling of the test above, and the distinction the queue's read/write split exists for:
+    /// nothing was written here either, but no write was ever attempted. Reporting it as a failed
+    /// write would put an `io=out` `storage.write.failed` on a read that never touched the file.
+    @Test
+    func trackTransition_givenQueueUnreadable_expectRefusalNotAWriteFailure() async {
+        let dir = makeTempDirectory()
+        let queueFile = dir.appendingPathComponent("pending_geofence_metrics.json")
+        defer {
+            try? FileManager.default.setAttributes([.posixPermissions: 0o644], ofItemAtPath: queueFile.path)
+            try? FileManager.default.removeItem(at: dir)
+        }
+        let pending = makePendingStore(directory: dir)
+        #expect(await pending.append([PendingGeofenceMetric(
+            geofenceId: "geo_old", transition: .enter, timestamp: Date(timeIntervalSince1970: 1),
+            userId: "user_42", name: nil, transitionId: "txn_old"
+        )]) == .persisted)
+        let before = try? Data(contentsOf: queueFile)
+        try? FileManager.default.setAttributes([.posixPermissions: 0o000], ofItemAtPath: queueFile.path)
+
+        let storage = makeStorage(directory: makeTempDirectory())
+        let dateUtil = DateUtilStub()
+        let logger = LoggerMock()
+        let delivery = GeofenceDeliveryTrackerMock()
+        delivery.trackMetricClosure = { _, _, onComplete in onComplete(.success(())) }
+        let tracker = makeTracker(
+            storage: storage,
+            pendingStore: pending,
+            deliveryTracker: delivery,
+            contextStore: makeContextStore(userId: "user_42"),
+            dateUtil: dateUtil,
+            logger: logger
+        )
+
+        await tracker.trackTransition(geofenceId: "geo_1", transition: .enter, occurredAt: crossedAt)
+
+        let messages = logger.errorReceivedInvocations.map(\.message)
+        #expect(messages.contains { $0.contains("the pending queue could not be read, so no write was attempted") })
+        #expect(!messages.contains { $0.contains("Failed to persist") })
+        #expect(delivery.trackMetricCallsCount == 0)
+        // The backlog it refused to write over is still byte-for-byte on disk.
+        try? FileManager.default.setAttributes([.posixPermissions: 0o644], ofItemAtPath: queueFile.path)
+        #expect((try? Data(contentsOf: queueFile)) == before)
+        // Same cooldown release as the write-failure path: the next crossing must not be suppressed.
         let remaining = await storage.tryAcquireCooldown(key: "user_42:geo_1:enter", now: dateUtil.now, interval: cooldownInterval)
         #expect(remaining == nil)
     }
@@ -156,7 +207,7 @@ struct GeofenceEventTrackerTests {
             eventBus: bus
         )
 
-        await tracker.trackTransition(geofenceId: "geo_1", transition: .enter) // fresh HTTP fails → row persists
+        await tracker.trackTransition(geofenceId: "geo_1", transition: .enter, occurredAt: crossedAt) // fresh HTTP fails → row persists
         await tracker.flushPending() // replay hands the persisted row to EventBus
 
         // Fresh delivery goes out over HTTP; the replay over EventBus. Both carry the same
@@ -189,14 +240,14 @@ struct GeofenceEventTrackerTests {
             dateUtil: dateUtil
         )
 
-        await tracker.trackTransition(geofenceId: "geo_1", transition: .enter)
+        await tracker.trackTransition(geofenceId: "geo_1", transition: .enter, occurredAt: crossedAt)
         #expect(delivery.trackMetricCallsCount == 1)
 
         dateUtil.givenNow = baseTime.addingTimeInterval(1800)
-        await tracker.trackTransition(geofenceId: "geo_1", transition: .enter)
+        await tracker.trackTransition(geofenceId: "geo_1", transition: .enter, occurredAt: crossedAt)
 
         #expect(delivery.trackMetricCallsCount == 1)
-        #expect(await pending.loadAll().isEmpty)
+        #expect(await pending.rows().isEmpty)
     }
 
     @Test
@@ -217,9 +268,11 @@ struct GeofenceEventTrackerTests {
             dateUtil: dateUtil
         )
 
-        await tracker.trackTransition(geofenceId: "geo_1", transition: .enter)
+        await tracker.trackTransition(geofenceId: "geo_1", transition: .enter, occurredAt: baseTime)
         dateUtil.givenNow = baseTime.addingTimeInterval(cooldownInterval)
-        await tracker.trackTransition(geofenceId: "geo_1", transition: .enter)
+        await tracker.trackTransition(
+            geofenceId: "geo_1", transition: .enter, occurredAt: baseTime.addingTimeInterval(cooldownInterval)
+        )
 
         #expect(delivery.trackMetricCallsCount == 2)
     }
@@ -246,7 +299,7 @@ struct GeofenceEventTrackerTests {
             contextStore: makeContextStore(userId: "user_A"),
             dateUtil: dateUtil
         )
-        await trackerA.trackTransition(geofenceId: "geo_1", transition: .enter)
+        await trackerA.trackTransition(geofenceId: "geo_1", transition: .enter, occurredAt: baseTime)
         #expect(delivery.trackMetricCallsCount == 1)
 
         // Same geofence, halfway through the cooldown window, but user B now.
@@ -258,13 +311,17 @@ struct GeofenceEventTrackerTests {
             contextStore: makeContextStore(userId: "user_B"),
             dateUtil: dateUtil
         )
-        await trackerB.trackTransition(geofenceId: "geo_1", transition: .enter)
+        await trackerB.trackTransition(
+            geofenceId: "geo_1", transition: .enter, occurredAt: baseTime.addingTimeInterval(cooldownInterval / 2)
+        )
 
         #expect(delivery.trackMetricCallsCount == 2)
         #expect(delivery.trackMetricReceivedArguments?.userId == "user_B")
 
         // And the same user within the window stays suppressed.
-        await trackerA.trackTransition(geofenceId: "geo_1", transition: .enter)
+        await trackerA.trackTransition(
+            geofenceId: "geo_1", transition: .enter, occurredAt: baseTime.addingTimeInterval(cooldownInterval / 2)
+        )
         #expect(delivery.trackMetricCallsCount == 2)
     }
 
@@ -282,8 +339,8 @@ struct GeofenceEventTrackerTests {
             contextStore: makeContextStore(userId: "user_42")
         )
 
-        await tracker.trackTransition(geofenceId: "geo_1", transition: .enter)
-        await tracker.trackTransition(geofenceId: "geo_1", transition: .exit)
+        await tracker.trackTransition(geofenceId: "geo_1", transition: .enter, occurredAt: crossedAt)
+        await tracker.trackTransition(geofenceId: "geo_1", transition: .exit, occurredAt: crossedAt)
 
         #expect(delivery.trackMetricCallsCount == 2)
     }
@@ -318,16 +375,16 @@ struct GeofenceEventTrackerTests {
             dateUtil: dateUtil
         )
 
-        await tracker.trackTransition(geofenceId: "geo_1", transition: .enter)
+        await tracker.trackTransition(geofenceId: "geo_1", transition: .enter, occurredAt: crossedAt)
         // Halfway through the server cooldown → suppressed (would have been allowed if
         // the constructor's 1h default were in effect).
         dateUtil.givenNow = baseTime.addingTimeInterval(serverCooldown / 2)
-        await tracker.trackTransition(geofenceId: "geo_1", transition: .enter)
+        await tracker.trackTransition(geofenceId: "geo_1", transition: .enter, occurredAt: crossedAt)
         #expect(delivery.trackMetricCallsCount == 1)
 
         // Past the server cooldown but still within the constructor default → allowed.
         dateUtil.givenNow = baseTime.addingTimeInterval(serverCooldown + 1)
-        await tracker.trackTransition(geofenceId: "geo_1", transition: .enter)
+        await tracker.trackTransition(geofenceId: "geo_1", transition: .enter, occurredAt: crossedAt)
         #expect(delivery.trackMetricCallsCount == 2)
     }
 
@@ -352,7 +409,7 @@ struct GeofenceEventTrackerTests {
                 userId: "user_42", name: nil, transitionId: "txn_2"
             )
         ])
-        #expect(await pending.loadAll().count == 2)
+        #expect(await pending.rows().count == 2)
 
         let delivery = GeofenceDeliveryTrackerMock()
         let bus = EventBusHandlerMock()
@@ -369,7 +426,7 @@ struct GeofenceEventTrackerTests {
         // Without an HTTP context (no cdpApiKey), replay falls back to EventBus → DataPipeline.
         #expect(postedGeofenceEvents(from: bus).count == 2)
         #expect(delivery.trackMetricCallsCount == 0)
-        #expect(await pending.loadAll().isEmpty)
+        #expect(await pending.rows().isEmpty)
     }
 
     @Test
@@ -406,7 +463,7 @@ struct GeofenceEventTrackerTests {
         // replay ships over the direct channel instead of waiting for the next launch.
         #expect(Set(delivery.trackMetricReceivedInvocations.map(\.metric.geofenceId)) == ["geo_1", "geo_2"])
         #expect(postedGeofenceEvents(from: bus).isEmpty)
-        #expect(await pending.loadAll().isEmpty)
+        #expect(await pending.rows().isEmpty)
     }
 
     @Test
@@ -436,7 +493,7 @@ struct GeofenceEventTrackerTests {
 
         // An HTTP failure keeps the row queued for the next trigger; it must not silently switch
         // channels — EventBus is the no-context fallback, not the failure fallback.
-        #expect(await pending.loadAll().count == 1)
+        #expect(await pending.rows().count == 1)
         #expect(postedGeofenceEvents(from: bus).isEmpty)
     }
 
@@ -498,7 +555,7 @@ struct GeofenceEventTrackerTests {
 
         #expect(postedGeofenceEvents(from: bus).count == 1)
         #expect(delivery.trackMetricCallsCount == 0)
-        #expect(await pending.loadAll().isEmpty)
+        #expect(await pending.rows().isEmpty)
         // The store holds the provider weakly; keep it alive through the flush above.
         withExtendedLifetime(liveProvider) {}
     }
@@ -526,11 +583,11 @@ struct GeofenceEventTrackerTests {
             eventBus: bus
         )
 
-        await tracker.trackTransition(geofenceId: "geo_new", transition: .enter)
+        await tracker.trackTransition(geofenceId: "geo_new", transition: .enter, occurredAt: crossedAt)
 
         #expect(Set(delivery.trackMetricReceivedInvocations.map(\.metric.geofenceId)) == ["geo_old", "geo_new"])
         #expect(postedGeofenceEvents(from: bus).isEmpty)
-        #expect(await pending.loadAll().isEmpty)
+        #expect(await pending.rows().isEmpty)
     }
 
     @Test
@@ -569,7 +626,7 @@ struct GeofenceEventTrackerTests {
         _ = await(flush1, flush2)
 
         #expect(Set(postedGeofenceEvents(from: bus).map(\.geofenceId)) == ["geo_1", "geo_2"])
-        #expect(await pending.loadAll().isEmpty)
+        #expect(await pending.rows().isEmpty)
     }
 
     @Test
@@ -608,18 +665,18 @@ struct GeofenceEventTrackerTests {
             contextStore: makeContextStore(userId: "user_42", cdpApiKey: "key_123")
         )
 
-        let tracking = Task { await tracker.trackTransition(geofenceId: "geo_new", transition: .enter) }
+        let tracking = Task { await tracker.trackTransition(geofenceId: "geo_new", transition: .enter, occurredAt: crossedAt) }
         for await _ in backlogStarted.stream {
             break
         }
         // The replay is mid-flight; a suspension here must not lose the crossing — it is on disk.
-        #expect(await pending.loadAll().map(\.geofenceId).contains("geo_new"))
+        #expect(await pending.rows().map(\.geofenceId).contains("geo_new"))
         backlogRelease.continuation.yield()
         await tracking.value
 
         // Backlog delivered and removed; the failed fresh row stays for the next trigger, attempted
         // exactly once — the flush excluded it instead of re-sending on the same network.
-        #expect(await pending.loadAll().map(\.geofenceId) == ["geo_new"])
+        #expect(await pending.rows().map(\.geofenceId) == ["geo_new"])
         #expect(delivery.trackMetricReceivedInvocations.filter { $0.metric.geofenceId == "geo_new" }.count == 1)
     }
 
@@ -644,12 +701,12 @@ struct GeofenceEventTrackerTests {
             eventBus: bus
         )
 
-        await tracker.trackTransition(geofenceId: "geo_new", transition: .enter)
+        await tracker.trackTransition(geofenceId: "geo_new", transition: .enter, occurredAt: crossedAt)
 
         // The crossing replays the backlog over EventBus, then delivers itself over HTTP.
         #expect(postedGeofenceEvents(from: bus).map(\.geofenceId) == ["geo_old"])
         #expect(delivery.trackMetricReceivedInvocations.map(\.metric.geofenceId) == ["geo_new"])
-        #expect(await pending.loadAll().isEmpty)
+        #expect(await pending.rows().isEmpty)
     }
 
     @Test
@@ -674,13 +731,13 @@ struct GeofenceEventTrackerTests {
             eventBus: bus
         )
 
-        await tracker.trackTransition(geofenceId: "geo_new", transition: .enter)
+        await tracker.trackTransition(geofenceId: "geo_new", transition: .enter, occurredAt: crossedAt)
 
         // The anonymous crossing itself is dropped (no HTTP, nothing new queued)...
         #expect(delivery.trackMetricCallsCount == 0)
         // ...but the stamped backlog row still went out.
         #expect(postedGeofenceEvents(from: bus).map(\.transitionId) == ["txn_old"])
-        #expect(await pending.loadAll().isEmpty)
+        #expect(await pending.rows().isEmpty)
     }
 
     @Test
@@ -702,9 +759,9 @@ struct GeofenceEventTrackerTests {
             eventBus: bus
         )
 
-        await tracker.trackTransition(geofenceId: "geo_1", transition: .enter)
+        await tracker.trackTransition(geofenceId: "geo_1", transition: .enter, occurredAt: crossedAt)
         // Dropped at capture: nothing queued, nothing posted.
-        #expect(await pending.loadAll().isEmpty)
+        #expect(await pending.rows().isEmpty)
         #expect(postedGeofenceEvents(from: bus).isEmpty)
 
         contextStore.setUserId("user_42")
@@ -734,9 +791,9 @@ struct GeofenceEventTrackerTests {
             contextStore: makeContextStore(userId: "user_A")
         )
 
-        await tracker.trackTransition(geofenceId: "geo_1", transition: .enter)
+        await tracker.trackTransition(geofenceId: "geo_1", transition: .enter, occurredAt: crossedAt)
 
-        let queued = await pending.loadAll()
+        let queued = await pending.rows()
         #expect(queued.first?.userId == "user_A")
     }
 
@@ -823,9 +880,9 @@ struct GeofenceEventTrackerTests {
             contextStore: makeContextStore(userId: "user_42")
         )
 
-        await tracker.trackTransition(geofenceId: "geo_1", transition: .enter)
+        await tracker.trackTransition(geofenceId: "geo_1", transition: .enter, occurredAt: crossedAt)
 
-        #expect(await pending.loadAll().first?.name == "HQ")
+        #expect(await pending.rows().first?.name == "HQ")
     }
 
     @Test
@@ -842,9 +899,9 @@ struct GeofenceEventTrackerTests {
             contextStore: makeContextStore(userId: "user_42")
         )
 
-        await tracker.trackTransition(geofenceId: "geo_unknown", transition: .enter)
+        await tracker.trackTransition(geofenceId: "geo_unknown", transition: .enter, occurredAt: crossedAt)
 
-        #expect(await pending.loadAll().first?.name == nil)
+        #expect(await pending.rows().first?.name == nil)
     }
 
     @Test
@@ -864,9 +921,9 @@ struct GeofenceEventTrackerTests {
             contextStore: makeContextStore(userId: "user_42")
         )
 
-        await tracker.trackTransition(geofenceId: "geo_1", transition: .enter)
+        await tracker.trackTransition(geofenceId: "geo_1", transition: .enter, occurredAt: crossedAt)
 
-        #expect(await pending.loadAll().first?.name == nil)
+        #expect(await pending.rows().first?.name == nil)
     }
 
     // MARK: - Metadata (snapshot + prefer-live)
@@ -898,9 +955,9 @@ struct GeofenceEventTrackerTests {
             contextStore: makeContextStore(userId: "user_42")
         )
 
-        await tracker.trackTransition(geofenceId: "geo_1", transition: .enter)
+        await tracker.trackTransition(geofenceId: "geo_1", transition: .enter, occurredAt: crossedAt)
 
-        #expect(await pending.loadAll().first?.metadata == ["category": .string("office")])
+        #expect(await pending.rows().first?.metadata == ["category": .string("office")])
     }
 
     @Test
@@ -917,7 +974,7 @@ struct GeofenceEventTrackerTests {
             storage: storage, pendingStore: pending, deliveryTracker: failing,
             contextStore: makeContextStore(userId: "user_42")
         )
-        await priorTracker.trackTransition(geofenceId: "geo_1", transition: .enter) // snapshot gold, persisted
+        await priorTracker.trackTransition(geofenceId: "geo_1", transition: .enter, occurredAt: crossedAt) // snapshot gold, persisted
 
         // Server updated the tier; the cache now reflects it.
         await seedGeofence(storage, id: "geo_1", name: "HQ", metadata: ["tier": .string("platinum")])
@@ -946,7 +1003,7 @@ struct GeofenceEventTrackerTests {
             storage: storage, pendingStore: pending, deliveryTracker: failing,
             contextStore: makeContextStore(userId: "user_42")
         )
-        await priorTracker.trackTransition(geofenceId: "geo_1", transition: .enter)
+        await priorTracker.trackTransition(geofenceId: "geo_1", transition: .enter, occurredAt: crossedAt)
 
         await storage.setCachedGeofences([]) // geofence evicted
 
@@ -975,7 +1032,7 @@ struct GeofenceEventTrackerTests {
             storage: storage, pendingStore: pending, deliveryTracker: failing,
             contextStore: makeContextStore(userId: "user_42")
         )
-        await priorTracker.trackTransition(geofenceId: "geo_1", transition: .enter)
+        await priorTracker.trackTransition(geofenceId: "geo_1", transition: .enter, occurredAt: crossedAt)
 
         await seedGeofence(storage, id: "geo_1", name: "New HQ", metadata: [:])
         let bus = EventBusHandlerMock()
@@ -1017,7 +1074,7 @@ struct GeofenceEventTrackerTests {
             contextStore: makeContextStore(userId: "user_42")
         )
 
-        await tracker.trackTransition(geofenceId: "geo_1", transition: .enter)
+        await tracker.trackTransition(geofenceId: "geo_1", transition: .enter, occurredAt: crossedAt)
 
         // One delivery per geoset, each a standalone event with a scalar geosetId
         // plus full geofence metadata.
@@ -1029,7 +1086,7 @@ struct GeofenceEventTrackerTests {
         #expect(metrics.allSatisfy { $0.transition == .enter })
         // All fan-out rows share one transitionId (same physical crossing); geosetId distinguishes them.
         #expect(Set(metrics.map(\.transitionId)).count == 1)
-        #expect(await pending.loadAll().isEmpty)
+        #expect(await pending.rows().isEmpty)
     }
 
     @Test
@@ -1048,7 +1105,7 @@ struct GeofenceEventTrackerTests {
             contextStore: makeContextStore(userId: "user_42")
         )
 
-        await tracker.trackTransition(geofenceId: "geo_1", transition: .enter)
+        await tracker.trackTransition(geofenceId: "geo_1", transition: .enter, occurredAt: crossedAt)
 
         let metrics = delivery.trackMetricReceivedInvocations.map(\.metric)
         #expect(metrics.count == 1)
@@ -1073,7 +1130,7 @@ struct GeofenceEventTrackerTests {
             contextStore: makeContextStore(userId: "user_42")
         )
 
-        await tracker.trackTransition(geofenceId: "geo_1", transition: .enter)
+        await tracker.trackTransition(geofenceId: "geo_1", transition: .enter, occurredAt: crossedAt)
 
         let metrics = delivery.trackMetricReceivedInvocations.map(\.metric)
         #expect(metrics.count == 1)
@@ -1099,7 +1156,7 @@ struct GeofenceEventTrackerTests {
             contextStore: makeContextStore(userId: "user_42")
         )
 
-        await tracker.trackTransition(geofenceId: "geo_1", transition: .enter)
+        await tracker.trackTransition(geofenceId: "geo_1", transition: .enter, occurredAt: crossedAt)
 
         let metrics = delivery.trackMetricReceivedInvocations.map(\.metric)
         #expect(metrics.count == 2)
@@ -1122,11 +1179,11 @@ struct GeofenceEventTrackerTests {
             contextStore: makeContextStore(userId: "user_42")
         )
 
-        await tracker.trackTransition(geofenceId: "geo_1", transition: .enter)
+        await tracker.trackTransition(geofenceId: "geo_1", transition: .enter, occurredAt: crossedAt)
 
         // Both fan-out rows persist independently; the pending-store key includes the
         // geosetId so the rows of one transition cannot collide with each other.
-        let persisted = await pending.loadAll()
+        let persisted = await pending.rows()
         #expect(persisted.count == 2)
         #expect(Set(persisted.compactMap(\.geosetId)) == ["set_y", "set_z"])
     }
@@ -1147,7 +1204,7 @@ struct GeofenceEventTrackerTests {
             storage: storage, pendingStore: pending, deliveryTracker: failing,
             contextStore: makeContextStore(userId: "user_42")
         )
-        await priorTracker.trackTransition(geofenceId: "geo_1", transition: .enter)
+        await priorTracker.trackTransition(geofenceId: "geo_1", transition: .enter, occurredAt: crossedAt)
 
         let bus = EventBusHandlerMock()
         let tracker = makeTracker(
@@ -1158,7 +1215,7 @@ struct GeofenceEventTrackerTests {
 
         await tracker.flushPending()
 
-        #expect(await pending.loadAll().isEmpty)
+        #expect(await pending.rows().isEmpty)
         let posted = postedGeofenceEvents(from: bus)
         #expect(posted.count == 2)
         #expect(Set(posted.compactMap(\.geosetId)) == ["set_y", "set_z"]) // delivery order is not guaranteed (concurrent)
@@ -1182,8 +1239,8 @@ struct GeofenceEventTrackerTests {
             contextStore: makeContextStore(userId: "user_42")
         )
 
-        await tracker.trackTransition(geofenceId: "geo_1", transition: .enter)
-        await tracker.trackTransition(geofenceId: "geo_1", transition: .enter)
+        await tracker.trackTransition(geofenceId: "geo_1", transition: .enter, occurredAt: crossedAt)
+        await tracker.trackTransition(geofenceId: "geo_1", transition: .enter, occurredAt: crossedAt)
 
         // The cooldown gates the physical transition, before fan-out: the second
         // enter produces zero additional deliveries, not a partial fan-out.
@@ -1211,7 +1268,7 @@ struct GeofenceEventTrackerTests {
             backgroundTaskRunner: runner
         )
 
-        await tracker.trackTransition(geofenceId: "geo_1", transition: .enter)
+        await tracker.trackTransition(geofenceId: "geo_1", transition: .enter, occurredAt: crossedAt)
 
         // Delivery is bracketed by the assertion so the OS keeps the app alive through the send.
         #expect(runner.callCount.wrappedValue == 1)
@@ -1251,7 +1308,157 @@ struct GeofenceEventTrackerTests {
         // assertion is taken (that is only for the fresh HTTP send). The row is posted and drained.
         #expect(runner.callCount.wrappedValue == 0)
         #expect(postedGeofenceEvents(from: bus).count == 1)
-        #expect(await pending.loadAll().isEmpty)
+        #expect(await pending.rows().isEmpty)
+    }
+
+    // MARK: - Crossing time
+
+    /// The queue outlives sign-out by design — rows are self-contained and stamped with the userId
+    /// that earned them. Two users can therefore hold rows for the same crossing instant: the
+    /// cooldown that would suppress a repeat is per user and cleared on sign-out, while an
+    /// unchanged cached fix hands the second user the first one's timestamp. Both rows must survive.
+    ///
+    /// A cdpApiKey is set on both so the post-send flush routes over direct HTTP: without one it
+    /// drains the queue to EventBus, which is a legitimate handoff and would mask the drop.
+    @Test
+    func trackTransition_givenTwoUsersAtTheSameCrossingTime_expectBothRowsDurable() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let storage = makeStorage(directory: dir)
+        let pending = makePendingStore(directory: dir)
+        let delivery = GeofenceDeliveryTrackerMock()
+        delivery.trackMetricClosure = { _, _, onComplete in onComplete(.failure(.transport)) }
+        let occurredAt = Date(timeIntervalSince1970: 1700000000)
+        let trackerA = makeTracker(
+            storage: storage, pendingStore: pending, deliveryTracker: delivery,
+            contextStore: makeContextStore(userId: "user_A", cdpApiKey: "key_123")
+        )
+        let trackerB = makeTracker(
+            storage: storage, pendingStore: pending, deliveryTracker: delivery,
+            contextStore: makeContextStore(userId: "user_B", cdpApiKey: "key_123")
+        )
+
+        await trackerA.trackTransition(geofenceId: "geo_1", transition: .enter, occurredAt: occurredAt)
+        await trackerB.trackTransition(geofenceId: "geo_1", transition: .enter, occurredAt: occurredAt)
+
+        // Keyed without the userId this is one row, user_A's: B's append is a no-op, and B's flush
+        // excludes the key it thinks it just wrote — which is A's.
+        #expect(Set(await pending.rows().map(\.userId)) == ["user_A", "user_B"])
+    }
+
+    /// The other half: a successful send removes its own row by key, so a key shared across users
+    /// would have the second user's delivery drain the first user's undelivered row. Delivery is
+    /// per-user here — B succeeds, A never does — so the only thing that can remove A's row is a
+    /// key collision, not a legitimate replay.
+    @Test
+    func trackTransition_givenAnotherUserSucceedsAtTheSameCrossingTime_expectTheQueuedRowKept() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let storage = makeStorage(directory: dir)
+        let pending = makePendingStore(directory: dir)
+        let delivery = GeofenceDeliveryTrackerMock()
+        delivery.trackMetricClosure = { _, userId, onComplete in
+            onComplete(userId == "user_B" ? .success(()) : .failure(.transport))
+        }
+        let occurredAt = Date(timeIntervalSince1970: 1700000000)
+        let trackerA = makeTracker(
+            storage: storage, pendingStore: pending, deliveryTracker: delivery,
+            contextStore: makeContextStore(userId: "user_A", cdpApiKey: "key_123")
+        )
+        let trackerB = makeTracker(
+            storage: storage, pendingStore: pending, deliveryTracker: delivery,
+            contextStore: makeContextStore(userId: "user_B", cdpApiKey: "key_123")
+        )
+
+        await trackerA.trackTransition(geofenceId: "geo_1", transition: .enter, occurredAt: occurredAt)
+        await trackerB.trackTransition(geofenceId: "geo_1", transition: .enter, occurredAt: occurredAt)
+
+        #expect(await pending.rows().map(\.userId) == ["user_A"])
+    }
+
+    /// The row's timestamp is the event time the customer sees. It must be when the crossing
+    /// happened, not when we got round to sending it — the two differ by the wake-to-verdict
+    /// pipeline on a polygon, and by the whole suspension on a crossing replayed after one.
+    @Test
+    func trackTransition_givenACrossingBeforeTheSend_expectTheRowStampedWithTheCrossing() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let delivery = GeofenceDeliveryTrackerMock()
+        delivery.trackMetricClosure = { _, _, onComplete in onComplete(.success(())) }
+        let dateUtil = DateUtilStub()
+        let sentAt = Date(timeIntervalSince1970: 1700000000)
+        dateUtil.givenNow = sentAt
+        let occurredAt = sentAt.addingTimeInterval(-90)
+        let tracker = makeTracker(
+            storage: makeStorage(directory: dir),
+            pendingStore: makePendingStore(directory: dir),
+            deliveryTracker: delivery,
+            contextStore: makeContextStore(userId: "user_42"),
+            dateUtil: dateUtil
+        )
+
+        await tracker.trackTransition(geofenceId: "geo_1", transition: .enter, occurredAt: occurredAt)
+
+        let sent = delivery.trackMetricReceivedInvocations.map(\.metric).first
+        #expect(sent?.timestamp == occurredAt)
+        #expect(sent?.timestamp != sentAt)
+    }
+
+    /// A row that failed its fresh send and goes out on the replay channel later must carry the
+    /// same crossing time — the replay is even further from it than the first attempt was.
+    @Test
+    func flushPending_givenAReplayedRow_expectTheCrossingTimeCarriedToEventBus() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let delivery = GeofenceDeliveryTrackerMock()
+        delivery.trackMetricClosure = { _, _, onComplete in onComplete(.failure(.transport)) }
+        let bus = EventBusHandlerMock()
+        let dateUtil = DateUtilStub()
+        let sentAt = Date(timeIntervalSince1970: 1700000000)
+        dateUtil.givenNow = sentAt
+        let occurredAt = sentAt.addingTimeInterval(-90)
+        let tracker = makeTracker(
+            storage: makeStorage(directory: dir),
+            pendingStore: makePendingStore(directory: dir),
+            deliveryTracker: delivery,
+            contextStore: makeContextStore(userId: "user_42"),
+            eventBus: bus,
+            dateUtil: dateUtil
+        )
+
+        await tracker.trackTransition(geofenceId: "geo_1", transition: .enter, occurredAt: occurredAt)
+        dateUtil.givenNow = sentAt.addingTimeInterval(3600)
+        await tracker.flushPending()
+
+        #expect(postedGeofenceEvents(from: bus).first?.timestamp == occurredAt)
+    }
+
+    /// The cooldown deliberately stays on the wall clock. Two crossings whose own timestamps are an
+    /// hour apart, both handed over within one window, are still one send — otherwise a batch of
+    /// replayed crossings would each read as outside a window they are all inside.
+    @Test
+    func trackTransition_givenCrossingsAnHourApartDeliveredTogether_expectTheSecondSuppressed() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let delivery = GeofenceDeliveryTrackerMock()
+        delivery.trackMetricClosure = { _, _, onComplete in onComplete(.success(())) }
+        let dateUtil = DateUtilStub()
+        let sentAt = Date(timeIntervalSince1970: 1700000000)
+        dateUtil.givenNow = sentAt
+        let tracker = makeTracker(
+            storage: makeStorage(directory: dir),
+            pendingStore: makePendingStore(directory: dir),
+            deliveryTracker: delivery,
+            contextStore: makeContextStore(userId: "user_42"),
+            dateUtil: dateUtil
+        )
+
+        await tracker.trackTransition(
+            geofenceId: "geo_1", transition: .enter, occurredAt: sentAt.addingTimeInterval(-2 * cooldownInterval)
+        )
+        await tracker.trackTransition(geofenceId: "geo_1", transition: .enter, occurredAt: sentAt)
+
+        #expect(delivery.trackMetricCallsCount == 1)
     }
 }
 

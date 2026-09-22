@@ -91,7 +91,7 @@ final class GeofenceRefreshTrigger {
         guard wasArmed else { return }
         logger.geofenceFirstRunRearm()
         Task { @MainActor [coordinator] in
-            _ = await coordinator().refresh(latitude: location.latitude, longitude: location.longitude)
+            _ = await coordinator().refresh(latitude: location.latitude, longitude: location.longitude, anchorIsLiveFix: true)
         }
     }
 
@@ -117,7 +117,10 @@ final class GeofenceRefreshTrigger {
                 return
             }
             self.lastSkippedForNoLocation.wrappedValue = false
-            _ = await self.coordinator().refresh(latitude: anchor.latitude, longitude: anchor.longitude)
+            // Not a live fix: `anchor` is the stored registration centre (or, before anything is
+            // registered, the last-known cache), so the movement trigger must not be sized to a
+            // polygon boundary around it.
+            _ = await self.coordinator().refresh(latitude: anchor.latitude, longitude: anchor.longitude, anchorIsLiveFix: false)
         }
     }
 

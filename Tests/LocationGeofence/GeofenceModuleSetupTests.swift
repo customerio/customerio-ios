@@ -52,7 +52,7 @@ struct GeofenceModuleSetupTests {
         let (refreshSignal, refreshContinuation) = AsyncStream<Void>.makeStream()
         let refreshContinuationWatchdog = bounded(refreshContinuation)
         defer { refreshContinuationWatchdog.cancel() }
-        f.spyCoordinator.refreshClosure = { _, _ in
+        f.spyCoordinator.refreshClosure = { _, _, _ in
             refreshContinuation.yield()
             return .success(())
         }
@@ -95,7 +95,7 @@ struct GeofenceModuleSetupTests {
         let (refreshSignal, refreshContinuation) = AsyncStream<(Double, Double)>.makeStream()
         let refreshContinuationWatchdog = bounded(refreshContinuation)
         defer { refreshContinuationWatchdog.cancel() }
-        f.spyCoordinator.refreshClosure = { lat, lon in
+        f.spyCoordinator.refreshClosure = { lat, lon, _ in
             refreshContinuation.yield((lat, lon))
             return .success(())
         }
@@ -124,7 +124,7 @@ struct GeofenceModuleSetupTests {
         let (refreshSignal, refreshContinuation) = AsyncStream<(Double, Double)>.makeStream()
         let refreshContinuationWatchdog = bounded(refreshContinuation)
         defer { refreshContinuationWatchdog.cancel() }
-        f.spyCoordinator.refreshClosure = { lat, lon in
+        f.spyCoordinator.refreshClosure = { lat, lon, _ in
             refreshContinuation.yield((lat, lon))
             return .success(())
         }
@@ -145,7 +145,7 @@ struct GeofenceModuleSetupTests {
         let f = Fixture(cachedLocation: LocationData(latitude: 7, longitude: 8), identifiedUserId: nil)
         defer { f.cleanup() }
 
-        f.spyCoordinator.refreshClosure = { _, _ in .success(()) }
+        f.spyCoordinator.refreshClosure = { _, _, _ in .success(()) }
 
         f.wire()
         // The user gate is synchronous (no Task spawned), so nothing can have run.
@@ -188,7 +188,7 @@ struct GeofenceModuleSetupTests {
         let (refreshSignal, refreshContinuation) = AsyncStream<(Double, Double)>.makeStream()
         let refreshContinuationWatchdog = bounded(refreshContinuation)
         defer { refreshContinuationWatchdog.cancel() }
-        f.spyCoordinator.refreshClosure = { lat, lon in
+        f.spyCoordinator.refreshClosure = { lat, lon, _ in
             refreshContinuation.yield((lat, lon))
             return .success(())
         }
@@ -225,7 +225,7 @@ struct GeofenceModuleSetupTests {
         defer { readContinuationWatchdog.cancel() }
         f.stub.onGetLastKnown = { readContinuation.yield() }
 
-        f.spyCoordinator.refreshClosure = { _, _ in .success(()) }
+        f.spyCoordinator.refreshClosure = { _, _, _ in .success(()) }
 
         f.wire()
 
@@ -262,7 +262,7 @@ struct GeofenceModuleSetupTests {
         let (refreshSignal, refreshContinuation) = AsyncStream<(Double, Double)>.makeStream()
         let refreshContinuationWatchdog = bounded(refreshContinuation)
         defer { refreshContinuationWatchdog.cancel() }
-        f.spyCoordinator.refreshClosure = { lat, lon in
+        f.spyCoordinator.refreshClosure = { lat, lon, _ in
             refreshContinuation.yield((lat, lon))
             return .success(())
         }
@@ -295,7 +295,7 @@ struct GeofenceModuleSetupTests {
         let (refreshSignal, refreshContinuation) = AsyncStream<Void>.makeStream()
         let refreshContinuationWatchdog = bounded(refreshContinuation)
         defer { refreshContinuationWatchdog.cancel() }
-        f.spyCoordinator.refreshClosure = { _, _ in
+        f.spyCoordinator.refreshClosure = { _, _, _ in
             refreshContinuation.yield()
             return .success(())
         }

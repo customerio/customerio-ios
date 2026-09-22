@@ -21,7 +21,7 @@ extension CLMonitorGeofenceMonitor {
     ///
     /// Each candidate's registered circle is CAPTURED here, synchronously with the calling sync's
     /// unchanged-diff, and re-verified when the operation drains: a later sync can stage a reshape
-    /// (updating `registeredConditions` synchronously) while its storage rewrite is still queued
+    /// (updating the ledger synchronously) while its storage rewrite is still queued
     /// behind this heal, and judging the old baseline against the new circle would synthesize a
     /// wrong transition. A candidate whose staged geometry or stored record no longer matches the
     /// capture is skipped — the reshape reseeds its baseline anyway.
@@ -39,10 +39,10 @@ extension CLMonitorGeofenceMonitor {
     /// clock at both ends and does not reintroduce the drain-order dependence drive 5 measured,
     /// which came from weighing a reseed's wall-clock write time against an event's OS date.
     func enqueueBaselineHeal(candidates: [String]) {
-        // Captured before the enqueue: `registeredConditions` at this instant is what the calling
+        // Captured before the enqueue: the ledger at this instant is what the calling
         // sync just diffed as unchanged.
         let expectedConditions = candidates.reduce(into: [String: RegisteredCondition]()) {
-            $0[$1] = registeredConditions[$1]
+            $0[$1] = conditionLedger.condition(for: $1)
         }
         guard !expectedConditions.isEmpty else { return }
         enqueueMonitorOperation { [weak self] _ in
@@ -51,7 +51,7 @@ extension CLMonitorGeofenceMonitor {
             let records = await self.storage.getMonitorRegionRecords()
             for (identifier, condition) in expectedConditions.sorted(by: { $0.key < $1.key }) {
                 guard self.ownedRegionIdentifiers.contains(identifier),
-                      self.registeredConditions[identifier] == condition,
+                      self.conditionLedger.condition(for: identifier) == condition,
                       let record = records[identifier],
                       record.center == condition.center, record.radius == condition.radius
                 else { continue }
@@ -89,7 +89,16 @@ extension CLMonitorGeofenceMonitor {
                 self.onTransition?(
                     identifier,
                     transition,
-                    LocationData(latitude: fix.coordinate.latitude, longitude: fix.coordinate.longitude)
+                    LocationData(latitude: fix.coordinate.latitude, longitude: fix.coordinate.longitude),
+                    fix.timestamp,
+                    // A heal only synthesizes off a fix it just gated as fresh.
+                    true,
+                    // Synthesized against the condition in hand, so the circle is known outright
+                    // rather than looked up by date.
+                    .circle(MonitoredCircle(
+                        center: condition.center, radius: condition.radius,
+                        maximumRadius: self.authManager.maximumRegionMonitoringDistance
+                    ))
                 )
             }
         }
@@ -106,7 +115,7 @@ extension CLMonitorGeofenceMonitor {
     /// wins; the decision's fix-age guard applies to the result.
     private func resolveHealFix() async -> CLLocation? {
         await withCheckedContinuation { continuation in
-            movementFixResolver.resolve(cached: bestKnownFix()) { [weak self] _ in
+            movementFixResolver.resolve(cached: bestKnownFix(), purpose: .baselineHeal) { [weak self] _, _ in
                 continuation.resume(returning: self?.bestKnownFix())
             }
         }

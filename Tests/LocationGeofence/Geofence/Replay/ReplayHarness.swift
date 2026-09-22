@@ -55,6 +55,7 @@ final class ReplayHarness {
     private(set) var monitor: CLMonitorGeofenceMonitor!
     private(set) var coordinator: GeofenceSyncCoordinatorImpl!
     private(set) var tracker: GeofenceEventTracker!
+    private(set) var resolver: PolygonMembershipResolver!
     /// The real sync trigger — the rules that decide whether an input causes a sync at all.
     private(set) var trigger: GeofenceRefreshTrigger!
 
@@ -128,6 +129,7 @@ final class ReplayHarness {
             dateUtil: clock
         )
         self.pendingStore = PendingGeofenceMetricStore(
+            logger: logger,
             fileManager: .default,
             directoryURL: root.appendingPathComponent("pending")
         )
@@ -244,6 +246,16 @@ final class ReplayHarness {
             logger: logger
         )
 
+        // Circle fences never reach it, but the binder routes every transition through it and a
+        // polygon in the corpus would otherwise resolve against the production singleton — which
+        // reads the real DI graph and the wall clock.
+        resolver = PolygonMembershipResolver(
+            storage: storage,
+            transitionEmitter: tracker,
+            logger: logger,
+            contextStore: contextStore
+        )
+
         monitor = makeMonitor()
 
         coordinator = GeofenceSyncCoordinatorImpl(
@@ -280,7 +292,7 @@ final class ReplayHarness {
         // `module.init`, and an unbound monitor there would drop every crossing silently.
         GeofenceMonitorBinder.bind(
             monitor: monitor,
-            tracker: tracker,
+            resolver: resolver,
             coordinator: coordinator,
             logger: logger
         )
@@ -294,6 +306,11 @@ final class ReplayHarness {
         di.override(value: storage, forType: GeofenceStorage.self)
         di.override(value: contextStore, forType: BackgroundDeliveryContextStore.self)
         di.override(value: tracker, forType: GeofenceEventTracker.self)
+        // Without this, `GeofenceBootstrap` binds `PolygonMembershipResolver.shared` — a process-wide
+        // `static let` built from the real graph — and every OS transition the binder routes through
+        // it lands in another harness's storage. The drive then shows one `transition.accepted`, the
+        // coordinator's synthesized arrival, and no crossings at all.
+        di.override(value: resolver, forType: PolygonMembershipResolver.self)
         di.override(value: monitor as GeofenceRegionMonitoring, forType: GeofenceRegionMonitoring.self)
         di.override(value: coordinator as GeofenceSyncCoordinator, forType: GeofenceSyncCoordinator.self)
     }

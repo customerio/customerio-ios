@@ -5,34 +5,10 @@ import Foundation
 /// Cached-fix reads for the CLMonitor path, split out to keep the monitor's event and lifecycle
 /// plumbing readable (same convention as `+Registration`).
 @available(iOS 17.0, *)
-extension CLMonitorGeofenceMonitor {
-    /// Newest usable fix across the auth manager's cache and the resolver's requested fixes.
-    /// The manager's cache can freeze at process start on a long-suspended process, so a fresher
-    /// resolver fix must win wherever cached position is read.
-    func bestKnownFix() -> CLLocation? {
-        bestKnownFixDetail()?.fix
-    }
-
-    /// The same choice, but reporting which source won.
-    ///
-    /// Worth carrying into diagnostics: a resolver fix was requested and delivered, while the
-    /// manager's cache is whatever the OS last happened to have — and on a long-suspended process
-    /// that can be hours old. Both produce a coordinate; only one of them means anything.
-    func bestKnownFixDetail() -> (fix: CLLocation, source: GeofenceLog.FixSource)? {
-        let selected = selectFix()
-        // Every cache read is an input and is logged, repeated or not.
-        logger.geofenceLocationFix(selected?.fix, source: selected?.source ?? .none, now: dateUtil.now)
-        return selected
-    }
-
-    private func selectFix() -> (fix: CLLocation, source: GeofenceLog.FixSource)? {
-        let cached = authManager.currentLocation.flatMap { CLLocationCoordinate2DIsValid($0.coordinate) ? $0 : nil }
-        guard let resolved = movementFixResolver.latestFix else {
-            return cached.map { ($0, .managerCache) }
-        }
-        guard let cached else { return (resolved, .resolver) }
-        return resolved.timestamp > cached.timestamp ? (resolved, .resolver) : (cached, .managerCache)
-    }
+extension CLMonitorGeofenceMonitor: GeofenceFixSelecting {
+    /// `GeofenceFixSelecting`; `bestKnownFix()` and `bestKnownFixDetail()` come from its default.
+    /// Read through the OS seam, not `manager.location`, so a replay can substitute it.
+    var osCachedFix: CLLocation? { authManager.currentLocation }
 
     /// Records an OS-delivered crossing together with the fix the SDK will attach to it.
     ///
@@ -85,6 +61,27 @@ extension CLMonitorGeofenceMonitor {
         }
         logger.geofenceCallbackDropped(identifier: identifier, transition: transition, reason: "awaiting_reregistration")
         return true
+    }
+
+    /// An event CLMonitor delivered for a condition this process does not own.
+    ///
+    /// Logged, and logged as `info` rather than `os.callback.dropped`: the drop happens BEFORE
+    /// `logReceivedCallback`, so there is no receipt for it to net against and filing it as a drop
+    /// would inflate the received-vs-dropped count. Until now this path returned in silence, which
+    /// makes "the OS never delivered it" and "we refused to look at it" the same empty capture —
+    /// exactly the ambiguity a paired drive exists to resolve.
+    func logUnownedEvent(_ event: GeofenceConditionEvent) {
+        logger.geofenceInfo("callback_for_unowned_condition", fields: [
+            ("id", event.identifier),
+            ("state", String(describing: event.state))
+        ])
+    }
+
+    /// The oldest queued event, discarded because the bootstrap has not bound `onTransition` and
+    /// the queue is at its cap. Safe by design — CLMonitor re-emits current state — but it was
+    /// invisible, so a lost crossing here looked identical to one that never arrived.
+    func logOverflowedEvent(_ event: GeofenceConditionEvent) {
+        logger.geofenceInfo("pending_event_overflow", fields: [("id", event.identifier)])
     }
 
     /// Internal (not private) only because it lives in a separate file from its callers.
