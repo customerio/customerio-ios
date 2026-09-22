@@ -148,9 +148,7 @@ final class PolygonMembershipResolver {
                 // The pass already recorded why. No fix means nothing to size a trigger with.
                 return .nothingToRearm
             }
-            return .circleEntered(fix: LocationData(
-                latitude: fix.coordinate.latitude, longitude: fix.coordinate.longitude
-            ))
+            return .circleEntered(fix: ResolvedFix(fix))
         }
     }
 
@@ -195,7 +193,7 @@ final class PolygonMembershipResolver {
         guard !pending.isEmpty else { return true }
         let pass = nextPass()
         logger.geofencePolygonPassStarted(reason: reason, count: pending.count, pass: pass)
-        guard let fix = await resolveFix(requiringFresh: requiresFreshFix) else {
+        guard let fix = await requestedPassFix(requiringFresh: requiresFreshFix) else {
             for geofenceId in pending {
                 logger.geofencePolygonUndecided(identifier: geofenceId, reason: .noUsableFix, pass: pass)
             }
@@ -223,6 +221,7 @@ final class PolygonMembershipResolver {
     func evaluateAllPolygons(
         reason: PolygonEvaluationReason,
         requiresFreshFix: Bool = false,
+        heldFix: ResolvedFix? = nil,
         isStillCurrent: (@Sendable () -> Bool)? = nil
     ) async {
         if passesInFlight > 0, !requiresFreshFix {
@@ -237,13 +236,14 @@ final class PolygonMembershipResolver {
         // Before the empty guard on purpose: `n=0` is the record that a pass ran and had nothing
         // to judge, which is otherwise a silent return.
         let pass = nextPass()
-        logger.geofencePolygonPassStarted(reason: reason, count: polygons.count, pass: pass)
+        let heldFixDecision = heldFixUse(heldFix)
+        logger.geofencePolygonPassStarted(reason: reason, count: polygons.count, pass: pass, heldFix: heldFixDecision.use)
         guard polygons.isEmpty == false else { return }
-        // One request for the whole pass. Resolving per polygon would issue a fresh timed request
-        // for every one of them whenever the cache stays empty, holding the main actor for minutes
-        // and still deciding nothing — and a failed fresh request would silently downgrade every
+        // At most one request for the whole pass. Resolving per polygon would issue a fresh timed
+        // request for each whenever the cache stays empty, holding the main actor for minutes and
+        // still deciding nothing — and a failed fresh request would silently downgrade every
         // polygon after the first to the pre-wake fix.
-        guard let fix = await resolveFix(requiringFresh: requiresFreshFix) else {
+        guard let fix = await passFix(heldFix: heldFix, decision: heldFixDecision, requiringFresh: requiresFreshFix) else {
             for geofence in polygons {
                 logger.geofencePolygonUndecided(identifier: geofence.id, reason: .noUsableFix, pass: pass)
             }
@@ -263,12 +263,12 @@ final class PolygonMembershipResolver {
     ) async -> CLLocation? {
         let pass = nextPass()
         logger.geofencePolygonPassStarted(reason: .osTransition, count: 1, pass: pass)
-        guard let fix = await resolveFix(requiringFresh: requiresFreshFix) else {
+        guard let fix = await requestedPassFix(requiringFresh: requiresFreshFix) else {
             logger.geofencePolygonUndecided(identifier: geofenceId, reason: .noUsableFix, pass: pass)
             return nil
         }
         await runPass(geofenceIds: [geofenceId], fix: fix, pass: pass, isStillCurrent: isStillCurrent)
-        return fix
+        return fix.location
     }
 
     /// Takes an id, never a caller's `PolygonRegion`: resolving a fix suspends, and a refresh can
@@ -285,11 +285,11 @@ final class PolygonMembershipResolver {
     ///   fix settled it or settled nothing.
     func evaluate(
         geofenceId: String,
-        fix: CLLocation,
+        fix: PassFix,
         pass: Int,
         isStillCurrent: (@Sendable () -> Bool)? = nil
     ) async -> DeferredCorroboration? {
-        guard CLLocationCoordinate2DIsValid(fix.coordinate) else {
+        guard CLLocationCoordinate2DIsValid(fix.location.coordinate) else {
             logger.geofencePolygonUndecided(identifier: geofenceId, reason: .noUsableFix, pass: pass)
             return nil
         }
@@ -303,10 +303,11 @@ final class PolygonMembershipResolver {
             logger.geofencePolygonUndecided(identifier: geofenceId, reason: .unregistered, pass: pass)
             return nil
         }
-        let point = LocationData(latitude: fix.coordinate.latitude, longitude: fix.coordinate.longitude)
+        let point = LocationData(latitude: fix.location.coordinate.latitude, longitude: fix.location.coordinate.longitude)
         let signedEdgeDistance = polygon.signedEdgeDistance(to: point)
         switch await classifyMembership(
-            fix: fix, geofence: geofence, polygon: polygon, signedEdgeDistance: signedEdgeDistance, pass: pass
+            fix: fix, geofence: geofence, polygon: polygon,
+            signedEdgeDistance: signedEdgeDistance, pass: pass
         ) {
         case .none:
             return nil
@@ -321,7 +322,7 @@ final class PolygonMembershipResolver {
                     membership: membership, corroboration: .notNeeded,
                     signedEdgeDistance: signedEdgeDistance, pass: pass
                 ),
-                for: geofence, fix: fix, isStillCurrent: isStillCurrent
+                for: geofence, fix: fix.location, isStillCurrent: isStillCurrent
             )
             return nil
         }
@@ -373,11 +374,7 @@ final class PolygonMembershipResolver {
             logger.geofencePolygonNotDelivered(identifier: geofence.id, reason: .userChanged)
             return
         }
-        logger.geofencePolygonTransition(
-            identifier: geofence.id,
-            transition: transition,
-            confirmedByFix: confirmedByFix
-        )
+        logger.geofencePolygonTransition(identifier: geofence.id, transition: transition, confirmedByFix: confirmedByFix)
         await transitionEmitter.trackTransition(geofenceId: geofence.id, transition: transition, occurredAt: evidence)
     }
 

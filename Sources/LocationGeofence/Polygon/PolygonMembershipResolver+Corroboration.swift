@@ -39,8 +39,13 @@ extension PolygonMembershipResolver {
     /// first and corroborates afterwards.
     ///
     /// - Returns: what the fix alone establishes, after logging why it established nothing.
+    /// - Parameter fixAge: the age the PASS settled on, not the age right now. One fix serves the
+    ///   whole pass, so its usability is decided once. Recomputing here re-asks a question already
+    ///   answered and can answer it differently part-way through: a fix taken just inside
+    ///   `movementFixMaxAge` crosses the limit while the pass runs, and every polygon after that
+    ///   records `fix_too_old` even though the pass began with a fix it was entitled to use.
     func classifyMembership(
-        fix: CLLocation,
+        fix: PassFix,
         geofence: Geofence,
         polygon: PolygonRegion,
         signedEdgeDistance: Double,
@@ -48,8 +53,8 @@ extension PolygonMembershipResolver {
     ) async -> MembershipClassification {
         switch PolygonMembershipDecision.resolvedOutcome(
             signedEdgeDistance: signedEdgeDistance,
-            horizontalAccuracy: fix.horizontalAccuracy,
-            fixAge: -fix.timestamp.timeIntervalSinceNow,
+            horizontalAccuracy: fix.location.horizontalAccuracy,
+            fixAge: fix.age,
             venueScale: polygon.scale
         ) {
         case .decided(let decided):
@@ -57,7 +62,7 @@ extension PolygonMembershipResolver {
         case .undecided(let reason):
             logger.geofencePolygonUndecided(
                 identifier: geofence.id, reason: reason,
-                signedEdgeDistance: signedEdgeDistance, horizontalAccuracy: fix.horizontalAccuracy,
+                signedEdgeDistance: signedEdgeDistance, horizontalAccuracy: fix.location.horizontalAccuracy,
                 pass: pass
             )
             return .none

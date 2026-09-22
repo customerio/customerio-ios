@@ -6,6 +6,64 @@ import Foundation
 /// file cap. `internal` rather than `private` only because of that split; it remains
 /// implementation detail of the resolver.
 extension PolygonMembershipResolver {
+    /// Whether a caller's fix can stand in for a request of our own. Recorded on the pass log so a
+    /// drive can tell a reuse from a fall-through.
+    enum HeldFixUse: String {
+        /// The caller held none; the pass requests its own, as it always has.
+        case none
+        case reused
+        case tooOld = "too_old"
+    }
+
+    /// A caller that already resolved a fix under the same freshness rule must not be made to ask
+    /// again, and not only to save the request. `resolveFix(requiringFresh:)` demands a fix
+    /// strictly newer than the last one this resolver delivered — which is the caller's — so the
+    /// second request is refused whenever CoreLocation echoes that fix, as it commonly does within
+    /// seconds of delivering it. Every polygon in the pass then records `no_usable_fix`: the whole
+    /// pass lost, not one request wasted.
+    ///
+    /// Age is the limit. A movement deferred at the gate replays with the fix it was recorded
+    /// with, older by however long the holder ran — a remote refetch is seconds, and unbounded on
+    /// a slow network. `PolygonMembershipDecision` refuses anything past `movementFixMaxAge` as
+    /// `fix_too_old`, so reusing one there loses the same pass by the other route. Past the cap we
+    /// request instead, which also beats the stale baseline the guard above compares against.
+    func heldFixUse(_ heldFix: ResolvedFix?) -> HeldFixDecision {
+        guard let heldFix else { return HeldFixDecision(use: .none, age: 0) }
+        let age = -heldFix.timestamp.timeIntervalSinceNow
+        return HeldFixDecision(use: age <= GeofenceConstants.movementFixMaxAge ? .reused : .tooOld, age: age)
+    }
+
+    /// The verdict on a caller's fix, carrying the age it was judged on so the pass does not ask
+    /// again. The two reads are not interchangeable: accepting at 29.9 s and re-reading the clock
+    /// at the start of the pass puts the fix past `movementFixMaxAge`, and every polygon then
+    /// records `fix_too_old` — while `.tooOld`, the branch that would have requested a usable
+    /// replacement, was never taken. Measured in the field at a 29.95 s held fix.
+    struct HeldFixDecision {
+        let use: HeldFixUse
+        let age: TimeInterval
+    }
+
+    /// A fix and the age settled for it when it was CHOSEN. One pass, one fix, one age.
+    struct PassFix {
+        let location: CLLocation
+        let age: TimeInterval
+    }
+
+    /// The fix a pass judges against — see `heldFixUse` for when the caller's is taken.
+    func passFix(heldFix: ResolvedFix?, decision: HeldFixDecision, requiringFresh: Bool) async -> PassFix? {
+        guard decision.use == .reused, let heldFix else {
+            return await requestedPassFix(requiringFresh: requiringFresh)
+        }
+        // The age from the decision, not a new reading: that is the whole point of carrying it.
+        return PassFix(location: heldFix.location, age: decision.age)
+    }
+
+    /// Wraps a fix this resolver requested with the age it had on arrival.
+    func requestedPassFix(requiringFresh: Bool) async -> PassFix? {
+        guard let resolved = await resolveFix(requiringFresh: requiringFresh) else { return nil }
+        return PassFix(location: resolved, age: -resolved.timestamp.timeIntervalSinceNow)
+    }
+
     func resolveFix(requiringFresh: Bool = false) async -> CLLocation? {
         // What this resolver has already DELIVERED, which is what a forced request must improve on.
         // Deliberately not `cachedFix`: that reports the newest fix obtainable from either source,
