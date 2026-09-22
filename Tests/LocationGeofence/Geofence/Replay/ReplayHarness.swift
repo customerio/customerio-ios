@@ -33,6 +33,8 @@ final class ReplayHarness {
 
     /// `CLMonitor`. Holds the conditions the SDK registers and delivers the events replay pushes in.
     let conditionMonitor = FakeConditionMonitor()
+    /// `CLLocationManager`'s visit delegate. The wake source that is not a registered edge.
+    let visitMonitor = ReplayVisitMonitor()
     /// `CLLocationManager`: the granted tier, the OS radius cap, and the cached-position read.
     let authority = FakeLocationAuthority()
     let api: GeofenceApiServiceMock
@@ -307,6 +309,7 @@ final class ReplayHarness {
         // coordinator's synthesized arrival, and no crossings at all.
         di.override(value: resolver, forType: PolygonMembershipResolver.self)
         di.override(value: monitor as GeofenceRegionMonitoring, forType: GeofenceRegionMonitoring.self)
+        di.override(value: visitMonitor as GeofenceVisitMonitoring, forType: GeofenceVisitMonitoring.self)
         di.override(value: coordinator as GeofenceSyncCoordinator, forType: GeofenceSyncCoordinator.self)
     }
 

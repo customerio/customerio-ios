@@ -299,6 +299,28 @@ enum ReplayRunner {
             )
             return true
 
+        case "visit.reported":
+            // `lat`/`lon` are what CoreLocation handed over. Drives recorded before the logger
+            // carried them fall back to the anchor the SDK already knows, which replays the same:
+            // the coordinate is a wake signal the SDK never reads for containment, and a drive that
+            // passes either way is the evidence for that.
+            let edge = record.fields["edge"]
+            let delay = record.fields["delay"].flatMap(Double.init) ?? 0
+            let reportedAt = harness.now.addingTimeInterval(-delay)
+            let isArrival = edge == "arrival"
+            harness.visitMonitor.deliver(
+                GeofenceVisit(
+                    coordinate: LocationData(
+                        latitude: record.fields["lat"].flatMap(Double.init) ?? 0,
+                        longitude: record.fields["lon"].flatMap(Double.init) ?? 0
+                    ),
+                    horizontalAccuracy: record.fields["acc"].flatMap(Double.init) ?? -1,
+                    arrivalDate: isArrival ? reportedAt : .distantPast,
+                    departureDate: isArrival ? .distantFuture : reportedAt
+                )
+            )
+            return true
+
         case "os.monitor.stopped":
             // The OS abandoning a condition. First seen on the 2026-09-12 drive, where a relaunch
             // made CoreLocation give up all 20 at once — no earlier capture contains one, which is
