@@ -51,12 +51,21 @@ protocol GeofenceVisitMonitoring: AnyObject {
 final class GeofenceVisitMonitor: NSObject, GeofenceVisitMonitoring, @preconcurrency CLLocationManagerDelegate {
     private let manager: CLLocationManager
     private let logger: Logger
+    private let authorizationStatus: @MainActor () -> CLAuthorizationStatus
     private var onVisit: GeofenceVisitHandler?
     private var started = false
 
-    init(logger: Logger, manager: CLLocationManager? = nil) {
+    /// - Parameter authorizationStatus: overridable only so a test can drive a permission change.
+    ///   The real status is the process's, and no unit test can move it.
+    init(
+        logger: Logger,
+        manager: CLLocationManager? = nil,
+        authorizationStatus: (@MainActor () -> CLAuthorizationStatus)? = nil
+    ) {
+        let manager = manager ?? CLLocationManager()
         self.logger = logger
-        self.manager = manager ?? CLLocationManager()
+        self.manager = manager
+        self.authorizationStatus = authorizationStatus ?? { Self.systemAuthorizationStatus(manager) }
         super.init()
         self.manager.delegate = self
     }
@@ -66,24 +75,30 @@ final class GeofenceVisitMonitor: NSObject, GeofenceVisitMonitoring, @preconcurr
     }
 
     func start() {
-        guard !started else { return }
         // Always, not whenInUse: visit delivery to a suspended or terminated app is the entire
         // point, and `whenInUse` would report only while the app is already awake — which is the
         // case that needs no help.
         // Read once: the guard and the log must report the same answer, and the status can change
-        // between two reads. The availability split mirrors `CoreLocationGeofenceMonitor` —
-        // the instance property is iOS 14+ and this package still supports iOS 13.
-        let status = currentAuthorizationStatus()
+        // between two reads.
+        let status = authorizationStatus()
+        // Checked BEFORE `started`, not after: `started` records the last request we made, the
+        // status is what the OS will honour, and a downgrade from Always moves only the second.
+        // Every rewire routes through here, so an early return on our own bookkeeping would leave
+        // the monitor running against a permission that no longer backs it.
         guard status == .authorizedAlways else {
             logger.geofenceVisitMonitoringSkipped(status: status.rawValue)
+            stop()
             return
         }
+        guard !started else { return }
         started = true
         manager.startMonitoringVisits()
         logger.geofenceVisitMonitoringStarted()
     }
 
-    private func currentAuthorizationStatus() -> CLAuthorizationStatus {
+    /// The availability split mirrors `CoreLocationGeofenceMonitor` — the instance property is
+    /// iOS 14+ and this package still supports iOS 13.
+    private static func systemAuthorizationStatus(_ manager: CLLocationManager) -> CLAuthorizationStatus {
         if #available(iOS 14.0, *) {
             return manager.authorizationStatus
         } else {
