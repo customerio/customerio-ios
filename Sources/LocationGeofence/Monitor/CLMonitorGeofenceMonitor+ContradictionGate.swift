@@ -62,7 +62,14 @@ extension CLMonitorGeofenceMonitor {
             insideWindow: insideWindow
         )
         guard insideWindow else { return false }
-        let gateFix = await resolveGateFix()
+        // The movement trigger is judged on the cache alone. It is the one condition whose gate sits
+        // on the path that drives every sync, and this runs on the single serialized event consumer,
+        // so a one-shot request here stalls every later event behind it for up to
+        // `movementFixRequestTimeout`. It also has the least to gain: the trigger was added centred
+        // on the device from that same cache moments earlier, so the cached fix is the reference the
+        // staging already used. No cached fix means no judgement, and the gate fails open as always.
+        let isMovementTrigger = identifier == GeofenceConstants.movementTriggerIdentifier
+        let gateFix = isMovementTrigger ? bestKnownFix() : await resolveGateFix()
         guard let gateFix, CLLocationCoordinate2DIsValid(gateFix.coordinate) else {
             // `gateFix` is the unbound optional in this branch, so the two causes stay
             // distinguishable without a second guard.
@@ -75,7 +82,7 @@ extension CLMonitorGeofenceMonitor {
         }
         let center = CLLocation(latitude: readd.center.latitude, longitude: readd.center.longitude)
         let distanceFromCenter = gateFix.distance(from: center)
-        let fixAge = -gateFix.timestamp.timeIntervalSinceNow
+        let fixAge = dateUtil.now.timeIntervalSince(gateFix.timestamp)
         guard BaselineHealDecision.synthesizedTransition(
             distanceFromCenter: distanceFromCenter,
             radius: readd.radius,
@@ -119,7 +126,7 @@ extension CLMonitorGeofenceMonitor {
     /// event claims. Returns via `bestKnownFix()` so the freshest of the cache and the request
     /// wins; the caller's decision applies the fix-age guard to the result.
     private func resolveGateFix() async -> CLLocation? {
-        if Self.gateFixRequestBlocked(failedAt: gateFixRequestFailedAt, now: Date()) {
+        if Self.gateFixRequestBlocked(failedAt: gateFixRequestFailedAt, now: dateUtil.now) {
             return bestKnownFix()
         }
         let isFresh: Bool = await withCheckedContinuation { continuation in
@@ -131,7 +138,7 @@ extension CLMonitorGeofenceMonitor {
         // returns afterwards: a request that FAILED still leaves an OS cache that can be under
         // `movementFixMaxAge`, and recomputing then read that as success and left the block unarmed
         // — so every later event in the burst paid another full timeout.
-        gateFixRequestFailedAt = isFresh ? nil : Date()
+        gateFixRequestFailedAt = isFresh ? nil : dateUtil.now
         return bestKnownFix()
     }
 

@@ -22,8 +22,8 @@ enum GeofenceDiagnostics {
 
     private static let gate = DiagnosticsGate()
 
-    /// Test-only. The one concession to testability in this file; production reads the bundle.
-    static var overrideForTesting: Bool?
+    /// Test-only. Task-local so concurrently running suites cannot observe each other's value.
+    @TaskLocal static var overrideForTesting: Bool?
 
     static var isEnabled: Bool { overrideForTesting ?? gate.isEnabled }
 }
@@ -51,6 +51,17 @@ private final class DiagnosticsGate: @unchecked Sendable {
 enum GeofenceLog {
     /// A parser splits on the **last** occurrence, and only if the remainder is all `key=value`.
     static let delimiter = " || "
+
+    /// Why a condition was removed from `CLMonitor`, on `condition.removed`.
+    ///
+    /// A token rather than a bare string at the call sites: the two are read as a pair by anyone
+    /// timing the OS queue, and a third spelling of either would silently split the count.
+    enum RemovalOp: String {
+        /// Clearing the way for an immediate re-add of the same identifier.
+        case readd
+        /// The condition is leaving the registered set.
+        case drop
+    }
 
     /// The single gate for every diagnostic value; returns nothing when diagnostics are off.
     ///
@@ -195,6 +206,8 @@ enum GeofenceLog {
         case freshRequest = "fresh_request"
         /// The contradiction gate's fix, taken inside a re-add replay window.
         case gate
+        /// Delivered by the Location module: an arrival, not a read. Same channel as Android's `bus`.
+        case bus
         /// A synthesized transition, not an OS-delivered one.
         case synthetic
         case none
@@ -204,12 +217,12 @@ enum GeofenceLog {
     ///
     /// `age` is the one to notice: `bestKnownFix()` can be hours old on a long-suspended process,
     /// and an overshoot computed from one of those looks identical to a real measurement.
-    static func fixQuality(_ location: CLLocation?, source: FixSource) -> [(String, String?)] {
+    static func fixQuality(_ location: CLLocation?, source: FixSource, now: Date) -> [(String, String?)] {
         var fields: [(String, String?)] = [("fixsrc", source.rawValue)]
         guard let location else { return fields }
 
         fields.append(("acc", num(location.horizontalAccuracy)))
-        fields.append(("age", num(-location.timestamp.timeIntervalSinceNow)))
+        fields.append(("age", num(now.timeIntervalSince(location.timestamp), 6)))
         if location.verticalAccuracy > 0 {
             fields.append(("vacc", num(location.verticalAccuracy)))
         }
@@ -227,9 +240,13 @@ enum GeofenceLog {
 
     /// How long an OS-dated event waited before the SDK processed it — "observed late" and
     /// "observed on time, delivered late" are different faults that otherwise look the same.
-    static func eventTiming(_ eventDate: Date?) -> [(String, String?)] {
+    static func eventTiming(_ eventDate: Date?, now: Date) -> [(String, String?)] {
         guard let eventDate else { return [] }
-        return [("evage", num(-eventDate.timeIntervalSinceNow))]
+        return [
+            ("evage", num(now.timeIntervalSince(eventDate), 6)),
+            // Absolute and unrounded: the only field that identifies a re-delivered event.
+            ("edate", num(eventDate.timeIntervalSince1970, 6))
+        ]
     }
 
     // MARK: - Device position
@@ -280,6 +297,8 @@ extension GeofenceMonitorEventOutcome {
         case .suppressedFilteredType: return "transition_type_not_registered"
         case .suppressedNoBaseline: return "baseline_established"
         case .suppressedNewerBaseline: return "newer_baseline"
+        case .suppressedRedelivery: return "redelivered"
+        case .suppressedPredatesRegistration: return "predates_registration"
         }
     }
 }

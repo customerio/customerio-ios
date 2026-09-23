@@ -38,12 +38,16 @@ final class CoreLocationGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @pr
     var isDrainingPendingEvents = false
     static let maxPendingEvents = 64
 
-    init(logger: Logger) {
+    let dateUtil: DateUtil
+
+    init(logger: Logger, dateUtil: DateUtil = DIGraphShared.shared.dateUtil) {
+        self.dateUtil = dateUtil
         self.manager = CLLocationManager()
         self.logger = logger
         self.movementFixResolver = MovementFixResolver(
             logger: logger,
-            backgroundTaskRunner: GeofenceBackgroundTime.runner(name: "io.customer.geofence.movement-fix")
+            backgroundTaskRunner: GeofenceBackgroundTime.runner(name: "io.customer.geofence.movement-fix"),
+            dateUtil: dateUtil
         )
         super.init()
         manager.delegate = self
@@ -65,7 +69,7 @@ final class CoreLocationGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @pr
         let adopted = identifiers.intersection(osMonitoredRegionIdentifiers)
         guard !adopted.isEmpty else { return }
         ownedRegionIdentifiers.formUnion(adopted)
-        logger.geofenceRegionsAdopted(count: adopted.count)
+        logger.geofenceRegionsAdopted(identifiers: Array(adopted))
     }
 
     func setOnTransition(_ handler: GeofenceTransitionHandler?) {

@@ -17,7 +17,7 @@ extension Logger {
     func geofenceInvalidRegionDropped(_ identifier: String, reason: GeofenceRegionDropReason) {
         error(
             "Geofence '\(identifier)' dropped — \(reason.rawValue)"
-                + geofenceTail("registration.rejected", .output, [
+                + geofenceTail("registration.rejected", .observation, [
                     ("id", identifier),
                     ("why", reason.logToken)
                 ]),
@@ -29,7 +29,7 @@ extension Logger {
     func geofenceInvalidCoordinatesForRegion(_ identifier: String) {
         error(
             "Invalid coordinates for region \(identifier), skipping"
-                + geofenceTail("registration.rejected", .output, [
+                + geofenceTail("registration.rejected", .observation, [
                     ("id", identifier),
                     ("why", "invalid_coordinates")
                 ]),
@@ -69,7 +69,7 @@ extension Logger {
     // third-party subsystems, so a field report would not carry them.
     func geofenceMonitorStoppedMonitoringRegion(_ identifier: String) {
         error(
-            "CoreLocation stopped monitoring region \(identifier); its transitions are not delivered until the next sync re-registers it"
+            "CoreLocation stopped monitoring region \(identifier); its transitions are not delivered until it is re-registered, which is now scheduled rather than left to the next sync"
                 + geofenceTail("os.monitor.stopped", .input, [("id", identifier)]),
             geofenceTag,
             nil
@@ -98,7 +98,7 @@ extension Logger {
     func geofencePermissionUnavailable(currentStatus: CLAuthorizationStatus) {
         info(
             "Geofence registration skipped: location permission not granted (current status: \(currentStatus.rawValue)). The host app controls when and which permission to request."
-                + geofenceTail("permission.changed", .observation, [
+                + geofenceTail("permission.changed", .input, [
                     ("perm", GeofenceLog.permission(currentStatus)),
                     ("why", "not_granted")
                 ]),
@@ -109,7 +109,7 @@ extension Logger {
     func geofenceBackgroundDeliveryUnavailable(currentStatus: CLAuthorizationStatus) {
         info(
             "Geofence registered for foreground delivery only: WhenInUse authorization granted (current status: \(currentStatus.rawValue)). Background transitions require Always authorization."
-                + geofenceTail("permission.changed", .observation, [
+                + geofenceTail("permission.changed", .input, [
                     ("perm", GeofenceLog.permission(currentStatus)),
                     ("why", "foreground_only")
                 ]),
@@ -120,7 +120,7 @@ extension Logger {
     func geofenceBackgroundDeliveryAvailable(currentStatus: CLAuthorizationStatus) {
         info(
             "Geofence background delivery active: Always authorization granted (current status: \(currentStatus.rawValue))."
-                + geofenceTail("permission.changed", .observation, [
+                + geofenceTail("permission.changed", .input, [
                     ("perm", GeofenceLog.permission(currentStatus)),
                     ("ok", GeofenceLog.bool(true))
                 ]),
@@ -135,7 +135,7 @@ extension Logger {
     func geofenceModuleInitialized(launchReason: GeofenceLaunchReason) {
         info(
             "Geofence module initialized (\(launchReason.rawValue))"
-                + geofenceTail("module.init", .observation, [("launch", launchReason.rawValue)]),
+                + geofenceTail("module.init", .input, [("launch", launchReason.rawValue)]),
             geofenceTag
         )
     }
@@ -145,7 +145,7 @@ extension Logger {
     func geofenceModuleWoke(launchReason: GeofenceLaunchReason) {
         info(
             "Geofence module woken (\(launchReason.rawValue))"
-                + geofenceTail("module.wake", .observation, [("launch", launchReason.rawValue)]),
+                + geofenceTail("module.wake", .input, [("launch", launchReason.rawValue)]),
             geofenceTag
         )
     }
@@ -173,7 +173,8 @@ extension Logger {
         fix: CLLocation?,
         source: GeofenceLog.FixSource,
         eventDate: Date? = nil,
-        buffered: Bool = false
+        buffered: Bool = false,
+        now: Date
     ) {
         debug(
             "OS reported \(transition.rawValue) for region \(identifier)"
@@ -185,8 +186,8 @@ extension Logger {
                         ("t", transition.rawValue),
                         ("buf", GeofenceLog.bool(buffered))
                     ]
-                        + GeofenceLog.fixQuality(fix, source: source)
-                        + GeofenceLog.eventTiming(eventDate)
+                        + GeofenceLog.fixQuality(fix, source: source, now: now)
+                        + GeofenceLog.eventTiming(eventDate, now: now)
                         + GeofenceLog.position(fix)
                 ),
             geofenceTag
@@ -218,10 +219,57 @@ extension Logger {
     func geofenceCallbackDropped(identifier: String, transition: GeofenceTransition, reason: String) {
         debug(
             "OS \(transition.rawValue) for region \(identifier) not routed: \(reason)"
-                + geofenceTail("os.callback.dropped", .input, [
+                + geofenceTail("os.callback.dropped", .observation, [
                     ("id", identifier),
                     ("t", transition.rawValue),
                     ("why", reason)
+                ]),
+            geofenceTag
+        )
+    }
+
+    /// A sign-in or sign-out reaching the geofence module. The identifier is never written.
+    func geofenceIdentityChanged(identified: Bool) {
+        debug(
+            "Geofence identity \(identified ? "identified" : "reset")"
+                + geofenceTail("identity.changed", .input, [("ok", GeofenceLog.bool(identified))]),
+            geofenceTag
+        )
+    }
+
+    /// A position the Location module delivered: the one `location.fix` that is an arrival.
+    func geofenceLocationArrived(_ location: LocationData) {
+        debug(
+            "Location fix delivered to geofencing"
+                + geofenceTail("location.fix", .input, GeofenceLog.position(location) + [
+                    ("prov", GeofenceLog.FixSource.bus.rawValue)
+                ]),
+            geofenceTag
+        )
+    }
+
+    /// A position the SDK read from the OS cache. `io=in`: the read is when the data crosses in.
+    ///
+    /// Gated whole, not just in its tail. This fires on every cache read — 55 of them in nine
+    /// minutes on the 2026-09-14 drive, against 11 OS callbacks — and with diagnostics off
+    /// `geofenceTail` returns nothing, so the line that survived carried no position, accuracy, age
+    /// or provenance. Volume with nothing in it, on a path this PR describes as logging-only.
+    func geofenceLocationFix(_ location: CLLocation?, source: GeofenceLog.FixSource, now: Date) {
+        guard GeofenceDiagnostics.isEnabled else { return }
+        guard let location else {
+            debug(
+                "Deciding from no fix"
+                    + geofenceTail("location.fix", .input, [("prov", GeofenceLog.FixSource.none.rawValue)]),
+                geofenceTag
+            )
+            return
+        }
+        debug(
+            "Deciding from \(source.rawValue) fix"
+                + geofenceTail("location.fix", .input, GeofenceLog.position(location) + [
+                    ("acc", GeofenceLog.num(location.horizontalAccuracy, 1)),
+                    ("age", GeofenceLog.num(now.timeIntervalSince(location.timestamp), 6)),
+                    ("prov", source.rawValue)
                 ]),
             geofenceTag
         )
@@ -232,7 +280,7 @@ extension Logger {
     func geofenceFixReceived(_ location: CLLocation, source: String) {
         debug(
             "Location fix received (\(source))"
-                + geofenceTail("fix.received", .input, [
+                + geofenceTail("fix.received", .observation, [
                     ("prov", source)
                 ] + GeofenceLog.position(location)),
             geofenceTag
@@ -246,7 +294,7 @@ extension Logger {
     func geofenceStorageLoaded(regionCount: Int, hasAnchor: Bool) {
         debug(
             "Loaded \(regionCount) cached region(s) from storage"
-                + geofenceTail("storage.loaded", .input, [
+                + geofenceTail("storage.loaded", .observation, [
                     ("n", GeofenceLog.int(regionCount)),
                     ("anchor", GeofenceLog.bool(hasAnchor))
                 ]),
@@ -254,49 +302,43 @@ extension Logger {
         )
     }
 
-    // MARK: - Visits
-
-    /// The wake source that does not need an edge crossing. Recorded at start/stop as well as on
-    /// each report, because "no visit landed" and "visits were never armed" look identical in a
-    /// capture otherwise — see the absence-of-a-log-line trap.
-    func geofenceVisitMonitoringStarted() {
-        info(
-            "Visit monitoring armed"
-                + geofenceTail("visit.monitoring", .output, [("state", "started")]),
-            geofenceTag
-        )
-    }
-
-    func geofenceVisitMonitoringStopped() {
-        info(
-            "Visit monitoring disarmed"
-                + geofenceTail("visit.monitoring", .output, [("state", "stopped")]),
-            geofenceTag
-        )
-    }
-
-    /// Not armed, and why. `status` is the raw `CLAuthorizationStatus`.
-    func geofenceVisitMonitoringSkipped(status: Int32) {
-        info(
-            "Visit monitoring needs Always authorization"
-                + geofenceTail("visit.monitoring", .output, [
-                    ("state", "skipped"),
-                    ("why", "not_always"),
-                    ("status", String(status))
-                ]),
-            geofenceTag
-        )
-    }
-
-    /// `delay` is how long after the visit edge iOS told us — routinely minutes, which is why the
-    /// visit coordinate is never used as an anchor.
-    func geofenceVisitReported(isArrival: Bool, horizontalAccuracy: Double, reportDelay: TimeInterval) {
+    /// The moment one condition actually landed at the OS — one record per `CLMonitor.add`.
+    ///
+    /// **The boundary a replay has to park on.** Every add runs inside `enqueueMonitorOperation`,
+    /// so a sync's conditions reach CoreLocation one at a time behind whatever the queue already
+    /// held — and the storage write that reseeds a condition's dedup baseline sits at the head of
+    /// each add's own operation. On the 2026-09-12 iPhone relaunch that queue was still draining
+    /// 170 ms after `registration.applied` was logged, so two callbacks landing inside the window
+    /// compared against a baseline the phone had not written yet and a third arrived before an
+    /// `.unmonitored`'s queued clear could run. Nothing recorded when any of those calls returned,
+    /// so a replay answered them all instantly and decided differently — twice.
+    ///
+    /// Per identifier rather than per batch, unlike Android's count-carrying pair: CLMonitor takes
+    /// one condition at a time, so the identifier is free and it pairs a recorded moment with the
+    /// exact call a replay has to hold.
+    ///
+    /// `registration.applied` still reports the resulting set and is still the only assertion; this
+    /// is the mechanism underneath it, the same relation `registration.diff` already has.
+    func geofenceConditionAdded(identifier: String) {
         debug(
-            "Visit \(isArrival ? "arrival" : "departure") reported after \(Int(reportDelay))s"
-                + geofenceTail("visit.reported", .input, [
-                    ("edge", isArrival ? "arrival" : "departure"),
-                    ("acc", GeofenceLog.num(horizontalAccuracy)),
-                    ("delay", GeofenceLog.num(reportDelay, 0))
+            "Condition \(identifier) added at the OS"
+                + geofenceTail("condition.added", .observation, [("id", identifier)]),
+            geofenceTag
+        )
+    }
+
+    /// The moment one condition left the OS.
+    ///
+    /// `op` separates the two callers, which a reader cannot otherwise tell apart: CLMonitor
+    /// silently ignores an add over a live identifier and keeps the original circle, so every
+    /// re-registration removes first — a `readd` here is a condition on its way back in, not one
+    /// going away. Counterpart to `geofenceConditionAdded`; see its note for why both exist.
+    func geofenceConditionRemoved(identifier: String, op: GeofenceLog.RemovalOp) {
+        debug(
+            "Condition \(identifier) removed at the OS (\(op.rawValue))"
+                + geofenceTail("condition.removed", .observation, [
+                    ("id", identifier),
+                    ("op", op.rawValue)
                 ]),
             geofenceTag
         )

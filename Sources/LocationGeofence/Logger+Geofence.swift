@@ -59,7 +59,7 @@ extension Logger {
     func geofenceEventSuppressed(geofenceId: String, transition: GeofenceTransition, cooldownRemaining: TimeInterval? = nil) {
         debug(
             "Suppressed duplicate \(transition.rawValue) event for geofence \(geofenceId), within cooldown"
-                + geofenceTail("transition.suppressed", .output, [
+                + geofenceTail("transition.suppressed", .observation, [
                     ("id", geofenceId),
                     ("t", transition.rawValue),
                     ("why", "cooldown"),
@@ -72,7 +72,7 @@ extension Logger {
     func geofenceTransitionDroppedAnonymous(geofenceId: String, transition: GeofenceTransition) {
         debug(
             "Dropped \(transition.rawValue) event for geofence \(geofenceId): no identified user at transition time (geofencing is identified-only)"
-                + geofenceTail("transition.dropped", .output, [
+                + geofenceTail("transition.dropped", .observation, [
                     ("id", geofenceId),
                     ("t", transition.rawValue),
                     ("why", "no_identified_user")
@@ -95,7 +95,7 @@ extension Logger {
     func geofenceTransitionDroppedQueueUnreadable(geofenceId: String, transition: GeofenceTransition) {
         error(
             "Dropped \(transition.rawValue) for geofence \(geofenceId): the pending queue could not be read, so no write was attempted; cooldown released so the next crossing can retry"
-                + geofenceTail("transition.dropped", .output, [
+                + geofenceTail("transition.dropped", .observation, [
                     ("id", geofenceId),
                     ("t", transition.rawValue),
                     ("why", "queue_unreadable")
@@ -108,7 +108,7 @@ extension Logger {
     func geofencePendingPersistFailed(geofenceId: String, transition: GeofenceTransition) {
         error(
             "Failed to persist \(transition.rawValue) event for geofence \(geofenceId) before send; cooldown released so the next crossing can retry"
-                + geofenceTail("storage.write.failed", .output, [
+                + geofenceTail("storage.write.failed", .observation, [
                     ("id", geofenceId),
                     ("t", transition.rawValue),
                     ("ok", GeofenceLog.bool(false))
@@ -123,7 +123,7 @@ extension Logger {
     func geofenceSyncSkipped(reason: GeofenceSyncSkipReason) {
         debug(
             "Sync skipped: \(reason.prose)"
-                + geofenceTail("sync.skipped", .output, [("why", reason.rawValue)]),
+                + geofenceTail("sync.skipped", .observation, [("why", reason.rawValue)]),
             geofenceTag
         )
     }
@@ -131,7 +131,7 @@ extension Logger {
     func geofenceSyncSkippedFresh() {
         debug(
             "Sync skipped: last server fetch is within freshness window"
-                + geofenceTail("sync.skipped", .output, [("why", "within_freshness_window")]),
+                + geofenceTail("sync.skipped", .observation, [("why", "within_freshness_window")]),
             geofenceTag
         )
     }
@@ -220,7 +220,7 @@ extension Logger {
             : "; monitoring disabled (max business geofences is 0)"
         info(
             "Sync completed: registered \(requestedCount) business geofences\(trigger)"
-                + geofenceTail("sync.completed", .output, [
+                + geofenceTail("sync.completed", .observation, [
                     ("n", GeofenceLog.int(acceptedCount)),
                     ("mvmt", GeofenceLog.bool(movementTriggerAccepted)),
                     ("ms", GeofenceLog.num(elapsed.map { $0 * 1000 }, 0))
@@ -234,7 +234,7 @@ extension Logger {
     func geofenceRegistrationDiff(added: Int, removed: Int, unchanged: Int) {
         debug(
             "OS registration diff: +\(added) / -\(removed); \(unchanged) left registered untouched"
-                + geofenceTail("registration.diff", .output, [
+                + geofenceTail("registration.diff", .observation, [
                     ("nadd", GeofenceLog.int(added)),
                     ("nrem", GeofenceLog.int(removed)),
                     ("nkeep", GeofenceLog.int(unchanged))
@@ -259,7 +259,7 @@ extension Logger {
     ) {
         debug(
             "Ranked \(candidates) candidate(s), selected \(selectedCount)"
-                + geofenceTail("rank.evaluated", .output, {
+                + geofenceTail("rank.evaluated", .observation, {
                     let distances = edgeDistances()
                     let ranked = selected().map { id -> String in
                         guard let edge = distances[id] else { return GeofenceLog.sanitize(id) }
@@ -287,7 +287,7 @@ extension Logger {
     func geofenceCallbackDispatched(identifier: String, transition: GeofenceTransition) {
         debug(
             "OS delivered \(transition.rawValue) for region \(identifier)"
-                + geofenceTail("os.callback.dispatched", .output, [
+                + geofenceTail("os.callback.dispatched", .observation, [
                     ("id", identifier),
                     ("t", transition.rawValue)
                 ]),
@@ -300,11 +300,12 @@ extension Logger {
     func geofenceSyncSupersededByUserChange() {
         info(
             "Sync result discarded: identified user changed during fetch"
-                + geofenceTail("sync.superseded", .output, [("why", "user_changed")]),
+                + geofenceTail("sync.superseded", .observation, [("why", "user_changed")]),
             geofenceTag
         )
     }
 
+    /// Sign-out's outward half: monitoring stopped at the OS. An output.
     func geofenceResetCompleted() {
         info(
             "Reset completed: monitoring stopped and user-scoped state cleared"
@@ -313,6 +314,7 @@ extension Logger {
         )
     }
 
+    /// The other half of the same decision: a reset that deliberately did not clear.
     func geofenceResetSuperseded() {
         debug(
             "Reset skipped: another user is signed in"
@@ -327,15 +329,25 @@ extension Logger {
     func geofenceFirstRunRearm() {
         debug(
             "First-run refresh re-armed by new location fix"
-                + geofenceTail("movement.rearmed", .output, [("why", "first_run")]),
+                + geofenceTail("movement.rearmed", .observation, [("why", "first_run")]),
             geofenceTag
         )
     }
 
-    func geofenceRegionsAdopted(count: Int) {
+    /// Which OS-persisted conditions this process claimed on launch.
+    ///
+    /// The identifiers were always in hand — `adoptExistingRegions` computes a `Set<String>` and
+    /// used to log only its size. They are the *claimed* set, which is why this stays an
+    /// observation: the re-arm behind it skips any condition whose stored geometry no longer
+    /// matches, so the authoritative answer is the `registration.applied` the re-arm emits once it
+    /// has read the OS back. This record says what the SDK decided to take; that one says what it got.
+    func geofenceRegionsAdopted(identifiers: [String]) {
         debug(
-            "Adopted \(count) OS-persisted region(s) on launch; re-armed in place"
-                + geofenceTail("registration.adopted", .output, [("n", GeofenceLog.int(count))]),
+            "Adopted \(identifiers.count) OS-persisted region(s) on launch; re-arming in place"
+                + geofenceTail("registration.adopted", .observation, [
+                    ("n", GeofenceLog.int(identifiers.count)),
+                    ("ids", GeofenceLog.list(identifiers.sorted()))
+                ]),
             geofenceTag
         )
     }
@@ -343,7 +355,7 @@ extension Logger {
     func geofenceForegroundRearm(count: Int) {
         info(
             "Foreground entry after long suspension: re-armed \(count) condition(s) in place"
-                + geofenceTail("registration.rearmed", .output, [
+                + geofenceTail("registration.rearmed", .observation, [
                     ("n", GeofenceLog.int(count)),
                     ("why", "foreground_after_suspension")
                 ]),

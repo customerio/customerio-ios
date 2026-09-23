@@ -43,7 +43,7 @@ extension Logger {
     func geofenceBaselineHealed(identifier: String, transition: GeofenceTransition) {
         info(
             "Synthesized \(transition.rawValue) for region \(identifier): fresh fix contradicts stored baseline (OS never delivered the crossing)"
-                + geofenceTail("baseline.healed", .output, [
+                + geofenceTail("baseline.healed", .observation, [
                     ("id", identifier),
                     ("t", transition.rawValue)
                 ]),
@@ -60,7 +60,7 @@ extension Logger {
     func geofenceContradictionEvaluated(identifier: String, transition: GeofenceTransition, delaySinceAdd: TimeInterval, insideWindow: Bool) {
         debug(
             "Event for region \(identifier) landed \(String(format: "%.3f", delaySinceAdd))s after its re-add"
-                + geofenceTail("contradiction.evaluated", .output, [
+                + geofenceTail("contradiction.evaluated", .observation, [
                     ("id", identifier),
                     ("t", transition.rawValue),
                     ("dly", GeofenceLog.num(delaySinceAdd, 3)),
@@ -90,7 +90,7 @@ extension Logger {
     ) {
         debug(
             "Allowed OS \(transition.rawValue) for region \(identifier): the gate did not refuse it (distance \(Int(geometry.distanceFromCenter)) m, radius \(Int(geometry.radius)) m, accuracy \(Int(geometry.accuracy)) m, fix age \(String(format: "%.1f", geometry.fixAge))s)"
-                + geofenceTail("contradiction.allowed", .output, [
+                + geofenceTail("contradiction.allowed", .observation, [
                     ("id", identifier),
                     ("t", transition.rawValue),
                     ("dist", GeofenceLog.num(geometry.distanceFromCenter, 0)),
@@ -119,7 +119,7 @@ extension Logger {
     ) {
         debug(
             "Allowed OS \(transition.rawValue) for region \(identifier): \(reason.prose)"
-                + geofenceTail("contradiction.no_fix", .output, [
+                + geofenceTail("contradiction.no_fix", .observation, [
                     ("id", identifier),
                     ("t", transition.rawValue),
                     ("why", reason.rawValue)
@@ -131,7 +131,7 @@ extension Logger {
     func geofenceEventRefusedByContradiction(identifier: String, transition: GeofenceTransition, distanceFromCenter: Double, radius: Double, accuracy: Double) {
         info(
             "Refused OS \(transition.rawValue) for region \(identifier): a fresh fix contradicts it (distance \(Int(distanceFromCenter)) m, radius \(Int(radius)) m, accuracy \(Int(accuracy)) m)"
-                + geofenceTail("contradiction.refused", .output, [
+                + geofenceTail("contradiction.refused", .observation, [
                     ("id", identifier),
                     ("t", transition.rawValue),
                     ("dist", GeofenceLog.num(distanceFromCenter, 0)),
@@ -145,7 +145,7 @@ extension Logger {
 
     /// A heal decided a crossing was real and the dedup baseline refused it.
     ///
-    /// `io=out` and its own key, deliberately not `os.callback.dropped`: nothing arrived from the
+    /// `io=obs` and its own key, deliberately not `os.callback.dropped`: nothing arrived from the
     /// OS here. A heal synthesizes the transition from a fix, so reporting it as a dropped callback
     /// invents an OS delivery that never happened and inflates the received-vs-dropped count —
     /// the count that distinguishes "the OS never reported it" from "we discarded it", which is
@@ -153,7 +153,7 @@ extension Logger {
     func geofenceBaselineRefused(identifier: String, transition: GeofenceTransition, reason: String) {
         debug(
             "Baseline heal for region \(identifier) refused: \(reason)"
-                + geofenceTail("baseline.refused", .output, [
+                + geofenceTail("baseline.refused", .observation, [
                     ("id", identifier),
                     ("t", transition.rawValue),
                     ("why", reason)
@@ -172,7 +172,7 @@ extension Logger {
     func geofenceTransitionSynthesized(geofenceId: String, transition: GeofenceTransition) {
         debug(
             "Geofence '\(geofenceId)': device already inside a newly-registered fence — synthesizing \(transition.rawValue)"
-                + geofenceTail("transition.synthesized", .output, [
+                + geofenceTail("transition.synthesized", .observation, [
                     ("id", geofenceId),
                     ("t", transition.rawValue),
                     ("why", "initial_enter_inside")

@@ -6,6 +6,9 @@ import Foundation
 import SharedTests
 import Testing
 
+// Nested for serialization only; the body keeps top-level indentation so the file's history stays readable.
+// swiftformat:disable indent
+extension SharedDIGraphSuites {
 @Suite("GeofenceBootstrap", .serialized)
 @MainActor
 struct GeofenceBootstrapTests {
@@ -628,6 +631,18 @@ struct GeofenceBootstrapTests {
     }
 }
 
+private final class StubProvider: BackgroundDeliveryCdpApiKeyProvider {
+    let value: String?
+    init(value: String?) {
+        self.value = value
+    }
+
+    var cdpApiKey: String? { value }
+}
+}
+
+// swiftformat:enable indent
+
 /// Waits for a re-run the handler spawned onto the process-global run chain. A fixed sleep races
 /// whatever else holds that chain, and a concurrent suite held it for 2 s on CI.
 private func awaitRerun(
@@ -642,15 +657,6 @@ private func awaitRerun(
         try? await Task.sleep(nanoseconds: 5000000)
     }
     Issue.record("condition not met within \(within)s", sourceLocation: sourceLocation)
-}
-
-private final class StubProvider: BackgroundDeliveryCdpApiKeyProvider {
-    let value: String?
-    init(value: String?) {
-        self.value = value
-    }
-
-    var cdpApiKey: String? { value }
 }
 
 private actor AsyncSignal {

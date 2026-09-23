@@ -68,7 +68,8 @@ extension CoreLocationGeofenceMonitor {
             transition: transition,
             fix: receivedFix?.fix,
             source: receivedFix?.source ?? .none,
-            buffered: false
+            buffered: false,
+            now: dateUtil.now
         )
         dispatchTransition(
             identifier: region.identifier, transition: transition,
@@ -92,7 +93,8 @@ extension CoreLocationGeofenceMonitor {
                     transition: next.transition,
                     fix: next.fix,
                     source: next.fixSource,
-                    buffered: true
+                    buffered: true,
+                    now: self.dateUtil.now
                 )
                 self.dispatchTransition(
                     identifier: next.identifier, transition: next.transition,

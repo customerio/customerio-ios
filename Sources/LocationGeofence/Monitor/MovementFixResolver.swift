@@ -32,6 +32,8 @@ final class MovementFixResolver: NSObject, @preconcurrency CLLocationManagerDele
     private let maxAge: TimeInterval
     private let requestTimeout: TimeInterval
     private let backgroundTaskRunner: BackgroundTaskRunner
+    /// Freshness is measured against this clock, never the wall clock.
+    private let dateUtil: DateUtil
     private let desiredAccuracy: CLLocationAccuracy
 
     /// Created lazily so tests using the `requestFreshFix` seam never touch CoreLocation.
@@ -89,17 +91,32 @@ final class MovementFixResolver: NSObject, @preconcurrency CLLocationManagerDele
     /// `handleResolvedFix` / `handleRequestFailure` directly.
     var requestFreshFix: (() -> Void)?
 
+    /// How the timeout waits. The OS clock is the default; a caller driving a recorded timeline
+    /// supplies its own so the wait costs what the timeline says rather than real seconds.
+    ///
+    /// Settable rather than init-only, for the same reason as `requestFreshFix`: this resolver is
+    /// constructed inside `CLMonitorGeofenceMonitor`, so a caller has no way to reach the
+    /// initialiser. Without it the fallback fires ten real seconds after a replay that finished in
+    /// milliseconds of virtual time — long after the run it belonged to.
+    var waitForTimeout: (TimeInterval) async -> Void
+
     init(
         logger: Logger,
         maxAge: TimeInterval = GeofenceConstants.movementFixMaxAge,
         requestTimeout: TimeInterval = GeofenceConstants.movementFixRequestTimeout,
         backgroundTaskRunner: BackgroundTaskRunner = NoBackgroundTaskRunner(),
-        desiredAccuracy: CLLocationAccuracy = kCLLocationAccuracyHundredMeters
+        dateUtil: DateUtil = DIGraphShared.shared.dateUtil,
+        desiredAccuracy: CLLocationAccuracy = kCLLocationAccuracyHundredMeters,
+        waitForTimeout: @escaping (TimeInterval) async -> Void = { seconds in
+            try? await Task.sleep(nanoseconds: UInt64(seconds * 1000000000))
+        }
     ) {
         self.logger = logger
         self.maxAge = maxAge
         self.requestTimeout = requestTimeout
         self.backgroundTaskRunner = backgroundTaskRunner
+        self.dateUtil = dateUtil
+        self.waitForTimeout = waitForTimeout
         self.desiredAccuracy = desiredAccuracy
     }
 
@@ -117,7 +134,7 @@ final class MovementFixResolver: NSObject, @preconcurrency CLLocationManagerDele
     /// that sizes anything to the coordinates needs that apart, and deriving it from the fix's age
     /// at the call site would put this rule in two more places to get wrong.
     func resolve(cached: CLLocation?, purpose: GeofenceFixPurpose, completion: @escaping (LocationData?, Bool) -> Void) {
-        let age = cached.map { -$0.timestamp.timeIntervalSinceNow }
+        let age = cached.map { self.age(of: $0) }
         if let cached, let age, age <= maxAge {
             logger.geofenceMovementFixResolved(ageSeconds: age, requested: false, speed: cached.speed, purpose: purpose)
             completion(locationData(from: cached), true)
@@ -148,14 +165,7 @@ final class MovementFixResolver: NSObject, @preconcurrency CLLocationManagerDele
         guard let fix = locations.last, CLLocationCoordinate2DIsValid(fix.coordinate),
               fix.horizontalAccuracy > 0
         else { return }
-        // Core Location can echo a cached location as a new manager's first delivery. A fix as
-        // stale as the one that prompted the request must not complete the pass as "fresh" —
-        // keep waiting; the timeout falls back if nothing recent arrives.
-        guard -fix.timestamp.timeIntervalSinceNow <= maxAge else {
-            recordDeliveredFix(fix)
-            return
-        }
-        handleResolvedFix(fix)
+        handleDeliveredFix(fix)
     }
 
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
@@ -164,10 +174,19 @@ final class MovementFixResolver: NSObject, @preconcurrency CLLocationManagerDele
 
     // MARK: - Internal (also the test seam's feed points)
 
+    /// One fix from the OS, freshness not yet judged: a new manager can echo a stale cached location.
+    func handleDeliveredFix(_ fix: CLLocation) {
+        guard age(of: fix) <= maxAge else {
+            recordDeliveredFix(fix)
+            return
+        }
+        handleResolvedFix(fix)
+    }
+
     func handleResolvedFix(_ fix: CLLocation) {
         recordDeliveredFix(fix)
         guard !pendingCompletions.isEmpty else { return }
-        logger.geofenceMovementFixResolved(ageSeconds: -fix.timestamp.timeIntervalSinceNow, requested: true, speed: fix.speed, purpose: pendingPurpose)
+        logger.geofenceMovementFixResolved(ageSeconds: age(of: fix), requested: true, speed: fix.speed, purpose: pendingPurpose)
         completeAll(with: locationData(from: fix), isFresh: true)
     }
 
@@ -182,6 +201,10 @@ final class MovementFixResolver: NSObject, @preconcurrency CLLocationManagerDele
 
     // MARK: - Private
 
+    private func age(of fix: CLLocation) -> TimeInterval {
+        dateUtil.now.timeIntervalSince(fix.timestamp)
+    }
+
     private func recordDeliveredFix(_ fix: CLLocation) {
         logger.geofenceFixReceived(fix, source: "movement_resolver")
         if latestFix.map({ fix.timestamp > $0.timestamp }) ?? true {
@@ -191,8 +214,8 @@ final class MovementFixResolver: NSObject, @preconcurrency CLLocationManagerDele
 
     private func startTimeout() {
         timeoutTask?.cancel()
-        timeoutTask = Task { @MainActor [weak self, requestTimeout] in
-            try? await Task.sleep(nanoseconds: UInt64(requestTimeout * 1000000000))
+        timeoutTask = Task { @MainActor [weak self, requestTimeout, waitForTimeout] in
+            await waitForTimeout(requestTimeout)
             guard !Task.isCancelled else { return }
             self?.handleRequestFailure()
         }

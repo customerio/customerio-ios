@@ -15,7 +15,7 @@ extension Logger {
     func geofenceMovementTrigger(tier: HandleMovementTier) {
         debug(
             "Movement trigger EXIT: \(tier.rawValue)"
-                + geofenceTail("movement.exit", .input, [("tier", tier.rawValue)]),
+                + geofenceTail("movement.exit", .observation, [("tier", tier.rawValue)]),
             geofenceTag
         )
     }
@@ -30,7 +30,7 @@ extension Logger {
         ]
         debug(
             "Movement trigger registered with radius \(Int(radius)) m"
-                + geofenceTail("movement.registered", .output, geometry + [("rad", GeofenceLog.num(radius, 0))]),
+                + geofenceTail("movement.registered", .observation, geometry + [("rad", GeofenceLog.num(radius, 0))]),
             geofenceTag
         )
     }
@@ -38,7 +38,7 @@ extension Logger {
     func geofenceMovementRearmedAfterFailedRefresh() {
         debug(
             "Movement refresh failed; re-ranking from cache to re-arm the movement trigger"
-                + geofenceTail("movement.rearmed", .output, [("why", "refresh_failed")]),
+                + geofenceTail("movement.rearmed", .observation, [("why", "refresh_failed")]),
             geofenceTag
         )
     }
@@ -50,8 +50,8 @@ extension Logger {
         let source = requested ? "freshly requested" : "cached"
         debug(
             "Movement pass using \(source) fix, age \(String(format: "%.1f", ageSeconds))s"
-                + geofenceTail("movement.fix.resolved", .input, [
-                    ("age", GeofenceLog.num(ageSeconds)),
+                + geofenceTail("movement.fix.resolved", .observation, [
+                    ("age", GeofenceLog.num(ageSeconds, 6)),
                     ("prov", requested ? "requested" : "cached"),
                     // Negative means the fix carries no speed, which is not the same as stationary.
                     ("spd", speed.flatMap { $0 >= 0 ? GeofenceLog.num($0) : nil }),
@@ -67,8 +67,8 @@ extension Logger {
         let age = ageSeconds.map { "\(String(format: "%.1f", $0))s old" } ?? "missing"
         info(
             "Cached fix is \(age); requesting a fresh fix for the movement pass"
-                + geofenceTail("movement.fix.requested", .output, [
-                    ("age", GeofenceLog.num(ageSeconds)),
+                + geofenceTail("movement.fix.requested", .observation, [
+                    ("age", GeofenceLog.num(ageSeconds, 6)),
                     ("why", ageSeconds == nil ? "no_cached_fix" : "stale_cached_fix")
                 ]),
             geofenceTag
@@ -79,7 +79,7 @@ extension Logger {
         let outcome = fallingBackToCached ? "falling back to the stale cached fix" : "no cached fix to fall back to"
         info(
             "Fresh-fix request failed or timed out; \(outcome)"
-                + geofenceTail("movement.fix.failed", .input, [
+                + geofenceTail("movement.fix.failed", .observation, [
                     ("ok", GeofenceLog.bool(false)),
                     ("why", fallingBackToCached ? "fallback_cached" : "no_fallback"),
                     ("ms", GeofenceLog.num(elapsed.map { $0 * 1000 }, 0))

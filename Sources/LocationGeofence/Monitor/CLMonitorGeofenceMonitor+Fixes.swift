@@ -7,7 +7,8 @@ import Foundation
 @available(iOS 17.0, *)
 extension CLMonitorGeofenceMonitor: GeofenceFixSelecting {
     /// `GeofenceFixSelecting`; `bestKnownFix()` and `bestKnownFixDetail()` come from its default.
-    var osCachedFix: CLLocation? { authManager.location }
+    /// Read through the OS seam, not `manager.location`, so a replay can substitute it.
+    var osCachedFix: CLLocation? { authManager.currentLocation }
 
     /// Records an OS-delivered crossing together with the fix the SDK will attach to it.
     ///
@@ -21,7 +22,8 @@ extension CLMonitorGeofenceMonitor: GeofenceFixSelecting {
             transition: transition,
             fix: detail?.fix,
             source: detail?.source ?? .none,
-            eventDate: eventDate
+            eventDate: eventDate,
+            now: dateUtil.now
         )
     }
 
@@ -47,7 +49,7 @@ extension CLMonitorGeofenceMonitor: GeofenceFixSelecting {
     /// would inflate the received-vs-dropped count. Until now this path returned in silence, which
     /// makes "the OS never delivered it" and "we refused to look at it" the same empty capture —
     /// exactly the ambiguity a paired drive exists to resolve.
-    func logUnownedEvent(_ event: CLMonitor.Event) {
+    func logUnownedEvent(_ event: GeofenceConditionEvent) {
         logger.geofenceInfo("callback_for_unowned_condition", fields: [
             ("id", event.identifier),
             ("state", String(describing: event.state))
@@ -57,7 +59,7 @@ extension CLMonitorGeofenceMonitor: GeofenceFixSelecting {
     /// The oldest queued event, discarded because the bootstrap has not bound `onTransition` and
     /// the queue is at its cap. Safe by design — CLMonitor re-emits current state — but it was
     /// invisible, so a lost crossing here looked identical to one that never arrived.
-    func logOverflowedEvent(_ event: CLMonitor.Event) {
+    func logOverflowedEvent(_ event: GeofenceConditionEvent) {
         logger.geofenceInfo("pending_event_overflow", fields: [("id", event.identifier)])
     }
 

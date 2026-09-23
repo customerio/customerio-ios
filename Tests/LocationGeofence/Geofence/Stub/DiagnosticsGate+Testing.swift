@@ -21,15 +21,13 @@ import Foundation
 /// what `GeofenceVisitMonitorTests` does, and why. Reaching for a token and watching the count come
 /// back zero is the confusing way to discover this.
 enum DiagnosticsGateTesting {
-    private static let lock = NSRecursiveLock()
-
-    /// Runs `body` with the gate forced on or off, restoring the previous value after.
+    /// Runs `body` with the gate forced on or off. Task-local, so no lock is needed.
     static func withDiagnostics<T>(_ enabled: Bool, _ body: () throws -> T) rethrows -> T {
-        lock.lock()
-        defer { lock.unlock() }
-        let previous = GeofenceDiagnostics.overrideForTesting
-        GeofenceDiagnostics.overrideForTesting = enabled
-        defer { GeofenceDiagnostics.overrideForTesting = previous }
-        return try body()
+        try GeofenceDiagnostics.$overrideForTesting.withValue(enabled, operation: body)
+    }
+
+    /// Async counterpart, for a body that awaits.
+    static func withDiagnostics<T>(_ enabled: Bool, _ body: () async throws -> T) async rethrows -> T {
+        try await GeofenceDiagnostics.$overrideForTesting.withValue(enabled, operation: body)
     }
 }

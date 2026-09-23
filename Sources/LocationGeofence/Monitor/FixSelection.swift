@@ -1,3 +1,4 @@
+import CioInternalCommon
 import CoreLocation
 import Foundation
 
@@ -40,6 +41,11 @@ protocol GeofenceFixSelecting: AnyObject {
     /// The OS's own cached fix, from whichever manager this monitor owns.
     var osCachedFix: CLLocation? { get }
     var movementFixResolver: MovementFixResolver { get }
+    /// The selection is logged from the default below, so it is logged identically for both
+    /// monitors. Requirements rather than a shadowing override: a concrete `bestKnownFixDetail()`
+    /// would not be seen by `bestKnownFix()`, which dispatches statically inside this extension.
+    var logger: Logger { get }
+    var dateUtil: DateUtil { get }
 }
 
 extension GeofenceFixSelecting {
@@ -56,6 +62,9 @@ extension GeofenceFixSelecting {
     /// cache is whatever the system last happened to have — and on a long-suspended process that
     /// can be hours old. Both produce a coordinate; only one of them means anything.
     func bestKnownFixDetail() -> (fix: CLLocation, source: GeofenceLog.FixSource)? {
-        FixSelection.newest(cached: FixSelection.usable(osCachedFix), delivered: movementFixResolver.latestFix)
+        let selected = FixSelection.newest(cached: FixSelection.usable(osCachedFix), delivered: movementFixResolver.latestFix)
+        // Every cache read is an input and is logged, repeated or not.
+        logger.geofenceLocationFix(selected?.fix, source: selected?.source ?? .none, now: dateUtil.now)
+        return selected
     }
 }
