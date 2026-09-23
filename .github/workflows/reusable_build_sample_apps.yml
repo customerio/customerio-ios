@@ -47,7 +47,9 @@ on:
 
 jobs:
   build_sample_apps:
-    runs-on: macos-26
+    # Xcode 27 ships only on GitHub's Xcode 27 image (macOS 27); macos-26 tops out at Xcode 26.6.
+    # `xcode-27` is GitHub's public-preview image today (not yet GA) — revisit once promoted.
+    runs-on: xcode-27
     name: Building iOS sample apps
     strategy:
       fail-fast: false
@@ -230,6 +232,10 @@ jobs:
       - name: Build sample app
         uses: ./.github/actions/build-sample-app
         with:
+          # Only one Xcode is installed on the xcode-27 image, so setup-xcode cannot resolve a
+          # version string. Pass an empty value so setup-ios skips selection and the build uses
+          # the image-default Xcode 27. (The default '26.6' does not exist on this image.)
+          xcode-version: ''
           apn-or-fcm: ${{ matrix.apn-or-fcm }}
           sample-app: ${{ matrix.sample-app }}
           customerio-workspace-siteid: ${{ secrets[matrix.cio-siteid-secret-key] }}

@@ -84,15 +84,18 @@ jobs:
     name: Compile APN sample
     needs: detect-changes
     if: needs.detect-changes.outputs.apn == 'true'
-    runs-on: macos-26
+    # Xcode 27 ships only on GitHub's dedicated Xcode 27 image (macOS 27); macos-26 tops out
+    # at Xcode 26.6. `xcode-27` is GitHub's public-preview image today (not yet GA) — revisit
+    # this label and the DEVELOPER_DIR path once GitHub promotes it to GA.
+    runs-on: xcode-27
     timeout-minutes: 60
+    # Only one Xcode is installed on the xcode-27 image, so maxim-lobanov/setup-xcode cannot
+    # resolve a version string here. Select the toolchain via DEVELOPER_DIR instead. The
+    # /Applications/Xcode_27.0.app symlink survives the RC -> GA bundle rename.
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_27.0.app/Contents/Developer
     steps:
       - uses: actions/checkout@v4
-
-      - name: Install Xcode
-        uses: maxim-lobanov/setup-xcode@60606e260d2fc5762a71e64e74b2174e8ea3c8bd # v1.6.0
-        with:
-          xcode-version: '26.6'
 
       - name: Prepare placeholder build environment
         run: cp 'Apps/APN-UIKit/BuildEnvironment.sample.swift' 'Apps/APN-UIKit/BuildEnvironment.swift'
@@ -115,7 +118,7 @@ jobs:
         uses: customerio/mobile-ci-tools/github-actions/ios/launch-simulator-app/v1@main
         with:
           app-path: ${{ runner.temp }}/apn-sample/Build/Products/Debug-iphonesimulator/APN UIKit.app
-          expected-ios-major: '26'
+          expected-ios-major: '27'
           survival-seconds: ${{ env.LAUNCH_SURVIVAL_SECONDS }}
           log-path: ${{ runner.temp }}/apn-sample-launch.log
 
@@ -123,15 +126,15 @@ jobs:
     name: Compile FCM sample
     needs: detect-changes
     if: needs.detect-changes.outputs.fcm == 'true'
-    runs-on: macos-26
+    # See the APN job above: Xcode 27 is on GitHub's Xcode 27 image (macOS 27), currently in
+    # public preview. Revisit this label and the DEVELOPER_DIR path once it reaches GA.
+    runs-on: xcode-27
     timeout-minutes: 60
+    # Single-Xcode image: select via DEVELOPER_DIR (setup-xcode cannot resolve a version here).
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_27.0.app/Contents/Developer
     steps:
       - uses: actions/checkout@v4
-
-      - name: Install Xcode
-        uses: maxim-lobanov/setup-xcode@60606e260d2fc5762a71e64e74b2174e8ea3c8bd # v1.6.0
-        with:
-          xcode-version: '26.6'
 
       - name: Prepare placeholder build environment
         run: cp 'Apps/CocoaPods-FCM/BuildEnvironment.sample.swift' 'Apps/CocoaPods-FCM/BuildEnvironment.swift'
@@ -160,6 +163,6 @@ jobs:
         uses: customerio/mobile-ci-tools/github-actions/ios/launch-simulator-app/v1@main
         with:
           app-path: ${{ runner.temp }}/fcm-sample/Build/Products/Debug-iphonesimulator/test cocoapods.app
-          expected-ios-major: '26'
+          expected-ios-major: '27'
           survival-seconds: ${{ env.LAUNCH_SURVIVAL_SECONDS }}
           log-path: ${{ runner.temp }}/fcm-sample-launch.log
