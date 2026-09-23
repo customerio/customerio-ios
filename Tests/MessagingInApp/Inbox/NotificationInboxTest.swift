@@ -562,8 +562,7 @@ class NotificationInboxTest: UnitTest {
     /// Builds the state with the initialiser rather than `copy`, because `copy` coalesces with
     /// `??` and so cannot express clearing an identity back to nil — which is the case under test.
     private func deliverStoreState(userId: String?, anonymousId: String? = nil) async {
-        await waitUntil(
-            { self.inAppMessageManagerMock.subscribeReceivedArguments != nil },
+        await waitUntil({ self.inAppMessageManagerMock.subscribeReceivedArguments != nil },
             "the inbox subscribed to the store"
         )
         inAppMessageManagerMock.subscribeReceivedArguments?.subscriber.newState(
