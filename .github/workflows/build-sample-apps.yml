@@ -19,7 +19,7 @@ on:
 
 concurrency:
   # Unrelated labels and body-only edits must not cancel an in-flight release or
-  # ci:full run. They share a separate group, where SDK-size validation repeats.
+  # ci:full run, so they share a separate concurrency group.
   group: >-
     ${{ github.workflow }}-${{ github.ref }}-${{
       github.event_name == 'pull_request' &&
@@ -73,75 +73,3 @@ jobs:
       SAMPLE_APPS_FCM_FIREBASE_APP_ID: ${{ secrets.SAMPLE_APPS_FCM_FIREBASE_APP_ID }}
       SAMPLE_APPS_INSTRUCTIONS_GUIDE_LINK: ${{ secrets.SAMPLE_APPS_INSTRUCTIONS_GUIDE_LINK }}
       SLACK_NOTIFY_RELEASES_WEBHOOK_URL: ${{ secrets.SLACK_NOTIFY_RELEASES_WEBHOOK_URL }}
-
-  # Size is a release guardrail, so it runs for every internal non-documentation
-  # PR. Main keeps warming the exact-SHA baseline cache to avoid rebuilding it.
-  generate-sdk-size-reports:
-    if: >-
-      github.event_name == 'workflow_dispatch' ||
-      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
-      (github.event_name == 'pull_request' &&
-      github.event.pull_request.head.repo.full_name == github.repository &&
-      github.event.pull_request.user.login != 'dependabot[bot]')
-    runs-on: macos-26
-    timeout-minutes: 60
-    permissions:
-      pull-requests: write
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: ./.github/actions/generate-sdk-size-report
-        id: generate-sdk-size-report
-        with:
-          GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64: ${{ secrets.GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64 }}
-          baseline-ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event_name == 'push' && github.sha || '' }}
-
-      - name: Find existing "SDK size reports" comment
-        # A metadata-only run still validates size, but must not race a newer
-        # commit when replacing the PR's single shared report comment.
-        if: >-
-          github.event_name == 'pull_request' &&
-          (github.event.action != 'edited' ||
-          github.event.changes.title != null ||
-          github.event.changes.base != null) &&
-          (github.event.action != 'labeled' || github.event.label.name == 'ci:full')
-        uses: peter-evans/find-comment@3eae4d37986fb5a8592848f6a574fdf654e61f9e # v3.1.0
-        id: find-sdk-size-report-comment
-        with:
-          issue-number: ${{ github.event.pull_request.number }}
-          comment-author: 'github-actions[bot]'
-          body-includes: <!-- sdk size reports -->
-
-      - name: Send SDK size reports to the PR
-        if: >-
-          github.event_name == 'pull_request' &&
-          (github.event.action != 'edited' ||
-          github.event.changes.title != null ||
-          github.event.changes.base != null) &&
-          (github.event.action != 'labeled' || github.event.label.name == 'ci:full')
-        uses: peter-evans/create-or-update-comment@71345be0265236311c031f5c7866368bd1eff043 # v4.0.0
-        with:
-          comment-id: ${{ steps.find-sdk-size-report-comment.outputs.comment-id }}
-          issue-number: ${{ github.event.pull_request.number }}
-          edit-mode: replace
-          body: |
-            <!-- sdk size reports -->
-            # SDK binary size reports 📊
-
-            <details>
-            <summary>SDK binary size of this PR</summary>
-
-            ```
-            ${{ steps.generate-sdk-size-report.outputs.sdk-size-report }}
-            ```
-
-            </details>
-
-            <details>
-            <summary>SDK binary size diff report vs. main branch</summary>
-
-            ```
-            ${{ steps.generate-sdk-size-report.outputs.sdk-size-diff-report }}
-            ```
-
-            </details>
