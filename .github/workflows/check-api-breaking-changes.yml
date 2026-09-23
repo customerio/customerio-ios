@@ -20,6 +20,7 @@ concurrency: # cancel previous workflow run if one exists
 jobs:
   check-api-breaking-changes:
     runs-on: xcode-27
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v7
       
