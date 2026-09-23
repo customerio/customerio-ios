@@ -90,15 +90,10 @@ jobs:
     if: >-
       vars.MOBILE_E2E_ENABLED == 'true' ||
       github.event_name == 'workflow_dispatch'
-    # Xcode 27 ships only on GitHub's Xcode 27 image (macOS 27); macos-26 tops out at Xcode 26.6.
-    # `xcode-27` is GitHub's public-preview image today (not yet GA) — revisit once promoted.
     runs-on: xcode-27
     timeout-minutes: 60
     env:
-      # Single-Xcode image: select via DEVELOPER_DIR (the symlink survives the RC -> GA rename).
       DEVELOPER_DIR: /Applications/Xcode_27.0.app/Contents/Developer
-      # NOTE: the xcode-27 image ships the iOS 27.0 runtime. Verify this device name exists /
-      # can be created there (its preinstalled catalog lists "iPhone 17", not "iPhone 17 Pro").
       IOS_SIMULATOR_NAME: iPhone 17 Pro
     strategy:
       fail-fast: false

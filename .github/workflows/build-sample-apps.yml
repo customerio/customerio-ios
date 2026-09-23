@@ -83,12 +83,7 @@ jobs:
       (github.event_name == 'pull_request' &&
       github.event.pull_request.head.repo.full_name == github.repository &&
       github.event.pull_request.user.login != 'dependabot[bot]')
-    # TODO(xcode27): intentionally NOT migrated to the xcode-27 image yet. The
-    # generate-sdk-size-report composite action pins Xcode via maxim-lobanov/setup-xcode
-    # (which cannot resolve a version on the single-Xcode xcode-27 image) and caches the
-    # main-branch size baseline keyed on the Xcode version, so flipping the toolchain would
-    # skew/invalidate the release size guardrail. Migrate once the size-report action can
-    # select Xcode via DEVELOPER_DIR. See PR description.
+    # Kept on macos-26: the size-report action selects Xcode via setup-xcode, not DEVELOPER_DIR.
     runs-on: macos-26
     timeout-minutes: 60
     permissions:

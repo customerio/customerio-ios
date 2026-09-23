@@ -15,11 +15,8 @@ jobs:
   test:
     uses: customerio/mobile-ci-tools/.github/workflows/ios-test.yml@main
     with:
-      # Run on GitHub's Xcode 27 image (macOS 27). macos-26 tops out at Xcode 26.6, so it cannot
-      # build/test against the iOS 27 SDK. `xcode-27` is GitHub's public-preview image today (not
-      # yet GA) — revisit once promoted. Only one Xcode is installed on that image, so leave
-      # xcode-version empty: the shared workflow then skips setup-xcode and uses the image default.
       runner-label: 'xcode-27'
+      # Empty so the shared workflow uses the xcode-27 image's only installed Xcode.
       xcode-version: ''
       scheme: 'Customer.io-Package'
       xcresult-name: 'Customer.io-Package.xcresult'

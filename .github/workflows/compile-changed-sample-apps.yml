@@ -84,14 +84,8 @@ jobs:
     name: Compile APN sample
     needs: detect-changes
     if: needs.detect-changes.outputs.apn == 'true'
-    # Xcode 27 ships only on GitHub's dedicated Xcode 27 image (macOS 27); macos-26 tops out
-    # at Xcode 26.6. `xcode-27` is GitHub's public-preview image today (not yet GA) — revisit
-    # this label and the DEVELOPER_DIR path once GitHub promotes it to GA.
     runs-on: xcode-27
     timeout-minutes: 60
-    # Only one Xcode is installed on the xcode-27 image, so maxim-lobanov/setup-xcode cannot
-    # resolve a version string here. Select the toolchain via DEVELOPER_DIR instead. The
-    # /Applications/Xcode_27.0.app symlink survives the RC -> GA bundle rename.
     env:
       DEVELOPER_DIR: /Applications/Xcode_27.0.app/Contents/Developer
     steps:
@@ -126,11 +120,8 @@ jobs:
     name: Compile FCM sample
     needs: detect-changes
     if: needs.detect-changes.outputs.fcm == 'true'
-    # See the APN job above: Xcode 27 is on GitHub's Xcode 27 image (macOS 27), currently in
-    # public preview. Revisit this label and the DEVELOPER_DIR path once it reaches GA.
     runs-on: xcode-27
     timeout-minutes: 60
-    # Single-Xcode image: select via DEVELOPER_DIR (setup-xcode cannot resolve a version here).
     env:
       DEVELOPER_DIR: /Applications/Xcode_27.0.app/Contents/Developer
     steps:
