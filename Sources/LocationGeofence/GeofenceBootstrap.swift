@@ -206,6 +206,13 @@ enum GeofenceBootstrap {
         await $0.geofenceStorage.getCachedConfig()
     }
 
+    /// Test-only: awaits the process-global run and arm chains so a test waits exactly as long as
+    /// the chain coupling needs rather than guessing a wall-clock deadline. Not called in production.
+    static func awaitPendingWorkForTesting() async {
+        await lastRun?.value
+        await lastArm?.value
+    }
+
     /// Logs a one-line note when cold-wake real-time delivery is unavailable for this
     /// customer (no `cdpApiKey` persisted and no in-memory DataPipeline source). Surfaces
     /// only at bootstrap-time, when the customer's choice has observable consequences.

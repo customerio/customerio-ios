@@ -406,11 +406,15 @@ private struct Fixture {
     /// iOS 16+, and this package builds against iOS 13.
     func settle(
         _ condition: () -> Bool,
-        within: TimeInterval = 2,
+        within: TimeInterval = 10,
         sourceLocation: SourceLocation = #_sourceLocation
     ) async throws {
         let deadline = Date().addingTimeInterval(within)
         while Date() < deadline {
+            // Await the bootstrap chains first: arming runs through process-global run/arm chains
+            // that a concurrent suite can hold, so this waits as long as the coupling needs rather
+            // than racing a fixed deadline. The deadline is only a backstop.
+            await GeofenceBootstrap.awaitPendingWorkForTesting()
             if condition() { return }
             try await Task.sleep(nanoseconds: 5000000)
         }
