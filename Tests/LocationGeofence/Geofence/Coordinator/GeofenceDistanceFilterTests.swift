@@ -218,6 +218,29 @@ struct GeofenceDistanceFilterTests {
     }
 
     @Test
+    func nearest_givenPolygonWhoseRingDoesNotBuild_expectRankedByCoveringCircle() {
+        // Two distinct positions, so no ring builds. Covering circle edge ~200 m, circle ~100 m.
+        let unbuildable = Geofence(
+            id: "unbuildable",
+            latitude: 0,
+            longitude: 0.0027,
+            radius: 100,
+            name: "unbuildable",
+            transitionTypes: [.enter, .exit],
+            lastUpdated: Date(timeIntervalSince1970: 0),
+            vertices: [
+                LocationData(latitude: 0, longitude: 0.0027),
+                LocationData(latitude: 0, longitude: 0.0028),
+                LocationData(latitude: 0, longitude: 0.0027)
+            ]
+        )
+        #expect(unbuildable.polygonRegion == nil)
+        let regions = [unbuildable, makeRegion(id: "circle", latitude: 0, longitude: -0.0018, radius: 100)]
+        let result = filter.nearest(regions, to: origin, limit: 1, maxDistance: GeofenceConstants.noMonitoringDistanceCap)
+        #expect(result.map(\.id) == ["circle"])
+    }
+
+    @Test
     func nearest_givenElongatedAndCompactPolygons_expectNearerRingRanksFirst() {
         // Strip: covering circle edge ~44 m, ring ~422 m. Square: covering circle edge ~302 m,
         // ring ~311 m.

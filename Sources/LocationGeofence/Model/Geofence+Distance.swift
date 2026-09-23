@@ -27,7 +27,7 @@ extension Geofence {
     /// whole annulus, so a venue the device is outside of would rank as occupied.
     ///
     /// Not a containment test — this is `0` for every point inside. Use `distanceTo` against
-    /// `radius` to ask whether the device is inside a region.
+    /// `radius` for a circle, or `polygonRegion?.contains` for a polygon.
     func edgeDistanceTo(_ location: LocationData) -> CLLocationDistance {
         if let polygon = polygonRegion { return max(0, -polygon.signedEdgeDistance(to: location)) }
         return max(0, distanceTo(location) - radius)
