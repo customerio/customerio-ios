@@ -386,6 +386,19 @@ final class ReplayHarness {
         UserDefaults.standard.removePersistentDomain(forName: defaultsSuite)
     }
 
+    /// Whether any registered geofence is a polygon.
+    ///
+    /// A visit forces `evaluateAllPolygons(requiresFreshFix: true)`, and that pass resolves the
+    /// fresh fix through `PolygonMembershipResolver+Fix`/`+Pass`, which read the wall clock with no
+    /// seam (see `makePolygonResolver`). In replay the fix is decades old, classifies `tooOld`, and
+    /// every polygon records `no_usable_fix` — so a visit cannot drive a polygon arrival, and a
+    /// drive that needs one must be refused rather than graded green. The pass returns at its empty
+    /// guard before requesting a fix when nothing is registered, so a circle-only drive's visits
+    /// replay honestly; this is the check that tells the two apart.
+    func hasRegisteredPolygons() async -> Bool {
+        await storage.getCachedGeofences().contains { $0.vertices != nil }
+    }
+
     /// Runs `body` with the diagnostic tail forced on — without it the SDK logs prose with no
     /// `ev=`, and every match vacuously finds nothing.
     ///

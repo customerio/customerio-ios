@@ -108,7 +108,9 @@ enum ReplayRunner {
             await harness.advance(to: record.at) { await settle(harness) }
             let isFirst = seen.insert(record.ev).inserted
             let handled = deliver(record, on: harness, isFirst: isFirst, scenarioEpoch: scenario.startedAt)
-            if !handled { unsupported.append("\(record.kind) \(record.ev)@\(record.at)") }
+            if let reason = await unsupportedReason(record, handled: handled, on: harness) {
+                unsupported.append(reason)
+            }
             await settle(harness)
         }
 
@@ -275,6 +277,26 @@ enum ReplayRunner {
         deliverWorldInput(record, on: harness, scenarioEpoch: scenarioEpoch)
             ?? deliverAppInput(record, on: harness, isFirst: isFirst)
             ?? false
+    }
+
+    /// Why an input the harness dispatched still cannot be graded, or `nil` when it can.
+    ///
+    /// A `visit.reported` reaches its handler but wakes `evaluateAllPolygons(requiresFreshFix:)`,
+    /// whose fresh fix the replay cannot supply once a polygon is registered — see
+    /// `ReplayHarness.hasRegisteredPolygons`. The wake replays; the pass's verdict does not, so a
+    /// polygon-bearing drive is refused rather than graded green. A circle-only drive registers no
+    /// polygon, so its visits are honest.
+    private static func unsupportedReason(
+        _ record: Scenario.Record,
+        handled: Bool,
+        on harness: ReplayHarness
+    ) async -> String? {
+        let stamp = "\(record.kind) \(record.ev)@\(record.at)"
+        guard handled else { return stamp }
+        if record.ev == "visit.reported", await harness.hasRegisteredPolygons() {
+            return "\(stamp) — polygon pass needs a fresh fix the replay cannot supply"
+        }
+        return nil
     }
 
     /// What reached the SDK from outside it: the OS, the location stack, the permission tier.

@@ -265,6 +265,13 @@ struct ScenarioReplayTests {
             "\(name): \(harness.conditionMonitor.deliveredWithNoSubscriber) OS callback(s) delivered before the SDK was listening"
         )
 
+        // The same guard for visits, which arm asynchronously off `identify`: a visit pushed before
+        // the SDK subscribed reaches no handler, and reporting it handled asserts nothing.
+        #expect(
+            harness.visitMonitor.deliveredWithNoSubscriber == 0,
+            "\(name): \(harness.visitMonitor.deliveredWithNoSubscriber) visit(s) delivered before the SDK was listening"
+        )
+
         // Every expectation the drive recorded. There is no exclusion list: a decision replay cannot
         // reproduce is a finding about the seam, not a row to skip.
         //

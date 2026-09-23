@@ -13,6 +13,11 @@ final class ReplayVisitMonitor: GeofenceVisitMonitoring {
     private(set) var isStarted = false
     private(set) var startCount = 0
     private(set) var stopCount = 0
+    /// A visit pushed while nothing was listening. Visit monitoring is armed asynchronously off
+    /// `identify`, so a drive whose first visit lands before that arming leaves the SDK unwoken —
+    /// the same hazard `FakeConditionMonitor.deliveredWithNoSubscriber` guards for OS callbacks.
+    /// A run that reports this handled while the SDK never saw the visit is asserting nothing.
+    private(set) var deliveredWithNoSubscriber = 0
     private var onVisit: GeofenceVisitHandler?
 
     func setOnVisit(_ handler: GeofenceVisitHandler?) {
@@ -37,7 +42,10 @@ final class ReplayVisitMonitor: GeofenceVisitMonitoring {
     /// `stop()` is called here exactly as the real monitor calls it.
     @discardableResult
     func deliver(_ visit: GeofenceVisit) -> Bool {
-        guard let onVisit else { return false }
+        guard let onVisit else {
+            deliveredWithNoSubscriber += 1
+            return false
+        }
         if onVisit(visit) != true { stop() }
         return true
     }
