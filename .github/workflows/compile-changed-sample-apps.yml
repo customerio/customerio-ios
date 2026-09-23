@@ -86,8 +86,6 @@ jobs:
     if: needs.detect-changes.outputs.apn == 'true'
     runs-on: xcode-27
     timeout-minutes: 60
-    env:
-      DEVELOPER_DIR: /Applications/Xcode_27.0.app/Contents/Developer
     steps:
       - uses: actions/checkout@v4
 
@@ -122,8 +120,6 @@ jobs:
     if: needs.detect-changes.outputs.fcm == 'true'
     runs-on: xcode-27
     timeout-minutes: 60
-    env:
-      DEVELOPER_DIR: /Applications/Xcode_27.0.app/Contents/Developer
     steps:
       - uses: actions/checkout@v4
 
