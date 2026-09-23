@@ -293,6 +293,15 @@ final class ReplayHarness {
             coordinator: coordinator,
             logger: logger
         )
+        // Visits at the same lifecycle point as transitions, and for the same two reasons: a visit
+        // before `module.init` would otherwise reach no handler, and — because this reruns on
+        // `reenterProcess()` — the outgoing composition's handler, bound to a resolver now being
+        // replaced, is rebound to the fresh one rather than left stale.
+        GeofenceMonitorBinder.bindVisits(
+            visitMonitor: visitMonitor,
+            resolver: resolver,
+            contextStore: contextStore
+        )
 
         // Everything `GeofenceBootstrap` resolves — plus `DateUtil`, which it does not read today
         // and which would answer with the wall clock if a later change made it. The
@@ -396,7 +405,12 @@ final class ReplayHarness {
     /// guard before requesting a fix when nothing is registered, so a circle-only drive's visits
     /// replay honestly; this is the check that tells the two apart.
     func hasRegisteredPolygons() async -> Bool {
-        await storage.getCachedGeofences().contains { $0.vertices != nil }
+        // The same pair `evaluateAllPolygons` filters on — registered AND has vertices. A polygon
+        // cached but not in the registered business set is filtered out there, so the pass hits its
+        // empty early return and never asks for the fix; testing only `vertices != nil` would refuse
+        // a visit the SDK would in fact replay honestly.
+        let registered = await storage.getRegisteredBusinessIds()
+        return await storage.getCachedGeofences().contains { registered.contains($0.id) && $0.vertices != nil }
     }
 
     /// Runs `body` with the diagnostic tail forced on — without it the SDK logs prose with no
