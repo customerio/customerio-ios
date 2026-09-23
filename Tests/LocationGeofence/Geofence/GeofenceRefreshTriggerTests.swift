@@ -46,6 +46,14 @@ extension SharedDIGraphSuites {
                 set { lastKnownBox.wrappedValue = newValue }
             }
 
+            /// Runs when the trigger's decision reads `lastKnownLocation` — the one point inside a
+            /// decision a test can interpose on, to land a reset mid-reads (see the late-reset test).
+            private let onLastKnownReadBox = Synchronized<(() -> Void)?>(nil)
+            var onLastKnownRead: (() -> Void)? {
+                get { onLastKnownReadBox.wrappedValue }
+                set { onLastKnownReadBox.wrappedValue = newValue }
+            }
+
             private let root: URL
 
             /// `acquireFix` is called from the trigger's decision task, not from the test's thread, and
@@ -88,7 +96,10 @@ extension SharedDIGraphSuites {
                     logger: LoggerMock(),
                     locationMode: locationMode,
                     explicitRefreshRequested: explicitRefreshRequested,
-                    lastKnownLocation: { [weak self] in self?.lastKnown },
+                    lastKnownLocation: { [weak self] in
+                        self?.onLastKnownRead?()
+                        return self?.lastKnown
+                    },
                     acquireFix: { [weak self] in self?.acquireCounter.mutating { $0 += 1 } }
                 )
                 triggers.append(trigger)
@@ -253,6 +264,30 @@ extension SharedDIGraphSuites {
             trigger.onLocationAcquired(LocationData(latitude: 44, longitude: 45))
             await settleQuietly(windowForAbsence)
             #expect(harness.coordinator.refreshCallsCount == 0)
+        }
+
+        /// A late `ResetEvent` for a *prior* user must not abort the current user's decision.
+        ///
+        /// After `clearIdentify()` → `identify("B")`, the reset can arrive (unordered bus) while B's
+        /// decision is already running. The old identity-epoch counter bumped on every reset and
+        /// aborted here, leaving B with no geofences — while the coordinator's own reset was
+        /// superseded and would not register them either. Keying the guard on the current user
+        /// instead proceeds, because B is still the current user.
+        @Test
+        func onIdentified_givenLateResetForPriorUserMidDecision_expectRefreshStillRuns() async {
+            let harness = Harness()
+            harness.contextStore.setUserId("B")
+            harness.lastKnown = LocationData(latitude: 10, longitude: 20)
+            let trigger = harness.makeTrigger()
+            // The reset lands mid-reads: it clears the arm flags but leaves B the current user.
+            harness.onLastKnownRead = { [weak trigger] in trigger?.onReset() }
+
+            trigger.onIdentified()
+
+            #expect(
+                await settle(timeout: waitForDetachedWork) { harness.coordinator.refreshCallsCount == 1 },
+                "a late reset for a prior user dropped the current user's refresh"
+            )
         }
     }
 }
