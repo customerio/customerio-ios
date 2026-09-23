@@ -216,24 +216,6 @@ extension Logger {
         )
     }
 
-    /// The SDK re-registering conditions CoreLocation gave up on, instead of waiting for a
-    /// movement pass that — when the trigger is among them — can never come.
-    ///
-    /// Error level for the same reason as `os.monitor.stopped` above, and it is the other half of
-    /// that pair: `info` is not persisted to the log store for third-party subsystems, so a field
-    /// report carried the outage and not the recovery, which reads as an outage that never ended.
-    func geofenceUnmonitoredRecovery(count: Int) {
-        error(
-            "CoreLocation gave up \(count) condition(s); re-registering them now"
-                + geofenceTail("registration.recovery", .observation, [
-                    ("n", GeofenceLog.int(count)),
-                    ("why", "os_unmonitored")
-                ]),
-            geofenceTag,
-            nil
-        )
-    }
-
     func geofenceCallbackDropped(identifier: String, transition: GeofenceTransition, reason: String) {
         debug(
             "OS \(transition.rawValue) for region \(identifier) not routed: \(reason)"

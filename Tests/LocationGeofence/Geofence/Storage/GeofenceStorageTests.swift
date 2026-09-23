@@ -727,6 +727,25 @@ struct GeofenceStorageTests {
     }
 
     @Test
+    func recordMonitorEvent_givenMovementTriggerExitBeforeReplant_expectExemptFromPredates() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let storage = makeStorage(directory: dir)
+        let id = GeofenceConstants.movementTriggerIdentifier
+        let replantAt = Date(timeIntervalSince1970: 1789215260.748)
+        await storage.recordMonitorRegistration(identifier: id, transitionTypes: [.exit], initialState: .enter, center: LocationData(latitude: 10, longitude: 20), radius: 1000, now: replantAt.addingTimeInterval(-3600))
+        // The device exits; a movement pass re-centres and re-sizes the trigger on the new position.
+        #expect(await storage.recordMonitorEvent(.exit, forIdentifier: id, osEventDate: replantAt.addingTimeInterval(-0.2)) == .deliver)
+        // Wake-sizing re-plants the trigger at a smaller radius — its geometry changes every pass, so
+        // registeredAt moves forward. For a business circle this would be a new incarnation.
+        await storage.recordMonitorRegistration(identifier: id, transitionTypes: [.exit], initialState: .enter, center: LocationData(latitude: 10, longitude: 20), radius: 100, now: replantAt)
+        // A genuine exit dated just before that re-plant. A business circle drops this as
+        // suppressedPredatesRegistration (see the test above); the movement trigger is exempt because
+        // it is re-planted routinely and the exit is real — it must reach the movement pass.
+        #expect(await storage.recordMonitorEvent(.exit, forIdentifier: id, osEventDate: replantAt.addingTimeInterval(-0.042)) == .deliver)
+    }
+
+    @Test
     func recordMonitorRegistration_givenUnchangedReRegistration_expectIncarnationPreserved() async {
         let dir = makeTempDirectory()
         defer { try? FileManager.default.removeItem(at: dir) }

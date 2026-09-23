@@ -254,110 +254,6 @@ struct CLMonitorRelaunchTests {
         }
     }
 
-    // MARK: - The OS giving a condition up
-
-    /// **The spurious events.**
-    ///
-    /// `handleConditionUnmonitored` wipes the contradiction-gate stamp and the geometry record
-    /// synchronously, but clears the stored dedup baseline from the serial operation queue, behind
-    /// every OS call already pending. In that window the condition has no gate and a baseline that
-    /// still reads "outside", and the daemon replays its belief: on the drive a fence the device was
-    /// ranked 4.5 km outside was delivered as four customer events, one millisecond after its own
-    /// unmonitored notice.
-    ///
-    /// The OS is held here so the clear really is still queued when the replay lands. Let it drain
-    /// first and the event is refused for having no baseline at all — the right outcome reached by
-    /// luck, which passes with or without the fix and so proves nothing.
-    @Test
-    @available(iOS 17.0, *)
-    func unmonitoredCondition_givenReplayBeforeTheBaselineClearDrains_expectNotDelivered() async {
-        await withFixture(preloaded: ["f1": .unsatisfied]) { fixture in
-            await fixture.storage.recordMonitorRegistration(
-                identifier: "f1", transitionTypes: [.enter, .exit],
-                initialState: .exit, center: Self.center, radius: Self.radius
-            )
-            let delivered = DeliveredTransitions()
-            fixture.monitor.setOnTransition { identifier, transition, _, _, _, _ in
-                delivered.record(identifier, transition)
-            }
-            fixture.monitor.setOnReconciled {}
-
-            // An OS call that has not come back yet; everything queued after it stays queued.
-            fixture.os.holdOperations()
-            fixture.monitor.startMonitoring(
-                identifier: "f2", center: Self.otherCenter, radius: Self.radius, transitionTypes: [.enter, .exit]
-            )
-            _ = await settleOnMain { fixture.os.hasParkedOperation }
-
-            fixture.os.deliver(identifier: "f1", state: .unmonitored, at: fixture.clock.now)
-            fixture.os.deliver(identifier: "f1", state: .satisfied, at: fixture.clock.now)
-            _ = await settleOnMain { !tails(fixture, ev: "os.callback.dropped").isEmpty }
-            await settleQuietly()
-
-            #expect(delivered.isEmpty, "a dead condition's replay was delivered: \(delivered.description)")
-            #expect(tails(fixture, ev: "os.callback.dropped").first?["why"] == "awaiting_reregistration")
-
-            fixture.os.releaseOperations()
-            await settleQuietly()
-        }
-    }
-
-    /// **The outage.**
-    ///
-    /// The handler left re-registration to "the next sync", and syncs are driven by the movement
-    /// trigger — itself a monitored condition. On the drive the trigger was among the twenty the OS
-    /// gave up, so no sync could come: the phone drove 4.2 km over the next 66 minutes with the
-    /// module frozen and two fences' crossings lost, until a sign-out reset it.
-    @Test
-    @available(iOS 17.0, *)
-    func unmonitoredCondition_expectReregistrationScheduled() async {
-        await withFixture(preloaded: ["f1": .unsatisfied]) { fixture in
-            await fixture.storage.recordMonitorRegistration(
-                identifier: "f1", transitionTypes: [.enter, .exit],
-                initialState: .exit, center: Self.center, radius: Self.radius
-            )
-            fixture.monitor.setOnTransition { _, _, _, _, _, _ in }
-            var reconciled = 0
-            fixture.monitor.setOnReconciled { reconciled += 1 }
-
-            fixture.os.deliver(identifier: "f1", state: .unmonitored, at: fixture.clock.now)
-            _ = await settleOnMain { reconciled >= 1 }
-            await settleQuietly()
-
-            #expect(reconciled == 1, "re-registration was not scheduled")
-            #expect(tails(fixture, ev: "registration.recovery").count == 1)
-        }
-    }
-
-    /// One recovery per burst. A storm of twenty conditions given up at once must not schedule
-    /// twenty bootstrap re-runs.
-    @Test
-    @available(iOS 17.0, *)
-    func unmonitoredConditions_givenABurst_expectOneRecovery() async {
-        let identifiers = (1 ... 5).map { "f\($0)" }
-        let preloaded = Dictionary(uniqueKeysWithValues: identifiers.map { ($0, GeofenceConditionState.unsatisfied) })
-        await withFixture(preloaded: preloaded) { fixture in
-            for identifier in identifiers {
-                await fixture.storage.recordMonitorRegistration(
-                    identifier: identifier, transitionTypes: [.enter, .exit],
-                    initialState: .exit, center: Self.center, radius: Self.radius
-                )
-            }
-            fixture.monitor.setOnTransition { _, _, _, _, _, _ in }
-            var reconciled = 0
-            fixture.monitor.setOnReconciled { reconciled += 1 }
-
-            for identifier in identifiers {
-                fixture.os.deliver(identifier: identifier, state: .unmonitored, at: fixture.clock.now)
-            }
-            _ = await settleOnMain { reconciled >= 1 }
-            await settleQuietly()
-
-            #expect(reconciled == 1, "a burst scheduled \(reconciled) recoveries")
-            #expect(tails(fixture, ev: "registration.recovery").count == 1)
-        }
-    }
-
     // MARK: - Event identity, not the SDK's write time
 
     /// CoreLocation hands the same event over two or three times, not always in date order, and on
@@ -397,17 +293,19 @@ struct CLMonitorRelaunchTests {
         }
     }
 
-    // MARK: - The movement trigger is gated like any other condition
+    // MARK: - The movement trigger is exempt from the contradiction gate
 
-    /// It is added centred on the device, so an exit the daemon dates within seconds of that add is
-    /// its stale belief replayed, never a kilometre of displacement. The trigger used to be exempt
-    /// from the contradiction gate, and a replay it accepted drove a whole redundant sync pass —
-    /// which re-registers conditions, which provokes more correctives.
+    /// Polygon wake-sizing shrinks the trigger to `polygonWakeMinRadius`, so a genuine exit lands
+    /// inside the gate's window (a moving car covers 100 m well under the 10 s window) while the
+    /// cached fix still reads the centre right after the add. Gating it — which every other condition
+    /// gets — would refuse the real crossing that drives the next polygon evaluation, so the trigger
+    /// skips the gate and its exit is delivered: the movement pass that re-arms the trigger runs.
     @Test
     @available(iOS 17.0, *)
-    func movementTriggerExit_givenFixAtTheCentreRightAfterTheAdd_expectRefused() async {
+    func movementTriggerExit_givenFixAtTheCentreRightAfterTheAdd_expectDelivered() async {
         await withFixture { fixture in
-            // The device sits at the trigger's centre, and the read is fresh.
+            // The device still reads at the trigger's centre — the cached fix has not caught up. This
+            // is exactly the shape the gate refuses for a business circle.
             fixture.authority.answerCachedLocation = { [clock = fixture.clock] in
                 CLLocation(
                     coordinate: CLLocationCoordinate2D(latitude: Self.center.latitude, longitude: Self.center.longitude),
@@ -422,7 +320,7 @@ struct CLMonitorRelaunchTests {
 
             fixture.monitor.startMonitoring(
                 identifier: GeofenceConstants.movementTriggerIdentifier,
-                center: Self.center, radius: 1000, transitionTypes: [.exit]
+                center: Self.center, radius: GeofenceConstants.polygonWakeMinRadius, transitionTypes: [.exit]
             )
             _ = await settleOnMain { fixture.os.held[GeofenceConstants.movementTriggerIdentifier] != nil }
 
@@ -430,12 +328,18 @@ struct CLMonitorRelaunchTests {
                 identifier: GeofenceConstants.movementTriggerIdentifier,
                 state: .unsatisfied, at: fixture.clock.now
             )
-            _ = await settleOnMain { !tails(fixture, ev: "contradiction.refused").isEmpty }
+            // Positive signal: the movement pass delivered the exit. Waiting for this (not a bare
+            // settle) means a regression that re-gates the trigger fails here rather than passing
+            // because nothing had run yet.
+            let wasDelivered = await settleOnMain {
+                delivered.all.contains { $0.identifier == GeofenceConstants.movementTriggerIdentifier && $0.transition == .exit }
+            }
 
+            #expect(wasDelivered, "the movement trigger exit was refused, not delivered: \(delivered.description)")
             #expect(
-                tails(fixture, ev: "contradiction.refused").first?["id"] == GeofenceConstants.movementTriggerIdentifier
+                tails(fixture, ev: "contradiction.refused").isEmpty,
+                "the movement trigger was sent through the gate: \(tails(fixture, ev: "contradiction.refused"))"
             )
-            #expect(delivered.isEmpty, "a belief replay started a movement pass: \(delivered.description)")
         }
     }
 }

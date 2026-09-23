@@ -51,9 +51,7 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring {
     /// Internal (not private) for the `+BaselineHeal` extension's synthesized deliveries.
     var onTransition: GeofenceTransitionHandler?
     private var onAuthorizationChanged: GeofenceAuthorizationChangedHandler?
-    /// Internal (not private) for `+Registration`, which re-runs the bootstrap through it when the
-    /// OS gives conditions up (`scheduleUnmonitoredRecovery`).
-    var onReconciled: GeofenceReconciledHandler?
+    private var onReconciled: GeofenceReconciledHandler?
     private var lastLoggedPermissionTier: CoreLocationGeofenceMonitor.PermissionTier?
 
     /// In-memory ownership filter, mirrors `ownedRegionIdentifiers` in the classic monitor.
@@ -71,17 +69,9 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring {
     /// first pass re-register it; when the bootstrap adopts instead, `adoptExistingRegions` seeds it
     /// from the persisted records the re-arm then imposes at the OS.
     var conditionLedger = RegisteredConditionLedger()
-    /// Conditions the OS stopped monitoring since their last registration, and when it gave each up.
-    /// The next registration reseeds their stored baseline rather than preserving it — see
-    /// `recordMonitorRegistration`. Dated so the refusal they drive expires; see `unmonitoredGateMaxAge`.
-    var conditionsNeedingBaselineReseed: [String: Date] = [:]
-    /// Whether a re-registration of conditions the OS gave up on is already queued, and whether one
-    /// waits out the rate-limit window before re-asking. Both from `+Registration`.
-    var isUnmonitoredRecoveryScheduled = false
-    var isUnmonitoredRecoveryDeferred = false
-    /// When the last recovery that did something ran; another defers inside
-    /// `unmonitoredRecoveryInterval`. A run finding nothing pending does not stamp it.
-    var lastUnmonitoredRecoveryAt: Date?
+    /// Conditions the OS stopped monitoring since their last registration. The next registration
+    /// reseeds their stored baseline instead of preserving it — see `recordMonitorRegistration`.
+    var conditionsNeedingBaselineReseed: Set<String> = []
 
     /// When each condition was last (re)added at the OS and the circle that add imposed, stamped
     /// at the add's drain time. The contradiction gate only vets events landing shortly after an
@@ -120,9 +110,6 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring {
     let dateUtil: DateUtil
 
     private let makeConditionMonitor: @Sendable (String) async -> GeofenceConditionMonitoring
-    /// How a deferred recovery (`+Registration`) waits out its window: the OS clock by default, a
-    /// caller's own when it is driving a recorded timeline rather than paying 60 real seconds.
-    let waitForRecoveryWindow: (TimeInterval) async -> Void
 
     init(
         logger: Logger,
@@ -132,9 +119,6 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring {
         authority: GeofenceLocationAuthority = CoreLocationAuthority(),
         makeConditionMonitor: @escaping @Sendable (String) async -> GeofenceConditionMonitoring = { name in
             await CoreLocationConditionMonitor(monitor: CLMonitor(name))
-        },
-        waitForRecoveryWindow: @escaping (TimeInterval) async -> Void = { seconds in
-            try? await Task.sleep(nanoseconds: UInt64(seconds * 1000000000))
         }
     ) {
         self.logger = logger
@@ -144,7 +128,6 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring {
         self.lastRearmAt = dateUtil.now
         self.authManager = authority
         self.makeConditionMonitor = makeConditionMonitor
-        self.waitForRecoveryWindow = waitForRecoveryWindow
         self.movementFixResolver = MovementFixResolver(
             logger: logger,
             backgroundTaskRunner: GeofenceBackgroundTime.runner(name: "io.customer.geofence.movement-fix"),
@@ -287,7 +270,25 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring {
         case .unknown:
             return logger.geofenceInfo("os_state_unusable", fields: [("id", identifier), ("state", "unknown")])
         case .unmonitored:
-            handleConditionUnmonitored(identifier)
+            // CLMonitor gave up on the condition (budget exceeded). Drop the mirror entry and the
+            // recorded circle so the next sync re-registers it, and reseed the baseline then rather
+            // than preserve it — after the OS gave up, the stored state no longer matches reality.
+            // Ownership is KEPT: it only gates which events this process accepts, and a dropped
+            // condition stays listed and revives on its own once budget frees (measured); dropping
+            // the movement trigger's ownership would remove the only thing that restores it.
+            logger.geofenceMonitorStoppedMonitoringRegion(identifier)
+            knownConditionIdentifiers.remove(identifier)
+            conditionLedger.forget(identifier)
+            conditionReadds.removeValue(forKey: identifier)
+            conditionsNeedingBaselineReseed.insert(identifier)
+            persistConditionMirror()
+            // Skipped if a registration re-added the identifier since — deleting a baseline that add
+            // just wrote would cost the next crossing. Keyed on this monitor's own completed adds,
+            // not `CLMonitor.identifiers` (which still lists a dropped condition).
+            enqueueMonitorOperation { [weak self] _ in
+                guard let self, !self.knownConditionIdentifiers.contains(identifier) else { return }
+                await self.storage.clearMonitorRegionRecord(identifier: identifier)
+            }
             return
         @unknown default:
             return logger.geofenceInfo("os_state_unusable", fields: [("id", identifier), ("state", "unhandled")])
@@ -296,14 +297,13 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring {
         // event the OS delivered, and the drives worth explaining are usually the ones where
         // something arrived and was then discarded.
         logReceivedCallback(identifier: identifier, transition: transition, eventDate: event.date)
-        // The OS gave this condition up and nothing has re-registered it yet: until then whatever it
-        // reports is a replay of a dead incarnation, not a crossing (see `handleConditionUnmonitored`).
-        if isAwaitingReregistration(identifier: identifier, transition: transition) { return }
         // Runs BEFORE the baseline advance below: a refused event must leave the stored baseline
         // untouched so the daemon's own re-evaluation dedups against it (see `+ContradictionGate`).
-        // The movement trigger is gated too: it is added centred on the device, so an exit dated
-        // within seconds of that add is a belief replay, never a kilometre of displacement.
-        if await isEventContradictedByFreshFix(identifier: identifier, transition: transition, eventDate: event.date) {
+        // The movement trigger is exempt: polygon wake-sizing shrinks it to `polygonWakeMinRadius`
+        // (100 m), so a genuine exit lands inside the gate's window while the cached fix still reads
+        // the centre — gating it would refuse the real crossing that drives the next polygon pass.
+        if identifier != GeofenceConstants.movementTriggerIdentifier,
+           await isEventContradictedByFreshFix(identifier: identifier, transition: transition, eventDate: event.date) {
             return
         }
         // Dated by the OS, not by receipt: every guard below weighs OS dates, never the instant

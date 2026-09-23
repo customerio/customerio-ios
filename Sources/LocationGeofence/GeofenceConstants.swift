@@ -59,20 +59,6 @@ enum GeofenceConstants {
     /// never gated, so a normal crossing is never delayed by a fix request nor at any risk of refusal.
     static let contradictionGateReplayWindow: TimeInterval = 10
 
-    /// Minimum time between re-registrations prompted by the OS giving conditions up
-    /// (`CLMonitorGeofenceMonitor.scheduleUnmonitoredRecovery`): one re-run per burst, none inside
-    /// this window, so a condition the OS refuses to hold cannot make the SDK loop on it.
-    static let unmonitoredRecoveryInterval: TimeInterval = 60
-
-    /// How long `isAwaitingReregistration` may refuse a condition's events after the OS gave it up.
-    ///
-    /// The refusal exists to cover the gap between the synchronous flag and the queued baseline
-    /// clear. If the re-registration never succeeds — a host app over the OS budget, say — an
-    /// unbounded refusal is a permanent version of the outage the recovery exists to end, so past
-    /// this point the events are believed again. The reseed flag itself does not expire: a
-    /// condition registered an hour later still needs its stale baseline replaced.
-    static let unmonitoredGateMaxAge: TimeInterval = 300
-
     // Sane bounds the SDK coerces server config into, so a misconfigured backend can't push
     // monitoring into a pathological state: a positive out-of-range value clamps to the nearest
     // bound; a non-positive value falls back. (`maxMonitoringDistance` needs no upper bound — a

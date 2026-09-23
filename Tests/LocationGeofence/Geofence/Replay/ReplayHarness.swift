@@ -188,33 +188,7 @@ final class ReplayHarness {
             authority: authority,
             // One condition monitor for the life of the drive: CoreLocation keeps monitoring while
             // the app is dead, which is the whole reason a crossing relaunches it.
-            makeConditionMonitor: { [conditionMonitor] _ in conditionMonitor },
-            // The recovery window is a real 60-second sleep by default, which a replay finishing in
-            // milliseconds of wall time would never come back from inside the run.
-            //
-            // **Yielding is not a faithful substitute, and parking on the gate is worse.** A yield
-            // costs no virtual time, so the SDK re-checks a rate limit measured on the virtual
-            // clock the instant the wait returns, is refused, defers and asks again — a spin that
-            // ends only when the runner next advances the clock. Parking at `now + seconds`
-            // instead looks right and is not: releasing the boundary moves the clock forward by
-            // the window, the SDK re-stamps `lastUnmonitoredRecoveryAt`, the next check is inside
-            // the window again, and it parks again — an endless ladder that trips the gate's
-            // 512-round guard and `fatalError`s the whole test process. Measured, not theorised.
-            //
-            // So the spin stays, as the lesser of two failures — but it is **not bounded**, and
-            // nothing here can bound it. `deferUnmonitoredRecovery` re-arms from inside its own
-            // `Task`, so the only exit is virtual time crossing the window; once the runner stops
-            // advancing the clock after the last stimulus, the chain keeps allocating and draining
-            // `Task`s on the main actor for the rest of the test *process* — `detachFromBootstrap`
-            // cannot stop it, because the monitor is never freed. A crash is still worse than a
-            // livelock, which is why this is the shape that ships.
-            //
-            // Reached by a drive with two `.unmonitored` bursts inside 60 virtual seconds. The
-            // corpus has a near miss: `drive5` carries 21 `os.monitor.stopped` in two bursts, and
-            // escapes only because they are ~4000 s apart. The honest fix is for the recovery to
-            // be driven by the recording rather than by a wall-clock wait, which is an SDK change.
-            // Tracked.
-            waitForRecoveryWindow: { _ in await Task.yield() }
+            makeConditionMonitor: { [conditionMonitor] _ in conditionMonitor }
         )
         // Where CoreLocation would be asked for one position. The SDK's own seam for it: a request
         // is counted here and satisfied by the next recorded fix in `feedFix`.

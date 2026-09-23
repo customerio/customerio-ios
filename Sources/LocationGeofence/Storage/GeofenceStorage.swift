@@ -185,7 +185,13 @@ actor GeofenceStorage {
             return .suppressedNoBaseline
         }
         if let osEventDate {
-            if let registeredAt = record.registeredAt, osEventDate < registeredAt { return .suppressedPredatesRegistration }
+            // The movement trigger is exempt from predates-registration: its geometry (radius) is
+            // re-planted on every wake-size pass, so `registeredAt` moves constantly, and a genuine
+            // exit dated a hair before a routine re-plant would be dropped as being about a circle
+            // that no longer exists — but the trigger's identity is stable and that exit is real. The
+            // redelivery guard below still protects it from processing the same event twice.
+            if identifier != GeofenceConstants.movementTriggerIdentifier,
+               let registeredAt = record.registeredAt, osEventDate < registeredAt { return .suppressedPredatesRegistration }
             if let lastEventDate = record.lastEventDate, osEventDate <= lastEventDate { return .suppressedRedelivery }
             record.lastEventDate = osEventDate
         }
