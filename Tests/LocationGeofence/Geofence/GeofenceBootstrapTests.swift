@@ -579,11 +579,10 @@ struct GeofenceBootstrapTests {
         #expect(coordinator.applyCachedRegistrationCallsCount == 1)
 
         // Simulate iOS reporting a permission change. The handler spawns a Task to re-run
-        // wireMonitor; the sleep gives that Task time to schedule and complete.
+        // wireMonitor.
         monitor.onAuthorizationChanged?()
-        try? await Task.sleep(nanoseconds: 100000000)
 
-        #expect(coordinator.applyCachedRegistrationCallsCount == 2)
+        await awaitRerun { coordinator.applyCachedRegistrationCallsCount == 2 }
     }
 
     @Test
@@ -600,12 +599,10 @@ struct GeofenceBootstrapTests {
         #expect(coordinator.applyCachedRegistrationCallsCount == 1)
 
         // The CLMonitor path calls this once it has reconciled the mirror against the OS's live set.
-        // It must re-run wireMonitor so the adopt/re-register decision is re-made against live truth;
-        // the sleep gives the spawned Task time to complete.
+        // It must re-run wireMonitor so the adopt/re-register decision is re-made against live truth.
         monitor.onReconciled?()
-        try? await Task.sleep(nanoseconds: 100000000)
 
-        #expect(coordinator.applyCachedRegistrationCallsCount == 2)
+        await awaitRerun { coordinator.applyCachedRegistrationCallsCount == 2 }
     }
 
     @Test
@@ -629,6 +626,22 @@ struct GeofenceBootstrapTests {
 
         #expect(logger.infoCallsCount == 0)
     }
+}
+
+/// Waits for a re-run the handler spawned onto the process-global run chain. A fixed sleep races
+/// whatever else holds that chain, and a concurrent suite held it for 2 s on CI.
+private func awaitRerun(
+    _ condition: () -> Bool,
+    within: TimeInterval = 10,
+    sourceLocation: SourceLocation = #_sourceLocation
+) async {
+    let deadline = Date().addingTimeInterval(within)
+    while Date() < deadline {
+        await GeofenceBootstrap.awaitPendingWorkForTesting()
+        if condition() { return }
+        try? await Task.sleep(nanoseconds: 5000000)
+    }
+    Issue.record("condition not met within \(within)s", sourceLocation: sourceLocation)
 }
 
 private final class StubProvider: BackgroundDeliveryCdpApiKeyProvider {
