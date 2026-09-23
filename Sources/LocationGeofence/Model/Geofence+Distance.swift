@@ -23,9 +23,13 @@ extension Geofence {
     /// `maxBusinessGeofences` regions have nearer centers, and an unmonitored region can never
     /// report its exit.
     ///
+    /// A polygon measures to its ring, not its covering circle: the circle reads `0` across the
+    /// whole annulus, so a venue the device is outside of would rank as occupied.
+    ///
     /// Not a containment test — this is `0` for every point inside. Use `distanceTo` against
-    /// `radius` to ask whether the device is inside a region.
+    /// `radius` for a circle, or `polygonRegion?.contains` for a polygon.
     func edgeDistanceTo(_ location: LocationData) -> CLLocationDistance {
-        max(0, distanceTo(location) - radius)
+        if let polygon = polygonRegion { return max(0, -polygon.signedEdgeDistance(to: location)) }
+        return max(0, distanceTo(location) - radius)
     }
 }
