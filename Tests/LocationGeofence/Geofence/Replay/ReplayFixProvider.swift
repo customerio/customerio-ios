@@ -63,6 +63,10 @@ final class ReplayFixProvider {
     private var cursorByWindow: [Int: Int] = [:]
     /// The read an `os.callback` record carries in its own fields, by window. Last resort.
     private var carriedByWindow: [Int: CachedRead] = [:]
+    /// The fixes the drive's own fresh-fix requests were answered with (`fix.received`
+    /// `prov=movement_resolver`), in recorded order, and how far through them requests have got.
+    private var requestedAnswers: [CachedRead] = []
+    private var answerCursor = 0
 
     /// `t0`, so an age can be turned into a timestamp on the replay's own timeline.
     private let epoch: Date
@@ -129,6 +133,62 @@ final class ReplayFixProvider {
             // Absent from every capture, and the SDK reads it only to report it.
             verticalAccuracy: -1,
             timestamp: epoch.addingTimeInterval(now - sample.age)
+        )
+    }
+
+    /// Loads the answers the drive's fresh-fix requests received. Only a capture whose
+    /// `fix.received` carries accuracy can supply them; older ones load none, and every request
+    /// falls back to `currentPosition()`.
+    func loadRequestedAnswers(_ answers: [CachedRead]) {
+        requestedAnswers = answers.sorted { $0.at < $1.at }
+        answerCursor = 0
+    }
+
+    /// The fix the drive received for a request made now: the first recorded answer inside the
+    /// request's timeout. Consumed, so one answer serves one request.
+    ///
+    /// Looked up ahead rather than delivered at its recorded time, because the replay's request
+    /// timeout fires immediately. In the car the answer arrived seconds after the request and was
+    /// what the pass decided from — on the 2026-09-24 iPhone drive, 29.6 m ten seconds later, where
+    /// the cached read at the request was 34.2 m and left one polygon undecided. Answers the replay
+    /// has already moved past (a request it no longer makes) are skipped, never handed to a later
+    /// request.
+    func requestedAnswer(within timeout: TimeInterval) -> CLLocation? {
+        while answerCursor < requestedAnswers.count, requestedAnswers[answerCursor].at < now {
+            answerCursor += 1
+        }
+        guard answerCursor < requestedAnswers.count,
+              requestedAnswers[answerCursor].at <= now + timeout,
+              let location = requestedAnswers[answerCursor].location
+        else { return nil }
+        let answer = requestedAnswers[answerCursor]
+        answerCursor += 1
+        return CLLocation(
+            coordinate: CLLocationCoordinate2D(latitude: location.latitude, longitude: location.longitude),
+            altitude: 0,
+            horizontalAccuracy: answer.accuracy,
+            verticalAccuracy: -1,
+            timestamp: epoch.addingTimeInterval(now - answer.age)
+        )
+    }
+
+    /// The drive's position right now, WITHOUT consuming a cache read.
+    ///
+    /// A fresh-fix request is the OS answering from current GPS, not a walk of the recorded
+    /// cache-read stream, so it must neither advance the cursor nor count as a pull. Consuming here
+    /// let the first polygon's request in an os-transition pass eat the window's only sample, so
+    /// every polygon after it saw `no_usable_fix`. The callback's own carried position is the read
+    /// the drive made at this stimulus; a plain `location.fix` sample answers a window without one.
+    func currentPosition() -> CLLocation? {
+        let index = window(at: now)
+        guard let read = carriedByWindow[index] ?? samplesByWindow[index]?.first,
+              let location = read.location else { return nil }
+        return CLLocation(
+            coordinate: CLLocationCoordinate2D(latitude: location.latitude, longitude: location.longitude),
+            altitude: 0,
+            horizontalAccuracy: read.accuracy,
+            verticalAccuracy: -1,
+            timestamp: epoch.addingTimeInterval(now - read.age)
         )
     }
 

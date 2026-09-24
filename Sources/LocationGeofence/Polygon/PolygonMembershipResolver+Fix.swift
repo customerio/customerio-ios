@@ -47,14 +47,14 @@ extension PolygonMembershipResolver {
         guard let heldFix else { return HeldFixDecision(use: .none, age: 0, newerFix: nil) }
         if let latest = fixResolver.latestFix, latest.timestamp > heldFix.timestamp {
             // Judged on the NEWER fix's age, not the held one's: one fix, one age, and they differ.
-            let age = -latest.timestamp.timeIntervalSinceNow
+            let age = dateUtil.now.timeIntervalSince(latest.timestamp)
             guard age <= GeofenceConstants.movementFixMaxAge else {
                 // The newest thing held is itself past the cap, so the caller's is older still.
                 return HeldFixDecision(use: .tooOld, age: age, newerFix: nil)
             }
             return HeldFixDecision(use: .newer, age: age, newerFix: latest)
         }
-        let age = -heldFix.timestamp.timeIntervalSinceNow
+        let age = dateUtil.now.timeIntervalSince(heldFix.timestamp)
         return HeldFixDecision(
             use: age <= GeofenceConstants.movementFixMaxAge ? .reused : .tooOld, age: age, newerFix: nil
         )
@@ -104,7 +104,7 @@ extension PolygonMembershipResolver {
     /// Wraps a fix this resolver requested with the age it had on arrival.
     func requestedPassFix(requiringFresh: Bool) async -> PassFix? {
         guard let resolved = await resolveFix(requiringFresh: requiringFresh) else { return nil }
-        return PassFix(location: resolved, age: -resolved.timestamp.timeIntervalSinceNow)
+        return PassFix(location: resolved, age: dateUtil.now.timeIntervalSince(resolved.timestamp))
     }
 
     func resolveFix(requiringFresh: Bool = false) async -> CLLocation? {
