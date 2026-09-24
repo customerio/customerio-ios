@@ -132,6 +132,26 @@ final class ReplayFixProvider {
         )
     }
 
+    /// The drive's position right now, WITHOUT consuming a cache read.
+    ///
+    /// A fresh-fix request is the OS answering from current GPS, not a walk of the recorded
+    /// cache-read stream, so it must neither advance the cursor nor count as a pull. Consuming here
+    /// let the first polygon's request in an os-transition pass eat the window's only sample, so
+    /// every polygon after it saw `no_usable_fix`. The callback's own carried position is the read
+    /// the drive made at this stimulus; a plain `location.fix` sample answers a window without one.
+    func currentPosition() -> CLLocation? {
+        let index = window(at: now)
+        guard let read = carriedByWindow[index] ?? samplesByWindow[index]?.first,
+              let location = read.location else { return nil }
+        return CLLocation(
+            coordinate: CLLocationCoordinate2D(latitude: location.latitude, longitude: location.longitude),
+            altitude: 0,
+            horizontalAccuracy: read.accuracy,
+            verticalAccuracy: -1,
+            timestamp: epoch.addingTimeInterval(now - read.age)
+        )
+    }
+
     /// Whether every read the SDK made landed in a window the drive actually recorded.
     func pullAccounting() -> String? {
         // Only a drive that *records* cache reads can be accounted against them. An Android

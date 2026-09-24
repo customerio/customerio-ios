@@ -424,8 +424,10 @@ final class ReplayHarness {
     /// would classify `tooOld`, a live `CLLocationManager` request would be issued from a unit test,
     /// and every polygon would record `no_usable_fix` while the drive graded green.
     ///
-    /// Not a complete substitution: `PolygonMembershipResolver+Fix` and `+Pass` read
-    /// `timeIntervalSinceNow` directly and have no clock seam. That one is the polygon side's.
+    /// `+Fix` and `+Pass` age fixes against the injected `dateUtil`, so the drive's clock reaches
+    /// them too — before, they read `timeIntervalSinceNow` directly, the drive's decades-old epoch
+    /// made every fix classify `tooOld`, and every polygon recorded `no_usable_fix` while the drive
+    /// graded green. The far epoch is the detector that surfaced it.
     private func makePolygonResolver() -> PolygonMembershipResolver {
         let fixResolver = MovementFixResolver(
             logger: logger,
@@ -433,12 +435,23 @@ final class ReplayHarness {
             desiredAccuracy: kCLLocationAccuracyNearestTenMeters,
             waitForTimeout: { _ in await Task.yield() }
         )
-        fixResolver.requestFreshFix = { [weak self] in self?.fixRequestCount += 1 }
+        fixResolver.requestFreshFix = { [weak self, weak fixResolver] in
+            guard let self, let fixResolver else { return }
+            self.fixRequestCount += 1
+            // Answer the request the way CoreLocation would: hand back the drive's current position.
+            // An os-transition polygon pass demands a fresh fix (`requiresFreshFix: true`); left only
+            // to count, `resolveFix` returns nil and every polygon logs `no_usable_fix`. This is the
+            // iOS counterpart of Android's ReplayPolygonFreshFixSource.
+            if let fix = self.fixes.currentPosition() {
+                fixResolver.handleResolvedFix(fix)
+            }
+        }
         return PolygonMembershipResolver(
             storage: storage,
             transitionEmitter: tracker,
             logger: logger,
             contextStore: contextStore,
+            dateUtil: clock,
             fixResolver: fixResolver
         )
     }
