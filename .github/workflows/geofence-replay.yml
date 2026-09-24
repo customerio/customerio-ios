@@ -55,7 +55,18 @@ jobs:
               if [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
                 echo "run=true" >> "$GITHUB_OUTPUT"; exit 0
               fi
-              files=$(gh api "repos/$GITHUB_REPOSITORY/compare/$BEFORE...$AFTER" --jq '.files[].filename') ;;
+              # The compare API lists at most 300 files and does not page them, so a push that
+              # reaches the cap (a large merge) may be hiding a geofence change. Replay rather than
+              # skip: an extra replay costs minutes, a skipped one hides a regression. Same for a
+              # failed call.
+              if ! files=$(gh api "repos/$GITHUB_REPOSITORY/compare/$BEFORE...$AFTER" --jq '.files[].filename'); then
+                echo "::notice::Could not list the pushed changes — replaying to be safe."
+                echo "run=true" >> "$GITHUB_OUTPUT"; exit 0
+              fi
+              if [ "$(printf '%s\n' "$files" | grep -c .)" -ge 300 ]; then
+                echo "::notice::Push touches 300+ files, past what the compare API lists — replaying to be safe."
+                echo "run=true" >> "$GITHUB_OUTPUT"; exit 0
+              fi ;;
           esac
           # The pin file is watched on purpose: bumping the corpus alone is a change worth replaying.
           if printf '%s\n' "$files" | grep -Eq '^(Sources/LocationGeofence/|Tests/LocationGeofence/|\.github/geofence-corpus\.ref$|\.github/workflows/geofence-replay\.yml$|\.github/scripts/geofence_replay_gate\.py$)'; then
