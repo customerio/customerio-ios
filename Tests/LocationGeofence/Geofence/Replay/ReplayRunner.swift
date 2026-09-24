@@ -78,18 +78,7 @@ enum ReplayRunner {
             .map(\.at)
         let carried = carriedReads(scenario, on: harness)
         unsupported.append(contentsOf: carried.unsupported)
-        // What each fresh-fix request was answered with. A `note` because it is the OS's reply to
-        // work the SDK started, not a stimulus; only captures that log its accuracy carry one.
-        harness.fixes.loadRequestedAnswers(scenario.note.compactMap { record in
-            guard record.ev == "fix.received", record.fields["prov"] == "movement_resolver",
-                  let latitude = record.latitude, let longitude = record.longitude,
-                  let accuracy = record.fields["acc"].flatMap(Double.init)
-            else { return nil }
-            return harness.pulledFix(
-                latitude: latitude, longitude: longitude, accuracy: accuracy,
-                age: record.fields["age"].flatMap(Double.init) ?? 0, at: record.at
-            )
-        })
+        loadRequestedFixAnswers(scenario, on: harness)
         harness.loadPulledFixes(
             stimuli: stimuli,
             samples: pulled,
@@ -130,6 +119,21 @@ enum ReplayRunner {
         // the outstanding boundaries answer so those decisions are graded rather than lost.
         try await harness.settleBoundaries()
         return Result(emitted: harness.emitted, unsupported: unsupported, stimuli: stimuli)
+    }
+
+    /// What each fresh-fix request was answered with. A `note` because it is the OS's reply to
+    /// work the SDK started, not a stimulus; only captures that log its accuracy carry one.
+    private static func loadRequestedFixAnswers(_ scenario: Scenario, on harness: ReplayHarness) {
+        harness.fixes.loadRequestedAnswers(scenario.note.compactMap { record in
+            guard record.ev == "fix.received", record.fields["prov"] == "movement_resolver",
+                  let latitude = record.latitude, let longitude = record.longitude,
+                  let accuracy = record.fields["acc"].flatMap(Double.init)
+            else { return nil }
+            return harness.pulledFix(
+                latitude: latitude, longitude: longitude, accuracy: accuracy,
+                age: record.fields["age"].flatMap(Double.init) ?? 0, at: record.at
+            )
+        })
     }
 
     /// What each OS callback recorded about the fix it read to write its own line.
