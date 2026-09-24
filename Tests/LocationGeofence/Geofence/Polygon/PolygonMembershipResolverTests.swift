@@ -13,6 +13,12 @@ import UIKit
 @Suite("PolygonMembershipResolver")
 @MainActor
 struct PolygonMembershipResolverTests {
+    /// One frozen clock for the SDK and every timestamp the tests build. Real time let a stalled
+    /// runner age a fix past `movementFixMaxAge` between creating it and the resolver reading it,
+    /// and every test expecting a verdict failed together. Fresh per test: Swift Testing builds a
+    /// new instance of the suite for each one.
+    private let clock = DateUtilStub()
+
     /// Records what reached the event tracker, standing in for the real one.
     private actor EmitterSpy: GeofenceTransitionEmitting {
         struct Delivered: Equatable, Sendable {
@@ -57,7 +63,7 @@ struct PolygonMembershipResolverTests {
     ) -> Geofence {
         Geofence(
             id: id, latitude: 0, longitude: 0, radius: radius, name: "poly",
-            transitionTypes: transitionTypes, lastUpdated: Date(), vertices: Self.squareVertices
+            transitionTypes: transitionTypes, lastUpdated: clock.now, vertices: Self.squareVertices
         )
     }
 
@@ -66,7 +72,7 @@ struct PolygonMembershipResolverTests {
     private func replacedPolygonGeofence(id: String = "1") -> Geofence {
         Geofence(
             id: id, latitude: 0, longitude: 0.005, radius: 300, name: "poly",
-            transitionTypes: [.enter, .exit], lastUpdated: Date(),
+            transitionTypes: [.enter, .exit], lastUpdated: clock.now,
             vertices: Self.squareVertices.map {
                 LocationData(latitude: $0.latitude, longitude: $0.longitude + 0.005)
             }
@@ -76,7 +82,7 @@ struct PolygonMembershipResolverTests {
     private func circleGeofence(id: String = "2") -> Geofence {
         Geofence(
             id: id, latitude: 0, longitude: 0, radius: 300, name: "circle",
-            transitionTypes: [.enter, .exit], lastUpdated: Date()
+            transitionTypes: [.enter, .exit], lastUpdated: clock.now
         )
     }
 
@@ -89,9 +95,9 @@ struct PolygonMembershipResolverTests {
     @Test
     func heldFixUse_givenResolverDeliveredANewerFix_expectTheNewerFixUsed() async {
         let setup = await makeSetup(fix: nil)
-        let held = ResolvedFix(fix(latitude: 0, longitude: 0, at: Date().addingTimeInterval(-5)))
+        let held = ResolvedFix(fix(latitude: 0, longitude: 0, at: clock.now.addingTimeInterval(-5)))
         // The corroboration answer that contradicted it.
-        let newer = fix(latitude: 1, longitude: 1, at: Date())
+        let newer = fix(latitude: 1, longitude: 1, at: clock.now)
         setup.fixResolver.handleResolvedFix(newer)
 
         let decision = setup.resolver.heldFixUse(held)
@@ -107,8 +113,8 @@ struct PolygonMembershipResolverTests {
     func passFix_givenANewerFixIsHeld_expectItIsUsedWithoutARequest() async {
         // `fix: nil` makes any request fail, so a pass that needs one decides nothing.
         let setup = await makeSetup(fix: nil)
-        let held = ResolvedFix(fix(latitude: 0, longitude: 0, at: Date().addingTimeInterval(-5)))
-        let newer = fix(latitude: 1, longitude: 1, at: Date())
+        let held = ResolvedFix(fix(latitude: 0, longitude: 0, at: clock.now.addingTimeInterval(-5)))
+        let newer = fix(latitude: 1, longitude: 1, at: clock.now)
         setup.fixResolver.handleResolvedFix(newer)
         let decision = setup.resolver.heldFixUse(held)
 
@@ -121,8 +127,8 @@ struct PolygonMembershipResolverTests {
     @Test
     func heldFixUse_givenANewerFixIsHeld_expectTheNewerFixAge() async {
         let setup = await makeSetup(fix: nil)
-        let held = ResolvedFix(fix(latitude: 0, longitude: 0, at: Date().addingTimeInterval(-20)))
-        setup.fixResolver.handleResolvedFix(fix(latitude: 1, longitude: 1, at: Date()))
+        let held = ResolvedFix(fix(latitude: 0, longitude: 0, at: clock.now.addingTimeInterval(-20)))
+        setup.fixResolver.handleResolvedFix(fix(latitude: 1, longitude: 1, at: clock.now))
 
         let decision = setup.resolver.heldFixUse(held)
 
@@ -138,8 +144,8 @@ struct PolygonMembershipResolverTests {
     func heldFixUse_givenTheNewerFixIsAlsoPastTheCap_expectTooOld() async {
         let setup = await makeSetup(fix: nil)
         let cap = GeofenceConstants.movementFixMaxAge
-        let held = ResolvedFix(fix(latitude: 0, longitude: 0, at: Date().addingTimeInterval(-(cap + 20))))
-        setup.fixResolver.handleResolvedFix(fix(latitude: 1, longitude: 1, at: Date().addingTimeInterval(-(cap + 5))))
+        let held = ResolvedFix(fix(latitude: 0, longitude: 0, at: clock.now.addingTimeInterval(-(cap + 20))))
+        setup.fixResolver.handleResolvedFix(fix(latitude: 1, longitude: 1, at: clock.now.addingTimeInterval(-(cap + 5))))
 
         let decision = setup.resolver.heldFixUse(held)
 
@@ -156,7 +162,7 @@ struct PolygonMembershipResolverTests {
     @Test
     func heldFixUse_givenNothingNewerDelivered_expectReused() async {
         let setup = await makeSetup(fix: nil)
-        let delivered = fix(latitude: 0, longitude: 0, at: Date().addingTimeInterval(-5))
+        let delivered = fix(latitude: 0, longitude: 0, at: clock.now.addingTimeInterval(-5))
         setup.fixResolver.handleResolvedFix(delivered)
 
         let decision = setup.resolver.heldFixUse(ResolvedFix(delivered))
@@ -169,7 +175,7 @@ struct PolygonMembershipResolverTests {
     @Test
     func heldFixUse_givenHeldFixPastTheAgeCap_expectTooOld() async {
         let setup = await makeSetup(fix: nil)
-        let stale = Date().addingTimeInterval(-(GeofenceConstants.movementFixMaxAge + 5))
+        let stale = clock.now.addingTimeInterval(-(GeofenceConstants.movementFixMaxAge + 5))
 
         let decision = setup.resolver.heldFixUse(ResolvedFix(fix(latitude: 0, longitude: 0, at: stale)))
 
@@ -202,7 +208,8 @@ struct PolygonMembershipResolverTests {
         if contextStore.currentUserId == nil { contextStore.setUserId("user-1") }
         let storage = GeofenceStorage(
             fileManager: .default,
-            directoryURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+            directoryURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString),
+            dateUtil: clock
         )
         // A belief is only created for a registered polygon, so the fixture has to be registered or
         // every write comes back `.suppressedUnmonitored`.
@@ -222,6 +229,7 @@ struct PolygonMembershipResolverTests {
                 transitionEmitter: emitter,
                 logger: logger,
                 contextStore: contextStore,
+                dateUtil: clock,
                 fixResolver: fixResolver,
                 notificationCenter: notificationCenter
             ),
@@ -238,14 +246,14 @@ struct PolygonMembershipResolverTests {
         latitude: Double,
         longitude: Double,
         accuracy: Double = 5,
-        at timestamp: Date = Date()
+        at timestamp: Date? = nil
     ) -> CLLocation {
         CLLocation(
             coordinate: CLLocationCoordinate2D(latitude: latitude, longitude: longitude),
             altitude: 0,
             horizontalAccuracy: accuracy,
             verticalAccuracy: 5,
-            timestamp: timestamp
+            timestamp: timestamp ?? clock.now
         )
     }
 
@@ -268,7 +276,7 @@ struct PolygonMembershipResolverTests {
     private func movedPolygonGeofence(id: String = "1") -> Geofence {
         Geofence(
             id: id, latitude: 1, longitude: 1, radius: 300, name: "poly",
-            transitionTypes: [.enter, .exit], lastUpdated: Date(),
+            transitionTypes: [.enter, .exit], lastUpdated: clock.now,
             vertices: Self.squareVertices.map {
                 LocationData(latitude: $0.latitude + 1, longitude: $0.longitude + 1)
             }
@@ -434,7 +442,7 @@ struct PolygonMembershipResolverTests {
         let setup = await makeSetup(fix: nil)
         await setup.storage.setCachedGeofences([circleGeofence()])
 
-        await setup.resolver.handleTransition(identifier: "2", transition: .enter, occurredAt: Date())
+        await setup.resolver.handleTransition(identifier: "2", transition: .enter, occurredAt: clock.now)
 
         let delivered = await setup.emitter.snapshot()
         #expect(delivered.count == 1)
@@ -447,7 +455,7 @@ struct PolygonMembershipResolverTests {
     func handleTransition_givenUncachedGeofence_expectForwarded() async {
         let setup = await makeSetup(fix: nil)
 
-        await setup.resolver.handleTransition(identifier: "999", transition: .exit, occurredAt: Date())
+        await setup.resolver.handleTransition(identifier: "999", transition: .exit, occurredAt: clock.now)
 
         #expect(await setup.emitter.snapshot().count == 1)
     }
@@ -459,7 +467,7 @@ struct PolygonMembershipResolverTests {
         let setup = await makeSetup(fix: fix(latitude: 0, longitude: 0))
         await setup.storage.setCachedGeofences([polygonGeofence()])
 
-        await setup.resolver.handleTransition(identifier: "1", transition: .enter, occurredAt: Date())
+        await setup.resolver.handleTransition(identifier: "1", transition: .enter, occurredAt: clock.now)
 
         let delivered = await setup.emitter.snapshot()
         #expect(delivered.count == 1)
@@ -503,12 +511,12 @@ struct PolygonMembershipResolverTests {
             _ = fixResolver
             return CLLocation(
                 coordinate: CLLocationCoordinate2D(latitude: 0, longitude: 0),
-                altitude: 0, horizontalAccuracy: 5, verticalAccuracy: 5, timestamp: Date()
+                altitude: 0, horizontalAccuracy: 5, verticalAccuracy: 5, timestamp: clock.now
             )
         }
         await setup.storage.setCachedGeofences([polygonGeofence()])
 
-        await setup.resolver.handleTransition(identifier: "1", transition: .enter, occurredAt: Date())
+        await setup.resolver.handleTransition(identifier: "1", transition: .enter, occurredAt: clock.now)
 
         let delivered = await setup.emitter.snapshot()
         #expect(delivered.count == 1, "verdict was refused; got \(delivered)")
@@ -530,7 +538,7 @@ struct PolygonMembershipResolverTests {
         }
         await setup.storage.setCachedGeofences([polygonGeofence()])
 
-        await setup.resolver.handleTransition(identifier: "1", transition: .enter, occurredAt: Date())
+        await setup.resolver.handleTransition(identifier: "1", transition: .enter, occurredAt: clock.now)
 
         let delivered = await setup.emitter.snapshot()
         #expect(delivered.count == 1)
@@ -557,7 +565,7 @@ struct PolygonMembershipResolverTests {
         }
         await setup.storage.setCachedGeofences([polygonGeofence()])
 
-        await setup.resolver.handleTransition(identifier: "1", transition: .enter, occurredAt: Date())
+        await setup.resolver.handleTransition(identifier: "1", transition: .enter, occurredAt: clock.now)
 
         #expect(await setup.emitter.snapshot().count == 1)
         #expect(await setup.storage.getPolygonMembership()["1"]?.membership == .inside)
@@ -585,7 +593,7 @@ struct PolygonMembershipResolverTests {
         setup.fixResolver.systemCachedFix = {
             CLLocation(
                 coordinate: CLLocationCoordinate2D(latitude: 0, longitude: 0),
-                altitude: 0, horizontalAccuracy: 5, verticalAccuracy: 5, timestamp: Date()
+                altitude: 0, horizontalAccuracy: 5, verticalAccuracy: 5, timestamp: clock.now
             )
         }
         await setup.storage.setCachedGeofences([polygonGeofence()])
@@ -618,7 +626,7 @@ struct PolygonMembershipResolverTests {
         ))
         await setup.storage.setCachedGeofences([polygonGeofence()])
 
-        await setup.resolver.handleTransition(identifier: "1", transition: .enter, occurredAt: Date())
+        await setup.resolver.handleTransition(identifier: "1", transition: .enter, occurredAt: clock.now)
 
         #expect(await setup.emitter.snapshot().isEmpty)
         #expect(await setup.storage.getPolygonMembership()["1"] == nil)
@@ -634,7 +642,7 @@ struct PolygonMembershipResolverTests {
         setup.fixResolver.handleResolvedFix(fix(latitude: 0, longitude: 0))
         await setup.storage.setCachedGeofences([polygonGeofence()])
 
-        await setup.resolver.handleTransition(identifier: "1", transition: .enter, occurredAt: Date())
+        await setup.resolver.handleTransition(identifier: "1", transition: .enter, occurredAt: clock.now)
 
         #expect(await setup.emitter.snapshot().isEmpty)
         #expect(await setup.storage.getPolygonMembership()["1"] == nil)
@@ -650,7 +658,7 @@ struct PolygonMembershipResolverTests {
         setup.fixResolver.systemCachedFix = { fix(latitude: 0, longitude: 0) }
         await setup.storage.setCachedGeofences([polygonGeofence()])
 
-        await setup.resolver.handleTransition(identifier: "1", transition: .enter, occurredAt: Date())
+        await setup.resolver.handleTransition(identifier: "1", transition: .enter, occurredAt: clock.now)
 
         #expect(await setup.emitter.snapshot().isEmpty)
         #expect(await setup.storage.getPolygonMembership()["1"] == nil)
@@ -663,12 +671,12 @@ struct PolygonMembershipResolverTests {
         let setup = await makeSetup(fix: fix(latitude: 0, longitude: 0))
         let degenerate = Geofence(
             id: "1", latitude: 0, longitude: 0, radius: 300, name: "poly",
-            transitionTypes: [.enter, .exit], lastUpdated: Date(),
+            transitionTypes: [.enter, .exit], lastUpdated: clock.now,
             vertices: [LocationData(latitude: 0, longitude: 0), LocationData(latitude: 0, longitude: 0)]
         )
         await setup.storage.setCachedGeofences([degenerate])
 
-        await setup.resolver.handleTransition(identifier: "1", transition: .enter, occurredAt: Date())
+        await setup.resolver.handleTransition(identifier: "1", transition: .enter, occurredAt: clock.now)
 
         #expect(await setup.emitter.snapshot().isEmpty)
         #expect(await setup.storage.getPolygonMembership()["1"] == nil)
@@ -681,17 +689,20 @@ struct PolygonMembershipResolverTests {
     func handleTransition_givenStoredRingThatCannotBuild_expectExitStillApplied() async {
         let setup = await makeSetup(fix: fix(latitude: 0, longitude: 0))
         await setup.storage.setCachedGeofences([polygonGeofence()])
-        await setup.resolver.handleTransition(identifier: "1", transition: .enter, occurredAt: Date())
+        await setup.resolver.handleTransition(identifier: "1", transition: .enter, occurredAt: clock.now)
         #expect(await setup.storage.getPolygonMembership()["1"]?.membership == .inside)
 
         let degenerate = Geofence(
             id: "1", latitude: 0, longitude: 0, radius: 300, name: "poly",
-            transitionTypes: [.enter, .exit], lastUpdated: Date(),
+            transitionTypes: [.enter, .exit], lastUpdated: clock.now,
             vertices: [LocationData(latitude: 0, longitude: 0), LocationData(latitude: 0, longitude: 0)]
         )
         await setup.storage.setCachedGeofences([degenerate])
+        // The exit comes after the enter. On a frozen clock the two would share one instant, and a
+        // belief only yields to strictly newer evidence.
+        clock.givenNow = clock.now.addingTimeInterval(1)
 
-        await setup.resolver.handleTransition(identifier: "1", transition: .exit, occurredAt: Date())
+        await setup.resolver.handleTransition(identifier: "1", transition: .exit, occurredAt: clock.now)
 
         #expect(await setup.storage.getPolygonMembership()["1"]?.membership == .outside)
         #expect(await setup.emitter.snapshot().map(\.transition) == [.enter, .exit])
@@ -703,7 +714,7 @@ struct PolygonMembershipResolverTests {
     func handleTransition_givenExitOlderThanBelief_expectSuppressed() async {
         let setup = await makeSetup(fix: fix(latitude: 0, longitude: 0))
         await setup.storage.setCachedGeofences([polygonGeofence()])
-        await setup.resolver.handleTransition(identifier: "1", transition: .enter, occurredAt: Date())
+        await setup.resolver.handleTransition(identifier: "1", transition: .enter, occurredAt: clock.now)
         #expect(await setup.storage.getPolygonMembership()["1"]?.membership == .inside)
 
         await setup.resolver.handleTransition(
@@ -802,7 +813,7 @@ struct PolygonMembershipResolverTests {
         let setup = await makeSetup(fix: fix(latitude: 0.0024, longitude: 0))
         await setup.storage.setCachedGeofences([polygonGeofence()])
 
-        await setup.resolver.handleTransition(identifier: "1", transition: .enter, occurredAt: Date())
+        await setup.resolver.handleTransition(identifier: "1", transition: .enter, occurredAt: clock.now)
 
         #expect(await setup.emitter.snapshot().isEmpty)
         #expect(await setup.storage.getPolygonMembership()["1"]?.membership == .outside)
@@ -815,7 +826,7 @@ struct PolygonMembershipResolverTests {
         let setup = await makeSetup(fix: fix(latitude: 0, longitude: 0, accuracy: 400))
         await setup.storage.setCachedGeofences([polygonGeofence()])
 
-        await setup.resolver.handleTransition(identifier: "1", transition: .enter, occurredAt: Date())
+        await setup.resolver.handleTransition(identifier: "1", transition: .enter, occurredAt: clock.now)
 
         #expect(await setup.emitter.snapshot().isEmpty)
         #expect(await setup.storage.getPolygonMembership()["1"] == nil)
@@ -826,7 +837,7 @@ struct PolygonMembershipResolverTests {
         let setup = await makeSetup(fix: nil)
         await setup.storage.setCachedGeofences([polygonGeofence()])
 
-        await setup.resolver.handleTransition(identifier: "1", transition: .enter, occurredAt: Date())
+        await setup.resolver.handleTransition(identifier: "1", transition: .enter, occurredAt: clock.now)
 
         #expect(await setup.emitter.snapshot().isEmpty)
         #expect(await setup.storage.getPolygonMembership()["1"] == nil)
@@ -839,9 +850,9 @@ struct PolygonMembershipResolverTests {
     func handleTransition_givenPolygonExitWhileInside_expectExitDeliveredWithoutFix() async {
         let setup = await makeSetup(fix: nil)
         await setup.storage.setCachedGeofences([polygonGeofence()])
-        _ = await setup.storage.recordPolygonMembership(.inside, forIdentifier: "1")
+        _ = await setup.storage.recordPolygonMembership(.inside, forIdentifier: "1", now: clock.now.addingTimeInterval(-1))
 
-        await setup.resolver.handleTransition(identifier: "1", transition: .exit, occurredAt: Date())
+        await setup.resolver.handleTransition(identifier: "1", transition: .exit, occurredAt: clock.now)
 
         let delivered = await setup.emitter.snapshot()
         #expect(delivered.count == 1)
@@ -857,11 +868,11 @@ struct PolygonMembershipResolverTests {
         let setup = await makeSetup(fix: nil)
         let original = polygonGeofence()
         await setup.storage.setCachedGeofences([original])
-        _ = await setup.storage.recordPolygonMembership(.inside, forIdentifier: "1")
+        _ = await setup.storage.recordPolygonMembership(.inside, forIdentifier: "1", now: clock.now.addingTimeInterval(-1))
         await setup.storage.setCachedGeofences([replacedPolygonGeofence()])
 
         await setup.resolver.handleTransition(
-            identifier: "1", transition: .exit, occurredAt: Date(),
+            identifier: "1", transition: .exit, occurredAt: clock.now,
             eventCircle: .circle(MonitoredCircle(
                 center: LocationData(latitude: original.latitude, longitude: original.longitude),
                 radius: original.radius, maximumRadius: 1000
@@ -879,10 +890,10 @@ struct PolygonMembershipResolverTests {
         let setup = await makeSetup(fix: nil)
         let geofence = polygonGeofence()
         await setup.storage.setCachedGeofences([geofence])
-        _ = await setup.storage.recordPolygonMembership(.inside, forIdentifier: "1")
+        _ = await setup.storage.recordPolygonMembership(.inside, forIdentifier: "1", now: clock.now.addingTimeInterval(-1))
 
         await setup.resolver.handleTransition(
-            identifier: "1", transition: .exit, occurredAt: Date(),
+            identifier: "1", transition: .exit, occurredAt: clock.now,
             eventCircle: .circle(MonitoredCircle(
                 center: LocationData(latitude: geofence.latitude, longitude: geofence.longitude),
                 radius: geofence.radius, maximumRadius: 1000
@@ -907,22 +918,22 @@ struct PolygonMembershipResolverTests {
     func handleTransition_givenAnExitOlderThanEveryHeldGeneration_expectRefusedAndBeliefKept() async {
         let setup = await makeSetup(fix: nil)
         var ledger = RegisteredConditionLedger()
-        let raisedAt = Date().addingTimeInterval(-90)
-        let firstLiveAt = Date().addingTimeInterval(-60)
+        let raisedAt = clock.now.addingTimeInterval(-90)
+        let firstLiveAt = clock.now.addingTimeInterval(-60)
         ledger.note(
             identifier: "1", center: LocationData(latitude: 0, longitude: 0),
             radius: 300, transitionTypes: [.enter, .exit], at: firstLiveAt, liveFrom: firstLiveAt
         )
-        let secondStagedAt = Date().addingTimeInterval(-30)
+        let secondStagedAt = clock.now.addingTimeInterval(-30)
         ledger.note(
             identifier: "1", center: LocationData(latitude: 0, longitude: 0.005),
             radius: 300, transitionTypes: [.enter, .exit], at: secondStagedAt
         )
-        ledger.confirm("1", stagedAt: secondStagedAt, at: Date().addingTimeInterval(-20))
+        ledger.confirm("1", stagedAt: secondStagedAt, at: clock.now.addingTimeInterval(-20))
 
         await setup.storage.setCachedGeofences([polygonGeofence()])
         _ = await setup.storage.recordPolygonMembership(
-            .inside, forIdentifier: "1", onlyIfBeliefPredates: Date().addingTimeInterval(-120)
+            .inside, forIdentifier: "1", onlyIfBeliefPredates: clock.now.addingTimeInterval(-120), now: clock.now
         )
         await setup.storage.setCachedGeofences([replacedPolygonGeofence()])
 
@@ -945,10 +956,10 @@ struct PolygonMembershipResolverTests {
         let setup = await makeSetup(fix: nil)
         let geofence = polygonGeofence(radius: 5000)
         await setup.storage.setCachedGeofences([geofence])
-        _ = await setup.storage.recordPolygonMembership(.inside, forIdentifier: "1")
+        _ = await setup.storage.recordPolygonMembership(.inside, forIdentifier: "1", now: clock.now.addingTimeInterval(-1))
 
         await setup.resolver.handleTransition(
-            identifier: "1", transition: .exit, occurredAt: Date(),
+            identifier: "1", transition: .exit, occurredAt: clock.now,
             eventCircle: .circle(MonitoredCircle(
                 center: LocationData(latitude: 0, longitude: 0),
                 radius: min(5000, 1000), maximumRadius: 1000
@@ -962,9 +973,9 @@ struct PolygonMembershipResolverTests {
     func handleTransition_givenPolygonExitWhileNotInside_expectSilent() async {
         let setup = await makeSetup(fix: nil)
         await setup.storage.setCachedGeofences([polygonGeofence()])
-        _ = await setup.storage.recordPolygonMembership(.outside, forIdentifier: "1")
+        _ = await setup.storage.recordPolygonMembership(.outside, forIdentifier: "1", now: clock.now.addingTimeInterval(-1))
 
-        await setup.resolver.handleTransition(identifier: "1", transition: .exit, occurredAt: Date())
+        await setup.resolver.handleTransition(identifier: "1", transition: .exit, occurredAt: clock.now)
 
         #expect(await setup.emitter.snapshot().isEmpty)
     }
@@ -1105,7 +1116,7 @@ struct PolygonMembershipResolverTests {
         let setup = await makeSetup(fix: fix(latitude: 0, longitude: 0))
         await registerPolygons(setup, ids: ["1"])
         _ = await setup.storage.recordPolygonMembership(
-            .outside, forIdentifier: "1", onlyIfBeliefPredates: Date(timeIntervalSince1970: 0)
+            .outside, forIdentifier: "1", onlyIfBeliefPredates: Date(timeIntervalSince1970: 0), now: clock.now
         )
         // True while the verdict is formed, false by the time the delivery boundary asks.
         let asked = RequestCounter()
@@ -1136,7 +1147,7 @@ struct PolygonMembershipResolverTests {
         // A belief already exists, so the write takes the CHANGE path and returns .deliver(.exit)
         // rather than suppressing as an initial outside.
         _ = await setup.storage.recordPolygonMembership(
-            .inside, forIdentifier: "1", onlyIfBeliefPredates: Date(timeIntervalSince1970: 0)
+            .inside, forIdentifier: "1", onlyIfBeliefPredates: Date(timeIntervalSince1970: 0), now: clock.now
         )
 
         await setup.resolver.evaluateAllPolygons(reason: .foreground)
@@ -1170,7 +1181,8 @@ struct PolygonMembershipResolverTests {
     func foreground_givenTheDefaultNotificationCentre_expectPassRuns() async {
         let storage = GeofenceStorage(
             fileManager: .default,
-            directoryURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+            directoryURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString),
+            dateUtil: clock
         )
         await storage.recordRegistration(center: LocationData(latitude: 0, longitude: 0), businessIds: ["1"])
         await storage.setCachedGeofences([polygonGeofence()])
@@ -1185,12 +1197,12 @@ struct PolygonMembershipResolverTests {
         fixResolver.requestFreshFix = { [weak fixResolver] in
             fixResolver?.handleResolvedFix(CLLocation(
                 coordinate: CLLocationCoordinate2D(latitude: 0, longitude: 0),
-                altitude: 0, horizontalAccuracy: 5, verticalAccuracy: 5, timestamp: Date()
+                altitude: 0, horizontalAccuracy: 5, verticalAccuracy: 5, timestamp: clock.now
             ))
         }
         let resolver = PolygonMembershipResolver(
             storage: storage, transitionEmitter: emitter,
-            logger: LoggerMock(), contextStore: contextStore, fixResolver: fixResolver
+            logger: LoggerMock(), contextStore: contextStore, dateUtil: clock, fixResolver: fixResolver
         )
 
         NotificationCenter.default.post(name: UIApplication.willEnterForegroundNotification, object: nil)
@@ -1209,7 +1221,7 @@ struct PolygonMembershipResolverTests {
         let setup = await makeSetup(fix: fix(latitude: 0, longitude: 0))
         let distant = Geofence(
             id: "2", latitude: 1, longitude: 1, radius: 300, name: "far",
-            transitionTypes: [.enter, .exit], lastUpdated: Date(),
+            transitionTypes: [.enter, .exit], lastUpdated: clock.now,
             vertices: Self.squareVertices.map {
                 LocationData(latitude: $0.latitude + 1, longitude: $0.longitude + 1)
             }
@@ -1249,9 +1261,9 @@ struct PolygonMembershipResolverTests {
     func handleTransition_givenEnterOnlyPolygon_expectExitSuppressed() async {
         let setup = await makeSetup(fix: nil)
         await setup.storage.setCachedGeofences([polygonGeofence(transitionTypes: [.enter])])
-        _ = await setup.storage.recordPolygonMembership(.inside, forIdentifier: "1")
+        _ = await setup.storage.recordPolygonMembership(.inside, forIdentifier: "1", now: clock.now.addingTimeInterval(-1))
 
-        await setup.resolver.handleTransition(identifier: "1", transition: .exit, occurredAt: Date())
+        await setup.resolver.handleTransition(identifier: "1", transition: .exit, occurredAt: clock.now)
 
         #expect(await setup.emitter.snapshot().isEmpty)
         #expect(await setup.storage.getPolygonMembership()["1"]?.membership == .outside)
@@ -1267,7 +1279,7 @@ struct PolygonMembershipResolverTests {
         // Both fixes are stamped from one instant. Stamping them at their own call sites makes
         // their ORDER depend on how long `makeSetup` takes, and the forced request is refused
         // unless its answer is strictly newer than the held fix — so on a loaded runner they invert.
-        let now = Date()
+        let now = clock.now
         let setup = await makeSetup(fix: fix(latitude: 0.01, longitude: 0.01, at: now))
         // Held, inside, and young enough that the cached path would have accepted it.
         setup.fixResolver.handleResolvedFix(CLLocation(
@@ -1313,9 +1325,9 @@ struct PolygonMembershipResolverTests {
         await registerPolygons(setup, ids: ["1"])
         // Dated behind the fix: `makeSetup` builds the CLLocation first, so a belief stamped now
         // would postdate it and the pass would be refused as a newer decision without evaluating.
-        let before = Date().addingTimeInterval(-60)
+        let before = clock.now.addingTimeInterval(-60)
         _ = await setup.storage.recordPolygonMembership(
-            .inside, forIdentifier: "1", onlyIfBeliefPredates: before
+            .inside, forIdentifier: "1", onlyIfBeliefPredates: before, now: clock.now
         )
         await evictCoveringCircle(setup, id: "1")
 
@@ -1336,7 +1348,7 @@ struct PolygonMembershipResolverTests {
         let setup = await makeSetup(fix: fix(latitude: 0.0020, longitude: 0))
         await registerPolygons(setup, ids: ["1"])
         _ = await setup.storage.recordPolygonMembership(
-            .inside, forIdentifier: "1", onlyIfBeliefPredates: Date().addingTimeInterval(-60)
+            .inside, forIdentifier: "1", onlyIfBeliefPredates: clock.now.addingTimeInterval(-60), now: clock.now
         )
         await evictCoveringCircle(setup, id: "1")
 
@@ -1373,13 +1385,13 @@ struct PolygonMembershipResolverTests {
     /// offset is a head start the test must beat. 12 s failed twice on stalled CI runners.
     @Test
     func handleTransition_givenEnterDecidedFromAFix_expectStampedWithTheFixNotTheVerdict() async {
-        let takenAt = Date().addingTimeInterval(-1)
+        let takenAt = clock.now.addingTimeInterval(-1)
         let logger = LoggerMock()
         let setup = await makeSetup(fix: fix(latitude: 0, longitude: 0, at: takenAt), logger: logger)
         await setup.storage.setCachedGeofences([polygonGeofence()])
 
         // A deliberately different date on the OS event, so a stamp taken from the wrong one shows.
-        await setup.resolver.handleTransition(identifier: "1", transition: .enter, occurredAt: Date())
+        await setup.resolver.handleTransition(identifier: "1", transition: .enter, occurredAt: clock.now)
 
         // Before the count: a stalled runner ages the fix out, and a bare `count == 1` reports
         // that as a lost emission. Prose, not the tail — the tail needs diagnostics on. Taken
@@ -1403,9 +1415,9 @@ struct PolygonMembershipResolverTests {
     func handleTransition_givenCoveringCircleExit_expectStampedWithTheOsEventDate() async {
         let setup = await makeSetup(fix: nil)
         await setup.storage.setCachedGeofences([polygonGeofence()])
-        let leftAt = Date().addingTimeInterval(-300)
+        let leftAt = clock.now.addingTimeInterval(-300)
         _ = await setup.storage.recordPolygonMembership(
-            .inside, forIdentifier: "1", onlyIfBeliefPredates: leftAt.addingTimeInterval(-60)
+            .inside, forIdentifier: "1", onlyIfBeliefPredates: leftAt.addingTimeInterval(-60), now: clock.now
         )
 
         await setup.resolver.handleTransition(identifier: "1", transition: .exit, occurredAt: leftAt)
@@ -1419,7 +1431,7 @@ struct PolygonMembershipResolverTests {
     func handleTransition_givenCircleGeofence_expectStampedWithTheOsEventDate() async {
         let setup = await makeSetup(fix: nil)
         await setup.storage.setCachedGeofences([circleGeofence()])
-        let crossedAt = Date().addingTimeInterval(-300)
+        let crossedAt = clock.now.addingTimeInterval(-300)
 
         await setup.resolver.handleTransition(identifier: "2", transition: .enter, occurredAt: crossedAt)
 
@@ -1433,7 +1445,7 @@ struct PolygonMembershipResolverTests {
     private func deepPolygonGeofence(id: String) -> Geofence {
         Geofence(
             id: id, latitude: 0.0016, longitude: 0, radius: 300, name: "deep",
-            transitionTypes: [.enter, .exit], lastUpdated: Date(),
+            transitionTypes: [.enter, .exit], lastUpdated: clock.now,
             vertices: Self.squareVertices.map {
                 LocationData(latitude: $0.latitude + 0.0016, longitude: $0.longitude)
             }
@@ -1494,7 +1506,7 @@ struct PolygonMembershipResolverTests {
         }
         // Stands in for phase one landing this belief after "1" was classified as deferred.
         _ = await setup.storage.recordPolygonMembership(
-            .inside, forIdentifier: "1", onlyIfBeliefPredates: Date(timeIntervalSince1970: 0)
+            .inside, forIdentifier: "1", onlyIfBeliefPredates: Date(timeIntervalSince1970: 0), now: clock.now
         )
 
         await setup.resolver.evaluateMembership(geofenceIds: ["1"], reason: .newPolygon)
@@ -1609,7 +1621,7 @@ struct PolygonMembershipResolverTests {
         // by the clock, but the decision accepted it at 1 s.
         let held = ResolvedFix(fix(
             latitude: 0, longitude: 0,
-            at: Date().addingTimeInterval(-GeofenceConstants.movementFixMaxAge + 0.05)
+            at: clock.now.addingTimeInterval(-GeofenceConstants.movementFixMaxAge + 0.05)
         ))
         let decision = PolygonMembershipResolver.HeldFixDecision(use: .reused, age: 1, newerFix: nil)
 
@@ -1625,7 +1637,7 @@ struct PolygonMembershipResolverTests {
         // Older than the cap by the clock, so a recomputed age refuses it outright.
         let stale = fix(
             latitude: 0, longitude: 0,
-            at: Date().addingTimeInterval(-GeofenceConstants.movementFixMaxAge - 5)
+            at: clock.now.addingTimeInterval(-GeofenceConstants.movementFixMaxAge - 5)
         )
 
         _ = await setup.resolver.evaluate(
@@ -1656,7 +1668,7 @@ struct PolygonMembershipResolverTests {
             reason: .movement, requiresFreshFix: true,
             heldFix: ResolvedFix(fix(
                 latitude: 0, longitude: 0,
-                at: Date().addingTimeInterval(-GeofenceConstants.movementFixMaxAge - 1)
+                at: clock.now.addingTimeInterval(-GeofenceConstants.movementFixMaxAge - 1)
             ))
         )
 
@@ -1703,7 +1715,7 @@ struct PolygonMembershipResolverTests {
             latitude: Self.latitudeInsideNorthEdge(by: 3),
             longitude: 0,
             accuracy: 5,
-            at: Date().addingTimeInterval(-Self.ageInsideGate)
+            at: clock.now.addingTimeInterval(-Self.ageInsideGate)
         )
         let setup = await makeSetup(fix: marginal)
         // The pass answers from here without recording it, which is what opened the gap.
@@ -1723,7 +1735,7 @@ struct PolygonMembershipResolverTests {
     func corroborationFix_givenTheSameBasisTwice_expectOneRequest() async {
         let setup = await makeSetup(fix: nil)
         let counter = countingRequests(setup)
-        let basis = Date().addingTimeInterval(-Self.ageInsideGate)
+        let basis = clock.now.addingTimeInterval(-Self.ageInsideGate)
 
         let cache = PassCorroboration()
         _ = await setup.resolver.corroborationFix(newerThan: basis, cache: cache)
@@ -1738,7 +1750,7 @@ struct PolygonMembershipResolverTests {
     @Test
     func corroborationFix_givenADifferentBasis_expectAFreshRequest() async {
         let delivered = fix(
-            latitude: 0, longitude: 0, at: Date().addingTimeInterval(-Self.ageInsideGate)
+            latitude: 0, longitude: 0, at: clock.now.addingTimeInterval(-Self.ageInsideGate)
         )
         let setup = await makeSetup(fix: delivered)
         let counter = RequestCounter()
@@ -1746,7 +1758,7 @@ struct PolygonMembershipResolverTests {
             counter.count += 1
             fixResolver?.handleResolvedFix(delivered)
         }
-        let first = Date().addingTimeInterval(-20)
+        let first = clock.now.addingTimeInterval(-20)
 
         // Succeeds and is cached, which is the state the stale reuse needed.
         let cache = PassCorroboration()
@@ -1760,7 +1772,7 @@ struct PolygonMembershipResolverTests {
     /// reports as its own outcome, so a capture can tell an echo from location not answering.
     @Test
     func corroborationFix_givenAnAnswerNotNewerThanTheBasis_expectNotIndependent() async {
-        let basis = Date().addingTimeInterval(-Self.ageInsideGate)
+        let basis = clock.now.addingTimeInterval(-Self.ageInsideGate)
         let setup = await makeSetup(fix: fix(latitude: 0, longitude: 0, at: basis))
 
         #expect(await setup.resolver.corroborationFix(newerThan: basis, cache: PassCorroboration()) == .notIndependent)
@@ -1779,7 +1791,7 @@ struct PolygonMembershipResolverTests {
     private func marginalPass(_ setup: Setup) {
         let passFix = fix(
             latitude: Self.latitudeInsideNorthEdge(by: 3), longitude: 0, accuracy: 5,
-            at: Date().addingTimeInterval(-Self.ageInsideGate)
+            at: clock.now.addingTimeInterval(-Self.ageInsideGate)
         )
         setup.fixResolver.systemCachedFix = { passFix }
     }
@@ -1810,7 +1822,7 @@ struct PolygonMembershipResolverTests {
         let setup = await makeSetup(fix: nil)
         let passFix = fix(
             latitude: Self.latitudeInsideNorthEdge(by: 3), longitude: 0, accuracy: 5,
-            at: Date().addingTimeInterval(-Self.ageInsideGate)
+            at: clock.now.addingTimeInterval(-Self.ageInsideGate)
         )
         let counter = countingContradictions(setup)
         await registerPolygons(setup, ids: ["1"])
@@ -1886,6 +1898,6 @@ struct PolygonMembershipResolverTests {
     func corroborationFix_givenNoFix_expectUnavailable() async {
         let setup = await makeSetup(fix: nil)
 
-        #expect(await setup.resolver.corroborationFix(newerThan: Date(), cache: PassCorroboration()) == .unavailable)
+        #expect(await setup.resolver.corroborationFix(newerThan: clock.now, cache: PassCorroboration()) == .unavailable)
     }
 }
