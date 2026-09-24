@@ -5,6 +5,7 @@ on:
     paths:
       - 'Sources/**'
       - 'Package.swift'
+      - 'Package.resolved'
       - '**/*.podspec'
       - '.github/workflows/size-report.yml'
   push:
