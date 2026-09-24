@@ -86,7 +86,7 @@ extension PolygonMembershipResolver {
         logger.geofencePolygonVerdict(
             identifier: geofence.id, verdict: verdict,
             horizontalAccuracy: fix.horizontalAccuracy,
-            fixAge: -fix.timestamp.timeIntervalSinceNow
+            fixAge: dateUtil.now.timeIntervalSince(fix.timestamp)
         )
         await apply(
             verdict.membership, to: geofence, evidence: fix.timestamp,
