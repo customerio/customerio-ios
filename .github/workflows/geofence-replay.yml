@@ -118,7 +118,8 @@ jobs:
 
       # `TEST_RUNNER_` is how an environment variable reaches the simulator test process; a bare
       # CIO_GEOFENCE_SCENARIOS is silently dropped. Output goes to a file, not the log: a failing
-      # drive's report can carry corpus content. Only compile errors are shown.
+      # drive's report can carry corpus content. What is shown can't: the exit status, build and
+      # destination errors, and xcodebuild's banners. Test-failure lines are filtered out.
       - name: Run replay tests
         env:
           TEST_RUNNER_CIO_GEOFENCE_SCENARIOS: ${{ github.workspace }}/.corpus/scenarios
@@ -132,8 +133,10 @@ jobs:
             -derivedDataPath .build/derivedData \
             > "$RUNNER_TEMP/xcodebuild.log" 2>&1
           status=$?
+          echo "xcodebuild exit $status"
+          grep -E 'error:|Unable to find a destination|Ineligible destinations|\*\* (BUILD|TEST)[A-Z ]*\*\*' "$RUNNER_TEMP/xcodebuild.log" \
+            | grep -vE 'recorded an issue|Expectation failed|: failed -' | head -40
           if [ ! -d "$RUNNER_TEMP/replay.xcresult" ]; then
-            grep -E 'error:' "$RUNNER_TEMP/xcodebuild.log" | head -40
             echo "::error::The package did not build or its tests could not run (xcodebuild exit $status)."
             exit 1
           fi
@@ -142,4 +145,4 @@ jobs:
       - name: Grade replay
         run: |
           xcrun xcresulttool get test-results tests --path "$RUNNER_TEMP/replay.xcresult" > "$RUNNER_TEMP/tests.json"
-          python3 .github/scripts/geofence_replay_gate.py "$RUNNER_TEMP/tests.json"
+          python3 .github/scripts/geofence_replay_gate.py "$RUNNER_TEMP/tests.json" .corpus/scenarios
