@@ -275,14 +275,17 @@ extension Logger {
         )
     }
 
-    /// Every fix the SDK receives. Only the movement-pass fix age is logged today, so the
-    /// positions the SDK was actually working from are invisible.
-    func geofenceFixReceived(_ location: CLLocation, source: String) {
+    /// Every fix the SDK receives, with the accuracy and age it was judged on — without them a
+    /// replay knows where the answer was but not whether it was good enough to decide from.
+    func geofenceFixReceived(_ location: CLLocation, source: String, now: Date) {
         debug(
             "Location fix received (\(source))"
                 + geofenceTail("fix.received", .observation, [
                     ("prov", source)
-                ] + GeofenceLog.position(location)),
+                ] + GeofenceLog.position(location) + [
+                    ("acc", GeofenceLog.num(location.horizontalAccuracy, 1)),
+                    ("age", GeofenceLog.num(now.timeIntervalSince(location.timestamp), 6))
+                ]),
             geofenceTag
         )
     }

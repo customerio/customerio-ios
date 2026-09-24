@@ -78,6 +78,18 @@ enum ReplayRunner {
             .map(\.at)
         let carried = carriedReads(scenario, on: harness)
         unsupported.append(contentsOf: carried.unsupported)
+        // What each fresh-fix request was answered with. A `note` because it is the OS's reply to
+        // work the SDK started, not a stimulus; only captures that log its accuracy carry one.
+        harness.fixes.loadRequestedAnswers(scenario.note.compactMap { record in
+            guard record.ev == "fix.received", record.fields["prov"] == "movement_resolver",
+                  let latitude = record.latitude, let longitude = record.longitude,
+                  let accuracy = record.fields["acc"].flatMap(Double.init)
+            else { return nil }
+            return harness.pulledFix(
+                latitude: latitude, longitude: longitude, accuracy: accuracy,
+                age: record.fields["age"].flatMap(Double.init) ?? 0, at: record.at
+            )
+        })
         harness.loadPulledFixes(
             stimuli: stimuli,
             samples: pulled,

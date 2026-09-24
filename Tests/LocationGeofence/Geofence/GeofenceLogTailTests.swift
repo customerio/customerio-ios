@@ -67,7 +67,7 @@ struct GeofenceLogTailTests {
             Invocation(name: "callbackReceivedNoFix", ev: "os.callback.received", requiredKeys: ["id", "t", "fixsrc"]) { $0.geofenceCallbackReceived(identifier: "notl_core", transition: .exit, fix: nil, source: .none, now: Date()) },
             Invocation(name: "info", ev: "info", requiredKeys: ["why"]) { $0.geofenceInfo("os_state_unusable", fields: [("id", "notl_core"), ("state", "unknown")]) },
             Invocation(name: "callbackDropped", ev: "os.callback.dropped", requiredKeys: ["id", "t", "why"]) { $0.geofenceCallbackDropped(identifier: "notl_core", transition: .enter, reason: "movement_trigger_not_exit") },
-            Invocation(name: "fixReceived", ev: "fix.received", requiredKeys: ["prov"]) { $0.geofenceFixReceived(location, source: "movement_pass") },
+            Invocation(name: "fixReceived", ev: "fix.received", requiredKeys: ["prov", "lat", "lon", "acc", "age"]) { $0.geofenceFixReceived(location, source: "movement_pass", now: Date()) },
             Invocation(name: "locationFix", ev: "location.fix", requiredKeys: ["lat", "lon", "acc", "age", "prov"]) { $0.geofenceLocationFix(location, source: .managerCache, now: Date()) },
             Invocation(name: "identityChanged", ev: "identity.changed", requiredKeys: ["ok"]) { $0.geofenceIdentityChanged(identified: true) },
             Invocation(name: "fixQuality", ev: "os.callback.received", requiredKeys: ["fixsrc", "acc", "age"]) { $0.geofenceCallbackReceived(identifier: "q", transition: .enter, fix: location, source: .freshRequest, now: Date()) },

@@ -443,7 +443,9 @@ final class ReplayHarness {
             // to count, `resolveFix` returns nil and every polygon logs `no_usable_fix`. This is the
             // iOS counterpart of Android's ReplayPolygonFreshFixSource. Through `handleDeliveredFix`,
             // the delegate's entry, so a read older than `maxAge` is refused as it is on a device.
-            if let fix = self.fixes.currentPosition() {
+            // The drive's own recorded answer when the capture has one, else the position now.
+            let answer = self.fixes.requestedAnswer(within: GeofenceConstants.movementFixRequestTimeout)
+            if let fix = answer ?? self.fixes.currentPosition() {
                 fixResolver.handleDeliveredFix(fix)
             }
         }
