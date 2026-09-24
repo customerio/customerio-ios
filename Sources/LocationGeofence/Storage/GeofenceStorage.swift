@@ -142,7 +142,9 @@ actor GeofenceStorage {
             // A new circle is a new incarnation: an OS event dated before this instant was computed
             // against the old one (see `recordMonitorEvent`). Preserved with the baseline.
             registeredAt: preserved ? existing?.registeredAt : stamp,
-            lastEventDate: preserved ? existing?.lastEventDate : nil
+            // The movement trigger keeps its identity across routine radius changes. Remember
+            // OS events already handled for it, even when the new geometry reseeds the state.
+            lastEventDate: (preserved || identifier == GeofenceConstants.movementTriggerIdentifier) ? existing?.lastEventDate : nil
         )
         state.monitorRegionRecords = records
         saveToDisk(state)
@@ -152,7 +154,8 @@ actor GeofenceStorage {
     /// compare-and-store runs inside the actor with no `await` between steps, so concurrent events
     /// cannot both observe a stale baseline and both deliver. The baseline advances on every state
     /// change — including transitions filtered from delivery — so an exit-only region still tracks
-    /// that the device entered, and the following exit is recognized as a change.
+    /// that the device entered, and the following exit is recognized as a change. A delayed exit
+    /// for an older movement-trigger circle can wake a pass without changing the new circle's state.
     ///
     /// `onlyIfBaselinePredates` makes the write conditional on the baseline's age, atomically with
     /// the compare-and-store: when set, a baseline written after that instant suppresses the event.
@@ -162,7 +165,8 @@ actor GeofenceStorage {
     /// `osEventDate` is the OS path's evidence, judged against the record's own OS-dated history
     /// rather than against `lastStateChangedAt`: an event dated at or before the last one processed
     /// is a re-delivery; one dated before the current circle was installed is about a circle that no
-    /// longer exists. Neither comparison involves the instant the SDK happened to write anything —
+    /// longer exists, except for a delayed movement-trigger wake. Neither comparison involves the
+    /// instant the SDK happened to write anything —
     /// which is what made the old rule, a reseed's write time against an event's OS date, answer
     /// differently depending on how fast the OS queue drained (drive 5, 2026-09-12).
     func recordMonitorEvent(
@@ -184,19 +188,38 @@ actor GeofenceStorage {
             saveToDisk(state)
             return .suppressedNoBaseline
         }
+        // A movement-trigger exit can arrive just after its circle was re-planted while carrying
+        // the old circle's OS date. Only the untouched re-plant baseline is exempt: a later heal
+        // or crossing is newer evidence and must keep its normal ordering guard.
+        let delayedMovementExit: Bool
+        if identifier == GeofenceConstants.movementTriggerIdentifier, transition == .exit,
+           let osEventDate, let registeredAt = record.registeredAt,
+           let changedAt = record.lastStateChangedAt {
+            delayedMovementExit = osEventDate < registeredAt && changedAt == registeredAt
+        } else {
+            delayedMovementExit = false
+        }
         if let osEventDate {
-            // The movement trigger is exempt from predates-registration: its geometry (radius) is
-            // re-planted on every wake-size pass, so `registeredAt` moves constantly, and a genuine
-            // exit dated a hair before a routine re-plant would be dropped as being about a circle
-            // that no longer exists — but the trigger's identity is stable and that exit is real. The
-            // redelivery guard below still protects it from processing the same event twice.
-            if identifier != GeofenceConstants.movementTriggerIdentifier,
+            // A genuine exit dated just before a routine trigger re-plant still wakes a movement
+            // pass, but only while that re-plant remains the newest baseline. The redelivery guard
+            // below rejects an exit already handled before the re-plant.
+            if !delayedMovementExit,
                let registeredAt = record.registeredAt, osEventDate < registeredAt { return .suppressedPredatesRegistration }
             if let lastEventDate = record.lastEventDate, osEventDate <= lastEventDate { return .suppressedRedelivery }
             record.lastEventDate = osEventDate
         }
-        if let evidenceTimestamp, let changedAt = record.lastStateChangedAt, changedAt > evidenceTimestamp {
+        if !delayedMovementExit,
+           let evidenceTimestamp, let changedAt = record.lastStateChangedAt, changedAt > evidenceTimestamp {
             return .suppressedNewerBaseline
+        }
+        if delayedMovementExit {
+            // Deliver the old circle's wake once, but leave the new circle's seeded state intact.
+            // The movement pass may fail before it re-plants; otherwise its next real exit would
+            // look unchanged and never reach the pass. Persist the OS date for redelivery dedup.
+            records[identifier] = record
+            state.monitorRegionRecords = records
+            saveToDisk(state)
+            return record.transitionTypes.contains(transition) ? .deliver : .suppressedFilteredType
         }
         guard record.lastState != transition else {
             // Nothing to deliver, but the event is now seen: persist its date so a later copy is refused.

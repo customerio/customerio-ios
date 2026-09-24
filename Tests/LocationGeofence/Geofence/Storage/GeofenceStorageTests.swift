@@ -721,7 +721,11 @@ struct GeofenceStorageTests {
         // A corrective the daemon computed against the OLD circle, dated 42 ms before the new one
         // was installed (drive 5). Its state differs from the fresh seed, so by state alone it is a
         // crossing — and the phone only absorbed it because its queue happened to drain later.
-        #expect(await storage.recordMonitorEvent(.exit, forIdentifier: "trigger", osEventDate: reshapedAt.addingTimeInterval(-0.042)) == .suppressedPredatesRegistration)
+        let oldExitAt = reshapedAt.addingTimeInterval(-0.042)
+        #expect(await storage.recordMonitorEvent(
+            .exit, forIdentifier: "trigger",
+            onlyIfBaselinePredates: oldExitAt, osEventDate: oldExitAt, now: oldExitAt
+        ) == .suppressedPredatesRegistration)
         // The record is untouched: a real exit of the new circle still delivers.
         #expect(await storage.recordMonitorEvent(.exit, forIdentifier: "trigger", osEventDate: reshapedAt.addingTimeInterval(300)) == .deliver)
     }
@@ -734,15 +738,70 @@ struct GeofenceStorageTests {
         let id = GeofenceConstants.movementTriggerIdentifier
         let replantAt = Date(timeIntervalSince1970: 1789215260.748)
         await storage.recordMonitorRegistration(identifier: id, transitionTypes: [.exit], initialState: .enter, center: LocationData(latitude: 10, longitude: 20), radius: 1000, now: replantAt.addingTimeInterval(-3600))
-        // The device exits; a movement pass re-centres and re-sizes the trigger on the new position.
-        #expect(await storage.recordMonitorEvent(.exit, forIdentifier: id, osEventDate: replantAt.addingTimeInterval(-0.2)) == .deliver)
         // Wake-sizing re-plants the trigger at a smaller radius — its geometry changes every pass, so
         // registeredAt moves forward. For a business circle this would be a new incarnation.
         await storage.recordMonitorRegistration(identifier: id, transitionTypes: [.exit], initialState: .enter, center: LocationData(latitude: 10, longitude: 20), radius: 100, now: replantAt)
         // A genuine exit dated just before that re-plant. A business circle drops this as
         // suppressedPredatesRegistration (see the test above); the movement trigger is exempt because
         // it is re-planted routinely and the exit is real — it must reach the movement pass.
-        #expect(await storage.recordMonitorEvent(.exit, forIdentifier: id, osEventDate: replantAt.addingTimeInterval(-0.042)) == .deliver)
+        let exitAt = replantAt.addingTimeInterval(-0.042)
+        #expect(await storage.recordMonitorEvent(
+            .exit, forIdentifier: id,
+            onlyIfBaselinePredates: exitAt, osEventDate: exitAt, now: exitAt
+        ) == .deliver)
+        #expect(await storage.recordMonitorEvent(
+            .exit, forIdentifier: id,
+            onlyIfBaselinePredates: exitAt, osEventDate: exitAt, now: exitAt
+        ) == .suppressedRedelivery)
+        // The movement pass can fail before re-planting. The delayed exit belonged to the old
+        // circle, so it must not change the new circle's baseline and swallow its later exit.
+        let newExitAt = replantAt.addingTimeInterval(300)
+        #expect(await storage.recordMonitorEvent(
+            .exit, forIdentifier: id,
+            onlyIfBaselinePredates: newExitAt, osEventDate: newExitAt, now: newExitAt
+        ) == .deliver)
+    }
+
+    @Test
+    func recordMonitorEvent_givenHandledMovementExitBeforeReplant_expectCopySuppressed() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let storage = makeStorage(directory: dir)
+        let id = GeofenceConstants.movementTriggerIdentifier
+        let replantAt = Date(timeIntervalSince1970: 1789215260.748)
+        await storage.recordMonitorRegistration(identifier: id, transitionTypes: [.exit], initialState: .enter, center: LocationData(latitude: 10, longitude: 20), radius: 1000, now: replantAt.addingTimeInterval(-3600))
+        let exitAt = replantAt.addingTimeInterval(-0.2)
+        #expect(await storage.recordMonitorEvent(
+            .exit, forIdentifier: id,
+            onlyIfBaselinePredates: exitAt, osEventDate: exitAt, now: exitAt
+        ) == .deliver)
+        await storage.recordMonitorRegistration(identifier: id, transitionTypes: [.exit], initialState: .enter, center: LocationData(latitude: 10, longitude: 20), radius: 100, now: replantAt)
+        #expect(await storage.recordMonitorEvent(
+            .exit, forIdentifier: id,
+            onlyIfBaselinePredates: exitAt, osEventDate: exitAt, now: exitAt
+        ) == .suppressedRedelivery)
+    }
+
+    @Test
+    func recordMonitorEvent_givenMovementTriggerAlreadyOutsideAtReplant_expectOldExitStillWakes() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let storage = makeStorage(directory: dir)
+        let id = GeofenceConstants.movementTriggerIdentifier
+        let replantAt = Date(timeIntervalSince1970: 1789215260.748)
+        await storage.recordMonitorRegistration(identifier: id, transitionTypes: [.exit], initialState: .enter, center: LocationData(latitude: 10, longitude: 20), radius: 1000, now: replantAt.addingTimeInterval(-3600))
+        // A stale anchor can put the device outside the freshly planted trigger. The old
+        // circle's delayed exit is still the wake that can recenter it.
+        await storage.recordMonitorRegistration(identifier: id, transitionTypes: [.exit], initialState: .exit, center: LocationData(latitude: 10, longitude: 20), radius: 100, now: replantAt)
+        let exitAt = replantAt.addingTimeInterval(-0.042)
+        #expect(await storage.recordMonitorEvent(
+            .exit, forIdentifier: id,
+            onlyIfBaselinePredates: exitAt, osEventDate: exitAt, now: exitAt
+        ) == .deliver)
+        #expect(await storage.recordMonitorEvent(
+            .exit, forIdentifier: id,
+            onlyIfBaselinePredates: exitAt, osEventDate: exitAt, now: exitAt
+        ) == .suppressedRedelivery)
     }
 
     @Test
