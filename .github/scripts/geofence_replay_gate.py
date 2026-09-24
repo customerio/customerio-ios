@@ -45,10 +45,15 @@ def main(path):
         if not name.startswith(REPLAY_CASE):
             others.append((name, outcome(case)))
             continue
-        # One `Arguments` child per drive. None means the whole case was skipped or never
-        # expanded, which is reported as the case itself.
+        # One `Arguments` child per drive, and only those count as replays. A case with none either
+        # skipped or had no drives to expand — a corpus holding only the other platform's scenarios
+        # "passes" that way having replayed nothing — so it is reported but never counted.
         arguments = [c for c in case.get("children", []) if c.get("nodeType") == "Arguments"]
-        drives += [(a.get("name", "?").strip('"'), outcome(a)) for a in arguments] or [(name, outcome(case))]
+        if arguments:
+            drives += [(a.get("name", "?").strip('"'), outcome(a)) for a in arguments]
+        else:
+            result = outcome(case)
+            drives.append((name, "failed" if result == "failed" else "skipped"))
 
     print("Recorded drives:")
     for name, result in drives:
@@ -62,8 +67,8 @@ def main(path):
     replayed = [d for d in drives if d[1] != "skipped"]
     failed = [d for d in drives if d[1] == "failed"] + failed_others
     if not replayed:
-        print("::error::No recorded drive was replayed — every case skipped, so the corpus was "
-              "not found. That is a setup failure, not a pass.")
+        print("::error::No recorded drive was replayed: the corpus was not found, or holds no "
+              "scenarios for this platform. That is a setup failure, not a pass.")
         return 2
     if failed:
         print(f"::error::{len(failed)} geofence replay test(s) failed. Details stay out of this "
