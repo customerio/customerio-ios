@@ -215,7 +215,7 @@ struct PolygonMembershipResolverTests {
         // every write comes back `.suppressedUnmonitored`.
         await storage.recordRegistration(center: LocationData(latitude: 0, longitude: 0), businessIds: ["1"])
         let emitter = EmitterSpy()
-        let fixResolver = MovementFixResolver(logger: LoggerMock())
+        let fixResolver = MovementFixResolver(logger: LoggerMock(), dateUtil: clock)
         fixResolver.systemCachedFix = { nil } // never touch CoreLocation from a unit test
         // Seam: resolve inline with the supplied fix instead of touching CoreLocation.
         fixResolver.requestFreshFix = { [weak fixResolver] in
@@ -558,7 +558,7 @@ struct PolygonMembershipResolverTests {
         let preWakeFix = CLLocation(
             coordinate: CLLocationCoordinate2D(latitude: 0, longitude: 0),
             altitude: 0, horizontalAccuracy: 5, verticalAccuracy: 5,
-            timestamp: Date(timeIntervalSinceNow: -Self.ageInsideGate)
+            timestamp: clock.now.addingTimeInterval(-Self.ageInsideGate)
         )
         setup.fixResolver.requestFreshFix = { [weak fixResolver = setup.fixResolver] in
             fixResolver?.locationManager(CLLocationManager(), didUpdateLocations: [preWakeFix])
@@ -587,7 +587,7 @@ struct PolygonMembershipResolverTests {
         setup.fixResolver.handleResolvedFix(CLLocation(
             coordinate: CLLocationCoordinate2D(latitude: 0.01, longitude: 0.01),
             altitude: 0, horizontalAccuracy: 5, verticalAccuracy: 5,
-            timestamp: Date(timeIntervalSinceNow: -Self.ageInsideGate)
+            timestamp: clock.now.addingTimeInterval(-Self.ageInsideGate)
         ))
         // The system cache has moved on and sits inside the polygon, well within the age gate.
         setup.fixResolver.systemCachedFix = {
@@ -622,7 +622,7 @@ struct PolygonMembershipResolverTests {
         setup.fixResolver.handleResolvedFix(CLLocation(
             coordinate: CLLocationCoordinate2D(latitude: 0, longitude: 0),
             altitude: 0, horizontalAccuracy: 5, verticalAccuracy: 5,
-            timestamp: Date(timeIntervalSinceNow: -Self.ageInsideGate)
+            timestamp: clock.now.addingTimeInterval(-Self.ageInsideGate)
         ))
         await setup.storage.setCachedGeofences([polygonGeofence()])
 
@@ -1192,7 +1192,7 @@ struct PolygonMembershipResolverTests {
         )
         contextStore.setUserId("user-1")
         let emitter = EmitterSpy()
-        let fixResolver = MovementFixResolver(logger: LoggerMock())
+        let fixResolver = MovementFixResolver(logger: LoggerMock(), dateUtil: clock)
         fixResolver.systemCachedFix = { nil }
         fixResolver.requestFreshFix = { [weak fixResolver] in
             fixResolver?.handleResolvedFix(CLLocation(
@@ -1304,7 +1304,7 @@ struct PolygonMembershipResolverTests {
         setup.fixResolver.handleResolvedFix(CLLocation(
             coordinate: CLLocationCoordinate2D(latitude: 0, longitude: 0),
             altitude: 0, horizontalAccuracy: 5, verticalAccuracy: 5,
-            timestamp: Date(timeIntervalSinceNow: -Self.ageInsideGate)
+            timestamp: clock.now.addingTimeInterval(-Self.ageInsideGate)
         ))
         await setup.storage.setCachedGeofences([polygonGeofence()])
 
@@ -1829,8 +1829,8 @@ struct PolygonMembershipResolverTests {
 
         // Distinct pass numbers because these ARE two passes; the point of the test is that the
         // second does not inherit the first's corroboration attempt.
-        await setup.resolver.runPass(geofenceIds: ["1"], fix: .init(location: passFix, age: -passFix.timestamp.timeIntervalSinceNow), pass: 1)
-        await setup.resolver.runPass(geofenceIds: ["1"], fix: .init(location: passFix, age: -passFix.timestamp.timeIntervalSinceNow), pass: 2)
+        await setup.resolver.runPass(geofenceIds: ["1"], fix: .init(location: passFix, age: clock.now.timeIntervalSince(passFix.timestamp)), pass: 1)
+        await setup.resolver.runPass(geofenceIds: ["1"], fix: .init(location: passFix, age: clock.now.timeIntervalSince(passFix.timestamp)), pass: 2)
 
         #expect(counter.count == 2)
     }

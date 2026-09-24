@@ -39,10 +39,7 @@ final class PolygonMembershipResolver {
     // `internal`, not `private`, only because the split extension files use them.
     let logger: Logger
     let contextStore: BackgroundDeliveryContextStore
-    // The clock every fix age is measured against. Injected so replay ages fixes on the drive's
-    // timeline; in production this is the SDK's real clock, so on-device behaviour is unchanged.
-    // `+Fix`/`+Pass` read it directly, which is why it is not `private`.
-    let dateUtil: DateUtil
+    let dateUtil: DateUtil // Fix ages. Real clock in production; replay injects the drive's. Read by +Fix/+Pass.
     let notificationCenter: NotificationCenter
     var foregroundObserverToken: NSObjectProtocol?
 
