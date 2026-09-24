@@ -441,9 +441,10 @@ final class ReplayHarness {
             // Answer the request the way CoreLocation would: hand back the drive's current position.
             // An os-transition polygon pass demands a fresh fix (`requiresFreshFix: true`); left only
             // to count, `resolveFix` returns nil and every polygon logs `no_usable_fix`. This is the
-            // iOS counterpart of Android's ReplayPolygonFreshFixSource.
+            // iOS counterpart of Android's ReplayPolygonFreshFixSource. Through `handleDeliveredFix`,
+            // the delegate's entry, so a read older than `maxAge` is refused as it is on a device.
             if let fix = self.fixes.currentPosition() {
-                fixResolver.handleResolvedFix(fix)
+                fixResolver.handleDeliveredFix(fix)
             }
         }
         return PolygonMembershipResolver(

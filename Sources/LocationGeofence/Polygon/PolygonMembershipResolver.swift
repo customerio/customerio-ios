@@ -68,12 +68,12 @@ final class PolygonMembershipResolver {
         self.contextStore = contextStore
         self.dateUtil = dateUtil
         self.notificationCenter = notificationCenter
-        // Ten metres, not the hundred the circle path uses: a verdict needs the device farther from
-        // the boundary than the fix is accurate, so a hundred-metre fix cannot decide anything for a
-        // polygon near the minimum monitored size.
+        // Ten metres, not the circle path's hundred: a verdict needs the device farther from the edge
+        // than the fix's accuracy, so a 100 m fix decides nothing for a polygon near minimum size.
         self.fixResolver = fixResolver ?? MovementFixResolver(
             logger: logger,
             backgroundTaskRunner: GeofenceBackgroundTime.runner(name: "io.customer.geofence.polygon-fix"),
+            dateUtil: dateUtil,
             desiredAccuracy: kCLLocationAccuracyNearestTenMeters
         )
         registerForegroundEvaluation()
