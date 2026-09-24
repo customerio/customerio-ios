@@ -1,0 +1,145 @@
+name: Geofence corpus replay
+
+# Replays the private recorded-drive corpus (customerio/mobile-replay-harness) against the
+# LocationGeofence module. A check of its own, so a corpus or harness problem never reddens the main
+# Tests run — and it leaves the shared ios-test.yml (also used by customerio-ios-fcm) untouched.
+#
+# Pilot: informative, not required. It skips cleanly when geofence code did not change, and when
+# the corpus key is unavailable (forks, bots, or before the secret is configured). Detection runs
+# on ubuntu so a macOS runner is only taken when there is something to replay.
+#
+# The corpus is private and this repo's logs are public: nothing below prints scenario content,
+# failure messages or uploads the result bundle. See .github/scripts/geofence_replay_gate.py.
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [main, 'feature/**']
+  push:
+    branches: [main, feature/geofence-polygons]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  detect:
+    name: Detect geofence changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      run: ${{ steps.decide.outputs.run }}
+    steps:
+      - name: Decide whether to replay
+        id: decide
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HAS_KEY: ${{ secrets.GEOFENCE_CORPUS_DEPLOY_KEY != '' }}
+          EVENT: ${{ github.event_name }}
+          PR: ${{ github.event.pull_request.number }}
+          BEFORE: ${{ github.event.before }}
+          AFTER: ${{ github.sha }}
+        run: |
+          if [ "$HAS_KEY" != "true" ]; then
+            echo "::notice::Corpus key unavailable (fork, bot, or secret not configured) — skipping replay."
+            echo "run=false" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          case "$EVENT" in
+            workflow_dispatch) echo "run=true" >> "$GITHUB_OUTPUT"; exit 0 ;;
+            pull_request) files=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR/files" --paginate --jq '.[].filename') ;;
+            push)
+              if [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
+                echo "run=true" >> "$GITHUB_OUTPUT"; exit 0
+              fi
+              files=$(gh api "repos/$GITHUB_REPOSITORY/compare/$BEFORE...$AFTER" --jq '.files[].filename') ;;
+          esac
+          # The pin file is watched on purpose: bumping the corpus alone is a change worth replaying.
+          if printf '%s\n' "$files" | grep -Eq '^(Sources/LocationGeofence/|Tests/LocationGeofence/|\.github/geofence-corpus\.ref$|\.github/workflows/geofence-replay\.yml$|\.github/scripts/geofence_replay_gate\.py$)'; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::No geofence changes — skipping replay."
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  replay:
+    name: Replay recorded drives
+    needs: detect
+    if: needs.detect.outputs.run == 'true'
+    runs-on: macos-26
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read corpus pin
+        id: pin
+        run: |
+          ref=$(tr -d '[:space:]' < .github/geofence-corpus.ref)
+          if ! printf '%s' "$ref" | grep -Eq '^[0-9a-f]{40}$'; then
+            echo "::error::Corpus setup failed: .github/geofence-corpus.ref must hold one full 40-character commit SHA, never a branch."
+            exit 1
+          fi
+          echo "sha=$ref" >> "$GITHUB_OUTPUT"
+
+      - name: Fetch corpus
+        id: corpus
+        continue-on-error: true
+        uses: actions/checkout@v4
+        with:
+          repository: customerio/mobile-replay-harness
+          ref: ${{ steps.pin.outputs.sha }}
+          ssh-key: ${{ secrets.GEOFENCE_CORPUS_DEPLOY_KEY }}
+          persist-credentials: false
+          path: .corpus
+
+      # Checked by count, not by trusting the loader: an override naming a missing directory
+      # resolves to "no corpus" on iOS and skips every replay rather than failing.
+      - name: Check corpus
+        run: |
+          if [ "${{ steps.corpus.outcome }}" != "success" ]; then
+            echo "::error::Corpus setup failed: could not fetch mobile-replay-harness@${{ steps.pin.outputs.sha }}. Check the deploy key and that the pinned SHA exists."
+            exit 1
+          fi
+          count=$(find .corpus/scenarios -maxdepth 1 -name '*.scenario.ndjson' 2>/dev/null | wc -l | tr -d ' ')
+          if [ "$count" -eq 0 ]; then
+            echo "::error::Corpus setup failed: mobile-replay-harness@${{ steps.pin.outputs.sha }} has no scenarios/*.scenario.ndjson."
+            exit 1
+          fi
+          echo "Corpus @ ${{ steps.pin.outputs.sha }}: $count scenario file(s)."
+
+      # Same Xcode and simulator as the main Tests run (mobile-ci-tools ios-test.yml + Scanfile).
+      - name: Setup iOS
+        uses: customerio/mobile-ci-tools/github-actions/ios/setup-ios/v1@main
+        with:
+          xcode-version: '26.6'
+
+      # `TEST_RUNNER_` is how an environment variable reaches the simulator test process; a bare
+      # CIO_GEOFENCE_SCENARIOS is silently dropped. Output goes to a file, not the log: a failing
+      # drive's report can carry corpus content. Only compile errors are shown.
+      - name: Run replay tests
+        env:
+          TEST_RUNNER_CIO_GEOFENCE_SCENARIOS: ${{ github.workspace }}/.corpus/scenarios
+        run: |
+          set +e
+          xcodebuild test \
+            -scheme Customer.io-Package \
+            -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.2' \
+            -only-testing:LocationGeofenceTests/ScenarioReplayTests \
+            -resultBundlePath "$RUNNER_TEMP/replay.xcresult" \
+            -derivedDataPath .build/derivedData \
+            > "$RUNNER_TEMP/xcodebuild.log" 2>&1
+          status=$?
+          if [ ! -d "$RUNNER_TEMP/replay.xcresult" ]; then
+            grep -E 'error:' "$RUNNER_TEMP/xcodebuild.log" | head -40
+            echo "::error::The package did not build or its tests could not run (xcodebuild exit $status)."
+            exit 1
+          fi
+
+      # Graded here rather than by xcodebuild's exit code, which is 0 when every replay skipped.
+      - name: Grade replay
+        run: |
+          xcrun xcresulttool get test-results tests --path "$RUNNER_TEMP/replay.xcresult" > "$RUNNER_TEMP/tests.json"
+          python3 .github/scripts/geofence_replay_gate.py "$RUNNER_TEMP/tests.json"
