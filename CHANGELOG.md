@@ -1,3 +1,9 @@
+## [4.9.0](https://github.com/customerio/customerio-ios/compare/4.8.1...4.9.0) (2026-09-25)
+
+### Features
+
+* **geofence:** add support for polygon geofences ([#1308](https://github.com/customerio/customerio-ios/issues/1308)) ([0c76d4b](https://github.com/customerio/customerio-ios/commit/0c76d4b7d9f2ff59065ad230df770ed05e399b5e))
+
 ## [4.8.1](https://github.com/customerio/customerio-ios/compare/4.8.0...4.8.1) (2026-09-16)
 
 ### Bug Fixes
