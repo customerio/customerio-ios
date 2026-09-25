@@ -8,5 +8,5 @@ Pod::Spec.new do |spec|
   
     spec.source_files  = "Source/**/*"
     spec.dependency "CustomerIODataPipelines"
-    spec.ios.deployment_target = "13.0"
+    spec.ios.deployment_target = "15.0"
   end

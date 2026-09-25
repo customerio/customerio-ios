@@ -13,7 +13,7 @@ Pod::Spec.new do |spec|
   spec.cocoapods_version = '>= 1.11.0'
 
   spec.platform = :ios
-  spec.ios.deployment_target = "13.0"
+  spec.ios.deployment_target = "15.0"
 
   # Protocols/models only, no SDK dependency. Safe to import in the app target and the
   # widget extension. Live Activities APIs are @available(iOS 16.2, *)-gated in source.

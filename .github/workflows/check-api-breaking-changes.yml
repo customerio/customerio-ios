@@ -15,18 +15,17 @@ on:
 concurrency: # cancel previous workflow run if one exists
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
-  
+
 jobs:
   check-api-breaking-changes:
-    runs-on: macos-26
+    # xcode-27 image ships a single Xcode; rely on it instead of pinning one via setup-ios.
+    runs-on: xcode-27
     steps:
       - uses: actions/checkout@v4
-      
-      - uses: customerio/mobile-ci-tools/github-actions/ios/setup-ios/v1@main
-      
+
       - name: Install sourcekitten
         run: brew install sourcekitten
-      
+
       - name: Setup Ruby
         uses: ruby/setup-ruby@95ef2b042f9d7a56d8268cba8559e2842e2ad01b # v1.321.0
         with:
