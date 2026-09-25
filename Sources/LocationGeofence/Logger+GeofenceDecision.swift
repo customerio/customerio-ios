@@ -43,9 +43,86 @@ extension Logger {
     func geofenceBaselineHealed(identifier: String, transition: GeofenceTransition) {
         info(
             "Synthesized \(transition.rawValue) for region \(identifier): fresh fix contradicts stored baseline (OS never delivered the crossing)"
-                + geofenceTail("baseline.healed", .output, [
+                + geofenceTail("baseline.healed", .observation, [
                     ("id", identifier),
                     ("t", transition.rawValue)
+                ]),
+            geofenceTag
+        )
+    }
+
+    /// Every event arriving while a re-add record is held, with its distance in TIME from that add.
+    ///
+    /// The gate records only refusals, so `contradictionGateReplayWindow` could not be calibrated
+    /// from a drive: an event just outside the window and an event that was never a replay both
+    /// logged nothing. `dly` is the event's date minus the add, `win` whether the current bound
+    /// covered it — together, the distribution the constant is currently guessing at.
+    func geofenceContradictionEvaluated(identifier: String, transition: GeofenceTransition, delaySinceAdd: TimeInterval, insideWindow: Bool) {
+        debug(
+            "Event for region \(identifier) landed \(String(format: "%.3f", delaySinceAdd))s after its re-add"
+                + geofenceTail("contradiction.evaluated", .observation, [
+                    ("id", identifier),
+                    ("t", transition.rawValue),
+                    ("dly", GeofenceLog.num(delaySinceAdd, 3)),
+                    ("win", GeofenceLog.bool(insideWindow))
+                ]),
+            geofenceTag
+        )
+    }
+
+    /// The gate consulted a fix and did NOT refuse — the counterpart to `contradiction.refused`,
+    /// without which "the gate allowed this event" and "the gate could not have refused anything"
+    /// are the same silence. Below a radius the fix accuracy can resolve, the second case is the
+    /// norm, so a drive on small fences cannot otherwise tell whether the gate still protects
+    /// anything.
+    ///
+    /// `edge` is signed here, unlike the refusal's, because which side the fix fell on is the
+    /// question. Negative is inside — the CIRCLE path's convention, matching
+    /// `BaselineHealDecision`. The polygon records use the same key with the opposite sign
+    /// (`PolygonRegion.signedEdgeDistance` is positive inside), so a parser must read `edge`
+    /// against the record's `ev`. The measurements ride as their own keys and no `why` token
+    /// classifies them: which guard declined is derivable from `edge`, `acc` and `age`, and a
+    /// token would need a second copy of `BaselineHealDecision`'s guard sequence to produce.
+    func geofenceContradictionAllowed(
+        identifier: String,
+        transition: GeofenceTransition,
+        geometry: GateFixGeometry
+    ) {
+        debug(
+            "Allowed OS \(transition.rawValue) for region \(identifier): the gate did not refuse it (distance \(Int(geometry.distanceFromCenter)) m, radius \(Int(geometry.radius)) m, accuracy \(Int(geometry.accuracy)) m, fix age \(String(format: "%.1f", geometry.fixAge))s)"
+                + geofenceTail("contradiction.allowed", .observation, [
+                    ("id", identifier),
+                    ("t", transition.rawValue),
+                    ("dist", GeofenceLog.num(geometry.distanceFromCenter, 0)),
+                    ("rad", GeofenceLog.num(geometry.radius, 0)),
+                    ("edge", GeofenceLog.num(geometry.signedEdgeDistance, 0)),
+                    ("acc", GeofenceLog.num(geometry.accuracy)),
+                    ("age", GeofenceLog.num(geometry.fixAge))
+                ]),
+            geofenceTag
+        )
+    }
+
+    /// The gate reached an in-window event with no fix to judge it against, so it failed open.
+    /// Silent before this, which made it indistinguishable from a gate that ran and allowed the
+    /// event.
+    ///
+    /// This is NOT what a blocked fix request produces. The blocked path still returns
+    /// `bestKnownFix()`, and the usable-fix filter rejects only an invalid coordinate, never age —
+    /// so whenever any fix exists the gate reaches the decision and fails open on the age guard,
+    /// emitting `contradiction.allowed` with a large `age`. Counting blocked bursts by this record
+    /// would find none and read that as the resolver working.
+    func geofenceContradictionNoFix(
+        identifier: String,
+        transition: GeofenceTransition,
+        reason: ContradictionGateNoFixReason
+    ) {
+        debug(
+            "Allowed OS \(transition.rawValue) for region \(identifier): \(reason.prose)"
+                + geofenceTail("contradiction.no_fix", .observation, [
+                    ("id", identifier),
+                    ("t", transition.rawValue),
+                    ("why", reason.rawValue)
                 ]),
             geofenceTag
         )
@@ -54,7 +131,7 @@ extension Logger {
     func geofenceEventRefusedByContradiction(identifier: String, transition: GeofenceTransition, distanceFromCenter: Double, radius: Double, accuracy: Double) {
         info(
             "Refused OS \(transition.rawValue) for region \(identifier): a fresh fix contradicts it (distance \(Int(distanceFromCenter)) m, radius \(Int(radius)) m, accuracy \(Int(accuracy)) m)"
-                + geofenceTail("contradiction.refused", .output, [
+                + geofenceTail("contradiction.refused", .observation, [
                     ("id", identifier),
                     ("t", transition.rawValue),
                     ("dist", GeofenceLog.num(distanceFromCenter, 0)),
@@ -68,7 +145,7 @@ extension Logger {
 
     /// A heal decided a crossing was real and the dedup baseline refused it.
     ///
-    /// `io=out` and its own key, deliberately not `os.callback.dropped`: nothing arrived from the
+    /// `io=obs` and its own key, deliberately not `os.callback.dropped`: nothing arrived from the
     /// OS here. A heal synthesizes the transition from a fix, so reporting it as a dropped callback
     /// invents an OS delivery that never happened and inflates the received-vs-dropped count —
     /// the count that distinguishes "the OS never reported it" from "we discarded it", which is
@@ -76,7 +153,7 @@ extension Logger {
     func geofenceBaselineRefused(identifier: String, transition: GeofenceTransition, reason: String) {
         debug(
             "Baseline heal for region \(identifier) refused: \(reason)"
-                + geofenceTail("baseline.refused", .output, [
+                + geofenceTail("baseline.refused", .observation, [
                     ("id", identifier),
                     ("t", transition.rawValue),
                     ("why", reason)
@@ -95,7 +172,7 @@ extension Logger {
     func geofenceTransitionSynthesized(geofenceId: String, transition: GeofenceTransition) {
         debug(
             "Geofence '\(geofenceId)': device already inside a newly-registered fence — synthesizing \(transition.rawValue)"
-                + geofenceTail("transition.synthesized", .output, [
+                + geofenceTail("transition.synthesized", .observation, [
                     ("id", geofenceId),
                     ("t", transition.rawValue),
                     ("why", "initial_enter_inside")

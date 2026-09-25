@@ -14,31 +14,49 @@ extension CLMonitorGeofenceMonitor {
     /// baseline, so CLMonitor emits only transitions that happened while unmonitored — genuine
     /// catch-up, which the baseline comparison then delivers.
     ///
-    /// `records` comes from the caller (`adoptExistingRegions`), which has already seeded the
-    /// geometry bookkeeping from it synchronously — noting it again at drain time would clobber
-    /// a newer circle a sync staged while this operation was still queued.
+    /// Records are read when the operation DRAINS, not when it was staged, and a condition is
+    /// skipped unless its record still matches the staged geometry — the same two rules as
+    /// `rearmOnForegroundIfStale`. A crossing accepted while this waited in the queue has moved the
+    /// baseline, and asserting the staged snapshot to the OS makes the daemon answer with a
+    /// corrective the dedup then has to absorb: on the 2026-09-12 relaunch the trigger was re-added
+    /// `satisfied` after its exit had been accepted, 30 ms earlier. A sync that reshaped a condition
+    /// meanwhile has its own add queued behind this, and re-imposing the old circle here would leave
+    /// the OS and the bookkeeping disagreeing — the case the geometry check skips.
     ///
     /// Each successful add is recorded in `knownConditionIdentifiers` and the mirror persisted, the
     /// same bookkeeping `startMonitoring` does. Without it the mirror under-reports a condition this
     /// re-add revived, and the next process seeds ownership from that mirror — so a cold-wake event
     /// for the revived condition would be dropped by the ownership gate.
-    func rearmConditions(_ identifiers: Set<String>, records: [String: MonitorRegionRecord]) {
+    func rearmConditions(_ identifiers: Set<String>) {
         enqueueMonitorOperation { [weak self] monitor in
             guard let self else { return }
+            let records = await self.storage.getMonitorRegionRecords()
             var revived = false
-            for identifier in identifiers {
+            for identifier in identifiers.sorted() {
                 // A record without geometry can't be rebuilt; the next sync re-registers it.
                 guard let record = records[identifier],
-                      let center = record.center, let radius = record.radius
+                      let center = record.center, let radius = record.radius,
+                      self.conditionLedger.condition(for: identifier) == RegisteredCondition(
+                          center: center,
+                          radius: radius,
+                          transitionTypes: record.transitionTypes
+                      )
                 else { continue }
-                let readdStart = Date()
+                let readdStart = self.dateUtil.now
                 await monitor.remove(identifier)
-                let condition = CLMonitor.CircularGeographicCondition(
-                    center: CLLocationCoordinate2D(latitude: center.latitude, longitude: center.longitude),
-                    radius: radius
+                await monitor.add(
+                    center: center,
+                    radius: radius,
+                    identifier: identifier,
+                    assuming: record.lastState == .enter ? .satisfied : .unsatisfied
                 )
-                await monitor.add(condition, identifier: identifier, assuming: record.lastState == .enter ? .satisfied : .unsatisfied)
-                self.conditionReadds[identifier] = ConditionReadd(start: readdStart, added: Date(), center: center, radius: radius)
+                // Stamped straight off the `add`, before anything else runs. The contradiction
+                // gate replays events against this instant, and a log dispatched between the two
+                // pushes the anchor later than the OS actually accepted the circle.
+                let addedAt = self.dateUtil.now
+                self.conditionReadds[identifier] = ConditionReadd(start: readdStart, added: addedAt, center: center, radius: radius)
+                self.logger.geofenceConditionRemoved(identifier: identifier, op: .readd)
+                self.logger.geofenceConditionAdded(identifier: identifier)
                 // Recorded per identifier rather than in one pass at the end: an `.unmonitored` for
                 // one of these can land between two iterations, and it must be able to take the
                 // identifier back out.
@@ -47,7 +65,31 @@ extension CLMonitorGeofenceMonitor {
             }
             guard revived else { return }
             self.persistConditionMirror()
+            await self.reportRegisteredConditions(on: monitor)
         }
+    }
+
+    /// Reports the OS's live condition set as `registration.applied`, from inside the operation
+    /// that changed it.
+    ///
+    /// Adopt and re-arm both alter which fences the OS is holding for us, and until now neither
+    /// said so: `registration.applied` is emitted by the sync coordinator, and neither path goes
+    /// through it. A relaunch that adopted twenty conditions, re-armed them and did nothing else
+    /// therefore produced no output record at all — which is why replay could not catch the
+    /// second-adopt defect, and why a reader could not answer "was this fence being watched" for
+    /// the one session where the answer changed.
+    ///
+    /// Read from `monitor.identifiers`, not from the set we asked for. That is the contract the
+    /// record already carries — "what the OS is holding, not what was asked for" — and it matters
+    /// here more than at a sync: the loops above skip any condition whose record lost its geometry
+    /// or whose staged circle no longer matches, so the requested set overstates the result.
+    private func reportRegisteredConditions(on monitor: GeofenceConditionMonitoring) async {
+        let held = Set(await monitor.identifiers)
+        let movementTriggerId = GeofenceConstants.movementTriggerIdentifier
+        logger.geofenceRegionsRegistered(
+            identifiers: held.subtracting([movementTriggerId]).sorted(),
+            movementTrigger: held.contains(movementTriggerId) ? movementTriggerId : nil
+        )
     }
 
     /// Runs `rearmOnForegroundIfStale` when the app enters the foreground.
@@ -74,17 +116,17 @@ extension CLMonitorGeofenceMonitor {
     /// event-silent when nothing changed. Cold launch already rebuilds via adopt; a process that
     /// lives suspended for days never cold-launches.
     ///
-    /// Unlike `rearmConditions`, ownership and records are read at DRAIN time, and a condition is
-    /// skipped unless its record matches the staged registration: a mid-transition condition (e.g.
+    /// Ownership and records are read at DRAIN time, and a condition is skipped unless its record
+    /// matches the staged registration — `rearmConditions` now applies the same rule: a mid-transition condition (e.g.
     /// adopt racing an in-flight reshape leaves the two temporarily disagreeing) will be settled by
     /// the queued ops, and re-arming it from either snapshot imposes geometry the other bookkeeping
     /// layer doesn't know about — the state-space model (v6) shows the sync layer then skips it as
     /// unchanged forever, so the OS never converges back to the desired set.
     func rearmOnForegroundIfStale() {
-        guard Date().timeIntervalSince(lastRearmAt) >= GeofenceConstants.foregroundRearmInterval else { return }
+        guard dateUtil.now.timeIntervalSince(lastRearmAt) >= GeofenceConstants.foregroundRearmInterval else { return }
         guard !ownedRegionIdentifiers.isEmpty else { return }
         // Stamped at enqueue so rapid foreground cycles can't queue a second rebuild behind this one.
-        lastRearmAt = Date()
+        lastRearmAt = dateUtil.now
         enqueueMonitorOperation { [weak self] monitor in
             guard let self else { return }
             let records = await self.storage.getMonitorRegionRecords()
@@ -92,26 +134,34 @@ extension CLMonitorGeofenceMonitor {
             for identifier in self.ownedRegionIdentifiers.sorted() {
                 guard let record = records[identifier],
                       let center = record.center, let radius = record.radius,
-                      self.registeredConditions[identifier] == RegisteredCondition(
+                      self.conditionLedger.condition(for: identifier) == RegisteredCondition(
                           center: center,
                           radius: radius,
                           transitionTypes: record.transitionTypes
                       )
                 else { continue }
-                let readdStart = Date()
+                let readdStart = self.dateUtil.now
                 await monitor.remove(identifier)
-                let condition = CLMonitor.CircularGeographicCondition(
-                    center: CLLocationCoordinate2D(latitude: center.latitude, longitude: center.longitude),
-                    radius: radius
+                await monitor.add(
+                    center: center,
+                    radius: radius,
+                    identifier: identifier,
+                    assuming: record.lastState == .enter ? .satisfied : .unsatisfied
                 )
-                await monitor.add(condition, identifier: identifier, assuming: record.lastState == .enter ? .satisfied : .unsatisfied)
-                self.conditionReadds[identifier] = ConditionReadd(start: readdStart, added: Date(), center: center, radius: radius)
+                // Stamped straight off the `add`, before anything else runs. The contradiction
+                // gate replays events against this instant, and a log dispatched between the two
+                // pushes the anchor later than the OS actually accepted the circle.
+                let addedAt = self.dateUtil.now
+                self.conditionReadds[identifier] = ConditionReadd(start: readdStart, added: addedAt, center: center, radius: radius)
+                self.logger.geofenceConditionRemoved(identifier: identifier, op: .readd)
+                self.logger.geofenceConditionAdded(identifier: identifier)
                 self.knownConditionIdentifiers.insert(identifier)
                 rearmed += 1
             }
             guard rearmed > 0 else { return }
             self.persistConditionMirror()
             self.logger.geofenceForegroundRearm(count: rearmed)
+            await self.reportRegisteredConditions(on: monitor)
         }
     }
 }

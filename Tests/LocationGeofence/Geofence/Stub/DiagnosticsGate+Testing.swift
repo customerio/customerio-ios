@@ -15,16 +15,19 @@ import Foundation
 /// intermittently. No lock can be held across a suspension point, so the fix is not a better lock
 /// — a test that needs the gate must not await inside it. The one test that did now asserts on
 /// prose instead, which needs no gate at all.
+/// **A test that does not take this lock cannot assert on structured log tokens at all.**
+/// `GeofenceLog.tail` returns "" unless `GeofenceDiagnostics.isEnabled`, so `ev=`, `state=` and
+/// every other key are simply absent from the message. Assert on the log's PROSE instead — that is
+/// what `GeofenceVisitMonitorTests` does, and why. Reaching for a token and watching the count come
+/// back zero is the confusing way to discover this.
 enum DiagnosticsGateTesting {
-    private static let lock = NSRecursiveLock()
-
-    /// Runs `body` with the gate forced on or off, restoring the previous value after.
+    /// Runs `body` with the gate forced on or off. Task-local, so no lock is needed.
     static func withDiagnostics<T>(_ enabled: Bool, _ body: () throws -> T) rethrows -> T {
-        lock.lock()
-        defer { lock.unlock() }
-        let previous = GeofenceDiagnostics.overrideForTesting
-        GeofenceDiagnostics.overrideForTesting = enabled
-        defer { GeofenceDiagnostics.overrideForTesting = previous }
-        return try body()
+        try GeofenceDiagnostics.$overrideForTesting.withValue(enabled, operation: body)
+    }
+
+    /// Async counterpart, for a body that awaits.
+    static func withDiagnostics<T>(_ enabled: Bool, _ body: () async throws -> T) async rethrows -> T {
+        try await GeofenceDiagnostics.$overrideForTesting.withValue(enabled, operation: body)
     }
 }

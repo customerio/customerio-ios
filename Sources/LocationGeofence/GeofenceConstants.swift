@@ -76,4 +76,8 @@ enum GeofenceConstants {
     // drop valid data; per-value size is left to the server.
     static let maxMetadataCount = 100
     static let maxMetadataPayloadBytes = 100 * 1024 // ~20× the server's 5 KB total
+
+    /// Floor on the movement trigger's radius once polygons shrink it: below this the OS promotes
+    /// crossings too unreliably to be worth a wake, so a nearer boundary is reached late.
+    static let polygonWakeMinRadius: Double = 100
 }

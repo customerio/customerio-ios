@@ -21,16 +21,19 @@ actor GeofenceStorage {
 
     private let fileManager: FileManager
     private let directoryURL: URL?
-
+    /// `lastStateChangedAt` is weighed against fix timestamps, so it must come from the same clock.
+    private let dateUtil: DateUtil
     /// - Parameters:
     ///   - fileManager: File manager used for I/O. Defaults to `.default`.
     ///   - directoryURL: Directory for the state file. If `nil`, uses Application Support in the app container.
     init(
         fileManager: FileManager = .default,
-        directoryURL: URL? = nil
+        directoryURL: URL? = nil,
+        dateUtil: DateUtil = DIGraphShared.shared.dateUtil
     ) {
         self.fileManager = fileManager
         self.directoryURL = directoryURL
+        self.dateUtil = dateUtil
     }
 
     // MARK: - Event Cooldowns
@@ -114,7 +117,7 @@ actor GeofenceStorage {
     /// `forceReseed` overrides that preservation. The caller sets it when the OS stopped monitoring
     /// the condition since the last registration: the device can cross while unmonitored, so the
     /// persisted state is no longer known to match reality and keeping it would suppress the next
-    /// genuine crossing.
+    /// genuine crossing. Polygon belief is NOT reseeded with it — see `clearMonitorRegionRecord`.
     func recordMonitorRegistration(
         identifier: String,
         transitionTypes: Set<GeofenceTransition>,
@@ -122,19 +125,26 @@ actor GeofenceStorage {
         center: LocationData,
         radius: Double,
         forceReseed: Bool = false,
-        now: Date = Date()
+        now: Date? = nil // nil rather than `Date()`: a default expression cannot reach `dateUtil`.
     ) {
         var state = loadFromDisk() ?? GeofenceState()
         var records = state.monitorRegionRecords ?? [:]
         let existing = records[identifier]
         let unchangedGeometry = existing?.center == center && existing?.radius == radius
         let preserved = unchangedGeometry && !forceReseed
+        let stamp = now ?? dateUtil.now
         records[identifier] = MonitorRegionRecord(
             lastState: preserved ? (existing?.lastState ?? initialState) : initialState,
             transitionTypes: transitionTypes,
             center: center,
             radius: radius,
-            lastStateChangedAt: preserved ? existing?.lastStateChangedAt : now
+            lastStateChangedAt: preserved ? existing?.lastStateChangedAt : stamp,
+            // A new circle is a new incarnation: an OS event dated before this instant was computed
+            // against the old one (see `recordMonitorEvent`). Preserved with the baseline.
+            registeredAt: preserved ? existing?.registeredAt : stamp,
+            // The movement trigger keeps its identity across routine radius changes. Remember
+            // OS events already handled for it, even when the new geometry reseeds the state.
+            lastEventDate: (preserved || identifier == GeofenceConstants.movementTriggerIdentifier) ? existing?.lastEventDate : nil
         )
         state.monitorRegionRecords = records
         saveToDisk(state)
@@ -144,34 +154,84 @@ actor GeofenceStorage {
     /// compare-and-store runs inside the actor with no `await` between steps, so concurrent events
     /// cannot both observe a stale baseline and both deliver. The baseline advances on every state
     /// change — including transitions filtered from delivery — so an exit-only region still tracks
-    /// that the device entered, and the following exit is recognized as a change.
+    /// that the device entered, and the following exit is recognized as a change. A delayed exit
+    /// for an older movement-trigger circle can wake a pass without changing the new circle's state.
     ///
     /// `onlyIfBaselinePredates` makes the write conditional on the baseline's age, atomically with
     /// the compare-and-store: when set, a baseline written after that instant suppresses the event.
     /// The heal passes its fix's timestamp — a genuine OS crossing landing while the heal waited in
     /// the queue (or within the fix's own age) must win over a decision made from an older position.
+    ///
+    /// `osEventDate` is the OS path's evidence, judged against the record's own OS-dated history
+    /// rather than against `lastStateChangedAt`: an event dated at or before the last one processed
+    /// is a re-delivery; one dated before the current circle was installed is about a circle that no
+    /// longer exists, except for a delayed movement-trigger wake. Neither comparison involves the
+    /// instant the SDK happened to write anything —
+    /// which is what made the old rule, a reseed's write time against an event's OS date, answer
+    /// differently depending on how fast the OS queue drained (drive 5, 2026-09-12).
     func recordMonitorEvent(
         _ transition: GeofenceTransition,
         forIdentifier identifier: String,
         onlyIfBaselinePredates evidenceTimestamp: Date? = nil,
-        now: Date = Date()
+        osEventDate: Date? = nil,
+        now: Date? = nil
     ) -> GeofenceMonitorEventOutcome {
         var state = loadFromDisk() ?? GeofenceState()
         var records = state.monitorRegionRecords ?? [:]
         guard var record = records[identifier] else {
             // No registration record (condition predates this bookkeeping). Establish the baseline
             // without delivering — mirrors classic registration, which is silent about the initial state.
-            records[identifier] = MonitorRegionRecord(lastState: transition, transitionTypes: [.enter, .exit], lastStateChangedAt: now)
+            records[identifier] = MonitorRegionRecord(
+                lastState: transition, transitionTypes: [.enter, .exit], lastStateChangedAt: now ?? dateUtil.now, lastEventDate: osEventDate
+            )
             state.monitorRegionRecords = records
             saveToDisk(state)
             return .suppressedNoBaseline
         }
-        if let evidenceTimestamp, let changedAt = record.lastStateChangedAt, changedAt > evidenceTimestamp {
+        // A movement-trigger exit can arrive just after its circle was re-planted while carrying
+        // the old circle's OS date. Only the untouched re-plant baseline is exempt: a later heal
+        // or crossing is newer evidence and must keep its normal ordering guard.
+        let delayedMovementExit: Bool
+        if identifier == GeofenceConstants.movementTriggerIdentifier, transition == .exit,
+           let osEventDate, let registeredAt = record.registeredAt,
+           let changedAt = record.lastStateChangedAt {
+            delayedMovementExit = osEventDate < registeredAt && changedAt == registeredAt
+        } else {
+            delayedMovementExit = false
+        }
+        if let osEventDate {
+            // A genuine exit dated just before a routine trigger re-plant still wakes a movement
+            // pass, but only while that re-plant remains the newest baseline. The redelivery guard
+            // below rejects an exit already handled before the re-plant.
+            if !delayedMovementExit,
+               let registeredAt = record.registeredAt, osEventDate < registeredAt { return .suppressedPredatesRegistration }
+            if let lastEventDate = record.lastEventDate, osEventDate <= lastEventDate { return .suppressedRedelivery }
+            record.lastEventDate = osEventDate
+        }
+        if !delayedMovementExit,
+           let evidenceTimestamp, let changedAt = record.lastStateChangedAt, changedAt > evidenceTimestamp {
             return .suppressedNewerBaseline
         }
-        guard record.lastState != transition else { return .suppressedNoChange }
+        if delayedMovementExit {
+            // Deliver the old circle's wake once, but leave the new circle's seeded state intact.
+            // The movement pass may fail before it re-plants; otherwise its next real exit would
+            // look unchanged and never reach the pass. Persist the OS date for redelivery dedup.
+            records[identifier] = record
+            state.monitorRegionRecords = records
+            saveToDisk(state)
+            return record.transitionTypes.contains(transition) ? .deliver : .suppressedFilteredType
+        }
+        guard record.lastState != transition else {
+            // Nothing to deliver, but the event is now seen: persist its date so a later copy is refused.
+            if osEventDate != nil {
+                records[identifier] = record
+                state.monitorRegionRecords = records
+                saveToDisk(state)
+            }
+            return .suppressedNoChange
+        }
         record.lastState = transition
-        record.lastStateChangedAt = now
+        record.lastStateChangedAt = now ?? dateUtil.now
         records[identifier] = record
         state.monitorRegionRecords = records
         saveToDisk(state)
@@ -187,15 +247,19 @@ actor GeofenceStorage {
     /// Drops the baseline for a condition the OS stopped monitoring, so the next registration
     /// reseeds from the device's real position rather than carrying a state it may have left while
     /// unmonitored — an unchanged-geometry re-register would preserve that stale value.
+    ///
+    /// Polygon belief deliberately SURVIVES: a crossing during the gap is unknowable, so every rule
+    /// guesses, and dropping guesses "it left" — a device that stayed then looks brand new, and a
+    /// brand-new polygon found inside delivers an enter the customer already had. Keeping still
+    /// yields the exit when it did leave; it loses only left-AND-returned, the rarest case.
     func clearMonitorRegionRecord(identifier: String) {
         var state = loadFromDisk() ?? GeofenceState()
-        guard var records = state.monitorRegionRecords, records.removeValue(forKey: identifier) != nil else { return }
-        state.monitorRegionRecords = records
+        guard state.monitorRegionRecords?.removeValue(forKey: identifier) != nil else { return }
         saveToDisk(state)
     }
 
-    /// Clears the cooldown map, last-sync record, registration set, and monitor baselines but
-    /// preserves the cached geofences and config. Called on sign-out: the workspace cache is shared
+    /// Clears the cooldown map, last-sync record, registration set, monitor baselines and polygon
+    /// beliefs but preserves the cached geofences and config. Called on sign-out: the workspace cache is shared
     /// across users, while cooldowns belong to the signed-out user and the last-sync anchor would
     /// otherwise let the freshness gate skip the first sync for the next signed-in user against stale
     /// state. `monitorRegionRecords` is dropped so the next session can't inherit a stale per-region
@@ -208,6 +272,7 @@ actor GeofenceStorage {
         state.movementTriggerCenter = nil
         state.monitoredGeofenceIds = nil
         state.monitorRegionRecords = nil
+        state.polygonMembership = nil
         saveToDisk(state)
     }
 
@@ -259,48 +324,10 @@ actor GeofenceStorage {
         saveToDisk(state)
     }
 
-    // MARK: - Last Registration
-
-    /// Center of the most recent OS registration (the movement-trigger center). The sync
-    /// decision measures distance from here to detect a stale ranking — the device moved
-    /// beyond the trigger radius while the app was dead, so the registered nearest-set is
-    /// no longer the closest geofences and needs a local re-rank.
-    func getLastRegistrationCenter() -> LocationData? {
-        loadFromDisk()?.movementTriggerCenter
-    }
-
-    /// Business geofence IDs registered with the OS at the last registration. Lets the sync
-    /// decision spot a cache that holds regions while nothing is registered (e.g. regs lost
-    /// on sign-out) and re-register instead of skipping.
-    func getRegisteredBusinessIds() -> Set<String> {
-        loadFromDisk()?.monitoredGeofenceIds ?? []
-    }
-
-    /// Records the registration anchor + business IDs in one load-modify-save. Updated on every
-    /// registration, including a local re-rank, so the ranking-staleness reference follows the
-    /// device. Distinct from `recordSync` (the API-fetch anchor), which a local re-rank leaves intact.
-    func recordRegistration(center: LocationData, businessIds: Set<String>) {
-        var state = loadFromDisk() ?? GeofenceState()
-        state.movementTriggerCenter = center
-        state.monitoredGeofenceIds = businessIds
-        // Drop per-condition baselines for regions this registration no longer covers. A record
-        // survives `stopMonitoring` on purpose, so an unchanged re-register keeps its baseline and
-        // CLMonitor's re-evaluation stays silent — but a region *evicted* from the set is a
-        // different case. It goes unmonitored, so no EXIT ever balances a `.enter` baseline, and a
-        // later re-registration with the same circle keeps that stale value instead of the state
-        // the device is actually in. The next genuine arrival then reads as no change and is
-        // dropped. Retaining exactly the registered set bounds the records the same way
-        // `monitoredGeofenceIds` is bounded, and clears anything a previous version stranded.
-        if let records = state.monitorRegionRecords {
-            let retained = businessIds.union([GeofenceConstants.movementTriggerIdentifier])
-            state.monitorRegionRecords = records.filter { retained.contains($0.key) }
-        }
-        saveToDisk(state)
-    }
-
     // MARK: - Private (file persistence)
 
-    private func loadFromDisk() -> GeofenceState? {
+    // Internal (not private): reached by the `+PolygonMembership` extension in its own file.
+    func loadFromDisk() -> GeofenceState? {
         guard let url = stateFileURL() else { return nil }
         guard fileManager.fileExists(atPath: url.path),
               let data = try? Data(contentsOf: url)
@@ -310,7 +337,7 @@ actor GeofenceStorage {
         return try? Self.makeDecoder().decode(GeofenceState.self, from: data)
     }
 
-    private func saveToDisk(_ state: GeofenceState) {
+    func saveToDisk(_ state: GeofenceState) {
         guard let data = try? Self.makeEncoder().encode(state),
               let url = stateFileURL()
         else {
@@ -365,32 +392,4 @@ actor GeofenceStorage {
         decoder.dateDecodingStrategy = .secondsSince1970
         return decoder
     }
-}
-
-/// Disposition of a state observed off `CLMonitor.events`, decided by
-/// `GeofenceStorage.recordMonitorEvent(_:forIdentifier:)`.
-enum GeofenceMonitorEventOutcome: Equatable, Sendable, CaseIterable {
-    /// Genuine state change of a registered transition type — deliver it.
-    case deliver
-    /// Same state as the baseline — a CLMonitor re-emission (relaunch/unlock/foreground), not a crossing.
-    case suppressedNoChange
-    /// Genuine state change, but the region wasn't registered for this transition type.
-    case suppressedFilteredType
-    /// First observation for a condition with no registration record — baseline established, nothing delivered.
-    case suppressedNoBaseline
-    /// The baseline was written after the caller's evidence (`onlyIfBaselinePredates`) — e.g. a
-    /// heal whose fix predates an OS crossing that landed while the heal was queued.
-    case suppressedNewerBaseline
-}
-
-// MARK: - DI
-
-extension DIGraphShared {
-    var customGeofenceStorage: GeofenceStorage {
-        GeofenceStorage.shared
-    }
-}
-
-extension GeofenceStorage {
-    static let shared = GeofenceStorage()
 }

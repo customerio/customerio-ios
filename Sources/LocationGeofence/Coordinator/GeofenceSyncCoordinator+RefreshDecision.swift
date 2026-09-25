@@ -24,6 +24,14 @@ extension GeofenceSyncCoordinatorImpl {
         return .skip
     }
 
+    /// True once the device has moved far enough from the last registration centre to re-rank.
+    /// Measured from that centre, never from the trigger: the trigger moves on every polygon wake,
+    /// so anchoring to it would reset the distance each time and re-ranking would never come due.
+    func movedBeyondRerankRadius(to location: LocationData, config: GeofenceConfig) async -> Bool {
+        guard let center = await storage.getLastRegistrationCenter() else { return true }
+        return distance(from: center, to: location) >= config.localRefreshTriggerRadius
+    }
+
     /// True once the device has moved beyond the refetch radius from the fetch anchor — the cached
     /// set was ranked around that anchor and no longer covers the area. False when there's no anchor
     /// to measure from.
@@ -53,5 +61,19 @@ extension GeofenceSyncCoordinatorImpl {
     func distance(from: LocationData, to: LocationData) -> Double {
         CLLocation(latitude: from.latitude, longitude: from.longitude)
             .distance(from: CLLocation(latitude: to.latitude, longitude: to.longitude))
+    }
+
+    /// Drops polygons the OS cannot monitor BEFORE ranking, so a fence that would be refused does
+    /// not consume one of `maxBusinessGeofences` and leave a usable candidate unregistered.
+    @MainActor
+    func monitorableRegions(_ regions: [Geofence]) -> [Geofence] {
+        let maximumRadius = monitor.maximumMonitoringRadius
+        return regions.filter { region in
+            guard region.vertices != nil, region.radius > maximumRadius else { return true }
+            logger.geofencePolygonExceedsMonitoringLimit(
+                identifier: region.id, radius: region.radius, limit: maximumRadius
+            )
+            return false
+        }
     }
 }

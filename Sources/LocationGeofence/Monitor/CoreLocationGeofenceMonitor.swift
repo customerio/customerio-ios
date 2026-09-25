@@ -24,35 +24,30 @@ final class CoreLocationGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @pr
         case blocked
     }
 
-    private let manager: CLLocationManager
-    private let logger: Logger
+    let manager: CLLocationManager
+    let logger: Logger
     /// Freshens the fix behind movement-trigger EXIT dispatches (see `MovementFixResolver`).
-    private let movementFixResolver: MovementFixResolver
-    private var onTransition: GeofenceTransitionHandler?
+    let movementFixResolver: MovementFixResolver
+    var onTransition: GeofenceTransitionHandler?
     private var onAuthorizationChanged: GeofenceAuthorizationChangedHandler?
     private var lastLoggedPermissionTier: PermissionTier?
-    private var ownedRegionIdentifiers: Set<String> = []
-    private struct PendingRegionEvent {
-        let identifier: String
-        let transition: GeofenceTransition
-        let location: LocationData?
-        /// Fix as it stood when the OS reported the crossing. Carried so the deferred
-        /// `os.callback.received` record reports receive-time truth rather than drain-time.
-        let fix: CLLocation?
-        let fixSource: GeofenceLog.FixSource
-    }
+    var ownedRegionIdentifiers: Set<String> = []
 
     /// Region events received before the bootstrap bound `onTransition` (see `handleRegionEvent`).
-    private var pendingEvents: [PendingRegionEvent] = []
-    private var isDrainingPendingEvents = false
-    private static let maxPendingEvents = 64
+    var pendingEvents: [PendingRegionEvent] = []
+    var isDrainingPendingEvents = false
+    static let maxPendingEvents = 64
 
-    init(logger: Logger) {
+    let dateUtil: DateUtil
+
+    init(logger: Logger, dateUtil: DateUtil = DIGraphShared.shared.dateUtil) {
+        self.dateUtil = dateUtil
         self.manager = CLLocationManager()
         self.logger = logger
         self.movementFixResolver = MovementFixResolver(
             logger: logger,
-            backgroundTaskRunner: GeofenceBackgroundTime.runner(name: "io.customer.geofence.movement-fix")
+            backgroundTaskRunner: GeofenceBackgroundTime.runner(name: "io.customer.geofence.movement-fix"),
+            dateUtil: dateUtil
         )
         super.init()
         manager.delegate = self
@@ -74,7 +69,7 @@ final class CoreLocationGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @pr
         let adopted = identifiers.intersection(osMonitoredRegionIdentifiers)
         guard !adopted.isEmpty else { return }
         ownedRegionIdentifiers.formUnion(adopted)
-        logger.geofenceRegionsAdopted(count: adopted.count)
+        logger.geofenceRegionsAdopted(identifiers: Array(adopted))
     }
 
     func setOnTransition(_ handler: GeofenceTransitionHandler?) {
@@ -177,86 +172,6 @@ final class CoreLocationGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @pr
         handleRegionEvent(region, transition: .exit)
     }
 
-    /// Delivers a region event, holding it until the bootstrap binds `onTransition`: on a cold wake
-    /// the delegate can go live before bind/adopt run (any DI path constructing the monitor), and a
-    /// crossing delivered then would be dropped with no re-emission. Ownership is checked at drain —
-    /// after adopt populated it — which still filters buffered host-app events. New arrivals queue
-    /// behind any backlog and behind an in-flight drain, so per-region order holds. Capped against a
-    /// process that never binds; unlike CLMonitor there is no re-emission, but overflowing the cap
-    /// requires bind to never run, and then every buffered event is undeliverable anyway.
-    private func handleRegionEvent(_ region: CLRegion, transition: GeofenceTransition) {
-        guard region is CLCircularRegion else { return }
-        let mustBuffer = onTransition == nil || !pendingEvents.isEmpty || isDrainingPendingEvents
-        // The classic delegate carries no event date, so unlike the CLMonitor path there is no way
-        // to tell how long the OS sat on this before handing it over. `buf` at least distinguishes
-        // a crossing that waited on our own side for a handler to be bound.
-        //
-        // The fix is read here, when the OS handed the crossing over, but the record is only
-        // emitted once the region is known to be ours. A host app's own circular regions reach
-        // this delegate too, and recording before the ownership check wrote crossings we never
-        // owned — and the host's region identifiers — into a capture we hand around.
-        let receivedFix = bestKnownFixDetail()
-        if mustBuffer {
-            pendingEvents.append(PendingRegionEvent(
-                identifier: region.identifier,
-                transition: transition,
-                location: currentLocationData(),
-                fix: receivedFix?.fix,
-                fixSource: receivedFix?.source ?? .none
-            ))
-            if pendingEvents.count > Self.maxPendingEvents { pendingEvents.removeFirst() }
-            drainPendingEventsIfReady()
-            return
-        }
-        guard ownedRegionIdentifiers.contains(region.identifier) else { return }
-        logger.geofenceCallbackReceived(
-            identifier: region.identifier,
-            transition: transition,
-            fix: receivedFix?.fix,
-            source: receivedFix?.source ?? .none,
-            buffered: false
-        )
-        dispatchTransition(identifier: region.identifier, transition: transition, capturedLocation: currentLocationData())
-    }
-
-    private func drainPendingEventsIfReady() {
-        guard onTransition != nil, !isDrainingPendingEvents, !pendingEvents.isEmpty else { return }
-        isDrainingPendingEvents = true
-        Task { @MainActor [weak self] in
-            guard let self else { return }
-            while self.onTransition != nil, !self.pendingEvents.isEmpty {
-                let next = self.pendingEvents.removeFirst()
-                guard self.ownedRegionIdentifiers.contains(next.identifier) else { continue }
-                // Emitted at drain, not at receive: on the cold-wake path ownership is only
-                // knowable here. `buf=true` marks that delay; the fix is the one read when the OS
-                // reported the crossing, not the one current at drain.
-                self.logger.geofenceCallbackReceived(
-                    identifier: next.identifier,
-                    transition: next.transition,
-                    fix: next.fix,
-                    source: next.fixSource,
-                    buffered: true
-                )
-                self.dispatchTransition(identifier: next.identifier, transition: next.transition, capturedLocation: next.location)
-            }
-            self.isDrainingPendingEvents = false
-        }
-    }
-
-    /// Movement-trigger EXITs re-center the trigger and measure displacement at the attached
-    /// coords, so a frozen cached fix pins the whole pipeline to a stale point — freshen it first,
-    /// keeping the captured location only as the fallback. Fire-and-forget so a slow fix can't
-    /// stall the pending-event drain behind it. Business events keep the captured location.
-    private func dispatchTransition(identifier: String, transition: GeofenceTransition, capturedLocation: LocationData?) {
-        if identifier == GeofenceConstants.movementTriggerIdentifier, transition == .exit {
-            movementFixResolver.resolve(cached: bestKnownFix()) { [weak self] location in
-                self?.onTransition?(identifier, transition, location ?? capturedLocation)
-            }
-            return
-        }
-        onTransition?(identifier, transition, capturedLocation)
-    }
-
     func locationManager(_ manager: CLLocationManager, monitoringDidFailFor region: CLRegion?, withError error: Error) {
         guard let identifier = region?.identifier,
               ownedRegionIdentifiers.remove(identifier) != nil
@@ -268,6 +183,11 @@ final class CoreLocationGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @pr
     // We surface it to callers so the bootstrap can re-attempt registration when permission
     // improves mid-process (the initial fire after delegate-set is harmless — the bootstrap
     // already read the current status synchronously before installing the handler).
+    //
+    // Surfaced UNFILTERED, in both directions. Improvement is not the only case that matters:
+    // `GeofenceBootstrap.armVisitMonitoring` disarms visit monitoring off this callback when
+    // Always is withdrawn, and nothing else notices a downgrade. Narrowing this to improvements
+    // would leave visits running against a permission that no longer backs them.
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         onAuthorizationChanged?()
     }
@@ -310,23 +230,10 @@ final class CoreLocationGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @pr
         }
     }
 
-    /// Newest usable fix across the manager's cache and the resolver's requested fixes — the
-    /// manager's cache can freeze at process start on a long-suspended process.
-    private func bestKnownFix() -> CLLocation? {
-        bestKnownFixDetail()?.fix
-    }
+    /// `GeofenceFixSelecting`; `bestKnownFix()` and `bestKnownFixDetail()` come from its default.
+    var osCachedFix: CLLocation? { manager.location }
 
-    /// The same choice, reporting which source won — see the CLMonitor twin for why it matters.
-    private func bestKnownFixDetail() -> (fix: CLLocation, source: GeofenceLog.FixSource)? {
-        let cached = manager.location.flatMap { CLLocationCoordinate2DIsValid($0.coordinate) ? $0 : nil }
-        guard let resolved = movementFixResolver.latestFix else {
-            return cached.map { ($0, .managerCache) }
-        }
-        guard let cached else { return (resolved, .resolver) }
-        return resolved.timestamp > cached.timestamp ? (resolved, .resolver) : (cached, .managerCache)
-    }
-
-    private func currentLocationData() -> LocationData? {
+    func currentLocationData() -> LocationData? {
         guard let location = bestKnownFix() else { return nil }
         return LocationData(latitude: location.coordinate.latitude, longitude: location.coordinate.longitude)
     }
@@ -359,7 +266,7 @@ extension DIGraphShared {
     }
 }
 
-extension CoreLocationGeofenceMonitor {
+extension CoreLocationGeofenceMonitor: GeofenceFixSelecting {
     @MainActor
     static let shared = CoreLocationGeofenceMonitor(logger: DIGraphShared.shared.logger)
 }

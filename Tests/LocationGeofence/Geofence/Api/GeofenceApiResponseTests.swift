@@ -264,7 +264,7 @@ struct GeofenceApiResponseTests {
         """
         let response = try decode(json)
         var droppedIds: [String] = []
-        let regions = response.toDomainRegions(onInvalidRegion: { droppedIds.append($0) })
+        let regions = response.toDomainRegions(onInvalidRegion: { id, _ in droppedIds.append(id) })
 
         #expect(regions.map(\.id) == ["good"])
         #expect(droppedIds == ["bad"])
@@ -438,5 +438,63 @@ struct GeofenceApiResponseTests {
         }
         #expect(totalBytes <= GeofenceConstants.maxMetadataPayloadBytes)
         #expect(metadata.count < generated) // byte budget dropped some
+    }
+
+    // MARK: - One bad region must not cost the response
+
+    @Test
+    func decode_givenOneWrongTypedRegion_expectOthersSurvive() throws {
+        let json = """
+        {"geofences":[
+          {"id":"good","latitude":1,"longitude":2,"radius":100},
+          {"id":"bad","latitude":1,"longitude":2,"radius":"not-a-number"},
+          {"id":"alsoGood","latitude":3,"longitude":4,"radius":200}
+        ]}
+        """
+        let response = try decode(json)
+        #expect(response.receivedRegionCount == 3)
+        #expect(response.toDomainRegions().map(\.id) == ["good", "alsoGood"])
+    }
+
+    /// Distinguishes "the server sent none" from "none of them decoded" — the caller wipes the
+    /// cache on the first and must not on the second.
+    @Test
+    func decode_givenEveryRegionWrongTyped_expectCountPreservedAndListEmpty() throws {
+        let json = """
+        {"geofences":[
+          {"id":"a","latitude":1,"longitude":2,"radius":"nope"},
+          {"id":"b","latitude":"nope","longitude":2,"radius":100}
+        ]}
+        """
+        let response = try decode(json)
+        #expect(response.receivedRegionCount == 2)
+        #expect(response.geofences.isEmpty)
+    }
+
+    @Test
+    func decode_givenGenuinelyEmptyList_expectZeroReceived() throws {
+        let response = try decode("{\"geofences\":[]}")
+        #expect(response.receivedRegionCount == 0)
+    }
+
+    @Test
+    func toDomainRegions_givenUnknownShape_expectShapeReasonReported() throws {
+        let json = """
+        {"geofences":[{"id":"weird","shape":"hexagon","latitude":1,"longitude":2,"radius":100}]}
+        """
+        var reasons: [String: GeofenceRegionDropReason] = [:]
+        let regions = try decode(json).toDomainRegions(onInvalidRegion: { reasons[$0] = $1 })
+        #expect(regions.isEmpty)
+        #expect(reasons["weird"] == .unknownShape)
+    }
+
+    @Test
+    func toDomainRegions_givenUnusableCircle_expectCircleReasonReported() throws {
+        let json = """
+        {"geofences":[{"id":"c","latitude":91,"longitude":2,"radius":100}]}
+        """
+        var reasons: [String: GeofenceRegionDropReason] = [:]
+        _ = try decode(json).toDomainRegions(onInvalidRegion: { reasons[$0] = $1 })
+        #expect(reasons["c"] == .unusableCircle)
     }
 }

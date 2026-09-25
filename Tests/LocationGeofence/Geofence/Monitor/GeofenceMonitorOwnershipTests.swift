@@ -70,7 +70,7 @@ struct GeofenceMonitorOwnershipTests {
         withDiagnostics(true) {
             let logger = CapturingLogger()
             let monitor = CoreLocationGeofenceMonitor(logger: logger)
-            monitor.setOnTransition { _, _, _ in }
+            monitor.setOnTransition { _, _, _, _, _, _ in }
 
             monitor.locationManager(CLLocationManager(), didEnterRegion: hostRegion())
 
@@ -92,7 +92,7 @@ struct GeofenceMonitorOwnershipTests {
     func regionEvent_givenRegionNotOurs_expectIdentifierNeverLogged() {
         let logger = CapturingLogger()
         let monitor = CoreLocationGeofenceMonitor(logger: logger)
-        monitor.setOnTransition { _, _, _ in }
+        monitor.setOnTransition { _, _, _, _, _, _ in }
 
         monitor.locationManager(CLLocationManager(), didExitRegion: hostRegion())
 
@@ -110,7 +110,7 @@ struct GeofenceMonitorOwnershipTests {
         let monitor = CoreLocationGeofenceMonitor(logger: logger)
 
         monitor.locationManager(CLLocationManager(), didEnterRegion: hostRegion())
-        monitor.setOnTransition { _, _, _ in }
+        monitor.setOnTransition { _, _, _, _, _, _ in }
         // Let the drain task run; it is dispatched onto the main actor.
         await Task.yield()
 

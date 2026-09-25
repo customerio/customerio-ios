@@ -21,7 +21,7 @@ extension CLMonitorGeofenceMonitor {
     ///
     /// Each candidate's registered circle is CAPTURED here, synchronously with the calling sync's
     /// unchanged-diff, and re-verified when the operation drains: a later sync can stage a reshape
-    /// (updating `registeredConditions` synchronously) while its storage rewrite is still queued
+    /// (updating the ledger synchronously) while its storage rewrite is still queued
     /// behind this heal, and judging the old baseline against the new circle would synthesize a
     /// wrong transition. A candidate whose staged geometry or stored record no longer matches the
     /// capture is skipped — the reshape reseeds its baseline anyway.
@@ -30,11 +30,19 @@ extension CLMonitorGeofenceMonitor {
     /// genuine OS crossing recorded after the fix was taken — while the heal waited in the queue,
     /// or within the fix's own age — must win over a decision made from an older position, which
     /// would otherwise synthesize the reverse transition and dedup away the real one.
+    ///
+    /// **The OS event path passes the same guard, for the mirror of this reason.** A heal writes a
+    /// baseline without advancing `registeredAt` or `lastEventDate`, so the two OS-dated checks in
+    /// `recordMonitorEvent` cannot see it: an event dated BEFORE a heal that already synthesized
+    /// the opposite state clears both and reverses newer evidence. That path passes the event's
+    /// own date — and stamps the baseline with it via `now:` — so the comparison stays on the OS
+    /// clock at both ends and does not reintroduce the drain-order dependence drive 5 measured,
+    /// which came from weighing a reseed's wall-clock write time against an event's OS date.
     func enqueueBaselineHeal(candidates: [String]) {
-        // Captured before the enqueue: `registeredConditions` at this instant is what the calling
+        // Captured before the enqueue: the ledger at this instant is what the calling
         // sync just diffed as unchanged.
         let expectedConditions = candidates.reduce(into: [String: RegisteredCondition]()) {
-            $0[$1] = registeredConditions[$1]
+            $0[$1] = conditionLedger.condition(for: $1)
         }
         guard !expectedConditions.isEmpty else { return }
         enqueueMonitorOperation { [weak self] _ in
@@ -43,7 +51,7 @@ extension CLMonitorGeofenceMonitor {
             let records = await self.storage.getMonitorRegionRecords()
             for (identifier, condition) in expectedConditions.sorted(by: { $0.key < $1.key }) {
                 guard self.ownedRegionIdentifiers.contains(identifier),
-                      self.registeredConditions[identifier] == condition,
+                      self.conditionLedger.condition(for: identifier) == condition,
                       let record = records[identifier],
                       record.center == condition.center, record.radius == condition.radius
                 else { continue }
@@ -54,18 +62,22 @@ extension CLMonitorGeofenceMonitor {
                     horizontalAccuracy: fix.horizontalAccuracy,
                     // Age at drain time, so a delayed drain disqualifies the fix instead of
                     // trusting a snapshot that has gone stale in the queue.
-                    fixAge: -fix.timestamp.timeIntervalSinceNow,
+                    fixAge: self.dateUtil.now.timeIntervalSince(fix.timestamp),
                     lastState: record.lastState
                 ) else { continue }
                 // A heal that decides a crossing is real and is then refused by the baseline used
                 // to vanish. Reported as `baseline.refused`, not `os.callback.dropped`: nothing
-                // arrived from the OS on this path. This is also the only site that can return
-                // `.suppressedNewerBaseline` — the OS path passes no evidence timestamp — so
-                // without this the token exists but can never print.
+                // arrived from the OS on this path. The OS path passes an evidence timestamp too,
+                // so `.suppressedNewerBaseline` can print from either side: there it means a heal
+                // outran an older OS copy, here that a genuine crossing outran this heal.
+                // Stamped with the fix's time, not the drain time, so the baseline records when the
+                // evidence was taken rather than when the queue reached it. Only this path reads
+                // that stamp back.
                 let outcome = await self.storage.recordMonitorEvent(
                     transition,
                     forIdentifier: identifier,
-                    onlyIfBaselinePredates: fix.timestamp
+                    onlyIfBaselinePredates: fix.timestamp,
+                    now: fix.timestamp
                 )
                 guard case .deliver = outcome else {
                     if let reason = outcome.diagnosticReason {
@@ -77,7 +89,16 @@ extension CLMonitorGeofenceMonitor {
                 self.onTransition?(
                     identifier,
                     transition,
-                    LocationData(latitude: fix.coordinate.latitude, longitude: fix.coordinate.longitude)
+                    LocationData(latitude: fix.coordinate.latitude, longitude: fix.coordinate.longitude),
+                    fix.timestamp,
+                    // A heal only synthesizes off a fix it just gated as fresh.
+                    true,
+                    // Synthesized against the condition in hand, so the circle is known outright
+                    // rather than looked up by date.
+                    .circle(MonitoredCircle(
+                        center: condition.center, radius: condition.radius,
+                        maximumRadius: self.authManager.maximumRegionMonitoringDistance
+                    ))
                 )
             }
         }
@@ -94,7 +115,7 @@ extension CLMonitorGeofenceMonitor {
     /// wins; the decision's fix-age guard applies to the result.
     private func resolveHealFix() async -> CLLocation? {
         await withCheckedContinuation { continuation in
-            movementFixResolver.resolve(cached: bestKnownFix()) { [weak self] _ in
+            movementFixResolver.resolve(cached: bestKnownFix(), purpose: .baselineHeal) { [weak self] _, _ in
                 continuation.resume(returning: self?.bestKnownFix())
             }
         }

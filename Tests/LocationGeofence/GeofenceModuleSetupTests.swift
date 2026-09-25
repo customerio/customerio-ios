@@ -23,6 +23,8 @@ struct GeofenceModuleSetupTests {
         defer { f.cleanup() }
 
         let (resetSignal, resetContinuation) = AsyncStream<Void>.makeStream()
+        let resetContinuationWatchdog = bounded(resetContinuation)
+        defer { resetContinuationWatchdog.cancel() }
         f.spyCoordinator.resetClosure = {
             resetContinuation.yield()
             return .success(())
@@ -48,7 +50,9 @@ struct GeofenceModuleSetupTests {
         defer { f.cleanup() }
 
         let (refreshSignal, refreshContinuation) = AsyncStream<Void>.makeStream()
-        f.spyCoordinator.refreshClosure = { _, _ in
+        let refreshContinuationWatchdog = bounded(refreshContinuation)
+        defer { refreshContinuationWatchdog.cancel() }
+        f.spyCoordinator.refreshClosure = { _, _, _ in
             refreshContinuation.yield()
             return .success(())
         }
@@ -89,7 +93,9 @@ struct GeofenceModuleSetupTests {
         defer { f.cleanup() }
 
         let (refreshSignal, refreshContinuation) = AsyncStream<(Double, Double)>.makeStream()
-        f.spyCoordinator.refreshClosure = { lat, lon in
+        let refreshContinuationWatchdog = bounded(refreshContinuation)
+        defer { refreshContinuationWatchdog.cancel() }
+        f.spyCoordinator.refreshClosure = { lat, lon, _ in
             refreshContinuation.yield((lat, lon))
             return .success(())
         }
@@ -116,7 +122,9 @@ struct GeofenceModuleSetupTests {
         await f.di.geofenceStorage.recordRegistration(center: LocationData(latitude: 10, longitude: 20), businessIds: ["g1"])
 
         let (refreshSignal, refreshContinuation) = AsyncStream<(Double, Double)>.makeStream()
-        f.spyCoordinator.refreshClosure = { lat, lon in
+        let refreshContinuationWatchdog = bounded(refreshContinuation)
+        defer { refreshContinuationWatchdog.cancel() }
+        f.spyCoordinator.refreshClosure = { lat, lon, _ in
             refreshContinuation.yield((lat, lon))
             return .success(())
         }
@@ -137,7 +145,7 @@ struct GeofenceModuleSetupTests {
         let f = Fixture(cachedLocation: LocationData(latitude: 7, longitude: 8), identifiedUserId: nil)
         defer { f.cleanup() }
 
-        f.spyCoordinator.refreshClosure = { _, _ in .success(()) }
+        f.spyCoordinator.refreshClosure = { _, _, _ in .success(()) }
 
         f.wire()
         // The user gate is synchronous (no Task spawned), so nothing can have run.
@@ -152,6 +160,8 @@ struct GeofenceModuleSetupTests {
         defer { f.cleanup() }
 
         let (signal, continuation) = AsyncStream<Void>.makeStream()
+        let continuationWatchdog = bounded(continuation)
+        defer { continuationWatchdog.cancel() }
         f.stub.onRequestSilently = { continuation.yield() }
 
         f.wire()
@@ -171,10 +181,14 @@ struct GeofenceModuleSetupTests {
         defer { f.cleanup() }
 
         let (readSignal, readContinuation) = AsyncStream<Void>.makeStream()
+        let readContinuationWatchdog = bounded(readContinuation)
+        defer { readContinuationWatchdog.cancel() }
         f.stub.onGetLastKnown = { readContinuation.yield() }
 
         let (refreshSignal, refreshContinuation) = AsyncStream<(Double, Double)>.makeStream()
-        f.spyCoordinator.refreshClosure = { lat, lon in
+        let refreshContinuationWatchdog = bounded(refreshContinuation)
+        defer { refreshContinuationWatchdog.cancel() }
+        f.spyCoordinator.refreshClosure = { lat, lon, _ in
             refreshContinuation.yield((lat, lon))
             return .success(())
         }
@@ -207,13 +221,11 @@ struct GeofenceModuleSetupTests {
         // The anchor read is the last await before the no-anchor branch runs, so awaiting it as a
         // barrier guarantees the launch arm + acquire-gate decision has executed before we assert.
         let (readSignal, readContinuation) = AsyncStream<Void>.makeStream()
+        let readContinuationWatchdog = bounded(readContinuation)
+        defer { readContinuationWatchdog.cancel() }
         f.stub.onGetLastKnown = { readContinuation.yield() }
 
-        let (refreshSignal, refreshContinuation) = AsyncStream<(Double, Double)>.makeStream()
-        f.spyCoordinator.refreshClosure = { lat, lon in
-            refreshContinuation.yield((lat, lon))
-            return .success(())
-        }
+        f.spyCoordinator.refreshClosure = { _, _, _ in .success(()) }
 
         f.wire()
 
@@ -224,13 +236,18 @@ struct GeofenceModuleSetupTests {
         #expect(f.stub.requestSilentlyCount.wrappedValue == 0)
 
         // But launch still armed the first-run refresh, so a host-driven fix drives the sync.
+        // The arm is written after the read above returns and, in manual mode, has no observable
+        // of its own; a fix delivered before it is a no-op. So deliver until one is consumed.
         let locAcquired = try #require(f.bus.observers[LocationAcquiredEvent.key], "LocationAcquiredEvent observer must be registered")
-        locAcquired(LocationAcquiredEvent(location: LocationData(latitude: 9, longitude: 10)))
-
-        var refreshIter = refreshSignal.makeAsyncIterator()
-        let received = await refreshIter.next()
-        #expect(received?.0 == 9)
-        #expect(received?.1 == 10)
+        let refreshed = await settle {
+            if f.spyCoordinator.refreshCallsCount == 0 {
+                locAcquired(LocationAcquiredEvent(location: LocationData(latitude: 9, longitude: 10)))
+            }
+            return f.spyCoordinator.refreshCallsCount >= 1
+        }
+        #expect(refreshed, "the armed first-run refresh never consumed the host's fix")
+        #expect(f.spyCoordinator.refreshReceivedArguments?.latitude == 9)
+        #expect(f.spyCoordinator.refreshReceivedArguments?.longitude == 10)
         #expect(f.stub.requestSilentlyCount.wrappedValue == 0)
     }
 
@@ -243,7 +260,9 @@ struct GeofenceModuleSetupTests {
         defer { f.cleanup() }
 
         let (refreshSignal, refreshContinuation) = AsyncStream<(Double, Double)>.makeStream()
-        f.spyCoordinator.refreshClosure = { lat, lon in
+        let refreshContinuationWatchdog = bounded(refreshContinuation)
+        defer { refreshContinuationWatchdog.cancel() }
+        f.spyCoordinator.refreshClosure = { lat, lon, _ in
             refreshContinuation.yield((lat, lon))
             return .success(())
         }
@@ -274,7 +293,9 @@ struct GeofenceModuleSetupTests {
         defer { f.cleanup() }
 
         let (refreshSignal, refreshContinuation) = AsyncStream<Void>.makeStream()
-        f.spyCoordinator.refreshClosure = { _, _ in
+        let refreshContinuationWatchdog = bounded(refreshContinuation)
+        defer { refreshContinuationWatchdog.cancel() }
+        f.spyCoordinator.refreshClosure = { _, _, _ in
             refreshContinuation.yield()
             return .success(())
         }
@@ -288,6 +309,62 @@ struct GeofenceModuleSetupTests {
         locAcquired(LocationAcquiredEvent(location: LocationData(latitude: 3, longitude: 4)))
 
         #expect(f.spyCoordinator.refreshCallsCount == 1)
+    }
+
+    // MARK: - Visit arming
+
+    /// These live in this suite rather than their own so they do not run in PARALLEL with it.
+    /// Swift Testing runs separate suites concurrently, and both use `@MainActor`; a sibling
+    /// holding the actor starved the disarm hop and timed the barrier out here while the tests
+    /// passed in isolation.
+
+    @Test
+    @MainActor
+    func identify_givenSetupRanBeforeIdentify_expectVisitsArmed() async throws {
+        let f = Fixture(identifiedUserId: nil)
+        defer { f.cleanup() }
+        f.wire()
+
+        // Bootstrap arms on its own task and, with no user yet, disarms. Waiting for THAT to land
+        // first is what makes this test discriminating: once it has, a later `start` can only have
+        // come from the identify observer. Asserting without the barrier passes either way,
+        // because bootstrap's own arming is free to run inside the wait below.
+        try await f.settle { f.visitMonitor.stopCallCount == 1 }
+        #expect(f.visitMonitor.startCallCount == 0)
+
+        f.contextStore.setUserId("u1")
+        let identify = try #require(
+            f.bus.observers[ProfileIdentifiedEvent.key], "ProfileIdentifiedEvent observer must be registered"
+        )
+        identify(ProfileIdentifiedEvent(identifier: "u1"))
+
+        try await f.settle { f.visitMonitor.startCallCount == 1 }
+    }
+
+    /// Sign-out must disarm: a visit waking a signed-out process evaluates an empty set.
+    /// `bindVisits` refuses the delivery but leaves the monitor running, so only this disarms.
+    @Test
+    @MainActor
+    func reset_givenVisitsArmed_expectDisarmed() async throws {
+        let f = Fixture(identifiedUserId: "u1")
+        defer { f.cleanup() }
+        // The generated mock returns an implicitly-unwrapped value; unstubbed it traps and takes
+        // the whole test process with it.
+        f.spyCoordinator.resetClosure = { .success(()) }
+        f.wire()
+
+        // Same barrier as above, for the same reason: let bootstrap's own arming land before
+        // measuring, or a `stop` it issues is indistinguishable from the one reset owes us.
+        try await f.settle { f.visitMonitor.startCallCount == 1 }
+        #expect(f.visitMonitor.stopCallCount == 0)
+
+        // Cleared before the event, matching production: `commonClearIdentify` calls
+        // `clearUserId()` before `analytics.reset()`, and it is that reset which posts the event.
+        f.contextStore.setUserId(nil)
+        let reset = try #require(f.bus.observers[ResetEvent.key], "ResetEvent observer must be registered")
+        reset(ResetEvent())
+
+        try await f.settle { f.visitMonitor.stopCallCount == 1 }
     }
 }
 
@@ -303,6 +380,8 @@ private struct Fixture {
     let state: GeofenceModuleState
     let stub: StubLocationServices
     let locationMode: GeofenceLocationMode
+    let visitMonitor: MockGeofenceVisitMonitor
+    let contextStore: BackgroundDeliveryContextStore
 
     init(cachedLocation: LocationData? = nil, locationMode: GeofenceLocationMode = .automatic, identifiedUserId: String? = "test-user") {
         self.locationMode = locationMode
@@ -316,6 +395,10 @@ private struct Fixture {
         let contextStore = BackgroundDeliveryContextStore(fileManager: .default, directoryURL: tempDir)
         contextStore.setUserId(identifiedUserId)
         di.override(value: contextStore, forType: BackgroundDeliveryContextStore.self)
+        self.contextStore = contextStore
+
+        self.visitMonitor = MockGeofenceVisitMonitor()
+        di.override(value: visitMonitor as GeofenceVisitMonitoring, forType: GeofenceVisitMonitoring.self)
 
         self.spyCoordinator = GeofenceSyncCoordinatorMock()
         di.override(value: spyCoordinator as GeofenceSyncCoordinator, forType: GeofenceSyncCoordinator.self)
@@ -335,6 +418,28 @@ private struct Fixture {
 
     func wire() {
         state.setup(di: di, locationMode: locationMode)
+    }
+
+    /// Waits for a condition the module's own tasks satisfy, so a test measures the step it names
+    /// rather than whatever bootstrap happened to do inside a bare yield loop.
+    ///
+    /// `Date`/`Task.sleep(nanoseconds:)` rather than `ContinuousClock`/`Duration`: those are
+    /// iOS 16+, and this package builds against iOS 13.
+    func settle(
+        _ condition: () -> Bool,
+        within: TimeInterval = 10,
+        sourceLocation: SourceLocation = #_sourceLocation
+    ) async throws {
+        let deadline = Date().addingTimeInterval(within)
+        while Date() < deadline {
+            // Await the bootstrap chains first: arming runs through process-global run/arm chains
+            // that a concurrent suite can hold, so this waits as long as the coupling needs rather
+            // than racing a fixed deadline. The deadline is only a backstop.
+            await GeofenceBootstrap.awaitPendingWorkForTesting()
+            if condition() { return }
+            try await Task.sleep(nanoseconds: 5000000)
+        }
+        Issue.record("condition not met within \(within)s", sourceLocation: sourceLocation)
     }
 
     func cleanup() {
@@ -388,4 +493,20 @@ private final class CapturingEventBusHandler: EventBusHandler, @unchecked Sendab
     func loadEventsFromStorage() async {}
     func removeFromStorage<E: EventRepresentable>(_ event: E) async {}
     func removeAllObservers() {}
+}
+
+/// Bounds a signal the test awaits: if the SDK never sends it, the stream finishes and the await
+/// returns `nil`, so the test fails instead of hanging the whole run.
+private func bounded<T>(_ continuation: AsyncStream<T>.Continuation, seconds: TimeInterval = 5) -> Task<Void, Never> {
+    Task {
+        do {
+            try await Task.sleep(nanoseconds: UInt64(seconds * 1000000000))
+        } catch {
+            // Cancelled, which is how a test disarms this watchdog once the signal it was guarding
+            // has arrived. `try?` here swallowed the cancellation and fell through to `finish()`,
+            // so cancelling the watchdog closed the stream instead of standing it down.
+            return
+        }
+        continuation.finish()
+    }
 }

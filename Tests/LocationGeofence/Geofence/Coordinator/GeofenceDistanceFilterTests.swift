@@ -153,4 +153,102 @@ struct GeofenceDistanceFilterTests {
         let result = filter.nearest(regions, to: origin, limit: 3, maxDistance: GeofenceConstants.noMonitoringDistanceCap)
         #expect(result.map(\.id) == ["inside-a", "inside-b", "outside"])
     }
+
+    // MARK: - Polygons rank by their ring, not their covering circle
+
+    private func makeSquare(id: String, longitude: Double, halfSide: Double, radius: Double) -> Geofence {
+        makePolygon(id: id, longitude: longitude, radius: radius, halfWidth: halfSide, halfLength: halfSide)
+    }
+
+    /// ~800 m long, ~44 m wide, north–south, covering circle 401 m.
+    private func makeStrip(id: String, longitude: Double) -> Geofence {
+        makePolygon(id: id, longitude: longitude, radius: 401, halfWidth: 0.0002, halfLength: 0.0036)
+    }
+
+    private func makePolygon(id: String, longitude: Double, radius: Double, halfWidth: Double, halfLength: Double) -> Geofence {
+        Geofence(
+            id: id,
+            latitude: 0,
+            longitude: longitude,
+            radius: radius,
+            name: id,
+            transitionTypes: [.enter, .exit],
+            lastUpdated: Date(timeIntervalSince1970: 0),
+            vertices: [
+                LocationData(latitude: -halfLength, longitude: longitude - halfWidth),
+                LocationData(latitude: -halfLength, longitude: longitude + halfWidth),
+                LocationData(latitude: halfLength, longitude: longitude + halfWidth),
+                LocationData(latitude: halfLength, longitude: longitude - halfWidth)
+            ]
+        )
+    }
+
+    @Test
+    func nearest_givenDeviceInPolygonCoveringCircleOnly_expectNearerCircleRanksFirst() {
+        // Strip: covering circle edge ~44 m, ring ~422 m. Circle edge ~300 m.
+        let regions = [
+            makeStrip(id: "strip", longitude: 0.004),
+            makeRegion(id: "circle", latitude: 0, longitude: -0.0036, radius: 100)
+        ]
+        let result = filter.nearest(regions, to: origin, limit: 1, maxDistance: GeofenceConstants.noMonitoringDistanceCap)
+        #expect(result.map(\.id) == ["circle"])
+    }
+
+    @Test
+    func nearest_givenDeviceInsidePolygon_expectItRanksAheadOfNearbyCircle() {
+        // Device ~22 m inside the shop's ring; circle edge ~10 m away.
+        let regions = [
+            makeSquare(id: "shop", longitude: 0, halfSide: 0.0002, radius: 40),
+            makeRegion(id: "circle", latitude: 0, longitude: -0.001, radius: 101)
+        ]
+        let result = filter.nearest(regions, to: origin, limit: 1, maxDistance: GeofenceConstants.noMonitoringDistanceCap)
+        #expect(result.map(\.id) == ["shop"])
+    }
+
+    @Test
+    func nearest_givenContainingPolygonAndCoveringCircleOnlyPolygon_expectContainingRanksFirst() {
+        // Both covering circles contain the device, but only the shop's ring does. The strip's
+        // smaller id would win a tie at 0.
+        let regions = [
+            makeStrip(id: "a-strip", longitude: 0.0025),
+            makeSquare(id: "z-shop", longitude: 0, halfSide: 0.0002, radius: 40)
+        ]
+        let result = filter.nearest(regions, to: origin, limit: 1, maxDistance: GeofenceConstants.noMonitoringDistanceCap)
+        #expect(result.map(\.id) == ["z-shop"])
+    }
+
+    @Test
+    func nearest_givenPolygonWhoseRingDoesNotBuild_expectRankedByCoveringCircle() {
+        // Two distinct positions, so no ring builds. Covering circle edge ~200 m, circle ~100 m.
+        let unbuildable = Geofence(
+            id: "unbuildable",
+            latitude: 0,
+            longitude: 0.0027,
+            radius: 100,
+            name: "unbuildable",
+            transitionTypes: [.enter, .exit],
+            lastUpdated: Date(timeIntervalSince1970: 0),
+            vertices: [
+                LocationData(latitude: 0, longitude: 0.0027),
+                LocationData(latitude: 0, longitude: 0.0028),
+                LocationData(latitude: 0, longitude: 0.0027)
+            ]
+        )
+        #expect(unbuildable.polygonRegion == nil)
+        let regions = [unbuildable, makeRegion(id: "circle", latitude: 0, longitude: -0.0018, radius: 100)]
+        let result = filter.nearest(regions, to: origin, limit: 1, maxDistance: GeofenceConstants.noMonitoringDistanceCap)
+        #expect(result.map(\.id) == ["circle"])
+    }
+
+    @Test
+    func nearest_givenElongatedAndCompactPolygons_expectNearerRingRanksFirst() {
+        // Strip: covering circle edge ~44 m, ring ~422 m. Square: covering circle edge ~302 m,
+        // ring ~311 m.
+        let regions = [
+            makeStrip(id: "strip", longitude: 0.004),
+            makeSquare(id: "square", longitude: -0.003, halfSide: 0.0002, radius: 32)
+        ]
+        let result = filter.nearest(regions, to: origin, limit: 1, maxDistance: GeofenceConstants.noMonitoringDistanceCap)
+        #expect(result.map(\.id) == ["square"])
+    }
 }
