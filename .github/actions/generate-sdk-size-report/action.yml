@@ -6,10 +6,6 @@ inputs:
   GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64:
     description: 'Maps to the secret, GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64. Used for code signing. See the Fastlane config files to learn more.'
     required: true
-  xcode-version:
-    description: 'Xcode version to install. Pinned so every size report and the main-branch baseline it is diffed against are built with the same toolchain — the cache key for the stored main build includes this value.'
-    required: false
-    default: '26.6'
   baseline-ref:
     description: 'Exact commit used as the comparison baseline.'
     required: false
@@ -34,11 +30,10 @@ runs:
     shell: bash
     run: test $RUNNER_OS = 'macOS'
 
-  - name: Install Target Xcode version
-    uses: maxim-lobanov/setup-xcode@60606e260d2fc5762a71e64e74b2174e8ea3c8bd # v1.6.0
-    with:
-      xcode-version: ${{ inputs.xcode-version }}
-
+  # No setup-xcode: GitHub uses one Xcode per runner image, so the image label the
+  # caller runs on (e.g. `xcode-27` for the PR/main size report, `macos-26` for the
+  # deploy/release lane) selects the toolchain. Every sub-action below is passed an
+  # empty xcode-version so setup-ios skips selection and the image default is used.
   - name: Install Bloaty from source (main-branch for DWARF 5 / new dSYM support)
     id: install-bloaty
     uses: ./.github/actions/install-bloaty-from-source
@@ -63,7 +58,9 @@ runs:
       customerio-workspace-cdp-api-key: "12345"
       customerio-workspace-name: "Dummy Workspace"
       GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64: ${{ inputs.GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64 }}
-      xcode-version: ${{ inputs.xcode-version }}
+      # Empty on purpose: setup-ios then skips Xcode selection and uses the runner
+      # image's default Xcode instead of pinning a version.
+      xcode-version: ''
 
   - name: Save the sample app build, if this is a main branch build 
     if: github.ref == 'refs/heads/main'   
@@ -71,7 +68,9 @@ runs:
     with:
       set-latest-main-build: ${{ steps.build-sample-app.outputs.app-xcarchive-name }}
       GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64: ${{ inputs.GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64 }}
-      xcode-version: ${{ inputs.xcode-version }}
+      # Empty on purpose: build with the runner image's default Xcode. The baseline
+      # cache key is tagged with the detected Xcode version inside this action.
+      xcode-version: ''
       baseline-ref: ${{ inputs.baseline-ref }}
 
   - name: Make the SDK size report
@@ -128,7 +127,8 @@ runs:
     uses: ./.github/actions/main-sample-app-build
     with:
       GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64: ${{ inputs.GOOGLE_CLOUD_MATCH_READONLY_SERVICE_ACCOUNT_B64 }}
-      xcode-version: ${{ inputs.xcode-version }}
+      # Empty on purpose: use the runner image's default Xcode (see save call above).
+      xcode-version: ''
       baseline-ref: ${{ inputs.baseline-ref }}
 
   - name: Generate SDK binary diff report between main branch and current branch 
