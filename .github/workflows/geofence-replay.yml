@@ -50,7 +50,11 @@ jobs:
           fi
           case "$EVENT" in
             workflow_dispatch) echo "run=true" >> "$GITHUB_OUTPUT"; exit 0 ;;
-            pull_request) files=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR/files" --paginate --jq '.[].filename') ;;
+            pull_request)
+              if ! files=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR/files" --paginate --jq '.[].filename'); then
+                echo "::notice::Could not list the PR files — replaying to be safe."
+                echo "run=true" >> "$GITHUB_OUTPUT"; exit 0
+              fi ;;
             push)
               if [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
                 echo "run=true" >> "$GITHUB_OUTPUT"; exit 0
@@ -69,7 +73,8 @@ jobs:
               fi ;;
           esac
           # The pin file is watched on purpose: bumping the corpus alone is a change worth replaying.
-          if printf '%s\n' "$files" | grep -Eq '^(Sources/LocationGeofence/|Tests/LocationGeofence/|\.github/geofence-corpus\.ref$|\.github/workflows/geofence-replay\.yml$|\.github/scripts/geofence_replay_gate\.py$)'; then
+          # So is everything the geofence module and its tests build on (see Package.swift).
+          if printf '%s\n' "$files" | grep -Eq '^(Sources/(Common|Location|LocationGeofence)/|Tests/(LocationGeofence|Shared|Mocks/Common|Mocks/LocationGeofence)/|Package\.swift$|\.github/geofence-corpus\.ref$|\.github/workflows/geofence-replay\.yml$|\.github/scripts/geofence_replay_gate\.py$)'; then
             echo "run=true" >> "$GITHUB_OUTPUT"
           else
             echo "::notice::No geofence changes — skipping replay."
