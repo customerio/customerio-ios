@@ -15,13 +15,13 @@ struct GeofenceDwellCoordinatorTests {
     @Test
     func redeliveredCircleEnterPreservesTheCurrentVisit() async {
         let setup = await makeSetup(isPolygon: false)
-        let firstEntry = Date(timeIntervalSince1970: 1_000)
+        let firstEntry = Date(timeIntervalSince1970: 1000)
         await setup.coordinator.handleBoundary(
             geofence: setup.geofence, transition: .enter, occurredAt: firstEntry
         )
         let firstVisit = await setup.storage.getDwellVisit(geofenceId: setup.geofence.id)
 
-        let returnEntry = firstEntry.addingTimeInterval(3_600)
+        let returnEntry = firstEntry.addingTimeInterval(3600)
         await setup.coordinator.handleBoundary(
             geofence: setup.geofence, transition: .enter, occurredAt: returnEntry
         )
@@ -33,7 +33,7 @@ struct GeofenceDwellCoordinatorTests {
     @Test
     func circleExitThenEnterStartsANewVisit() async {
         let setup = await makeSetup(isPolygon: false)
-        let firstEntry = Date(timeIntervalSince1970: 1_000)
+        let firstEntry = Date(timeIntervalSince1970: 1000)
         await setup.coordinator.handleBoundary(
             geofence: setup.geofence, transition: .enter, occurredAt: firstEntry
         )
@@ -57,7 +57,7 @@ struct GeofenceDwellCoordinatorTests {
     @Test
     func delayedEnterDoesNotReplaceANewerVisit() async {
         let setup = await makeSetup(isPolygon: false)
-        let currentEntry = Date(timeIntervalSince1970: 2_000)
+        let currentEntry = Date(timeIntervalSince1970: 2000)
         await setup.coordinator.handleBoundary(
             geofence: setup.geofence, transition: .enter, occurredAt: currentEntry
         )
@@ -79,7 +79,7 @@ struct GeofenceDwellCoordinatorTests {
             transitionTypes: [.exit],
             isPolygon: false
         )
-        let enteredAt = Date(timeIntervalSince1970: 1_000)
+        let enteredAt = Date(timeIntervalSince1970: 1000)
         await setup.coordinator.handleBoundary(
             geofence: setup.geofence,
             transition: .enter,
@@ -89,31 +89,31 @@ struct GeofenceDwellCoordinatorTests {
         let context = await setup.coordinator.handleBoundary(
             geofence: setup.geofence,
             transition: .exit,
-            occurredAt: enteredAt.addingTimeInterval(7 * 86_400)
+            occurredAt: enteredAt.addingTimeInterval(7 * 86400)
         )
 
-        #expect(context?.durationSeconds == 7 * 86_400)
+        #expect(context?.durationSeconds == 7 * 86400)
         #expect(await setup.storage.getDwellVisit(geofenceId: setup.geofence.id) == nil)
     }
 
     @Test
     func dayLongDwellThresholdRemainsAchievableWhenEvidenceArrivesLate() async {
-        let setup = await makeSetup(dwellThresholdSeconds: 86_400, isPolygon: false)
-        let enteredAt = Date(timeIntervalSince1970: 1_000)
+        let setup = await makeSetup(dwellThresholdSeconds: 86400, isPolygon: false)
+        let enteredAt = Date(timeIntervalSince1970: 1000)
         await setup.coordinator.handleBoundary(
             geofence: setup.geofence, transition: .enter, occurredAt: enteredAt
         )
 
         await setup.coordinator.recordInsideEvidence(
             geofence: setup.geofence,
-            at: enteredAt.addingTimeInterval(86_401),
+            at: enteredAt.addingTimeInterval(86401),
             source: "location_evidence"
         )
 
         let dwell = await setup.emitter.dwells().first
         #expect(dwell?.context.enteredAt == enteredAt)
-        #expect(dwell?.context.thresholdSeconds == 86_400)
-        #expect(dwell?.context.durationSeconds == 86_401)
+        #expect(dwell?.context.thresholdSeconds == 86400)
+        #expect(dwell?.context.durationSeconds == 86401)
     }
 
     @Test
@@ -144,7 +144,7 @@ struct GeofenceDwellCoordinatorTests {
         await setup.coordinator.resumePendingVisits(geofences: [setup.geofence])
 
         for _ in 0 ..< 200 where await setup.emitter.dwells().isEmpty {
-            try? await Task.sleep(nanoseconds: 10_000_000)
+            try? await Task.sleep(nanoseconds: 10000000)
         }
 
         #expect(await setup.emitter.dwells().count == 1)
@@ -154,7 +154,7 @@ struct GeofenceDwellCoordinatorTests {
     @Test
     func confirmedPolygonReentryStartsNewVisitWhileDuplicateEvidencePreservesIt() async {
         let setup = await makeSetup(dwellThresholdSeconds: 0, transitionTypes: [.exit])
-        let firstEntry = Date(timeIntervalSince1970: 1_000)
+        let firstEntry = Date(timeIntervalSince1970: 1000)
         await setup.coordinator.recordInsideEvidence(
             geofence: setup.geofence,
             at: firstEntry,
@@ -185,7 +185,7 @@ struct GeofenceDwellCoordinatorTests {
     @Test
     func polygonDwellRequiresInsideEvidenceAfterThresholdAndEmitsOnce() async {
         let setup = await makeSetup()
-        let enteredAt = Date(timeIntervalSince1970: 1_000)
+        let enteredAt = Date(timeIntervalSince1970: 1000)
 
         await setup.coordinator.handleBoundary(geofence: setup.geofence, transition: .enter, occurredAt: enteredAt)
         await setup.coordinator.recordInsideEvidence(
@@ -249,7 +249,7 @@ struct GeofenceDwellCoordinatorTests {
     func failedOutboxWriteLeavesVisitRetryable() async {
         let emitter = DwellEmitterSpy(results: [false, true])
         let setup = await makeSetup(emitter: emitter)
-        let enteredAt = Date(timeIntervalSince1970: 1_000)
+        let enteredAt = Date(timeIntervalSince1970: 1000)
 
         await setup.coordinator.handleBoundary(geofence: setup.geofence, transition: .enter, occurredAt: enteredAt)
         await setup.coordinator.recordInsideEvidence(
@@ -274,7 +274,7 @@ struct GeofenceDwellCoordinatorTests {
     @Test
     func exitEndsVisitAndLaterEvidenceStartsANewOne() async {
         let setup = await makeSetup()
-        let enteredAt = Date(timeIntervalSince1970: 1_000)
+        let enteredAt = Date(timeIntervalSince1970: 1000)
         await setup.coordinator.handleBoundary(geofence: setup.geofence, transition: .enter, occurredAt: enteredAt)
         let firstVisit = await setup.storage.getDwellVisit(geofenceId: setup.geofence.id)
 
@@ -297,7 +297,7 @@ struct GeofenceDwellCoordinatorTests {
     @Test
     func polygonEvidenceLongAfterTheDeadlineEmitsForTheStillValidVisit() async {
         let setup = await makeSetup()
-        let enteredAt = Date(timeIntervalSince1970: 1_000)
+        let enteredAt = Date(timeIntervalSince1970: 1000)
         await setup.coordinator.handleBoundary(geofence: setup.geofence, transition: .enter, occurredAt: enteredAt)
         let firstVisit = await setup.storage.getDwellVisit(geofenceId: setup.geofence.id)
         let lateEvidence = enteredAt.addingTimeInterval(24 * 60 * 60)
@@ -318,7 +318,7 @@ struct GeofenceDwellCoordinatorTests {
     @Test
     func exitOnlyFenceReturnsObservedVisitDuration() async {
         let setup = await makeSetup(dwellThresholdSeconds: 0, transitionTypes: [.exit])
-        let enteredAt = Date(timeIntervalSince1970: 1_000)
+        let enteredAt = Date(timeIntervalSince1970: 1000)
 
         await setup.coordinator.handleBoundary(
             geofence: setup.geofence, transition: .enter, occurredAt: enteredAt
@@ -343,7 +343,7 @@ struct GeofenceDwellCoordinatorTests {
         let context = await setup.coordinator.handleBoundary(
             geofence: setup.geofence,
             transition: .exit,
-            occurredAt: Date(timeIntervalSince1970: 1_075)
+            occurredAt: Date(timeIntervalSince1970: 1075)
         )
 
         #expect(context == nil)
@@ -352,7 +352,7 @@ struct GeofenceDwellCoordinatorTests {
     @Test
     func insideEvidenceAfterContinuityLossDoesNotClaimVisitDurationOnExit() async {
         let setup = await makeSetup(dwellThresholdSeconds: 0, transitionTypes: [.exit])
-        let enteredAt = Date(timeIntervalSince1970: 1_000)
+        let enteredAt = Date(timeIntervalSince1970: 1000)
         await setup.coordinator.handleBoundary(
             geofence: setup.geofence, transition: .enter, occurredAt: enteredAt
         )
@@ -377,7 +377,7 @@ struct GeofenceDwellCoordinatorTests {
     @Test
     func insideEvidenceAfterContinuityLossStillSupportsBestEffortDwell() async {
         let setup = await makeSetup()
-        let enteredAt = Date(timeIntervalSince1970: 1_000)
+        let enteredAt = Date(timeIntervalSince1970: 1000)
         await setup.coordinator.handleBoundary(
             geofence: setup.geofence, transition: .enter, occurredAt: enteredAt
         )
@@ -400,7 +400,7 @@ struct GeofenceDwellCoordinatorTests {
     @Test
     func observedEntryAfterContinuityLossRestoresVisitDuration() async {
         let setup = await makeSetup(dwellThresholdSeconds: 0, transitionTypes: [.exit])
-        let enteredAt = Date(timeIntervalSince1970: 1_000)
+        let enteredAt = Date(timeIntervalSince1970: 1000)
         await setup.coordinator.recordInsideEvidence(
             geofence: setup.geofence, at: enteredAt, source: "location_evidence"
         )
@@ -422,7 +422,7 @@ struct GeofenceDwellCoordinatorTests {
     @Test
     func evidenceForAnEndedVisitDoesNotStartAnother() async {
         let setup = await makeSetup()
-        let enteredAt = Date(timeIntervalSince1970: 1_000)
+        let enteredAt = Date(timeIntervalSince1970: 1000)
         await setup.coordinator.handleBoundary(
             geofence: setup.geofence, transition: .enter, occurredAt: enteredAt
         )
@@ -484,7 +484,7 @@ struct GeofenceDwellCoordinatorTests {
     @Test
     func delayedExitFromOlderVisitDoesNotClearNewerVisit() async {
         let setup = await makeSetup(dwellThresholdSeconds: 0, transitionTypes: [.exit])
-        let enteredAt = Date(timeIntervalSince1970: 1_000)
+        let enteredAt = Date(timeIntervalSince1970: 1000)
         await setup.coordinator.handleBoundary(
             geofence: setup.geofence, transition: .enter, occurredAt: enteredAt
         )
@@ -566,7 +566,7 @@ struct GeofenceDwellCoordinatorTests {
     }
 
     @Test
-    func exitWhileFixIsResolvingDoesNotRearmEvidence() async {
+    func exitWhileFixIsResolvingDoesNotRearmEvidence() async throws {
         let probe = SuspendedFixProvider()
         let setup = await makeSetup(
             isPolygon: false,
@@ -579,10 +579,9 @@ struct GeofenceDwellCoordinatorTests {
             transition: .enter,
             occurredAt: enteredAt
         )
-        for _ in 0 ..< 100 where probe.calls == 0 {
-            await Task.yield()
-        }
-        #expect(probe.calls == 1)
+        // The due deadline runs on its own task; under a loaded suite it can take longer than any
+        // fixed number of yields to reach the fix request.
+        try #require(await settleOnMain(timeout: 5) { probe.calls == 1 })
 
         await setup.coordinator.handleBoundary(
             geofence: setup.geofence,
@@ -590,10 +589,34 @@ struct GeofenceDwellCoordinatorTests {
             occurredAt: Date()
         )
         probe.resolve(nil)
-        try? await Task.sleep(nanoseconds: 50000000)
 
-        #expect(probe.calls == 1)
+        // Without the exit, the failed fix re-arms after 1 ms (see the control test below), so a
+        // window hundreds of times longer is enough for a stray retry to land.
+        #expect(await settleOnMain(timeout: 0.3) { probe.calls > 1 } == false)
         #expect(await setup.storage.getDwellVisit(geofenceId: setup.geofence.id) == nil)
+    }
+
+    /// Control for the test above: the same failed fix, with the visit still open, does re-arm.
+    @Test
+    func failedFixWhileVisitStaysOpenRearmsEvidence() async throws {
+        let probe = SuspendedFixProvider()
+        let setup = await makeSetup(
+            isPolygon: false,
+            freshFixProvider: { await probe.next() },
+            evidenceRetryDelay: 0.001
+        )
+        await setup.coordinator.handleBoundary(
+            geofence: setup.geofence,
+            transition: .enter,
+            occurredAt: Date().addingTimeInterval(-120)
+        )
+        try #require(await settleOnMain(timeout: 5) { probe.calls == 1 })
+
+        probe.resolve(nil)
+
+        #expect(await settleOnMain(timeout: 5) { probe.calls == 2 })
+        await setup.coordinator.invalidateContinuity()
+        probe.resolve(nil)
     }
 
     @Test
@@ -646,7 +669,7 @@ struct GeofenceDwellCoordinatorTests {
         notificationCenter.post(name: UIApplication.willEnterForegroundNotification, object: nil)
 
         for _ in 0 ..< 300 where await setup.emitter.dwells().isEmpty {
-            try? await Task.sleep(nanoseconds: 10_000_000)
+            try? await Task.sleep(nanoseconds: 10000000)
         }
 
         let dwells = await setup.emitter.dwells()

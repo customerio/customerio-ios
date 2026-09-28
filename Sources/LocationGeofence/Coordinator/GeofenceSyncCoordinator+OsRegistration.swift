@@ -83,9 +83,11 @@ extension GeofenceSyncCoordinatorImpl {
                 // once and never again, an exit-only one never at all. The customer's filter is
                 // applied to the polygon verdict instead.
                 transitionTypes: region.vertices == nil
-                    ? (region.dwellThresholdSeconds > 0 || region.transitionTypes.contains(.exit)
-                        ? [.enter, .exit]
-                        : region.transitionTypes.intersection([.enter, .exit]))
+                    ? (
+                        region.dwellThresholdSeconds > 0 || region.transitionTypes.contains(.exit)
+                            ? [.enter, .exit]
+                            : region.transitionTypes.intersection([.enter, .exit])
+                    )
                     : [.enter, .exit]
             )
         })

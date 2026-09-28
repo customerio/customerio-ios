@@ -595,6 +595,57 @@ struct GeofenceBootstrapTests {
         #expect(await storage.getDwellVisit(geofenceId: "g2") == nil)
     }
 
+    /// Dropping continuity for OS-dropped fences awaits storage. Doing that before registering let
+    /// a sign-out queued after the identity check run first, so bootstrap registered for a user who
+    /// had already signed out.
+    @Test
+    func wireMonitor_givenDroppedRegionsAndSignOutQueuedAfterBind_expectRegisteredBeforeSignOutRuns() async {
+        let di = DIGraphShared.shared
+        let storage = GeofenceStorage(
+            directoryURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        )
+        let dropped = Geofence(
+            id: "g1", latitude: 1, longitude: 2, radius: 100, name: nil,
+            transitionTypes: [.exit], lastUpdated: Date(timeIntervalSince1970: 1)
+        )
+        await storage.setCachedGeofences([dropped])
+        await storage.recordRegistration(center: LocationData(latitude: 10, longitude: 20), businessIds: ["g1"])
+        di.override(value: storage, forType: GeofenceStorage.self)
+        let contextStore = BackgroundDeliveryContextStore(
+            fileManager: .default,
+            directoryURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        )
+        contextStore.setUserId("user-1")
+        di.override(value: contextStore, forType: BackgroundDeliveryContextStore.self)
+        let dwellCoordinator = GeofenceDwellCoordinator(
+            storage: storage,
+            transitionEmitter: BootstrapTransitionEmitter(),
+            contextStore: contextStore,
+            logger: LoggerMock(),
+            notificationCenter: NotificationCenter()
+        )
+        di.override(value: dwellCoordinator, forType: GeofenceDwellCoordinator.self)
+        let monitor = MockGeofenceRegionMonitor()
+        // The OS kept nothing, so bootstrap takes the re-register branch with g1 missing.
+        monitor.onSetOnTransition = {
+            Task { @MainActor in contextStore.clearUserId() }
+        }
+        di.override(value: monitor as GeofenceRegionMonitoring, forType: GeofenceRegionMonitoring.self)
+        let coordinator = GeofenceSyncCoordinatorMock()
+        var userAtRegistration: String?
+        coordinator.applyCachedRegistrationClosure = { _, _, _, _ in
+            userAtRegistration = contextStore.currentUserId
+            return nil
+        }
+        di.override(value: coordinator as GeofenceSyncCoordinator, forType: GeofenceSyncCoordinator.self)
+        defer { di.reset() }
+
+        await GeofenceBootstrap.wireMonitor(di: di)
+
+        #expect(coordinator.applyCachedRegistrationCallsCount == 1)
+        #expect(userAtRegistration == "user-1")
+    }
+
     @Test
     func geofenceSyncCoordinator_givenRepeatedResolution_expectSameInstance() {
         let di = DIGraphShared.shared

@@ -105,10 +105,9 @@ enum GeofenceBootstrap {
         } else if !expectedOwnedRegions.isEmpty, expectedOwnedRegions.isSubset(of: monitor.osMonitoredRegionIdentifiers) {
             monitor.adoptExistingRegions(matching: expectedOwnedRegions, records: monitorRecords)
         } else {
+            // Read before registering, which re-adds them; invalidated only after, because an await
+            // here would reopen the window the identity check above just closed.
             let missingBusinessRegions = lastRegisteredBusinessIds.subtracting(monitor.osMonitoredRegionIdentifiers)
-            for geofenceId in missingBusinessRegions {
-                await di.geofenceDwellCoordinator.invalidateContinuity(geofenceId: geofenceId)
-            }
             // First launch after install, the OS dropped our regions (e.g. permission revoked then
             // re-granted, which clears `monitoredRegions`), or a partial drop. Register fresh from cache.
             let registration = coordinator.applyCachedRegistration(
@@ -117,6 +116,9 @@ enum GeofenceBootstrap {
                 config: cachedConfig,
                 userId: userId
             )
+            for geofenceId in missingBusinessRegions {
+                await di.geofenceDwellCoordinator.invalidateContinuity(geofenceId: geofenceId)
+            }
             // Persist what was registered as the ranking-staleness reference. The await is safe
             // here: applyCachedRegistration already ran startMonitoring synchronously, so the
             // cold-wake no-await window has closed and a queued transition can't land in an empty

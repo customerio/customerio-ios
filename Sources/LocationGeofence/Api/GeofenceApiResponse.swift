@@ -88,7 +88,7 @@ struct GeofenceApiRegion: Decodable {
     /// keep their type; null/array/object values are dropped during decode rather than failing the
     /// whole region.
     let metadata: [String: GeofenceMetadataValue]?
-    var dwellThresholdSeconds: Int? = nil
+    var dwellThresholdSeconds: Int?
 }
 
 /// GeoJSON geometry of a polygon region. Decoded with `try?` at the region level, so a geometry we

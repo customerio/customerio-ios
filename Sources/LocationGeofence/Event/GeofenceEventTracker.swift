@@ -165,8 +165,7 @@ final class GeofenceEventTracker: @unchecked Sendable {
         let interval = await storage.getCachedConfig()?.duplicateEventsExpiry ?? cooldownInterval
 
         if transition != .dwell,
-           let remaining = await storage.tryAcquireCooldown(key: cooldownKey, now: now, interval: interval)
-        {
+           let remaining = await storage.tryAcquireCooldown(key: cooldownKey, now: now, interval: interval) {
             logger.geofenceEventSuppressed(geofenceId: geofenceId, transition: transition, cooldownRemaining: remaining)
             return []
         }

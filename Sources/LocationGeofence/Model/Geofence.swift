@@ -3,7 +3,7 @@ import Foundation
 
 enum GeofenceDwellLimits {
     /// Shared with Android: GMS represents loitering delay as signed 32-bit milliseconds.
-    static let maxThresholdSeconds = Int(Int32.max) / 1_000
+    static let maxThresholdSeconds = Int(Int32.max) / 1000
 }
 
 /// A geofence region returned by the server.

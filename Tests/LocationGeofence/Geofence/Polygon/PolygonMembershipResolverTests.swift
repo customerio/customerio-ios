@@ -523,7 +523,7 @@ struct PolygonMembershipResolverTests {
         let setup = await makeSetup(fix: nil, withDwellCoordinator: true)
         let geofence = polygonGeofence(transitionTypes: [.exit])
         await setup.storage.setCachedGeofences([geofence])
-        let firstEntry = Date(timeIntervalSince1970: 1_000)
+        let firstEntry = Date(timeIntervalSince1970: 1000)
 
         await setup.resolver.apply(.inside, to: geofence, evidence: firstEntry, confirmedByFix: true)
         let firstVisit = await setup.storage.getDwellVisit(geofenceId: geofence.id)
@@ -556,7 +556,7 @@ struct PolygonMembershipResolverTests {
         let setup = await makeSetup(fix: nil, withDwellCoordinator: true)
         let geofence = polygonGeofence(transitionTypes: [.exit])
         await setup.storage.setCachedGeofences([geofence])
-        let entry = Date(timeIntervalSince1970: 1_000)
+        let entry = Date(timeIntervalSince1970: 1000)
         await setup.resolver.apply(.inside, to: geofence, evidence: entry, confirmedByFix: true)
         await setup.storage.removeDwellVisit(geofenceId: geofence.id)
 

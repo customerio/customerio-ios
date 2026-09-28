@@ -107,7 +107,12 @@ final class MockGeofenceRegionMonitor: GeofenceRegionMonitoring {
     func setOnTransition(_ handler: GeofenceTransitionHandler?) {
         onTransition = handler
         setOnTransitionCallsCount += 1
+        onSetOnTransition?()
     }
+
+    /// Runs when the bootstrap binds its transition handler, the start of its synchronous phase, so
+    /// a test can queue main-actor work that must not run before registration.
+    var onSetOnTransition: (() -> Void)?
 
     func setOnAuthorizationChanged(_ handler: GeofenceAuthorizationChangedHandler?) {
         onAuthorizationChanged = handler

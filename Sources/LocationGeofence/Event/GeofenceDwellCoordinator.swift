@@ -184,8 +184,7 @@ final class GeofenceDwellCoordinator {
             emitted: false
         )
         if contextStore.currentUserId == userId,
-           await storage.saveDwellVisit(visit, geofenceId: geofence.id)
-        {
+           await storage.saveDwellVisit(visit, geofenceId: geofence.id) {
             scheduleDeadline(for: geofence, visit: visit)
         }
     }
@@ -247,7 +246,7 @@ final class GeofenceDwellCoordinator {
             TimeInterval(GeofenceDwellLimits.maxThresholdSeconds),
             max(0, visit.enteredAt.addingTimeInterval(TimeInterval(geofence.dwellThresholdSeconds)).timeIntervalSinceNow)
         )
-        let delayNanoseconds = UInt64(delay * 1_000_000_000)
+        let delayNanoseconds = UInt64(delay * 1000000000)
         deadlineTasks[geofence.id] = Task { [weak self] in
             try? await Task.sleep(nanoseconds: delayNanoseconds)
             guard !Task.isCancelled, let self else { return }
@@ -312,8 +311,7 @@ final class GeofenceDwellCoordinator {
               distance + fix.horizontalAccuracy <= geofence.radius
         else {
             if fix.horizontalAccuracy > 0,
-               distance - fix.horizontalAccuracy >= geofence.radius
-            {
+               distance - fix.horizontalAccuracy >= geofence.radius {
                 await invalidateContinuity(geofenceId: geofence.id)
                 return
             }
@@ -391,7 +389,7 @@ final class GeofenceDwellCoordinator {
         deadlineTasks.removeValue(forKey: geofence.id)?.cancel()
         let delay = max(0, evidenceRetryDelay)
         deadlineTasks[geofence.id] = Task { [weak self] in
-            try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+            try? await Task.sleep(nanoseconds: UInt64(delay * 1000000000))
             guard !Task.isCancelled, let self else { return }
             await self.requestQualifyingEvidence(geofenceId: geofence.id)
         }
