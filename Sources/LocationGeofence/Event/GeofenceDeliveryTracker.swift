@@ -1,10 +1,8 @@
 import CioInternalCommon
 import Foundation
 
-/// Sends a single geofence transition event over direct HTTP to `/track`.
-///
-/// Callers persist the metric to `PendingGeofenceMetricStore` *before* calling `trackMetric`,
-/// and remove it from the queue only after this returns success.
+/// Sends one geofence transition over direct HTTP to `/track`. Callers persist the metric first and
+/// dequeue it only on success.
 protocol GeofenceDeliveryTracker: AutoMockable {
     func trackMetric(
         metric: PendingGeofenceMetric,

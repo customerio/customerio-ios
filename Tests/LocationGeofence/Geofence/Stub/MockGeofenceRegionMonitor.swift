@@ -9,7 +9,6 @@ struct MonitoredRegionRecord: Sendable {
     let transitionTypes: Set<GeofenceTransition>
 }
 
-/// OS-side operations in arrival order, so tests can assert sequencing.
 enum MockMonitorOperation: Sendable, Equatable {
     case start(identifier: String)
     case stop(identifier: String)
@@ -29,15 +28,12 @@ final class MockGeofenceRegionMonitor: GeofenceRegionMonitoring {
     private(set) var stopAllCallCount = 0
     private(set) var operationLog: [MockMonitorOperation] = []
     private var activeIdentifiers: Set<String> = []
-    /// The circle the OS holds per identifier: stands in for classic's live `CLCircularRegion` and
-    /// CLMonitor's condition ledger.
+    /// The clamped circle the OS holds per identifier.
     private var registeredGeometry: [String: MonitoredRegionRecord] = [:]
 
-    /// Regions the OS still monitors; seed it to model a fresh process, where the ownership set
-    /// (`activeIdentifiers`) starts empty.
+    /// Seed to model a fresh process, where ownership (`activeIdentifiers`) starts empty.
     var osMonitoredRegions: Set<String> = []
 
-    /// Identifiers `startMonitoring` refuses, modelling blocked permission or invalid coordinates.
     var rejectedIdentifiers: Set<String> = []
     private(set) var adoptExistingRegionsCallsCount = 0
     private(set) var adoptedIdentifiers: Set<String> = []
@@ -48,7 +44,6 @@ final class MockGeofenceRegionMonitor: GeofenceRegionMonitoring {
         activeIdentifiers
     }
 
-    /// No clamp by default; tests that exercise the OS cap set it.
     var maximumMonitoringRadius: Double = .greatestFiniteMagnitude
 
     var osMonitoredRegionIdentifiers: Set<String> {
@@ -61,8 +56,7 @@ final class MockGeofenceRegionMonitor: GeofenceRegionMonitoring {
         let adopted = identifiers.intersection(osMonitoredRegions)
         adoptedIdentifiers.formUnion(adopted)
         activeIdentifiers.formUnion(adopted)
-        // Mirrors CLMonitor: adoption seeds geometry from the persisted (post-clamp) records, so a
-        // sync right after adopt reads an unchanged region as unchanged instead of re-adding it.
+        // Mirrors CLMonitor: seeds geometry from persisted records, so a later sync doesn't re-add it.
         for identifier in adopted {
             guard let record = records[identifier],
                   let center = record.center, let radius = record.radius
@@ -76,8 +70,7 @@ final class MockGeofenceRegionMonitor: GeofenceRegionMonitoring {
         }
     }
 
-    /// A condition the OS holds that this process has not adopted, as on a fresh launch before
-    /// the bootstrap runs.
+    /// An OS-held condition this process hasn't adopted yet.
     func seedOsHeldRegion(identifier: String, center: LocationData, radius: Double, transitionTypes: Set<GeofenceTransition>) {
         registeredGeometry[identifier] = MonitoredRegionRecord(
             identifier: identifier,
@@ -88,7 +81,7 @@ final class MockGeofenceRegionMonitor: GeofenceRegionMonitoring {
         osMonitoredRegions.insert(identifier)
     }
 
-    /// The circle the OS is holding, as opposed to what the caller last asked for.
+    /// The clamped circle the OS holds, not what the caller asked for.
     func osGeometry(for identifier: String) -> MonitoredRegionRecord? {
         registeredGeometry[identifier]
     }
@@ -112,13 +105,11 @@ final class MockGeofenceRegionMonitor: GeofenceRegionMonitoring {
         setOnReconciledCallsCount += 1
     }
 
-    /// Runs inside `startMonitoring`, so a test can land work mid-registration.
     var onStartMonitoring: (() -> Void)?
 
     func startMonitoring(identifier: String, center: LocationData, radius: Double, transitionTypes: Set<GeofenceTransition>) {
         onStartMonitoring?()
-        // Mirrors CLMonitor: a rejected id is not owned, and any circle the OS held for it is
-        // cleared rather than left live on a slot nothing owns.
+        // Mirrors CLMonitor: a rejected id is unowned and any OS circle for it is cleared.
         guard !rejectedIdentifiers.contains(identifier) else {
             if osMonitoredRegions.remove(identifier) != nil {
                 registeredGeometry.removeValue(forKey: identifier)
@@ -134,9 +125,8 @@ final class MockGeofenceRegionMonitor: GeofenceRegionMonitoring {
             radius: radius,
             transitionTypes: transitionTypes
         ))
-        // CLMonitor silently ignores an add over a held identifier, so the monitor removes first;
-        // modelled as the same remove-then-add pair. Classic replaces by identifier, so a caller
-        // correct against this mock is correct against both.
+        // CLMonitor ignores an add over a held identifier, so the monitor removes first. Classic
+        // replaces in place; remove-then-add is correct for both.
         if osMonitoredRegions.remove(identifier) != nil {
             stoppedIdentifiers.append(identifier)
             operationLog.append(.stop(identifier: identifier))
@@ -153,7 +143,7 @@ final class MockGeofenceRegionMonitor: GeofenceRegionMonitoring {
     }
 
     func stopMonitoring(identifier: String) {
-        // Stopping a region this process doesn't own never reaches the OS, as in both monitors.
+        // As in both monitors, an unowned region never reaches the OS.
         guard activeIdentifiers.remove(identifier) != nil else { return }
         stoppedIdentifiers.append(identifier)
         registeredGeometry.removeValue(forKey: identifier)
@@ -161,22 +151,18 @@ final class MockGeofenceRegionMonitor: GeofenceRegionMonitoring {
         operationLog.append(.stop(identifier: identifier))
     }
 
-    /// Fired inside `stopMonitoringAll`, so a test can order it against other teardown steps.
     var onStopAll: (() -> Void)?
 
     func stopMonitoringAll() {
         onStopAll?()
         stopAllCallCount += 1
-        // Mirrors the classic monitor: only owned regions are removed, so an unadopted OS region
-        // survives. (CLMonitor instead clears every live condition under its monitor name.)
+        // Classic semantics: an unadopted OS region survives. CLMonitor clears everything.
         osMonitoredRegions.subtract(activeIdentifiers)
         activeIdentifiers.removeAll()
         registeredGeometry.removeAll()
         operationLog.append(.stopAll)
     }
 
-    /// Mirrors both monitors: stop what left the set, skip what is registered with the same circle,
-    /// start the rest.
     @discardableResult
     func setMonitoredRegions(_ regions: [GeofenceRegionRequest]) -> GeofenceRegionDiff {
         let desiredIdentifiers = Set(regions.map(\.identifier))
@@ -185,8 +171,7 @@ final class MockGeofenceRegionMonitor: GeofenceRegionMonitoring {
             stopMonitoring(identifier: identifier)
             removed.insert(identifier)
         }
-        // Mirrors CLMonitor's sweep of live OS state. Classic can't sweep: `monitoredRegions` is
-        // shared app-wide, so it would tear down the host app's regions.
+        // CLMonitor's sweep. Classic can't sweep: `monitoredRegions` includes the host app's regions.
         for identifier in osMonitoredRegions.subtracting(desiredIdentifiers) {
             osMonitoredRegions.remove(identifier)
             registeredGeometry.removeValue(forKey: identifier)
@@ -195,8 +180,7 @@ final class MockGeofenceRegionMonitor: GeofenceRegionMonitoring {
         }
         var added: Set<String> = []
         for region in regions where !isRegisteredUnchanged(region) {
-            // Ownership is released before re-registration so a rejected region stops counting as
-            // registered. OS-side state changes only when `startMonitoring` tells the OS.
+            // Release ownership first, so a rejected region stops counting as registered.
             activeIdentifiers.remove(region.identifier)
             startMonitoring(
                 identifier: region.identifier,
@@ -210,8 +194,7 @@ final class MockGeofenceRegionMonitor: GeofenceRegionMonitoring {
     }
 
     private func isRegisteredUnchanged(_ region: GeofenceRegionRequest) -> Bool {
-        // Owned AND held by the OS. Classic reads live `monitoredRegions`; CLMonitor trusts its
-        // staged record. In this synchronous mock staged and drained coincide, so one check fits both.
+        // Owned AND OS-held: fits both monitors because this mock has no staged-vs-drained gap.
         guard activeIdentifiers.contains(region.identifier),
               osMonitoredRegions.contains(region.identifier),
               let existing = registeredGeometry[region.identifier]
@@ -224,8 +207,6 @@ final class MockGeofenceRegionMonitor: GeofenceRegionMonitoring {
         )
     }
 
-    /// `eventCircle` defaults to the circle registered for `identifier`, so the event is
-    /// self-consistent unless a test overrides it.
     func simulateTransition(
         identifier: String,
         transition: GeofenceTransition,

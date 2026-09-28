@@ -1,10 +1,6 @@
 import Foundation
 
-// Log contracts for the contradiction gate's non-refusal outcomes, kept with the tail rather than
-// in `Model/`.
-
-/// Why the gate had no fix to judge an in-window event against. `prose` is for humans; the raw
-/// value is the stable token.
+/// The raw value is the stable log token; `prose` is for humans.
 enum ContradictionGateNoFixReason: String, CaseIterable {
     case noFixAvailable = "no_fix_available"
     case invalidCoordinate = "invalid_coordinate"
@@ -17,7 +13,6 @@ enum ContradictionGateNoFixReason: String, CaseIterable {
     }
 }
 
-/// What the gate measured a fix against, grouped to stay under the parameter-count limit.
 struct GateFixGeometry {
     let distanceFromCenter: Double
     let radius: Double

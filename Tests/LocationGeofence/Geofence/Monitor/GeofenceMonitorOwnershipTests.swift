@@ -4,10 +4,7 @@ import CoreLocation
 import Foundation
 import Testing
 
-/// The delegate is shared. A host app monitoring its own `CLCircularRegion`s gets those crossings
-/// delivered to the same `locationManager(_:didEnterRegion:)` we implement, so anything recorded
-/// before the ownership check describes a crossing the SDK has nothing to do with — and writes the
-/// host's region identifier into a capture that gets shared around.
+/// The delegate is shared, so it also receives crossings for the host app's own regions.
 @Suite("CoreLocationGeofenceMonitor ownership boundary", .serialized)
 @MainActor
 struct GeofenceMonitorOwnershipTests {
@@ -48,8 +45,7 @@ struct GeofenceMonitorOwnershipTests {
 
     private static let hostIdentifier = "host_app_loyalty_store_4471"
 
-    /// The `ev=` tail only exists when diagnostics are on; without it the assertions below would
-    /// pass vacuously.
+    /// Without diagnostics there is no `ev=` tail, and the `ev=` assertions pass vacuously.
     private func withDiagnostics<T>(_ enabled: Bool, _ body: () throws -> T) rethrows -> T {
         try DiagnosticsGateTesting.withDiagnostics(enabled, body)
     }
@@ -62,8 +58,6 @@ struct GeofenceMonitorOwnershipTests {
         )
     }
 
-    /// Immediate path: a handler is bound and nothing is queued, so the crossing is evaluated
-    /// against ownership straight away.
     @Test
     func regionEvent_givenRegionNotOurs_expectNothingRecorded() {
         withDiagnostics(true) {
@@ -84,9 +78,7 @@ struct GeofenceMonitorOwnershipTests {
         }
     }
 
-    /// The identifier itself must not reach the log by any route. The tail is gated behind the
-    /// diagnostics flag, but the prose half of the record is not, so a leak here would ship even
-    /// with diagnostics off.
+    /// Diagnostics off on purpose: the prose half of the record isn't gated.
     @Test
     func regionEvent_givenRegionNotOurs_expectIdentifierNeverLogged() {
         let logger = CapturingLogger()
@@ -101,8 +93,6 @@ struct GeofenceMonitorOwnershipTests {
         )
     }
 
-    /// Buffered path: with no handler bound the crossing queues, and ownership is only checked when
-    /// the queue drains. Nothing may be recorded in the meantime.
     @Test
     func regionEvent_givenBufferedAndNotOurs_expectNothingRecorded() async {
         let logger = CapturingLogger()
@@ -110,11 +100,9 @@ struct GeofenceMonitorOwnershipTests {
 
         monitor.locationManager(CLLocationManager(), didEnterRegion: hostRegion())
         monitor.setOnTransition { _, _, _, _, _, _ in }
-        // Let the drain task run; it is dispatched onto the main actor.
         await Task.yield()
 
-        // Asserted on the identifier rather than `ev=`: the prose is emitted whatever the
-        // diagnostics gate says, so this cannot pass vacuously with the gate off.
+        // Asserts on the identifier, not `ev=`, so it can't pass vacuously with diagnostics off.
         #expect(
             logger.messages.allSatisfy { !$0.contains(Self.hostIdentifier) },
             "drained a buffered crossing for a region we do not own: \(logger.messages)"

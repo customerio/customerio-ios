@@ -4,7 +4,7 @@ import Foundation
 
 private let geofenceTag = "Geofence"
 
-/// Why a sync did not run. `prose` is for humans; the raw value is the stable `why=` token.
+/// The raw value is the stable `why=` token; `prose` is for humans.
 enum GeofenceSyncSkipReason: String, CaseIterable {
     case refreshInProgress = "refresh_in_progress"
     case noIdentifiedUser = "no_identified_user"
@@ -25,15 +25,12 @@ enum GeofenceSyncSkipReason: String, CaseIterable {
     }
 }
 
-/// How the SDK came to be running. Separates "never running" from "ran and chose not to act".
 enum GeofenceLaunchReason: String, CaseIterable {
     case appStart = "app_start"
     case locationEvent = "location_event"
 }
 
 extension Logger {
-    /// Not "the workspace has no fences": every region was unreadable, so the response is treated
-    /// as a fetch failure and the cache survives. The tail is what tells those two apart on replay.
     func geofenceAllRegionsDropped(count: Int) {
         error(
             "All \(count) region(s) in the response were unusable — treating as a fetch failure so the cache survives"
@@ -74,11 +71,8 @@ extension Logger {
         )
     }
 
-    /// The pending queue could not be READ, so no write was attempted. Not `storage.write.failed`,
-    /// which says a write was tried. The same refusal covers an unresolvable file location.
-    ///
-    /// Logged at `error` while the anonymous drop logs at `debug`, so `transition.dropped` spans
-    /// two levels; a level filter sees only part of the family.
+    /// `error` level, while the anonymous `transition.dropped` is `debug`: a level filter sees only
+    /// part of the family.
     func geofenceTransitionDroppedQueueUnreadable(geofenceId: String, transition: GeofenceTransition) {
         error(
             "Dropped \(transition.rawValue) for geofence \(geofenceId): the pending queue could not be read, so no write was attempted; cooldown released so the next crossing can retry"
@@ -135,7 +129,6 @@ extension Logger {
         )
     }
 
-    /// An **input**: replay feeds the response back rather than re-issuing the request.
     func geofenceApiFetchResult(
         returnedCount: Int,
         elapsed: TimeInterval?,
@@ -153,10 +146,6 @@ extension Logger {
         geofenceFenceCatalog(regions)
     }
 
-    /// One record per fetched fence, with its geometry, so a replay can place fences as they were
-    /// at capture time (fences move, and a customer capture has no workspace to re-fetch from).
-    ///
-    /// Gated whole: the prose alone is worthless.
     private func geofenceFenceCatalog(_ regions: [GeofenceApiRegion]) {
         guard !regions.isEmpty, GeofenceDiagnostics.isEnabled else { return }
         for region in regions {
@@ -167,13 +156,11 @@ extension Logger {
                         ("name", region.name),
                         ("gs", GeofenceLog.list(region.geosetIds ?? [])),
                         ("sh", region.catalogShape.rawValue),
-                        // A polygon has no lat/lon/radius on the wire; these fall back to its
-                        // enclosing circle, which is the circle the OS monitors.
+                        // For a polygon: its enclosing circle, the one the OS monitors.
                         ("lat", GeofenceLog.num(region.catalogCenter?.latitude, 5)),
                         ("lon", GeofenceLog.num(region.catalogCenter?.longitude, 5)),
                         ("rad", GeofenceLog.num(region.catalogRadius, 0)),
-                        // `nv` is authoritative: `ring` truncates, so it is for placement only and
-                        // never a membership input.
+                        // `ring` truncates; `nv` is the true vertex count.
                         ("nv", GeofenceLog.int(region.catalogRing?.count)),
                         ("ring", GeofenceLog.list(region.catalogRing ?? [], limit: 64)),
                         ("tt", GeofenceLog.list(region.transitionTypes ?? []))
@@ -183,8 +170,7 @@ extension Logger {
         }
     }
 
-    /// The prose reports what was *requested* (its else-branch states a config fact); the tail
-    /// reports what the OS *accepted*. A difference between them is the signal.
+    /// The prose reports what was *requested*; the tail what the OS *accepted*.
     func geofenceSyncCompleted(
         requestedCount: Int,
         movementTriggerRequested: Bool,
@@ -206,7 +192,6 @@ extension Logger {
         )
     }
 
-    /// The change; `registration.applied` reports the resulting set.
     func geofenceRegistrationDiff(added: Int, removed: Int, unchanged: Int) {
         debug(
             "OS registration diff: +\(added) / -\(removed); \(unchanged) left registered untouched"
@@ -219,9 +204,7 @@ extension Logger {
         )
     }
 
-    /// The top-N selection, so a geofence that ranked out is distinguishable from one that was
-    /// registered and never fired. The lists are autoclosures: building them costs a distance per
-    /// region on a background wake path, wasted unless the tail is on.
+    /// Autoclosures: building the lists costs a distance per region, wasted unless the tail is on.
     func geofenceRankEvaluated(
         candidates: Int,
         selectedCount: Int,
@@ -248,9 +231,7 @@ extension Logger {
         )
     }
 
-    /// The event survived the contradiction gate and the dedup baseline and is being handed to the
-    /// consumer. `os.callback.received` fires for EVERY delivered event; the difference between the
-    /// two is what the monitor discarded.
+    /// Only events that passed the monitor's filters; `os.callback.received` logs every delivery.
     func geofenceCallbackDispatched(identifier: String, transition: GeofenceTransition) {
         debug(
             "OS delivered \(transition.rawValue) for region \(identifier)"
@@ -280,7 +261,7 @@ extension Logger {
         )
     }
 
-    /// Same `ev` as `geofenceResetCompleted`: a reset that deliberately did not clear.
+    /// `ok=false` here is a deliberate skip, not a failure.
     func geofenceResetSuperseded() {
         debug(
             "Reset skipped: another user is signed in"
@@ -300,9 +281,7 @@ extension Logger {
         )
     }
 
-    /// Which OS-persisted conditions this process claimed on launch. An observation, not the final
-    /// set: on CLMonitor the re-arm skips conditions whose geometry changed, and its
-    /// `registration.applied` is authoritative.
+    /// Not the final set: on CLMonitor, `registration.applied` is authoritative.
     func geofenceRegionsAdopted(identifiers: [String]) {
         debug(
             "Adopted \(identifiers.count) OS-persisted region(s) on launch; re-arming in place"

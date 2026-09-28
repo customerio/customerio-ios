@@ -2,16 +2,8 @@
 @testable import CioLocationGeofence
 import Foundation
 
-/// A replayable scenario: fixtures to seed, stimuli to inject, expectations to match.
-///
-/// One NDJSON record per line, each tagged with a kind. The format is described in
-/// `geofence-scenario-format-decision.md`. The scenarios live in `mobile-replay-harness`,
-/// **outside this repo**, because the captures carry real coordinates and real business fence
-/// names; none may become a committed fixture until redaction exists.
-///
-/// Values stay `String` on purpose. The tail is an untyped `key=value` contract shared with an
-/// off-device parser; decoding it into Swift types here would invent a second schema that could
-/// drift from the one the SDK emits.
+/// Captures carry real coordinates and fence names: none may become a committed fixture.
+/// Values stay `String`: typing them here would invent a second schema beside the tail's.
 struct Scenario {
     let name: String
     let platform: String
@@ -21,31 +13,23 @@ struct Scenario {
     struct Header {
         let name: String
         let platform: String
-        /// `recorded` for a drive taken off a phone, `authored` for a scenario somebody wrote,
-        /// from `source.kind` (the corpus is one flat directory, so provenance travels in the file).
-        ///
-        /// Absent becomes `unknown` and discovery rejects it, as with `platform`. Defaulting to
-        /// `recorded` would let an authored scenario satisfy the "any drive found?" guard.
+        /// Absent becomes `unknown` and is rejected: defaulting to `recorded` would let authored
+        /// scenarios satisfy the "any drive found?" guard.
         let sourceKind: String
         let startedAt: String
         let sdk: String?
         let device: String?
     }
 
-    /// Whether this came off a phone. Only used by the "did discovery find any drives" guard, which
-    /// a corpus of authored scenarios alone must not satisfy.
-    ///
-    /// Not what decides where a scenario runs: that is `platform` alone, and a recorded drive may
-    /// declare `any` once it holds on both compositions.
+    /// Only for the "any drive found?" guard; `platform` alone decides where a scenario runs.
     var isRecorded: Bool { header.sourceKind == "recorded" }
 
-    /// One line of the scenario. `at` is seconds since the drive started — the virtual clock's only input.
     struct Record {
         enum Kind: String {
             case given
             case when
             case then
-            /// Context only: neither an input nor an assertion.
+            /// Neither an input nor an assertion.
             case note
         }
 
@@ -54,13 +38,7 @@ struct Scenario {
         let ev: String
         let fields: [String: String]
 
-        /// The fence this record concerns, under either platform's spelling.
-        ///
-        /// Android writes `ids` because Play Services batches several fences onto one callback;
-        /// CoreLocation never batches, so iOS writes `id`. A single-fence `ids` is the same event.
-        ///
-        /// A genuinely batched `ids` stays unsupported: this composition cannot receive one, and
-        /// replaying only its first fence would grade a different drive.
+        /// A single-fence Android `ids` is the same event; a batched one stays unsupported.
         var fenceId: String? {
             if let id = fields["id"] { return id }
             guard let ids = fields["ids"], !ids.contains(",") else { return nil }
@@ -69,18 +47,13 @@ struct Scenario {
 
         var transition: GeofenceTransition? { fields["t"].flatMap(GeofenceTransition.init(rawValue:)) }
 
-        /// Horizontal accuracy in metres. Present on stimuli only — the transform strips it from
-        /// expectations, because it is an input no replay could reproduce as an output.
+        /// Stimuli only; the transform strips it from expectations.
         var accuracy: String? { fields["acc"] }
 
-        /// Why the SDK decided what it decided — `cooldown`, `no_state_change`, and so on.
         var reason: String? { fields["why"] }
     }
 
-    /// `t0` as a `Date`, when the header carries a parseable one.
-    ///
-    /// Needed only to place an OS event's absolute `edate` on the scenario's timeline. Optional
-    /// because a synthetic scenario's `t0` is free text ("t" in the test fixtures).
+    /// Optional: a synthetic scenario's `t0` is free text.
     var startedAt: Date? { ISO8601DateFormatter.geofenceScenario.date(from: header.startedAt) }
 
     var given: [Record] { records.filter { $0.kind == .given } }
@@ -139,8 +112,7 @@ enum ScenarioLoader {
             guard let ev = object["ev"] as? String else {
                 throw LoadError.malformedLine(number, "no ev")
             }
-            // `at` is required on everything the runner schedules. A record without one cannot be
-            // placed on the virtual clock, and silently defaulting it to 0 would reorder the run.
+            // Required: defaulting it to 0 would silently reorder the run.
             guard let at = object["at"] as? Double else {
                 throw LoadError.malformedLine(number, "no at")
             }
@@ -154,13 +126,11 @@ enum ScenarioLoader {
         return Scenario(name: header.name, platform: header.platform, header: header, records: records)
     }
 
-    /// Renders a JSON value the way the tail carries it, so a scenario field compares equal to the
-    /// emitted string.
+    /// Rendered as the tail prints it, so a field compares equal to the emitted string.
     private static func stringify(_ value: Any) -> String {
         if let string = value as? String { return string }
         if value is NSNull { return "null" }
-        // `fixture.api.fetch` carries the fence catalogue as nested JSON; `String(describing:)`
-        // would produce a Swift debug description the runner cannot parse back.
+        // `String(describing:)` would give a debug description the runner can't parse back.
         if value is [Any] || value is [String: Any] {
             guard let data = try? JSONSerialization.data(withJSONObject: value),
                   let json = String(data: data, encoding: .utf8)
@@ -168,8 +138,7 @@ enum ScenarioLoader {
             return json
         }
         guard let number = value as? NSNumber else { return String(describing: value) }
-        // NSNumber bridges to both `Bool` and `Int` (`as? Bool` on 1 yields `true`), so only the
-        // CoreFoundation type id tells a JSON boolean from a number.
+        // `as? Bool` matches 1 too; only the CF type id tells a JSON boolean from a number.
         if CFGetTypeID(number) == CFBooleanGetTypeID() { return number.boolValue ? "true" : "false" }
         let double = number.doubleValue
         // The tail prints whole floats with one decimal (`acc=14.0`) and integers bare (`n=1`).

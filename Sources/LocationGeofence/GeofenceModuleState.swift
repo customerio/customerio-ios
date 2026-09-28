@@ -2,15 +2,11 @@ import CioInternalCommon
 @_spi(Geofence) import CioLocation
 import Foundation
 
-/// Wires the Geofence module; the refresh decisions live in `GeofenceRefreshTrigger`.
-///
-/// Lives for the process lifetime via `shared`, because the SDK does not retain the
-/// `GeofenceModule` facade once `initialize()` returns.
+/// Process-lifetime via `shared`: the SDK doesn't retain `GeofenceModule` after `initialize()`.
 final class GeofenceModuleState {
     static let shared = GeofenceModuleState()
 
-    /// Resolved lazily at each use so the live `LocationServices` is read even when the geofence
-    /// module initializes before `LocationModule` (registration order is not guaranteed).
+    /// Resolved at each use: this module may initialize before `LocationModule`.
     private let locationServicesProvider: () -> LocationServices
 
     /// Owned here because `refreshFromCurrentLocation()` can arrive before `setup`.
@@ -20,7 +16,6 @@ final class GeofenceModuleState {
     private var didSetup = false
     private var trigger: GeofenceRefreshTrigger?
 
-    /// Internal init lets tests build instances independent of `.shared`.
     init(
         locationServicesProvider: @escaping () -> LocationServices = { CustomerIO.location }
     ) {
@@ -61,26 +56,22 @@ final class GeofenceModuleState {
     private func registerEventSubscriptions(di: DIGraphShared, trigger: GeofenceRefreshTrigger) {
         di.eventBusHandler.addObserver(ProfileIdentifiedEvent.self) { _ in
             Task { await di.geofenceEventTracker.flushPending() }
-            // Setup usually runs before `identify`, so `wireMonitor` leaves visits off for a nil
-            // user. This is what arms them on the ordinary launch order.
+            // `wireMonitor` usually ran before identify and left visits off; this arms them.
             Task { @MainActor in await GeofenceBootstrap.armVisitMonitoring(di: di) }
             trigger.onIdentified()
         }
         di.eventBusHandler.addObserver(ResetEvent.self) { _ in
             trigger.onReset()
-            // Disarms visits. Queued after `onReset`, which starts the coordinator reset on the
-            // same actor.
+            // Disarms visits. Must stay after `onReset`, which starts the reset on the same actor.
             Task { @MainActor in await GeofenceBootstrap.armVisitMonitoring(di: di) }
         }
         di.eventBusHandler.addObserver(LocationAcquiredEvent.self) { event in
-            // The only place a position arrives on this platform; every other `location.fix` is a read.
             di.logger.geofenceLocationArrived(event.location)
             trigger.onLocationAcquired(event.location)
         }
     }
 
-    /// Arms a host-initiated refresh so the next acquired fix drives a sync. Writes the shared box
-    /// directly because it may be called before `setup`, when no trigger exists.
+    /// May be called before `setup`, so it writes the shared box rather than the trigger.
     func onRefreshRequested() {
         explicitRefreshRequested.wrappedValue = true
     }

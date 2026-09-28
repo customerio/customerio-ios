@@ -2,17 +2,8 @@ import CioInternalCommon
 import CoreLocation
 import Foundation
 
-/// Planar geometry for a polygon geofence, evaluated on a local equirectangular projection
-/// around the polygon's vertex centroid.
-///
-/// Projection: `x = R·Δlon·cos(lat₀)`, `y = R·Δlat` (radians, R = 6371000 m). Android does not
-/// share this projection: it ray-casts in raw degrees and projects each edge distance around the
-/// query point, so the two SDKs can differ slightly on large rings.
-///
-/// The ray cast is half-open, so the boundary is not symmetric: a point on the west or south edge
-/// (and the south-west vertex) reads as INSIDE, one on the east or north edge as outside. A point
-/// on the boundary has an edge distance of 0, which never yields a verdict, so the asymmetry is
-/// unobservable in practice.
+/// Evaluated on an equirectangular projection around the vertex centroid. Android projects
+/// differently, so the two SDKs can differ slightly on large rings.
 struct PolygonRegion {
     private struct Point {
         let x: Double
@@ -25,34 +16,18 @@ struct PolygonRegion {
     private let referenceLongitudeRadians: Double
     private let cosReferenceLatitude: Double
 
-    /// IUGG mean Earth radius, the `R` of the projection above. CoreLocation exposes no equivalent
-    /// constant — it offers geodesic distances (`CLLocation.distance`) but no way to project, which
-    /// point-in-polygon needs. Android uses the same value.
+    /// IUGG mean Earth radius; Android uses the same value.
     private static let earthRadiusMeters = 6371000.0
     private static let degreesToRadians = Double.pi / 180
 
-    /// Canonicalises and projects a ring. Fails on fewer than 3 distinct vertices, or on a position
-    /// outside the valid coordinate range. A closed ring (last vertex repeating the first) is
-    /// accepted and unclosed — servers commonly send GeoJSON-style closed rings.
-    ///
-    /// Consecutively repeated positions are collapsed, so `vertices` is the canonical unique ring.
-    /// A repeat describes a zero-length edge, which contributes nothing to either containment or
-    /// edge distance; collapsing it keeps the count comparable to the server's own cap, which is
-    /// stated in unique vertices.
-    ///
-    /// The range check bounds the work downstream: longitudes are walked in 360° steps, and past
-    /// roughly 3.2e18 subtracting 360 no longer changes a `Double`, so one wild value would hang
-    /// the process on every rebuild from cache.
-    ///
-    /// O(n): the degeneracy checks live in `init(validating:)` because callers rebuild a region per
-    /// evaluation.
+    /// O(n), as it runs per evaluation; the O(n²) checks live in `init(validating:)`. The range
+    /// check matters: past ~3.2e18 subtracting 360 no longer changes a `Double`, so the unwrap hangs.
     init?(vertices: [LocationData]) {
         var open: [LocationData] = []
         open.reserveCapacity(vertices.count)
         for vertex in vertices {
-            // Validity first: `samePosition` unwraps, and an out-of-range longitude can unwrap onto
-            // a legitimate one — 360 lands on 0 — so testing it before this guard would let an
-            // invalid position be silently collapsed away instead of rejecting the ring.
+            // Validity first: `samePosition` unwraps (360 lands on 0), so an invalid position could
+            // be collapsed away instead of rejecting the ring.
             guard CLLocationCoordinate2DIsValid(
                 CLLocationCoordinate2D(latitude: vertex.latitude, longitude: vertex.longitude)
             ) else { return nil }
@@ -64,8 +39,7 @@ struct PolygonRegion {
         }
         guard open.count >= 3 else { return nil }
 
-        // Unwrap before averaging: a ring spanning the antimeridian holds values near both +180
-        // and -180, whose mean is Greenwich, and the fence then projects a hemisphere wide.
+        // Unwrap before averaging, or an antimeridian ring averages to Greenwich.
         let unwrapped = Self.unwrapLongitudes(open)
         let lat0 = unwrapped.map(\.latitude).reduce(0, +) / Double(unwrapped.count)
         let lon0 = unwrapped.map(\.longitude).reduce(0, +) / Double(unwrapped.count)
@@ -87,31 +61,19 @@ struct PolygonRegion {
         self.projected = planar
     }
 
-    /// Same place, not same numbers: +180 and -180 name one meridian, and a ring may legally close
-    /// with the opposite sign to the one it opened with. Compared raw, that closing vertex survives
-    /// canonicalisation as a zero-length edge, which `selfIntersects` then reads as a crossing and
-    /// the whole fence drops. Android canonicalises the same way.
-    ///
-    /// Only sound for positions already known to be in range, which is why the caller validates
-    /// first: subtracting 360 is exact at ±180 but not in general, so this must not be reused as a
-    /// wrapping equality for arbitrary longitudes.
+    /// +180 and -180 are one meridian; compared raw, such a closing vertex reads as a
+    /// self-intersection. Only sound for in-range positions: not a general wrapping equality.
     private static func samePosition(_ a: LocationData, _ b: LocationData) -> Bool {
         a.latitude == b.latitude && unwrapLongitude(a.longitude, near: b.longitude) == b.longitude
     }
 
-    /// The only writer of `Geofence.vertices`: a ring from any other source has not been through
-    /// these checks.
-    ///
-    /// Additionally rejects rings with zero area or a self-intersection. These checks are O(n²),
-    /// so they run once per sync at the API boundary rather than in `init(vertices:)`, which runs
-    /// per polygon per evaluation.
+    /// The only writer of `Geofence.vertices`. O(n²), so it runs once per sync at the API boundary.
     init?(validating vertices: [LocationData]) {
         self.init(vertices: vertices)
         guard Self.enclosesArea(projected), !Self.selfIntersects(projected) else { return nil }
     }
 
-    /// A ring below this is a line or a point. It can never contain anything, so it would hold an OS
-    /// monitoring slot and pull the shared wake circle toward its floor while never firing.
+    /// Below this a ring can never contain anything, yet would hold an OS monitoring slot.
     private static let minimumAreaSquareMeters = 1.0
 
     private static func enclosesArea(_ ring: [Point]) -> Bool {
@@ -124,18 +86,14 @@ struct PolygonRegion {
         return abs(twiceArea) / 2 >= minimumAreaSquareMeters
     }
 
-    /// True when two non-adjacent edges cross OR touch. Even-odd ray casting reports both lobes of a
-    /// bow-tie as inside, so such a ring delivers enters for ground the polygon never covered, and a
-    /// pair of lobes joined at a single point is the same shape with the crossing degenerated to a
-    /// vertex. Touching counts, matching Android — a ring repeating a vertex non-consecutively
-    /// (a…b…a…c) survives canonicalisation on both SDKs and must then be dropped on both.
+    /// Touching counts as crossing, matching Android: even-odd ray casting reads both lobes of a
+    /// bow-tie as inside.
     private static func selfIntersects(_ ring: [Point]) -> Bool {
         let n = ring.count
         guard n >= 4 else { return false }
         for i in 0 ..< n {
             let a1 = ring[i], a2 = ring[(i + 1) % n]
-            // j starts at i+2 to skip the shared-vertex neighbour; the i == 0 guard skips the
-            // closing edge, which shares a vertex with the first.
+            // i+2 skips the neighbour; the i == 0 guard skips the closing edge, which shares a vertex.
             for j in stride(from: i + 2, to: n, by: 1) where !(i == 0 && j == n - 1) {
                 let b1 = ring[j], b2 = ring[(j + 1) % n]
                 if Self.segmentsMeet(a1, a2, b1, b2) { return true }
@@ -144,8 +102,7 @@ struct PolygonRegion {
         return false
     }
 
-    /// Orientations below this are treated as collinear. Projected coordinates are metres, so the
-    /// cross product is m²: this is exact-zero with room for float error, not a tolerance.
+    /// Exact zero with room for float error (m²), not a tolerance.
     private static let orientationEpsilon = 1e-9
 
     private static func segmentsMeet(_ p1: Point, _ p2: Point, _ p3: Point, _ p4: Point) -> Bool {
@@ -161,8 +118,7 @@ struct PolygonRegion {
         return false
     }
 
-    /// Whether `point` lies in the bounding box of the `a`–`b` segment, used only once the three are
-    /// known to be collinear.
+    /// Bounding-box test; valid only once the three are known to be collinear.
     private static func within(_ a: Point, _ point: Point, _ b: Point) -> Bool {
         point.x >= min(a.x, b.x) && point.x <= max(a.x, b.x)
             && point.y >= min(a.y, b.y) && point.y <= max(a.y, b.y)
@@ -176,13 +132,8 @@ struct PolygonRegion {
         isInside(project(location))
     }
 
-    /// Meters to the nearest polygon edge: **positive inside, negative outside**.
-    ///
-    /// The circle path does not mirror this: `Geofence.edgeDistanceTo` is
-    /// `max(0, distanceTo - radius)`, clamped to 0 inside and never negative. Ranking a polygon
-    /// alongside circles therefore needs `max(0, -signedEdgeDistance)`, not a plain negation.
-    /// Android uses the same sign, and the polygon verdict logs `edge` with it, so it cannot be
-    /// flipped unilaterally.
+    /// Meters to the nearest edge: **positive inside, negative outside**. Shared with Android and
+    /// logged as `edge`, so don't flip it.
     func signedEdgeDistance(to location: LocationData) -> Double {
         let p = project(location)
         var minDistance = Double.greatestFiniteMagnitude
@@ -194,17 +145,8 @@ struct PolygonRegion {
         return isInside(p) ? minDistance : -minDistance
     }
 
-    /// Roughly how deep this venue is: `2 × area / perimeter`, in metres.
-    ///
-    /// Answers "can a fix of accuracy A say anything about being inside this shape at all?". When
-    /// the accuracy circle is as wide as the venue is deep, `inside` carries no information — the
-    /// circle can contain the whole ring — so a verdict there would be a coin flip rather than a
-    /// boundary case. Used as the ceiling in `PolygonMembershipDecision`.
-    ///
-    /// An O(n) approximation of the maximum inradius, where a true inradius needs a search. Exact
-    /// for a circle (`2πr²/2πr = r`) and never below the inradius of a convex ring, so it errs
-    /// HIGH, which widens the accuracy accepted: the safe direction, since refusing a real arrival
-    /// is the expensive error.
+    /// Venue depth in metres, `2 × area / perimeter`. Errs HIGH against the inradius, the safe
+    /// direction: it widens the accuracy accepted.
     var scale: Double {
         var twiceArea = 0.0
         var perimeter = 0.0
@@ -218,8 +160,6 @@ struct PolygonRegion {
         return abs(twiceArea) / perimeter
     }
 
-    /// Shifts longitudes into the ±180° window around the first vertex so a ring crossing the
-    /// antimeridian is continuous.
     private static func unwrapLongitudes(_ ring: [LocationData]) -> [LocationData] {
         guard let reference = ring.first?.longitude else { return ring }
         return ring.map {
@@ -227,10 +167,8 @@ struct PolygonRegion {
         }
     }
 
-    /// The walk is bounded by its inputs: `init?(vertices:)` refuses out-of-range ring positions and
-    /// `evaluate` refuses an invalid fix, so both sides arrive inside ±180°. The guard keeps that a
-    /// property of this function rather than of its callers — a value far enough out of range stops
-    /// changing when 360 is subtracted from it, and the loop would never end.
+    /// The guard keeps the loop bounded here, not only in callers: far enough out of range,
+    /// subtracting 360 stops changing the value.
     private static func unwrapLongitude(_ longitude: Double, near reference: Double) -> Double {
         guard longitude.isFinite, abs(longitude) <= 360, reference.isFinite else { return longitude }
         var value = longitude
@@ -257,8 +195,6 @@ struct PolygonRegion {
         )
     }
 
-    /// `static` so the initializer can project the ring before `self` is fully formed, and so the
-    /// formula lives in exactly one place.
     private static func project(
         _ location: LocationData,
         referenceLatitudeRadians: Double,
@@ -271,7 +207,7 @@ struct PolygonRegion {
         )
     }
 
-    /// Ray cast with the half-open rule, so a crossing shared by two edges counts once.
+    /// Half-open rule, so a crossing shared by two edges counts once.
     private func isInside(_ p: Point) -> Bool {
         var inside = false
         for i in 0 ..< projected.count {

@@ -4,12 +4,9 @@ import Foundation
 
 private let geofenceTag = "Geofence"
 
-/// Setup, permissions and OS plumbing: was the SDK in a position to see the crossing at all.
 extension Logger {
     // MARK: - Registration
 
-    /// `reason` separates a shape this version cannot monitor from a payload it could not read;
-    /// the difference decides whether the cache is cleared.
     func geofenceInvalidRegionDropped(_ identifier: String, reason: GeofenceRegionDropReason) {
         error(
             "Geofence '\(identifier)' dropped — \(reason.rawValue)"
@@ -34,9 +31,7 @@ extension Logger {
         )
     }
 
-    // The error description is inlined and `nil` passed as the error: the logger appends
-    // " Error: <desc>" after the tail, which would break the parser's `key=value` split. The tail
-    // has to stay last.
+    // Pass `nil` as the error: the logger appends it after the tail, and the tail must stay last.
     func geofenceMonitoringFailed(region: String, error: Error) {
         self.error(
             "Monitoring failed for region \(region): \(error.localizedDescription)"
@@ -59,8 +54,7 @@ extension Logger {
         )
     }
 
-    // Error level on purpose: `info`/`debug` are not persisted to the log store for third-party
-    // subsystems, so a field report would not carry them.
+    // `error` on purpose: lower levels aren't persisted for third-party subsystems.
     func geofenceMonitorStoppedMonitoringRegion(_ identifier: String) {
         error(
             "CoreLocation stopped monitoring region \(identifier); its transitions are not delivered until it is re-registered, which is now scheduled rather than left to the next sync"
@@ -70,8 +64,6 @@ extension Logger {
         )
     }
 
-    /// Which regions are registered with the OS right now. Carries identifiers, not just a count,
-    /// so a missed crossing can be checked against what was monitored.
     func geofenceRegionsRegistered(identifiers: [String], movementTrigger: String?) {
         debug(
             "Monitoring \(identifiers.count) region(s) with the OS"
@@ -121,8 +113,7 @@ extension Logger {
 
     // MARK: - Lifecycle
 
-    /// The module came up. Always `app_start`; a cold wake announces itself separately via
-    /// ``geofenceModuleWoke(launchReason:)`` rather than racing this one for a single record.
+    /// Always `app_start`; a cold wake logs `module.wake` separately, in no fixed order.
     func geofenceModuleInitialized(launchReason: GeofenceLaunchReason) {
         info(
             "Geofence module initialized (\(launchReason.rawValue))"
@@ -131,8 +122,6 @@ extension Logger {
         )
     }
 
-    /// The process was started *by* something (a location event). Separate from `module.init`
-    /// because the OS decides their order.
     func geofenceModuleWoke(launchReason: GeofenceLaunchReason) {
         info(
             "Geofence module woken (\(launchReason.rawValue))"
@@ -143,15 +132,7 @@ extension Logger {
 
     // MARK: - OS callback routing
 
-    /// An OS-delivered crossing, logged in the monitor: the OS supplies no position with a geofence
-    /// event, so the attached coordinate is the SDK's own best known fix, and the monitor is the
-    /// last place holding it as a full `CLLocation` (accuracy, age, provenance).
-    ///
-    /// - Parameters:
-    ///   - fix: the position the SDK will attach to this transition, whatever its quality.
-    ///   - source: which cache or request that fix came from.
-    ///   - eventDate: when the OS says the crossing happened, where it says so.
-    ///   - buffered: whether the event waited in the pending queue for a handler to be bound.
+    /// The OS sends no position, so `fix` is the SDK's own. `buf`: the event waited for a handler.
     func geofenceCallbackReceived(
         identifier: String,
         transition: GeofenceTransition,
@@ -179,9 +160,8 @@ extension Logger {
         )
     }
 
-    /// A note for humans explaining a capture, outside the asserted vocabulary (`ev=info`, `io=obs`).
-    /// Not `os.callback.dropped`: every real drop nets against an `os.callback.received`, and these
-    /// have no receipt to net against.
+    /// Outside the asserted vocabulary. Not `os.callback.dropped`: these have no
+    /// `os.callback.received` to net against.
     func geofenceInfo(_ reason: String, fields: [(String, String?)] = []) {
         debug(
             "Geofence note: \(reason.replacingOccurrences(of: "_", with: " "))"
@@ -202,7 +182,7 @@ extension Logger {
         )
     }
 
-    /// A sign-in or sign-out reaching the geofence module. The identifier is never written.
+    /// The identifier is never written.
     func geofenceIdentityChanged(identified: Bool) {
         debug(
             "Geofence identity \(identified ? "identified" : "reset")"
@@ -211,7 +191,7 @@ extension Logger {
         )
     }
 
-    /// A position the Location module delivered: the one `location.fix` that is an arrival.
+    /// The only `location.fix` that is an arrival rather than a read.
     func geofenceLocationArrived(_ location: LocationData) {
         debug(
             "Location fix delivered to geofencing"
@@ -222,9 +202,6 @@ extension Logger {
         )
     }
 
-    /// A position the SDK read from the OS cache. `io=in`: the read is when the data crosses in.
-    ///
-    /// Gated whole: it fires on every cache read, and without the tail the line carries nothing.
     func geofenceLocationFix(_ location: CLLocation?, source: GeofenceLog.FixSource, now: Date) {
         guard GeofenceDiagnostics.isEnabled else { return }
         guard let location else {
@@ -246,7 +223,6 @@ extension Logger {
         )
     }
 
-    /// Every fix the SDK receives, with the accuracy and age it was judged on.
     func geofenceFixReceived(_ location: CLLocation, source: String, now: Date) {
         debug(
             "Location fix received (\(source))"
@@ -262,7 +238,6 @@ extension Logger {
 
     // MARK: - Storage
 
-    /// What survived a cold start: whether a background wake had anything to work from.
     func geofenceStorageLoaded(regionCount: Int, hasAnchor: Bool) {
         debug(
             "Loaded \(regionCount) cached region(s) from storage"
@@ -274,14 +249,8 @@ extension Logger {
         )
     }
 
-    /// The moment one condition landed at the OS, one record per `CLMonitor.add`.
-    ///
-    /// The boundary a replay has to wait on: adds run one at a time through
-    /// `enqueueMonitorOperation` and can drain after `registration.applied` is logged, so callbacks
-    /// in that window compare against a baseline not yet written.
-    ///
-    /// Per identifier, unlike Android's count-carrying pair: CLMonitor takes one condition at a
-    /// time. `registration.applied` remains the assertion; this is the mechanism under it.
+    /// Adds can drain after `registration.applied` is logged; callbacks before this compare against
+    /// a baseline not yet written.
     func geofenceConditionAdded(identifier: String) {
         debug(
             "Condition \(identifier) added at the OS"
@@ -290,8 +259,7 @@ extension Logger {
         )
     }
 
-    /// The moment one condition left the OS. CLMonitor ignores an add over a live identifier, so
-    /// every re-registration removes first; `op=readd` marks a condition on its way back in.
+    /// `op=readd`: removed only to re-add (CLMonitor ignores an add over a live identifier).
     func geofenceConditionRemoved(identifier: String, op: GeofenceLog.RemovalOp) {
         debug(
             "Condition \(identifier) removed at the OS (\(op.rawValue))"

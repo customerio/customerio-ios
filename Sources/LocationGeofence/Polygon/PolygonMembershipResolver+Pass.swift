@@ -2,15 +2,9 @@ import CioInternalCommon
 import CoreLocation
 import Foundation
 
-/// How a pass is sequenced over the polygons it judges, split from the resolver's core for the
-/// file cap. Members are `internal` only because of the split.
 extension PolygonMembershipResolver {
-    /// Runs one pass over `geofenceIds` against a single fix in TWO phases: everything the fix
-    /// alone can decide is settled first, and only then are the marginal arrivals corroborated.
-    ///
-    /// Corroborating inline would let one marginal polygon's request (up to
-    /// `movementFixRequestTimeout`) age the fix past `movementFixMaxAge` for every polygon after
-    /// it, so one venue's arrival would depend on another venue and on catalog order.
+    /// Two phases: settle everything the fix alone decides, then corroborate marginal arrivals.
+    /// Corroborating inline would age the fix for every later polygon.
     func runPass(
         geofenceIds: [String],
         fix: PassFix,
@@ -28,9 +22,8 @@ extension PolygonMembershipResolver {
             }
         }
         for pending in deferred {
-            // An ambiguous INSIDE cannot move a belief that already says inside, so a second fix
-            // would only reach `no_change`. Re-read per polygon, right before the request: phase
-            // one and earlier corroborations can both land that belief after classification.
+            // Re-read per polygon, right before the request: phase one and earlier corroborations
+            // can land an inside belief after classification.
             guard await storage.getPolygonMembership()[pending.geofence.id]?.membership != .inside
             else {
                 logger.geofencePolygonUndecided(
@@ -42,8 +35,6 @@ extension PolygonMembershipResolver {
                 )
                 continue
             }
-            // Only a second fix that positively reads OUTSIDE blocks the arrival. Everything
-            // else commits, carrying on the verdict why it could not be confirmed.
             let corroboration: VerdictCorroboration
             switch await corroborate(pending, firstFix: fix.location, cache: cache, pass: pass) {
             case .confirmed: corroboration = .confirmed
@@ -60,10 +51,8 @@ extension PolygonMembershipResolver {
         }
     }
 
-    /// Logs the verdict and applies it, so both phases record identically apart from `cor`.
-    ///
-    /// The logged age is the fix's age AT RECORD TIME. On a corroborated verdict the second
-    /// request sits in between, so the age can exceed `movementFixMaxAge` although the gate passed.
+    /// The logged age is at RECORD time, so a corroborated verdict can log one past
+    /// `movementFixMaxAge`.
     func record(
         _ verdict: PolygonVerdict,
         for geofence: Geofence,
@@ -82,30 +71,23 @@ extension PolygonMembershipResolver {
     }
 }
 
-/// A settled verdict and how it was reached, carried together so both pass phases record one.
 struct PolygonVerdict {
     let membership: PolygonMembership
     let corroboration: VerdictCorroboration
     let signedEdgeDistance: Double
-    /// Which pass produced it; see `geofencePolygonVerdict`'s `pass` key.
     let pass: Int
 }
 
-/// How a recorded verdict stands with respect to a second fix. Three states, not a Bool, so an
-/// uncorroborated marginal arrival is not logged as though no second fix was wanted.
+/// Three states, not a Bool, so an unconfirmed arrival isn't logged as not needing a second fix.
 enum VerdictCorroboration: Equatable {
-    /// Decisive on one fix; no second was asked for.
     case notNeeded
-    /// A second, independent fix agreed.
     case confirmed
-    /// Marginal, and committed anyway because no second opinion could be had.
     case unconfirmed(PolygonUndecidedReason)
 
-    /// The shared cross-SDK `cor` boolean: whether a second fix agreed.
+    /// The cross-SDK `cor` key: whether a second fix agreed (false for `.notNeeded`).
     var confirmed: Bool { self == .confirmed }
 
-    /// `nil` unless the arrival committed without confirmation, so the key is absent on every
-    /// decisive verdict rather than carrying a placeholder.
+    /// `nil` unless unconfirmed, so the key is absent on decisive verdicts.
     var unconfirmedReason: String? {
         guard case .unconfirmed(let reason) = self else { return nil }
         return reason.rawValue

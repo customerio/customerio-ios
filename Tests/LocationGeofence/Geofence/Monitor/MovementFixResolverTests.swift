@@ -35,9 +35,8 @@ struct MovementFixResolverTests {
         )
     }
 
-    /// The flag the wake radius is sized from. A late fix arriving after the timeout still updates
-    /// `latestFix`, so the answer has to come from which completion path fired, not from inspecting
-    /// state afterwards.
+    /// A late fix still updates `latestFix`, so freshness must come from the completion path, not
+    /// later state.
     @Test
     func resolve_expectFreshnessReportedFromTheCompletionPath() {
         var freshness: [Bool] = []
@@ -271,9 +270,7 @@ struct MovementFixResolverTests {
         #expect(received.map(\.?.latitude) == [32.7])
     }
 
-    /// CoreLocation's cache advances on its own between passes (other clients in the process), so
-    /// it can hold a newer fix than anything this resolver delivered. Preferring `latestFix` by
-    /// source would fall back to the older of the two when a request fails.
+    /// The system cache advances on its own (other clients), so it can be newer than any delivered fix.
     @Test
     func cachedFix_givenSystemCacheNewerThanDeliveredFix_expectSystemCache() {
         let resolver = makeResolver()
@@ -294,7 +291,6 @@ struct MovementFixResolverTests {
         #expect(resolver.cachedFix?.coordinate.latitude == 31.1)
     }
 
-    /// An invalid system coordinate must not win on age alone over a usable delivered fix.
     @Test
     func cachedFix_givenSystemCacheNewerButInvalid_expectDeliveredFix() {
         let resolver = makeResolver()
@@ -305,8 +301,7 @@ struct MovementFixResolverTests {
         #expect(resolver.cachedFix?.coordinate.latitude == 31.1)
     }
 
-    /// The seam stands in for CoreLocation entirely: a seam returning nil must not fall through to
-    /// the real manager, or a unit test would reach for the device's location.
+    /// A nil seam must not fall through to the real manager, or the test reads the device's location.
     @Test
     func cachedFix_givenSeamReturnsNilAndNothingDelivered_expectNil() {
         let resolver = makeResolver()
@@ -316,7 +311,6 @@ struct MovementFixResolverTests {
     }
 }
 
-/// Records entry/exit of the background-time window so tests can assert it brackets the request.
 private final class BackgroundTaskRunnerSpy: BackgroundTaskRunner, @unchecked Sendable {
     let started = Synchronized(0)
     let finished = Synchronized(0)

@@ -18,7 +18,7 @@ struct PolygonWakeRadiusTests {
         )
     }
 
-    /// ~400 m square around `center`, so `center` sits ~200 m from the nearest edge.
+    /// ~400 m square; `center` is ~200 m from its nearest edge.
     private func polygon(id: String, coveringRadius: Double = 500) -> Geofence {
         let ring = [
             LocationData(latitude: 31.3682, longitude: 74.1679),
@@ -33,7 +33,7 @@ struct PolygonWakeRadiusTests {
         )
     }
 
-    /// A ~4 km square around `center`, so its boundary is far from anything the tests probe.
+    /// ~4 km square; its boundary is far from every probe.
     private func widePolygon(id: String) -> Geofence {
         let ring = [
             LocationData(latitude: 31.35, longitude: 74.15),
@@ -69,9 +69,6 @@ struct PolygonWakeRadiusTests {
         #expect(r == 1000)
     }
 
-    /// A covering-circle enter does not re-arm the trigger, so a radius that ignored polygons the
-    /// device has not reached yet would carry a wide trigger across the boundary: no wake, and the
-    /// whole visit silent.
     @Test
     func radius_givenDeviceOutsideCoveringCircleButNearBoundary_expectDistanceToBoundary() {
         // ~600 m north of centre: beyond the 500 m covering circle, ~400 m from the ring's north edge.
@@ -87,7 +84,6 @@ struct PolygonWakeRadiusTests {
         #expect(r > 190 && r < 210, "got \(r)")
     }
 
-    /// The NEAREST boundary wins: a distant polygon must not let the device walk into a close one.
     @Test
     func radius_givenTwoPolygons_expectNearestBoundaryWins() {
         let near = LocationData(latitude: 31.3717, longitude: 74.17) // ~11 m inside the north edge
@@ -101,7 +97,6 @@ struct PolygonWakeRadiusTests {
         #expect(both == GeofenceConstants.polygonWakeMinRadius, "got \(both)")
     }
 
-    /// The floor is what stops the trigger shrinking into the range the OS promotes unreliably.
     @Test
     func radius_givenBoundaryNearerThanFloor_expectFloor() {
         let onEdge = LocationData(latitude: 31.37179, longitude: 74.17)
@@ -117,7 +112,6 @@ struct PolygonWakeRadiusTests {
         #expect(r == 150, "got \(r)")
     }
 
-    /// A config below the floor cannot push the trigger into the range the OS drops.
     @Test
     func radius_givenConfigBelowFloor_expectFloorWins() {
         let r = PolygonWakeRadius.radius(

@@ -1,7 +1,6 @@
 import CioInternalCommon
 import Foundation
 
-/// The cold-wake restore path. Split out to stay under the file cap.
 extension GeofenceSyncCoordinatorImpl {
     @MainActor
     func applyCachedRegistration(
@@ -15,13 +14,11 @@ extension GeofenceSyncCoordinatorImpl {
             logger.geofenceSyncSkipped(reason: .noIdentifiedUser)
             return nil
         }
-        // No early return on an empty cache: the trigger stays armed for an empty nearby set, so
-        // this re-arms it if the OS dropped our regions.
+        // No early return on an empty cache: the trigger must still be re-armed.
         guard let anchor else {
             logger.geofenceSyncSkipped(reason: .noLastSyncAnchor)
             return nil
         }
-        // Stamped with the gate; see `acquireGateWithSequence`.
         guard let restoreSequence = acquireGateWithSequence() else {
             logger.geofenceSyncSkipped(reason: .restoreInProgress)
             return nil
@@ -39,8 +36,7 @@ extension GeofenceSyncCoordinatorImpl {
         let osRegistration = registerWithOsSync(
             businessRegions: nearest,
             movementTriggerLocation: anchor,
-            // The full refresh radius, not a boundary-sized one: the stored anchor can be
-            // arbitrarily far from the device here. The next movement pass re-arms against a fix.
+            // Full radius, not boundary-sized: the stored anchor can be far from the device.
             movementTriggerRadius: effectiveConfig.localRefreshTriggerRadius,
             registerMovementTrigger: registerMovementTrigger
         )
@@ -51,11 +47,9 @@ extension GeofenceSyncCoordinatorImpl {
             triggerRadius: effectiveConfig.localRefreshTriggerRadius
         )
         logSyncCompleted(registration, requested: (nearest.count, registerMovementTrigger), startedAt: syncStartedAt)
-        // Retires older replays, using the sequence taken at entry: a fresh one would outrank a
-        // movement that arrived while this was registering.
+        // The entry sequence: a fresh one would outrank a movement that arrived meanwhile.
         if osRegistration.movementTriggerPlanted { noteMovementApplied(restoreSequence) }
-        // No initial-enter: this restores the pre-kill set off a possibly-stale anchor; new fences
-        // come from a refresh, which emits them. Only what the OS took, as in the refresh paths.
+        // No initial-enter: the anchor may be stale; a refresh emits enters for new fences.
         return GeofenceRegistration(center: anchor, businessIds: nearestIds.intersection(osRegistration.registeredIds))
     }
 }

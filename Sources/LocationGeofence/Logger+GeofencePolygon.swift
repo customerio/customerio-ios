@@ -6,11 +6,7 @@ private let geofenceTag = "Geofence"
 // MARK: - Polygon membership
 
 //
-// What the SDK concluded about a polygon. The OS only reports the covering circle, so every record
-// here is a verdict the SDK reached itself.
-//
-// iOS vocabulary, not a cross-SDK contract: Android's `polygon.*` records use different keys
-// (only `polygon.undecided` shares a name).
+// iOS vocabulary, not a cross-SDK contract: only `polygon.undecided` shares a name with Android.
 
 extension Logger {
     func geofencePolygonTransition(identifier: String, transition: GeofenceTransition, confirmedByFix: Bool) {
@@ -26,7 +22,6 @@ extension Logger {
         )
     }
 
-    /// A whole-set pass declined, e.g. because one is already running.
     func geofencePolygonPassSkipped(reason: PolygonPassSkipReason) {
         debug(
             "Skipped polygon evaluation pass: \(reason.prose)"
@@ -35,11 +30,7 @@ extension Logger {
         )
     }
 
-    /// A whole-set pass ran; `n=0` means nothing was registered. One record per pass, not per
-    /// polygon, so a long stationary capture stays readable.
-    ///
-    /// `heldFix` records what became of a fix the caller supplied: reused, too old, or replaced
-    /// by a newer one the resolver already held.
+    /// `n=0` means nothing was registered.
     func geofencePolygonPassStarted(
         reason: PolygonEvaluationReason,
         count: Int,
@@ -94,12 +85,8 @@ extension Logger {
         )
     }
 
-    /// Logged on every decisive evaluation, delivered or not: the commonest outcome (decisively
-    /// outside, belief unchanged) writes nothing else, and would look like a dead evaluator.
-    ///
-    /// `edge` is signed, **positive inside** (`PolygonRegion.signedEdgeDistance`, same as Android).
-    /// Circle records use the opposite sign, so read `edge` against the record's `ev`. `acc` is the
-    /// ambiguity margin: a verdict needs `|edge|` to exceed it.
+    /// `edge` is **positive inside** (as Android); circle records use the opposite sign. A verdict
+    /// needs `|edge|` to exceed `acc`.
     func geofencePolygonVerdict(
         identifier: String,
         verdict: PolygonVerdict,
@@ -116,15 +103,12 @@ extension Logger {
                     ("edge", GeofenceLog.num(signedEdgeDistance, 0)),
                     ("acc", GeofenceLog.num(horizontalAccuracy)),
                     ("age", GeofenceLog.num(fixAge)),
-                    // Ties this verdict to its `polygon.pass.started` row: two passes can
-                    // interleave their verdicts.
+                    // Two passes can interleave their verdicts.
                     ("pass", String(verdict.pass)),
-                    // Shared cross-SDK boolean: true only when a second fix agreed. Keep it a
-                    // boolean; Android's contract pins it.
+                    // True only when a second fix agreed. Keep it a boolean: Android's contract
+                    // pins it.
                     ("cor", verdict.corroboration.confirmed ? "true" : "false"),
-                    // iOS-only, present only when a marginal arrival committed without
-                    // confirmation. The `PolygonUndecidedReason` tokens here describe the SECOND
-                    // fix: `corwhy=no_usable_fix` means no usable second fix was obtained.
+                    // Only on an unconfirmed marginal arrival. Tokens describe the SECOND fix.
                     ("corwhy", verdict.corroboration.unconfirmedReason)
                 ]),
             geofenceTag
@@ -142,8 +126,6 @@ extension Logger {
         )
     }
 
-    /// Which radius the movement trigger was armed with and why. Read with the resolver's fix-age
-    /// line just before it to judge whether a re-arm was warranted.
     func geofenceWakeRadiusChosen(radius: Double, anchorIsLiveFix: Bool) {
         let basis = anchorIsLiveFix ? "a held fix" : "a stored anchor"
         debug(
@@ -156,10 +138,7 @@ extension Logger {
         )
     }
 
-    /// `edge` and `acc` ride as their own keys so `why` stays a token.
-    ///
-    /// `pass` has no default so every call site attributes the record; sites outside any pass
-    /// pass `nil`, logged as `none`.
+    /// `pass` has no default on purpose; `nil` (outside any pass) logs `none`.
     func geofencePolygonUndecided(
         identifier: String,
         reason: PolygonUndecidedReason,

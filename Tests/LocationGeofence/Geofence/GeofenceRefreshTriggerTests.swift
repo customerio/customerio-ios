@@ -6,21 +6,14 @@ import Foundation
 import SharedTests
 import Testing
 
-/// Bound for every wait for something to happen.
-///
-/// `settle`'s 2 s default is too short on CI, where suites run in parallel and these decisions
-/// reach the main actor under contention. A late refresh can then land after the mock is reset.
-/// A passing wait returns as soon as the condition holds, so this only delays a genuine failure.
+/// `settle`'s 2 s default is too short under CI contention. A passing wait returns early, so this
+/// only delays a real failure.
 private let waitForDetachedWork: TimeInterval = 10
 
-/// Window for every assertion that something does *not* happen.
-///
-/// A negative can only be given long enough that the forbidden thing would have happened.
-/// `settleQuietly`'s 0.3 s default is far shorter than the contention above. Paid on every green run.
+/// Absence window; must outlast the contention above, which `settleQuietly`'s 0.3 s default doesn't.
 private let windowForAbsence: TimeInterval = 2
 
-/// Nested under `SharedDIGraphSuites` because `GeofenceStorage.init` defaults its `dateUtil` to
-/// `DIGraphShared.shared.dateUtil`, so every `Harness` reads the shared graph.
+/// `GeofenceStorage.init` defaults `dateUtil` from `DIGraphShared.shared`, hence `SharedDIGraphSuites`.
 extension SharedDIGraphSuites {
     @Suite("GeofenceRefreshTrigger")
     struct GeofenceRefreshTriggerTests {
@@ -30,15 +23,12 @@ extension SharedDIGraphSuites {
             let storage: GeofenceStorage
             let explicitRefreshRequested = Synchronized<Bool>(false)
 
-            /// Read from the trigger's decision task and written from the test, so synchronized.
             private let lastKnownBox = Synchronized<LocationData?>(nil)
             var lastKnown: LocationData? {
                 get { lastKnownBox.wrappedValue }
                 set { lastKnownBox.wrappedValue = newValue }
             }
 
-            /// Runs when the decision reads `lastKnownLocation`, the one point a test can interpose
-            /// on to land a reset mid-decision.
             private let onLastKnownReadBox = Synchronized<(() -> Void)?>(nil)
             var onLastKnownRead: (() -> Void)? {
                 get { onLastKnownReadBox.wrappedValue }
@@ -47,17 +37,15 @@ extension SharedDIGraphSuites {
 
             private let root: URL
 
-            /// Written from the decision task and polled from the test, so synchronized.
             private let acquireCounter = Synchronized<Int>(0)
             var acquireCount: Int { acquireCounter.wrappedValue }
 
-            /// Triggers this harness has built, held for its lifetime as module state holds one in
-            /// production. `refreshIfPossible` captures `[weak self]`, so a trigger owned only by a
-            /// local `let` can be released before its task runs, and the decision silently returns.
+            /// Keeps triggers alive: `refreshIfPossible` captures `[weak self]`, so a released
+            /// trigger's decision silently returns.
             private var triggers: [GeofenceRefreshTrigger] = []
 
             init() {
-                // An unstubbed generated mock force-unwraps and takes the whole process down.
+                // An unstubbed generated mock force-unwraps and crashes the process.
                 coordinator.refreshReturnValue = .success(())
                 coordinator.resetReturnValue = .success(())
                 self.root = FileManager.default.temporaryDirectory.appendingPathComponent("trigger-\(UUID().uuidString)")
@@ -205,15 +193,13 @@ extension SharedDIGraphSuites {
             #expect(harness.coordinator.refreshReceivedArguments?.latitude == 44)
         }
 
-        /// `onReset` clears two arm flags. This covers the one a no-anchor decision sets;
-        /// `explicitRefreshRequested` is covered below.
         @Test
         func onReset_givenArmedByAMissingAnchor_expectTheArmingDropped() async {
             let harness = Harness()
             harness.contextStore.setUserId("u")
             let trigger = harness.makeTrigger(locationMode: .automatic)
 
-            // No anchor of either kind, so the decision arms and asks for a fix instead of refreshing.
+            // No anchor, so the decision arms and asks for a fix instead of refreshing.
             trigger.onIdentified()
             #expect(await settle(timeout: waitForDetachedWork) { harness.acquireCount == 1 })
             #expect(harness.coordinator.refreshCallsCount == 0)
@@ -221,7 +207,6 @@ extension SharedDIGraphSuites {
             trigger.onReset()
             #expect(await settle(timeout: waitForDetachedWork) { harness.coordinator.resetCallsCount == 1 })
 
-            // The fix that arming asked for arrives, but the user who asked for it has signed out.
             trigger.onLocationAcquired(LocationData(latitude: 9, longitude: 9))
             await settleQuietly(windowForAbsence)
 
@@ -247,18 +232,15 @@ extension SharedDIGraphSuites {
             #expect(harness.coordinator.refreshCallsCount == 0)
         }
 
-        /// A late `ResetEvent` for a *prior* user must not abort the current user's decision.
-        ///
-        /// After `clearIdentify()` → `identify("B")`, the reset can arrive (unordered bus) while B's
-        /// decision is running. Aborting would leave B with no geofences, since the coordinator's
-        /// own reset is superseded and would not register them either.
+        /// The bus is unordered, so a prior user's reset can land during B's decision; aborting would
+        /// leave B with no geofences.
         @Test
         func onIdentified_givenLateResetForPriorUserMidDecision_expectRefreshStillRuns() async {
             let harness = Harness()
             harness.contextStore.setUserId("B")
             harness.lastKnown = LocationData(latitude: 10, longitude: 20)
             let trigger = harness.makeTrigger()
-            // The reset lands mid-reads: it clears the arm flags but leaves B the current user.
+            // Clears the arm flags but leaves B the current user.
             harness.onLastKnownRead = { [weak trigger] in trigger?.onReset() }
 
             trigger.onIdentified()

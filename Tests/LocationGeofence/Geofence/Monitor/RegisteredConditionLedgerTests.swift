@@ -3,9 +3,8 @@
 import Foundation
 import Testing
 
-/// The generation bookkeeping behind event attribution, driven as a sequence rather than by handing
-/// a selector its inputs: the selector alone can pass while nothing populates the previous
-/// generation, leaving the guard inert.
+/// Driven as sequences, not selector inputs: the selector can pass while nothing populates the old
+/// generation.
 @Suite("RegisteredConditionLedger")
 struct RegisteredConditionLedgerTests {
     private func ledgerWithReplacement(
@@ -18,8 +17,8 @@ struct RegisteredConditionLedgerTests {
             radius: 300, transitionTypes: [.enter, .exit], at: firstAt, liveFrom: firstAt
         )
         let replacedAt = Date()
-        // `setMonitoredRegions` releases ownership before re-registering a changed region; the
-        // launch path registers straight over the top. Both must retain the old circle.
+        // Geometry changes release first; the launch path registers over the top. Both keep the old
+        // circle.
         if releaseFirst { ledger.retire("1") }
         ledger.note(
             identifier: "1", center: LocationData(latitude: 0, longitude: 0.005),
@@ -29,8 +28,6 @@ struct RegisteredConditionLedgerTests {
         return (ledger, replacedAt)
     }
 
-    /// The path a geometry change actually takes: ownership is released, then the replacement is
-    /// registered. An event the daemon raised before the swap belongs to the circle it crossed.
     @Test
     func attribution_givenReleaseThenReRegister_expectTheEventResolvesToTheOldCircle() {
         let (ledger, replacedAt) = ledgerWithReplacement(releaseFirst: true)
@@ -40,8 +37,6 @@ struct RegisteredConditionLedgerTests {
         #expect(resolved?.center.longitude == 0)
     }
 
-    /// Registering straight over a live entry has to behave identically, or the attribution depends
-    /// on which caller happened to reach it.
     @Test
     func attribution_givenReRegisterWithoutRelease_expectTheEventResolvesToTheOldCircle() {
         let (ledger, replacedAt) = ledgerWithReplacement(releaseFirst: false)
@@ -51,8 +46,6 @@ struct RegisteredConditionLedgerTests {
         #expect(resolved?.center.longitude == 0)
     }
 
-    /// Control: an ordinary event postdates its registration and must resolve to the current
-    /// circle, or every exit would be refused as stale.
     @Test
     func attribution_givenEventAfterTheReplacement_expectTheCurrentCircle() {
         let (ledger, replacedAt) = ledgerWithReplacement(releaseFirst: true)
@@ -62,8 +55,6 @@ struct RegisteredConditionLedgerTests {
         #expect(resolved?.center.longitude == 0.005)
     }
 
-    /// Nothing registered means nothing can be said, and a consumer reads that as "treat as
-    /// current" rather than refusing a genuine crossing.
     @Test
     func attribution_givenNothingRegistered_expectNoneHeld() {
         let ledger = RegisteredConditionLedger()
@@ -71,7 +62,6 @@ struct RegisteredConditionLedgerTests {
         #expect(ledger.attribution(for: "1", raisedAt: Date()) == .noneHeld)
     }
 
-    /// The OS gave the condition up, so a later event must not be attributed to either generation.
     @Test
     func attribution_givenForgottenAfterTheOsDroppedIt_expectNoneHeld() {
         var (ledger, replacedAt) = ledgerWithReplacement(releaseFirst: true)
@@ -82,8 +72,6 @@ struct RegisteredConditionLedgerTests {
         #expect(ledger.attribution(for: "1", raisedAt: replacedAt.addingTimeInterval(-1)) == .noneHeld)
     }
 
-    /// Teardown clears both generations: a belief inherited across sign-out would attribute the
-    /// next session's events to the previous one's geometry.
     @Test
     func attribution_givenForgetAll_expectNothingRetained() {
         var (ledger, replacedAt) = ledgerWithReplacement(releaseFirst: true)
@@ -94,8 +82,7 @@ struct RegisteredConditionLedgerTests {
         #expect(ledger.condition(for: "1") == nil)
     }
 
-    /// Adoption stamps `.distantPast` because the condition predates the process. Every event it
-    /// will see therefore postdates it and resolves to the adopted circle rather than through nil.
+    /// Adoption stamps `.distantPast`: the condition predates the process.
     @Test
     func attribution_givenAdoptedCondition_expectEventsResolveToIt() {
         var ledger = RegisteredConditionLedger()
@@ -109,9 +96,8 @@ struct RegisteredConditionLedgerTests {
         #expect(resolved?.center.longitude == 0)
     }
 
-    /// `registeredAt` is excluded from equality on purpose: the baseline heal compares conditions to
-    /// ask whether the CIRCLE still matches, and a re-registration of identical geometry must not
-    /// read as a change there.
+    /// `registeredAt` is excluded from equality on purpose: identical geometry must not read as a
+    /// change.
     @Test
     func equality_givenSameGeometryDifferentRegistrationTime_expectEqual() {
         let a = RegisteredCondition(
@@ -126,8 +112,6 @@ struct RegisteredConditionLedgerTests {
         #expect(a == b)
     }
 
-    /// Registration records geometry synchronously but the OS keeps evaluating the old circle until
-    /// the queued add is issued, so an event raised in between belongs to the old circle.
     @Test
     func attribution_givenEventBetweenStagingAndDrain_expectTheOldCircle() {
         var ledger = RegisteredConditionLedger()
@@ -149,7 +133,6 @@ struct RegisteredConditionLedgerTests {
         #expect(resolved?.center.longitude == 0)
     }
 
-    /// Once the add drains the new circle is the one events belong to.
     @Test
     func attribution_givenEventAfterTheDrain_expectTheNewCircle() {
         var ledger = RegisteredConditionLedger()
@@ -164,8 +147,7 @@ struct RegisteredConditionLedgerTests {
         #expect(generation(ledger, at: drainedAt.addingTimeInterval(1))?.center.longitude == 0.005)
     }
 
-    /// A drain promotes the generation it belongs to, not the newest staged one: the queue is
-    /// serial, so the circle the OS takes next is the oldest queued.
+    /// A drain promotes the oldest staged generation: the queue is serial.
     @Test
     func confirm_givenThreeStagedAndTheyDrainInTurn_expectEachBecomesLiveInOrder() {
         var ledger = RegisteredConditionLedger()
@@ -197,9 +179,6 @@ struct RegisteredConditionLedgerTests {
         #expect(generation(ledger, at: secondDrainedAt.addingTimeInterval(-1))?.center.longitude == 0)
     }
 
-    /// Two replacements staged before either add drains. The OS is on the original circle
-    /// throughout; attributing an exit to a circle the OS never took gets it refused by the
-    /// consumer's geometry guard and leaves the device believed inside.
     @Test
     func attribution_givenTwoReplacementsStagedBeforeEitherDrains_expectTheCircleTheOsHolds() {
         var ledger = RegisteredConditionLedger()
@@ -222,8 +201,6 @@ struct RegisteredConditionLedgerTests {
         #expect(generation(ledger, at: Date())?.center.longitude == 0)
     }
 
-    /// A sync diffing geometry must see the circle just staged, while attribution must still see
-    /// the one the OS is evaluating.
     @Test
     func stagedAndLive_givenAReplacementNotYetDrained_expectEachReadsItsOwnGeneration() {
         var ledger = RegisteredConditionLedger()
@@ -242,8 +219,6 @@ struct RegisteredConditionLedgerTests {
         #expect(generation(ledger, at: Date())?.center.longitude == 0)
     }
 
-    /// Retiring drops the claim, so geometry comparisons stop matching, but the OS keeps evaluating
-    /// the circle until a queued removal drains and an event already raised can still arrive.
     @Test
     func retire_expectClaimDroppedAndAttributionKept() {
         var ledger = RegisteredConditionLedger()
@@ -259,9 +234,8 @@ struct RegisteredConditionLedgerTests {
         #expect(generation(ledger, at: Date())?.center.longitude == 0)
     }
 
-    /// An event older than BOTH held generations is `expired`, not `noneHeld`: `noneHeld` is taken
-    /// as current, which would let a stale covering-exit store `outside` for a device inside the
-    /// polygon that replaced the one it was raised against.
+    /// `expired`, not `noneHeld`: consumers take `noneHeld` as current, which would let a stale exit
+    /// store `outside`.
     @Test
     func attribution_givenAnEventOlderThanEveryHeldGeneration_expectExpired() {
         var ledger = RegisteredConditionLedger()
@@ -277,15 +251,12 @@ struct RegisteredConditionLedgerTests {
         )
         ledger.confirm("1", stagedAt: secondStagedAt, at: Date().addingTimeInterval(-20))
 
-        // Between the two generations resolves to the first, which WAS live then.
         #expect(generation(ledger, at: firstLiveAt.addingTimeInterval(1))?.center.longitude == 0)
-        // Before either went live, the ledger knows it cannot answer AND that the event is stale.
         #expect(ledger.attribution(for: "1", raisedAt: firstLiveAt.addingTimeInterval(-1)) == .expired)
     }
 
-    /// The first-add boundary must NOT expire. An event dated before the first `liveFrom` was
-    /// raised against a condition the OS already held, whose circle may well be the same one.
-    /// Expiry needs a generation to have been REPLACED.
+    /// Not expired before the FIRST add: the OS may already hold the same circle. Expiry needs a
+    /// replacement.
     @Test
     func attribution_givenAFirstAddAndAnEventBeforeItWasIssued_expectNoneHeld() {
         var ledger = RegisteredConditionLedger()
@@ -300,8 +271,6 @@ struct RegisteredConditionLedgerTests {
         #expect(ledger.attribution(for: "1", raisedAt: liveFrom.addingTimeInterval(-1)) == .noneHeld)
     }
 
-    /// Staged but never drained: nothing has gone live, so the ledger has never known what the OS
-    /// holds and must not call the event stale. `noneHeld`, and the consumer takes it as current.
     @Test
     func attribution_givenStagedButNeverDrained_expectNoneHeld() {
         var ledger = RegisteredConditionLedger()
@@ -313,9 +282,8 @@ struct RegisteredConditionLedgerTests {
         #expect(ledger.attribution(for: "1", raisedAt: Date()) == .noneHeld)
     }
 
-    /// The OS dates an add's corrective event as the add lands, so an event AT `liveFrom` belongs
-    /// to the new generation. Attributing it to the old circle, whose geometry no longer matches
-    /// the fence, gets the corrective crossing refused.
+    /// The OS dates an add's corrective event as the add lands, so an event AT `liveFrom` is the
+    /// new generation.
     @Test
     func attribution_givenAnEventAtTheInstantTheAddWasIssued_expectTheNewGeneration() {
         var ledger = RegisteredConditionLedger()
@@ -333,12 +301,10 @@ struct RegisteredConditionLedgerTests {
         ledger.confirm("1", stagedAt: stagedAt, at: liveFrom)
 
         #expect(generation(ledger, at: liveFrom)?.center.longitude == 0.01)
-        // One instant earlier still belongs to the circle being replaced.
         #expect(generation(ledger, at: liveFrom.addingTimeInterval(-0.001))?.center.longitude == 0)
     }
 
-    /// A confirmation for a forgotten generation must not promote whatever replaced it: `confirm`
-    /// is keyed on staging time, so it matches nothing and the replacement waits for its own drain.
+    /// `confirm` is keyed on staging time, so a forgotten generation's confirm matches nothing.
     @Test
     func confirm_givenTheIdentifierWasForgottenBeforeTheDrain_expectTheReplacementStaysQueued() {
         var ledger = RegisteredConditionLedger()
@@ -356,15 +322,12 @@ struct RegisteredConditionLedgerTests {
 
         ledger.confirm("1", stagedAt: firstStagedAt, at: Date().addingTimeInterval(-10))
 
-        // Nothing is live: the replacement's own add has not drained.
         #expect(ledger.attribution(for: "1", raisedAt: Date()) == .noneHeld)
-        // ...and it is still what a sync diffs its geometry against.
         #expect(ledger.condition(for: "1")?.center.longitude == 0.005)
     }
 
-    /// What the diagnostics sampler reads. A retired condition must stop reading as wanted even
-    /// though `retire` keeps its live generation for late events; keyed on live generations, a
-    /// removed fence would read as missing from the OS for the rest of the process.
+    /// Read by the diagnostics sampler; keyed on live generations, a removed fence would read as
+    /// missing.
     @Test
     func stagedIdentifiers_givenOneRetiredAndOneUnconfirmed_expectOnlyTheWantedOnesListed() {
         var ledger = RegisteredConditionLedger()
@@ -383,8 +346,6 @@ struct RegisteredConditionLedgerTests {
         // The live generation outlives the claim, which is why `staged` is the field to read.
         #expect(ledger.attribution(for: "1", raisedAt: at) != .noneHeld)
 
-        // Staged with its add still queued, as every registration is before its drain: nothing
-        // is live yet, but it is wanted.
         ledger.note(
             identifier: "3", center: LocationData(latitude: 0, longitude: 0),
             radius: 300, transitionTypes: [.enter, .exit], at: at
@@ -394,8 +355,6 @@ struct RegisteredConditionLedgerTests {
         #expect(ledger.attribution(for: "3", raisedAt: at) == .noneHeld)
     }
 
-    /// The condition an attribution names, for assertions that only care about which circle.
-    /// The `noneHeld` / `expired` split is asserted directly by the tests that turn on it.
     private func generation(_ ledger: RegisteredConditionLedger, at raisedAt: Date) -> RegisteredCondition? {
         guard case .generation(let condition) = ledger.attribution(for: "1", raisedAt: raisedAt) else { return nil }
         return condition

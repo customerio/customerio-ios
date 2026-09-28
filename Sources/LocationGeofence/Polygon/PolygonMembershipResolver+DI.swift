@@ -4,9 +4,7 @@ import Foundation
 // MARK: - DI
 
 extension DIGraphShared {
-    /// Hand-written and `@MainActor` for the same reason as `geofenceMonitor`: the resolver owns a
-    /// `CLLocationManager` through its `MovementFixResolver`. The override check mirrors the
-    /// generated accessors so tests can substitute via `di.override(value:forType:)`.
+    /// Hand-written because the resolver owns a `CLLocationManager` and is `@MainActor`.
     @MainActor
     var polygonMembershipResolver: PolygonMembershipResolver {
         let overridden: PolygonMembershipResolver? = getOverriddenInstance()
@@ -15,8 +13,7 @@ extension DIGraphShared {
 }
 
 extension PolygonMembershipResolver {
-    /// Process-wide singleton so one `CLLocationManager` serves every evaluation. Membership belief
-    /// lives in `GeofenceStorage`, not here.
+    /// One instance, so one `CLLocationManager` serves every evaluation.
     @MainActor
     static let shared = PolygonMembershipResolver(
         storage: DIGraphShared.shared.geofenceStorage,

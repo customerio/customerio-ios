@@ -3,31 +3,19 @@ import CoreLocation
 import Foundation
 
 extension Geofence {
-    /// Straight-line distance in meters from this geofence's center to the given coordinates.
+    /// Meters from the center, not the boundary.
     func distanceTo(latitude: Double, longitude: Double) -> CLLocationDistance {
         let center = CLLocation(latitude: self.latitude, longitude: self.longitude)
         let target = CLLocation(latitude: latitude, longitude: longitude)
         return center.distance(from: target)
     }
 
-    /// Straight-line distance in meters from this geofence's center to the given location.
     func distanceTo(_ location: LocationData) -> CLLocationDistance {
         distanceTo(latitude: location.latitude, longitude: location.longitude)
     }
 
-    /// Distance in meters from this geofence's *boundary* to the given location, `0` when the
-    /// location is inside.
-    ///
-    /// Monitoring relevance is proximity to the boundary, not to the center: ranking on center
-    /// distance evicts a large region the device currently occupies as soon as
-    /// `maxBusinessGeofences` regions have nearer centers, and an unmonitored region can never
-    /// report its exit.
-    ///
-    /// A polygon measures to its ring, not its covering circle: the circle reads `0` across the
-    /// whole annulus, so a venue the device is outside of would rank as occupied.
-    ///
-    /// Not a containment test — this is `0` for every point inside. Use `distanceTo` against
-    /// `radius` for a circle, or `polygonRegion?.contains` for a polygon.
+    /// Meters from the boundary (a polygon's ring, not its covering circle), `0` anywhere inside.
+    /// Not a containment test.
     func edgeDistanceTo(_ location: LocationData) -> CLLocationDistance {
         if let polygon = polygonRegion { return max(0, -polygon.signedEdgeDistance(to: location)) }
         return max(0, distanceTo(location) - radius)

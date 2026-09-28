@@ -6,10 +6,6 @@ private let geofenceTag = "Geofence"
 
 // MARK: - Movement trigger
 
-//
-// Re-centring, the refetch tier, and the fix a pass runs on; read together when calibrating the
-// wake margin.
-
 extension Logger {
     func geofenceMovementTrigger(tier: HandleMovementTier) {
         debug(
@@ -19,7 +15,7 @@ extension Logger {
         )
     }
 
-    /// The re-centred trigger's geometry. Its centre is the device's position.
+    /// The centre is the device's position.
     func geofenceMovementTriggerRegistered(latitude: Double, longitude: Double, radius: Double) {
         let geometry: [(String, String?)] = [
             ("rlat", GeofenceLog.num(latitude, 5)),
@@ -40,8 +36,6 @@ extension Logger {
         )
     }
 
-    /// `spd` rides here, not only on `os.callback.received`: the wake margin is sized from the fix a
-    /// pass actually uses, while callback-time speed samples only moments the OS chose to wake us.
     func geofenceMovementFixResolved(ageSeconds: TimeInterval, requested: Bool, speed: CLLocationSpeed? = nil, purpose: GeofenceFixPurpose? = nil) {
         let source = requested ? "freshly requested" : "cached"
         debug(
@@ -51,7 +45,6 @@ extension Logger {
                     ("prov", requested ? "requested" : "cached"),
                     // Negative means the fix carries no speed, which is not the same as stationary.
                     ("spd", speed.flatMap { $0 >= 0 ? GeofenceLog.num($0) : nil }),
-                    // Which caller asked; their speed samples are different populations.
                     ("for", purpose?.rawValue)
                 ]),
             geofenceTag

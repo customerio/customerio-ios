@@ -1,31 +1,20 @@
 import CioInternalCommon
 import Foundation
 
-/// What a read of the queue file found.
-///
-/// `unreadable` is not an empty list: treated as one, the next append replaces a queue that is
-/// intact on disk. A read can fail while a write succeeds, since `Data.write(options: .atomic)`
-/// renames a temp file into place and needs permission on the directory, not the target.
+/// `unreadable` is not empty: treated as empty, the next append replaces a queue intact on disk. A
+/// read can fail while an atomic write (a rename into the directory) succeeds.
 enum PendingGeofenceQueueRead: Equatable {
-    /// The file was read. Rows that did not decode are skipped, counted, and logged by the store.
     case rows([PendingGeofenceMetric])
-    /// The bytes could not be obtained. Nothing may be written over them.
     case unreadable
 }
 
-/// The outcome of a write. The two failures are reported differently: only one is a failed write.
 enum PendingGeofenceQueueWrite: Equatable {
     case persisted
-    /// Refused before writing, because the existing queue could not be read.
     case refusedUnreadable
     case writeFailed
 }
 
-/// File-backed queue of geofence transition events awaiting delivery.
-///
-/// Like `PendingPushDeliveryStore` but in the app's container: geofence callbacks run in the main
-/// process, so no app group. Uses `completeUntilFirstUserAuthentication` and is excluded from
-/// backups. Each method's load → modify → save runs without `await`.
+/// In the app's container, not an app group: geofence callbacks run in the main process.
 actor PendingGeofenceMetricStore {
     private static let defaultSubdirectory = "io.customer.sdk.geofence"
     private static let filename = "pending_geofence_metrics.json"
@@ -36,10 +25,6 @@ actor PendingGeofenceMetricStore {
     private let directoryURL: URL?
     private let logger: Logger
 
-    /// - Parameters:
-    ///   - logger: Reports rows skipped on read; the store is the only place that knows the count.
-    ///   - fileManager: File manager used for I/O. Defaults to `.default`.
-    ///   - directoryURL: Directory for the queue file. If `nil`, uses Application Support in the app container.
     init(
         logger: Logger,
         fileManager: FileManager = .default,
@@ -50,9 +35,7 @@ actor PendingGeofenceMetricStore {
         self.directoryURL = directoryURL
     }
 
-    /// Appends in one read-modify-write so a transition's fan-out persists all-or-nothing. Rows
-    /// whose `key` already exists are skipped; over capacity, the **oldest** are dropped. Refuses to
-    /// write over an unreadable file.
+    /// One write, so a transition's fan-out persists all-or-nothing.
     func append(_ metrics: [PendingGeofenceMetric]) -> PendingGeofenceQueueWrite {
         guard !metrics.isEmpty else { return .persisted }
         guard case .rows(var items) = read() else { return .refusedUnreadable }
@@ -66,13 +49,11 @@ actor PendingGeofenceMetricStore {
         return saveToDisk(items) ? .persisted : .writeFailed
     }
 
-    /// The pending queue, oldest first, or `unreadable`, which callers must not treat as empty.
+    /// Oldest first.
     func read() -> PendingGeofenceQueueRead {
         loadFromDisk()
     }
 
-    /// Removes one pending entry by key. Returns `true` when the entry was found and removed,
-    /// `false` when it was absent, the file was unreadable, or the write failed.
     func remove(key: String) -> Bool {
         guard case .rows(var items) = read() else { return false }
         let originalCount = items.count
@@ -84,8 +65,7 @@ actor PendingGeofenceMetricStore {
     // MARK: - Private (file persistence)
 
     private func loadFromDisk() -> PendingGeofenceQueueRead {
-        // Application Support could not be resolved. Unreadable, not empty, and logged: every
-        // append and flush fails for the life of the process.
+        // Unreadable, not empty: every append and flush fails for the life of the process.
         guard let url = fileURL() else {
             logger.geofenceQueueUnreadable(reason: .noFileLocation)
             return .unreadable
@@ -107,8 +87,7 @@ actor PendingGeofenceMetricStore {
         return .rows(decoded)
     }
 
-    /// Decodes one row without failing the array, so a row the current schema can't read (schema
-    /// evolution, e.g. non-optional `userId`/`transitionId`) doesn't discard the rest.
+    /// Per row, so one the current schema can't read doesn't discard the rest.
     private struct DecodedRow: Decodable {
         let metric: PendingGeofenceMetric?
 
@@ -135,8 +114,8 @@ actor PendingGeofenceMetricStore {
         } catch {
             return false
         }
-        // Best-effort: the bytes are already on disk, and reporting failure here would make the
-        // caller retry and duplicate the row.
+        // Best-effort: the bytes are on disk, and a failure here would make the caller duplicate
+        // the row.
         try? fileManager.setAttributes(
             [.protectionKey: Self.protection],
             ofItemAtPath: url.path

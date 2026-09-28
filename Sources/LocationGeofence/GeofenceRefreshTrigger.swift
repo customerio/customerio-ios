@@ -1,8 +1,6 @@
 import CioInternalCommon
 import Foundation
 
-/// Decides when a geofence sync runs, and which position it runs from. `GeofenceModuleState` keeps
-/// the wiring and hands the two OS-facing reads in as closures.
 final class GeofenceRefreshTrigger {
     private let storage: GeofenceStorage
     private let contextStore: BackgroundDeliveryContextStore
@@ -15,10 +13,8 @@ final class GeofenceRefreshTrigger {
 
     /// Owned by `GeofenceModuleState`: `refreshFromCurrentLocation()` can arrive before `setup`.
     private let explicitRefreshRequested: Synchronized<Bool>
-    /// Armed when a refresh found no anchor; the next fix consumes it.
     private let lastSkippedForNoLocation = Synchronized<Bool>(false)
-    /// Guards the *pair* of arm flags. Each is thread-safe alone, but a reset must not land between
-    /// the two reads in `onLocationAcquired`, or a signed-out user's refresh can go ahead.
+    /// Guards the flag *pair*: a reset between the two reads could let a signed-out user's refresh run.
     private let armingLock = NSRecursiveLock()
 
     init(
@@ -43,7 +39,6 @@ final class GeofenceRefreshTrigger {
 
     // MARK: - Inputs
 
-    /// App launch.
     func onModuleInit(launchReason: GeofenceLaunchReason = .appStart) {
         logger.geofenceModuleInitialized(launchReason: launchReason)
         refreshIfPossible()
@@ -56,8 +51,7 @@ final class GeofenceRefreshTrigger {
 
     func onReset() {
         logger.geofenceIdentityChanged(identified: false)
-        // Synchronously, before the async reset: must land before a re-login's identify re-arms.
-        // Under the arming lock so a concurrent consume sees both flags cleared together.
+        // Synchronous, so it lands before a re-login's identify re-arms.
         armingLock.withLock {
             explicitRefreshRequested.wrappedValue = false
             lastSkippedForNoLocation.wrappedValue = false
@@ -67,7 +61,6 @@ final class GeofenceRefreshTrigger {
         }
     }
 
-    /// Refreshes only when something armed for it; one fix is consumed once.
     func onLocationAcquired(_ location: LocationData) {
         let startedForUser = contextStore.currentUserId
         let wasArmed = armingLock.withLock { () -> Bool in
@@ -87,9 +80,8 @@ final class GeofenceRefreshTrigger {
         logger.geofenceFirstRunRearm()
         Task { @MainActor [weak self] in
             guard let self else { return }
-            // The armed refresh belongs to the user current when the flag was consumed. A sign-out or
-            // switch racing this fix must win: the coordinator's reset is skipped while any user is
-            // signed in, so it would not undo this refresh.
+            // A racing sign-out/switch must win: the coordinator's reset is skipped while anyone is
+            // signed in, so it wouldn't undo this refresh.
             guard self.contextStore.currentUserId == startedForUser else { return }
             _ = await self.coordinator().refresh(latitude: location.latitude, longitude: location.longitude, anchorIsLiveFix: true)
         }
@@ -101,14 +93,11 @@ final class GeofenceRefreshTrigger {
         guard let startedForUser = contextStore.currentUserId, !startedForUser.isEmpty else { return }
         Task { @MainActor [weak self] in
             guard let self else { return }
-            // Registration centre over the Location cache: movement EXITs walk the former and never
-            // update the latter, so on relaunch the cache is the stale one.
+            // Registration centre first: movement EXITs move it but not the Location cache.
             let registrationCenter = await self.storage.getLastRegistrationCenter()
             let lastKnown = await self.lastKnownLocation()
             let anchor = registrationCenter ?? lastKnown
-            // Compare against the CURRENT user, not an epoch counter: a late reset for a prior user
-            // must not abort this decision, while a real sign-out or switch does. Arming happens under
-            // `armingLock` so it cannot interleave with `onReset` clearing the flags.
+            // CURRENT user, not an epoch counter: a late reset for a prior user must not abort this.
             let isCurrent = self.armingLock.withLock { () -> Bool in
                 guard self.contextStore.currentUserId == startedForUser else { return false }
                 // Armed only here, after the reads, or an existing anchor would arm it falsely.
@@ -120,9 +109,7 @@ final class GeofenceRefreshTrigger {
                 self.autoAcquireIfNeeded()
                 return
             }
-            // Not a live fix: `anchor` is the stored registration centre (or, before anything is
-            // registered, the last-known cache), so the movement trigger must not be sized to a
-            // polygon boundary around it.
+            // Not live: `anchor` is stored.
             _ = await self.coordinator().refresh(latitude: anchor.latitude, longitude: anchor.longitude, anchorIsLiveFix: false)
         }
     }

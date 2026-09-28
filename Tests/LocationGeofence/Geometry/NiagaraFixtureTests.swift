@@ -12,8 +12,7 @@ struct NiagaraFixtureTests {
         (43.1500, -79.1200), (43.1800, -79.1800), (43.2300, -79.1500), (43.2620, -79.0750)
     ].map { LocationData(latitude: $0.0, longitude: $0.1) }
 
-    /// Minimum enclosing circle on WGS84: the farthest vertex sits 7877.1 m out, matching the
-    /// server's PostGIS `geography` value.
+    /// Minimum enclosing circle on WGS84 (farthest vertex 7877.1 m), matching the server's value.
     private static let covering = (latitude: 43.219062, longitude: -79.099117, radius: 7878.0)
 
     @Test
@@ -47,7 +46,7 @@ struct NiagaraFixtureTests {
         #expect(domain.polygonRegion != nil)
     }
 
-    /// Well inside the town: the margin must exceed any realistic fix accuracy.
+    /// The margin must exceed any realistic fix accuracy.
     @Test
     func niagaraRing_expectInteriorPointDecisivelyInside() {
         let region = PolygonRegion(vertices: Self.ring)
@@ -58,8 +57,7 @@ struct NiagaraFixtureTests {
         #expect(signed > 65)
     }
 
-    /// The reflex notch: inside the covering circle, outside the town. A convex hull would
-    /// wrongly call this inside.
+    /// Inside the covering circle but outside the town; a convex hull would wrongly call it inside.
     @Test
     func niagaraRing_expectNotchPointOutside() {
         let region = PolygonRegion(vertices: Self.ring)

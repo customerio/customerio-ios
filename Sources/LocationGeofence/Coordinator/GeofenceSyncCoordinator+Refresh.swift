@@ -1,11 +1,7 @@
 import CioInternalCommon
 import Foundation
 
-/// The gated refresh tiers and their exit cleanup. Internal only because they live in a separate
-/// file from their callers.
 extension GeofenceSyncCoordinatorImpl {
-    /// Fetch, filter, register, persist. The caller owns the gate; `expectedUserId` is captured
-    /// before the fetch so the result can be dropped if the user changed during it.
     func performRemoteRefresh(
         expectedUserId: String,
         anchor: LocationData,
@@ -20,7 +16,6 @@ extension GeofenceSyncCoordinatorImpl {
         case .failure(let error): return MovementPassOutcome(result: .failure(error), reCentred: false)
         }
 
-        // Registering for a stale user would attribute geofences and events to whoever signs in next.
         if contextStore.currentUserId != expectedUserId {
             logger.geofenceSyncSupersededByUserChange()
             // Not a re-centre: nothing moved, so a queued movement must not be retired as overtaken.
@@ -37,7 +32,7 @@ extension GeofenceSyncCoordinatorImpl {
         let monitorable = await MainActor.run { monitorableRegions(regions) }
         let nearest = distanceFilter.nearest(monitorable, to: anchor, limit: effectiveConfig.maxBusinessGeofences, maxDistance: effectiveConfig.maxMonitoringDistance)
         let registerMovementTrigger = effectiveConfig.maxBusinessGeofences > 0
-        // Read before `recordRegistration` overwrites it — the diff decides which registrations are new.
+        // Read before `recordRegistration` overwrites it.
         let previouslyRegisteredIds = await storage.getRegisteredBusinessIds()
         let nearestIds = Set(nearest.map(\.id))
         let wakeRadius = wakeRadius(at: anchor, polygons: nearest, config: effectiveConfig, anchorIsLiveFix: anchorIsLiveFix)
@@ -74,8 +69,6 @@ extension GeofenceSyncCoordinatorImpl {
     ) async -> Result<GeofenceApiResponse, GeofenceSyncError> {
         switch await awaitApiFetch(latitude: anchor.latitude, longitude: anchor.longitude) {
         case .success(let value):
-            // Logged before local filtering, so what the server offered can be compared with what
-            // survived ranking.
             logger.geofenceApiFetchResult(
                 returnedCount: value.geofences.count,
                 elapsed: GeofenceLog.monotonicNow() - startedAt,
@@ -99,20 +92,16 @@ extension GeofenceSyncCoordinatorImpl {
         registeredIds: Set<String>
     ) async {
         await storage.setCachedGeofences(regions)
-        // A response without a config must not clobber the cached one.
         if let parsedConfig {
             await storage.setCachedConfig(parsedConfig)
             onConfigPersisted.wrappedValue?()
         }
         await storage.recordSync(timestamp: dateUtil.now, location: anchor)
-        // Only what the OS accepted: recording an unregistered (e.g. oversized) polygon would have
-        // the resolver deliver an enter that no exit can ever balance.
+        // Only what the OS accepted, or the resolver could emit an enter no exit can balance.
         await storage.recordRegistration(center: anchor, businessIds: registeredIds)
     }
 
-    /// Re-ranks cached regions and re-registers with the OS. No API call and no `lastSync` write:
-    /// the fetch anchor is what the refetch decision measures from. Records the registration
-    /// centre so the re-rank reference follows the device.
+    /// No `lastSync` write: the refetch decision measures from the fetch anchor.
     func performLocalRefresh(
         expectedUserId: String,
         anchor: LocationData,
@@ -125,7 +114,7 @@ extension GeofenceSyncCoordinatorImpl {
         let monitorable = await MainActor.run { monitorableRegions(cachedRegions) }
         let nearest = distanceFilter.nearest(monitorable, to: anchor, limit: config.maxBusinessGeofences, maxDistance: config.maxMonitoringDistance)
         let registerMovementTrigger = config.maxBusinessGeofences > 0
-        // Read before `recordRegistration` overwrites it — the diff decides which registrations are new.
+        // Read before `recordRegistration` overwrites it.
         let previouslyRegisteredIds = await storage.getRegisteredBusinessIds()
         let nearestIds = Set(nearest.map(\.id))
         logRanking(candidates: cachedRegions, nearest: nearest, nearestIds: nearestIds, anchor: anchor)
@@ -153,8 +142,7 @@ extension GeofenceSyncCoordinatorImpl {
         return MovementPassOutcome(result: .success(()), reCentred: osRegistration.movementTriggerPlanted)
     }
 
-    /// Re-arms the trigger and re-evaluates membership; the nearby set is unchanged, so no ranking or
-    /// cache writes. Must not `recordRegistration`: see `movedBeyondRerankRadius`.
+    /// Must not `recordRegistration`: see `movedBeyondRerankRadius`.
     func performPolygonWakePass(
         expectedUserId: String,
         at location: LocationData,
@@ -178,14 +166,7 @@ extension GeofenceSyncCoordinatorImpl {
         return MovementPassOutcome(result: .success(()), reCentred: osRegistration.movementTriggerPlanted)
     }
 
-    /// The trigger radius, sized to the nearest polygon boundary only when the anchor is a live fix.
-    /// A stored anchor can be arbitrarily far from the device, so a boundary-sized circle around it
-    /// may already exclude the device; the full refresh radius is used and the next movement pass
-    /// re-arms against a fix.
-    ///
-    /// Known gap: "live" means no older than `movementFixMaxAge`, so at speed a tight trigger can
-    /// still be planted around a point the device has left. On the CLMonitor path (iOS 18+) that
-    /// costs one spurious re-arm; on the classic path the trigger may never fire.
+    /// Boundary-sized only for a live fix: around a stored anchor it may already exclude the device.
     private func wakeRadius(
         at anchor: LocationData,
         polygons: [Geofence],
@@ -201,30 +182,25 @@ extension GeofenceSyncCoordinatorImpl {
         return radius
     }
 
-    /// Decodes the response's regions, failing when none survive and any was unreadable. Treating
-    /// a broken payload as "no geofences" would wipe the cache and deregister everything. Regions
-    /// dropped only for a shape this SDK doesn't support, or a genuinely empty list, apply normally,
-    /// so a workspace that moved to an unsupported shape doesn't freeze stale fences forever.
+    /// Fails when none survive and any was unreadable, or a broken payload would deregister
+    /// everything. Unsupported shapes don't count, so they can't freeze stale fences forever.
     private func readableRegions(from response: GeofenceApiResponse) -> Result<[Geofence], GeofenceSyncError> {
         var unreadableCount = 0
         let regions = response.toDomainRegions(onInvalidRegion: { id, reason in
             logger.geofenceInvalidRegionDropped(id, reason: reason)
-            // A shape the server named but this version doesn't implement is unsupported, not
-            // unreadable. `undescribedShape` (polygon fields, no discriminator) is malformed and counts.
+            // `unknownShape` is unsupported, not unreadable; `undescribedShape` is malformed and
+            // counts.
             if reason != .unknownShape { unreadableCount += 1 }
         })
-        // Regions lost at JSON decode (e.g. a wrong-typed radius) never reach `toDomainRegions`,
-        // so count them from the arrival tally.
+        // Regions lost at JSON decode never reach `toDomainRegions`.
         let decodeLosses = response.receivedRegionCount - response.geofences.count
         guard regions.isEmpty, unreadableCount + decodeLosses > 0 else { return .success(regions) }
         logger.geofenceAllRegionsDropped(count: response.receivedRegionCount)
         return .failure(.fetchFailed(.decoding))
     }
 
-    /// A sign-out/switch can land inside a gated operation, and the `reset()` it triggers is dropped
-    /// while the gate is held. Runs at each gated method's single exit, gate still held, to undo
-    /// the stale user's state. Returns true when it cleaned, so the caller can retry for the
-    /// current user.
+    /// Call with the gate still held: a sign-out's `reset()` is dropped while it is held, so this
+    /// undoes the stale user's state.
     func cleanupIfUserChanged(expectedUserId: String?) async -> Bool {
         guard let expectedUserId, contextStore.currentUserId != expectedUserId else { return false }
         // Clear before the OS stop — same ordering rule as `reset`, same reason.
@@ -236,8 +212,6 @@ extension GeofenceSyncCoordinatorImpl {
 
     // MARK: - Diagnostics
 
-    /// Makes the top-N selection visible: a geofence that ranked out looks exactly like one that
-    /// registered and never fired.
     func logSyncCompleted(
         _ registration: (accepted: [String], movementTrigger: Bool),
         requested: (count: Int, movementTrigger: Bool),
@@ -262,8 +236,7 @@ extension GeofenceSyncCoordinatorImpl {
         )
     }
 
-    /// Logs what the OS actually holds, not what was asked for, so a rejected region or a starved
-    /// movement trigger is visible. Sorted so replay output is stable.
+    /// Sorted so replay output is stable.
     @discardableResult
     func logRegistration(registeredIds: Set<String>, anchor: LocationData, registerMovementTrigger: Bool, triggerRadius: Double) -> (accepted: [String], movementTrigger: Bool) {
         let movementTriggerId = GeofenceConstants.movementTriggerIdentifier

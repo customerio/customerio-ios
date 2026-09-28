@@ -6,19 +6,8 @@ import UIKit
 
 @available(iOS 17.0, *)
 extension CLMonitorGeofenceMonitor {
-    /// Re-adds every adopted condition instead of trusting the OS-side state. Per CLMonitor.h,
-    /// CoreLocation silently stops monitoring a condition whose pending event no monitor was
-    /// configured to receive (e.g. after a reboot, when the app is not relaunched), while the store
-    /// still lists it. `assuming:` = stored baseline keeps the re-add silent unless something
-    /// changed while unmonitored.
-    ///
-    /// Records are read at DRAIN, and a condition is skipped unless its record matches the staged
-    /// geometry. A crossing accepted while this waited has moved the baseline, and a stale
-    /// `assuming:` provokes a corrective; a reshape queued behind this would otherwise leave the OS
-    /// and the bookkeeping disagreeing.
-    ///
-    /// Revived conditions go into `knownConditionIdentifiers` and the persisted mirror, or the next
-    /// process would not own them and would drop their cold-wake events.
+    /// CoreLocation can silently stop monitoring a condition it still lists, so re-add rather than
+    /// trust it. Records are read at DRAIN; skip any whose record doesn't match the staged geometry.
     func rearmConditions(_ identifiers: Set<String>) {
         enqueueMonitorOperation { [weak self] monitor in
             guard let self else { return }
@@ -42,7 +31,7 @@ extension CLMonitorGeofenceMonitor {
                     identifier: identifier,
                     assuming: record.lastState == .enter ? .satisfied : .unsatisfied
                 )
-                // Stamped straight off the `add`: the contradiction gate's window starts here.
+                // Straight off the `add`: the contradiction gate's window starts here.
                 let addedAt = self.dateUtil.now
                 self.conditionReadds[identifier] = ConditionReadd(start: readdStart, added: addedAt, center: center, radius: radius)
                 self.logger.geofenceConditionRemoved(identifier: identifier, op: .readd)
@@ -58,11 +47,7 @@ extension CLMonitorGeofenceMonitor {
         }
     }
 
-    /// Reports the OS's live condition set as `registration.applied`. Adopt and re-arm change what
-    /// the OS holds without going through the sync coordinator, which emits it otherwise.
-    ///
-    /// Read from `monitor.identifiers`, not the requested set, which overstates the result when
-    /// the loops above skip a condition.
+    /// The OS's live set, not the requested one, which overstates when a condition was skipped.
     private func reportRegisteredConditions(on monitor: GeofenceConditionMonitoring) async {
         let held = Set(await monitor.identifiers)
         let movementTriggerId = GeofenceConstants.movementTriggerIdentifier
@@ -86,14 +71,9 @@ extension CLMonitorGeofenceMonitor {
         #endif
     }
 
-    /// Re-arms every owned condition on foreground after `foregroundRearmInterval` with no rebuild.
-    /// locationd's per-fence promotion record can wedge in a process suspended for days, reporting
-    /// "outside" while the device is inside, and only a re-add recovers it. Cold launch already
-    /// rebuilds via adopt; a long-suspended process never cold-launches.
-    ///
-    /// Same drain-time rules as `rearmConditions`. Re-arming a condition whose record and staged
-    /// registration disagree imposes geometry one layer doesn't know about, and the sync layer
-    /// would then skip it as unchanged forever.
+    /// A fence's OS state can wedge in a process suspended for days, and only a re-add recovers it.
+    /// Same drain-time match as `rearmConditions`, or the sync layer skips a mismatch as unchanged
+    /// forever.
     func rearmOnForegroundIfStale() {
         guard dateUtil.now.timeIntervalSince(lastRearmAt) >= GeofenceConstants.foregroundRearmInterval else { return }
         guard !ownedRegionIdentifiers.isEmpty else { return }
@@ -120,7 +100,7 @@ extension CLMonitorGeofenceMonitor {
                     identifier: identifier,
                     assuming: record.lastState == .enter ? .satisfied : .unsatisfied
                 )
-                // Stamped straight off the `add`: the contradiction gate's window starts here.
+                // Straight off the `add`: the contradiction gate's window starts here.
                 let addedAt = self.dateUtil.now
                 self.conditionReadds[identifier] = ConditionReadd(start: readdStart, added: addedAt, center: center, radius: radius)
                 self.logger.geofenceConditionRemoved(identifier: identifier, op: .readd)

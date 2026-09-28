@@ -2,42 +2,30 @@ import CioInternalCommon
 import CoreLocation
 import Foundation
 
-/// What one fix alone established about a polygon, before any second fix is spent.
 enum MembershipClassification: Equatable {
     case decided(PolygonMembership)
-    /// A marginal inside, worth a second fix — held back until the pass's decisive verdicts are in.
+    /// A marginal inside, held back until the pass's decisive verdicts are in.
     case deferred(PolygonMembership)
-    /// Nothing, and the reason is already logged.
+    /// Undecided; the reason is already logged.
     case none
 }
 
-/// What a corroboration attempt yielded. Three cases, not an optional, so a capture can tell an
-/// echo of the first fix from no fix at all.
+/// Three cases, not an optional, so a capture can tell an echo of the first fix from no fix.
 enum CorroborationOutcome: Equatable {
     case obtained(CLLocation)
-    /// A fix came back, but not newer than the one being corroborated — the first fix over again.
+    /// A fix came back, but not newer than the one being corroborated.
     case notIndependent
     case unavailable
 
-    /// The fix when there was one, for callers that do not branch on the refusal.
     var fix: CLLocation? {
         if case .obtained(let fix) = self { return fix }
         return nil
     }
 }
 
-/// The second-fix confirmation for a marginal arrival, split from the resolver's core for the file
-/// cap. Members are `internal` only because of the split.
 extension PolygonMembershipResolver {
-    /// Applies the arrival rule to one fix WITHOUT spending a second one.
-    ///
-    /// A marginal inside is RETURNED rather than corroborated here: a corroboration request can
-    /// take up to `movementFixRequestTimeout`, aging the fix for every polygon judged after it. The
-    /// caller settles everything the fix alone can decide first and corroborates afterwards.
-    ///
-    /// Judges on `fix.age`, the age settled when the pass chose the fix, not the age now: re-reading
-    /// the clock mid-pass would push a fix near `movementFixMaxAge` over it for later polygons.
-    /// - Returns: what the fix alone establishes, after logging why it established nothing.
+    /// A marginal inside is returned, not corroborated here: a second request would age the fix for
+    /// every later polygon. Judges on `fix.age` from when the pass chose the fix, not the age now.
     func classifyMembership(
         fix: PassFix,
         geofence: Geofence,
@@ -61,38 +49,28 @@ extension PolygonMembershipResolver {
             )
             return .none
         case .needsCorroboration(let proposed):
-            // The already-inside short-circuit is applied later, right before the request it saves:
-            // phase one can move a belief after this point.
+            // The already-inside short-circuit is applied later: phase one can still move a belief.
             return .deferred(proposed)
         }
     }
 
-    /// Seeks a second fix for an arrival a single fix could not separate from the boundary. It can
-    /// only BLOCK the arrival, never gate it.
-    ///
-    /// Requested now rather than on a later evaluation: a stationary device gets no later wake, so
-    /// a pending arrival would never resolve.
-    ///
-    /// - Returns: whether a second fix confirmed the arrival, could not be obtained, or
-    ///   contradicted it. Only the last blocks delivery.
+    /// Can only BLOCK a marginal arrival, never gate it. Requested now, not on a later pass: a
+    /// stationary device gets no later wake.
     func corroborate(
         _ pending: DeferredCorroboration,
         firstFix: CLLocation,
         cache: PassCorroboration,
         pass: Int
     ) async -> CorroborationResult {
-        // Defensive: only a marginal INSIDE is ever deferred, and nothing else may commit here.
+        // Defensive: only a marginal INSIDE is ever deferred.
         guard pending.proposed == .inside else { return .contradicted }
-        // Must postdate the fix being corroborated to be independent evidence.
-        // `resolveFix(requiringFresh:)` alone does NOT ensure that: it compares against what this
-        // resolver last DELIVERED, and a pass answered from `cachedFix` never records there, so an
-        // echo of that fix would confirm the arrival against itself.
+        // Must postdate the first fix. `resolveFix(requiringFresh:)` alone doesn't ensure that: a
+        // pass answered from `cachedFix` never records as delivered.
         let second: CLLocation
         switch await corroborationFix(newerThan: firstFix.timestamp, cache: cache) {
         case .obtained(let fix):
             second = fix
-        // Separate tokens so a capture can tell an echo from no answer. Neither is evidence the
-        // device is outside, so both commit.
+        // Neither is evidence the device is outside, so both commit.
         case .notIndependent:
             return .unconfirmed(.corroborationNotIndependent)
         case .unavailable:
@@ -102,16 +80,12 @@ extension PolygonMembershipResolver {
             latitude: second.coordinate.latitude, longitude: second.coordinate.longitude
         )
         let secondEdge = pending.polygon.signedEdgeDistance(to: secondPoint)
-        // A fix that cannot judge this venue adds nothing but does not argue against the first,
-        // so these commit with the reason on the verdict.
+        // A fix that can't judge this venue doesn't argue against the first, so these commit.
         guard second.horizontalAccuracy > 0 else { return .unconfirmed(.noUsableFix) }
         guard second.horizontalAccuracy < pending.polygon.scale else {
             return .unconfirmed(.accuracyTooLow)
         }
-        // Agreement on the SIDE, not the distance: two fixes metres apart near a boundary will
-        // not agree on an edge.
-        //
-        // The one blocking outcome, logged here because it is the only branch with no verdict.
+        // Agreement on the SIDE, not the distance.
         guard secondEdge > 0 else {
             logger.geofencePolygonUndecided(
                 identifier: pending.geofence.id, reason: .corroborationDisagreed,
@@ -123,14 +97,7 @@ extension PolygonMembershipResolver {
         return .confirmed
     }
 
-    /// One corroboration attempt per judged fix, made on first need and reused, so N marginal
-    /// polygons judged from one fix cost one request instead of N sequential timeouts.
-    ///
-    /// A failure is cached too, including a timeout, so a late fix does not retry within this pass.
-    /// Cheap, because an unanswered attempt still commits the arrival as `unconfirmed`.
-    ///
-    /// - Parameter basis: timestamp of the fix being corroborated. The answer must strictly
-    ///   postdate it; anything at or before it is the first fix over again.
+    /// A failure, including a timeout, is cached too, so a late fix doesn't retry within this pass.
     func corroborationFix(newerThan basis: Date, cache: PassCorroboration) async -> CorroborationOutcome {
         if let existing = cache.attempt(for: basis) { return existing }
         let outcome: CorroborationOutcome
@@ -143,23 +110,16 @@ extension PolygonMembershipResolver {
     }
 }
 
-/// What a corroboration attempt settled for a marginal arrival. Only a second fix that reads
-/// OUTSIDE blocks; a missing second opinion commits and records why it could not be confirmed.
+/// Only a second fix that reads OUTSIDE blocks; a missing second opinion commits.
 enum CorroborationResult: Equatable {
-    /// A second, independent fix agreed.
     case confirmed
-    /// No usable second opinion. The arrival still commits; the reason rides on the verdict.
+    /// No usable second opinion. The arrival still commits.
     case unconfirmed(PolygonUndecidedReason)
-    /// A second fix placed the device on the other side of the boundary.
     case contradicted
 }
 
-/// One corroboration attempt per pass, so N marginal polygons sharing a fix cost one request.
-///
-/// Owned by the pass, not the resolver: two forced-fresh passes can overlap (one refresh starts
-/// both `evaluateNewlyRegistered` and the movement pass), and shared state would let one pass
-/// reuse an attempt the other made. The `basis` key stops an attempt answering for a fix it
-/// predates.
+/// Owned by the pass, not the resolver: overlapping forced-fresh passes must not reuse each other's
+/// attempt.
 final class PassCorroboration {
     private var attempt: (basis: Date, outcome: CorroborationOutcome)?
 
@@ -173,7 +133,6 @@ final class PassCorroboration {
     }
 }
 
-/// A marginal arrival held back until every polygon the pass fix could decide on its own has been.
 struct DeferredCorroboration {
     let geofence: Geofence
     let polygon: PolygonRegion

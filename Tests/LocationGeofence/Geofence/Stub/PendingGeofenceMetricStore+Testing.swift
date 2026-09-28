@@ -2,8 +2,7 @@
 import Foundation
 
 extension PendingGeofenceMetricStore {
-    /// Rows only, for tests that are not about the read outcome. Test-only because production
-    /// callers must handle `unreadable` explicitly.
+    /// Test-only: production callers must handle `unreadable`.
     func rows() -> [PendingGeofenceMetric] {
         guard case .rows(let rows) = read() else { return [] }
         return rows

@@ -4,17 +4,12 @@ import Foundation
 
 /// Public API for the Geofence module, exposed through `CustomerIO.geofence`.
 public protocol GeofenceServices {
-    /// Requests a one-shot location fix and refreshes the nearby geofence set from it, **without**
-    /// emitting a `CIO Location Update` analytics event (unlike `CustomerIO.location.requestLocationUpdate()`)
-    /// and without caching the fix.
+    /// Requests a one-shot location fix and refreshes nearby geofences from it. The fix is not
+    /// cached or sent as a `CIO Location Update` event.
     ///
-    /// Call this after the host app has been granted location permission — the SDK never requests
-    /// permission itself. It is the primary way to drive geofencing when the module is configured
-    /// with `GeofenceLocationMode.manual`; with the default `.automatic` the SDK acquires location
-    /// on its own and this is only needed to force an immediate refresh.
-    ///
-    /// In `.manual`, call this once a user has been identified — a refresh requested before any
-    /// identify is not retried automatically.
+    /// Call after location permission is granted; the SDK never requests it. Required in
+    /// `.manual` mode, and only after identify (an earlier call is not retried). In `.automatic`
+    /// it just forces an immediate refresh.
     func refreshFromCurrentLocation()
 }
 
@@ -28,8 +23,7 @@ public extension CustomerIO {
 
 struct GeofenceServicesImplementation: GeofenceServices {
     func refreshFromCurrentLocation() {
-        // Arm first so the returning fix drives a sync. Safe without the Location module:
-        // `CustomerIO.location` is then a no-op that only logs.
+        // Arm first so the returning fix drives a sync.
         GeofenceModuleState.shared.onRefreshRequested()
         CustomerIO.location.requestLocationUpdateSilently()
     }

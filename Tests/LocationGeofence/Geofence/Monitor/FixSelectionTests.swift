@@ -59,7 +59,7 @@ struct FixSelectionTests {
         #expect(result?.source == .resolver)
     }
 
-    /// Same fix either way, but `fixsrc` in diagnostics depends on which source wins the tie.
+    /// The tie-break decides `fixsrc` in diagnostics.
     @Test
     func newest_givenEqualTimestamps_expectTheDeliveredFix() {
         let sameMoment = Date(timeIntervalSince1970: 1700000000)
@@ -72,8 +72,6 @@ struct FixSelectionTests {
         #expect(result?.source == .resolver)
     }
 
-    /// An unusable coordinate must not win on age: as the freshness baseline it would make a
-    /// genuinely newer delivered fix look not-newer.
     @Test
     func usable_givenAnInvalidCoordinate_expectNothingToSelect() {
         let invalid = CLLocation(latitude: 9999, longitude: 9999)

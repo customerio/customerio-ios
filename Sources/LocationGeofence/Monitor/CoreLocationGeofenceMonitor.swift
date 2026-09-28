@@ -2,20 +2,12 @@ import CioInternalCommon
 import CoreLocation
 import Foundation
 
-/// CLLocationManager-backed geofence region monitor.
-///
-/// Registration calls CLLocationManager synchronously on the main actor, so the ownership-set
-/// update and the OS call happen with no reentrancy point between them.
-///
-/// Tracks which regions this monitor owns so it does not interfere with regions
-/// registered by the host app or other SDKs (CLLocationManager.monitoredRegions is shared app-wide).
+/// Tracks its own regions because `monitoredRegions` is shared app-wide. Registration stays
+/// synchronous so the ownership update and the OS call have no reentrancy point between them.
 @MainActor
 final class CoreLocationGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @preconcurrency CLLocationManagerDelegate {
-    /// Tier of capability available given the current `CLAuthorizationStatus`. The SDK never
-    /// requests permission — the host app owns that — so the monitor adapts to whatever was
-    /// granted: `.authorizedAlways` enables background delivery, `.authorizedWhenInUse` falls
-    /// back to foreground-only (regions still register and fire while foregrounded),
-    /// everything else skips registration.
+    /// The SDK never requests permission. `.foregroundOnly` still registers; regions fire only while
+    /// foregrounded.
     enum PermissionTier: Equatable {
         case backgroundDelivery
         case foregroundOnly
@@ -24,14 +16,12 @@ final class CoreLocationGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @pr
 
     let manager: CLLocationManager
     let logger: Logger
-    /// Freshens the fix behind movement-trigger EXIT dispatches (see `MovementFixResolver`).
     let movementFixResolver: MovementFixResolver
     var onTransition: GeofenceTransitionHandler?
     private var onAuthorizationChanged: GeofenceAuthorizationChangedHandler?
     private var lastLoggedPermissionTier: PermissionTier?
     var ownedRegionIdentifiers: Set<String> = []
 
-    /// Region events received before the bootstrap bound `onTransition` (see `handleRegionEvent`).
     var pendingEvents: [PendingRegionEvent] = []
     var isDrainingPendingEvents = false
     static let maxPendingEvents = 64
@@ -125,8 +115,8 @@ final class CoreLocationGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @pr
         }
         var added: Set<String> = []
         for region in regions where !isRegisteredUnchanged(region) {
-            // Explicit stop before start (no-op when unowned): `startMonitoring(for:)` replaces by
-            // identifier, but the pair keeps the OS-side sequence identical on both monitors.
+            // `startMonitoring(for:)` replaces by id anyway; the stop keeps both monitors' OS
+            // sequence identical.
             stopMonitoring(identifier: region.identifier)
             startMonitoring(
                 identifier: region.identifier,
@@ -134,17 +124,14 @@ final class CoreLocationGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @pr
                 radius: region.radius,
                 transitionTypes: region.transitionTypes
             )
-            // Blocked permission / invalid coordinates make `startMonitoring` a no-op; the caller's
-            // initial-enter decision must not count a region the OS never took.
+            // `startMonitoring` may have refused it; count only regions the OS took.
             if ownedRegionIdentifiers.contains(region.identifier) { added.insert(region.identifier) }
         }
         return GeofenceRegionDiff(added: added, removed: removed)
     }
 
-    /// True when this monitor owns the region and the OS holds an identical circle, so re-registering
-    /// would only risk absorbing an undelivered crossing. Geometry comes from the live
-    /// `CLCircularRegion` rather than our own bookkeeping, so a region the OS reshaped or dropped
-    /// re-registers rather than being trusted.
+    /// Geometry from the live `CLCircularRegion`, not our bookkeeping, so a region the OS reshaped or
+    /// dropped re-registers.
     private func isRegisteredUnchanged(_ region: GeofenceRegionRequest) -> Bool {
         guard ownedRegionIdentifiers.contains(region.identifier),
               let existing = manager.monitoredRegions.first(where: { $0.identifier == region.identifier }) as? CLCircularRegion
@@ -177,9 +164,8 @@ final class CoreLocationGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @pr
         logger.geofenceMonitoringFailed(region: identifier, error: error)
     }
 
-    // iOS 14+ also fires this on delegate set; harmless, the bootstrap has already read the status.
-    // Surfaced UNFILTERED in both directions: an improvement re-attempts registration, and a
-    // downgrade is the only thing that makes `GeofenceBootstrap.armVisitMonitoring` disarm visits.
+    // Unfiltered: an improvement re-attempts registration, and a downgrade disarms visits. The
+    // iOS 14+ call on delegate set is harmless.
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         onAuthorizationChanged?()
     }
@@ -233,20 +219,15 @@ final class CoreLocationGeofenceMonitor: NSObject, GeofenceRegionMonitoring, @pr
 // MARK: - DI
 
 extension DIGraphShared {
-    /// Process-wide singleton. Hand-written rather than via Sourcery's `InjectRegisterShared`
-    /// because that template's eager-init resolution test references the property from a
-    /// non-isolated context, which clashes with `@MainActor` isolation. The override check mirrors
-    /// the generated accessors so tests can substitute via `di.override(value:forType:)`.
+    /// Hand-written: Sourcery's eager-init test reads it from a non-isolated context, which clashes
+    /// with `@MainActor`.
     @MainActor
     var geofenceMonitor: GeofenceRegionMonitoring {
-        // Explicit type on the optional pins the generic `T` in `getOverriddenInstance()` to
-        // the protocol — without it, Swift infers `T` as the concrete `CoreLocationGeofenceMonitor`
-        // from the `??` right-hand side and the override lookup misses by key.
+        // Typed as the protocol: overrides are keyed by it.
         let overridden: GeofenceRegionMonitoring? = getOverriddenInstance()
         if let overridden { return overridden }
-        // iOS 18+ uses CLMonitor: only there does `CLServiceSession` offer a documented way to keep
-        // background delivery alive. iOS 13–17 keep the classic monitor, whose deprecated region
-        // APIs still deliver reliably in the background.
+        // iOS 18+ only: `CLServiceSession` is the documented way to keep CLMonitor delivering in
+        // the background.
         if #available(iOS 18.0, *) {
             return CLMonitorGeofenceMonitor.shared
         }

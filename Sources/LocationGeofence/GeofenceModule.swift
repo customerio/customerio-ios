@@ -12,10 +12,8 @@ public struct GeofenceModuleConfig: CustomerIOModuleConfig {
     }
 }
 
-/// Opt-in on-device geofence module. Depends on the Location module: register both via
-/// `SDKConfigBuilder.addModule(_:)` so geofence monitoring is initialized during
-/// `CustomerIO.initialize(withConfig:)`. Apps that only need location tracking register
-/// `LocationModule` alone and never link this module.
+/// Opt-in geofence module. Requires the Location module; register both via
+/// `SDKConfigBuilder.addModule(_:)`.
 ///
 /// **Example:**
 /// ```swift
@@ -37,21 +35,15 @@ public final class GeofenceModule: CustomerIOModule {
         GeofenceModuleState.shared.setup(di: DIGraphShared.shared, locationMode: config.locationMode)
     }
 
-    /// Bootstraps geofence cold-wake delivery. Call from the host's `AppDelegate`.
-    ///
-    /// Wrapper SDKs (React Native, Flutter) don't run `CustomerIO.initialize` in a cold-wake
-    /// process, since no JS/Dart runtime starts. This reads persisted state, wires region
-    /// monitoring and flushes queued transitions without any module's `initialize` having run.
-    ///
-    /// Safe to call on every launch. After `CustomerIO.initialize(withConfig:)` it reuses the
-    /// same instances, so nothing is initialized or monitored twice.
+    /// Delivers geofence events when the OS wakes the app in the background without
+    /// `CustomerIO.initialize` running (e.g. wrapper SDKs whose JS/Dart runtime doesn't start). Call
+    /// from the host's `AppDelegate` launch method. Safe to call on every launch, including when
+    /// `CustomerIO.initialize` also runs: nothing is set up twice.
     ///
     /// - Parameter launchOptions: the launch options the app delegate received.
     @MainActor
     public static func bootstrapForBackgroundDelivery(launchOptions: [UIApplication.LaunchOptionsKey: Any]?) {
         let di = DIGraphShared.shared
-        // Only a cold wake is recorded here: a normal launch already logs `module.init`, and only
-        // this path sees `launchOptions`.
         if launchOptions?[.location] != nil {
             di.logger.geofenceModuleWoke(launchReason: .locationEvent)
         }

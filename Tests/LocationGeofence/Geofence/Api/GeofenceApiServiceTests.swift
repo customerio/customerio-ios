@@ -55,8 +55,7 @@ struct GeofenceApiServiceTests {
         let body = (try? JSONSerialization.jsonObject(with: params?.body ?? Data())) as? [String: Double]
         #expect(body?["latitude"] == 37.7749295)
         #expect(body?["longitude"] == -122.4194155)
-        // radius is omitted: the server applies its own coverage default, kept wider than
-        // remoteFetchRefreshTriggerRadius so the cached set always spans the refetch band.
+        // Omitted: the server's default coverage is kept wider than `remoteFetchRefreshTriggerRadius`.
         #expect(body?["radius"] == nil)
     }
 
@@ -203,8 +202,7 @@ struct GeofenceApiServiceTests {
 
     // MARK: - Endpoint version
 
-    /// The endpoint carries its own version and the host's is dropped, because `apiHost` is shared
-    /// with `/track` — which is still v1 — so it cannot be moved to reach this one.
+    /// `apiHost` is shared with `/track`, still v1, so the endpoint's own version replaces the host's.
     @Test(arguments: [
         ("cdp.customer.io/v1", "https://cdp.customer.io/v2/geofences/nearest"),
         ("cdp-eu.customer.io/v1", "https://cdp-eu.customer.io/v2/geofences/nearest"),
@@ -216,8 +214,8 @@ struct GeofenceApiServiceTests {
         ("http://localhost:8080/v1", "http://localhost:8080/v2/geofences/nearest"),
         // Only a trailing version is a version. A host whose NAME contains one keeps it.
         ("v1.example.com/v1", "https://v1.example.com/v2/geofences/nearest"),
-        // `apiHost` is customer-supplied and a pasted trailing slash is ordinary. Splicing the path
-        // onto the host string would produce a `//` here.
+        // A pasted trailing slash is ordinary; splicing the path onto the host string would produce
+        // `//`.
         ("cdp.customer.io/", "https://cdp.customer.io/v2/geofences/nearest"),
         ("https://cdp.customer.io/", "https://cdp.customer.io/v2/geofences/nearest"),
         ("proxy.example.com/cio/", "https://proxy.example.com/cio/v2/geofences/nearest"),
@@ -228,8 +226,7 @@ struct GeofenceApiServiceTests {
         ("cdp.customer.io/v1?x=1", "https://cdp.customer.io/v2/geofences/nearest?x=1"),
         // `v` alone is not a version, so the segment stays.
         ("cdp.customer.io/v", "https://cdp.customer.io/v/v2/geofences/nearest"),
-        // Any version is replaced, not just the one the host happens to be on today. Every other
-        // case here is v1, so without these a strip narrowed to a literal `/v1` would still pass.
+        // Every other case is v1; these catch a strip narrowed to a literal `/v1`.
         ("cdp.customer.io/v3", "https://cdp.customer.io/v2/geofences/nearest"),
         ("cdp.customer.io/v10", "https://cdp.customer.io/v2/geofences/nearest")
     ])

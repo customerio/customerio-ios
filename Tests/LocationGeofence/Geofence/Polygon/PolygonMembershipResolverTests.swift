@@ -13,12 +13,9 @@ import UIKit
 @Suite("PolygonMembershipResolver")
 @MainActor
 struct PolygonMembershipResolverTests {
-    /// One frozen clock for the SDK and every timestamp the tests build, so a stalled runner cannot
-    /// age a fix past `movementFixMaxAge`. Fresh per test: Swift Testing builds a new suite
-    /// instance for each one.
+    /// Frozen, so a stalled runner can't age a fix past `movementFixMaxAge`.
     private let clock = DateUtilStub()
 
-    /// Records what reached the event tracker, standing in for the real one.
     private actor EmitterSpy: GeofenceTransitionEmitting {
         struct Delivered: Equatable, Sendable {
             let id: String
@@ -37,7 +34,7 @@ struct PolygonMembershipResolverTests {
         }
     }
 
-    /// A ~360 m square centred on the origin, so a precise fix at the centre is decisive.
+    /// ~360 m square on the origin, so a precise fix at the centre is decisive.
     private static let squareVertices = [
         LocationData(latitude: -0.0016, longitude: -0.0016),
         LocationData(latitude: -0.0016, longitude: 0.0016),
@@ -45,7 +42,7 @@ struct PolygonMembershipResolverTests {
         LocationData(latitude: 0.0016, longitude: -0.0016)
     ]
 
-    /// An age that predates the wake yet stays well inside `movementFixMaxAge`.
+    /// Predates the wake but stays well inside `movementFixMaxAge`.
     private static let ageInsideGate: TimeInterval = 5
 
     private func polygonGeofence(
@@ -59,8 +56,7 @@ struct PolygonMembershipResolverTests {
         )
     }
 
-    /// The same fence after a refresh replaced it: the server recomputes the enclosing circle from
-    /// the new ring, so the covering circle moves with the geometry.
+    /// The fence after a refresh moved its ring; the server moves the covering circle with it.
     private func replacedPolygonGeofence(id: String = "1") -> Geofence {
         Geofence(
             id: id, latitude: 0, longitude: 0.005, radius: 300, name: "poly",
@@ -80,15 +76,10 @@ struct PolygonMembershipResolverTests {
 
     // MARK: - Held-fix selection
 
-    /// The pass that handed this fix over may have spent a corroboration request and been answered
-    /// with a NEWER fix that read outside, refusing the enter. Reusing the held fix would re-propose
-    /// that arrival, and its own corroboration would be refused as an echo of the newer fix,
-    /// committing the enter UNCONFIRMED on older evidence.
     @Test
     func heldFixUse_givenResolverDeliveredANewerFix_expectTheNewerFixUsed() async {
         let setup = await makeSetup(fix: nil)
         let held = ResolvedFix(fix(latitude: 0, longitude: 0, at: clock.now.addingTimeInterval(-5)))
-        // The corroboration answer that contradicted it.
         let newer = fix(latitude: 1, longitude: 1, at: clock.now)
         setup.fixResolver.handleResolvedFix(newer)
 
@@ -98,8 +89,6 @@ struct PolygonMembershipResolverTests {
         #expect(decision.newerFix?.timestamp == newer.timestamp)
     }
 
-    /// Substituting must spend no request: a forced request here is refused as an echo, losing
-    /// every polygon in the pass to `no_usable_fix`.
     @Test
     func passFix_givenANewerFixIsHeld_expectItIsUsedWithoutARequest() async {
         // `fix: nil` makes any request fail, so a pass that needs one decides nothing.
@@ -114,7 +103,6 @@ struct PolygonMembershipResolverTests {
         #expect(chosen?.location.timestamp == newer.timestamp)
     }
 
-    /// The age travels with the fix that was chosen, not with the one the caller handed over.
     @Test
     func heldFixUse_givenANewerFixIsHeld_expectTheNewerFixAge() async {
         let setup = await makeSetup(fix: nil)
@@ -126,11 +114,6 @@ struct PolygonMembershipResolverTests {
         #expect(decision.age < 5)
     }
 
-    /// A newer fix that is itself past the cap leaves nothing usable held — the caller's is older
-    /// still — so the pass must request rather than judge on either.
-    ///
-    /// The `.tooOld` verdict alone would pass either way — with the substitution removed the held
-    /// fix is past the cap too — so the age bound below is what makes this discriminate.
     @Test
     func heldFixUse_givenTheNewerFixIsAlsoPastTheCap_expectTooOld() async {
         let setup = await makeSetup(fix: nil)
@@ -142,13 +125,11 @@ struct PolygonMembershipResolverTests {
 
         #expect(decision.use == .tooOld)
         #expect(decision.newerFix == nil)
-        // The age comes from whichever fix was looked at: ~cap+5 on the newer path, the held
-        // fix's ~cap+20 without the substitution.
+        // The age bound is what discriminates: ~cap+5 from the newer fix, ~cap+20 without the
+        // substitution.
         #expect(decision.age < GeofenceConstants.movementFixMaxAge + 10)
     }
 
-    /// With nothing newer delivered the held fix is reused, so the caller is not made to re-ask
-    /// and hit the echo refusal.
     @Test
     func heldFixUse_givenNothingNewerDelivered_expectReused() async {
         let setup = await makeSetup(fix: nil)
@@ -160,8 +141,6 @@ struct PolygonMembershipResolverTests {
         #expect(decision.use == .reused)
     }
 
-    /// Age still wins over supersession: past the cap the pass must request rather than reuse,
-    /// whatever the resolver has delivered since.
     @Test
     func heldFixUse_givenHeldFixPastTheAgeCap_expectTooOld() async {
         let setup = await makeSetup(fix: nil)
@@ -188,8 +167,7 @@ struct PolygonMembershipResolverTests {
         contextStore: BackgroundDeliveryContextStore? = nil,
         onFixDelivered: (@Sendable () -> Void)? = nil
     ) async -> Setup {
-        // Its own centre: `willEnterForeground` posted on the default one reaches every other
-        // test's live resolver, whose pass then consumes their fix requests and writes their beliefs.
+        // Own centre: a `willEnterForeground` on the default one reaches every other test's resolver.
         let notificationCenter = NotificationCenter()
         let contextStore = contextStore ?? BackgroundDeliveryContextStore(
             fileManager: .default,
@@ -201,13 +179,12 @@ struct PolygonMembershipResolverTests {
             directoryURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString),
             dateUtil: clock
         )
-        // A belief is only created for a registered polygon, so the fixture has to be registered or
-        // every write comes back `.suppressedUnmonitored`.
+        // Beliefs exist only for registered polygons; otherwise every write is
+        // `.suppressedUnmonitored`.
         await storage.recordRegistration(center: LocationData(latitude: 0, longitude: 0), businessIds: ["1"])
         let emitter = EmitterSpy()
         let fixResolver = MovementFixResolver(logger: LoggerMock(), dateUtil: clock)
         fixResolver.systemCachedFix = { nil } // never touch CoreLocation from a unit test
-        // Seam: resolve inline with the supplied fix instead of touching CoreLocation.
         fixResolver.requestFreshFix = { [weak fixResolver] in
             guard let fix else { return fixResolver?.handleRequestFailure() ?? () }
             fixResolver?.handleResolvedFix(fix)
@@ -247,12 +224,10 @@ struct PolygonMembershipResolverTests {
         )
     }
 
-    /// Counts location requests so a pass that says it shares one fix can be held to it.
     private final class RequestCounter: @unchecked Sendable {
         var count = 0
     }
 
-    /// A latch the fix seam flips, so a test can place an event inside the resolve window.
     private final class Flag: @unchecked Sendable {
         var value = false
     }
@@ -261,8 +236,7 @@ struct PolygonMembershipResolverTests {
         logger.debugReceivedInvocations.contains { $0.message.contains(needle) }
     }
 
-    /// The same ring shifted a degree away, so a point decisive INSIDE the original is decisively
-    /// outside this one.
+    /// Same ring a degree away, so a point decisively inside the original is decisively outside this.
     private func movedPolygonGeofence(id: String = "1") -> Geofence {
         Geofence(
             id: id, latitude: 1, longitude: 1, radius: 300, name: "poly",
@@ -291,8 +265,6 @@ struct PolygonMembershipResolverTests {
 
     // MARK: - One fix per pass
 
-    /// A failed request leaves the cache empty, so resolving inside the loop would issue one timed
-    /// request per polygon and hold the main actor for as long as that takes.
     @Test
     func evaluateAllPolygons_givenNoFixAvailable_expectOneRequestForTheWholePass() async {
         let setup = await makeSetup(fix: nil)
@@ -304,8 +276,6 @@ struct PolygonMembershipResolverTests {
         #expect(counter.count == 1)
     }
 
-    /// Foregrounds arrive in bursts. A second concurrent pass reads the same storage and the same
-    /// fix, so it can only duplicate the location work.
     @Test
     func evaluateAllPolygons_givenConcurrentPasses_expectSecondSkipped() async {
         let setup = await makeSetup(fix: nil)
@@ -319,13 +289,8 @@ struct PolygonMembershipResolverTests {
         #expect(counter.count == 1)
     }
 
-    /// A wake requires a fresh fix; a foreground pass does not. Skipping the wake behind an
-    /// in-flight foreground would drop exactly the pass that runs BECAUSE the device moved, and
-    /// nothing retries it.
-    ///
-    /// `async let` does not order task start-up, and a request count cannot tell "skipped" from
-    /// "coalesced into the pending request" — so the first pass is held inside its request and the
-    /// assertion is on the skip decision itself.
+    /// The first pass is held inside its request: `async let` doesn't order start-up, and a request
+    /// count can't tell "skipped" from "coalesced".
     @Test
     func evaluateAllPolygons_givenFreshRequiredDuringForegroundPass_expectNotSkipped() async {
         let logger = LoggerMock()
@@ -343,9 +308,6 @@ struct PolygonMembershipResolverTests {
         #expect(skipCount(logger) == 0)
     }
 
-    /// Two wakes are not interchangeable just because both demand a fresh fix. The in-flight one
-    /// asked for its fix before the crossing that caused this one, so yielding to it drops the
-    /// second crossing entirely — there is no retry behind a wake.
     @Test
     func evaluateAllPolygons_givenFreshRequiredDuringFreshPass_expectNotSkipped() async {
         let logger = LoggerMock()
@@ -357,8 +319,6 @@ struct PolygonMembershipResolverTests {
         await yieldUntil { !gate.releases.isEmpty }
         async let secondWake: Void = setup.resolver.evaluateAllPolygons(reason: .foreground, requiresFreshFix: true)
         await settle()
-        // One request, not two: the second wake coalesces onto the in-flight one. Pinned because
-        // it bounds what not skipping buys: the second wake gets an answer, not a fix of its own.
         #expect(gate.releases.count == 1, "expected the second wake to coalesce, got \(gate.releases.count) requests")
         gate.releaseAll()
         _ = await(firstWake, secondWake)
@@ -366,7 +326,6 @@ struct PolygonMembershipResolverTests {
         #expect(skipCount(logger) == 0)
     }
 
-    /// The converse still holds: a weaker pass behind a fresh one adds nothing.
     @Test
     func evaluateAllPolygons_givenForegroundDuringFreshPass_expectSkipped() async {
         let logger = LoggerMock()
@@ -384,8 +343,6 @@ struct PolygonMembershipResolverTests {
         #expect(skipCount(logger) == 1)
     }
 
-    /// Holds each pass inside its location request until released, so a second pass always starts
-    /// against a known in-flight state.
     private final class RequestGate {
         var releases: [() -> Void] = []
         func releaseAll() {
@@ -436,8 +393,6 @@ struct PolygonMembershipResolverTests {
         #expect(delivered.first?.transition == .enter)
     }
 
-    /// A sync can drop a geofence the OS still holds a condition for. Forwarding beats dropping:
-    /// losing a real crossing is worse than one shaped like its covering circle.
     @Test
     func handleTransition_givenUncachedGeofence_expectForwarded() async {
         let setup = await makeSetup(fix: nil)
@@ -462,9 +417,8 @@ struct PolygonMembershipResolverTests {
         #expect(await setup.storage.getPolygonMembership()["1"]?.membership == .inside)
     }
 
-    /// The pass resolves ONE fix for every polygon. A per-polygon "first one pays" flag would clear
-    /// after the first evaluation even when it got no fresh fix, silently downgrading polygon two
-    /// onward to the pre-wake fix — so assert the second polygon is undecided too, not just the first.
+    /// Asserts polygon 3 too: a per-polygon "first one pays" flag would hand later polygons the
+    /// pre-wake fix.
     @Test
     func evaluateAllPolygons_givenFreshFixRequiredButRequestFails_expectEveryPolygonUndecided() async {
         let setup = await makeSetup(fix: nil) // the forced request fails
@@ -481,16 +435,11 @@ struct PolygonMembershipResolverTests {
         #expect(await setup.storage.getPolygonMembership()["3"] == nil)
     }
 
-    /// CoreLocation's own cache advances on its own, so a system fix is about as fresh as anything
-    /// a request can return. A forced-fresh baseline taken from `cachedFix`, which reports the
-    /// newest of both sources, would be unbeatable and every verdict would be "no usable fix".
-    ///
-    /// The seam is LIVE here on purpose: every other test stubs `systemCachedFix` to nil.
+    /// The `systemCachedFix` seam is live here on purpose; every other test stubs it to nil.
     @Test
     func handleTransition_givenSystemCacheAlwaysCurrent_expectEnterStillDelivered() async {
         let setup = await makeSetup(fix: fix(latitude: 0, longitude: 0))
-        // Stands in for a cache the OS keeps refreshing: every read is "now", so it is never older
-        // than the fix the request delivers.
+        // A cache the OS keeps refreshing: every read is "now".
         setup.fixResolver.systemCachedFix = { [weak fixResolver = setup.fixResolver] in
             _ = fixResolver
             return CLLocation(
@@ -508,9 +457,7 @@ struct PolygonMembershipResolverTests {
         #expect(await setup.storage.getPolygonMembership()["1"]?.membership == .inside)
     }
 
-    /// Resolves through `locationManager(_:didUpdateLocations:)` rather than the `handleResolvedFix`
-    /// seam, which bypasses the delegate path's filters: the `movementFixMaxAge` echo check,
-    /// `horizontalAccuracy > 0`, and the invalid-coordinate drop.
+    /// Resolves through the delegate: the `handleResolvedFix` seam bypasses its filters.
     @Test
     func handleTransition_givenFixArrivingThroughTheDelegate_expectEnterDelivered() async {
         let setup = await makeSetup(fix: nil)
@@ -528,11 +475,8 @@ struct PolygonMembershipResolverTests {
         #expect(delivered.first?.transition == .enter)
     }
 
-    /// KNOWN LIMIT, pinned so it cannot change silently. CoreLocation can echo its cached fix as a
-    /// new manager's first delivery, and the delegate accepts an echo inside `movementFixMaxAge`.
-    /// On the first pass of a process there is no delivered fix to be newer than, so a cold wake
-    /// can be decided by a fix up to `movementFixMaxAge` older than the wake, several hundred
-    /// metres at speed. Narrowing it needs an assumed-speed constant.
+    /// Known limit, pinned: on a cold process an echoed pre-wake fix inside `movementFixMaxAge`
+    /// still decides.
     @Test
     func handleTransition_givenColdProcessAndEchoedPreWakeFix_expectVerdictFromTheStaleEcho() async {
         let setup = await makeSetup(fix: nil) // cold: nothing delivered, no system cache
@@ -552,15 +496,11 @@ struct PolygonMembershipResolverTests {
         #expect(await setup.storage.getPolygonMembership()["1"]?.membership == .inside)
     }
 
-    /// A pass that does NOT require a fresh fix must act on the newest position available, not on
-    /// the last one this resolver delivered. `resolve`'s fast path answers from the caller's cached
-    /// fix without recording it, so `latestFix` can be an old delivered fix while the fresh system
-    /// fix is what let the pass proceed.
     @Test
     func evaluateAllPolygons_givenStaleDeliveredFixAndFreshSystemCache_expectTheFreshOneDecides() async {
         let setup = await makeSetup(fix: nil)
-        // Delivered ~1.5 km away, outside the polygon, and deliberately INSIDE `movementFixMaxAge`:
-        // a fix the decision's own age gate rejects would make this pass on that gate instead.
+        // Outside the polygon and deliberately inside `movementFixMaxAge`, so the age gate can't be
+        // what refuses it.
         setup.fixResolver.handleResolvedFix(CLLocation(
             coordinate: CLLocationCoordinate2D(latitude: 0.01, longitude: 0.01),
             altitude: 0, horizontalAccuracy: 5, verticalAccuracy: 5,
@@ -583,13 +523,8 @@ struct PolygonMembershipResolverTests {
         #expect(await setup.storage.getPolygonMembership()["1"]?.membership == .inside)
     }
 
-    /// Pins that a failed forced request never falls back to the held fix.
-    ///
-    /// Passes with or without the `cached: nil` coupling: without it, `resolve`'s fast path answers
-    /// without recording, so `resolved` and `priorTimestamp` are the same `latestFix` and the strict
-    /// `>` refuses it. The coupling guards the opposite failure, a current system cache
-    /// short-circuiting the request, and
-    /// `handleTransition_givenSystemCacheAlwaysCurrent_expectEnterStillDelivered` fails without it.
+    /// Doesn't guard the `cached: nil` coupling;
+    /// `handleTransition_givenSystemCacheAlwaysCurrent_expectEnterStillDelivered` does.
     @Test
     func handleTransition_givenFreshRequiredAndStaleHeldFix_expectNoVerdictFromIt() async {
         let setup = await makeSetup(fix: nil) // the forced request fails
@@ -607,13 +542,9 @@ struct PolygonMembershipResolverTests {
         #expect(await setup.storage.getPolygonMembership()["1"] == nil)
     }
 
-    /// A wake fires BECAUSE the device moved, so the fix it already holds describes where it was.
-    /// When the forced request fails, falling back to that fix re-affirms the stale verdict — the
-    /// exact silent miss the fresh-fix rule exists to prevent — so no verdict must be reached.
     @Test
     func handleTransition_givenFreshFixRequiredButRequestFails_expectNoVerdictFromHeldFix() async {
         let setup = await makeSetup(fix: nil) // the forced request fails
-        // Seed a pre-wake fix that is inside the polygon and still within `movementFixMaxAge`.
         setup.fixResolver.handleResolvedFix(fix(latitude: 0, longitude: 0))
         await setup.storage.setCachedGeofences([polygonGeofence()])
 
@@ -623,13 +554,9 @@ struct PolygonMembershipResolverTests {
         #expect(await setup.storage.getPolygonMembership()["1"] == nil)
     }
 
-    /// The first wake of a process has delivered no fix, so the freshness comparison has nothing to
-    /// reject. CoreLocation's cached fix, the pre-movement one, must still not answer the forced
-    /// request.
     @Test
     func handleTransition_givenFreshFixRequiredOnFirstWake_expectNoVerdictFromSystemCache() async {
         let setup = await makeSetup(fix: nil) // the forced request fails
-        // No fix delivered to this resolver yet: a cold process with only CoreLocation's cache.
         setup.fixResolver.systemCachedFix = { fix(latitude: 0, longitude: 0) }
         await setup.storage.setCachedGeofences([polygonGeofence()])
 
@@ -639,8 +566,6 @@ struct PolygonMembershipResolverTests {
         #expect(await setup.storage.getPolygonMembership()["1"] == nil)
     }
 
-    /// A stored ring that no longer builds is not a circle. Forwarding it would fire a customer
-    /// enter anywhere inside the covering circle — the polygon's whole annulus included.
     @Test
     func handleTransition_givenStoredRingThatCannotBuild_expectNothingForwarded() async {
         let setup = await makeSetup(fix: fix(latitude: 0, longitude: 0))
@@ -657,9 +582,6 @@ struct PolygonMembershipResolverTests {
         #expect(await setup.storage.getPolygonMembership()["1"] == nil)
     }
 
-    /// An exit needs no ring: polygon ⊆ covering circle, so leaving the circle proves it whatever
-    /// the stored geometry does. Refusing one because the ring no longer builds would strand the
-    /// belief at inside, suppressing every later exit and re-enter.
     @Test
     func handleTransition_givenStoredRingThatCannotBuild_expectExitStillApplied() async {
         let setup = await makeSetup(fix: fix(latitude: 0, longitude: 0))
@@ -682,8 +604,6 @@ struct PolygonMembershipResolverTests {
         #expect(await setup.emitter.snapshot().map(\.transition) == [.enter, .exit])
     }
 
-    /// A replayed or synthesized exit arriving after a newer enter must not overwrite it: the device
-    /// would be believed outside while sitting inside, with the enter cooldown blocking recovery.
     @Test
     func handleTransition_givenExitOlderThanBelief_expectSuppressed() async {
         let setup = await makeSetup(fix: fix(latitude: 0, longitude: 0))
@@ -699,9 +619,6 @@ struct PolygonMembershipResolverTests {
         #expect(await setup.emitter.snapshot().map(\.transition) == [.enter])
     }
 
-    /// The fix resolves across a suspension point. If the user switches in that window, cleanup has
-    /// already cleared user-scoped state, so resuming would rewrite the old user's belief and stamp
-    /// any event to whoever signed in.
     @Test
     func evaluateMembership_givenUserChangesWhileResolving_expectNoBeliefAndNoEvent() async {
         let setup = await makeSetup(fix: fix(latitude: 0, longitude: 0))
@@ -715,8 +632,7 @@ struct PolygonMembershipResolverTests {
         #expect(await setup.storage.getPolygonMembership()["1"] == nil)
     }
 
-    /// Control: the same call with the user unchanged must still decide, so the guard above is not
-    /// passing by refusing everything.
+    /// Control for the test above.
     @Test
     func evaluateMembership_givenUserUnchanged_expectVerdictRecorded() async {
         let setup = await makeSetup(fix: fix(latitude: 0, longitude: 0))
@@ -729,9 +645,6 @@ struct PolygonMembershipResolverTests {
         #expect(await setup.storage.getPolygonMembership()["1"]?.membership == .inside)
     }
 
-    /// The batch shares one fix, so every polygon in it spans the same request — and a refresh
-    /// landing inside that request replaces rings under the ids the batch is holding. Each verdict
-    /// must come from the ring current when it is decided, not the one the batch was built from.
     @Test
     func evaluateMembership_givenPolygonReplacedWhileFixPending_expectVerdictFromTheCurrentRing() async {
         let setup = await makeSetup(fix: nil)
@@ -749,7 +662,7 @@ struct PolygonMembershipResolverTests {
         #expect(await setup.storage.getPolygonMembership()["1"]?.membership == .outside)
     }
 
-    /// Control: the same interleaving with the catalog left alone must still deliver.
+    /// Control for the test above.
     @Test
     func evaluateMembership_givenCatalogUnchangedWhileFixPending_expectEnterDelivered() async {
         let setup = await makeSetup(fix: nil)
@@ -766,9 +679,6 @@ struct PolygonMembershipResolverTests {
         #expect(await setup.emitter.snapshot().map(\.transition) == [.enter])
     }
 
-    /// A registration carrying several new polygons must cost one location request, not one each:
-    /// with no fix obtainable, per-polygon resolution spends the full request timeout N times over
-    /// on the main actor and still decides nothing.
     @Test
     func evaluateMembership_givenSeveralNewPolygons_expectOneRequestForTheBatch() async {
         let setup = await makeSetup(fix: nil)
@@ -780,8 +690,7 @@ struct PolygonMembershipResolverTests {
         #expect(counter.count == 1)
     }
 
-    /// The annulus: inside the covering circle, outside the polygon. The OS thinks we arrived;
-    /// geometry says otherwise, so nothing is delivered and the belief records `outside`.
+    /// Annulus: inside the covering circle, outside the polygon.
     @Test
     func handleTransition_givenPolygonEnterAndFixInAnnulus_expectNoEvent() async {
         let setup = await makeSetup(fix: fix(latitude: 0.0024, longitude: 0))
@@ -793,8 +702,6 @@ struct PolygonMembershipResolverTests {
         #expect(await setup.storage.getPolygonMembership()["1"]?.membership == .outside)
     }
 
-    /// A fix too coarse to place the device relative to the boundary must leave no belief behind:
-    /// guessing either way would deliver an event we cannot stand behind.
     @Test
     func handleTransition_givenUndecidableFix_expectNoBelief() async {
         let setup = await makeSetup(fix: fix(latitude: 0, longitude: 0, accuracy: 400))
@@ -819,7 +726,6 @@ struct PolygonMembershipResolverTests {
 
     // MARK: - Covering-circle exit
 
-    /// polygon ⊆ circle, so leaving the circle proves the polygon was left — no fix required.
     @Test
     func handleTransition_givenPolygonExitWhileInside_expectExitDeliveredWithoutFix() async {
         let setup = await makeSetup(fix: nil)
@@ -833,10 +739,6 @@ struct PolygonMembershipResolverTests {
         #expect(delivered.first?.transition == .exit)
     }
 
-    /// Leaving a circle only proves leaving the ring that circle encloses. A refresh moves both, so
-    /// an exit raised for the old circle says nothing about the new ring — the device can be
-    /// standing inside it. Writing `outside` here would also stamp a date that then refuses the
-    /// very fix that would correct it, so the belief sticks rather than self-heals.
     @Test
     func handleTransition_givenExitRaisedForAReplacedCircle_expectRefusedAndBeliefKept() async {
         let setup = await makeSetup(fix: nil)
@@ -857,8 +759,7 @@ struct PolygonMembershipResolverTests {
         #expect(await setup.storage.getPolygonMembership()["1"]?.membership == .inside)
     }
 
-    /// Control: an exit for the circle the fence still has is the case the containment argument
-    /// covers, and must still deliver without a fix.
+    /// Control for the test above.
     @Test
     func handleTransition_givenExitRaisedForTheCurrentCircle_expectExitDelivered() async {
         let setup = await makeSetup(fix: nil)
@@ -877,14 +778,8 @@ struct PolygonMembershipResolverTests {
         #expect(await setup.emitter.snapshot().first?.transition == .exit)
     }
 
-    /// The same refusal when the producer cannot name the circle at all: the exit predates every
-    /// generation the ledger still holds. It must not arrive as `unknown`, which is the cold-wake
-    /// case and is taken as current: that stores `outside` for a device inside the replacement
-    /// polygon, stamped with a date no later fix can correct.
-    ///
-    /// Driven from a real ledger history through the production mapping rather than by handing
-    /// `.expired` in. The belief is stamped OLDER than the event on purpose, or evidence order would
-    /// refuse it before the geometry guard is reached.
+    /// Built from a real ledger history, not `.expired` directly. The belief predates the event, or
+    /// evidence order would refuse it before the geometry guard.
     @Test
     func handleTransition_givenAnExitOlderThanEveryHeldGeneration_expectRefusedAndBeliefKept() async {
         let setup = await makeSetup(fix: nil)
@@ -919,9 +814,8 @@ struct PolygonMembershipResolverTests {
         #expect(await setup.storage.getPolygonMembership()["1"]?.membership == .inside)
     }
 
-    /// The OS registers `min(radius, maximumRegionMonitoringDistance)`, so an over-cap fence is
-    /// monitored by a smaller circle than it declares. Comparing the event against the fence's own
-    /// radius would read every such fence as replaced and refuse its exits for good.
+    /// The OS monitors `min(radius, maximumRegionMonitoringDistance)`, so the event circle is smaller
+    /// than the fence's radius.
     @Test
     func handleTransition_givenExitForAnOverCapFence_expectExitDelivered() async {
         let setup = await makeSetup(fix: nil)
@@ -953,9 +847,6 @@ struct PolygonMembershipResolverTests {
 
     // MARK: - Foreground evaluation
 
-    /// A refresh can replace the fence under the same id while the fix is pending. The ring the
-    /// pass started with is then geometry the workspace has already moved off, and deciding from it
-    /// delivers a crossing for a shape we no longer monitor. No user switch is involved.
     @Test
     func evaluateAllPolygons_givenPolygonReplacedWhileFixPending_expectVerdictFromTheCurrentRing() async {
         let setup = await makeSetup(fix: nil)
@@ -975,8 +866,7 @@ struct PolygonMembershipResolverTests {
         #expect(await setup.storage.getPolygonMembership()["1"]?.membership == .outside)
     }
 
-    /// Control: the same interleaving with the catalog left alone must still deliver, so the guard
-    /// above is not passing by refusing anything that arrives late.
+    /// Control for the test above.
     @Test
     func evaluateAllPolygons_givenCatalogUnchangedWhileFixPending_expectEnterDelivered() async {
         let setup = await makeSetup(fix: nil)
@@ -993,11 +883,8 @@ struct PolygonMembershipResolverTests {
         #expect(await setup.emitter.snapshot().map(\.transition) == [.enter])
     }
 
-    /// A polygon unregistered while the request is out must not be judged either.
-    ///
-    /// Pins the OUTCOME only, and passes without the resolver's registration re-read: storage also
-    /// refuses the create as unmonitored. That guard covers only the create path, which is why the
-    /// resolver re-reads registration too.
+    /// Outcome only: storage also refuses the create as unmonitored, so this passes without the
+    /// resolver's own registration re-read.
     @Test
     func evaluateAllPolygons_givenPolygonUnregisteredWhileFixPending_expectNoVerdict() async {
         let setup = await makeSetup(fix: nil)
@@ -1015,8 +902,6 @@ struct PolygonMembershipResolverTests {
         #expect(await setup.storage.getPolygonMembership()["1"] == nil)
     }
 
-    /// A polygon dropped from the catalog entirely while the fix resolved has nothing left to
-    /// decide against, and must not be judged by the copy the pass is still holding.
     @Test
     func evaluateAllPolygons_givenPolygonDroppedWhileFixPending_expectNoVerdict() async {
         let setup = await makeSetup(fix: nil)
@@ -1034,12 +919,7 @@ struct PolygonMembershipResolverTests {
         #expect(await setup.storage.getPolygonMembership()["1"] == nil)
     }
 
-    /// Foregrounding resolves a fix like any other pass, and a foregrounding app's cached fix is
-    /// normally stale — the app was suspended — so the request suspends for real. The observer has
-    /// no caller to take an expected user from, so it samples one itself.
-    ///
-    /// The switch lands at fix delivery, so this pins the check that runs after the fix; the one on
-    /// the emit's own stretch is pinned separately below. They are not duplicates.
+    /// The switch lands at fix delivery; the post-write check is pinned separately below.
     @Test
     func foreground_givenUserChangesWhileResolving_expectNoEvent() async {
         let contextStore = BackgroundDeliveryContextStore(
@@ -1060,24 +940,18 @@ struct PolygonMembershipResolverTests {
 
         setup.notificationCenter.post(name: UIApplication.willEnterForegroundNotification, object: nil)
         await yieldUntil { switched.value }
-        // Waits for the refusal to be RECORDED, not for a fixed number of yields: an expect-nothing
-        // test with a fixed wait goes vacuous the moment this path gains another await.
+        // Wait on the recorded refusal, not a fixed yield count, or this goes vacuous when the path
+        // gains an await.
         await yieldUntil { logged(setup.logger, PolygonUndecidedReason.userChanged.prose) }
 
-        // `yieldUntil` gives up silently, so without this the expect-nothing assertions below pass
-        // whether the refusal ran or the wait simply timed out.
+        // `yieldUntil` gives up silently, so assert the refusal actually ran.
         #expect(logged(setup.logger, PolygonUndecidedReason.userChanged.prose))
         #expect(await setup.emitter.snapshot().isEmpty)
         #expect(await setup.storage.getPolygonMembership()["1"] == nil)
     }
 
-    /// The verdict is only half the path: the membership write and the emit are two more awaits,
-    /// and the tracker stamps whoever is current when it is entered. A switch landing after the
-    /// write must still not deliver — while the write itself may stand, since a belief states
-    /// geometry rather than attribution.
-    ///
-    /// A belief already exists, so the write takes the CHANGE path — the one
-    /// `monitoredGeofenceIds` does not guard.
+    /// A belief exists, so the write takes the change path, which `monitoredGeofenceIds` doesn't guard.
+    /// The write may stand; only the emit is refused.
     @Test
     func evaluateAllPolygons_givenUserChangesAfterTheWrite_expectNoEvent() async {
         let setup = await makeSetup(fix: fix(latitude: 0, longitude: 0))
@@ -1100,19 +974,14 @@ struct PolygonMembershipResolverTests {
         #expect(await setup.storage.getPolygonMembership()["1"]?.membership == .inside)
     }
 
-    /// An enter-only polygon decided OUTSIDE reaches the delivery boundary as `.deliver(.exit)`,
-    /// and the transition filter refuses it. The log must name the filter, not the write's
-    /// `deliver` outcome.
     @Test
     func evaluateAllPolygons_givenEnterOnlyPolygonDecidedOutside_expectTheFilterNamed() async {
-        // Outside the ring, decisively — the square is around the origin.
         let setup = await makeSetup(fix: fix(latitude: 5, longitude: 5))
         await setup.storage.recordRegistration(
             center: LocationData(latitude: 0, longitude: 0), businessIds: ["1"]
         )
         await setup.storage.setCachedGeofences([polygonGeofence(id: "1", transitionTypes: [.enter])])
-        // A belief already exists, so the write takes the CHANGE path and returns .deliver(.exit)
-        // rather than suppressing as an initial outside.
+        // Existing belief, so the write takes the change path and returns `.deliver(.exit)`.
         _ = await setup.storage.recordPolygonMembership(
             .inside, forIdentifier: "1", onlyIfBeliefPredates: Date(timeIntervalSince1970: 0), now: clock.now
         )
@@ -1124,8 +993,7 @@ struct PolygonMembershipResolverTests {
         #expect(!logged(setup.logger, "delivered nothing: deliver"))
     }
 
-    /// Control: the same foregrounding with nobody switching must still deliver, so the guard above
-    /// is not passing by refusing every foreground pass.
+    /// Control for `foreground_givenUserChangesWhileResolving_expectNoEvent`.
     @Test
     func foreground_givenUserUnchanged_expectVerdictRecorded() async {
         let setup = await makeSetup(fix: fix(latitude: 0, longitude: 0))
@@ -1140,10 +1008,8 @@ struct PolygonMembershipResolverTests {
         #expect(await setup.emitter.snapshot().map(\.transition) == [.enter])
     }
 
-    /// The default centre is what production observes, and every other test here injects a private
-    /// one, so without this nothing would notice if that default broke and foreground evaluation
-    /// stopped in production. Safe only while no other test posts to `.default` or builds the DI
-    /// singleton; if that changes, this is the test that will start cross-talking.
+    /// The only test on `.default`, the centre production observes. Safe only while no other test
+    /// posts to `.default` or builds the DI singleton.
     @Test
     func foreground_givenTheDefaultNotificationCentre_expectPassRuns() async {
         let storage = GeofenceStorage(
@@ -1181,9 +1047,6 @@ struct PolygonMembershipResolverTests {
         _ = resolver
     }
 
-    /// The case no OS event reaches: a device already standing inside a polygon when monitoring
-    /// begins has crossed nothing, and standing still produces no movement pass either.
-    /// Foregrounding is the remaining signal.
     @Test
     func evaluateAllPolygons_givenDeviceInsideOneRegisteredPolygon_expectEnterForThatOneOnly() async {
         let setup = await makeSetup(fix: fix(latitude: 0, longitude: 0))
@@ -1208,8 +1071,6 @@ struct PolygonMembershipResolverTests {
         #expect(await setup.storage.getPolygonMembership()["2"]?.membership == .outside)
     }
 
-    /// A polygon that has dropped out of the registered set is no longer monitored, so foreground
-    /// evaluation must not resurrect it.
     @Test
     func evaluateAllPolygons_givenUnregisteredPolygon_expectSkipped() async {
         let setup = await makeSetup(fix: fix(latitude: 0, longitude: 0))
@@ -1239,9 +1100,6 @@ struct PolygonMembershipResolverTests {
 
     // MARK: - Newly registered polygons
 
-    /// The two passes a refresh starts must not disagree. `evaluatePolygonsAfterMovement` forces a
-    /// fresh fix, so deciding here from the cached one could deliver an enter from a position up to
-    /// `movementFixMaxAge` old and then its own correcting exit.
     @Test
     func evaluateNewlyRegistered_givenCachedInsideAndFreshOutside_expectOnlyTheFreshVerdict() async {
         // The forced request is refused unless its answer is strictly newer than the held fix.
@@ -1261,9 +1119,6 @@ struct PolygonMembershipResolverTests {
         #expect(await setup.storage.getPolygonMembership()["1"]?.membership == .outside)
     }
 
-    /// The fallback the forced request needs: enter-when-inside is owed for a polygon the device is
-    /// standing in, and the movement pass fails on the same request, so a failed request must not
-    /// cost the enter outright.
     @Test
     func evaluateNewlyRegistered_givenTheForcedRequestFails_expectTheCachedFixStillDecides() async {
         let setup = await makeSetup(fix: nil) // the forced request fails
@@ -1282,15 +1137,11 @@ struct PolygonMembershipResolverTests {
 
     // MARK: - Belief across an OS eviction
 
-    /// The eviction sequence end to end: the `.unmonitored` clear, then the re-registration that
-    /// reseeds the circle baseline, then a pass. The device never left, so the surviving belief
-    /// makes this a no-change and the customer gets no second enter for a visit already reported.
     @Test
     func evaluateAllPolygons_givenEvictionWhileStillInside_expectNoDuplicateEnter() async {
         let setup = await makeSetup(fix: fix(latitude: 0, longitude: 0))
         await registerPolygons(setup, ids: ["1"])
-        // Dated behind the fix so the confirming pass visibly advances the stamp: a belief stamped
-        // at the fix's own instant would not move.
+        // Dated behind the fix so a confirming pass visibly advances the stamp.
         let before = clock.now.addingTimeInterval(-60)
         _ = await setup.storage.recordPolygonMembership(
             .inside, forIdentifier: "1", onlyIfBeliefPredates: before, now: clock.now
@@ -1301,14 +1152,11 @@ struct PolygonMembershipResolverTests {
 
         #expect(await setup.emitter.snapshot().isEmpty)
         #expect(await setup.storage.getPolygonMembership()["1"]?.membership == .inside)
-        // Proves the pass actually decided: a confirming evaluation refreshes the evidence stamp,
-        // so without this the assertions above also hold when nothing was evaluated at all.
+        // Proves the pass decided: a confirming evaluation refreshes the stamp.
         let stamp = await setup.storage.getPolygonMembership()["1"]?.lastChangedAt
         #expect(stamp.map { $0 > before } == true)
     }
 
-    /// Same eviction, but the device left during the gap. The retained `inside` belief is what
-    /// makes the verdict a change; dropped, this lands on the create path and the exit is lost.
     @Test
     func evaluateAllPolygons_givenEvictionThenDeviceLeft_expectExitDelivered() async {
         let setup = await makeSetup(fix: fix(latitude: 0.0020, longitude: 0))
@@ -1324,12 +1172,10 @@ struct PolygonMembershipResolverTests {
         #expect(await setup.storage.getPolygonMembership()["1"]?.membership == .outside)
     }
 
-    /// What the OS reporting a covering circle unmonitored actually does to storage: the deferred
-    /// clear, then the next registration reseeding the circle baseline.
+    /// The `.unmonitored` clear, then the next registration reseeding the circle baseline.
     private func evictCoveringCircle(_ setup: Setup, id: String) async {
         let center = LocationData(latitude: 0, longitude: 0)
-        // Seeded first: the clear only removes a monitor record that exists, so without this the
-        // `.unmonitored` half is a no-op and only the reseed would be under test.
+        // Seeded first: the clear only removes a record that exists.
         await setup.storage.recordMonitorRegistration(
             identifier: id, transitionTypes: [.enter, .exit], initialState: .enter,
             center: center, radius: 300
@@ -1343,9 +1189,6 @@ struct PolygonMembershipResolverTests {
 
     // MARK: - Crossing time
 
-    /// The event time is when the device crossed, not when the verdict was reached. Those differ by
-    /// the whole wake-to-fix-to-verdict pipeline, and the OS event's own date is a third value,
-    /// so the assertion names the fix's timestamp exactly rather than a tolerance around now.
     @Test
     func handleTransition_givenEnterDecidedFromAFix_expectStampedWithTheFixNotTheVerdict() async {
         let takenAt = clock.now.addingTimeInterval(-1)
@@ -1356,12 +1199,10 @@ struct PolygonMembershipResolverTests {
         // A deliberately different date on the OS event, so a stamp taken from the wrong one shows.
         await setup.resolver.handleTransition(identifier: "1", transition: .enter, occurredAt: clock.now)
 
-        // Before the count, so a fix aged out reads as that and not as a lost emission. Prose, not
-        // the tail: the tail needs diagnostics on. Taken from the enum so a reworded sentence
-        // cannot silently stop this matching.
+        // Checked first, so a fix that aged out reads as a stalled runner, not a lost emission.
+        // Prose, not the tail: the tail needs diagnostics on.
         let tooOld = PolygonUndecidedReason.fixTooOld.prose
-        // `contains("")` is always true, which would invert the guard below into asserting the
-        // line WAS logged.
+        // `contains("")` is always true, which would invert the guard below.
         #expect(!tooOld.isEmpty)
         #expect(
             !logger.debugReceivedInvocations.contains { $0.message.contains(tooOld) },
@@ -1372,8 +1213,6 @@ struct PolygonMembershipResolverTests {
         #expect(delivered.first?.occurredAt == takenAt)
     }
 
-    /// A covering-circle exit needs no fix, so its evidence is the OS event's own date — which on a
-    /// crossing replayed to a long-suspended process is nowhere near the moment we handle it.
     @Test
     func handleTransition_givenCoveringCircleExit_expectStampedWithTheOsEventDate() async {
         let setup = await makeSetup(fix: nil)
@@ -1403,8 +1242,7 @@ struct PolygonMembershipResolverTests {
 
     // MARK: - Pass phase ordering
 
-    /// A ring shifted north so a fix 3 m inside the standard square's north edge sits deep inside
-    /// this one — marginal for `1`, decisive for `2`, from the same fix.
+    /// Shifted north so a fix 3 m inside the square's north edge is marginal for `1`, decisive for `2`.
     private func deepPolygonGeofence(id: String) -> Geofence {
         Geofence(
             id: id, latitude: 0.0016, longitude: 0, radius: 300, name: "deep",
@@ -1415,10 +1253,8 @@ struct PolygonMembershipResolverTests {
         )
     }
 
-    /// Every decisive verdict is recorded BEFORE any corroboration request is issued. Corroborating
-    /// inline lets one marginal polygon's request burn its timeout mid-loop, handing every later
-    /// polygon the same fix up to ten seconds older and possibly past `movementFixMaxAge`, so an
-    /// arrival would depend on another venue being marginal.
+    /// Decisive verdicts must be recorded before any corroboration request, or a slow request ages the
+    /// fix every later polygon is judged on.
     private func expectDecisiveVerdictBeforeCorroboration(order ids: [String]) async {
         let logger = LoggerMock()
         let setup = await makeSetup(fix: nil, logger: logger)
@@ -1436,7 +1272,6 @@ struct PolygonMembershipResolverTests {
 
         await setup.resolver.evaluateMembership(geofenceIds: ids, reason: .newPolygon)
 
-        // The decisive verdict for 2 was already in when 1's corroboration request went out.
         #expect(decisiveSeenAtRequest.count == 1)
     }
 
@@ -1445,14 +1280,12 @@ struct PolygonMembershipResolverTests {
         await expectDecisiveVerdictBeforeCorroboration(order: ["1", "2"])
     }
 
-    /// Reversed, so the property cannot come from catalog order.
+    /// Reversed, so the result can't come from catalog order.
     @Test
     func evaluateMembership_givenMarginalPolygonLast_expectDecisiveOneSettledBeforeCorroboration() async {
         await expectDecisiveVerdictBeforeCorroboration(order: ["2", "1"])
     }
 
-    /// The already-inside guard must be read immediately before the request it saves, because
-    /// phase one can land that belief after the deferred polygon was classified.
     @Test
     func runPass_givenBeliefTurnsInsideAfterClassification_expectNoCorroborationRequest() async {
         let logger = LoggerMock()
@@ -1477,7 +1310,6 @@ struct PolygonMembershipResolverTests {
 
     // MARK: - Pass provenance
 
-    /// A capture has to say which pass produced a verdict.
     @Test
     func evaluateAllPolygons_givenAForegroundPass_expectTheReasonRecorded() async {
         let logger = LoggerMock()
@@ -1489,7 +1321,6 @@ struct PolygonMembershipResolverTests {
         #expect(logged(logger, "Evaluating 2 polygon(s) (foreground)"))
     }
 
-    /// A movement wake and a foreground pass must not read alike.
     @Test
     func evaluateAllPolygons_givenAMovementPass_expectTheReasonRecorded() async {
         let logger = LoggerMock()
@@ -1501,8 +1332,6 @@ struct PolygonMembershipResolverTests {
         #expect(logged(logger, "Evaluating 1 polygon(s) (movement)"))
     }
 
-    /// A pass with nothing to judge still logs, so "nothing registered" and "never ran" differ in a
-    /// capture.
     @Test
     func evaluateAllPolygons_givenNothingRegistered_expectAPassRecordWithZero() async {
         let logger = LoggerMock()
@@ -1515,19 +1344,15 @@ struct PolygonMembershipResolverTests {
 
     // MARK: - A pass running on a fix its caller already holds
 
-    /// Sets up the state a circle-entry re-arm leaves behind: one polygon already decided by a
-    /// forced pass, so this resolver's baseline now stands at that fix, and a second polygon
-    /// registered afterwards that the follow-up pass is supposed to decide.
+    /// One polygon decided by a forced pass (so the resolver's baseline is that fix), then a second
+    /// registered for the follow-up pass to decide.
     private func afterAnEntryPass(_ setup: Setup) async {
         await registerPolygons(setup, ids: ["1"])
         await setup.resolver.evaluateAllPolygons(reason: .movement, requiresFreshFix: true)
         await registerPolygons(setup, ids: ["1", "2"])
     }
 
-    /// The defect the held fix exists for, asserted as a control so the fix below cannot pass
-    /// vacuously. `resolveFix(requiringFresh:)` demands a fix strictly newer than the last one
-    /// delivered, and the entry pass has just made that the current one — so the follow-up's own
-    /// request is refused and decides nothing at all.
+    /// Control: without a held fix, the follow-up's own request is refused as not newer.
     @Test
     func evaluateAllPolygons_givenAForcedPassRightAfterAnEntry_expectItDecidesNothingOnItsOwn() async {
         let resolved = fix(latitude: 0, longitude: 0)
@@ -1541,8 +1366,6 @@ struct PolygonMembershipResolverTests {
         #expect(logged(setup.logger, "undecided for region 2: no usable fix"))
     }
 
-    /// The same sequence with the entry's fix handed through: the pass judges against it and the
-    /// second polygon gets a verdict.
     @Test
     func evaluateAllPolygons_givenTheCallersFix_expectItDecidesWithoutRequestingAnother() async {
         let resolved = fix(latitude: 0, longitude: 0)
@@ -1560,14 +1383,10 @@ struct PolygonMembershipResolverTests {
         #expect(requests == 0)
     }
 
-    /// The age `heldFixUse` accepted the fix at must travel with it. Re-reading the clock would put
-    /// a fix accepted at 29.95 s past `movementFixMaxAge`, recording `fix_too_old` for every
-    /// polygon while `.tooOld`, the branch that requests a replacement, was never taken.
     @Test
     func passFix_givenAReusedHeldFix_expectTheDecisionsAgeNotAFreshReading() async {
         let setup = await makeSetup(fix: nil)
-        // Deliberately far apart so a re-measurement is unmistakable: the fix reads ~29.95 s old
-        // by the clock, but the decision accepted it at 1 s.
+        // ~29.95 s old by the clock, but the decision accepted it at 1 s.
         let held = ResolvedFix(fix(
             latitude: 0, longitude: 0,
             at: clock.now.addingTimeInterval(-GeofenceConstants.movementFixMaxAge + 0.05)
@@ -1579,9 +1398,7 @@ struct PolygonMembershipResolverTests {
         #expect(chosen?.age == 1)
     }
 
-    /// The pass settles its fix's age once. Re-reading the clock per polygon lets a fix taken just
-    /// inside `movementFixMaxAge` cross it mid-pass, and every later polygon records `fix_too_old`.
-    /// Driven through `evaluate` with the age passed explicitly, because the drift itself is a race.
+    /// Calls `evaluate` with the age passed explicitly, because the drift itself is a race.
     @Test
     func evaluate_givenTheFixAgedPastTheCapAfterThePassSettledIt_expectItStillDecides() async {
         let setup = await makeSetup(fix: nil)
@@ -1601,10 +1418,6 @@ struct PolygonMembershipResolverTests {
         #expect(await setup.storage.getPolygonMembership()["1"]?.membership == .inside)
     }
 
-    /// A movement deferred at the gate replays with the fix it was recorded with, aged by however
-    /// long the holder ran. Past `movementFixMaxAge` the decision layer refuses it as
-    /// `fix_too_old` and the pass decides nothing — the same loss the held fix exists to prevent,
-    /// reached from the other side. So the resolver must drop it and request instead.
     @Test
     func evaluateAllPolygons_givenAHeldFixPastTheAgeCap_expectItRequestsRatherThanReuseIt() async {
         let setup = await makeSetup(fix: fix(latitude: 0, longitude: 0))
@@ -1626,8 +1439,6 @@ struct PolygonMembershipResolverTests {
         #expect(await setup.storage.getPolygonMembership()["2"]?.membership == .inside)
     }
 
-    /// A held fix is judged on its own accuracy like any other, not waved through because a caller
-    /// supplied it.
     @Test
     func evaluateAllPolygons_givenACoarseHeldFix_expectItIsStillJudgedOnAccuracy() async {
         let resolved = fix(latitude: 0, longitude: 0)
@@ -1645,16 +1456,12 @@ struct PolygonMembershipResolverTests {
 
     // MARK: - Corroboration independence
 
-    /// A latitude `metres` INSIDE the square's northern edge, so `signedEdgeDistance` is that many
-    /// metres positive and a 5 m fix there is marginal rather than decisive.
+    /// A latitude `metres` inside the square's north edge; a 5 m fix there is marginal.
     private static func latitudeInsideNorthEdge(by metres: Double) -> Double {
         0.0016 - metres / 111320
     }
 
-    /// The pass fix comes from the SYSTEM cache, which `MovementFixResolver` answers with but never
-    /// records in `latestFix`, so a CoreLocation echo of that same fix clears a guard measured
-    /// against `latestFix`. An echo is not evidence the device is outside, so the arrival commits,
-    /// but as `corroboration_not_independent`, never as `cor=true`.
+    /// The system cache isn't recorded in `latestFix`, so an echo of the pass fix gets past that guard.
     @Test
     func evaluateMembership_givenCorroborationEchoesThePassFix_expectEnterCommittedUnconfirmed() async {
         let marginal = fix(
@@ -1676,7 +1483,6 @@ struct PolygonMembershipResolverTests {
         #expect(await setup.storage.getPolygonMembership()["1"]?.membership == .inside)
     }
 
-    /// The same fix judged twice still costs one request — the batching the pass depends on.
     @Test
     func corroborationFix_givenTheSameBasisTwice_expectOneRequest() async {
         let setup = await makeSetup(fix: nil)
@@ -1690,7 +1496,6 @@ struct PolygonMembershipResolverTests {
         #expect(counter.count == 1)
     }
 
-    /// A SUCCEEDED attempt must not answer for a different fix: the cache is keyed on the basis.
     @Test
     func corroborationFix_givenADifferentBasis_expectAFreshRequest() async {
         let delivered = fix(
@@ -1712,8 +1517,6 @@ struct PolygonMembershipResolverTests {
         #expect(counter.count == 2)
     }
 
-    /// A fix at or before the basis is the first fix over again, not a second opinion — and it
-    /// reports as its own outcome, so a capture can tell an echo from location not answering.
     @Test
     func corroborationFix_givenAnAnswerNotNewerThanTheBasis_expectNotIndependent() async {
         let basis = clock.now.addingTimeInterval(-Self.ageInsideGate)
@@ -1722,16 +1525,13 @@ struct PolygonMembershipResolverTests {
         #expect(await setup.resolver.corroborationFix(newerThan: basis, cache: PassCorroboration()) == .notIndependent)
     }
 
-    /// Answers the corroboration request with a fix of its own, so the SECOND fix's properties
-    /// decide the refusal rather than the one the pass judged.
     private func deliveringSecondFix(_ setup: Setup, _ second: CLLocation) {
         setup.fixResolver.requestFreshFix = { [weak fixResolver = setup.fixResolver] in
             fixResolver?.handleResolvedFix(second)
         }
     }
 
-    /// Sets up a marginal inside — `edge` +3 against 5 m accuracy — resolved from the system
-    /// cache, which is the state corroboration runs from.
+    /// Marginal inside (edge +3 m, 5 m accuracy), resolved from the system cache.
     private func marginalPass(_ setup: Setup) {
         let passFix = fix(
             latitude: Self.latitudeInsideNorthEdge(by: 3), longitude: 0, accuracy: 5,
@@ -1740,8 +1540,7 @@ struct PolygonMembershipResolverTests {
         setup.fixResolver.systemCachedFix = { passFix }
     }
 
-    /// Counts corroboration requests and answers each with a fix far OUTSIDE the ring, so the
-    /// arrival is blocked and a later pass is still owed its own attempt.
+    /// Answers each corroboration with a fix far outside, so the arrival stays owed.
     private func countingContradictions(_ setup: Setup) -> RequestCounter {
         let counter = RequestCounter()
         setup.fixResolver.requestFreshFix = { [weak fixResolver = setup.fixResolver] in
@@ -1751,13 +1550,8 @@ struct PolygonMembershipResolverTests {
         return counter
     }
 
-    /// One refresh starts BOTH `evaluateNewlyRegistered` and the movement pass, both
-    /// `requiresFreshFix`, and the in-flight guard lets a fresh pass through, so two passes
-    /// routinely judge the same fix at once. Each must make its own corroboration attempt, or one
-    /// pass's transient timeout suppresses the other's arrival.
-    ///
-    /// Driven through `runPass` twice against one fix: the same shared-basis condition the overlap
-    /// produces, deterministically.
+    /// Two `runPass` calls on one fix: the overlap a refresh's two fresh passes produce, made
+    /// deterministic.
     @Test
     func runPass_givenASecondPassOnTheSameFix_expectItMakesItsOwnAttempt() async {
         let setup = await makeSetup(fix: nil)
@@ -1775,8 +1569,8 @@ struct PolygonMembershipResolverTests {
         #expect(counter.count == 2)
     }
 
-    /// The only case where a usable second fix reaches the side check and agrees. Without it,
-    /// inverting that branch would leave the suite green.
+    /// The only test where a usable second fix agrees; without it that branch could be inverted
+    /// unnoticed.
     @Test
     func evaluateMembership_givenSecondFixReadsInside_expectEnterDelivered() async {
         let setup = await makeSetup(fix: nil)
@@ -1796,8 +1590,6 @@ struct PolygonMembershipResolverTests {
         #expect(await setup.storage.getPolygonMembership()["1"]?.membership == .inside)
     }
 
-    /// Side disagreement has its own record, distinct from `within_accuracy`, which describes a fix
-    /// that could not pick a side.
     @Test
     func evaluateMembership_givenSecondFixReadsOutside_expectCorroborationDisagreed() async {
         let logger = LoggerMock()
@@ -1813,8 +1605,6 @@ struct PolygonMembershipResolverTests {
         #expect(await setup.emitter.snapshot().isEmpty)
     }
 
-    /// A second fix too coarse to judge this venue adds nothing to the first, which is not the
-    /// same as arguing against it, so the arrival still commits.
     @Test
     func evaluateMembership_givenSecondFixCoarserThanTheVenue_expectEnterCommittedUnconfirmed() async {
         let setup = await makeSetup(fix: nil)
@@ -1830,7 +1620,6 @@ struct PolygonMembershipResolverTests {
         #expect(delivered.first?.transition == .enter)
     }
 
-    /// No fix at all is a different record from an echo.
     @Test
     func corroborationFix_givenNoFix_expectUnavailable() async {
         let setup = await makeSetup(fix: nil)

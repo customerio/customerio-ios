@@ -7,11 +7,8 @@ import Foundation
 import SharedTests
 import Testing
 
-/// Tests `GeofenceModuleState.setup` without the full `initialize()` path, which spins up
-/// `CLLocationManager` and lifecycle observers.
-///
-/// Each test owns a private `DIGraphShared`, so a fire-and-forget refresh `Task` can never resolve
-/// a dependency another suite swapped on the shared graph.
+/// Each test owns a private `DIGraphShared`, so a fire-and-forget refresh `Task` can't resolve
+/// another suite's overrides.
 @Suite("GeofenceModuleState.setup", .serialized)
 struct GeofenceModuleSetupTests {
     @Test
@@ -42,7 +39,6 @@ struct GeofenceModuleSetupTests {
     @Test
     @MainActor
     func setup_givenResetEvent_clearsRefreshArm_soLaterFixDoesNotRefresh() async throws {
-        // Otherwise a fix after logout would drive a refresh armed in the previous user's session.
         let f = Fixture(cachedLocation: LocationData(latitude: 1, longitude: 2))
         defer { f.cleanup() }
 
@@ -108,8 +104,7 @@ struct GeofenceModuleSetupTests {
     @Test
     @MainActor
     func setup_givenRegistrationCenter_expectRefreshAnchoredThereNotCacheAtLaunch() async throws {
-        // The registration center wins over the Location cache, which movement never updates and
-        // is stale on relaunch; anchoring there would re-rank from a far-away point.
+        // Not the Location cache: movement never updates it, so it's stale on relaunch.
         let f = Fixture(cachedLocation: LocationData(latitude: 12.34, longitude: 56.78))
         defer { f.cleanup() }
 
@@ -135,14 +130,13 @@ struct GeofenceModuleSetupTests {
     @Test
     @MainActor
     func setup_givenNoIdentifiedUser_expectNoRefreshOrAcquireAtLaunch() throws {
-        // Geofencing can't sync without a user, so launch must not refresh or self-acquire a fix.
         let f = Fixture(cachedLocation: LocationData(latitude: 7, longitude: 8), identifiedUserId: nil)
         defer { f.cleanup() }
 
         f.spyCoordinator.refreshClosure = { _, _, _ in .success(()) }
 
         f.wire()
-        // The user gate is synchronous (no Task spawned), so nothing can have run.
+        // The user gate is synchronous, so nothing can have run.
         #expect(f.spyCoordinator.refreshCallsCount == 0)
         #expect(f.stub.requestSilentlyCount.wrappedValue == 0)
     }
@@ -169,8 +163,7 @@ struct GeofenceModuleSetupTests {
     @Test
     @MainActor
     func setup_givenNoAnchorAtLaunch_whenIdentifiedWithAnchor_expectRefresh() async throws {
-        // Launch runs with no anchor (arms + acquires, no refresh); a registration recorded
-        // afterward is what the identify refresh anchors on.
+        // Launch has no anchor, so it arms and acquires without refreshing.
         let f = Fixture()
         defer { f.cleanup() }
 
@@ -212,8 +205,7 @@ struct GeofenceModuleSetupTests {
         let f = Fixture(locationMode: .manual)
         defer { f.cleanup() }
 
-        // Barrier on the anchor read, the last await before the no-anchor branch. It fires as the
-        // read starts, so the arm may not be written yet; the fix loop below handles that.
+        // Fires as the anchor read starts, so the arm may not be written yet; the fix loop covers it.
         let (readSignal, readContinuation) = AsyncStream<Void>.makeStream()
         let readContinuationWatchdog = bounded(readContinuation)
         defer { readContinuationWatchdog.cancel() }
@@ -228,8 +220,8 @@ struct GeofenceModuleSetupTests {
 
         #expect(f.stub.requestSilentlyCount.wrappedValue == 0)
 
-        // Launch still armed the first-run refresh. The arm has no observable of its own in manual
-        // mode and a fix delivered before it is a no-op, so deliver until one is consumed.
+        // The arm has no observable in manual mode and an earlier fix is a no-op, so deliver until
+        // one is consumed.
         let locAcquired = try #require(f.bus.observers[LocationAcquiredEvent.key], "LocationAcquiredEvent observer must be registered")
         let refreshed = await settle {
             if f.spyCoordinator.refreshCallsCount == 0 {
@@ -246,8 +238,8 @@ struct GeofenceModuleSetupTests {
     @Test
     @MainActor
     func setup_givenExplicitRefreshRequested_whenLocationAcquiredWithoutPriorSkip_expectRefresh() async throws {
-        // An anchor at launch clears the no-anchor arm, so only the explicit arm can drive the
-        // second refresh.
+        // The launch anchor clears the no-anchor arm, so only the explicit arm can drive a second
+        // refresh.
         let f = Fixture(cachedLocation: LocationData(latitude: 1, longitude: 2))
         defer { f.cleanup() }
 
@@ -279,8 +271,6 @@ struct GeofenceModuleSetupTests {
     @Test
     @MainActor
     func setup_givenAnchorAtLaunch_whenLocationAcquired_expectNoDuplicateRefresh() async throws {
-        // An anchor at launch must not arm the first-run flag, or a later fix fires a second,
-        // competing refresh.
         let f = Fixture(cachedLocation: LocationData(latitude: 1, longitude: 2))
         defer { f.cleanup() }
 
@@ -305,8 +295,8 @@ struct GeofenceModuleSetupTests {
 
     // MARK: - Visit arming
 
-    /// Kept in this suite so they don't run in parallel with it: a sibling suite holding the main
-    /// actor starved the disarm hop and timed out the barrier.
+    /// Kept in this serialized suite: in parallel, a sibling holding the main actor starved the
+    /// disarm hop.
 
     @Test
     @MainActor
@@ -315,8 +305,7 @@ struct GeofenceModuleSetupTests {
         defer { f.cleanup() }
         f.wire()
 
-        // Bootstrap arms on its own task and, with no user yet, disarms. Waiting for that first
-        // means a later `start` can only come from the identify observer.
+        // Wait for bootstrap's own disarm, so a later `start` can only come from the identify observer.
         try await f.settle { f.visitMonitor.stopCallCount == 1 }
         #expect(f.visitMonitor.startCallCount == 0)
 
@@ -329,8 +318,7 @@ struct GeofenceModuleSetupTests {
         try await f.settle { f.visitMonitor.startCallCount == 1 }
     }
 
-    /// `bindVisits` refuses a signed-out visit but leaves the monitor running, so only the reset
-    /// path disarms.
+    /// Only reset disarms: `bindVisits` refuses a signed-out visit but leaves the monitor running.
     @Test
     @MainActor
     func reset_givenVisitsArmed_expectDisarmed() async throws {
@@ -340,13 +328,11 @@ struct GeofenceModuleSetupTests {
         f.spyCoordinator.resetClosure = { .success(()) }
         f.wire()
 
-        // Same barrier as above: bootstrap's own arming must land first, or its `stop` is
-        // indistinguishable from reset's.
+        // Bootstrap's own arming must land first, or its `stop` is indistinguishable from reset's.
         try await f.settle { f.visitMonitor.startCallCount == 1 }
         #expect(f.visitMonitor.stopCallCount == 0)
 
-        // Cleared before the event, matching production: `commonClearIdentify` calls
-        // `clearUserId()` before `analytics.reset()`, and it is that reset which posts the event.
+        // Cleared before the event, as in production: `clearUserId()` runs before `analytics.reset()`.
         f.contextStore.setUserId(nil)
         let reset = try #require(f.bus.observers[ResetEvent.key], "ResetEvent observer must be registered")
         reset(ResetEvent())
@@ -355,8 +341,6 @@ struct GeofenceModuleSetupTests {
     }
 }
 
-/// Per-test private `DIGraphShared` with capturing/mocking deps, and a fresh `GeofenceModuleState`
-/// with a stub `LocationServices`.
 @MainActor
 private struct Fixture {
     let di: DIGraphShared
@@ -377,7 +361,6 @@ private struct Fixture {
         self.bus = CapturingEventBusHandler()
         di.override(value: bus as EventBusHandler, forType: EventBusHandler.self)
 
-        // Geofence refreshes require an identified user; seed one so launch/identify proceed.
         self.tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         let contextStore = BackgroundDeliveryContextStore(fileManager: .default, directoryURL: tempDir)
         contextStore.setUserId(identifiedUserId)
@@ -407,10 +390,7 @@ private struct Fixture {
         state.setup(di: di, locationMode: locationMode)
     }
 
-    /// Waits for a condition the module's own tasks satisfy.
-    ///
-    /// `Date`/`Task.sleep(nanoseconds:)` rather than `ContinuousClock`: that is iOS 16+, and this
-    /// package targets iOS 13.
+    /// Not `ContinuousClock`: it's iOS 16+ and this package targets iOS 13.
     func settle(
         _ condition: () -> Bool,
         within: TimeInterval = 10,
@@ -418,8 +398,7 @@ private struct Fixture {
     ) async throws {
         let deadline = Date().addingTimeInterval(within)
         while Date() < deadline {
-            // Arming runs through process-global chains a concurrent suite can hold, so await them
-            // rather than race the deadline, which is only a backstop.
+            // Await the process-global chains a concurrent suite can hold; the deadline is a backstop.
             await GeofenceBootstrap.awaitPendingWorkForTesting()
             if condition() { return }
             try await Task.sleep(nanoseconds: 5000000)
@@ -433,7 +412,6 @@ private struct Fixture {
     }
 }
 
-/// Stub `LocationServices` returning a fixed cached location and recording silent-acquire calls.
 private final class StubLocationServices: LocationServices, @unchecked Sendable {
     private let cachedLocation: LocationData?
     let requestSilentlyCount = Synchronized<Int>(0)
@@ -457,8 +435,6 @@ private final class StubLocationServices: LocationServices, @unchecked Sendable 
     }
 }
 
-/// Captures registered observers so tests can deliver events synchronously, without the real
-/// `CioEventBusHandler`'s async queue.
 private final class CapturingEventBusHandler: EventBusHandler, @unchecked Sendable {
     private(set) var observers: [String: (AnyEventRepresentable) -> Void] = [:]
 
@@ -480,15 +456,13 @@ private final class CapturingEventBusHandler: EventBusHandler, @unchecked Sendab
     func removeAllObservers() {}
 }
 
-/// Bounds a signal the test awaits: if the SDK never sends it, the stream finishes and the await
-/// returns `nil`, so the test fails instead of hanging the whole run.
+/// Finishes the stream after `seconds`, so a missing signal fails the test instead of hanging it.
 private func bounded<T>(_ continuation: AsyncStream<T>.Continuation, seconds: TimeInterval = 5) -> Task<Void, Never> {
     Task {
         do {
             try await Task.sleep(nanoseconds: UInt64(seconds * 1000000000))
         } catch {
-            // Cancelled: the test stood the watchdog down. Not `try?`, which would fall through to
-            // `finish()` and close the stream.
+            // Not `try?`: cancellation must not fall through to `finish()`.
             return
         }
         continuation.finish()
