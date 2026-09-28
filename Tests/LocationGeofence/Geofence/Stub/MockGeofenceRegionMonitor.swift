@@ -260,14 +260,15 @@ final class MockGeofenceRegionMonitor: GeofenceRegionMonitoring {
         location: LocationData?,
         occurredAt: Date = Date(),
         locationIsFresh: Bool = true,
-        eventCircle: GeofenceEventCircle? = nil
+        eventCircle: GeofenceEventCircle? = nil,
+        entryObserved: Bool = true
     ) {
         let circle = eventCircle ?? registeredGeometry[identifier].map {
             GeofenceEventCircle.circle(
                 MonitoredCircle(center: $0.center, radius: $0.radius, maximumRadius: maximumMonitoringRadius)
             )
         } ?? .unknown
-        onTransition?(identifier, transition, location, occurredAt, locationIsFresh, circle)
+        onTransition?(identifier, transition, location, occurredAt, locationIsFresh, circle, entryObserved)
     }
 
     func simulateMonitoringInterrupted(identifier: String?) {

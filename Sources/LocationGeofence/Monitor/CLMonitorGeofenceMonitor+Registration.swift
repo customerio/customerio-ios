@@ -86,7 +86,8 @@ extension CLMonitorGeofenceMonitor {
         )
 
         let isMovementTrigger = identifier == GeofenceConstants.movementTriggerIdentifier
-        let isInside = isDeviceInside(center: coordinate, radius: clampedRadius) ?? isMovementTrigger
+        let side = deviceSide(center: coordinate, radius: clampedRadius)
+        let isInside = side?.isInside ?? isMovementTrigger
         let initialTransition: GeofenceTransition = isInside ? .enter : .exit
         let assumedState: GeofenceConditionState = isInside ? .satisfied : .unsatisfied
 
@@ -100,6 +101,9 @@ extension CLMonitorGeofenceMonitor {
                     transitionTypes: transitionTypes,
                     initialTransition: initialTransition,
                     assumedState: assumedState,
+                    // No fix, or one too old or too close to call, is an assumption: the ENTER the OS
+                    // may answer it with is no crossing (see `MonitorRegionRecord.lastStateObserved`).
+                    initialStateObserved: side?.isSettled ?? false,
                     stagedAt: stagedAt
                 ),
                 on: monitor
@@ -115,6 +119,7 @@ extension CLMonitorGeofenceMonitor {
         let transitionTypes: Set<GeofenceTransition>
         let initialTransition: GeofenceTransition
         let assumedState: GeofenceConditionState
+        let initialStateObserved: Bool
         /// When the circle was staged, for the ledger's stage→confirm attribution window.
         let stagedAt: Date
     }
@@ -139,7 +144,8 @@ extension CLMonitorGeofenceMonitor {
             initialState: staged.initialTransition,
             center: center,
             radius: radius,
-            forceReseed: forceReseed
+            forceReseed: forceReseed,
+            initialStateObserved: staged.initialStateObserved
         )
         // CLMonitor SILENTLY IGNORES an add over a live identifier, keeping the original circle
         // and reporting no error, so the identifier is cleared first. Keyed on the OS rather

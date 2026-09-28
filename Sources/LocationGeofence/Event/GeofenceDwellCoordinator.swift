@@ -59,11 +59,16 @@ final class GeofenceDwellCoordinator {
         if let foregroundObserver { notificationCenter.removeObserver(foregroundObserver) }
     }
 
+    /// - Parameter entryObserved: for an ENTER, whether it is a crossing the OS observed. False for
+    ///   one synthesized for a fence registered around a device already inside, or an OS correction
+    ///   of an assumed state: the visit it starts supports dwell, but its start is discovery, so
+    ///   the dwell reports neither it nor a duration.
     func handleBoundary(
         geofence: Geofence,
         transition: GeofenceTransition,
         occurredAt: Date,
-        expectedUserId: String? = nil
+        expectedUserId: String? = nil,
+        entryObserved: Bool = true
     ) async {
         // Before the user check and every await: leaving is geometry, whoever is signed in, and an
         // ENTER write already in flight must see it.
@@ -74,7 +79,8 @@ final class GeofenceDwellCoordinator {
             await startVisitIfNeeded(
                 geofence: geofence,
                 enteredAt: occurredAt,
-                expectedUserId: expectedUserId
+                expectedUserId: expectedUserId,
+                entryObserved: entryObserved
             )
         case .exit:
             // Only the visit this EXIT read and judged: an overlapping ENTER may have written a newer
@@ -144,7 +150,8 @@ final class GeofenceDwellCoordinator {
     private func startVisitIfNeeded(
         geofence: Geofence,
         enteredAt: Date,
-        expectedUserId: String?
+        expectedUserId: String?,
+        entryObserved: Bool
     ) async {
         guard tracksVisit(geofence),
               let userId = contextStore.currentUserId, !userId.isEmpty,
@@ -167,7 +174,8 @@ final class GeofenceDwellCoordinator {
             enteredAt: enteredAt,
             geometryRevision: geofence.dwellRevision,
             userId: userId,
-            emitted: false
+            emitted: false,
+            entryObserved: entryObserved
         )
         if contextStore.currentUserId == userId,
            await saveNewVisit(visit, geofenceId: geofence.id, replacing: existing?.visitId) {

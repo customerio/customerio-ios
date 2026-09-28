@@ -26,7 +26,7 @@ enum GeofenceMonitorBinder {
         monitor.setOnMonitoringInterrupted { geofenceId in
             Task { await dwellCoordinator?.invalidateContinuity(geofenceId: geofenceId) }
         }
-        monitor.setOnTransition { [weak resolver, weak coordinator, weak dwellCoordinator] identifier, transition, location, occurredAt, locationIsFresh, eventCircle in
+        monitor.setOnTransition { [weak resolver, weak coordinator, weak dwellCoordinator] identifier, transition, location, occurredAt, locationIsFresh, eventCircle, entryObserved in
             // CLLocationManager delivers on main; both handlers below are async with their
             // own serialization (tracker active-delivery dedup, coordinator refresh gate),
             // so fire-and-forget Tasks are safe.
@@ -69,7 +69,7 @@ enum GeofenceMonitorBinder {
                 let outcome = await resolver?.handleTransition(
                     identifier: identifier, transition: transition,
                     occurredAt: occurredAt, eventCircle: eventCircle,
-                    receivedForUserId: receivedForUserId
+                    receivedForUserId: receivedForUserId, entryObserved: entryObserved
                 ) ?? .nothingToRearm
 
                 await dispatchFollowUp(

@@ -98,7 +98,9 @@ extension CLMonitorGeofenceMonitor {
                     .circle(MonitoredCircle(
                         center: condition.center, radius: condition.radius,
                         maximumRadius: self.authManager.maximumRegionMonitoringDistance
-                    ))
+                    )),
+                    // The OS missed this crossing, so the fix only dates when it was noticed.
+                    false
                 )
             }
         }

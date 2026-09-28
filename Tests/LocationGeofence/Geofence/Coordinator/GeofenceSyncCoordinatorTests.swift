@@ -3129,7 +3129,10 @@ struct GeofenceSyncCoordinatorTests {
         }
 
         #expect(emitter.calls.wrappedValue.isEmpty)
-        #expect(await storage.getDwellVisit(geofenceId: region.id) != nil)
+        let visit = await storage.getDwellVisit(geofenceId: region.id)
+        #expect(visit != nil)
+        // Registered around a device already inside: discovery, not an entry a dwell may report.
+        #expect(visit?.entryObserved == false)
     }
 
     /// The refresh records a widened edge before registering and keeps the record through the

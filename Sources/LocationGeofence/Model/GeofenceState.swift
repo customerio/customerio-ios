@@ -123,4 +123,10 @@ struct MonitorRegionRecord: Codable, Equatable, Sendable {
     /// dated at or before this one has already been seen. Optional for records persisted before the
     /// field; `nil` refuses nothing.
     var lastEventDate: Date?
+    /// Whether `lastState` was observed — an OS-reported change, or a fix that settled the side —
+    /// rather than assumed at registration. `CLMonitor` answers a wrong `assuming:` with an event of
+    /// the real state, so an ENTER out of an assumed `.exit` can be that correction for a device
+    /// inside all along: no crossing a visit can date from. Optional for records persisted before
+    /// the field; `nil` counts as assumed.
+    var lastStateObserved: Bool?
 }
