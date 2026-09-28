@@ -3288,8 +3288,6 @@ struct GeofenceSyncCoordinatorTests {
         )
         let coordinator = makeStallingEnterCoordinator(
             serving: region,
-            storage: storage,
-            contextStore: contextStore,
             emitter: emitter,
             dwellCoordinator: dwellCoordinator,
             dateUtil: dateUtil
@@ -3313,11 +3311,56 @@ struct GeofenceSyncCoordinatorTests {
         await emitter.release()
     }
 
+    /// A fence the SDK stops monitoring gets no EXIT. Its visit ends with the registration, so
+    /// the ENTER synthesized when a later re-rank registers it again cannot adopt a stay that
+    /// spans the time nobody watched. A fence that stays registered keeps its visit.
+    @Test
+    func registerWithOs_givenDwellFenceUnregistered_expectOnlyItsVisitEnded() async {
+        let storage = makeStorage()
+        let contextStore = makeContextStore()
+        let dwellCoordinator = GeofenceDwellCoordinator(
+            storage: storage, transitionEmitter: TransitionEmitterSpy(), contextStore: contextStore,
+            logger: LoggerMock(), freshFixProvider: { nil }
+        )
+        let fences = ["dropped", "kept"].map { id in
+            Geofence(
+                id: id, latitude: 1.0, longitude: 2.0, radius: 100, name: id,
+                transitionTypes: [.enter, .exit], lastUpdated: Date(timeIntervalSince1970: 1),
+                dwellThresholdSeconds: 600
+            )
+        }
+        await storage.setCachedGeofences(fences)
+        for fence in fences {
+            let visit = GeofenceDwellVisit(
+                visitId: "visit-\(fence.id)", enteredAt: Date(), geometryRevision: fence.dwellRevision,
+                userId: "user-1", emitted: false
+            )
+            #expect(await storage.saveDwellVisit(visit, geofenceId: fence.id))
+        }
+        let setup = makeCoordinator(storage: storage, contextStore: contextStore, dwellCoordinator: dwellCoordinator)
+        let register = { (regions: [Geofence]) in
+            setup.coordinator.registerWithOsSync(
+                businessRegions: regions,
+                movementTriggerLocation: LocationData(latitude: 1.0, longitude: 2.0),
+                movementTriggerRadius: 500,
+                registerMovementTrigger: true
+            )
+        }
+        register(fences)
+
+        register([fences[1]])
+        for _ in 0 ..< 200 where await storage.getDwellVisit(geofenceId: "dropped") != nil {
+            await Task.yield()
+        }
+
+        #expect(await storage.getDwellVisit(geofenceId: "dropped") == nil)
+        #expect(await storage.getDwellVisit(geofenceId: "kept")?.visitId == "visit-kept")
+    }
+
     /// `makeCoordinator` is typed to `TransitionEmitterSpy`; this wires the stalling emitter instead.
+    /// Storage and identity come from `dwellCoordinator`, so all three share one store.
     private func makeStallingEnterCoordinator(
         serving region: Geofence,
-        storage: GeofenceStorage,
-        contextStore: BackgroundDeliveryContextStore,
         emitter: StallingEnterEmitter,
         dwellCoordinator: GeofenceDwellCoordinator,
         dateUtil: DateUtilStub
@@ -3328,9 +3371,9 @@ struct GeofenceSyncCoordinatorTests {
         }
         return GeofenceSyncCoordinatorImpl(
             apiService: api,
-            storage: storage,
+            storage: dwellCoordinator.storage,
             monitor: MockGeofenceRegionMonitor(),
-            contextStore: contextStore,
+            contextStore: dwellCoordinator.contextStore,
             transitionEmitter: emitter,
             dwellCoordinator: dwellCoordinator,
             dateUtil: dateUtil,

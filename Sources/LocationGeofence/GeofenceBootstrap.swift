@@ -172,7 +172,8 @@ enum GeofenceBootstrap {
         GeofenceMonitorBinder.bindVisits(
             visitMonitor: di.geofenceVisitMonitor,
             resolver: resolver,
-            contextStore: di.backgroundDeliveryContextStore
+            contextStore: di.backgroundDeliveryContextStore,
+            dwellCoordinator: di.geofenceDwellCoordinator
         )
     }
 

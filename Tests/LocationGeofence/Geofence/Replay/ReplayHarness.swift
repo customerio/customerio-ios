@@ -289,7 +289,8 @@ final class ReplayHarness {
         GeofenceMonitorBinder.bindVisits(
             visitMonitor: visitMonitor,
             resolver: resolver,
-            contextStore: contextStore
+            contextStore: contextStore,
+            dwellCoordinator: dwellCoordinator
         )
 
         overrideBootstrapDependencies()

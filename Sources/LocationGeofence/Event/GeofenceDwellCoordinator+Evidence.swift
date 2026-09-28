@@ -86,16 +86,14 @@ extension GeofenceDwellCoordinator {
         let center = CLLocation(latitude: geofence.latitude, longitude: geofence.longitude)
         let distance = fix.distance(from: center)
         // The point alone is not a verdict. Only an accuracy circle wholly inside the region is
-        // qualifying dwell evidence. Ambiguous or outside fixes leave teardown to Core Location's
-        // real EXIT callback so a noisy deadline fix cannot end a live visit.
+        // qualifying dwell evidence. Anything else — ambiguous, or even decisively outside — only
+        // withholds the dwell: teardown is left to Core Location's real EXIT. Its exit hysteresis
+        // means a device can step just past the radius and come back with no EXIT and no new
+        // ENTER, so ending the visit here would lose this stay's dwell and EXIT duration for good;
+        // a circle has no candidate path to rebuild it.
         guard fix.horizontalAccuracy > 0,
               distance + fix.horizontalAccuracy <= geofence.radius
         else {
-            if fix.horizontalAccuracy > 0,
-               distance - fix.horizontalAccuracy >= geofence.radius {
-                await invalidateContinuity(geofenceId: geofence.id)
-                return
-            }
             scheduleEvidenceRetry(for: geofence, visit: remaining)
             return
         }
@@ -204,19 +202,37 @@ extension GeofenceDwellCoordinator {
         ) { [weak self] _ in
             MainActor.assumeIsolated {
                 guard let self else { return }
-                Task {
-                    let geofences = await self.storage.getCachedGeofences()
-                    for geofence in geofences where geofence.dwellThresholdSeconds > 0 {
-                        if let visit = await self.storage.getDwellVisit(geofenceId: geofence.id), !visit.emitted {
-                            // Re-arm from wall-clock entry rather than requesting now: a due visit
-                            // still requests immediately, but pre-threshold evidence cannot qualify
-                            // and would spend the bounded retries, leaving no deadline at all.
-                            self.scheduleDeadline(for: geofence, visit: visit)
-                        }
-                    }
-                }
+                Task { await self.rearmPendingEvidence(includePolygons: true) }
             }
         }
         #endif
+    }
+
+    /// Re-arms every pending visit's deadline from its wall-clock entry, with a fresh retry budget.
+    ///
+    /// A deadline is an in-process sleep: it does not run while the app is suspended, and may run
+    /// late after one. So besides foregrounding, every background wake the SDK gets — a region
+    /// callback, a CLVisit — calls this, and a visit that came due while suspended requests its
+    /// evidence then. That is the best iOS allows; nothing here emits on elapsed time alone.
+    ///
+    /// Re-arming rather than requesting now: a due visit still requests immediately, but
+    /// pre-threshold evidence cannot qualify and would spend the bounded retries.
+    ///
+    /// - Parameter includePolygons: false on a background wake. A polygon's evidence is a forced
+    ///   fresh-fix pass, and the wake's own pass is already one; a second concurrent one is
+    ///   answered with the same fix, refused as an echo, and decides nothing for either.
+    func rearmPendingEvidence(includePolygons: Bool) async {
+        guard let userId = contextStore.currentUserId, !userId.isEmpty else { return }
+        let geofences = await storage.getCachedGeofences().filter { geofence in
+            geofence.dwellThresholdSeconds > 0 && (includePolygons || geofence.vertices == nil)
+        }
+        for geofence in geofences {
+            guard let visit = await currentVisit(geofence: geofence, userId: userId), !visit.emitted,
+                  // A newer visit's own deadline, scheduled while the read above was suspended,
+                  // must not be replaced by this older read.
+                  (evidenceRetries[geofence.id]?.visitId ?? visit.visitId) == visit.visitId
+            else { continue }
+            scheduleDeadline(for: geofence, visit: visit)
+        }
     }
 }

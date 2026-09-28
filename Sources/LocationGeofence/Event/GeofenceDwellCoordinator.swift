@@ -155,9 +155,10 @@ final class GeofenceDwellCoordinator {
         source: String,
         userId: String
     ) async {
-        guard geofence.dwellThresholdSeconds > 0, !visit.emitted, observedAt >= visit.enteredAt else { return }
-        let duration = max(0, Self.wholeSeconds(from: visit.enteredAt, to: observedAt))
-        guard duration >= geofence.dwellThresholdSeconds else { return }
+        guard geofence.dwellThresholdSeconds > 0, !visit.emitted, observedAt >= visit.enteredAt,
+              Self.wholeSeconds(from: visit.enteredAt, to: observedAt) >= geofence.dwellThresholdSeconds
+        else { return }
+        let duration = Self.reportedSeconds(from: visit.enteredAt, to: observedAt)
         // A candidate's start is its first inside evidence, not an entry, so neither it nor the
         // time since it is reported as observed — matching Android. It still qualifies the dwell.
         let observed = visit.entryObserved
@@ -304,6 +305,14 @@ final class GeofenceDwellCoordinator {
     /// of slack absorbs that and rounds up no fraction anyone could observe.
     static func wholeSeconds(from start: Date, to end: Date) -> Int {
         Int((end.timeIntervalSince(start) + 0.000_001).rounded(.down))
+    }
+
+    /// The duration an event reports: the difference of the two whole epoch seconds, so it equals
+    /// the event's whole-second timestamp minus the `enteredAt` it carries, which is serialized by
+    /// truncation too. Can be a second more than `wholeSeconds` (100.9 s → 160.1 s reports 60, not
+    /// 59); qualifying stays on `wholeSeconds`, the elapsed time actually observed.
+    static func reportedSeconds(from start: Date, to end: Date) -> Int {
+        max(0, Int(end.timeIntervalSince1970) - Int(start.timeIntervalSince1970))
     }
 
     private func tracksVisit(_ geofence: Geofence) -> Bool {
