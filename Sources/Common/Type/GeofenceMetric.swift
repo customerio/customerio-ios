@@ -34,6 +34,7 @@ public extension GeofenceMetric {
     var dwellThresholdSeconds: Int? { nil }
     var dwellDurationSeconds: Int? { nil }
     var detectionSource: String? { nil }
+    var visitDurationSeconds: Int? { nil }
 
     /// `/track` event name. The same name for every transition; the direction is the
     /// `transition` property.
