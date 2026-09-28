@@ -772,7 +772,9 @@ private actor AsyncSignal {
 
 private actor BootstrapTransitionEmitter: GeofenceTransitionEmitting {
     func trackTransition(geofenceId: String, transition: GeofenceTransition, occurredAt: Date) async {}
-    func trackExit(geofenceId: String, occurredAt: Date, expectedUserId: String?) async {}
+    func trackExit(
+        geofenceId: String, occurredAt: Date, context: GeofenceExitContext?, expectedUserId: String?
+    ) async {}
 
     func trackDwell(
         geofenceId: String, occurredAt: Date, context: GeofenceDwellContext, expectedUserId: String?

@@ -1,13 +1,14 @@
 import CioInternalCommon
 import Foundation
 
-/// One crossing handed to `GeofenceEventTracker`: what happened, the visit a dwell qualifies, and
-/// who it may be delivered for.
+/// One crossing handed to `GeofenceEventTracker`: what happened, the visit it closes or qualifies,
+/// and who it may be delivered for. At most one of `dwell` and `exit` is set.
 struct GeofenceCrossing: Sendable {
     let geofenceId: String
     let transition: GeofenceTransition
     let occurredAt: Date
     let dwell: GeofenceDwellContext?
+    let exit: GeofenceExitContext?
     /// Drop the crossing unless this is still the identified user. Nil accepts whoever is current.
     let expectedUserId: String?
 }
@@ -40,11 +41,12 @@ extension GeofenceCrossing {
                 geosetId: geosetId,
                 // Snapshot as the fallback for an evicted geofence; delivery prefers the live cache.
                 metadata: cachedGeofence?.metadata,
-                visitId: dwell?.visitId,
-                enteredAt: dwell?.enteredAt,
+                visitId: dwell?.visitId ?? exit?.visitId,
+                enteredAt: dwell?.enteredAt ?? exit?.enteredAt,
                 dwellThresholdSeconds: dwell?.thresholdSeconds,
                 dwellDurationSeconds: dwell?.durationSeconds,
-                detectionSource: dwell?.detectionSource
+                visitDurationSeconds: exit?.durationSeconds,
+                detectionSource: dwell?.detectionSource ?? exit?.detectionSource
             )
         }
     }

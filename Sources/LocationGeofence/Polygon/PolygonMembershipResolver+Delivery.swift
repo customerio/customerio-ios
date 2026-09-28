@@ -41,11 +41,13 @@ extension PolygonMembershipResolver {
             onlyIfRingMatches: evaluatedRing,
             onlyIfCircleMatches: evaluatedCircle
         )
+        var exitContext: GeofenceExitContext?
         let expectedUserId = contextStore.currentUserId
         if isStillCurrent?() ?? true {
-            await forwardDwellEvidence(
+            exitContext = await forwardDwellEvidence(
                 PolygonDwellEvidence(membership: membership, outcome: outcome),
-                geofence: geofence, at: evidence, expectedUserId: expectedUserId
+                geofence: geofence, at: evidence, confirmedByFix: confirmedByFix,
+                expectedUserId: expectedUserId
             )
         }
         guard case .deliver(let transition) = outcome else {
@@ -62,7 +64,8 @@ extension PolygonMembershipResolver {
         }
         logger.geofencePolygonTransition(identifier: geofence.id, transition: transition, confirmedByFix: confirmedByFix)
         await emitPolygonTransition(
-            transition, geofenceId: geofence.id, occurredAt: evidence, expectedUserId: expectedUserId
+            transition, geofenceId: geofence.id, occurredAt: evidence,
+            exitContext: exitContext, expectedUserId: expectedUserId
         )
     }
 
@@ -105,8 +108,8 @@ extension PolygonMembershipResolver {
     /// ENTER's user check still runs first. An EXIT overtaking the write is caught by the dwell
     /// coordinator, which refuses a visit that started before an EXIT it has seen.
     ///
-    /// An EXIT ends its visit before it is delivered, and is bound to the receiving user, so a
-    /// switch meanwhile drops rather than misattributes it.
+    /// An EXIT has to read its visit first — the duration travels on the event — and is bound to
+    /// the receiving user, so a switch meanwhile drops rather than misattributes it.
     func forwardCircleTransition(
         geofence: Geofence,
         transition: GeofenceTransition,
@@ -116,7 +119,7 @@ extension PolygonMembershipResolver {
         switch transition {
         case .enter:
             let dwellCoordinator = dwellCoordinator
-            async let visitRecorded: Void? = dwellCoordinator?.handleBoundary(
+            async let visitRecorded: GeofenceExitContext? = dwellCoordinator?.handleBoundary(
                 geofence: geofence, transition: .enter, occurredAt: occurredAt, expectedUserId: receivedForUserId
             )
             if geofence.transitionTypes.contains(.enter) {
@@ -124,12 +127,13 @@ extension PolygonMembershipResolver {
             }
             _ = await visitRecorded
         case .exit:
-            await dwellCoordinator?.handleBoundary(
+            let exitContext = await dwellCoordinator?.handleBoundary(
                 geofence: geofence, transition: .exit, occurredAt: occurredAt, expectedUserId: receivedForUserId
             )
             guard geofence.transitionTypes.contains(.exit) else { return }
             await transitionEmitter.trackExit(
-                geofenceId: geofence.id, occurredAt: occurredAt, expectedUserId: receivedForUserId
+                geofenceId: geofence.id, occurredAt: occurredAt, context: exitContext,
+                expectedUserId: receivedForUserId
             )
         case .dwell:
             // Core Location never produces one; dwell is the coordinator's own decision.
@@ -141,8 +145,8 @@ extension PolygonMembershipResolver {
     /// polygons as. No visit: there is no fence to measure against.
     ///
     /// `unconfigured` is the one piece of configuration that outlives the cache: the edges the
-    /// circle was registered for only as visit bookkeeping (a dwell-tracking circle is registered
-    /// for both edges). Those are dropped — the customer never asked for them. Every
+    /// circle was registered for only as visit bookkeeping (an exit-only or dwell-only circle is
+    /// registered for ENTER too). Those are dropped — the customer never asked for them. Every
     /// other edge is forwarded unfiltered, as before, so a configured ENTER still arrives.
     func forwardUncachedTransition(
         identifier: String,
@@ -160,7 +164,7 @@ extension PolygonMembershipResolver {
             await forwardEnter(identifier: identifier, occurredAt: occurredAt, receivedForUserId: receivedForUserId)
         case .exit:
             await transitionEmitter.trackExit(
-                geofenceId: identifier, occurredAt: occurredAt, expectedUserId: receivedForUserId
+                geofenceId: identifier, occurredAt: occurredAt, context: nil, expectedUserId: receivedForUserId
             )
         case .dwell:
             return
@@ -177,13 +181,15 @@ extension PolygonMembershipResolver {
         await transitionEmitter.trackTransition(geofenceId: identifier, transition: .enter, occurredAt: occurredAt)
     }
 
-    /// Hands a real-shape verdict to the dwell coordinator.
+    /// Hands a real-shape verdict to the dwell coordinator. Returns the visit an EXIT closed, to
+    /// travel with that EXIT; nil for every other verdict.
     private func forwardDwellEvidence(
         _ dwellEvidence: PolygonDwellEvidence,
         geofence: Geofence,
         at evidence: Date,
+        confirmedByFix: Bool,
         expectedUserId: String?
-    ) async {
+    ) async -> GeofenceExitContext? {
         switch dwellEvidence {
         case .entered, .stillInside:
             await dwellCoordinator?.recordInsideEvidence(
@@ -193,15 +199,17 @@ extension PolygonMembershipResolver {
                 expectedUserId: expectedUserId,
                 beginsNewVisit: dwellEvidence == .entered
             )
+            return nil
         case .exited:
-            await dwellCoordinator?.handleBoundary(
+            return await dwellCoordinator?.handleBoundary(
                 geofence: geofence,
                 transition: .exit,
                 occurredAt: evidence,
-                expectedUserId: expectedUserId
+                expectedUserId: expectedUserId,
+                detectionSource: confirmedByFix ? "location_evidence" : "covering_circle"
             )
         case .none:
-            return
+            return nil
         }
     }
 
@@ -209,11 +217,13 @@ extension PolygonMembershipResolver {
         _ transition: GeofenceTransition,
         geofenceId: String,
         occurredAt: Date,
+        exitContext: GeofenceExitContext?,
         expectedUserId: String?
     ) async {
         if transition == .exit {
             await transitionEmitter.trackExit(
-                geofenceId: geofenceId, occurredAt: occurredAt, expectedUserId: expectedUserId
+                geofenceId: geofenceId, occurredAt: occurredAt, context: exitContext,
+                expectedUserId: expectedUserId
             )
         } else {
             await transitionEmitter.trackTransition(

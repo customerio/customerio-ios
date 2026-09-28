@@ -70,7 +70,7 @@ final class GeofenceEventTracker: @unchecked Sendable {
     ) async {
         _ = await track(GeofenceCrossing(
             geofenceId: geofenceId, transition: transition, occurredAt: occurredAt,
-            dwell: nil, expectedUserId: nil
+            dwell: nil, exit: nil, expectedUserId: nil
         ))
     }
 
@@ -79,14 +79,16 @@ final class GeofenceEventTracker: @unchecked Sendable {
     ) async -> Bool {
         await track(GeofenceCrossing(
             geofenceId: geofenceId, transition: .dwell, occurredAt: occurredAt,
-            dwell: context, expectedUserId: expectedUserId
+            dwell: context, exit: nil, expectedUserId: expectedUserId
         ))
     }
 
-    func trackExit(geofenceId: String, occurredAt: Date, expectedUserId: String?) async {
+    func trackExit(
+        geofenceId: String, occurredAt: Date, context: GeofenceExitContext?, expectedUserId: String?
+    ) async {
         _ = await track(GeofenceCrossing(
             geofenceId: geofenceId, transition: .exit, occurredAt: occurredAt,
-            dwell: nil, expectedUserId: expectedUserId
+            dwell: nil, exit: context, expectedUserId: expectedUserId
         ))
     }
 
@@ -304,6 +306,7 @@ final class GeofenceEventTracker: @unchecked Sendable {
             enteredAt: metric.enteredAt,
             dwellThresholdSeconds: metric.dwellThresholdSeconds,
             dwellDurationSeconds: metric.dwellDurationSeconds,
+            visitDurationSeconds: metric.visitDurationSeconds,
             detectionSource: metric.detectionSource
         ))
         logger.geofenceDeliveryQueued(geofenceId: metric.geofenceId, transition: metric.transition, via: "event_bus")

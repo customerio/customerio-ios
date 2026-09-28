@@ -33,7 +33,7 @@ extension GeofenceStorage {
         }
         guard let geofence = state.cachedGeofences?.first(where: { $0.id == geofenceId }),
               geofence.dwellRevision == visit.geometryRevision,
-              geofence.dwellThresholdSeconds > 0
+              geofence.dwellThresholdSeconds > 0 || geofence.transitionTypes.contains(.exit)
         else { return false }
         var visits = state.dwellVisits ?? [:]
         visits[geofenceId] = visit
@@ -114,7 +114,8 @@ extension GeofenceStorage {
         let current = Dictionary(geofences.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
         return visits?.filter { id, visit in
             guard let geofence = current[id] else { return false }
-            return geofence.dwellThresholdSeconds > 0 && geofence.dwellRevision == visit.geometryRevision
+            return (geofence.dwellThresholdSeconds > 0 || geofence.transitionTypes.contains(.exit)) &&
+                geofence.dwellRevision == visit.geometryRevision
         }
     }
 }

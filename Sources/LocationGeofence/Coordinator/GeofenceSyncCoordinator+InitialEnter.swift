@@ -32,7 +32,11 @@ extension GeofenceSyncCoordinatorImpl {
         let newPolygons = newlyRegistered.filter { $0.vertices != nil }
         let newInside = newlyRegistered.filter { region in
             region.vertices == nil
-                && (region.transitionTypes.contains(.enter) || region.dwellThresholdSeconds > 0)
+                && (
+                    region.transitionTypes.contains(.enter) ||
+                        region.dwellThresholdSeconds > 0 ||
+                        region.transitionTypes.contains(.exit)
+                )
                 && region.distanceTo(anchor) <= min(region.radius, osRegistration.maxMonitoringRadius)
         }
         if !newPolygons.isEmpty {
@@ -55,7 +59,7 @@ extension GeofenceSyncCoordinatorImpl {
                 // send can span a sign-out/switch that the tracker would otherwise stamp to whoever is
                 // current — so stop the batch the moment identity changes.
                 guard contextStore.currentUserId == expectedUserId else { return }
-                async let visitRecorded: Void? = dwellCoordinator?.handleBoundary(
+                async let visitRecorded: GeofenceExitContext? = dwellCoordinator?.handleBoundary(
                     geofence: region,
                     transition: .enter,
                     occurredAt: discoveredAt,

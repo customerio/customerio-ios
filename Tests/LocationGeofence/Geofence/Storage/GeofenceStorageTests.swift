@@ -575,6 +575,34 @@ struct GeofenceStorageTests {
         #expect(await makeStorage(directory: dir).getDwellVisit(geofenceId: geofence.id)?.entryObserved == false)
     }
 
+    /// An exit-only fence with no dwell threshold still keeps a visit, so its EXIT can carry the
+    /// observed duration.
+    @Test
+    func saveDwellVisit_givenExitOnlyFenceWithoutDwellThreshold_expectPersisted() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let storage = makeStorage(directory: dir)
+        let geofence = Geofence(
+            id: "g1", latitude: 1, longitude: 2, radius: 100, name: "g1",
+            transitionTypes: [.exit], lastUpdated: Date(timeIntervalSince1970: 1)
+        )
+        await storage.setCachedGeofences([geofence])
+
+        let saved = await storage.saveDwellVisit(
+            GeofenceDwellVisit(
+                visitId: "visit-1",
+                enteredAt: Date(timeIntervalSince1970: 100),
+                geometryRevision: geofence.dwellRevision,
+                userId: "user-1",
+                emitted: false
+            ),
+            geofenceId: geofence.id
+        )
+
+        #expect(saved)
+        #expect(await storage.getDwellVisit(geofenceId: geofence.id)?.visitId == "visit-1")
+    }
+
     /// A fence with nothing to track a visit for is refused rather than given one it never clears.
     @Test
     func saveDwellVisit_givenEnterOnlyFenceWithoutDwellThreshold_expectRefused() async {
@@ -1365,7 +1393,7 @@ struct GeofenceStorageTests {
 
         await storage.recordRegistrationIntent(for: fences, pruningToCache: true)
 
-        #expect(await storage.transitionTarget(id: "exit-only") == .uncached(unconfigured: []))
+        #expect(await storage.transitionTarget(id: "exit-only") == .uncached(unconfigured: [.enter]))
         #expect(await storage.transitionTarget(id: "exit-dwell") == .uncached(unconfigured: [.enter]))
         #expect(await storage.transitionTarget(id: "dwell-only") == .uncached(unconfigured: [.enter, .exit]))
         #expect(await storage.transitionTarget(id: "enter-dwell") == .uncached(unconfigured: [.exit]))

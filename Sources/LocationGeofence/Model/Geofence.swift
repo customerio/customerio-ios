@@ -70,12 +70,12 @@ struct Geofence: Codable, Equatable, Sendable {
     }
 
     /// The edges registered with the OS. A circle that tracks a visit needs both — ENTER starts the
-    /// visit, EXIT ends it — whatever the customer configured. A polygon's covering circle is
+    /// visit, EXIT measures it — whatever the customer configured. A polygon's covering circle is
     /// machinery and always reports both, so membership can advance; its filter applies to the
     /// verdict instead.
     var osTransitionTypes: Set<GeofenceTransition> {
         guard vertices == nil else { return [.enter, .exit] }
-        return dwellThresholdSeconds > 0
+        return dwellThresholdSeconds > 0 || transitionTypes.contains(.exit)
             ? [.enter, .exit]
             : transitionTypes.intersection([.enter, .exit])
     }

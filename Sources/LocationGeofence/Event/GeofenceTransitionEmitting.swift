@@ -11,6 +11,13 @@ struct GeofenceDwellContext: Sendable {
     let detectionSource: String
 }
 
+struct GeofenceExitContext: Sendable, Equatable {
+    let visitId: String
+    let enteredAt: Date
+    let durationSeconds: Int
+    let detectionSource: String
+}
+
 /// Delivers a transition through the tracked path (cooldown dedup, per-geoset fan-out, persistence).
 /// Lets a caller such as `GeofenceSyncCoordinator` fire a synthetic initial ENTER for a newly
 /// registered geofence the device is already inside, without depending on the concrete tracker.
@@ -22,6 +29,9 @@ protocol GeofenceTransitionEmitting: Sendable {
     func trackDwell(
         geofenceId: String, occurredAt: Date, context: GeofenceDwellContext, expectedUserId: String?
     ) async -> Bool
-    /// Delivers an exit. Dropped when `expectedUserId` is set and is no longer the identified user.
-    func trackExit(geofenceId: String, occurredAt: Date, expectedUserId: String?) async
+    /// Delivers an exit with its optional visit context. Dropped when `expectedUserId` is set and
+    /// is no longer the identified user.
+    func trackExit(
+        geofenceId: String, occurredAt: Date, context: GeofenceExitContext?, expectedUserId: String?
+    ) async
 }

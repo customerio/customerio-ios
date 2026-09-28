@@ -42,8 +42,8 @@ struct GeofenceDwellVisit: Codable, Equatable, Sendable {
     let userId: String
     var emitted: Bool
     /// False for a candidate started from mid-visit inside evidence after continuity was lost: it
-    /// can still support a best-effort dwell, but its start is not an entry, so the dwell reports
-    /// neither `enteredAt` nor a duration.
+    /// can still support a best-effort dwell, but its start is not an entry, so its EXIT carries no
+    /// visit duration.
     var entryObserved = true
 }
 

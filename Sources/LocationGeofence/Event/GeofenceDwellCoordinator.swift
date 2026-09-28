@@ -9,9 +9,9 @@ final class GeofenceDwellCoordinator {
     private var dwellEmissionsInFlight: Set<String> = []
     /// The latest EXIT each fence has seen in this process, recorded before any await. An ENTER's
     /// visit write is not ordered against a later EXIT — the two arrive on separate tasks — so a
-    /// write landing after that EXIT would leave a visit open for a device already outside, and it
-    /// could then qualify a dwell for a stay that had already ended. In memory only: the ENTER whose
-    /// write it guards lives in the same process, and dies with it.
+    /// write landing after that EXIT would leave a visit open for a device already outside, and the
+    /// next EXIT would measure the time spent away. In memory only: the ENTER whose write it guards
+    /// lives in the same process, and dies with it.
     private var latestExitAt: [String: Date] = [:]
     // `internal`, not `private`, only because the `+Evidence` extension file uses them.
     let storage: GeofenceStorage
@@ -58,16 +58,18 @@ final class GeofenceDwellCoordinator {
         if let foregroundObserver { notificationCenter.removeObserver(foregroundObserver) }
     }
 
+    @discardableResult
     func handleBoundary(
         geofence: Geofence,
         transition: GeofenceTransition,
         occurredAt: Date,
-        expectedUserId: String? = nil
-    ) async {
+        expectedUserId: String? = nil,
+        detectionSource: String? = nil
+    ) async -> GeofenceExitContext? {
         // Before the user check and every await: leaving is geometry, whoever is signed in, and an
         // ENTER write already in flight must see it.
         if transition == .exit { recordExit(geofenceId: geofence.id, at: occurredAt) }
-        if let expectedUserId, contextStore.currentUserId != expectedUserId { return }
+        if let expectedUserId, contextStore.currentUserId != expectedUserId { return nil }
         switch transition {
         case .enter:
             await startVisitIfNeeded(
@@ -75,23 +77,29 @@ final class GeofenceDwellCoordinator {
                 enteredAt: occurredAt,
                 expectedUserId: expectedUserId
             )
+            return nil
         case .exit:
+            let result = await exitContext(
+                geofence: geofence,
+                exitedAt: occurredAt,
+                detectionSource: detectionSource ?? (geofence.vertices == nil ? "native" : "location_evidence"),
+                expectedUserId: expectedUserId
+            )
             // Only the visit this EXIT read and judged: an overlapping ENTER may have written a newer
             // one since, and a delayed EXIT that found none has nothing to end.
-            guard let endedVisitId = await visitEnded(
-                geofence: geofence, exitedAt: occurredAt, expectedUserId: expectedUserId
-            ) else { return }
+            guard let endedVisitId = result.endedVisitId else { return result.context }
             cancelEvidence(for: geofence.id, ifVisit: endedVisitId)
             await storage.removeDwellVisit(geofenceId: geofence.id, ifStill: endedVisitId)
+            return result.context
         case .dwell:
-            return
+            return nil
         }
     }
 
     /// Accept only evidence already validated against the real shape by the caller.
     /// - Parameters:
     ///   - beginsNewVisit: the evidence is an observed entry. Otherwise, with no visit stored, it
-    ///     starts a candidate whose start is not reported as an entry.
+    ///     starts a candidate that supports dwell but no EXIT duration.
     ///   - continuingVisitId: evidence requested for this visit only. If that visit has ended by
     ///     the time the evidence is applied, the evidence is dropped rather than starting another.
     func recordInsideEvidence(
@@ -264,20 +272,30 @@ final class GeofenceDwellCoordinator {
         return visit
     }
 
-    /// The visit an EXIT reads and ends; nil when it found none, or found one it must leave — a
-    /// visit that began after this EXIT.
-    private func visitEnded(
+    /// What an EXIT does to the visit. `endedVisitId` is the visit it read and ends; nil when it
+    /// found none, or found one it must leave — a visit that began after this EXIT.
+    private func exitContext(
         geofence: Geofence,
         exitedAt: Date,
+        detectionSource: String,
         expectedUserId: String?
-    ) async -> String? {
+    ) async -> (context: GeofenceExitContext?, endedVisitId: String?) {
         guard let userId = contextStore.currentUserId, !userId.isEmpty,
               expectedUserId == nil || expectedUserId == userId,
               let visit = await currentVisit(geofence: geofence, userId: userId),
               // A delayed exit from an older visit must not clear a newer visit.
               exitedAt >= visit.enteredAt
-        else { return nil }
-        return visit.visitId
+        else { return (nil, nil) }
+        guard visit.entryObserved, geofence.transitionTypes.contains(.exit) else { return (nil, visit.visitId) }
+        return (
+            GeofenceExitContext(
+                visitId: visit.visitId,
+                enteredAt: visit.enteredAt,
+                durationSeconds: Self.wholeSeconds(from: visit.enteredAt, to: exitedAt),
+                detectionSource: detectionSource
+            ),
+            visit.visitId
+        )
     }
 
     /// Whole seconds from `start` to `end`. A persisted date comes back up to one ulp (~1.2e-7 s)
@@ -289,7 +307,7 @@ final class GeofenceDwellCoordinator {
     }
 
     private func tracksVisit(_ geofence: Geofence) -> Bool {
-        geofence.dwellThresholdSeconds > 0
+        geofence.dwellThresholdSeconds > 0 || geofence.transitionTypes.contains(.exit)
     }
 }
 
@@ -308,7 +326,7 @@ extension GeofenceDwellCoordinator {
     }
 
     /// Monitoring stopped being trustworthy, so persisted entry time can no longer support a
-    /// dwell. Pending deliveries remain untouched.
+    /// dwell or completed duration. Pending deliveries remain untouched.
     func invalidateContinuity(geofenceId: String? = nil) async {
         if let geofenceId {
             cancelEvidence(for: geofenceId)
