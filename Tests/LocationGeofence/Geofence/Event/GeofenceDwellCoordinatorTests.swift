@@ -222,7 +222,7 @@ struct GeofenceDwellCoordinatorTests {
     }
 
     @Test
-    func failedOutboxWriteLeavesVisitRetryable() async {
+    func failedOutboxWriteLeavesVisitRetryable() async throws {
         let emitter = DwellEmitterSpy(results: [false, true])
         let setup = await makeSetup(emitter: emitter)
         let enteredAt = Date(timeIntervalSince1970: 1000)
@@ -241,8 +241,18 @@ struct GeofenceDwellCoordinatorTests {
             source: "location_evidence"
         )
 
+        // A due evidence retry can already be in flight when the second explicit evidence arrives.
+        // Wait for its write and the visit mark rather than observing the intermediate first attempt.
+        for _ in 0 ..< 200 {
+            let attempts = await emitter.dwells()
+            if attempts.count >= 2,
+               await setup.storage.getDwellVisit(geofenceId: setup.geofence.id)?.emitted == true {
+                break
+            }
+            try await Task.sleep(nanoseconds: 10000000)
+        }
         let attempts = await emitter.dwells()
-        #expect(attempts.count == 2)
+        try #require(attempts.count == 2)
         #expect(attempts[0].context.visitId == attempts[1].context.visitId)
         // The retry repeats the reserved occurrence, not the later evidence that prompted it.
         #expect(attempts[1].occurredAt == attempts[0].occurredAt)
