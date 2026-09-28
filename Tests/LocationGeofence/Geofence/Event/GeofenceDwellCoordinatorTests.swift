@@ -672,6 +672,97 @@ struct GeofenceDwellCoordinatorTests {
         #expect(finalExit?.durationSeconds == 120)
     }
 
+    /// The overlap the test above cannot force: the re-ENTER sees the EXIT and replaces its visit
+    /// before that EXIT reads the store (a priority inversion between the two callback tasks). The
+    /// EXIT then finds only the newer visit, and used to report no duration for the stay it ended.
+    /// An EXIT refused for another user still records the exit time first, which is exactly the
+    /// state such an EXIT leaves before its read; the same EXIT is then read for the right user.
+    @Test
+    func exitReadAfterAnOverlappingReentryReplacedItsVisitStillReportsThatVisitsDuration() async throws {
+        let setup = await makeSetup(dwellThresholdSeconds: 0, transitionTypes: [.exit], isPolygon: false)
+        let firstEntry = Date(timeIntervalSince1970: 1000)
+        let exitedAt = firstEntry.addingTimeInterval(60)
+        let reentry = firstEntry.addingTimeInterval(61)
+        await setup.coordinator.handleBoundary(geofence: setup.geofence, transition: .enter, occurredAt: firstEntry)
+        let first = try #require(await setup.storage.getDwellVisit(geofenceId: setup.geofence.id))
+        await setup.coordinator.handleBoundary(
+            geofence: setup.geofence, transition: .exit, occurredAt: exitedAt, expectedUserId: "someone-else"
+        )
+        await setup.coordinator.handleBoundary(geofence: setup.geofence, transition: .enter, occurredAt: reentry)
+
+        let closed = await setup.coordinator.handleBoundary(geofence: setup.geofence, transition: .exit, occurredAt: exitedAt)
+
+        #expect(closed?.visitId == first.visitId)
+        #expect(closed?.durationSeconds == 60)
+        // The newer visit is left for its own EXIT, which measures it and not the replaced one.
+        #expect(await setup.storage.getDwellVisit(geofenceId: setup.geofence.id)?.enteredAt == reentry)
+        let finalExit = await setup.coordinator.handleBoundary(
+            geofence: setup.geofence, transition: .exit, occurredAt: reentry.addingTimeInterval(120)
+        )
+        #expect(finalExit?.enteredAt == reentry)
+        #expect(finalExit?.durationSeconds == 120)
+    }
+
+    /// Only the EXIT that ended the replaced visit may report it: any other EXIT that finds the
+    /// newer visit started after it is a delayed one, with nothing to report.
+    @Test
+    func replacedVisitIsNotReportedByAnUnrelatedDelayedExit() async {
+        let setup = await makeSetup(dwellThresholdSeconds: 0, transitionTypes: [.exit], isPolygon: false)
+        let firstEntry = Date(timeIntervalSince1970: 1000)
+        await setup.coordinator.handleBoundary(geofence: setup.geofence, transition: .enter, occurredAt: firstEntry)
+        await setup.coordinator.handleBoundary(
+            geofence: setup.geofence, transition: .exit, occurredAt: firstEntry.addingTimeInterval(60),
+            expectedUserId: "someone-else"
+        )
+        await setup.coordinator.handleBoundary(
+            geofence: setup.geofence, transition: .enter, occurredAt: firstEntry.addingTimeInterval(61)
+        )
+
+        let delayed = await setup.coordinator.handleBoundary(
+            geofence: setup.geofence, transition: .exit, occurredAt: firstEntry.addingTimeInterval(30)
+        )
+
+        #expect(delayed == nil)
+    }
+
+    /// A decisive-outside deadline fix no longer ends the visit, so the stay's real EXIT, when
+    /// Core Location finally reports it past its hysteresis, still carries the duration.
+    @Test
+    func exitAfterADecisiveOutsideDeadlineFixStillReportsTheVisitDuration() async {
+        let outside = CLLocation(
+            coordinate: CLLocationCoordinate2D(latitude: 0.51, longitude: 0.5),
+            altitude: 0, horizontalAccuracy: 5, verticalAccuracy: 10, timestamp: Date()
+        )
+        let setup = await makeSetup(isPolygon: false, freshFixProvider: { outside }, evidenceRetryDelay: 60)
+        let enteredAt = Date(timeIntervalSince1970: 1000)
+        await setup.coordinator.handleBoundary(geofence: setup.geofence, transition: .enter, occurredAt: enteredAt)
+        await setup.coordinator.requestQualifyingEvidence(geofenceId: setup.geofence.id)
+
+        let context = await setup.coordinator.handleBoundary(
+            geofence: setup.geofence, transition: .exit, occurredAt: enteredAt.addingTimeInterval(900)
+        )
+
+        #expect(await setup.emitter.dwells().isEmpty)
+        #expect(context?.enteredAt == enteredAt)
+        #expect(context?.durationSeconds == 900)
+    }
+
+    /// The EXIT's duration is the difference of whole epoch seconds, so it equals the EXIT's
+    /// whole-second timestamp minus the truncated `enteredAt` it travels with.
+    @Test
+    func exitDurationMatchesTheWholeSecondFieldsItTravelsWith() async {
+        let setup = await makeSetup(dwellThresholdSeconds: 0, transitionTypes: [.exit], isPolygon: false)
+        let enteredAt = Date(timeIntervalSince1970: 1000.9)
+        let exitedAt = Date(timeIntervalSince1970: 1060.1)
+        await setup.coordinator.handleBoundary(geofence: setup.geofence, transition: .enter, occurredAt: enteredAt)
+
+        let context = await setup.coordinator.handleBoundary(geofence: setup.geofence, transition: .exit, occurredAt: exitedAt)
+
+        let enteredSeconds = Int(context?.enteredAt.timeIntervalSince1970 ?? 0)
+        #expect(context?.durationSeconds == 60)
+        #expect(context?.durationSeconds == Int(exitedAt.timeIntervalSince1970) - enteredSeconds)
+    }
+
     /// A delayed EXIT that found no visit has nothing to end. Removing unconditionally let it erase
     /// the visit a newer ENTER wrote while it was suspended on its read.
     @Test

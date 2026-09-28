@@ -13,6 +13,12 @@ final class GeofenceDwellCoordinator {
     /// next EXIT would measure the time spent away. In memory only: the ENTER whose write it guards
     /// lives in the same process, and dies with it.
     private var latestExitAt: [String: Date] = [:]
+    /// A visit an overlapping re-ENTER replaced after seeing the EXIT that ends it, but possibly
+    /// before that EXIT read the store, with that EXIT's time. The EXIT still describes this visit,
+    /// so it takes its duration from here rather than finding only the newer visit and reporting
+    /// none. In memory for the same reason as `latestExitAt`.
+    /// Internal, not private, only because the `+ExitDuration` extension file uses it.
+    var visitsEndedByPendingExit: [String: (visit: GeofenceDwellVisit, exitedAt: Date)] = [:]
     // `internal`, not `private`, only because the `+Evidence` extension file uses them.
     let storage: GeofenceStorage
     let contextStore: BackgroundDeliveryContextStore
@@ -221,6 +227,10 @@ final class GeofenceDwellCoordinator {
         )
         if contextStore.currentUserId == userId,
            await saveNewVisit(visit, geofenceId: geofence.id, replacing: existing?.visitId) {
+            // Only an overtaken visit reaches here, so `latestExitAt` is the EXIT that ended it.
+            if let existing, let exitedAt = latestExitAt[geofence.id] {
+                visitsEndedByPendingExit[geofence.id] = (existing, exitedAt)
+            }
             scheduleDeadline(for: geofence, visit: visit)
         }
     }
@@ -273,32 +283,6 @@ final class GeofenceDwellCoordinator {
         return visit
     }
 
-    /// What an EXIT does to the visit. `endedVisitId` is the visit it read and ends; nil when it
-    /// found none, or found one it must leave — a visit that began after this EXIT.
-    private func exitContext(
-        geofence: Geofence,
-        exitedAt: Date,
-        detectionSource: String,
-        expectedUserId: String?
-    ) async -> (context: GeofenceExitContext?, endedVisitId: String?) {
-        guard let userId = contextStore.currentUserId, !userId.isEmpty,
-              expectedUserId == nil || expectedUserId == userId,
-              let visit = await currentVisit(geofence: geofence, userId: userId),
-              // A delayed exit from an older visit must not clear a newer visit.
-              exitedAt >= visit.enteredAt
-        else { return (nil, nil) }
-        guard visit.entryObserved, geofence.transitionTypes.contains(.exit) else { return (nil, visit.visitId) }
-        return (
-            GeofenceExitContext(
-                visitId: visit.visitId,
-                enteredAt: visit.enteredAt,
-                durationSeconds: Self.wholeSeconds(from: visit.enteredAt, to: exitedAt),
-                detectionSource: detectionSource
-            ),
-            visit.visitId
-        )
-    }
-
     /// Whole seconds from `start` to `end`. A persisted date comes back up to one ulp (~1.2e-7 s)
     /// off — `.secondsSince1970` rounds converting out of and back into the reference epoch — so a
     /// span of exactly whole seconds can read a hair short and truncate a second low. A microsecond
@@ -339,9 +323,11 @@ extension GeofenceDwellCoordinator {
     func invalidateContinuity(geofenceId: String? = nil) async {
         if let geofenceId {
             cancelEvidence(for: geofenceId)
+            visitsEndedByPendingExit.removeValue(forKey: geofenceId)
             await storage.removeDwellVisit(geofenceId: geofenceId)
             return
         }
+        visitsEndedByPendingExit.removeAll()
         deadlineTasks.values.forEach { $0.cancel() }
         deadlineTasks.removeAll()
         evidenceRetries.removeAll()

@@ -147,7 +147,7 @@ struct GeofenceEventTrackerTests {
         )
 
         await tracker.trackTransition(geofenceId: "geo_1", transition: .enter, occurredAt: crossedAt)
-        await tracker.trackExit(geofenceId: "geo_1", occurredAt: crossedAt.addingTimeInterval(300), expectedUserId: nil)
+        await tracker.trackExit(geofenceId: "geo_1", occurredAt: crossedAt.addingTimeInterval(300), context: nil, expectedUserId: nil)
         await tracker.trackTransition(geofenceId: "geo_1", transition: .enter, occurredAt: crossedAt.addingTimeInterval(600))
         let persisted = await tracker.trackDwell(
             geofenceId: "geo_1",
@@ -158,7 +158,7 @@ struct GeofenceEventTrackerTests {
             ),
             expectedUserId: "user_42"
         )
-        await tracker.trackExit(geofenceId: "geo_1", occurredAt: crossedAt.addingTimeInterval(3000), expectedUserId: nil)
+        await tracker.trackExit(geofenceId: "geo_1", occurredAt: crossedAt.addingTimeInterval(3000), context: nil, expectedUserId: nil)
 
         #expect(persisted)
         #expect(delivery.trackMetricReceivedInvocations.map(\.metric.transition) == [.enter, .exit, .dwell])
