@@ -50,7 +50,7 @@ extension PolygonMembershipResolver {
                 expectedUserId: expectedUserId
             )
         }
-        guard case .deliver(let transition) = outcome else {
+        guard let transition = outcome.deliveredTransition else {
             logger.geofencePolygonNotDelivered(identifier: geofence.id, reason: .outcome(outcome))
             return
         }
@@ -191,7 +191,9 @@ extension PolygonMembershipResolver {
         expectedUserId: String?
     ) async -> GeofenceExitContext? {
         switch dwellEvidence {
-        case .entered, .stillInside:
+        case .entered, .discoveredInside, .stillInside:
+            // Only an observed crossing begins a visit with a known start. Discovery and
+            // confirmation start at most a candidate, which supports dwell but no EXIT duration.
             await dwellCoordinator?.recordInsideEvidence(
                 geofence: geofence,
                 at: evidence,
@@ -236,7 +238,10 @@ extension PolygonMembershipResolver {
 /// What a membership write means for the dwell visit. Only a write that established or confirmed
 /// inside, or delivered an EXIT, is evidence; every other outcome leaves the visit alone.
 private enum PolygonDwellEvidence: Equatable {
+    /// An observed outside → inside crossing.
     case entered
+    /// Inside with no observed crossing: the device was already there when first judged.
+    case discoveredInside
     case stillInside
     case exited
     case none
@@ -244,9 +249,24 @@ private enum PolygonDwellEvidence: Equatable {
     init(membership: PolygonMembership, outcome: PolygonMembershipOutcome) {
         switch (membership, outcome) {
         case (.inside, .deliver(.enter)): self = .entered
+        case (.inside, .discoveredInside): self = .discoveredInside
         case (.inside, .suppressedNoChange): self = .stillInside
         case (.outside, .deliver(.exit)): self = .exited
         default: self = .none
+        }
+    }
+}
+
+extension PolygonMembershipOutcome {
+    /// The transition this outcome delivers, nil when it delivers none. A discovered inside still
+    /// owes its ENTER; it differs from a crossing only in what it tells the dwell visit.
+    var deliveredTransition: GeofenceTransition? {
+        switch self {
+        case .deliver(let transition): return transition
+        case .discoveredInside: return .enter
+        case .suppressedNoChange, .suppressedNewerDecision, .suppressedInitialOutside,
+             .suppressedUnmonitored, .suppressedGeometryChanged:
+            return nil
         }
     }
 }

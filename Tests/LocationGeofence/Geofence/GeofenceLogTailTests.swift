@@ -362,12 +362,13 @@ struct GeofenceLogTailTests {
     @Test
     func polygonOutcome_expectDistinctPinnedTokenPerCause() {
         let cases: [PolygonMembershipOutcome] = [
-            .deliver(.enter), .suppressedNoChange, .suppressedNewerDecision,
+            .deliver(.enter), .discoveredInside, .suppressedNoChange, .suppressedNewerDecision,
             .suppressedInitialOutside, .suppressedUnmonitored, .suppressedGeometryChanged
         ]
         for outcome in cases {
             switch outcome {
             case .deliver: #expect(outcome.logToken == "deliver")
+            case .discoveredInside: #expect(outcome.logToken == "discovered_inside")
             case .suppressedNoChange: #expect(outcome.logToken == "no_change")
             case .suppressedNewerDecision: #expect(outcome.logToken == "newer_decision")
             case .suppressedInitialOutside: #expect(outcome.logToken == "initial_outside")
@@ -383,7 +384,7 @@ struct GeofenceLogTailTests {
     @Test
     func polygonUndeliveredReason_expectRefusalsDistinctFromOutcomes() {
         let outcomes: [PolygonMembershipOutcome] = [
-            .deliver(.enter), .suppressedNoChange, .suppressedNewerDecision,
+            .deliver(.enter), .discoveredInside, .suppressedNoChange, .suppressedNewerDecision,
             .suppressedInitialOutside, .suppressedUnmonitored, .suppressedGeometryChanged
         ]
         // Every outcome, so the two refusals are checked against all of them and not just one.

@@ -443,7 +443,7 @@ struct PolygonMembershipResolverTests {
 
         async let first: Void = setup.resolver.evaluateAllPolygons(reason: .foreground)
         async let second: Void = setup.resolver.evaluateAllPolygons(reason: .foreground)
-        _ = await(first, second)
+        _ = await (first, second)
 
         #expect(counter.count == 1)
     }
@@ -467,7 +467,7 @@ struct PolygonMembershipResolverTests {
         async let wake: Void = setup.resolver.evaluateAllPolygons(reason: .foreground, requiresFreshFix: true)
         await settle()
         gate.releaseAll()
-        _ = await(foreground, wake)
+        _ = await (foreground, wake)
 
         #expect(skipCount(logger) == 0)
     }
@@ -493,7 +493,7 @@ struct PolygonMembershipResolverTests {
         // is "it gets an answer", not "it gets a fix of its own".
         #expect(gate.releases.count == 1, "expected the second wake to coalesce, got \(gate.releases.count) requests")
         gate.releaseAll()
-        _ = await(firstWake, secondWake)
+        _ = await (firstWake, secondWake)
 
         #expect(skipCount(logger) == 0)
     }
@@ -511,7 +511,7 @@ struct PolygonMembershipResolverTests {
         async let foreground: Void = setup.resolver.evaluateAllPolygons(reason: .foreground)
         await settle()
         gate.releaseAll()
-        _ = await(wake, foreground)
+        _ = await (wake, foreground)
 
         #expect(skipCount(logger) == 1)
     }
@@ -830,6 +830,94 @@ struct PolygonMembershipResolverTests {
         #expect(exits.count == 1)
         #expect(exits.first?.context == nil)
         #expect(await setup.storage.getDwellVisit(geofenceId: geofence.id) == nil)
+    }
+
+    /// The first verdict for a polygon placing the device inside is discovery: it was never seen
+    /// outside, so the stay began at some unknown earlier time. The configured ENTER is still owed,
+    /// but the visit it starts has no observed entry, so the EXIT reports no `entered_at` or duration.
+    @Test
+    func apply_givenFirstVerdictInside_expectEnterDeliveredAndExitWithoutVisitDuration() async {
+        let setup = await makeSetup(fix: nil, withDwellCoordinator: true)
+        let geofence = polygonGeofence(transitionTypes: [.enter, .exit])
+        await setup.storage.setCachedGeofences([geofence])
+        let discovered = Date(timeIntervalSince1970: 1000)
+
+        await setup.resolver.apply(.inside, to: geofence, evidence: discovered, confirmedByFix: true)
+        let visit = await setup.storage.getDwellVisit(geofenceId: geofence.id)
+        await setup.resolver.apply(
+            .outside, to: geofence, evidence: discovered.addingTimeInterval(600), confirmedByFix: true
+        )
+
+        #expect(await setup.emitter.snapshot().map(\.transition) == [.enter, .exit])
+        #expect(visit != nil)
+        #expect(visit?.entryObserved == false)
+        let exits = await setup.emitter.exitSnapshot()
+        #expect(exits.count == 1)
+        #expect(exits.first?.context == nil)
+    }
+
+    /// An EXIT-only polygon discovered inside gets no ENTER, and its EXIT still has no duration to
+    /// report: the candidate visit exists only to measure dwell and close on that EXIT.
+    @Test
+    func apply_givenExitOnlyPolygonFirstVerdictInside_expectExitWithoutVisitDuration() async {
+        let setup = await makeSetup(fix: nil, withDwellCoordinator: true)
+        let geofence = polygonGeofence(transitionTypes: [.exit])
+        await setup.storage.setCachedGeofences([geofence])
+        let discovered = Date(timeIntervalSince1970: 1000)
+
+        await setup.resolver.apply(.inside, to: geofence, evidence: discovered, confirmedByFix: true)
+        await setup.resolver.apply(
+            .outside, to: geofence, evidence: discovered.addingTimeInterval(600), confirmedByFix: true
+        )
+
+        #expect(await setup.emitter.snapshot().map(\.transition) == [.exit])
+        let exits = await setup.emitter.exitSnapshot()
+        #expect(exits.count == 1)
+        #expect(exits.first?.context == nil)
+    }
+
+    /// Control for the two above: seen outside first, the arrival is a real crossing and its EXIT
+    /// carries the observed entry and duration.
+    @Test
+    func apply_givenOutsideThenInside_expectExitCarriesObservedEntryAndDuration() async {
+        let setup = await makeSetup(fix: nil, withDwellCoordinator: true)
+        let geofence = polygonGeofence(transitionTypes: [.enter, .exit])
+        await setup.storage.setCachedGeofences([geofence])
+        let entry = Date(timeIntervalSince1970: 1000)
+
+        await setup.resolver.apply(
+            .outside, to: geofence, evidence: entry.addingTimeInterval(-60), confirmedByFix: true
+        )
+        await setup.resolver.apply(.inside, to: geofence, evidence: entry, confirmedByFix: true)
+        await setup.resolver.apply(
+            .outside, to: geofence, evidence: entry.addingTimeInterval(600), confirmedByFix: true
+        )
+
+        #expect(await setup.emitter.snapshot().map(\.transition) == [.enter, .exit])
+        let exits = await setup.emitter.exitSnapshot()
+        #expect(exits.count == 1)
+        #expect(exits.first?.context?.enteredAt == entry)
+        #expect(exits.first?.context?.durationSeconds == 600)
+    }
+
+    /// A duplicate inside verdict after discovery is confirmation, not a crossing: it keeps the
+    /// discovered visit rather than replacing it with one that claims an observed entry.
+    @Test
+    func apply_givenRepeatedInsideAfterDiscovery_expectDiscoveredVisitKept() async {
+        let setup = await makeSetup(fix: nil, withDwellCoordinator: true)
+        let geofence = polygonGeofence(transitionTypes: [.enter, .exit])
+        await setup.storage.setCachedGeofences([geofence])
+        let discovered = Date(timeIntervalSince1970: 1000)
+
+        await setup.resolver.apply(.inside, to: geofence, evidence: discovered, confirmedByFix: true)
+        let first = await setup.storage.getDwellVisit(geofenceId: geofence.id)
+        await setup.resolver.apply(
+            .inside, to: geofence, evidence: discovered.addingTimeInterval(30), confirmedByFix: true
+        )
+
+        #expect(await setup.emitter.snapshot().map(\.transition) == [.enter])
+        #expect(await setup.storage.getDwellVisit(geofenceId: geofence.id) == first)
+        #expect(first?.entryObserved == false)
     }
 
     @Test

@@ -65,13 +65,17 @@ final class GeofenceDwellCoordinator {
         if let foregroundObserver { notificationCenter.removeObserver(foregroundObserver) }
     }
 
+    /// - Parameter entryObserved: for an ENTER, whether it is a crossing the OS observed. False for
+    ///   one synthesized for a fence registered around a device already inside: the visit it starts
+    ///   supports dwell, but its start is discovery, so neither it nor its EXIT reports a duration.
     @discardableResult
     func handleBoundary(
         geofence: Geofence,
         transition: GeofenceTransition,
         occurredAt: Date,
         expectedUserId: String? = nil,
-        detectionSource: String? = nil
+        detectionSource: String? = nil,
+        entryObserved: Bool = true
     ) async -> GeofenceExitContext? {
         // Before the user check and every await: leaving is geometry, whoever is signed in, and an
         // ENTER write already in flight must see it.
@@ -82,7 +86,8 @@ final class GeofenceDwellCoordinator {
             await startVisitIfNeeded(
                 geofence: geofence,
                 enteredAt: occurredAt,
-                expectedUserId: expectedUserId
+                expectedUserId: expectedUserId,
+                entryObserved: entryObserved
             )
             return nil
         case .exit:
@@ -158,7 +163,8 @@ final class GeofenceDwellCoordinator {
     private func startVisitIfNeeded(
         geofence: Geofence,
         enteredAt: Date,
-        expectedUserId: String?
+        expectedUserId: String?,
+        entryObserved: Bool
     ) async {
         guard tracksVisit(geofence),
               let userId = contextStore.currentUserId, !userId.isEmpty,
@@ -181,7 +187,8 @@ final class GeofenceDwellCoordinator {
             enteredAt: enteredAt,
             geometryRevision: geofence.dwellRevision,
             userId: userId,
-            emitted: false
+            emitted: false,
+            entryObserved: entryObserved
         )
         if contextStore.currentUserId == userId,
            await saveNewVisit(visit, geofenceId: geofence.id, replacing: existing?.visitId) {

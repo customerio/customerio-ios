@@ -46,6 +46,14 @@ extension GeofenceDwellCoordinator {
         )
     }
 
+    /// The duration an EXIT reports: the difference of the two whole epoch seconds, so it equals
+    /// the event's whole-second timestamp minus the `enteredAt` it carries, which is serialized by
+    /// truncation too. Can be a second more than `wholeSeconds` (100.9 s → 160.1 s reports 60, not
+    /// 59); qualifying stays on `wholeSeconds`, the elapsed time actually observed.
+    static func reportedSeconds(from start: Date, to end: Date) -> Int {
+        max(0, Int(end.timeIntervalSince1970) - Int(start.timeIntervalSince1970))
+    }
+
     /// Takes the visit an overlapping re-ENTER replaced for exactly this EXIT, if it still belongs
     /// to `userId` and the fence's geometry. Consumed, so no other EXIT can report it.
     private func takeVisitEndedByPendingExit(
