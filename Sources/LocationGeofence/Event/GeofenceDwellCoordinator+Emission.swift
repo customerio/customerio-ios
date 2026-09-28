@@ -16,19 +16,10 @@ extension GeofenceDwellCoordinator {
         userId: String
     ) async {
         guard geofence.dwellThresholdSeconds > 0, !visit.emitted else { return }
-        let proposed: GeofenceDwellReservation
-        if let reserved = visit.dwellReservation {
-            // Already qualified when reserved; later evidence neither re-qualifies nor moves it.
-            proposed = reserved
-        } else {
-            guard observedAt >= visit.enteredAt,
-                  Self.wholeSeconds(from: visit.enteredAt, to: observedAt) >= geofence.dwellThresholdSeconds
-            else { return }
-            proposed = Self.dwellReservation(
-                for: visit, observedAt: observedAt,
-                thresholdSeconds: geofence.dwellThresholdSeconds, source: source
-            )
-        }
+        guard let proposed = Self.qualifiedReservation(
+            for: visit, observedAt: observedAt,
+            thresholdSeconds: geofence.dwellThresholdSeconds, source: source
+        ) else { return }
         guard contextStore.currentUserId == userId else { return }
         guard dwellEmissionsInFlight.insert(visit.visitId).inserted else { return }
         defer { dwellEmissionsInFlight.remove(visit.visitId) }
@@ -57,6 +48,10 @@ extension GeofenceDwellCoordinator {
             expectedUserId: userId
         )
         guard persisted else { return }
+        await finishDwellEmission(geofence: geofence, visit: visit)
+    }
+
+    private func finishDwellEmission(geofence: Geofence, visit: GeofenceDwellVisit) async {
         // The emitter suspends, so an EXIT and a re-entry may have replaced this visit meanwhile.
         // Writing the captured copy back would resurrect the old visit over the new one.
         switch await storage.markDwellVisitEmitted(visit, geofenceId: geofence.id) {
@@ -77,6 +72,23 @@ extension GeofenceDwellCoordinator {
         await emitDwellIfQualified(
             geofence: geofence, visit: visit, observedAt: reservation.occurredAt,
             source: reservation.detectionSource, userId: userId
+        )
+    }
+
+    private static func qualifiedReservation(
+        for visit: GeofenceDwellVisit,
+        observedAt: Date,
+        thresholdSeconds: Int,
+        source: String
+    ) -> GeofenceDwellReservation? {
+        // Already qualified when reserved; later evidence neither re-qualifies nor moves it.
+        if let reserved = visit.dwellReservation { return reserved }
+        guard observedAt >= visit.enteredAt,
+              wholeSeconds(from: visit.enteredAt, to: observedAt) >= thresholdSeconds
+        else { return nil }
+        return dwellReservation(
+            for: visit, observedAt: observedAt,
+            thresholdSeconds: thresholdSeconds, source: source
         )
     }
 

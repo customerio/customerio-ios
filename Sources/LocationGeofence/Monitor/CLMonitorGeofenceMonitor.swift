@@ -274,31 +274,7 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring {
         case .unknown:
             return logger.geofenceInfo("os_state_unusable", fields: [("id", identifier), ("state", "unknown")])
         case .unmonitored:
-            // CLMonitor gave up on the condition (budget exceeded). Drop the mirror entry and the
-            // recorded circle so the next sync re-registers it, and reseed the baseline then rather
-            // than preserve it — after the OS gave up, the stored state no longer matches reality.
-            // Ownership is KEPT: it only gates which events this process accepts, and a dropped
-            // condition stays listed and revives on its own once budget frees (measured); dropping
-            // the movement trigger's ownership would remove the only thing that restores it.
-            logger.geofenceMonitorStoppedMonitoringRegion(identifier)
-            knownConditionIdentifiers.remove(identifier)
-            conditionLedger.forget(identifier)
-            conditionReadds.removeValue(forKey: identifier)
-            conditionsNeedingBaselineReseed.insert(identifier)
-            persistConditionMirror()
-            // The fence went unwatched, so a stored entry time can no longer vouch for a continuous
-            // stay — matching the classic monitor's `monitoringDidFailFor`. The movement trigger
-            // carries no visit.
-            if identifier != GeofenceConstants.movementTriggerIdentifier {
-                onMonitoringInterrupted?(identifier)
-            }
-            // Skipped if a registration re-added the identifier since — deleting a baseline that add
-            // just wrote would cost the next crossing. Keyed on this monitor's own completed adds,
-            // not `CLMonitor.identifiers` (which still lists a dropped condition).
-            enqueueMonitorOperation { [weak self] _ in
-                guard let self, !self.knownConditionIdentifiers.contains(identifier) else { return }
-                await self.storage.clearMonitorRegionRecord(identifier: identifier)
-            }
+            handleUnmonitored(identifier: identifier)
             return
         @unknown default:
             return logger.geofenceInfo("os_state_unusable", fields: [("id", identifier), ("state", "unhandled")])
@@ -343,6 +319,34 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring {
         logger.geofenceCallbackDispatched(identifier: identifier, transition: transition)
         // Business events carry the captured location for context only; nothing sizes to it.
         onTransition?(identifier, transition, currentLocationData(), event.date, false, eventCircle(for: identifier, raisedAt: event.date))
+    }
+
+    private func handleUnmonitored(identifier: String) {
+        // CLMonitor gave up on the condition (budget exceeded). Drop the mirror entry and the
+        // recorded circle so the next sync re-registers it, and reseed the baseline then rather
+        // than preserve it — after the OS gave up, the stored state no longer matches reality.
+        // Ownership is KEPT: it only gates which events this process accepts, and a dropped
+        // condition stays listed and revives on its own once budget frees (measured); dropping
+        // the movement trigger's ownership would remove the only thing that restores it.
+        logger.geofenceMonitorStoppedMonitoringRegion(identifier)
+        knownConditionIdentifiers.remove(identifier)
+        conditionLedger.forget(identifier)
+        conditionReadds.removeValue(forKey: identifier)
+        conditionsNeedingBaselineReseed.insert(identifier)
+        persistConditionMirror()
+        // The fence went unwatched, so a stored entry time can no longer vouch for a continuous
+        // stay — matching the classic monitor's `monitoringDidFailFor`. The movement trigger
+        // carries no visit.
+        if identifier != GeofenceConstants.movementTriggerIdentifier {
+            onMonitoringInterrupted?(identifier)
+        }
+        // Skipped if a registration re-added the identifier since — deleting a baseline that add
+        // just wrote would cost the next crossing. Keyed on this monitor's own completed adds,
+        // not `CLMonitor.identifiers` (which still lists a dropped condition).
+        enqueueMonitorOperation { [weak self] _ in
+            guard let self, !self.knownConditionIdentifiers.contains(identifier) else { return }
+            await self.storage.clearMonitorRegionRecord(identifier: identifier)
+        }
     }
 
     // MARK: - GeofenceRegionMonitoring
