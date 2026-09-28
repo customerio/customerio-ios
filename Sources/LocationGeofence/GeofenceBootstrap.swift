@@ -13,6 +13,8 @@ enum GeofenceBootstrap {
     private static var lastRun: Task<Void, Never>?
     /// Tail of the visit-arming chain; see the async `armVisitMonitoring`.
     private static var lastArm: Task<Void, Never>?
+    /// Tail of the dwell-continuity chain; see `reconcileDwellContinuity`.
+    private static var lastDwellReconcile: Task<Void, Never>?
 
     static func wireMonitor(di: DIGraphShared) async {
         let previous = lastRun
@@ -65,22 +67,7 @@ enum GeofenceBootstrap {
         // before any new delegate call can land.
         let monitor = di.geofenceMonitor
         let coordinator = di.geofenceSyncCoordinator
-        let resolver = di.polygonMembershipResolver
-        GeofenceMonitorBinder.bind(
-            monitor: monitor,
-            resolver: resolver,
-            coordinator: coordinator,
-            logger: di.logger,
-            dwellCoordinator: di.geofenceDwellCoordinator
-        )
-        // Wired here, with the transition handler, for the same reason: a cold wake can deliver a
-        // visit immediately and an unwired handler drops it. Arming is deferred to the tail of
-        // this function, once the adopt-or-register decision has settled what we actually monitor.
-        GeofenceMonitorBinder.bindVisits(
-            visitMonitor: di.geofenceVisitMonitor,
-            resolver: resolver,
-            contextStore: di.backgroundDeliveryContextStore
-        )
+        bindDeliveryHandlers(di: di, monitor: monitor, coordinator: coordinator)
 
         // Install both re-run handlers BEFORE the adopt/re-register decision so the CLMonitor path's
         // first reconciliation — which can fire right after this synchronous phase yields — finds a
@@ -97,6 +84,8 @@ enum GeofenceBootstrap {
         // regions dropped, e.g. a monitoring failure or only the trigger surviving) falls through to
         // re-register so the missing business geofences come back rather than staying unmonitored
         // until the next refresh.
+        // Fences the OS stopped monitoring since last session; their visits lost continuity.
+        var droppedBusinessRegions: Set<String> = []
         if di.backgroundDeliveryContextStore.currentUserId != userId {
             // Identity changed during the reads above: adopting or registering now could resurrect
             // regions a sign-out reset just tore down (adopt's FIFO'd re-adds land after the
@@ -105,9 +94,8 @@ enum GeofenceBootstrap {
         } else if !expectedOwnedRegions.isEmpty, expectedOwnedRegions.isSubset(of: monitor.osMonitoredRegionIdentifiers) {
             monitor.adoptExistingRegions(matching: expectedOwnedRegions, records: monitorRecords)
         } else {
-            // Read before registering, which re-adds them; invalidated only after, because an await
-            // here would reopen the window the identity check above just closed.
-            let missingBusinessRegions = lastRegisteredBusinessIds.subtracting(monitor.osMonitoredRegionIdentifiers)
+            // Read before registering, which re-adds them.
+            droppedBusinessRegions = lastRegisteredBusinessIds.subtracting(monitor.osMonitoredRegionIdentifiers)
             // First launch after install, the OS dropped our regions (e.g. permission revoked then
             // re-granted, which clears `monitoredRegions`), or a partial drop. Register fresh from cache.
             let registration = coordinator.applyCachedRegistration(
@@ -116,9 +104,6 @@ enum GeofenceBootstrap {
                 config: cachedConfig,
                 userId: userId
             )
-            for geofenceId in missingBusinessRegions {
-                await di.geofenceDwellCoordinator.invalidateContinuity(geofenceId: geofenceId)
-            }
             // Persist what was registered as the ranking-staleness reference. The await is safe
             // here: applyCachedRegistration already ran startMonitoring synchronously, so the
             // cold-wake no-await window has closed and a queued transition can't land in an empty
@@ -134,7 +119,7 @@ enum GeofenceBootstrap {
         // The adopt path above skips `startMonitoring` (the other tier-log site), so without this
         // a relaunch that re-claims OS-persisted regions would report nothing about delivery readiness.
         monitor.reportPermissionTier()
-        await di.geofenceDwellCoordinator.resumePendingVisits(geofences: cachedRegions)
+        reconcileDwellContinuity(di: di, droppedGeofenceIds: droppedBusinessRegions, cachedRegions: cachedRegions)
 
         // The ASYNC form on purpose, though `cachedConfig` is in scope: that value was read in
         // phase 1 and this run has awaited storage and OS registration since. A refresh landing a
@@ -142,6 +127,53 @@ enum GeofenceBootstrap {
         // the phase-1 value would overwrite the disarm. Going through the chain makes this read
         // late and apply last.
         await armVisitMonitoring(di: di)
+    }
+
+    /// Drops the visits of fences the OS stopped monitoring, then re-arms the deadlines of the
+    /// rest. Launched, not awaited: dwell is best-effort bookkeeping, and every await it adds to
+    /// the run chain delays the rest of setup — and every later setup queued behind it — by storage
+    /// round trips, which is the window a sign-out or a queued crossing lands in. Chained so two
+    /// setups' invalidate-then-resume pairs cannot interleave.
+    private static func reconcileDwellContinuity(
+        di: DIGraphShared,
+        droppedGeofenceIds: Set<String>,
+        cachedRegions: [Geofence]
+    ) {
+        let dwellCoordinator = di.geofenceDwellCoordinator
+        let previous = lastDwellReconcile
+        lastDwellReconcile = Task { @MainActor in
+            await previous?.value
+            for geofenceId in droppedGeofenceIds {
+                await dwellCoordinator.invalidateContinuity(geofenceId: geofenceId)
+            }
+            await dwellCoordinator.resumePendingVisits(geofences: cachedRegions)
+        }
+    }
+
+    /// Binds the transition and visit handlers. Synchronous on purpose: it runs inside the
+    /// no-`await` window of `performWireMonitor`, and must stay free of suspension points.
+    /// Extracted only to keep that function under the body-length cap; it is called from the one place.
+    private static func bindDeliveryHandlers(
+        di: DIGraphShared,
+        monitor: GeofenceRegionMonitoring,
+        coordinator: GeofenceSyncCoordinator
+    ) {
+        let resolver = di.polygonMembershipResolver
+        GeofenceMonitorBinder.bind(
+            monitor: monitor,
+            resolver: resolver,
+            coordinator: coordinator,
+            logger: di.logger,
+            dwellCoordinator: di.geofenceDwellCoordinator
+        )
+        // Wired here, with the transition handler, for the same reason: a cold wake can deliver a
+        // visit immediately and an unwired handler drops it. Arming is deferred to the tail of
+        // `performWireMonitor`, once the adopt-or-register decision has settled what we actually monitor.
+        GeofenceMonitorBinder.bindVisits(
+            visitMonitor: di.geofenceVisitMonitor,
+            resolver: resolver,
+            contextStore: di.backgroundDeliveryContextStore
+        )
     }
 
     /// The three handlers that re-run work after this setup, installed together and replacing any
@@ -219,11 +251,12 @@ enum GeofenceBootstrap {
         await $0.geofenceStorage.getCachedConfig()
     }
 
-    /// Test-only: awaits the process-global run and arm chains so a test waits exactly as long as
+    /// Test-only: awaits the process-global run, arm and dwell chains so a test waits exactly as long as
     /// the chain coupling needs rather than guessing a wall-clock deadline. Not called in production.
     static func awaitPendingWorkForTesting() async {
         await lastRun?.value
         await lastArm?.value
+        await lastDwellReconcile?.value
     }
 
     /// Logs a one-line note when cold-wake real-time delivery is unavailable for this

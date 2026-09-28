@@ -572,13 +572,7 @@ struct GeofenceBootstrapTests {
             directoryURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         )
         contextStore.setUserId("user-1")
-        let dwellCoordinator = GeofenceDwellCoordinator(
-            storage: storage,
-            transitionEmitter: BootstrapTransitionEmitter(),
-            contextStore: contextStore,
-            logger: LoggerMock(),
-            notificationCenter: NotificationCenter()
-        )
+        let dwellCoordinator = makeDwellCoordinator(storage: storage, contextStore: contextStore)
         di.override(value: dwellCoordinator, forType: GeofenceDwellCoordinator.self)
         let monitor = MockGeofenceRegionMonitor()
         monitor.osMonitoredRegions = ["g1", GeofenceConstants.movementTriggerIdentifier]
@@ -588,6 +582,8 @@ struct GeofenceBootstrapTests {
         defer { di.reset() }
 
         await GeofenceBootstrap.wireMonitor(di: di)
+        // Continuity is reconciled off the run chain, so setup never waits on dwell storage.
+        await GeofenceBootstrap.awaitPendingWorkForTesting()
 
         #expect(monitor.adoptExistingRegionsCallsCount == 0)
         #expect(coordinator.applyCachedRegistrationCallsCount == 1)
@@ -617,13 +613,7 @@ struct GeofenceBootstrapTests {
         )
         contextStore.setUserId("user-1")
         di.override(value: contextStore, forType: BackgroundDeliveryContextStore.self)
-        let dwellCoordinator = GeofenceDwellCoordinator(
-            storage: storage,
-            transitionEmitter: BootstrapTransitionEmitter(),
-            contextStore: contextStore,
-            logger: LoggerMock(),
-            notificationCenter: NotificationCenter()
-        )
+        let dwellCoordinator = makeDwellCoordinator(storage: storage, contextStore: contextStore)
         di.override(value: dwellCoordinator, forType: GeofenceDwellCoordinator.self)
         let monitor = MockGeofenceRegionMonitor()
         // The OS kept nothing, so bootstrap takes the re-register branch with g1 missing.
@@ -644,6 +634,19 @@ struct GeofenceBootstrapTests {
 
         #expect(coordinator.applyCachedRegistrationCallsCount == 1)
         #expect(userAtRegistration == "user-1")
+    }
+
+    private func makeDwellCoordinator(
+        storage: GeofenceStorage,
+        contextStore: BackgroundDeliveryContextStore
+    ) -> GeofenceDwellCoordinator {
+        GeofenceDwellCoordinator(
+            storage: storage,
+            transitionEmitter: BootstrapTransitionEmitter(),
+            contextStore: contextStore,
+            logger: LoggerMock(),
+            notificationCenter: NotificationCenter()
+        )
     }
 
     @Test

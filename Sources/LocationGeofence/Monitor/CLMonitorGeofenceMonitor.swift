@@ -50,10 +50,12 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring {
     let movementFixResolver: MovementFixResolver
     /// Internal (not private) for the `+BaselineHeal` extension's synthesized deliveries.
     var onTransition: GeofenceTransitionHandler?
-    private var onAuthorizationChanged: GeofenceAuthorizationChangedHandler?
+    /// Internal (not private) for the `+Authorization` extension, which fires it.
+    var onAuthorizationChanged: GeofenceAuthorizationChangedHandler?
     private var onReconciled: GeofenceReconciledHandler?
     private var onMonitoringInterrupted: GeofenceMonitoringInterruptedHandler?
-    private var lastLoggedPermissionTier: CoreLocationGeofenceMonitor.PermissionTier?
+    /// Internal (not private) for the `+Authorization` extension's tier dedup.
+    var lastLoggedPermissionTier: CoreLocationGeofenceMonitor.PermissionTier?
 
     /// In-memory ownership filter, mirrors `ownedRegionIdentifiers` in the classic monitor.
     /// The three below are internal for the `+Registration` extension.
@@ -366,40 +368,5 @@ final class CLMonitorGeofenceMonitor: NSObject, GeofenceRegionMonitoring {
 
     func setOnMonitoringInterrupted(_ handler: GeofenceMonitoringInterruptedHandler?) {
         onMonitoringInterrupted = handler
-    }
-
-    func reportPermissionTier() {
-        let status = authManager.authorizationStatus
-        let tier = CoreLocationGeofenceMonitor.permissionTier(for: status)
-        guard tier != lastLoggedPermissionTier else { return }
-        lastLoggedPermissionTier = tier
-        switch tier {
-        case .blocked:
-            logger.geofencePermissionUnavailable(currentStatus: status)
-        case .foregroundOnly:
-            logger.geofenceBackgroundDeliveryUnavailable(currentStatus: status)
-        case .backgroundDelivery:
-            logger.geofenceBackgroundDeliveryAvailable(currentStatus: status)
-        }
-    }
-
-    // MARK: - Authorization
-
-    // Fires once when the delegate is set (harmless) and again on every change, keeping the service
-    // session in step with the granted tier. Surfaced UNFILTERED in BOTH directions: an improvement
-    // lets the bootstrap re-attempt registration, and a downgrade is what disarms visit monitoring.
-    private func handleAuthorizationChange() {
-        updateServiceSession()
-        onAuthorizationChanged?()
-    }
-
-    // MARK: - Service session (iOS 18+)
-
-    /// On iOS 18+, `CLMonitor.events` stops yielding in the background unless a `CLServiceSession`
-    /// asserts continued interest — Always authorization alone no longer suffices. Held for the
-    /// monitor's lifetime, but only while Always is ALREADY granted: a session above the granted
-    /// tier can put up a permission prompt, and prompting is the host's decision, never the SDK's.
-    private func updateServiceSession() {
-        authManager.updateServiceSession(isAlwaysAuthorized: authManager.authorizationStatus == .authorizedAlways)
     }
 }

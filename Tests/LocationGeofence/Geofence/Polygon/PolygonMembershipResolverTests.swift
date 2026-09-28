@@ -228,6 +228,31 @@ struct PolygonMembershipResolverTests {
         #expect(exits.first?.context == nil)
     }
 
+    /// Records whether the fence's visit was already stored when its ENTER reached the tracker.
+    private actor VisitProbeEmitter: GeofenceTransitionEmitting {
+        private let storage: GeofenceStorage
+        private(set) var visitStoredWhenEnterTracked: Bool?
+
+        init(storage: GeofenceStorage) {
+            self.storage = storage
+        }
+
+        func trackTransition(geofenceId: String, transition: GeofenceTransition, occurredAt: Date) async {
+            guard transition == .enter else { return }
+            visitStoredWhenEnterTracked = await storage.getDwellVisit(geofenceId: geofenceId) != nil
+        }
+
+        func trackDwell(
+            geofenceId: String, occurredAt: Date, context: GeofenceDwellContext, expectedUserId: String?
+        ) async -> Bool {
+            true
+        }
+
+        func trackExit(
+            geofenceId: String, occurredAt: Date, context: GeofenceExitContext?, expectedUserId: String?
+        ) async {}
+    }
+
     private struct Setup {
         let resolver: PolygonMembershipResolver
         let storage: GeofenceStorage
@@ -504,16 +529,80 @@ struct PolygonMembershipResolverTests {
         #expect(delivered.first?.transition == .enter)
     }
 
-    /// A sync can drop a geofence while the OS still holds its condition. Without the cached
-    /// configuration, the callback cannot be filtered or distinguished from a polygon covering
-    /// circle, so emitting it could leak an ENTER from an exit-only fence.
+    /// A sync can drop a geofence while the OS still holds its condition. The crossing is still
+    /// real, so it is forwarded as the circle it was before polygons existed — bound to the user
+    /// who received it and carrying no visit, there being no fence to measure it against.
     @Test
-    func handleTransition_givenUncachedGeofence_expectDropped() async {
-        let setup = await makeSetup(fix: nil)
+    func handleTransition_givenUncachedGeofenceExit_expectForwardedForTheReceivingUser() async {
+        let setup = await makeSetup(fix: nil, withDwellCoordinator: true)
 
-        await setup.resolver.handleTransition(identifier: "999", transition: .exit, occurredAt: clock.now)
+        await setup.resolver.handleTransition(
+            identifier: "999", transition: .exit, occurredAt: clock.now, receivedForUserId: "user-1"
+        )
+
+        #expect(await setup.emitter.snapshot().map(\.transition) == [.exit])
+        let exits = await setup.emitter.exitSnapshot()
+        #expect(exits.first?.expectedUserId == "user-1")
+        #expect(exits.first?.context == nil)
+    }
+
+    @Test
+    func handleTransition_givenUncachedGeofenceEnter_expectForwarded() async {
+        let setup = await makeSetup(fix: nil, withDwellCoordinator: true)
+
+        await setup.resolver.handleTransition(
+            identifier: "999", transition: .enter, occurredAt: clock.now, receivedForUserId: "user-1"
+        )
+
+        #expect(await setup.emitter.snapshot() == [.init(id: "999", transition: .enter, occurredAt: clock.now)])
+    }
+
+    /// The forward is not a licence to reattribute: an ENTER received for user-1 is dropped once
+    /// user-2 has signed in, exactly as it is for a cached circle.
+    @Test
+    func handleTransition_givenUncachedGeofenceEnterAfterUserSwitch_expectDropped() async {
+        let setup = await makeSetup(fix: nil, withDwellCoordinator: true)
+        setup.contextStore.setUserId("user-2")
+
+        await setup.resolver.handleTransition(
+            identifier: "999", transition: .enter, occurredAt: clock.now, receivedForUserId: "user-1"
+        )
 
         #expect(await setup.emitter.snapshot().isEmpty)
+    }
+
+    /// The ENTER is the event; the visit is best-effort bookkeeping behind a storage round trip.
+    /// Recording the visit first put that round trip between the OS callback and delivery, and a
+    /// sign-out landing in it dropped the crossing. The visit must still be recorded afterwards.
+    @Test
+    func circleEnter_givenDwellCoordinator_expectTrackedBeforeTheVisitIsRecorded() async {
+        let setup = await makeSetup(fix: nil, withDwellCoordinator: true)
+        let circle = circleGeofence()
+        await setup.storage.setCachedGeofences([circle])
+        let probe = VisitProbeEmitter(storage: setup.storage)
+        let resolver = PolygonMembershipResolver(
+            storage: setup.storage,
+            transitionEmitter: probe,
+            logger: setup.logger,
+            contextStore: setup.contextStore,
+            dateUtil: clock,
+            fixResolver: setup.fixResolver,
+            notificationCenter: setup.notificationCenter,
+            dwellCoordinator: GeofenceDwellCoordinator(
+                storage: setup.storage,
+                transitionEmitter: probe,
+                contextStore: setup.contextStore,
+                logger: setup.logger,
+                notificationCenter: setup.notificationCenter
+            )
+        )
+
+        await resolver.handleTransition(
+            identifier: circle.id, transition: .enter, occurredAt: clock.now, receivedForUserId: "user-1"
+        )
+
+        #expect(await probe.visitStoredWhenEnterTracked == false)
+        #expect(await setup.storage.getDwellVisit(geofenceId: circle.id) != nil)
     }
 
     // MARK: - Covering-circle enter
@@ -1176,20 +1265,6 @@ struct PolygonMembershipResolverTests {
 
         #expect(await setup.emitter.snapshot().isEmpty)
         #expect(await setup.storage.getPolygonMembership()["1"] == nil)
-    }
-
-    @Test
-    func handleTransitionGivenUncachedFenceDoesNotLeakAnUnconfiguredEnter() async {
-        let setup = await makeSetup(fix: nil)
-        await setup.storage.setCachedGeofences([])
-
-        await setup.resolver.handleTransition(
-            identifier: "1",
-            transition: .enter,
-            occurredAt: Date()
-        )
-
-        #expect(await setup.emitter.snapshot().isEmpty)
     }
 
     /// Foregrounding resolves a fix like any other pass, and a foregrounding app's cached fix is

@@ -50,7 +50,9 @@ extension GeofenceSyncCoordinatorImpl {
         // the Task because `DateUtil` is a non-Sendable protocol with a non-final implementation,
         // and the Swift 5 language mode does not diagnose capturing one into a @Sendable closure.
         let discoveredAt = dateUtil.now
-        Task { @MainActor [transitionEmitter, contextStore, logger, dwellCoordinator] in
+        // Not main-actor bound, as before dwell: the ENTER must not queue behind main-actor work, a
+        // sign-out included. Only the visit bookkeeping below hops, and only after the emit.
+        Task { [transitionEmitter, contextStore, logger, dwellCoordinator] in
             for region in newInside {
                 // Re-check per iteration: the diff was computed for `expectedUserId`, and each awaited
                 // send can span a sign-out/switch that the tracker would otherwise stamp to whoever is

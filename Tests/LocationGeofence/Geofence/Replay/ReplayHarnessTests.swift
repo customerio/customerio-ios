@@ -171,6 +171,34 @@ struct ReplayHarnessTests {
         }
     }
 
+    /// Replay composes dwell as production does. Left to the DI default, bootstrap resolved
+    /// `GeofenceDwellCoordinator.shared` — built from whichever harness touched it first — and
+    /// awaited it inside the process-global run chain, while this composition's resolver and
+    /// coordinator ran the pre-dwell paths production no longer takes.
+    @Test
+    @available(iOS 17.0, *)
+    func deliverCrossing_givenArmedCircle_expectVisitRecordedByThisComposition() async throws {
+        try await ReplayHarness.withTail {
+            let harness = ReplayHarness()
+            defer { harness.detachFromBootstrap() }
+            #expect(harness.bootstrapResolvesOwnDwellCoordinator)
+            try await registered(harness, fenceId: "A")
+
+            harness.deliverCrossing(fence: "A", transition: .enter)
+            await Task.yield()
+            await settleOnMain { harness.emitted(ev: "transition.accepted").count == 1 }
+
+            #expect(harness.emitted(ev: "transition.accepted").first?["t"] == "enter")
+            // Recorded after the ENTER is tracked, so it can trail the acceptance by a hop or two.
+            var visit = await harness.storedVisit(fence: "A")
+            for _ in 0 ..< 200 where visit == nil {
+                try await Task.sleep(nanoseconds: 10000000)
+                visit = await harness.storedVisit(fence: "A")
+            }
+            #expect(visit?.entryObserved == true)
+        }
+    }
+
     /// **The spike's central assumption.**
     ///
     /// §5 of the format decision claims the iOS clock gap does not block replay, because the raw

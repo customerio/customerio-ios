@@ -573,6 +573,41 @@ struct GeofenceStorageTests {
         #expect(await makeStorage(directory: dir).getDwellVisit(geofenceId: geofence.id)?.entryObserved == false)
     }
 
+    /// Nothing upstream dedupes fence ids, and building the retention lookup with
+    /// `uniqueKeysWithValues` trapped on the first payload that listed one twice — on every sync.
+    /// The first occurrence decides, as every `first(where:)` read of the same cache does.
+    @Test
+    func setCachedGeofences_givenDuplicateIds_expectNoCrashAndFirstOccurrenceDecidesRetention() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let storage = makeStorage(directory: dir)
+        let first = Geofence(
+            id: "g1", latitude: 1, longitude: 2, radius: 100, name: "g1",
+            transitionTypes: [.exit], lastUpdated: Date(timeIntervalSince1970: 1)
+        )
+        let reshaped = Geofence(
+            id: "g1", latitude: 1, longitude: 2, radius: 250, name: "g1",
+            transitionTypes: [.exit], lastUpdated: Date(timeIntervalSince1970: 2)
+        )
+        await storage.setCachedGeofences([first])
+        #expect(await storage.saveDwellVisit(
+            GeofenceDwellVisit(
+                visitId: "visit-1",
+                enteredAt: Date(timeIntervalSince1970: 100),
+                geometryRevision: first.dwellRevision,
+                userId: "user-1",
+                emitted: false
+            ),
+            geofenceId: first.id
+        ))
+
+        await storage.setCachedGeofences([first, reshaped])
+        #expect(await storage.getDwellVisit(geofenceId: "g1")?.visitId == "visit-1")
+
+        await storage.setCachedGeofences([reshaped, first])
+        #expect(await storage.getDwellVisit(geofenceId: "g1") == nil)
+    }
+
     @Test
     func clearUserScopedState_expectCooldownsLastSyncAndRegistrationCleared_workspaceCachePreserved() async {
         let dir = makeTempDirectory()
