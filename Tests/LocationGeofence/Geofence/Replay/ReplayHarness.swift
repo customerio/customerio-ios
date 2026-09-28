@@ -217,6 +217,21 @@ final class ReplayHarness {
         return monitor
     }
 
+    private func makeRefreshTrigger() -> GeofenceRefreshTrigger {
+        GeofenceRefreshTrigger(
+            storage: storage,
+            contextStore: contextStore,
+            coordinator: { [coordinator] in coordinator },
+            logger: logger,
+            locationMode: .automatic,
+            explicitRefreshRequested: Synchronized<Bool>(false),
+            // Production reads the Location module's stored position. Geofence's own resolver
+            // requests never update it, so replay must use the same separate value.
+            lastKnownLocation: { [weak self] in self?.moduleLastKnownLocation },
+            acquireFix: { [weak self] in self?.acquireFixCallCount += 1 }
+        )
+    }
+
     private func composeSDK() {
         tracker = GeofenceEventTracker(
             storage: storage,
@@ -256,25 +271,7 @@ final class ReplayHarness {
             logger: logger
         )
 
-        trigger = GeofenceRefreshTrigger(
-            storage: storage,
-            contextStore: contextStore,
-            coordinator: { [coordinator] in coordinator },
-            logger: logger,
-            locationMode: .automatic,
-            explicitRefreshRequested: Synchronized<Bool>(false),
-            // The **Location module's** stored position, not the geofence monitor's cache read.
-            //
-            // Production wires this to `locationServices.getLastKnownLocation()`, which returns what
-            // `LocationSyncCoordinator` recorded the last time the Location module acquired a fix —
-            // the same acquisitions that publish as `prov=bus`. Geofence's own resolver requests go
-            // through a separate `CLLocationManager` and never reach it.
-            //
-            // Pointing this at the fix provider instead made the trigger pull the OS cache at a
-            // moment the drive recorded no pull, which is how the stimulus-window check found it.
-            lastKnownLocation: { [weak self] in self?.moduleLastKnownLocation },
-            acquireFix: { [weak self] in self?.acquireFixCallCount += 1 }
-        )
+        trigger = makeRefreshTrigger()
 
         // Kept, though `wireMonitor()` binds too: a hand-driven harness test never sends a
         // `module.init`, and an unbound monitor there would drop every crossing silently.

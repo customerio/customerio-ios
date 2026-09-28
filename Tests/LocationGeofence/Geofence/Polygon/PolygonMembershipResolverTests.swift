@@ -228,18 +228,31 @@ struct PolygonMembershipResolverTests {
         #expect(exits.first?.context == nil)
     }
 
-    /// Records whether the fence's visit was already stored when its ENTER reached the tracker.
-    private actor VisitProbeEmitter: GeofenceTransitionEmitting {
-        private let storage: GeofenceStorage
-        private(set) var visitStoredWhenEnterTracked: Bool?
-
-        init(storage: GeofenceStorage) {
-            self.storage = storage
-        }
+    /// Holds the first ENTER inside the tracker — an HTTP send stalled offline or behind a backlog
+    /// flush — until released, and records every EXIT's visit context.
+    private actor StalledEnterEmitter: GeofenceTransitionEmitting {
+        private var stalledSend: CheckedContinuation<Void, Never>?
+        private var hasStalled = false
+        private(set) var enterIsStalled = false
+        private(set) var entersReceived = 0
+        private(set) var exitContexts: [GeofenceExitContext?] = []
 
         func trackTransition(geofenceId: String, transition: GeofenceTransition, occurredAt: Date) async {
             guard transition == .enter else { return }
-            visitStoredWhenEnterTracked = await storage.getDwellVisit(geofenceId: geofenceId) != nil
+            entersReceived += 1
+            guard !hasStalled else { return }
+            hasStalled = true
+            await withCheckedContinuation { continuation in
+                stalledSend = continuation
+                enterIsStalled = true
+            }
+        }
+
+        func release() {
+            hasStalled = true
+            stalledSend?.resume()
+            stalledSend = nil
+            enterIsStalled = false
         }
 
         func trackDwell(
@@ -250,7 +263,28 @@ struct PolygonMembershipResolverTests {
 
         func trackExit(
             geofenceId: String, occurredAt: Date, context: GeofenceExitContext?, expectedUserId: String?
-        ) async {}
+        ) async {
+            exitContexts.append(context)
+        }
+    }
+
+    private func resolver(_ setup: Setup, emitter: GeofenceTransitionEmitting) -> PolygonMembershipResolver {
+        PolygonMembershipResolver(
+            storage: setup.storage,
+            transitionEmitter: emitter,
+            logger: setup.logger,
+            contextStore: setup.contextStore,
+            dateUtil: clock,
+            fixResolver: setup.fixResolver,
+            notificationCenter: setup.notificationCenter,
+            dwellCoordinator: GeofenceDwellCoordinator(
+                storage: setup.storage,
+                transitionEmitter: emitter,
+                contextStore: setup.contextStore,
+                logger: setup.logger,
+                notificationCenter: setup.notificationCenter
+            )
+        )
     }
 
     private struct Setup {
@@ -502,6 +536,14 @@ struct PolygonMembershipResolverTests {
         }
     }
 
+    /// Bounded, so a condition that never holds fails its expectation instead of hanging the suite.
+    private func waitUntil(_ condition: () async -> Bool) async {
+        for _ in 0 ..< 1000 {
+            if await condition() { return }
+            await Task.yield()
+        }
+    }
+
     /// Lets a just-started task reach its first suspension point.
     private func settle() async {
         for _ in 0 ..< 20 {
@@ -557,6 +599,65 @@ struct PolygonMembershipResolverTests {
         #expect(await setup.emitter.snapshot() == [.init(id: "999", transition: .enter, occurredAt: clock.now)])
     }
 
+    /// An exit-only circle is registered for ENTER only so its visit has a start. Once the cache has
+    /// dropped it, that ENTER must still not reach the customer; its configured EXIT still does.
+    @Test
+    func handleTransition_givenUncachedExitOnlyCircle_expectBookkeepingEnterDroppedAndExitForwarded() async {
+        let setup = await makeSetup(fix: nil, withDwellCoordinator: true)
+        let exitOnly = Geofence(
+            id: "999", latitude: 0, longitude: 0, radius: 300, name: "exit only",
+            transitionTypes: [.exit], lastUpdated: clock.now
+        )
+        await setup.storage.recordRegistrationIntent(for: [exitOnly], pruningToCache: true)
+
+        await setup.resolver.handleTransition(
+            identifier: "999", transition: .enter, occurredAt: clock.now, receivedForUserId: "user-1"
+        )
+        await setup.resolver.handleTransition(
+            identifier: "999", transition: .exit, occurredAt: clock.now, receivedForUserId: "user-1"
+        )
+
+        #expect(await setup.emitter.snapshot().map(\.transition) == [.exit])
+        #expect(logged(setup.logger, "not routed: transition_not_configured"))
+    }
+
+    /// A dwell-only circle configured neither edge: both are bookkeeping once it is uncached.
+    @Test
+    func handleTransition_givenUncachedDwellOnlyCircle_expectBothEdgesDropped() async {
+        let setup = await makeSetup(fix: nil, withDwellCoordinator: true)
+        let dwellOnly = Geofence(
+            id: "999", latitude: 0, longitude: 0, radius: 300, name: "dwell only",
+            transitionTypes: [], lastUpdated: clock.now, dwellThresholdSeconds: 60
+        )
+        await setup.storage.recordRegistrationIntent(for: [dwellOnly], pruningToCache: true)
+
+        await setup.resolver.handleTransition(
+            identifier: "999", transition: .enter, occurredAt: clock.now, receivedForUserId: "user-1"
+        )
+        await setup.resolver.handleTransition(
+            identifier: "999", transition: .exit, occurredAt: clock.now, receivedForUserId: "user-1"
+        )
+
+        #expect(await setup.emitter.snapshot().isEmpty)
+    }
+
+    /// The legacy behaviour for a configured ENTER is untouched: dropped from the cache, still forwarded.
+    @Test
+    func handleTransition_givenUncachedEnterConfiguredCircle_expectEnterStillForwarded() async {
+        let setup = await makeSetup(fix: nil, withDwellCoordinator: true)
+        let configured = Geofence(
+            id: "999", latitude: 0, longitude: 0, radius: 300, name: "configured",
+            transitionTypes: [.enter, .exit], lastUpdated: clock.now, dwellThresholdSeconds: 60
+        )
+        await setup.storage.recordRegistrationIntent(for: [configured], pruningToCache: true)
+
+        await setup.resolver.handleTransition(
+            identifier: "999", transition: .enter, occurredAt: clock.now, receivedForUserId: "user-1"
+        )
+
+        #expect(await setup.emitter.snapshot() == [.init(id: "999", transition: .enter, occurredAt: clock.now)])
+    }
+
     /// The forward is not a licence to reattribute: an ENTER received for user-1 is dropped once
     /// user-2 has signed in, exactly as it is for a cached circle.
     @Test
@@ -572,37 +673,77 @@ struct PolygonMembershipResolverTests {
     }
 
     /// The ENTER is the event; the visit is best-effort bookkeeping behind a storage round trip.
-    /// Recording the visit first put that round trip between the OS callback and delivery, and a
-    /// sign-out landing in it dropped the crossing. The visit must still be recorded afterwards.
+    /// Recording the visit first put that round trip before the ENTER's user check, and a sign-out
+    /// queued behind the callback ran inside it and dropped the crossing.
     @Test
-    func circleEnter_givenDwellCoordinator_expectTrackedBeforeTheVisitIsRecorded() async {
-        let setup = await makeSetup(fix: nil, withDwellCoordinator: true)
+    func circleEnter_givenSignOutQueuedBehindIt_expectEnterStillTracked() async {
+        let setup = await makeSetup(fix: nil)
         let circle = circleGeofence()
         await setup.storage.setCachedGeofences([circle])
-        let probe = VisitProbeEmitter(storage: setup.storage)
-        let resolver = PolygonMembershipResolver(
-            storage: setup.storage,
-            transitionEmitter: probe,
-            logger: setup.logger,
-            contextStore: setup.contextStore,
-            dateUtil: clock,
-            fixResolver: setup.fixResolver,
-            notificationCenter: setup.notificationCenter,
-            dwellCoordinator: GeofenceDwellCoordinator(
-                storage: setup.storage,
-                transitionEmitter: probe,
-                contextStore: setup.contextStore,
-                logger: setup.logger,
-                notificationCenter: setup.notificationCenter
+        let emitter = StalledEnterEmitter()
+        await emitter.release() // nothing stalls: only whether the ENTER arrives is under test
+        let resolver = resolver(setup, emitter: emitter)
+
+        let enter = Task { @MainActor in
+            await resolver.forwardCircleTransition(
+                geofence: circle, transition: .enter, occurredAt: clock.now, receivedForUserId: "user-1"
             )
-        )
+        }
+        let signOut = Task { @MainActor in setup.contextStore.setUserId(nil) }
+        await enter.value
+        await signOut.value
+
+        #expect(await emitter.entersReceived == 1)
+    }
+
+    /// A stalled ENTER send must not hold the visit write behind it. When it did, the EXIT found no
+    /// visit, the write then landed for a device already outside, and the re-entry's EXIT reported
+    /// the hour spent away as part of its visit.
+    @Test
+    func circleVisit_givenEnterSendStalledAcrossExitAndReentry_expectEachExitMeasuresItsOwnVisit() async {
+        let setup = await makeSetup(fix: nil)
+        let circle = circleGeofence()
+        await setup.storage.setCachedGeofences([circle])
+        let emitter = StalledEnterEmitter()
+        let resolver = resolver(setup, emitter: emitter)
+        // Whole seconds: a visit's `enteredAt` round-trips through JSON, and a fractional one
+        // comes back a hair off, which the whole-second duration then truncates.
+        let firstEntry = Date(timeIntervalSince1970: clock.now.timeIntervalSince1970.rounded(.down) - 7200)
+        let firstExit = firstEntry.addingTimeInterval(60)
+        let reentry = firstEntry.addingTimeInterval(3600)
+        let finalExit = reentry.addingTimeInterval(120)
+
+        let stalledEnter = Task { @MainActor in
+            await resolver.handleTransition(
+                identifier: circle.id, transition: .enter, occurredAt: firstEntry, receivedForUserId: "user-1"
+            )
+        }
+        await waitUntil { await emitter.enterIsStalled }
+        #expect(await emitter.enterIsStalled)
+        await waitUntil { await setup.storage.getDwellVisit(geofenceId: circle.id) != nil }
+        #expect(await setup.storage.getDwellVisit(geofenceId: circle.id)?.enteredAt == firstEntry)
 
         await resolver.handleTransition(
-            identifier: circle.id, transition: .enter, occurredAt: clock.now, receivedForUserId: "user-1"
+            identifier: circle.id, transition: .exit, occurredAt: firstExit, receivedForUserId: "user-1"
+        )
+        await emitter.release()
+        _ = await stalledEnter.value
+        #expect(await setup.storage.getDwellVisit(geofenceId: circle.id) == nil)
+
+        await resolver.handleTransition(
+            identifier: circle.id, transition: .enter, occurredAt: reentry, receivedForUserId: "user-1"
+        )
+        await resolver.handleTransition(
+            identifier: circle.id, transition: .exit, occurredAt: finalExit, receivedForUserId: "user-1"
         )
 
-        #expect(await probe.visitStoredWhenEnterTracked == false)
-        #expect(await setup.storage.getDwellVisit(geofenceId: circle.id) != nil)
+        let exits = await emitter.exitContexts
+        #expect(exits.count == 2)
+        #expect(exits.first??.enteredAt == firstEntry)
+        #expect(exits.first??.durationSeconds == 60)
+        #expect(exits.last??.enteredAt == reentry)
+        #expect(exits.last??.durationSeconds == 120)
+        #expect(await setup.storage.getDwellVisit(geofenceId: circle.id) == nil)
     }
 
     // MARK: - Covering-circle enter

@@ -7,6 +7,12 @@ import Foundation
 final class GeofenceDwellCoordinator {
     private let transitionEmitter: GeofenceTransitionEmitting
     private var dwellEmissionsInFlight: Set<String> = []
+    /// The latest EXIT each fence has seen in this process, recorded before any await. An ENTER's
+    /// visit write is not ordered against a later EXIT — the two arrive on separate tasks — so a
+    /// write landing after that EXIT would leave a visit open for a device already outside, and the
+    /// next EXIT would measure the time spent away. In memory only: the ENTER whose write it guards
+    /// lives in the same process, and dies with it.
+    private var latestExitAt: [String: Date] = [:]
     // `internal`, not `private`, only because the `+Evidence` extension file uses them.
     let storage: GeofenceStorage
     let contextStore: BackgroundDeliveryContextStore
@@ -60,6 +66,9 @@ final class GeofenceDwellCoordinator {
         expectedUserId: String? = nil,
         detectionSource: String? = nil
     ) async -> GeofenceExitContext? {
+        // Before the user check and every await: leaving is geometry, whoever is signed in, and an
+        // ENTER write already in flight must see it.
+        if transition == .exit { recordExit(geofenceId: geofence.id, at: occurredAt) }
         if let expectedUserId, contextStore.currentUserId != expectedUserId { return nil }
         switch transition {
         case .enter:
@@ -76,10 +85,11 @@ final class GeofenceDwellCoordinator {
                 detectionSource: detectionSource ?? (geofence.vertices == nil ? "native" : "location_evidence"),
                 expectedUserId: expectedUserId
             )
-            // A delayed exit from an older visit must not clear a newer visit.
-            guard result.shouldEndVisit else { return nil }
-            cancelEvidence(for: geofence.id)
-            await storage.removeDwellVisit(geofenceId: geofence.id)
+            // Only the visit this EXIT read and judged: an overlapping ENTER may have written a newer
+            // one since, and a delayed EXIT that found none has nothing to end.
+            guard let endedVisitId = result.endedVisitId else { return result.context }
+            cancelEvidence(for: geofence.id, ifVisit: endedVisitId)
+            await storage.removeDwellVisit(geofenceId: geofence.id, ifStill: endedVisitId)
             return result.context
         case .dwell:
             return nil
@@ -133,7 +143,7 @@ final class GeofenceDwellCoordinator {
             emitted: false,
             entryObserved: beginsNewVisit
         )
-        guard await storage.saveDwellVisit(visit, geofenceId: geofence.id) else { return nil }
+        guard await saveNewVisit(visit, geofenceId: geofence.id, replacing: stored?.visitId) else { return nil }
         scheduleDeadline(for: geofence, visit: visit)
         return visit
     }
@@ -146,8 +156,11 @@ final class GeofenceDwellCoordinator {
         userId: String
     ) async {
         guard geofence.dwellThresholdSeconds > 0, !visit.emitted, observedAt >= visit.enteredAt else { return }
-        let duration = max(0, Int(observedAt.timeIntervalSince(visit.enteredAt)))
+        let duration = max(0, Self.wholeSeconds(from: visit.enteredAt, to: observedAt))
         guard duration >= geofence.dwellThresholdSeconds else { return }
+        // A candidate's start is its first inside evidence, not an entry, so neither it nor the
+        // time since it is reported as observed — matching Android. It still qualifies the dwell.
+        let observed = visit.entryObserved
         guard contextStore.currentUserId == userId else { return }
         guard dwellEmissionsInFlight.insert(visit.visitId).inserted else { return }
         defer { dwellEmissionsInFlight.remove(visit.visitId) }
@@ -156,9 +169,9 @@ final class GeofenceDwellCoordinator {
             occurredAt: observedAt,
             context: GeofenceDwellContext(
                 visitId: visit.visitId,
-                enteredAt: visit.enteredAt,
+                enteredAt: observed ? visit.enteredAt : nil,
                 thresholdSeconds: geofence.dwellThresholdSeconds,
-                durationSeconds: duration,
+                durationSeconds: observed ? duration : nil,
                 detectionSource: source
             ),
             expectedUserId: userId
@@ -190,10 +203,11 @@ final class GeofenceDwellCoordinator {
             await storage.removeDwellVisit(geofenceId: geofence.id)
             return
         }
-        if let existing = await currentVisit(
-            geofence: geofence,
-            userId: userId
-        ) {
+        let existing = await currentVisit(geofence: geofence, userId: userId)
+        // A redelivered ENTER keeps the visit it belongs to. One an EXIT has already been seen
+        // ending does not count: that EXIT may still be suspended before its removal, and adopting
+        // the visit would leave this re-entry with none once it lands.
+        if let existing, !exitOvertook(existing, geofenceId: geofence.id) {
             scheduleDeadline(for: geofence, visit: existing)
             return
         }
@@ -205,13 +219,45 @@ final class GeofenceDwellCoordinator {
             emitted: false
         )
         if contextStore.currentUserId == userId,
-           await storage.saveDwellVisit(visit, geofenceId: geofence.id) {
+           await saveNewVisit(visit, geofenceId: geofence.id, replacing: existing?.visitId) {
             scheduleDeadline(for: geofence, visit: visit)
         }
     }
 
-    /// The stored visit, when it still belongs to `userId` and the fence's current geometry.
-    /// A stale one is removed. Internal for the `+Evidence` extension.
+    private func recordExit(geofenceId: String, at exitedAt: Date) {
+        if let recorded = latestExitAt[geofenceId], recorded >= exitedAt { return }
+        latestExitAt[geofenceId] = exitedAt
+    }
+
+    /// Whether an EXIT at or after `visit` started has already been seen for the fence.
+    private func exitOvertook(_ visit: GeofenceDwellVisit, geofenceId: String) -> Bool {
+        guard let exitedAt = latestExitAt[geofenceId] else { return false }
+        return exitedAt >= visit.enteredAt
+    }
+
+    /// Writes a new visit unless an EXIT for the fence overtook it. Checked before the write and
+    /// again after it: an EXIT landing during the write may have read the store before it did, and
+    /// then nothing else would close the visit. The retraction is compare-and-remove, so it cannot
+    /// take out a visit written since.
+    ///
+    /// `replacing` is the visit the caller read, nil for none; the write is refused if an
+    /// overlapping callback has stored a different one since.
+    private func saveNewVisit(_ visit: GeofenceDwellVisit, geofenceId: String, replacing: String?) async -> Bool {
+        guard !exitOvertook(visit, geofenceId: geofenceId),
+              await storage.saveDwellVisit(visit, geofenceId: geofenceId, replacing: replacing)
+        else { return false }
+        guard !exitOvertook(visit, geofenceId: geofenceId) else {
+            await storage.removeDwellVisit(geofenceId: geofenceId, ifStill: visit.visitId)
+            return false
+        }
+        return true
+    }
+
+    /// The stored visit, when it still belongs to `userId` and to `geofence`'s geometry.
+    /// Internal for the `+Evidence` extension.
+    ///
+    /// A mismatch is removed only if it is stale against the store's own cache: `geofence` can be
+    /// a snapshot read before a refresh, and the visit it disagrees with may be the newer one.
     func currentVisit(
         geofence: Geofence,
         userId: String
@@ -220,38 +266,44 @@ final class GeofenceDwellCoordinator {
         guard visit.userId == userId,
               visit.geometryRevision == geofence.dwellRevision
         else {
-            await storage.removeDwellVisit(geofenceId: geofence.id)
+            await storage.removeDwellVisitIfStale(geofenceId: geofence.id, currentUserId: userId)
             return nil
         }
         return visit
     }
 
+    /// What an EXIT does to the visit. `endedVisitId` is the visit it read and ends; nil when it
+    /// found none, or found one it must leave — a visit that began after this EXIT.
     private func exitContext(
         geofence: Geofence,
         exitedAt: Date,
         detectionSource: String,
         expectedUserId: String?
-    ) async -> (context: GeofenceExitContext?, shouldEndVisit: Bool) {
+    ) async -> (context: GeofenceExitContext?, endedVisitId: String?) {
         guard let userId = contextStore.currentUserId, !userId.isEmpty,
-              expectedUserId == nil || expectedUserId == userId
-        else { return (nil, false) }
-        guard let visit = await currentVisit(
-            geofence: geofence,
-            userId: userId
-        ) else {
-            return (nil, true)
-        }
-        guard exitedAt >= visit.enteredAt else { return (nil, false) }
-        guard visit.entryObserved, geofence.transitionTypes.contains(.exit) else { return (nil, true) }
+              expectedUserId == nil || expectedUserId == userId,
+              let visit = await currentVisit(geofence: geofence, userId: userId),
+              // A delayed exit from an older visit must not clear a newer visit.
+              exitedAt >= visit.enteredAt
+        else { return (nil, nil) }
+        guard visit.entryObserved, geofence.transitionTypes.contains(.exit) else { return (nil, visit.visitId) }
         return (
             GeofenceExitContext(
                 visitId: visit.visitId,
                 enteredAt: visit.enteredAt,
-                durationSeconds: Int(exitedAt.timeIntervalSince(visit.enteredAt)),
+                durationSeconds: Self.wholeSeconds(from: visit.enteredAt, to: exitedAt),
                 detectionSource: detectionSource
             ),
-            true
+            visit.visitId
         )
+    }
+
+    /// Whole seconds from `start` to `end`. A persisted date comes back up to one ulp (~1.2e-7 s)
+    /// off — `.secondsSince1970` rounds converting out of and back into the reference epoch — so a
+    /// span of exactly whole seconds can read a hair short and truncate a second low. A microsecond
+    /// of slack absorbs that and rounds up no fraction anyone could observe.
+    static func wholeSeconds(from start: Date, to end: Date) -> Int {
+        Int((end.timeIntervalSince(start) + 0.000_001).rounded(.down))
     }
 
     private func tracksVisit(_ geofence: Geofence) -> Bool {

@@ -633,6 +633,7 @@ struct GeofenceStorageTests {
         await storage.recordSync(timestamp: Date(timeIntervalSince1970: 100), location: LocationData(latitude: 1, longitude: 2))
         await storage.recordRegistration(center: LocationData(latitude: 1, longitude: 2), businessIds: ["g1"])
         await storage.recordMonitorRegistration(identifier: "g1", transitionTypes: [.enter, .exit], initialState: .enter, center: LocationData(latitude: 10, longitude: 20), radius: 100)
+        await storage.recordRegistrationIntent(for: [intentFence("old-user-exit-only", types: [.exit])], pruningToCache: false)
 
         await storage.clearUserScopedState()
 
@@ -646,6 +647,7 @@ struct GeofenceStorageTests {
         #expect(await storage.getLastRegistrationCenter() == nil)
         #expect(await storage.getRegisteredBusinessIds().isEmpty)
         #expect(await storage.getDwellVisit(geofenceId: geofence.id) == nil)
+        #expect(await storage.transitionTarget(id: "old-user-exit-only") == .uncached(unconfigured: []))
         // Monitor baseline is dropped: a post-clear event for the same id finds no record (no stale
         // baseline inherited), so it re-establishes silently instead of comparing to the old state.
         #expect(await storage.recordMonitorEvent(.enter, forIdentifier: "g1") == .suppressedNoBaseline)
@@ -1292,4 +1294,84 @@ struct GeofenceStorageTests {
         let later = Self.reseedAt.addingTimeInterval(300)
         #expect(await storage.recordMonitorEvent(.exit, forIdentifier: Self.trigger, onlyIfBaselinePredates: later, now: later) == .deliver)
     }
+
+    // MARK: - Registration intent
+
+    private func intentFence(
+        _ id: String,
+        types: Set<GeofenceTransition>,
+        dwell: Int = 0,
+        polygon: Bool = false
+    ) -> Geofence {
+        Geofence(
+            id: id, latitude: 0, longitude: 0, radius: 100, name: id,
+            transitionTypes: types, lastUpdated: Date(timeIntervalSince1970: 1),
+            vertices: polygon ? [
+                LocationData(latitude: 0, longitude: 0),
+                LocationData(latitude: 0, longitude: 0.001),
+                LocationData(latitude: 0.001, longitude: 0)
+            ] : nil,
+            dwellThresholdSeconds: dwell
+        )
+    }
+
+    /// Only edges a circle is registered for beyond what the customer configured are recorded.
+    @Test
+    func recordRegistrationIntent_givenEachFenceShape_expectOnlyBookkeepingEdgesRecorded() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let storage = makeStorage(directory: dir)
+        let fences = [
+            intentFence("exit-only", types: [.exit]),
+            intentFence("dwell-only", types: [], dwell: 60),
+            intentFence("enter-dwell", types: [.enter], dwell: 60),
+            intentFence("enter-exit", types: [.enter, .exit]),
+            intentFence("enter-only", types: [.enter]),
+            intentFence("exit-only-polygon", types: [.exit], polygon: true)
+        ]
+
+        await storage.recordRegistrationIntent(for: fences, pruningToCache: true)
+
+        #expect(await storage.transitionTarget(id: "exit-only") == .uncached(unconfigured: [.enter]))
+        #expect(await storage.transitionTarget(id: "dwell-only") == .uncached(unconfigured: [.enter, .exit]))
+        #expect(await storage.transitionTarget(id: "enter-dwell") == .uncached(unconfigured: [.exit]))
+        #expect(await storage.transitionTarget(id: "enter-exit") == .uncached(unconfigured: []))
+        #expect(await storage.transitionTarget(id: "enter-only") == .uncached(unconfigured: []))
+        #expect(await storage.transitionTarget(id: "exit-only-polygon") == .uncached(unconfigured: []))
+    }
+
+    /// A fence's record outlives the cache write that drops it by one refresh — callbacks queued
+    /// when it was unregistered — and is forgotten by the next.
+    @Test
+    func recordRegistrationIntent_givenFenceDropped_expectKeptThroughOneRefreshThenForgotten() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let storage = makeStorage(directory: dir)
+        let exitOnly = intentFence("exit-only", types: [.exit])
+        await storage.recordRegistrationIntent(for: [exitOnly], pruningToCache: true)
+        await storage.setCachedGeofences([exitOnly])
+        #expect(await storage.transitionTarget(id: "exit-only") == .cached(exitOnly))
+
+        await storage.recordRegistrationIntent(for: [], pruningToCache: true)
+        await storage.setCachedGeofences([])
+        #expect(await storage.transitionTarget(id: "exit-only") == .uncached(unconfigured: [.enter]))
+
+        await storage.recordRegistrationIntent(for: [], pruningToCache: true)
+        await storage.setCachedGeofences([])
+        #expect(await storage.transitionTarget(id: "exit-only") == .uncached(unconfigured: []))
+    }
+
+    /// A fence reconfigured to include ENTER loses its record, so its ENTER is forwarded again.
+    @Test
+    func recordRegistrationIntent_givenFenceReconfiguredWithEnter_expectRecordCleared() async {
+        let dir = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let storage = makeStorage(directory: dir)
+        await storage.recordRegistrationIntent(for: [intentFence("fence", types: [.exit])], pruningToCache: false)
+
+        await storage.recordRegistrationIntent(for: [intentFence("fence", types: [.enter, .exit])], pruningToCache: false)
+
+        #expect(await storage.transitionTarget(id: "fence") == .uncached(unconfigured: []))
+    }
+
 }

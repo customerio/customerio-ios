@@ -116,10 +116,16 @@ final class PolygonMembershipResolver {
         // A switch during the awaits below must not relabel this crossing or its visit. Anonymous
         // maps to "" so no later sign-in can claim it either.
         let receivedForUserId = receivedForUserId ?? contextStore.currentUserId ?? ""
-        guard let geofence = await cachedGeofence(id: identifier) else {
+        // One read for both answers, so an uncached ENTER meets its user check after exactly the
+        // storage round trip it always had.
+        let geofence: Geofence
+        switch await storage.transitionTarget(id: identifier) {
+        case .cached(let cached):
+            geofence = cached
+        case .uncached(let unconfigured):
             await forwardUncachedTransition(
                 identifier: identifier, transition: transition, occurredAt: occurredAt,
-                receivedForUserId: receivedForUserId
+                receivedForUserId: receivedForUserId, unconfigured: unconfigured
             )
             return .nothingToRearm
         }

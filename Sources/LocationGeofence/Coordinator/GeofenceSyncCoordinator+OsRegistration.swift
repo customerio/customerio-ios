@@ -81,14 +81,9 @@ extension GeofenceSyncCoordinatorImpl {
                 // BOTH edges so membership can advance. Registering it with the customer's types
                 // would starve the resolver of the filtered edge — an enter-only polygon would fire
                 // once and never again, an exit-only one never at all. The customer's filter is
-                // applied to the polygon verdict instead.
-                transitionTypes: region.vertices == nil
-                    ? (
-                        region.dwellThresholdSeconds > 0 || region.transitionTypes.contains(.exit)
-                            ? [.enter, .exit]
-                            : region.transitionTypes.intersection([.enter, .exit])
-                    )
-                    : [.enter, .exit]
+                // applied to the polygon verdict instead. A visit-tracking circle is widened too;
+                // its extra edges are recorded by `recordRegistrationIntent` before this runs.
+                transitionTypes: region.osTransitionTypes
             )
         })
         let diff = monitor.setMonitoredRegions(desired)

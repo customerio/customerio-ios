@@ -3129,6 +3129,102 @@ struct GeofenceSyncCoordinatorTests {
         #expect(await storage.getDwellVisit(geofenceId: region.id) != nil)
     }
 
+    /// The refresh records a widened edge before registering and keeps the record through the
+    /// refresh that drops the fence, so a callback queued at the drop is still recognised.
+    @Test
+    func remoteRefresh_givenExitOnlyCircleDropped_expectWidenedEnterStillKnownThroughTheDrop() async {
+        let anchor = LocationData(latitude: 1.0, longitude: 2.0)
+        let storage = makeStorage()
+        let dateUtil = DateUtilStub()
+        let exitOnly = Geofence(
+            id: "exit-only", latitude: 1.0, longitude: 2.0, radius: 100, name: "exit-only",
+            transitionTypes: [.exit], lastUpdated: Date(timeIntervalSince1970: 1700000000)
+        )
+        let served = Synchronized<[Geofence]>([exitOnly, makeRegion(id: "configured", latitude: 1.0, longitude: 2.0)])
+        let api = GeofenceApiServiceMock()
+        api.fetchNearbyGeofencesClosure = { _, _, completion in
+            completion(.success(makeApiResponse(regions: served.wrappedValue)))
+        }
+        let setup = makeCoordinator(api: api, storage: storage, dateUtil: dateUtil)
+        let refreshRemotely = {
+            await storage.recordSync(
+                timestamp: dateUtil.givenNow.addingTimeInterval(-25 * 60 * 60),
+                location: LocationData(latitude: 0, longitude: 0)
+            )
+            _ = await setup.coordinator.refresh(latitude: anchor.latitude, longitude: anchor.longitude, anchorIsLiveFix: true)
+        }
+
+        await refreshRemotely()
+        let registered = setup.monitor.monitoredRegionIdentifiers
+        #expect(registered.contains("exit-only"))
+        served.wrappedValue = []
+        await refreshRemotely()
+
+        #expect(await storage.transitionTarget(id: "exit-only") == .uncached(unconfigured: [.enter]))
+        #expect(await storage.transitionTarget(id: "configured") == .uncached(unconfigured: []))
+    }
+
+    /// The synthetic ENTER's send can stall (offline, a backlog flush). Its visit must not wait
+    /// behind it, or a real EXIT in that window finds nothing to close and the write lands after.
+    @Test
+    func refresh_givenInitialEnterSendStalls_expectVisitRecordedWhileItIsInFlight() async {
+        let anchor = LocationData(latitude: 1.0, longitude: 2.0)
+        let storage = makeStorage()
+        let contextStore = makeContextStore()
+        let emitter = StallingEnterEmitter()
+        let dwellCoordinator = GeofenceDwellCoordinator(
+            storage: storage,
+            transitionEmitter: emitter,
+            contextStore: contextStore,
+            logger: LoggerMock()
+        )
+        let dateUtil = DateUtilStub()
+        await storage.recordSync(
+            timestamp: dateUtil.givenNow.addingTimeInterval(-25 * 60 * 60),
+            location: LocationData(latitude: 0, longitude: 0)
+        )
+        let region = Geofence(
+            id: "enter-exit",
+            latitude: anchor.latitude,
+            longitude: anchor.longitude,
+            radius: 100,
+            name: "Enter and exit",
+            transitionTypes: [.enter, .exit],
+            lastUpdated: Date(timeIntervalSince1970: 1)
+        )
+        let api = GeofenceApiServiceMock()
+        api.fetchNearbyGeofencesClosure = { _, _, completion in
+            completion(.success(makeApiResponse(regions: [region])))
+        }
+        let coordinator = GeofenceSyncCoordinatorImpl(
+            apiService: api,
+            storage: storage,
+            monitor: MockGeofenceRegionMonitor(),
+            contextStore: contextStore,
+            transitionEmitter: emitter,
+            dwellCoordinator: dwellCoordinator,
+            dateUtil: dateUtil,
+            logger: LoggerMock()
+        )
+
+        _ = await coordinator.refresh(
+            latitude: anchor.latitude,
+            longitude: anchor.longitude,
+            anchorIsLiveFix: true
+        )
+        for _ in 0 ..< 1000 {
+            if await emitter.entersReceived == 1, await storage.getDwellVisit(geofenceId: region.id) != nil { break }
+            await Task.yield()
+        }
+
+        #expect(await emitter.entersReceived == 1)
+        #expect(await emitter.isStalled)
+        // Within a millisecond, not equal: the visit's date round-trips through JSON.
+        let enteredAt = await storage.getDwellVisit(geofenceId: region.id)?.enteredAt
+        #expect(abs(enteredAt?.timeIntervalSince(dateUtil.givenNow) ?? .infinity) < 0.001)
+        await emitter.release()
+    }
+
     @Test
     func refresh_givenNewAndAlreadyRegisteredInside_expectOnlyNewEmitted() async {
         let anchor = LocationData(latitude: 1.0, longitude: 2.0)
@@ -3475,6 +3571,7 @@ private actor SpyGeofenceSyncStorage: GeofenceSyncStorage {
         case setCachedConfig
         case recordSync
         case recordRegistration
+        case recordRegistrationIntent
         case clearUserScopedState
     }
 
@@ -3521,6 +3618,11 @@ private actor SpyGeofenceSyncStorage: GeofenceSyncStorage {
     func getLastRegistrationCenter() async -> LocationData? {
         operations.append(.getLastRegistrationCenter)
         return await underlying.getLastRegistrationCenter()
+    }
+
+    func recordRegistrationIntent(for geofences: [Geofence], pruningToCache: Bool) async {
+        operations.append(.recordRegistrationIntent)
+        await underlying.recordRegistrationIntent(for: geofences, pruningToCache: pruningToCache)
     }
 
     func getRegisteredBusinessIds() async -> Set<String> {
@@ -3591,6 +3693,40 @@ private final class TransitionEmitterSpy: GeofenceTransitionEmitting, @unchecked
     ) async {
         await trackTransition(geofenceId: geofenceId, transition: .exit, occurredAt: occurredAt)
     }
+}
+
+/// Holds every ENTER inside the tracker, a send that has not come back, until released.
+private actor StallingEnterEmitter: GeofenceTransitionEmitting {
+    private var released = false
+    private var stalledSends: [CheckedContinuation<Void, Never>] = []
+    private(set) var entersReceived = 0
+
+    var isStalled: Bool {
+        !stalledSends.isEmpty
+    }
+
+    func trackTransition(geofenceId: String, transition: GeofenceTransition, occurredAt: Date) async {
+        guard transition == .enter else { return }
+        entersReceived += 1
+        guard !released else { return }
+        await withCheckedContinuation { stalledSends.append($0) }
+    }
+
+    func release() {
+        released = true
+        stalledSends.forEach { $0.resume() }
+        stalledSends.removeAll()
+    }
+
+    func trackDwell(
+        geofenceId: String, occurredAt: Date, context: GeofenceDwellContext, expectedUserId: String?
+    ) async -> Bool {
+        true
+    }
+
+    func trackExit(
+        geofenceId: String, occurredAt: Date, context: GeofenceExitContext?, expectedUserId: String?
+    ) async {}
 }
 
 // MARK: - Async signal helper

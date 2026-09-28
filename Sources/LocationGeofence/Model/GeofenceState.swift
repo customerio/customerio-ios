@@ -29,6 +29,10 @@ struct GeofenceState: Codable, Equatable, Sendable {
     var monitorRegionRecords: [String: MonitorRegionRecord]?
     /// One durable continuous visit per fence. Cleared on exit, user change, or geometry change.
     var dwellVisits: [String: GeofenceDwellVisit]?
+    /// Per circle, the OS edges registered only for visit bookkeeping (see
+    /// `Geofence.unconfiguredOsTransitions`). Outlives the fence's cache entry, which is the point:
+    /// an OS callback for a fence the cache has dropped carries no configuration of its own.
+    var unconfiguredOsTransitions: [String: Set<GeofenceTransition>]?
 }
 
 struct GeofenceDwellVisit: Codable, Equatable, Sendable {

@@ -188,6 +188,13 @@ extension GeofenceDwellCoordinator {
         evidenceRetries.removeValue(forKey: geofenceId)
     }
 
+    /// Cancels only while the pending evidence is `visitId`'s: an overlapping ENTER may already have
+    /// scheduled the next visit's deadline, and that one must survive the old visit's EXIT.
+    func cancelEvidence(for geofenceId: String, ifVisit visitId: String) {
+        guard (evidenceRetries[geofenceId]?.visitId ?? visitId) == visitId else { return }
+        cancelEvidence(for: geofenceId)
+    }
+
     func registerForegroundEvaluation() {
         #if canImport(UIKit)
         foregroundObserver = notificationCenter.addObserver(

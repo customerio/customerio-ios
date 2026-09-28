@@ -3,9 +3,11 @@ import Foundation
 
 struct GeofenceDwellContext: Sendable {
     let visitId: String
-    let enteredAt: Date
+    /// Nil when the visit's entry was not observed: its start is only the first inside evidence.
+    let enteredAt: Date?
     let thresholdSeconds: Int
-    let durationSeconds: Int
+    /// Nil on the same condition as `enteredAt`; it would be measured from that inferred start.
+    let durationSeconds: Int?
     let detectionSource: String
 }
 

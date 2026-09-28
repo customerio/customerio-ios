@@ -11,7 +11,26 @@ extension GeofenceStorage {
 
     @discardableResult
     func saveDwellVisit(_ visit: GeofenceDwellVisit, geofenceId: String) -> Bool {
+        saveDwellVisit(visit, geofenceId: geofenceId, onlyIfStored: nil, requiresMatch: false)
+    }
+
+    /// Compare-and-set: writes `visit` only while the store holds no visit for the fence, or still
+    /// holds `expectedVisitId` — the one the caller read. A visit written by an overlapping callback
+    /// since that read is never overwritten.
+    func saveDwellVisit(_ visit: GeofenceDwellVisit, geofenceId: String, replacing expectedVisitId: String?) -> Bool {
+        saveDwellVisit(visit, geofenceId: geofenceId, onlyIfStored: expectedVisitId, requiresMatch: true)
+    }
+
+    private func saveDwellVisit(
+        _ visit: GeofenceDwellVisit,
+        geofenceId: String,
+        onlyIfStored expectedVisitId: String?,
+        requiresMatch: Bool
+    ) -> Bool {
         var state = loadFromDisk() ?? GeofenceState()
+        if requiresMatch, let stored = state.dwellVisits?[geofenceId], stored.visitId != expectedVisitId {
+            return false
+        }
         guard let geofence = state.cachedGeofences?.first(where: { $0.id == geofenceId }),
               geofence.dwellRevision == visit.geometryRevision,
               geofence.dwellThresholdSeconds > 0 || geofence.transitionTypes.contains(.exit)
@@ -50,6 +69,29 @@ extension GeofenceStorage {
     func removeDwellVisit(geofenceId: String) {
         var state = loadFromDisk() ?? GeofenceState()
         guard state.dwellVisits?.removeValue(forKey: geofenceId) != nil else { return }
+        saveToDisk(state)
+    }
+
+    /// Compare-and-remove: removes the stored visit only while it is still `visitId`, so a caller
+    /// retracting the visit it wrote cannot delete one written since.
+    func removeDwellVisit(geofenceId: String, ifStill visitId: String) {
+        var state = loadFromDisk() ?? GeofenceState()
+        guard state.dwellVisits?[geofenceId]?.visitId == visitId else { return }
+        state.dwellVisits?.removeValue(forKey: geofenceId)
+        saveToDisk(state)
+    }
+
+    /// Removes the stored visit only when it is stale against what is stored NOW: another user's,
+    /// or recorded against geometry the cached fence no longer has. A caller holding an older
+    /// snapshot of the fence must not delete a visit recorded against the newer geometry.
+    func removeDwellVisitIfStale(geofenceId: String, currentUserId: String) {
+        var state = loadFromDisk() ?? GeofenceState()
+        guard let stored = state.dwellVisits?[geofenceId] else { return }
+        let retained = Self.dwellVisits(
+            [geofenceId: stored], retainedFor: state.cachedGeofences ?? []
+        )?[geofenceId] != nil
+        guard stored.userId != currentUserId || !retained else { return }
+        state.dwellVisits?.removeValue(forKey: geofenceId)
         saveToDisk(state)
     }
 

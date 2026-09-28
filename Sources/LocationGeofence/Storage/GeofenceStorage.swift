@@ -210,6 +210,7 @@ actor GeofenceStorage {
         state.monitorRegionRecords = nil
         state.polygonMembership = nil
         state.dwellVisits = nil
+        state.unconfiguredOsTransitions = nil
         saveToDisk(state)
     }
 

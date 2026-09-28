@@ -99,11 +99,17 @@ extension PolygonMembershipResolver {
     /// A circle fence's OS event, forwarded untouched apart from the visit it opens or closes.
     /// `receivedForUserId` is who was identified when the OS delivered it; see `handleTransition`.
     ///
-    /// An ENTER reaches the tracker BEFORE its visit is recorded: the visit is best-effort
-    /// bookkeeping behind a storage round trip, and awaiting it first let a sign-out landing in that
-    /// window drop the crossing itself. An EXIT has to read its visit first — the duration travels
-    /// on the event — and is bound to the receiving user, so a switch meanwhile drops rather than
-    /// misattributes it.
+    /// An ENTER's visit is written ALONGSIDE its delivery, neither awaiting the other. Awaiting the
+    /// visit first put a storage round trip before the user check, and a sign-out landing in it
+    /// dropped the crossing itself. Awaiting the delivery first put the whole send — HTTP, backlog
+    /// flush, an offline timeout — before the write, so an EXIT in that window found no visit and a
+    /// write landing after it left one open for a device already outside. The child task needs the
+    /// main actor, which this function holds until `forwardEnter` suspends inside the tracker, so the
+    /// ENTER's user check still runs first. An EXIT overtaking the write is caught by the dwell
+    /// coordinator, which refuses a visit that started before an EXIT it has seen.
+    ///
+    /// An EXIT has to read its visit first — the duration travels on the event — and is bound to
+    /// the receiving user, so a switch meanwhile drops rather than misattributes it.
     func forwardCircleTransition(
         geofence: Geofence,
         transition: GeofenceTransition,
@@ -112,12 +118,14 @@ extension PolygonMembershipResolver {
     ) async {
         switch transition {
         case .enter:
+            let dwellCoordinator = dwellCoordinator
+            async let visitRecorded: GeofenceExitContext? = dwellCoordinator?.handleBoundary(
+                geofence: geofence, transition: .enter, occurredAt: occurredAt, expectedUserId: receivedForUserId
+            )
             if geofence.transitionTypes.contains(.enter) {
                 await forwardEnter(identifier: geofence.id, occurredAt: occurredAt, receivedForUserId: receivedForUserId)
             }
-            await dwellCoordinator?.handleBoundary(
-                geofence: geofence, transition: .enter, occurredAt: occurredAt, expectedUserId: receivedForUserId
-            )
+            _ = await visitRecorded
         case .exit:
             let exitContext = await dwellCoordinator?.handleBoundary(
                 geofence: geofence, transition: .exit, occurredAt: occurredAt, expectedUserId: receivedForUserId
@@ -134,13 +142,23 @@ extension PolygonMembershipResolver {
     }
 
     /// An OS event for a fence the cache no longer holds, forwarded as the circle it predates
-    /// polygons as. No transition-type filter and no visit: there is no configuration to apply.
+    /// polygons as. No visit: there is no fence to measure against.
+    ///
+    /// `unconfigured` is the one piece of configuration that outlives the cache: the edges the
+    /// circle was registered for only as visit bookkeeping (an exit-only or dwell-only circle is
+    /// registered for ENTER too). Those are dropped — the customer never asked for them. Every
+    /// other edge is forwarded unfiltered, as before, so a configured ENTER still arrives.
     func forwardUncachedTransition(
         identifier: String,
         transition: GeofenceTransition,
         occurredAt: Date,
-        receivedForUserId: String
+        receivedForUserId: String,
+        unconfigured: Set<GeofenceTransition> = []
     ) async {
+        guard !unconfigured.contains(transition) else {
+            logger.geofenceCallbackDropped(identifier: identifier, transition: transition, reason: "transition_not_configured")
+            return
+        }
         switch transition {
         case .enter:
             await forwardEnter(identifier: identifier, occurredAt: occurredAt, receivedForUserId: receivedForUserId)

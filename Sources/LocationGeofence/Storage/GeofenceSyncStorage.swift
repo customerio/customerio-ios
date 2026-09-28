@@ -14,6 +14,7 @@ protocol GeofenceSyncStorage: Sendable {
     func setCachedConfig(_ config: GeofenceConfig) async
     func recordSync(timestamp: Date, location: LocationData) async
     func recordRegistration(center: LocationData, businessIds: Set<String>) async
+    func recordRegistrationIntent(for geofences: [Geofence], pruningToCache: Bool) async
     func clearUserScopedState() async
 }
 
