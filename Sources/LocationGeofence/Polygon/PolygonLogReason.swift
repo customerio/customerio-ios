@@ -110,6 +110,7 @@ extension PolygonMembershipOutcome {
     var logToken: String {
         switch self {
         case .deliver: return "deliver"
+        case .discoveredInside: return "discovered_inside"
         case .suppressedNoChange: return "no_change"
         case .suppressedNewerDecision: return "newer_decision"
         case .suppressedInitialOutside: return "initial_outside"

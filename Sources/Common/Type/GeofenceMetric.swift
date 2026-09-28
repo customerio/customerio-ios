@@ -27,6 +27,13 @@ public protocol GeofenceMetric {
 }
 
 public extension GeofenceMetric {
+    // Keep existing third-party conformers source compatible when dwell fields are added.
+    var visitId: String? { nil }
+    var enteredAt: Date? { nil }
+    var dwellThresholdSeconds: Int? { nil }
+    var dwellDurationSeconds: Int? { nil }
+    var detectionSource: String? { nil }
+
     /// `/track` event name. The same name for every transition; the direction is the
     /// `transition` property.
     var trackEventName: String { "Geofence Transition" }

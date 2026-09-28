@@ -10,9 +10,12 @@ extension GeofenceStorage {
     /// concurrent evaluations cannot both observe a stale belief and both deliver.
     ///
     /// A polygon with no record yet is undecided, not outside: the first decisive fix placing the
-    /// device inside is therefore a genuine enter (the polygon counterpart of enter-when-inside),
-    /// while a first fix placing it outside simply establishes the belief. Because the record
-    /// survives re-registration, a wholesale re-register stays silent without needing a diff.
+    /// device inside is therefore still owed an enter (the polygon counterpart of enter-when-inside),
+    /// while a first fix placing it outside simply establishes the belief. That enter is
+    /// `.discoveredInside`, not `.deliver(.enter)`: the device was never seen outside, so the stay
+    /// was already in progress and its start is unknown. Only an `outside` belief stamped with the
+    /// same ring makes inside an observed crossing. Because the record survives re-registration, a
+    /// wholesale re-register stays silent without needing a diff.
     ///
     /// `onlyIfBeliefPredates` makes the write conditional on the belief's age, atomically with the
     /// compare-and-store: an evaluation whose fix predates a belief written since must not
@@ -52,20 +55,11 @@ extension GeofenceStorage {
         // this closes what is left — deciding on the main actor and then hopping here to write, a
         // gap a refresh can land in. The ring itself, not `lastUpdated`: the server owns that field
         // and a replacement that failed to bump it would pass a check written against it.
-        if let evaluatedRing {
-            let currentRing = state.cachedGeofences?.first { $0.id == identifier }?.vertices
-            guard currentRing == evaluatedRing else { return .suppressedGeometryChanged }
-        }
-        // The covering exit's equivalent. It carries no ring — leaving a circle says nothing about
-        // a ring — but the certainty it rests on is polygon ⊆ ITS OWN circle, so it holds only
-        // while the fence still has the circle that was crossed. Checked here rather than before
-        // the hop for the same reason as the ring: a refresh landing in between would otherwise
-        // store `outside` for a device inside the replacement polygon.
-        if let evaluatedCircle {
-            guard let current = state.cachedGeofences?.first(where: { $0.id == identifier }),
-                  evaluatedCircle.matches(current)
-            else { return .suppressedGeometryChanged }
-        }
+        guard Self.matchesEvaluatedGeometry(
+            state: state, identifier: identifier,
+            evaluatedRing: evaluatedRing, evaluatedCircle: evaluatedCircle
+        ) else { return .suppressedGeometryChanged }
+        let currentRing = state.cachedGeofences?.first { $0.id == identifier }?.vertices
         var records = state.polygonMembership ?? [:]
         let existing = records[identifier]
         // A stamp ahead of `now` is impossible evidence — persisted by a build that predates the
@@ -85,28 +79,57 @@ extension GeofenceStorage {
                 return .suppressedUnmonitored
             }
             records[identifier] = PolygonMembershipRecord(
-                membership: membership, lastChangedAt: evidenceTimestamp ?? now
+                membership: membership, lastChangedAt: evidenceTimestamp ?? now, ring: currentRing
             )
             state.polygonMembership = records
             saveToDisk(state)
-            return membership == .inside ? .deliver(.enter) : .suppressedInitialOutside
+            return membership == .inside ? .discoveredInside : .suppressedInitialOutside
         }
         guard existing.membership != membership else {
+            var confirmed = existing
             if let evidenceTimestamp, let existingStamp, evidenceTimestamp > existingStamp {
-                records[identifier] = PolygonMembershipRecord(
-                    membership: membership, lastChangedAt: evidenceTimestamp
-                )
+                confirmed.lastChangedAt = evidenceTimestamp
+            }
+            // A confirmation under a replaced ring re-proves the belief against the new ring, so it
+            // is re-stamped even when its evidence is no newer.
+            confirmed.ring = currentRing
+            if confirmed != existing {
+                records[identifier] = confirmed
                 state.polygonMembership = records
                 saveToDisk(state)
             }
             return .suppressedNoChange
         }
         records[identifier] = PolygonMembershipRecord(
-            membership: membership, lastChangedAt: evidenceTimestamp ?? now
+            membership: membership, lastChangedAt: evidenceTimestamp ?? now, ring: currentRing
         )
         state.polygonMembership = records
         saveToDisk(state)
-        return .deliver(membership == .inside ? .enter : .exit)
+        guard membership == .inside else { return .deliver(.exit) }
+        return Self.observesEntry(from: existing, currentRing: currentRing) ? .deliver(.enter) : .discoveredInside
+    }
+
+    /// Whether `outside` → inside is an observed crossing: only when the outside belief was formed
+    /// against the ring the inside verdict is judged by.
+    private static func observesEntry(from outside: PolygonMembershipRecord, currentRing: [LocationData]?) -> Bool {
+        guard let ring = outside.ring else { return false }
+        return ring == currentRing
+    }
+
+    private static func matchesEvaluatedGeometry(
+        state: GeofenceState,
+        identifier: String,
+        evaluatedRing: [LocationData]?,
+        evaluatedCircle: MonitoredCircle?
+    ) -> Bool {
+        let current = state.cachedGeofences?.first { $0.id == identifier }
+        if let evaluatedRing, current?.vertices != evaluatedRing { return false }
+        // A covering-circle exit carries no ring, but its verdict is only valid while this same
+        // monitored circle belongs to the fence. Check inside the actor's compare-and-store.
+        if let evaluatedCircle {
+            guard let current, evaluatedCircle.matches(current) else { return false }
+        }
+        return true
     }
 
     /// The cached fence for `id`, but only while it is still registered — both read from one load,

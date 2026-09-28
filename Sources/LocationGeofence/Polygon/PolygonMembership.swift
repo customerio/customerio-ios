@@ -30,6 +30,11 @@ struct PolygonMembershipRecord: Codable, Equatable, Sendable {
     /// `try?`, taking the cached geofences, monitor baselines, registration set and cooldowns with
     /// it on the next write.
     var lastChangedAt: Date
+    /// The ring cached when the belief was written. An `outside` belief proves an observed entry
+    /// only against this same ring: after a replacement, "outside the old shape" says nothing about
+    /// when the device came to be inside the new one. Nil on records written before the field
+    /// existed: nothing says which ring they were formed against, so they prove no entry.
+    var ring: [LocationData]?
 }
 
 /// What `GeofenceStorage.recordPolygonMembership` decided about an evaluation.
@@ -37,6 +42,11 @@ enum PolygonMembershipOutcome: Equatable {
     /// Membership changed; the caller delivers this transition, subject to the geofence's own
     /// transition-type filter.
     case deliver(GeofenceTransition)
+    /// The belief moved to inside with no outside belief for the same ring before it: the first
+    /// decision for this polygon, or the first after its ring was replaced. The caller still
+    /// delivers an ENTER (enter-when-inside), but no crossing was observed, so the stay it begins
+    /// has no known start and must not report `entered_at` or a visit duration.
+    case discoveredInside
     case suppressedNoChange
     /// A newer decision was already recorded — the evaluation's fix predates it.
     case suppressedNewerDecision
