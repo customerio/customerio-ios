@@ -579,7 +579,7 @@ struct GeofenceDwellCoordinatorTests {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .secondsSince1970
         for step in 0 ..< 1000 {
-            let date = Date(timeIntervalSinceReferenceDate: 811_000_000.123 + Double(step) * 0.017)
+            let date = Date(timeIntervalSinceReferenceDate: 811000000.123 + Double(step) * 0.017)
             guard let data = try? encoder.encode(Box(date: date)),
                   let back = try? decoder.decode(Box.self, from: data).date
             else { continue }

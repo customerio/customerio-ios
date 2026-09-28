@@ -1373,5 +1373,4 @@ struct GeofenceStorageTests {
 
         #expect(await storage.transitionTarget(id: "fence") == .uncached(unconfigured: []))
     }
-
 }
